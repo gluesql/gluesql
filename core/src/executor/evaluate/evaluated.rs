@@ -33,16 +33,10 @@ impl TryFrom<Evaluated<'_>> for Value {
             Evaluated::StrSlice {
                 source: s,
                 range: r,
-            } => {
-                println!(
-                    "try from Evaluated to Value: {:?}",
-                    Value::Str(s[r.clone()].to_owned())
-                );
-                match s.as_str() {
-                    "NULL" => Ok(Value::Null),
-                    _ => Ok(Value::Str(s[r].to_owned())),
-                }
-            }
+            } => match s.as_str() {
+                "NULL" => Ok(Value::Null),
+                _ => Ok(Value::Str(s[r].to_owned())),
+            },
             Evaluated::Value(v) => Ok(v),
         }
     }
@@ -858,13 +852,7 @@ impl<'a> Evaluated<'a> {
             Evaluated::StrSlice {
                 source: s,
                 range: r,
-            } => {
-                println!(
-                    "try into value function : {:?}",
-                    Value::Str(s[r.clone()].to_owned())
-                );
-                Value::Str(s[r].to_owned())
-            }
+            } => Value::Str(s[r].to_owned()),
         };
 
         value.validate_null(nullable)?;
