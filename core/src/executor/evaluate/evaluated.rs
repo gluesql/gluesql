@@ -564,8 +564,14 @@ impl<'a> Evaluated<'a> {
             .next();
 
         let end = match pivot {
-            Some(idx) => matched_vec[matched_vec.len() - idx].0,
-            _ => matched_vec[0].0,
+            Some(idx) => match idx {
+                0 => range.end,
+                _ => matched_vec[matched_vec.len() - idx].0,
+            },
+            _ => match matched_vec[matched_vec.len() - 1].0 == sliced_expr.len() - 1 {
+                true => matched_vec[0].0,
+                false => range.start,
+            },
         };
 
         Ok(Evaluated::StrSlice {
@@ -805,9 +811,12 @@ impl<'a> Evaluated<'a> {
                 let end = match pivot {
                     Some(idx) => match idx {
                         0 => range.end,
-                        _ => matched_vec[matched_vec.len() - idx - 1].0 + 1,
+                        _ => matched_vec[matched_vec.len() - idx].0,
                     },
-                    _ => range.start,
+                    _ => match matched_vec[matched_vec.len() - 1].0 == sliced_expr.len() - 1 {
+                        true => matched_vec[0].0,
+                        false => range.start,
+                    },
                 };
 
                 Ok(Evaluated::StrSlice {
@@ -820,7 +829,7 @@ impl<'a> Evaluated<'a> {
                     .chars()
                     .skip(range.start)
                     .enumerate()
-                    .find(|(_, c)| c.is_whitespace())
+                    .find(|(_, c)| !c.is_whitespace())
                     .map(|(idx, _)| idx + range.start)
                     .unwrap_or(0);
 
@@ -830,7 +839,7 @@ impl<'a> Evaluated<'a> {
                         .rev()
                         .skip(expr_str.len() - range.end)
                         .enumerate()
-                        .find(|(_, c)| c.is_whitespace())
+                        .find(|(_, c)| !c.is_whitespace())
                         .map(|(idx, _)| expr_str.len() - (range.end - idx))
                         .unwrap_or(0);
 
