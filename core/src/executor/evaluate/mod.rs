@@ -303,7 +303,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a>(
                 None => None,
             };
 
-            f::trim(name, expr, filter_chars, trim_where_field)
+            expr.trim(name, filter_chars, trim_where_field)
         }
         Function::Ltrim { expr, chars } => {
             let expr = eval(expr).await?;

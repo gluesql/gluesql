@@ -199,7 +199,7 @@ fn evaluate_function<'a>(
             let expr = eval(expr)?;
             let filter_chars = eval_opt(filter_chars.as_ref())?;
 
-            f::trim(name, expr, filter_chars, trim_where_field)
+            expr.trim(name, filter_chars, trim_where_field)
         }
         Function::Ltrim { expr, chars } => {
             let expr = eval(expr)?;

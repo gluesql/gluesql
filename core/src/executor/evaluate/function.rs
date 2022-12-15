@@ -1,7 +1,7 @@
 use {
     super::{EvaluateError, Evaluated},
     crate::{
-        ast::{DataType, DateTimeField, TrimWhereField},
+        ast::{DataType, DateTimeField},
         data::{Value, ValueError},
         result::Result,
     },
@@ -182,34 +182,6 @@ pub fn lpad_or_rpad<'a>(
     };
 
     Ok(Evaluated::from(Value::Str(result)))
-}
-
-pub fn trim<'a>(
-    name: String,
-    expr: Evaluated<'_>,
-    filter_chars: Option<Evaluated<'_>>,
-    trim_where_field: &'a Option<TrimWhereField>,
-) -> Result<Evaluated<'a>> {
-    let expr_str = eval_to_str!(name, expr);
-    let expr_str = expr_str.as_str();
-    let filter_chars = match filter_chars {
-        Some(expr) => eval_to_str!(name, expr).chars().collect::<Vec<_>>(),
-        None => vec![' '],
-    };
-
-    let value = match trim_where_field {
-        Some(TrimWhereField::Both) => expr_str.trim_matches(&filter_chars[..]),
-        Some(TrimWhereField::Leading) => expr_str.trim_start_matches(&filter_chars[..]),
-        Some(TrimWhereField::Trailing) => expr_str.trim_end_matches(&filter_chars[..]),
-        None => expr_str.trim(),
-    };
-    let start = expr_str.find(value.chars().next().unwrap()).unwrap_or(0);
-    let end = expr_str.rfind(value.chars().last().unwrap()).unwrap_or(0);
-
-    Ok(Evaluated::StrSlice {
-        source: value.to_owned(),
-        range: start..end,
-    })
 }
 
 pub fn ltrim<'a>(

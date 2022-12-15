@@ -577,54 +577,166 @@ impl<'a> Evaluated<'a> {
             .collect::<Vec<_>>(),
             None => vec![' '],
         };
-        println!("expr_str !{:?}, filter_chars {:?}", expr_str, filter_chars);
-
+        let sliced_expr = &expr_str[range.clone()];
+        let matched_vec: Vec<_> = sliced_expr.match_indices(&filter_chars[..]).collect();
+        //filter_chars => ['x','y','z']
+        //"x".trim_matches(filter_chars[..]) => ""
+        if matched_vec.len() == sliced_expr.len() {
+            return Ok(Evaluated::StrSlice {
+                source,
+                range: 0..0,
+            });
+        }
+        //filter_chars => ['x','y','z']
+        //"tuv".trim_matches(filter_chars[..]) => "tuv"
+        if matched_vec.len() == 0 {
+            return Ok(Evaluated::StrSlice { source, range });
+        }
+        //filter_chars => ['x','y','z']
+        //"txu".trim_matches(filter_chars[..]) => "txv"
+        if matched_vec[0].0 != 0 && matched_vec[matched_vec.len() - 1].0 != sliced_expr.len() - 1 {
+            return Ok(Evaluated::StrSlice { source, range });
+        }
         match trim_where_field {
             Some(TrimWhereField::Both) => {
-                let start = expr_str.find(filter_chars[0]).unwrap_or(0);
-                let end = expr_str.rfind(filter_chars[0]).unwrap_or(0);
+                //filter_chars => ['x','y','z']
+                //"xyzbyxlxyz  ".trim_matches(filter_chars[..]) => "byxlxyz  "
+                if matched_vec[0].0 == 0
+                    && matched_vec[matched_vec.len() - 1].0 != sliced_expr.len() - 1
+                {
+                    let pivot = matched_vec
+                        .iter()
+                        .enumerate()
+                        .skip_while(|(vec_idx, (slice_idx, _))| vec_idx == slice_idx)
+                        .map(|(vec_idx, (_, _))| vec_idx)
+                        .next();
 
-                // let start = match start {
-                //     Some(x) => {
+                    let start = match pivot {
+                        Some(idx) => match idx {
+                            0 => 0,
+                            _ => matched_vec[idx - 1].0 + 1,
+                        },
+                        _ => matched_vec[matched_vec.len() - 1].0 + 1,
+                    };
 
-                //     },
-                //     None => {
-                //         Ok(Evaluated::StrSlice {
-                //             source: expr_str.to_owned(),
-                //             range: start..end,
-                //         })
-                //     }
-                // }
+                    return Ok(Evaluated::StrSlice {
+                        source: expr_str.to_owned(),
+                        range: range.start + start..range.end,
+                    });
+                }
+                //filter_chars => ['x','y','z']
+                //"  xyzblankxyzxx".trim_matches(filter_chars[..]) => "  xyzblank"
+                if matched_vec[0].0 != 0
+                    && matched_vec[matched_vec.len() - 1].0 == sliced_expr.len() - 1
+                {
+                    let pivot = matched_vec
+                        .iter()
+                        .rev()
+                        .enumerate()
+                        .skip_while(|(vec_idx, (slice_idx, _))| {
+                            *vec_idx == sliced_expr.len() - slice_idx - 1
+                        })
+                        .map(|(vec_idx, (_, _))| vec_idx)
+                        .next();
+
+                    let end = match pivot {
+                        Some(idx) => matched_vec[matched_vec.len() - idx].0,
+                        _ => matched_vec[0].0,
+                    };
+
+                    return Ok(Evaluated::StrSlice {
+                        source: expr_str.to_owned(),
+                        range: range.start..end,
+                    });
+                }
+                //filter_chars => ['x','y','z']
+                //"xxbyz".trim_matches(filter_chars[..]) => "b"
+                let pivot = matched_vec
+                    .iter()
+                    .enumerate()
+                    .skip_while(|(vec_idx, (slice_idx, _))| vec_idx == slice_idx)
+                    .map(|(vec_idx, (_, _))| vec_idx)
+                    .next();
+
+                let trim_range = match pivot {
+                    Some(idx) => matched_vec[idx - 1].0..(matched_vec[idx].0 + range.start),
+                    _ => matched_vec[matched_vec.len() - 1].0..range.end,
+                };
+
                 Ok(Evaluated::StrSlice {
                     source: expr_str.to_owned(),
-                    range: start..end,
+                    range: range.start + trim_range.start + 1..trim_range.end,
                 })
             }
             Some(TrimWhereField::Leading) => {
-                let start = expr_str.find(filter_chars[0]).unwrap_or(0);
-                Ok(Evaluated::StrSlice {
+                let pivot = matched_vec
+                    .iter()
+                    .enumerate()
+                    .skip_while(|(vec_idx, (slice_idx, _))| vec_idx == slice_idx)
+                    .map(|(vec_idx, (_, _))| vec_idx)
+                    .next();
+
+                let start = match pivot {
+                    Some(idx) => match idx {
+                        0 => 0,
+                        _ => matched_vec[idx - 1].0 + 1,
+                    },
+                    _ => matched_vec[matched_vec.len() - 1].0 + 1,
+                };
+
+                return Ok(Evaluated::StrSlice {
                     source: expr_str.to_owned(),
-                    range: start..range.end,
-                })
+                    range: range.start + start..range.end,
+                });
             }
             Some(TrimWhereField::Trailing) => {
-                let end = expr_str.rfind(filter_chars[0]).unwrap_or(0);
-                Ok(Evaluated::StrSlice {
+                let pivot = matched_vec
+                    .iter()
+                    .rev()
+                    .enumerate()
+                    .skip_while(|(vec_idx, (slice_idx, _))| {
+                        *vec_idx == sliced_expr.len() - slice_idx - 1
+                    })
+                    .map(|(vec_idx, (_, _))| vec_idx)
+                    .next();
+
+                let end = match pivot {
+                    Some(idx) => match idx {
+                        0 => range.end,
+                        _ => matched_vec[matched_vec.len() - idx - 1].0 + 1,
+                    },
+                    _ => range.start,
+                };
+
+                return Ok(Evaluated::StrSlice {
                     source: expr_str.to_owned(),
                     range: range.start..end,
-                })
+                });
             }
             None => {
-                //whitespace 양쪽에서 찾은 후 start..end없뎃해서반영
-                let start = expr_str.find(char::is_whitespace).unwrap_or(0);
-                let end = expr_str.rfind(char::is_whitespace).unwrap_or(0);
-                println!(
-                    "trim!!!!!!!!!!!!!!!!!!!!!! expr_str: {:?}, start: {:?}, end: {:?}",
-                    expr_str, start, end
-                );
+                let start = expr_str
+                    .chars()
+                    .skip(range.start)
+                    .enumerate()
+                    .skip_while(|(_, c)| c.is_whitespace())
+                    .next()
+                    .map(|(idx, _)| idx + range.start)
+                    .unwrap_or(0);
+
+                let end = expr_str.len()
+                    - expr_str
+                        .chars()
+                        .rev()
+                        .skip(expr_str.len() - range.end)
+                        .enumerate()
+                        .skip_while(|(_, c)| c.is_whitespace())
+                        .next()
+                        .map(|(idx, _)| expr_str.len() - (range.end - idx))
+                        .unwrap_or(0);
+
                 Ok(Evaluated::StrSlice {
-                    source: expr_str.to_owned(),
-                    range: range.start..end,
+                    source,
+                    range: start..end,
                 })
             }
         }
