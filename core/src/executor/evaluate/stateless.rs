@@ -205,13 +205,13 @@ fn evaluate_function<'a>(
             let expr = eval(expr)?;
             let chars = eval_opt(chars.as_ref())?;
 
-            f::ltrim(name, expr, chars)
+            expr.ltrim(name, chars)
         }
         Function::Rtrim { expr, chars } => {
             let expr = eval(expr)?;
             let chars = eval_opt(chars.as_ref())?;
 
-            f::rtrim(name, expr, chars)
+            expr.rtrim(name, chars)
         }
         Function::Reverse(expr) => {
             let expr = eval(expr)?;

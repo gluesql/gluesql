@@ -312,7 +312,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a>(
                 None => None,
             };
 
-            f::ltrim(name, expr, chars)
+            expr.ltrim(name, chars)
         }
         Function::Rtrim { expr, chars } => {
             let expr = eval(expr).await?;
@@ -321,7 +321,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a>(
                 None => None,
             };
 
-            f::rtrim(name, expr, chars)
+            expr.rtrim(name, chars)
         }
         Function::Reverse(expr) => {
             let expr = eval(expr).await?;

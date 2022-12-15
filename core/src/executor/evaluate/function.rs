@@ -184,48 +184,6 @@ pub fn lpad_or_rpad<'a>(
     Ok(Evaluated::from(Value::Str(result)))
 }
 
-pub fn ltrim<'a>(
-    name: String,
-    expr: Evaluated<'_>,
-    chars: Option<Evaluated<'_>>,
-) -> Result<Evaluated<'a>> {
-    let expr_str = eval_to_str!(name, expr);
-    let chars = match chars {
-        Some(chars) => eval_to_str!(name, chars).chars().collect::<Vec<char>>(),
-        None => vec![' '],
-    };
-
-    let value = expr_str.trim_start_matches(chars.as_slice()).to_owned();
-    let start = expr_str.find(value.chars().next().unwrap()).unwrap_or(0);
-    let end = expr_str.rfind(value.chars().last().unwrap()).unwrap_or(0);
-
-    Ok(Evaluated::StrSlice {
-        source: value,
-        range: start..end,
-    })
-}
-
-pub fn rtrim<'a>(
-    name: String,
-    expr: Evaluated<'_>,
-    chars: Option<Evaluated<'_>>,
-) -> Result<Evaluated<'a>> {
-    let expr_str = eval_to_str!(name, expr);
-    let chars = match chars {
-        Some(chars) => eval_to_str!(name, chars).chars().collect::<Vec<char>>(),
-        None => vec![' '],
-    };
-
-    let value = expr_str.trim_end_matches(chars.as_slice()).to_owned();
-    let start = expr_str.find(value.chars().next().unwrap()).unwrap_or(0);
-    let end = expr_str.rfind(value.chars().last().unwrap()).unwrap_or(0);
-
-    Ok(Evaluated::StrSlice {
-        source: value,
-        range: start..end,
-    })
-}
-
 pub fn reverse(name: String, expr: Evaluated<'_>) -> Result<Evaluated> {
     let value = eval_to_str!(name, expr).chars().rev().collect::<String>();
 

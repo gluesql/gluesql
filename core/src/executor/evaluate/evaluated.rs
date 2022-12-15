@@ -444,6 +444,67 @@ impl<'a> Evaluated<'a> {
         Ok(evaluated)
     }
 
+    pub fn ltrim(self, name: String, chars: Option<Evaluated<'_>>) -> Result<Evaluated<'a>> {
+        let (source, range) = match self {
+            Evaluated::Literal(literal) => {
+                let value = Value::try_from(literal)?;
+                match value {
+                    Value::Str(string) => {
+                        let end = string.len();
+                        (string, 0..end)
+                    }
+                    _ => return exceptional_str_val_to_eval(name, value),
+                }
+            }
+            Evaluated::StrSlice { source, range } => (source, range),
+            Evaluated::Value(value) => match value {
+                Value::Str(string) => {
+                    let end = string.len();
+                    (string, 0..end)
+                }
+                _ => return exceptional_str_val_to_eval(name, value),
+            },
+        };
+
+        let expr_str = source.as_str();
+        let filter_chars = match chars {
+            Some(expr) => match expr.try_into()? {
+                Value::Str(value) => value,
+                Value::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+                _ => {
+                    return Err(EvaluateError::FunctionRequiresStringValue(name).into());
+                }
+            }
+            .chars()
+            .collect::<Vec<_>>(),
+            None => vec![' '],
+        };
+        let sliced_expr = &expr_str[range.clone()];
+        let matched_vec: Vec<_> = sliced_expr.match_indices(&filter_chars[..]).collect();
+
+        let pivot = matched_vec
+            .iter()
+            .enumerate()
+            .skip_while(|(vec_idx, (slice_idx, _))| vec_idx == slice_idx)
+            .map(|(vec_idx, (_, _))| vec_idx)
+            .next();
+
+        let start = match pivot {
+            Some(idx) => match idx {
+                0 => 0,
+                _ => matched_vec[idx - 1].0 + 1,
+            },
+            _ => matched_vec[matched_vec.len() - 1].0 + 1,
+        };
+
+        Ok(Evaluated::StrSlice {
+            source: expr_str.to_owned(),
+            range: range.start + start..range.end,
+        })
+    }
+
     pub fn is_null(&self) -> bool {
         match self {
             Evaluated::Value(v) => v.is_null(),
@@ -453,6 +514,64 @@ impl<'a> Evaluated<'a> {
             } => Value::Str(s.to_owned()).is_null(),
             Evaluated::Literal(v) => matches!(v, &Literal::Null),
         }
+    }
+
+    pub fn rtrim(self, name: String, chars: Option<Evaluated<'_>>) -> Result<Evaluated<'a>> {
+        let (source, range) = match self {
+            Evaluated::Literal(literal) => {
+                let value = Value::try_from(literal)?;
+                match value {
+                    Value::Str(string) => {
+                        let end = string.len();
+                        (string, 0..end)
+                    }
+                    _ => return exceptional_str_val_to_eval(name, value),
+                }
+            }
+            Evaluated::StrSlice { source, range } => (source, range),
+            Evaluated::Value(value) => match value {
+                Value::Str(string) => {
+                    let end = string.len();
+                    (string, 0..end)
+                }
+                _ => return exceptional_str_val_to_eval(name, value),
+            },
+        };
+
+        let expr_str = source.as_str();
+        let filter_chars = match chars {
+            Some(expr) => match expr.try_into()? {
+                Value::Str(value) => value,
+                Value::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+                _ => {
+                    return Err(EvaluateError::FunctionRequiresStringValue(name).into());
+                }
+            }
+            .chars()
+            .collect::<Vec<_>>(),
+            None => vec![' '],
+        };
+        let sliced_expr = &expr_str[range.clone()];
+        let matched_vec: Vec<_> = sliced_expr.match_indices(&filter_chars[..]).collect();
+        let pivot = matched_vec
+            .iter()
+            .rev()
+            .enumerate()
+            .skip_while(|(vec_idx, (slice_idx, _))| *vec_idx == sliced_expr.len() - slice_idx - 1)
+            .map(|(vec_idx, (_, _))| vec_idx)
+            .next();
+
+        let end = match pivot {
+            Some(idx) => matched_vec[matched_vec.len() - idx].0,
+            _ => matched_vec[0].0,
+        };
+
+        Ok(Evaluated::StrSlice {
+            source: expr_str.to_owned(),
+            range: range.start..end,
+        })
     }
 
     pub fn substr(
