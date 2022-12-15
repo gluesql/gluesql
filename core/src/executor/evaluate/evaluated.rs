@@ -262,23 +262,6 @@ pub fn exceptional_str_val_to_eval<'a>(name: String, v: Value) -> Result<Evaluat
     }
 }
 
-// pub fn trim_matches<'b, P>(&'a self, pat: P) -> &'b (usize, usize)
-//     where
-//         P: Pattern<'b, Searcher: DoubleEndedSearcher<'b>>,
-//     {
-//         let mut i = 0;
-//         let mut j = 0;
-//         let mut matcher = pat.into_searcher(self);
-//         if let Some((a, b)) = matcher.next_reject() {
-//             i = a;
-//             j = b; // Remember earliest known match, correct it below if
-//             // last match is different
-//         }
-//         if let Some((_, b)) = matcher.next_reject_back() {
-//             j = b;
-//         }
-//         (i, j)
-//     }
 impl<'a> Evaluated<'a> {
     pub fn add<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
         binary_op(self, other, |l, r| l.add(r), |l, r| l.add(r))
@@ -589,7 +572,7 @@ impl<'a> Evaluated<'a> {
         }
         //filter_chars => ['x','y','z']
         //"tuv".trim_matches(filter_chars[..]) => "tuv"
-        if matched_vec.len() == 0 {
+        if matched_vec.is_empty() {
             return Ok(Evaluated::StrSlice { source, range });
         }
         //filter_chars => ['x','y','z']
@@ -684,10 +667,10 @@ impl<'a> Evaluated<'a> {
                     _ => matched_vec[matched_vec.len() - 1].0 + 1,
                 };
 
-                return Ok(Evaluated::StrSlice {
+                Ok(Evaluated::StrSlice {
                     source: expr_str.to_owned(),
                     range: range.start + start..range.end,
-                });
+                })
             }
             Some(TrimWhereField::Trailing) => {
                 let pivot = matched_vec
@@ -708,18 +691,17 @@ impl<'a> Evaluated<'a> {
                     _ => range.start,
                 };
 
-                return Ok(Evaluated::StrSlice {
+                Ok(Evaluated::StrSlice {
                     source: expr_str.to_owned(),
                     range: range.start..end,
-                });
+                })
             }
             None => {
                 let start = expr_str
                     .chars()
                     .skip(range.start)
                     .enumerate()
-                    .skip_while(|(_, c)| c.is_whitespace())
-                    .next()
+                    .find(|(_, c)| c.is_whitespace())
                     .map(|(idx, _)| idx + range.start)
                     .unwrap_or(0);
 
@@ -729,8 +711,7 @@ impl<'a> Evaluated<'a> {
                         .rev()
                         .skip(expr_str.len() - range.end)
                         .enumerate()
-                        .skip_while(|(_, c)| c.is_whitespace())
-                        .next()
+                        .find(|(_, c)| c.is_whitespace())
                         .map(|(idx, _)| expr_str.len() - (range.end - idx))
                         .unwrap_or(0);
 
