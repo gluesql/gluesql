@@ -79,11 +79,7 @@ fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> (Vec<Result<Row>>, Vec<String>)
     (rows, labels)
 }
 
-fn sort_stateless(
-    rows: Vec<Result<Row>>,
-    labels: &[String],
-    order_by: &[OrderByExpr],
-) -> Result<Vec<Result<Row>>> {
+fn sort_stateless(rows: Vec<Result<Row>>, order_by: &[OrderByExpr]) -> Result<Vec<Result<Row>>> {
     let sorted = rows
         .into_iter()
         .map(|row| {
@@ -91,9 +87,7 @@ fn sort_stateless(
                 .iter()
                 .map(|OrderByExpr { expr, asc }| -> Result<_> {
                     let row = row.as_ref().ok();
-                    let context = row.map(|row| (labels, row.get_values()));
-
-                    let value: Value = evaluate_stateless(context, expr)?.try_into()?;
+                    let value: Value = evaluate_stateless(row, expr)?.try_into()?;
 
                     Ok((value, *asc))
                 })
@@ -131,7 +125,7 @@ pub async fn select_with_labels<'a>(
         SetExpr::Values(Values(values_list)) => {
             let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
             let (rows, labels) = rows_with_labels(values_list);
-            let rows = sort_stateless(rows, &labels, &query.order_by)?;
+            let rows = sort_stateless(rows, &query.order_by)?;
             let rows = stream::iter(rows);
             let rows = limit.apply(rows);
 

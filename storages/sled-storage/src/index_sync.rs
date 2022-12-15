@@ -22,7 +22,7 @@ pub struct IndexSync<'a> {
     tree: &'a TransactionalTree,
     txid: u64,
     table_name: &'a str,
-    columns: Vec<String>,
+    columns: Option<Vec<String>>,
     indexes: Cow<'a, Vec<SchemaIndex>>,
 }
 
@@ -35,15 +35,12 @@ impl<'a> IndexSync<'a> {
             ..
         } = schema;
 
-        let column_defs = match column_defs {
-            Some(column_defs) => column_defs,
-            None => todo!(),
-        };
-
-        let columns = column_defs
-            .iter()
-            .map(|column_def| column_def.name.to_owned())
-            .collect::<Vec<_>>();
+        let columns = column_defs.as_ref().map(|column_defs| {
+            column_defs
+                .iter()
+                .map(|column_def| column_def.name.to_owned())
+                .collect::<Vec<_>>()
+        });
 
         let indexes = Cow::Borrowed(indexes);
 
@@ -72,15 +69,12 @@ impl<'a> IndexSync<'a> {
             .map_err(err_into)
             .map_err(ConflictableTransactionError::Abort)?;
 
-        let column_defs = match column_defs {
-            Some(column_defs) => column_defs,
-            None => todo!(),
-        };
-
-        let columns = column_defs
-            .into_iter()
-            .map(|column_def| column_def.name)
-            .collect::<Vec<_>>();
+        let columns = column_defs.map(|column_defs| {
+            column_defs
+                .into_iter()
+                .map(|column_def| column_def.name)
+                .collect::<Vec<_>>()
+        });
 
         Ok(Self {
             tree,
@@ -115,8 +109,13 @@ impl<'a> IndexSync<'a> {
             ..
         } = index;
 
-        let index_key =
-            &evaluate_index_key(self.table_name, index_name, index_expr, &self.columns, row)?;
+        let index_key = &evaluate_index_key(
+            self.table_name,
+            index_name,
+            index_expr,
+            self.columns.as_deref(),
+            row,
+        )?;
 
         self.insert_index_data(index_key, data_key)?;
 
@@ -140,7 +139,7 @@ impl<'a> IndexSync<'a> {
                 self.table_name,
                 index_name,
                 index_expr,
-                &self.columns,
+                self.columns.as_deref(),
                 old_row,
             )?;
 
@@ -148,7 +147,7 @@ impl<'a> IndexSync<'a> {
                 self.table_name,
                 index_name,
                 index_expr,
-                &self.columns,
+                self.columns.as_deref(),
                 new_row,
             )?;
 
@@ -183,8 +182,13 @@ impl<'a> IndexSync<'a> {
             ..
         } = index;
 
-        let index_key =
-            &evaluate_index_key(self.table_name, index_name, index_expr, &self.columns, row)?;
+        let index_key = &evaluate_index_key(
+            self.table_name,
+            index_name,
+            index_expr,
+            self.columns.as_deref(),
+            row,
+        )?;
 
         self.delete_index_data(index_key, data_key)?;
 
@@ -263,14 +267,11 @@ fn evaluate_index_key(
     table_name: &str,
     index_name: &str,
     index_expr: &Expr,
-    columns: &[String],
+    columns: Option<&[String]>,
     row: &DataRow,
 ) -> ConflictableTransactionResult<Vec<u8>, Error> {
-    let values = match row {
-        DataRow::Vec(values) => values,
-        DataRow::Map(_) => todo!(),
-    };
-    let evaluated = evaluate_stateless(Some((columns, values)), index_expr)
+    let columns = columns.unwrap_or(&[]);
+    let evaluated = evaluate_stateless((columns, row), index_expr)
         .map_err(ConflictableTransactionError::Abort)?;
     let value: Value = evaluated
         .try_into()
