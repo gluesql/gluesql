@@ -294,7 +294,7 @@ impl<'a> Evaluated<'a> {
             Evaluated::Literal(value) => cast_literal(&value),
             Evaluated::Value(value) => cast_value(&value),
             Evaluated::StrSlice { source, range } => {
-                cast_value(&Value::Str(source[range.clone()].to_owned()))
+                cast_value(&Value::Str(source[range].to_owned()))
             }
         }
         .map(Evaluated::from)
@@ -311,16 +311,16 @@ impl<'a> Evaluated<'a> {
             }
             (Evaluated::Value(l), Evaluated::Value(r)) => Evaluated::from(l.concat(r)),
             (Evaluated::Literal(l), Evaluated::StrSlice { source, range }) => Evaluated::from(
-                (Value::try_from(l)?).concat(Value::Str(source[range.clone()].to_owned())),
+                (Value::try_from(l)?).concat(Value::Str(source[range].to_owned())),
             ),
             (Evaluated::Value(l), Evaluated::StrSlice { source, range }) => {
-                Evaluated::from(l.concat(Value::Str(source[range.clone()].to_owned())))
+                Evaluated::from(l.concat(Value::Str(source[range].to_owned())))
             }
             (Evaluated::StrSlice { source, range }, Evaluated::Literal(r)) => Evaluated::from(
-                Value::Str(source[range.clone()].to_owned()).concat(Value::try_from(r)?),
+                Value::Str(source[range].to_owned()).concat(Value::try_from(r)?),
             ),
             (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => {
-                Evaluated::from(Value::Str(source[range.clone()].to_owned()).concat(r))
+                Evaluated::from(Value::Str(source[range].to_owned()).concat(r))
             }
             (
                 Evaluated::StrSlice {
@@ -332,7 +332,7 @@ impl<'a> Evaluated<'a> {
                     range: br,
                 },
             ) => Evaluated::from(
-                Value::Str(a[ar.clone()].to_owned()).concat(Value::Str(b[br.clone()].to_owned())),
+                Value::Str(a[ar].to_owned()).concat(Value::Str(b[br].to_owned())),
             ),
         };
 
@@ -355,7 +355,7 @@ impl<'a> Evaluated<'a> {
             }
             (Evaluated::Literal(l), Evaluated::StrSlice { source, range }) => {
                 Evaluated::from(Value::try_from(l)?.like(
-                    &Value::Str(source[range.clone()].to_owned()),
+                    &Value::Str(source[range].to_owned()),
                     case_sensitive,
                 )?)
             }
@@ -374,14 +374,14 @@ impl<'a> Evaluated<'a> {
                 },
             ) => Evaluated::from(
                 Value::Str(a[ar.clone()].to_owned())
-                    .like(&Value::Str(b[br.clone()].to_owned()), case_sensitive)?,
+                    .like(&Value::Str(b[br].to_owned()), case_sensitive)?,
             ),
             (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => Evaluated::from(
                 Value::Str(source[range.clone()].to_owned()).like(&r, case_sensitive)?,
             ),
             (Evaluated::Value(l), Evaluated::StrSlice { source, range }) => {
                 Evaluated::from(l.like(
-                    &Value::Str(source[range.clone()].to_owned()),
+                    &Value::Str(source[range].to_owned()),
                     case_sensitive,
                 )?)
             }
