@@ -61,7 +61,7 @@ pub fn evaluate_stateless<'a, 'b, T: Into<Context<'b>>>(
     evaluate(&context.into(), expr)
 }
 
-fn evaluate<'a, 'b>(context: &'b Context<'b>, expr: &'a Expr) -> Result<Evaluated<'a>> {
+fn evaluate<'a>(context: &Context<'_>, expr: &'a Expr) -> Result<Evaluated<'a>> {
     let eval = |expr| evaluate(context, expr);
 
     match expr {
@@ -187,10 +187,7 @@ fn evaluate<'a, 'b>(context: &'b Context<'b>, expr: &'a Expr) -> Result<Evaluate
     }
 }
 
-fn evaluate_function<'a, 'b>(
-    context: &'b Context<'b>,
-    func: &'a Function,
-) -> Result<Evaluated<'a>> {
+fn evaluate_function<'a>(context: &Context<'_>, func: &'a Function) -> Result<Evaluated<'a>> {
     use function as f;
 
     let name = func.to_string();
