@@ -11,7 +11,7 @@ use {
         ast::ColumnDef,
         data::{schema::Schema, Value},
         executor::evaluate_stateless,
-        result::{MutResult, Result, TrySelf},
+        result::{Error, MutResult, Result, TrySelf},
         store::{AlterTable, AlterTableError, DataRow},
     },
     sled::transaction::ConflictableTransactionError,
@@ -164,10 +164,9 @@ impl AlterTable for SledStorage {
                 .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
 
-            let column_defs = match column_defs {
-                Some(column_defs) => column_defs,
-                None => todo!(),
-            };
+            let column_defs = column_defs
+                .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.to_owned()).into())
+                .map_err(ConflictableTransactionError::Abort)?;
 
             if column_defs
                 .iter()
@@ -264,10 +263,9 @@ impl AlterTable for SledStorage {
                 .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
 
-            let column_defs = match column_defs {
-                Some(column_defs) => column_defs,
-                None => todo!(),
-            };
+            let column_defs = column_defs
+                .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.to_owned()).into())
+                .map_err(ConflictableTransactionError::Abort)?;
 
             if column_defs
                 .iter()
@@ -316,7 +314,12 @@ impl AlterTable for SledStorage {
 
                 let values = match row {
                     DataRow::Vec(values) => values,
-                    DataRow::Map(_) => todo!(),
+                    DataRow::Map(_) => {
+                        return Err(Error::StorageMsg(
+                            "conflict - add_column failed: schemaless row found".to_owned(),
+                        ))
+                        .map_err(ConflictableTransactionError::Abort);
+                    }
                 };
                 let row = values
                     .into_iter()
@@ -413,10 +416,9 @@ impl AlterTable for SledStorage {
                 .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
 
-            let column_defs = match column_defs {
-                Some(column_defs) => column_defs,
-                None => todo!(),
-            };
+            let column_defs = column_defs
+                .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.to_owned()).into())
+                .map_err(ConflictableTransactionError::Abort)?;
 
             let column_index = column_defs
                 .iter()
@@ -448,7 +450,12 @@ impl AlterTable for SledStorage {
 
                 let values = match row {
                     DataRow::Vec(values) => values,
-                    DataRow::Map(_) => todo!(),
+                    DataRow::Map(_) => {
+                        return Err(Error::StorageMsg(
+                            "conflict - drop_column failed: schemaless row found".to_owned(),
+                        ))
+                        .map_err(ConflictableTransactionError::Abort);
+                    }
                 };
 
                 let row = values

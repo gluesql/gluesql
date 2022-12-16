@@ -6,7 +6,7 @@ use {
     gluesql_core::{
         ast::ColumnDef,
         data::Value,
-        result::{MutResult, Result, TrySelf},
+        result::{Error, MutResult, Result, TrySelf},
         store::{AlterTable, AlterTableError, DataRow},
     },
 };
@@ -35,10 +35,11 @@ impl MemoryStorage {
             .get_mut(table_name)
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
 
-        let column_defs = match &mut item.schema.column_defs {
-            Some(column_defs) => column_defs,
-            None => todo!(),
-        };
+        let column_defs = item
+            .schema
+            .column_defs
+            .as_mut()
+            .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.to_owned()))?;
 
         if column_defs
             .iter()
@@ -54,26 +55,6 @@ impl MemoryStorage {
 
         column_def.name = new_column_name.to_owned();
 
-        /*
-        if item
-            .schema
-            .column_defs
-            .iter()
-            .any(|ColumnDef { name, .. }| name == new_column_name)
-        {
-            return Err(AlterTableError::AlreadyExistingColumn(new_column_name.to_owned()).into());
-        }
-
-        let mut column_def = item
-            .schema
-            .column_defs
-            .iter_mut()
-            .find(|column_def| column_def.name == old_column_name)
-            .ok_or(AlterTableError::RenamingColumnNotFound)?;
-
-        column_def.name = new_column_name.to_owned();
-        */
-
         Ok(())
     }
 
@@ -83,10 +64,11 @@ impl MemoryStorage {
             .get_mut(table_name)
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
 
-        let column_defs = match &mut item.schema.column_defs {
-            Some(column_defs) => column_defs,
-            None => todo!(),
-        };
+        let column_defs = item
+            .schema
+            .column_defs
+            .as_mut()
+            .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.to_owned()))?;
 
         if column_defs
             .iter()
@@ -116,66 +98,20 @@ impl MemoryStorage {
             }
         };
 
-        /*
-        let item = self
-            .items
-            .get_mut(table_name)
-            .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
-            */
-
-        item.rows.iter_mut().for_each(|(_, row)| {
+        for (_, row) in item.rows.iter_mut() {
             match row {
                 DataRow::Vec(values) => {
                     values.push(value.clone());
                 }
-                DataRow::Map(_) => todo!(),
-            };
-
-            // row.push(value.clone());
-        });
-        column_defs.push(column_def.clone());
-
-        /*
-        if item
-            .schema
-            .column_defs
-            .iter()
-            .any(|ColumnDef { name, .. }| name == &column_def.name)
-        {
-            let adding_column = column_def.name.to_owned();
-
-            return Err(AlterTableError::AlreadyExistingColumn(adding_column).into());
+                DataRow::Map(_) => {
+                    return Err(Error::StorageMsg(
+                        "conflict - add_column failed: schemaless row found".to_owned(),
+                    ));
+                }
+            }
         }
 
-        let ColumnDef {
-            data_type,
-            nullable,
-            default,
-            ..
-        } = column_def;
-
-        let value = match (default, nullable) {
-            (Some(expr), _) => {
-                let evaluated = gluesql_core::executor::evaluate_stateless(None, expr)?;
-
-                evaluated.try_into_value(data_type, *nullable)?
-            }
-            (None, true) => Value::Null,
-            (None, false) => {
-                return Err(AlterTableError::DefaultValueRequired(column_def.clone()).into())
-            }
-        };
-
-        let item = self
-            .items
-            .get_mut(table_name)
-            .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
-
-        item.rows.iter_mut().for_each(|(_, row)| {
-            row.push(value.clone());
-        });
-        item.schema.column_defs.push(column_def.clone());
-        */
+        column_defs.push(column_def.clone());
 
         Ok(())
     }
@@ -191,10 +127,11 @@ impl MemoryStorage {
             .get_mut(table_name)
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
 
-        let column_defs = match &mut item.schema.column_defs {
-            Some(column_defs) => column_defs,
-            None => todo!(),
-        };
+        let column_defs = item
+            .schema
+            .column_defs
+            .as_mut()
+            .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.to_owned()))?;
 
         let column_index = column_defs
             .iter()
@@ -204,17 +141,22 @@ impl MemoryStorage {
             Some(column_index) => {
                 column_defs.remove(column_index);
 
-                item.rows.iter_mut().for_each(|(_, row)| {
-                    if row.len() > column_index {
-                        match row {
-                            DataRow::Vec(values) => {
-                                values.remove(column_index);
-                            }
-                            DataRow::Map(_) => todo!(),
-                        };
-                        // row.remove(column_index);
+                for (_, row) in item.rows.iter_mut() {
+                    if row.len() <= column_index {
+                        continue;
                     }
-                });
+
+                    match row {
+                        DataRow::Vec(values) => {
+                            values.remove(column_index);
+                        }
+                        DataRow::Map(_) => {
+                            return Err(Error::StorageMsg(
+                                "conflict - drop_column failed: schemaless row found".to_owned(),
+                            ));
+                        }
+                    }
+                }
             }
             None if if_exists => {}
             None => {
