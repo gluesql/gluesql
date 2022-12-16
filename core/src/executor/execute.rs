@@ -12,7 +12,7 @@ use {
             DataType, Dictionary, Expr, Query, SelectItem, SetExpr, Statement, TableAlias,
             TableFactor, TableWithJoins, Variable,
         },
-        data::{Key, Schema, Value},
+        data::{Key, Row, Schema, Value},
         result::MutResult,
         store::{GStore, GStoreMut},
     },
@@ -186,11 +186,21 @@ pub async fn execute<T: GStore + GStoreMut>(
                     .fetch_schema(table_name)
                     .await?
                     .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
+
+                let all_columns = column_defs
+                    .as_deref()
+                    .unwrap_or(&[])
+                    .iter()
+                    .map(|col_def| col_def.name.to_owned())
+                    .collect::<Rc<[String]>>();
+                let columns_to_update = assignments
+                    .iter()
+                    .map(|assignment| assignment.id.to_owned())
+                    .collect();
+
                 let update =
                     Update::new(&storage, table_name, assignments, column_defs.as_deref())?;
 
-                let all_columns = Rc::from(update.all_columns());
-                let columns_to_update = update.columns_to_update();
                 let rows = fetch(&storage, table_name, all_columns, selection.as_ref())
                     .await?
                     .and_then(|item| {
@@ -199,37 +209,35 @@ pub async fn execute<T: GStore + GStoreMut>(
 
                         async move {
                             let row = update.apply(row).await?;
-                            Ok((key, row.into()))
+
+                            Ok((key, row))
                         }
                     })
-                    // .try_collect::<Vec<(Key, DataRow)>>()
-                    .try_collect::<Vec<(Key, Vec<Value>)>>()
+                    .try_collect::<Vec<(Key, Row)>>()
                     .await?;
 
-                let column_defs = match column_defs {
-                    Some(column_defs) => column_defs,
-                    None => todo!(),
-                };
+                if let Some(column_defs) = column_defs {
+                    let column_validation = ColumnValidation::SpecifiedColumns(
+                        Rc::from(column_defs),
+                        columns_to_update,
+                    );
 
-                let column_validation =
-                    ColumnValidation::SpecifiedColumns(Rc::from(column_defs), columns_to_update);
-                validate_unique(
-                    &storage,
-                    table_name,
-                    column_validation,
-                    rows.iter().map(|(_, values)| values.as_slice()),
-                )
-                .await?;
+                    validate_unique(
+                        &storage,
+                        table_name,
+                        column_validation,
+                        rows.iter().map(|(_, row)| row.get_values()),
+                    )
+                    .await?;
+                }
 
                 Ok((table_name, rows))
             });
 
             let num_rows = rows.len();
-
-            // temp
             let rows = rows
                 .into_iter()
-                .map(|(key, values)| (key, values.into()))
+                .map(|(key, row)| (key, row.into()))
                 .collect();
 
             storage
