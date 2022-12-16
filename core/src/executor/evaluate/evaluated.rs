@@ -310,15 +310,15 @@ impl<'a> Evaluated<'a> {
                 Evaluated::from(l.concat(Value::try_from(r)?))
             }
             (Evaluated::Value(l), Evaluated::Value(r)) => Evaluated::from(l.concat(r)),
-            (Evaluated::Literal(l), Evaluated::StrSlice { source, range }) => Evaluated::from(
-                (Value::try_from(l)?).concat(Value::Str(source[range].to_owned())),
-            ),
+            (Evaluated::Literal(l), Evaluated::StrSlice { source, range }) => {
+                Evaluated::from((Value::try_from(l)?).concat(Value::Str(source[range].to_owned())))
+            }
             (Evaluated::Value(l), Evaluated::StrSlice { source, range }) => {
                 Evaluated::from(l.concat(Value::Str(source[range].to_owned())))
             }
-            (Evaluated::StrSlice { source, range }, Evaluated::Literal(r)) => Evaluated::from(
-                Value::Str(source[range].to_owned()).concat(Value::try_from(r)?),
-            ),
+            (Evaluated::StrSlice { source, range }, Evaluated::Literal(r)) => {
+                Evaluated::from(Value::Str(source[range].to_owned()).concat(Value::try_from(r)?))
+            }
             (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => {
                 Evaluated::from(Value::Str(source[range].to_owned()).concat(r))
             }
@@ -331,9 +331,7 @@ impl<'a> Evaluated<'a> {
                     source: b,
                     range: br,
                 },
-            ) => Evaluated::from(
-                Value::Str(a[ar].to_owned()).concat(Value::Str(b[br].to_owned())),
-            ),
+            ) => Evaluated::from(Value::Str(a[ar].to_owned()).concat(Value::Str(b[br].to_owned()))),
         };
 
         Ok(evaluated)
@@ -353,12 +351,9 @@ impl<'a> Evaluated<'a> {
             (Evaluated::Value(l), Evaluated::Value(r)) => {
                 Evaluated::from(l.like(&r, case_sensitive)?)
             }
-            (Evaluated::Literal(l), Evaluated::StrSlice { source, range }) => {
-                Evaluated::from(Value::try_from(l)?.like(
-                    &Value::Str(source[range].to_owned()),
-                    case_sensitive,
-                )?)
-            }
+            (Evaluated::Literal(l), Evaluated::StrSlice { source, range }) => Evaluated::from(
+                Value::try_from(l)?.like(&Value::Str(source[range].to_owned()), case_sensitive)?,
+            ),
             (Evaluated::StrSlice { source, range }, Evaluated::Literal(r)) => Evaluated::from(
                 Value::Str(source[range.clone()].to_owned())
                     .like(&Value::try_from(r)?, case_sensitive)?,
@@ -380,10 +375,7 @@ impl<'a> Evaluated<'a> {
                 Value::Str(source[range.clone()].to_owned()).like(&r, case_sensitive)?,
             ),
             (Evaluated::Value(l), Evaluated::StrSlice { source, range }) => {
-                Evaluated::from(l.like(
-                    &Value::Str(source[range].to_owned()),
-                    case_sensitive,
-                )?)
+                Evaluated::from(l.like(&Value::Str(source[range].to_owned()), case_sensitive)?)
             }
         };
 
