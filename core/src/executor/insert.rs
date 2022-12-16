@@ -113,7 +113,7 @@ async fn fetch_vec_rows<T: GStore + GStoreMut>(
             });
             let rows = stream::iter(rows);
             let rows = limit.apply(rows);
-            let rows = rows.map_ok(Into::into);
+            let rows = rows.map_ok(Row::into_values);
 
             Rows::Values(rows)
         }
@@ -124,7 +124,7 @@ async fn fetch_vec_rows<T: GStore + GStoreMut>(
                 async move {
                     validate_row(&row, &column_defs)?;
 
-                    Ok(row.into())
+                    Ok(row.into_values())
                 }
             });
 

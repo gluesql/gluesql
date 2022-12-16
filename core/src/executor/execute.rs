@@ -272,7 +272,10 @@ pub async fn execute<T: GStore + GStoreMut>(
         Statement::Query(query) => {
             let (labels, rows) = try_block!(storage, {
                 let (labels, rows) = select_with_labels(&storage, query, None).await?;
-                let rows = rows.map_ok(Into::into).try_collect::<Vec<_>>().await?;
+                let rows = rows
+                    .map_ok(Row::into_values)
+                    .try_collect::<Vec<_>>()
+                    .await?;
                 Ok((labels, rows))
             });
             Ok((storage, Payload::Select { labels, rows }))
@@ -327,7 +330,10 @@ pub async fn execute<T: GStore + GStoreMut>(
 
             let (labels, rows) = try_block!(storage, {
                 let (labels, rows) = select_with_labels(&storage, &query, None).await?;
-                let rows = rows.map_ok(Into::into).try_collect::<Vec<_>>().await?;
+                let rows = rows
+                    .map_ok(Row::into_values)
+                    .try_collect::<Vec<_>>()
+                    .await?;
                 Ok((labels, rows))
             });
 
