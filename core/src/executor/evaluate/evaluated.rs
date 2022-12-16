@@ -56,7 +56,9 @@ impl TryFrom<&Evaluated<'_>> for Key {
     fn try_from(evaluated: &Evaluated<'_>) -> Result<Self> {
         match evaluated {
             Evaluated::Literal(l) => Value::try_from(l)?.try_into(),
-            Evaluated::StrSlice { source, range: _ } => Ok(Key::from(source)),
+            Evaluated::StrSlice { source, range } => {
+                Ok(Key::from(&source[range.clone()].to_owned()))
+            }
             Evaluated::Value(v) => v.try_into(),
         }
     }
@@ -71,8 +73,8 @@ impl TryFrom<Evaluated<'_>> for bool {
             Evaluated::Literal(v) => {
                 Err(EvaluateError::BooleanTypeRequired(format!("{:?}", v)).into())
             }
-            Evaluated::StrSlice { source, range: _ } => {
-                Err(EvaluateError::BooleanTypeRequired(format!("{:?}", source)).into())
+            Evaluated::StrSlice { source, range } => {
+                Err(EvaluateError::BooleanTypeRequired(format!("{:?}", &source[range])).into())
             }
             Evaluated::Value(Value::Bool(v)) => Ok(v),
             Evaluated::Value(v) => {
@@ -93,40 +95,40 @@ impl<'a> PartialEq for Evaluated<'a> {
                 Evaluated::Literal(a),
                 Evaluated::StrSlice {
                     source: b,
-                    range: _,
+                    range: r,
                 },
-            ) => a == b,
+            )
+            | (
+                Evaluated::StrSlice {
+                    source: b,
+                    range: r,
+                },
+                Evaluated::Literal(a),
+            ) => a == &b[r.clone()].to_owned(),
             (
                 Evaluated::Value(a),
                 Evaluated::StrSlice {
                     source: b,
-                    range: _,
+                    range: r,
                 },
-            ) => a == b,
+            )
+            | (
+                Evaluated::StrSlice {
+                    source: b,
+                    range: r,
+                },
+                Evaluated::Value(a),
+            ) => a == &b[r.clone()].to_owned(),
             (
                 Evaluated::StrSlice {
                     source: a,
-                    range: _,
-                },
-                Evaluated::Literal(b),
-            ) => b == a,
-            (
-                Evaluated::StrSlice {
-                    source: a,
-                    range: _,
-                },
-                Evaluated::Value(b),
-            ) => b == a,
-            (
-                Evaluated::StrSlice {
-                    source: a,
-                    range: _,
+                    range: ar,
                 },
                 Evaluated::StrSlice {
                     source: b,
-                    range: _,
+                    range: br,
                 },
-            ) => a == b,
+            ) => a[ar.clone()] == b[br.clone()],
         }
     }
 }
@@ -138,44 +140,28 @@ impl<'a> PartialOrd for Evaluated<'a> {
             (Evaluated::Literal(l), Evaluated::Value(r)) => r.partial_cmp(l).map(|o| o.reverse()),
             (Evaluated::Value(l), Evaluated::Literal(r)) => l.partial_cmp(r),
             (Evaluated::Value(l), Evaluated::Value(r)) => l.partial_cmp(r),
-            (
-                Evaluated::Literal(l),
-                Evaluated::StrSlice {
-                    source: r,
-                    range: _,
-                },
-            ) => l.partial_cmp(r),
-            (
-                Evaluated::Value(l),
-                Evaluated::StrSlice {
-                    source: r,
-                    range: _,
-                },
-            ) => l.partial_cmp(r),
+            (Evaluated::Literal(l), Evaluated::StrSlice { source, range }) => {
+                l.partial_cmp(&source[range.clone()].to_owned())
+            }
+            (Evaluated::Value(l), Evaluated::StrSlice { source, range }) => {
+                l.partial_cmp(&source[range.clone()].to_owned())
+            }
+            (Evaluated::StrSlice { source, range }, Evaluated::Literal(l)) => l
+                .partial_cmp(&source[range.clone()].to_owned())
+                .map(|o| o.reverse()),
+            (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => r
+                .partial_cmp(&source[range.clone()].to_owned())
+                .map(|o| o.reverse()),
             (
                 Evaluated::StrSlice {
-                    source: l,
-                    range: _,
-                },
-                Evaluated::Literal(r),
-            ) => r.partial_cmp(l).map(|o| o.reverse()),
-            (
-                Evaluated::StrSlice {
-                    source: l,
-                    range: _,
-                },
-                Evaluated::Value(r),
-            ) => r.partial_cmp(l).map(|o| o.reverse()),
-            (
-                Evaluated::StrSlice {
-                    source: l,
-                    range: _,
+                    source: a,
+                    range: ar,
                 },
                 Evaluated::StrSlice {
-                    source: r,
-                    range: _,
+                    source: b,
+                    range: br,
                 },
-            ) => l.partial_cmp(r),
+            ) => a[ar.clone()].partial_cmp(&b[br.clone()]),
         }
     }
 }
@@ -199,44 +185,36 @@ where
             value_op(l, &Value::try_from(r)?).map(Evaluated::from)
         }
         (Evaluated::Value(l), Evaluated::Value(r)) => value_op(l, r).map(Evaluated::from),
-        (
-            Evaluated::Literal(l),
-            Evaluated::StrSlice {
-                source: r,
-                range: _,
-            },
-        ) => value_op(&Value::try_from(l)?, &Value::Str(r.to_owned())).map(Evaluated::from),
-        (
-            Evaluated::StrSlice {
-                source: l,
-                range: _,
-            },
-            Evaluated::Literal(r),
-        ) => value_op(&Value::Str(l.to_owned()), &Value::try_from(r)?).map(Evaluated::from),
+        (Evaluated::Literal(l), Evaluated::StrSlice { source, range }) => value_op(
+            &Value::try_from(l)?,
+            &Value::Str(source[range.clone()].to_owned()),
+        )
+        .map(Evaluated::from),
+        (Evaluated::StrSlice { source, range }, Evaluated::Literal(r)) => value_op(
+            &Value::Str(source[range.clone()].to_owned()),
+            &Value::try_from(r)?,
+        )
+        .map(Evaluated::from),
         (
             Evaluated::StrSlice {
-                source: l,
-                range: _,
+                source: a,
+                range: ar,
             },
             Evaluated::StrSlice {
-                source: r,
-                range: _,
+                source: b,
+                range: br,
             },
-        ) => value_op(&Value::Str(l.to_owned()), &Value::Str(r.to_owned())).map(Evaluated::from),
-        (
-            Evaluated::StrSlice {
-                source: l,
-                range: _,
-            },
-            Evaluated::Value(r),
-        ) => value_op(&Value::Str(l.to_owned()), r).map(Evaluated::from),
-        (
-            Evaluated::Value(l),
-            Evaluated::StrSlice {
-                source: r,
-                range: _,
-            },
-        ) => value_op(l, &Value::Str(r.to_owned())).map(Evaluated::from),
+        ) => value_op(
+            &Value::Str(a[ar.clone()].to_owned()),
+            &Value::Str(b[br.clone()].to_owned()),
+        )
+        .map(Evaluated::from),
+        (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => {
+            value_op(&Value::Str(source[range.clone()].to_owned()), r).map(Evaluated::from)
+        }
+        (Evaluated::Value(l), Evaluated::StrSlice { source, range }) => {
+            value_op(l, &Value::Str(source[range.clone()].to_owned())).map(Evaluated::from)
+        }
     }
 }
 
@@ -281,10 +259,9 @@ impl<'a> Evaluated<'a> {
         match self {
             Evaluated::Literal(v) => v.unary_plus().map(Evaluated::Literal),
             Evaluated::Value(v) => v.unary_plus().map(Evaluated::from),
-            Evaluated::StrSlice {
-                source: s,
-                range: _,
-            } => Value::Str(s.to_owned()).unary_plus().map(Evaluated::from),
+            Evaluated::StrSlice { source, range } => Value::Str(source[range.clone()].to_owned())
+                .unary_plus()
+                .map(Evaluated::from),
         }
     }
 
@@ -292,10 +269,9 @@ impl<'a> Evaluated<'a> {
         match self {
             Evaluated::Literal(v) => v.unary_minus().map(Evaluated::Literal),
             Evaluated::Value(v) => v.unary_minus().map(Evaluated::from),
-            Evaluated::StrSlice {
-                source: s,
-                range: _,
-            } => Value::Str(s.to_owned()).unary_minus().map(Evaluated::from),
+            Evaluated::StrSlice { source, range } => Value::Str(source[range.clone()].to_owned())
+                .unary_minus()
+                .map(Evaluated::from),
         }
     }
 
@@ -303,10 +279,9 @@ impl<'a> Evaluated<'a> {
         match self {
             Evaluated::Literal(v) => Value::try_from(v).and_then(|v| v.unary_factorial()),
             Evaluated::Value(v) => v.unary_factorial(),
-            Evaluated::StrSlice {
-                source: s,
-                range: _,
-            } => Value::Str(s.to_owned()).unary_factorial(),
+            Evaluated::StrSlice { source, range } => {
+                Value::Str(source[range.clone()].to_owned()).unary_factorial()
+            }
         }
         .map(Evaluated::from)
     }
@@ -318,10 +293,9 @@ impl<'a> Evaluated<'a> {
         match self {
             Evaluated::Literal(value) => cast_literal(&value),
             Evaluated::Value(value) => cast_value(&value),
-            Evaluated::StrSlice {
-                source: s,
-                range: _,
-            } => cast_value(&Value::Str(s)),
+            Evaluated::StrSlice { source, range } => {
+                cast_value(&Value::Str(source[range.clone()].to_owned()))
+            }
         }
         .map(Evaluated::from)
     }
@@ -336,44 +310,30 @@ impl<'a> Evaluated<'a> {
                 Evaluated::from(l.concat(Value::try_from(r)?))
             }
             (Evaluated::Value(l), Evaluated::Value(r)) => Evaluated::from(l.concat(r)),
-            (
-                Evaluated::Literal(l),
-                Evaluated::StrSlice {
-                    source: r,
-                    range: _,
-                },
-            ) => Evaluated::from((Value::try_from(l)?).concat(Value::Str(r))),
-            (
-                Evaluated::Value(l),
-                Evaluated::StrSlice {
-                    source: r,
-                    range: _,
-                },
-            ) => Evaluated::from(l.concat(Value::Str(r))),
+            (Evaluated::Literal(l), Evaluated::StrSlice { source, range }) => Evaluated::from(
+                (Value::try_from(l)?).concat(Value::Str(source[range.clone()].to_owned())),
+            ),
+            (Evaluated::Value(l), Evaluated::StrSlice { source, range }) => {
+                Evaluated::from(l.concat(Value::Str(source[range.clone()].to_owned())))
+            }
+            (Evaluated::StrSlice { source, range }, Evaluated::Literal(r)) => Evaluated::from(
+                Value::Str(source[range.clone()].to_owned()).concat(Value::try_from(r)?),
+            ),
+            (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => {
+                Evaluated::from(Value::Str(source[range.clone()].to_owned()).concat(r))
+            }
             (
                 Evaluated::StrSlice {
-                    source: l,
-                    range: _,
-                },
-                Evaluated::Literal(r),
-            ) => Evaluated::from(Value::Str(l).concat(Value::try_from(r)?)),
-            (
-                Evaluated::StrSlice {
-                    source: l,
-                    range: _,
-                },
-                Evaluated::Value(r),
-            ) => Evaluated::from(Value::Str(l).concat(r)),
-            (
-                Evaluated::StrSlice {
-                    source: l,
-                    range: _,
+                    source: a,
+                    range: ar,
                 },
                 Evaluated::StrSlice {
-                    source: r,
-                    range: _,
+                    source: b,
+                    range: br,
                 },
-            ) => Evaluated::from(Value::Str(l).concat(Value::Str(r))),
+            ) => Evaluated::from(
+                Value::Str(a[ar.clone()].to_owned()).concat(Value::Str(b[br.clone()].to_owned())),
+            ),
         };
 
         Ok(evaluated)
@@ -393,46 +353,38 @@ impl<'a> Evaluated<'a> {
             (Evaluated::Value(l), Evaluated::Value(r)) => {
                 Evaluated::from(l.like(&r, case_sensitive)?)
             }
-            (
-                Evaluated::Literal(l),
-                Evaluated::StrSlice {
-                    source: r,
-                    range: _,
-                },
-            ) => Evaluated::from(Value::try_from(l)?.like(&Value::Str(r), case_sensitive)?),
-            (
-                Evaluated::StrSlice {
-                    source: l,
-                    range: _,
-                },
-                Evaluated::Literal(r),
-            ) => Evaluated::from(
-                Value::Str(l.to_owned()).like(&Value::try_from(r)?, case_sensitive)?,
+            (Evaluated::Literal(l), Evaluated::StrSlice { source, range }) => {
+                Evaluated::from(Value::try_from(l)?.like(
+                    &Value::Str(source[range.clone()].to_owned()),
+                    case_sensitive,
+                )?)
+            }
+            (Evaluated::StrSlice { source, range }, Evaluated::Literal(r)) => Evaluated::from(
+                Value::Str(source[range.clone()].to_owned())
+                    .like(&Value::try_from(r)?, case_sensitive)?,
             ),
             (
                 Evaluated::StrSlice {
-                    source: l,
-                    range: _,
+                    source: a,
+                    range: ar,
                 },
                 Evaluated::StrSlice {
-                    source: r,
-                    range: _,
+                    source: b,
+                    range: br,
                 },
-            ) => Evaluated::from(Value::Str(l.to_owned()).like(&Value::Str(r), case_sensitive)?),
-            (
-                Evaluated::StrSlice {
-                    source: l,
-                    range: _,
-                },
-                Evaluated::Value(r),
-            ) => Evaluated::from(Value::Str(l.to_owned()).like(&r, case_sensitive)?),
-            (
-                Evaluated::Value(l),
-                Evaluated::StrSlice {
-                    source: r,
-                    range: _,
-                },
-            ) => Evaluated::from(l.like(&Value::Str(r), case_sensitive)?),
+            ) => Evaluated::from(
+                Value::Str(a[ar.clone()].to_owned())
+                    .like(&Value::Str(b[br.clone()].to_owned()), case_sensitive)?,
+            ),
+            (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => Evaluated::from(
+                Value::Str(source[range.clone()].to_owned()).like(&r, case_sensitive)?,
+            ),
+            (Evaluated::Value(l), Evaluated::StrSlice { source, range }) => {
+                Evaluated::from(l.like(
+                    &Value::Str(source[range.clone()].to_owned()),
+                    case_sensitive,
+                )?)
+            }
         };
 
         Ok(evaluated)
@@ -502,10 +454,9 @@ impl<'a> Evaluated<'a> {
     pub fn is_null(&self) -> bool {
         match self {
             Evaluated::Value(v) => v.is_null(),
-            Evaluated::StrSlice {
-                source: s,
-                range: _,
-            } => Value::Str(s.to_owned()).is_null(),
+            Evaluated::StrSlice { source, range } => {
+                Value::Str(source[range.clone()].to_owned()).is_null()
+            }
             Evaluated::Literal(v) => matches!(v, &Literal::Null),
         }
     }
