@@ -1,9 +1,10 @@
-use crate::ast::{Join, Query, TableAlias, TableFactor, TableWithJoins};
-
 use {
     super::PlanError,
     crate::{
-        ast::{Expr, SelectItem, SetExpr, Statement},
+        ast::{
+            Expr, Join, Query, SelectItem, SetExpr, Statement, TableAlias, TableFactor,
+            TableWithJoins,
+        },
         data::Schema,
         result::Result,
     },
@@ -11,7 +12,6 @@ use {
 };
 
 /// Validate user select column should not be ambiguous
-// pub fn validate(schema_map: &HashMap<String, Schema>, statement: Statement) -> Result<Statement> {
 pub fn validate(
     schema_map: HashMap<(&String, &Option<TableAlias>), &Schema>,
     statement: &Statement,
@@ -55,22 +55,6 @@ pub fn validate(
     Ok(())
 }
 
-// enum SchemaContext {
-//     Data {
-//         schema: Schema,
-//         alias: String,
-//         next: Option<Rc<SchemaContext>>,
-//     },
-//     Bridge {
-//         left: Option<Rc<SchemaContext>>,
-//         right: Option<Rc<SchemaContext>>,
-//     },
-// }
-
-// struct SchemaContext {
-//
-// }
-
 type SchemaContext<'a> = HashMap<(&'a String, &'a Option<TableAlias>), &'a Schema>;
 type SchemaMap = HashMap<String, Schema>;
 
@@ -79,7 +63,7 @@ pub fn update_schema_context<'a>(
     statement: &'a Statement,
 ) -> SchemaContext<'a> {
     match statement {
-        Statement::Query(query) => update_query(schema_map, query),
+        Statement::Query(query) => update_schema_context_by_query(schema_map, query),
         Statement::Insert {
             table_name, source, ..
         } => {
@@ -87,16 +71,29 @@ pub fn update_schema_context<'a>(
                 .get(table_name)
                 .map(|schema| HashMap::from([((table_name, &None), schema)]))
                 .unwrap_or_else(HashMap::new);
-            let source_schema_list = update_query(schema_map, source);
+            let source_schema_list = update_schema_context_by_query(schema_map, source);
             let schema_list = table_schema.into_iter().chain(source_schema_list).collect();
 
             schema_list
         }
-        _ => todo!(),
+        Statement::DropTable { names, .. } => names
+            .iter()
+            .map(|name| {
+                let schema = schema_map.get(name);
+                schema
+                    .map(|schema| HashMap::from([((name, &None), schema)]))
+                    .unwrap_or_else(HashMap::new)
+            })
+            .flatten()
+            .collect(),
+        _ => HashMap::new(),
     }
 }
 
-fn update_query<'a>(schema_map: &'a SchemaMap, query: &'a Query) -> SchemaContext<'a> {
+fn update_schema_context_by_query<'a>(
+    schema_map: &'a SchemaMap,
+    query: &'a Query,
+) -> SchemaContext<'a> {
     let Query { body, .. } = query;
     match body {
         SetExpr::Select(select) => {
@@ -109,11 +106,13 @@ fn update_query<'a>(schema_map: &'a SchemaMap, query: &'a Query) -> SchemaContex
                         .map(|schema| HashMap::from([((name, alias), schema)]))
                         .unwrap_or(HashMap::new())
                 }
-                TableFactor::Derived { subquery, .. } => update_query(schema_map, subquery),
+                TableFactor::Derived { subquery, .. } => {
+                    update_schema_context_by_query(schema_map, subquery)
+                }
                 TableFactor::Series { .. } | TableFactor::Dictionary { .. } => HashMap::new(),
             };
 
-            let by_join = joins
+            let schema_context = joins
                 .into_iter()
                 .map(|Join { relation, .. }| match relation {
                     TableFactor::Table { name, alias, .. } => {
@@ -122,14 +121,16 @@ fn update_query<'a>(schema_map: &'a SchemaMap, query: &'a Query) -> SchemaContex
                             .map(|schema| HashMap::from([((name, alias), schema)]))
                             .unwrap_or(HashMap::new())
                     }
-                    TableFactor::Derived { subquery, .. } => update_query(schema_map, subquery),
+                    TableFactor::Derived { subquery, .. } => {
+                        update_schema_context_by_query(schema_map, subquery)
+                    }
                     TableFactor::Series { .. } | TableFactor::Dictionary { .. } => HashMap::new(),
                 })
                 .flatten()
                 .chain(by_table)
                 .collect();
 
-            by_join
+            schema_context
         }
         SetExpr::Values(_) => HashMap::new(),
     }

@@ -24,10 +24,7 @@ pub use {
 pub async fn plan(storage: &dyn Store, statement: Statement) -> Result<Statement> {
     let schema_map = fetch_schema_map(storage, &statement).await?;
     let schema_context = update_schema_context(&schema_map, &statement);
-
-    // let statement = validate(&schema_map, statement)?;
     validate(schema_context, &statement)?;
-
     let statement = plan_primary_key(&schema_map, statement);
     let statement = plan_index(&schema_map, statement)?;
     let statement = plan_join(&schema_map, statement);

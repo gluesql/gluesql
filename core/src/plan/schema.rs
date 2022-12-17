@@ -1,5 +1,3 @@
-use crate::ast::TableAlias;
-
 use {
     super::expr::PlanExpr,
     crate::{
@@ -164,7 +162,7 @@ async fn scan_table_factor(
     table_factor: &TableFactor,
 ) -> Result<HashMap<String, Schema>> {
     match table_factor {
-        TableFactor::Table { name, alias, .. } => {
+        TableFactor::Table { name, .. } => {
             let schema = storage.fetch_schema(name).await?;
             let schema_list: HashMap<String, Schema> = schema.map_or_else(HashMap::new, |schema| {
                 HashMap::from([(name.to_owned(), schema)])
