@@ -877,6 +877,15 @@ mod tests {
             }))
             .to_sql()
         );
+
+        assert_eq!(
+            "APPEND(list, value)",
+            &Expr::Function(Box::new(Function::Append {
+                expr: Expr::Identifier("list".to_owned()),
+                value: Expr::Identifier("value".to_owned())
+            }))
+            .to_sql()
+        )
     }
 
     #[test]
