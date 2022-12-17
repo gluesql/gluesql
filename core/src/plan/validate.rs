@@ -72,19 +72,17 @@ pub fn update_schema_context<'a>(
                 .map(|schema| HashMap::from([((table_name, &None), schema)]))
                 .unwrap_or_else(HashMap::new);
             let source_schema_list = update_schema_context_by_query(schema_map, source);
-            let schema_list = table_schema.into_iter().chain(source_schema_list).collect();
 
-            schema_list
+            table_schema.into_iter().chain(source_schema_list).collect()
         }
         Statement::DropTable { names, .. } => names
             .iter()
-            .map(|name| {
+            .flat_map(|name| {
                 let schema = schema_map.get(name);
                 schema
                     .map(|schema| HashMap::from([((name, &None), schema)]))
                     .unwrap_or_else(HashMap::new)
             })
-            .flatten()
             .collect(),
         _ => HashMap::new(),
     }
@@ -104,7 +102,7 @@ fn update_schema_context_by_query<'a>(
                     let schema = schema_map.get(name);
                     schema
                         .map(|schema| HashMap::from([((name, alias), schema)]))
-                        .unwrap_or(HashMap::new())
+                        .unwrap_or_default()
                 }
                 TableFactor::Derived { subquery, .. } => {
                     update_schema_context_by_query(schema_map, subquery)
@@ -112,25 +110,22 @@ fn update_schema_context_by_query<'a>(
                 TableFactor::Series { .. } | TableFactor::Dictionary { .. } => HashMap::new(),
             };
 
-            let schema_context = joins
-                .into_iter()
-                .map(|Join { relation, .. }| match relation {
+            let by_joins = joins
+                .iter()
+                .flat_map(|Join { relation, .. }| match relation {
                     TableFactor::Table { name, alias, .. } => {
                         let schema = schema_map.get(name);
                         schema
                             .map(|schema| HashMap::from([((name, alias), schema)]))
-                            .unwrap_or(HashMap::new())
+                            .unwrap_or_default()
                     }
                     TableFactor::Derived { subquery, .. } => {
                         update_schema_context_by_query(schema_map, subquery)
                     }
                     TableFactor::Series { .. } | TableFactor::Dictionary { .. } => HashMap::new(),
-                })
-                .flatten()
-                .chain(by_table)
-                .collect();
+                });
 
-            schema_context
+            by_joins.chain(by_table).collect()
         }
         SetExpr::Values(_) => HashMap::new(),
     }
