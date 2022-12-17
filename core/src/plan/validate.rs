@@ -95,6 +95,7 @@ fn update_schema_context_by_query<'a>(
     let Query { body, .. } = query;
     match body {
         SetExpr::Select(select) => {
+            // todo!()
             let TableWithJoins { relation, joins } = &select.from;
 
             let by_table = match relation {

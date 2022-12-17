@@ -12,9 +12,10 @@ mod validate;
 #[cfg(test)]
 mod mock;
 
-use crate::{ast::Statement, result::Result, store::Store};
-
-use self::validate::update_schema_context;
+use {
+    self::validate::update_schema_context,
+    crate::{ast::Statement, result::Result, store::Store},
+};
 
 pub use {
     self::validate::validate, error::*, index::plan as plan_index, join::plan as plan_join,
