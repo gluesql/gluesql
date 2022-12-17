@@ -125,7 +125,8 @@ impl Function {
             | Self::Position {
                 from_expr: expr2,
                 sub_expr: expr,
-            } => Exprs::Double([expr, expr2].into_iter()),
+            }
+            | Self::Append { expr, value: expr2 } => Exprs::Double([expr, expr2].into_iter()),
             Self::Lpad {
                 expr,
                 size: expr2,
@@ -275,5 +276,7 @@ mod tests {
             r#"CONCAT_WS(",", "gluesql", "is", "cool")"#,
             &[r#"",""#, r#""gluesql""#, r#""is""#, r#""cool""#],
         );
+
+        //VarialbeArgsWithVariable
     }
 }

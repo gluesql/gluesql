@@ -139,6 +139,10 @@ pub enum Function {
     },
     Ascii(Expr),
     Chr(Expr),
+    Append {
+        expr: Expr,
+        value: Expr,
+    },
 }
 
 impl ToSql for Function {
@@ -290,6 +294,13 @@ impl ToSql for Function {
             }
             Function::Ascii(e) => format!("ASCII({})", e.to_sql()),
             Function::Chr(e) => format!("CHR({})", e.to_sql()),
+            Function::Append { expr, value } => {
+                format!(
+                    "APPEND({items}, {value})",
+                    items = expr.to_sql(),
+                    value = value.to_sql()
+                )
+            }
         }
     }
 }

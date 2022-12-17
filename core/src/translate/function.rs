@@ -454,6 +454,13 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             let expr = translate_expr(args[0])?;
             Ok(Expr::Function(Box::new(Function::Chr(expr))))
         }
+        "APPEND" => {
+            check_len(name, args.len(), 2)?;
+            let expr = translate_expr(args[0])?;
+            let value = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Append { expr, value })))
+        }
         _ => Err(TranslateError::UnsupportedFunction(name).into()),
     }
 }

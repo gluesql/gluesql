@@ -452,5 +452,12 @@ async fn evaluate_function<'a>(
             let expr = eval(expr).await?;
             f::extract(field, expr)
         }
+
+        // --- list ---
+        Function::Append { expr, value } => {
+            let expr = eval(expr).await?;
+            let value = eval(value).await?;
+            f::append(expr, value)
+        }
     }
 }

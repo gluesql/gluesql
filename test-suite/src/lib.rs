@@ -170,6 +170,7 @@ macro_rules! generate_store_tests {
         );
         glue!(type_match, type_match::type_match);
         glue!(dictionary, dictionary::dictionary);
+        glue!(function_append, function::append::append);
 
         // ast-builder
         glue!(ast_builder_basic, ast_builder::basic::basic);

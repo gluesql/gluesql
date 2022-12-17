@@ -44,6 +44,9 @@ pub enum EvaluateError {
     #[error("expr requires map or list value")]
     MapOrListTypeRequired,
 
+    #[error("expr requires list value")]
+    ListTypeRequired,
+
     #[error("unsupported stateless expression: {0:#?}")]
     UnsupportedStatelessExpr(Expr),
 

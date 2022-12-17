@@ -480,6 +480,20 @@ fn gcd_i64(a: i64, b: i64) -> i64 {
     }
 }
 
+// --- list ---
+pub fn append<'a>(expr: Evaluated<'_>, value: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let expr: Value = expr.try_into()?;
+    let value: Value = value.try_into()?;
+
+    match (expr, value) {
+        (Value::List(mut l), v) => {
+            l.push(v);
+            Ok(Evaluated::Value(Value::List(l)))
+        }
+        _ => Err(EvaluateError::ListTypeRequired.into()),
+    }
+}
+
 // --- etc ---
 
 pub fn unwrap<'a>(
