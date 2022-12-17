@@ -34,6 +34,7 @@ impl From<&Value> for String {
             Value::Map(_) => "[MAP]".to_owned(),
             Value::List(_) => "[LIST]".to_owned(),
             Value::Decimal(value) => value.to_string(),
+            Value::Point((x, y)) => "POINT({x} {y})".to_string(),
             Value::Null => String::from("NULL"),
         }
     }
@@ -120,6 +121,7 @@ impl TryFrom<&Value> for bool {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -157,6 +159,7 @@ impl TryFrom<&Value> for i8 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -194,6 +197,7 @@ impl TryFrom<&Value> for i16 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -231,6 +235,7 @@ impl TryFrom<&Value> for i32 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -268,6 +273,7 @@ impl TryFrom<&Value> for i64 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -305,6 +311,7 @@ impl TryFrom<&Value> for i128 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -342,6 +349,7 @@ impl TryFrom<&Value> for u8 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -378,6 +386,7 @@ impl TryFrom<&Value> for u16 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -415,6 +424,7 @@ impl TryFrom<&Value> for f64 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -452,6 +462,7 @@ impl TryFrom<&Value> for usize {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -489,6 +500,7 @@ impl TryFrom<&Value> for Decimal {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -696,6 +708,10 @@ mod tests {
             Value::List(Vec::new()),
             Err(ValueError::ImpossibleCast.into())
         );
+        test!(
+            Value::Point((1.0, 1.0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
 
         // impossible casts
@@ -757,6 +773,10 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+        test!(
+            Value::Point((1.0, 1.0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
 
         // impossible casts to i8
         test!(Value::I16(128), Err(ValueError::ImpossibleCast.into()));
@@ -818,6 +838,10 @@ mod tests {
             Value::List(Vec::new()),
             Err(ValueError::ImpossibleCast.into())
         );
+        test!(
+            Value::Point((1.0, 1.0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
     }
 
@@ -870,6 +894,10 @@ mod tests {
         );
         test!(
             Value::List(Vec::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Point((1.0, 1.0)),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
@@ -926,6 +954,10 @@ mod tests {
             Value::List(Vec::new()),
             Err(ValueError::ImpossibleCast.into())
         );
+        test!(
+            Value::Point((1.0, 1.0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
     }
 
@@ -978,6 +1010,10 @@ mod tests {
         );
         test!(
             Value::List(Vec::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Point((1.0, 1.0)),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
@@ -1036,6 +1072,10 @@ mod tests {
         );
         test!(
             Value::List(Vec::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Point((1.0, 1.0)),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
@@ -1098,6 +1138,10 @@ mod tests {
             Value::List(Vec::new()),
             Err(ValueError::ImpossibleCast.into())
         );
+        test!(
+            Value::Point((1.0, 1.0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
     }
 
@@ -1154,6 +1198,10 @@ mod tests {
             Value::List(Vec::new()),
             Err(ValueError::ImpossibleCast.into())
         );
+        test!(
+            Value::Point((1.0, 1.0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
     }
 
@@ -1206,6 +1254,10 @@ mod tests {
         );
         test!(
             Value::List(Vec::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Point((1.0, 1.0)),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));

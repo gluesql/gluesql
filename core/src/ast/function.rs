@@ -139,6 +139,8 @@ pub enum Function {
     },
     Ascii(Expr),
     Chr(Expr),
+    StX(Expr),
+    StY(Expr),
 }
 
 impl ToSql for Function {
@@ -290,6 +292,8 @@ impl ToSql for Function {
             }
             Function::Ascii(e) => format!("ASCII({})", e.to_sql()),
             Function::Chr(e) => format!("CHR({})", e.to_sql()),
+            Function::StX(e) => format!("ST_X({})", e.to_sql()),
+            Function::StY(e) => format!("ST_Y({})", e.to_sql()),
         }
     }
 }
@@ -866,6 +870,22 @@ mod tests {
             }))
             .to_sql()
         );
+
+        assert_eq!(
+            "ST_X(point)",
+            &Expr::Function(Box::new(Function::StX(Expr::Identifier(
+                "point".to_owned()
+            ))))
+            .to_sql()
+        );
+
+        assert_eq!(
+            "ST_Y(point)",
+            &Expr::Function(Box::new(Function::StY(Expr::Identifier(
+                "point".to_owned()
+            ))))
+            .to_sql()
+        )
     }
 
     #[test]

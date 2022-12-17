@@ -19,6 +19,7 @@ mod error;
 mod expr;
 mod json;
 mod literal;
+mod point;
 mod selector;
 mod uuid;
 
@@ -45,6 +46,7 @@ pub enum Value {
     Uuid(u128),
     Map(HashMap<String, Value>),
     List(Vec<Value>),
+    Point((f64, f64)),
     Null,
 }
 
@@ -151,6 +153,7 @@ impl Value {
             Value::Uuid(_) => Some(DataType::Uuid),
             Value::Map(_) => Some(DataType::Map),
             Value::List(_) => Some(DataType::List),
+            Value::Point(_) => Some(DataType::Point),
             Value::Null => None,
         }
     }
@@ -176,6 +179,7 @@ impl Value {
             Value::Uuid(_) => matches!(data_type, DataType::Uuid),
             Value::Map(_) => matches!(data_type, DataType::Map),
             Value::List(_) => matches!(data_type, DataType::List),
+            Value::Point(_) => matches!(data_type, DataType::Point),
             Value::Null => true,
         };
 

@@ -406,6 +406,10 @@ async fn evaluate_function<'a>(
             f::lcm(name, left, right)
         }
 
+        // --- spatial ---
+        Function::StX(expr) => f::stx(name, eval(expr).await?),
+        Function::StY(expr) => f::sty(name, eval(expr).await?),
+
         // --- etc ---
         Function::Unwrap { expr, selector } => {
             let expr = eval(expr).await?;

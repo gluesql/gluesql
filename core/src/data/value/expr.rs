@@ -102,6 +102,9 @@ impl TryFrom<Value> for Expr {
 
                 Expr::Literal(AstLiteral::QuotedString(json.to_string()))
             }
+            Value::Point(v) => {
+                todo!()
+            }
             Value::Null => Expr::Literal(AstLiteral::Null),
         };
 

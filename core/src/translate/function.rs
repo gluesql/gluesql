@@ -455,6 +455,18 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             let expr = translate_expr(args[0])?;
             Ok(Expr::Function(Box::new(Function::Chr(expr))))
         }
+        "ST_X" => {
+            check_len(name, args.len(), 1)?;
+
+            let expr = translate_expr(args[0])?;
+            Ok(Expr::Function(Box::new(Function::StX(expr))))
+        }
+        "ST_Y" => {
+            check_len(name, args.len(), 1)?;
+
+            let expr = translate_expr(args[0])?;
+            Ok(Expr::Function(Box::new(Function::StY(expr))))
+        }
         _ => Err(TranslateError::UnsupportedFunction(name).into()),
     }
 }

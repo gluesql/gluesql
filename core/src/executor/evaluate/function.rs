@@ -610,3 +610,11 @@ pub fn cast<'a>(expr: Evaluated<'a>, data_type: &DataType) -> Result<Evaluated<'
 pub fn extract<'a>(field: &DateTimeField, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
     Ok(Evaluated::from(Value::try_from(expr)?.extract(field)?))
 }
+
+pub fn stx<'a>(name: String, expr: Evaluated<'a>) -> Result<Evaluated<'a>> {
+    todo!()
+}
+
+pub fn sty<'a>(name: String, expr: Evaluated<'a>) -> Result<Evaluated<'a>> {
+    todo!()
+}

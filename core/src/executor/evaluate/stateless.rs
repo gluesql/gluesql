@@ -345,5 +345,9 @@ fn evaluate_function<'a>(
 
             f::concat_ws(name, separator, exprs)
         }
+
+        // --- spatial ---
+        Function::StX(expr) => f::stx(name, eval(expr)?),
+        Function::StY(expr) => f::sty(name, eval(expr)?),
     }
 }

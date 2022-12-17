@@ -20,6 +20,9 @@ pub enum KeyError {
 
     #[error("LIST data type cannot be used as Key")]
     ListTypeKeyNotSupported,
+
+    #[error("POINT data type cannot be used as Key")]
+    PointTypeKeyNotSupported,
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug, Serialize, Deserialize)]
@@ -93,6 +96,7 @@ impl TryFrom<Value> for Key {
             F64(_) => Err(KeyError::FloatTypeKeyNotSupported.into()),
             Map(_) => Err(KeyError::MapTypeKeyNotSupported.into()),
             List(_) => Err(KeyError::ListTypeKeyNotSupported.into()),
+            Point(_) => Err(KeyError::PointTypeKeyNotSupported.into()),
         }
     }
 }
