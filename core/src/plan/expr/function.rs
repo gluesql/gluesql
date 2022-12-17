@@ -276,7 +276,5 @@ mod tests {
             r#"CONCAT_WS(",", "gluesql", "is", "cool")"#,
             &[r#"",""#, r#""gluesql""#, r#""is""#, r#""cool""#],
         );
-
-        //VarialbeArgsWithVariable
     }
 }
