@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::ast::{Join, Query, TableAlias, TableFactor, TableWithJoins};
 
 use {
@@ -73,57 +71,66 @@ pub fn validate(
 //
 // }
 
-pub fn update_schema_context<'a>(
-    schema_map: &'a HashMap<String, Schema>,
-    statement: &'a Statement,
-) -> HashMap<(&'a String, &'a Option<TableAlias>), &'a Schema> {
-    match statement {
-        Statement::Query(Query { ref body, .. }) => match body {
-            SetExpr::Select(select) => {
-                let TableWithJoins { relation, joins } = &select.from;
+type SchemaContext<'a> = HashMap<(&'a String, &'a Option<TableAlias>), &'a Schema>;
+type SchemaMap = HashMap<String, Schema>;
 
-                let by_table = match relation {
-                    TableFactor::Table { name, alias, index } => {
+pub fn update_schema_context<'a>(
+    schema_map: &'a SchemaMap,
+    statement: &'a Statement,
+) -> SchemaContext<'a> {
+    match statement {
+        Statement::Query(query) => update_query(schema_map, query),
+        Statement::Insert {
+            table_name, source, ..
+        } => {
+            let table_schema = schema_map
+                .get(table_name)
+                .map(|schema| HashMap::from([((table_name, &None), schema)]))
+                .unwrap_or_else(HashMap::new);
+            let source_schema_list = update_query(schema_map, source);
+            let schema_list = table_schema.into_iter().chain(source_schema_list).collect();
+
+            schema_list
+        }
+        _ => todo!(),
+    }
+}
+
+fn update_query<'a>(schema_map: &'a SchemaMap, query: &'a Query) -> SchemaContext<'a> {
+    let Query { body, .. } = query;
+    match body {
+        SetExpr::Select(select) => {
+            let TableWithJoins { relation, joins } = &select.from;
+
+            let by_table = match relation {
+                TableFactor::Table { name, alias, .. } => {
+                    let schema = schema_map.get(name);
+                    schema
+                        .map(|schema| HashMap::from([((name, alias), schema)]))
+                        .unwrap_or(HashMap::new())
+                }
+                TableFactor::Derived { subquery, .. } => update_query(schema_map, subquery),
+                TableFactor::Series { .. } | TableFactor::Dictionary { .. } => HashMap::new(),
+            };
+
+            let by_join = joins
+                .into_iter()
+                .map(|Join { relation, .. }| match relation {
+                    TableFactor::Table { name, alias, .. } => {
                         let schema = schema_map.get(name);
                         schema
                             .map(|schema| HashMap::from([((name, alias), schema)]))
                             .unwrap_or(HashMap::new())
                     }
-                    TableFactor::Derived { subquery, alias } => todo!(),
-                    TableFactor::Series { alias, size } => todo!(),
-                    TableFactor::Dictionary { dict, alias } => todo!(),
-                };
+                    TableFactor::Derived { subquery, .. } => update_query(schema_map, subquery),
+                    TableFactor::Series { .. } | TableFactor::Dictionary { .. } => HashMap::new(),
+                })
+                .flatten()
+                .chain(by_table)
+                .collect();
 
-                let by_join = joins
-                    .into_iter()
-                    .map(
-                        |Join {
-                             relation,
-                             join_operator,
-                             join_executor,
-                         }| {
-                            match relation {
-                                TableFactor::Table { name, alias, index } => {
-                                    let schema = schema_map.get(name);
-                                    schema
-                                        .map(|schema| HashMap::from([((name, alias), schema)]))
-                                        .unwrap_or(HashMap::new())
-                                }
-                                TableFactor::Derived { subquery, alias } => todo!(),
-                                TableFactor::Series { alias, size } => todo!(),
-                                TableFactor::Dictionary { dict, alias } => todo!(),
-                            }
-                        },
-                    )
-                    .flatten()
-                    .chain(by_table)
-                    .collect();
-
-                by_join
-                // todo!()
-            }
-            SetExpr::Values(_) => todo!(),
-        },
-        _ => todo!(),
+            by_join
+        }
+        SetExpr::Values(_) => HashMap::new(),
     }
 }
