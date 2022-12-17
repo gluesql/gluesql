@@ -14,6 +14,8 @@ mod mock;
 
 use crate::{ast::Statement, result::Result, store::Store};
 
+use self::validate::update_schema_context;
+
 pub use {
     self::validate::validate, error::*, index::plan as plan_index, join::plan as plan_join,
     primary_key::plan as plan_primary_key, schema::fetch_schema_map,
@@ -22,7 +24,10 @@ pub use {
 pub async fn plan(storage: &dyn Store, statement: Statement) -> Result<Statement> {
     let schema_map = fetch_schema_map(storage, &statement).await?;
 
-    let statement = validate(&schema_map, statement)?;
+    let schema_context = update_schema_context(&schema_map, &statement);
+
+    // let statement = validate(&schema_map, statement)?;
+    validate(schema_context, &statement)?;
 
     let statement = plan_primary_key(&schema_map, statement);
     let statement = plan_index(&schema_map, statement)?;
