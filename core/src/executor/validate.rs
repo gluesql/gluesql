@@ -17,6 +17,9 @@ pub enum ValidateError {
     #[error("conflict! storage row has no column on index {0}")]
     ConflictOnStorageColumnIndex(usize),
 
+    #[error("conflict! schemaless row found in schema based data")]
+    ConflictOnUnexpectedSchemalessRowFound,
+
     #[error("duplicate entry '{}' for unique column '{1}'", String::from(.0))]
     DuplicateEntryOnUniqueField(Value, String),
 
@@ -142,7 +145,9 @@ pub async fn validate_unique(
                 let (_, data_row) = result?;
                 let values = match data_row {
                     DataRow::Vec(values) => values,
-                    DataRow::Map(_) => todo!(),
+                    DataRow::Map(_) => {
+                        return Err(ValidateError::ConflictOnUnexpectedSchemalessRowFound.into());
+                    }
                 };
 
                 Rc::clone(&unique_constraints)
