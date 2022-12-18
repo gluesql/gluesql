@@ -44,6 +44,12 @@ pub enum EvaluateError {
     #[error("expr requires map or list value")]
     MapOrListTypeRequired,
 
+    #[error("map or string value required for json map conversion: {0}")]
+    MapOrStringValueRequired(String),
+
+    #[error("text literal required for json map conversion: {0}")]
+    TextLiteralRequired(String),
+
     #[error("unsupported stateless expression: {0:#?}")]
     UnsupportedStatelessExpr(Expr),
 

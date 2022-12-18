@@ -4,13 +4,13 @@ use {
         validate::{validate_unique, ColumnValidation},
     },
     crate::{
-        ast::{ColumnDef, ColumnUniqueOption, DataType, Expr, Query, SetExpr, Values},
+        ast::{ColumnDef, ColumnUniqueOption, Expr, Query, SetExpr, Values},
         data::{Key, Row, Schema, Value},
         executor::{evaluate::evaluate_stateless, limit::Limit},
         result::{MutResult, Result, TrySelf},
         store::{DataRow, GStore, GStoreMut},
     },
-    futures::stream::{self, TryStreamExt},
+    futures::stream::{self, StreamExt, TryStreamExt},
     serde::Serialize,
     std::{fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
@@ -32,6 +32,12 @@ pub enum InsertError {
 
     #[error("literals have more values than target columns")]
     TooManyValues,
+
+    #[error("only single value accepted for schemaless row insert")]
+    OnlySingleValueAcceptedForSchemalessRow,
+
+    #[error("map type required: {0}")]
+    MapTypeValueRequired(String),
 }
 
 enum RowsData {
@@ -180,16 +186,12 @@ async fn fetch_map_rows<T: GStore + GStoreMut>(
             let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref())?;
             let rows = values_list.iter().map(|values| {
                 if values.len() > 1 {
-                    todo!();
+                    return Err(InsertError::OnlySingleValueAcceptedForSchemalessRow.into());
                 }
 
-                let value =
-                    evaluate_stateless(None, &values[0])?.try_into_value(&DataType::Map, true)?;
-
-                Ok(match value {
-                    Value::Map(values) => Row::Map(values),
-                    _ => unreachable!(), // todo!
-                })
+                evaluate_stateless(None, &values[0])?
+                    .try_into()
+                    .map(Row::Map)
             });
             let rows = stream::iter(rows);
             let rows = limit.apply(rows);
@@ -198,18 +200,18 @@ async fn fetch_map_rows<T: GStore + GStoreMut>(
             Rows::Values(rows)
         }
         SetExpr::Select(_) => {
-            let rows = select(storage, source, None).await?.and_then(|row| {
-                /*
-                let column_defs = Rc::clone(&column_defs);
+            let rows = select(storage, source, None).await?.map(|row| {
+                let row = row?;
 
-                async move {
-                    validate_row(&row, &column_defs)?;
-
-                    Ok(row.into())
+                if let Row::Vec { values, .. } = &row {
+                    if values.len() > 1 {
+                        return Err(InsertError::OnlySingleValueAcceptedForSchemalessRow.into());
+                    } else if !matches!(&values[0], Value::Map(_)) {
+                        return Err(InsertError::MapTypeValueRequired((&values[0]).into()).into());
+                    }
                 }
-                */
-                //todo
-                async move { Ok(row.into()) }
+
+                Ok(row.into())
             });
 
             Rows::Select(rows)

@@ -1,4 +1,11 @@
-use {crate::*, gluesql_core::prelude::Value::*};
+use {
+    crate::*,
+    gluesql_core::{
+        data::ValueError,
+        executor::{EvaluateError, InsertError},
+        prelude::Value::*,
+    },
+};
 
 test_case!(basic, async move {
     run!("CREATE TABLE Item");
@@ -53,5 +60,36 @@ test_case!(basic, async move {
             Str                | I64;
             "Hello".to_owned()   3000
         ))
+    );
+
+    test!(
+        r#"
+            INSERT INTO Item
+            VALUES (
+                '{ "a": 10 }',
+                '{ "b": true }'
+            );
+        "#,
+        Err(InsertError::OnlySingleValueAcceptedForSchemalessRow.into())
+    );
+    test!(
+        "INSERT INTO Item SELECT id, name FROM Item LIMIT 1",
+        Err(InsertError::OnlySingleValueAcceptedForSchemalessRow.into())
+    );
+    test!(
+        "INSERT INTO Item VALUES ('[1, 2, 3]');",
+        Err(ValueError::JsonObjectTypeRequired.into())
+    );
+    test!(
+        "INSERT INTO Item VALUES (true);",
+        Err(EvaluateError::TextLiteralRequired("Boolean(true)".to_owned()).into())
+    );
+    test!(
+        "INSERT INTO Item VALUES (CAST(1 AS INTEGER) + 4)",
+        Err(EvaluateError::MapOrStringValueRequired("5".to_owned()).into())
+    );
+    test!(
+        "INSERT INTO Item SELECT id FROM Item LIMIT 1",
+        Err(InsertError::MapTypeValueRequired("101".to_owned()).into())
     );
 });
