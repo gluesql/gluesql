@@ -1110,6 +1110,26 @@ mod tests {
         let actual = text("GlueSQL").substr(num(2), None);
         let expected = "SUBSTR('GlueSQL', 2)";
         test_expr(actual, expected);
+
+        let actual = text("GlueSQL").substr(num(2), None);
+        let expected = "SUBSTR('GlueSQL', 2)";
+        test_expr(actual, expected);
+
+        let actual = substr(text("GlueSQL      ").rtrim(None), num(2), None);
+        let expected = "SUBSTR(RTRIM('GlueSQL      '), 2)";
+        test_expr(actual, expected);
+
+        let actual = text("GlueSQL      ").rtrim(None).substr(num(2), None);
+        let expected = "SUBSTR(RTRIM('GlueSQL      '), 2)";
+        test_expr(actual, expected);
+
+        let actual = substr(text("      GlueSQL").ltrim(None), num(2), None);
+        let expected = "SUBSTR(LTRIM('      GlueSQL'), 2)";
+        test_expr(actual, expected);
+
+        let actual = text("      GlueSQL").ltrim(None).substr(num(2), None);
+        let expected = "SUBSTR(LTRIM('      GlueSQL'), 2)";
+        test_expr(actual, expected);
     }
 
     #[test]
@@ -1129,6 +1149,14 @@ mod tests {
         let actual = text("GlueSQLABC").rtrim(Some(text("ABC")));
         let expected = "RTRIM('GlueSQLABC','ABC')";
         test_expr(actual, expected);
+
+        let actual = text("chicken").ltrim(None).rtrim(Some(text("en")));
+        let expected = "RTRIM(LTRIM('chicken'),'en')";
+        test_expr(actual, expected);
+
+        let actual = rtrim(text("chicken").ltrim(Some(text("chick"))), None);
+        let expected = "RTRIM(LTRIM('chicken','chick'))";
+        test_expr(actual, expected);
     }
 
     #[test]
@@ -1147,6 +1175,14 @@ mod tests {
 
         let actual = text("ABCGlueSQL").ltrim(Some(text("ABC")));
         let expected = "LTRIM('ABCGlueSQL','ABC')";
+        test_expr(actual, expected);
+
+        let actual = text("chicken").rtrim(Some(text("en"))).ltrim(None);
+        let expected = "LTRIM(RTRIM('chicken','en'))";
+        test_expr(actual, expected);
+
+        let actual = text("chicken").rtrim(None).ltrim(Some(text("chick")));
+        let expected = "LTRIM(RTRIM('chicken'),'chick')";
         test_expr(actual, expected);
     }
 
