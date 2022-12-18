@@ -2,7 +2,7 @@ use {
     super::error::EvaluateError,
     crate::{
         ast::DataType,
-        data::{value::HashMapExt, Key, Literal, Value},
+        data::{value::HashMapJsonExt, Key, Literal, Value},
         result::{Error, Result},
     },
     std::{cmp::Ordering, collections::HashMap},

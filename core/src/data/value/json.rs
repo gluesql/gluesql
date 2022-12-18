@@ -8,11 +8,11 @@ use {
     uuid::Uuid,
 };
 
-pub trait HashMapExt {
+pub trait HashMapJsonExt {
     fn parse_json_object(value: &str) -> Result<HashMap<String, Value>>;
 }
 
-impl HashMapExt for HashMap<String, Value> {
+impl HashMapJsonExt for HashMap<String, Value> {
     fn parse_json_object(value: &str) -> Result<HashMap<String, Value>> {
         let value = serde_json::from_str(value)
             .map_err(|_| ValueError::InvalidJsonString(value.to_owned()))?;
