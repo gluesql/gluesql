@@ -185,9 +185,11 @@ where
             value_op(l, &Value::try_from(r)?).map(Evaluated::from)
         }
         (Evaluated::Value(l), Evaluated::Value(r)) => value_op(l, r).map(Evaluated::from),
-        _ => Err(
-            EvaluateError::ArithmeticNotAllowedFunctionForStrSlice("binary_op".to_owned()).into(),
-        ),
+        (l, r) => Err(EvaluateError::UnsupportedBinaryArithmetic(
+            format!("{:?}", l),
+            format!("{:?}", r),
+        )
+        .into()),
     }
 }
 

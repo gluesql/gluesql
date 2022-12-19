@@ -149,10 +149,11 @@ test_case!(substr, async move {
         ),
         (
             r#"SELECT SUBSTR('123', 2, 3) - '3' AS test FROM SingleItem"#,
-            Err(
-                EvaluateError::ArithmeticNotAllowedFunctionForStrSlice("binary_op".to_owned())
-                    .into(),
-            ),
+            Err(EvaluateError::UnsupportedBinaryArithmetic(
+                "StrSlice { source: \"123\", range: 1..3 }".to_owned(),
+                "Literal(Text(\"3\"))".to_owned(),
+            )
+            .into()),
         ),
     ];
     for (sql, expected) in test_cases {
