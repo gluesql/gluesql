@@ -30,12 +30,4 @@ impl Row {
             Self::Map(_) => todo!(),
         }
     }
-
-    // temp
-    pub fn get_values(&self) -> &[Value] {
-        match self {
-            Self::Vec { values, .. } => values.as_slice(),
-            Self::Map(_) => todo!(),
-        }
-    }
 }

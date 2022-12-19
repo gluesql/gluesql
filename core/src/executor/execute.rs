@@ -221,14 +221,12 @@ pub async fn execute<T: GStore + GStoreMut>(
                         Rc::from(column_defs),
                         columns_to_update,
                     );
+                    let rows = rows.iter().filter_map(|(_, row)| match row {
+                        Row::Vec { values, .. } => Some(values.as_slice()),
+                        Row::Map(_) => None,
+                    });
 
-                    validate_unique(
-                        &storage,
-                        table_name,
-                        column_validation,
-                        rows.iter().map(|(_, row)| row.get_values()),
-                    )
-                    .await?;
+                    validate_unique(&storage, table_name, column_validation, rows).await?;
                 }
 
                 Ok((table_name, rows))
