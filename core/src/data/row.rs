@@ -13,13 +13,6 @@ pub enum Row {
 }
 
 impl Row {
-    pub fn get_value_by_index(&self, index: usize) -> Option<&Value> {
-        match self {
-            Self::Vec { values, .. } => values.get(index),
-            Self::Map(_) => todo!(),
-        }
-    }
-
     pub fn get_value(&self, ident: &str) -> Option<&Value> {
         match self {
             Self::Vec { columns, values } => columns
