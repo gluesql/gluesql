@@ -422,6 +422,21 @@ impl<'a> Evaluated<'a> {
         let sliced_expr = &expr_str[range.clone()];
         let matched_vec: Vec<_> = sliced_expr.match_indices(&filter_chars[..]).collect();
 
+        //"x".trim_start_matches(['x','y','z']) => ""
+        if matched_vec.len() == sliced_expr.len() {
+            return Ok(Evaluated::StrSlice {
+                source,
+                range: 0..0,
+            });
+        }
+        //"tuv".trim_start_matches(['x','y','z']) => "tuv"
+        if matched_vec.is_empty() {
+            return Ok(Evaluated::StrSlice { source, range });
+        }
+        //"txu".trim_start_matches(['x','y','z']) => "txu"
+        if matched_vec[0].0 != 0 && matched_vec[matched_vec.len() - 1].0 != sliced_expr.len() - 1 {
+            return Ok(Evaluated::StrSlice { source, range });
+        }
         let pivot = matched_vec
             .iter()
             .enumerate()
@@ -492,6 +507,23 @@ impl<'a> Evaluated<'a> {
         };
         let sliced_expr = &expr_str[range.clone()];
         let matched_vec: Vec<_> = sliced_expr.match_indices(&filter_chars[..]).collect();
+
+        //"x".trim_end_matches(['x','y','z']) => ""
+        if matched_vec.len() == sliced_expr.len() {
+            return Ok(Evaluated::StrSlice {
+                source,
+                range: 0..0,
+            });
+        }
+        //"tuv".trim_end_matches(['x','y','z']) => "tuv"
+        if matched_vec.is_empty() {
+            return Ok(Evaluated::StrSlice { source, range });
+        }
+        //"txu".trim_end_matches(['x','y','z']) => "txu"
+        if matched_vec[0].0 != 0 && matched_vec[matched_vec.len() - 1].0 != sliced_expr.len() - 1 {
+            return Ok(Evaluated::StrSlice { source, range });
+        }
+
         let pivot = matched_vec
             .iter()
             .rev()
@@ -638,7 +670,7 @@ impl<'a> Evaluated<'a> {
             return Ok(Evaluated::StrSlice { source, range });
         }
         //filter_chars => ['x','y','z']
-        //"txu".trim_matches(filter_chars[..]) => "txv"
+        //"txu".trim_matches(filter_chars[..]) => "txu"
         if matched_vec[0].0 != 0 && matched_vec[matched_vec.len() - 1].0 != sliced_expr.len() - 1 {
             return Ok(Evaluated::StrSlice { source, range });
         }

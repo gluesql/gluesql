@@ -29,6 +29,15 @@ test_case!(ltrim_rtrim, async move {
             )),
         ),
         (
+            "SELECT LTRIM(RTRIM('GlueSQLABC', 'ABC')) AS test FROM Item;",
+            Ok(select!(
+                "test"
+                Str;
+                "GlueSQL".to_owned();
+                "GlueSQL".to_owned()
+            )),
+        ),
+        (
             "SELECT LTRIM(name, ' xyz') AS test FROM Item",
             Ok(select!(
                 "test"
