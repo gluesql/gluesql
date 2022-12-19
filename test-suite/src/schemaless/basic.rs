@@ -24,6 +24,14 @@ test_case!(basic, async move {
         ');
     "#
     );
+    run!("CREATE TABLE Player");
+    run!(
+        r#"
+        INSERT INTO Player VALUES
+            ('{ "id": 1001, "name": "Beam", "flag": 1 }'),
+            ('{ "id": 1002, "name": "Seo" }');
+        "#
+    );
 
     test!(
         "SELECT name, dex, rare FROM Item",
@@ -59,6 +67,23 @@ test_case!(basic, async move {
             new_field          | cost
             Str                | I64;
             "Hello".to_owned()   3000
+        ))
+    );
+
+    // join
+    test!(
+        "SELECT
+            Player.id AS player_id,
+            Player.name AS player_name,
+            Item.obj['cost'] AS item_cost
+        FROM Item
+        JOIN Player
+        WHERE flag IS NOT NULL;
+        ",
+        Ok(select!(
+            player_id | player_name       | item_cost
+            I64       | Str               | I64;
+            1001        "Beam".to_owned()   3000
         ))
     );
 

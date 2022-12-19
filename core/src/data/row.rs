@@ -19,7 +19,7 @@ impl Row {
                 .iter()
                 .position(|column| column == ident)
                 .and_then(|index| values.get(index)),
-            Self::Map(values) => values.get(ident),
+            Self::Map(values) => Some(values.get(ident).unwrap_or(&Value::Null)),
         }
     }
 
