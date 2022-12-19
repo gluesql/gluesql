@@ -187,12 +187,12 @@ pub async fn execute<T: GStore + GStoreMut>(
                     .await?
                     .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
 
-                let all_columns = column_defs
-                    .as_deref()
-                    .unwrap_or(&[])
-                    .iter()
-                    .map(|col_def| col_def.name.to_owned())
-                    .collect::<Rc<[String]>>();
+                let all_columns = column_defs.as_deref().map(|columns| {
+                    columns
+                        .iter()
+                        .map(|col_def| col_def.name.to_owned())
+                        .collect()
+                });
                 let columns_to_update = assignments
                     .iter()
                     .map(|assignment| assignment.id.to_owned())
@@ -248,7 +248,7 @@ pub async fn execute<T: GStore + GStoreMut>(
             selection,
         } => {
             let (table_name, keys) = try_block!(storage, {
-                let columns = fetch_columns(&storage, table_name).await.map(Rc::from)?;
+                let columns = fetch_columns(&storage, table_name).await?.map(Rc::from);
                 let keys = fetch(&storage, table_name, columns, selection.as_ref())
                     .await?
                     .map_ok(|(key, _)| key)

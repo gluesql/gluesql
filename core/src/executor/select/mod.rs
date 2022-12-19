@@ -179,8 +179,9 @@ pub async fn select_with_labels<'a>(
     let rows = aggregate.apply(rows).await?;
 
     let labels = fetch_labels(storage, relation, joins, projection)
-        .await
-        .map(Rc::from)?;
+        .await?
+        .unwrap_or_default(); // todo! labels needs to be used as Option
+    let labels = Rc::from(labels);
 
     let project = Rc::new(Project::new(storage, filter_context, projection));
     let project_labels = Rc::clone(&labels);
