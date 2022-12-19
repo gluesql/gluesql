@@ -124,14 +124,29 @@ async fn fetch_vec_rows<T: GStore + GStoreMut>(
             Rows::Values(rows)
         }
         SetExpr::Select(_) => {
-            let rows = select(storage, source, None).await?.and_then(|row| {
-                let column_defs = Rc::clone(&column_defs);
+            let rows = select(storage, source, None).await?.map(|row| {
+                let row = row?;
 
-                async move {
-                    validate_row(&row, &column_defs)?;
+                column_defs
+                    .iter()
+                    .enumerate()
+                    .try_for_each(|(index, column_def)| {
+                        let value = match row.get_value_by_index(index) {
+                            Some(value) => value,
+                            None => return Ok(()),
+                        };
 
-                    Ok(row.into_values())
-                }
+                        let ColumnDef {
+                            data_type,
+                            nullable,
+                            ..
+                        } = column_def;
+
+                        value.validate_type(data_type)?;
+                        value.validate_null(*nullable)
+                    })?;
+
+                Ok(row.into_values())
             });
 
             Rows::Select(rows)
@@ -284,28 +299,4 @@ fn fill_values(
         .collect::<Result<Vec<Value>>>()?;
 
     Ok(values)
-}
-
-fn validate_row(row: &Row, column_defs: &[ColumnDef]) -> Result<()> {
-    let items = column_defs
-        .iter()
-        .enumerate()
-        .filter_map(|(index, column_def)| {
-            let value = row.get_value_by_index(index);
-
-            value.map(|v| (v, column_def))
-        });
-
-    for (value, column_def) in items {
-        let ColumnDef {
-            data_type,
-            nullable,
-            ..
-        } = column_def;
-
-        value.validate_type(data_type)?;
-        value.validate_null(*nullable)?;
-    }
-
-    Ok(())
 }
