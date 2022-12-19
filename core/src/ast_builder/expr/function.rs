@@ -1184,6 +1184,21 @@ mod tests {
         let actual = text("chicken").rtrim(None).ltrim(Some(text("chick")));
         let expected = "LTRIM(RTRIM('chicken'),'chick')";
         test_expr(actual, expected);
+
+        let actual = text("id").ltrim(None).eq(10);
+        let expected = "lTRIM('id') = 10";
+        test_expr(actual, expected);
+
+        let actual = col("id").ltrim(None).neq(10);
+        let expected = "lTRIM(id) != 10";
+        test_expr(actual, expected);
+
+        let actual = col("id")
+            .ltrim(None)
+            .gt(10)
+            .and(col("id").ltrim(None).lt(num(20)));
+        let expected = "lTRIM(id) > 10 AND LTRIM(id) < 20";
+        test_expr(actual, expected);
     }
 
     #[test]
