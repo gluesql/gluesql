@@ -68,6 +68,12 @@ pub enum EvaluateError {
     #[error("subquery returns more than one row")]
     MoreThanOneRowReturned,
 
+    #[error("schemaless projection is not allowed for IN (subquery)")]
+    SchemalessProjectionForInSubQuery,
+
+    #[error("schemaless projection is not allowed for subquery")]
+    SchemalessProjectionForSubQuery,
+
     #[error("format function does not support following data_type: {0}")]
     UnsupportedExprForFormatFunction(String),
 

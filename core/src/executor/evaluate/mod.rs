@@ -8,8 +8,8 @@ use {
     super::{context::RowContext, select::select},
     crate::{
         ast::{Aggregate, Expr, Function},
-        data::{Interval, Literal, Value},
-        result::Result,
+        data::{Interval, Literal, Row, Value},
+        result::{Error, Result},
         store::GStore,
     },
     async_recursion::async_recursion,
@@ -67,7 +67,18 @@ pub async fn evaluate<'a, 'b: 'a, 'c: 'a>(
         Expr::Subquery(query) => {
             let evaluations = select(storage, query, context.as_ref().map(Rc::clone))
                 .await?
-                .map_ok(|row| row.into_values().into_iter().next())
+                .map(|row| {
+                    let value = match row? {
+                        Row::Vec { values, .. } => values,
+                        Row::Map(_) => {
+                            return Err(EvaluateError::SchemalessProjectionForSubQuery.into());
+                        }
+                    }
+                    .into_iter()
+                    .next();
+
+                    Ok::<_, Error>(value)
+                })
                 .take(2)
                 .try_collect::<Vec<_>>()
                 .await?;
@@ -134,10 +145,18 @@ pub async fn evaluate<'a, 'b: 'a, 'c: 'a>(
 
             select(storage, subquery, context)
                 .await?
-                .map_ok(|row| {
-                    let value = row.into_values().into_iter().next().unwrap_or(Value::Null);
+                .map(|row| {
+                    let value = match row? {
+                        Row::Vec { values, .. } => values,
+                        Row::Map(_) => {
+                            return Err(EvaluateError::SchemalessProjectionForInSubQuery.into());
+                        }
+                    }
+                    .into_iter()
+                    .next()
+                    .unwrap_or(Value::Null);
 
-                    Evaluated::from(value)
+                    Ok(Evaluated::from(value))
                 })
                 .try_filter(|evaluated| ready(evaluated == &target))
                 .try_next()

@@ -92,4 +92,8 @@ test_case!(basic, async move {
         "INSERT INTO Item SELECT id FROM Item LIMIT 1",
         Err(InsertError::MapTypeValueRequired("101".to_owned()).into())
     );
+    /* todo!
+        Err(EvaluateError::SchemalessProjectionForSubQuery.into())
+        Err(EvaluateError::SchemalessProjectionForInSubQuery.into())
+    */
 });
