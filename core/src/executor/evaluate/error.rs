@@ -73,6 +73,11 @@ pub enum EvaluateError {
 
     #[error("function requires integer value in range")]
     ChrFunctionRequiresIntegerValueInRange0To255,
+
+    #[error(
+        "arithmetic operations are not allowed on functions that return StrSlice. used in: {0}"
+    )]
+    ArithmeticNotAllowedFunctionForStrSlice(String),
 }
 
 fn error_serialize<S>(error: &chrono::format::ParseError, serializer: S) -> Result<S::Ok, S::Error>

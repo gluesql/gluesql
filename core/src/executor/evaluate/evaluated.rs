@@ -185,36 +185,9 @@ where
             value_op(l, &Value::try_from(r)?).map(Evaluated::from)
         }
         (Evaluated::Value(l), Evaluated::Value(r)) => value_op(l, r).map(Evaluated::from),
-        (Evaluated::Literal(l), Evaluated::StrSlice { source, range }) => value_op(
-            &Value::try_from(l)?,
-            &Value::Str(source[range.clone()].to_owned()),
-        )
-        .map(Evaluated::from),
-        (Evaluated::StrSlice { source, range }, Evaluated::Literal(r)) => value_op(
-            &Value::Str(source[range.clone()].to_owned()),
-            &Value::try_from(r)?,
-        )
-        .map(Evaluated::from),
-        (
-            Evaluated::StrSlice {
-                source: a,
-                range: ar,
-            },
-            Evaluated::StrSlice {
-                source: b,
-                range: br,
-            },
-        ) => value_op(
-            &Value::Str(a[ar.clone()].to_owned()),
-            &Value::Str(b[br.clone()].to_owned()),
-        )
-        .map(Evaluated::from),
-        (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => {
-            value_op(&Value::Str(source[range.clone()].to_owned()), r).map(Evaluated::from)
-        }
-        (Evaluated::Value(l), Evaluated::StrSlice { source, range }) => {
-            value_op(l, &Value::Str(source[range.clone()].to_owned())).map(Evaluated::from)
-        }
+        _ => Err(
+            EvaluateError::ArithmeticNotAllowedFunctionForStrSlice("binary_op".to_owned()).into(),
+        ),
     }
 }
 
