@@ -114,7 +114,6 @@ pub async fn create_table<T: GStore + GStoreMut>(
         };
 
         if let Some(column_defs) = schema.column_defs.as_deref() {
-            // validate_column_names(&schema.column_defs)?;
             validate_column_names(column_defs)?;
 
             for column_def in column_defs {

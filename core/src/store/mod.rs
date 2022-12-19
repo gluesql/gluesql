@@ -70,7 +70,6 @@ use {
     async_trait::async_trait,
 };
 
-// pub type Row = Vec<Value>;
 pub type RowIter = Box<dyn Iterator<Item = Result<(Key, DataRow)>>>;
 
 /// By implementing `Store` trait, you can run `SELECT` query.

@@ -326,7 +326,6 @@ impl AlterTable for SledStorage {
                     .chain(once(value.clone()))
                     .collect::<Vec<Value>>()
                     .into();
-                // let row = row.into_iter().chain(once(value.clone())).collect();
 
                 let (snapshot, _) = snapshot.update(txid, row);
                 let snapshot = bincode::serialize(&snapshot)

@@ -30,7 +30,6 @@ pub fn validate(schema_map: &HashMap<String, Schema>, statement: Statement) -> R
                                         }
                                         None => None,
                                     }
-                                    // schema.column_defs.iter().find(|col| &col.name == ident)
                                 });
 
                             if tables_with_given_col.count() > 1 {
