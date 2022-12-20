@@ -338,26 +338,17 @@ pub async fn execute<T: GStore + GStoreMut>(
 
             let payload = try_block!(storage, {
                 let (labels, rows) = select_with_labels(&storage, &query, None).await?;
-                let payload = match labels {
-                    Some(labels) => {
-                        let rows = rows
-                            .map(|row| row?.into_vec())
-                            .try_collect::<Vec<_>>()
-                            .await?;
+                let labels = labels.unwrap_or_default();
+                let rows = rows
+                    .map(|row| row?.into_vec())
+                    .try_collect::<Vec<_>>()
+                    .await?;
 
-                        (!rows.is_empty()).then_some(Payload::Select { labels, rows })
-                    }
-                    None => {
-                        let rows = rows
-                            .map(|row| row?.into_map())
-                            .try_collect::<Vec<_>>()
-                            .await?;
+                if rows.is_empty() {
+                    return Err(ExecuteError::TableNotFound(table_name.to_owned()).into());
+                }
 
-                        (!rows.is_empty()).then_some(Payload::SelectMap(rows))
-                    }
-                };
-
-                payload.ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()).into())
+                Ok(Payload::Select { labels, rows })
             });
 
             Ok((storage, payload))
