@@ -180,24 +180,19 @@ pub async fn select_with_labels<'a>(
 
     let labels = fetch_labels(storage, relation, joins, projection)
         .await?
-        .unwrap_or_default(); // todo! labels needs to be used as Option
-    let labels = Rc::from(labels);
+        .map(Rc::from);
 
     let project = Rc::new(Project::new(storage, filter_context, projection));
-    let project_labels = Rc::clone(&labels);
+    let project_labels = labels.as_ref().map(Rc::clone);
     let rows = rows.and_then(move |aggregate_context| {
-        let labels = Rc::clone(&project_labels);
+        let labels = project_labels.as_ref().map(Rc::clone);
         let project = Rc::clone(&project);
         let AggregateContext { aggregated, next } = aggregate_context;
         let aggregated = aggregated.map(Rc::new);
 
         async move {
             let row = project
-                .apply(
-                    aggregated.as_ref().map(Rc::clone),
-                    Rc::clone(&labels),
-                    Rc::clone(&next),
-                )
+                .apply(aggregated.as_ref().map(Rc::clone), labels, Rc::clone(&next))
                 .await?;
 
             Ok((aggregated, next, row))
@@ -206,7 +201,10 @@ pub async fn select_with_labels<'a>(
 
     let rows = sort.apply(rows, get_alias(relation)).await?;
     let rows = limit.apply(rows);
-    let labels = labels.iter().cloned().collect();
+    let labels = match labels {
+        Some(labels) => labels.iter().cloned().collect(),
+        None => Vec::new(),
+    };
 
     Ok((labels, rows))
 }

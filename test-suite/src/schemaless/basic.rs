@@ -117,8 +117,12 @@ test_case!(basic, async move {
         "INSERT INTO Item SELECT id FROM Item LIMIT 1",
         Err(InsertError::MapTypeValueRequired("101".to_owned()).into())
     );
-    /* todo!
-        Err(EvaluateError::SchemalessProjectionForSubQuery.into())
+    test!(
+        "SELECT id FROM Item WHERE id IN (SELECT * FROM Item)",
         Err(EvaluateError::SchemalessProjectionForInSubQuery.into())
-    */
+    );
+    test!(
+        "SELECT id FROM Item WHERE id = (SELECT * FROM Item LIMIT 1)",
+        Err(EvaluateError::SchemalessProjectionForSubQuery.into())
+    );
 });

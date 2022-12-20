@@ -71,33 +71,37 @@ impl<'a> RowContext<'a> {
         }
     }
 
-    pub fn get_alias_values(&self, alias: &str) -> Option<Vec<Value>> {
+    pub fn get_alias_entries(&self, alias: &str) -> Option<Vec<(&String, Value)>> {
         match self {
             Self::Data {
                 table_alias, row, ..
-            } if *table_alias == alias => Some(row.as_ref().clone().into_values()),
+            } if *table_alias == alias => Some(row.iter().map(|(k, v)| (k, v.clone())).collect()),
             Self::Data { next: None, .. } => None,
             Self::Data {
                 next: Some(next), ..
-            } => next.get_alias_values(alias),
+            } => next.get_alias_entries(alias),
             Self::Bridge { left, right } => left
-                .get_alias_values(alias)
-                .or_else(|| right.get_alias_values(alias)),
+                .get_alias_entries(alias)
+                .or_else(|| right.get_alias_entries(alias)),
         }
     }
 
-    pub fn get_all_values(&self) -> Vec<Value> {
+    pub fn get_all_entries(&self) -> Vec<(&String, Value)> {
         match self {
             Self::Data {
                 row, next: None, ..
-            } => row.as_ref().clone().into_values(),
+            } => row.iter().map(|(k, v)| (k, v.clone())).collect(),
             Self::Data {
                 row,
                 next: Some(next),
                 ..
-            } => [next.get_all_values(), row.as_ref().clone().into_values()].concat(),
+            } => next
+                .get_all_entries()
+                .into_iter()
+                .chain(row.iter().map(|(k, v)| (k, v.clone())))
+                .collect(),
             Self::Bridge { left, right } => {
-                [left.get_all_values(), right.get_all_values()].concat()
+                [left.get_all_entries(), right.get_all_entries()].concat()
             }
         }
     }

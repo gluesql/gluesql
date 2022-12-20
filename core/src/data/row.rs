@@ -23,6 +23,19 @@ impl Row {
         }
     }
 
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &Value)> {
+        #[derive(iter_enum::Iterator)]
+        enum Entries<I1, I2> {
+            Vec(I1),
+            Map(I2),
+        }
+
+        match self {
+            Self::Vec { columns, values } => Entries::Vec(columns.iter().zip(values.iter())),
+            Self::Map(values) => Entries::Map(values.iter()),
+        }
+    }
+
     // temp
     pub fn into_values(self) -> Vec<Value> {
         match self {
