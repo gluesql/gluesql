@@ -1,7 +1,9 @@
 use {
     crate::{
         ast_builder::AstBuilderError,
-        data::{IntervalError, KeyError, LiteralError, StringExtError, TableError, ValueError},
+        data::{
+            IntervalError, KeyError, LiteralError, RowError, StringExtError, TableError, ValueError,
+        },
         executor::{
             AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, InsertError,
             SelectError, SortError, UpdateError, ValidateError,
@@ -70,6 +72,8 @@ pub enum Error {
     #[error(transparent)]
     Validate(#[from] ValidateError),
     #[error(transparent)]
+    Row(#[from] RowError),
+    #[error(transparent)]
     Key(#[from] KeyError),
     #[error(transparent)]
     Value(#[from] ValueError),
@@ -110,6 +114,7 @@ impl PartialEq for Error {
             (Update(e), Update(e2)) => e == e2,
             (Table(e), Table(e2)) => e == e2,
             (Validate(e), Validate(e2)) => e == e2,
+            (Row(e), Row(e2)) => e == e2,
             (Key(e), Key(e2)) => e == e2,
             (Value(e), Value(e2)) => e == e2,
             (Literal(e), Literal(e2)) => e == e2,

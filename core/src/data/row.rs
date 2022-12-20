@@ -1,7 +1,18 @@
 use {
-    crate::data::Value,
+    crate::{data::Value, result::Result},
+    serde::Serialize,
     std::{collections::HashMap, fmt::Debug, rc::Rc},
+    thiserror::Error,
 };
+
+#[derive(Error, Serialize, Debug, PartialEq, Eq)]
+pub enum RowError {
+    #[error("conflict - vec expected but map row found")]
+    ConflictOnUnexpectedMapRowFound,
+
+    #[error("conflict - map expected but vec row found")]
+    ConflictOnUnexpectedVecRowFound,
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Row {
@@ -36,11 +47,17 @@ impl Row {
         }
     }
 
-    // temp
-    pub fn into_values(self) -> Vec<Value> {
+    pub fn into_vec(self) -> Result<Vec<Value>> {
         match self {
-            Self::Vec { values, .. } => values,
-            Self::Map(_) => todo!(),
+            Self::Vec { values, .. } => Ok(values),
+            Self::Map(_) => Err(RowError::ConflictOnUnexpectedMapRowFound.into()),
+        }
+    }
+
+    pub fn into_map(self) -> Result<HashMap<String, Value>> {
+        match self {
+            Self::Vec { .. } => Err(RowError::ConflictOnUnexpectedVecRowFound.into()),
+            Self::Map(values) => Ok(values),
         }
     }
 }

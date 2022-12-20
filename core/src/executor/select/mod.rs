@@ -111,7 +111,7 @@ pub async fn select_with_labels<'a>(
     query: &'a Query,
     filter_context: Option<Rc<RowContext<'a>>>,
 ) -> Result<(
-    Vec<String>,
+    Option<Vec<String>>,
     impl TryStream<Ok = Row, Error = Error, Item = Result<Row>> + 'a,
 )> {
     let Select {
@@ -129,7 +129,7 @@ pub async fn select_with_labels<'a>(
             let rows = stream::iter(rows);
             let rows = limit.apply(rows);
 
-            return Ok((labels, rows));
+            return Ok((Some(labels), rows));
         }
     };
 
@@ -201,10 +201,7 @@ pub async fn select_with_labels<'a>(
 
     let rows = sort.apply(rows, get_alias(relation)).await?;
     let rows = limit.apply(rows);
-    let labels = match labels {
-        Some(labels) => labels.iter().cloned().collect(),
-        None => Vec::new(),
-    };
+    let labels = labels.map(|labels| labels.iter().cloned().collect());
 
     Ok((labels, rows))
 }

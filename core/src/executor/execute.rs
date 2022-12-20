@@ -16,9 +16,9 @@ use {
         result::MutResult,
         store::{GStore, GStoreMut},
     },
-    futures::stream::TryStreamExt,
+    futures::stream::{StreamExt, TryStreamExt},
     serde::{Deserialize, Serialize},
-    std::{env::var, fmt::Debug, rc::Rc},
+    std::{collections::HashMap, env::var, fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
 };
 
@@ -46,6 +46,7 @@ pub enum Payload {
         labels: Vec<String>,
         rows: Vec<Vec<Value>>,
     },
+    SelectMap(Vec<HashMap<String, Value>>),
     Delete(usize),
     Update(usize),
     DropTable,
@@ -268,15 +269,24 @@ pub async fn execute<T: GStore + GStoreMut>(
 
         //- Selection
         Statement::Query(query) => {
-            let (labels, rows) = try_block!(storage, {
+            let payload = try_block!(storage, {
                 let (labels, rows) = select_with_labels(&storage, query, None).await?;
-                let rows = rows
-                    .map_ok(Row::into_values)
-                    .try_collect::<Vec<_>>()
-                    .await?;
-                Ok((labels, rows))
+
+                match labels {
+                    Some(labels) => rows
+                        .map(|row| row?.into_vec())
+                        .try_collect::<Vec<_>>()
+                        .await
+                        .map(|rows| Payload::Select { labels, rows }),
+                    None => rows
+                        .map(|row| row?.into_map())
+                        .try_collect::<Vec<_>>()
+                        .await
+                        .map(Payload::SelectMap),
+                }
             });
-            Ok((storage, Payload::Select { labels, rows }))
+
+            Ok((storage, payload))
         }
         Statement::ShowColumns { table_name } => {
             let keys = try_block!(storage, {
@@ -326,22 +336,31 @@ pub async fn execute<T: GStore + GStoreMut>(
                 offset: None,
             };
 
-            let (labels, rows) = try_block!(storage, {
+            let payload = try_block!(storage, {
                 let (labels, rows) = select_with_labels(&storage, &query, None).await?;
-                let rows = rows
-                    .map_ok(Row::into_values)
-                    .try_collect::<Vec<_>>()
-                    .await?;
-                Ok((labels, rows))
+                let payload = match labels {
+                    Some(labels) => {
+                        let rows = rows
+                            .map(|row| row?.into_vec())
+                            .try_collect::<Vec<_>>()
+                            .await?;
+
+                        (!rows.is_empty()).then_some(Payload::Select { labels, rows })
+                    }
+                    None => {
+                        let rows = rows
+                            .map(|row| row?.into_map())
+                            .try_collect::<Vec<_>>()
+                            .await?;
+
+                        (!rows.is_empty()).then_some(Payload::SelectMap(rows))
+                    }
+                };
+
+                payload.ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()).into())
             });
 
-            match rows.is_empty() {
-                true => Err((
-                    storage,
-                    ExecuteError::TableNotFound(table_name.to_owned()).into(),
-                )),
-                false => Ok((storage, Payload::Select { labels, rows })),
-            }
+            Ok((storage, payload))
         }
         Statement::ShowVariable(variable) => match variable {
             Variable::Tables => {
@@ -371,12 +390,11 @@ pub async fn execute<T: GStore + GStoreMut>(
                 };
 
                 let rows = try_block!(storage, {
-                    let rows = select(&storage, &query, None).await?;
-                    let rows = rows
-                        .map_ok(|row| row.into_values())
+                    select(&storage, &query, None)
+                        .await?
+                        .map(|row| row?.into_vec())
                         .try_collect::<Vec<_>>()
-                        .await?;
-                    Ok(rows)
+                        .await
                 });
 
                 let table_names = rows

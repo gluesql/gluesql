@@ -172,6 +172,7 @@ impl<'a, W: Write> Print<W> {
                     }
                 }
             }
+            Payload::SelectMap(_) => todo!(),
         };
 
         Ok(())

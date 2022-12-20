@@ -3,7 +3,7 @@ use {
     gluesql_core::{
         data::ValueError,
         executor::{EvaluateError, InsertError},
-        prelude::Value::*,
+        prelude::{Payload, Value::*},
     },
 };
 
@@ -40,6 +40,23 @@ test_case!(basic, async move {
             Str                   | I64 | Bool;
             "Test 001".to_owned()   324   false
         ))
+    );
+
+    test!(
+        "SELECT * FROM Item",
+        Ok(Payload::SelectMap(vec![[
+            ("id", I64(100)),
+            ("name", Str("Test 001".to_owned())),
+            ("dex", I64(324)),
+            ("rare", Bool(false)),
+            (
+                "obj",
+                Map([("cost".to_owned(), I64(3000))].into_iter().collect())
+            ),
+        ]
+        .into_iter()
+        .map(|(k, v)| (k.to_owned(), v))
+        .collect()]))
     );
 
     run!(
