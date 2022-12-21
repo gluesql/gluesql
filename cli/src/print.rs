@@ -2,6 +2,7 @@ use {
     crate::command::{SetOption, ShowOption},
     gluesql_core::prelude::{Payload, PayloadVariable},
     std::{
+        collections::{HashMap, HashSet},
         fmt::Display,
         fs::File,
         io::{Result as IOResult, Write},
@@ -130,20 +131,69 @@ impl<'a, W: Write> Print<W> {
                 let table = self.build_table(table);
                 self.write(table)?;
             }
-            Payload::Select { labels, rows } => {
-                let PrintOption {
-                    tabular,
-                    colsep,
-                    colwrap,
-                    heading,
-                } = &self.option;
+            Payload::Select { labels, rows } => match &self.option.tabular {
+                true => {
+                    let labels = labels.iter().map(AsRef::as_ref);
+                    let mut table = self.get_table(labels);
+                    for row in rows {
+                        let row: Vec<String> = row.iter().map(Into::into).collect();
 
-                match tabular {
+                        table.add_record(row);
+                    }
+                    let table = self.build_table(table);
+                    self.write(table)?;
+                }
+                false => {
+                    let PrintOption {
+                        colsep,
+                        colwrap,
+                        heading,
+                        ..
+                    } = &self.option;
+
+                    if *heading {
+                        let labels = labels
+                            .iter()
+                            .map(|v| format!("{colwrap}{v}{colwrap}"))
+                            .collect::<Vec<_>>()
+                            .join(colsep.as_str());
+
+                        writeln!(self.output, "{}", labels)?;
+                    }
+
+                    for row in rows {
+                        let row = row
+                            .iter()
+                            .map(Into::into)
+                            .map(|v: String| format!("{colwrap}{v}{colwrap}"))
+                            .collect::<Vec<_>>()
+                            .join(colsep.as_str());
+                        writeln!(self.output, "{}", row)?
+                    }
+                }
+            },
+            Payload::SelectMap(rows) => {
+                let mut labels = rows
+                    .iter()
+                    .flat_map(HashMap::keys)
+                    .map(AsRef::as_ref)
+                    .collect::<HashSet<&str>>()
+                    .into_iter()
+                    .collect::<Vec<_>>();
+                labels.sort();
+
+                match &self.option.tabular {
                     true => {
-                        let labels = labels.iter().map(AsRef::as_ref);
-                        let mut table = self.get_table(labels);
+                        let mut table = self.get_table(labels.clone());
                         for row in rows {
-                            let row: Vec<String> = row.iter().map(Into::into).collect();
+                            let row = labels
+                                .iter()
+                                .map(|label| {
+                                    row.get(*label)
+                                        .map(Into::into)
+                                        .unwrap_or_else(|| "".to_owned())
+                                })
+                                .collect::<Vec<String>>();
 
                             table.add_record(row);
                         }
@@ -151,28 +201,42 @@ impl<'a, W: Write> Print<W> {
                         self.write(table)?;
                     }
                     false => {
-                        let labels = labels
-                            .iter()
-                            .map(|v| format!("{colwrap}{v}{colwrap}"))
-                            .collect::<Vec<_>>()
-                            .join(colsep.as_str());
+                        let PrintOption {
+                            colsep,
+                            colwrap,
+                            heading,
+                            ..
+                        } = &self.option;
+
                         if *heading {
+                            let labels = labels
+                                .iter()
+                                .map(|v| format!("{colwrap}{v}{colwrap}"))
+                                .collect::<Vec<_>>()
+                                .join(colsep.as_str());
+
                             writeln!(self.output, "{}", labels)?;
                         }
 
                         for row in rows {
-                            let row = row
+                            let row = labels
                                 .iter()
-                                .map(Into::into)
-                                .map(|v: String| format!("{colwrap}{v}{colwrap}"))
+                                .map(|label| {
+                                    let v = row
+                                        .get(*label)
+                                        .map(Into::into)
+                                        .unwrap_or_else(|| "".to_owned());
+
+                                    format!("{colwrap}{v}{colwrap}")
+                                })
                                 .collect::<Vec<_>>()
                                 .join(colsep.as_str());
+
                             writeln!(self.output, "{}", row)?
                         }
                     }
                 }
             }
-            Payload::SelectMap(_) => todo!(),
         };
 
         Ok(())
@@ -419,6 +483,27 @@ mod tests {
         );
 
         test!(
+            &Payload::SelectMap(vec![
+                [
+                    ("id".to_owned(), Value::I64(1)),
+                    ("title".to_owned(), Value::Str("foo".to_owned()))
+                ]
+                .into_iter()
+                .collect(),
+                [("id".to_owned(), Value::I64(2))].into_iter().collect(),
+                [("title".to_owned(), Value::Str("bar".to_owned()))]
+                    .into_iter()
+                    .collect(),
+            ]),
+            "
+| id | title |
+|----|-------|
+| 1  | foo   |
+| 2  |       |
+|    | bar   |"
+        );
+
+        test!(
             &Payload::ShowColumns(vec![
                 ("id".to_owned(), DataType::Int),
                 ("name".to_owned(), DataType::Text),
@@ -485,6 +570,26 @@ mod tests {
 id|title|valid
 1|foo|TRUE
 2|bar|FALSE"
+        );
+
+        test!(
+            &Payload::SelectMap(vec![
+                [
+                    ("id".to_owned(), Value::I64(1)),
+                    ("title".to_owned(), Value::Str("foo".to_owned()))
+                ]
+                .into_iter()
+                .collect(),
+                [("id".to_owned(), Value::I64(2))].into_iter().collect(),
+                [("title".to_owned(), Value::Str("bar".to_owned()))]
+                    .into_iter()
+                    .collect(),
+            ]),
+            "
+id|title
+1|foo
+2|
+|bar"
         );
 
         // ".set colsep ," should set column separator as ","
