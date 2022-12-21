@@ -12,6 +12,7 @@ use {
     futures::executor::block_on,
     gluesql_core::{
         ast::{Expr, SetExpr, Statement, ToSql, Values},
+        data::Value,
         store::{DataRow, GStore, GStoreMut, Store, Transaction},
     },
     gluesql_memory_storage::MemoryStorage,
@@ -98,7 +99,7 @@ pub fn dump_database(storage: SledStorage, dump_path: PathBuf) -> Result<SledSto
                         result.map(|data_row| {
                             let values = match data_row {
                                 DataRow::Vec(values) => values,
-                                DataRow::Map(_) => todo!(),
+                                DataRow::Map(values) => vec![Value::Map(values)],
                             };
 
                             values
