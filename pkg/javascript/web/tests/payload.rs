@@ -3,6 +3,7 @@
 wasm_bindgen_test_configure!(run_in_browser);
 
 use {
+    gloo_utils::format::JsValueSerdeExt,
     gluesql_js::Glue,
     serde_json::{json, Value as Json},
     wasm_bindgen_futures::JsFuture,
