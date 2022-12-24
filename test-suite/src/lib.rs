@@ -182,6 +182,7 @@ macro_rules! generate_store_tests {
 
         // schemaless data support
         glue!(schemaless_basic, schemaless::basic);
+        glue!(schemaless_error, schemaless::error);
     };
 }
 

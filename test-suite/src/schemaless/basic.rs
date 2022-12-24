@@ -1,40 +1,38 @@
 use {
     crate::*,
-    gluesql_core::{
-        data::ValueError,
-        executor::{EvaluateError, InsertError},
-        prelude::{Payload, Value::*},
-    },
+    gluesql_core::prelude::Value::{self, *},
+    serde_json::json,
 };
 
 test_case!(basic, async move {
-    run!("CREATE TABLE Item");
-    run!(
-        r#"
-        INSERT INTO Item VALUES ('
-            {
-                "id": 100,
-                "name": "Test 001",
-                "dex": 324,
-                "rare": false,
-                "obj": {
-                    "cost": 3000
-                }
-            }
-        ');
-    "#
-    );
     run!("CREATE TABLE Player");
-    run!(
-        r#"
-        INSERT INTO Player VALUES
-            ('{ "id": 1001, "name": "Beam", "flag": 1 }'),
-            ('{ "id": 1002, "name": "Seo" }');
-        "#
-    );
+    run!(format!(
+        "INSERT INTO Player VALUES ('{}'), ('{}');",
+        json!({ "id": 1001, "name": "Beam", "flag": 1 }),
+        json!({ "id": 1002, "name": "Seo" }),
+    )
+    .as_str());
+
+    run!("CREATE TABLE Item");
+    run!(format!(
+        "INSERT INTO Item VALUES ('{}'), ('{}');",
+        json!({
+            "id": 100,
+            "name": "Test 001",
+            "dex": 324,
+            "rare": false,
+            "obj": {
+                "cost": 3000
+            }
+        }),
+        json!({
+            "id": 200
+        })
+    )
+    .as_str());
 
     test!(
-        "SELECT name, dex, rare FROM Item",
+        "SELECT name, dex, rare FROM Item WHERE id = 100",
         Ok(select!(
             name                  | dex | rare
             Str                   | I64 | Bool;
@@ -43,22 +41,33 @@ test_case!(basic, async move {
     );
 
     test!(
-        "SELECT * FROM Item",
-        Ok(Payload::SelectMap(vec![[
-            ("id", I64(100)),
-            ("name", Str("Test 001".to_owned())),
-            ("dex", I64(324)),
-            ("rare", Bool(false)),
-            (
-                "obj",
-                Map([("cost".to_owned(), I64(3000))].into_iter().collect())
-            ),
-        ]
-        .into_iter()
-        .map(|(k, v)| (k.to_owned(), v))
-        .collect()]))
+        "SELECT name, dex, rare FROM Item",
+        Ok(select_with_null!(
+            name                       | dex      | rare;
+            Str("Test 001".to_owned())   I64(324)   Bool(false);
+            Null                         Null       Null
+        ))
     );
 
+    test!(
+        "SELECT * FROM Item",
+        Ok(select_map![
+            json!({
+                "id": 100,
+                "name": "Test 001",
+                "dex": 324,
+                "rare": false,
+                "obj": {
+                    "cost": 3000
+                }
+            }),
+            json!({
+                "id": 200
+            })
+        ])
+    );
+
+    run!("DELETE FROM Item WHERE id > 100");
     run!(
         "
         UPDATE Item
@@ -102,44 +111,5 @@ test_case!(basic, async move {
             I64       | Str               | I64;
             1001        "Beam".to_owned()   3000
         ))
-    );
-
-    test!(
-        r#"
-            INSERT INTO Item
-            VALUES (
-                '{ "a": 10 }',
-                '{ "b": true }'
-            );
-        "#,
-        Err(InsertError::OnlySingleValueAcceptedForSchemalessRow.into())
-    );
-    test!(
-        "INSERT INTO Item SELECT id, name FROM Item LIMIT 1",
-        Err(InsertError::OnlySingleValueAcceptedForSchemalessRow.into())
-    );
-    test!(
-        "INSERT INTO Item VALUES ('[1, 2, 3]');",
-        Err(ValueError::JsonObjectTypeRequired.into())
-    );
-    test!(
-        "INSERT INTO Item VALUES (true);",
-        Err(EvaluateError::TextLiteralRequired("Boolean(true)".to_owned()).into())
-    );
-    test!(
-        "INSERT INTO Item VALUES (CAST(1 AS INTEGER) + 4)",
-        Err(EvaluateError::MapOrStringValueRequired("5".to_owned()).into())
-    );
-    test!(
-        "INSERT INTO Item SELECT id FROM Item LIMIT 1",
-        Err(InsertError::MapTypeValueRequired("101".to_owned()).into())
-    );
-    test!(
-        "SELECT id FROM Item WHERE id IN (SELECT * FROM Item)",
-        Err(EvaluateError::SchemalessProjectionForInSubQuery.into())
-    );
-    test!(
-        "SELECT id FROM Item WHERE id = (SELECT * FROM Item LIMIT 1)",
-        Err(EvaluateError::SchemalessProjectionForSubQuery.into())
     );
 });
