@@ -38,9 +38,6 @@ pub enum InsertError {
 
     #[error("map type required: {0}")]
     MapTypeValueRequired(String),
-
-    #[error("conflict - Row::Map found in schema specified data")]
-    ConflictOnMapRowFoundInSchemaSpecifiedTable,
 }
 
 enum RowsData {
@@ -128,12 +125,7 @@ async fn fetch_vec_rows<T: GStore + GStoreMut>(
         }
         SetExpr::Select(_) => {
             let rows = select(storage, source, None).await?.map(|row| {
-                let values = match row? {
-                    Row::Vec { values, .. } => values,
-                    Row::Map(_) => {
-                        return Err(InsertError::ConflictOnMapRowFoundInSchemaSpecifiedTable.into());
-                    }
-                };
+                let values = row?.into_vec()?;
 
                 column_defs
                     .iter()
