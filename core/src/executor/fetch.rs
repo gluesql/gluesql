@@ -284,11 +284,7 @@ pub async fn fetch_relation_rows<'a>(
                     Dictionary::GlueIndexes => {
                         let schemas = storage.fetch_all_schemas().await?;
                         let rows = schemas.into_iter().flat_map(move |schema| {
-                            let column_defs = match schema.column_defs {
-                                Some(column_defs) => column_defs,
-                                None => vec![],
-                            };
-
+                            let column_defs = schema.column_defs.unwrap_or_default();
                             let primary_column = column_defs.iter().find_map(|column_def| {
                                 let ColumnDef { name, unique, .. } = column_def;
 
