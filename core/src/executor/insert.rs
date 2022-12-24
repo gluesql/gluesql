@@ -158,13 +158,9 @@ async fn fetch_vec_rows<T: GStore + GStoreMut>(
     )
     .await?;
 
-    let primary_key = column_defs
-        .iter()
-        .enumerate()
-        .find(|(_, ColumnDef { unique, .. })| {
-            unique == &Some(ColumnUniqueOption { is_primary: true })
-        })
-        .map(|(i, _)| i);
+    let primary_key = column_defs.iter().position(|ColumnDef { unique, .. }| {
+        unique == &Some(ColumnUniqueOption { is_primary: true })
+    });
 
     match primary_key {
         Some(i) => rows
