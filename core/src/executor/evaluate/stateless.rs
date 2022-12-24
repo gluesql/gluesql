@@ -17,7 +17,6 @@ pub enum Context<'a> {
         values: &'a [Value],
     },
     Map(&'a HashMap<String, Value>),
-    Row(&'a Row),
     None,
 }
 
@@ -33,7 +32,8 @@ impl<'a> From<(&'a [String], &'a DataRow)> for Context<'a> {
 impl<'a> From<Option<&'a Row>> for Context<'a> {
     fn from(row: Option<&'a Row>) -> Self {
         match row {
-            Some(row) => Self::Row(row),
+            Some(Row::Vec { columns, values }) => Context::Vec { columns, values },
+            Some(Row::Map(values)) => Context::Map(values),
             None => Self::None,
         }
     }
@@ -48,7 +48,6 @@ impl<'a> Context<'a> {
                 .position(|column| column == target)
                 .and_then(|index| values.get(index)),
             Context::Map(values) => values.get(target),
-            Context::Row(row) => row.get_value(target),
             Context::None => None,
         }
     }
