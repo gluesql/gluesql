@@ -274,12 +274,12 @@ pub async fn execute<T: GStore + GStoreMut>(
 
                 match labels {
                     Some(labels) => rows
-                        .map(|row| row?.into_vec())
+                        .map(|row| row?.try_into_vec())
                         .try_collect::<Vec<_>>()
                         .await
                         .map(|rows| Payload::Select { labels, rows }),
                     None => rows
-                        .map(|row| row?.into_map())
+                        .map(|row| row?.try_into_map())
                         .try_collect::<Vec<_>>()
                         .await
                         .map(Payload::SelectMap),
@@ -340,7 +340,7 @@ pub async fn execute<T: GStore + GStoreMut>(
                 let (labels, rows) = select_with_labels(&storage, &query, None).await?;
                 let labels = labels.unwrap_or_default();
                 let rows = rows
-                    .map(|row| row?.into_vec())
+                    .map(|row| row?.try_into_vec())
                     .try_collect::<Vec<_>>()
                     .await?;
 
@@ -383,7 +383,7 @@ pub async fn execute<T: GStore + GStoreMut>(
                 let rows = try_block!(storage, {
                     select(&storage, &query, None)
                         .await?
-                        .map(|row| row?.into_vec())
+                        .map(|row| row?.try_into_vec())
                         .try_collect::<Vec<_>>()
                         .await
                 });

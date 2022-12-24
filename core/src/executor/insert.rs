@@ -119,13 +119,13 @@ async fn fetch_vec_rows<T: GStore + GStoreMut>(
             });
             let rows = stream::iter(rows);
             let rows = limit.apply(rows);
-            let rows = rows.map(|row| row?.into_vec());
+            let rows = rows.map(|row| row?.try_into_vec());
 
             Rows::Values(rows)
         }
         SetExpr::Select(_) => {
             let rows = select(storage, source, None).await?.map(|row| {
-                let values = row?.into_vec()?;
+                let values = row?.try_into_vec()?;
 
                 column_defs
                     .iter()

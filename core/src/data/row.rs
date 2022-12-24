@@ -47,14 +47,14 @@ impl Row {
         }
     }
 
-    pub fn into_vec(self) -> Result<Vec<Value>> {
+    pub fn try_into_vec(self) -> Result<Vec<Value>> {
         match self {
             Self::Vec { values, .. } => Ok(values),
             Self::Map(_) => Err(RowError::ConflictOnUnexpectedMapRowFound.into()),
         }
     }
 
-    pub fn into_map(self) -> Result<HashMap<String, Value>> {
+    pub fn try_into_map(self) -> Result<HashMap<String, Value>> {
         match self {
             Self::Vec { .. } => Err(RowError::ConflictOnUnexpectedVecRowFound.into()),
             Self::Map(values) => Ok(values),
