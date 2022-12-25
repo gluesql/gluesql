@@ -11,7 +11,7 @@ use {
     gluesql_core::{
         data::{Key, Schema},
         result::{MutResult, Result},
-        store::{IndexError, Row, StoreMut},
+        store::{DataRow, IndexError, StoreMut},
     },
     sled::transaction::ConflictableTransactionError,
 };
@@ -111,7 +111,7 @@ impl StoreMut for SledStorage {
 
             // delete data
             for (row_key, row_snapshot) in items.iter() {
-                let row_snapshot: Snapshot<Row> = bincode::deserialize(row_snapshot)
+                let row_snapshot: Snapshot<DataRow> = bincode::deserialize(row_snapshot)
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
 
@@ -142,7 +142,7 @@ impl StoreMut for SledStorage {
             .await
     }
 
-    async fn append_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
+    async fn append_data(self, table_name: &str, rows: Vec<DataRow>) -> MutResult<Self, ()> {
         let id_offset = self.id_offset;
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
@@ -186,7 +186,7 @@ impl StoreMut for SledStorage {
             .await
     }
 
-    async fn insert_data(self, table_name: &str, rows: Vec<(Key, Row)>) -> MutResult<Self, ()> {
+    async fn insert_data(self, table_name: &str, rows: Vec<(Key, DataRow)>) -> MutResult<Self, ()> {
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
         let tx_rows = &rows;
@@ -205,7 +205,7 @@ impl StoreMut for SledStorage {
                 let key = key::data(table_name, key.to_cmp_be_bytes());
                 let snapshot = match tree.get(&key)? {
                     Some(snapshot) => {
-                        let snapshot: Snapshot<Row> = bincode::deserialize(&snapshot)
+                        let snapshot: Snapshot<DataRow> = bincode::deserialize(&snapshot)
                             .map_err(err_into)
                             .map_err(ConflictableTransactionError::Abort)?;
 
@@ -269,7 +269,7 @@ impl StoreMut for SledStorage {
                     .get(&key)?
                     .ok_or_else(|| IndexError::ConflictOnEmptyIndexValueDelete.into())
                     .map_err(ConflictableTransactionError::Abort)?;
-                let snapshot: Snapshot<Row> = bincode::deserialize(&snapshot)
+                let snapshot: Snapshot<DataRow> = bincode::deserialize(&snapshot)
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
 

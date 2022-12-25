@@ -47,7 +47,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
                             unique: None,
                         };
 
-                        vec![column_def]
+                        Some(vec![column_def])
                     }
                     _ => {
                         return Err(Error::Table(TableError::Unreachable));
@@ -99,10 +99,11 @@ pub async fn create_table<T: GStore + GStoreMut>(
                         })
                         .collect::<Vec<_>>();
 
-                    column_defs
+                    Some(column_defs)
                 }
             },
-            None => column_defs.to_vec(),
+            None if !column_defs.is_empty() => Some(column_defs.to_vec()),
+            None => None,
         };
 
         let schema = Schema {
@@ -112,10 +113,12 @@ pub async fn create_table<T: GStore + GStoreMut>(
             created: Utc::now().naive_utc(),
         };
 
-        validate_column_names(&schema.column_defs)?;
+        if let Some(column_defs) = schema.column_defs.as_deref() {
+            validate_column_names(column_defs)?;
 
-        for column_def in &schema.column_defs {
-            validate(column_def)?;
+            for column_def in column_defs {
+                validate(column_def)?;
+            }
         }
 
         match (

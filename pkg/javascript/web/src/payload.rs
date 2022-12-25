@@ -42,6 +42,28 @@ fn convert_payload(payload: Payload) -> Json {
                 "rows": Json::Array(rows),
             })
         }
+        Payload::SelectMap(rows) => {
+            let rows = rows
+                .into_iter()
+                .map(|row| {
+                    let row = row
+                        .into_iter()
+                        .map(|(key, value)| {
+                            let value = Json::try_from(value).unwrap();
+
+                            (key, value)
+                        })
+                        .collect();
+
+                    Json::Object(row)
+                })
+                .collect();
+
+            json!({
+                "type": "SELECT",
+                "rows": Json::Array(rows),
+            })
+        }
         Payload::ShowColumns(columns) => {
             let columns = columns
                 .into_iter()

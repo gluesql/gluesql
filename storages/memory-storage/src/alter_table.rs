@@ -6,8 +6,8 @@ use {
     gluesql_core::{
         ast::ColumnDef,
         data::Value,
-        result::{MutResult, Result, TrySelf},
-        store::{AlterTable, AlterTableError},
+        result::{Error, MutResult, Result, TrySelf},
+        store::{AlterTable, AlterTableError, DataRow},
     },
 };
 
@@ -35,18 +35,20 @@ impl MemoryStorage {
             .get_mut(table_name)
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
 
-        if item
+        let column_defs = item
             .schema
             .column_defs
+            .as_mut()
+            .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.to_owned()))?;
+
+        if column_defs
             .iter()
             .any(|ColumnDef { name, .. }| name == new_column_name)
         {
             return Err(AlterTableError::AlreadyExistingColumn(new_column_name.to_owned()).into());
         }
 
-        let mut column_def = item
-            .schema
-            .column_defs
+        let mut column_def = column_defs
             .iter_mut()
             .find(|column_def| column_def.name == old_column_name)
             .ok_or(AlterTableError::RenamingColumnNotFound)?;
@@ -59,12 +61,16 @@ impl MemoryStorage {
     pub fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
         let item = self
             .items
-            .get(table_name)
+            .get_mut(table_name)
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
 
-        if item
+        let column_defs = item
             .schema
             .column_defs
+            .as_mut()
+            .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.to_owned()))?;
+
+        if column_defs
             .iter()
             .any(|ColumnDef { name, .. }| name == &column_def.name)
         {
@@ -92,15 +98,20 @@ impl MemoryStorage {
             }
         };
 
-        let item = self
-            .items
-            .get_mut(table_name)
-            .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
+        for (_, row) in item.rows.iter_mut() {
+            match row {
+                DataRow::Vec(values) => {
+                    values.push(value.clone());
+                }
+                DataRow::Map(_) => {
+                    return Err(Error::StorageMsg(
+                        "conflict - add_column failed: schemaless row found".to_owned(),
+                    ));
+                }
+            }
+        }
 
-        item.rows.iter_mut().for_each(|(_, row)| {
-            row.push(value.clone());
-        });
-        item.schema.column_defs.push(column_def.clone());
+        column_defs.push(column_def.clone());
 
         Ok(())
     }
@@ -116,21 +127,36 @@ impl MemoryStorage {
             .get_mut(table_name)
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
 
-        let column_index = item
+        let column_defs = item
             .schema
             .column_defs
+            .as_mut()
+            .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.to_owned()))?;
+
+        let column_index = column_defs
             .iter()
             .position(|column_def| column_def.name == column_name);
 
         match column_index {
             Some(column_index) => {
-                item.schema.column_defs.remove(column_index);
+                column_defs.remove(column_index);
 
-                item.rows.iter_mut().for_each(|(_, row)| {
-                    if row.len() > column_index {
-                        row.remove(column_index);
+                for (_, row) in item.rows.iter_mut() {
+                    if row.len() <= column_index {
+                        continue;
                     }
-                });
+
+                    match row {
+                        DataRow::Vec(values) => {
+                            values.remove(column_index);
+                        }
+                        DataRow::Map(_) => {
+                            return Err(Error::StorageMsg(
+                                "conflict - drop_column failed: schemaless row found".to_owned(),
+                            ));
+                        }
+                    }
+                }
             }
             None if if_exists => {}
             None => {

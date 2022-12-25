@@ -26,6 +26,7 @@ pub mod order_by;
 pub mod ordering;
 pub mod primary_key;
 pub mod project;
+pub mod schemaless;
 pub mod series;
 pub mod show_columns;
 pub mod synthesize;
@@ -178,6 +179,10 @@ macro_rules! generate_store_tests {
         glue!(ast_builder_update, ast_builder::update::update);
         glue!(ast_builder_delete, ast_builder::delete::delete);
         glue!(ast_builder_alias_as, ast_builder::alias_as::alias_as);
+
+        // schemaless data support
+        glue!(schemaless_basic, schemaless::basic);
+        glue!(schemaless_error, schemaless::error);
     };
 }
 

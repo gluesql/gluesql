@@ -16,14 +16,40 @@ async fn queries() {
 
     let test_cases = [
         (
-            "CREATE TABLE Foo (id INTEGER)",
-            json!([{ "type": "CREATE TABLE" }]),
+            "
+            CREATE TABLE Foo (id INTEGER);
+            CREATE TABLE Bar;
+            ",
+            json!([
+                { "type": "CREATE TABLE" },
+                { "type": "CREATE TABLE" },
+            ]),
         ),
         (
             "INSERT INTO Foo VALUES (1), (2), (3)",
             json!([{
                 "type": "INSERT",
                 "affected": 3
+            }]),
+        ),
+        (
+            r#"INSERT INTO Bar VALUES
+                ('{ "hello": 1 }'),
+                ('{ "world": "cookie" }');
+            "#,
+            json!([{
+                "type": "INSERT",
+                "affected": 2
+            }]),
+        ),
+        (
+            "SELECT * FROM Bar",
+            json!([{
+                "type": "SELECT",
+                "rows": [
+                    { "hello": 1 },
+                    { "world": "cookie" }
+                ]
             }]),
         ),
         (
@@ -72,7 +98,7 @@ async fn queries() {
             "SHOW TABLES",
             json!([{
                 "type": "SHOW TABLES",
-                "tables": ["Foo"]
+                "tables": ["Bar", "Foo"]
             }]),
         ),
         (

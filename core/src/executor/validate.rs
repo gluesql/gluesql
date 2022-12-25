@@ -3,7 +3,7 @@ use {
         ast::{ColumnDef, ColumnUniqueOption},
         data::{Key, Value},
         result::Result,
-        store::Store,
+        store::{DataRow, Store},
     },
     im_rc::HashSet,
     serde::Serialize,
@@ -16,6 +16,9 @@ use {
 pub enum ValidateError {
     #[error("conflict! storage row has no column on index {0}")]
     ConflictOnStorageColumnIndex(usize),
+
+    #[error("conflict! schemaless row found in schema based data")]
+    ConflictOnUnexpectedSchemalessRowFound,
 
     #[error("duplicate entry '{}' for unique column '{1}'", String::from(.0))]
     DuplicateEntryOnUniqueField(Value, String),
@@ -139,12 +142,19 @@ pub async fn validate_unique(
 
             let unique_constraints = Rc::new(unique_constraints);
             storage.scan_data(table_name).await?.try_for_each(|result| {
-                let (_, row) = result?;
+                let (_, data_row) = result?;
+                let values = match data_row {
+                    DataRow::Vec(values) => values,
+                    DataRow::Map(_) => {
+                        return Err(ValidateError::ConflictOnUnexpectedSchemalessRowFound.into());
+                    }
+                };
+
                 Rc::clone(&unique_constraints)
                     .iter()
                     .try_for_each(|constraint| {
                         let col_idx = constraint.column_index;
-                        let val = row
+                        let val = values
                             .get(col_idx)
                             .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
 
