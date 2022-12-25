@@ -135,7 +135,7 @@ macro_rules! select_map {
             $(
                 match gluesql_core::data::Value::try_from($row).unwrap() {
                     Value::Map(v) => v,
-                    _ => panic!(),
+                    _ => panic!("select_map! - Value::Map type required"),
                 }
             ),*
         ])
