@@ -1,3 +1,4 @@
+#![cfg(target_arch = "wasm32")]
 #![deny(clippy::str_to_string)]
 
 use {

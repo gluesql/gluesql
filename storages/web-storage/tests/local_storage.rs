@@ -1,3 +1,5 @@
+#![cfg(target_arch = "wasm32")]
+
 use {
     async_trait::async_trait,
     gluesql_core::prelude::Glue,
