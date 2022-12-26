@@ -22,23 +22,16 @@ const SCHEMA_PATH: &str = "gluesql-schema";
 /// gluesql-data/{table_name} -> {Vec<DataRow>}
 const DATA_PATH: &str = "gluesql-data";
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Default, Serialize, Deserialize)]
 pub enum WebStorageType {
+    #[default]
     Local,
     Session,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Default, Serialize, Deserialize)]
 pub struct WebStorage {
     storage_type: WebStorageType,
-}
-
-impl Default for WebStorage {
-    fn default() -> WebStorage {
-        WebStorage {
-            storage_type: WebStorageType::Local,
-        }
-    }
 }
 
 impl WebStorage {
