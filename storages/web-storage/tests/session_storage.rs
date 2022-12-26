@@ -3,9 +3,8 @@ use {
     gluesql_core::prelude::Glue,
     gluesql_web_storage::{WebStorage, WebStorageType},
     test_suite::*,
+    wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure},
 };
-
-use wasm_bindgen_test::{wasm_bindgen_test, wasm_bindgen_test_configure};
 
 wasm_bindgen_test_configure!(run_in_browser);
 
