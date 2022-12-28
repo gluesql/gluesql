@@ -15,6 +15,7 @@ use {
         data::Value,
         store::{DataRow, GStore, GStoreMut, Store, Transaction},
     },
+    gluesql_jsonl_storage::JsonlStorage,
     gluesql_memory_storage::MemoryStorage,
     gluesql_sled_storage::SledStorage,
     itertools::Itertools,
@@ -35,6 +36,9 @@ struct Args {
     /// PATH to dump whole database
     #[clap(short, long, value_parser)]
     dump: Option<PathBuf>,
+
+    #[clap(short, long, value_parser)]
+    storage: String,
 }
 
 pub fn run() -> Result<()> {
@@ -42,19 +46,29 @@ pub fn run() -> Result<()> {
 
     if let Some(path) = args.path {
         let path = path.as_path().to_str().expect("wrong path");
+        match args.storage.as_str() {
+            "jsonl" => {
+                println!("[jsonl-storage] connected to {}", path);
+                run(
+                    JsonlStorage::new(path).expect("failed to load jsonl-storage"),
+                    args.execute,
+                );
+            }
+            _ => {
+                if let Some(dump_path) = args.dump {
+                    let storage = SledStorage::new(path).expect("failed to load sled-storage");
+                    dump_database(&mut storage, dump_path)?;
 
-        if let Some(dump_path) = args.dump {
-            let mut storage = SledStorage::new(path).expect("failed to load sled-storage");
-            dump_database(&mut storage, dump_path)?;
+                    return Ok::<_, Error>(());
+                }
 
-            return Ok::<_, Error>(());
+                println!("[sled-storage] connected to {}", path);
+                run(
+                    SledStorage::new(path).expect("failed to load sled-storage"),
+                    args.execute,
+                );
+            }
         }
-
-        println!("[sled-storage] connected to {}", path);
-        run(
-            SledStorage::new(path).expect("failed to load sled-storage"),
-            args.execute,
-        );
     } else {
         println!("[memory-storage] initialized");
         run(MemoryStorage::default(), args.execute);

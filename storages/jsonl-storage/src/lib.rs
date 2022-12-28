@@ -1,11 +1,11 @@
 use std::{
     collections::HashMap,
-    fs::{read_to_string, File},
+    fs::{self, read_to_string, File},
     io::{self, BufRead},
     path::{Path, PathBuf},
 };
 
-use gluesql_core::{chrono::NaiveDateTime, prelude::Value};
+use gluesql_core::{chrono::NaiveDateTime, prelude::Value, store::StoreMut};
 
 use {
     async_trait::async_trait,
@@ -17,8 +17,26 @@ use {
     },
 };
 
-struct JsonlStorage {
+pub struct JsonlStorage {
     tables: HashMap<String, JsonlTable>,
+}
+
+impl JsonlStorage {
+    pub fn new(directory: &str) -> Result<Self> {
+        let paths = fs::read_dir(directory).unwrap();
+        let tables = paths
+            .into_iter()
+            .map(|result| {
+                let path = result.unwrap().path();
+                let table_name = path.file_name().unwrap().to_str().unwrap().to_owned();
+                let jsonl_table = JsonlTable::new(table_name.clone(), path);
+
+                (table_name, jsonl_table)
+            })
+            .collect::<HashMap<String, JsonlTable>>();
+
+        Ok(Self { tables })
+    }
 }
 
 struct JsonlTable {
@@ -114,4 +132,39 @@ where
 {
     let file = File::open(filename)?;
     Ok(io::BufReader::new(file).lines())
+}
+
+#[async_trait(?Send)]
+impl StoreMut for JsonlStorage {
+    async fn insert_schema(self, schema: &Schema) -> gluesql_core::result::MutResult<Self, ()> {
+        todo!()
+    }
+
+    async fn delete_schema(self, table_name: &str) -> gluesql_core::result::MutResult<Self, ()> {
+        todo!()
+    }
+
+    async fn append_data(
+        self,
+        table_name: &str,
+        rows: Vec<DataRow>,
+    ) -> gluesql_core::result::MutResult<Self, ()> {
+        todo!()
+    }
+
+    async fn insert_data(
+        self,
+        table_name: &str,
+        rows: Vec<(Key, DataRow)>,
+    ) -> gluesql_core::result::MutResult<Self, ()> {
+        todo!()
+    }
+
+    async fn delete_data(
+        self,
+        table_name: &str,
+        keys: Vec<Key>,
+    ) -> gluesql_core::result::MutResult<Self, ()> {
+        todo!()
+    }
 }
