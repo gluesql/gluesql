@@ -67,6 +67,7 @@ impl<'a> Update<'a> {
     pub async fn apply(&self, row: Row) -> Result<Row> {
         let context = RowContext::new(self.table_name, Cow::Borrowed(&row), None);
         let context = Some(Rc::new(context));
+
         let assignments = stream::iter(self.fields.iter())
             .then(|assignment| {
                 let Assignment {
