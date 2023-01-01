@@ -155,6 +155,18 @@ test_case!(substr, async move {
             )
             .into()),
         ),
+        (
+            r#"SELECT +SUBSTR('123', 2, 3) AS test FROM SingleItem"#,
+            Err(EvaluateError::UnsupportedUnaryPlus("23".to_owned()).into()),
+        ),
+        (
+            r#"SELECT -SUBSTR('123', 2, 3) AS test FROM SingleItem"#,
+            Err(EvaluateError::UnsupportedUnaryMinus("23".to_owned()).into()),
+        ),
+        (
+            r#"SELECT SUBSTR('123', 2, 3)! AS test FROM SingleItem"#,
+            Err(EvaluateError::UnsupportedUnaryFactorial("23".to_owned()).into()),
+        ),
     ];
     for (sql, expected) in test_cases {
         test!(sql, expected);

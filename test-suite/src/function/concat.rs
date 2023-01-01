@@ -27,6 +27,42 @@ test_case!(concat, async move {
     );
 
     test!(
+        "select concat(SUBSTR('abc', 2, 3), 'de') as myc from Concat;",
+        Ok(select!(
+           myc
+           Str;
+           "bcde".to_owned()
+        ))
+    );
+
+    test!(
+        "select concat('de', SUBSTR('abc', 2, 3)) as myc from Concat;",
+        Ok(select!(
+           myc
+           Str;
+           "debc".to_owned()
+        ))
+    );
+
+    test!(
+        "select concat(SUBSTR('123', 2, 3), 45) as myc from Concat;",
+        Ok(select!(
+           myc
+           Str;
+           "2345".to_owned()
+        ))
+    );
+
+    test!(
+        "select concat(45, SUBSTR('123', 2, 3)) as myc from Concat;",
+        Ok(select!(
+           myc
+           Str;
+           "4523".to_owned()
+        ))
+    );
+
+    test!(
         "select concat('ab', 'cd', 'ef') as myconcat from Concat;",
         Ok(select!(
            myconcat
