@@ -124,6 +124,14 @@ test_case!(substr, async move {
             )),
         ),
         (
+            "SELECT SUBSTR(SUBSTR('ABC', 2, 3), 1, 1) AS test FROM SingleItem",
+            Ok(select!(
+                "test"
+                Str;
+                "B".to_owned()
+            )),
+        ),
+        (
             "SELECT SUBSTR('ABC', -1, NULL) AS test FROM SingleItem",
             Ok(select_with_null!(test; Null)),
         ),
