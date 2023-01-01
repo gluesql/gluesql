@@ -3,8 +3,8 @@ use {
     crate::{
         ast_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
-            JoinNode, OffsetLimitNode, OrderByNode, ProjectNode, QueryNode, SelectItemList,
-            SelectNode, TableFactorNode,
+            JoinNode, OffsetLimitNode, OrderByNode, ProjectNode, QueryNode, SelectNode,
+            TableFactorNode,
         },
         result::Result,
     },
@@ -20,6 +20,7 @@ pub enum PrevNode<'a> {
     HashJoin(HashJoinNode<'a>),
     Filter(FilterNode<'a>),
     OrderBy(OrderByNode<'a>),
+    ProjectNode(Box<ProjectNode<'a>>),
 }
 
 impl<'a> Prebuild for PrevNode<'a> {
@@ -33,6 +34,7 @@ impl<'a> Prebuild for PrevNode<'a> {
             Self::HashJoin(node) => node.prebuild(),
             Self::Filter(node) => node.prebuild(),
             Self::OrderBy(node) => node.prebuild(),
+            Self::ProjectNode(node) => node.prebuild(),
         }
     }
 }
@@ -85,6 +87,12 @@ impl<'a> From<OrderByNode<'a>> for PrevNode<'a> {
     }
 }
 
+impl<'a> From<ProjectNode<'a>> for PrevNode<'a> {
+    fn from(node: ProjectNode<'a>) -> Self {
+        PrevNode::ProjectNode(Box::new(node))
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct OffsetNode<'a> {
     prev_node: PrevNode<'a>,
@@ -101,10 +109,6 @@ impl<'a> OffsetNode<'a> {
 
     pub fn limit<T: Into<ExprNode<'a>>>(self, expr: T) -> OffsetLimitNode<'a> {
         OffsetLimitNode::new(self, expr)
-    }
-
-    pub fn project<T: Into<SelectItemList<'a>>>(self, select_items: T) -> ProjectNode<'a> {
-        ProjectNode::new(self, select_items)
     }
 
     pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
@@ -196,6 +200,11 @@ mod tests {
         // filter node -> offset node -> build
         let actual = table("Bar").select().filter("id > 2").offset(100).build();
         let expected = "SELECT * FROM Bar WHERE id > 2 OFFSET 100";
+        test(actual, expected);
+
+        // project node -> offset node -> build
+        let actual = table("Item").select().project("*").offset(10).build();
+        let expected = "SELECT * FROM Item OFFSET 10";
         test(actual, expected);
 
         // hash join node -> offset node -> build

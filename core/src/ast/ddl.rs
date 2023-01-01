@@ -27,15 +27,15 @@ pub struct ColumnDef {
     pub name: String,
     pub data_type: DataType,
     pub nullable: bool,
-    pub options: Vec<ColumnOption>,
+    /// `DEFAULT <restricted-expr>`
+    pub default: Option<Expr>,
+    /// `{ PRIMARY KEY | UNIQUE }`
+    pub unique: Option<ColumnUniqueOption>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum ColumnOption {
-    /// `DEFAULT <restricted-expr>`
-    Default(Expr),
-    /// `{ PRIMARY KEY | UNIQUE }`
-    Unique { is_primary: bool },
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct ColumnUniqueOption {
+    pub is_primary: bool,
 }
 
 impl ToSql for AlterTableOperation {
@@ -68,42 +68,43 @@ impl ToSql for ColumnDef {
             name,
             data_type,
             nullable,
-            options,
+            default,
+            unique,
         } = self;
         {
             let nullable = match nullable {
                 true => "NULL",
                 false => "NOT NULL",
             };
+            let column_def = format!("{name} {data_type} {nullable}");
+            let default = default
+                .as_ref()
+                .map(|expr| format!("DEFAULT {}", expr.to_sql()));
+            let unique = unique.as_ref().map(ToSql::to_sql);
 
-            let options = options
-                .iter()
-                .map(|option| option.to_sql())
+            [Some(column_def), default, unique]
+                .into_iter()
+                .flatten()
                 .collect::<Vec<_>>()
-                .join(" ");
-
-            format!("{name} {data_type} {nullable} {options}")
-                .trim_end()
-                .to_owned()
+                .join(" ")
         }
     }
 }
 
-impl ToSql for ColumnOption {
+impl ToSql for ColumnUniqueOption {
     fn to_sql(&self) -> String {
-        match self {
-            ColumnOption::Default(expr) => format!("DEFAULT {}", expr.to_sql()),
-            ColumnOption::Unique { is_primary } => match is_primary {
-                true => "PRIMARY KEY".to_owned(),
-                false => "UNIQUE".to_owned(),
-            },
+        if self.is_primary {
+            "PRIMARY KEY"
+        } else {
+            "UNIQUE"
         }
+        .to_owned()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{AstLiteral, ColumnDef, ColumnOption, DataType, Expr, ToSql};
+    use crate::ast::{AstLiteral, ColumnDef, ColumnUniqueOption, DataType, Expr, ToSql};
 
     #[test]
     fn to_sql_column_def() {
@@ -113,7 +114,8 @@ mod tests {
                 name: "name".to_owned(),
                 data_type: DataType::Text,
                 nullable: false,
-                options: vec![ColumnOption::Unique { is_primary: false }]
+                default: None,
+                unique: Some(ColumnUniqueOption { is_primary: false }),
             }
             .to_sql()
         );
@@ -124,7 +126,8 @@ mod tests {
                 name: "accepted".to_owned(),
                 data_type: DataType::Boolean,
                 nullable: true,
-                options: Vec::new()
+                default: None,
+                unique: None,
             }
             .to_sql()
         );
@@ -135,7 +138,8 @@ mod tests {
                 name: "id".to_owned(),
                 data_type: DataType::Int,
                 nullable: false,
-                options: vec![ColumnOption::Unique { is_primary: true }]
+                default: None,
+                unique: Some(ColumnUniqueOption { is_primary: true }),
             }
             .to_sql()
         );
@@ -146,9 +150,20 @@ mod tests {
                 name: "accepted".to_owned(),
                 data_type: DataType::Boolean,
                 nullable: false,
-                options: vec![ColumnOption::Default(Expr::Literal(AstLiteral::Boolean(
-                    false
-                )))]
+                default: Some(Expr::Literal(AstLiteral::Boolean(false))),
+                unique: None,
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            "accepted BOOLEAN NOT NULL DEFAULT FALSE UNIQUE",
+            ColumnDef {
+                name: "accepted".to_owned(),
+                data_type: DataType::Boolean,
+                nullable: false,
+                default: Some(Expr::Literal(AstLiteral::Boolean(false))),
+                unique: Some(ColumnUniqueOption { is_primary: false }),
             }
             .to_sql()
         );

@@ -20,6 +20,7 @@ pub use {
     execute::{ExecuteError, Payload, PayloadVariable},
     fetch::FetchError,
     insert::InsertError,
+    select::SelectError,
     sort::SortError,
     update::UpdateError,
     validate::ValidateError,

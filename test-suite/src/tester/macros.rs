@@ -127,3 +127,17 @@ macro_rules! concat_with_null {
         concat_with_null!($rows ; $( $( $v2 )* );* )
     });
 }
+
+#[macro_export]
+macro_rules! select_map {
+    ( $( $row: expr ),* ) => (
+        gluesql_core::executor::Payload::SelectMap(vec![
+            $(
+                match gluesql_core::data::Value::try_from($row).unwrap() {
+                    Value::Map(v) => v,
+                    _ => panic!("select_map! - Value::Map type required"),
+                }
+            ),*
+        ])
+    )
+}

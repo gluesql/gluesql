@@ -2,11 +2,12 @@ use {
     super::error::EvaluateError,
     crate::{
         ast::{DataType, TrimWhereField},
-        data::{Key, Literal, Value},
+        data::{value::HashMapJsonExt, Key, Literal, Value},
         result::{Error, Result},
     },
     std::{
         cmp::{max, min, Ordering},
+        collections::HashMap,
         ops::Range,
     },
 };
@@ -79,6 +80,25 @@ impl TryFrom<Evaluated<'_>> for bool {
             Evaluated::Value(Value::Bool(v)) => Ok(v),
             Evaluated::Value(v) => {
                 Err(EvaluateError::BooleanTypeRequired(format!("{:?}", v)).into())
+            }
+        }
+    }
+}
+
+impl TryFrom<Evaluated<'_>> for HashMap<String, Value> {
+    type Error = Error;
+
+    fn try_from(evaluated: Evaluated<'_>) -> Result<HashMap<String, Value>> {
+        match evaluated {
+            Evaluated::Literal(Literal::Text(v)) => HashMap::parse_json_object(v.as_ref()),
+            Evaluated::Literal(v) => {
+                Err(EvaluateError::TextLiteralRequired(format!("{v:?}")).into())
+            }
+            Evaluated::Value(Value::Str(v)) => HashMap::parse_json_object(v.as_str()),
+            Evaluated::Value(Value::Map(v)) => Ok(v),
+            Evaluated::Value(v) => Err(EvaluateError::MapOrStringValueRequired(v.into()).into()),
+            Evaluated::StrSlice { source, range } => {
+                HashMap::parse_json_object(source[range.clone()].to_owned().as_str())
             }
         }
     }

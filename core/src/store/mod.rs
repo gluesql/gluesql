@@ -59,16 +59,18 @@ cfg_if! {
     }
 }
 
+mod data_row;
+pub use data_row::DataRow;
+
 use {
     crate::{
-        data::{Key, Schema, Value},
+        data::{Key, Schema},
         result::{MutResult, Result},
     },
     async_trait::async_trait,
 };
 
-pub type Row = Vec<Value>;
-pub type RowIter = Box<dyn Iterator<Item = Result<(Key, Row)>>>;
+pub type RowIter = Box<dyn Iterator<Item = Result<(Key, DataRow)>>>;
 
 /// By implementing `Store` trait, you can run `SELECT` query.
 #[async_trait(?Send)]
@@ -77,7 +79,7 @@ pub trait Store {
 
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>>;
 
-    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Row>>;
+    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>>;
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter>;
 }
@@ -93,9 +95,9 @@ where
 
     async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()>;
 
-    async fn append_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()>;
+    async fn append_data(self, table_name: &str, rows: Vec<DataRow>) -> MutResult<Self, ()>;
 
-    async fn insert_data(self, table_name: &str, rows: Vec<(Key, Row)>) -> MutResult<Self, ()>;
+    async fn insert_data(self, table_name: &str, rows: Vec<(Key, DataRow)>) -> MutResult<Self, ()>;
 
     async fn delete_data(self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()>;
 }

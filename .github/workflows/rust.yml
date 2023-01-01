@@ -118,3 +118,6 @@ jobs:
           yarn build
           yarn test:firefox
           cd ../../../
+          cd storages/web-storage
+          wasm-pack test --headless --firefox
+          cd ../../

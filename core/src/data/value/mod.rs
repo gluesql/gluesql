@@ -23,7 +23,10 @@ mod selector;
 pub mod string;
 mod uuid;
 
-pub use error::{NumericBinaryOperator, ValueError};
+pub use {
+    error::{NumericBinaryOperator, ValueError},
+    json::HashMapJsonExt,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Value {

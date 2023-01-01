@@ -3,8 +3,8 @@ use {
     crate::{
         ast_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
-            JoinNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryNode,
-            SelectItemList, SelectNode, TableFactorNode,
+            JoinNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryNode, SelectNode,
+            TableFactorNode,
         },
         result::Result,
     },
@@ -19,6 +19,7 @@ pub enum PrevNode<'a> {
     JoinNode(JoinNode<'a>),
     JoinConstraint(JoinConstraintNode<'a>),
     HashJoin(Box<HashJoinNode<'a>>),
+    ProjectNode(Box<ProjectNode<'a>>),
 }
 
 impl<'a> Prebuild for PrevNode<'a> {
@@ -31,6 +32,7 @@ impl<'a> Prebuild for PrevNode<'a> {
             Self::JoinNode(node) => node.prebuild(),
             Self::JoinConstraint(node) => node.prebuild(),
             Self::HashJoin(node) => node.prebuild(),
+            Self::ProjectNode(node) => node.prebuild(),
         }
     }
 }
@@ -77,6 +79,12 @@ impl<'a> From<HashJoinNode<'a>> for PrevNode<'a> {
     }
 }
 
+impl<'a> From<ProjectNode<'a>> for PrevNode<'a> {
+    fn from(node: ProjectNode<'a>) -> Self {
+        PrevNode::ProjectNode(Box::new(node))
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct OrderByNode<'a> {
     prev_node: PrevNode<'a>,
@@ -100,10 +108,6 @@ impl<'a> OrderByNode<'a> {
 
     pub fn limit<T: Into<ExprNode<'a>>>(self, expr: T) -> LimitNode<'a> {
         LimitNode::new(self, expr)
-    }
-
-    pub fn project<T: Into<SelectItemList<'a>>>(self, select_items: T) -> ProjectNode<'a> {
-        ProjectNode::new(self, select_items)
     }
 
     pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
@@ -196,6 +200,15 @@ mod tests {
             SELECT * FROM Foo
             WHERE id > 10 AND id < 20
             ORDER BY id ASC";
+        test(actual, expected);
+
+        // project node -> order by node -> build
+        let actual = table("Foo")
+            .select()
+            .project("id")
+            .order_by("id asc")
+            .build();
+        let expected = "SELECT id FROM Foo ORDER BY id asc";
         test(actual, expected);
 
         // join node -> order by node -> build

@@ -88,21 +88,21 @@ impl<'a> Sort<'a> {
                             _ => None,
                         };
 
-                        match big_decimal {
-                            Some(n) => {
+                        match (big_decimal, &row) {
+                            (Some(n), Row::Vec { values, .. }) => {
                                 let index = n
                                     .to_usize()
                                     .ok_or_else(|| -> Error { SortError::Unreachable.into() })?;
                                 let zero_based = index.checked_sub(1).ok_or_else(|| -> Error {
                                     SortError::ColumnIndexOutOfRange(index).into()
                                 })?;
-                                let value = row.get_value_by_index(zero_based).ok_or_else(
-                                    || -> Error { SortError::ColumnIndexOutOfRange(index).into() },
-                                )?;
+                                let value = values.get(zero_based).ok_or_else(|| -> Error {
+                                    SortError::ColumnIndexOutOfRange(index).into()
+                                })?;
 
                                 Ok((SortType::Value(value.clone()), *asc))
                             }
-                            None => Ok((SortType::Expr(expr), *asc)),
+                            _ => Ok((SortType::Expr(expr), *asc)),
                         }
                     })
                     .collect::<Result<Vec<_>>>();

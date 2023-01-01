@@ -9,7 +9,7 @@ use {
     gluesql_core::{
         data::{Key, Schema},
         result::{MutResult, Result},
-        store::{Row, RowIter, Store, StoreMut},
+        store::{DataRow, RowIter, Store, StoreMut},
     },
     indexmap::IndexMap,
     serde::{Deserialize, Serialize},
@@ -19,7 +19,7 @@ use {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Item {
     pub schema: Schema,
-    pub rows: IndexMap<Key, Row>,
+    pub rows: IndexMap<Key, DataRow>,
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -47,7 +47,7 @@ impl Store for MemoryStorage {
             .transpose()
     }
 
-    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Row>> {
+    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {
         let row = self
             .items
             .get(table_name)
@@ -81,7 +81,7 @@ impl MemoryStorage {
         self.items.remove(table_name);
     }
 
-    pub fn append_data(&mut self, table_name: &str, rows: Vec<Row>) {
+    pub fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) {
         if let Some(item) = self.items.get_mut(table_name) {
             for row in rows {
                 self.id_counter += 1;
@@ -91,7 +91,7 @@ impl MemoryStorage {
         }
     }
 
-    pub fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Row)>) {
+    pub fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) {
         if let Some(item) = self.items.get_mut(table_name) {
             for (key, row) in rows {
                 item.rows.insert(key, row);
@@ -126,7 +126,7 @@ impl StoreMut for MemoryStorage {
         Ok((storage, ()))
     }
 
-    async fn append_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
+    async fn append_data(self, table_name: &str, rows: Vec<DataRow>) -> MutResult<Self, ()> {
         let mut storage = self;
 
         MemoryStorage::append_data(&mut storage, table_name, rows);
@@ -134,7 +134,7 @@ impl StoreMut for MemoryStorage {
         Ok((storage, ()))
     }
 
-    async fn insert_data(self, table_name: &str, rows: Vec<(Key, Row)>) -> MutResult<Self, ()> {
+    async fn insert_data(self, table_name: &str, rows: Vec<(Key, DataRow)>) -> MutResult<Self, ()> {
         let mut storage = self;
 
         MemoryStorage::insert_data(&mut storage, table_name, rows);

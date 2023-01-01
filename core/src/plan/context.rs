@@ -1,15 +1,16 @@
 use std::rc::Rc;
 
-pub struct Context<'a> {
-    content: Option<Content<'a>>,
-    next: Option<Rc<Context<'a>>>,
-    next2: Option<Rc<Context<'a>>>,
-}
-
-struct Content<'a> {
-    alias: String,
-    columns: Vec<&'a str>,
-    primary_key: Option<&'a str>,
+pub enum Context<'a> {
+    Data {
+        alias: String,
+        columns: Vec<&'a str>,
+        primary_key: Option<&'a str>,
+        next: Option<Rc<Context<'a>>>,
+    },
+    Bridge {
+        left: Rc<Context<'a>>,
+        right: Rc<Context<'a>>,
+    },
 }
 
 impl<'a> Context<'a> {
@@ -18,100 +19,82 @@ impl<'a> Context<'a> {
         columns: Vec<&'a str>,
         primary_key: Option<&'a str>,
         next: Option<Rc<Context<'a>>>,
-        next2: Option<Rc<Context<'a>>>,
     ) -> Self {
-        Context {
-            content: Some(Content {
-                alias,
-                columns,
-                primary_key,
-            }),
+        Context::Data {
+            alias,
+            columns,
+            primary_key,
             next,
-            next2,
         }
     }
 
-    pub fn concat(next: Option<Rc<Context<'a>>>, next2: Option<Rc<Context<'a>>>) -> Self {
-        Context {
-            content: None,
-            next,
-            next2,
+    pub fn concat(
+        left: Option<Rc<Context<'a>>>,
+        right: Option<Rc<Context<'a>>>,
+    ) -> Option<Rc<Self>> {
+        match (left, right) {
+            (Some(left), Some(right)) => Some(Rc::new(Self::Bridge { left, right })),
+            (context @ Some(_), None) | (None, context @ Some(_)) => context,
+            (None, None) => None,
         }
     }
 
     pub fn contains_alias(&self, target: &str) -> bool {
-        if let Some(Content { alias, .. }) = &self.content {
-            if alias == target {
-                return true;
+        match self {
+            Self::Data { alias, .. } if alias == target => true,
+            Self::Data { next, .. } => next
+                .as_ref()
+                .map(|next| next.contains_alias(target))
+                .unwrap_or(false),
+            Self::Bridge { left, right } => {
+                left.contains_alias(target) || right.contains_alias(target)
             }
-        }
-
-        match (self.next.as_ref(), self.next2.as_ref()) {
-            (Some(next), Some(next2)) => {
-                next.contains_alias(target) || next2.contains_alias(target)
-            }
-            (Some(context), None) | (None, Some(context)) => context.contains_alias(target),
-            (None, None) => false,
         }
     }
 
     pub fn contains_column(&self, target: &str) -> bool {
-        if let Some(Content { columns, .. }) = &self.content {
-            if columns.iter().any(|column| column == &target) {
-                return true;
+        match self {
+            Self::Data { columns, .. } if columns.iter().any(|column| column == &target) => true,
+            Self::Data { next, .. } => next
+                .as_ref()
+                .map(|next| next.contains_column(target))
+                .unwrap_or(false),
+            Self::Bridge { left, right } => {
+                left.contains_column(target) || right.contains_column(target)
             }
-        }
-
-        match (self.next.as_ref(), self.next2.as_ref()) {
-            (Some(next), Some(next2)) => {
-                next.contains_column(target) || next2.contains_column(target)
-            }
-            (Some(context), None) | (None, Some(context)) => context.contains_column(target),
-            (None, None) => false,
         }
     }
 
     pub fn contains_aliased_column(&self, target_alias: &str, target_column: &str) -> bool {
-        if let Some(content) = &self.content {
-            let Content { alias, columns, .. } = content;
-
-            if alias == target_alias {
-                return columns.iter().any(|column| column == &target_column);
+        match self {
+            Self::Data { alias, columns, .. } if alias == target_alias => {
+                columns.iter().any(|column| column == &target_column)
             }
-        }
-
-        match (self.next.as_ref(), self.next2.as_ref()) {
-            (Some(next), Some(next2)) => {
-                next.contains_aliased_column(target_alias, target_column)
-                    || next2.contains_aliased_column(target_alias, target_column)
+            Self::Data { next, .. } => next
+                .as_ref()
+                .map(|next| next.contains_aliased_column(target_alias, target_column))
+                .unwrap_or(false),
+            Self::Bridge { left, right } => {
+                left.contains_aliased_column(target_alias, target_column)
+                    || right.contains_aliased_column(target_alias, target_column)
             }
-            (Some(context), None) | (None, Some(context)) => {
-                context.contains_aliased_column(target_alias, target_column)
-            }
-            (None, None) => false,
         }
     }
 
     pub fn contains_primary_key(&self, target_column: &str) -> bool {
-        if let Some(Content {
-            primary_key: Some(primary_key),
-            ..
-        }) = &self.content
-        {
-            if primary_key == &target_column {
-                return true;
+        match self {
+            Self::Data {
+                primary_key: Some(primary_key),
+                ..
+            } if primary_key == &target_column => true,
+            Self::Data { next, .. } => next
+                .as_ref()
+                .map(|next| next.contains_primary_key(target_column))
+                .unwrap_or(false),
+            Self::Bridge { left, right } => {
+                left.contains_primary_key(target_column)
+                    || right.contains_primary_key(target_column)
             }
-        }
-
-        match (self.next.as_ref(), self.next2.as_ref()) {
-            (Some(next), Some(next2)) => {
-                next.contains_primary_key(target_column)
-                    || next2.contains_primary_key(target_column)
-            }
-            (Some(context), None) | (None, Some(context)) => {
-                context.contains_primary_key(target_column)
-            }
-            (None, None) => false,
         }
     }
 }

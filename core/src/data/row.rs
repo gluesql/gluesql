@@ -1,71 +1,63 @@
 use {
     crate::{data::Value, result::Result},
     serde::Serialize,
-    std::{fmt::Debug, rc::Rc},
+    std::{collections::HashMap, fmt::Debug, rc::Rc},
     thiserror::Error,
 };
 
 #[derive(Error, Serialize, Debug, PartialEq, Eq)]
 pub enum RowError {
-    #[error("VALUES lists must all be the same length")]
-    NumberOfValuesDifferent,
+    #[error("conflict - vec expected but map row found")]
+    ConflictOnUnexpectedMapRowFound,
 
-    #[error("conflict! row cannot be empty")]
-    ConflictOnEmptyRow,
+    #[error("conflict - map expected but vec row found")]
+    ConflictOnUnexpectedVecRowFound,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Row {
-    pub columns: Rc<[String]>,
-    pub values: Vec<Value>,
+pub enum Row {
+    Vec {
+        columns: Rc<[String]>,
+        values: Vec<Value>,
+    },
+    Map(HashMap<String, Value>),
 }
 
 impl Row {
-    pub fn get_value_by_index(&self, index: usize) -> Option<&Value> {
-        self.values.get(index)
-    }
-
     pub fn get_value(&self, ident: &str) -> Option<&Value> {
-        self.columns
-            .iter()
-            .position(|column| column == ident)
-            .and_then(|index| self.values.get(index))
+        match self {
+            Self::Vec { columns, values } => columns
+                .iter()
+                .position(|column| column == ident)
+                .and_then(|index| values.get(index)),
+            Self::Map(values) => Some(values.get(ident).unwrap_or(&Value::Null)),
+        }
     }
 
-    pub fn take_first_value(self) -> Result<Value> {
-        self.values
-            .into_iter()
-            .next()
-            .ok_or_else(|| RowError::ConflictOnEmptyRow.into())
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &Value)> {
+        #[derive(iter_enum::Iterator)]
+        enum Entries<I1, I2> {
+            Vec(I1),
+            Map(I2),
+        }
+
+        match self {
+            Self::Vec { columns, values } => Entries::Vec(columns.iter().zip(values.iter())),
+            Self::Map(values) => Entries::Map(values.iter()),
+        }
     }
 
-    pub fn len(&self) -> usize {
-        self.values.len()
+    pub fn try_into_vec(self) -> Result<Vec<Value>> {
+        match self {
+            Self::Vec { values, .. } => Ok(values),
+            Self::Map(_) => Err(RowError::ConflictOnUnexpectedMapRowFound.into()),
+        }
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.values.is_empty()
-    }
-}
-
-impl From<Row> for Vec<Value> {
-    fn from(row: Row) -> Self {
-        row.values
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use {super::Row, crate::data::Value, std::rc::Rc};
-
-    #[test]
-    fn len() {
-        let row = Row {
-            columns: Rc::from(vec!["T".to_owned()]),
-            values: vec![Value::Bool(true), Value::I64(100)],
-        };
-
-        assert_eq!(row.len(), 2);
-        assert!(!row.is_empty());
+    pub fn try_into_map(self) -> Result<HashMap<String, Value>> {
+        match self {
+            Self::Vec { .. } => Err(RowError::ConflictOnUnexpectedVecRowFound.into()),
+            Self::Map(values) => Ok(values),
+        }
     }
 }
