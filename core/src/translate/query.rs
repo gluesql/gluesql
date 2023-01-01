@@ -11,16 +11,17 @@ use {
         result::Result,
     },
     sqlparser::ast::{
-        Expr as SqlExpr, FunctionArg as SqlFunctionArg, Join as SqlJoin,
+        Cte as SqlCte, Expr as SqlExpr, FunctionArg as SqlFunctionArg, Join as SqlJoin,
         JoinConstraint as SqlJoinConstraint, JoinOperator as SqlJoinOperator, Query as SqlQuery,
         Select as SqlSelect, SelectItem as SqlSelectItem, SetExpr as SqlSetExpr,
         TableAlias as SqlTableAlias, TableFactor as SqlTableFactor,
-        TableWithJoins as SqlTableWithJoins,
+        TableWithJoins as SqlTableWithJoins, With as SqlWith,
     },
 };
 
 pub fn translate_query(sql_query: &SqlQuery) -> Result<Query> {
     let SqlQuery {
+        with,
         body,
         order_by,
         limit,
@@ -39,6 +40,12 @@ pub fn translate_query(sql_query: &SqlQuery) -> Result<Query> {
         .as_ref()
         .map(|offset| translate_expr(&offset.value))
         .transpose()?;
+
+    // TODO Q. entrypoint for with clause (cte)
+    let body = match with {
+        None => body,
+        Some(with) => translate_with_clause(&body, with)?,
+    };
 
     Ok(Query {
         body,
@@ -269,4 +276,108 @@ fn translate_join(sql_join: &SqlJoin) -> Result<Join> {
         join_operator,
         join_executor: JoinExecutor::NestedLoop,
     })
+}
+
+fn translate_with_clause(body: &SetExpr, with: &SqlWith) -> Result<SetExpr> {
+    let SqlWith {
+        recursive,
+        cte_tables,
+    } = with;
+
+    if *recursive {
+        return Err(TranslateError::UnsupportedRecursiveCte.into());
+    }
+
+    let mut derived_from_cte: Vec<TableFactor> = Vec::new();
+    for SqlCte { alias, query, .. } in cte_tables {
+        let SqlTableAlias { name, columns } = alias;
+        let alias = TableAlias {
+            name: name.value.to_owned(),
+            columns: translate_idents(columns),
+        };
+        let query = translate_query(query)?;
+        let query = match query.body {
+            SetExpr::Select(select) => {
+                let from = replace_cte_table(&select.from, &derived_from_cte)?;
+                Query {
+                    body: SetExpr::Select(Box::from(replace_from(&select, from))),
+                    ..query
+                }
+            }
+            _ => query,
+        };
+        let derived = TableFactor::Derived {
+            subquery: query,
+            alias,
+        };
+        derived_from_cte.push(derived);
+    }
+
+    // translate main query
+    match body {
+        SetExpr::Select(select) => {
+            let from = replace_cte_table(&select.from, &derived_from_cte)?;
+            Ok(SetExpr::Select(Box::new(Select {
+                from,
+                ..*select.clone()
+            })))
+        }
+        _ => Ok(body.clone()),
+    }
+}
+
+fn replace_from(select: &Select, from: TableWithJoins) -> Select {
+    Select {
+        from,
+        ..select.clone()
+    }
+}
+
+fn replace_cte_table(
+    table: &TableWithJoins,
+    derived_tables_from_cte: &[TableFactor],
+) -> Result<TableWithJoins> {
+    let matched_relation = find_from_tablefactors(&table.relation, derived_tables_from_cte);
+    let relation = match matched_relation {
+        None => table.relation.clone(),
+        Some(derived) => derived,
+    };
+    let joins = table
+        .joins
+        .iter()
+        .map(|join| {
+            let matched_relation = find_from_tablefactors(&join.relation, derived_tables_from_cte);
+            match matched_relation {
+                None => join.clone(),
+                Some(derived) => Join {
+                    relation: derived,
+                    ..join.clone()
+                },
+            }
+        })
+        .collect();
+    Ok(TableWithJoins { relation, joins })
+}
+
+// return derived table(translated cte) when table
+// TODO Q. can derived refer cte? ex. WITH cte AS (..) SELECT * FROM (SELECT * FROM cte) AS derived
+// TODO Q. what if alias does not exist ?!? what if index exists?!?
+fn find_from_tablefactors(
+    table: &TableFactor,
+    derived_tables_from_cte: &[TableFactor],
+) -> Option<TableFactor> {
+    match table {
+        TableFactor::Table {
+            name: table_name,
+            alias: _,
+            index: _,
+        } => derived_tables_from_cte
+            .iter()
+            .find(|tablefactor| match tablefactor {
+                TableFactor::Derived { alias, .. } => table_name.eq(&alias.name),
+                _ => false,
+            })
+            .map_or_else(|| None, |derived| Some(derived.clone())),
+        _ => None,
+    }
 }

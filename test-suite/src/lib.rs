@@ -7,6 +7,7 @@ pub mod ast_builder;
 pub mod basic;
 pub mod case;
 pub mod concat;
+pub mod cte;
 pub mod data_type;
 pub mod default;
 pub mod dictionary;
@@ -78,6 +79,7 @@ macro_rules! generate_store_tests {
         glue!(arithmetic_project, arithmetic::project::project);
         glue!(arithmetic_on_where, arithmetic::on_where::on_where);
         glue!(concat, concat::concat);
+        glue!(cte, cte::cte);
         glue!(project, project::project);
         glue!(create_table, alter::create_table);
         glue!(drop_table, alter::drop_table);
