@@ -76,6 +76,15 @@ pub enum EvaluateError {
 
     #[error("unsupported evaluate binary arithmetic between {0} and {1}")]
     UnsupportedBinaryArithmetic(String, String),
+
+    #[error("unsupported evaluate string unary plus: {0}")]
+    UnsupportedUnaryPlus(String),
+
+    #[error("unsupported evaluate string unary minus: {0}")]
+    UnsupportedUnaryMinus(String),
+
+    #[error("unsupported evaluate string unary factorial: {0}")]
+    UnsupportedUnaryFactorial(String),
 }
 
 fn error_serialize<S>(error: &chrono::format::ParseError, serializer: S) -> Result<S::Ok, S::Error>

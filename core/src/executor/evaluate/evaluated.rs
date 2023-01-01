@@ -234,9 +234,9 @@ impl<'a> Evaluated<'a> {
         match self {
             Evaluated::Literal(v) => v.unary_plus().map(Evaluated::Literal),
             Evaluated::Value(v) => v.unary_plus().map(Evaluated::from),
-            Evaluated::StrSlice { source, range } => Value::Str(source[range.clone()].to_owned())
-                .unary_plus()
-                .map(Evaluated::from),
+            Evaluated::StrSlice { source, range } => {
+                Err(EvaluateError::UnsupportedUnaryPlus(source[range.clone()].to_owned()).into())
+            }
         }
     }
 
@@ -244,9 +244,9 @@ impl<'a> Evaluated<'a> {
         match self {
             Evaluated::Literal(v) => v.unary_minus().map(Evaluated::Literal),
             Evaluated::Value(v) => v.unary_minus().map(Evaluated::from),
-            Evaluated::StrSlice { source, range } => Value::Str(source[range.clone()].to_owned())
-                .unary_minus()
-                .map(Evaluated::from),
+            Evaluated::StrSlice { source, range } => {
+                Err(EvaluateError::UnsupportedUnaryMinus(source[range.clone()].to_owned()).into())
+            }
         }
     }
 
@@ -254,9 +254,10 @@ impl<'a> Evaluated<'a> {
         match self {
             Evaluated::Literal(v) => Value::try_from(v).and_then(|v| v.unary_factorial()),
             Evaluated::Value(v) => v.unary_factorial(),
-            Evaluated::StrSlice { source, range } => {
-                Value::Str(source[range.clone()].to_owned()).unary_factorial()
-            }
+            Evaluated::StrSlice { source, range } => Err(EvaluateError::UnsupportedUnaryFactorial(
+                source[range.clone()].to_owned(),
+            )
+            .into()),
         }
         .map(Evaluated::from)
     }
