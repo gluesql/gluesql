@@ -320,6 +320,10 @@ mod tests {
             Key::try_from(Value::List(Vec::default())),
             Err(KeyError::ListTypeKeyNotSupported.into())
         );
+        assert_eq!(
+            convert("SUBSTR('BEEF', 2, 3)"),
+            Ok(Key::Str("EEF".to_owned()))
+        );
         assert_eq!(convert("POSITION('PORK' IN 'MEAT')"), Ok(Key::I64(0)));
         assert_eq!(
             convert("EXTRACT(SECOND FROM INTERVAL '8' SECOND)"),
