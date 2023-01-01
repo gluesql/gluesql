@@ -98,7 +98,7 @@ impl TryFrom<Evaluated<'_>> for HashMap<String, Value> {
             Evaluated::Value(Value::Map(v)) => Ok(v),
             Evaluated::Value(v) => Err(EvaluateError::MapOrStringValueRequired(v.into()).into()),
             Evaluated::StrSlice { source, range } => {
-                HashMap::parse_json_object(source[range.clone()].to_owned().as_str())
+                HashMap::parse_json_object(source[range].to_owned().as_str())
             }
         }
     }
