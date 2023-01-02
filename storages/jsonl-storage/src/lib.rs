@@ -1,3 +1,7 @@
+mod alter_table;
+mod index;
+mod transaction;
+
 use std::{
     collections::HashMap,
     fs::{self, read_to_string, File},
@@ -28,7 +32,13 @@ impl JsonlStorage {
             .into_iter()
             .map(|result| {
                 let path = result.unwrap().path();
-                let table_name = path.file_name().unwrap().to_str().unwrap().to_owned();
+                let table_name = path
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_owned()
+                    .replace(".json", "");
                 let jsonl_table = JsonlTable::new(table_name.clone(), path);
 
                 (table_name, jsonl_table)
