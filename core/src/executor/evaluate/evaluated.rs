@@ -75,7 +75,7 @@ impl TryFrom<Evaluated<'_>> for bool {
                 Err(EvaluateError::BooleanTypeRequired(format!("{:?}", v)).into())
             }
             Evaluated::StrSlice { source, range } => {
-                Err(EvaluateError::BooleanTypeRequired(format!("{:?}", &source[range])).into())
+                Err(EvaluateError::BooleanTypeRequired(source[range].to_owned()).into())
             }
             Evaluated::Value(Value::Bool(v)) => Ok(v),
             Evaluated::Value(v) => {

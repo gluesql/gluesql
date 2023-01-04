@@ -144,6 +144,10 @@ test_case!(substr, async move {
             Ok(select_with_null!(test; Null)),
         ),
         (
+            "SELECT * FROM SingleItem WHERE TRUE AND SUBSTR('wine',2,3)",
+            Err(EvaluateError::BooleanTypeRequired("ine".to_owned()).into()),
+        ),
+        (
             r#"SELECT SUBSTR(1, 1) AS test FROM SingleItem"#,
             Err(EvaluateError::FunctionRequiresStringValue("SUBSTR".to_owned()).into()),
         ),
