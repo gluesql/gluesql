@@ -4,7 +4,7 @@ mod transaction;
 
 use std::{
     collections::HashMap,
-    fs::{self, read_to_string, File, OpenOptions},
+    fs::{self, read_to_string, remove_file, File, OpenOptions},
     io::{self, BufRead, BufReader},
     path::{Path, PathBuf},
 };
@@ -23,10 +23,19 @@ use {
     },
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct JsonlStorage {
     tables: HashMap<String, Schema>,
     path: PathBuf,
+}
+
+impl Default for JsonlStorage {
+    fn default() -> Self {
+        JsonlStorage {
+            tables: HashMap::new(),
+            path: PathBuf::from("data"),
+        }
+    }
 }
 
 impl JsonlStorage {
@@ -187,6 +196,9 @@ impl StoreMut for JsonlStorage {
     }
 
     async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()> {
+        let table_path = JsonlStorage::table_path(&self, table_name);
+        remove_file(table_path).unwrap();
+
         let mut storage = self;
         JsonlStorage::delete_schema(&mut storage, table_name);
 
@@ -195,12 +207,6 @@ impl StoreMut for JsonlStorage {
 
     async fn append_data(self, table_name: &str, rows: Vec<DataRow>) -> MutResult<Self, ()> {
         self.tables.get(table_name).and_then(|jsonl_table| {
-            // let file = File::open(jsonl_table.path).unwrap();
-            // let buffered = BufReader::new(file);
-
-            // for line in buffered.lines() {
-            //     println!("{}", line.unwrap());
-            // }
             let table_path = JsonlStorage::table_path(&self, table_name);
 
             let mut file = OpenOptions::new()
@@ -218,7 +224,7 @@ impl StoreMut for JsonlStorage {
                     // }),
                     DataRow::Map(hash_map) => {
                         let json = serde_json::to_string(hash_map).unwrap();
-                        write!(file, "{}", json);
+                        write!(file, "{}\n", json);
                     }
                 };
 
@@ -234,11 +240,19 @@ impl StoreMut for JsonlStorage {
     }
 
     async fn insert_data(self, table_name: &str, rows: Vec<(Key, DataRow)>) -> MutResult<Self, ()> {
-        todo!()
+        unreachable!("UPDATE is not supported by jsonl-storage")
+        // let rows = rows.into_iter().map(|(_, data_row)| data_row).collect();
+        // self.append_data(table_name, rows).await
     }
 
     async fn delete_data(self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()> {
-        todo!()
+        self.tables.get(table_name).and_then(|jsonl_table| {
+            let table_path = JsonlStorage::table_path(&self, table_name);
+            File::create(&table_path).unwrap();
+            Some(())
+        });
+
+        Ok((self, ()))
     }
 }
 
