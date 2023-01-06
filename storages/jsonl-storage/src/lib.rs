@@ -147,7 +147,7 @@ impl Store for JsonlStorage {
 
                 Ok(Box::new(row_iter))
             }
-            Err(_) => todo!(),
+            Err(_) => todo!("error reading json file"),
         }
         // let data = read_to_string(path.unwrap());
 
@@ -223,8 +223,14 @@ impl StoreMut for JsonlStorage {
                     //     // let b: String = cur.into();
                     // }),
                     DataRow::Map(hash_map) => {
-                        let json = serde_json::to_string(hash_map).unwrap();
-                        write!(file, "{}\n", json);
+                        // let json = serde_json::to_string(hash_map).unwrap();
+                        let mut json = hash_map
+                            .iter()
+                            .map(|(k, v)| format!("\"{k}\": {}", String::from(v)))
+                            .collect::<Vec<_>>();
+                        json.sort();
+                        let json = json.join(", ");
+                        write!(file, "{{{json}}}\n").unwrap();
                     }
                 };
 

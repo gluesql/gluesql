@@ -38,7 +38,7 @@ struct Args {
     dump: Option<PathBuf>,
 
     #[clap(short, long, value_parser)]
-    storage: String,
+    storage: Option<String>,
 }
 
 pub fn run() -> Result<()> {
@@ -46,8 +46,8 @@ pub fn run() -> Result<()> {
 
     if let Some(path) = args.path {
         let path = path.as_path().to_str().expect("wrong path");
-        match args.storage.as_str() {
-            "jsonl" => {
+        match args.storage {
+            Some(storage) if storage == "jsonl" => {
                 println!("[jsonl-storage] connected to {}", path);
                 run(
                     JsonlStorage::new(path).expect("failed to load jsonl-storage"),
