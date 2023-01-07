@@ -142,7 +142,7 @@ impl SledStorage {
                 self.tree.remove(temp_key).map_err(err_into)?;
             }
 
-            self.tree.remove(&get_txdata_key(txid)).map_err(err_into)?;
+            self.tree.remove(get_txdata_key(txid)).map_err(err_into)?;
         }
 
         Ok(())

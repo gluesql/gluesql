@@ -33,8 +33,8 @@ impl Store for MemoryStorage {
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         let mut schemas = self
             .items
-            .iter()
-            .map(|(_, item)| item.schema.clone())
+            .values()
+            .map(|item| item.schema.clone())
             .collect::<Vec<_>>();
         schemas.sort_by(|a, b| a.table_name.cmp(&b.table_name));
 
