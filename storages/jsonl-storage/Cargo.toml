@@ -15,6 +15,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 futures = "0.3"
 tokio = { version = "1", features = ["rt", "macros"] }
+utils = { package = "gluesql-utils", path = "../../utils", version = "0.13.0" }
 
 [dev-dependencies]
 test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.13.0" }

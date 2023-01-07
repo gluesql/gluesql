@@ -18,6 +18,7 @@ use {
         io::{self, prelude::*, BufRead},
         path::{Path, PathBuf},
     },
+    utils::HashMapExt,
 };
 
 #[derive(Debug)]
@@ -226,7 +227,25 @@ impl StoreMut for JsonlStorage {
     }
 
     async fn insert_data(self, table_name: &str, rows: Vec<(Key, DataRow)>) -> MutResult<Self, ()> {
-        unreachable!("UPDATE is not supported by jsonl-storage")
+        let prev_rows = self.scan_data(table_name).await.unwrap();
+
+        let prev_rows = prev_rows
+            .collect::<Result<HashMap<Key, DataRow>>>()
+            .unwrap();
+
+        let rows = prev_rows.concat(rows.into_iter());
+        let mut rows = rows.into_iter().collect::<Vec<_>>();
+
+        rows.sort_by(|(key_a, _), (key_b, _)| match (key_a, key_b) {
+            (Key::Uuid(a), Key::Uuid(b)) => a.cmp(b),
+            _ => todo!(),
+        });
+
+        let rows = rows.into_iter().map(|(_, data_row)| data_row).collect();
+
+        let table_path = JsonlStorage::table_path(&self, table_name).unwrap();
+        File::create(&table_path).map_storage_err().unwrap();
+        self.append_data(table_name, rows).await
     }
 
     async fn delete_data(self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()> {
