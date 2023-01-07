@@ -193,7 +193,7 @@ impl StoreMut for JsonlStorage {
             .tables
             .get(table_name)
             .ok_or_else(|| Error::StorageMsg("could not find table".to_owned()))
-            .and_then(|jsonl_table| {
+            .and_then(|_| {
                 let table_path = JsonlStorage::table_path(&self, table_name)?;
 
                 let mut file = OpenOptions::new()
@@ -249,21 +249,22 @@ impl StoreMut for JsonlStorage {
     }
 
     async fn delete_data(self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()> {
-        let result = self
-            .tables
-            .get(table_name)
-            .ok_or_else(|| Error::StorageMsg("could not find table".to_owned()))
-            .and_then(|jsonl_table| {
-                let table_path = JsonlStorage::table_path(&self, table_name)?;
-                File::create(&table_path).map_storage_err()?;
+        let prev_rows = self.scan_data(table_name).await.unwrap();
+        let rows = prev_rows
+            .filter(|result| {
+                result
+                    .as_ref()
+                    .map(|(key, data_row)| !keys.iter().any(|target_key| target_key == key))
+                    .ok()
+                    .unwrap_or(false)
+            })
+            .map(|a| a.map(|(k, d)| d))
+            .collect::<Result<Vec<_>>>()
+            .unwrap();
 
-                Ok(())
-            });
-
-        match result {
-            Ok(_) => Ok((self, ())),
-            Err(e) => Err((self, e)),
-        }
+        let table_path = JsonlStorage::table_path(&self, table_name).unwrap();
+        File::create(&table_path).map_storage_err().unwrap();
+        self.append_data(table_name, rows).await
     }
 }
 
