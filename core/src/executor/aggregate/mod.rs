@@ -54,7 +54,7 @@ impl<'a> Aggregator<'a> {
 
     pub async fn apply(
         &self,
-        rows: impl TryStream<Ok = Rc<RowContext<'a>>, Error = Error> + 'a,
+        rows: impl TryStream<Ok = Rc<RowContext<'a>>, Error = Error>,
     ) -> Result<
         impl TryStream<Ok = AggregateContext<'a>, Error = Error, Item = Result<AggregateContext<'a>>>,
     > {
