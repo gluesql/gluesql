@@ -2,7 +2,10 @@ use {
     super::{
         ast_literal::{translate_ast_literal, translate_datetime_field},
         data_type::translate_data_type,
-        function::{translate_cast, translate_extract, translate_function, translate_position},
+        function::{
+            translate_cast, translate_ceil, translate_extract, translate_floor, translate_function,
+            translate_position,
+        },
         operator::{translate_binary_operator, translate_unary_operator},
         translate_idents, translate_query, TranslateError,
     },
@@ -11,7 +14,9 @@ use {
         result::Result,
         translate::function::translate_trim,
     },
-    sqlparser::ast::{Expr as SqlExpr, OrderByExpr as SqlOrderByExpr},
+    sqlparser::ast::{
+        DateTimeField as SqlDateTimeField, Expr as SqlExpr, OrderByExpr as SqlOrderByExpr,
+    },
 };
 
 /// # Description
@@ -106,6 +111,20 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             trim_where,
             trim_what,
         } => translate_trim(expr, trim_where, trim_what),
+        SqlExpr::Floor { expr, field } => {
+            if !matches!(field, SqlDateTimeField::NoDateTime) {
+                return Err(TranslateError::UnsupportedExpr(sql_expr.to_string()).into());
+            }
+
+            translate_floor(expr)
+        }
+        SqlExpr::Ceil { expr, field } => {
+            if !matches!(field, SqlDateTimeField::NoDateTime) {
+                return Err(TranslateError::UnsupportedExpr(sql_expr.to_string()).into());
+            }
+
+            translate_ceil(expr)
+        }
         SqlExpr::Exists { subquery, negated } => Ok(Expr::Exists {
             subquery: translate_query(subquery).map(Box::new)?,
             negated: *negated,
@@ -158,6 +177,7 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
                 .transpose()?,
         }),
         SqlExpr::Cast { expr, data_type } => translate_cast(expr, data_type),
+
         _ => Err(TranslateError::UnsupportedExpr(sql_expr.to_string()).into()),
     }
 }

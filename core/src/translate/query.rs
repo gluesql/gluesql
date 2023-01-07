@@ -51,8 +51,7 @@ pub fn translate_query(sql_query: &SqlQuery) -> Result<Query> {
 fn translate_set_expr(sql_set_expr: &SqlSetExpr) -> Result<SetExpr> {
     match sql_set_expr {
         SqlSetExpr::Select(select) => translate_select(select).map(Box::new).map(SetExpr::Select),
-        SqlSetExpr::Values(values) => values
-            .0
+        SqlSetExpr::Values(sqlparser::ast::Values { rows, .. }) => rows
             .iter()
             .map(|items| items.iter().map(translate_expr).collect::<Result<_>>())
             .collect::<Result<_>>()
@@ -129,10 +128,10 @@ pub fn translate_select_item(sql_select_item: &SqlSelectItem) -> Result<SelectIt
                 label: alias.value.to_owned(),
             })
         }
-        SqlSelectItem::QualifiedWildcard(object_name) => Ok(SelectItem::QualifiedWildcard(
+        SqlSelectItem::QualifiedWildcard(object_name, _) => Ok(SelectItem::QualifiedWildcard(
             translate_object_name(object_name)?,
         )),
-        SqlSelectItem::Wildcard => Ok(SelectItem::Wildcard),
+        SqlSelectItem::Wildcard(_) => Ok(SelectItem::Wildcard),
     }
 }
 
