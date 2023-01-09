@@ -13,7 +13,7 @@ mod validate;
 mod mock;
 
 use {
-    self::validate::update_validation_context,
+    self::validate::contextualize_stmt,
     crate::{ast::Statement, result::Result, store::Store},
 };
 
@@ -24,7 +24,7 @@ pub use {
 
 pub async fn plan(storage: &dyn Store, statement: Statement) -> Result<Statement> {
     let schema_map = fetch_schema_map(storage, &statement).await?;
-    let validation_context = update_validation_context(&schema_map, &statement);
+    let validation_context = contextualize_stmt(&schema_map, &statement);
     validate(validation_context, &statement)?;
     let statement = plan_primary_key(&schema_map, statement);
     let statement = plan_index(&schema_map, statement)?;

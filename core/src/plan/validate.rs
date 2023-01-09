@@ -94,11 +94,12 @@ impl<'a> ValidationContext<'a> {
             ValidationContext::Data { schema, next, .. } => {
                 let current = schema
                     .column_defs
+                    .as_ref()
                     .map(|column_defs| {
                         column_defs
                             .iter()
-                            .any(|column| column.name == column_name.to_owned())
-                            .then_some(0)
+                            .any(|column| &column.name == column_name)
+                            .then_some(1)
                             .unwrap_or(0)
                     })
                     .unwrap_or(0);
@@ -118,12 +119,12 @@ impl<'a> ValidationContext<'a> {
 }
 
 type SchemaMap = HashMap<String, Schema>;
-pub fn update_validation_context<'a>(
+pub fn contextualize_stmt<'a>(
     schema_map: &'a SchemaMap,
     statement: &'a Statement,
 ) -> Option<Rc<ValidationContext<'a>>> {
     match statement {
-        Statement::Query(query) => update_validation_context_by_query(schema_map, query),
+        Statement::Query(query) => contextualize_query(schema_map, query),
         Statement::Insert {
             table_name, source, ..
         } => {
@@ -136,7 +137,7 @@ pub fn update_validation_context<'a>(
                 ))
             });
 
-            let source_context = update_validation_context_by_query(schema_map, source);
+            let source_context = contextualize_query(schema_map, source);
 
             ValidationContext::concat(table_context, source_context)
         }
@@ -151,7 +152,7 @@ pub fn update_validation_context<'a>(
     }
 }
 
-fn update_validation_context_by_query<'a>(
+fn contextualize_query<'a>(
     schema_map: &'a SchemaMap,
     query: &'a Query,
 ) -> Option<Rc<ValidationContext<'a>>> {
@@ -167,32 +168,34 @@ fn update_validation_context_by_query<'a>(
                         Rc::from(ValidationContext::new(name, alias.as_ref(), schema, None))
                     })
                 }
-                TableFactor::Derived { subquery, .. } => {
-                    update_validation_context_by_query(schema_map, subquery)
-                }
+                TableFactor::Derived { subquery, .. } => contextualize_query(schema_map, subquery),
                 TableFactor::Series { .. } | TableFactor::Dictionary { .. } => None,
             }
             .map(Rc::from);
 
             let by_joins = joins
                 .iter()
-                .map(|Join { relation, .. }| match relation {
-                    TableFactor::Table { name, alias, .. } => {
-                        let schema = schema_map.get(name);
-                        schema.map(|schema| {
-                            Rc::from(ValidationContext::new(name, alias.as_ref(), schema, None))
-                        })
-                    }
-                    TableFactor::Derived { subquery, .. } => {
-                        update_validation_context_by_query(schema_map, subquery)
-                    }
-                    TableFactor::Series { .. } | TableFactor::Dictionary { .. } => None,
-                })
-                .map(|context| context.map(Rc::from))
+                .map(|Join { relation, .. }| contextualize_table_factor(schema_map, relation))
                 .fold(None, |acc, cur| ValidationContext::concat(acc, cur));
 
             ValidationContext::concat(by_table, by_joins)
         }
         SetExpr::Values(_) => None,
     }
+}
+
+fn contextualize_table_factor<'a>(
+    schema_map: &'a SchemaMap,
+    table_factor: &'a TableFactor,
+) -> Option<Rc<ValidationContext<'a>>> {
+    match table_factor {
+        TableFactor::Table { name, alias, .. } => {
+            let schema = schema_map.get(name);
+            schema
+                .map(|schema| Rc::from(ValidationContext::new(name, alias.as_ref(), schema, None)))
+        }
+        TableFactor::Derived { subquery, .. } => contextualize_query(schema_map, subquery),
+        TableFactor::Series { .. } | TableFactor::Dictionary { .. } => None,
+    }
+    .map(Rc::from)
 }
