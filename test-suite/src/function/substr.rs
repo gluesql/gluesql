@@ -48,6 +48,40 @@ test_case!(substr, async move {
             )),
         ),
         (
+            "SELECT * FROM Item WHERE name = SUBSTR('ABC', 2, 1)",
+            Ok(select!(
+                "name"
+                Str;
+                "B".to_owned()
+            )),
+        ),
+        (
+            "SELECT * FROM Item WHERE SUBSTR(name, 1, 1) = 'B'",
+            Ok(select!(
+                "name"
+                Str;
+                "Blop mc blee".to_owned();
+                "B".to_owned()
+            )),
+        ),
+        (
+            "SELECT * FROM Item WHERE 'B' = SUBSTR(name, 1, 1)",
+            Ok(select!(
+                "name"
+                Str;
+                "Blop mc blee".to_owned();
+                "B".to_owned()
+            )),
+        ),
+        (
+            "SELECT * FROM Item WHERE SUBSTR(name, 1, 4) = SUBSTR('Blop', 1)",
+            Ok(select!(
+                "name"
+                Str;
+                "Blop mc blee".to_owned()
+            )),
+        ),
+        (
             r#"SELECT SUBSTR(name, 2) AS test FROM Item"#,
             Ok(select!(
                 "test"
