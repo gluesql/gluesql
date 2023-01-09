@@ -96,11 +96,11 @@ impl<'a> ValidationContext<'a> {
                     .column_defs
                     .as_ref()
                     .map(|column_defs| {
-                        column_defs
-                            .iter()
-                            .any(|column| &column.name == column_name)
-                            .then_some(1)
-                            .unwrap_or(0)
+                        if column_defs.iter().any(|column| &column.name == column_name) {
+                            1
+                        } else {
+                            0
+                        }
                     })
                     .unwrap_or(0);
 
@@ -147,7 +147,7 @@ pub fn contextualize_stmt<'a>(
                 let schema = schema_map.get(name);
                 schema.map(|schema| Rc::from(ValidationContext::new(name, None, schema, None)))
             })
-            .fold(None, |acc, cur| ValidationContext::concat(acc, cur)),
+            .fold(None, ValidationContext::concat),
         _ => None,
     }
 }
@@ -176,7 +176,7 @@ fn contextualize_query<'a>(
             let by_joins = joins
                 .iter()
                 .map(|Join { relation, .. }| contextualize_table_factor(schema_map, relation))
-                .fold(None, |acc, cur| ValidationContext::concat(acc, cur));
+                .fold(None, ValidationContext::concat);
 
             ValidationContext::concat(by_table, by_joins)
         }
