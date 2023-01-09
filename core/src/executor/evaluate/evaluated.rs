@@ -5,11 +5,7 @@ use {
         data::{value::HashMapJsonExt, Key, Literal, Value},
         result::{Error, Result},
     },
-    std::{
-        cmp::{max, min, Ordering},
-        collections::HashMap,
-        ops::Range,
-    },
+    std::{cmp::Ordering, collections::HashMap, ops::Range},
 };
 
 #[derive(Clone, Debug)]
@@ -594,13 +590,10 @@ impl<'a> Evaluated<'a> {
         let end = if count < 0 {
             return Err(EvaluateError::NegativeSubstrLenNotAllowed.into());
         } else {
-            min(
-                max(range.start as i64 + start + count, 0),
-                source.len() as i64,
-            ) as usize
+            (range.start as i64 + start + count).clamp(0, source.len() as i64) as usize
         };
 
-        let start = min(max(start + range.start as i64, 0), source.len() as i64) as usize;
+        let start = (start + range.start as i64).clamp(0, source.len() as i64) as usize;
 
         Ok(Evaluated::StrSlice {
             source,
