@@ -96,11 +96,7 @@ impl<'a> ValidationContext<'a> {
                     .column_defs
                     .as_ref()
                     .map(|column_defs| {
-                        if column_defs.iter().any(|column| &column.name == column_name) {
-                            1
-                        } else {
-                            0
-                        }
+                        i32::from(column_defs.iter().any(|column| &column.name == column_name))
                     })
                     .unwrap_or(0);
 
