@@ -108,7 +108,25 @@ test_case!(substr, async move {
             )),
         ),
         (
+            "SELECT * FROM Item WHERE 'B' < SUBSTR(name, 1, 4)",
+            Ok(select!(
+                "name"
+                Str;
+                "Blop mc blee".to_owned();
+                "Steven the &long named$ folken!".to_owned()
+            )),
+        ),
+        (
             "SELECT * FROM Item WHERE SUBSTR(name, 1, 4) > UPPER('b')",
+            Ok(select!(
+                "name"
+                Str;
+                "Blop mc blee".to_owned();
+                "Steven the &long named$ folken!".to_owned()
+            )),
+        ),
+        (
+            "SELECT * FROM Item WHERE UPPER('b') < SUBSTR(name, 1, 4)",
             Ok(select!(
                 "name"
                 Str;
