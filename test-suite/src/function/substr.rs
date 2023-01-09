@@ -74,6 +74,15 @@ test_case!(substr, async move {
             )),
         ),
         (
+            "SELECT * FROM Item WHERE SUBSTR(name, 1, 1) = UPPER('b')",
+            Ok(select!(
+                "name"
+                Str;
+                "Blop mc blee".to_owned();
+                "B".to_owned()
+            )),
+        ),
+        (
             "SELECT * FROM Item WHERE SUBSTR(name, 1, 4) = SUBSTR('Blop', 1)",
             Ok(select!(
                 "name"
