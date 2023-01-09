@@ -63,6 +63,42 @@ test_case!(concat, async move {
     );
 
     test!(
+        "select concat('sand', SUBSTR('swich', 2)) as test from Concat;",
+        Ok(select!(
+           test
+           Str;
+           "sandwich".to_owned()
+        ))
+    );
+
+    test!(
+        "select concat(SUBSTR('ssand', 2), 'wich') as test from Concat;",
+        Ok(select!(
+           test
+           Str;
+           "sandwich".to_owned()
+        ))
+    );
+
+    test!(
+        "select concat(LOWER('SAND'), SUBSTR('swich', 2)) as test from Concat;",
+        Ok(select!(
+           test
+           Str;
+           "sandwich".to_owned()
+        ))
+    );
+
+    test!(
+        "select concat(SUBSTR('ssand', 2), LOWER('WICH')) as test from Concat;",
+        Ok(select!(
+           test
+           Str;
+           "sandwich".to_owned()
+        ))
+    );
+
+    test!(
         "select concat('ab', 'cd', 'ef') as myconcat from Concat;",
         Ok(select!(
            myconcat
