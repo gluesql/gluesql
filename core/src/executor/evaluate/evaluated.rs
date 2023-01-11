@@ -209,6 +209,20 @@ where
     }
 }
 
+pub fn exceptional_int_val_to_eval<'a>(name: String, v: Value) -> Result<Evaluated<'a>> {
+    match v {
+        Value::Null => Ok(Evaluated::from(Value::Null)),
+        _ => Err(EvaluateError::FunctionRequiresIntegerValue(name).into()),
+    }
+}
+
+pub fn exceptional_str_val_to_eval<'a>(name: String, v: Value) -> Result<Evaluated<'a>> {
+    match v {
+        Value::Null => Ok(Evaluated::from(Value::Null)),
+        _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+    }
+}
+
 impl<'a> Evaluated<'a> {
     pub fn add<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
         binary_op(self, other, |l, r| l.add(r), |l, r| l.add(r))
@@ -367,8 +381,7 @@ impl<'a> Evaluated<'a> {
                         let end = string.len();
                         (string, 0..end)
                     }
-                    Value::Null => return Ok(Evaluated::from(Value::Null)),
-                    _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+                    _ => return exceptional_str_val_to_eval(name, value),
                 }
             }
             Evaluated::StrSlice { source, range } => (source, range),
@@ -377,8 +390,7 @@ impl<'a> Evaluated<'a> {
                     let end = string.len();
                     (string, 0..end)
                 }
-                Value::Null => return Ok(Evaluated::from(Value::Null)),
-                _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+                _ => return exceptional_str_val_to_eval(name, value),
             },
         };
 
@@ -455,8 +467,7 @@ impl<'a> Evaluated<'a> {
                         let end = string.len();
                         (string, 0..end)
                     }
-                    Value::Null => return Ok(Evaluated::from(Value::Null)),
-                    _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+                    _ => return exceptional_str_val_to_eval(name, value),
                 }
             }
             Evaluated::StrSlice { source, range } => (source, range),
@@ -465,8 +476,7 @@ impl<'a> Evaluated<'a> {
                     let end = string.len();
                     (string, 0..end)
                 }
-                Value::Null => return Ok(Evaluated::from(Value::Null)),
-                _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+                _ => return exceptional_str_val_to_eval(name, value),
             },
         };
 
@@ -543,8 +553,7 @@ impl<'a> Evaluated<'a> {
                         let end = string.len();
                         (string, 0..end)
                     }
-                    Value::Null => return Ok(Evaluated::from(Value::Null)),
-                    _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+                    _ => return exceptional_str_val_to_eval(name, value),
                 }
             }
             Evaluated::StrSlice { source, range } => (source, range),
@@ -553,8 +562,7 @@ impl<'a> Evaluated<'a> {
                     let end = string.len();
                     (string, 0..end)
                 }
-                Value::Null => return Ok(Evaluated::from(Value::Null)),
-                _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+                _ => return exceptional_str_val_to_eval(name, value),
             },
         };
 
@@ -562,8 +570,7 @@ impl<'a> Evaluated<'a> {
             let value = start.try_into()?;
             match value {
                 Value::I64(num) => num,
-                Value::Null => return Ok(Evaluated::from(Value::Null)),
-                _ => return Err(EvaluateError::FunctionRequiresIntegerValue(name).into()),
+                _ => return exceptional_int_val_to_eval(name, value),
             }
         } - 1;
 
@@ -572,8 +579,7 @@ impl<'a> Evaluated<'a> {
                 let value = eval.try_into()?;
                 match value {
                     Value::I64(num) => num,
-                    Value::Null => return Ok(Evaluated::from(Value::Null)),
-                    _ => return Err(EvaluateError::FunctionRequiresIntegerValue(name).into()),
+                    _ => return exceptional_int_val_to_eval(name, value),
                 }
             }
             None => source.len() as i64,
@@ -607,8 +613,7 @@ impl<'a> Evaluated<'a> {
                         let end = string.len();
                         (string, 0..end)
                     }
-                    Value::Null => return Ok(Evaluated::from(Value::Null)),
-                    _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+                    _ => return exceptional_str_val_to_eval(name, value),
                 }
             }
             Evaluated::StrSlice { source, range } => (source, range),
@@ -617,8 +622,7 @@ impl<'a> Evaluated<'a> {
                     let end = string.len();
                     (string, 0..end)
                 }
-                Value::Null => return Ok(Evaluated::from(Value::Null)),
-                _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+                _ => return exceptional_str_val_to_eval(name, value),
             },
         };
 
