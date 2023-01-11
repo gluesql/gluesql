@@ -45,6 +45,8 @@ test_case!(like_ilike, async move {
         (2, "SELECT name FROM Item WHERE name LIKE '_a%'"),
         (2, "SELECT name FROM Item WHERE name LIKE '%r%'"),
         (2, "SELECT name FROM Item WHERE name LIKE '%a'"),
+        (2, "SELECT name FROM Item WHERE SUBSTR(name, 1) LIKE '%a'"),
+        (2, "SELECT name FROM Item WHERE LOWER(name) LIKE '%a'"),
         (5, "SELECT name FROM Item WHERE name LIKE '%%'"),
         (0, "SELECT name FROM Item WHERE name LIKE 'g%'"),
         (2, "SELECT name FROM Item WHERE name ILIKE '_A%'"),
