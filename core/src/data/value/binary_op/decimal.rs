@@ -158,8 +158,7 @@ impl TryBinaryOperator for Decimal {
                     .into()
                 })
                 .map(Decimal),
- 
-    
+
             F64(rhs) => Decimal::from_f64_retain(rhs)
                 .map(|x| Ok(Decimal(lhs + x)))
                 .unwrap_or_else(|| Err(ValueError::FloatToDecimalConversionFailure(rhs).into())),
@@ -416,7 +415,6 @@ impl TryBinaryOperator for Decimal {
                 })
                 .map(Decimal),
 
-
             F64(rhs) => Decimal::from_f64_retain(rhs)
                 .map(|x| Ok(Decimal(lhs * x)))
                 .unwrap_or_else(|| Err(ValueError::FloatToDecimalConversionFailure(rhs).into())),
@@ -661,7 +659,7 @@ impl TryBinaryOperator for Decimal {
                     .into()
                 })
                 .map(Decimal),
-             U128(rhs) => lhs
+            U128(rhs) => lhs
                 .checked_rem(Decimal::from(rhs))
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
@@ -787,7 +785,7 @@ mod tests {
             }
             .into())
         );
-         assert_eq!(
+        assert_eq!(
             Decimal::MAX.try_add(&U32(1)),
             Err(ValueError::BinaryOperationOverflow {
                 lhs: Decimal(Decimal::MAX),
@@ -796,7 +794,7 @@ mod tests {
             }
             .into())
         );
-         assert_eq!(
+        assert_eq!(
             Decimal::MAX.try_add(&U64(1)),
             Err(ValueError::BinaryOperationOverflow {
                 lhs: Decimal(Decimal::MAX),
@@ -805,7 +803,7 @@ mod tests {
             }
             .into())
         );
-         assert_eq!(
+        assert_eq!(
             Decimal::MAX.try_add(&U128(1)),
             Err(ValueError::BinaryOperationOverflow {
                 lhs: Decimal(Decimal::MAX),
@@ -878,7 +876,7 @@ mod tests {
             }
             .into())
         );
-         assert_eq!(
+        assert_eq!(
             Decimal::MIN.try_subtract(&U64(1)),
             Err(ValueError::BinaryOperationOverflow {
                 lhs: Decimal(Decimal::MIN),
@@ -887,7 +885,7 @@ mod tests {
             }
             .into())
         );
-         assert_eq!(
+        assert_eq!(
             Decimal::MIN.try_subtract(&U128(1)),
             Err(ValueError::BinaryOperationOverflow {
                 lhs: Decimal(Decimal::MIN),
@@ -1180,8 +1178,6 @@ mod tests {
             .into())
         );
 
-
-
         assert_eq!(
             base.try_modulo(&Decimal(Decimal::ZERO)),
             Err(ValueError::BinaryOperationOverflow {
@@ -1202,9 +1198,9 @@ mod tests {
         assert_eq!(base, I64(1));
         assert_eq!(base, I128(1));
         assert_eq!(base, U8(1));
-        assert_eq!(base, U16(1)); 
+        assert_eq!(base, U16(1));
         assert_eq!(base, U32(1));
-        assert_eq!(base, U64(1)); 
+        assert_eq!(base, U64(1));
         assert_eq!(base, U128(1));
         assert_eq!(base, F64(1.0));
         assert_eq!(base, Decimal(Decimal::ONE));
