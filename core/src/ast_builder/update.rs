@@ -6,7 +6,7 @@ use {
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct UpdateNode<'a> {
     table_name: String,
     assignments: Vec<AssignmentNode<'a>>,

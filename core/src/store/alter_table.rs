@@ -9,7 +9,7 @@ use {
     thiserror::Error,
 };
 
-#[derive(Error, Serialize, Debug, PartialEq)]
+#[derive(Error, Serialize, Debug, PartialEq, Eq)]
 pub enum AlterTableError {
     #[error("Table not found: {0}")]
     TableNotFound(String),
@@ -25,6 +25,9 @@ pub enum AlterTableError {
 
     #[error("Dropping column not found: {0}")]
     DroppingColumnNotFound(String),
+
+    #[error("Schemaless table does not support ALTER TABLE: {0}")]
+    SchemalessTableFound(String),
 }
 
 #[async_trait(?Send)]

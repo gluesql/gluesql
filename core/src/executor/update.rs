@@ -1,21 +1,22 @@
 use {
     super::{
-        context::FilterContext,
+        context::RowContext,
         evaluate::{evaluate, Evaluated},
     },
     crate::{
-        ast::{Assignment, ColumnDef, ColumnOption},
+        ast::{Assignment, ColumnDef, ColumnUniqueOption},
         data::{Row, Value},
-        result::Result,
+        result::{Error, Result},
         store::GStore,
     },
-    futures::stream::{self, TryStreamExt},
+    futures::stream::{self, StreamExt, TryStreamExt},
     serde::Serialize,
-    std::{fmt::Debug, rc::Rc},
+    std::{borrow::Cow, fmt::Debug, rc::Rc},
     thiserror::Error,
+    utils::HashMapExt,
 };
 
-#[derive(Error, Serialize, Debug, PartialEq)]
+#[derive(Error, Serialize, Debug, PartialEq, Eq)]
 pub enum UpdateError {
     #[error("column not found {0}")]
     ColumnNotFound(String),
@@ -31,7 +32,7 @@ pub struct Update<'a> {
     storage: &'a dyn GStore,
     table_name: &'a str,
     fields: &'a [Assignment],
-    column_defs: &'a [ColumnDef],
+    column_defs: Option<&'a [ColumnDef]>,
 }
 
 impl<'a> Update<'a> {
@@ -39,23 +40,19 @@ impl<'a> Update<'a> {
         storage: &'a dyn GStore,
         table_name: &'a str,
         fields: &'a [Assignment],
-        column_defs: &'a [ColumnDef],
+        column_defs: Option<&'a [ColumnDef]>,
     ) -> Result<Self> {
-        for assignment in fields.iter() {
-            let Assignment { id, .. } = assignment;
+        if let Some(column_defs) = column_defs {
+            for assignment in fields.iter() {
+                let Assignment { id, .. } = assignment;
 
-            if column_defs.iter().all(|col_def| &col_def.name != id) {
-                return Err(UpdateError::ColumnNotFound(id.to_owned()).into());
-            } else if column_defs.iter().any(|ColumnDef { name, options, .. }| {
-                if name != id {
-                    return false;
+                if column_defs.iter().all(|col_def| &col_def.name != id) {
+                    return Err(UpdateError::ColumnNotFound(id.to_owned()).into());
+                } else if column_defs.iter().any(|ColumnDef { name, unique, .. }| {
+                    name == id && matches!(unique, Some(ColumnUniqueOption { is_primary: true }))
+                }) {
+                    return Err(UpdateError::UpdateOnPrimaryKeyNotSupported(id.to_owned()).into());
                 }
-
-                options
-                    .iter()
-                    .any(|option| option == &ColumnOption::Unique { is_primary: true })
-            }) {
-                return Err(UpdateError::UpdateOnPrimaryKeyNotSupported(id.to_owned()).into());
             }
         }
 
@@ -67,77 +64,73 @@ impl<'a> Update<'a> {
         })
     }
 
-    async fn find(&self, row: &Row, column_def: &ColumnDef) -> Result<Option<Value>> {
-        let all_columns = Rc::from(self.all_columns());
-        let context = FilterContext::new(self.table_name, Rc::clone(&all_columns), row, None);
+    pub async fn apply(&self, row: Row) -> Result<Row> {
+        let context = RowContext::new(self.table_name, Cow::Borrowed(&row), None);
         let context = Some(Rc::new(context));
 
-        match self
-            .fields
-            .iter()
-            .find(|assignment| assignment.id == column_def.name)
-        {
-            None => Ok(None),
-            Some(assignment) => {
-                let Assignment { value, .. } = &assignment;
-                let ColumnDef {
-                    data_type,
-                    nullable,
-                    ..
-                } = column_def;
-
-                let value = match evaluate(self.storage, context, None, value).await? {
-                    Evaluated::Literal(v) => Value::try_from_literal(data_type, &v)?,
-                    Evaluated::Value(v) => {
-                        v.validate_type(data_type)?;
-                        v
-                    }
-                };
-
-                value.validate_null(*nullable)?;
-
-                Ok(Some(value))
-            }
-        }
-    }
-
-    pub async fn apply(&self, row: Row) -> Result<Row> {
-        let Row(values) = &row;
-
-        let values = values.clone().into_iter().enumerate().map(|(i, value)| {
-            self.column_defs
-                .get(i)
-                .map(|col_def| (col_def, value))
-                .ok_or_else(|| UpdateError::ConflictOnSchema.into())
-        });
-
-        stream::iter(values)
-            .and_then(|(col_def, value)| {
-                let row = &row;
+        let assignments = stream::iter(self.fields.iter())
+            .then(|assignment| {
+                let Assignment {
+                    id,
+                    value: value_expr,
+                } = assignment;
+                let context = context.as_ref().map(Rc::clone);
 
                 async move {
-                    self.find(row, col_def)
-                        .await
-                        .transpose()
-                        .unwrap_or(Ok(value))
+                    let evaluated = evaluate(self.storage, context, None, value_expr).await?;
+                    let value = match self.column_defs {
+                        Some(column_defs) => {
+                            let ColumnDef {
+                                data_type,
+                                nullable,
+                                ..
+                            } = column_defs
+                                .iter()
+                                .find(|column_def| id == &column_def.name)
+                                .ok_or(UpdateError::ConflictOnSchema)?;
+
+                            let value = match evaluated {
+                                Evaluated::Literal(v) => Value::try_from_literal(data_type, &v)?,
+                                Evaluated::Value(v) => {
+                                    v.validate_type(data_type)?;
+                                    v
+                                }
+                            };
+
+                            value.validate_null(*nullable)?;
+                            value
+                        }
+                        None => evaluated.try_into()?,
+                    };
+
+                    Ok::<_, Error>((id.as_ref(), value))
                 }
             })
-            .try_collect::<Vec<_>>()
-            .await
-            .map(Row)
-    }
+            .try_collect::<Vec<(&str, Value)>>()
+            .await?;
 
-    pub fn all_columns(&self) -> Vec<String> {
-        self.column_defs
-            .iter()
-            .map(|col_def| col_def.name.to_owned())
-            .collect()
-    }
+        Ok(match row {
+            Row::Vec { columns, values } => {
+                let values = columns
+                    .iter()
+                    .zip(values)
+                    .map(|(column, value)| {
+                        assignments
+                            .iter()
+                            .find_map(|(id, new_value)| (column == id).then_some(new_value.clone()))
+                            .unwrap_or(value)
+                    })
+                    .collect();
 
-    pub fn columns_to_update(&self) -> Vec<String> {
-        self.fields
-            .iter()
-            .map(|assignment| assignment.id.to_owned())
-            .collect()
+                Row::Vec { columns, values }
+            }
+            Row::Map(values) => {
+                let assignments = assignments
+                    .into_iter()
+                    .map(|(id, value)| (id.to_owned(), value));
+
+                Row::Map(values.concat(assignments))
+            }
+        })
     }
 }

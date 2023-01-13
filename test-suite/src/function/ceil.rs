@@ -46,13 +46,8 @@ test_case!(ceil, async move {
             Err(EvaluateError::FunctionRequiresFloatValue(String::from("CEIL")).into()),
         ),
         (
-            "SELECT CEIL('string', 'string2') AS ceil FROM SingleItem",
-            Err(TranslateError::FunctionArgsLengthNotMatching {
-                name: "CEIL".to_owned(),
-                expected: 1,
-                found: 2,
-            }
-            .into()),
+            "SELECT CEIL('string' TO DAY) AS ceil FROM SingleItem",
+            Err(TranslateError::UnsupportedExpr("CEIL('string' TO DAY)".to_owned()).into()),
         ),
     ];
 

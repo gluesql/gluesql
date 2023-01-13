@@ -1,6 +1,6 @@
 use {crate::result::Result, regex::Regex, serde::Serialize, thiserror::Error};
 
-#[derive(Error, Serialize, Debug, PartialEq)]
+#[derive(Error, Serialize, Debug, PartialEq, Eq)]
 pub enum StringExtError {
     #[error("unreachable literal unary operation")]
     UnreachablePatternParsing,

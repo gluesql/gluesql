@@ -6,7 +6,7 @@ pub use {
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct InsertNode {
     table_name: String,
     columns: Option<ColumnList>,
@@ -42,7 +42,7 @@ impl InsertNode {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct InsertSourceNode<'a> {
     insert_node: InsertNode,
     source: QueryNode<'a>,
@@ -91,7 +91,7 @@ mod tests {
 
         let actual = table("Foo")
             .insert()
-            .as_select(table("Bar").select().limit(10).project("id, name"))
+            .as_select(table("Bar").select().project("id, name").limit(10))
             .build();
         let expected = r#"INSERT INTO Foo SELECT id, name FROM Bar LIMIT 10"#;
         test(actual, expected);

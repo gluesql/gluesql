@@ -22,7 +22,8 @@ mod select;
 mod select_item;
 mod select_item_list;
 mod show_columns;
-mod table;
+mod table_factor;
+mod table_name;
 #[cfg(feature = "transaction")]
 mod transaction;
 mod update;
@@ -45,12 +46,15 @@ pub use {
     query::QueryNode,
     select::{
         FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode, LimitNode,
-        LimitOffsetNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode,
+        OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode,
     },
     select_item::SelectItemNode,
     select_item_list::SelectItemList,
     show_columns::ShowColumnsNode,
-    table::{TableAliasNode, TableNode},
+    table_factor::{
+        glue_indexes, glue_objects, glue_table_columns, glue_tables, series, TableFactorNode,
+    },
+    table_name::table,
     update::UpdateNode,
 };
 
@@ -78,13 +82,6 @@ pub use expr::{
         rtrim, sign, sin, sqrt, substr, tan, to_date, to_time, to_timestamp, upper, FunctionNode,
     },
 };
-
-/// Entry point function to build statement
-pub fn table(table_name: &str) -> TableNode {
-    let table_name = table_name.to_owned();
-
-    TableNode { table_name }
-}
 
 /// Functions for building transaction statements
 #[cfg(feature = "transaction")]

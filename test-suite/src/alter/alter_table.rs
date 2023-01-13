@@ -61,7 +61,8 @@ test_case!(alter_table_add_drop, async move {
                 name: "amount".to_owned(),
                 data_type: DataType::Int,
                 nullable: false,
-                options: vec![],
+                default: None,
+                unique: None,
             })
             .into()),
         ),

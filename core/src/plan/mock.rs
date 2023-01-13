@@ -8,11 +8,11 @@ use crate::store::Transaction;
 use crate::store::{Index, IndexMut};
 use {
     crate::{
-        data::{Key, Row, Schema},
+        data::{Key, Schema},
         executor::execute,
         parse_sql::parse,
         result::{Error, MutResult, Result},
-        store::{RowIter, Store, StoreMut},
+        store::{DataRow, RowIter, Store, StoreMut},
         translate::translate,
     },
     async_trait::async_trait,
@@ -64,7 +64,7 @@ impl Store for MockStorage {
             .transpose()
     }
 
-    async fn fetch_data(&self, _table_name: &str, _key: &Key) -> Result<Option<Row>> {
+    async fn fetch_data(&self, _table_name: &str, _key: &Key) -> Result<Option<DataRow>> {
         Err(Error::StorageMsg(
             "[MockStorage] fetch_data not supported".to_owned(),
         ))
@@ -95,13 +95,17 @@ impl StoreMut for MockStorage {
         Err((self, Error::StorageMsg(msg)))
     }
 
-    async fn append_data(self, _table_name: &str, _rows: Vec<Row>) -> MutResult<Self, ()> {
+    async fn append_data(self, _table_name: &str, _rows: Vec<DataRow>) -> MutResult<Self, ()> {
         let msg = "[MockStorage] append_data is not supported".to_owned();
 
         Err((self, Error::StorageMsg(msg)))
     }
 
-    async fn insert_data(self, _table_name: &str, _rows: Vec<(Key, Row)>) -> MutResult<Self, ()> {
+    async fn insert_data(
+        self,
+        _table_name: &str,
+        _rows: Vec<(Key, DataRow)>,
+    ) -> MutResult<Self, ()> {
         let msg = "[MockStorage] insert_data is not supported".to_owned();
 
         Err((self, Error::StorageMsg(msg)))
@@ -182,7 +186,8 @@ mod tests {
                     name: "new_col".to_owned(),
                     data_type: DataType::Boolean,
                     nullable: false,
-                    options: Vec::new(),
+                    default: None,
+                    unique: None,
                 },
             ));
             let storage = test(storage.drop_column("Foo", "col", false));

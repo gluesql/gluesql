@@ -2,28 +2,23 @@ use {
     super::{NodeData, Prebuild},
     crate::{
         ast_builder::{
-            FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
-            LimitNode, LimitOffsetNode, OffsetLimitNode, OffsetNode, OrderByNode, SelectItemList,
-            SelectNode,
+            ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
+            JoinNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode, QueryNode,
+            SelectItemList, SelectNode, TableFactorNode,
         },
         result::Result,
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum PrevNode<'a> {
-    Select(SelectNode),
+    Select(SelectNode<'a>),
     GroupBy(GroupByNode<'a>),
     Having(HavingNode<'a>),
-    Limit(LimitNode<'a>),
-    LimitOffset(LimitOffsetNode<'a>),
-    Offset(OffsetNode<'a>),
-    OffsetLimit(OffsetLimitNode<'a>),
     Join(Box<JoinNode<'a>>),
     JoinConstraint(Box<JoinConstraintNode<'a>>),
     HashJoin(HashJoinNode<'a>),
     Filter(FilterNode<'a>),
-    OrderBy(OrderByNode<'a>),
 }
 
 impl<'a> Prebuild for PrevNode<'a> {
@@ -32,21 +27,16 @@ impl<'a> Prebuild for PrevNode<'a> {
             Self::Select(node) => node.prebuild(),
             Self::GroupBy(node) => node.prebuild(),
             Self::Having(node) => node.prebuild(),
-            Self::Limit(node) => node.prebuild(),
-            Self::LimitOffset(node) => node.prebuild(),
-            Self::Offset(node) => node.prebuild(),
-            Self::OffsetLimit(node) => node.prebuild(),
             Self::Join(node) => node.prebuild(),
             Self::JoinConstraint(node) => node.prebuild(),
             Self::HashJoin(node) => node.prebuild(),
             Self::Filter(node) => node.prebuild(),
-            Self::OrderBy(node) => node.prebuild(),
         }
     }
 }
 
-impl<'a> From<SelectNode> for PrevNode<'a> {
-    fn from(node: SelectNode) -> Self {
+impl<'a> From<SelectNode<'a>> for PrevNode<'a> {
+    fn from(node: SelectNode<'a>) -> Self {
         PrevNode::Select(node)
     }
 }
@@ -60,30 +50,6 @@ impl<'a> From<GroupByNode<'a>> for PrevNode<'a> {
 impl<'a> From<HavingNode<'a>> for PrevNode<'a> {
     fn from(node: HavingNode<'a>) -> Self {
         PrevNode::Having(node)
-    }
-}
-
-impl<'a> From<LimitNode<'a>> for PrevNode<'a> {
-    fn from(node: LimitNode<'a>) -> Self {
-        PrevNode::Limit(node)
-    }
-}
-
-impl<'a> From<LimitOffsetNode<'a>> for PrevNode<'a> {
-    fn from(node: LimitOffsetNode<'a>) -> Self {
-        PrevNode::LimitOffset(node)
-    }
-}
-
-impl<'a> From<OffsetNode<'a>> for PrevNode<'a> {
-    fn from(node: OffsetNode<'a>) -> Self {
-        PrevNode::Offset(node)
-    }
-}
-
-impl<'a> From<OffsetLimitNode<'a>> for PrevNode<'a> {
-    fn from(node: OffsetLimitNode<'a>) -> Self {
-        PrevNode::OffsetLimit(node)
     }
 }
 
@@ -111,13 +77,7 @@ impl<'a> From<FilterNode<'a>> for PrevNode<'a> {
     }
 }
 
-impl<'a> From<OrderByNode<'a>> for PrevNode<'a> {
-    fn from(node: OrderByNode<'a>) -> Self {
-        PrevNode::OrderBy(node)
-    }
-}
-
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ProjectNode<'a> {
     prev_node: PrevNode<'a>,
     select_items_list: Vec<SelectItemList<'a>>,
@@ -138,6 +98,22 @@ impl<'a> ProjectNode<'a> {
         self.select_items_list.push(select_items.into());
 
         self
+    }
+
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
+        QueryNode::ProjectNode(self).alias_as(table_alias)
+    }
+
+    pub fn order_by<T: Into<OrderByExprList<'a>>>(self, order_by_exprs: T) -> OrderByNode<'a> {
+        OrderByNode::new(self, order_by_exprs)
+    }
+
+    pub fn offset<T: Into<ExprNode<'a>>>(self, expr: T) -> OffsetNode<'a> {
+        OffsetNode::new(self, expr)
+    }
+
+    pub fn limit<T: Into<ExprNode<'a>>>(self, expr: T) -> LimitNode<'a> {
+        LimitNode::new(self, expr)
     }
 }
 
@@ -246,45 +222,6 @@ mod tests {
         "#;
         test(actual, expected);
 
-        // limit node -> project node -> build
-        let actual = table("Item").select().limit(10).project("*").build();
-        let expected = "SELECT * FROM Item LIMIT 10";
-        test(actual, expected);
-
-        // limit offset node -> project node -> build
-        let actual = table("Operator")
-            .select()
-            .limit(100)
-            .offset(50)
-            .project("name")
-            .build();
-        let expected = "SELECT name FROM Operator LIMIT 100 OFFSET 50";
-        test(actual, expected);
-
-        // offset node -> project node -> build
-        let actual = table("Item").select().offset(10).project("*").build();
-        let expected = "SELECT * FROM Item OFFSET 10";
-        test(actual, expected);
-
-        // offset limit node -> project node -> build
-        let actual = table("Operator")
-            .select()
-            .offset(3)
-            .limit(10)
-            .project("name")
-            .build();
-        let expected = "SELECT name FROM Operator LIMIT 10 OFFSET 3";
-        test(actual, expected);
-
-        // order by node -> project node -> build
-        let actual = table("Foo")
-            .select()
-            .order_by("id asc")
-            .project("id")
-            .build();
-        let expected = "SELECT id FROM Foo ORDER BY id asc";
-        test(actual, expected);
-
         // hash join node -> project node -> build
         let actual = table("Player")
             .select()
@@ -331,5 +268,15 @@ mod tests {
             }))
         };
         assert_eq!(actual, expected);
+
+        // select -> project -> derived subquery
+        let actual = table("Foo")
+            .select()
+            .project("id")
+            .alias_as("Sub")
+            .select()
+            .build();
+        let expected = "SELECT * FROM (SELECT id FROM Foo) Sub";
+        test(actual, expected);
     }
 }

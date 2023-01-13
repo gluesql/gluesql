@@ -2,10 +2,10 @@ use {
     super::error::EvaluateError,
     crate::{
         ast::DataType,
-        data::{Key, Literal, Value},
+        data::{value::HashMapJsonExt, Key, Literal, Value},
         result::{Error, Result},
     },
-    std::cmp::Ordering,
+    std::{cmp::Ordering, collections::HashMap},
 };
 
 #[derive(Clone)]
@@ -63,6 +63,22 @@ impl TryFrom<Evaluated<'_>> for bool {
             Evaluated::Value(v) => {
                 Err(EvaluateError::BooleanTypeRequired(format!("{:?}", v)).into())
             }
+        }
+    }
+}
+
+impl TryFrom<Evaluated<'_>> for HashMap<String, Value> {
+    type Error = Error;
+
+    fn try_from(evaluated: Evaluated<'_>) -> Result<HashMap<String, Value>> {
+        match evaluated {
+            Evaluated::Literal(Literal::Text(v)) => HashMap::parse_json_object(v.as_ref()),
+            Evaluated::Literal(v) => {
+                Err(EvaluateError::TextLiteralRequired(format!("{v:?}")).into())
+            }
+            Evaluated::Value(Value::Str(v)) => HashMap::parse_json_object(v.as_str()),
+            Evaluated::Value(Value::Map(v)) => Ok(v),
+            Evaluated::Value(v) => Err(EvaluateError::MapOrStringValueRequired(v.into()).into()),
         }
     }
 }
@@ -169,12 +185,12 @@ impl<'a> Evaluated<'a> {
         let evaluated = match (self, other) {
             (Evaluated::Literal(l), Evaluated::Literal(r)) => Evaluated::Literal(l.concat(r)),
             (Evaluated::Literal(l), Evaluated::Value(r)) => {
-                Evaluated::from((&Value::try_from(l)?).concat(&r))
+                Evaluated::from((Value::try_from(l)?).concat(r))
             }
             (Evaluated::Value(l), Evaluated::Literal(r)) => {
-                Evaluated::from(l.concat(&Value::try_from(r)?))
+                Evaluated::from(l.concat(Value::try_from(r)?))
             }
-            (Evaluated::Value(l), Evaluated::Value(r)) => Evaluated::from(l.concat(&r)),
+            (Evaluated::Value(l), Evaluated::Value(r)) => Evaluated::from(l.concat(r)),
         };
 
         Ok(evaluated)
@@ -186,7 +202,7 @@ impl<'a> Evaluated<'a> {
                 Evaluated::Literal(l.like(&r, case_sensitive)?)
             }
             (Evaluated::Literal(l), Evaluated::Value(r)) => {
-                Evaluated::from((&Value::try_from(l)?).like(&r, case_sensitive)?)
+                Evaluated::from((Value::try_from(l)?).like(&r, case_sensitive)?)
             }
             (Evaluated::Value(l), Evaluated::Literal(r)) => {
                 Evaluated::from(l.like(&Value::try_from(r)?, case_sensitive)?)

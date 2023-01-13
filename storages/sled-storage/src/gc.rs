@@ -4,10 +4,7 @@ use {
         lock::{get_txdata_key, Lock, TxData},
         SledStorage, Snapshot,
     },
-    gluesql_core::{
-        data::{Row, Schema},
-        result::Result,
-    },
+    gluesql_core::{data::Schema, result::Result, store::DataRow},
     std::time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -109,7 +106,7 @@ impl SledStorage {
         }
 
         for txid in txids {
-            gc_txid!(txid, key::temp_data_prefix(txid), Row);
+            gc_txid!(txid, key::temp_data_prefix(txid), DataRow);
             gc_txid!(txid, key::temp_schema_prefix(txid), Schema);
 
             for (temp_key, data_key) in fetch_keys(key::temp_index_prefix(txid))? {
@@ -145,7 +142,7 @@ impl SledStorage {
                 self.tree.remove(temp_key).map_err(err_into)?;
             }
 
-            self.tree.remove(&get_txdata_key(txid)).map_err(err_into)?;
+            self.tree.remove(get_txdata_key(txid)).map_err(err_into)?;
         }
 
         Ok(())

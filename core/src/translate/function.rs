@@ -34,7 +34,19 @@ pub fn translate_trim(
     })))
 }
 
-pub fn translate_positon(sub_expr: &SqlExpr, from_expr: &SqlExpr) -> Result<Expr> {
+pub fn translate_floor(expr: &SqlExpr) -> Result<Expr> {
+    let expr = translate_expr(expr)?;
+
+    Ok(Expr::Function(Box::new(Function::Floor(expr))))
+}
+
+pub fn translate_ceil(expr: &SqlExpr) -> Result<Expr> {
+    let expr = translate_expr(expr)?;
+
+    Ok(Expr::Function(Box::new(Function::Ceil(expr))))
+}
+
+pub fn translate_position(sub_expr: &SqlExpr, from_expr: &SqlExpr) -> Result<Expr> {
     let from_expr = translate_expr(from_expr)?;
     let sub_expr = translate_expr(sub_expr)?;
     Ok(Expr::Function(Box::new(Function::Position {
@@ -206,7 +218,6 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         "VARIANCE" => translate_aggregate_one_arg(Aggregate::Variance, args, name),
         "STDEV" => translate_aggregate_one_arg(Aggregate::Stdev, args, name),
         "CONCAT" => {
-            check_len_min(name, args.len(), 1)?;
             let exprs = args
                 .into_iter()
                 .map(translate_expr)
@@ -300,9 +311,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 fill,
             })))
         }
-        "CEIL" => translate_function_one_arg(Function::Ceil, args, name),
         "ROUND" => translate_function_one_arg(Function::Round, args, name),
-        "FLOOR" => translate_function_one_arg(Function::Floor, args, name),
         "EXP" => translate_function_one_arg(Function::Exp, args, name),
         "LN" => translate_function_one_arg(Function::Ln, args, name),
         "LOG" => {

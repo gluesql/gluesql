@@ -8,16 +8,28 @@ use {
     uuid::Uuid,
 };
 
-impl Value {
-    pub fn parse_json_map(value: &str) -> Result<Value> {
+pub trait HashMapJsonExt {
+    fn parse_json_object(value: &str) -> Result<HashMap<String, Value>>;
+}
+
+impl HashMapJsonExt for HashMap<String, Value> {
+    fn parse_json_object(value: &str) -> Result<HashMap<String, Value>> {
         let value = serde_json::from_str(value)
             .map_err(|_| ValueError::InvalidJsonString(value.to_owned()))?;
 
-        if !matches!(value, JsonValue::Object(_)) {
-            return Err(ValueError::JsonObjectTypeRequired.into());
+        match value {
+            JsonValue::Object(json_map) => json_map
+                .into_iter()
+                .map(|(key, value)| value.try_into().map(|value| (key, value)))
+                .collect::<Result<HashMap<String, Value>>>(),
+            _ => Err(ValueError::JsonObjectTypeRequired.into()),
         }
+    }
+}
 
-        value.try_into()
+impl Value {
+    pub fn parse_json_map(value: &str) -> Result<Value> {
+        HashMap::parse_json_object(value).map(Value::Map)
     }
 
     pub fn parse_json_list(value: &str) -> Result<Value> {

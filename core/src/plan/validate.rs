@@ -24,7 +24,12 @@ pub fn validate(schema_map: &HashMap<String, Schema>, statement: Statement) -> R
                         {
                             let tables_with_given_col =
                                 schema_map.iter().filter_map(|(_, schema)| {
-                                    schema.column_defs.iter().find(|col| &col.name == ident)
+                                    match schema.column_defs.as_ref() {
+                                        Some(column_defs) => {
+                                            column_defs.iter().find(|col| &col.name == ident)
+                                        }
+                                        None => None,
+                                    }
                                 });
 
                             if tables_with_given_col.count() > 1 {

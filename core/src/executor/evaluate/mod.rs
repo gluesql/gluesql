@@ -5,11 +5,11 @@ mod function;
 mod stateless;
 
 use {
-    super::{context::FilterContext, select::select},
+    super::{context::RowContext, select::select},
     crate::{
         ast::{Aggregate, Expr, Function},
-        data::{Interval, Literal, Value},
-        result::Result,
+        data::{Interval, Literal, Row, Value},
+        result::{Error, Result},
         store::GStore,
     },
     async_recursion::async_recursion,
@@ -25,10 +25,10 @@ use {
 pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
 
 #[async_recursion(?Send)]
-pub async fn evaluate<'a>(
+pub async fn evaluate<'a, 'b: 'a, 'c: 'a>(
     storage: &'a dyn GStore,
-    context: Option<Rc<FilterContext<'a>>>,
-    aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
+    context: Option<Rc<RowContext<'b>>>,
+    aggregated: Option<Rc<HashMap<&'c Aggregate, Value>>>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>> {
     let eval = |expr| {
@@ -67,7 +67,18 @@ pub async fn evaluate<'a>(
         Expr::Subquery(query) => {
             let evaluations = select(storage, query, context.as_ref().map(Rc::clone))
                 .await?
-                .map_ok(|row| row.take_first_value().map(Evaluated::from))
+                .map(|row| {
+                    let value = match row? {
+                        Row::Vec { values, .. } => values,
+                        Row::Map(_) => {
+                            return Err(EvaluateError::SchemalessProjectionForSubQuery.into());
+                        }
+                    }
+                    .into_iter()
+                    .next();
+
+                    Ok::<_, Error>(value)
+                })
                 .take(2)
                 .try_collect::<Vec<_>>()
                 .await?;
@@ -76,10 +87,13 @@ pub async fn evaluate<'a>(
                 return Err(EvaluateError::MoreThanOneRowReturned.into());
             }
 
-            evaluations
+            let value = evaluations
                 .into_iter()
                 .next()
-                .unwrap_or_else(|| Ok(Evaluated::from(Value::Null)))
+                .flatten()
+                .unwrap_or(Value::Null);
+
+            Ok(Evaluated::from(value))
         }
         Expr::BinaryOp { op, left, right } => {
             let left = eval(left).await?;
@@ -131,7 +145,19 @@ pub async fn evaluate<'a>(
 
             select(storage, subquery, context)
                 .await?
-                .and_then(|row| ready(row.take_first_value().map(Evaluated::from)))
+                .map(|row| {
+                    let value = match row? {
+                        Row::Vec { values, .. } => values,
+                        Row::Map(_) => {
+                            return Err(EvaluateError::SchemalessProjectionForInSubQuery.into());
+                        }
+                    }
+                    .into_iter()
+                    .next()
+                    .unwrap_or(Value::Null);
+
+                    Ok(Evaluated::from(value))
+                })
                 .try_filter(|evaluated| ready(evaluated == &target))
                 .try_next()
                 .await
@@ -245,11 +271,11 @@ pub async fn evaluate<'a>(
     }
 }
 
-async fn evaluate_function<'a>(
+async fn evaluate_function<'a, 'b: 'a, 'c: 'a>(
     storage: &'a dyn GStore,
-    context: Option<Rc<FilterContext<'a>>>,
-    aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
-    func: &'a Function,
+    context: Option<Rc<RowContext<'b>>>,
+    aggregated: Option<Rc<HashMap<&'c Aggregate, Value>>>,
+    func: &'b Function,
 ) -> Result<Evaluated<'a>> {
     use function as f;
 

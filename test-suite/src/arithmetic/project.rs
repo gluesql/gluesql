@@ -3,7 +3,7 @@ use {
     gluesql_core::prelude::Value::{self, *},
 };
 
-test_case!(blend, async move {
+test_case!(project, async move {
     run!(
         "
         CREATE TABLE Arith (

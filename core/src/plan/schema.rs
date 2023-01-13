@@ -235,8 +235,7 @@ mod tests {
         let schema_map = block_on(fetch_schema_map(storage, &statement));
 
         Ok(schema_map?
-            .into_iter()
-            .map(|(table_name, _)| table_name)
+            .into_keys()
             .collect::<Vector<String>>()
             .sort()
             .into())

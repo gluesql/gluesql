@@ -5,8 +5,8 @@ use {
             IntervalError, KeyError, LiteralError, RowError, StringExtError, TableError, ValueError,
         },
         executor::{
-            AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, SelectError,
-            SortError, UpdateError, ValidateError,
+            AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, InsertError,
+            SelectError, SortError, UpdateError, ValidateError,
         },
         plan::PlanError,
         store::{GStore, GStoreMut},
@@ -56,21 +56,23 @@ pub enum Error {
     #[error(transparent)]
     Fetch(#[from] FetchError),
     #[error(transparent)]
-    Evaluate(#[from] EvaluateError),
-    #[error(transparent)]
     Select(#[from] SelectError),
+    #[error(transparent)]
+    Evaluate(#[from] EvaluateError),
     #[error(transparent)]
     Aggregate(#[from] AggregateError),
     #[error(transparent)]
     Sort(#[from] SortError),
     #[error(transparent)]
-    Update(#[from] UpdateError),
+    Insert(#[from] InsertError),
     #[error(transparent)]
-    Row(#[from] RowError),
+    Update(#[from] UpdateError),
     #[error(transparent)]
     Table(#[from] TableError),
     #[error(transparent)]
     Validate(#[from] ValidateError),
+    #[error(transparent)]
+    Row(#[from] RowError),
     #[error(transparent)]
     Key(#[from] KeyError),
     #[error(transparent)]
@@ -104,14 +106,15 @@ impl PartialEq for Error {
             (Execute(e), Execute(e2)) => e == e2,
             (Alter(e), Alter(e2)) => e == e2,
             (Fetch(e), Fetch(e2)) => e == e2,
-            (Evaluate(e), Evaluate(e2)) => e == e2,
             (Select(e), Select(e2)) => e == e2,
+            (Evaluate(e), Evaluate(e2)) => e == e2,
             (Aggregate(e), Aggregate(e2)) => e == e2,
             (Sort(e), Sort(e2)) => e == e2,
+            (Insert(e), Insert(e2)) => e == e2,
             (Update(e), Update(e2)) => e == e2,
-            (Row(e), Row(e2)) => e == e2,
             (Table(e), Table(e2)) => e == e2,
             (Validate(e), Validate(e2)) => e == e2,
+            (Row(e), Row(e2)) => e == e2,
             (Key(e), Key(e2)) => e == e2,
             (Value(e), Value(e2)) => e == e2,
             (Literal(e), Literal(e2)) => e == e2,

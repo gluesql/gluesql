@@ -5,7 +5,7 @@ use {
     thiserror::Error,
 };
 
-#[derive(Error, Serialize, Debug, PartialEq)]
+#[derive(Error, Serialize, Debug, PartialEq, Eq)]
 pub enum EvaluateError {
     #[error(transparent)]
     #[serde(serialize_with = "error_serialize")]
@@ -44,6 +44,12 @@ pub enum EvaluateError {
     #[error("expr requires map or list value")]
     MapOrListTypeRequired,
 
+    #[error("map or string value required for json map conversion: {0}")]
+    MapOrStringValueRequired(String),
+
+    #[error("text literal required for json map conversion: {0}")]
+    TextLiteralRequired(String),
+
     #[error("unsupported stateless expression: {0:#?}")]
     UnsupportedStatelessExpr(Expr),
 
@@ -61,6 +67,12 @@ pub enum EvaluateError {
 
     #[error("subquery returns more than one row")]
     MoreThanOneRowReturned,
+
+    #[error("schemaless projection is not allowed for IN (subquery)")]
+    SchemalessProjectionForInSubQuery,
+
+    #[error("schemaless projection is not allowed for subquery")]
+    SchemalessProjectionForSubQuery,
 
     #[error("format function does not support following data_type: {0}")]
     UnsupportedExprForFormatFunction(String),

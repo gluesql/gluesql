@@ -5,13 +5,14 @@ use {
         ast_builder::{
             select::{NodeData, Prebuild},
             ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinNode, LimitNode,
-            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, SelectItemList,
+            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode, SelectItemList,
+            TableFactorNode,
         },
         result::Result,
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum PrevNode<'a> {
     Join(Box<JoinNode<'a>>),
     HashJoin(Box<HashJoinNode<'a>>),
@@ -38,7 +39,7 @@ impl<'a> From<HashJoinNode<'a>> for PrevNode<'a> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct JoinConstraintNode<'a> {
     prev_node: PrevNode<'a>,
     expr: ExprNode<'a>,
@@ -100,6 +101,10 @@ impl<'a> JoinConstraintNode<'a> {
 
     pub fn order_by<T: Into<OrderByExprList<'a>>>(self, order_by_exprs: T) -> OrderByNode<'a> {
         OrderByNode::new(self, order_by_exprs)
+    }
+
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
+        QueryNode::JoinConstraintNode(self).alias_as(table_alias)
     }
 }
 
@@ -223,5 +228,21 @@ mod tests {
             }))
         };
         assert_eq!(actual, expected, "hash join -> join constraint");
+
+        // join -> on -> derived subquery
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .on("Foo.id = Bar.id")
+            .alias_as("Sub")
+            .select()
+            .build();
+        let expected = "
+            SELECT * FROM (
+                SELECT * FROM Foo
+                INNER JOIN Bar ON Foo.id = Bar.id
+            ) Sub
+            ";
+        test(actual, expected);
     }
 }

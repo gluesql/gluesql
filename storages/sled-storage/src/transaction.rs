@@ -8,9 +8,9 @@ use {
     },
     async_trait::async_trait,
     gluesql_core::{
-        data::{Row, Schema},
+        data::Schema,
         result::{Error, MutResult, Result},
-        store::Transaction,
+        store::{DataRow, Transaction},
     },
     serde::{de::DeserializeOwned, Serialize},
     sled::{
@@ -211,7 +211,7 @@ impl SledStorage {
 
         self.tree
             .transaction(move |tree| {
-                rollback_items::<Row>(tree, txid, &data_items)?;
+                rollback_items::<DataRow>(tree, txid, &data_items)?;
                 rollback_items::<Schema>(tree, txid, &schema_items)?;
 
                 for (temp_key, value_key) in index_items.iter() {

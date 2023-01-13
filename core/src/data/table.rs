@@ -5,7 +5,7 @@ use {
     thiserror::Error,
 };
 
-#[derive(Error, Serialize, Debug, PartialEq)]
+#[derive(Error, Serialize, Debug, PartialEq, Eq)]
 pub enum TableError {
     #[error("unreachable")]
     Unreachable,

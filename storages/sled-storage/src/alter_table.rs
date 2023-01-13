@@ -9,10 +9,10 @@ use {
     async_trait::async_trait,
     gluesql_core::{
         ast::ColumnDef,
-        data::{schema::Schema, Row, Value},
+        data::{schema::Schema, Value},
         executor::evaluate_stateless,
-        result::{MutResult, Result, TrySelf},
-        store::{AlterTable, AlterTableError},
+        result::{Error, MutResult, Result, TrySelf},
+        store::{AlterTable, AlterTableError, DataRow},
     },
     sled::transaction::ConflictableTransactionError,
     std::{iter::once, str},
@@ -83,7 +83,7 @@ impl AlterTable for SledStorage {
                     .map_err(ConflictableTransactionError::Abort)?;
                 let new_key = new_key.replace(table_name, new_table_name);
 
-                let old_row_snapshot: Snapshot<Row> = bincode::deserialize(value)
+                let old_row_snapshot: Snapshot<DataRow> = bincode::deserialize(value)
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
 
@@ -99,7 +99,7 @@ impl AlterTable for SledStorage {
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
 
-                let new_row_snapshot = Snapshot::<Row>::new(txid, row);
+                let new_row_snapshot = Snapshot::<DataRow>::new(txid, row);
                 let new_row_snapshot = bincode::serialize(&new_row_snapshot)
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
@@ -164,6 +164,10 @@ impl AlterTable for SledStorage {
                 .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
 
+            let column_defs = column_defs
+                .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.to_owned()).into())
+                .map_err(ConflictableTransactionError::Abort)?;
+
             if column_defs
                 .iter()
                 .any(|ColumnDef { name, .. }| name == new_column_name)
@@ -183,7 +187,8 @@ impl AlterTable for SledStorage {
             let ColumnDef {
                 data_type,
                 nullable,
-                options,
+                default,
+                unique,
                 ..
             } = column_defs[i].clone();
 
@@ -191,13 +196,14 @@ impl AlterTable for SledStorage {
                 name: new_column_name.to_owned(),
                 data_type,
                 nullable,
-                options,
+                default,
+                unique,
             };
             let column_defs = Vector::from(column_defs).update(i, column_def).into();
 
             let schema = Schema {
                 table_name: table_name.to_owned(),
-                column_defs,
+                column_defs: Some(column_defs),
                 indexes,
                 created,
             };
@@ -257,6 +263,10 @@ impl AlterTable for SledStorage {
                 .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
 
+            let column_defs = column_defs
+                .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.to_owned()).into())
+                .map_err(ConflictableTransactionError::Abort)?;
+
             if column_defs
                 .iter()
                 .any(|ColumnDef { name, .. }| name == &column_def.name)
@@ -270,10 +280,10 @@ impl AlterTable for SledStorage {
             let ColumnDef {
                 data_type,
                 nullable,
+                default,
                 ..
             } = column_def;
 
-            let default = column_def.get_default();
             let value = match (default, nullable) {
                 (Some(expr), _) => {
                     let evaluated = evaluate_stateless(None, expr)
@@ -292,7 +302,7 @@ impl AlterTable for SledStorage {
 
             // migrate data
             for (key, snapshot) in items.iter() {
-                let snapshot: Snapshot<Row> = bincode::deserialize(snapshot)
+                let snapshot: Snapshot<DataRow> = bincode::deserialize(snapshot)
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
                 let row = match snapshot.clone().extract(txid, None) {
@@ -301,7 +311,21 @@ impl AlterTable for SledStorage {
                         continue;
                     }
                 };
-                let row = Row(row.0.into_iter().chain(once(value.clone())).collect());
+
+                let values = match row {
+                    DataRow::Vec(values) => values,
+                    DataRow::Map(_) => {
+                        return Err(Error::StorageMsg(
+                            "conflict - add_column failed: schemaless row found".to_owned(),
+                        ))
+                        .map_err(ConflictableTransactionError::Abort);
+                    }
+                };
+                let row = values
+                    .into_iter()
+                    .chain(once(value.clone()))
+                    .collect::<Vec<Value>>()
+                    .into();
 
                 let (snapshot, _) = snapshot.update(txid, row);
                 let snapshot = bincode::serialize(&snapshot)
@@ -327,7 +351,7 @@ impl AlterTable for SledStorage {
 
             let schema = Schema {
                 table_name,
-                column_defs,
+                column_defs: Some(column_defs),
                 indexes,
                 created,
             };
@@ -391,6 +415,10 @@ impl AlterTable for SledStorage {
                 .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
 
+            let column_defs = column_defs
+                .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.to_owned()).into())
+                .map_err(ConflictableTransactionError::Abort)?;
+
             let column_index = column_defs
                 .iter()
                 .position(|ColumnDef { name, .. }| name == column_name);
@@ -409,7 +437,7 @@ impl AlterTable for SledStorage {
 
             // migrate data
             for (key, snapshot) in items.iter() {
-                let snapshot: Snapshot<Row> = bincode::deserialize(snapshot)
+                let snapshot: Snapshot<DataRow> = bincode::deserialize(snapshot)
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
                 let row = match snapshot.clone().extract(txid, None) {
@@ -418,12 +446,23 @@ impl AlterTable for SledStorage {
                         continue;
                     }
                 };
-                let row = Row(row
-                    .0
+
+                let values = match row {
+                    DataRow::Vec(values) => values,
+                    DataRow::Map(_) => {
+                        return Err(Error::StorageMsg(
+                            "conflict - drop_column failed: schemaless row found".to_owned(),
+                        ))
+                        .map_err(ConflictableTransactionError::Abort);
+                    }
+                };
+
+                let row = values
                     .into_iter()
                     .enumerate()
                     .filter_map(|(i, v)| (i != column_index).then_some(v))
-                    .collect());
+                    .collect::<Vec<_>>()
+                    .into();
 
                 let (snapshot, _) = snapshot.update(txid, row);
                 let snapshot = bincode::serialize(&snapshot)
@@ -450,7 +489,7 @@ impl AlterTable for SledStorage {
 
             let schema = Schema {
                 table_name,
-                column_defs,
+                column_defs: Some(column_defs),
                 indexes,
                 created,
             };

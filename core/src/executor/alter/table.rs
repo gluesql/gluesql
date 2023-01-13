@@ -43,10 +43,11 @@ pub async fn create_table<T: GStore + GStoreMut>(
                             name: "N".into(),
                             data_type: DataType::Int,
                             nullable: false,
-                            options: Vec::new(),
+                            default: None,
+                            unique: None,
                         };
 
-                        vec![column_def]
+                        Some(vec![column_def])
                     }
                     _ => {
                         return Err(Error::Table(TableError::Unreachable));
@@ -93,14 +94,16 @@ pub async fn create_table<T: GStore + GStoreMut>(
                             name: format!("column{}", i + 1),
                             data_type,
                             nullable: true,
-                            options: Vec::new(),
+                            default: None,
+                            unique: None,
                         })
                         .collect::<Vec<_>>();
 
-                    column_defs
+                    Some(column_defs)
                 }
             },
-            None => column_defs.to_vec(),
+            None if !column_defs.is_empty() => Some(column_defs.to_vec()),
+            None => None,
         };
 
         let schema = Schema {
@@ -110,10 +113,12 @@ pub async fn create_table<T: GStore + GStoreMut>(
             created: Utc::now().naive_utc(),
         };
 
-        validate_column_names(&schema.column_defs)?;
+        if let Some(column_defs) = schema.column_defs.as_deref() {
+            validate_column_names(column_defs)?;
 
-        for column_def in &schema.column_defs {
-            validate(column_def)?;
+            for column_def in column_defs {
+                validate(column_def)?;
+            }
         }
 
         match (
@@ -136,9 +141,15 @@ pub async fn create_table<T: GStore + GStoreMut>(
 
     match source {
         Some(q) => {
-            let (storage, rows) = async { select(&storage, q, None).await?.try_collect().await }
-                .await
-                .try_self(storage)?;
+            let (storage, rows) = async {
+                select(&storage, q, None)
+                    .await?
+                    .map_ok(Into::into)
+                    .try_collect()
+                    .await
+            }
+            .await
+            .try_self(storage)?;
 
             storage.append_data(target_table_name, rows).await
         }

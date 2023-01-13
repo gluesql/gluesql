@@ -5,7 +5,6 @@ pub mod alter;
 pub mod arithmetic;
 pub mod ast_builder;
 pub mod basic;
-pub mod blend;
 pub mod case;
 pub mod concat;
 pub mod data_type;
@@ -26,6 +25,8 @@ pub mod nullable;
 pub mod order_by;
 pub mod ordering;
 pub mod primary_key;
+pub mod project;
+pub mod schemaless;
 pub mod series;
 pub mod show_columns;
 pub mod synthesize;
@@ -75,10 +76,10 @@ macro_rules! generate_store_tests {
         glue!(aggregate_error, aggregate::error::error);
         glue!(aggregate_error_group_by, aggregate::error::error_group_by);
         glue!(arithmetic_error, arithmetic::error::error);
-        glue!(arithmetic_blend, arithmetic::blend::blend);
+        glue!(arithmetic_project, arithmetic::project::project);
         glue!(arithmetic_on_where, arithmetic::on_where::on_where);
         glue!(concat, concat::concat);
-        glue!(blend, blend::blend);
+        glue!(project, project::project);
         glue!(create_table, alter::create_table);
         glue!(drop_table, alter::drop_table);
         glue!(default, default::default);
@@ -125,7 +126,7 @@ macro_rules! generate_store_tests {
         glue!(function_chr, function::chr::chr);
         glue!(function_position, function::position::position);
         glue!(join, join::join);
-        glue!(join_blend, join::blend);
+        glue!(join_project, join::project);
         glue!(migrate, migrate::migrate);
         glue!(nested_select, nested_select::nested_select);
         glue!(primary_key, primary_key::primary_key);
@@ -177,6 +178,11 @@ macro_rules! generate_store_tests {
         glue!(ast_builder_insert, ast_builder::insert::insert);
         glue!(ast_builder_update, ast_builder::update::update);
         glue!(ast_builder_delete, ast_builder::delete::delete);
+        glue!(ast_builder_alias_as, ast_builder::alias_as::alias_as);
+
+        // schemaless data support
+        glue!(schemaless_basic, schemaless::basic);
+        glue!(schemaless_error, schemaless::error);
     };
 }
 
