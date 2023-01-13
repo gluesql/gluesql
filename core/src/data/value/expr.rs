@@ -175,6 +175,19 @@ mod tests {
             )))
         );
         assert_eq!(
+            Value::U16(16).try_into(),
+            Ok(Expr::Literal(AstLiteral::Number(
+                BigDecimal::from_u16(16).unwrap()
+            )))
+        );
+        assert_eq!(
+            Value::U32(32).try_into(),
+            Ok(Expr::Literal(AstLiteral::Number(
+                BigDecimal::from_u32(32).unwrap()
+            )))
+        );
+
+        assert_eq!(
             Value::F64(64.4).try_into(),
             Ok(Expr::Literal(AstLiteral::Number(
                 BigDecimal::from_f64(64.4).unwrap()
