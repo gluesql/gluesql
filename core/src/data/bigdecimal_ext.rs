@@ -52,13 +52,13 @@ impl BigDecimalExt for BigDecimal {
             .then(|| bigdecimal::ToPrimitive::to_u32(self))?
     }
     fn to_u64(&self) -> Option<u64> {
-        match self.is_integer(){
+        match self.is_integer() {
             true => bigdecimal::ToPrimitive::to_u64(self),
             false => None,
         }
     }
     fn to_u128(&self) -> Option<u128> {
-       match self.is_integer(){
+        match self.is_integer() {
             true => bigdecimal::ToPrimitive::to_u128(self),
             false => None,
         }
