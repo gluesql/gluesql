@@ -186,6 +186,18 @@ mod tests {
                 BigDecimal::from_u32(32).unwrap()
             )))
         );
+        assert_eq!(
+            Value::U64(64).try_into(),
+            Ok(Expr::Literal(AstLiteral::Number(
+                BigDecimal::from_u64(64).unwrap()
+            )))
+        );
+        assert_eq!(
+            Value::U128(128).try_into(),
+            Ok(Expr::Literal(AstLiteral::Number(
+                BigDecimal::from_u32(128).unwrap()
+            )))
+        );
 
         assert_eq!(
             Value::F64(64.4).try_into(),
