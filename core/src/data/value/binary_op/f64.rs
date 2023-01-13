@@ -365,11 +365,13 @@ mod tests {
         assert!(
             matches!(base.try_multiply(&U16(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON )
         );
-                assert!(
+        assert!(
             matches!(base.try_multiply(&U32(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON )
-        );        assert!(
+        );
+        assert!(
             matches!(base.try_multiply(&U64(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON )
-        );        assert!(
+        );
+        assert!(
             matches!(base.try_multiply(&U128(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON )
         );
         assert!(
@@ -404,8 +406,6 @@ mod tests {
         assert!(matches!(base.try_divide(&U32(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON ));
         assert!(matches!(base.try_divide(&U64(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON ));
         assert!(matches!(base.try_divide(&U128(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON ));
-
-
 
         assert!(
             matches!(base.try_divide(&F64(1.0)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON )
