@@ -1717,6 +1717,9 @@ mod tests {
         assert_eq!(I128(5).unary_factorial(), Ok(I128(120)));
         assert_eq!(U8(5).unary_factorial(), Ok(I128(120)));
         assert_eq!(U16(5).unary_factorial(), Ok(I128(120)));
+        assert_eq!(U32(5).unary_factorial(),Ok(I128(120)));
+        assert_eq!(U64(5).unary_factorial(),Ok(I128(120)));
+        assert_eq!(U128(5).unary_factorial(),Ok(I128(120)));
         assert_eq!(
             F64(5.0).unary_factorial(),
             Err(ValueError::FactorialOnNonInteger.into())
@@ -1736,6 +1739,9 @@ mod tests {
         assert_eq!(I128(9).sqrt(), Ok(F64(3.0)));
         assert_eq!(U8(9).sqrt(), Ok(F64(3.0)));
         assert_eq!(U16(9).sqrt(), Ok(F64(3.0)));
+        assert_eq!(U32(9).sqrt(),Ok(F64(3.0)));
+        assert_eq!(U64(9).sqrt(),Ok(F64(3.0)));
+        assert_eq!(U128(9).sqrt(),Ok(F64(3.0)));
         assert_eq!(F64(9.0).sqrt(), Ok(F64(3.0)));
         assert!(Null.sqrt().unwrap().is_null());
         assert_eq!(
@@ -1796,6 +1802,9 @@ mod tests {
         assert_eq!(I128(1).get_type(), Some(D::Int128));
         assert_eq!(U8(1).get_type(), Some(D::Uint8));
         assert_eq!(U16(1).get_type(), Some(D::Uint16));
+        assert_eq!(U32(1).get_type(),Some(D::Uint32));
+        assert_eq!(U64(1).get_type(),Some(D::Uint64));
+        assert_eq!(U128(1).get_type(),Some(D::Uint128));
         assert_eq!(F64(1.1).get_type(), Some(D::Float));
         assert_eq!(decimal.get_type(), Some(D::Decimal));
         assert_eq!(Bool(true).get_type(), Some(D::Boolean));
