@@ -453,7 +453,7 @@ impl TryFrom<&Value> for u128 {
 
     fn try_from(v: &Value) -> Result<u128> {
         Ok(match v {
-            Value::Bool(value) => u128::from(*values),
+            Value::Bool(value) => u128::from(*value),
             Value::I8(value) => value.to_u128().ok_or(ValueError::ImpossibleCast)?,
             Value::I16(value) => value.to_u128().ok_or(ValueError::ImpossibleCast)?,
             Value::I32(value) => value.to_u128().ok_or(ValueError::ImpossibleCast)?,
