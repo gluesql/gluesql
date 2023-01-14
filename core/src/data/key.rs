@@ -306,6 +306,9 @@ mod tests {
         assert_eq!(convert("2048"), Ok(Key::I64(2048)));
         assert_eq!(convert("CAST(11 AS UINT8)"), Ok(Key::U8(11)));
         assert_eq!(convert("CAST(11 AS UINT16)"), Ok(Key::U16(11)));
+        assert_eq!(convert("CAST(11 AS UINT32)"), Ok(Key::U32(11)));
+        assert_eq!(convert("CAST(11 AS UINT64)"), Ok(Key::U64(11)));
+        assert_eq!(convert("CAST(11 AS UINT128)"), Ok(Key::U128(11)));
         assert_eq!(
             convert("CAST(123.45 AS DECIMAL)"),
             Ok(Key::Decimal(Decimal::from_str("123.45").unwrap()))
@@ -470,6 +473,33 @@ mod tests {
         let n2 = U16(3).to_cmp_be_bytes();
         let n3 = U16(20).to_cmp_be_bytes();
         let n4 = U16(20).to_cmp_be_bytes();
+        assert_eq!(cmp(&n1, &n2), Ordering::Less);
+        assert_eq!(cmp(&n3, &n2), Ordering::Greater);
+        assert_eq!(cmp(&n1, &n4), Ordering::Less);
+        assert_eq!(cmp(&n3, &n4), Ordering::Equal);
+
+        let n1 = U32(0).to_cmp_be_bytes();
+        let n2 = U32(3).to_cmp_be_bytes();
+        let n3 = U32(20).to_cmp_be_bytes();
+        let n4 = U32(20).to_cmp_be_bytes();
+        assert_eq!(cmp(&n1, &n2), Ordering::Less);
+        assert_eq!(cmp(&n3, &n2), Ordering::Greater);
+        assert_eq!(cmp(&n1, &n4), Ordering::Less);
+        assert_eq!(cmp(&n3, &n4), Ordering::Equal);
+
+        let n1 = U64(0).to_cmp_be_bytes();
+        let n2 = U64(3).to_cmp_be_bytes();
+        let n3 = U64(20).to_cmp_be_bytes();
+        let n4 = U64(20).to_cmp_be_bytes();
+        assert_eq!(cmp(&n1, &n2), Ordering::Less);
+        assert_eq!(cmp(&n3, &n2), Ordering::Greater);
+        assert_eq!(cmp(&n1, &n4), Ordering::Less);
+        assert_eq!(cmp(&n3, &n4), Ordering::Equal);
+
+        let n1 = U128(0).to_cmp_be_bytes();
+        let n2 = U128(3).to_cmp_be_bytes();
+        let n3 = U128(20).to_cmp_be_bytes();
+        let n4 = U128(20).to_cmp_be_bytes();
         assert_eq!(cmp(&n1, &n2), Ordering::Less);
         assert_eq!(cmp(&n3, &n2), Ordering::Greater);
         assert_eq!(cmp(&n1, &n4), Ordering::Less);
