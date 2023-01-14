@@ -8,7 +8,7 @@ use {
         data::Schema,
         result::Result,
     },
-    std::{collections::HashMap, rc::Rc},
+    std::{collections::HashMap, ops::Add, rc::Rc},
 };
 
 /// Validate user select column should not be ambiguous
@@ -31,9 +31,9 @@ pub fn validate(
                             let tables_with_given_col = validation_context
                                 .as_ref()
                                 .map(|context| context.count(ident))
-                                .unwrap_or(0);
+                                .unwrap_or(SchemaCount::Zero);
 
-                            if tables_with_given_col > 1 {
+                            if let SchemaCount::Duplicated = tables_with_given_col {
                                 return Err(
                                     PlanError::ColumnReferenceAmbiguous(ident.to_owned()).into()
                                 );
@@ -63,6 +63,28 @@ pub enum ValidationContext<'a> {
     },
 }
 
+#[derive(Debug)]
+enum SchemaCount {
+    Zero,
+    One,
+    Duplicated,
+}
+
+impl Add for SchemaCount {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self {
+        match (self, rhs) {
+            (Self::Zero, Self::Zero) => Self::Zero,
+            (Self::Zero, Self::One) => Self::One,
+            (Self::One, Self::Zero) => Self::One,
+            (Self::One, Self::One) => Self::Duplicated,
+            (Self::Duplicated, _) => Self::Duplicated,
+            (_, Self::Duplicated) => Self::Duplicated,
+        }
+    }
+}
+
 impl<'a> ValidationContext<'a> {
     fn new(
         table_name: &'a String,
@@ -89,21 +111,25 @@ impl<'a> ValidationContext<'a> {
         }
     }
 
-    fn count(&self, column_name: &str) -> i32 {
+    fn count(&self, column_name: &str) -> SchemaCount {
         match self {
             ValidationContext::Data { schema, next, .. } => {
                 let current = schema
                     .column_defs
                     .as_ref()
                     .map(|column_defs| {
-                        i32::from(column_defs.iter().any(|column| column.name == column_name))
+                        column_defs
+                            .iter()
+                            .any(|column| column.name == column_name)
+                            .then_some(SchemaCount::One)
+                            .unwrap_or(SchemaCount::Zero)
                     })
-                    .unwrap_or(0);
+                    .unwrap_or(SchemaCount::Zero);
 
                 let next = next
                     .as_ref()
                     .map(|context| context.count(column_name))
-                    .unwrap_or(0);
+                    .unwrap_or(SchemaCount::Zero);
 
                 current + next
             }
