@@ -305,6 +305,48 @@ impl Value {
 
                 Ok(Value::U16(v))
             }
+            (DataType::Uint32, Literal::Text(v)) => v
+                .parse::<u32>()
+                .map(Value::U32)
+                .map_err(|_| ValueError::LiteralCastFromTextToUint32Failed(v.to_string()).into()),
+            (DataType::Uint32, Literal::Number(v)) => match v.to_u32() {
+                Some(x) => Ok(Value::U32(x)),
+                None => Err(ValueError::LiteralCastToUint32Failed(v.to_string()).into()),
+            },
+            (DataType::Uint32, Literal::Boolean(v)) => {
+                let v = u32::from(*v);
+
+                Ok(Value::U32(v))
+            }
+
+            (DataType::Uint64, Literal::Text(v)) => v
+                .parse::<u64>()
+                .map(Value::U64)
+                .map_err(|_| ValueError::LiteralCastFromTextToUint64Failed(v.to_string()).into()),
+            (DataType::Uint64, Literal::Number(v)) => match v.to_u64() {
+                Some(x) => Ok(Value::U64(x)),
+                None => Err(ValueError::LiteralCastToUint64Failed(v.to_string()).into()),
+            },
+            (DataType::Uint64, Literal::Boolean(v)) => {
+                let v = u64::from(*v);
+
+                Ok(Value::U64(v))
+            }
+
+            (DataType::Uint128, Literal::Text(v)) => v
+                .parse::<u128>()
+                .map(Value::U128)
+                .map_err(|_| ValueError::LiteralCastFromTextToUint128Failed(v.to_string()).into()),
+            (DataType::Uint128, Literal::Number(v)) => match v.to_u128() {
+                Some(x) => Ok(Value::U128(x)),
+                None => Err(ValueError::LiteralCastToUint128Failed(v.to_string()).into()),
+            },
+            (DataType::Uint128, Literal::Boolean(v)) => {
+                let v = u128::from(*v);
+
+                Ok(Value::U128(v))
+            }
+
             (DataType::Float, Literal::Text(v)) => v
                 .parse::<f64>()
                 .map(Value::F64)
@@ -351,6 +393,9 @@ impl Value {
             | (DataType::Int128, Literal::Null)
             | (DataType::Uint8, Literal::Null)
             | (DataType::Uint16, Literal::Null)
+            | (DataType::Uint32, Literal::Null)
+            | (DataType::Uint64, Literal::Null)
+            | (DataType::Uint128, Literal::Null)
             | (DataType::Float, Literal::Null)
             | (DataType::Decimal, Literal::Null)
             | (DataType::Text, Literal::Null) => Ok(Value::Null),

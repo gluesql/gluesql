@@ -98,6 +98,15 @@ pub enum ValueError {
     #[error("literal cast failed from text to UINT16: {0}")]
     LiteralCastFromTextToUint16Failed(String),
 
+    #[error("literal cast failed from text to UINT32: {0}")]
+    LiteralCastFromTextToUint32Failed(String),
+
+    #[error("literal cast failed from text to UINT64: {0}")]
+    LiteralCastFromTextToUint64Failed(String),
+
+    #[error("literal cast failed from text to UINT128: {0}")]
+    LiteralCastFromTextToUint128Failed(String),
+
     #[error("literal cast failed from text to float: {0}")]
     LiteralCastFromTextToFloatFailed(String),
 
@@ -121,6 +130,15 @@ pub enum ValueError {
 
     #[error("literal cast failed to UINT16: {0}")]
     LiteralCastToUint16Failed(String),
+
+    #[error("literal cast failed to UNIT32: {0}")]
+    LiteralCastToUint32Failed(String),
+
+    #[error("literal cast failed to UNIT64: {0}")]
+    LiteralCastToUint64Failed(String),
+
+    #[error("literal cast failed to UNIT128: {0}")]
+    LiteralCastToUint128Failed(String),
 
     #[error("literal cast failed to time: {0}")]
     LiteralCastToTimeFailed(String),
