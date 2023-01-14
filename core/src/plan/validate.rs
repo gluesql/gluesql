@@ -118,11 +118,11 @@ impl<'a> ValidationContext<'a> {
                     .column_defs
                     .as_ref()
                     .map(|column_defs| {
-                        column_defs
-                            .iter()
-                            .any(|column| column.name == column_name)
-                            .then_some(SchemaCount::One)
-                            .unwrap_or(SchemaCount::Zero)
+                        if column_defs.iter().any(|column| column.name == column_name) {
+                            SchemaCount::One
+                        } else {
+                            SchemaCount::Zero
+                        }
                     })
                     .unwrap_or(SchemaCount::Zero);
 
