@@ -883,6 +883,14 @@ mod tests {
         }
         assert!(U8(0).is_zero());
         assert!(!U8(1).is_zero());
+        assert!(U16(0).is_zero());
+        assert!(!U16(1).is_zero());
+        assert!(U32(0).is_zero());
+        assert!(!U32(1).is_zero());
+        assert!(U64(0).is_zero());
+        assert!(!U64(1).is_zero());
+        assert!(U128(0).is_zero());
+        assert!(!U128(1).is_zero());
     }
 
     #[test]
@@ -973,6 +981,36 @@ mod tests {
         test!(add U16(1),   I128(2)   => U16(3));
         test!(add U16(1),   U8(2)     => U16(3));
         test!(add U16(1),   F64(2.0)  => F64(3.0));
+
+        test!(add U32(1),   I8(2)     => U32(3));
+        test!(add U32(1),   I16(2)    => U32(3));
+        test!(add U32(1),   I32(2)    => U32(3));
+        test!(add U32(1),   I64(2)    => U32(3));
+        test!(add U32(1),   I128(2)   => U32(3));
+        test!(add U32(1),   U8(2)     => U32(3));
+        test!(add U32(1),   U16(2)     => U32(3));
+        test!(add U32(1),   U32(2)     => U32(3));
+        test!(add U32(1),   F64(2.0)  => F64(3.0));
+
+        test!(add U64(1),   I8(2)     => U64(3));
+        test!(add U64(1),   I16(2)    => U64(3));
+        test!(add U64(1),   I32(2)    => U64(3));
+        test!(add U64(1),   I64(2)    => U64(3));
+        test!(add U64(1),   I128(2)   => U64(3));
+        test!(add U64(1),   U8(2)     => U64(3));
+        test!(add U64(1),   U16(2)     => U64(3));
+        test!(add U64(1),   U32(2)     => U64(3));
+        test!(add U64(1),   F64(2.0)  => F64(3.0));
+
+        test!(add U128(1),   I8(2)     => U128(3));
+        test!(add U128(1),   I16(2)    => U128(3));
+        test!(add U128(1),   I32(2)    => U128(3));
+        test!(add U128(1),   I64(2)    => U128(3));
+        test!(add U128(1),   I128(2)   => U128(3));
+        test!(add U128(1),   U8(2)     => U128(3));
+        test!(add U128(1),   U16(2)     => U128(3));
+        test!(add U128(1),   U32(2)     => U128(3));
+        test!(add U128(1),   F64(2.0)  => F64(3.0));
 
         test!(add F64(1.0), F64(2.0) => F64(3.0));
         test!(add F64(1.0), I8(2)    => F64(3.0));
