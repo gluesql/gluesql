@@ -25,6 +25,9 @@ impl PartialEq<Literal<'_>> for Value {
             (Value::I128(l), Literal::Number(r)) => r.to_i128().map(|r| *l == r).unwrap_or(false),
             (Value::U8(l), Literal::Number(r)) => r.to_u8().map(|r| *l == r).unwrap_or(false),
             (Value::U16(l), Literal::Number(r)) => r.to_u16().map(|r| *l == r).unwrap_or(false),
+            (Value::U32(l), Literal::Number(r)) => r.to_u32().map(|r| *l == r).unwrap_or(false),
+            (Value::U64(l), Literal::Number(r)) => r.to_u64().map(|r| *l == r).unwrap_or(false),
+            (Value::U128(l), Literal::Number(r)) => r.to_u128().map(|r| *l == r).unwrap_or(false),
             (Value::F64(l), Literal::Number(r)) => r.to_f64().map(|r| *l == r).unwrap_or(false),
             (Value::Str(l), Literal::Text(r)) => l == r.as_ref(),
             (Value::Bytea(l), Literal::Bytea(r)) => l == r,
@@ -466,12 +469,15 @@ mod tests {
 
         assert_eq!(Value::Bool(true), Literal::Boolean(true));
         assert_eq!(Value::I8(8), num!("8"));
-        //assert_eq!(Value::I32(32), num!("32"));   // should this work?
+        assert_eq!(Value::I32(32), num!("32")); // should this work?
         assert_eq!(Value::I64(64), num!("64"));
         assert_eq!(Value::I128(128), num!("128"));
         assert_eq!(Value::F64(7.123), num!("7.123"));
         assert_eq!(Value::U8(7), num!("7"));
         assert_eq!(Value::U16(64), num!("64"));
+        assert_eq!(Value::U32(64), num!("64"));
+        assert_eq!(Value::U64(64), num!("64"));
+        assert_eq!(Value::U128(64), num!("64"));
         assert_eq!(Value::Str("Hello".to_owned()), text!("Hello"));
         assert_eq!(Value::Bytea(bytea()), Literal::Bytea(bytea()));
         assert_eq!(Value::Date(date(2021, 11, 20)), text!("2021-11-20"));
@@ -578,7 +584,9 @@ mod tests {
         test!(DataType::Int128, num!("64"), Value::I128(64));
         test!(DataType::Uint8, num!("8"), Value::U8(8));
         test!(DataType::Uint16, num!("64"), Value::U16(64));
-
+        test!(DataType::Uint32, num!("64"), Value::U32(64));
+        test!(DataType::Uint64, num!("64"), Value::U64(64));
+        test!(DataType::Uint128, num!("64"), Value::U128(64));
         test!(DataType::Float, num!("123456789"), Value::F64(123456789.0));
         test!(
             DataType::Text,
@@ -782,6 +790,21 @@ mod tests {
         test!(DataType::Uint16, Literal::Boolean(true), Value::U16(1));
         test!(DataType::Uint16, Literal::Boolean(false), Value::U16(0));
 
+        test!(DataType::Uint32, text!("127"), Value::U32(127));
+        test!(DataType::Uint32, num!("125"), Value::U32(125));
+        test!(DataType::Uint32, Literal::Boolean(true), Value::U32(1));
+        test!(DataType::Uint32, Literal::Boolean(false), Value::U32(0));
+
+        test!(DataType::Uint64, text!("127"), Value::U64(127));
+        test!(DataType::Uint64, num!("125"), Value::U64(125));
+        test!(DataType::Uint64, Literal::Boolean(true), Value::U64(1));
+        test!(DataType::Uint64, Literal::Boolean(false), Value::U64(0));
+
+        test!(DataType::Uint128, text!("127"), Value::U128(127));
+        test!(DataType::Uint128, num!("125"), Value::U128(125));
+        test!(DataType::Uint128, Literal::Boolean(true), Value::U128(1));
+        test!(DataType::Uint128, Literal::Boolean(false), Value::U128(0));
+
         test!(DataType::Float, text!("12345.6789"), Value::F64(12345.6789));
         test!(DataType::Float, num!("123456.789"), Value::F64(123456.789));
         test!(DataType::Float, Literal::Boolean(true), Value::F64(1.0));
@@ -817,6 +840,9 @@ mod tests {
         test_null!(DataType::Int8, Literal::Null);
         test_null!(DataType::Uint8, Literal::Null);
         test_null!(DataType::Uint16, Literal::Null);
+        test_null!(DataType::Uint32, Literal::Null);
+        test_null!(DataType::Uint64, Literal::Null);
+        test_null!(DataType::Uint128, Literal::Null);
         test_null!(DataType::Float, Literal::Null);
         test_null!(DataType::Text, Literal::Null);
         test!(
