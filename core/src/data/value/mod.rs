@@ -1119,7 +1119,7 @@ mod tests {
         test!(subtract U128(3),   I128(2)   => U128(1));
         test!(subtract U128(3),   U8(2)     => U128(1));
         test!(subtract U128(3),   F64(2.0)  => F64(1.0));
-
+        
         test!(subtract I8(3),    F64(2.0) => F64(1.0));
         test!(subtract I32(3),   F64(2.0) => F64(1.0));
         test!(subtract I64(3),   F64(2.0) => F64(1.0));
@@ -1319,7 +1319,7 @@ mod tests {
         test!(divide U16(6),   I128(2)   => U16(3));
         test!(divide U16(6),   U8(2)     => U16(3));
         test!(divide U16(6),   F64(2.0)  => F64(3.0));
-
+        
         test!(divide U32(6),   I8(2)     => U32(3));
         test!(divide U32(6),   I16(2)    => U32(3));
         test!(divide U32(6),   I32(2)    => U32(3));
@@ -1335,6 +1335,14 @@ mod tests {
         test!(divide U64(6),   I128(2)   => U64(3));
         test!(divide U64(6),   U8(2)     => U64(3));
         test!(divide U64(6),   F64(2.0)  => F64(3.0));
+
+        test!(divide U128(6),   I8(2)     => U128(3));
+        test!(divide U128(6),   I16(2)    => U128(3));
+        test!(divide U128(6),   I32(2)    => U128(3));
+        test!(divide U128(6),   I64(2)    => U128(3));
+        test!(divide U128(6),   I128(2)   => U128(3));
+        test!(divide U128(6),   U8(2)     => U128(3));
+        test!(divide U128(6),   F64(2.0)  => F64(3.0));
 
         test!(divide I8(6),    F64(2.0) => F64(3.0));
         test!(divide I32(6),    F64(2.0) => F64(3.0));
@@ -1355,6 +1363,10 @@ mod tests {
         test!(divide mon!(6),  I64(2)   => mon!(3));
         test!(divide mon!(6),  I128(2)    => mon!(3));
         test!(divide mon!(6),  U8(2)    => mon!(3));
+        test!(divide mon!(6),  U16(2)    => mon!(3));
+        test!(divide mon!(6),  U32(2)    => mon!(3));
+        test!(divide mon!(6),  U64(2)    => mon!(3));
+        test!(divide mon!(6),  U128(2)    => mon!(3));
         test!(divide mon!(6),  F64(2.0) => mon!(3));
 
         test!(modulo I8(6),    I8(4)    => I8(2));
@@ -1653,6 +1665,7 @@ mod tests {
         cast!(Str("11".to_owned())  => Uint8, U8(11));
         cast!(Null                  => Uint8, Null);
 
+      
         // Float
         cast!(Bool(true)            => Float, F64(1.0));
         cast!(Bool(false)           => Float, F64(0.0));
