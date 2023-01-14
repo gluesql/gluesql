@@ -63,7 +63,6 @@ pub enum ValidationContext<'a> {
     },
 }
 
-#[derive(Debug)]
 enum SchemaCount {
     Zero,
     One,
