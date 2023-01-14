@@ -73,6 +73,16 @@ impl PartialOrd<Literal<'_>> for Value {
             (Value::U16(l), Literal::Number(r)) => {
                 r.to_u16().map(|r| l.partial_cmp(&r)).unwrap_or(None)
             }
+            (Value::U32(l), Literal::Number(r)) => {
+                r.to_u32().map(|r| l.partial_cmp(&r)).unwrap_or(None)
+            }
+            (Value::U64(l), Literal::Number(r)) => {
+                r.to_u64().map(|r| l.partial_cmp(&r)).unwrap_or(None)
+            }
+            (Value::U128(l), Literal::Number(r)) => {
+                r.to_u128().map(|r| l.partial_cmp(&r)).unwrap_or(None)
+            }
+
             (Value::F64(l), Literal::Number(r)) => {
                 r.to_f64().map(|r| l.partial_cmp(&r)).unwrap_or(None)
             }
@@ -157,6 +167,18 @@ impl Value {
             (DataType::Uint16, Literal::Number(v)) => v
                 .to_u16()
                 .map(Value::U16)
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+            (DataType::Uint32, Literal::Number(v)) => v
+                .to_u32()
+                .map(Value::U32)
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+            (DataType::Uint64, Literal::Number(v)) => v
+                .to_u64()
+                .map(Value::U64)
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+            (DataType::Uint128, Literal::Number(v)) => v
+                .to_u128()
+                .map(Value::U128)
                 .ok_or_else(|| ValueError::FailedToParseNumber.into()),
             (DataType::Float, Literal::Number(v)) => v
                 .to_f64()
