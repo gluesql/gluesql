@@ -52,7 +52,7 @@ pub fn validate(
 
 pub enum ValidationContext<'a> {
     Data {
-        table_name: &'a String,
+        table_name: &'a str,
         alias: Option<&'a TableAlias>,
         schema: &'a Schema,
         next: Option<Rc<ValidationContext<'a>>>,
@@ -89,14 +89,14 @@ impl<'a> ValidationContext<'a> {
         }
     }
 
-    fn count(&self, column_name: &String) -> i32 {
+    fn count(&self, column_name: &str) -> i32 {
         match self {
             ValidationContext::Data { schema, next, .. } => {
                 let current = schema
                     .column_defs
                     .as_ref()
                     .map(|column_defs| {
-                        i32::from(column_defs.iter().any(|column| &column.name == column_name))
+                        i32::from(column_defs.iter().any(|column| column.name == column_name))
                     })
                     .unwrap_or(0);
 
