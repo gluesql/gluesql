@@ -483,6 +483,15 @@ mod tests {
         assert_eq!(Month(2) * 3_u16, Month(6));
         assert_eq!(2_u16 * Month(3), Month(6));
 
+        assert_eq!(Month(2) * 3_u32, Month(6));
+        assert_eq!(2_u32 * Month(3), Month(6));
+
+        assert_eq!(Month(2) * 3_u64, Month(6));
+        assert_eq!(2_u64 * Month(3), Month(6));
+
+        assert_eq!(Month(2) * 3_u128, Month(6));
+        assert_eq!(2_u128 * Month(3), Month(6));
+
         assert_eq!(Month(2) * 3.0, Month(6));
         assert_eq!(2.0 * Month(3), Month(6));
 
@@ -506,6 +515,15 @@ mod tests {
 
         assert_eq!(Month(6) / 3_u16, Month(2));
         assert_eq!(6_u16 / Month(2), Month(3));
+
+        assert_eq!(Month(6) / 3_u32, Month(2));
+        assert_eq!(6_u32 / Month(2), Month(3));
+
+        assert_eq!(Month(6) / 3_u64, Month(2));
+        assert_eq!(6_u64 / Month(2), Month(3));
+
+        assert_eq!(Month(6) / 3_u128, Month(2));
+        assert_eq!(6_u128 / Month(2), Month(3));
 
         assert_eq!(Month(8) / 4.0, Month(2));
         assert_eq!(8.0 / Month(4), Month(2));
@@ -531,6 +549,15 @@ mod tests {
         assert_eq!(Microsecond(2) * 3_u16, Microsecond(6));
         assert_eq!(2_u16 * Microsecond(3), Microsecond(6));
 
+        assert_eq!(Microsecond(2) * 3_u32, Microsecond(6));
+        assert_eq!(2_u32 * Microsecond(3), Microsecond(6));
+
+        assert_eq!(Microsecond(2) * 3_u64, Microsecond(6));
+        assert_eq!(2_u64 * Microsecond(3), Microsecond(6));
+
+        assert_eq!(Microsecond(2) * 3_u128, Microsecond(6));
+        assert_eq!(2_u128 * Microsecond(3), Microsecond(6));
+
         assert_eq!(Microsecond(6) / 3_i8, Microsecond(2));
         assert_eq!(6_i8 / Microsecond(2), Microsecond(3));
 
@@ -551,5 +578,14 @@ mod tests {
 
         assert_eq!(Microsecond(6) / 3_u16, Microsecond(2));
         assert_eq!(6_u16 / Microsecond(2), Microsecond(3));
+
+        assert_eq!(Microsecond(6) / 3_u32, Microsecond(2));
+        assert_eq!(6_u32 / Microsecond(2), Microsecond(3));
+
+        assert_eq!(Microsecond(6) / 3_u64, Microsecond(2));
+        assert_eq!(6_u64 / Microsecond(2), Microsecond(3));
+
+        assert_eq!(Microsecond(6) / 3_u128, Microsecond(2));
+        assert_eq!(6_u128 / Microsecond(2), Microsecond(3));
     }
 }
