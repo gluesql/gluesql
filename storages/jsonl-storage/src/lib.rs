@@ -1,5 +1,6 @@
 mod alter_table;
 mod index;
+mod schema;
 mod transaction;
 
 use {
@@ -98,6 +99,15 @@ impl JsonlStorage {
 
     pub fn delete_schema(&mut self, table_name: &str) {
         self.tables.remove(table_name);
+    }
+
+    pub fn load_table(&self, table_name: String, column_defs: Vec<gluesql_core::ast::ColumnDef>) {
+        let schema = Schema {
+            table_name,
+            column_defs: Some(column_defs),
+            indexes: Vec::new(),
+            created: NaiveDateTime::default(), // todo!: parse comment
+        };
     }
 }
 
