@@ -1096,6 +1096,30 @@ mod tests {
         test!(subtract U16(3),   U8(2)     => U16(1));
         test!(subtract U16(3),   F64(2.0)  => F64(1.0));
 
+        test!(subtract U32(3),   I8(2)     => U32(1));
+        test!(subtract U32(3),   I16(2)    => U32(1));
+        test!(subtract U32(3),   I32(2)    => U32(1));
+        test!(subtract U32(3),   I64(2)    => U32(1));
+        test!(subtract U32(3),   I128(2)   => U32(1));
+        test!(subtract U32(3),   U8(2)     => U32(1));
+        test!(subtract U32(3),   F64(2.0)  => F64(1.0));
+
+        test!(subtract U64(3),   I8(2)     => U64(1));
+        test!(subtract U64(3),   I16(2)    => U64(1));
+        test!(subtract U64(3),   I32(2)    => U64(1));
+        test!(subtract U64(3),   I64(2)    => U64(1));
+        test!(subtract U64(3),   I128(2)   => U64(1));
+        test!(subtract U64(3),   U8(2)     => U64(1));
+        test!(subtract U64(3),   F64(2.0)  => F64(1.0));
+
+        test!(subtract U128(3),   I8(2)     => U128(1));
+        test!(subtract U128(3),   I16(2)    => U128(1));
+        test!(subtract U128(3),   I32(2)    => U128(1));
+        test!(subtract U128(3),   I64(2)    => U128(1));
+        test!(subtract U128(3),   I128(2)   => U128(1));
+        test!(subtract U128(3),   U8(2)     => U128(1));
+        test!(subtract U128(3),   F64(2.0)  => F64(1.0));
+
         test!(subtract I8(3),    F64(2.0) => F64(1.0));
         test!(subtract I32(3),   F64(2.0) => F64(1.0));
         test!(subtract I64(3),   F64(2.0) => F64(1.0));
@@ -1205,6 +1229,22 @@ mod tests {
         test!(multiply U16(3),   U8(2)     => U16(6));
         test!(multiply U16(3),   F64(2.0)  => F64(6.0));
 
+        test!(multiply U32(3),   I8(2)     => U32(6));
+        test!(multiply U32(3),   I16(2)    => U32(6));
+        test!(multiply U32(3),   I32(2)    => U32(6));
+        test!(multiply U32(3),   I64(2)    => U32(6));
+        test!(multiply U32(3),   I128(2)   => U32(6));
+        test!(multiply U32(3),   U8(2)     => U32(6));
+        test!(multiply U32(3),   F64(2.0)  => F64(6.0));
+
+        test!(multiply U64(3),   I8(2)     => U64(6));
+        test!(multiply U64(3),   I16(2)    => U64(6));
+        test!(multiply U64(3),   I32(2)    => U64(6));
+        test!(multiply U64(3),   I64(2)    => U64(6));
+        test!(multiply U64(3),   I128(2)   => U64(6));
+        test!(multiply U64(3),   U8(2)     => U64(6));
+        test!(multiply U64(3),   F64(2.0)  => F64(6.0));
+
         test!(multiply F64(3.0), F64(2.0) => F64(6.0));
         test!(multiply F64(3.0), I8(2)    => F64(6.0));
         test!(multiply F64(3.0), I32(2)   => F64(6.0));
@@ -1279,6 +1319,22 @@ mod tests {
         test!(divide U16(6),   I128(2)   => U16(3));
         test!(divide U16(6),   U8(2)     => U16(3));
         test!(divide U16(6),   F64(2.0)  => F64(3.0));
+
+        test!(divide U32(6),   I8(2)     => U32(3));
+        test!(divide U32(6),   I16(2)    => U32(3));
+        test!(divide U32(6),   I32(2)    => U32(3));
+        test!(divide U32(6),   I64(2)    => U32(3));
+        test!(divide U32(6),   I128(2)   => U32(3));
+        test!(divide U32(6),   U8(2)     => U32(3));
+        test!(divide U32(6),   F64(2.0)  => F64(3.0));
+
+        test!(divide U64(6),   I8(2)     => U64(3));
+        test!(divide U64(6),   I16(2)    => U64(3));
+        test!(divide U64(6),   I32(2)    => U64(3));
+        test!(divide U64(6),   I64(2)    => U64(3));
+        test!(divide U64(6),   I128(2)   => U64(3));
+        test!(divide U64(6),   U8(2)     => U64(3));
+        test!(divide U64(6),   F64(2.0)  => F64(3.0));
 
         test!(divide I8(6),    F64(2.0) => F64(3.0));
         test!(divide I32(6),    F64(2.0) => F64(3.0));
@@ -1363,6 +1419,9 @@ mod tests {
         null_test!(add      I128(1),   Null);
         null_test!(add      U8(1),   Null);
         null_test!(add      U16(1),   Null);
+        null_test!(add      U32(1),   Null);
+        null_test!(add      U64(1),   Null);
+        null_test!(add      U128(1),   Null);
         null_test!(add      F64(1.0), Null);
         null_test!(add      decimal(1), Null);
         null_test!(add      date(),   Null);
@@ -1376,6 +1435,9 @@ mod tests {
         null_test!(subtract I128(1),   Null);
         null_test!(subtract U8(1),   Null);
         null_test!(subtract U16(1),   Null);
+        null_test!(subtract U32(1),   Null);
+        null_test!(subtract U64(1),   Null);
+        null_test!(subtract U128(1),   Null);
         null_test!(subtract F64(1.0), Null);
         null_test!(subtract decimal(1), Null);
         null_test!(subtract date(),   Null);
@@ -1389,6 +1451,9 @@ mod tests {
         null_test!(multiply I128(1),   Null);
         null_test!(multiply U8(1),   Null);
         null_test!(multiply U16(1),   Null);
+        null_test!(multiply U32(1),   Null);
+        null_test!(multiply U64(1),   Null);
+        null_test!(multiply U128(1),   Null);
         null_test!(multiply F64(1.0), Null);
         null_test!(multiply decimal(1), Null);
         null_test!(multiply mon!(1),  Null);
@@ -1399,6 +1464,9 @@ mod tests {
         null_test!(divide   I128(1),   Null);
         null_test!(divide   U8(1),   Null);
         null_test!(divide   U16(1),   Null);
+        null_test!(divide   U32(1),   Null);
+        null_test!(divide   U64(1),   Null);
+        null_test!(divide   U128(1),   Null);
         null_test!(divide   F64(1.0), Null);
         null_test!(divide   decimal(1), Null);
         null_test!(divide   mon!(1),  Null);
@@ -1409,6 +1477,9 @@ mod tests {
         null_test!(modulo   I128(1),   Null);
         null_test!(modulo   U8(1),   Null);
         null_test!(modulo   U16(1),   Null);
+        null_test!(modulo   U32(1),   Null);
+        null_test!(modulo   U64(1),   Null);
+        null_test!(modulo   U128(1),   Null);
         null_test!(modulo   F64(1.0), Null);
         null_test!(modulo   decimal(1), Null);
 
@@ -1419,6 +1490,9 @@ mod tests {
         null_test!(add      Null, I128(1));
         null_test!(add      Null, U8(1));
         null_test!(add      Null, U16(1));
+        null_test!(add      Null, U32(1));
+        null_test!(add      Null, U64(1));
+        null_test!(add      Null, U128(1));
         null_test!(add      Null, F64(1.0));
         null_test!(add      Null, decimal(1));
         null_test!(add      Null, mon!(1));
@@ -1431,6 +1505,9 @@ mod tests {
         null_test!(subtract Null, I128(1));
         null_test!(subtract Null, U8(1));
         null_test!(subtract Null, U16(1));
+        null_test!(subtract Null, U32(1));
+        null_test!(subtract Null, U64(1));
+        null_test!(subtract Null, U128(1));
         null_test!(subtract Null, F64(1.0));
         null_test!(subtract Null, decimal(1));
         null_test!(subtract Null, date());
@@ -1444,6 +1521,9 @@ mod tests {
         null_test!(multiply Null, I128(1));
         null_test!(multiply Null, U8(1));
         null_test!(multiply Null, U16(1));
+        null_test!(multiply Null, U32(1));
+        null_test!(multiply Null, U64(1));
+        null_test!(multiply Null, U128(1));
         null_test!(multiply Null, F64(1.0));
         null_test!(multiply Null, decimal(1));
         null_test!(divide   Null, I8(1));
@@ -1453,6 +1533,9 @@ mod tests {
         null_test!(divide   Null, I128(1));
         null_test!(divide   Null, U8(1));
         null_test!(divide   Null, U16(1));
+        null_test!(divide   Null, U32(1));
+        null_test!(divide   Null, U64(1));
+        null_test!(divide   Null, U128(1));
         null_test!(divide   Null, F64(1.0));
         null_test!(divide   Null, decimal(1));
         null_test!(modulo   Null, I8(1));
@@ -1461,6 +1544,9 @@ mod tests {
         null_test!(modulo   Null, I128(1));
         null_test!(modulo   Null, U8(1));
         null_test!(modulo   Null, U16(1));
+        null_test!(modulo   Null, U32(1));
+        null_test!(modulo   Null, U64(1));
+        null_test!(modulo   Null, U128(1));
         null_test!(modulo   Null, F64(1.0));
         null_test!(modulo   Null, decimal(1));
 
@@ -1504,6 +1590,9 @@ mod tests {
         cast!(I128(1)               => Int128       , I128(1));
         cast!(U8(1)                 => Uint8        , U8(1));
         cast!(U16(1)                 => Uint16        , U16(1));
+        cast!(U32(1)                 => Uint32        , U32(1));
+        cast!(U64(1)                 => Uint64        , U64(1));
+        cast!(U128(1)                 => Uint128        , U128(1));
         cast!(F64(1.0)              => Float        , F64(1.0));
         cast!(Value::Uuid(123)      => Uuid         , Value::Uuid(123));
 
@@ -1523,6 +1612,12 @@ mod tests {
         cast!(U8(0)                   => Boolean, Bool(false));
         cast!(U16(1)                   => Boolean, Bool(true));
         cast!(U16(0)                   => Boolean, Bool(false));
+        cast!(U32(1)                   => Boolean, Bool(true));
+        cast!(U32(1)                   => Boolean, Bool(true));
+        cast!(U64(1)                   => Boolean, Bool(true));
+        cast!(U64(0)                   => Boolean, Bool(false));
+        cast!(U128(0)                   => Boolean, Bool(false));
+        cast!(U128(0)                   => Boolean, Bool(false));
         cast!(F64(1.0)                  => Boolean, Bool(true));
         cast!(F64(0.0)                  => Boolean, Bool(false));
         cast!(Null                      => Boolean, Null);
