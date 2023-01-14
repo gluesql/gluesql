@@ -27,7 +27,7 @@ use crate::store::IndexError;
 pub enum Error {
     #[error(transparent)]
     #[serde(with = "stringify")]
-    Storage(#[from] Box<dyn StdError + Send + Sync>),
+    Storage(#[from] Box<dyn StdError + Send + Sync + 'static>),
 
     #[error("storage error: {0}")]
     StorageMsg(String),

@@ -2,6 +2,7 @@
 members = [
 	"cli",
 	"core",
+	"logic-test",
 	"pkg/rust",
 	"pkg/javascript/web",
 	"storages/*",
@@ -11,6 +12,7 @@ members = [
 default-members = [
 	"cli",
 	"core",
+	"logic-test",
 	"pkg/rust",
 	"pkg/javascript/web",
 	"storages/*",

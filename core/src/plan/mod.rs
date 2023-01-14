@@ -19,7 +19,7 @@ pub use {
     primary_key::plan as plan_primary_key, schema::fetch_schema_map,
 };
 
-pub async fn plan(storage: &dyn Store, statement: Statement) -> Result<Statement> {
+pub async fn plan<T: Store>(storage: &T, statement: Statement) -> Result<Statement> {
     let schema_map = fetch_schema_map(storage, &statement).await?;
 
     let statement = validate(&schema_map, statement)?;

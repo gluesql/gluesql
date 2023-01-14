@@ -1,0 +1,17 @@
+[package]
+name = "gluesql-sql-logic-test"
+version = "0.13.0"
+edition = "2021"
+authors = [
+	"Jiseok CHOI <jiseok.dev@gmail.com>",
+	"Taehoon Moon <taehoon.moon@outlook.com>",
+]
+
+[dependencies]
+gluesql-core = { path = "../core", version = "0.13.0" }
+gluesql_memory_storage = { path = "../storages/memory-storage", version = "0.13.0" }
+
+sqllogictest = "0.10"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+async-trait = "0.1"
+thiserror = "1"
