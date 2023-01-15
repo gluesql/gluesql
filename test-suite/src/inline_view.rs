@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        executor::EvaluateError,
+        executor::{EvaluateError, FetchError},
         prelude::{Payload, Value::*},
         translate::TranslateError,
     },
@@ -234,6 +234,39 @@ test_case!(inline_view, async move {
                 2    "SQL".to_owned();
                 1    "GLUE".to_owned()
             )),
+        ),
+        (
+            // column alias with wildcard 
+            "SELECT * FROM (SELECT * FROM InnerTable) AS InlineView(a, b)",
+             Ok(select!(
+                    a   | b
+                    I64 | Str;
+                    1     "GLUE".to_owned();
+                    2     "SQL".to_owned();
+                    3     "SQL".to_owned()
+            ))       
+        ),
+        (
+            // partial column alias
+            "SELECT * FROM (SELECT * FROM InnerTable) AS InlineView(a)",
+             Ok(select!(
+                    a   | name  
+                    I64 | Str;
+                    1     "GLUE".to_owned();
+                    2     "SQL".to_owned();
+                    3     "SQL".to_owned()
+            ))       
+        ),
+        // (
+        //     // column alias (non-wildcard) 
+        //     "SELECT a FROM (SELECT * FROM InnerTable) AS InlineView(a, b)",
+        //     Ok(select!( a; I64; 1; 2; 3))       
+        // ),
+        (
+            // too many column alias 
+            "SELECT * FROM (SELECT * FROM InnerTable) AS InlineView(a, b, c)",
+            Err(FetchError::TooManyColumnAliases("InlineView".into(), 2, 3).into()),
+     
         ),
         (
             // unsupported implicit join

@@ -140,6 +140,33 @@ test_case!(project, async move {
             );",
             select!(id; I64; 2),
         ),
+        (
+            // column alias with wildcard 
+            "SELECT * FROM ProjectUser AS Table(a, b)",
+            select!(
+                a   | b 
+                I64 | Str;
+                1     "Taehoon".to_owned();
+                2     "Mike".to_owned();
+                3     "Jorno".to_owned()
+            ),
+        ),
+        (
+            // partial column alias
+            "SELECT * FROM ProjectUser AS Table(a)",
+            select!(
+                a   | name 
+                I64 | Str;
+                1     "Taehoon".to_owned();
+                2     "Mike".to_owned();
+                3     "Jorno".to_owned()
+            ),
+        ),
+        (
+            // column alias (non-wildcard) 
+            "SELECT a FROM ProjectUser AS Table(a, b)",
+            select!( a; I64; 1; 2; 3)       
+        ),
     ];
 
     for (sql, expected) in test_cases {
@@ -159,6 +186,11 @@ test_case!(project, async move {
             "SELECT (SELECT id FROM ProjectItem) as id FROM ProjectItem",
             EvaluateError::MoreThanOneRowReturned.into(),
         ),
+        (
+            // too many column alias 
+            "Select * from ProjectUser as table(a, b, c)",
+            FetchError::TooManyColumnAliases("ProjectUser".to_owned(), 2, 3).into(),
+        ), 
     ];
 
     for (sql, error) in error_cases {
