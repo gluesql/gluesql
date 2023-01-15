@@ -86,7 +86,7 @@ impl Add for SchemaCount {
 
 impl<'a> ValidationContext<'a> {
     fn new(
-        table_name: &'a String,
+        table_name: &'a str,
         alias: Option<&'a TableAlias>,
         schema: &'a Schema,
         next: Option<Rc<ValidationContext<'a>>>,
