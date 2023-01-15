@@ -473,6 +473,15 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             let expr = translate_expr(args[0])?;
             Ok(Expr::Function(Box::new(Function::Chr(expr))))
         }
+        #[cfg(feature = "function")]
+        _ => {
+            let exprs = args
+                .into_iter()
+                .map(translate_expr)
+                .collect::<Result<Vec<_>>>()?;
+            Ok(Expr::Function(Box::new(Function::Custom { name, exprs })))
+        }
+        #[cfg(not(feature = "function"))]
         _ => Err(TranslateError::UnsupportedFunction(name).into()),
     }
 }

@@ -25,3 +25,6 @@ pub use {
     update::UpdateError,
     validate::ValidateError,
 };
+
+#[cfg(feature = "function")]
+pub use evaluate::FunctionProxy;

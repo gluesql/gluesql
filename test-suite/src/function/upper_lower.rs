@@ -75,10 +75,6 @@ test_case!(upper_lower, async move {
             Err(EvaluateError::FunctionRequiresStringValue("LOWER".to_owned()).into()),
         ),
         (
-            "SELECT WHATEVER(1) FROM Item",
-            Err(TranslateError::UnsupportedFunction("WHATEVER".to_owned()).into()),
-        ),
-        (
             "SELECT LOWER(a => 2) FROM Item",
             Err(TranslateError::NamedFunctionArgNotSupported.into()),
         ),

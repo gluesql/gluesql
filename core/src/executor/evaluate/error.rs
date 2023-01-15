@@ -97,6 +97,10 @@ pub enum EvaluateError {
 
     #[error("unsupported evaluate string unary factorial: {0}")]
     UnsupportedUnaryFactorial(String),
+
+    #[cfg(feature = "function")]
+    #[error("unsupported custom function in subqueries")]
+    UnsupportedCustomFunction,
 }
 
 fn error_serialize<S>(error: &chrono::format::ParseError, serializer: S) -> Result<S::Ok, S::Error>

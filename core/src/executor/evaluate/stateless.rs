@@ -200,6 +200,10 @@ fn evaluate_function<'a>(context: &Context<'_>, func: &'a Function) -> Result<Ev
 
     match func {
         // --- text ---
+        #[cfg(feature = "function")]
+        Function::Custom { name: _, exprs: _ } => {
+            Err(EvaluateError::UnsupportedCustomFunction.into())
+        }
         Function::Concat(exprs) => {
             let exprs = exprs.iter().map(eval).collect::<Result<_>>()?;
 

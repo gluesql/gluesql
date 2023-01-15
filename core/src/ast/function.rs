@@ -42,6 +42,11 @@ pub enum Function {
         separator: Expr,
         exprs: Vec<Expr>,
     },
+    #[cfg(feature = "function")]
+    Custom {
+        name: String,
+        exprs: Vec<Expr>,
+    },
     IfNull {
         expr: Expr,
         then: Expr,
@@ -184,6 +189,15 @@ impl ToSql for Function {
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("CONCAT({items})")
+            }
+            #[cfg(feature = "function")]
+            Function::Custom { name, exprs } => {
+                let exprs = exprs
+                    .iter()
+                    .map(ToSql::to_sql)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("{name}({exprs})")
             }
             Function::ConcatWs { separator, exprs } => {
                 let exprs = exprs
@@ -467,6 +481,39 @@ mod tests {
         assert_eq!(
             "CEIL(num)",
             &Expr::Function(Box::new(Function::Ceil(Expr::Identifier("num".to_owned())))).to_sql()
+        );
+
+        #[cfg(feature = "function")]
+        assert_eq!(
+            "CUSTOM_FUNC(Tic, 1, num, 'abc')",
+            &Expr::Function(Box::new(Function::Custom {
+                name: "CUSTOM_FUNC".to_owned(),
+                exprs: vec![
+                    Expr::Identifier("Tic".to_owned()),
+                    Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
+                    Expr::Identifier("num".to_owned()),
+                    Expr::Literal(AstLiteral::QuotedString("abc".to_owned()))
+                ]
+            }))
+            .to_sql()
+        );
+        #[cfg(feature = "function")]
+        assert_eq!(
+            "CUSTOM_FUNC(num)",
+            &Expr::Function(Box::new(Function::Custom {
+                name: "CUSTOM_FUNC".to_owned(),
+                exprs: vec![Expr::Identifier("num".to_owned())]
+            }))
+            .to_sql()
+        );
+        #[cfg(feature = "function")]
+        assert_eq!(
+            "CUSTOM_FUNC()",
+            &Expr::Function(Box::new(Function::Custom {
+                name: "CUSTOM_FUNC".to_owned(),
+                exprs: vec![]
+            }))
+            .to_sql()
         );
 
         assert_eq!(

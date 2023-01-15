@@ -143,3 +143,6 @@ fn fetch_schema(
 
     Ok((key, schema_snapshot))
 }
+
+#[cfg(feature = "function")]
+impl gluesql_core::store::Function for SledStorage {}

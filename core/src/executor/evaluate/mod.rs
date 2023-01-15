@@ -24,6 +24,12 @@ use {
 
 pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
 
+#[cfg(feature = "function")]
+use crate::translate::TranslateError;
+
+#[cfg(feature = "function")]
+pub use function::FunctionProxy;
+
 #[async_recursion(?Send)]
 pub async fn evaluate<'a, 'b: 'a, 'c: 'a, T: GStore>(
     storage: &'a T,
@@ -293,6 +299,15 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         Function::Concat(exprs) => {
             let exprs = stream::iter(exprs).then(eval).try_collect().await?;
             f::concat(exprs)
+        }
+        #[cfg(feature = "function")]
+        Function::Custom { name, exprs } => {
+            let custom_func = storage
+                .get_function(name)
+                .await
+                .map_err(|_| TranslateError::UnsupportedFunction(name.to_string()))?;
+            let exprs = stream::iter(exprs).then(eval).try_collect().await?;
+            custom_func._call(exprs)
         }
         Function::ConcatWs { separator, exprs } => {
             let separator = eval(separator).await?;

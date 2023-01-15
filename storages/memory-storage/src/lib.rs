@@ -1,6 +1,7 @@
 #![deny(clippy::str_to_string)]
 
 mod alter_table;
+mod function;
 mod index;
 mod transaction;
 
@@ -16,16 +17,28 @@ use {
     std::{collections::HashMap, iter::empty},
 };
 
+#[cfg(feature = "function")]
+use gluesql_core::prelude::FunctionProxy;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Item {
     pub schema: Schema,
     pub rows: IndexMap<Key, DataRow>,
 }
 
+#[cfg(not(feature = "function"))]
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct MemoryStorage {
     pub id_counter: i64,
     pub items: HashMap<String, Item>,
+}
+
+#[cfg(feature = "function")]
+#[derive(Debug, Default, Clone)]
+pub struct MemoryStorage {
+    pub id_counter: i64,
+    pub items: HashMap<String, Item>,
+    pub functions: HashMap<String, FunctionProxy>,
 }
 
 #[async_trait(?Send)]

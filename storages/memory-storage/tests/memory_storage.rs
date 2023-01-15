@@ -94,3 +94,29 @@ fn memory_storage_transaction() {
     test!(glue "COMMIT", Ok(vec![Payload::Commit]));
     test!(glue "ROLLBACK", Ok(vec![Payload::Rollback]));
 }
+
+#[cfg(feature = "function")]
+#[test]
+fn memory_storage_function() {
+    use gluesql_core::prelude::{FunctionProxy, Glue, Payload, Value};
+    use gluesql_core::{
+        result::{Error, Result},
+        store::Function,
+    };
+
+    let storage = MemoryStorage::default();
+    let mut glue = Glue::new(storage);
+
+    fn say(_args: Vec<Value>) -> Result<Value> {
+        Ok(Value::Str("Hello".to_owned()))
+    }
+
+    let proxy = FunctionProxy { func: say };
+
+    assert!(glue.storage.register_function("say", proxy).is_ok());
+
+    test!(
+        glue "SELECT SAY() as msg",
+        Ok(vec![Payload::Select { labels: vec!["msg".to_owned()], rows: vec![vec![Value::Str("Hello".to_owned())]] }])
+    );
+}

@@ -26,3 +26,6 @@ tokio = { version = "1", features = ["rt", "macros"] }
 [[bench]]
 name = "sled_benchmark"
 harness = false
+
+[features]
+function = ["gluesql-core/function"]

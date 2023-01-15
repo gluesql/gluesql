@@ -19,3 +19,6 @@ web-sys = { version = "0.3.60" }
 [dev-dependencies]
 test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.13.0" }
 wasm-bindgen-test = "0.3.33"
+
+[features]
+function = ["gluesql-core/function"]

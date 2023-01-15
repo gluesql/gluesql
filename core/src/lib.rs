@@ -16,6 +16,8 @@ pub mod store;
 pub mod translate;
 
 pub mod prelude {
+    #[cfg(feature = "function")]
+    pub use crate::executor::FunctionProxy;
     pub use crate::{
         ast::DataType,
         data::{Key, Value},

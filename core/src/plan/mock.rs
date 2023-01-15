@@ -1,5 +1,8 @@
 #![cfg(test)]
 
+#[cfg(feature = "function")]
+use crate::store::Function;
+
 use {
     crate::{
         data::{Key, Schema},
@@ -104,6 +107,9 @@ impl AlterTable for MockStorage {}
 impl Index for MockStorage {}
 impl IndexMut for MockStorage {}
 impl Transaction for MockStorage {}
+
+#[cfg(feature = "function")]
+impl Function for MockStorage {}
 
 #[cfg(test)]
 mod tests {

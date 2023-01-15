@@ -110,3 +110,6 @@ impl StoreMut for SharedMemoryStorage {
         database.delete_data(table_name, keys).await
     }
 }
+
+#[cfg(feature = "function")]
+impl gluesql_core::store::Function for SharedMemoryStorage {}

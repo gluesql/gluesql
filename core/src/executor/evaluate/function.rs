@@ -53,6 +53,34 @@ macro_rules! eval_to_float {
     };
 }
 
+#[cfg(feature = "function")]
+#[derive(Debug, Clone)]
+pub struct FunctionProxy {
+    pub func: fn(Vec<Value>) -> Result<Value>,
+    // args: Vec<Value>,
+    // r#return: Value
+}
+
+#[cfg(feature = "function")]
+impl FunctionProxy {
+    pub fn _call(&self, args: Vec<Evaluated<'_>>) -> Result<Evaluated> {
+        let args = args
+            .into_iter()
+            .map(|expr| Value::try_from(expr).unwrap())
+            .collect::<Vec<_>>();
+
+        let value = self.call(args)?;
+
+        Ok(Evaluated::from(value))
+    }
+    pub fn call(&self, args: Vec<Value>) -> Result<Value> {
+        // TODO
+        // Verify len or len range
+        // Verify types
+        (self.func)(args)
+    }
+}
+
 // --- text ---
 
 pub fn concat(exprs: Vec<Evaluated<'_>>) -> Result<Evaluated> {

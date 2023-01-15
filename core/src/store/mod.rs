@@ -1,13 +1,34 @@
 mod alter_table;
 mod data_row;
+mod function;
 mod index;
 mod transaction;
 
-pub trait GStore: Store + Index {}
-impl<S: Store + Index> GStore for S {}
+use cfg_if::cfg_if;
 
-pub trait GStoreMut: StoreMut + IndexMut + AlterTable + Transaction {}
-impl<S: StoreMut + IndexMut + AlterTable + Transaction> GStoreMut for S {}
+#[cfg(feature = "function")]
+pub use function::Function;
+
+cfg_if! {
+    if #[cfg(feature = "function")] {
+        pub trait GStore: Store + Index + Function {}
+        impl<S: Store + Index + Function> GStore for S {}
+    } else {
+        pub trait GStore: Store + Index {}
+        impl<S: Store + Index> GStore for S {}
+    }
+}
+
+cfg_if! {
+    // Features should be in alphabetic order for readibility
+    if #[cfg(feature = "function")] {
+        pub trait GStoreMut: StoreMut + IndexMut + AlterTable + Transaction + Function {}
+        impl<S: StoreMut + IndexMut + AlterTable + Transaction + Function> GStoreMut for S {}
+    } else {
+        pub trait GStoreMut: StoreMut + IndexMut + AlterTable + Transaction {}
+        impl<S: StoreMut + IndexMut + AlterTable + Transaction> GStoreMut for S {}
+    }
+}
 
 pub use {
     alter_table::{AlterTable, AlterTableError},
