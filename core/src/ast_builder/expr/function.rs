@@ -16,6 +16,7 @@ pub enum FunctionNode<'a> {
         then: ExprNode<'a>,
     },
     Ceil(ExprNode<'a>),
+    Rand(Option<ExprNode<'a>>),
     Round(ExprNode<'a>),
     Floor(ExprNode<'a>),
     Asin(ExprNode<'a>),
@@ -145,6 +146,9 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
                 Ok(Function::IfNull { expr, then })
             }
             FunctionNode::Ceil(expr_node) => expr_node.try_into().map(Function::Ceil),
+            FunctionNode::Rand(expr_node) => Ok(Function::Rand(
+                expr_node.map(TryInto::try_into).transpose()?,
+            )),
             FunctionNode::Round(expr_node) => expr_node.try_into().map(Function::Round),
             FunctionNode::Floor(expr_node) => expr_node.try_into().map(Function::Floor),
             FunctionNode::Asin(expr_node) => expr_node.try_into().map(Function::Asin),
@@ -304,6 +308,9 @@ impl<'a> ExprNode<'a> {
     pub fn ceil(self) -> ExprNode<'a> {
         ceil(self)
     }
+    pub fn rand(self) -> ExprNode<'a> {
+        rand(self)
+    }
     pub fn round(self) -> ExprNode<'a> {
         round(self)
     }
@@ -439,6 +446,9 @@ pub fn ifnull<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(expr: T, then: U
 }
 pub fn ceil<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Ceil(expr.into())))
+}
+pub fn rand<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Rand(Some(expr.into()))))
 }
 pub fn round<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Round(expr.into())))
@@ -710,7 +720,7 @@ mod tests {
         ast_builder::{
             abs, acos, asin, atan, cast, ceil, col, concat, concat_ws, cos, date, degrees, divide,
             exp, expr, extract, floor, format, gcd, generate_uuid, ifnull, lcm, left, ln, log,
-            log10, log2, lower, lpad, ltrim, modulo, now, num, pi, position, power, radians,
+            log10, log2, lower, lpad, ltrim, modulo, now, num, pi, position, power, radians, rand,
             repeat, reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr, tan, test_expr,
             text, time, timestamp, to_date, to_time, to_timestamp, upper,
         },
@@ -757,6 +767,17 @@ mod tests {
 
         let actual = expr("base - 10").ceil();
         let expected = "CEIL(base - 10)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_rand() {
+        let actual = rand(col("num"));
+        let expected = "RAND(num)";
+        test_expr(actual, expected);
+
+        let actual = expr("base - 10").rand();
+        let expected = "RAND(base - 10)";
         test_expr(actual, expected);
     }
 

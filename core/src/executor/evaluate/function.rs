@@ -5,6 +5,7 @@ use {
         data::{Value, ValueError},
         result::Result,
     },
+    rand::{rngs::StdRng, Rng, SeedableRng},
     std::{
         cmp::{max, min},
         ops::ControlFlow,
@@ -347,6 +348,21 @@ pub fn power<'a>(name: String, expr: Evaluated<'_>, power: Evaluated<'_>) -> Res
 
 pub fn ceil<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
     Ok(Evaluated::from(Value::F64(eval_to_float!(name, n).ceil())))
+}
+
+pub fn rand<'a>(name: String, seed: Option<Evaluated<'_>>) -> Result<Evaluated<'a>> {
+    let seed = if let Some(v) = seed {
+        match v.try_into()? {
+            Value::F64(s) => StdRng::seed_from_u64(s as u64).gen(),
+            Value::I64(s) => StdRng::seed_from_u64(s as u64).gen(),
+            _ => {
+                return Err(EvaluateError::FunctionRequiresFloatOrIntegerValue(name).into());
+            }
+        }
+    } else {
+        rand::random()
+    };
+    Ok(Evaluated::from(Value::F64(seed)))
 }
 
 pub fn round<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {

@@ -24,6 +24,7 @@ pub mod position;
 pub mod radians;
 pub mod repeat;
 pub mod reverse;
+pub mod rand;
 pub mod round;
 pub mod sign;
 pub mod sqrt_power;
