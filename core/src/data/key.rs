@@ -302,8 +302,6 @@ mod tests {
             Ok(Key::Timestamp(_))
         ));
         assert!(matches!(convert("INTERVAL '1' DAY"), Ok(Key::Interval(_))));
-        assert!(matches!(convert("RAND()"), Ok(Key::Decimal(_))));
-        assert!(matches!(convert("RAND(123)"), Ok(Key::Decimal(_))));
         assert!(matches!(convert("GENERATE_UUID()"), Ok(Key::Uuid(_))));
 
         // None

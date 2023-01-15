@@ -352,13 +352,7 @@ pub fn ceil<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
 
 pub fn rand<'a>(name: String, seed: Option<Evaluated<'_>>) -> Result<Evaluated<'a>> {
     let seed = if let Some(v) = seed {
-        match v.try_into()? {
-            Value::F64(s) => StdRng::seed_from_u64(s as u64).gen(),
-            Value::I64(s) => StdRng::seed_from_u64(s as u64).gen(),
-            _ => {
-                return Err(EvaluateError::FunctionRequiresFloatOrIntegerValue(name).into());
-            }
-        }
+        StdRng::seed_from_u64(eval_to_float!(name, v) as u64).gen()
     } else {
         rand::random()
     };
