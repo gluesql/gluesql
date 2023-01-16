@@ -131,7 +131,7 @@ test_case!(ltrim_rtrim, async move {
         ),
         ("INSERT INTO NullTest VALUES (null)", Ok(Payload::Insert(1))),
         (
-            "SELECT LTRIM(name, NULL) AS test FROM NullTest",
+            "SELECT LTRIM('name', NULL) AS test FROM NullTest",
             Ok(select_with_null!(test; Value::Null)),
         ),
         (
