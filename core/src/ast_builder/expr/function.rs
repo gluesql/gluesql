@@ -309,7 +309,7 @@ impl<'a> ExprNode<'a> {
         ceil(self)
     }
     pub fn rand(self) -> ExprNode<'a> {
-        rand(self)
+        rand(Some(self))
     }
     pub fn round(self) -> ExprNode<'a> {
         round(self)
@@ -447,8 +447,8 @@ pub fn ifnull<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(expr: T, then: U
 pub fn ceil<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Ceil(expr.into())))
 }
-pub fn rand<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
-    ExprNode::Function(Box::new(FunctionNode::Rand(Some(expr.into()))))
+pub fn rand(expr: Option<ExprNode>) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Rand(expr)))
 }
 pub fn round<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Round(expr.into())))
@@ -772,7 +772,11 @@ mod tests {
 
     #[test]
     fn function_rand() {
-        let actual = rand(col("num"));
+        let actual = rand(None);
+        let expected = "RAND()";
+        test_expr(actual, expected);
+
+        let actual = rand(Some(col("num")));
         let expected = "RAND(num)";
         test_expr(actual, expected);
 

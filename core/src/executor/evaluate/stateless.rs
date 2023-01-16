@@ -275,13 +275,7 @@ fn evaluate_function<'a>(context: &Context<'_>, func: &'a Function) -> Result<Ev
         Function::IfNull { expr, then } => f::ifnull(eval(expr)?, eval(then)?),
         Function::Sign(expr) => f::sign(name, eval(expr)?),
         Function::Ceil(expr) => f::ceil(name, eval(expr)?),
-        Function::Rand(expr) => {
-            let expr = match expr {
-                Some(v) => Some(eval(v)?),
-                None => None,
-            };
-            f::rand(name, expr)
-        }
+        Function::Rand(expr) => f::rand(name, eval_opt(expr.as_ref())?),
         Function::Round(expr) => f::round(name, eval(expr)?),
         Function::Floor(expr) => f::floor(name, eval(expr)?),
         Function::Radians(expr) => f::radians(name, eval(expr)?),
