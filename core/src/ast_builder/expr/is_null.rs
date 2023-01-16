@@ -12,12 +12,16 @@ impl<'a> ExprNode<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{col, num, test_expr};
+    use crate::ast_builder::{col, ltrim, num, test_expr};
 
     #[test]
     fn is_null() {
         let actual = col("id").is_null();
         let expected = "id IS NULL";
+        test_expr(actual, expected);
+
+        let actual = ltrim(col("id"), None).is_null();
+        let expected = "LTRIM(id) IS NULL";
         test_expr(actual, expected);
 
         let actual = num(10).add("id").is_not_null();
