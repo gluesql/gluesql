@@ -47,10 +47,9 @@ test_case!(nullable, async move {
             ),
         ),
         (
-            "SELECT SUBSTR(id, 1) as test, num FROM Test WHERE id IS NULL",
-            select_with_null!(
-                test   | num;
-                Null   I64(2)
+            "SELECT name FROM Test WHERE SUBSTR(name, 1) IS NULL",
+            select!(
+                name;
             ),
         ),
         (
