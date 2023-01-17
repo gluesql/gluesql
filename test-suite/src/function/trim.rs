@@ -54,6 +54,10 @@ test_case!(trim, async move {
             )),
         ),
         (
+            "SELECT TRIM(BOTH NULL FROM 'name') AS test",
+            Ok(select_with_null!(test; Value::Null)),
+        ),
+        (
             "SELECT TRIM(TRAILING NULL FROM name) FROM NullName;",
             Ok(select_with_null!(
                 "TRIM(TRAILING NULL FROM name)";
@@ -69,7 +73,7 @@ test_case!(trim, async move {
         ),
         ("CREATE TABLE Test (name TEXT)", Ok(Payload::Create)),
         (
-            "INSERT INTO Test VALUES 
+            "INSERT INTO Test VALUES
                     ('     blank     '), 
                     ('xxxyzblankxyzxx'), 
                     ('xxxyzblank     '),
@@ -127,6 +131,16 @@ test_case!(trim, async move {
                 both               | leading              | trailing
                 Value::Str         | Value::Str           | Value::Str;
                 "hello".to_owned()   "hello  ".to_owned()   "  hello".to_owned()
+            )),
+        ),
+        (
+            "SELECT
+                TRIM(BOTH TRIM(BOTH ' potato ')) AS both
+            ",
+            Ok(select!(
+                both
+                Value::Str;
+                "potato".to_owned()
             )),
         ),
     ];
