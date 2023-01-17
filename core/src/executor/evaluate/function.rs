@@ -6,10 +6,7 @@ use {
         result::Result,
     },
     rand::{rngs::StdRng, Rng, SeedableRng},
-    std::{
-        cmp::{max, min},
-        ops::ControlFlow,
-    },
+    std::ops::ControlFlow,
     uuid::Uuid,
 };
 
