@@ -5,7 +5,11 @@ use {
         data::{Value, ValueError},
         result::Result,
     },
-    std::ops::ControlFlow,
+    rand::{rngs::StdRng, Rng, SeedableRng},
+    std::{
+        cmp::{max, min},
+        ops::ControlFlow,
+    },
     uuid::Uuid,
 };
 
@@ -267,6 +271,15 @@ pub fn power<'a>(name: String, expr: Evaluated<'_>, power: Evaluated<'_>) -> Res
 
 pub fn ceil<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
     Ok(Evaluated::from(Value::F64(eval_to_float!(name, n).ceil())))
+}
+
+pub fn rand<'a>(name: String, seed: Option<Evaluated<'_>>) -> Result<Evaluated<'a>> {
+    let seed = if let Some(v) = seed {
+        StdRng::seed_from_u64(eval_to_float!(name, v) as u64).gen()
+    } else {
+        rand::random()
+    };
+    Ok(Evaluated::from(Value::F64(seed)))
 }
 
 pub fn round<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
