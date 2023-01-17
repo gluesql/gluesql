@@ -384,6 +384,13 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a>(
             f::power(name, expr, power)
         }
         Function::Ceil(expr) => f::ceil(name, eval(expr).await?),
+        Function::Rand(expr) => {
+            let expr = match expr {
+                Some(v) => Some(eval(v).await?),
+                None => None,
+            };
+            f::rand(name, expr)
+        }
         Function::Round(expr) => f::round(name, eval(expr).await?),
         Function::Floor(expr) => f::floor(name, eval(expr).await?),
         Function::Radians(expr) => f::radians(name, eval(expr).await?),

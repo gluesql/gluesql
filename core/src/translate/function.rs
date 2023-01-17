@@ -311,6 +311,15 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 fill,
             })))
         }
+        "RAND" => {
+            check_len_range(name, args.len(), 0, 1)?;
+            let v = if args.is_empty() {
+                None
+            } else {
+                Some(translate_expr(args[0])?)
+            };
+            Ok(Expr::Function(Box::new(Function::Rand(v))))
+        }
         "ROUND" => translate_function_one_arg(Function::Round, args, name),
         "EXP" => translate_function_one_arg(Function::Exp, args, name),
         "LN" => translate_function_one_arg(Function::Ln, args, name),
