@@ -110,6 +110,15 @@ test_case!(ltrim_rtrim, async move {
             )),
         ),
         (
+            "SELECT RTRIM('xux', 'xyz') AS test from Item;",
+            Ok(select!(
+                "test"
+                Str;
+                "xu".to_owned();
+                "xu".to_owned()
+            )),
+        ),
+        (
             "SELECT LTRIM(1) AS test FROM Item",
             Err(EvaluateError::FunctionRequiresStringValue("LTRIM".to_owned()).into()),
         ),
@@ -140,6 +149,10 @@ test_case!(ltrim_rtrim, async move {
         ),
         (
             "SELECT RTRIM(name) AS test FROM NullTest",
+            Ok(select_with_null!(test; Value::Null)),
+        ),
+        (
+            "SELECT RTRIM('name', NULL) AS test FROM NullTest",
             Ok(select_with_null!(test; Value::Null)),
         ),
         (
