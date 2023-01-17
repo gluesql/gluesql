@@ -527,10 +527,7 @@ impl<'a> Evaluated<'a> {
                 0 => range.end,
                 _ => matched_vec[matched_vec.len() - idx].0,
             },
-            _ => match matched_vec[matched_vec.len() - 1].0 == sliced_expr.len() - 1 {
-                true => matched_vec[0].0,
-                false => range.start,
-            },
+            _ => matched_vec[0].0,
         };
 
         Ok(Evaluated::StrSlice {
