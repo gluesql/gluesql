@@ -8,7 +8,6 @@ use {
 
 pub fn convert(value: JsValue, column_defs: Option<&[ColumnDef]>) -> Result<DataRow> {
     let value: JsonValue = value.into_serde().unwrap();
-    // let value: JsonValue = serde_json::to_value(value.into_serde::<().unwrap()).unwrap();
 
     match (value, column_defs) {
         (JsonValue::Array(json_array), Some(column_defs)) => json_array
@@ -19,7 +18,7 @@ pub fn convert(value: JsValue, column_defs: Option<&[ColumnDef]>) -> Result<Data
                 let value = value?;
 
                 match value.get_type() {
-                    Some(curr_type) if &curr_type != data_type => value.cast(&data_type),
+                    Some(curr_type) if &curr_type != data_type => value.cast(data_type),
                     _ => Ok(value),
                 }
             })
@@ -30,11 +29,6 @@ pub fn convert(value: JsValue, column_defs: Option<&[ColumnDef]>) -> Result<Data
             .map(|(key, value)| value.try_into().map(|value| (key, value)))
             .collect::<Result<HashMap<String, Value>>>()
             .map(DataRow::Map),
-        (v, _) => {
-            Ok(DataRow::Vec(vec![]))
-            // todo!("{v:?}");
-        }
+        _ => todo!(),
     }
 }
-
-// DataRow to JsValue..? no Value
