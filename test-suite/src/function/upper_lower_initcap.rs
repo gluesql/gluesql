@@ -7,7 +7,7 @@ use {
     },
 };
 
-test_case!(upper_lower, async move {
+test_case!(upper_lower_initcap, async move {
     let test_cases = [
         (
             "CREATE TABLE Item (
