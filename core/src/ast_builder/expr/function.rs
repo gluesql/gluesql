@@ -118,6 +118,7 @@ pub enum FunctionNode<'a> {
         format: ExprNode<'a>,
     },
     Lower(ExprNode<'a>),
+    Initcap(ExprNode<'a>),
     Position {
         from_expr: ExprNode<'a>,
         sub_expr: ExprNode<'a>,
@@ -140,6 +141,7 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
             FunctionNode::Abs(expr_node) => expr_node.try_into().map(Function::Abs),
             FunctionNode::Upper(expr_node) => expr_node.try_into().map(Function::Upper),
             FunctionNode::Lower(expr_node) => expr_node.try_into().map(Function::Lower),
+            FunctionNode::Initcap(expr_node) => expr_node.try_into().map(Function::Initcap),
             FunctionNode::IfNull { expr, then } => {
                 let expr = expr.try_into()?;
                 let then = then.try_into()?;
@@ -302,6 +304,9 @@ impl<'a> ExprNode<'a> {
     pub fn lower(self) -> ExprNode<'a> {
         lower(self)
     }
+    pub fn initcap(self) -> ExprNode<'a> {
+        initcap(self)
+    }
     pub fn ifnull<T: Into<ExprNode<'a>>>(self, another: T) -> ExprNode<'a> {
         ifnull(self, another)
     }
@@ -437,6 +442,9 @@ pub fn upper<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
 }
 pub fn lower<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Lower(expr.into())))
+}
+pub fn initcap<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Initcap(expr.into())))
 }
 pub fn ifnull<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(expr: T, then: U) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::IfNull {
@@ -719,10 +727,10 @@ mod tests {
         ast::DateTimeField,
         ast_builder::{
             abs, acos, asin, atan, cast, ceil, col, concat, concat_ws, cos, date, degrees, divide,
-            exp, expr, extract, floor, format, gcd, generate_uuid, ifnull, lcm, left, ln, log,
-            log10, log2, lower, lpad, ltrim, modulo, now, num, pi, position, power, radians, rand,
-            repeat, reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr, tan, test_expr,
-            text, time, timestamp, to_date, to_time, to_timestamp, upper,
+            exp, expr, extract, floor, format, gcd, generate_uuid, ifnull, initcap, lcm, left, ln,
+            log, log10, log2, lower, lpad, ltrim, modulo, now, num, pi, position, power, radians,
+            rand, repeat, reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr, tan,
+            test_expr, text, time, timestamp, to_date, to_time, to_timestamp, upper,
         },
         prelude::DataType,
     };
@@ -1258,6 +1266,18 @@ mod tests {
 
         let actual = expr("HoHo").lower();
         let expected = "LOWER(HoHo)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_initcap() {
+        // Initcap
+        let actual = initcap(text("ABC"));
+        let expected = "INITCAP('ABC')";
+        test_expr(actual, expected);
+
+        let actual = expr("HoHo").initcap();
+        let expected = "INITCAP(HoHo)";
         test_expr(actual, expected);
     }
 

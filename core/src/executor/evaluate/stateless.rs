@@ -206,6 +206,7 @@ fn evaluate_function<'a>(context: &Context<'_>, func: &'a Function) -> Result<Ev
             f::concat(exprs)
         }
         Function::Lower(expr) => f::lower(name, eval(expr)?),
+        Function::Initcap(expr) => f::initcap(name, eval(expr)?),
         Function::Upper(expr) => f::upper(name, eval(expr)?),
         Function::Left { expr, size } | Function::Right { expr, size } => {
             let expr = eval(expr)?;

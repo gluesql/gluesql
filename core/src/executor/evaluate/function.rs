@@ -106,6 +106,23 @@ pub fn lower(name: String, expr: Evaluated<'_>) -> Result<Evaluated> {
     )))
 }
 
+pub fn initcap(name: String, expr: Evaluated<'_>) -> Result<Evaluated> {
+    let string = eval_to_str!(name, expr);
+    let string = string
+        .chars()
+        .scan(true, |state, c| {
+            let c = if *state {
+                c.to_ascii_uppercase()
+            } else {
+                c.to_ascii_lowercase()
+            };
+            *state = !c.is_alphanumeric();
+            Some(c)
+        })
+        .collect();
+    Ok(Evaluated::from(Value::Str(string)))
+}
+
 pub fn upper(name: String, expr: Evaluated<'_>) -> Result<Evaluated> {
     Ok(Evaluated::from(Value::Str(
         eval_to_str!(name, expr).to_uppercase(),

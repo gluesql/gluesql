@@ -238,6 +238,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             })))
         }
         "LOWER" => translate_function_one_arg(Function::Lower, args, name),
+        "INITCAP" => translate_function_one_arg(Function::Initcap, args, name),
         "UPPER" => translate_function_one_arg(Function::Upper, args, name),
         "LEFT" => {
             check_len(name, args.len(), 2)?;

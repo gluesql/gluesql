@@ -10,6 +10,7 @@ use {
 pub enum Function {
     Abs(Expr),
     Lower(Expr),
+    Initcap(Expr),
     Upper(Expr),
     Left {
         expr: Expr,
@@ -146,6 +147,7 @@ impl ToSql for Function {
     fn to_sql(&self) -> String {
         match self {
             Function::Abs(e) => format!("ABS({})", e.to_sql()),
+            Function::Initcap(e) => format!("INITCAP({})", e.to_sql()),
             Function::Lower(e) => format!("LOWER({})", e.to_sql()),
             Function::Upper(e) => format!("UPPER({})", e.to_sql()),
             Function::Left { expr, size } => format!("LEFT({}, {})", expr.to_sql(), size.to_sql()),
@@ -360,6 +362,14 @@ mod tests {
         assert_eq!(
             "LOWER('Bye')",
             &Expr::Function(Box::new(Function::Lower(Expr::Literal(
+                AstLiteral::QuotedString("Bye".to_owned())
+            ))))
+            .to_sql()
+        );
+
+        assert_eq!(
+            "INITCAP('Bye')",
+            &Expr::Function(Box::new(Function::Initcap(Expr::Literal(
                 AstLiteral::QuotedString("Bye".to_owned())
             ))))
             .to_sql()

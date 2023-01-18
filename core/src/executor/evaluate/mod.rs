@@ -301,6 +301,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a>(
         }
         Function::IfNull { expr, then } => f::ifnull(eval(expr).await?, eval(then).await?),
         Function::Lower(expr) => f::lower(name, eval(expr).await?),
+        Function::Initcap(expr) => f::initcap(name, eval(expr).await?),
         Function::Upper(expr) => f::upper(name, eval(expr).await?),
         Function::Left { expr, size } | Function::Right { expr, size } => {
             let expr = eval(expr).await?;

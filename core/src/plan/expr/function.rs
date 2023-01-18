@@ -20,6 +20,7 @@ impl Function {
                 Exprs::Empty(empty())
             }
             Self::Lower(expr)
+            | Self::Initcap(expr)
             | Self::Upper(expr)
             | Self::Sin(expr)
             | Self::Cos(expr)
@@ -187,6 +188,7 @@ mod tests {
 
         // Single
         test("LOWER(id)", &["id"]);
+        test("INITCAP(id)", &["id"]);
         test(r#"UPPER("Hello")"#, &[r#""Hello""#]);
         test("SIN(3.14)", &["3.14"]);
         test("COS(3.14)", &["3.14"]);
