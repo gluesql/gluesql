@@ -7,13 +7,14 @@ use {
     convert::convert,
     gloo_utils::format::JsValueSerdeExt,
     gluesql_core::{
+        ast::{ColumnDef, ColumnUniqueOption},
         data::{Key, Schema, Value},
         result::{Error, MutResult, Result, TrySelf},
         store::{DataRow, RowIter, Store, StoreMut},
     },
-    idb::{CursorDirection, Database, Factory, ObjectStoreParams, Query, TransactionMode},
+    idb::{CursorDirection, Database, Factory, KeyPath, ObjectStoreParams, Query, TransactionMode},
     serde::{Deserialize, Serialize},
-    serde_json::Value as JsonValue,
+    serde_json::{json, Value as JsonValue},
     uuid::Uuid,
     wasm_bindgen::JsValue,
 };
@@ -137,12 +138,15 @@ impl Store for IdbStorage {
         let schema = store.get(JsValue::from_str(table_name)).await.unwrap(); // Vec<JsValue>
         let schema = schema.map(|v| serde_wasm_bindgen::from_value(v).unwrap());
 
+        transaction.commit().await.unwrap();
+
         // panic!("fetch_schema: {table_name}, {}", schema.is_some());
 
         Ok(schema)
     }
 
     async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<DataRow>> {
+        let Schema { column_defs, .. } = self.fetch_schema(table_name).await?.unwrap();
         let transaction = self
             .database
             .transaction(&[table_name], TransactionMode::ReadOnly)
@@ -150,7 +154,16 @@ impl Store for IdbStorage {
 
         let store = transaction.object_store(table_name).unwrap();
 
-        todo!();
+        let key: Value = target.into();
+        let key: JsonValue = key.try_into()?;
+        let key = JsValue::from_serde(&key).unwrap();
+        // let key: String = Value::try_from(key)?.try_into();
+        let row = store.get(key).await.unwrap();
+        transaction.commit().await.unwrap();
+
+        row.map(|row| convert(row, column_defs.as_ref().map(Vec::as_slice)))
+            .transpose()
+
         /*
         let path = format!("{}/{}", DATA_PATH, table_name);
         let row = self
@@ -203,6 +216,7 @@ impl Store for IdbStorage {
             current_key = cursor.key().unwrap();
             current_row = cursor.value().unwrap();
         }
+        transaction.commit().await.unwrap();
 
         /*
         let key = cursor.key().unwrap();
@@ -247,7 +261,7 @@ impl Store for IdbStorage {
 
 impl IdbStorage {
     pub async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
-        let table_name = schema.table_name.to_owned();
+        // let table_name = schema.table_name.to_owned();
         let version = self.database.version().unwrap() + 1;
 
         self.database.close();
@@ -258,16 +272,65 @@ impl IdbStorage {
             .factory
             .open(self.namespace.as_str(), Some(version))
             .unwrap();
+
+        let s = schema.clone();
         open_request.on_upgrade_needed(move |event| {
             // panic!("fail please 222222");
             let database = event.database().unwrap();
             // let table_name = &schema.table_name;
 
+            let primary_key = s.column_defs.as_ref().and_then(|column_defs| {
+                column_defs
+                    .iter()
+                    .enumerate()
+                    .find_map(|(i, ColumnDef { unique, .. })| {
+                        (unique == &Some(ColumnUniqueOption { is_primary: true })).then_some(i)
+                    })
+            });
+
+            /*
+            let primary_key = primary_key.map(|i| {
+                // KeyPath::new_single(i.to_string().as_str())
+                KeyPath::new_single("0")
+            });
+            */
+
+            // panic!("{primary_key:?}");
+            // params.key_path(primary_key);
+            // params.key_path(None);
             let mut params = ObjectStoreParams::new();
-            params.key_path(None);
+
+            /*
+            match primary_key {
+                Some(i) => {
+                    // let key_path = JsonValue::String(i.to_string());
+                    let key_path = JsonValue::String("abc".to_string());
+                    let key_path = JsValue::from_serde(&key_path).unwrap();
+
+                    params.key_path(Some(&key_path));
+                }
+                None => {
+                    params.auto_increment(true);
+                }
+            };
+            */
+            // panic!("{params:?}");
             params.auto_increment(true);
 
-            database.create_object_store(&table_name, params).unwrap();
+            /*
+            let params = match primary_key {
+                Some(key_path) =>
+                    JsValue::from_serde(&json!({ "keyPath": key_path.to_string() })).unwrap().try_into().unwrap(),
+                None => {
+                    let mut params = ObjectStoreParams::new();
+                    params.auto_increment(true);
+
+                    params
+                }
+            };
+            */
+
+            database.create_object_store(&s.table_name, params).unwrap();
 
             // how to deal with this
 

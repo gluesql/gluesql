@@ -105,6 +105,37 @@ impl TryFrom<&Value> for Key {
     }
 }
 
+// todo: add unit tests
+impl From<Key> for Value {
+    fn from(key: Key) -> Self {
+        match key {
+            Key::Bool(v) => Value::Bool(v),
+            Key::I8(v) => Value::I8(v),
+            Key::I16(v) => Value::I16(v),
+            Key::I32(v) => Value::I32(v),
+            Key::I64(v) => Value::I64(v),
+            Key::I128(v) => Value::I128(v),
+            Key::U8(v) => Value::U8(v),
+            Key::U16(v) => Value::U16(v),
+            Key::Decimal(v) => Value::Decimal(v),
+            Key::Str(v) => Value::Str(v),
+            Key::Bytea(v) => Value::Bytea(v),
+            Key::Date(v) => Value::Date(v),
+            Key::Timestamp(v) => Value::Timestamp(v),
+            Key::Time(v) => Value::Time(v),
+            Key::Interval(v) => Value::Interval(v),
+            Key::Uuid(v) => Value::Uuid(v),
+            Key::None => Value::Null,
+        }
+    }
+}
+
+impl From<&Key> for Value {
+    fn from(key: &Key) -> Self {
+        key.clone().into()
+    }
+}
+
 const VALUE: u8 = 0;
 const NONE: u8 = 1;
 
