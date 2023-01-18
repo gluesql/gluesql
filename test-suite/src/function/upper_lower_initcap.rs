@@ -12,12 +12,16 @@ test_case!(upper_lower_initcap, async move {
         (
             "CREATE TABLE Item (
                 name TEXT DEFAULT UPPER('abc'),
-                opt_name TEXT NULL DEFAULT LOWER('ABC')
+                opt_name TEXT NULL DEFAULT LOWER('ABC'),
+                opt_name_2 TEXT NULL DEFAULT INITCAP('a/b c')
             )",
             Ok(Payload::Create),
         ),
         (
-            "INSERT INTO Item VALUES ('abcd', 'efgi'), ('Abcd', NULL), ('ABCD', 'EfGi')",
+            "INSERT INTO Item VALUES
+            ('abcd', 'efgi', 'h/i jk'),
+            ('Abcd', NULL, NULL),
+            ('ABCD', 'EfGi', 'H/I JK')",
             Ok(Payload::Insert(3)),
         ),
         (
@@ -30,35 +34,45 @@ test_case!(upper_lower_initcap, async move {
             )),
         ),
         (
-            "SELECT LOWER(name), UPPER(name) FROM Item;",
+            "SELECT LOWER(name), UPPER(name), INITCAP(name) FROM Item;",
             Ok(select!(
-                "LOWER(name)"      | "UPPER(name)"
-                Str                | Str;
-                "abcd".to_owned()    "ABCD".to_owned();
-                "abcd".to_owned()    "ABCD".to_owned();
-                "abcd".to_owned()    "ABCD".to_owned()
+                "LOWER(name)"      | "UPPER(name)"      | "INITCAP(name)"
+                Str                | Str                | Str;
+                "abcd".to_owned()    "ABCD".to_owned()    "Abcd".to_owned();
+                "abcd".to_owned()    "ABCD".to_owned()    "Abcd".to_owned();
+                "abcd".to_owned()    "ABCD".to_owned()    "Abcd".to_owned()
             )),
         ),
         (
             "
             SELECT
                 LOWER('Abcd') as lower,
-                UPPER('abCd') as upper
+                UPPER('abCd') as upper,
+                INITCAP('Abcd') as initcap
             FROM Item LIMIT 1;
             ",
             Ok(select!(
-                lower             | upper
-                Str               | Str;
-                "abcd".to_owned()   "ABCD".to_owned()
+                lower             | upper             | initcap
+                Str               | Str               | Str;
+                "abcd".to_owned()   "ABCD".to_owned()   "Abcd".to_owned()
             )),
         ),
         (
-            "SELECT LOWER(opt_name), UPPER(opt_name) FROM Item;",
+            "SELECT LOWER(opt_name), UPPER(opt_name), INITCAP(opt_name) FROM Item;",
             Ok(select_with_null!(
-                "LOWER(opt_name)"      | "UPPER(opt_name)";
-                Str("efgi".to_owned())   Str("EFGI".to_owned());
-                Null                     Null;
-                Str("efgi".to_owned())   Str("EFGI".to_owned())
+                "LOWER(opt_name)"      | "UPPER(opt_name)"       | "INITCAP(opt_name)";
+                Str("efgi".to_owned())   Str("EFGI".to_owned())    Str("Efgi".to_owned());
+                Null                     Null                      Null;
+                Str("efgi".to_owned())   Str("EFGI".to_owned())    Str("Efgi".to_owned())
+            )),
+        ),
+        (
+            "SELECT LOWER(opt_name_2), UPPER(opt_name_2), INITCAP(opt_name_2) FROM Item;",
+            Ok(select_with_null!(
+                "LOWER(opt_name_2)"      | "UPPER(opt_name_2)"       | "INITCAP(opt_name_2)";
+                Str("h/i jk".to_owned())   Str("H/I JK".to_owned())    Str("H/I Jk".to_owned());
+                Null                     Null                      Null;
+                Str("h/i jk".to_owned())   Str("H/I JK".to_owned())    Str("H/I Jk".to_owned())
             )),
         ),
         (
