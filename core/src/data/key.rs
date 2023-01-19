@@ -292,6 +292,7 @@ mod tests {
             result::Result,
             translate::translate_expr,
         },
+        chrono::{NaiveDate, NaiveDateTime, NaiveTime},
         rust_decimal::Decimal,
         std::{cmp::Ordering, collections::HashMap, str::FromStr},
     };
@@ -374,10 +375,7 @@ mod tests {
 
     #[test]
     fn cmp_big_endian() {
-        use {
-            crate::data::{Interval as I, Key::*},
-            chrono::{NaiveDate, NaiveTime},
-        };
+        use crate::data::{Interval as I, Key::*};
 
         let null = None.to_cmp_be_bytes();
 
@@ -576,5 +574,62 @@ mod tests {
         assert_eq!(cmp(&n1, &n2), Ordering::Less);
         assert_eq!(cmp(&n2, &n1), Ordering::Greater);
         assert_eq!(cmp(&n1, &null), Ordering::Less);
+    }
+
+    #[test]
+    fn from_key_to_value() {
+        use {crate::data::Interval as I, uuid::Uuid};
+
+        assert_eq!(Value::from(Key::I8(2)), Value::I8(2));
+        assert_eq!(Value::from(Key::I16(4)), Value::I16(4));
+        assert_eq!(Value::from(Key::I32(8)), Value::I32(8));
+        assert_eq!(Value::from(Key::I64(16)), Value::I64(16));
+        assert_eq!(Value::from(Key::I128(32)), Value::I128(32));
+        assert_eq!(Value::from(Key::U8(64)), Value::U8(64));
+        assert_eq!(Value::from(Key::U16(128)), Value::U16(128));
+        assert_eq!(
+            Value::from(Key::Decimal(Decimal::from_str("123.45").unwrap())),
+            Value::Decimal(Decimal::from_str("123.45").unwrap())
+        );
+        assert_eq!(Value::from(Key::Bool(true)), Value::Bool(true));
+        assert_eq!(
+            Value::from(Key::Str("abc".to_owned())),
+            Value::Str("abc".to_owned())
+        );
+        assert_eq!(Value::from(Key::Bytea(vec![])), Value::Bytea(vec![]));
+        assert_eq!(
+            Value::from(Key::Date(NaiveDate::from_ymd_opt(2023, 1, 23).unwrap())),
+            Value::Date(NaiveDate::from_ymd_opt(2023, 1, 23).unwrap())
+        );
+        assert_eq!(
+            Value::from(Key::Timestamp(
+                NaiveDateTime::from_timestamp_millis(1662921288).unwrap()
+            )),
+            Value::Timestamp(NaiveDateTime::from_timestamp_millis(1662921288).unwrap())
+        );
+        assert_eq!(
+            Value::from(Key::Time(
+                NaiveTime::from_hms_milli_opt(20, 20, 1, 452).unwrap()
+            )),
+            Value::Time(NaiveTime::from_hms_milli_opt(20, 20, 1, 452).unwrap())
+        );
+        assert_eq!(
+            Value::from(Key::Interval(I::Month(11))),
+            Value::Interval(I::Month(11))
+        );
+        assert_eq!(
+            Value::from(Key::Uuid(
+                Uuid::parse_str("550e8400-e29b-41d4-a716-446655440000")
+                    .unwrap()
+                    .as_u128()
+            )),
+            Value::Uuid(
+                Uuid::parse_str("550e8400-e29b-41d4-a716-446655440000")
+                    .unwrap()
+                    .as_u128()
+            )
+        );
+        matches!(Value::from(Key::None), Value::Null);
+        matches!(Value::from(&Key::None), Value::Null);
     }
 }
