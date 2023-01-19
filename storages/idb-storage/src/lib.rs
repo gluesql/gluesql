@@ -1,14 +1,17 @@
+#![cfg(target_arch = "wasm32")]
 #![deny(clippy::str_to_string)]
 
 mod convert;
+mod error;
 
 use {
     async_trait::async_trait,
     convert::convert,
+    error::ErrInto,
     gloo_utils::format::JsValueSerdeExt,
     gluesql_core::{
         data::{Key, Schema, Value},
-        result::{Error, MutResult, Result, TrySelf},
+        result::{MutResult, Result, TrySelf},
         store::{DataRow, RowIter, Store, StoreMut},
     },
     idb::{CursorDirection, Database, Factory, ObjectStoreParams, Query, TransactionMode},
@@ -27,11 +30,11 @@ pub struct IdbStorage {
 
 impl IdbStorage {
     pub async fn new(namespace: Option<String>) -> Result<Self> {
-        let factory = Factory::new().map_err(|e| Error::StorageMsg(e.to_string()))?;
+        let factory = Factory::new().err_into()?;
 
         let namespace = namespace.as_deref().unwrap_or(DEFAULT_NAMESPACE).to_owned();
 
-        let mut open_request = factory.open(namespace.as_str(), None).unwrap();
+        let mut open_request = factory.open(namespace.as_str(), None).err_into()?;
         open_request.on_upgrade_needed(move |event| {
             let database = event.database().unwrap();
 
@@ -40,7 +43,7 @@ impl IdbStorage {
                 .unwrap();
         });
 
-        let database = open_request.await.unwrap();
+        let database = open_request.await.err_into()?;
 
         Ok(Self {
             namespace,
@@ -50,10 +53,7 @@ impl IdbStorage {
     }
 
     pub async fn delete(&self) -> Result<()> {
-        self.factory
-            .delete(&self.namespace)
-            .await
-            .map_err(|e| Error::StorageMsg(e.to_string()))
+        self.factory.delete(&self.namespace).await.err_into()
     }
 }
 
@@ -63,64 +63,71 @@ impl Store for IdbStorage {
         let transaction = self
             .database
             .transaction(&[SCHEMA_STORE], TransactionMode::ReadOnly)
-            .unwrap();
+            .err_into()?;
 
-        let store = transaction.object_store(SCHEMA_STORE).unwrap();
-        let schemas = store.get_all(None, None).await.unwrap(); // Vec<JsValue>
-        let schemas = schemas
+        let store = transaction.object_store(SCHEMA_STORE).err_into()?;
+        let schemas = store.get_all(None, None).await.err_into()?;
+
+        schemas
             .into_iter()
-            .map(|v| serde_wasm_bindgen::from_value(v).unwrap())
-            .collect::<Vec<Schema>>();
-
-        Ok(schemas)
+            .map(|v| serde_wasm_bindgen::from_value(v).err_into())
+            .collect::<Result<Vec<Schema>>>()
     }
 
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         let transaction = self
             .database
             .transaction(&[SCHEMA_STORE], TransactionMode::ReadOnly)
-            .unwrap();
+            .err_into()?;
 
-        let store = transaction.object_store(SCHEMA_STORE).unwrap();
-        let schema = store.get(JsValue::from_str(table_name)).await.unwrap(); // Vec<JsValue>
-        let schema = schema.map(|v| serde_wasm_bindgen::from_value(v).unwrap());
+        let store = transaction.object_store(SCHEMA_STORE).err_into()?;
+        let schema = store.get(JsValue::from_str(table_name)).await.err_into()?;
+        let schema = schema
+            .map(|v| serde_wasm_bindgen::from_value(v).err_into())
+            .transpose()?;
 
-        transaction.commit().await.unwrap();
-
+        transaction.commit().await.err_into()?;
         Ok(schema)
     }
 
     async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<DataRow>> {
-        let Schema { column_defs, .. } = self.fetch_schema(table_name).await?.unwrap();
+        let column_defs = self
+            .fetch_schema(table_name)
+            .await?
+            .and_then(|schema| schema.column_defs);
         let transaction = self
             .database
             .transaction(&[table_name], TransactionMode::ReadOnly)
-            .unwrap();
+            .err_into()?;
 
-        let store = transaction.object_store(table_name).unwrap();
+        let store = transaction.object_store(table_name).err_into()?;
 
         let key: Value = target.into();
         let key: JsonValue = key.try_into()?;
-        let key = JsValue::from_serde(&key).unwrap();
-        let row = store.get(key).await.unwrap();
-        transaction.commit().await.unwrap();
+        let key = JsValue::from_serde(&key).err_into()?;
+        let row = store.get(key).await.err_into()?;
+
+        transaction.commit().await.err_into()?;
 
         row.map(|row| convert(row, column_defs.as_deref()))
             .transpose()
     }
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
-        let Schema { column_defs, .. } = self.fetch_schema(table_name).await?.unwrap();
+        let column_defs = self
+            .fetch_schema(table_name)
+            .await?
+            .and_then(|schema| schema.column_defs);
         let transaction = self
             .database
             .transaction(&[table_name], TransactionMode::ReadOnly)
-            .unwrap();
+            .err_into()?;
 
-        let store = transaction.object_store(table_name).unwrap();
+        let store = transaction.object_store(table_name).err_into()?;
         let cursor = store
             .open_cursor(None, Some(CursorDirection::Next))
             .await
-            .unwrap();
+            .err_into()?;
 
         let mut cursor = match cursor {
             Some(cursor) => cursor,
@@ -134,7 +141,7 @@ impl Store for IdbStorage {
         let mut current_row = cursor.value().unwrap();
 
         while !current_key.is_null() {
-            let key: JsonValue = current_key.into_serde().unwrap();
+            let key: JsonValue = current_key.into_serde().err_into()?;
             let key: Key = Value::try_from(key)?.try_into()?;
 
             let row = convert(current_row, column_defs.as_deref())?;
@@ -146,27 +153,27 @@ impl Store for IdbStorage {
                 break;
             }
 
-            current_key = cursor.key().unwrap();
-            current_row = cursor.value().unwrap();
+            current_key = cursor.key().err_into()?;
+            current_row = cursor.value().err_into()?;
         }
-        transaction.commit().await.unwrap();
+
+        transaction.commit().await.err_into()?;
 
         let rows = rows.into_iter().map(Ok);
-
         Ok(Box::new(rows))
     }
 }
 
 impl IdbStorage {
     pub async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
-        let version = self.database.version().unwrap() + 1;
+        let version = self.database.version().err_into()? + 1;
 
         self.database.close();
 
         let mut open_request = self
             .factory
             .open(self.namespace.as_str(), Some(version))
-            .unwrap();
+            .err_into()?;
 
         let table_name = schema.table_name.to_owned();
         open_request.on_upgrade_needed(move |event| {
@@ -178,25 +185,24 @@ impl IdbStorage {
             database.create_object_store(&table_name, params).unwrap();
         });
 
-        self.database = open_request.await.unwrap();
+        self.database = open_request.await.err_into()?;
 
         let transaction = self
             .database
             .transaction(&[SCHEMA_STORE], TransactionMode::ReadWrite)
-            .unwrap();
-        let store = transaction.object_store(SCHEMA_STORE).unwrap();
+            .err_into()?;
+        let store = transaction.object_store(SCHEMA_STORE).err_into()?;
 
         let key = JsValue::from_str(&schema.table_name);
-        let schema = JsValue::from_serde(&schema).unwrap();
-        store.add(&schema, Some(&key)).await.unwrap();
+        let schema = JsValue::from_serde(&schema).err_into()?;
+        store.add(&schema, Some(&key)).await.err_into()?;
 
-        transaction.commit().await.unwrap();
-
+        transaction.commit().await.err_into()?;
         Ok(())
     }
 
     pub async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
-        let version = self.database.version().unwrap() + 1;
+        let version = self.database.version().err_into()? + 1;
         self.database.close();
 
         let mut open_request = self
@@ -218,19 +224,18 @@ impl IdbStorage {
             }
         });
 
-        self.database = open_request.await.unwrap();
+        self.database = open_request.await.err_into()?;
 
         let transaction = self
             .database
             .transaction(&[SCHEMA_STORE], TransactionMode::ReadWrite)
-            .unwrap();
-        let store = transaction.object_store(SCHEMA_STORE).unwrap();
+            .err_into()?;
+        let store = transaction.object_store(SCHEMA_STORE).err_into()?;
 
         let key = JsValue::from_str(table_name);
-        store.delete(Query::from(key)).await.unwrap();
+        store.delete(Query::from(key)).await.err_into()?;
 
-        transaction.commit().await.unwrap();
-
+        transaction.commit().await.err_into()?;
         Ok(())
     }
 
@@ -238,8 +243,8 @@ impl IdbStorage {
         let transaction = self
             .database
             .transaction(&[table_name], TransactionMode::ReadWrite)
-            .unwrap();
-        let store = transaction.object_store(table_name).unwrap();
+            .err_into()?;
+        let store = transaction.object_store(table_name).err_into()?;
 
         for data_row in new_rows.into_iter() {
             let row = match data_row {
@@ -248,12 +253,12 @@ impl IdbStorage {
             };
 
             let row = JsonValue::try_from(row)?;
-            let row = JsValue::from_serde(&row).unwrap();
+            let row = JsValue::from_serde(&row).err_into()?;
 
-            store.add(&row, None).await.unwrap();
+            store.add(&row, None).await.err_into()?;
         }
 
-        transaction.commit().await.unwrap();
+        transaction.commit().await.err_into()?;
         Ok(())
     }
 
@@ -265,8 +270,8 @@ impl IdbStorage {
         let transaction = self
             .database
             .transaction(&[table_name], TransactionMode::ReadWrite)
-            .unwrap();
-        let store = transaction.object_store(table_name).unwrap();
+            .err_into()?;
+        let store = transaction.object_store(table_name).err_into()?;
 
         for (key, data_row) in new_rows.into_iter() {
             let row = match data_row {
@@ -275,7 +280,7 @@ impl IdbStorage {
             };
 
             let row = JsonValue::try_from(row)?;
-            let row = JsValue::from_serde(&row).unwrap();
+            let row = JsValue::from_serde(&row).err_into()?;
 
             let key = match key {
                 Key::I64(v) => v as f64,
@@ -284,10 +289,10 @@ impl IdbStorage {
 
             let key = JsValue::from_f64(key);
 
-            store.put(&row, Some(&key)).await.unwrap();
+            store.put(&row, Some(&key)).await.err_into()?;
         }
 
-        transaction.commit().await.unwrap();
+        transaction.commit().await.err_into()?;
         Ok(())
     }
 
@@ -295,8 +300,8 @@ impl IdbStorage {
         let transaction = self
             .database
             .transaction(&[table_name], TransactionMode::ReadWrite)
-            .unwrap();
-        let store = transaction.object_store(table_name).unwrap();
+            .err_into()?;
+        let store = transaction.object_store(table_name).err_into()?;
 
         for key in keys.into_iter() {
             let key = match key {
@@ -307,10 +312,10 @@ impl IdbStorage {
             let key = JsValue::from_f64(key);
             let key = Query::from(key);
 
-            store.delete(key).await.unwrap();
+            store.delete(key).await.err_into()?;
         }
 
-        transaction.commit().await.unwrap();
+        transaction.commit().await.err_into()?;
         Ok(())
     }
 }
