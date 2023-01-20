@@ -13,6 +13,7 @@ use {
         store::{DataRow, RowIter, Store},
         {chrono::NaiveDateTime, result::MutResult, store::StoreMut},
     },
+    serde_json::{Map as JsonMap, Number as JsonNumber, Value as JsonValue},
     std::{
         collections::HashMap,
         fs::{self, remove_file, File, OpenOptions},
@@ -93,21 +94,31 @@ impl JsonlStorage {
     }
 
     fn insert_schema(&mut self, schema: &Schema) {
-        let json_table = JsonlStorage::new_table(schema.table_name.clone());
-        self.tables.insert(schema.table_name.clone(), json_table);
+        // let json_table = JsonlStorage::new_table(schema.table_name.clone());
+        self.tables
+            .insert(schema.table_name.clone(), schema.to_owned());
     }
 
     pub fn delete_schema(&mut self, table_name: &str) {
         self.tables.remove(table_name);
     }
 
-    pub fn load_table(&self, table_name: String, column_defs: Vec<gluesql_core::ast::ColumnDef>) {
-        let schema = Schema {
-            table_name,
-            column_defs: Some(column_defs),
-            indexes: Vec::new(),
-            created: NaiveDateTime::default(), // todo!: parse comment
-        };
+    // pub fn load_table(&self, table_name: String, column_defs: Vec<gluesql_core::ast::ColumnDef>) {
+    //     let schema = Schema {
+    //         table_name,
+    //         column_defs: Some(column_defs),
+    //         indexes: Vec::new(),
+    //         created: NaiveDateTime::default(), // todo!: parse comment
+    //     };
+    // }
+
+    fn write_schema(&self, schema: &Schema) -> Result<()> {
+        let path = format!("{}/{}.sql", self.path.display(), schema.table_name);
+        let ddl = schema.clone().to_ddl();
+        let mut file = File::create(path).unwrap();
+        write!(file, "{ddl}").unwrap();
+
+        Ok(())
     }
 }
 
@@ -161,13 +172,17 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
-impl JsonlStorage {}
-
 #[async_trait(?Send)]
 impl StoreMut for JsonlStorage {
     async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
         let path = format!("{}/{}.json", self.path.display(), schema.table_name);
         let path = PathBuf::from(path);
+
+        match &schema.column_defs {
+            Some(columns) => self.write_schema(schema),
+            None => todo!(),
+        }
+        .unwrap();
 
         match File::create(path).map_storage_err() {
             Ok(_) => {
@@ -203,7 +218,7 @@ impl StoreMut for JsonlStorage {
             .tables
             .get(table_name)
             .ok_or_else(|| Error::StorageMsg("could not find table".to_owned()))
-            .and_then(|_| {
+            .and_then(|schema| {
                 let table_path = JsonlStorage::table_path(&self, table_name)?;
 
                 let mut file = OpenOptions::new()
@@ -219,11 +234,27 @@ impl StoreMut for JsonlStorage {
                                 .iter()
                                 .map(|(k, v)| format!("\"{k}\": {}", String::from(v)))
                                 .collect::<Vec<_>>();
-                            json.sort();
+                            json.sort(); // todo! remove sort?
                             let json = json.join(", ");
                             write!(file, "{{{json}}}\n").map_storage_err()?;
                         }
-                        DataRow::Vec(values) => todo!(),
+                        DataRow::Vec(values) => {
+                            match &schema.column_defs {
+                                Some(column_defs) => {
+                                    // todo! validate columns
+                                    let mut json = column_defs
+                                        .iter()
+                                        .map(|column_def| column_def.name.clone())
+                                        .zip(values.iter())
+                                        .map(|(k, v)| format!("\"{k}\": {}", String::from(v))) // todo! enclose string with ''?
+                                        .collect::<Vec<_>>();
+                                    json.sort();
+                                    let json = json.join(", ");
+                                    write!(file, "{{{json}}}\n").map_storage_err()?;
+                                }
+                                None => unreachable!(),
+                            };
+                        }
                     }
                 }
 
@@ -239,6 +270,7 @@ impl StoreMut for JsonlStorage {
     async fn insert_data(self, table_name: &str, rows: Vec<(Key, DataRow)>) -> MutResult<Self, ()> {
         let prev_rows = self.scan_data(table_name).await.unwrap();
 
+        // todo! impl without sort + vector.zip
         let prev_rows = prev_rows
             .collect::<Result<HashMap<Key, DataRow>>>()
             .unwrap();
