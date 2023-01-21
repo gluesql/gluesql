@@ -4,5 +4,5 @@
 
 ### 🔬 Test in Headless Browsers with `wasm-pack test`
 ```
-wasm-pack test --headless --firefox --chrome
+WASM_BINDGEN_TEST_TIMEOUT=60 wasm-pack test --headless --firefox --chrome
 ```
