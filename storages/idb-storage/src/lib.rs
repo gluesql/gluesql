@@ -101,6 +101,7 @@ impl Store for IdbStorage {
         let store = transaction.object_store(SCHEMA_STORE).err_into()?;
         let schemas = store.get_all(None, None).await.err_into()?;
 
+        transaction.commit().await.err_into()?;
         schemas
             .into_iter()
             .map(|v| serde_wasm_bindgen::from_value(v).err_into())
