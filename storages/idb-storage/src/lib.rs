@@ -363,7 +363,7 @@ impl IdbStorage {
             .err_into()?;
         let store = transaction.object_store(table_name).err_into()?;
 
-        for data_row in new_rows.into_iter() {
+        for data_row in new_rows {
             let row = match data_row {
                 DataRow::Vec(values) => Value::List(values),
                 DataRow::Map(values) => Value::Map(values),
@@ -390,7 +390,7 @@ impl IdbStorage {
             .err_into()?;
         let store = transaction.object_store(table_name).err_into()?;
 
-        for (key, data_row) in new_rows.into_iter() {
+        for (key, data_row) in new_rows {
             let row = match data_row {
                 DataRow::Vec(values) => Value::List(values),
                 DataRow::Map(values) => Value::Map(values),
@@ -416,7 +416,7 @@ impl IdbStorage {
             .err_into()?;
         let store = transaction.object_store(table_name).err_into()?;
 
-        for key in keys.into_iter() {
+        for key in keys {
             let key: JsonValue = Value::from(key).try_into()?;
             let key = JsValue::from_serde(&key).err_into()?;
             let key = Query::from(key);
