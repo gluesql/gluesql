@@ -377,12 +377,8 @@ impl IdbStorage {
             let row = JsonValue::try_from(row)?;
             let row = JsValue::from_serde(&row).err_into()?;
 
-            let key = match key {
-                Key::I64(v) => v as f64,
-                _ => todo!(),
-            };
-
-            let key = JsValue::from_f64(key);
+            let key: JsonValue = Value::from(key).try_into()?;
+            let key = JsValue::from_serde(&key).err_into()?;
 
             store.put(&row, Some(&key)).await.err_into()?;
         }
