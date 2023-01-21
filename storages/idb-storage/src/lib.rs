@@ -11,11 +11,12 @@ use {
     gloo_utils::format::JsValueSerdeExt,
     gluesql_core::{
         data::{Key, Schema, Value},
-        result::{MutResult, Result, TrySelf},
+        result::{Error, MutResult, Result, TrySelf},
         store::{DataRow, RowIter, Store, StoreMut},
     },
     idb::{CursorDirection, Database, Factory, ObjectStoreParams, Query, TransactionMode},
     serde_json::Value as JsonValue,
+    std::sync::{Arc, Mutex},
     wasm_bindgen::JsValue,
 };
 
@@ -31,19 +32,51 @@ pub struct IdbStorage {
 impl IdbStorage {
     pub async fn new(namespace: Option<String>) -> Result<Self> {
         let factory = Factory::new().err_into()?;
-
         let namespace = namespace.as_deref().unwrap_or(DEFAULT_NAMESPACE).to_owned();
 
-        let mut open_request = factory.open(namespace.as_str(), None).err_into()?;
-        open_request.on_upgrade_needed(move |event| {
-            let database = event.database().unwrap();
+        let error = Arc::new(Mutex::new(None));
+        let open_request = {
+            let error = Arc::clone(&error);
+            let mut open_request = factory.open(namespace.as_str(), None).err_into()?;
+            open_request.on_upgrade_needed(move |event| {
+                let database = match event.database().err_into() {
+                    Ok(database) => database,
+                    Err(e) => {
+                        let mut error = match error.lock() {
+                            Ok(error) => error,
+                            Err(_) => return,
+                        };
 
-            database
-                .create_object_store(SCHEMA_STORE, ObjectStoreParams::new())
-                .unwrap();
-        });
+                        *error = Some(e);
+                        return;
+                    }
+                };
+
+                if let Err(e) = database
+                    .create_object_store(SCHEMA_STORE, ObjectStoreParams::new())
+                    .err_into()
+                {
+                    let mut error = match error.lock() {
+                        Ok(error) => error,
+                        Err(_) => return,
+                    };
+
+                    *error = Some(e);
+                    return;
+                }
+            });
+
+            open_request
+        };
 
         let database = open_request.await.err_into()?;
+        if let Some(e) = Arc::try_unwrap(error)
+            .map_err(|_| Error::StorageMsg("infallible - Arc::try_unwrap failed".to_owned()))?
+            .into_inner()
+            .err_into()?
+        {
+            return Err(e);
+        }
 
         Ok(Self {
             namespace,
@@ -137,8 +170,8 @@ impl Store for IdbStorage {
         };
 
         let mut rows = Vec::new();
-        let mut current_key = cursor.key().unwrap();
-        let mut current_row = cursor.value().unwrap();
+        let mut current_key = cursor.key().err_into()?;
+        let mut current_row = cursor.value().err_into()?;
 
         while !current_key.is_null() {
             let key: JsonValue = current_key.into_serde().err_into()?;
@@ -167,25 +200,55 @@ impl Store for IdbStorage {
 impl IdbStorage {
     pub async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let version = self.database.version().err_into()? + 1;
-
         self.database.close();
 
-        let mut open_request = self
-            .factory
-            .open(self.namespace.as_str(), Some(version))
-            .err_into()?;
+        let error = Arc::new(Mutex::new(None));
+        let open_request = {
+            let error = Arc::clone(&error);
+            let table_name = schema.table_name.to_owned();
+            let mut open_request = self
+                .factory
+                .open(self.namespace.as_str(), Some(version))
+                .err_into()?;
 
-        let table_name = schema.table_name.to_owned();
-        open_request.on_upgrade_needed(move |event| {
-            let database = event.database().unwrap();
+            open_request.on_upgrade_needed(move |event| {
+                let database = match event.database().err_into() {
+                    Ok(database) => database,
+                    Err(e) => {
+                        let mut error = match error.lock() {
+                            Ok(error) => error,
+                            Err(_) => return,
+                        };
 
-            let mut params = ObjectStoreParams::new();
-            params.auto_increment(true);
+                        *error = Some(e);
+                        return;
+                    }
+                };
 
-            database.create_object_store(&table_name, params).unwrap();
-        });
+                let mut params = ObjectStoreParams::new();
+                params.auto_increment(true);
+
+                if let Err(e) = database.create_object_store(&table_name, params).err_into() {
+                    let mut error = match error.lock() {
+                        Ok(error) => error,
+                        Err(_) => return,
+                    };
+
+                    *error = Some(e);
+                }
+            });
+
+            open_request
+        };
 
         self.database = open_request.await.err_into()?;
+        if let Some(e) = Arc::try_unwrap(error)
+            .map_err(|_| Error::StorageMsg("infallible - Arc::try_unwrap failed".to_owned()))?
+            .into_inner()
+            .err_into()?
+        {
+            return Err(e);
+        }
 
         let transaction = self
             .database
@@ -205,26 +268,58 @@ impl IdbStorage {
         let version = self.database.version().err_into()? + 1;
         self.database.close();
 
-        let mut open_request = self
-            .factory
-            .open(self.namespace.as_str(), Some(version))
-            .unwrap();
+        let error = Arc::new(Mutex::new(None));
+        let open_request = {
+            let error = Arc::clone(&error);
+            let table_name = table_name.to_owned();
+            let mut open_request = self
+                .factory
+                .open(self.namespace.as_str(), Some(version))
+                .err_into()?;
 
-        let n = table_name.to_owned();
-        open_request.on_upgrade_needed(move |event| {
-            let table_name = n;
-            let database = event.database().unwrap();
+            open_request.on_upgrade_needed(move |event| {
+                let database = match event.database().err_into() {
+                    Ok(database) => database,
+                    Err(e) => {
+                        let mut error = match error.lock() {
+                            Ok(error) => error,
+                            Err(_) => return,
+                        };
 
-            if database
-                .store_names()
-                .iter()
-                .any(|name| name == &table_name)
-            {
-                database.delete_object_store(table_name.as_str()).unwrap();
-            }
-        });
+                        *error = Some(e);
+                        return;
+                    }
+                };
+
+                if !database
+                    .store_names()
+                    .iter()
+                    .any(|name| name == &table_name)
+                {
+                    return;
+                }
+
+                if let Err(e) = database.delete_object_store(table_name.as_str()).err_into() {
+                    let mut error = match error.lock() {
+                        Ok(error) => error,
+                        Err(_) => return,
+                    };
+
+                    *error = Some(e);
+                }
+            });
+
+            open_request
+        };
 
         self.database = open_request.await.err_into()?;
+        if let Some(e) = Arc::try_unwrap(error)
+            .map_err(|_| Error::StorageMsg("infallible - Arc::try_unwrap failed".to_owned()))?
+            .into_inner()
+            .err_into()?
+        {
+            return Err(e);
+        }
 
         let transaction = self
             .database
