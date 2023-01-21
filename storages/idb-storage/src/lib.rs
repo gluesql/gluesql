@@ -16,7 +16,10 @@ use {
     },
     idb::{CursorDirection, Database, Factory, ObjectStoreParams, Query, TransactionMode},
     serde_json::Value as JsonValue,
-    std::sync::{Arc, Mutex},
+    std::{
+        iter::empty,
+        sync::{Arc, Mutex},
+    },
     wasm_bindgen::JsValue,
     web_sys::console,
 };
@@ -175,7 +178,7 @@ impl Store for IdbStorage {
         let mut cursor = match cursor {
             Some(cursor) => cursor,
             None => {
-                return Ok(Box::new(Vec::new().into_iter()));
+                return Ok(Box::new(empty()));
             }
         };
 
