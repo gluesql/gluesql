@@ -395,12 +395,8 @@ impl IdbStorage {
         let store = transaction.object_store(table_name).err_into()?;
 
         for key in keys.into_iter() {
-            let key = match key {
-                Key::I64(v) => v as f64,
-                _ => todo!(),
-            };
-
-            let key = JsValue::from_f64(key);
+            let key: JsonValue = Value::from(key).try_into()?;
+            let key = JsValue::from_serde(&key).err_into()?;
             let key = Query::from(key);
 
             store.delete(key).await.err_into()?;
