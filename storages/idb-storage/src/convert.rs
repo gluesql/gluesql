@@ -16,20 +16,24 @@ pub fn convert(value: JsValue, column_defs: Option<&[ColumnDef]>) -> Result<Data
     let value: JsonValue = value.into_serde().err_into()?;
 
     match (value, column_defs) {
-        (JsonValue::Array(json_array), Some(column_defs)) => json_array
-            .into_iter()
-            .map(Value::try_from)
-            .zip(column_defs.iter())
-            .map(|(value, ColumnDef { data_type, .. })| {
-                let value = value?;
+        (JsonValue::Array(json_array), Some(column_defs))
+            if json_array.len() == column_defs.len() =>
+        {
+            json_array
+                .into_iter()
+                .map(Value::try_from)
+                .zip(column_defs.iter())
+                .map(|(value, ColumnDef { data_type, .. })| {
+                    let value = value?;
 
-                match value.get_type() {
-                    Some(curr_type) if &curr_type != data_type => value.cast(data_type),
-                    _ => Ok(value),
-                }
-            })
-            .collect::<Result<Vec<Value>>>()
-            .map(DataRow::Vec),
+                    match value.get_type() {
+                        Some(curr_type) if &curr_type != data_type => value.cast(data_type),
+                        _ => Ok(value),
+                    }
+                })
+                .collect::<Result<Vec<Value>>>()
+                .map(DataRow::Vec)
+        }
         (JsonValue::Object(json_map), None) => json_map
             .into_iter()
             .map(|(key, value)| value.try_into().map(|value| (key, value)))
