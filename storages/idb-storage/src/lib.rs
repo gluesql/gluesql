@@ -135,7 +135,7 @@ impl Store for IdbStorage {
 
         let store = transaction.object_store(table_name).err_into()?;
 
-        let key: Value = target.into();
+        let key: Value = target.clone().into();
         let key: JsonValue = key.try_into()?;
         let key = JsValue::from_serde(&key).err_into()?;
         let row = store.get(key).await.err_into()?;

@@ -105,7 +105,6 @@ impl TryFrom<&Value> for Key {
     }
 }
 
-// todo: add unit tests
 impl From<Key> for Value {
     fn from(key: Key) -> Self {
         match key {
@@ -127,12 +126,6 @@ impl From<Key> for Value {
             Key::Uuid(v) => Value::Uuid(v),
             Key::None => Value::Null,
         }
-    }
-}
-
-impl From<&Key> for Value {
-    fn from(key: &Key) -> Self {
-        key.clone().into()
     }
 }
 
@@ -630,6 +623,5 @@ mod tests {
             )
         );
         matches!(Value::from(Key::None), Value::Null);
-        matches!(Value::from(&Key::None), Value::Null);
     }
 }
