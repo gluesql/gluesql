@@ -18,6 +18,7 @@ use {
     serde_json::Value as JsonValue,
     std::sync::{Arc, Mutex},
     wasm_bindgen::JsValue,
+    web_sys::console,
 };
 
 const SCHEMA_STORE: &str = "gluesql-schema";
@@ -44,7 +45,11 @@ impl IdbStorage {
                     Err(e) => {
                         let mut error = match error.lock() {
                             Ok(error) => error,
-                            Err(_) => return,
+                            Err(_) => {
+                                let msg = JsValue::from_str("infallible - lock acquire failed");
+                                console::error_1(&msg);
+                                return;
+                            }
                         };
 
                         *error = Some(e);
@@ -58,7 +63,11 @@ impl IdbStorage {
                 {
                     let mut error = match error.lock() {
                         Ok(error) => error,
-                        Err(_) => return,
+                        Err(_) => {
+                            let msg = JsValue::from_str("infallible - lock acquire failed");
+                            console::error_1(&msg);
+                            return;
+                        }
                     };
 
                     *error = Some(e);
@@ -214,7 +223,11 @@ impl IdbStorage {
                     Err(e) => {
                         let mut error = match error.lock() {
                             Ok(error) => error,
-                            Err(_) => return,
+                            Err(_) => {
+                                let msg = JsValue::from_str("infallible - lock acquire failed");
+                                console::error_1(&msg);
+                                return;
+                            }
                         };
 
                         *error = Some(e);
@@ -228,7 +241,11 @@ impl IdbStorage {
                 if let Err(e) = database.create_object_store(&table_name, params).err_into() {
                     let mut error = match error.lock() {
                         Ok(error) => error,
-                        Err(_) => return,
+                        Err(_) => {
+                            let msg = JsValue::from_str("infallible - lock acquire failed");
+                            console::error_1(&msg);
+                            return;
+                        }
                     };
 
                     *error = Some(e);
@@ -280,7 +297,11 @@ impl IdbStorage {
                     Err(e) => {
                         let mut error = match error.lock() {
                             Ok(error) => error,
-                            Err(_) => return,
+                            Err(_) => {
+                                let msg = JsValue::from_str("infallible - lock acquire failed");
+                                console::error_1(&msg);
+                                return;
+                            }
                         };
 
                         *error = Some(e);
@@ -299,7 +320,11 @@ impl IdbStorage {
                 if let Err(e) = database.delete_object_store(table_name.as_str()).err_into() {
                     let mut error = match error.lock() {
                         Ok(error) => error,
-                        Err(_) => return,
+                        Err(_) => {
+                            let msg = JsValue::from_str("infallible - lock acquire failed");
+                            console::error_1(&msg);
+                            return;
+                        }
                     };
 
                     *error = Some(e);
