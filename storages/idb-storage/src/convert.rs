@@ -39,10 +39,8 @@ pub fn convert(value: JsValue, column_defs: Option<&[ColumnDef]>) -> Result<Data
             .map(|(key, value)| value.try_into().map(|value| (key, value)))
             .collect::<Result<HashMap<String, Value>>>()
             .map(DataRow::Map),
-        (value, _) => {
-            let msg = format!("conflict - unsupported value stored: {value:?}");
-
-            Err(Error::StorageMsg(msg))
-        }
+        (value, _) => Err(Error::StorageMsg(format!(
+            "conflict - unsupported value stored: {value:?}"
+        ))),
     }
 }
