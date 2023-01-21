@@ -10,7 +10,6 @@ use {
 
 wasm_bindgen_test_configure!(run_in_browser);
 
-// hello world
 struct IdbStorageTester {
     glue: Glue<IdbStorage>,
 }
@@ -19,8 +18,6 @@ struct IdbStorageTester {
 impl Tester<IdbStorage> for IdbStorageTester {
     async fn new(namespace: &str) -> Self {
         let storage = IdbStorage::new(Some(namespace.to_owned())).await.unwrap();
-        // storage.delete().await.unwrap();
-
         let glue = Glue::new(storage);
 
         Self { glue }
