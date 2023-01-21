@@ -1,6 +1,4 @@
-## 🚴 WebStorage
-* localStorage
-* sessionStorage
+## 🚴 IdbStorage - IndexedDB storage support for GlueSQL
 
 ### 🔬 Test in Headless Browsers with `wasm-pack test`
 ```
