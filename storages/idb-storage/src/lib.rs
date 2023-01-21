@@ -182,11 +182,7 @@ impl Store for IdbStorage {
 
             rows.push((key, row));
 
-            let result = cursor.advance(1).await;
-            if result.is_err() {
-                break;
-            }
-
+            cursor.advance(1).await.err_into()?;
             current_key = cursor.key().err_into()?;
             current_row = cursor.value().err_into()?;
         }
