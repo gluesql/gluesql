@@ -138,28 +138,6 @@ test_case!(values, async move {
             )),
         ),
         (
-            "SELECT * FROM (VALUES (1, 'a'), (2, 'b')) AS Derived(id)",
-            Ok(select!(
-                id      | column2;
-                I64     | Str;
-                1         "a".to_owned();
-                2         "b".to_owned()
-            )),
-        ),
-        (
-            "SELECT * FROM (VALUES (1, 'a'), (2, 'b')) AS Derived(id, name)",
-            Ok(select!(
-                id      | name;
-                I64     | Str;
-                1         "a".to_owned();
-                2         "b".to_owned()
-            )),
-        ),
-        (
-            "SELECT * FROM (VALUES (1, 'a'), (2, 'b')) AS Derived(id, name, dummy)",
-            Err(FetchError::TooManyColumnAliases("Derived".into(), 2, 3).into()),
-        ),
-        (
             "INSERT INTO Items (id) VALUES (1);",
             Ok(Payload::Insert(1))
         ),

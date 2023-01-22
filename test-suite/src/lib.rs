@@ -6,6 +6,7 @@ pub mod arithmetic;
 pub mod ast_builder;
 pub mod basic;
 pub mod case;
+pub mod column_alias;
 pub mod concat;
 pub mod data_type;
 pub mod default;
@@ -171,6 +172,7 @@ macro_rules! generate_store_tests {
         );
         glue!(type_match, type_match::type_match);
         glue!(dictionary, dictionary::dictionary);
+        glue!(column_alias, column_alias::column_alias);
 
         // ast-builder
         glue!(ast_builder_basic, ast_builder::basic::basic);
