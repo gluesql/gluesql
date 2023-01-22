@@ -97,11 +97,6 @@ test_case!(column_alias, async move {
                     3     "SQL".to_owned()
             )),
         ),
-        // (
-        //     // column alias (non-wildcard)
-        //     "SELECT a FROM (SELECT * FROM InnerTable) AS InlineView(a, b)",
-        //     Ok(select!( a; I64; 1; 2; 3))
-        // ),
         (
             // too many column alias
             "SELECT * FROM (SELECT * FROM InnerTable) AS InlineView(a, b, c)",
