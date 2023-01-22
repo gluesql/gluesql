@@ -1,3 +1,5 @@
+use gluesql_core::prelude::Value;
+
 mod alter_table;
 mod index;
 mod schema;
@@ -26,7 +28,7 @@ use {
 #[derive(Debug)]
 pub struct JsonlStorage {
     tables: HashMap<String, Schema>,
-    path: PathBuf,
+    pub path: PathBuf,
 }
 
 impl Default for JsonlStorage {
@@ -178,11 +180,9 @@ impl StoreMut for JsonlStorage {
         let path = format!("{}/{}.json", self.path.display(), schema.table_name);
         let path = PathBuf::from(path);
 
-        match &schema.column_defs {
-            Some(columns) => self.write_schema(schema),
-            None => todo!(),
+        if let Some(_) = &schema.column_defs {
+            self.write_schema(schema).unwrap();
         }
-        .unwrap();
 
         match File::create(path).map_storage_err() {
             Ok(_) => {
@@ -246,7 +246,14 @@ impl StoreMut for JsonlStorage {
                                         .iter()
                                         .map(|column_def| column_def.name.clone())
                                         .zip(values.iter())
-                                        .map(|(k, v)| format!("\"{k}\": {}", String::from(v))) // todo! enclose string with ''?
+                                        .map(|(key, value)| {
+                                            let value = match value {
+                                                Value::Str(string) => format!("\"{string}\""),
+                                                _ => String::from(value),
+                                            };
+
+                                            format!("\"{key}\": {value}")
+                                        })
                                         .collect::<Vec<_>>();
                                     json.sort();
                                     let json = json.join(", ");
