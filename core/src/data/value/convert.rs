@@ -35,7 +35,7 @@ impl From<&Value> for String {
             Value::Map(_) => "[MAP]".to_owned(),
             Value::List(_) => "[LIST]".to_owned(),
             Value::Decimal(value) => value.to_string(),
-            Value::Null => String::from("NULL"),
+            Value::Null => String::from("null"),
         }
     }
 }
