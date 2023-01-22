@@ -18,7 +18,7 @@ impl From<&Value> for String {
         match v {
             Value::Str(value) => value.to_owned(),
             Value::Bytea(value) => hex::encode(value),
-            Value::Bool(value) => (if *value { "TRUE" } else { "FALSE" }).to_owned(),
+            Value::Bool(value) => (if *value { "true" } else { "false" }).to_owned(),
             Value::I8(value) => value.to_string(),
             Value::I16(value) => value.to_string(),
             Value::I32(value) => value.to_string(),
