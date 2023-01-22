@@ -85,14 +85,25 @@ impl JsonlStorage {
         }
     }
 
-    fn table_path(&self, table_name: &str) -> Result<PathBuf> {
+    fn data_path(&self, table_name: &str) -> Result<PathBuf> {
+        let path = self.path_by(table_name, "json")?;
+
+        Ok(PathBuf::from(path))
+    }
+
+    fn schema_path(&self, table_name: &str) -> Result<PathBuf> {
+        let path = self.path_by(table_name, "sql")?;
+
+        Ok(PathBuf::from(path))
+    }
+
+    fn path_by(&self, table_name: &str, extension: &str) -> Result<String, Error> {
         let schema = self
             .tables
             .get(table_name)
             .ok_or_else(|| Error::StorageMsg("table does not exist".to_owned()))?;
-        let path = format!("{}/{}.json", self.path.display(), schema.table_name);
-
-        Ok(PathBuf::from(path))
+        let path = format!("{}/{}.{extension}", self.path.display(), schema.table_name);
+        Ok(path)
     }
 
     fn insert_schema(&mut self, schema: &Schema) {
@@ -122,6 +133,36 @@ impl JsonlStorage {
 
         Ok(())
     }
+
+    fn scan_data(&self, table_name: &str) -> Result<RowIter> {
+        let schema = self.tables.get(table_name).unwrap().to_owned();
+        let data_path = self.data_path(table_name)?;
+
+        match read_lines(data_path) {
+            Ok(lines) => {
+                let row_iter = lines.enumerate().map(move |(key, line)| -> Result<_> {
+                    let hash_map = HashMap::parse_json_object(&line.map_storage_err()?)?;
+                    let key = Key::Uuid(key.try_into().map_storage_err()?);
+                    let data_row = match schema.clone().column_defs {
+                        Some(column_defs) => {
+                            let values = column_defs
+                                .iter()
+                                .map(|column_def| hash_map.get(&column_def.name).unwrap().clone())
+                                .collect::<Vec<_>>();
+
+                            DataRow::Vec(values)
+                        }
+                        None => DataRow::Map(hash_map),
+                    };
+
+                    Ok((key, data_row))
+                });
+
+                Ok(Box::new(row_iter))
+            }
+            Err(_) => todo!("error reading json file"),
+        }
+    }
 }
 
 #[async_trait(?Send)]
@@ -136,8 +177,7 @@ impl Store for JsonlStorage {
 
     async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<DataRow>> {
         let row = self
-            .scan_data(table_name)
-            .await?
+            .scan_data(table_name)?
             .find_map(|result| Some(result.map(|(key, row)| (&key == target).then_some(row))));
 
         match row {
@@ -147,22 +187,7 @@ impl Store for JsonlStorage {
     }
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
-        let path = JsonlStorage::table_path(self, table_name)?;
-
-        match read_lines(path) {
-            Ok(lines) => {
-                let row_iter = lines.enumerate().map(|(key, line)| -> Result<_> {
-                    let hash_map = HashMap::parse_json_object(&line.map_storage_err()?);
-                    let data_row = DataRow::Map(hash_map?);
-                    let key = Key::Uuid(key.try_into().map_storage_err()?);
-
-                    Ok((key, data_row))
-                });
-
-                Ok(Box::new(row_iter))
-            }
-            Err(_) => todo!("error reading json file"),
-        }
+        self.scan_data(table_name)
     }
 }
 
@@ -196,7 +221,7 @@ impl StoreMut for JsonlStorage {
     }
 
     async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()> {
-        let table_path = JsonlStorage::table_path(&self, table_name);
+        let table_path = JsonlStorage::data_path(&self, table_name);
         match table_path {
             Ok(table_path) => {
                 match remove_file(table_path).map_storage_err() {
@@ -219,22 +244,31 @@ impl StoreMut for JsonlStorage {
             .get(table_name)
             .ok_or_else(|| Error::StorageMsg("could not find table".to_owned()))
             .and_then(|schema| {
-                let table_path = JsonlStorage::table_path(&self, table_name)?;
+                let table_path = JsonlStorage::data_path(&self, table_name)?;
+                println!("{table_path:#?}");
 
                 let mut file = OpenOptions::new()
                     .write(true)
                     .append(true)
                     .open(&table_path)
-                    .map_err(|_| Error::StorageMsg("could not open file".to_owned()))?;
+                    .map_err(|e| Error::StorageMsg(e.to_string()))?;
 
                 for row in rows {
                     match row {
                         DataRow::Map(hash_map) => {
-                            let mut json = hash_map
+                            let json = hash_map
                                 .iter()
-                                .map(|(k, v)| format!("\"{k}\": {}", String::from(v)))
+                                // todo! why even schemaless get to here? on_where.rs L55
+                                .map(|(key, value)| {
+                                    let value = match value {
+                                        Value::Str(string) => format!("\"{string}\""),
+                                        _ => String::from(value),
+                                    };
+
+                                    format!("\"{key}\": {value}")
+                                })
                                 .collect::<Vec<_>>();
-                            json.sort(); // todo! remove sort?
+                            // json.sort(); // todo! remove sort?
                             let json = json.join(", ");
                             write!(file, "{{{json}}}\n").map_storage_err()?;
                         }
@@ -242,7 +276,7 @@ impl StoreMut for JsonlStorage {
                             match &schema.column_defs {
                                 Some(column_defs) => {
                                     // todo! validate columns
-                                    let mut json = column_defs
+                                    let json = column_defs
                                         .iter()
                                         .map(|column_def| column_def.name.clone())
                                         .zip(values.iter())
@@ -255,7 +289,7 @@ impl StoreMut for JsonlStorage {
                                             format!("\"{key}\": {value}")
                                         })
                                         .collect::<Vec<_>>();
-                                    json.sort();
+                                    // json.sort();
                                     let json = json.join(", ");
                                     write!(file, "{{{json}}}\n").map_storage_err()?;
                                 }
@@ -275,7 +309,7 @@ impl StoreMut for JsonlStorage {
     }
 
     async fn insert_data(self, table_name: &str, rows: Vec<(Key, DataRow)>) -> MutResult<Self, ()> {
-        let prev_rows = self.scan_data(table_name).await.unwrap();
+        let prev_rows = self.scan_data(table_name).unwrap();
 
         // todo! impl without sort + vector.zip
         let prev_rows = prev_rows
@@ -292,13 +326,13 @@ impl StoreMut for JsonlStorage {
 
         let rows = rows.into_iter().map(|(_, data_row)| data_row).collect();
 
-        let table_path = JsonlStorage::table_path(&self, table_name).unwrap();
+        let table_path = JsonlStorage::data_path(&self, table_name).unwrap();
         File::create(&table_path).map_storage_err().unwrap();
         self.append_data(table_name, rows).await
     }
 
     async fn delete_data(self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()> {
-        let prev_rows = self.scan_data(table_name).await.unwrap();
+        let prev_rows = self.scan_data(table_name).unwrap();
         let rows = prev_rows
             .filter_map(|result| match result {
                 Ok((key, data_row)) => match keys.iter().any(|target_key| target_key == &key) {
@@ -309,7 +343,7 @@ impl StoreMut for JsonlStorage {
             })
             .collect::<Vec<_>>();
 
-        let table_path = JsonlStorage::table_path(&self, table_name).unwrap();
+        let table_path = JsonlStorage::data_path(&self, table_name).unwrap();
         File::create(&table_path).map_storage_err().unwrap();
         self.append_data(table_name, rows).await
     }
