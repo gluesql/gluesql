@@ -4,7 +4,7 @@ use {
     gluesql_core::{
         ast::DataType::{Boolean, Int, Text},
         data::{Literal, ValueError},
-        executor::{FetchError, InsertError, SelectError},
+        executor::{InsertError, SelectError},
         prelude::{DataType, Payload, Value::*},
     },
     std::borrow::Cow,
