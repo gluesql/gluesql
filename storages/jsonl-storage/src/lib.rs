@@ -141,6 +141,8 @@ impl JsonlStorage {
         match read_lines(data_path) {
             Ok(lines) => {
                 let row_iter = lines.enumerate().map(move |(key, line)| -> Result<_> {
+                    // way1. DataRow::Vec try_into each column type
+                    // way2. parse UUID prefix like X'..'
                     let hash_map = HashMap::parse_json_object(&line.map_storage_err()?)?;
                     let key = Key::Uuid(key.try_into().map_storage_err()?);
                     let data_row = match schema.clone().column_defs {
@@ -257,13 +259,10 @@ impl StoreMut for JsonlStorage {
                     match row {
                         DataRow::Map(hash_map) => {
                             let json = hash_map
-                                .iter()
+                                .into_iter()
                                 // todo! why even schemaless get to here? on_where.rs L55
                                 .map(|(key, value)| {
-                                    let value = match value {
-                                        Value::Str(string) => format!("\"{string}\""),
-                                        _ => String::from(value),
-                                    };
+                                    let value = JsonValue::try_from(value).unwrap().to_string();
 
                                     format!("\"{key}\": {value}")
                                 })
@@ -279,12 +278,10 @@ impl StoreMut for JsonlStorage {
                                     let json = column_defs
                                         .iter()
                                         .map(|column_def| column_def.name.clone())
-                                        .zip(values.iter())
+                                        .zip(values.into_iter())
                                         .map(|(key, value)| {
-                                            let value = match value {
-                                                Value::Str(string) => format!("\"{string}\""),
-                                                _ => String::from(value),
-                                            };
+                                            let value =
+                                                JsonValue::try_from(value).unwrap().to_string();
 
                                             format!("\"{key}\": {value}")
                                         })
