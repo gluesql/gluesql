@@ -365,7 +365,6 @@ pub async fn fetch_relation_columns(
     match table_factor {
         TableFactor::Table { name, alias, .. } => {
             let columns = fetch_columns(storage, name).await?;
-            // review
             match (columns, alias) {
                 (columns, None) => Ok(columns),
                 (None, Some(_)) => Ok(None),
@@ -386,39 +385,6 @@ pub async fn fetch_relation_columns(
                         .collect(),
                 )),
             }
-
-            // //
-            // if let Some(TableAlias {
-            //     columns: alias_columns,
-            //     ..
-            // }) = alias
-            // {
-            //     let alias_len = alias_columns.len();
-            //     let labels = match columns {
-            //         Some(columns) => {
-            //             let column_len = columns.len();
-            //             if alias_len > column_len {
-            //                 Err(FetchError::TooManyColumnAliases(
-            //                     name.to_string(),
-            //                     column_len,
-            //                     alias_len,
-            //                 )
-            //                 .into())
-            //             } else {
-            //                 Ok(Some(
-            //                     alias_columns
-            //                         .iter()
-            //                         .cloned()
-            //                         .chain(columns[alias_len..column_len].to_vec())
-            //                         .collect(),
-            //                 ))
-            //             }
-            //         }
-            //         None => Ok(None),
-            //     };
-            //     return labels;
-            // }
-            // Ok(columns)
         }
         TableFactor::Series { .. } => Ok(Some(vec!["N".to_owned()])),
         TableFactor::Dictionary { dict, .. } => Ok(Some(match dict {
