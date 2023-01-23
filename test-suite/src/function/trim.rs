@@ -136,16 +136,21 @@ test_case!(trim, async move {
         (
             "SELECT
                 TRIM(BOTH TRIM(BOTH ' potato ')) AS Case1,
-                TRIM('xyz' FROM 'x') AS Case2
+                TRIM('xyz' FROM 'x') AS Case2,
+                TRIM(TRAILING 'xyz' FROM 'xx') AS Case3
             ",
             Ok(select!(
-                Case1               | Case2
-                Value::Str          | Value::Str;
-                "potato".to_owned()   "".to_owned()
+                Case1               | Case2         | Case3
+                Value::Str          | Value::Str    | Value::Str;
+                "potato".to_owned()   "".to_owned()   "".to_owned()
             )),
         ),
         (
             "SELECT TRIM('1' FROM 1) AS test FROM Test",
+            Err(EvaluateError::FunctionRequiresStringValue("TRIM".to_owned()).into()),
+        ),
+        (
+            "SELECT TRIM(1 FROM TRIM('t' FROM 'tartare')) AS test FROM Test",
             Err(EvaluateError::FunctionRequiresStringValue("TRIM".to_owned()).into()),
         ),
     ];

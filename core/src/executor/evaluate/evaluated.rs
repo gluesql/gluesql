@@ -673,10 +673,7 @@ impl<'a> Evaluated<'a> {
                         .next();
 
                     let start = match pivot {
-                        Some(idx) => match idx {
-                            0 => 0,
-                            _ => matched_vec[idx - 1].0 + 1,
-                        },
+                        Some(idx) => matched_vec[idx - 1].0 + 1,
                         _ => matched_vec[matched_vec.len() - 1].0 + 1,
                     };
 
@@ -717,12 +714,10 @@ impl<'a> Evaluated<'a> {
                     .enumerate()
                     .skip_while(|(vec_idx, (slice_idx, _))| vec_idx == slice_idx)
                     .map(|(vec_idx, (_, _))| vec_idx)
-                    .next();
+                    .next()
+                    .unwrap_or(0);
 
-                let trim_range = match pivot {
-                    Some(idx) => matched_vec[idx - 1].0..(matched_vec[idx].0 + range.start),
-                    _ => matched_vec[matched_vec.len() - 1].0..range.end,
-                };
+                let trim_range = matched_vec[pivot - 1].0..(matched_vec[pivot].0 + range.start);
 
                 Ok(Evaluated::StrSlice {
                     source: expr_str.to_owned(),
@@ -766,10 +761,7 @@ impl<'a> Evaluated<'a> {
                         0 => range.end,
                         _ => matched_vec[matched_vec.len() - idx].0,
                     },
-                    _ => match matched_vec[matched_vec.len() - 1].0 == sliced_expr.len() - 1 {
-                        true => matched_vec[0].0,
-                        false => range.start,
-                    },
+                    _ => matched_vec[0].0,
                 };
 
                 Ok(Evaluated::StrSlice {
