@@ -68,6 +68,7 @@ impl IndexMut for SledStorage {
             let Schema {
                 column_defs,
                 indexes,
+                engine,
                 created,
                 ..
             } = schema
@@ -95,6 +96,7 @@ impl IndexMut for SledStorage {
                 table_name: table_name.to_owned(),
                 column_defs,
                 indexes,
+                engine,
                 created,
             };
 
@@ -148,6 +150,7 @@ impl IndexMut for SledStorage {
             let Schema {
                 column_defs,
                 indexes,
+                engine,
                 created,
                 ..
             } = schema
@@ -170,6 +173,7 @@ impl IndexMut for SledStorage {
                 table_name: table_name.to_owned(),
                 column_defs,
                 indexes,
+                engine,
                 created,
             };
 
