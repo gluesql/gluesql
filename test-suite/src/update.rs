@@ -61,7 +61,7 @@ test_case!(update, async move {
             Ok(Payload::Update(1))
         ),
         (
-            "UPDATE TableA SET name = 'John' WHERE name = SUBSTR(SUBSTR('Hello', 1), 1)",
+            "UPDATE TableA SET name = SUBSTR('John', 1) WHERE num = 9",
             Ok(Payload::Update(1))
         ),
         (

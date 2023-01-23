@@ -97,8 +97,8 @@ impl<'a> Update<'a> {
                                 }
                                 Evaluated::StrSlice {
                                     source: s,
-                                    range: _,
-                                } => Value::Str(s),
+                                    range: r,
+                                } => Value::Str(s[r].to_owned()),
                             };
 
                             value.validate_null(*nullable)?;
