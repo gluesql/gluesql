@@ -38,7 +38,7 @@ test_case!(substr, async move {
             Ok(Payload::Insert(1)),
         ),
         (
-            r#"SELECT SUBSTR(name, 1) AS test FROM Item"#,
+            r#"SELECT SUBSTR(SUBSTR(name, 1), 1) AS test FROM Item"#,
             Ok(select!(
                 "test"
                 Str;
