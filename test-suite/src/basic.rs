@@ -1,6 +1,9 @@
 use {
     crate::*,
-    gluesql_core::{prelude::Value::*, translate::TranslateError},
+    gluesql_core::{
+        prelude::{Payload, Value::*},
+        translate::TranslateError,
+    },
 };
 
 test_case!(basic, async move {
@@ -20,6 +23,7 @@ CREATE TABLE TestA (
     name TEXT
 )"#
     );
+    run!("CREATE TABLE EmptyTest");
 
     run!("INSERT INTO Test (id, num, name) VALUES (1, 2, 'Hello')");
     run!("INSERT INTO Test (id, num, name) VALUES (1, 9, 'World')");
@@ -47,6 +51,11 @@ CREATE TABLE TestA (
         ))
     );
 
+    test!("SELECT * FROM EmptyTest", Ok(Payload::SelectMap(vec![])));
+    test!(
+        "SELECT * FROM (SELECT * FROM EmptyTest) AS Empty",
+        Ok(Payload::SelectMap(vec![]))
+    );
     count!(4, "SELECT * FROM Test");
 
     run!("UPDATE Test SET id = 2");
