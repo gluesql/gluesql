@@ -163,7 +163,9 @@ impl JsonlStorage {
                             DataRow::Map(hash_map)
                         }
                     };
-                    let key = Key::Uuid(key.try_into().map_storage_err()?);
+                    // todo! okay not to use UUID?
+                    // todo! line starts from 1?
+                    let key = Key::I64((key + 1).try_into().map_storage_err()?);
 
                     Ok((key, data_row))
                 });
@@ -186,14 +188,13 @@ impl Store for JsonlStorage {
     }
 
     async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<DataRow>> {
-        let row = self
-            .scan_data(table_name)?
-            .find_map(|result| Some(result.map(|(key, row)| (&key == target).then_some(row))));
+        let row = self.scan_data(table_name)?.find_map(|result| {
+            result
+                .map(|(key, row)| (&key == target).then_some(row))
+                .unwrap_or(None)
+        });
 
-        match row {
-            Some(row) => row,
-            None => todo!(),
-        }
+        Ok(row)
     }
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
@@ -255,7 +256,6 @@ impl StoreMut for JsonlStorage {
             .ok_or_else(|| Error::StorageMsg("could not find table".to_owned()))
             .and_then(|schema| {
                 let table_path = JsonlStorage::data_path(&self, table_name)?;
-                println!("{table_path:#?}");
 
                 let mut file = OpenOptions::new()
                     .write(true)
@@ -324,10 +324,7 @@ impl StoreMut for JsonlStorage {
         let rows = prev_rows.concat(rows.into_iter());
         let mut rows = rows.into_iter().collect::<Vec<_>>();
 
-        rows.sort_by(|(key_a, _), (key_b, _)| match (key_a, key_b) {
-            (Key::Uuid(a), Key::Uuid(b)) => a.cmp(b),
-            _ => todo!(),
-        });
+        rows.sort_by(|(key_a, _), (key_b, _)| key_a.partial_cmp(key_b).unwrap());
 
         let rows = rows.into_iter().map(|(_, data_row)| data_row).collect();
 
