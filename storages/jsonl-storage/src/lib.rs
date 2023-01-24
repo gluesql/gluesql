@@ -144,18 +144,26 @@ impl JsonlStorage {
                     // way1. DataRow::Vec try_into each column type
                     // way2. parse UUID prefix like X'..'
                     let hash_map = HashMap::parse_json_object(&line.map_storage_err()?)?;
-                    let key = Key::Uuid(key.try_into().map_storage_err()?);
                     let data_row = match schema.clone().column_defs {
                         Some(column_defs) => {
                             let values = column_defs
                                 .iter()
-                                .map(|column_def| hash_map.get(&column_def.name).unwrap().clone())
+                                .map(|column_def| {
+                                    // data_type, key, value => 1. data_type::try_from(value)
+                                    let value = hash_map.get(&column_def.name).unwrap().clone();
+                                    value.cast(&column_def.data_type).unwrap()
+                                    // Str => UUID
+                                })
                                 .collect::<Vec<_>>();
 
                             DataRow::Vec(values)
                         }
-                        None => DataRow::Map(hash_map),
+                        None => {
+                            // let hash_map = HashMap::parse_json_object(&line.map_storage_err()?)?;
+                            DataRow::Map(hash_map)
+                        }
                     };
+                    let key = Key::Uuid(key.try_into().map_storage_err()?);
 
                     Ok((key, data_row))
                 });

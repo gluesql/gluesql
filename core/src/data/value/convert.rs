@@ -519,7 +519,10 @@ impl TryFrom<&Value> for u128 {
     fn try_from(v: &Value) -> Result<u128> {
         match v {
             Value::Uuid(value) => Ok(*value),
-            Value::Str(value) => parse_uuid(value),
+            Value::Str(value) => Uuid::from_str(value)
+                .as_ref()
+                .map(Uuid::as_u128)
+                .map_err(|_| ValueError::ImpossibleCast.into()),
             _ => Err(ValueError::ImpossibleCast.into()),
         }
     }
