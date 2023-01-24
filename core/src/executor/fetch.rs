@@ -363,7 +363,29 @@ pub async fn fetch_relation_columns(
     table_factor: &TableFactor,
 ) -> Result<Option<Vec<String>>> {
     match table_factor {
-        TableFactor::Table { name, .. } => fetch_columns(storage, name).await,
+        TableFactor::Table { name, alias, .. } => {
+            let columns = fetch_columns(storage, name).await?;
+            match (columns, alias) {
+                (columns, None) => Ok(columns),
+                (None, Some(_)) => Ok(None),
+                (Some(columns), Some(alias)) if alias.columns.len() > columns.len() => {
+                    Err(FetchError::TooManyColumnAliases(
+                        name.to_string(),
+                        columns.len(),
+                        alias.columns.len(),
+                    )
+                    .into())
+                }
+                (Some(columns), Some(alias)) => Ok(Some(
+                    alias
+                        .columns
+                        .iter()
+                        .cloned()
+                        .chain(columns[alias.columns.len()..columns.len()].to_vec())
+                        .collect(),
+                )),
+            }
+        }
         TableFactor::Series { .. } => Ok(Some(vec!["N".to_owned()])),
         TableFactor::Dictionary { dict, .. } => Ok(Some(match dict {
             Dictionary::GlueObjects => vec![
@@ -387,7 +409,11 @@ pub async fn fetch_relation_columns(
         })),
         TableFactor::Derived {
             subquery: Query { body, .. },
-            alias: TableAlias { columns, name },
+            alias:
+                TableAlias {
+                    columns: alias_columns,
+                    name,
+                },
         } => match body {
             SetExpr::Select(statement) => {
                 let Select {
@@ -399,11 +425,30 @@ pub async fn fetch_relation_columns(
                     ..
                 } = statement.as_ref();
 
-                fetch_labels(storage, relation, joins, projection).await
+                let labels = fetch_labels(storage, relation, joins, projection).await?;
+                match labels {
+                    None => Ok(None),
+                    Some(labels) if alias_columns.is_empty() => Ok(Some(labels)),
+                    Some(labels) if alias_columns.len() > labels.len() => {
+                        Err(FetchError::TooManyColumnAliases(
+                            name.to_string(),
+                            labels.len(),
+                            alias_columns.len(),
+                        )
+                        .into())
+                    }
+                    Some(labels) => Ok(Some(
+                        alias_columns
+                            .iter()
+                            .cloned()
+                            .chain(labels[alias_columns.len()..labels.len()].to_vec())
+                            .collect(),
+                    )),
+                }
             }
             SetExpr::Values(Values(values_list)) => {
                 let total_len = values_list[0].len();
-                let alias_len = columns.len();
+                let alias_len = alias_columns.len();
                 if alias_len > total_len {
                     return Err(FetchError::TooManyColumnAliases(
                         name.into(),
@@ -415,7 +460,11 @@ pub async fn fetch_relation_columns(
                 let labels = (alias_len + 1..=total_len)
                     .into_iter()
                     .map(|i| format!("column{}", i));
-                let labels = columns.iter().cloned().chain(labels).collect::<Vec<_>>();
+                let labels = alias_columns
+                    .iter()
+                    .cloned()
+                    .chain(labels)
+                    .collect::<Vec<_>>();
 
                 Ok(Some(labels))
             }
