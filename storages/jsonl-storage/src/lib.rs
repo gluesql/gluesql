@@ -193,7 +193,15 @@ impl Store for JsonlStorage {
     }
 
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
-        Ok(self.tables.iter().map(|table| table.1.to_owned()).collect())
+        let mut vec = self
+            .tables
+            .iter()
+            .map(|table| table.1.to_owned())
+            .collect::<Vec<_>>();
+        // vec.sort();
+        vec.sort_by(|key_a, key_b| key_a.table_name.cmp(&key_b.table_name));
+
+        Ok(vec)
     }
 
     async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<DataRow>> {
