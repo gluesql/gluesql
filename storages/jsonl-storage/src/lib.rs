@@ -1,4 +1,4 @@
-use gluesql_core::prelude::Value;
+use gluesql_core::prelude::{DataType, Value};
 
 mod alter_table;
 mod index;
@@ -151,8 +151,17 @@ impl JsonlStorage {
                                 .map(|column_def| {
                                     // data_type, key, value => 1. data_type::try_from(value)
                                     let value = hash_map.get(&column_def.name).unwrap().clone();
-                                    value.cast(&column_def.data_type).unwrap()
-                                    // Str => UUID
+                                    let data_type = value.get_type();
+                                    match data_type {
+                                        Some(data_type) => {
+                                            match data_type == column_def.data_type {
+                                                true => value,
+                                                false => value.cast(&column_def.data_type).unwrap(),
+                                            }
+                                        }
+                                        None => value,
+                                    }
+                                    // value.cast(&column_def.data_type).unwrap()
                                 })
                                 .collect::<Vec<_>>();
 
@@ -232,6 +241,7 @@ impl StoreMut for JsonlStorage {
     }
 
     async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()> {
+        // todo! should delete including .sql file
         let table_path = JsonlStorage::data_path(&self, table_name);
         match table_path {
             Ok(table_path) => {
@@ -245,7 +255,7 @@ impl StoreMut for JsonlStorage {
 
                 return Ok((storage, ()));
             }
-            Err(e) => Err((self, e)),
+            Err(_) => Ok((self, ())), // todo! fair enough to squash error for drop table if exist?
         }
     }
 
