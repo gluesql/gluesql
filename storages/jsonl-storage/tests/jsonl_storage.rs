@@ -1,4 +1,4 @@
-use std::fs::remove_dir_all;
+use std::{collections::HashMap, fs::remove_dir_all, path::PathBuf};
 
 use {
     async_trait::async_trait, gluesql_core::prelude::Glue, gluesql_jsonl_storage::JsonlStorage,
@@ -11,14 +11,16 @@ struct JsonlTester {
 
 #[async_trait(?Send)]
 impl Tester<JsonlStorage> for JsonlTester {
-    async fn new(_: &str) -> Self {
-        let storage = JsonlStorage::default();
-        let path = format!("{}/*", storage.path.display());
-        if let Err(e) = remove_dir_all(path) {
-            // println!("fs::remove_file {:?}", e);
-        };
-        let glue = Glue::new(storage);
+    async fn new(namespace: &str) -> Self {
+        let path = format!("data/{}", namespace);
 
+        if let Err(e) = remove_dir_all(&path) {
+            println!("fs::remove_file {:?}", e);
+        };
+
+        println!("{path}");
+        let storage = JsonlStorage::new(&path).expect("JsonlStorage::new");
+        let glue = Glue::new(storage);
         JsonlTester { glue }
     }
 

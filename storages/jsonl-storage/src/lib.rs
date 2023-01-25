@@ -52,6 +52,7 @@ impl<T, E: ToString> ResultExt<T, E> for std::result::Result<T, E> {
 
 impl JsonlStorage {
     pub fn new(path: &str) -> Result<Self> {
+        fs::create_dir_all(path).map_storage_err()?;
         let paths = fs::read_dir(path).map_storage_err()?;
         let tables = paths
             .into_iter()
