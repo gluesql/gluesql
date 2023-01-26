@@ -8,7 +8,7 @@ use {
     async_trait::async_trait,
     gluesql_core::{
         data::{Key, Schema},
-        result::{MutResult, Result},
+        result::Result,
         store::{DataRow, RowIter, Store, StoreMut},
     },
     indexmap::IndexMap,
@@ -66,8 +66,9 @@ impl Store for MemoryStorage {
     }
 }
 
-impl MemoryStorage {
-    pub fn insert_schema(&mut self, schema: &Schema) {
+#[async_trait(?Send)]
+impl StoreMut for MemoryStorage {
+    async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let table_name = schema.table_name.clone();
         let item = Item {
             schema: schema.clone(),
@@ -75,13 +76,15 @@ impl MemoryStorage {
         };
 
         self.items.insert(table_name, item);
+        Ok(())
     }
 
-    pub fn delete_schema(&mut self, table_name: &str) {
+    async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         self.items.remove(table_name);
+        Ok(())
     }
 
-    pub fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) {
+    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
         if let Some(item) = self.items.get_mut(table_name) {
             for row in rows {
                 self.id_counter += 1;
@@ -89,64 +92,27 @@ impl MemoryStorage {
                 item.rows.insert(Key::I64(self.id_counter), row);
             }
         }
+
+        Ok(())
     }
 
-    pub fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) {
+    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
         if let Some(item) = self.items.get_mut(table_name) {
             for (key, row) in rows {
                 item.rows.insert(key, row);
             }
         }
+
+        Ok(())
     }
 
-    pub fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) {
+    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         if let Some(item) = self.items.get_mut(table_name) {
             for key in keys {
                 item.rows.remove(&key);
             }
         }
-    }
-}
 
-#[async_trait(?Send)]
-impl StoreMut for MemoryStorage {
-    async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
-        let mut storage = self;
-
-        MemoryStorage::insert_schema(&mut storage, schema);
-
-        Ok((storage, ()))
-    }
-
-    async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()> {
-        let mut storage = self;
-
-        MemoryStorage::delete_schema(&mut storage, table_name);
-
-        Ok((storage, ()))
-    }
-
-    async fn append_data(self, table_name: &str, rows: Vec<DataRow>) -> MutResult<Self, ()> {
-        let mut storage = self;
-
-        MemoryStorage::append_data(&mut storage, table_name, rows);
-
-        Ok((storage, ()))
-    }
-
-    async fn insert_data(self, table_name: &str, rows: Vec<(Key, DataRow)>) -> MutResult<Self, ()> {
-        let mut storage = self;
-
-        MemoryStorage::insert_data(&mut storage, table_name, rows);
-
-        Ok((storage, ()))
-    }
-
-    async fn delete_data(self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()> {
-        let mut storage = self;
-
-        MemoryStorage::delete_data(&mut storage, table_name, keys);
-
-        Ok((storage, ()))
+        Ok(())
     }
 }

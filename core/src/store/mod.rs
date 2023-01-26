@@ -1,4 +1,4 @@
-use cfg_if::cfg_if;
+use {crate::result::TrySelf, cfg_if::cfg_if};
 
 cfg_if! {
     if #[cfg(feature = "alter-table")] {
@@ -87,17 +87,71 @@ pub trait Store {
 /// By implementing `StoreMut` trait,
 /// you can run `INSERT`, `CREATE TABLE`, `DELETE`, `UPDATE` and `DROP TABLE` queries.
 #[async_trait(?Send)]
-pub trait StoreMut
+pub trait StoreMut {
+    async fn insert_schema(&mut self, schema: &Schema) -> Result<()>;
+
+    async fn delete_schema(&mut self, table_name: &str) -> Result<()>;
+
+    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()>;
+
+    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()>;
+
+    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()>;
+}
+
+#[async_trait(?Send)]
+pub trait IStoreMut: StoreMut
 where
     Self: Sized,
 {
-    async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()>;
+    async fn insert_schema(mut self, schema: &Schema) -> MutResult<Self, ()>;
 
-    async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()>;
+    async fn delete_schema(mut self, table_name: &str) -> MutResult<Self, ()>;
 
-    async fn append_data(self, table_name: &str, rows: Vec<DataRow>) -> MutResult<Self, ()>;
+    async fn append_data(mut self, table_name: &str, rows: Vec<DataRow>) -> MutResult<Self, ()>;
 
-    async fn insert_data(self, table_name: &str, rows: Vec<(Key, DataRow)>) -> MutResult<Self, ()>;
+    async fn insert_data(
+        mut self,
+        table_name: &str,
+        rows: Vec<(Key, DataRow)>,
+    ) -> MutResult<Self, ()>;
 
-    async fn delete_data(self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()>;
+    async fn delete_data(mut self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()>;
+}
+
+#[async_trait(?Send)]
+impl<T: GStoreMut> IStoreMut for T {
+    async fn insert_schema(mut self, schema: &Schema) -> MutResult<Self, ()> {
+        StoreMut::insert_schema(&mut self, schema)
+            .await
+            .try_self(self)
+    }
+
+    async fn delete_schema(mut self, table_name: &str) -> MutResult<Self, ()> {
+        StoreMut::delete_schema(&mut self, table_name)
+            .await
+            .try_self(self)
+    }
+
+    async fn append_data(mut self, table_name: &str, rows: Vec<DataRow>) -> MutResult<Self, ()> {
+        StoreMut::append_data(&mut self, table_name, rows)
+            .await
+            .try_self(self)
+    }
+
+    async fn insert_data(
+        mut self,
+        table_name: &str,
+        rows: Vec<(Key, DataRow)>,
+    ) -> MutResult<Self, ()> {
+        StoreMut::insert_data(&mut self, table_name, rows)
+            .await
+            .try_self(self)
+    }
+
+    async fn delete_data(mut self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()> {
+        StoreMut::delete_data(&mut self, table_name, keys)
+            .await
+            .try_self(self)
+    }
 }

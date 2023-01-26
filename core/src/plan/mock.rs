@@ -11,7 +11,7 @@ use {
         data::{Key, Schema},
         executor::execute,
         parse_sql::parse,
-        result::{Error, MutResult, Result},
+        result::{Error, Result},
         store::{DataRow, RowIter, Store, StoreMut},
         translate::translate,
     },
@@ -79,42 +79,36 @@ impl Store for MockStorage {
 
 #[async_trait(?Send)]
 impl StoreMut for MockStorage {
-    async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
-        let mut storage = self;
-
+    async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let table_name = schema.table_name.clone();
         let schema = schema.clone();
 
-        storage.schema_map.insert(table_name, schema);
-        Ok((storage, ()))
+        self.schema_map.insert(table_name, schema);
+        Ok(())
     }
 
-    async fn delete_schema(self, _table_name: &str) -> MutResult<Self, ()> {
+    async fn delete_schema(&mut self, _table_name: &str) -> Result<()> {
         let msg = "[MockStorage] delete_schema is not supported".to_owned();
 
-        Err((self, Error::StorageMsg(msg)))
+        Err(Error::StorageMsg(msg))
     }
 
-    async fn append_data(self, _table_name: &str, _rows: Vec<DataRow>) -> MutResult<Self, ()> {
+    async fn append_data(&mut self, _table_name: &str, _rows: Vec<DataRow>) -> Result<()> {
         let msg = "[MockStorage] append_data is not supported".to_owned();
 
-        Err((self, Error::StorageMsg(msg)))
+        Err(Error::StorageMsg(msg))
     }
 
-    async fn insert_data(
-        self,
-        _table_name: &str,
-        _rows: Vec<(Key, DataRow)>,
-    ) -> MutResult<Self, ()> {
+    async fn insert_data(&mut self, _table_name: &str, _rows: Vec<(Key, DataRow)>) -> Result<()> {
         let msg = "[MockStorage] insert_data is not supported".to_owned();
 
-        Err((self, Error::StorageMsg(msg)))
+        Err(Error::StorageMsg(msg))
     }
 
-    async fn delete_data(self, _table_name: &str, _keys: Vec<Key>) -> MutResult<Self, ()> {
+    async fn delete_data(&mut self, _table_name: &str, _keys: Vec<Key>) -> Result<()> {
         let msg = "[MockStorage] delete_data is not supported".to_owned();
 
-        Err((self, Error::StorageMsg(msg)))
+        Err(Error::StorageMsg(msg))
     }
 }
 
@@ -166,15 +160,15 @@ mod tests {
 
     #[test]
     fn empty() {
-        let storage = MockStorage::default();
+        let mut storage = MockStorage::default();
 
         assert!(block_on(storage.scan_data("Foo")).is_err());
         assert!(block_on(storage.fetch_data("Foo", &Key::None)).is_err());
         assert!(block_on(storage.fetch_schema("__Err__")).is_err());
-        let storage = test(storage.delete_schema("Foo"));
-        let storage = test(storage.append_data("Foo", Vec::new()));
-        let storage = test(storage.insert_data("Foo", Vec::new()));
-        let storage = test(storage.delete_data("Foo", Vec::new()));
+        assert!(block_on(storage.delete_schema("Foo")).is_err());
+        assert!(block_on(storage.append_data("Foo", Vec::new())).is_err());
+        assert!(block_on(storage.insert_data("Foo", Vec::new())).is_err());
+        assert!(block_on(storage.delete_data("Foo", Vec::new())).is_err());
 
         #[cfg(feature = "alter-table")]
         let storage = {

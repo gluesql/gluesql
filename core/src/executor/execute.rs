@@ -14,7 +14,7 @@ use {
         },
         data::{Key, Row, Schema, Value},
         result::MutResult,
-        store::{GStore, GStoreMut},
+        store::{GStore, GStoreMut, IStoreMut},
     },
     futures::stream::{StreamExt, TryStreamExt},
     serde::{Deserialize, Serialize},
