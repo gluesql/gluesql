@@ -1,4 +1,7 @@
-use gluesql_core::prelude::{DataType, Value};
+use gluesql_core::{
+    prelude::{DataType, Value},
+    result::TrySelf,
+};
 
 mod alter_table;
 mod index;
@@ -47,6 +50,17 @@ trait ResultExt<T, E: ToString> {
 impl<T, E: ToString> ResultExt<T, E> for std::result::Result<T, E> {
     fn map_storage_err(self) -> Result<T, Error> {
         self.map_err(|e| e.to_string()).map_err(Error::StorageMsg)
+    }
+}
+
+trait OptionExt<T> {
+    fn map_storage_err(self, payload: &str) -> Result<T, Error>;
+}
+
+impl<T> OptionExt<T> for std::option::Option<T> {
+    fn map_storage_err(self, payload: &str) -> Result<T, Error> {
+        self.ok_or_else(|| payload.to_string())
+            .map_err(Error::StorageMsg)
     }
 }
 
@@ -129,14 +143,18 @@ impl JsonlStorage {
     fn write_schema(&self, schema: &Schema) -> Result<()> {
         let path = format!("{}/{}.sql", self.path.display(), schema.table_name);
         let ddl = schema.clone().to_ddl();
-        let mut file = File::create(path).unwrap();
-        write!(file, "{ddl}").unwrap();
+        let mut file = File::create(path).map_storage_err()?;
+        write!(file, "{ddl}").map_storage_err()?;
 
         Ok(())
     }
 
     fn scan_data(&self, table_name: &str) -> Result<RowIter> {
-        let schema = self.tables.get(table_name).unwrap().to_owned();
+        let schema = self
+            .tables
+            .get(table_name)
+            .map_storage_err("table does not exist")?
+            .to_owned();
         let data_path = self.data_path(table_name)?;
 
         match read_lines(data_path) {
@@ -149,22 +167,24 @@ impl JsonlStorage {
                         Some(column_defs) => {
                             let values = column_defs
                                 .iter()
-                                .map(|column_def| {
+                                .map(|column_def| -> Result<_> {
                                     // data_type, key, value => 1. data_type::try_from(value)
-                                    let value = hash_map.get(&column_def.name).unwrap().clone();
+                                    let value = hash_map
+                                        .get(&column_def.name)
+                                        .map_storage_err("column does not exist")?
+                                        .clone();
                                     let data_type = value.get_type();
                                     match data_type {
                                         Some(data_type) => {
                                             match data_type == column_def.data_type {
-                                                true => value,
-                                                false => value.cast(&column_def.data_type).unwrap(),
+                                                true => Ok(value),
+                                                false => value.cast(&column_def.data_type),
                                             }
                                         }
-                                        None => value,
+                                        None => Ok(value),
                                     }
-                                    // value.cast(&column_def.data_type).unwrap()
                                 })
-                                .collect::<Vec<_>>();
+                                .collect::<Result<Vec<_>>>()?;
 
                             DataRow::Vec(values)
                         }
@@ -234,19 +254,15 @@ impl StoreMut for JsonlStorage {
         let path = format!("{}/{}.json", self.path.display(), schema.table_name);
         let path = PathBuf::from(path);
 
-        if let Some(_) = &schema.column_defs {
-            self.write_schema(schema).unwrap();
-        }
+        let storage = match &schema.column_defs {
+            Some(_) => self.write_schema(schema).try_self(self)?.0,
+            _ => self,
+        };
 
-        match File::create(path).map_storage_err() {
-            Ok(_) => {
-                let mut storage = self;
-                JsonlStorage::insert_schema(&mut storage, schema);
+        let (mut storage, _) = File::create(path).map_storage_err().try_self(storage)?;
+        JsonlStorage::insert_schema(&mut storage, schema);
 
-                Ok((storage, ()))
-            }
-            Err(e) => return Err((self, e)),
-        }
+        Ok((storage, ()))
     }
 
     async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()> {
@@ -289,11 +305,11 @@ impl StoreMut for JsonlStorage {
                                 .into_iter()
                                 // todo! why even schemaless get to here? on_where.rs L55
                                 .map(|(key, value)| {
-                                    let value = JsonValue::try_from(value).unwrap().to_string();
+                                    let value = JsonValue::try_from(value)?.to_string();
 
-                                    format!("\"{key}\": {value}")
+                                    Ok(format!("\"{key}\": {value}"))
                                 })
-                                .collect::<Vec<_>>();
+                                .collect::<Result<Vec<_>>>()?;
                             // json.sort(); // todo! remove sort?
                             let json = json.join(", ");
                             write!(file, "{{{json}}}\n").map_storage_err()?;
@@ -307,12 +323,11 @@ impl StoreMut for JsonlStorage {
                                         .map(|column_def| column_def.name.clone())
                                         .zip(values.into_iter())
                                         .map(|(key, value)| {
-                                            let value =
-                                                JsonValue::try_from(value).unwrap().to_string();
+                                            let value = JsonValue::try_from(value)?.to_string();
 
-                                            format!("\"{key}\": {value}")
+                                            Ok(format!("\"{key}\": {value}"))
                                         })
-                                        .collect::<Vec<_>>();
+                                        .collect::<Result<Vec<_>>>()?;
                                     // json.sort();
                                     let json = json.join(", ");
                                     write!(file, "{{{json}}}\n").map_storage_err()?;
@@ -333,27 +348,32 @@ impl StoreMut for JsonlStorage {
     }
 
     async fn insert_data(self, table_name: &str, rows: Vec<(Key, DataRow)>) -> MutResult<Self, ()> {
-        let prev_rows = self.scan_data(table_name).unwrap();
+        let (self, prev_rows) = self.scan_data(table_name).try_self(self)?;
 
         // todo! impl without sort + vector.zip
-        let prev_rows = prev_rows
+        let (self, prev_rows) = prev_rows
             .collect::<Result<HashMap<Key, DataRow>>>()
-            .unwrap();
+            .try_self(self)?;
 
         let rows = prev_rows.concat(rows.into_iter());
         let mut rows = rows.into_iter().collect::<Vec<_>>();
 
-        rows.sort_by(|(key_a, _), (key_b, _)| key_a.partial_cmp(key_b).unwrap());
+        rows.sort_by(|(key_a, _), (key_b, _)| {
+            key_a
+                .partial_cmp(key_b)
+                .unwrap_or(std::cmp::Ordering::Equal) // todo! okay to be equal?
+        });
 
         let rows = rows.into_iter().map(|(_, data_row)| data_row).collect();
 
-        let table_path = JsonlStorage::data_path(&self, table_name).unwrap();
-        File::create(&table_path).map_storage_err().unwrap();
+        let (self, table_path) = JsonlStorage::data_path(&self, table_name).try_self(self)?;
+        let (self, _) = File::create(&table_path).map_storage_err().try_self(self)?;
+
         self.append_data(table_name, rows).await
     }
 
     async fn delete_data(self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()> {
-        let prev_rows = self.scan_data(table_name).unwrap();
+        let (self, prev_rows) = self.scan_data(table_name).try_self(self)?;
         let rows = prev_rows
             .filter_map(|result| match result {
                 Ok((key, data_row)) => match keys.iter().any(|target_key| target_key == &key) {
@@ -364,8 +384,9 @@ impl StoreMut for JsonlStorage {
             })
             .collect::<Vec<_>>();
 
-        let table_path = JsonlStorage::data_path(&self, table_name).unwrap();
-        File::create(&table_path).map_storage_err().unwrap();
+        let (self, table_path) = JsonlStorage::data_path(&self, table_name).try_self(self)?;
+        let (self, _) = File::create(&table_path).map_storage_err().try_self(self)?;
+
         self.append_data(table_name, rows).await
     }
 }
@@ -375,7 +396,6 @@ fn jsonl_storage_test() {
     let path = ".";
     let jsonl_storage = JsonlStorage::new(path).unwrap();
     let table_name = "Items".to_string();
-    // let path = PathBuf::from(format!("{path}/{table_name}.json"));
     let schema = Schema {
         table_name: table_name.clone(),
         column_defs: None,
