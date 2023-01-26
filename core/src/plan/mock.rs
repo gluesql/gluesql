@@ -141,16 +141,15 @@ mod tests {
         super::MockStorage,
         crate::{
             data::Key,
-            result::MutResult,
             store::{Store, StoreMut},
         },
         futures::executor::block_on,
-        std::future::Future,
     };
 
+    #[cfg(any(feature = "alter-table", feature = "index", feature = "transaction"))]
     fn test<T, F>(result: F) -> MockStorage
     where
-        F: Future<Output = MutResult<MockStorage, T>>,
+        F: std::future::Future<Output = crate::result::MutResult<MockStorage, T>>,
     {
         match block_on(result) {
             Ok(_) => unreachable!("this test must fail"),
