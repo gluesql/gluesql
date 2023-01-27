@@ -23,16 +23,8 @@ pub fn validate(schema_map: &SchemaMap, statement: &Statement) -> Result<()> {
                             ..
                         } = select_item
                         {
-                            let validation_context = contextualize_stmt(schema_map, statement);
-                            let tables_with_given_col = validation_context
-                                .as_ref()
-                                .map(|context| context.count(ident))
-                                .unwrap_or(Ok(false));
-
-                            if let Err(_) = tables_with_given_col {
-                                return Err(
-                                    PlanError::ColumnReferenceAmbiguous(ident.to_owned()).into()
-                                );
+                            if let Some(context) = contextualize_stmt(schema_map, statement) {
+                                context.is_duplicated(ident)?;
                             }
                         }
 
@@ -70,7 +62,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn count(&self, column_name: &str) -> Result<bool> {
+    fn is_duplicated(&self, column_name: &str) -> Result<bool> {
         match self {
             Context::Data { labels, next, .. } => {
                 let current: Result<bool> = Ok(match labels {
@@ -80,7 +72,7 @@ impl<'a> Context<'a> {
 
                 let next = next
                     .as_ref()
-                    .map(|context| context.count(column_name))
+                    .map(|context| context.is_duplicated(column_name))
                     .unwrap_or(Ok(false));
 
                 match (current, next) {
@@ -90,7 +82,10 @@ impl<'a> Context<'a> {
                 }
             }
             Context::Bridge { left, right } => {
-                match (left.count(column_name), right.count(column_name)) {
+                match (
+                    left.is_duplicated(column_name),
+                    right.is_duplicated(column_name),
+                ) {
                     (Ok(false), Ok(false)) => Ok(false),
                     (Ok(false), Ok(true)) | (Ok(true), Ok(false)) => Ok(true),
                     _ => Err(PlanError::ColumnReferenceAmbiguous(column_name.to_owned()).into()),
