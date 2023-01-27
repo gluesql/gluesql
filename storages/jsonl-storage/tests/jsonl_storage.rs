@@ -1,8 +1,6 @@
-use std::{collections::HashMap, fs::remove_dir_all, path::PathBuf};
-
 use {
     async_trait::async_trait, gluesql_core::prelude::Glue, gluesql_jsonl_storage::JsonlStorage,
-    test_suite::*,
+    std::fs::remove_dir_all, test_suite::*,
 };
 
 struct JsonlTester {

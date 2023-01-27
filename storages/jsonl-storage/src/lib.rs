@@ -1,24 +1,18 @@
-use gluesql_core::{
-    prelude::{DataType, Value},
-    result::TrySelf,
-};
-
 mod alter_table;
 mod index;
-mod schema;
 mod transaction;
 
 use {
     async_trait::async_trait,
-    futures::executor::block_on,
     gluesql_core::{
         data::{HashMapJsonExt, Schema},
         prelude::Key,
+        result::TrySelf,
         result::{Error, Result},
         store::{DataRow, RowIter, Store},
         {chrono::NaiveDateTime, result::MutResult, store::StoreMut},
     },
-    serde_json::{Map as JsonMap, Number as JsonNumber, Value as JsonValue},
+    serde_json::Value as JsonValue,
     std::{
         collections::HashMap,
         fs::{self, remove_file, File, OpenOptions},
@@ -106,11 +100,11 @@ impl JsonlStorage {
         Ok(PathBuf::from(path))
     }
 
-    fn schema_path(&self, table_name: &str) -> Result<PathBuf> {
-        let path = self.path_by(table_name, "sql")?;
+    // fn schema_path(&self, table_name: &str) -> Result<PathBuf> {
+    //     let path = self.path_by(table_name, "sql")?;
 
-        Ok(PathBuf::from(path))
-    }
+    //     Ok(PathBuf::from(path))
+    // }
 
     fn path_by(&self, table_name: &str, extension: &str) -> Result<String, Error> {
         let schema = self
@@ -295,7 +289,7 @@ impl StoreMut for JsonlStorage {
                 let mut file = OpenOptions::new()
                     .write(true)
                     .append(true)
-                    .open(&table_path)
+                    .open(table_path)
                     .map_err(|e| Error::StorageMsg(e.to_string()))?;
 
                 for row in rows {
@@ -312,7 +306,7 @@ impl StoreMut for JsonlStorage {
                                 .collect::<Result<Vec<_>>>()?;
                             // json.sort(); // todo! remove sort?
                             let json = json.join(", ");
-                            write!(file, "{{{json}}}\n").map_storage_err()?;
+                            writeln!(file, "{{{json}}}").map_storage_err()?;
                         }
                         DataRow::Vec(values) => {
                             match &schema.column_defs {
@@ -330,7 +324,7 @@ impl StoreMut for JsonlStorage {
                                         .collect::<Result<Vec<_>>>()?;
                                     // json.sort();
                                     let json = json.join(", ");
-                                    write!(file, "{{{json}}}\n").map_storage_err()?;
+                                    writeln!(file, "{{{json}}}").map_storage_err()?;
                                 }
                                 None => unreachable!(),
                             };
@@ -393,6 +387,8 @@ impl StoreMut for JsonlStorage {
 
 #[test]
 fn jsonl_storage_test() {
+    use futures::executor::block_on;
+
     let path = ".";
     let jsonl_storage = JsonlStorage::new(path).unwrap();
     let table_name = "Items".to_string();
