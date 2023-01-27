@@ -1,4 +1,4 @@
-use cfg_if::cfg_if;
+use {crate::result::TrySelf, cfg_if::cfg_if};
 
 cfg_if! {
     if #[cfg(feature = "alter-table")] {
@@ -33,29 +33,29 @@ cfg_if! {
 
 cfg_if! {
     if #[cfg(all(feature = "alter-table", feature = "index", feature = "transaction"))] {
-        pub trait GStoreMut: StoreMut + IndexMut + AlterTable + Transaction {}
-        impl<S: StoreMut + IndexMut + AlterTable+ Transaction> GStoreMut for S {}
+        pub trait GStoreMut: IStoreMut + IndexMut + AlterTable + Transaction {}
+        impl<S: IStoreMut + IndexMut + AlterTable+ Transaction> GStoreMut for S {}
     } else if #[cfg(all(feature = "alter-table", feature = "index"))] {
-        pub trait GStoreMut: StoreMut + IndexMut + AlterTable {}
-        impl<S: StoreMut + IndexMut + AlterTable> GStoreMut for S {}
+        pub trait GStoreMut: IStoreMut + IndexMut + AlterTable {}
+        impl<S: IStoreMut + IndexMut + AlterTable> GStoreMut for S {}
     } else if #[cfg(all(feature = "alter-table", feature = "transaction"))] {
-        pub trait GStoreMut: StoreMut + Transaction + AlterTable {}
-        impl<S: StoreMut + Transaction + AlterTable> GStoreMut for S {}
+        pub trait GStoreMut: IStoreMut + Transaction + AlterTable {}
+        impl<S: IStoreMut + Transaction + AlterTable> GStoreMut for S {}
     } else if #[cfg(all(feature = "index", feature = "transaction"))] {
-        pub trait GStoreMut: StoreMut + IndexMut + Transaction {}
-        impl<S: StoreMut + IndexMut + Transaction> GStoreMut for S {}
+        pub trait GStoreMut: IStoreMut + IndexMut + Transaction {}
+        impl<S: IStoreMut + IndexMut + Transaction> GStoreMut for S {}
     } else if #[cfg(feature = "alter-table")] {
-        pub trait GStoreMut: StoreMut + AlterTable {}
-        impl<S: StoreMut+ AlterTable> GStoreMut for S {}
+        pub trait GStoreMut: IStoreMut + AlterTable {}
+        impl<S: IStoreMut + AlterTable> GStoreMut for S {}
     } else if #[cfg(feature = "index")] {
-        pub trait GStoreMut: StoreMut + IndexMut {}
-        impl<S: StoreMut + IndexMut> GStoreMut for S {}
+        pub trait GStoreMut: IStoreMut + IndexMut {}
+        impl<S: IStoreMut + IndexMut> GStoreMut for S {}
     } else if #[cfg(feature = "transaction")] {
-        pub trait GStoreMut: StoreMut + Transaction {}
-        impl<S: StoreMut + Transaction> GStoreMut for S {}
+        pub trait GStoreMut: IStoreMut + Transaction {}
+        impl<S: IStoreMut + Transaction> GStoreMut for S {}
     } else {
-        pub trait GStoreMut: StoreMut {}
-        impl<S: StoreMut> GStoreMut for S {}
+        pub trait GStoreMut: IStoreMut {}
+        impl<S: IStoreMut> GStoreMut for S {}
     }
 }
 
@@ -87,17 +87,71 @@ pub trait Store {
 /// By implementing `StoreMut` trait,
 /// you can run `INSERT`, `CREATE TABLE`, `DELETE`, `UPDATE` and `DROP TABLE` queries.
 #[async_trait(?Send)]
-pub trait StoreMut
+pub trait StoreMut {
+    async fn insert_schema(&mut self, schema: &Schema) -> Result<()>;
+
+    async fn delete_schema(&mut self, table_name: &str) -> Result<()>;
+
+    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()>;
+
+    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()>;
+
+    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()>;
+}
+
+#[async_trait(?Send)]
+pub trait IStoreMut: StoreMut
 where
     Self: Sized,
 {
-    async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()>;
+    async fn insert_schema(mut self, schema: &Schema) -> MutResult<Self, ()>;
 
-    async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()>;
+    async fn delete_schema(mut self, table_name: &str) -> MutResult<Self, ()>;
 
-    async fn append_data(self, table_name: &str, rows: Vec<DataRow>) -> MutResult<Self, ()>;
+    async fn append_data(mut self, table_name: &str, rows: Vec<DataRow>) -> MutResult<Self, ()>;
 
-    async fn insert_data(self, table_name: &str, rows: Vec<(Key, DataRow)>) -> MutResult<Self, ()>;
+    async fn insert_data(
+        mut self,
+        table_name: &str,
+        rows: Vec<(Key, DataRow)>,
+    ) -> MutResult<Self, ()>;
 
-    async fn delete_data(self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()>;
+    async fn delete_data(mut self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()>;
+}
+
+#[async_trait(?Send)]
+impl<T: StoreMut> IStoreMut for T {
+    async fn insert_schema(mut self, schema: &Schema) -> MutResult<Self, ()> {
+        StoreMut::insert_schema(&mut self, schema)
+            .await
+            .try_self(self)
+    }
+
+    async fn delete_schema(mut self, table_name: &str) -> MutResult<Self, ()> {
+        StoreMut::delete_schema(&mut self, table_name)
+            .await
+            .try_self(self)
+    }
+
+    async fn append_data(mut self, table_name: &str, rows: Vec<DataRow>) -> MutResult<Self, ()> {
+        StoreMut::append_data(&mut self, table_name, rows)
+            .await
+            .try_self(self)
+    }
+
+    async fn insert_data(
+        mut self,
+        table_name: &str,
+        rows: Vec<(Key, DataRow)>,
+    ) -> MutResult<Self, ()> {
+        StoreMut::insert_data(&mut self, table_name, rows)
+            .await
+            .try_self(self)
+    }
+
+    async fn delete_data(mut self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()> {
+        StoreMut::delete_data(&mut self, table_name, keys)
+            .await
+            .try_self(self)
+    }
 }

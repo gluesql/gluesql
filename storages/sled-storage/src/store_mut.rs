@@ -5,12 +5,12 @@ use {
         key,
         lock::{self, LockAcquired},
         transaction::TxPayload,
-        SledStorage, Snapshot,
+        tx_err_into, SledStorage, Snapshot,
     },
     async_trait::async_trait,
     gluesql_core::{
         data::{Key, Schema},
-        result::{MutResult, Result},
+        result::Result,
         store::{DataRow, IndexError, StoreMut},
     },
     sled::transaction::ConflictableTransactionError,
@@ -18,7 +18,7 @@ use {
 
 #[async_trait(?Send)]
 impl StoreMut for SledStorage {
-    async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
+    async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
 
@@ -55,23 +55,25 @@ impl StoreMut for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        self.check_and_retry(tx_result, |storage| storage.insert_schema(schema))
-            .await
+        if let TxPayload::RollbackAndRetry(lock_txid) = tx_result.map_err(tx_err_into)? {
+            self.rollback_txid(lock_txid)?;
+            self.tree
+                .transaction(move |tree| lock::release(tree, lock_txid))
+                .map_err(tx_err_into)?;
+
+            self.insert_schema(schema).await?;
+        }
+
+        Ok(())
     }
 
-    async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()> {
+    async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         let prefix = format!("data/{}/", table_name);
         let items = self
             .tree
             .scan_prefix(prefix.as_bytes())
             .map(|item| item.map_err(err_into))
-            .collect::<Result<Vec<_>>>();
-        let items = match items {
-            Ok(items) => items,
-            Err(e) => {
-                return Err((self, e));
-            }
-        };
+            .collect::<Result<Vec<_>>>()?;
 
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
@@ -138,11 +140,19 @@ impl StoreMut for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        self.check_and_retry(tx_result, |storage| storage.delete_schema(table_name))
-            .await
+        if let TxPayload::RollbackAndRetry(lock_txid) = tx_result.map_err(tx_err_into)? {
+            self.rollback_txid(lock_txid)?;
+            self.tree
+                .transaction(move |tree| lock::release(tree, lock_txid))
+                .map_err(tx_err_into)?;
+
+            self.delete_schema(table_name).await?;
+        }
+
+        Ok(())
     }
 
-    async fn append_data(self, table_name: &str, rows: Vec<DataRow>) -> MutResult<Self, ()> {
+    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
         let id_offset = self.id_offset;
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
@@ -182,11 +192,19 @@ impl StoreMut for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        self.check_and_retry(tx_result, |storage| storage.append_data(table_name, rows))
-            .await
+        if let TxPayload::RollbackAndRetry(lock_txid) = tx_result.map_err(tx_err_into)? {
+            self.rollback_txid(lock_txid)?;
+            self.tree
+                .transaction(move |tree| lock::release(tree, lock_txid))
+                .map_err(tx_err_into)?;
+
+            self.append_data(table_name, rows).await?;
+        }
+
+        Ok(())
     }
 
-    async fn insert_data(self, table_name: &str, rows: Vec<(Key, DataRow)>) -> MutResult<Self, ()> {
+    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
         let tx_rows = &rows;
@@ -244,11 +262,19 @@ impl StoreMut for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        self.check_and_retry(tx_result, |storage| storage.insert_data(table_name, rows))
-            .await
+        if let TxPayload::RollbackAndRetry(lock_txid) = tx_result.map_err(tx_err_into)? {
+            self.rollback_txid(lock_txid)?;
+            self.tree
+                .transaction(move |tree| lock::release(tree, lock_txid))
+                .map_err(tx_err_into)?;
+
+            self.insert_data(table_name, rows).await?;
+        }
+
+        Ok(())
     }
 
-    async fn delete_data(self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()> {
+    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
         let tx_keys = &keys;
@@ -298,7 +324,15 @@ impl StoreMut for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        self.check_and_retry(tx_result, |storage| storage.delete_data(table_name, keys))
-            .await
+        if let TxPayload::RollbackAndRetry(lock_txid) = tx_result.map_err(tx_err_into)? {
+            self.rollback_txid(lock_txid)?;
+            self.tree
+                .transaction(move |tree| lock::release(tree, lock_txid))
+                .map_err(tx_err_into)?;
+
+            self.delete_data(table_name, keys).await?;
+        }
+
+        Ok(())
     }
 }

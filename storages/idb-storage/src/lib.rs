@@ -11,7 +11,7 @@ use {
     gloo_utils::format::JsValueSerdeExt,
     gluesql_core::{
         data::{Key, Schema, Value},
-        result::{Error, MutResult, Result, TrySelf},
+        result::{Error, Result},
         store::{DataRow, RowIter, Store, StoreMut},
     },
     idb::{CursorDirection, Database, Factory, ObjectStoreParams, Query, TransactionMode},
@@ -206,8 +206,9 @@ impl Store for IdbStorage {
     }
 }
 
-impl IdbStorage {
-    pub async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
+#[async_trait(?Send)]
+impl StoreMut for IdbStorage {
+    async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let version = self.database.version().err_into()? + 1;
         self.database.close();
 
@@ -281,7 +282,7 @@ impl IdbStorage {
         Ok(())
     }
 
-    pub async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
+    async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         let version = self.database.version().err_into()? + 1;
         self.database.close();
 
@@ -359,7 +360,7 @@ impl IdbStorage {
         Ok(())
     }
 
-    pub async fn append_data(&mut self, table_name: &str, new_rows: Vec<DataRow>) -> Result<()> {
+    async fn append_data(&mut self, table_name: &str, new_rows: Vec<DataRow>) -> Result<()> {
         let transaction = self
             .database
             .transaction(&[table_name], TransactionMode::ReadWrite)
@@ -382,11 +383,7 @@ impl IdbStorage {
         Ok(())
     }
 
-    pub async fn insert_data(
-        &mut self,
-        table_name: &str,
-        new_rows: Vec<(Key, DataRow)>,
-    ) -> Result<()> {
+    async fn insert_data(&mut self, table_name: &str, new_rows: Vec<(Key, DataRow)>) -> Result<()> {
         let transaction = self
             .database
             .transaction(&[table_name], TransactionMode::ReadWrite)
@@ -412,7 +409,7 @@ impl IdbStorage {
         Ok(())
     }
 
-    pub async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
+    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let transaction = self
             .database
             .transaction(&[table_name], TransactionMode::ReadWrite)
@@ -429,43 +426,6 @@ impl IdbStorage {
 
         transaction.commit().await.err_into()?;
         Ok(())
-    }
-}
-
-#[async_trait(?Send)]
-impl StoreMut for IdbStorage {
-    async fn insert_schema(mut self, schema: &Schema) -> MutResult<Self, ()> {
-        IdbStorage::insert_schema(&mut self, schema)
-            .await
-            .try_self(self)
-    }
-
-    async fn delete_schema(mut self, table_name: &str) -> MutResult<Self, ()> {
-        IdbStorage::delete_schema(&mut self, table_name)
-            .await
-            .try_self(self)
-    }
-
-    async fn append_data(mut self, table_name: &str, rows: Vec<DataRow>) -> MutResult<Self, ()> {
-        IdbStorage::append_data(&mut self, table_name, rows)
-            .await
-            .try_self(self)
-    }
-
-    async fn insert_data(
-        mut self,
-        table_name: &str,
-        rows: Vec<(Key, DataRow)>,
-    ) -> MutResult<Self, ()> {
-        IdbStorage::insert_data(&mut self, table_name, rows)
-            .await
-            .try_self(self)
-    }
-
-    async fn delete_data(mut self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()> {
-        IdbStorage::delete_data(&mut self, table_name, keys)
-            .await
-            .try_self(self)
     }
 }
 
