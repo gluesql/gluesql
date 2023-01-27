@@ -5,7 +5,7 @@ use {
         data::Schema,
         result::Result,
     },
-    std::{collections::HashMap, ops::Add, rc::Rc},
+    std::{collections::HashMap, rc::Rc},
 };
 
 type SchemaMap = HashMap<String, Schema>;
@@ -27,9 +27,9 @@ pub fn validate(schema_map: &SchemaMap, statement: &Statement) -> Result<()> {
                             let tables_with_given_col = validation_context
                                 .as_ref()
                                 .map(|context| context.count(ident))
-                                .unwrap_or(SchemaCount::Zero);
+                                .unwrap_or(Ok(false));
 
-                            if let SchemaCount::Duplicated = tables_with_given_col {
+                            if let Err(_) = tables_with_given_col {
                                 return Err(
                                     PlanError::ColumnReferenceAmbiguous(ident.to_owned()).into()
                                 );
@@ -48,7 +48,7 @@ pub fn validate(schema_map: &SchemaMap, statement: &Statement) -> Result<()> {
 
 enum Context<'a> {
     Data {
-        schema: &'a Schema,
+        labels: Option<Vec<&'a String>>,
         next: Option<Rc<Context<'a>>>,
     },
     Bridge {
@@ -57,30 +57,9 @@ enum Context<'a> {
     },
 }
 
-enum SchemaCount {
-    Zero,
-    One,
-    Duplicated,
-}
-
-impl Add for SchemaCount {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self {
-        match (self, rhs) {
-            (Self::Zero, Self::Zero) => Self::Zero,
-            (Self::Zero, Self::One) => Self::One,
-            (Self::One, Self::Zero) => Self::One,
-            (Self::One, Self::One) => Self::Duplicated,
-            (Self::Duplicated, _) => Self::Duplicated,
-            (_, Self::Duplicated) => Self::Duplicated,
-        }
-    }
-}
-
 impl<'a> Context<'a> {
-    fn new(schema: &'a Schema, next: Option<Rc<Context<'a>>>) -> Self {
-        Self::Data { schema, next }
+    fn new(labels: Option<Vec<&'a String>>, next: Option<Rc<Context<'a>>>) -> Self {
+        Self::Data { labels, next }
     }
 
     fn concat(left: Option<Rc<Context<'a>>>, right: Option<Rc<Context<'a>>>) -> Option<Rc<Self>> {
@@ -91,31 +70,43 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn count(&self, column_name: &str) -> SchemaCount {
+    fn count(&self, column_name: &str) -> Result<bool> {
         match self {
-            Context::Data { schema, next, .. } => {
-                let current = schema
-                    .column_defs
-                    .as_ref()
-                    .map(|column_defs| {
-                        if column_defs.iter().any(|column| column.name == column_name) {
-                            SchemaCount::One
-                        } else {
-                            SchemaCount::Zero
-                        }
-                    })
-                    .unwrap_or(SchemaCount::Zero);
+            Context::Data { labels, next, .. } => {
+                let current: Result<bool> = Ok(match labels {
+                    Some(labels) => labels.iter().any(|label| *label == column_name),
+                    None => false,
+                });
 
                 let next = next
                     .as_ref()
                     .map(|context| context.count(column_name))
-                    .unwrap_or(SchemaCount::Zero);
+                    .unwrap_or(Ok(false));
 
-                current + next
+                match (current, next) {
+                    (Ok(false), Ok(false)) => Ok(false),
+                    (Ok(false), Ok(true)) | (Ok(true), Ok(false)) => Ok(true),
+                    _ => Err(PlanError::ColumnReferenceAmbiguous(column_name.to_owned()).into()),
+                }
             }
-            Context::Bridge { left, right } => left.count(column_name) + right.count(column_name),
+            Context::Bridge { left, right } => {
+                match (left.count(column_name), right.count(column_name)) {
+                    (Ok(false), Ok(false)) => Ok(false),
+                    (Ok(false), Ok(true)) | (Ok(true), Ok(false)) => Ok(true),
+                    _ => Err(PlanError::ColumnReferenceAmbiguous(column_name.to_owned()).into()),
+                }
+            }
         }
     }
+}
+
+fn get_lables(schema: &Schema) -> Option<Vec<&String>> {
+    schema.column_defs.as_ref().map(|column_defs| {
+        column_defs
+            .iter()
+            .map(|column_def| &column_def.name)
+            .collect::<Vec<_>>()
+    })
 }
 
 fn contextualize_stmt<'a>(
@@ -129,7 +120,7 @@ fn contextualize_stmt<'a>(
         } => {
             let table_context = schema_map
                 .get(table_name)
-                .map(|schema| Rc::from(Context::new(schema, None)));
+                .map(|schema| Rc::from(Context::new(get_lables(schema), None)));
 
             let source_context = contextualize_query(schema_map, source);
 
@@ -139,7 +130,7 @@ fn contextualize_stmt<'a>(
             .iter()
             .map(|name| {
                 let schema = schema_map.get(name);
-                schema.map(|schema| Rc::from(Context::new(schema, None)))
+                schema.map(|schema| Rc::from(Context::new(get_lables(schema), None)))
             })
             .fold(None, Context::concat),
         _ => None,
@@ -155,7 +146,7 @@ fn contextualize_query<'a>(schema_map: &'a SchemaMap, query: &'a Query) -> Optio
             let by_table = match relation {
                 TableFactor::Table { name, .. } => {
                     let schema = schema_map.get(name);
-                    schema.map(|schema| Rc::from(Context::new(schema, None)))
+                    schema.map(|schema| Rc::from(Context::new(get_lables(schema), None)))
                 }
                 TableFactor::Derived { subquery, .. } => contextualize_query(schema_map, subquery),
                 TableFactor::Series { .. } | TableFactor::Dictionary { .. } => None,
@@ -180,7 +171,7 @@ fn contextualize_table_factor<'a>(
     match table_factor {
         TableFactor::Table { name, .. } => {
             let schema = schema_map.get(name);
-            schema.map(|schema| Rc::from(Context::new(schema, None)))
+            schema.map(|schema| Rc::from(Context::new(get_lables(schema), None)))
         }
         TableFactor::Derived { subquery, .. } => contextualize_query(schema_map, subquery),
         TableFactor::Series { .. } | TableFactor::Dictionary { .. } => None,
