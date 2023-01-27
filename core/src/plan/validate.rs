@@ -56,38 +56,39 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn validate_duplicated(&self, column_name: &str) -> Result<bool> {
-        match self {
-            Context::Data { labels, next, .. } => {
-                let current = match labels {
-                    Some(labels) => labels.iter().any(|label| *label == column_name),
-                    None => false,
-                };
+    fn validate_duplicated(&self, column_name: &str) -> Result<()> {
+        fn validate(context: &Context, column_name: &str) -> Result<bool> {
+            let (left, right) = match context {
+                Context::Data { labels, next, .. } => {
+                    let current = match labels {
+                        Some(labels) => labels.iter().any(|label| *label == column_name),
+                        None => false,
+                    };
 
-                let next = next
-                    .as_ref()
-                    .map(|next| next.validate_duplicated(column_name))
-                    .unwrap_or(Ok(false))?;
+                    let next = next
+                        .as_ref()
+                        .map(|next| validate(next, column_name))
+                        .unwrap_or(Ok(false))?;
 
-                match (current, next) {
-                    (true, true) => {
-                        Err(PlanError::ColumnReferenceAmbiguous(column_name.to_owned()).into())
-                    }
-                    _ => Ok(current || next),
+                    (current, next)
                 }
-            }
-            Context::Bridge { left, right } => {
-                let left = left.validate_duplicated(column_name)?;
-                let right = right.validate_duplicated(column_name)?;
+                Context::Bridge { left, right } => {
+                    let left = validate(left, column_name)?;
+                    let right = validate(right, column_name)?;
 
-                match (left, right) {
-                    (true, true) => {
-                        Err(PlanError::ColumnReferenceAmbiguous(column_name.to_owned()).into())
-                    }
-                    _ => Ok(left || right),
+                    (left, right)
                 }
+            };
+
+            match (left, right) {
+                (true, true) => {
+                    Err(PlanError::ColumnReferenceAmbiguous(column_name.to_owned()).into())
+                }
+                _ => Ok(left || right),
             }
         }
+
+        validate(self, column_name).map(|_| Ok(()))?
     }
 }
 
