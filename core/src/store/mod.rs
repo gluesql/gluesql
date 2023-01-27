@@ -33,29 +33,29 @@ cfg_if! {
 
 cfg_if! {
     if #[cfg(all(feature = "alter-table", feature = "index", feature = "transaction"))] {
-        pub trait GStoreMut: StoreMut + IndexMut + AlterTable + Transaction {}
-        impl<S: StoreMut + IndexMut + AlterTable+ Transaction> GStoreMut for S {}
+        pub trait GStoreMut: IStoreMut + IndexMut + AlterTable + Transaction {}
+        impl<S: IStoreMut + IndexMut + AlterTable+ Transaction> GStoreMut for S {}
     } else if #[cfg(all(feature = "alter-table", feature = "index"))] {
-        pub trait GStoreMut: StoreMut + IndexMut + AlterTable {}
-        impl<S: StoreMut + IndexMut + AlterTable> GStoreMut for S {}
+        pub trait GStoreMut: IStoreMut + IndexMut + AlterTable {}
+        impl<S: IStoreMut + IndexMut + AlterTable> GStoreMut for S {}
     } else if #[cfg(all(feature = "alter-table", feature = "transaction"))] {
-        pub trait GStoreMut: StoreMut + Transaction + AlterTable {}
-        impl<S: StoreMut + Transaction + AlterTable> GStoreMut for S {}
+        pub trait GStoreMut: IStoreMut + Transaction + AlterTable {}
+        impl<S: IStoreMut + Transaction + AlterTable> GStoreMut for S {}
     } else if #[cfg(all(feature = "index", feature = "transaction"))] {
-        pub trait GStoreMut: StoreMut + IndexMut + Transaction {}
-        impl<S: StoreMut + IndexMut + Transaction> GStoreMut for S {}
+        pub trait GStoreMut: IStoreMut + IndexMut + Transaction {}
+        impl<S: IStoreMut + IndexMut + Transaction> GStoreMut for S {}
     } else if #[cfg(feature = "alter-table")] {
-        pub trait GStoreMut: StoreMut + AlterTable {}
-        impl<S: StoreMut+ AlterTable> GStoreMut for S {}
+        pub trait GStoreMut: IStoreMut + AlterTable {}
+        impl<S: IStoreMut + AlterTable> GStoreMut for S {}
     } else if #[cfg(feature = "index")] {
-        pub trait GStoreMut: StoreMut + IndexMut {}
-        impl<S: StoreMut + IndexMut> GStoreMut for S {}
+        pub trait GStoreMut: IStoreMut + IndexMut {}
+        impl<S: IStoreMut + IndexMut> GStoreMut for S {}
     } else if #[cfg(feature = "transaction")] {
-        pub trait GStoreMut: StoreMut + Transaction {}
-        impl<S: StoreMut + Transaction> GStoreMut for S {}
+        pub trait GStoreMut: IStoreMut + Transaction {}
+        impl<S: IStoreMut + Transaction> GStoreMut for S {}
     } else {
-        pub trait GStoreMut: StoreMut {}
-        impl<S: StoreMut> GStoreMut for S {}
+        pub trait GStoreMut: IStoreMut {}
+        impl<S: IStoreMut> GStoreMut for S {}
     }
 }
 
@@ -120,7 +120,7 @@ where
 }
 
 #[async_trait(?Send)]
-impl<T: GStoreMut> IStoreMut for T {
+impl<T: StoreMut> IStoreMut for T {
     async fn insert_schema(mut self, schema: &Schema) -> MutResult<Self, ()> {
         StoreMut::insert_schema(&mut self, schema)
             .await

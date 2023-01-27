@@ -9,7 +9,6 @@ use {
             SelectError, SortError, UpdateError, ValidateError,
         },
         plan::PlanError,
-        store::GStoreMut,
         translate::TranslateError,
     },
     serde::Serialize,
@@ -126,15 +125,12 @@ impl PartialEq for Error {
     }
 }
 
-pub trait TrySelf<V>
-where
-    Self: Sized,
-{
-    fn try_self<T: GStoreMut>(self, storage: T) -> MutResult<T, V>;
+pub trait TrySelf<V> {
+    fn try_self<T>(self, storage: T) -> MutResult<T, V>;
 }
 
 impl<V> TrySelf<V> for Result<V> {
-    fn try_self<T: GStoreMut>(self, storage: T) -> MutResult<T, V> {
+    fn try_self<T>(self, storage: T) -> MutResult<T, V> {
         match self {
             Ok(v) => Ok((storage, v)),
             Err(e) => Err((storage, e)),

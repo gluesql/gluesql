@@ -6,7 +6,7 @@ use {
         executor::{evaluate_stateless, select::select},
         prelude::{DataType, Value},
         result::{Error, IntoControlFlow, MutResult, Result, TrySelf},
-        store::{GStore, GStoreMut, IStoreMut},
+        store::{GStore, GStoreMut},
     },
     chrono::Utc,
     futures::stream::{self, TryStreamExt},

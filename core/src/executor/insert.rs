@@ -8,7 +8,7 @@ use {
         data::{Key, Row, Schema, Value},
         executor::{evaluate::evaluate_stateless, limit::Limit},
         result::{MutResult, Result, TrySelf},
-        store::{DataRow, GStore, GStoreMut, IStoreMut},
+        store::{DataRow, GStore, GStoreMut},
     },
     futures::stream::{self, StreamExt, TryStreamExt},
     serde::Serialize,
