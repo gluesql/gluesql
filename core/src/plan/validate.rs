@@ -11,11 +11,9 @@ use {
     std::{collections::HashMap, ops::Add, rc::Rc},
 };
 
+type SchemaMap = HashMap<String, Schema>;
 /// Validate user select column should not be ambiguous
-pub fn validate(
-    validation_context: Option<Rc<ValidationContext>>,
-    statement: &Statement,
-) -> Result<()> {
+pub fn validate(schema_map: &SchemaMap, statement: &Statement) -> Result<()> {
     if let Statement::Query(query) = &statement {
         if let SetExpr::Select(select) = &query.body {
             if !select.from.joins.is_empty() {
@@ -28,6 +26,7 @@ pub fn validate(
                             ..
                         } = select_item
                         {
+                            let validation_context = contextualize_stmt(schema_map, statement);
                             let tables_with_given_col = validation_context
                                 .as_ref()
                                 .map(|context| context.count(ident))
@@ -139,7 +138,6 @@ impl<'a> ValidationContext<'a> {
     }
 }
 
-type SchemaMap = HashMap<String, Schema>;
 pub fn contextualize_stmt<'a>(
     schema_map: &'a SchemaMap,
     statement: &'a Statement,

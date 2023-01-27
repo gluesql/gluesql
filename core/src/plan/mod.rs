@@ -12,10 +12,7 @@ mod validate;
 #[cfg(test)]
 mod mock;
 
-use {
-    self::validate::contextualize_stmt,
-    crate::{ast::Statement, result::Result, store::Store},
-};
+use crate::{ast::Statement, result::Result, store::Store};
 
 pub use {
     self::validate::validate, error::*, index::plan as plan_index, join::plan as plan_join,
@@ -24,8 +21,7 @@ pub use {
 
 pub async fn plan(storage: &dyn Store, statement: Statement) -> Result<Statement> {
     let schema_map = fetch_schema_map(storage, &statement).await?;
-    let validation_context = contextualize_stmt(&schema_map, &statement);
-    validate(validation_context, &statement)?;
+    validate(&schema_map, &statement)?;
     let statement = plan_primary_key(&schema_map, statement);
     let statement = plan_index(&schema_map, statement)?;
     let statement = plan_join(&schema_map, statement);
