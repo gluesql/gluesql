@@ -20,7 +20,7 @@ pub fn validate(schema_map: &SchemaMap, statement: &Statement) -> Result<()> {
                 } = select_item
                 {
                     if let Some(context) = contextualize_stmt(schema_map, statement) {
-                        context.is_duplicated(ident)?;
+                        context.validate_duplicated(ident)?;
                     }
                 }
             }
@@ -54,33 +54,35 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn is_duplicated(&self, column_name: &str) -> Result<bool> {
+    fn validate_duplicated(&self, column_name: &str) -> Result<bool> {
         match self {
             Context::Data { labels, next, .. } => {
-                let current: Result<bool> = Ok(match labels {
+                let current = match labels {
                     Some(labels) => labels.iter().any(|label| *label == column_name),
                     None => false,
-                });
+                };
 
                 let next = next
                     .as_ref()
-                    .map(|context| context.is_duplicated(column_name))
-                    .unwrap_or(Ok(false));
+                    .map(|next| next.validate_duplicated(column_name))
+                    .unwrap_or(Ok(false))?;
 
                 match (current, next) {
-                    (Ok(false), Ok(false)) => Ok(false),
-                    (Ok(false), Ok(true)) | (Ok(true), Ok(false)) => Ok(true),
-                    _ => Err(PlanError::ColumnReferenceAmbiguous(column_name.to_owned()).into()),
+                    (true, true) => {
+                        Err(PlanError::ColumnReferenceAmbiguous(column_name.to_owned()).into())
+                    }
+                    _ => Ok(current || next),
                 }
             }
             Context::Bridge { left, right } => {
-                match (
-                    left.is_duplicated(column_name),
-                    right.is_duplicated(column_name),
-                ) {
-                    (Ok(false), Ok(false)) => Ok(false),
-                    (Ok(false), Ok(true)) | (Ok(true), Ok(false)) => Ok(true),
-                    _ => Err(PlanError::ColumnReferenceAmbiguous(column_name.to_owned()).into()),
+                let left = left.validate_duplicated(column_name)?;
+                let right = right.validate_duplicated(column_name)?;
+
+                match (left, right) {
+                    (true, true) => {
+                        Err(PlanError::ColumnReferenceAmbiguous(column_name.to_owned()).into())
+                    }
+                    _ => Ok(left || right),
                 }
             }
         }
