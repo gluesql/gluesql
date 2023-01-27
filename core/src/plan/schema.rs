@@ -10,10 +10,7 @@ use {
         store::Store,
     },
     async_recursion::async_recursion,
-    futures::{
-        future,
-        stream::{self, StreamExt, TryStreamExt},
-    },
+    futures::stream::{self, StreamExt, TryStreamExt},
     std::collections::HashMap,
 };
 
@@ -91,10 +88,10 @@ async fn scan_select(storage: &dyn Store, select: &Select) -> Result<HashMap<Str
     } = select;
 
     let projection = stream::iter(projection)
-        .then(|select_item| match select_item {
-            SelectItem::Expr { expr, .. } => scan_expr(storage, expr),
-            SelectItem::QualifiedWildcard(_) | SelectItem::Wildcard => {
-                Box::pin(future::ok(HashMap::new()))
+        .then(|select_item| async move {
+            match select_item {
+                SelectItem::Expr { expr, .. } => scan_expr(storage, expr).await,
+                SelectItem::QualifiedWildcard(_) | SelectItem::Wildcard => Ok(HashMap::new()),
             }
         })
         .try_collect::<Vec<HashMap<String, Schema>>>()
