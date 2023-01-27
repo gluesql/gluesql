@@ -7,10 +7,9 @@ use {
     gluesql_core::{
         data::{HashMapJsonExt, Schema},
         prelude::Key,
-        result::TrySelf,
         result::{Error, Result},
         store::{DataRow, RowIter, Store},
-        {chrono::NaiveDateTime, result::MutResult, store::StoreMut},
+        {chrono::NaiveDateTime, store::StoreMut},
     },
     serde_json::Value as JsonValue,
     std::{
@@ -100,12 +99,6 @@ impl JsonlStorage {
         Ok(PathBuf::from(path))
     }
 
-    // fn schema_path(&self, table_name: &str) -> Result<PathBuf> {
-    //     let path = self.path_by(table_name, "sql")?;
-
-    //     Ok(PathBuf::from(path))
-    // }
-
     fn path_by(&self, table_name: &str, extension: &str) -> Result<String, Error> {
         let schema = self
             .tables
@@ -116,7 +109,6 @@ impl JsonlStorage {
     }
 
     fn insert_schema(&mut self, schema: &Schema) {
-        // let json_table = JsonlStorage::new_table(schema.table_name.clone());
         self.tables
             .insert(schema.table_name.clone(), schema.to_owned());
     }
@@ -124,15 +116,6 @@ impl JsonlStorage {
     pub fn delete_schema(&mut self, table_name: &str) {
         self.tables.remove(table_name);
     }
-
-    // pub fn load_table(&self, table_name: String, column_defs: Vec<gluesql_core::ast::ColumnDef>) {
-    //     let schema = Schema {
-    //         table_name,
-    //         column_defs: Some(column_defs),
-    //         indexes: Vec::new(),
-    //         created: NaiveDateTime::default(), // todo!: parse comment
-    //     };
-    // }
 
     fn write_schema(&self, schema: &Schema) -> Result<()> {
         let path = format!("{}/{}.sql", self.path.display(), schema.table_name);
@@ -244,43 +227,41 @@ where
 
 #[async_trait(?Send)]
 impl StoreMut for JsonlStorage {
-    async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
+    async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let path = format!("{}/{}.json", self.path.display(), schema.table_name);
         let path = PathBuf::from(path);
 
-        let storage = match &schema.column_defs {
-            Some(_) => self.write_schema(schema).try_self(self)?.0,
-            _ => self,
-        };
+        if let Some(_) = &schema.column_defs {
+            self.write_schema(schema)?
+        }
 
-        let (mut storage, _) = File::create(path).map_storage_err().try_self(storage)?;
-        JsonlStorage::insert_schema(&mut storage, schema);
+        File::create(path).map_storage_err()?;
+        JsonlStorage::insert_schema(self, schema);
 
-        Ok((storage, ()))
+        Ok(())
     }
 
-    async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()> {
+    async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         // todo! should delete including .sql file
         let table_path = JsonlStorage::data_path(&self, table_name);
         match table_path {
             Ok(table_path) => {
                 match remove_file(table_path).map_storage_err() {
                     Ok(_) => {}
-                    Err(e) => return Err((self, e)),
+                    Err(e) => return Err(e),
                 }
 
                 let mut storage = self;
                 JsonlStorage::delete_schema(&mut storage, table_name);
 
-                return Ok((storage, ()));
+                return Ok(());
             }
-            Err(_) => Ok((self, ())), // todo! fair enough to squash error for drop table if exist?
+            Err(_) => Ok(()), // todo! fair enough to squash error for drop table if exist?
         }
     }
 
-    async fn append_data(self, table_name: &str, rows: Vec<DataRow>) -> MutResult<Self, ()> {
-        let result = self
-            .tables
+    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
+        self.tables
             .get(table_name)
             .ok_or_else(|| Error::StorageMsg("could not find table".to_owned()))
             .and_then(|schema| {
@@ -333,21 +314,14 @@ impl StoreMut for JsonlStorage {
                 }
 
                 Ok(())
-            });
-
-        match result {
-            Ok(_) => Ok((self, ())),
-            Err(e) => Err((self, e)),
-        }
+            })
     }
 
-    async fn insert_data(self, table_name: &str, rows: Vec<(Key, DataRow)>) -> MutResult<Self, ()> {
-        let (self, prev_rows) = self.scan_data(table_name).try_self(self)?;
+    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
+        let prev_rows = self.scan_data(table_name)?;
 
         // todo! impl without sort + vector.zip
-        let (self, prev_rows) = prev_rows
-            .collect::<Result<HashMap<Key, DataRow>>>()
-            .try_self(self)?;
+        let prev_rows = prev_rows.collect::<Result<HashMap<Key, DataRow>>>()?;
 
         let rows = prev_rows.concat(rows.into_iter());
         let mut rows = rows.into_iter().collect::<Vec<_>>();
@@ -360,14 +334,14 @@ impl StoreMut for JsonlStorage {
 
         let rows = rows.into_iter().map(|(_, data_row)| data_row).collect();
 
-        let (self, table_path) = JsonlStorage::data_path(&self, table_name).try_self(self)?;
-        let (self, _) = File::create(&table_path).map_storage_err().try_self(self)?;
+        let table_path = JsonlStorage::data_path(&self, table_name)?;
+        File::create(&table_path).map_storage_err()?;
 
         self.append_data(table_name, rows).await
     }
 
-    async fn delete_data(self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()> {
-        let (self, prev_rows) = self.scan_data(table_name).try_self(self)?;
+    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
+        let prev_rows = self.scan_data(table_name)?;
         let rows = prev_rows
             .filter_map(|result| match result {
                 Ok((key, data_row)) => match keys.iter().any(|target_key| target_key == &key) {
@@ -378,8 +352,8 @@ impl StoreMut for JsonlStorage {
             })
             .collect::<Vec<_>>();
 
-        let (self, table_path) = JsonlStorage::data_path(&self, table_name).try_self(self)?;
-        let (self, _) = File::create(&table_path).map_storage_err().try_self(self)?;
+        let table_path = JsonlStorage::data_path(&self, table_name)?;
+        File::create(&table_path).map_storage_err()?;
 
         self.append_data(table_name, rows).await
     }
@@ -390,7 +364,7 @@ fn jsonl_storage_test() {
     use futures::executor::block_on;
 
     let path = ".";
-    let jsonl_storage = JsonlStorage::new(path).unwrap();
+    let mut jsonl_storage = JsonlStorage::new(path).unwrap();
     let table_name = "Items".to_string();
     let schema = Schema {
         table_name: table_name.clone(),
@@ -399,7 +373,7 @@ fn jsonl_storage_test() {
         created: NaiveDateTime::default(),
     };
     block_on(async {
-        let (jsonl_storage, _) = jsonl_storage.insert_schema(&schema).await.unwrap();
+        jsonl_storage.insert_schema(&schema);
         let actual = jsonl_storage
             .fetch_schema(&table_name)
             .await
