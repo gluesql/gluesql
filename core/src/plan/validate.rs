@@ -73,7 +73,7 @@ impl<'a> Context<'a> {
                     (true, true) => {
                         Err(PlanError::ColumnReferenceAmbiguous(column_name.to_owned()).into())
                     }
-                    _ => Ok(current | next),
+                    _ => Ok(current || next),
                 }
             }
             Context::Bridge { left, right } => {
@@ -84,7 +84,7 @@ impl<'a> Context<'a> {
                     (true, true) => {
                         Err(PlanError::ColumnReferenceAmbiguous(column_name.to_owned()).into())
                     }
-                    _ => Ok(left | right),
+                    _ => Ok(left || right),
                 }
             }
         }
