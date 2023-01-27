@@ -11,26 +11,18 @@ use {
 type SchemaMap = HashMap<String, Schema>;
 /// Validate user select column should not be ambiguous
 pub fn validate(schema_map: &SchemaMap, statement: &Statement) -> Result<()> {
-    if let Statement::Query(query) = &statement {
-        if let SetExpr::Select(select) = &query.body {
-            if !select.from.joins.is_empty() {
-                select
-                    .projection
-                    .iter()
-                    .map(|select_item| {
-                        if let SelectItem::Expr {
-                            expr: Expr::Identifier(ident),
-                            ..
-                        } = select_item
-                        {
-                            if let Some(context) = contextualize_stmt(schema_map, statement) {
-                                context.is_duplicated(ident)?;
-                            }
-                        }
-
-                        Ok(())
-                    })
-                    .collect::<Result<Vec<()>>>()?;
+    if let Statement::Query(Query { body, .. }) = &statement {
+        if let SetExpr::Select(select) = body {
+            for select_item in &select.projection {
+                if let SelectItem::Expr {
+                    expr: Expr::Identifier(ident),
+                    ..
+                } = select_item
+                {
+                    if let Some(context) = contextualize_stmt(schema_map, statement) {
+                        context.is_duplicated(ident)?;
+                    }
+                }
             }
         }
     }
