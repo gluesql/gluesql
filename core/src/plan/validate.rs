@@ -46,14 +46,14 @@ pub fn validate(schema_map: &SchemaMap, statement: &Statement) -> Result<()> {
     Ok(())
 }
 
-enum ValidationContext<'a> {
+enum Context<'a> {
     Data {
         schema: &'a Schema,
-        next: Option<Rc<ValidationContext<'a>>>,
+        next: Option<Rc<Context<'a>>>,
     },
     Bridge {
-        left: Rc<ValidationContext<'a>>,
-        right: Rc<ValidationContext<'a>>,
+        left: Rc<Context<'a>>,
+        right: Rc<Context<'a>>,
     },
 }
 
@@ -78,15 +78,12 @@ impl Add for SchemaCount {
     }
 }
 
-impl<'a> ValidationContext<'a> {
-    fn new(schema: &'a Schema, next: Option<Rc<ValidationContext<'a>>>) -> Self {
+impl<'a> Context<'a> {
+    fn new(schema: &'a Schema, next: Option<Rc<Context<'a>>>) -> Self {
         Self::Data { schema, next }
     }
 
-    fn concat(
-        left: Option<Rc<ValidationContext<'a>>>,
-        right: Option<Rc<ValidationContext<'a>>>,
-    ) -> Option<Rc<Self>> {
+    fn concat(left: Option<Rc<Context<'a>>>, right: Option<Rc<Context<'a>>>) -> Option<Rc<Self>> {
         match (left, right) {
             (Some(left), Some(right)) => Some(Rc::new(Self::Bridge { left, right })),
             (context @ Some(_), None) | (None, context @ Some(_)) => context,
@@ -96,7 +93,7 @@ impl<'a> ValidationContext<'a> {
 
     fn count(&self, column_name: &str) -> SchemaCount {
         match self {
-            ValidationContext::Data { schema, next, .. } => {
+            Context::Data { schema, next, .. } => {
                 let current = schema
                     .column_defs
                     .as_ref()
@@ -116,9 +113,7 @@ impl<'a> ValidationContext<'a> {
 
                 current + next
             }
-            ValidationContext::Bridge { left, right } => {
-                left.count(column_name) + right.count(column_name)
-            }
+            Context::Bridge { left, right } => left.count(column_name) + right.count(column_name),
         }
     }
 }
@@ -126,7 +121,7 @@ impl<'a> ValidationContext<'a> {
 fn contextualize_stmt<'a>(
     schema_map: &'a SchemaMap,
     statement: &'a Statement,
-) -> Option<Rc<ValidationContext<'a>>> {
+) -> Option<Rc<Context<'a>>> {
     match statement {
         Statement::Query(query) => contextualize_query(schema_map, query),
         Statement::Insert {
@@ -134,27 +129,24 @@ fn contextualize_stmt<'a>(
         } => {
             let table_context = schema_map
                 .get(table_name)
-                .map(|schema| Rc::from(ValidationContext::new(schema, None)));
+                .map(|schema| Rc::from(Context::new(schema, None)));
 
             let source_context = contextualize_query(schema_map, source);
 
-            ValidationContext::concat(table_context, source_context)
+            Context::concat(table_context, source_context)
         }
         Statement::DropTable { names, .. } => names
             .iter()
             .map(|name| {
                 let schema = schema_map.get(name);
-                schema.map(|schema| Rc::from(ValidationContext::new(schema, None)))
+                schema.map(|schema| Rc::from(Context::new(schema, None)))
             })
-            .fold(None, ValidationContext::concat),
+            .fold(None, Context::concat),
         _ => None,
     }
 }
 
-fn contextualize_query<'a>(
-    schema_map: &'a SchemaMap,
-    query: &'a Query,
-) -> Option<Rc<ValidationContext<'a>>> {
+fn contextualize_query<'a>(schema_map: &'a SchemaMap, query: &'a Query) -> Option<Rc<Context<'a>>> {
     let Query { body, .. } = query;
     match body {
         SetExpr::Select(select) => {
@@ -163,7 +155,7 @@ fn contextualize_query<'a>(
             let by_table = match relation {
                 TableFactor::Table { name, .. } => {
                     let schema = schema_map.get(name);
-                    schema.map(|schema| Rc::from(ValidationContext::new(schema, None)))
+                    schema.map(|schema| Rc::from(Context::new(schema, None)))
                 }
                 TableFactor::Derived { subquery, .. } => contextualize_query(schema_map, subquery),
                 TableFactor::Series { .. } | TableFactor::Dictionary { .. } => None,
@@ -173,9 +165,9 @@ fn contextualize_query<'a>(
             let by_joins = joins
                 .iter()
                 .map(|Join { relation, .. }| contextualize_table_factor(schema_map, relation))
-                .fold(None, ValidationContext::concat);
+                .fold(None, Context::concat);
 
-            ValidationContext::concat(by_table, by_joins)
+            Context::concat(by_table, by_joins)
         }
         SetExpr::Values(_) => None,
     }
@@ -184,11 +176,11 @@ fn contextualize_query<'a>(
 fn contextualize_table_factor<'a>(
     schema_map: &'a SchemaMap,
     table_factor: &'a TableFactor,
-) -> Option<Rc<ValidationContext<'a>>> {
+) -> Option<Rc<Context<'a>>> {
     match table_factor {
         TableFactor::Table { name, .. } => {
             let schema = schema_map.get(name);
-            schema.map(|schema| Rc::from(ValidationContext::new(schema, None)))
+            schema.map(|schema| Rc::from(Context::new(schema, None)))
         }
         TableFactor::Derived { subquery, .. } => contextualize_query(schema_map, subquery),
         TableFactor::Series { .. } | TableFactor::Dictionary { .. } => None,
