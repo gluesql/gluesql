@@ -1,10 +1,7 @@
 use {
     super::PlanError,
     crate::{
-        ast::{
-            Expr, Join, Query, SelectItem, SetExpr, Statement, TableAlias, TableFactor,
-            TableWithJoins,
-        },
+        ast::{Expr, Join, Query, SelectItem, SetExpr, Statement, TableFactor, TableWithJoins},
         data::Schema,
         result::Result,
     },
@@ -49,10 +46,8 @@ pub fn validate(schema_map: &SchemaMap, statement: &Statement) -> Result<()> {
     Ok(())
 }
 
-pub enum ValidationContext<'a> {
+enum ValidationContext<'a> {
     Data {
-        table_name: &'a str,
-        alias: Option<&'a TableAlias>,
         schema: &'a Schema,
         next: Option<Rc<ValidationContext<'a>>>,
     },
@@ -84,18 +79,8 @@ impl Add for SchemaCount {
 }
 
 impl<'a> ValidationContext<'a> {
-    fn new(
-        table_name: &'a str,
-        alias: Option<&'a TableAlias>,
-        schema: &'a Schema,
-        next: Option<Rc<ValidationContext<'a>>>,
-    ) -> Self {
-        Self::Data {
-            table_name,
-            alias,
-            schema,
-            next,
-        }
+    fn new(schema: &'a Schema, next: Option<Rc<ValidationContext<'a>>>) -> Self {
+        Self::Data { schema, next }
     }
 
     fn concat(
@@ -138,7 +123,7 @@ impl<'a> ValidationContext<'a> {
     }
 }
 
-pub fn contextualize_stmt<'a>(
+fn contextualize_stmt<'a>(
     schema_map: &'a SchemaMap,
     statement: &'a Statement,
 ) -> Option<Rc<ValidationContext<'a>>> {
@@ -147,14 +132,9 @@ pub fn contextualize_stmt<'a>(
         Statement::Insert {
             table_name, source, ..
         } => {
-            let table_context = schema_map.get(table_name).map(|schema| {
-                Rc::from(ValidationContext::new(
-                    &schema.table_name,
-                    None,
-                    schema,
-                    None,
-                ))
-            });
+            let table_context = schema_map
+                .get(table_name)
+                .map(|schema| Rc::from(ValidationContext::new(schema, None)));
 
             let source_context = contextualize_query(schema_map, source);
 
@@ -164,7 +144,7 @@ pub fn contextualize_stmt<'a>(
             .iter()
             .map(|name| {
                 let schema = schema_map.get(name);
-                schema.map(|schema| Rc::from(ValidationContext::new(name, None, schema, None)))
+                schema.map(|schema| Rc::from(ValidationContext::new(schema, None)))
             })
             .fold(None, ValidationContext::concat),
         _ => None,
@@ -181,11 +161,9 @@ fn contextualize_query<'a>(
             let TableWithJoins { relation, joins } = &select.from;
 
             let by_table = match relation {
-                TableFactor::Table { name, alias, .. } => {
+                TableFactor::Table { name, .. } => {
                     let schema = schema_map.get(name);
-                    schema.map(|schema| {
-                        Rc::from(ValidationContext::new(name, alias.as_ref(), schema, None))
-                    })
+                    schema.map(|schema| Rc::from(ValidationContext::new(schema, None)))
                 }
                 TableFactor::Derived { subquery, .. } => contextualize_query(schema_map, subquery),
                 TableFactor::Series { .. } | TableFactor::Dictionary { .. } => None,
@@ -208,10 +186,9 @@ fn contextualize_table_factor<'a>(
     table_factor: &'a TableFactor,
 ) -> Option<Rc<ValidationContext<'a>>> {
     match table_factor {
-        TableFactor::Table { name, alias, .. } => {
+        TableFactor::Table { name, .. } => {
             let schema = schema_map.get(name);
-            schema
-                .map(|schema| Rc::from(ValidationContext::new(name, alias.as_ref(), schema, None)))
+            schema.map(|schema| Rc::from(ValidationContext::new(schema, None)))
         }
         TableFactor::Derived { subquery, .. } => contextualize_query(schema_map, subquery),
         TableFactor::Series { .. } | TableFactor::Dictionary { .. } => None,
