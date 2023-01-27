@@ -60,10 +60,10 @@ impl<'a> Context<'a> {
         fn validate(context: &Context, column_name: &str) -> Result<bool> {
             let (left, right) = match context {
                 Context::Data { labels, next, .. } => {
-                    let current = match labels {
-                        Some(labels) => labels.iter().any(|label| *label == column_name),
-                        None => false,
-                    };
+                    let current = labels
+                        .as_ref()
+                        .map(|labels| labels.iter().any(|label| *label == column_name))
+                        .unwrap_or(false);
 
                     let next = next
                         .as_ref()
@@ -80,15 +80,14 @@ impl<'a> Context<'a> {
                 }
             };
 
-            match (left, right) {
-                (true, true) => {
-                    Err(PlanError::ColumnReferenceAmbiguous(column_name.to_owned()).into())
-                }
-                _ => Ok(left || right),
+            if left && right {
+                Err(PlanError::ColumnReferenceAmbiguous(column_name.to_owned()).into())
+            } else {
+                Ok(left || right)
             }
         }
 
-        validate(self, column_name).map(|_| Ok(()))?
+        validate(self, column_name).map(|_| ())
     }
 }
 
