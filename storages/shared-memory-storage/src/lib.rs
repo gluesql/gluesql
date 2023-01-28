@@ -75,52 +75,38 @@ impl Store for SharedMemoryStorage {
 
 #[async_trait(?Send)]
 impl StoreMut for SharedMemoryStorage {
-    async fn insert_schema(&mut self, schema: &Schema) -> Result<&mut Self> {
+    async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let database = Arc::clone(&self.database);
         let mut database = database.write().await;
 
-        MemoryStorage::insert_schema(&mut database, schema)
-            .await
-            .map(|_| self)
+        database.insert_schema(schema).await
     }
 
-    async fn delete_schema(&mut self, table_name: &str) -> Result<&mut Self> {
+    async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         let database = Arc::clone(&self.database);
         let mut database = database.write().await;
 
-        MemoryStorage::delete_schema(&mut database, table_name)
-            .await
-            .map(|_| self)
+        database.delete_schema(table_name).await
     }
 
-    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<&mut Self> {
+    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
         let database = Arc::clone(&self.database);
         let mut database = database.write().await;
 
-        MemoryStorage::append_data(&mut database, table_name, rows)
-            .await
-            .map(|_| self)
+        database.append_data(table_name, rows).await
     }
 
-    async fn insert_data(
-        &mut self,
-        table_name: &str,
-        rows: Vec<(Key, DataRow)>,
-    ) -> Result<&mut Self> {
+    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
         let database = Arc::clone(&self.database);
         let mut database = database.write().await;
 
-        MemoryStorage::insert_data(&mut database, table_name, rows)
-            .await
-            .map(|_| self)
+        database.insert_data(table_name, rows).await
     }
 
-    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<&mut Self> {
+    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let database = Arc::clone(&self.database);
         let mut database = database.write().await;
 
-        MemoryStorage::delete_data(&mut database, table_name, keys)
-            .await
-            .map(|_| self)
+        database.delete_data(table_name, keys).await
     }
 }

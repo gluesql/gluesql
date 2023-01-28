@@ -125,16 +125,15 @@ impl Store for WebStorage {
 
 #[async_trait(?Send)]
 impl StoreMut for WebStorage {
-    async fn insert_schema(&mut self, schema: &Schema) -> Result<&mut Self> {
+    async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let mut table_names: Vec<String> = self.get(TABLE_NAMES_PATH)?.unwrap_or_default();
         table_names.push(schema.table_name.clone());
 
         self.set(TABLE_NAMES_PATH, table_names)?;
-        self.set(format!("{}/{}", SCHEMA_PATH, schema.table_name), schema)?;
-        Ok(self)
+        self.set(format!("{}/{}", SCHEMA_PATH, schema.table_name), schema)
     }
 
-    async fn delete_schema(&mut self, table_name: &str) -> Result<&mut Self> {
+    async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         let mut table_names: Vec<String> = self.get(TABLE_NAMES_PATH)?.unwrap_or_default();
         table_names
             .iter()
@@ -144,10 +143,10 @@ impl StoreMut for WebStorage {
         self.set(TABLE_NAMES_PATH, table_names)?;
         self.delete(format!("{}/{}", SCHEMA_PATH, table_name));
         self.delete(format!("{}/{}", DATA_PATH, table_name));
-        Ok(self)
+        Ok(())
     }
 
-    async fn append_data(&mut self, table_name: &str, new_rows: Vec<DataRow>) -> Result<&mut Self> {
+    async fn append_data(&mut self, table_name: &str, new_rows: Vec<DataRow>) -> Result<()> {
         let path = format!("{}/{}", DATA_PATH, table_name);
         let rows = self.get::<Vec<(Key, DataRow)>>(&path)?.unwrap_or_default();
         let new_rows = new_rows.into_iter().map(|row| {
@@ -158,14 +157,10 @@ impl StoreMut for WebStorage {
 
         let rows = rows.into_iter().chain(new_rows).collect::<Vec<_>>();
 
-        self.set(path, rows).map(|_| self)
+        self.set(path, rows)
     }
 
-    async fn insert_data(
-        &mut self,
-        table_name: &str,
-        new_rows: Vec<(Key, DataRow)>,
-    ) -> Result<&mut Self> {
+    async fn insert_data(&mut self, table_name: &str, new_rows: Vec<(Key, DataRow)>) -> Result<()> {
         let path = format!("{}/{}", DATA_PATH, table_name);
         let mut rows = self.get::<Vec<(Key, DataRow)>>(&path)?.unwrap_or_default();
 
@@ -177,10 +172,10 @@ impl StoreMut for WebStorage {
             }
         }
 
-        self.set(path, rows).map(|_| self)
+        self.set(path, rows)
     }
 
-    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<&mut Self> {
+    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let path = format!("{}/{}", DATA_PATH, table_name);
         let mut rows = self.get::<Vec<(Key, DataRow)>>(&path)?.unwrap_or_default();
 
@@ -190,7 +185,7 @@ impl StoreMut for WebStorage {
             }
         }
 
-        self.set(path, rows).map(|_| self)
+        self.set(path, rows)
     }
 }
 

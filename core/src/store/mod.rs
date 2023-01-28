@@ -88,17 +88,13 @@ pub trait Store {
 /// you can run `INSERT`, `CREATE TABLE`, `DELETE`, `UPDATE` and `DROP TABLE` queries.
 #[async_trait(?Send)]
 pub trait StoreMut {
-    async fn insert_schema(&mut self, schema: &Schema) -> Result<&mut Self>;
+    async fn insert_schema(&mut self, schema: &Schema) -> Result<()>;
 
-    async fn delete_schema(&mut self, table_name: &str) -> Result<&mut Self>;
+    async fn delete_schema(&mut self, table_name: &str) -> Result<()>;
 
-    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<&mut Self>;
+    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()>;
 
-    async fn insert_data(
-        &mut self,
-        table_name: &str,
-        rows: Vec<(Key, DataRow)>,
-    ) -> Result<&mut Self>;
+    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()>;
 
-    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<&mut Self>;
+    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()>;
 }

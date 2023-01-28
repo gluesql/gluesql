@@ -79,37 +79,33 @@ impl Store for MockStorage {
 
 #[async_trait(?Send)]
 impl StoreMut for MockStorage {
-    async fn insert_schema(&mut self, schema: &Schema) -> Result<&mut Self> {
+    async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let table_name = schema.table_name.clone();
         let schema = schema.clone();
 
         self.schema_map.insert(table_name, schema);
-        Ok(self)
+        Ok(())
     }
 
-    async fn delete_schema(&mut self, _table_name: &str) -> Result<&mut Self> {
+    async fn delete_schema(&mut self, _table_name: &str) -> Result<()> {
         let msg = "[MockStorage] delete_schema is not supported".to_owned();
 
         Err(Error::StorageMsg(msg))
     }
 
-    async fn append_data(&mut self, _table_name: &str, _rows: Vec<DataRow>) -> Result<&mut Self> {
+    async fn append_data(&mut self, _table_name: &str, _rows: Vec<DataRow>) -> Result<()> {
         let msg = "[MockStorage] append_data is not supported".to_owned();
 
         Err(Error::StorageMsg(msg))
     }
 
-    async fn insert_data(
-        &mut self,
-        _table_name: &str,
-        _rows: Vec<(Key, DataRow)>,
-    ) -> Result<&mut Self> {
+    async fn insert_data(&mut self, _table_name: &str, _rows: Vec<(Key, DataRow)>) -> Result<()> {
         let msg = "[MockStorage] insert_data is not supported".to_owned();
 
         Err(Error::StorageMsg(msg))
     }
 
-    async fn delete_data(&mut self, _table_name: &str, _keys: Vec<Key>) -> Result<&mut Self> {
+    async fn delete_data(&mut self, _table_name: &str, _keys: Vec<Key>) -> Result<()> {
         let msg = "[MockStorage] delete_data is not supported".to_owned();
 
         Err(Error::StorageMsg(msg))

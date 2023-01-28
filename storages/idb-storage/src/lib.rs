@@ -208,7 +208,7 @@ impl Store for IdbStorage {
 
 #[async_trait(?Send)]
 impl StoreMut for IdbStorage {
-    async fn insert_schema(&mut self, schema: &Schema) -> Result<&mut Self> {
+    async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let version = self.database.version().err_into()? + 1;
         self.database.close();
 
@@ -278,10 +278,10 @@ impl StoreMut for IdbStorage {
         let schema = JsValue::from_serde(&schema).err_into()?;
         store.add(&schema, Some(&key)).await.err_into()?;
 
-        transaction.commit().await.err_into().map(|_| self)
+        transaction.commit().await.err_into()
     }
 
-    async fn delete_schema(&mut self, table_name: &str) -> Result<&mut Self> {
+    async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         let version = self.database.version().err_into()? + 1;
         self.database.close();
 
@@ -355,10 +355,10 @@ impl StoreMut for IdbStorage {
         let key = JsValue::from_str(table_name);
         store.delete(Query::from(key)).await.err_into()?;
 
-        transaction.commit().await.err_into().map(|_| self)
+        transaction.commit().await.err_into()
     }
 
-    async fn append_data(&mut self, table_name: &str, new_rows: Vec<DataRow>) -> Result<&mut Self> {
+    async fn append_data(&mut self, table_name: &str, new_rows: Vec<DataRow>) -> Result<()> {
         let transaction = self
             .database
             .transaction(&[table_name], TransactionMode::ReadWrite)
@@ -377,14 +377,10 @@ impl StoreMut for IdbStorage {
             store.add(&row, None).await.err_into()?;
         }
 
-        transaction.commit().await.err_into().map(|_| self)
+        transaction.commit().await.err_into()
     }
 
-    async fn insert_data(
-        &mut self,
-        table_name: &str,
-        new_rows: Vec<(Key, DataRow)>,
-    ) -> Result<&mut Self> {
+    async fn insert_data(&mut self, table_name: &str, new_rows: Vec<(Key, DataRow)>) -> Result<()> {
         let transaction = self
             .database
             .transaction(&[table_name], TransactionMode::ReadWrite)
@@ -406,10 +402,10 @@ impl StoreMut for IdbStorage {
             store.put(&row, Some(&key)).await.err_into()?;
         }
 
-        transaction.commit().await.err_into().map(|_| self)
+        transaction.commit().await.err_into()
     }
 
-    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<&mut Self> {
+    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let transaction = self
             .database
             .transaction(&[table_name], TransactionMode::ReadWrite)
@@ -424,7 +420,7 @@ impl StoreMut for IdbStorage {
             store.delete(key).await.err_into()?;
         }
 
-        transaction.commit().await.err_into().map(|_| self)
+        transaction.commit().await.err_into()
     }
 }
 

@@ -18,7 +18,7 @@ use {
 
 #[async_trait(?Send)]
 impl StoreMut for SledStorage {
-    async fn insert_schema(&mut self, schema: &Schema) -> Result<&mut Self> {
+    async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
 
@@ -64,10 +64,10 @@ impl StoreMut for SledStorage {
             self.insert_schema(schema).await?;
         }
 
-        Ok(self)
+        Ok(())
     }
 
-    async fn delete_schema(&mut self, table_name: &str) -> Result<&mut Self> {
+    async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         let prefix = format!("data/{}/", table_name);
         let items = self
             .tree
@@ -149,10 +149,10 @@ impl StoreMut for SledStorage {
             self.delete_schema(table_name).await?;
         }
 
-        Ok(self)
+        Ok(())
     }
 
-    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<&mut Self> {
+    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
         let id_offset = self.id_offset;
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
@@ -201,14 +201,10 @@ impl StoreMut for SledStorage {
             self.append_data(table_name, rows).await?;
         }
 
-        Ok(self)
+        Ok(())
     }
 
-    async fn insert_data(
-        &mut self,
-        table_name: &str,
-        rows: Vec<(Key, DataRow)>,
-    ) -> Result<&mut Self> {
+    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
         let tx_rows = &rows;
@@ -275,10 +271,10 @@ impl StoreMut for SledStorage {
             self.insert_data(table_name, rows).await?;
         }
 
-        Ok(self)
+        Ok(())
     }
 
-    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<&mut Self> {
+    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
         let tx_keys = &keys;
@@ -337,6 +333,6 @@ impl StoreMut for SledStorage {
             self.delete_data(table_name, keys).await?;
         }
 
-        Ok(self)
+        Ok(())
     }
 }
