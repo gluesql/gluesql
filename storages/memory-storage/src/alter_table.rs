@@ -6,13 +6,14 @@ use {
     gluesql_core::{
         ast::ColumnDef,
         data::Value,
-        result::{Error, MutResult, Result, TrySelf},
+        result::{Error, Result},
         store::{AlterTable, AlterTableError, DataRow},
     },
 };
 
-impl MemoryStorage {
-    pub fn rename_schema(&mut self, table_name: &str, new_table_name: &str) -> Result<()> {
+#[async_trait(?Send)]
+impl AlterTable for MemoryStorage {
+    async fn rename_schema(&mut self, table_name: &str, new_table_name: &str) -> Result<()> {
         let mut item = self
             .items
             .remove(table_name)
@@ -24,7 +25,7 @@ impl MemoryStorage {
         Ok(())
     }
 
-    pub fn rename_column(
+    async fn rename_column(
         &mut self,
         table_name: &str,
         old_column_name: &str,
@@ -58,7 +59,7 @@ impl MemoryStorage {
         Ok(())
     }
 
-    pub fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
+    async fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
         let item = self
             .items
             .get_mut(table_name)
@@ -116,7 +117,7 @@ impl MemoryStorage {
         Ok(())
     }
 
-    pub fn drop_column(
+    async fn drop_column(
         &mut self,
         table_name: &str,
         column_name: &str,
@@ -165,44 +166,5 @@ impl MemoryStorage {
         };
 
         Ok(())
-    }
-}
-
-#[async_trait(?Send)]
-impl AlterTable for MemoryStorage {
-    async fn rename_schema(self, table_name: &str, new_table_name: &str) -> MutResult<Self, ()> {
-        let mut storage = self;
-
-        MemoryStorage::rename_schema(&mut storage, table_name, new_table_name).try_self(storage)
-    }
-
-    async fn rename_column(
-        self,
-        table_name: &str,
-        old_column_name: &str,
-        new_column_name: &str,
-    ) -> MutResult<Self, ()> {
-        let mut storage = self;
-
-        MemoryStorage::rename_column(&mut storage, table_name, old_column_name, new_column_name)
-            .try_self(storage)
-    }
-
-    async fn add_column(self, table_name: &str, column_def: &ColumnDef) -> MutResult<Self, ()> {
-        let mut storage = self;
-
-        MemoryStorage::add_column(&mut storage, table_name, column_def).try_self(storage)
-    }
-
-    async fn drop_column(
-        self,
-        table_name: &str,
-        column_name: &str,
-        if_exists: bool,
-    ) -> MutResult<Self, ()> {
-        let mut storage = self;
-
-        MemoryStorage::drop_column(&mut storage, table_name, column_name, if_exists)
-            .try_self(storage)
     }
 }

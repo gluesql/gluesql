@@ -13,7 +13,7 @@ use {
             TableFactor, TableWithJoins, Variable,
         },
         data::{Key, Row, Schema, Value},
-        result::{MutResult, TrySelf},
+        result::{MutResult, Result, TrySelf},
         store::{GStore, GStoreMut},
     },
     futures::stream::{StreamExt, TryStreamExt},
@@ -76,7 +76,7 @@ pub enum PayloadVariable {
 
 #[cfg(feature = "transaction")]
 pub async fn execute_atomic<T: GStore + GStoreMut>(
-    storage: T,
+    mut storage: T,
     statement: &Statement,
 ) -> MutResult<T, Payload> {
     if matches!(
@@ -86,17 +86,15 @@ pub async fn execute_atomic<T: GStore + GStoreMut>(
         return execute(storage, statement).await;
     }
 
-    let (storage, autocommit) = storage.begin(true).await?;
+    let (storage, autocommit) = storage.begin(true).await.try_self(storage)?;
     let result = execute(storage, statement).await;
 
     match (result, autocommit) {
-        (Ok((storage, payload)), true) => {
-            let (storage, ()) = storage.commit().await?;
-
-            Ok((storage, payload))
+        (Ok((mut storage, payload)), true) => {
+            storage.commit().await.map(|_| payload).try_self(storage)
         }
-        (Err((storage, error)), true) => {
-            let (storage, ()) = storage.rollback().await?;
+        (Err((mut storage, error)), true) => {
+            let (storage, _) = storage.rollback().await.try_self(storage)?;
 
             Err((storage, error))
         }
@@ -108,17 +106,15 @@ pub async fn execute<T: GStore + GStoreMut>(
     mut storage: T,
     statement: &Statement,
 ) -> MutResult<T, Payload> {
-    macro_rules! try_block {
-        ($storage: expr, $block: block) => {{
-            match (|| async { $block })().await {
-                Err(e) => {
-                    return Err(($storage, e));
-                }
-                Ok(v) => v,
-            }
-        }};
-    }
+    execute_inner(&mut storage, statement)
+        .await
+        .try_self(storage)
+}
 
+async fn execute_inner<T: GStore + GStoreMut>(
+    storage: &mut T,
+    statement: &Statement,
+) -> Result<Payload> {
     match statement {
         //- Modification
         //-- Tables
@@ -128,20 +124,18 @@ pub async fn execute<T: GStore + GStoreMut>(
             if_not_exists,
             source,
             ..
-        } => create_table(&mut storage, name, columns, *if_not_exists, source)
+        } => create_table(storage, name, columns, *if_not_exists, source)
             .await
-            .map(|_| Payload::Create)
-            .try_self(storage),
+            .map(|_| Payload::Create),
         Statement::DropTable {
             names, if_exists, ..
-        } => drop_table(&mut storage, names, *if_exists)
+        } => drop_table(storage, names, *if_exists)
             .await
-            .map(|_| Payload::DropTable)
-            .try_self(storage),
+            .map(|_| Payload::DropTable),
         #[cfg(feature = "alter-table")]
         Statement::AlterTable { name, operation } => alter_table(storage, name, operation)
             .await
-            .map(|(storage, _)| (storage, Payload::AlterTable)),
+            .map(|_| Payload::AlterTable),
         #[cfg(feature = "index")]
         Statement::CreateIndex {
             name,
@@ -149,92 +143,78 @@ pub async fn execute<T: GStore + GStoreMut>(
             column,
         } => create_index(storage, table_name, name, column)
             .await
-            .map(|(storage, _)| (storage, Payload::CreateIndex)),
+            .map(|_| Payload::CreateIndex),
         #[cfg(feature = "index")]
         Statement::DropIndex { name, table_name } => storage
             .drop_index(table_name, name)
             .await
-            .map(|(storage, _)| (storage, Payload::DropIndex)),
+            .map(|_| Payload::DropIndex),
         //- Transaction
         #[cfg(feature = "transaction")]
         Statement::StartTransaction => storage
             .begin(false)
             .await
-            .map(|(storage, _)| (storage, Payload::StartTransaction)),
+            .map(|_| Payload::StartTransaction),
         #[cfg(feature = "transaction")]
-        Statement::Commit => storage
-            .commit()
-            .await
-            .map(|(storage, _)| (storage, Payload::Commit)),
+        Statement::Commit => storage.commit().await.map(|_| Payload::Commit),
         #[cfg(feature = "transaction")]
-        Statement::Rollback => storage
-            .rollback()
-            .await
-            .map(|(storage, _)| (storage, Payload::Rollback)),
+        Statement::Rollback => storage.rollback().await.map(|_| Payload::Rollback),
         //-- Rows
         Statement::Insert {
             table_name,
             columns,
             source,
-        } => insert(&mut storage, table_name, columns, source)
+        } => insert(storage, table_name, columns, source)
             .await
-            .map(Payload::Insert)
-            .try_self(storage),
+            .map(Payload::Insert),
         Statement::Update {
             table_name,
             selection,
             assignments,
         } => {
-            let (table_name, rows) = try_block!(storage, {
-                let Schema { column_defs, .. } = storage
-                    .fetch_schema(table_name)
-                    .await?
-                    .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
+            let Schema { column_defs, .. } = storage
+                .fetch_schema(table_name)
+                .await?
+                .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
 
-                let all_columns = column_defs.as_deref().map(|columns| {
-                    columns
-                        .iter()
-                        .map(|col_def| col_def.name.to_owned())
-                        .collect()
-                });
-                let columns_to_update = assignments
+            let all_columns = column_defs.as_deref().map(|columns| {
+                columns
                     .iter()
-                    .map(|assignment| assignment.id.to_owned())
-                    .collect();
-
-                let update =
-                    Update::new(&storage, table_name, assignments, column_defs.as_deref())?;
-
-                let rows = fetch(&storage, table_name, all_columns, selection.as_ref())
-                    .await?
-                    .and_then(|item| {
-                        let update = &update;
-                        let (key, row) = item;
-
-                        async move {
-                            let row = update.apply(row).await?;
-
-                            Ok((key, row))
-                        }
-                    })
-                    .try_collect::<Vec<(Key, Row)>>()
-                    .await?;
-
-                if let Some(column_defs) = column_defs {
-                    let column_validation = ColumnValidation::SpecifiedColumns(
-                        Rc::from(column_defs),
-                        columns_to_update,
-                    );
-                    let rows = rows.iter().filter_map(|(_, row)| match row {
-                        Row::Vec { values, .. } => Some(values.as_slice()),
-                        Row::Map(_) => None,
-                    });
-
-                    validate_unique(&storage, table_name, column_validation, rows).await?;
-                }
-
-                Ok((table_name, rows))
+                    .map(|col_def| col_def.name.to_owned())
+                    .collect()
             });
+            let columns_to_update = assignments
+                .iter()
+                .map(|assignment| assignment.id.to_owned())
+                .collect();
+
+            let update = Update::new(storage, table_name, assignments, column_defs.as_deref())?;
+
+            let rows = fetch(storage, table_name, all_columns, selection.as_ref())
+                .await?
+                .and_then(|item| {
+                    let update = &update;
+                    let (key, row) = item;
+
+                    async move {
+                        let row = update.apply(row).await?;
+
+                        Ok((key, row))
+                    }
+                })
+                .try_collect::<Vec<(Key, Row)>>()
+                .await?;
+
+            if let Some(column_defs) = column_defs {
+                let column_validation =
+                    ColumnValidation::SpecifiedColumns(Rc::from(column_defs), columns_to_update);
+                let rows = rows.iter().filter_map(|(_, row)| match row {
+                    Row::Vec { values, .. } => Some(values.as_slice()),
+                    Row::Map(_) => None,
+                });
+
+                validate_unique(storage, table_name, column_validation, rows).await?;
+            }
 
             let num_rows = rows.len();
             let rows = rows
@@ -246,22 +226,17 @@ pub async fn execute<T: GStore + GStoreMut>(
                 .insert_data(table_name, rows)
                 .await
                 .map(|_| Payload::Update(num_rows))
-                .try_self(storage)
         }
         Statement::Delete {
             table_name,
             selection,
         } => {
-            let (table_name, keys) = try_block!(storage, {
-                let columns = fetch_columns(&storage, table_name).await?.map(Rc::from);
-                let keys = fetch(&storage, table_name, columns, selection.as_ref())
-                    .await?
-                    .map_ok(|(key, _)| key)
-                    .try_collect::<Vec<_>>()
-                    .await?;
-
-                Ok((table_name, keys))
-            });
+            let columns = fetch_columns(storage, table_name).await?.map(Rc::from);
+            let keys = fetch(storage, table_name, columns, selection.as_ref())
+                .await?
+                .map_ok(|(key, _)| key)
+                .try_collect::<Vec<_>>()
+                .await?;
 
             let num_keys = keys.len();
 
@@ -269,47 +244,38 @@ pub async fn execute<T: GStore + GStoreMut>(
                 .delete_data(table_name, keys)
                 .await
                 .map(|_| Payload::Delete(num_keys))
-                .try_self(storage)
         }
 
         //- Selection
         Statement::Query(query) => {
-            let payload = try_block!(storage, {
-                let (labels, rows) = select_with_labels(&storage, query, None).await?;
+            let (labels, rows) = select_with_labels(storage, query, None).await?;
 
-                match labels {
-                    Some(labels) => rows
-                        .map(|row| row?.try_into_vec())
-                        .try_collect::<Vec<_>>()
-                        .await
-                        .map(|rows| Payload::Select { labels, rows }),
-                    None => rows
-                        .map(|row| row?.try_into_map())
-                        .try_collect::<Vec<_>>()
-                        .await
-                        .map(Payload::SelectMap),
-                }
-            });
-
-            Ok((storage, payload))
+            match labels {
+                Some(labels) => rows
+                    .map(|row| row?.try_into_vec())
+                    .try_collect::<Vec<_>>()
+                    .await
+                    .map(|rows| Payload::Select { labels, rows }),
+                None => rows
+                    .map(|row| row?.try_into_map())
+                    .try_collect::<Vec<_>>()
+                    .await
+                    .map(Payload::SelectMap),
+            }
         }
         Statement::ShowColumns { table_name } => {
-            let keys = try_block!(storage, {
-                let Schema { column_defs, .. } = storage
-                    .fetch_schema(table_name)
-                    .await?
-                    .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
+            let Schema { column_defs, .. } = storage
+                .fetch_schema(table_name)
+                .await?
+                .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
 
-                Ok(column_defs)
-            });
-
-            let output: Vec<(String, DataType)> = keys
+            let output: Vec<(String, DataType)> = column_defs
                 .unwrap_or_default()
                 .into_iter()
                 .map(|key| (key.name, key.data_type))
                 .collect();
 
-            Ok((storage, Payload::ShowColumns(output)))
+            Ok(Payload::ShowColumns(output))
         }
         #[cfg(feature = "index")]
         Statement::ShowIndexes(table_name) => {
@@ -341,22 +307,18 @@ pub async fn execute<T: GStore + GStoreMut>(
                 offset: None,
             };
 
-            let payload = try_block!(storage, {
-                let (labels, rows) = select_with_labels(&storage, &query, None).await?;
-                let labels = labels.unwrap_or_default();
-                let rows = rows
-                    .map(|row| row?.try_into_vec())
-                    .try_collect::<Vec<_>>()
-                    .await?;
+            let (labels, rows) = select_with_labels(storage, &query, None).await?;
+            let labels = labels.unwrap_or_default();
+            let rows = rows
+                .map(|row| row?.try_into_vec())
+                .try_collect::<Vec<_>>()
+                .await?;
 
-                if rows.is_empty() {
-                    return Err(ExecuteError::TableNotFound(table_name.to_owned()).into());
-                }
+            if rows.is_empty() {
+                return Err(ExecuteError::TableNotFound(table_name.to_owned()).into());
+            }
 
-                Ok(Payload::Select { labels, rows })
-            });
-
-            Ok((storage, payload))
+            Ok(Payload::Select { labels, rows })
         }
         Statement::ShowVariable(variable) => match variable {
             Variable::Tables => {
@@ -385,30 +347,23 @@ pub async fn execute<T: GStore + GStoreMut>(
                     offset: None,
                 };
 
-                let rows = try_block!(storage, {
-                    select(&storage, &query, None)
-                        .await?
-                        .map(|row| row?.try_into_vec())
-                        .try_collect::<Vec<_>>()
-                        .await
-                });
-
-                let table_names = rows
+                let table_names = select(storage, &query, None)
+                    .await?
+                    .map(|row| row?.try_into_vec())
+                    .try_collect::<Vec<Vec<Value>>>()
+                    .await?
                     .iter()
                     .flat_map(|values| values.iter().map(|value| value.into()))
                     .collect::<Vec<_>>();
 
-                Ok((
-                    storage,
-                    Payload::ShowVariable(PayloadVariable::Tables(table_names)),
-                ))
+                Ok(Payload::ShowVariable(PayloadVariable::Tables(table_names)))
             }
             Variable::Version => {
                 let version = var("CARGO_PKG_VERSION")
                     .unwrap_or_else(|_| env!("CARGO_PKG_VERSION").to_owned());
                 let payload = Payload::ShowVariable(PayloadVariable::Version(version));
 
-                Ok((storage, payload))
+                Ok(payload)
             }
         },
     }
