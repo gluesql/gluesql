@@ -13,7 +13,7 @@ use {
             TableFactor, TableWithJoins, Variable,
         },
         data::{Key, Row, Schema, Value},
-        result::MutResult,
+        result::{MutResult, TrySelf},
         store::{GStore, GStoreMut},
     },
     futures::stream::{StreamExt, TryStreamExt},
@@ -105,7 +105,7 @@ pub async fn execute_atomic<T: GStore + GStoreMut>(
 }
 
 pub async fn execute<T: GStore + GStoreMut>(
-    storage: T,
+    mut storage: T,
     statement: &Statement,
 ) -> MutResult<T, Payload> {
     macro_rules! try_block {
@@ -128,14 +128,16 @@ pub async fn execute<T: GStore + GStoreMut>(
             if_not_exists,
             source,
             ..
-        } => create_table(storage, name, columns, *if_not_exists, source)
+        } => create_table(&mut storage, name, columns, *if_not_exists, source)
             .await
-            .map(|(storage, _)| (storage, Payload::Create)),
+            .map(|_| Payload::Create)
+            .try_self(storage),
         Statement::DropTable {
             names, if_exists, ..
-        } => drop_table(storage, names, *if_exists)
+        } => drop_table(&mut storage, names, *if_exists)
             .await
-            .map(|(storage, _)| (storage, Payload::DropTable)),
+            .map(|_| Payload::DropTable)
+            .try_self(storage),
         #[cfg(feature = "alter-table")]
         Statement::AlterTable { name, operation } => alter_table(storage, name, operation)
             .await
@@ -174,9 +176,10 @@ pub async fn execute<T: GStore + GStoreMut>(
             table_name,
             columns,
             source,
-        } => insert(storage, table_name, columns, source)
+        } => insert(&mut storage, table_name, columns, source)
             .await
-            .map(|(storage, num_rows)| (storage, Payload::Insert(num_rows))),
+            .map(Payload::Insert)
+            .try_self(storage),
         Statement::Update {
             table_name,
             selection,
@@ -242,7 +245,8 @@ pub async fn execute<T: GStore + GStoreMut>(
             storage
                 .insert_data(table_name, rows)
                 .await
-                .map(|(storage, _)| (storage, Payload::Update(num_rows)))
+                .map(|_| Payload::Update(num_rows))
+                .try_self(storage)
         }
         Statement::Delete {
             table_name,
@@ -264,7 +268,8 @@ pub async fn execute<T: GStore + GStoreMut>(
             storage
                 .delete_data(table_name, keys)
                 .await
-                .map(|(storage, _)| (storage, Payload::Delete(num_keys)))
+                .map(|_| Payload::Delete(num_keys))
+                .try_self(storage)
         }
 
         //- Selection

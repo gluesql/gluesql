@@ -399,10 +399,9 @@ async fn sled_transaction_gc() {
             .storage
             .unwrap()
             .insert_data("NewGarlic", vec![])
-            .await,
-        Err(Error::StorageMsg(
-            "acquire failed - expired transaction has used (txid)".to_owned()
-        )),
+            .await
+            .unwrap_err(),
+        Error::StorageMsg("acquire failed - expired transaction has used (txid)".to_owned()),
     );
 }
 
@@ -446,10 +445,9 @@ mod timeout_tests {
                 .clone()
                 .unwrap()
                 .insert_data("TxGarlic", vec![])
-                .await,
-            Err(Error::StorageMsg(
-                "acquire failed - expired transaction has used (timeout)".to_owned()
-            )),
+                .await
+                .unwrap_err(),
+            Error::StorageMsg("acquire failed - expired transaction has used (timeout)".to_owned()),
         );
 
         exec!(glue2 "BEGIN;");
