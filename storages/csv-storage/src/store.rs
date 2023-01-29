@@ -52,15 +52,15 @@ impl Store for CsvStorage {
         match column_defs {
             // Schema exists
             Some(cds) => {
-                let data_types = cds.iter().map(|cd| cd.data_type);
                 let rows = ReaderBuilder::new()
                     .from_path(file_path)
                     .map_err(StorageError::from_csv_error)?
                     .into_records()
                     .map(move |row| -> Result<DataRow> {
-                        let row_csv_iter = row.map_err(StorageError::from_csv_error)?.iter();
-                        let data_row_vec = row_csv_iter
-                            .zip(data_types)
+                        let data_row_vec = row
+                            .map_err(StorageError::from_csv_error)?
+                            .into_iter()
+                            .zip(cds.clone().into_iter().map(|cd| cd.data_type))
                             .map(|(value, data_type)| {
                                 Value::try_from_literal(
                                     &data_type,
