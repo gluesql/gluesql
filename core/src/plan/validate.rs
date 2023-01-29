@@ -202,8 +202,16 @@ fn validate_test() {
                 amount INTEGER
             );
         ");
-    let sql = "INSERT INTO Player VALUES(1, 'a');";
-    let (schema_map, statement) = plan(&storage, sql);
 
+    let sql = "INSERT INTO Player VALUES(1, 'a')";
+    let (schema_map, statement) = plan(&storage, sql);
+    assert!(contextualize_stmt(&schema_map, &statement).is_some());
+
+    let sql = "DROP TABLE Player";
+    let (schema_map, statement) = plan(&storage, sql);
+    assert!(contextualize_stmt(&schema_map, &statement).is_some());
+
+    let sql = "SELECT * FROM (SELECT * FROM SERIES(3))";
+    let (schema_map, statement) = plan(&storage, sql);
     assert!(contextualize_stmt(&schema_map, &statement).is_some());
 }
