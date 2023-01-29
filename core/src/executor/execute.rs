@@ -13,7 +13,7 @@ use {
             TableFactor, TableWithJoins, Variable,
         },
         data::{Key, Row, Schema, Value},
-        result::{MutResult, Result, TrySelf},
+        result::Result,
         store::{GStore, GStoreMut},
     },
     futures::stream::{StreamExt, TryStreamExt},
@@ -76,9 +76,9 @@ pub enum PayloadVariable {
 
 #[cfg(feature = "transaction")]
 pub async fn execute_atomic<T: GStore + GStoreMut>(
-    mut storage: T,
+    storage: &mut T,
     statement: &Statement,
-) -> MutResult<T, Payload> {
+) -> Result<Payload> {
     if matches!(
         statement,
         Statement::StartTransaction | Statement::Rollback | Statement::Commit
@@ -86,32 +86,24 @@ pub async fn execute_atomic<T: GStore + GStoreMut>(
         return execute(storage, statement).await;
     }
 
-    let (storage, autocommit) = storage.begin(true).await.try_self(storage)?;
+    let autocommit = storage.begin(true).await?;
     let result = execute(storage, statement).await;
 
-    match (result, autocommit) {
-        (Ok((mut storage, payload)), true) => {
-            storage.commit().await.map(|_| payload).try_self(storage)
-        }
-        (Err((mut storage, error)), true) => {
-            let (storage, _) = storage.rollback().await.try_self(storage)?;
+    if !autocommit {
+        return result;
+    }
 
-            Err((storage, error))
+    match result {
+        Ok(payload) => storage.commit().await.map(|_| payload),
+        Err(error) => {
+            storage.rollback().await?;
+
+            Err(error)
         }
-        (result, _) => result,
     }
 }
 
 pub async fn execute<T: GStore + GStoreMut>(
-    mut storage: T,
-    statement: &Statement,
-) -> MutResult<T, Payload> {
-    execute_inner(&mut storage, statement)
-        .await
-        .try_self(storage)
-}
-
-async fn execute_inner<T: GStore + GStoreMut>(
     storage: &mut T,
     statement: &Statement,
 ) -> Result<Payload> {

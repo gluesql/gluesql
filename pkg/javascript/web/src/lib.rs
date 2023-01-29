@@ -74,17 +74,15 @@ impl Glue {
                     }
                 };
 
-                let result = execute(storage, &statement)
+                let result = execute(&mut storage, &statement)
                     .await
-                    .map_err(|(storage, error)| (storage, JsValue::from_str(&format!("{error}"))));
+                    .map_err(|error| JsValue::from_str(&format!("{error}")));
 
                 match result {
-                    Ok((s, payload)) => {
-                        storage = s;
-
+                    Ok(payload) => {
                         payloads.push(payload);
                     }
-                    Err((storage, error)) => {
+                    Err(error) => {
                         cell.replace(Some(storage));
 
                         return Err(error);
