@@ -175,22 +175,11 @@ fn contextualize_table_factor<'a>(
 fn validate_test() {
     use {
         crate::{
-            plan::{
-                fetch_schema_map,
-                mock::{run, MockStorage},
-            },
+            plan::{fetch_schema_map, mock::run},
             prelude::{parse, translate},
         },
         futures::executor::block_on,
     };
-
-    fn plan(storage: &MockStorage, sql: &str) -> (HashMap<String, Schema>, Statement) {
-        let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
-        let statement = translate(&parsed).unwrap();
-        let schema_map = block_on(fetch_schema_map(storage, &statement)).unwrap();
-
-        (schema_map, statement)
-    }
 
     let storage = run("
             CREATE TABLE Items (
@@ -199,30 +188,19 @@ fn validate_test() {
             );
         ");
 
-    let sql = "INSERT INTO Items VALUES(1, 'a')";
-    let labels = ["id".to_owned(), "name".to_owned()];
-    let labels = Some(labels.iter().collect::<Vec<_>>());
-    let (schema_map, statement) = plan(&storage, sql);
-    let context = Some(Rc::from(Context::Data {
-        labels: labels.clone(),
-        next: None,
-    }));
-    assert_eq!(contextualize_stmt(&schema_map, &statement), context);
+    let cases = [
+        ("INSERT INTO Items VALUES(1, 'a')", true),
+        ("SELECT * FROM (SELECT * FROM Items) AS Sub", true),
+        ("SELECT * FROM SERIES(3)", true),
+        ("DROP TABLE Items", true),
+    ];
 
-    let sql = "SELECT * FROM (SELECT * FROM Items) AS Sub";
-    let (schema_map, statement) = plan(&storage, sql);
-    let context = Some(Rc::from(Context::Data {
-        labels: labels.clone(),
-        next: None,
-    }));
-    assert_eq!(contextualize_stmt(&schema_map, &statement), context);
+    for (sql, expected) in cases {
+        let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
+        let statement = translate(&parsed).unwrap();
+        let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
+        let actual = validate(&schema_map, &statement).is_ok();
 
-    let sql = "SELECT * FROM SERIES(3)";
-    let (schema_map, statement) = plan(&storage, sql);
-    assert_eq!(contextualize_stmt(&schema_map, &statement), None);
-
-    let sql = "DROP TABLE Items";
-    let (schema_map, statement) = plan(&storage, sql);
-    let context = Some(Rc::from(Context::Data { labels, next: None }));
-    assert_eq!(contextualize_stmt(&schema_map, &statement), context);
+        assert_eq!(actual, expected)
+    }
 }
