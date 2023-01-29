@@ -210,7 +210,7 @@ pub fn type_match(expected: &[DataType], found: Result<Payload>) {
 ///
 /// Actual test cases are in [test-suite/src/](https://github.com/gluesql/gluesql/blob/main/test-suite/src/),
 /// not in `/tests/`.
-#[async_trait(?Send)]
+#[async_trait]
 pub trait Tester<T: GStore + GStoreMut> {
     async fn new(namespace: &str) -> Self;
 

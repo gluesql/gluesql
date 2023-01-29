@@ -19,7 +19,7 @@ use {
     utils::Vector,
 };
 
-#[async_trait(?Send)]
+#[async_trait]
 impl AlterTable for SledStorage {
     async fn rename_schema(&mut self, table_name: &str, new_table_name: &str) -> Result<()> {
         let prefix = format!("data/{}/", table_name);

@@ -24,6 +24,17 @@ use {
     web_sys::console,
 };
 
+#[cfg(feature = "transaction")]
+use gluesql_core::store::Transaction;
+#[cfg(feature = "alter-table")]
+use gluesql_core::{ast::ColumnDef, store::AlterTable};
+#[cfg(feature = "index")]
+use gluesql_core::{
+    ast::{IndexOperator, OrderByExpr},
+    prelude::Value,
+    store::{Index, IndexMut},
+};
+
 const SCHEMA_STORE: &str = "gluesql-schema";
 const DEFAULT_NAMESPACE: &str = "gluesql";
 
@@ -425,10 +436,8 @@ impl StoreMut for IdbStorage {
 }
 
 #[cfg(feature = "alter-table")]
-impl gluesql_core::store::AlterTable for IdbStorage {}
+gluesql_core::impl_default_for_alter_table!(WebStorage);
 #[cfg(feature = "index")]
-impl gluesql_core::store::Index for IdbStorage {}
-#[cfg(feature = "index")]
-impl gluesql_core::store::IndexMut for IdbStorage {}
+gluesql_core::impl_default_for_index!(WebStorage);
 #[cfg(feature = "transaction")]
-impl gluesql_core::store::Transaction for IdbStorage {}
+gluesql_core::impl_default_for_transaction!(WebStorage);

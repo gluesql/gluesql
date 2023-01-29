@@ -24,12 +24,8 @@ test-suite = { package = "gluesql-test-suite", path = "../../test-suite", versio
 wasm-bindgen-test = "0.3.33"
 
 [features]
-default = [
-	"alter-table",
-	"index",
-	"transaction",
-]
+default = ["alter-table", "index", "transaction"]
 
-alter-table = ["gluesql-core/alter-table"]
-index = ["gluesql-core/index"]
-transaction = ["gluesql-core/transaction"]
+alter-table = ["gluesql-core/alter-table", "test-suite/alter-table"]
+index = ["gluesql-core/index", "test-suite/index"]
+transaction = ["gluesql-core/transaction", "test-suite/transaction"]

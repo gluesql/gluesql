@@ -43,7 +43,7 @@ impl From<MemoryStorage> for SharedMemoryStorage {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Store for SharedMemoryStorage {
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         let database = Arc::clone(&self.database);
@@ -73,7 +73,7 @@ impl Store for SharedMemoryStorage {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl StoreMut for SharedMemoryStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let database = Arc::clone(&self.database);

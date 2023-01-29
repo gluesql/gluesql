@@ -7,7 +7,7 @@ struct SharedMemoryTester {
     glue: Glue<SharedMemoryStorage>,
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Tester<SharedMemoryStorage> for SharedMemoryTester {
     async fn new(_: &str) -> Self {
         let storage = SharedMemoryStorage::new();

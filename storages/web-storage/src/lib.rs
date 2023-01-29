@@ -13,6 +13,17 @@ use {
     uuid::Uuid,
 };
 
+#[cfg(feature = "transaction")]
+use gluesql_core::store::Transaction;
+#[cfg(feature = "alter-table")]
+use gluesql_core::{ast::ColumnDef, store::AlterTable};
+#[cfg(feature = "index")]
+use gluesql_core::{
+    ast::{IndexOperator, OrderByExpr},
+    prelude::Value,
+    store::{Index, IndexMut},
+};
+
 /// gluesql-schema-names -> {Vec<String>}
 const TABLE_NAMES_PATH: &str = "gluesql-schema-names";
 
@@ -81,7 +92,7 @@ impl WebStorage {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Store for WebStorage {
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         let mut table_names: Vec<String> = self.get(TABLE_NAMES_PATH)?.unwrap_or_default();
@@ -123,7 +134,7 @@ impl Store for WebStorage {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl StoreMut for WebStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let mut table_names: Vec<String> = self.get(TABLE_NAMES_PATH)?.unwrap_or_default();
@@ -190,10 +201,8 @@ impl StoreMut for WebStorage {
 }
 
 #[cfg(feature = "alter-table")]
-impl gluesql_core::store::AlterTable for WebStorage {}
+gluesql_core::impl_default_for_alter_table!(WebStorage);
 #[cfg(feature = "index")]
-impl gluesql_core::store::Index for WebStorage {}
-#[cfg(feature = "index")]
-impl gluesql_core::store::IndexMut for WebStorage {}
+gluesql_core::impl_default_for_index!(WebStorage);
 #[cfg(feature = "transaction")]
-impl gluesql_core::store::Transaction for WebStorage {}
+gluesql_core::impl_default_for_transaction!(WebStorage);

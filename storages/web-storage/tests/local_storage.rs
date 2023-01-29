@@ -14,7 +14,7 @@ struct LocalStorageTester {
     glue: Glue<WebStorage>,
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Tester<WebStorage> for LocalStorageTester {
     async fn new(_: &str) -> Self {
         let storage = WebStorage::new(WebStorageType::Local);

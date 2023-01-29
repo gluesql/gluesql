@@ -11,7 +11,7 @@ use {
     },
 };
 
-#[async_trait(?Send)]
+#[async_trait]
 impl AlterTable for MemoryStorage {
     async fn rename_schema(&mut self, table_name: &str, new_table_name: &str) -> Result<()> {
         let mut item = self

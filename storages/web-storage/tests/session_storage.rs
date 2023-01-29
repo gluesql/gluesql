@@ -14,7 +14,7 @@ struct SessionStorageTester {
     glue: Glue<WebStorage>,
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Tester<WebStorage> for SessionStorageTester {
     async fn new(_: &str) -> Self {
         let storage = WebStorage::new(WebStorageType::Session);

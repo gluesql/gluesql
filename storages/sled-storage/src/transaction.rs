@@ -26,7 +26,7 @@ pub enum TxPayload {
     RollbackAndRetry(u64),
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Transaction for SledStorage {
     async fn begin(&mut self, autocommit: bool) -> Result<bool> {
         match (&self.state, autocommit) {

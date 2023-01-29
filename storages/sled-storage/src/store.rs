@@ -11,7 +11,7 @@ use {
 
 const SCHEMA_PREFIX: &str = "schema/";
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Store for SledStorage {
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         let (txid, created_at) = match self.state {

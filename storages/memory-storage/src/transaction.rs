@@ -9,27 +9,4 @@ use {
     },
 };
 
-#[async_trait(?Send)]
-impl Transaction for MemoryStorage {
-    async fn begin(&mut self, autocommit: bool) -> Result<bool> {
-        if autocommit {
-            return Ok(false);
-        }
-
-        Err(Error::StorageMsg(
-            "[MemoryStorage] transaction is not supported".to_owned(),
-        ))
-    }
-
-    async fn rollback(&mut self) -> Result<()> {
-        Err(Error::StorageMsg(
-            "[MemoryStorage] transaction is not supported".to_owned(),
-        ))
-    }
-
-    async fn commit(&mut self) -> Result<()> {
-        Err(Error::StorageMsg(
-            "[MemoryStorage] transaction is not supported".to_owned(),
-        ))
-    }
-}
+gluesql_core::impl_default_for_transaction!(MemoryStorage);

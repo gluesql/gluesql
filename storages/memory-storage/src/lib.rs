@@ -28,7 +28,7 @@ pub struct MemoryStorage {
     pub items: HashMap<String, Item>,
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Store for MemoryStorage {
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         let mut schemas = self
@@ -66,7 +66,7 @@ impl Store for MemoryStorage {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl StoreMut for MemoryStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let table_name = schema.table_name.clone();
