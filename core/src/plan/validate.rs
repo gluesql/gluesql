@@ -169,3 +169,41 @@ fn contextualize_table_factor<'a>(
     }
     .map(Rc::from)
 }
+
+#[test]
+fn validate_test() {
+    use {
+        crate::{
+            plan::{
+                fetch_schema_map,
+                mock::{run, MockStorage},
+            },
+            prelude::{parse, translate},
+        },
+        futures::executor::block_on,
+    };
+
+    fn plan(storage: &MockStorage, sql: &str) -> (HashMap<String, Schema>, Statement) {
+        let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
+        let statement = translate(&parsed).unwrap();
+        let schema_map = block_on(fetch_schema_map(storage, &statement)).unwrap();
+
+        (schema_map, statement)
+    }
+
+    let storage = run("
+            CREATE TABLE Player (
+                id INTEGER,
+                name TEXT
+            );
+            CREATE TABLE PlayerItem (
+                user_id INTEGER,
+                item_id INTEGER,
+                amount INTEGER
+            );
+        ");
+    let sql = "INSERT INTO Player VALUES(1, 'a');";
+    let (schema_map, statement) = plan(&storage, sql);
+
+    assert!(contextualize_stmt(&schema_map, &statement).is_some());
+}
