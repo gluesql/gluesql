@@ -192,26 +192,25 @@ fn validate_test() {
     }
 
     let storage = run("
-            CREATE TABLE Player (
+            CREATE TABLE Items (
                 id INTEGER,
                 name TEXT
             );
-            CREATE TABLE PlayerItem (
-                user_id INTEGER,
-                item_id INTEGER,
-                amount INTEGER
-            );
         ");
 
-    let sql = "INSERT INTO Player VALUES(1, 'a')";
+    let sql = "INSERT INTO Items VALUES(1, 'a')";
     let (schema_map, statement) = plan(&storage, sql);
     assert!(contextualize_stmt(&schema_map, &statement).is_some());
 
-    let sql = "DROP TABLE Player";
+    let sql = "SELECT * FROM (SELECT * FROM Items) AS Sub";
     let (schema_map, statement) = plan(&storage, sql);
     assert!(contextualize_stmt(&schema_map, &statement).is_some());
 
-    let sql = "SELECT * FROM (SELECT * FROM SERIES(3))";
+    let sql = "SELECT * FROM SERIES(3)";
+    let (schema_map, statement) = plan(&storage, sql);
+    assert!(contextualize_stmt(&schema_map, &statement).is_none());
+
+    let sql = "DROP TABLE Items";
     let (schema_map, statement) = plan(&storage, sql);
     assert!(contextualize_stmt(&schema_map, &statement).is_some());
 }
