@@ -23,7 +23,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
     if_not_exists: bool,
     source: &Option<Box<Query>>,
 ) -> Result<()> {
-    let target_columns_defs = match source.as_ref().map(AsRef::as_ref) {
+    let target_columns_defs = match source.as_deref() {
         Some(Query { body, .. }) => match body {
             SetExpr::Select(select_query) => match &select_query.from.relation {
                 TableFactor::Table { name, .. } => {
