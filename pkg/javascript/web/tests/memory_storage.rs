@@ -11,7 +11,7 @@ struct MemoryTester {
     glue: Glue<MemoryStorage>,
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Tester<MemoryStorage> for MemoryTester {
     async fn new(_: &str) -> Self {
         let storage = MemoryStorage::default();

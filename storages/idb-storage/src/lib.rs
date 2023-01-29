@@ -113,7 +113,7 @@ impl IdbStorage {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Store for IdbStorage {
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         let transaction = self
@@ -217,7 +217,7 @@ impl Store for IdbStorage {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl StoreMut for IdbStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let version = self.database.version().err_into()? + 1;

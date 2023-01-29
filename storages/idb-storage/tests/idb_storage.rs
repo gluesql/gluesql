@@ -14,7 +14,7 @@ struct IdbStorageTester {
     glue: Glue<IdbStorage>,
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Tester<IdbStorage> for IdbStorageTester {
     async fn new(namespace: &str) -> Self {
         let storage = IdbStorage::new(Some(namespace.to_owned())).await.unwrap();
