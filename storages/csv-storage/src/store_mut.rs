@@ -20,8 +20,7 @@ impl StoreMut for CsvStorage {
                     file_path,
                     schema: schema.to_owned(),
                 };
-                let mut tables = self.tables;
-                tables.insert(schema.table_name.to_owned(), csv_table);
+                self.tables.insert(schema.table_name.to_owned(), csv_table);
 
                 Ok(())
             }
@@ -30,8 +29,7 @@ impl StoreMut for CsvStorage {
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
-        let mut tables = self.tables;
-        match tables.remove(table_name) {
+        match self.tables.remove(table_name) {
             Some(_) => Ok(()),
             None => Err(StorageError::TableNotFound(table_name.to_string()).into()),
         }
