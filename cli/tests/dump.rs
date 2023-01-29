@@ -66,7 +66,8 @@ async fn dump_and_import() {
         source_glue.execute(sql).unwrap();
     }
 
-    let source_storage = dump_database(source_glue.storage.unwrap(), dump_path.clone()).unwrap();
+    let mut source_storage = source_glue.storage.unwrap();
+    dump_database(&mut source_storage, dump_path.clone()).unwrap();
 
     let data_path = "tmp/target";
     let config = sled::Config::default().path(data_path).temporary(true);

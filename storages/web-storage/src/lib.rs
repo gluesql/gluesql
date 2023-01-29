@@ -143,7 +143,6 @@ impl StoreMut for WebStorage {
         self.set(TABLE_NAMES_PATH, table_names)?;
         self.delete(format!("{}/{}", SCHEMA_PATH, table_name));
         self.delete(format!("{}/{}", DATA_PATH, table_name));
-
         Ok(())
     }
 

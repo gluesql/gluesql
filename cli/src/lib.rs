@@ -44,8 +44,8 @@ pub fn run() -> Result<()> {
         let path = path.as_path().to_str().expect("wrong path");
 
         if let Some(dump_path) = args.dump {
-            let storage = SledStorage::new(path).expect("failed to load sled-storage");
-            dump_database(storage, dump_path)?;
+            let mut storage = SledStorage::new(path).expect("failed to load sled-storage");
+            dump_database(&mut storage, dump_path)?;
 
             return Ok::<_, Error>(());
         }
@@ -78,11 +78,11 @@ pub fn run() -> Result<()> {
     Ok(())
 }
 
-pub fn dump_database(storage: SledStorage, dump_path: PathBuf) -> Result<SledStorage> {
+pub fn dump_database(storage: &mut SledStorage, dump_path: PathBuf) -> Result<()> {
     let file = File::create(dump_path)?;
 
     block_on(async {
-        let (storage, _) = storage.begin(true).await.map_err(|(_, error)| error)?;
+        storage.begin(true).await?;
         let schemas = storage.fetch_all_schemas().await?;
         for schema in schemas {
             writeln!(&file, "{}", schema.clone().to_ddl())?;
@@ -128,6 +128,6 @@ pub fn dump_database(storage: SledStorage, dump_path: PathBuf) -> Result<SledSto
             writeln!(&file)?;
         }
 
-        Ok(storage)
+        Ok(())
     })
 }
