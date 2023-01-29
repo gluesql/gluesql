@@ -120,6 +120,12 @@ impl JsonlStorage {
         Ok(PathBuf::from(path))
     }
 
+    fn schema_path(&self, table_name: &str) -> Option<PathBuf> {
+        let path = self.path_by(table_name, "sql").ok();
+
+        path.map(PathBuf::from)
+    }
+
     fn path_by(&self, table_name: &str, extension: &str) -> Result<String, Error> {
         let schema = self
             .tables
@@ -250,22 +256,17 @@ impl StoreMut for JsonlStorage {
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
-        // todo! should delete including .sql file
-        let table_path = JsonlStorage::data_path(&self, table_name);
-        match table_path {
-            Ok(table_path) => {
-                match remove_file(table_path).map_storage_err() {
-                    Ok(_) => {}
-                    Err(e) => return Err(e),
-                }
+        let table_path = JsonlStorage::data_path(&self, table_name)?;
+        let schema_path = JsonlStorage::schema_path(&self, table_name);
 
-                let mut storage = self;
-                JsonlStorage::delete_schema(&mut storage, table_name);
-
-                return Ok(());
-            }
-            Err(_) => Ok(()), // todo! fair enough to squash error for drop table if exist?
+        remove_file(table_path).map_storage_err()?;
+        if let Some(schema_path) = schema_path {
+            remove_file(schema_path).map_storage_err()?;
         }
+
+        JsonlStorage::delete_schema(self, table_name);
+
+        Ok(())
     }
 
     async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
