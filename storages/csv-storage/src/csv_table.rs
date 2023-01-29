@@ -28,8 +28,8 @@ impl CsvTable {
                 name: col.to_owned(),
                 data_type: DataType::Text,
                 nullable: true,
-                options: vec![],
                 default: None,
+                unique: None,
             })
             .collect();
 
@@ -51,7 +51,7 @@ impl CsvTable {
             file_path: path.as_ref().to_path_buf(),
             schema: Schema {
                 table_name,
-                column_defs,
+                column_defs: Some(column_defs),
                 indexes: vec![],
                 created: NaiveDateTime::default(),
             },
@@ -119,21 +119,21 @@ mod test {
                     name: "id".to_owned(),
                     data_type: DataType::Text,
                     nullable: true,
-                    options: vec![],
+                    unique: None,
                     default: None
                 },
                 ColumnDef {
                     name: "name".to_owned(),
                     data_type: DataType::Text,
                     nullable: true,
-                    options: vec![],
+                    unique: None,
                     default: None
                 },
                 ColumnDef {
                     name: "age".to_owned(),
                     data_type: DataType::Text,
                     nullable: true,
-                    options: vec![],
+                    unique: None,
                     default: None
                 },
             ],
@@ -169,29 +169,29 @@ mod test {
             file_path: PathBuf::from_str("users.csv").unwrap(),
             schema: Schema {
                 table_name: "users".to_string(),
-                column_defs: vec![
+                column_defs: Some(vec![
                     ColumnDef {
                         name: "id".to_owned(),
                         data_type: DataType::Text,
                         nullable: true,
-                        options: vec![],
+                        unique: None,
                         default: None,
                     },
                     ColumnDef {
                         name: "name".to_owned(),
                         data_type: DataType::Text,
                         nullable: true,
-                        options: vec![],
+                        unique: None,
                         default: None,
                     },
                     ColumnDef {
                         name: "age".to_owned(),
                         data_type: DataType::Text,
                         nullable: true,
-                        options: vec![],
+                        unique: None,
                         default: None,
                     },
-                ],
+                ]),
                 indexes: vec![],
                 created: NaiveDateTime::default(),
             },
@@ -204,29 +204,29 @@ mod test {
         let csv_table = generate_csv_table();
         let schema = Schema {
             table_name: "users".to_string(),
-            column_defs: vec![
+            column_defs: Some(vec![
                 ColumnDef {
                     name: "id".to_owned(),
                     data_type: DataType::Int128,
                     nullable: true,
-                    options: vec![],
+                    unique: None,
                     default: None,
                 },
                 ColumnDef {
                     name: "name".to_owned(),
                     data_type: DataType::Text,
                     nullable: true,
-                    options: vec![],
+                    unique: None,
                     default: None,
                 },
                 ColumnDef {
                     name: "age".to_owned(),
                     data_type: DataType::Uint8,
                     nullable: true,
-                    options: vec![],
+                    unique: None,
                     default: None,
                 },
-            ],
+            ]),
             indexes: vec![],
             created: NaiveDateTime::default(),
         };
@@ -244,21 +244,21 @@ mod test {
                     name: "id".to_owned(),
                     data_type: DataType::Int128,
                     nullable: true,
-                    options: vec![],
+                    unique: None,
                     default: None,
                 },
                 ColumnDef {
                     name: "name".to_owned(),
                     data_type: DataType::Text,
                     nullable: true,
-                    options: vec![],
+                    unique: None,
                     default: None,
                 },
                 ColumnDef {
                     name: "age".to_owned(),
                     data_type: DataType::Uint8,
                     nullable: true,
-                    options: vec![],
+                    unique: None,
                     default: None,
                 },
             ],
@@ -276,7 +276,7 @@ mod test {
         let csv_table = generate_csv_table();
         let schema = Schema {
             table_name: "animals".to_string(),
-            column_defs: vec![],
+            column_defs: Some(vec![]),
             indexes: vec![],
             created: NaiveDateTime::default(),
         };
@@ -298,13 +298,13 @@ mod test {
         let csv_table = generate_csv_table();
         let schema = Schema {
             table_name: "users".to_string(),
-            column_defs: vec![ColumnDef {
+            column_defs: Some(vec![ColumnDef {
                 name: "identifier".to_owned(),
                 data_type: DataType::Int128,
                 nullable: true,
-                options: vec![],
+                unique: None,
                 default: None,
-            }],
+            }]),
             indexes: vec![],
             created: NaiveDateTime::default(),
         };

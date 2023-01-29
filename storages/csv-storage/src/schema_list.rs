@@ -1,3 +1,5 @@
+use gluesql_core::ast::ColumnUniqueOption;
+
 use {
     crate::error::StorageError,
     gluesql_core::{
@@ -50,15 +52,15 @@ impl From<TomlColumn> for ColumnDef {
                 None => true,
             },
         };
-        let options: Vec<ColumnOption> = match column.options {
+        let unique: Option<ColumnUniqueOption> = match column.options {
             Some(opt) => opt
                 .iter()
                 .map(|co| match co {
-                    TomlColumnOption::PrimaryKey => ColumnOption::Unique { is_primary: true },
-                    TomlColumnOption::Unique => ColumnOption::Unique { is_primary: false },
+                    TomlColumnOption::PrimaryKey => Some(ColumnUniqueOption { is_primary: true }),
+                    TomlColumnOption::Unique => Some(ColumnUniqueOption { is_primary: false }),
                 })
                 .collect(),
-            None => vec![],
+            None => None,
         };
         let default = column.default.map(|value| Expr::TypedString {
             data_type: data_type.clone(),
@@ -69,8 +71,8 @@ impl From<TomlColumn> for ColumnDef {
             name: column.name,
             data_type,
             nullable,
-            options,
             default,
+            unique,
         }
     }
 }
@@ -93,7 +95,7 @@ impl From<TomlTable> for Schema {
         let column_defs: Vec<ColumnDef> = table.columns.into_iter().map(ColumnDef::from).collect();
         Self {
             table_name: table.name,
-            column_defs,
+            column_defs: Some(column_defs),
             indexes: vec![],
             created: NaiveDateTime::default(),
         }
@@ -206,32 +208,32 @@ mod test {
                     name: "id".to_string(),
                     data_type: DataType::Int128,
                     nullable: false,
-                    options: vec![ColumnOption::Unique { is_primary: true }],
                     default: None,
+                    unique: Some(ColumnUniqueOption { is_primary: true })
                 },
                 ColumnDef {
                     name: "name".to_string(),
                     data_type: DataType::Text,
                     nullable: true,
-                    options: vec![ColumnOption::Unique { is_primary: false },],
                     default: None,
+                    unique: Some(ColumnUniqueOption { is_primary: false })
                 },
                 ColumnDef {
                     name: "age".to_string(),
                     data_type: DataType::Uint8,
                     nullable: false,
-                    options: vec![],
                     default: None,
+                    unique: None,
                 },
                 ColumnDef {
                     name: "role".to_string(),
                     data_type: DataType::Text,
                     nullable: true,
-                    options: vec![],
                     default: Some(Expr::TypedString {
                         data_type: DataType::Text,
                         value: "GUEST".to_string()
                     }),
+                    unique: None,
                 },
             ],
             schema.column_defs
@@ -257,32 +259,32 @@ mod test {
                     name: "id".to_string(),
                     data_type: DataType::Int128,
                     nullable: false,
-                    options: vec![ColumnOption::Unique { is_primary: true }],
                     default: None,
+                    unique: Some(ColumnUniqueOption { is_primary: true })
                 },
                 ColumnDef {
                     name: "name".to_string(),
                     data_type: DataType::Text,
                     nullable: true,
-                    options: vec![ColumnOption::Unique { is_primary: false },],
                     default: None,
+                    unique: Some(ColumnUniqueOption { is_primary: false})
                 },
                 ColumnDef {
                     name: "age".to_string(),
                     data_type: DataType::Uint8,
                     nullable: false,
-                    options: vec![],
                     default: None,
+                    unique: None,
                 },
                 ColumnDef {
                     name: "role".to_string(),
                     data_type: DataType::Text,
                     nullable: true,
-                    options: vec![],
                     default: Some(Expr::TypedString {
                         data_type: DataType::Text,
                         value: "GUEST".to_string()
                     })
+                    unique: None,
                 },
             ],
             schema.column_defs
@@ -298,32 +300,32 @@ mod test {
                     name: "id".to_string(),
                     data_type: DataType::Int128,
                     nullable: false,
-                    options: vec![ColumnOption::Unique { is_primary: true }],
                     default: None,
+                    unique: Some(ColumnUniqueOption { is_primary: true })
                 },
                 ColumnDef {
                     name: "orderer_id".to_string(),
                     data_type: DataType::Int128,
                     nullable: true,
-                    options: vec![],
                     default: None,
+                    unique: None,
                 },
                 ColumnDef {
                     name: "food_id".to_string(),
                     data_type: DataType::Int128,
                     nullable: true,
-                    options: vec![],
                     default: None,
+                    unique: None,
                 },
                 ColumnDef {
                     name: "cost".to_string(),
                     data_type: DataType::Uint16,
                     nullable: true,
-                    options: vec![],
                     default: Some(Expr::TypedString {
                         data_type: DataType::Uint16,
                         value: "0".to_string()
                     })
+                    unique: None,
                 },
             ],
             schema.column_defs

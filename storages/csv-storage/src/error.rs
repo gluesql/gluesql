@@ -19,6 +19,9 @@ pub enum StorageError {
 
     #[error("table not found: {0}")]
     TableNotFound(String),
+
+    #[error("schema-less operation not supported yet")]
+    SchemaLessNotSupported,
 }
 
 impl StorageError {
