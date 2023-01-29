@@ -41,7 +41,6 @@ pub fn validate(schema_map: &SchemaMap, statement: &Statement) -> Result<()> {
     Ok(())
 }
 
-#[derive(PartialEq, Debug)]
 enum Context<'a> {
     Data {
         labels: Option<Vec<&'a String>>,
