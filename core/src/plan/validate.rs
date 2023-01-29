@@ -171,36 +171,39 @@ fn contextualize_table_factor<'a>(
     .map(Rc::from)
 }
 
-#[test]
-fn validate_test() {
+#[cfg(test)]
+mod tests {
     use {
         crate::{
-            plan::{fetch_schema_map, mock::run},
+            plan::{fetch_schema_map, mock::run, validate},
             prelude::{parse, translate},
         },
         futures::executor::block_on,
     };
 
-    let storage = run("
+    #[test]
+    fn validate_test() {
+        let storage = run("
             CREATE TABLE Items (
                 id INTEGER,
                 name TEXT
             );
         ");
 
-    let cases = [
-        ("INSERT INTO Items VALUES(1, 'a')", true),
-        ("SELECT * FROM (SELECT * FROM Items) AS Sub", true),
-        ("SELECT * FROM SERIES(3)", true),
-        ("DROP TABLE Items", true),
-    ];
+        let cases = [
+            ("INSERT INTO Items VALUES(1, 'a')", true),
+            ("SELECT * FROM (SELECT * FROM Items) AS Sub", true),
+            ("SELECT * FROM SERIES(3)", true),
+            ("DROP TABLE Items", true),
+        ];
 
-    for (sql, expected) in cases {
-        let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
-        let statement = translate(&parsed).unwrap();
-        let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
-        let actual = validate(&schema_map, &statement).is_ok();
+        for (sql, expected) in cases {
+            let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
+            let statement = translate(&parsed).unwrap();
+            let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
+            let actual = validate(&schema_map, &statement).is_ok();
 
-        assert_eq!(actual, expected)
+            assert_eq!(actual, expected)
+        }
     }
 }
