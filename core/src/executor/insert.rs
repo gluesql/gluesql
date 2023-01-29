@@ -7,7 +7,7 @@ use {
         ast::{ColumnDef, ColumnUniqueOption, Expr, Query, SetExpr, Values},
         data::{Key, Row, Schema, Value},
         executor::{evaluate::evaluate_stateless, limit::Limit},
-        result::{MutResult, Result, TrySelf},
+        result::Result,
         store::{DataRow, GStore, GStoreMut},
     },
     futures::stream::{self, StreamExt, TryStreamExt},
@@ -46,47 +46,44 @@ enum RowsData {
 }
 
 pub async fn insert<T: GStore + GStoreMut>(
-    storage: T,
+    storage: &mut T,
     table_name: &str,
     columns: &[String],
     source: &Query,
-) -> MutResult<T, usize> {
-    let rows = (|| async {
-        let Schema { column_defs, .. } = storage
-            .fetch_schema(table_name)
-            .await?
-            .ok_or_else(|| InsertError::TableNotFound(table_name.to_owned()))?;
+) -> Result<usize> {
+    let Schema { column_defs, .. } = storage
+        .fetch_schema(table_name)
+        .await?
+        .ok_or_else(|| InsertError::TableNotFound(table_name.to_owned()))?;
 
-        match column_defs {
-            Some(column_defs) => {
-                fetch_vec_rows(&storage, table_name, column_defs, columns, source).await
-            }
-            None => fetch_map_rows(&storage, source).await.map(RowsData::Append),
+    let rows = match column_defs {
+        Some(column_defs) => {
+            fetch_vec_rows(storage, table_name, column_defs, columns, source).await
         }
-    })()
-    .await;
+        None => fetch_map_rows(storage, source).await.map(RowsData::Append),
+    }?;
 
-    match rows.try_self(storage)? {
-        (storage, RowsData::Append(rows)) => {
+    match rows {
+        RowsData::Append(rows) => {
             let num_rows = rows.len();
 
             storage
                 .append_data(table_name, rows)
                 .await
-                .map(|(storage, _)| (storage, num_rows))
+                .map(|_| num_rows)
         }
-        (storage, RowsData::Insert(rows)) => {
+        RowsData::Insert(rows) => {
             let num_rows = rows.len();
 
             storage
                 .insert_data(table_name, rows)
                 .await
-                .map(|(storage, _)| (storage, num_rows))
+                .map(|_| num_rows)
         }
     }
 }
 
-async fn fetch_vec_rows<T: GStore + GStoreMut>(
+async fn fetch_vec_rows<T: GStore>(
     storage: &T,
     table_name: &str,
     column_defs: Vec<ColumnDef>,
@@ -177,10 +174,7 @@ async fn fetch_vec_rows<T: GStore + GStoreMut>(
     }
 }
 
-async fn fetch_map_rows<T: GStore + GStoreMut>(
-    storage: &T,
-    source: &Query,
-) -> Result<Vec<DataRow>> {
+async fn fetch_map_rows<T: GStore>(storage: &T, source: &Query) -> Result<Vec<DataRow>> {
     #[derive(futures_enum::Stream)]
     enum Rows<I1, I2> {
         Values(I1),

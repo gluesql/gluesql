@@ -16,26 +16,20 @@ use {
         translate::translate,
     },
     async_trait::async_trait,
-    futures::{
-        executor::block_on,
-        stream::{self, StreamExt},
-    },
+    futures::executor::block_on,
     std::collections::HashMap,
 };
 
 pub fn run(sql: &str) -> MockStorage {
-    let storage =
-        stream::iter(parse(sql).unwrap()).fold(MockStorage::default(), |storage, parsed| {
-            let statement = translate(&parsed).unwrap();
+    let mut storage = MockStorage::default();
 
-            async move {
-                let (storage, _) = execute(storage, &statement).await.unwrap();
+    for parsed in parse(sql).unwrap() {
+        let statement = translate(&parsed).unwrap();
 
-                storage
-            }
-        });
+        block_on(execute(&mut storage, &statement)).unwrap();
+    }
 
-    block_on(storage)
+    storage
 }
 
 #[derive(Default, Debug)]
@@ -146,17 +140,6 @@ mod tests {
         futures::executor::block_on,
     };
 
-    #[cfg(any(feature = "alter-table", feature = "index", feature = "transaction"))]
-    fn test<T, F>(result: F) -> MockStorage
-    where
-        F: std::future::Future<Output = crate::result::MutResult<MockStorage, T>>,
-    {
-        match block_on(result) {
-            Ok(_) => unreachable!("this test must fail"),
-            Err((storage, _)) => storage,
-        }
-    }
-
     #[test]
     fn empty() {
         let mut storage = MockStorage::default();
@@ -170,10 +153,10 @@ mod tests {
         assert!(block_on(storage.delete_data("Foo", Vec::new())).is_err());
 
         #[cfg(feature = "alter-table")]
-        let storage = {
-            let storage = test(storage.rename_schema("Foo", "Bar"));
-            let storage = test(storage.rename_column("Foo", "col_old", "col_new"));
-            let storage = test(storage.add_column(
+        {
+            assert!(block_on(storage.rename_schema("Foo", "Bar")).is_err());
+            assert!(block_on(storage.rename_column("Foo", "col_old", "col_new")).is_err());
+            assert!(block_on(storage.add_column(
                 "Foo",
                 &ColumnDef {
                     name: "new_col".to_owned(),
@@ -182,16 +165,15 @@ mod tests {
                     default: None,
                     unique: None,
                 },
-            ));
-            let storage = test(storage.drop_column("Foo", "col", false));
-
-            storage
+            ))
+            .is_err());
+            assert!(block_on(storage.drop_column("Foo", "col", false)).is_err());
         };
 
         #[cfg(feature = "index")]
-        let storage = {
+        {
             assert!(block_on(storage.scan_indexed_data("Foo", "idx_col", None, None)).is_err());
-            let storage = test(storage.create_index(
+            assert!(block_on(storage.create_index(
                 "Foo",
                 "idx_col",
                 &OrderByExpr {
@@ -201,19 +183,16 @@ mod tests {
                     },
                     asc: None,
                 },
-            ));
-            let storage = test(storage.drop_index("Foo", "idx_col"));
-
-            storage
+            ))
+            .is_err());
+            assert!(block_on(storage.drop_index("Foo", "idx_col")).is_err());
         };
 
         #[cfg(feature = "transaction")]
-        let storage = {
-            let storage = test(storage.begin(false));
-            let storage = test(storage.rollback());
-            let storage = test(storage.commit());
-
-            storage
+        {
+            assert!(block_on(storage.begin(false)).is_err());
+            assert!(block_on(storage.rollback()).is_err());
+            assert!(block_on(storage.commit()).is_err());
         };
 
         assert!(matches!(block_on(storage.fetch_schema("Foo")), Ok(None)));

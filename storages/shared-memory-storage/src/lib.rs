@@ -79,34 +79,34 @@ impl StoreMut for SharedMemoryStorage {
         let database = Arc::clone(&self.database);
         let mut database = database.write().await;
 
-        MemoryStorage::insert_schema(&mut database, schema).await
+        database.insert_schema(schema).await
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         let database = Arc::clone(&self.database);
         let mut database = database.write().await;
 
-        MemoryStorage::delete_schema(&mut database, table_name).await
+        database.delete_schema(table_name).await
     }
 
     async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
         let database = Arc::clone(&self.database);
         let mut database = database.write().await;
 
-        MemoryStorage::append_data(&mut database, table_name, rows).await
+        database.append_data(table_name, rows).await
     }
 
     async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
         let database = Arc::clone(&self.database);
         let mut database = database.write().await;
 
-        MemoryStorage::insert_data(&mut database, table_name, rows).await
+        database.insert_data(table_name, rows).await
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let database = Arc::clone(&self.database);
         let mut database = database.write().await;
 
-        MemoryStorage::delete_data(&mut database, table_name, keys).await
+        database.delete_data(table_name, keys).await
     }
 }

@@ -12,7 +12,7 @@ use {
         ast::OrderByExpr,
         chrono::Utc,
         data::{Schema, SchemaIndex, SchemaIndexOrd},
-        result::{Error, MutResult, Result, TrySelf},
+        result::{Error, Result},
         store::{IndexError, IndexMut, Store},
     },
     sled::transaction::{
@@ -39,13 +39,15 @@ fn fetch_schema(
 #[async_trait(?Send)]
 impl IndexMut for SledStorage {
     async fn create_index(
-        self,
+        &mut self,
         table_name: &str,
         index_name: &str,
         column: &OrderByExpr,
-    ) -> MutResult<Self, ()> {
-        let (self, rows) = self.scan_data(table_name).await.try_self(self)?;
-        let (self, rows) = rows.collect::<Result<Vec<_>>>().try_self(self)?;
+    ) -> Result<()> {
+        let rows = self
+            .scan_data(table_name)
+            .await?
+            .collect::<Result<Vec<_>>>()?;
 
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
@@ -121,15 +123,18 @@ impl IndexMut for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        self.check_and_retry(tx_result, |storage| {
-            storage.create_index(table_name, index_name, column)
-        })
-        .await
+        if self.check_retry(tx_result)? {
+            self.create_index(table_name, index_name, column).await?;
+        }
+
+        Ok(())
     }
 
-    async fn drop_index(self, table_name: &str, index_name: &str) -> MutResult<Self, ()> {
-        let (self, rows) = self.scan_data(table_name).await.try_self(self)?;
-        let (self, rows) = rows.collect::<Result<Vec<_>>>().try_self(self)?;
+    async fn drop_index(&mut self, table_name: &str, index_name: &str) -> Result<()> {
+        let rows = self
+            .scan_data(table_name)
+            .await?
+            .collect::<Result<Vec<_>>>()?;
 
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
@@ -198,9 +203,10 @@ impl IndexMut for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        self.check_and_retry(tx_result, |storage| {
-            storage.drop_index(table_name, index_name)
-        })
-        .await
+        if self.check_retry(tx_result)? {
+            self.drop_index(table_name, index_name).await?;
+        }
+
+        Ok(())
     }
 }
