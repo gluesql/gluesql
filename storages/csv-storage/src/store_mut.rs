@@ -3,16 +3,15 @@ use {
     async_trait::async_trait,
     gluesql_core::{
         data::{schema::Schema, Key},
-        result::MutResult,
-        store::Row,
-        store::StoreMut,
+        result::Result,
+        store::{DataRow, StoreMut},
     },
     std::{fs, path::PathBuf},
 };
 
 #[async_trait(?Send)]
 impl StoreMut for CsvStorage {
-    async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
+    async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let file_path = PathBuf::from(format!("{}.csv", schema.table_name));
 
         match fs::File::create(&file_path) {
@@ -24,32 +23,29 @@ impl StoreMut for CsvStorage {
                 let mut tables = self.tables;
                 tables.insert(schema.table_name.to_owned(), csv_table);
 
-                Ok((CsvStorage { tables }, ()))
+                Ok(())
             }
-            Err(_) => Err((self, StorageError::FailedToCreateTableFile.into())),
+            Err(_) => Err(StorageError::FailedToCreateTableFile.into()),
         }
     }
 
-    async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()> {
+    async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         let mut tables = self.tables;
         match tables.remove(table_name) {
-            Some(_) => Ok((CsvStorage { tables }, ())),
-            None => Err((
-                CsvStorage { tables },
-                StorageError::TableNotFound(table_name.to_string()).into(),
-            )),
+            Some(_) => Ok(()),
+            None => Err(StorageError::TableNotFound(table_name.to_string()).into()),
         }
     }
 
-    async fn append_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
+    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
         todo!()
     }
 
-    async fn insert_data(self, table_name: &str, rows: Vec<(Key, Row)>) -> MutResult<Self, ()> {
+    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
         todo!()
     }
 
-    async fn delete_data(self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()> {
+    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         todo!()
     }
 }
