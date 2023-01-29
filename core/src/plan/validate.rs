@@ -43,7 +43,7 @@ pub fn validate(schema_map: &SchemaMap, statement: &Statement) -> Result<()> {
 
 enum Context<'a> {
     Data {
-        labels: Option<Vec<&'a String>>,
+        labels: Option<Vec<&'a str>>,
         next: Option<Rc<Context<'a>>>,
     },
     Bridge {
@@ -53,7 +53,7 @@ enum Context<'a> {
 }
 
 impl<'a> Context<'a> {
-    fn new(labels: Option<Vec<&'a String>>, next: Option<Rc<Context<'a>>>) -> Self {
+    fn new(labels: Option<Vec<&'a str>>, next: Option<Rc<Context<'a>>>) -> Self {
         Self::Data { labels, next }
     }
 
@@ -100,11 +100,11 @@ impl<'a> Context<'a> {
     }
 }
 
-fn get_lables(schema: &Schema) -> Option<Vec<&String>> {
+fn get_lables(schema: &Schema) -> Option<Vec<&str>> {
     schema.column_defs.as_ref().map(|column_defs| {
         column_defs
             .iter()
-            .map(|column_def| &column_def.name)
+            .map(|column_def| column_def.name.as_str())
             .collect::<Vec<_>>()
     })
 }
