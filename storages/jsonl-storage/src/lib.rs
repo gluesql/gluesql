@@ -360,7 +360,7 @@ impl StoreMut for JsonlStorage {
             })
             .collect::<Vec<_>>();
 
-        let table_path = JsonlStorage::data_path(&self, table_name)?;
+        let table_path = JsonlStorage::data_path(self, table_name)?;
         File::create(&table_path).map_storage_err()?;
 
         self.append_data(table_name, rows).await
