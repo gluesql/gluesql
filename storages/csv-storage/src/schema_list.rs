@@ -1,9 +1,7 @@
-use gluesql_core::ast::ColumnUniqueOption;
-
 use {
     crate::error::StorageError,
     gluesql_core::{
-        ast::{ColumnDef, ColumnOption, Expr},
+        ast::{ColumnDef, ColumnUniqueOption, Expr},
         chrono::NaiveDateTime,
         data::Schema,
         prelude::DataType,
@@ -17,7 +15,7 @@ use {
 
 /// Column option parsed from TOML file.
 #[derive(PartialEq, Debug, Deserialize)]
-pub enum TomlColumnOption {
+pub enum TomlUniqueOption {
     Unique,
     PrimaryKey,
 }
@@ -36,7 +34,7 @@ pub struct TomlColumn {
     pub data_type: Option<DataType>,
     pub nullable: Option<bool>,
     pub default: Option<String>,
-    pub options: Option<Vec<TomlColumnOption>>,
+    pub unique: Option<TomlUniqueOption>,
 }
 
 impl From<TomlColumn> for ColumnDef {
@@ -47,19 +45,14 @@ impl From<TomlColumn> for ColumnDef {
         };
         let nullable = match column.nullable {
             Some(nullable) => nullable,
-            None => match column.options {
-                Some(ref opt) => !opt.contains(&TomlColumnOption::PrimaryKey),
-                None => true,
+            None => match column.unique {
+                Some(TomlUniqueOption::PrimaryKey) => false,
+                _ => true,
             },
         };
-        let unique: Option<ColumnUniqueOption> = match column.options {
-            Some(opt) => opt
-                .iter()
-                .map(|co| match co {
-                    TomlColumnOption::PrimaryKey => Some(ColumnUniqueOption { is_primary: true }),
-                    TomlColumnOption::Unique => Some(ColumnUniqueOption { is_primary: false }),
-                })
-                .collect(),
+        let unique: Option<ColumnUniqueOption> = match column.unique {
+            Some(TomlUniqueOption::PrimaryKey) => Some(ColumnUniqueOption { is_primary: true }),
+            Some(TomlUniqueOption::Unique) => Some(ColumnUniqueOption { is_primary: false }),
             None => None,
         };
         let default = column.default.map(|value| Expr::TypedString {
@@ -135,7 +128,7 @@ mod test {
     use {
         super::*,
         gluesql_core::{
-            ast::{ColumnDef, ColumnOption, Expr},
+            ast::{ColumnDef, Expr},
             chrono::NaiveDateTime,
             data::Schema,
             prelude::DataType,
@@ -161,28 +154,28 @@ mod test {
                             data_type: Some(DataType::Int128),
                             nullable: None,
                             default: None,
-                            options: Some(vec![TomlColumnOption::PrimaryKey]),
+                            unique: Some(TomlUniqueOption::PrimaryKey)
                         },
                         TomlColumn {
                             name: "name".to_string(),
                             data_type: Some(DataType::Text),
                             nullable: Some(true),
                             default: None,
-                            options: Some(vec![TomlColumnOption::Unique]),
+                            unique: Some(TomlUniqueOption::Unique)
                         },
                         TomlColumn {
                             name: "age".to_string(),
                             data_type: Some(DataType::Uint8),
                             nullable: Some(false),
                             default: None,
-                            options: None,
+                            unique: None
                         },
                         TomlColumn {
                             name: "role".to_string(),
                             data_type: None,
                             nullable: None,
                             default: Some("GUEST".to_string()),
-                            options: Some(vec![]),
+                            unique: None
                         },
                     ]
                 }]
@@ -203,7 +196,7 @@ mod test {
         assert!(matches!(schema, Schema { .. }));
         assert_eq!("users".to_string(), schema.table_name);
         assert_eq!(
-            vec![
+            Some(vec![
                 ColumnDef {
                     name: "id".to_string(),
                     data_type: DataType::Int128,
@@ -235,7 +228,7 @@ mod test {
                     }),
                     unique: None,
                 },
-            ],
+            ]),
             schema.column_defs
         );
         assert_eq!(NaiveDateTime::default(), schema.created);
@@ -254,7 +247,7 @@ mod test {
         assert!(matches!(schema, Schema { .. }));
         assert_eq!("users".to_string(), schema.table_name);
         assert_eq!(
-            vec![
+            Some(vec![
                 ColumnDef {
                     name: "id".to_string(),
                     data_type: DataType::Int128,
@@ -267,7 +260,7 @@ mod test {
                     data_type: DataType::Text,
                     nullable: true,
                     default: None,
-                    unique: Some(ColumnUniqueOption { is_primary: false})
+                    unique: Some(ColumnUniqueOption { is_primary: false })
                 },
                 ColumnDef {
                     name: "age".to_string(),
@@ -283,10 +276,10 @@ mod test {
                     default: Some(Expr::TypedString {
                         data_type: DataType::Text,
                         value: "GUEST".to_string()
-                    })
+                    }),
                     unique: None,
                 },
-            ],
+            ]),
             schema.column_defs
         );
         assert_eq!(NaiveDateTime::default(), schema.created);
@@ -295,7 +288,7 @@ mod test {
         assert!(matches!(schema, Schema { .. }));
         assert_eq!("orders".to_string(), schema.table_name);
         assert_eq!(
-            vec![
+            Some(vec![
                 ColumnDef {
                     name: "id".to_string(),
                     data_type: DataType::Int128,
@@ -324,10 +317,10 @@ mod test {
                     default: Some(Expr::TypedString {
                         data_type: DataType::Uint16,
                         value: "0".to_string()
-                    })
+                    }),
                     unique: None,
                 },
-            ],
+            ]),
             schema.column_defs
         );
         assert_eq!(NaiveDateTime::default(), schema.created);
