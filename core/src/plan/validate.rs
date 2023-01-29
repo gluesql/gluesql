@@ -121,9 +121,6 @@ fn contextualize_query<'a>(schema_map: &'a SchemaMap, query: &'a Query) -> Optio
                 .map(|Join { relation, .. }| contextualize_table_factor(schema_map, relation))
                 .fold(None, Context::concat);
 
-            println!("table{by_table:#?}");
-            println!("join{by_joins:#?}");
-            println!("schema_map{schema_map:#?}");
             Context::concat(by_table, by_joins)
         }
         SetExpr::Values(_) => None,
