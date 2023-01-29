@@ -11,19 +11,28 @@ use {
 type SchemaMap = HashMap<String, Schema>;
 /// Validate user select column should not be ambiguous
 pub fn validate(schema_map: &SchemaMap, statement: &Statement) -> Result<()> {
-    if let Statement::Query(Query {
-        body: SetExpr::Select(select),
-        ..
-    }) = &statement
-    {
-        for select_item in &select.projection {
-            if let SelectItem::Expr {
-                expr: Expr::Identifier(ident),
-                ..
-            } = select_item
-            {
-                if let Some(context) = contextualize_stmt(schema_map, statement) {
-                    context.validate_duplicated(ident)?;
+    let query = match statement {
+        Statement::Query(query) => Some(query),
+        Statement::Insert { source, .. } => Some(source),
+        Statement::CreateTable { source, .. } => source.as_deref(),
+        _ => None,
+    };
+
+    if let Some(query) = query {
+        if let Query {
+            body: SetExpr::Select(select),
+            ..
+        } = query
+        {
+            for select_item in &select.projection {
+                if let SelectItem::Expr {
+                    expr: Expr::Identifier(ident),
+                    ..
+                } = select_item
+                {
+                    if let Some(context) = contextualize_query(schema_map, query) {
+                        context.validate_duplicated(ident)?;
+                    }
                 }
             }
         }
@@ -100,50 +109,12 @@ fn get_lables(schema: &Schema) -> Option<Vec<&String>> {
     })
 }
 
-fn contextualize_stmt<'a>(
-    schema_map: &'a SchemaMap,
-    statement: &'a Statement,
-) -> Option<Rc<Context<'a>>> {
-    match statement {
-        Statement::Query(query) => contextualize_query(schema_map, query),
-        Statement::Insert {
-            table_name, source, ..
-        } => {
-            let table_context = schema_map
-                .get(table_name)
-                .map(|schema| Rc::from(Context::new(get_lables(schema), None)));
-
-            let source_context = contextualize_query(schema_map, source);
-
-            Context::concat(table_context, source_context)
-        }
-        Statement::DropTable { names, .. } => names
-            .iter()
-            .map(|name| {
-                let schema = schema_map.get(name);
-                schema.map(|schema| Rc::from(Context::new(get_lables(schema), None)))
-            })
-            .fold(None, Context::concat),
-        _ => None,
-    }
-}
-
 fn contextualize_query<'a>(schema_map: &'a SchemaMap, query: &'a Query) -> Option<Rc<Context<'a>>> {
     let Query { body, .. } = query;
     match body {
         SetExpr::Select(select) => {
             let TableWithJoins { relation, joins } = &select.from;
-
-            let by_table = match relation {
-                TableFactor::Table { name, .. } => {
-                    let schema = schema_map.get(name);
-                    schema.map(|schema| Rc::from(Context::new(get_lables(schema), None)))
-                }
-                TableFactor::Derived { subquery, .. } => contextualize_query(schema_map, subquery),
-                TableFactor::Series { .. } | TableFactor::Dictionary { .. } => None,
-            }
-            .map(Rc::from);
-
+            let by_table = contextualize_table_factor(schema_map, relation);
             let by_joins = joins
                 .iter()
                 .map(|Join { relation, .. }| contextualize_table_factor(schema_map, relation))
@@ -168,4 +139,48 @@ fn contextualize_table_factor<'a>(
         TableFactor::Series { .. } | TableFactor::Dictionary { .. } => None,
     }
     .map(Rc::from)
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        crate::{
+            plan::{fetch_schema_map, mock::run, validate},
+            prelude::{parse, translate},
+        },
+        futures::executor::block_on,
+    };
+
+    #[test]
+    fn validate_test() {
+        let storage = run("
+            CREATE TABLE Users (
+                id INTEGER,
+                name TEXT
+            );
+        ");
+
+        let cases = [
+            ("SELECT * FROM (SELECT * FROM Users) AS Sub", true),
+            ("SELECT * FROM SERIES(3)", true),
+            ("SELECT id FROM Users A JOIN Users B on A.id = B.id", false),
+            (
+                "INSERT INTO Users SELECT id FROM Users A JOIN Users B on A.id = B.id",
+                false,
+            ),
+            (
+                "CREATE TABLE Ids AS SELECT id FROM Users A JOIN Users B on A.id = B.id",
+                false,
+            ),
+        ];
+
+        for (sql, expected) in cases {
+            let parsed = parse(sql).expect(sql).into_iter().next().unwrap();
+            let statement = translate(&parsed).unwrap();
+            let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
+            let actual = validate(&schema_map, &statement).is_ok();
+
+            assert_eq!(actual, expected)
+        }
+    }
 }
