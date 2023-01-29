@@ -63,31 +63,39 @@ impl CsvTable {
     /// Following info should be identical between `schema` and `CsvTable`:
     /// - `table_name`
     /// - `column_def.name` for every item in `column_defs`
-    pub fn adapt_schema(self, schema: Schema) -> Result<Self, StorageError> {
-        if self.schema.table_name != schema.table_name {
+    pub fn adapt_schema(self, given_schema: Schema) -> Result<Self, StorageError> {
+        if self.schema.table_name != given_schema.table_name {
             return Err(StorageError::SchemaMismatch(
                 format!("Csv table name: {}", self.schema.table_name),
-                format!("Schema table name: {}", schema.table_name),
+                format!("Schema table name: {}", given_schema.table_name),
             ));
         }
 
-        let _ = self
-            .schema
-            .column_defs
-            .iter()
-            .zip(schema.column_defs.iter())
-            .map(|(csv_col, schema_col)| {
-                if csv_col.name != schema_col.name {
-                    return Err(StorageError::SchemaMismatch(
-                        format!("Csv column name: {}", csv_col.name),
-                        format!("Schema column name: {}", schema_col.name),
-                    ));
-                }
-                Ok(schema_col)
-            })
-            .collect::<Result<Vec<_>, StorageError>>()?;
-
-        Ok(CsvTable { schema, ..self })
+        match (self.schema.column_defs, given_schema.column_defs) {
+            (Some(self_cds), Some(given_cds)) => {
+                let result = self_cds
+                    .iter()
+                    .zip(given_cds.iter())
+                    .map(|(s_col, g_col)| {
+                        if s_col.name != g_col.name {
+                            return Err(StorageError::SchemaMismatch(
+                                format!("Csv column name: {}", s_col.name),
+                                format!("Schema column name: {}", g_col.name),
+                            ));
+                        }
+                        Ok(s_col.to_owned())
+                    })
+                    .collect::<Result<Vec<_>, StorageError>>()?;
+                Ok(Self {
+                    file_path: self.file_path,
+                    schema: Schema {
+                        column_defs: Some(result),
+                        ..self.schema
+                    },
+                })
+            }
+            _ => Err(StorageError::SchemaLessNotSupported.into()),
+        }
     }
 }
 
@@ -114,7 +122,7 @@ mod test {
         assert_eq!(PathBuf::from_str("users.csv").unwrap(), file_path);
         assert_eq!("users".to_string(), schema.table_name);
         assert_eq!(
-            vec![
+            Some(vec![
                 ColumnDef {
                     name: "id".to_owned(),
                     data_type: DataType::Text,
@@ -136,7 +144,7 @@ mod test {
                     unique: None,
                     default: None
                 },
-            ],
+            ]),
             schema.column_defs
         );
         assert_eq!(
@@ -239,7 +247,7 @@ mod test {
         let schema = result.schema;
         assert_eq!("users".to_string(), schema.table_name);
         assert_eq!(
-            vec![
+            Some(vec![
                 ColumnDef {
                     name: "id".to_owned(),
                     data_type: DataType::Int128,
@@ -261,7 +269,7 @@ mod test {
                     unique: None,
                     default: None,
                 },
-            ],
+            ]),
             schema.column_defs
         );
         assert_eq!(
