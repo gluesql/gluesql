@@ -140,15 +140,15 @@ fn check_table_factor(context: Option<Rc<Context<'_>>>, table_factor: &TableFact
     let alias = match table_factor {
         TableFactor::Table { name, alias, .. } => alias
             .as_ref()
-            .map(|TableAlias { name, .. }| name.clone())
-            .unwrap_or_else(|| name.clone()),
+            .map(|TableAlias { name, .. }| name)
+            .unwrap_or_else(|| name),
         TableFactor::Derived { alias, .. }
         | TableFactor::Series { alias, .. }
-        | TableFactor::Dictionary { alias, .. } => alias.name.to_owned(),
+        | TableFactor::Dictionary { alias, .. } => &alias.name,
     };
 
     context
-        .map(|context| context.contains_alias(&alias))
+        .map(|context| context.contains_alias(alias))
         .unwrap_or(false)
 }
 
@@ -160,10 +160,9 @@ mod tests {
         std::rc::Rc,
     };
 
-    fn test(context: &Rc<Context<'_>>, sql: &str, expected: bool) {
+    fn test(context: Option<Rc<Context<'_>>>, sql: &str, expected: bool) {
         let parsed = parse_expr(sql).unwrap();
         let expr = translate_expr(&parsed);
-        let context = Some(Rc::clone(context));
         let actual = match expr {
             Ok(expr) => check_expr(context, &expr),
             Err(_) => false,
@@ -175,29 +174,27 @@ mod tests {
     #[test]
     fn evaluable() {
         let context = {
-            let next_child = Context::new("Empty".to_owned(), Vec::new(), None, None, None);
-            let next = Context::new(
+            let left_child = Context::new("Empty".to_owned(), Vec::new(), None, None);
+            let left = Context::new(
                 "Foo".to_owned(),
                 vec!["id", "name"],
                 None,
-                Some(Rc::new(next_child)),
-                None,
+                Some(Rc::new(left_child)),
             );
-            let next2_child = Context::new("Src".to_owned(), Vec::new(), None, None, None);
-            let next2 = Context::new(
+            let right_child = Context::new("Src".to_owned(), Vec::new(), None, None);
+            let right = Context::new(
                 "Bar".to_owned(),
                 vec!["id", "rate"],
                 None,
-                None,
-                Some(Rc::new(next2_child)),
+                Some(Rc::new(right_child)),
             );
 
-            Rc::new(Context::concat(Some(Rc::new(next)), Some(Rc::new(next2))))
+            Context::concat(Some(Rc::new(left)), Some(Rc::new(right)))
         };
 
         macro_rules! test {
             ($sql: literal, $expected: expr) => {
-                test(&context, $sql, $expected);
+                test(context.as_ref().map(Rc::clone), $sql, $expected);
             };
         }
 

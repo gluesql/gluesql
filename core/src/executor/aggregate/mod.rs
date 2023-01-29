@@ -16,7 +16,7 @@ use {
     },
     async_recursion::async_recursion,
     futures::stream::{self, StreamExt, TryStream, TryStreamExt},
-    std::{convert::identity, pin::Pin, rc::Rc},
+    std::{convert::identity, rc::Rc},
 };
 
 pub use error::AggregateError;
@@ -29,8 +29,11 @@ pub struct Aggregator<'a> {
     filter_context: Option<Rc<RowContext<'a>>>,
 }
 
-type Applied<'a> = dyn TryStream<Ok = AggregateContext<'a>, Error = Error, Item = Result<AggregateContext<'a>>>
-    + 'a;
+#[derive(futures_enum::Stream)]
+enum Stream<T1, T2> {
+    NonAggregate(T1),
+    Aggregate(T2),
+}
 
 impl<'a> Aggregator<'a> {
     pub fn new(
@@ -51,14 +54,16 @@ impl<'a> Aggregator<'a> {
 
     pub async fn apply(
         &self,
-        rows: impl TryStream<Ok = Rc<RowContext<'a>>, Error = Error> + 'a,
-    ) -> Result<Pin<Box<Applied<'a>>>> {
+        rows: impl TryStream<Ok = Rc<RowContext<'a>>, Error = Error>,
+    ) -> Result<
+        impl TryStream<Ok = AggregateContext<'a>, Error = Error, Item = Result<AggregateContext<'a>>>,
+    > {
         if !self.check_aggregate() {
             let rows = rows.map_ok(|project_context| AggregateContext {
                 aggregated: None,
                 next: project_context,
             });
-            return Ok(Box::pin(rows));
+            return Ok(Stream::NonAggregate(rows));
         }
 
         let state = rows
@@ -111,10 +116,15 @@ impl<'a> Aggregator<'a> {
             )
             .await?;
 
-        self.group_by_having(state)
+        Ok(Stream::Aggregate(self.group_by_having(state)?))
     }
 
-    pub fn group_by_having(&self, state: State<'a>) -> Result<Pin<Box<Applied<'a>>>> {
+    pub fn group_by_having(
+        &self,
+        state: State<'a>,
+    ) -> Result<
+        impl TryStream<Ok = AggregateContext<'a>, Error = Error, Item = Result<AggregateContext<'a>>>,
+    > {
         let storage = self.storage;
         let filter_context = self.filter_context.as_ref().map(Rc::clone);
         let having = self.having;
@@ -153,7 +163,7 @@ impl<'a> Aggregator<'a> {
                     }
                 }
             })
-            .and_then(|(aggregated, next): (Option<_>, _)| async move {
+            .and_then(|(aggregated, next)| async move {
                 aggregated
                     .map(Rc::try_unwrap)
                     .transpose()
@@ -161,7 +171,7 @@ impl<'a> Aggregator<'a> {
                     .map(|aggregated| AggregateContext { aggregated, next })
             });
 
-        Ok(Box::pin(rows))
+        Ok(rows)
     }
 
     fn check_aggregate(&self) -> bool {

@@ -93,19 +93,25 @@ async fn join<'a>(
     };
 
     let columns = fetch_relation_columns(storage, relation)
-        .await
-        .map(Rc::from)?;
+        .await?
+        .map(Rc::from);
     let rows = left_rows.and_then(move |project_context| {
+        let init_context = {
+            let init_row = match columns.as_ref() {
+                Some(columns) => Row::Vec {
+                    columns: Rc::clone(columns),
+                    values: columns.iter().map(|_| Value::Null).collect(),
+                },
+                None => Row::Map(HashMap::new()),
+            };
+
+            Rc::new(RowContext::new(
+                table_alias,
+                Cow::Owned(init_row),
+                Some(Rc::clone(&project_context)),
+            ))
+        };
         let filter_context = filter_context.as_ref().map(Rc::clone);
-        let columns = Rc::clone(&columns);
-        let init_context = Rc::new(RowContext::new(
-            table_alias,
-            Cow::Owned(Row {
-                columns: Rc::clone(&columns),
-                values: columns.iter().map(|_| Value::Null).collect(),
-            }),
-            Some(Rc::clone(&project_context)),
-        ));
         let join_executor = Rc::clone(&join_executor);
 
         async move {

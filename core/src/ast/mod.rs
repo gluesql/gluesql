@@ -172,6 +172,10 @@ impl ToSql for Statement {
                     true => format!("CREATE TABLE IF NOT EXISTS {name} AS {};", query.to_sql()),
                     false => format!("CREATE TABLE {name} AS {};", query.to_sql()),
                 },
+                None if columns.is_empty() => match if_not_exists {
+                    true => format!("CREATE TABLE IF NOT EXISTS {name};"),
+                    false => format!("CREATE TABLE {name};"),
+                },
                 None => {
                     let columns = columns
                         .iter()
@@ -351,12 +355,40 @@ mod tests {
     #[test]
     fn to_sql_create_table() {
         assert_eq!(
-            "CREATE TABLE IF NOT EXISTS Foo ();",
+            "CREATE TABLE IF NOT EXISTS Foo;",
             Statement::CreateTable {
                 if_not_exists: true,
                 name: "Foo".into(),
-                columns: vec![],
-                source: None
+                columns: Vec::new(),
+                source: None,
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            "CREATE TABLE Foo;",
+            Statement::CreateTable {
+                if_not_exists: false,
+                name: "Foo".into(),
+                columns: Vec::new(),
+                source: None,
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            "CREATE TABLE IF NOT EXISTS Foo (id BOOLEAN NOT NULL);",
+            Statement::CreateTable {
+                if_not_exists: true,
+                name: "Foo".into(),
+                columns: vec![ColumnDef {
+                    name: "id".to_owned(),
+                    data_type: DataType::Boolean,
+                    nullable: false,
+                    default: None,
+                    unique: None,
+                },],
+                source: None,
             }
             .to_sql()
         );
@@ -372,21 +404,21 @@ mod tests {
                         data_type: DataType::Int,
                         nullable: false,
                         default: None,
-                        options: vec![]
+                        unique: None,
                     },
                     ColumnDef {
                         name: "num".to_owned(),
                         data_type: DataType::Int,
                         nullable: true,
                         default: None,
-                        options: Vec::new()
+                        unique: None,
                     },
                     ColumnDef {
                         name: "name".to_owned(),
                         data_type: DataType::Text,
                         nullable: false,
                         default: None,
-                        options: vec![]
+                        unique: None,
                     }
                 ],
                 source: None
@@ -469,7 +501,7 @@ mod tests {
                         default: Some(Expr::Literal(AstLiteral::Number(
                             BigDecimal::from_str("10").unwrap()
                         ))),
-                        options: Vec::new(),
+                        unique: None,
                     }
                 }
             }

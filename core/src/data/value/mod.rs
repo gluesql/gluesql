@@ -22,7 +22,10 @@ mod literal;
 mod selector;
 mod uuid;
 
-pub use error::{NumericBinaryOperator, ValueError};
+pub use {
+    error::{NumericBinaryOperator, ValueError},
+    json::HashMapJsonExt,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Value {
@@ -235,6 +238,9 @@ impl Value {
             (DataType::Timestamp, value) => value.try_into().map(Value::Timestamp),
             (DataType::Interval, value) => value.try_into().map(Value::Interval),
             (DataType::Uuid, value) => value.try_into().map(Value::Uuid),
+            (DataType::Bytea, Value::Str(value)) => hex::decode(value)
+                .map_err(|_| ValueError::CastFromHexToByteaFailed(value.clone()).into())
+                .map(Value::Bytea),
 
             _ => Err(ValueError::UnimplementedCast.into()),
         }
@@ -1499,6 +1505,13 @@ mod tests {
         cast!(Value::Date(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap()) => Timestamp, Value::Timestamp(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap().and_hms_opt(0, 0, 0).unwrap()));
         cast!(Str("2021-05-01 08:05:30".to_owned())                     => Timestamp, Value::Timestamp(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap().and_hms_opt(8, 5, 30).unwrap()));
         cast!(Null                                                      => Timestamp, Null);
+
+        // Bytea
+        cast!(Value::Str("0abc".to_owned()) => Bytea, Value::Bytea(hex::decode("0abc").unwrap()));
+        assert_eq!(
+            Value::Str("!@#$5".to_owned()).cast(&Bytea),
+            Err(ValueError::CastFromHexToByteaFailed("!@#$5".to_owned()).into()),
+        );
     }
 
     #[test]

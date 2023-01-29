@@ -12,7 +12,8 @@ use {
     futures::executor::block_on,
     gluesql_core::{
         ast::{Expr, SetExpr, Statement, ToSql, Values},
-        store::{GStore, GStoreMut, Store, Transaction},
+        data::Value,
+        store::{DataRow, GStore, GStoreMut, Store, Transaction},
     },
     gluesql_memory_storage::MemoryStorage,
     gluesql_sled_storage::SledStorage,
@@ -95,7 +96,12 @@ pub fn dump_database(storage: SledStorage, dump_path: PathBuf) -> Result<SledSto
             for rows in &rows_list {
                 let exprs_list = rows
                     .map(|result| {
-                        result.map(|values| {
+                        result.map(|data_row| {
+                            let values = match data_row {
+                                DataRow::Vec(values) => values,
+                                DataRow::Map(values) => vec![Value::Map(values)],
+                            };
+
                             values
                                 .into_iter()
                                 .map(|value| Ok(Expr::try_from(value)?))

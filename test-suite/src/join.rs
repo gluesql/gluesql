@@ -252,10 +252,10 @@ test_case!(project, async move {
     test!(sql, Ok(expected));
 
     // To test `PlanError` while using `JOIN`
-    run!("CREATE TABLE users (id INTEGER, name TEXT);");
-    run!("INSERT INTO users (id, name) VALUES (1, 'Harry');");
-    run!("CREATE TABLE testers (id INTEGER, nickname TEXT);");
-    run!("INSERT INTO testers (id, nickname) VALUES (1, 'Ron');");
+    run!("CREATE TABLE Users (id INTEGER, name TEXT);");
+    run!("INSERT INTO Users (id, name) VALUES (1, 'Harry');");
+    run!("CREATE TABLE Testers (id INTEGER, nickname TEXT);");
+    run!("INSERT INTO Testers (id, nickname) VALUES (1, 'Ron');");
 
     let error_cases = [
         (
@@ -267,7 +267,12 @@ test_case!(project, async move {
             TranslateError::UnsupportedJoinOperator("CrossJoin".to_owned()).into(),
         ),
         (
-            "SELECT id FROM users JOIN testers ON users.id = testers.id;",
+            "SELECT id FROM Users JOIN Testers ON Users.id = Testers.id;",
+            PlanError::ColumnReferenceAmbiguous("id".to_owned()).into(),
+        ),
+        (
+            // Ambiguous column should return error even with identical table join
+            "SELECT id FROM Users A JOIN Users B on A.id = B.id",
             PlanError::ColumnReferenceAmbiguous("id".to_owned()).into(),
         ),
         (

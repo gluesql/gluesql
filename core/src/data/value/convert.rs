@@ -1,6 +1,7 @@
 use {
     super::{
         date::{parse_date, parse_time, parse_timestamp},
+        uuid::parse_uuid,
         Value, ValueError,
     },
     crate::{
@@ -518,6 +519,7 @@ impl TryFrom<&Value> for u128 {
     fn try_from(v: &Value) -> Result<u128> {
         match v {
             Value::Uuid(value) => Ok(*value),
+            Value::Str(value) => parse_uuid(value),
             _ => Err(ValueError::ImpossibleCast.into()),
         }
     }
@@ -526,7 +528,7 @@ impl TryFrom<&Value> for u128 {
 #[cfg(test)]
 mod tests {
     use {
-        super::{Value, ValueError},
+        super::{parse_uuid, Value, ValueError},
         crate::{data::Interval as I, result::Result},
         chrono::{self, NaiveDate, NaiveDateTime, NaiveTime},
         rust_decimal::Decimal,
@@ -1234,5 +1236,11 @@ mod tests {
         let uuid = 195965723427462096757863453463987888808;
         assert_eq!((&Value::Uuid(uuid)).try_into() as Result<u128>, Ok(uuid));
         assert_eq!(u128::try_from(&Value::Uuid(uuid)), Ok(uuid));
+
+        let uuid = "936DA01F9ABD4d9d80C702AF85C822A8";
+        assert_eq!(
+            u128::try_from(&Value::Str(uuid.to_owned())),
+            parse_uuid(uuid)
+        );
     }
 }

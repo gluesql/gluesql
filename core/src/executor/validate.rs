@@ -1,9 +1,9 @@
 use {
     crate::{
-        ast::{ColumnDef, ColumnOption},
+        ast::{ColumnDef, ColumnUniqueOption},
         data::{Key, Value},
         result::Result,
-        store::Store,
+        store::{DataRow, Store},
     },
     im_rc::HashSet,
     serde::Serialize,
@@ -16,6 +16,9 @@ use {
 pub enum ValidateError {
     #[error("conflict! storage row has no column on index {0}")]
     ConflictOnStorageColumnIndex(usize),
+
+    #[error("conflict! schemaless row found in schema based data")]
+    ConflictOnUnexpectedSchemalessRowFound,
 
     #[error("duplicate entry '{}' for unique column '{1}'", String::from(.0))]
     DuplicateEntryOnUniqueField(Value, String),
@@ -91,36 +94,31 @@ pub async fn validate_unique(
         All(Vec<(usize, String)>),
     }
 
-    let columns =
-        match &column_validation {
-            ColumnValidation::All(column_defs) => {
-                let primary_key_index = column_defs
-                    .iter()
-                    .enumerate()
-                    .find(|(_, column_def)| {
-                        column_def.options.iter().any(|option| {
-                            matches!(option, ColumnOption::Unique { is_primary: true })
-                        })
-                    })
-                    .map(|(i, _)| i);
-                let other_unique_column_def_count = column_defs
-                    .iter()
-                    .filter(|column_def| {
-                        column_def.options.iter().any(|option| {
-                            matches!(option, ColumnOption::Unique { is_primary: false })
-                        })
-                    })
-                    .count();
+    let columns = match &column_validation {
+        ColumnValidation::All(column_defs) => {
+            let primary_key_index = column_defs
+                .iter()
+                .enumerate()
+                .find(|(_, ColumnDef { unique, .. })| {
+                    unique == &Some(ColumnUniqueOption { is_primary: true })
+                })
+                .map(|(i, _)| i);
+            let other_unique_column_def_count = column_defs
+                .iter()
+                .filter(|ColumnDef { unique, .. }| {
+                    unique == &Some(ColumnUniqueOption { is_primary: false })
+                })
+                .count();
 
-                match (primary_key_index, other_unique_column_def_count) {
-                    (Some(primary_key_index), 0) => Columns::PrimaryKeyOnly(primary_key_index),
-                    _ => Columns::All(fetch_all_unique_columns(column_defs)),
-                }
+            match (primary_key_index, other_unique_column_def_count) {
+                (Some(primary_key_index), 0) => Columns::PrimaryKeyOnly(primary_key_index),
+                _ => Columns::All(fetch_all_unique_columns(column_defs)),
             }
-            ColumnValidation::SpecifiedColumns(column_defs, specified_columns) => Columns::All(
-                fetch_specified_unique_columns(column_defs, specified_columns),
-            ),
-        };
+        }
+        ColumnValidation::SpecifiedColumns(column_defs, specified_columns) => Columns::All(
+            fetch_specified_unique_columns(column_defs, specified_columns),
+        ),
+    };
 
     match columns {
         Columns::PrimaryKeyOnly(primary_key_index) => {
@@ -144,12 +142,19 @@ pub async fn validate_unique(
 
             let unique_constraints = Rc::new(unique_constraints);
             storage.scan_data(table_name).await?.try_for_each(|result| {
-                let (_, row) = result?;
+                let (_, data_row) = result?;
+                let values = match data_row {
+                    DataRow::Vec(values) => values,
+                    DataRow::Map(_) => {
+                        return Err(ValidateError::ConflictOnUnexpectedSchemalessRowFound.into());
+                    }
+                };
+
                 Rc::clone(&unique_constraints)
                     .iter()
                     .try_for_each(|constraint| {
                         let col_idx = constraint.column_index;
-                        let val = row
+                        let val = values
                             .get(col_idx)
                             .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
 
@@ -188,13 +193,7 @@ fn fetch_all_unique_columns(column_defs: &[ColumnDef]) -> Vec<(usize, String)> {
     column_defs
         .iter()
         .enumerate()
-        .filter_map(|(i, table_col)| {
-            table_col
-                .options
-                .iter()
-                .any(|option| matches!(option, ColumnOption::Unique { .. }))
-                .then_some((i, table_col.name.to_owned()))
-        })
+        .filter_map(|(i, table_col)| table_col.unique.map(|_| (i, table_col.name.to_owned())))
         .collect()
 }
 
@@ -206,15 +205,9 @@ fn fetch_specified_unique_columns(
         .iter()
         .enumerate()
         .filter_map(|(i, table_col)| {
-            table_col
-                .options
-                .iter()
-                .any(|option| match option {
-                    ColumnOption::Unique { .. } => specified_columns
-                        .iter()
-                        .any(|specified_col| specified_col == &table_col.name),
-                })
-                .then_some((i, table_col.name.to_owned()))
+            (table_col.unique.is_some()
+                && specified_columns.iter().any(|col| col == &table_col.name))
+            .then_some((i, table_col.name.to_owned()))
         })
         .collect()
 }

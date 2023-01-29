@@ -54,6 +54,12 @@ async fn dump_and_import() {
          );"#,
         "CREATE INDEX Foo_int ON Foo (int);",
         "CREATE TABLE Bar AS SELECT N FROM SERIES(101);",
+        "CREATE TABLE Baz;",
+        r#"
+        INSERT INTO Baz VALUES
+            ('{"a": {"red": "apple", "blue": 1}, "b": 10}'),
+            ('{"a": 100, "c": true}');
+        "#,
     ];
 
     for sql in sqls {
@@ -87,6 +93,11 @@ async fn dump_and_import() {
 
     // data should be identical
     let sql = "SELECT * FROM Foo JOIN Bar;";
+    let source_data = source_glue.execute(sql).unwrap();
+    let target_data = target_glue.execute(sql).unwrap();
+    assert_eq!(source_data, target_data);
+
+    let sql = "SELECT * FROM Baz;";
     let source_data = source_glue.execute(sql).unwrap();
     let target_data = target_glue.execute(sql).unwrap();
     assert_eq!(source_data, target_data);
