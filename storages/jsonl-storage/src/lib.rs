@@ -14,6 +14,7 @@ use {
     serde_json::Value as JsonValue,
     std::{
         collections::HashMap,
+        fmt,
         fs::{self, remove_file, File, OpenOptions},
         io::{self, prelude::*, BufRead},
         path::{Path, PathBuf},
@@ -47,13 +48,33 @@ impl<T, E: ToString> ResultExt<T, E> for std::result::Result<T, E> {
 }
 
 trait OptionExt<T> {
-    fn map_storage_err(self, payload: &str) -> Result<T, Error>;
+    fn map_storage_err(self, payload: String) -> Result<T, Error>;
 }
 
 impl<T> OptionExt<T> for std::option::Option<T> {
-    fn map_storage_err(self, payload: &str) -> Result<T, Error> {
+    fn map_storage_err(self, payload: String) -> Result<T, Error> {
         self.ok_or_else(|| payload.to_string())
             .map_err(Error::StorageMsg)
+    }
+}
+
+enum JsonlStorageError {
+    FileNotFound,
+    CannotConvertToString,
+    TableDoesNotExist,
+    ColumnDoesNotExist,
+}
+
+impl fmt::Display for JsonlStorageError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let payload = match self {
+            JsonlStorageError::FileNotFound => "file not found",
+            JsonlStorageError::CannotConvertToString => "cannot convert to string",
+            JsonlStorageError::TableDoesNotExist => "table does not exist",
+            JsonlStorageError::ColumnDoesNotExist => "column does not exist",
+        };
+
+        write!(f, "{}", payload)
     }
 }
 
@@ -64,12 +85,12 @@ impl JsonlStorage {
         let tables = paths
             .into_iter()
             .map(|result| -> Result<_> {
-                let path = result.map_err(|e| Error::StorageMsg(e.to_string()))?.path();
+                let path = result.map_storage_err()?.path();
                 let table_name = path
                     .file_name()
-                    .ok_or_else(|| Error::StorageMsg("file not found".to_owned()))?
+                    .map_storage_err(JsonlStorageError::FileNotFound.to_string())?
                     .to_str()
-                    .ok_or_else(|| Error::StorageMsg("cannot convert to string".to_owned()))?
+                    .map_storage_err(JsonlStorageError::CannotConvertToString.to_string())?
                     .to_owned()
                     .replace(".json", "");
 
@@ -103,7 +124,7 @@ impl JsonlStorage {
         let schema = self
             .tables
             .get(table_name)
-            .ok_or_else(|| Error::StorageMsg("table does not exist".to_owned()))?;
+            .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())?;
         let path = format!("{}/{}.{extension}", self.path.display(), schema.table_name);
         Ok(path)
     }
@@ -130,57 +151,44 @@ impl JsonlStorage {
         let schema = self
             .tables
             .get(table_name)
-            .map_storage_err("table does not exist")?
+            .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())?
             .to_owned();
         let data_path = self.data_path(table_name)?;
+        let lines = read_lines(data_path).map_storage_err()?;
+        let row_iter = lines.enumerate().map(move |(key, line)| -> Result<_> {
+            let hash_map = HashMap::parse_json_object(&line.map_storage_err()?)?;
+            let data_row = match schema.clone().column_defs {
+                Some(column_defs) => {
+                    let values = column_defs
+                        .iter()
+                        .map(|column_def| -> Result<_> {
+                            let value = hash_map
+                                .get(&column_def.name)
+                                .map_storage_err(JsonlStorageError::ColumnDoesNotExist.to_string())?
+                                .clone();
+                            let data_type = value.get_type();
+                            match data_type {
+                                Some(data_type) => match data_type == column_def.data_type {
+                                    true => Ok(value),
+                                    false => value.cast(&column_def.data_type),
+                                },
+                                None => Ok(value),
+                            }
+                        })
+                        .collect::<Result<Vec<_>>>()?;
 
-        match read_lines(data_path) {
-            Ok(lines) => {
-                let row_iter = lines.enumerate().map(move |(key, line)| -> Result<_> {
-                    // way1. DataRow::Vec try_into each column type
-                    // way2. parse UUID prefix like X'..'
-                    let hash_map = HashMap::parse_json_object(&line.map_storage_err()?)?;
-                    let data_row = match schema.clone().column_defs {
-                        Some(column_defs) => {
-                            let values = column_defs
-                                .iter()
-                                .map(|column_def| -> Result<_> {
-                                    // data_type, key, value => 1. data_type::try_from(value)
-                                    let value = hash_map
-                                        .get(&column_def.name)
-                                        .map_storage_err("column does not exist")?
-                                        .clone();
-                                    let data_type = value.get_type();
-                                    match data_type {
-                                        Some(data_type) => {
-                                            match data_type == column_def.data_type {
-                                                true => Ok(value),
-                                                false => value.cast(&column_def.data_type),
-                                            }
-                                        }
-                                        None => Ok(value),
-                                    }
-                                })
-                                .collect::<Result<Vec<_>>>()?;
+                    DataRow::Vec(values)
+                }
+                None => DataRow::Map(hash_map),
+            };
+            // todo! okay not to use UUID?
+            // todo! line starts from 1?
+            let key = Key::I64((key + 1).try_into().map_storage_err()?);
 
-                            DataRow::Vec(values)
-                        }
-                        None => {
-                            // let hash_map = HashMap::parse_json_object(&line.map_storage_err()?)?;
-                            DataRow::Map(hash_map)
-                        }
-                    };
-                    // todo! okay not to use UUID?
-                    // todo! line starts from 1?
-                    let key = Key::I64((key + 1).try_into().map_storage_err()?);
+            Ok((key, data_row))
+        });
 
-                    Ok((key, data_row))
-                });
-
-                Ok(Box::new(row_iter))
-            }
-            Err(_) => todo!("error reading json file"),
-        }
+        Ok(Box::new(row_iter))
     }
 }
 
@@ -263,7 +271,7 @@ impl StoreMut for JsonlStorage {
     async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
         self.tables
             .get(table_name)
-            .ok_or_else(|| Error::StorageMsg("could not find table".to_owned()))
+            .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())
             .and_then(|schema| {
                 let table_path = JsonlStorage::data_path(&self, table_name)?;
 
@@ -271,7 +279,7 @@ impl StoreMut for JsonlStorage {
                     .write(true)
                     .append(true)
                     .open(table_path)
-                    .map_err(|e| Error::StorageMsg(e.to_string()))?;
+                    .map_storage_err()?;
 
                 for row in rows {
                     match row {
