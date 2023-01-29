@@ -33,6 +33,20 @@ pub async fn fetch_schema_map(
 
             Ok(schema_list)
         }
+        Statement::CreateTable { name, source, .. } => {
+            let table_schema = storage
+                .fetch_schema(name)
+                .await?
+                .map(|schema| HashMap::from([(name.to_owned(), schema)]))
+                .unwrap_or_else(HashMap::new);
+            let source_schema_list = match source {
+                Some(source) => scan_query(storage, source).await?,
+                None => HashMap::new(),
+            };
+            let schema_list = table_schema.into_iter().chain(source_schema_list).collect();
+
+            Ok(schema_list)
+        }
         Statement::DropTable { names, .. } => {
             stream::iter(names)
                 .map(Ok)
