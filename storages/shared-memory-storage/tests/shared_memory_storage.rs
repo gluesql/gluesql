@@ -7,7 +7,7 @@ struct SharedMemoryTester {
     glue: Glue<SharedMemoryStorage>,
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Tester<SharedMemoryStorage> for SharedMemoryTester {
     async fn new(_: &str) -> Self {
         let storage = SharedMemoryStorage::new();
@@ -62,7 +62,7 @@ fn shared_memory_storage_index() {
     assert_eq!(
         block_on(storage.scan_indexed_data("Idx", "hello", None, None)).map(|_| ()),
         Err(Error::StorageMsg(
-            "[Shared MemoryStorage] index is not supported".to_owned()
+            "[SharedMemoryStorage] Index::scan_indexed_data is not supported".to_owned()
         ))
     );
 
@@ -71,11 +71,11 @@ fn shared_memory_storage_index() {
     exec!(glue "CREATE TABLE Idx (id INTEGER);");
     test!(
         glue "CREATE INDEX idx_id ON Idx (id);",
-        Err(Error::StorageMsg("[Shared MemoryStorage] index is not supported".to_owned()))
+        Err(Error::StorageMsg("[SharedMemoryStorage] Index::create_index is not supported".to_owned()))
     );
     test!(
         glue "DROP INDEX Idx.idx_id;",
-        Err(Error::StorageMsg("[Shared MemoryStorage] index is not supported".to_owned()))
+        Err(Error::StorageMsg("[SharedMemoryStorage] Index::drop_index is not supported".to_owned()))
     );
 }
 
@@ -87,7 +87,7 @@ fn shared_memory_storage_transaction() {
     let mut glue = Glue::new(storage);
 
     exec!(glue "CREATE TABLE TxTest (id INTEGER);");
-    test!(glue "BEGIN", Err(Error::StorageMsg("[Shared MemoryStorage] transaction is not supported".to_owned())));
-    test!(glue "COMMIT", Err(Error::StorageMsg("[Shared MemoryStorage] transaction is not supported".to_owned())));
-    test!(glue "ROLLBACK", Err(Error::StorageMsg("[Shared MemoryStorage] transaction is not supported".to_owned())));
+    test!(glue "BEGIN", Err(Error::StorageMsg("[SharedMemoryStorage] Transaction::begin is not supported".to_owned())));
+    test!(glue "COMMIT", Err(Error::StorageMsg("[SharedMemoryStorage] Transaction::commit is not supported".to_owned())));
+    test!(glue "ROLLBACK", Err(Error::StorageMsg("[SharedMemoryStorage] Transaction::rollback is not supported".to_owned())));
 }

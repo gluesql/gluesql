@@ -1,11 +1,15 @@
 #![cfg(test)]
 
-#[cfg(feature = "alter-table")]
-use crate::store::AlterTable;
 #[cfg(feature = "transaction")]
 use crate::store::Transaction;
+#[cfg(feature = "alter-table")]
+use crate::{ast::ColumnDef, store::AlterTable};
 #[cfg(feature = "index")]
-use crate::store::{Index, IndexMut};
+use crate::{
+    ast::{IndexOperator, OrderByExpr},
+    prelude::Value,
+    store::{Index, IndexMut},
+};
 use {
     crate::{
         data::{Key, Schema},
@@ -37,7 +41,7 @@ pub struct MockStorage {
     schema_map: HashMap<String, Schema>,
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Store for MockStorage {
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         let msg = "[Storage] fetch_all_schemas not supported".to_owned();
@@ -71,7 +75,7 @@ impl Store for MockStorage {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl StoreMut for MockStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let table_name = schema.table_name.clone();
@@ -107,16 +111,13 @@ impl StoreMut for MockStorage {
 }
 
 #[cfg(feature = "alter-table")]
-impl AlterTable for MockStorage {}
+crate::impl_default_for_alter_table!(MockStorage);
 
 #[cfg(feature = "index")]
-impl Index for MockStorage {}
-
-#[cfg(feature = "index")]
-impl IndexMut for MockStorage {}
+crate::impl_default_for_index!(MockStorage);
 
 #[cfg(feature = "transaction")]
-impl Transaction for MockStorage {}
+crate::impl_default_for_transaction!(MockStorage);
 
 #[cfg(test)]
 mod tests {

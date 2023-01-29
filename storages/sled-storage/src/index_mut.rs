@@ -36,7 +36,7 @@ fn fetch_schema(
     Ok((key, schema_snapshot))
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl IndexMut for SledStorage {
     async fn create_index(
         &mut self,

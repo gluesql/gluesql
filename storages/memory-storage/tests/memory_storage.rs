@@ -7,7 +7,7 @@ struct MemoryTester {
     glue: Glue<MemoryStorage>,
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Tester<MemoryStorage> for MemoryTester {
     async fn new(_: &str) -> Self {
         let storage = MemoryStorage::default();
@@ -66,7 +66,7 @@ fn memory_storage_index() {
     assert_eq!(
         block_on(storage.scan_indexed_data("Idx", "hello", None, None)).map(|_| ()),
         Err(Error::StorageMsg(
-            "[MemoryStorage] index is not supported".to_owned()
+            "[MemoryStorage] Index::scan_indexed_data is not supported".to_owned()
         ))
     );
 
@@ -75,11 +75,11 @@ fn memory_storage_index() {
     exec!(glue "CREATE TABLE Idx (id INTEGER);");
     test!(
         glue "CREATE INDEX idx_id ON Idx (id);",
-        Err(Error::StorageMsg("[MemoryStorage] index is not supported".to_owned()))
+        Err(Error::StorageMsg("[MemoryStorage] Index::create_index is not supported".to_owned()))
     );
     test!(
         glue "DROP INDEX Idx.idx_id;",
-        Err(Error::StorageMsg("[MemoryStorage] index is not supported".to_owned()))
+        Err(Error::StorageMsg("[MemoryStorage] Index::drop_index is not supported".to_owned()))
     );
 }
 
@@ -92,7 +92,7 @@ fn memory_storage_transaction() {
     let mut glue = Glue::new(storage);
 
     exec!(glue "CREATE TABLE TxTest (id INTEGER);");
-    test!(glue "BEGIN", Err(Error::StorageMsg("[MemoryStorage] transaction is not supported".to_owned())));
-    test!(glue "COMMIT", Err(Error::StorageMsg("[MemoryStorage] transaction is not supported".to_owned())));
-    test!(glue "ROLLBACK", Err(Error::StorageMsg("[MemoryStorage] transaction is not supported".to_owned())));
+    test!(glue "BEGIN", Err(Error::StorageMsg("[MemoryStorage] Transaction::begin is not supported".to_owned())));
+    test!(glue "COMMIT", Err(Error::StorageMsg("[MemoryStorage] Transaction::commit is not supported".to_owned())));
+    test!(glue "ROLLBACK", Err(Error::StorageMsg("[MemoryStorage] Transaction::rollback is not supported".to_owned())));
 }

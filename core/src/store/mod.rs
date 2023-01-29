@@ -60,6 +60,8 @@ cfg_if! {
 }
 
 mod data_row;
+pub mod macros;
+
 pub use data_row::DataRow;
 
 use {
@@ -73,7 +75,7 @@ use {
 pub type RowIter = Box<dyn Iterator<Item = Result<(Key, DataRow)>>>;
 
 /// By implementing `Store` trait, you can run `SELECT` query.
-#[async_trait(?Send)]
+#[async_trait]
 pub trait Store {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>>;
 
@@ -86,7 +88,7 @@ pub trait Store {
 
 /// By implementing `StoreMut` trait,
 /// you can run `INSERT`, `CREATE TABLE`, `DELETE`, `UPDATE` and `DROP TABLE` queries.
-#[async_trait(?Send)]
+#[async_trait]
 pub trait StoreMut {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()>;
 

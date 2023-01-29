@@ -18,7 +18,7 @@ use {
     utils::Vector,
 };
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Index for SledStorage {
     async fn scan_indexed_data(
         &self,

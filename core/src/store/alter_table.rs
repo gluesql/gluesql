@@ -1,8 +1,7 @@
+#![cfg(feature = "alter-table")]
+
 use {
-    crate::{
-        ast::ColumnDef,
-        result::{Error, Result},
-    },
+    crate::{ast::ColumnDef, result::Result},
     async_trait::async_trait,
     serde::Serialize,
     std::fmt::Debug,
@@ -30,39 +29,23 @@ pub enum AlterTableError {
     SchemalessTableFound(String),
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 pub trait AlterTable {
-    async fn rename_schema(&mut self, _table_name: &str, _new_table_name: &str) -> Result<()> {
-        let msg = "[Storage] AlterTable::rename_schema is not supported".to_owned();
-
-        Err(Error::StorageMsg(msg))
-    }
+    async fn rename_schema(&mut self, table_name: &str, new_table_name: &str) -> Result<()>;
 
     async fn rename_column(
         &mut self,
-        _table_name: &str,
-        _old_column_name: &str,
-        _new_column_name: &str,
-    ) -> Result<()> {
-        let msg = "[Storage] AlterTable::rename_column is not supported".to_owned();
+        table_name: &str,
+        old_column_name: &str,
+        new_column_name: &str,
+    ) -> Result<()>;
 
-        Err(Error::StorageMsg(msg))
-    }
-
-    async fn add_column(&mut self, _table_name: &str, _column_def: &ColumnDef) -> Result<()> {
-        let msg = "[Storage] AlterTable::add_column is not supported".to_owned();
-
-        Err(Error::StorageMsg(msg))
-    }
+    async fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()>;
 
     async fn drop_column(
         &mut self,
-        _table_name: &str,
-        _column_name: &str,
-        _if_exists: bool,
-    ) -> Result<()> {
-        let msg = "[Storage] AlterTable::drop_column is not supported".to_owned();
-
-        Err(Error::StorageMsg(msg))
-    }
+        table_name: &str,
+        column_name: &str,
+        if_exists: bool,
+    ) -> Result<()>;
 }

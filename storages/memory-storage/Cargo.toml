@@ -20,11 +20,7 @@ tokio = { version = "1", features = ["rt", "macros"] }
 futures = "0.3"
 
 [features]
-default = [
-	"alter-table",
-	"index",
-	"transaction",
-]
+default = ["alter-table", "index", "transaction"]
 
 alter-table = ["gluesql-core/alter-table", "test-suite/alter-table"]
 index = ["gluesql-core/index", "test-suite/index"]
