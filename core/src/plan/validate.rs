@@ -32,6 +32,7 @@ pub fn validate(schema_map: &SchemaMap, statement: &Statement) -> Result<()> {
     Ok(())
 }
 
+#[derive(PartialEq, Debug)]
 enum Context<'a> {
     Data {
         labels: Option<Vec<&'a String>>,
@@ -199,18 +200,29 @@ fn validate_test() {
         ");
 
     let sql = "INSERT INTO Items VALUES(1, 'a')";
+    let labels = ["id".to_owned(), "name".to_owned()];
+    let labels = Some(labels.iter().collect::<Vec<_>>());
     let (schema_map, statement) = plan(&storage, sql);
-    assert!(contextualize_stmt(&schema_map, &statement).is_some());
+    let context = Some(Rc::from(Context::Data {
+        labels: labels.clone(),
+        next: None,
+    }));
+    assert_eq!(contextualize_stmt(&schema_map, &statement), context);
 
     let sql = "SELECT * FROM (SELECT * FROM Items) AS Sub";
     let (schema_map, statement) = plan(&storage, sql);
-    assert!(contextualize_stmt(&schema_map, &statement).is_some());
+    let context = Some(Rc::from(Context::Data {
+        labels: labels.clone(),
+        next: None,
+    }));
+    assert_eq!(contextualize_stmt(&schema_map, &statement), context);
 
     let sql = "SELECT * FROM SERIES(3)";
     let (schema_map, statement) = plan(&storage, sql);
-    assert!(contextualize_stmt(&schema_map, &statement).is_none());
+    assert_eq!(contextualize_stmt(&schema_map, &statement), None);
 
     let sql = "DROP TABLE Items";
     let (schema_map, statement) = plan(&storage, sql);
-    assert!(contextualize_stmt(&schema_map, &statement).is_some());
+    let context = Some(Rc::from(Context::Data { labels, next: None }));
+    assert_eq!(contextualize_stmt(&schema_map, &statement), context);
 }
