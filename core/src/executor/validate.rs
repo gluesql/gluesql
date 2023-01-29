@@ -81,8 +81,8 @@ impl UniqueConstraint {
     }
 }
 
-pub async fn validate_unique(
-    storage: &dyn Store,
+pub async fn validate_unique<T: Store>(
+    storage: &T,
     table_name: &str,
     column_validation: ColumnValidation,
     row_iter: impl Iterator<Item = &[Value]> + Clone,
