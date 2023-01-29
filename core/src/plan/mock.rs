@@ -16,26 +16,20 @@ use {
         translate::translate,
     },
     async_trait::async_trait,
-    futures::{
-        executor::block_on,
-        stream::{self, StreamExt},
-    },
+    futures::executor::block_on,
     std::collections::HashMap,
 };
 
 pub fn run(sql: &str) -> MockStorage {
-    let storage =
-        stream::iter(parse(sql).unwrap()).fold(MockStorage::default(), |storage, parsed| {
-            let statement = translate(&parsed).unwrap();
+    let mut storage = MockStorage::default();
 
-            async move {
-                let (storage, _) = execute(storage, &statement).await.unwrap();
+    for parsed in parse(sql).unwrap() {
+        let statement = translate(&parsed).unwrap();
 
-                storage
-            }
-        });
+        block_on(execute(&mut storage, &statement)).unwrap();
+    }
 
-    block_on(storage)
+    storage
 }
 
 #[derive(Default, Debug)]
