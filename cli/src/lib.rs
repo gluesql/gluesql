@@ -56,7 +56,7 @@ pub fn run() -> Result<()> {
             }
             _ => {
                 if let Some(dump_path) = args.dump {
-                    let storage = SledStorage::new(path).expect("failed to load sled-storage");
+                    let mut storage = SledStorage::new(path).expect("failed to load sled-storage");
                     dump_database(&mut storage, dump_path)?;
 
                     return Ok::<_, Error>(());

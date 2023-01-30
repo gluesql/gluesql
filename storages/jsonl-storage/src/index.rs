@@ -6,7 +6,7 @@ use {
     gluesql_core::{
         ast::{IndexOperator, OrderByExpr},
         data::Value,
-        result::{Error, MutResult, Result},
+        result::{Error, Result},
         store::{Index, IndexMut, RowIter},
     },
 };
@@ -29,21 +29,19 @@ impl Index for JsonlStorage {
 #[async_trait(?Send)]
 impl IndexMut for JsonlStorage {
     async fn create_index(
-        self,
+        &mut self,
         _table_name: &str,
         _index_name: &str,
         _column: &OrderByExpr,
-    ) -> MutResult<Self, ()> {
-        Err((
-            self,
-            Error::StorageMsg("[JsonlStorage] index is not supported".to_owned()),
+    ) -> Result<()> {
+        Err(Error::StorageMsg(
+            "[JsonlStorage] index is not supported".to_owned(),
         ))
     }
 
-    async fn drop_index(self, _table_name: &str, _index_name: &str) -> MutResult<Self, ()> {
-        Err((
-            self,
-            Error::StorageMsg("[JsonlStorage] index is not supported".to_owned()),
+    async fn drop_index(&mut self, _table_name: &str, _index_name: &str) -> Result<()> {
+        Err(Error::StorageMsg(
+            "[JsonlStorage] index is not supported".to_owned(),
         ))
     }
 }

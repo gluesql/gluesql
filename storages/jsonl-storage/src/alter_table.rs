@@ -3,11 +3,7 @@
 use {
     super::JsonlStorage,
     async_trait::async_trait,
-    gluesql_core::{
-        ast::ColumnDef,
-        result::{MutResult, Result, TrySelf},
-        store::AlterTable,
-    },
+    gluesql_core::{ast::ColumnDef, result::Result, store::AlterTable},
 };
 
 impl JsonlStorage {
@@ -40,39 +36,37 @@ impl JsonlStorage {
 
 #[async_trait(?Send)]
 impl AlterTable for JsonlStorage {
-    async fn rename_schema(self, table_name: &str, new_table_name: &str) -> MutResult<Self, ()> {
+    async fn rename_schema(&mut self, table_name: &str, new_table_name: &str) -> Result<()> {
         let mut storage = self;
 
-        JsonlStorage::rename_schema(&mut storage, table_name, new_table_name).try_self(storage)
+        JsonlStorage::rename_schema(&mut storage, table_name, new_table_name)
     }
 
     async fn rename_column(
-        self,
+        &mut self,
         table_name: &str,
         old_column_name: &str,
         new_column_name: &str,
-    ) -> MutResult<Self, ()> {
+    ) -> Result<()> {
         let mut storage = self;
 
         JsonlStorage::rename_column(&mut storage, table_name, old_column_name, new_column_name)
-            .try_self(storage)
     }
 
-    async fn add_column(self, table_name: &str, column_def: &ColumnDef) -> MutResult<Self, ()> {
+    async fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
         let mut storage = self;
 
-        JsonlStorage::add_column(&mut storage, table_name, column_def).try_self(storage)
+        JsonlStorage::add_column(&mut storage, table_name, column_def)
     }
 
     async fn drop_column(
-        self,
+        &mut self,
         table_name: &str,
         column_name: &str,
         if_exists: bool,
-    ) -> MutResult<Self, ()> {
+    ) -> Result<()> {
         let mut storage = self;
 
         JsonlStorage::drop_column(&mut storage, table_name, column_name, if_exists)
-            .try_self(storage)
     }
 }
