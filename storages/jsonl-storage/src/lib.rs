@@ -132,6 +132,7 @@ impl JsonlStorage {
             .get(table_name)
             .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())?;
         let path = format!("{}/{}.{extension}", self.path.display(), schema.table_name);
+
         Ok(path)
     }
 
@@ -256,15 +257,16 @@ impl StoreMut for JsonlStorage {
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
-        let table_path = JsonlStorage::data_path(&self, table_name)?;
-        let schema_path = JsonlStorage::schema_path(&self, table_name);
+        if let Ok(table_path) = JsonlStorage::data_path(&self, table_name) {
+            let schema_path = JsonlStorage::schema_path(&self, table_name);
 
-        remove_file(table_path).map_storage_err()?;
-        if let Some(schema_path) = schema_path {
-            remove_file(schema_path).map_storage_err()?;
+            remove_file(table_path).map_storage_err()?;
+            if let Some(schema_path) = schema_path {
+                remove_file(schema_path).map_storage_err()?;
+            }
+
+            JsonlStorage::delete_schema(self, table_name);
         }
-
-        JsonlStorage::delete_schema(self, table_name);
 
         Ok(())
     }
@@ -294,7 +296,6 @@ impl StoreMut for JsonlStorage {
                                     Ok(format!("\"{key}\": {value}"))
                                 })
                                 .collect::<Result<Vec<_>>>()?;
-                            // json.sort(); // todo! remove sort?
                             let json = json.join(", ");
                             writeln!(file, "{{{json}}}").map_storage_err()?;
                         }
@@ -312,7 +313,6 @@ impl StoreMut for JsonlStorage {
                                             Ok(format!("\"{key}\": {value}"))
                                         })
                                         .collect::<Result<Vec<_>>>()?;
-                                    // json.sort();
                                     let json = json.join(", ");
                                     writeln!(file, "{{{json}}}").map_storage_err()?;
                                 }
