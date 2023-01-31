@@ -302,7 +302,7 @@ impl StoreMut for JsonlStorage {
                         DataRow::Vec(values) => {
                             match &schema.column_defs {
                                 Some(column_defs) => {
-                                    // todo! validate columns
+                                    // todo! validate columns?
                                     let json = column_defs
                                         .iter()
                                         .map(|column_def| column_def.name.clone())
@@ -352,12 +352,16 @@ impl StoreMut for JsonlStorage {
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let prev_rows = self.scan_data(table_name)?;
         let rows = prev_rows
-            .filter_map(|result| match result {
-                Ok((key, data_row)) => match keys.iter().any(|target_key| target_key == &key) {
-                    true => None,
-                    false => Some(data_row),
-                },
-                Err(_) => None, // todo! how not to ignore error?
+            .filter_map(|result| {
+                result
+                    .map(|(key, data_row)| {
+                        let preservable = !keys.iter().any(|target_key| target_key == &key);
+
+                        preservable.then_some(data_row)
+                    })
+                    .unwrap_or(None)
+                // todo! how not to ignore error?
+                // can remove result from RowIter?
             })
             .collect::<Vec<_>>();
 
