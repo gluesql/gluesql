@@ -276,7 +276,7 @@ impl StoreMut for JsonlStorage {
             .get(table_name)
             .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())
             .and_then(|schema| {
-                let table_path = JsonlStorage::data_path(&self, table_name)?;
+                let table_path = JsonlStorage::data_path(self, table_name)?;
 
                 let mut file = OpenOptions::new()
                     .write(true)
@@ -343,7 +343,7 @@ impl StoreMut for JsonlStorage {
 
         let rows = rows.into_iter().map(|(_, data_row)| data_row).collect();
 
-        let table_path = JsonlStorage::data_path(&self, table_name)?;
+        let table_path = JsonlStorage::data_path(self, table_name)?;
         File::create(&table_path).map_storage_err()?;
 
         self.append_data(table_name, rows).await
