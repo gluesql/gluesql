@@ -246,7 +246,7 @@ impl StoreMut for JsonlStorage {
         let path = format!("{}/{}.json", self.path.display(), schema.table_name);
         let path = PathBuf::from(path);
 
-        if let Some(_) = &schema.column_defs {
+        if schema.column_defs.is_some() {
             self.write_schema(schema)?
         }
 
@@ -257,8 +257,8 @@ impl StoreMut for JsonlStorage {
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
-        if let Ok(table_path) = JsonlStorage::data_path(&self, table_name) {
-            let schema_path = JsonlStorage::schema_path(&self, table_name);
+        if let Ok(table_path) = JsonlStorage::data_path(self, table_name) {
+            let schema_path = JsonlStorage::schema_path(self, table_name);
 
             remove_file(table_path).map_storage_err()?;
             if let Some(schema_path) = schema_path {
