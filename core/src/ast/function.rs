@@ -46,6 +46,7 @@ pub enum Function {
         expr: Expr,
         then: Expr,
     },
+    Rand(Option<Expr>),
     Round(Expr),
     Floor(Expr),
     Trim {
@@ -199,6 +200,10 @@ impl ToSql for Function {
             Function::IfNull { expr, then } => {
                 format!("IFNULL({}, {})", expr.to_sql(), then.to_sql())
             }
+            Function::Rand(e) => match e {
+                Some(v) => format!("RAND({})", v.to_sql()),
+                None => "RAND()".to_owned(),
+            },
             Function::Round(e) => format!("ROUND({})", e.to_sql()),
             Function::Floor(e) => format!("FLOOR({})", e.to_sql()),
             Function::Trim {
@@ -504,6 +509,19 @@ mod tests {
                 expr: Expr::Identifier("updated_at".to_owned()),
                 then: Expr::Identifier("created_at".to_owned())
             }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            "RAND()",
+            &Expr::Function(Box::new(Function::Rand(None))).to_sql()
+        );
+
+        assert_eq!(
+            "RAND(num)",
+            &Expr::Function(Box::new(Function::Rand(Some(Expr::Identifier(
+                "num".to_owned()
+            )))))
             .to_sql()
         );
 

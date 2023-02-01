@@ -4,7 +4,7 @@ use {
     gluesql_core::{
         data::{Key, Schema},
         result::{Error, Result},
-        store::{Row, RowIter, Store},
+        store::{DataRow, RowIter, Store},
     },
     std::str,
 };
@@ -62,7 +62,7 @@ impl Store for SledStorage {
         Ok(schema)
     }
 
-    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Row>> {
+    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {
         let (txid, created_at) = match self.state {
             State::Transaction {
                 txid, created_at, ..
@@ -83,7 +83,7 @@ impl Store for SledStorage {
             .map(|v| bincode::deserialize(&v))
             .transpose()
             .map_err(err_into)?
-            .and_then(|snapshot: Snapshot<Row>| snapshot.extract(txid, lock_txid));
+            .and_then(|snapshot: Snapshot<DataRow>| snapshot.extract(txid, lock_txid));
 
         Ok(row)
     }
@@ -109,7 +109,7 @@ impl Store for SledStorage {
             .map(move |item| {
                 let (key, value) = item.map_err(err_into)?;
                 let key = key.subslice(prefix_len, key.len() - prefix_len).to_vec();
-                let snapshot: Snapshot<Row> = bincode::deserialize(&value).map_err(err_into)?;
+                let snapshot: Snapshot<DataRow> = bincode::deserialize(&value).map_err(err_into)?;
                 let row = snapshot.extract(txid, lock_txid);
                 let item = row.map(|row| (Key::Bytea(key), row));
 

@@ -54,13 +54,19 @@ async fn dump_and_import() {
          );"#,
         "CREATE INDEX Foo_int ON Foo (int);",
         "CREATE TABLE Bar AS SELECT N FROM SERIES(101);",
+        "CREATE TABLE Baz;",
+        r#"
+        INSERT INTO Baz VALUES
+            ('{"a": {"red": "apple", "blue": 1}, "b": 10}'),
+            ('{"a": 100, "c": true}');
+        "#,
     ];
 
     for sql in sqls {
         source_glue.execute(sql).unwrap();
     }
 
-    let source_storage = dump_database(source_glue.storage.unwrap(), dump_path.clone()).unwrap();
+    dump_database(&mut source_glue.storage, dump_path.clone()).unwrap();
 
     let data_path = "tmp/target";
     let config = sled::Config::default().path(data_path).temporary(true);
@@ -77,8 +83,6 @@ async fn dump_and_import() {
         target_glue.execute(sql).unwrap();
     }
 
-    let mut source_glue = Glue::new(source_storage);
-
     // schemas should be identical
     let sql = "SELECT OBJECT_TYPE, OBJECT_NAME FROM GLUE_OBJECTS";
     let source_data = source_glue.execute(sql).unwrap();
@@ -87,6 +91,11 @@ async fn dump_and_import() {
 
     // data should be identical
     let sql = "SELECT * FROM Foo JOIN Bar;";
+    let source_data = source_glue.execute(sql).unwrap();
+    let target_data = target_glue.execute(sql).unwrap();
+    assert_eq!(source_data, target_data);
+
+    let sql = "SELECT * FROM Baz;";
     let source_data = source_glue.execute(sql).unwrap();
     let target_data = target_glue.execute(sql).unwrap();
     assert_eq!(source_data, target_data);

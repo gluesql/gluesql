@@ -11,31 +11,25 @@ use {
         data::{Key, Schema},
         executor::execute,
         parse_sql::parse,
-        result::{Error, MutResult, Result},
-        store::{Row, RowIter, Store, StoreMut},
+        result::{Error, Result},
+        store::{DataRow, RowIter, Store, StoreMut},
         translate::translate,
     },
     async_trait::async_trait,
-    futures::{
-        executor::block_on,
-        stream::{self, StreamExt},
-    },
+    futures::executor::block_on,
     std::collections::HashMap,
 };
 
 pub fn run(sql: &str) -> MockStorage {
-    let storage =
-        stream::iter(parse(sql).unwrap()).fold(MockStorage::default(), |storage, parsed| {
-            let statement = translate(&parsed).unwrap();
+    let mut storage = MockStorage::default();
 
-            async move {
-                let (storage, _) = execute(storage, &statement).await.unwrap();
+    for parsed in parse(sql).unwrap() {
+        let statement = translate(&parsed).unwrap();
 
-                storage
-            }
-        });
+        block_on(execute(&mut storage, &statement)).unwrap();
+    }
 
-    block_on(storage)
+    storage
 }
 
 #[derive(Default, Debug)]
@@ -64,7 +58,7 @@ impl Store for MockStorage {
             .transpose()
     }
 
-    async fn fetch_data(&self, _table_name: &str, _key: &Key) -> Result<Option<Row>> {
+    async fn fetch_data(&self, _table_name: &str, _key: &Key) -> Result<Option<DataRow>> {
         Err(Error::StorageMsg(
             "[MockStorage] fetch_data not supported".to_owned(),
         ))
@@ -79,38 +73,36 @@ impl Store for MockStorage {
 
 #[async_trait(?Send)]
 impl StoreMut for MockStorage {
-    async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
-        let mut storage = self;
-
+    async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let table_name = schema.table_name.clone();
         let schema = schema.clone();
 
-        storage.schema_map.insert(table_name, schema);
-        Ok((storage, ()))
+        self.schema_map.insert(table_name, schema);
+        Ok(())
     }
 
-    async fn delete_schema(self, _table_name: &str) -> MutResult<Self, ()> {
+    async fn delete_schema(&mut self, _table_name: &str) -> Result<()> {
         let msg = "[MockStorage] delete_schema is not supported".to_owned();
 
-        Err((self, Error::StorageMsg(msg)))
+        Err(Error::StorageMsg(msg))
     }
 
-    async fn append_data(self, _table_name: &str, _rows: Vec<Row>) -> MutResult<Self, ()> {
+    async fn append_data(&mut self, _table_name: &str, _rows: Vec<DataRow>) -> Result<()> {
         let msg = "[MockStorage] append_data is not supported".to_owned();
 
-        Err((self, Error::StorageMsg(msg)))
+        Err(Error::StorageMsg(msg))
     }
 
-    async fn insert_data(self, _table_name: &str, _rows: Vec<(Key, Row)>) -> MutResult<Self, ()> {
+    async fn insert_data(&mut self, _table_name: &str, _rows: Vec<(Key, DataRow)>) -> Result<()> {
         let msg = "[MockStorage] insert_data is not supported".to_owned();
 
-        Err((self, Error::StorageMsg(msg)))
+        Err(Error::StorageMsg(msg))
     }
 
-    async fn delete_data(self, _table_name: &str, _keys: Vec<Key>) -> MutResult<Self, ()> {
+    async fn delete_data(&mut self, _table_name: &str, _keys: Vec<Key>) -> Result<()> {
         let msg = "[MockStorage] delete_data is not supported".to_owned();
 
-        Err((self, Error::StorageMsg(msg)))
+        Err(Error::StorageMsg(msg))
     }
 }
 
@@ -143,40 +135,28 @@ mod tests {
         super::MockStorage,
         crate::{
             data::Key,
-            result::MutResult,
             store::{Store, StoreMut},
         },
         futures::executor::block_on,
-        std::future::Future,
     };
-
-    fn test<T, F>(result: F) -> MockStorage
-    where
-        F: Future<Output = MutResult<MockStorage, T>>,
-    {
-        match block_on(result) {
-            Ok(_) => unreachable!("this test must fail"),
-            Err((storage, _)) => storage,
-        }
-    }
 
     #[test]
     fn empty() {
-        let storage = MockStorage::default();
+        let mut storage = MockStorage::default();
 
         assert!(block_on(storage.scan_data("Foo")).is_err());
         assert!(block_on(storage.fetch_data("Foo", &Key::None)).is_err());
         assert!(block_on(storage.fetch_schema("__Err__")).is_err());
-        let storage = test(storage.delete_schema("Foo"));
-        let storage = test(storage.append_data("Foo", Vec::new()));
-        let storage = test(storage.insert_data("Foo", Vec::new()));
-        let storage = test(storage.delete_data("Foo", Vec::new()));
+        assert!(block_on(storage.delete_schema("Foo")).is_err());
+        assert!(block_on(storage.append_data("Foo", Vec::new())).is_err());
+        assert!(block_on(storage.insert_data("Foo", Vec::new())).is_err());
+        assert!(block_on(storage.delete_data("Foo", Vec::new())).is_err());
 
         #[cfg(feature = "alter-table")]
-        let storage = {
-            let storage = test(storage.rename_schema("Foo", "Bar"));
-            let storage = test(storage.rename_column("Foo", "col_old", "col_new"));
-            let storage = test(storage.add_column(
+        {
+            assert!(block_on(storage.rename_schema("Foo", "Bar")).is_err());
+            assert!(block_on(storage.rename_column("Foo", "col_old", "col_new")).is_err());
+            assert!(block_on(storage.add_column(
                 "Foo",
                 &ColumnDef {
                     name: "new_col".to_owned(),
@@ -185,16 +165,15 @@ mod tests {
                     default: None,
                     unique: None,
                 },
-            ));
-            let storage = test(storage.drop_column("Foo", "col", false));
-
-            storage
+            ))
+            .is_err());
+            assert!(block_on(storage.drop_column("Foo", "col", false)).is_err());
         };
 
         #[cfg(feature = "index")]
-        let storage = {
+        {
             assert!(block_on(storage.scan_indexed_data("Foo", "idx_col", None, None)).is_err());
-            let storage = test(storage.create_index(
+            assert!(block_on(storage.create_index(
                 "Foo",
                 "idx_col",
                 &OrderByExpr {
@@ -204,19 +183,16 @@ mod tests {
                     },
                     asc: None,
                 },
-            ));
-            let storage = test(storage.drop_index("Foo", "idx_col"));
-
-            storage
+            ))
+            .is_err());
+            assert!(block_on(storage.drop_index("Foo", "idx_col")).is_err());
         };
 
         #[cfg(feature = "transaction")]
-        let storage = {
-            let storage = test(storage.begin(false));
-            let storage = test(storage.rollback());
-            let storage = test(storage.commit());
-
-            storage
+        {
+            assert!(block_on(storage.begin(false)).is_err());
+            assert!(block_on(storage.rollback()).is_err());
+            assert!(block_on(storage.commit()).is_err());
         };
 
         assert!(matches!(block_on(storage.fetch_schema("Foo")), Ok(None)));

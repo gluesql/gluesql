@@ -19,8 +19,8 @@ use {
     utils::OrStream,
 };
 
-pub struct Join<'a> {
-    storage: &'a dyn GStore,
+pub struct Join<'a, T: GStore> {
+    storage: &'a T,
     join_clauses: &'a [AstJoin],
     filter_context: Option<Rc<RowContext<'a>>>,
 }
@@ -29,9 +29,9 @@ type JoinItem<'a> = Rc<RowContext<'a>>;
 type Joined<'a> =
     Pin<Box<dyn TryStream<Ok = JoinItem<'a>, Error = Error, Item = Result<JoinItem<'a>>> + 'a>>;
 
-impl<'a> Join<'a> {
+impl<'a, T: GStore> Join<'a, T> {
     pub fn new(
-        storage: &'a dyn GStore,
+        storage: &'a T,
         join_clauses: &'a [AstJoin],
         filter_context: Option<Rc<RowContext<'a>>>,
     ) -> Self {
@@ -59,8 +59,8 @@ impl<'a> Join<'a> {
     }
 }
 
-async fn join<'a>(
-    storage: &'a dyn GStore,
+async fn join<'a, T: GStore>(
+    storage: &'a T,
     filter_context: Option<Rc<RowContext<'a>>>,
     ast_join: &'a AstJoin,
     left_rows: impl TryStream<Ok = JoinItem<'a>, Error = Error, Item = Result<JoinItem<'a>>> + 'a,
@@ -93,19 +93,25 @@ async fn join<'a>(
     };
 
     let columns = fetch_relation_columns(storage, relation)
-        .await
-        .map(Rc::from)?;
+        .await?
+        .map(Rc::from);
     let rows = left_rows.and_then(move |project_context| {
+        let init_context = {
+            let init_row = match columns.as_ref() {
+                Some(columns) => Row::Vec {
+                    columns: Rc::clone(columns),
+                    values: columns.iter().map(|_| Value::Null).collect(),
+                },
+                None => Row::Map(HashMap::new()),
+            };
+
+            Rc::new(RowContext::new(
+                table_alias,
+                Cow::Owned(init_row),
+                Some(Rc::clone(&project_context)),
+            ))
+        };
         let filter_context = filter_context.as_ref().map(Rc::clone);
-        let columns = Rc::clone(&columns);
-        let init_context = Rc::new(RowContext::new(
-            table_alias,
-            Cow::Owned(Row {
-                columns: Rc::clone(&columns),
-                values: columns.iter().map(|_| Value::Null).collect(),
-            }),
-            Some(Rc::clone(&project_context)),
-        ));
         let join_executor = Rc::clone(&join_executor);
 
         async move {
@@ -208,8 +214,8 @@ enum JoinExecutor<'a> {
 }
 
 impl<'a> JoinExecutor<'a> {
-    async fn new(
-        storage: &'a dyn GStore,
+    async fn new<T: GStore>(
+        storage: &'a T,
         relation: &TableFactor,
         filter_context: Option<Rc<RowContext<'a>>>,
         ast_join_executor: &'a AstJoinExecutor,
@@ -267,8 +273,8 @@ impl<'a> JoinExecutor<'a> {
     }
 }
 
-async fn check_where_clause<'a, 'b>(
-    storage: &'a dyn GStore,
+async fn check_where_clause<'a, 'b, T: GStore>(
+    storage: &'a T,
     table_alias: &'a str,
     filter_context: Option<Rc<RowContext<'a>>>,
     project_context: Option<Rc<RowContext<'a>>>,

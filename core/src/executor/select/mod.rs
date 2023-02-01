@@ -66,7 +66,7 @@ fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> (Vec<Result<Row>>, Vec<String>)
                         Ok(value)
                     })
                     .collect::<Result<Vec<_>>>()
-                    .map(|values| Row {
+                    .map(|values| Row::Vec {
                         columns: Rc::clone(&columns),
                         values,
                     });
@@ -79,11 +79,7 @@ fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> (Vec<Result<Row>>, Vec<String>)
     (rows, labels)
 }
 
-fn sort_stateless(
-    rows: Vec<Result<Row>>,
-    labels: &[String],
-    order_by: &[OrderByExpr],
-) -> Result<Vec<Result<Row>>> {
+fn sort_stateless(rows: Vec<Result<Row>>, order_by: &[OrderByExpr]) -> Result<Vec<Result<Row>>> {
     let sorted = rows
         .into_iter()
         .map(|row| {
@@ -91,9 +87,7 @@ fn sort_stateless(
                 .iter()
                 .map(|OrderByExpr { expr, asc }| -> Result<_> {
                     let row = row.as_ref().ok();
-                    let context = row.map(|row| (labels, row.values.as_slice()));
-
-                    let value: Value = evaluate_stateless(context, expr)?.try_into()?;
+                    let value: Value = evaluate_stateless(row, expr)?.try_into()?;
 
                     Ok((value, *asc))
                 })
@@ -103,7 +97,7 @@ fn sort_stateless(
         })
         .collect::<Result<Vec<_>>>()
         .map(Vector::from)?
-        .sort_by(|(values_a, _), (values_b, _)| Sort::sort_by(values_a, values_b))
+        .sort_by(|(values_a, _), (values_b, _)| super::sort::sort_by(values_a, values_b))
         .into_iter()
         .map(|(_, row)| row)
         .collect::<Vec<_>>();
@@ -112,12 +106,12 @@ fn sort_stateless(
 }
 
 #[async_recursion(?Send)]
-pub async fn select_with_labels<'a>(
-    storage: &'a dyn GStore,
+pub async fn select_with_labels<'a, T: GStore>(
+    storage: &'a T,
     query: &'a Query,
     filter_context: Option<Rc<RowContext<'a>>>,
 ) -> Result<(
-    Vec<String>,
+    Option<Vec<String>>,
     impl TryStream<Ok = Row, Error = Error, Item = Result<Row>> + 'a,
 )> {
     let Select {
@@ -131,11 +125,11 @@ pub async fn select_with_labels<'a>(
         SetExpr::Values(Values(values_list)) => {
             let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
             let (rows, labels) = rows_with_labels(values_list);
-            let rows = sort_stateless(rows, &labels, &query.order_by)?;
+            let rows = sort_stateless(rows, &query.order_by)?;
             let rows = stream::iter(rows);
             let rows = limit.apply(rows);
 
-            return Ok((labels, rows));
+            return Ok((Some(labels), rows));
         }
     };
 
@@ -185,24 +179,20 @@ pub async fn select_with_labels<'a>(
     let rows = aggregate.apply(rows).await?;
 
     let labels = fetch_labels(storage, relation, joins, projection)
-        .await
-        .map(Rc::from)?;
+        .await?
+        .map(Rc::from);
 
     let project = Rc::new(Project::new(storage, filter_context, projection));
-    let project_labels = Rc::clone(&labels);
+    let project_labels = labels.as_ref().map(Rc::clone);
     let rows = rows.and_then(move |aggregate_context| {
-        let labels = Rc::clone(&project_labels);
+        let labels = project_labels.as_ref().map(Rc::clone);
         let project = Rc::clone(&project);
         let AggregateContext { aggregated, next } = aggregate_context;
         let aggregated = aggregated.map(Rc::new);
 
         async move {
             let row = project
-                .apply(
-                    aggregated.as_ref().map(Rc::clone),
-                    Rc::clone(&labels),
-                    Rc::clone(&next),
-                )
+                .apply(aggregated.as_ref().map(Rc::clone), labels, Rc::clone(&next))
                 .await?;
 
             Ok((aggregated, next, row))
@@ -211,13 +201,13 @@ pub async fn select_with_labels<'a>(
 
     let rows = sort.apply(rows, get_alias(relation)).await?;
     let rows = limit.apply(rows);
-    let labels = labels.iter().cloned().collect();
+    let labels = labels.map(|labels| labels.iter().cloned().collect());
 
     Ok((labels, rows))
 }
 
-pub async fn select<'a>(
-    storage: &'a dyn GStore,
+pub async fn select<'a, T: GStore>(
+    storage: &'a T,
     query: &'a Query,
     filter_context: Option<Rc<RowContext<'a>>>,
 ) -> Result<impl TryStream<Ok = Row, Error = Error, Item = Result<Row>> + 'a> {

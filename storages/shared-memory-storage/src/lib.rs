@@ -8,8 +8,8 @@ use {
     async_trait::async_trait,
     gluesql_core::{
         data::{Key, Schema},
-        result::{MutResult, Result},
-        store::{Row, RowIter, Store, StoreMut},
+        result::Result,
+        store::{DataRow, RowIter, Store, StoreMut},
     },
     memory_storage::MemoryStorage,
     std::sync::Arc,
@@ -58,7 +58,7 @@ impl Store for SharedMemoryStorage {
         database.fetch_schema(table_name).await
     }
 
-    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Row>> {
+    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {
         let database = Arc::clone(&self.database);
         let database = database.read().await;
 
@@ -75,48 +75,38 @@ impl Store for SharedMemoryStorage {
 
 #[async_trait(?Send)]
 impl StoreMut for SharedMemoryStorage {
-    async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
+    async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let database = Arc::clone(&self.database);
         let mut database = database.write().await;
 
-        MemoryStorage::insert_schema(&mut database, schema);
-
-        Ok((self, ()))
+        database.insert_schema(schema).await
     }
 
-    async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()> {
+    async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         let database = Arc::clone(&self.database);
         let mut database = database.write().await;
 
-        MemoryStorage::delete_schema(&mut database, table_name);
-
-        Ok((self, ()))
+        database.delete_schema(table_name).await
     }
 
-    async fn append_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
+    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
         let database = Arc::clone(&self.database);
         let mut database = database.write().await;
 
-        MemoryStorage::append_data(&mut database, table_name, rows);
-
-        Ok((self, ()))
+        database.append_data(table_name, rows).await
     }
 
-    async fn insert_data(self, table_name: &str, rows: Vec<(Key, Row)>) -> MutResult<Self, ()> {
+    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
         let database = Arc::clone(&self.database);
         let mut database = database.write().await;
 
-        MemoryStorage::insert_data(&mut database, table_name, rows);
-
-        Ok((self, ()))
+        database.insert_data(table_name, rows).await
     }
 
-    async fn delete_data(self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()> {
+    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let database = Arc::clone(&self.database);
         let mut database = database.write().await;
 
-        MemoryStorage::delete_data(&mut database, table_name, keys);
-
-        Ok((self, ()))
+        database.delete_data(table_name, keys).await
     }
 }

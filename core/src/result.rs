@@ -1,13 +1,14 @@
 use {
     crate::{
         ast_builder::AstBuilderError,
-        data::{IntervalError, KeyError, LiteralError, StringExtError, TableError, ValueError},
+        data::{
+            IntervalError, KeyError, LiteralError, RowError, StringExtError, TableError, ValueError,
+        },
         executor::{
             AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, InsertError,
             SelectError, SortError, UpdateError, ValidateError,
         },
         plan::PlanError,
-        store::{GStore, GStoreMut},
         translate::TranslateError,
     },
     serde::Serialize,
@@ -70,6 +71,8 @@ pub enum Error {
     #[error(transparent)]
     Validate(#[from] ValidateError),
     #[error(transparent)]
+    Row(#[from] RowError),
+    #[error(transparent)]
     Key(#[from] KeyError),
     #[error(transparent)]
     Value(#[from] ValueError),
@@ -84,7 +87,6 @@ pub enum Error {
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
-pub type MutResult<T, U> = std::result::Result<(T, U), (T, Error)>;
 
 impl PartialEq for Error {
     fn eq(&self, other: &Error) -> bool {
@@ -110,6 +112,7 @@ impl PartialEq for Error {
             (Update(e), Update(e2)) => e == e2,
             (Table(e), Table(e2)) => e == e2,
             (Validate(e), Validate(e2)) => e == e2,
+            (Row(e), Row(e2)) => e == e2,
             (Key(e), Key(e2)) => e == e2,
             (Value(e), Value(e2)) => e == e2,
             (Literal(e), Literal(e2)) => e == e2,
@@ -117,22 +120,6 @@ impl PartialEq for Error {
             (StringExt(e), StringExt(e2)) => e == e2,
             (Plan(e), Plan(e2)) => e == e2,
             _ => false,
-        }
-    }
-}
-
-pub trait TrySelf<V>
-where
-    Self: Sized,
-{
-    fn try_self<T: GStore + GStoreMut>(self, storage: T) -> MutResult<T, V>;
-}
-
-impl<V> TrySelf<V> for Result<V> {
-    fn try_self<T: GStore + GStoreMut>(self, storage: T) -> MutResult<T, V> {
-        match self {
-            Ok(v) => Ok((storage, v)),
-            Err(e) => Err((storage, e)),
         }
     }
 }

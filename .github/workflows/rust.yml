@@ -118,3 +118,8 @@ jobs:
           yarn build
           yarn test:firefox
           cd ../../../
+          cd storages/web-storage
+          wasm-pack test --headless --firefox
+          cd ../idb-storage
+          WASM_BINDGEN_TEST_TIMEOUT=60 wasm-pack test --headless --firefox
+          cd ../../

@@ -25,7 +25,7 @@ pub struct SchemaIndex {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Schema {
     pub table_name: String,
-    pub column_defs: Vec<ColumnDef>,
+    pub column_defs: Option<Vec<ColumnDef>>,
     pub indexes: Vec<SchemaIndex>,
     pub created: NaiveDateTime,
 }
@@ -42,7 +42,7 @@ impl Schema {
         let create_table = Statement::CreateTable {
             if_not_exists: false,
             name: table_name.clone(),
-            columns,
+            columns: columns.unwrap_or_default(),
             source: None,
         }
         .to_sql();
@@ -74,7 +74,7 @@ mod tests {
     fn table_basic() {
         let schema = Schema {
             table_name: "User".to_owned(),
-            column_defs: vec![
+            column_defs: Some(vec![
                 ColumnDef {
                     name: "id".to_owned(),
                     data_type: DataType::Int,
@@ -89,7 +89,7 @@ mod tests {
                     default: Some(Expr::Literal(AstLiteral::QuotedString("glue".to_owned()))),
                     unique: None,
                 },
-            ],
+            ]),
             indexes: Vec::new(),
             created: Utc::now().naive_utc(),
         };
@@ -97,20 +97,28 @@ mod tests {
         assert_eq!(
             schema.to_ddl(),
             "CREATE TABLE User (id INT NOT NULL, name TEXT NULL DEFAULT 'glue');"
-        )
+        );
+
+        let schema = Schema {
+            table_name: "Test".to_owned(),
+            column_defs: None,
+            indexes: Vec::new(),
+            created: Utc::now().naive_utc(),
+        };
+        assert_eq!(schema.to_ddl(), "CREATE TABLE Test;");
     }
 
     #[test]
     fn table_primary() {
         let schema = Schema {
             table_name: "User".to_owned(),
-            column_defs: vec![ColumnDef {
+            column_defs: Some(vec![ColumnDef {
                 name: "id".to_owned(),
                 data_type: DataType::Int,
                 nullable: false,
                 default: None,
                 unique: Some(ColumnUniqueOption { is_primary: true }),
-            }],
+            }]),
             indexes: Vec::new(),
             created: Utc::now().naive_utc(),
         };
@@ -125,7 +133,7 @@ mod tests {
     fn table_with_index() {
         let schema = Schema {
             table_name: "User".to_owned(),
-            column_defs: vec![
+            column_defs: Some(vec![
                 ColumnDef {
                     name: "id".to_owned(),
                     data_type: DataType::Int,
@@ -140,7 +148,7 @@ mod tests {
                     default: None,
                     unique: None,
                 },
-            ],
+            ]),
             indexes: vec![
                 SchemaIndex {
                     name: "User_id".to_owned(),

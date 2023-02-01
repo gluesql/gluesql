@@ -21,9 +21,11 @@ pub fn translate_alter_table_operation(
     sql_alter_table_operation: &SqlAlterTableOperation,
 ) -> Result<AlterTableOperation> {
     match sql_alter_table_operation {
-        SqlAlterTableOperation::AddColumn { column_def } => Ok(AlterTableOperation::AddColumn {
-            column_def: translate_column_def(column_def)?,
-        }),
+        SqlAlterTableOperation::AddColumn { column_def, .. } => {
+            Ok(AlterTableOperation::AddColumn {
+                column_def: translate_column_def(column_def)?,
+            })
+        }
         SqlAlterTableOperation::DropColumn {
             column_name,
             if_exists,
