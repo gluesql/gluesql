@@ -8,7 +8,7 @@ use {
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum OrderByExprNode<'a> {
     Text(String),
     Expr(ExprNode<'a>),

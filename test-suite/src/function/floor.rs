@@ -48,13 +48,8 @@ test_case!(floor, async move {
             Err(EvaluateError::FunctionRequiresFloatValue(String::from("FLOOR")).into()),
         ),
         (
-            "SELECT FLOOR('string', 'string2') AS floor FROM SingleItem",
-            Err(TranslateError::FunctionArgsLengthNotMatching {
-                name: "FLOOR".to_owned(),
-                expected: 1,
-                found: 2,
-            }
-            .into()),
+            "SELECT FLOOR('string' TO DAY) AS floor FROM SingleItem",
+            Err(TranslateError::UnsupportedExpr("FLOOR('string' TO DAY)".to_owned()).into()),
         ),
     ];
 

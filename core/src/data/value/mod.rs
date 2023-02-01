@@ -23,7 +23,10 @@ mod point;
 mod selector;
 mod uuid;
 
-pub use error::{NumericBinaryOperator, ValueError};
+pub use {
+    error::{NumericBinaryOperator, ValueError},
+    json::HashMapJsonExt,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Value {
@@ -239,15 +242,19 @@ impl Value {
             (DataType::Timestamp, value) => value.try_into().map(Value::Timestamp),
             (DataType::Interval, value) => value.try_into().map(Value::Interval),
             (DataType::Uuid, value) => value.try_into().map(Value::Uuid),
+            (DataType::Bytea, Value::Str(value)) => hex::decode(value)
+                .map_err(|_| ValueError::CastFromHexToByteaFailed(value.clone()).into())
+                .map(Value::Bytea),
 
             _ => Err(ValueError::UnimplementedCast.into()),
         }
     }
 
-    pub fn concat(&self, other: &Value) -> Value {
+    pub fn concat(self, other: Value) -> Value {
         match (self, other) {
             (Value::Null, _) | (_, Value::Null) => Value::Null,
-            _ => Value::Str(String::from(self) + &String::from(other)),
+            (Value::List(l), Value::List(r)) => Value::List([l, r].concat()),
+            (l, r) => Value::Str(String::from(l) + &String::from(r)),
         }
     }
 
@@ -1502,24 +1509,39 @@ mod tests {
         cast!(Value::Date(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap()) => Timestamp, Value::Timestamp(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap().and_hms_opt(0, 0, 0).unwrap()));
         cast!(Str("2021-05-01 08:05:30".to_owned())                     => Timestamp, Value::Timestamp(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap().and_hms_opt(8, 5, 30).unwrap()));
         cast!(Null                                                      => Timestamp, Null);
+
+        // Bytea
+        cast!(Value::Str("0abc".to_owned()) => Bytea, Value::Bytea(hex::decode("0abc").unwrap()));
+        assert_eq!(
+            Value::Str("!@#$5".to_owned()).cast(&Bytea),
+            Err(ValueError::CastFromHexToByteaFailed("!@#$5".to_owned()).into()),
+        );
     }
 
     #[test]
     fn concat() {
-        let a = Str("A".to_owned());
-
-        assert_eq!(a.concat(&Str("B".to_owned())), Str("AB".to_owned()));
-        assert_eq!(a.concat(&Bool(true)), Str("ATRUE".to_owned()));
-        assert_eq!(a.concat(&I8(1)), Str("A1".to_owned()));
-        assert_eq!(a.concat(&I16(1)), Str("A1".to_owned()));
-        assert_eq!(a.concat(&I32(1)), Str("A1".to_owned()));
-        assert_eq!(a.concat(&I64(1)), Str("A1".to_owned()));
-        assert_eq!(a.concat(&I128(1)), Str("A1".to_owned()));
-        assert_eq!(a.concat(&U8(1)), Str("A1".to_owned()));
-        assert_eq!(a.concat(&U16(1)), Str("A1".to_owned()));
-        assert_eq!(a.concat(&F64(1.0)), Str("A1".to_owned()));
-        assert_eq!(I64(2).concat(&I64(1)), Str("21".to_owned()));
-        assert!(a.concat(&Null).is_null());
+        assert_eq!(
+            Str("A".to_owned()).concat(Str("B".to_owned())),
+            Str("AB".to_owned())
+        );
+        assert_eq!(
+            Str("A".to_owned()).concat(Bool(true)),
+            Str("ATRUE".to_owned())
+        );
+        assert_eq!(Str("A".to_owned()).concat(I8(1)), Str("A1".to_owned()));
+        assert_eq!(Str("A".to_owned()).concat(I16(1)), Str("A1".to_owned()));
+        assert_eq!(Str("A".to_owned()).concat(I32(1)), Str("A1".to_owned()));
+        assert_eq!(Str("A".to_owned()).concat(I64(1)), Str("A1".to_owned()));
+        assert_eq!(Str("A".to_owned()).concat(I128(1)), Str("A1".to_owned()));
+        assert_eq!(Str("A".to_owned()).concat(U8(1)), Str("A1".to_owned()));
+        assert_eq!(Str("A".to_owned()).concat(U16(1)), Str("A1".to_owned()));
+        assert_eq!(Str("A".to_owned()).concat(F64(1.0)), Str("A1".to_owned()));
+        assert_eq!(
+            List(vec![I64(1)]).concat(List(vec![I64(2)])),
+            List(vec![I64(1), I64(2)])
+        );
+        assert_eq!(I64(2).concat(I64(1)), Str("21".to_owned()));
+        assert!(Str("A".to_owned()).concat(Null).is_null());
     }
 
     #[test]

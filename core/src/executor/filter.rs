@@ -1,8 +1,5 @@
 use {
-    super::{
-        context::{BlendContext, FilterContext},
-        evaluate::evaluate,
-    },
+    super::{context::RowContext, evaluate::evaluate},
     crate::{
         ast::{Aggregate, Expr},
         data::Value,
@@ -13,18 +10,18 @@ use {
     std::rc::Rc,
 };
 
-pub struct Filter<'a> {
-    storage: &'a dyn GStore,
+pub struct Filter<'a, T: GStore> {
+    storage: &'a T,
     where_clause: Option<&'a Expr>,
-    context: Option<Rc<FilterContext<'a>>>,
+    context: Option<Rc<RowContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
 }
 
-impl<'a> Filter<'a> {
+impl<'a, T: GStore> Filter<'a, T> {
     pub fn new(
-        storage: &'a dyn GStore,
+        storage: &'a T,
         where_clause: Option<&'a Expr>,
-        context: Option<Rc<FilterContext<'a>>>,
+        context: Option<Rc<RowContext<'a>>>,
         aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
     ) -> Self {
         Self {
@@ -35,12 +32,16 @@ impl<'a> Filter<'a> {
         }
     }
 
-    pub async fn check(&self, blend_context: Rc<BlendContext<'a>>) -> Result<bool> {
+    pub async fn check(&self, project_context: Rc<RowContext<'a>>) -> Result<bool> {
         match self.where_clause {
             Some(expr) => {
-                let context = self.context.as_ref().map(Rc::clone);
-                let context = FilterContext::concat(context, Some(blend_context));
-                let context = Some(context).map(Rc::new);
+                let context = match &self.context {
+                    Some(context) => {
+                        Rc::new(RowContext::concat(project_context, Rc::clone(context)))
+                    }
+                    None => project_context,
+                };
+                let context = Some(context);
                 let aggregated = self.aggregated.as_ref().map(Rc::clone);
 
                 check_expr(self.storage, context, aggregated, expr).await
@@ -50,9 +51,9 @@ impl<'a> Filter<'a> {
     }
 }
 
-pub async fn check_expr<'a>(
-    storage: &'a dyn GStore,
-    context: Option<Rc<FilterContext<'a>>>,
+pub async fn check_expr<'a, T: GStore>(
+    storage: &'a T,
+    context: Option<Rc<RowContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
     expr: &'a Expr,
 ) -> Result<bool> {

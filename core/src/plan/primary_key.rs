@@ -204,7 +204,7 @@ impl<'a> PrimaryKeyPlanner<'a> {
                 PrimaryKey::NotFound(expr) => PrimaryKey::NotFound(Expr::Nested(Box::new(expr))),
             },
             _ => {
-                let outer_context = Some(Rc::new(Context::concat(current_context, outer_context)));
+                let outer_context = Context::concat(current_context, outer_context);
                 let expr = self.subquery_expr(outer_context, expr);
 
                 PrimaryKey::NotFound(expr)

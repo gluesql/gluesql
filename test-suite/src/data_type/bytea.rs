@@ -14,7 +14,7 @@ test_case!(bytea, async move {
     let bytea = |v| hex::decode(v).unwrap();
 
     let test_cases = [
-        ("CREATE TABLE Bytea (key BYTEA)", Ok(Payload::Create)),
+        ("CREATE TABLE Bytea (bytes BYTEA)", Ok(Payload::Create)),
         (
             "INSERT INTO Bytea VALUES
                 (X'123456'),
@@ -26,7 +26,7 @@ test_case!(bytea, async move {
         (
             "SELECT * FROM Bytea",
             Ok(select!(
-                key
+                bytes
                 Bytea;
                 bytea("123456");
                 bytea("ab0123");

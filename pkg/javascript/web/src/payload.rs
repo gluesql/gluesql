@@ -1,10 +1,8 @@
 #![cfg(target_arch = "wasm32")]
 
 use {
-    gluesql_core::{
-        ast::ToSql,
-        prelude::{Payload, PayloadVariable},
-    },
+    gloo_utils::format::JsValueSerdeExt,
+    gluesql_core::prelude::{Payload, PayloadVariable},
     serde_json::{json, Value as Json},
     wasm_bindgen::prelude::JsValue,
 };
@@ -29,6 +27,28 @@ fn convert_payload(payload: Payload) -> Json {
                         .zip(values.into_iter())
                         .map(|(label, value)| {
                             let key = label.to_owned();
+                            let value = Json::try_from(value).unwrap();
+
+                            (key, value)
+                        })
+                        .collect();
+
+                    Json::Object(row)
+                })
+                .collect();
+
+            json!({
+                "type": "SELECT",
+                "rows": Json::Array(rows),
+            })
+        }
+        Payload::SelectMap(rows) => {
+            let rows = rows
+                .into_iter()
+                .map(|row| {
+                    let row = row
+                        .into_iter()
+                        .map(|(key, value)| {
                             let value = Json::try_from(value).unwrap();
 
                             (key, value)

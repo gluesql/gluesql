@@ -1,16 +1,14 @@
 use {
     super::{
-        err_into,
-        error::StorageError,
-        key,
+        err_into, key,
         lock::{self, Lock},
         tx_err_into, SledStorage, Snapshot, State,
     },
     async_trait::async_trait,
     gluesql_core::{
-        data::{Row, Schema},
-        result::{Error, MutResult, Result},
-        store::Transaction,
+        data::Schema,
+        result::{Error, Result},
+        store::{DataRow, Transaction},
     },
     serde::{de::DeserializeOwned, Serialize},
     sled::{
@@ -23,29 +21,6 @@ use {
     std::result::Result as StdResult,
 };
 
-macro_rules! transaction {
-    ($self: expr, $expr: expr) => {{
-        let result = $self.tree.transaction($expr).map_err(|e| match e {
-            TransactionError::Abort(e) => e,
-            TransactionError::Storage(e) => StorageError::Sled(e).into(),
-        });
-
-        match result {
-            Ok(v) => {
-                let storage = Self {
-                    tree: $self.tree,
-                    id_offset: $self.id_offset,
-                    state: State::Idle,
-                    tx_timeout: $self.tx_timeout,
-                };
-
-                Ok((storage, v))
-            }
-            Err(e) => Err(($self, e)),
-        }
-    }};
-}
-
 pub enum TxPayload {
     Success,
     RollbackAndRetry(u64),
@@ -53,40 +28,31 @@ pub enum TxPayload {
 
 #[async_trait(?Send)]
 impl Transaction for SledStorage {
-    async fn begin(self, autocommit: bool) -> MutResult<Self, bool> {
+    async fn begin(&mut self, autocommit: bool) -> Result<bool> {
         match (&self.state, autocommit) {
-            (State::Transaction { .. }, false) => Err((
-                self,
-                Error::StorageMsg("nested transaction is not supported".to_owned()),
+            (State::Transaction { .. }, false) => Err(Error::StorageMsg(
+                "nested transaction is not supported".to_owned(),
             )),
-            (State::Transaction { autocommit, .. }, true) => {
-                let autocommit = *autocommit;
+            (State::Transaction { autocommit, .. }, true) => Ok(*autocommit),
+            (State::Idle, _) => {
+                let (txid, created_at) = lock::register(&self.tree, self.id_offset)?;
 
-                Ok((self, autocommit))
+                self.state = State::Transaction {
+                    txid,
+                    created_at,
+                    autocommit,
+                };
+
+                Ok(autocommit)
             }
-            (State::Idle, _) => match lock::register(&self.tree, self.id_offset) {
-                Ok((txid, created_at)) => {
-                    let state = State::Transaction {
-                        txid,
-                        created_at,
-                        autocommit,
-                    };
-
-                    Ok((self.update_state(state), autocommit))
-                }
-                Err(e) => Err((self, e)),
-            },
         }
     }
 
-    async fn rollback(self) -> MutResult<Self, ()> {
+    async fn rollback(&mut self) -> Result<()> {
         let txid = match self.state {
             State::Transaction { txid, .. } => txid,
             State::Idle => {
-                return Err((
-                    self,
-                    Error::StorageMsg("no transaction to rollback".to_owned()),
-                ));
+                return Err(Error::StorageMsg("no transaction to rollback".to_owned()));
             }
         };
 
@@ -107,53 +73,49 @@ impl Transaction for SledStorage {
             }
         };
 
-        match rollback() {
-            Ok(lock_txid) => transaction!(self, move |tree| {
+        let lock_txid = rollback()?;
+
+        self.tree
+            .transaction(move |tree| {
                 lock_txid
                     .map(|lock_txid| lock::release(tree, lock_txid))
                     .transpose()
             })
-            .map(|(storage, _)| (storage.update_state(State::Idle), ())),
-            Err(e) => Err((self, e)),
-        }
+            .map_err(tx_err_into)?;
+
+        self.state = State::Idle;
+        Ok(())
     }
 
-    async fn commit(self) -> MutResult<Self, ()> {
+    async fn commit(&mut self) -> Result<()> {
         let (txid, created_at) = match self.state {
             State::Transaction {
                 txid, created_at, ..
             } => (txid, created_at),
             State::Idle => {
-                return Err((
-                    self,
-                    Error::StorageMsg("no transaction to commit".to_owned()),
-                ));
+                return Err(Error::StorageMsg("no transaction to commit".to_owned()));
             }
         };
 
-        if let Err(e) = lock::fetch(&self.tree, txid, created_at, self.tx_timeout) {
-            return Err((self, e));
+        lock::fetch(&self.tree, txid, created_at, self.tx_timeout)?;
+
+        self.tree
+            .transaction(move |tree| lock::release(tree, txid))
+            .map_err(tx_err_into)?;
+
+        self.state = State::Idle;
+
+        if self.tree.get("gc_lock").map_err(err_into)?.is_some() {
+            return Ok(());
         }
 
-        let (storage, _) = transaction!(self, move |tree| { lock::release(tree, txid) })?;
-        let gc = || {
-            if storage.tree.get("gc_lock").map_err(err_into)?.is_some() {
-                return Ok(());
-            }
+        self.tree.insert("gc_lock", &[1]).map_err(err_into)?;
 
-            storage.tree.insert("gc_lock", &[1]).map_err(err_into)?;
+        let gc_result = self.gc();
 
-            let gc_result = storage.gc();
+        self.tree.remove("gc_lock").map_err(err_into)?;
 
-            storage.tree.remove("gc_lock").map_err(err_into)?;
-
-            gc_result
-        };
-
-        match gc() {
-            Ok(_) => Ok((storage, ())),
-            Err(e) => Err((storage, e)),
-        }
+        gc_result
     }
 }
 
@@ -211,7 +173,7 @@ impl SledStorage {
 
         self.tree
             .transaction(move |tree| {
-                rollback_items::<Row>(tree, txid, &data_items)?;
+                rollback_items::<DataRow>(tree, txid, &data_items)?;
                 rollback_items::<Schema>(tree, txid, &schema_items)?;
 
                 for (temp_key, value_key) in index_items.iter() {
@@ -252,31 +214,19 @@ impl SledStorage {
             .map_err(tx_err_into)
     }
 
-    pub async fn check_and_retry<Fut>(
-        self,
+    pub fn check_retry(
+        &mut self,
         tx_result: StdResult<TxPayload, TransactionError<Error>>,
-        retry_func: impl FnOnce(SledStorage) -> Fut,
-    ) -> MutResult<SledStorage, ()>
-    where
-        Fut: std::future::Future<Output = MutResult<SledStorage, ()>>,
-    {
-        match tx_result.map_err(tx_err_into) {
-            Ok(TxPayload::Success) => Ok((self, ())),
-            Ok(TxPayload::RollbackAndRetry(lock_txid)) => {
-                if let Err(err) = self.rollback_txid(lock_txid) {
-                    return Err((self, err));
-                };
+    ) -> Result<bool> {
+        if let TxPayload::RollbackAndRetry(lock_txid) = tx_result.map_err(tx_err_into)? {
+            self.rollback_txid(lock_txid)?;
+            self.tree
+                .transaction(move |tree| lock::release(tree, lock_txid))
+                .map_err(tx_err_into)?;
 
-                match self
-                    .tree
-                    .transaction(move |tree| lock::release(tree, lock_txid))
-                    .map_err(tx_err_into)
-                {
-                    Ok(_) => retry_func(self).await,
-                    Err(err) => Err((self, err)),
-                }
-            }
-            Err(err) => Err((self, err)),
+            Ok(true)
+        } else {
+            Ok(false)
         }
     }
 }

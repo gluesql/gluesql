@@ -2,6 +2,7 @@ use {
     crate::command::{SetOption, ShowOption},
     gluesql_core::prelude::{Payload, PayloadVariable},
     std::{
+        collections::{HashMap, HashSet},
         fmt::Display,
         fs::File,
         io::{Result as IOResult, Write},
@@ -130,20 +131,69 @@ impl<'a, W: Write> Print<W> {
                 let table = self.build_table(table);
                 self.write(table)?;
             }
-            Payload::Select { labels, rows } => {
-                let PrintOption {
-                    tabular,
-                    colsep,
-                    colwrap,
-                    heading,
-                } = &self.option;
+            Payload::Select { labels, rows } => match &self.option.tabular {
+                true => {
+                    let labels = labels.iter().map(AsRef::as_ref);
+                    let mut table = self.get_table(labels);
+                    for row in rows {
+                        let row: Vec<String> = row.iter().map(Into::into).collect();
 
-                match tabular {
+                        table.add_record(row);
+                    }
+                    let table = self.build_table(table);
+                    self.write(table)?;
+                }
+                false => {
+                    let PrintOption {
+                        colsep,
+                        colwrap,
+                        heading,
+                        ..
+                    } = &self.option;
+
+                    if *heading {
+                        let labels = labels
+                            .iter()
+                            .map(|v| format!("{colwrap}{v}{colwrap}"))
+                            .collect::<Vec<_>>()
+                            .join(colsep.as_str());
+
+                        writeln!(self.output, "{}", labels)?;
+                    }
+
+                    for row in rows {
+                        let row = row
+                            .iter()
+                            .map(Into::into)
+                            .map(|v: String| format!("{colwrap}{v}{colwrap}"))
+                            .collect::<Vec<_>>()
+                            .join(colsep.as_str());
+                        writeln!(self.output, "{}", row)?
+                    }
+                }
+            },
+            Payload::SelectMap(rows) => {
+                let mut labels = rows
+                    .iter()
+                    .flat_map(HashMap::keys)
+                    .map(AsRef::as_ref)
+                    .collect::<HashSet<&str>>()
+                    .into_iter()
+                    .collect::<Vec<_>>();
+                labels.sort();
+
+                match &self.option.tabular {
                     true => {
-                        let labels = labels.iter().map(AsRef::as_ref);
-                        let mut table = self.get_table(labels);
+                        let mut table = self.get_table(labels.clone());
                         for row in rows {
-                            let row: Vec<String> = row.iter().map(Into::into).collect();
+                            let row = labels
+                                .iter()
+                                .map(|label| {
+                                    row.get(*label)
+                                        .map(Into::into)
+                                        .unwrap_or_else(|| "".to_owned())
+                                })
+                                .collect::<Vec<String>>();
 
                             table.add_record(row);
                         }
@@ -151,22 +201,37 @@ impl<'a, W: Write> Print<W> {
                         self.write(table)?;
                     }
                     false => {
-                        let labels = labels
-                            .iter()
-                            .map(|v| format!("{colwrap}{v}{colwrap}"))
-                            .collect::<Vec<_>>()
-                            .join(colsep.as_str());
+                        let PrintOption {
+                            colsep,
+                            colwrap,
+                            heading,
+                            ..
+                        } = &self.option;
+
                         if *heading {
+                            let labels = labels
+                                .iter()
+                                .map(|v| format!("{colwrap}{v}{colwrap}"))
+                                .collect::<Vec<_>>()
+                                .join(colsep.as_str());
+
                             writeln!(self.output, "{}", labels)?;
                         }
 
                         for row in rows {
-                            let row = row
+                            let row = labels
                                 .iter()
-                                .map(Into::into)
-                                .map(|v: String| format!("{colwrap}{v}{colwrap}"))
+                                .map(|label| {
+                                    let v = row
+                                        .get(*label)
+                                        .map(Into::into)
+                                        .unwrap_or_else(|| "".to_owned());
+
+                                    format!("{colwrap}{v}{colwrap}")
+                                })
                                 .collect::<Vec<_>>()
                                 .join(colsep.as_str());
+
                             writeln!(self.output, "{}", row)?
                         }
                     }
@@ -290,7 +355,7 @@ mod tests {
     fn print_payload() {
         use gluesql_core::{
             ast::DataType,
-            prelude::{Payload, PayloadVariable, Row, Value},
+            prelude::{Payload, PayloadVariable, Value},
         };
 
         let mut print = Print::new(Vec::new(), None, Default::default());
@@ -361,8 +426,8 @@ mod tests {
                 rows: [101, 202, 301, 505, 1001]
                     .into_iter()
                     .map(Value::I64)
-                    .map(|v| vec![v].into())
-                    .collect::<Vec<Row>>(),
+                    .map(|v| vec![v])
+                    .collect::<Vec<Vec<Value>>>(),
             },
             "
 | id   |
@@ -384,32 +449,27 @@ mod tests {
                         Value::I64(1),
                         Value::Str("foo".to_owned()),
                         Value::Bool(true)
-                    ]
-                    .into(),
+                    ],
                     vec![
                         Value::I64(2),
                         Value::Str("bar".to_owned()),
                         Value::Bool(false)
-                    ]
-                    .into(),
+                    ],
                     vec![
                         Value::I64(3),
                         Value::Str("bas".to_owned()),
                         Value::Bool(false)
-                    ]
-                    .into(),
+                    ],
                     vec![
                         Value::I64(4),
                         Value::Str("lim".to_owned()),
                         Value::Bool(true)
-                    ]
-                    .into(),
+                    ],
                     vec![
                         Value::I64(5),
                         Value::Str("kim".to_owned()),
                         Value::Bool(true)
-                    ]
-                    .into(),
+                    ],
                 ],
             },
             "
@@ -420,6 +480,27 @@ mod tests {
 | 3  | bas   | FALSE |
 | 4  | lim   | TRUE  |
 | 5  | kim   | TRUE  |"
+        );
+
+        test!(
+            &Payload::SelectMap(vec![
+                [
+                    ("id".to_owned(), Value::I64(1)),
+                    ("title".to_owned(), Value::Str("foo".to_owned()))
+                ]
+                .into_iter()
+                .collect(),
+                [("id".to_owned(), Value::I64(2))].into_iter().collect(),
+                [("title".to_owned(), Value::Str("bar".to_owned()))]
+                    .into_iter()
+                    .collect(),
+            ]),
+            "
+| id | title |
+|----|-------|
+| 1  | foo   |
+| 2  |       |
+|    | bar   |"
         );
 
         test!(
@@ -477,20 +558,38 @@ mod tests {
                         Value::I64(1),
                         Value::Str("foo".to_owned()),
                         Value::Bool(true)
-                    ]
-                    .into(),
+                    ],
                     vec![
                         Value::I64(2),
                         Value::Str("bar".to_owned()),
                         Value::Bool(false)
-                    ]
-                    .into(),
+                    ],
                 ]
             },
             "
 id|title|valid
 1|foo|TRUE
 2|bar|FALSE"
+        );
+
+        test!(
+            &Payload::SelectMap(vec![
+                [
+                    ("id".to_owned(), Value::I64(1)),
+                    ("title".to_owned(), Value::Str("foo".to_owned()))
+                ]
+                .into_iter()
+                .collect(),
+                [("id".to_owned(), Value::I64(2))].into_iter().collect(),
+                [("title".to_owned(), Value::Str("bar".to_owned()))]
+                    .into_iter()
+                    .collect(),
+            ]),
+            "
+id|title
+1|foo
+2|
+|bar"
         );
 
         // ".set colsep ," should set column separator as ","
@@ -508,14 +607,12 @@ id|title|valid
                         Value::I64(1),
                         Value::Str("foo".to_owned()),
                         Value::Bool(true)
-                    ]
-                    .into(),
+                    ],
                     vec![
                         Value::I64(2),
                         Value::Str("bar".to_owned()),
                         Value::Bool(false)
-                    ]
-                    .into(),
+                    ],
                 ],
             },
             "
@@ -538,14 +635,12 @@ id,title,valid
                         Value::I64(1),
                         Value::Str("foo".to_owned()),
                         Value::Bool(true)
-                    ]
-                    .into(),
+                    ],
                     vec![
                         Value::I64(2),
                         Value::Str("bar".to_owned()),
                         Value::Bool(false)
-                    ]
-                    .into(),
+                    ],
                 ],
             },
             "
@@ -567,14 +662,12 @@ id,title,valid
                         Value::I64(1),
                         Value::Str("foo".to_owned()),
                         Value::Bool(true)
-                    ]
-                    .into(),
+                    ],
                     vec![
                         Value::I64(2),
                         Value::Str("bar".to_owned()),
                         Value::Bool(false)
-                    ]
-                    .into(),
+                    ],
                 ],
             },
             "

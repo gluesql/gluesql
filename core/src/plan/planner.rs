@@ -1,7 +1,7 @@
 use {
     super::context::Context,
     crate::{
-        ast::{ColumnDef, ColumnOption, Expr, Function, Query, TableAlias, TableFactor},
+        ast::{ColumnDef, ColumnUniqueOption, Expr, Function, Query, TableAlias, TableFactor},
         data::Schema,
     },
     std::rc::Rc,
@@ -198,6 +198,11 @@ pub trait Planner<'a> {
             None => return next,
         };
 
+        let column_defs = match column_defs {
+            Some(column_defs) => column_defs,
+            None => return next,
+        };
+
         let columns = column_defs
             .iter()
             .map(|ColumnDef { name, .. }| name.as_str())
@@ -205,11 +210,8 @@ pub trait Planner<'a> {
 
         let primary_key = column_defs
             .iter()
-            .find_map(|ColumnDef { name, options, .. }| {
-                options
-                    .iter()
-                    .any(|option| matches!(option, ColumnOption::Unique { is_primary: true }))
-                    .then(|| name.as_str())
+            .find_map(|ColumnDef { name, unique, .. }| {
+                (unique == &Some(ColumnUniqueOption { is_primary: true })).then_some(name.as_str())
             });
 
         let context = Context::new(
@@ -217,7 +219,6 @@ pub trait Planner<'a> {
             columns,
             primary_key,
             next,
-            None,
         );
         Some(Rc::new(context))
     }

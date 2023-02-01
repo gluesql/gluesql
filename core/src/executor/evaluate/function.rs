@@ -2,9 +2,10 @@ use {
     super::{EvaluateError, Evaluated},
     crate::{
         ast::{DataType, DateTimeField, TrimWhereField},
-        data::Value,
+        data::{Value, ValueError},
         result::Result,
     },
+    rand::{rngs::StdRng, Rng, SeedableRng},
     std::{
         cmp::{max, min},
         ops::ControlFlow,
@@ -64,16 +65,18 @@ pub fn concat(exprs: Vec<Evaluated<'_>>) -> Result<Evaluated> {
     }
 
     let control_flow = exprs.into_iter().map(|expr| expr.try_into()).try_fold(
-        Value::Str(String::new()),
-        |left, right: Result<Value>| match right {
-            Ok(value) if value.is_null() => ControlFlow::Break(BreakCase::Null),
-            Err(err) => ControlFlow::Break(BreakCase::Err(err)),
-            Ok(value) => ControlFlow::Continue(left.concat(&value)),
+        None,
+        |left: Option<Value>, right: Result<Value>| match (left, right) {
+            (_, Ok(value)) if value.is_null() => ControlFlow::Break(BreakCase::Null),
+            (_, Err(err)) => ControlFlow::Break(BreakCase::Err(err)),
+            (Some(left), Ok(value)) => ControlFlow::Continue(Some(left.concat(value))),
+            (None, Ok(value)) => ControlFlow::Continue(Some(value)),
         },
     );
 
     match control_flow {
-        ControlFlow::Continue(value) => Ok(Evaluated::from(value)),
+        ControlFlow::Continue(Some(value)) => Ok(Evaluated::from(value)),
+        ControlFlow::Continue(None) => Err(ValueError::EmptyArgNotAllowedInConcat.into()),
         ControlFlow::Break(BreakCase::Null) => Ok(Evaluated::from(Value::Null)),
         ControlFlow::Break(BreakCase::Err(err)) => Err(err),
     }
@@ -345,6 +348,15 @@ pub fn power<'a>(name: String, expr: Evaluated<'_>, power: Evaluated<'_>) -> Res
 
 pub fn ceil<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
     Ok(Evaluated::from(Value::F64(eval_to_float!(name, n).ceil())))
+}
+
+pub fn rand<'a>(name: String, seed: Option<Evaluated<'_>>) -> Result<Evaluated<'a>> {
+    let seed = if let Some(v) = seed {
+        StdRng::seed_from_u64(eval_to_float!(name, v) as u64).gen()
+    } else {
+        rand::random()
+    };
+    Ok(Evaluated::from(Value::F64(seed)))
 }
 
 pub fn round<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {

@@ -88,6 +88,12 @@ pub enum ValueError {
     #[error("unimplemented cast")]
     UnimplementedCast,
 
+    #[error("failed to cast from hex string to bytea: {0}")]
+    CastFromHexToByteaFailed(String),
+
+    #[error("function CONCAT requires at least 1 argument")]
+    EmptyArgNotAllowedInConcat,
+
     // Cast errors from literal to value
     #[error("literal cast failed from text to integer: {0}")]
     LiteralCastFromTextToIntegerFailed(String),

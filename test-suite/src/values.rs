@@ -3,8 +3,8 @@ use {
     bigdecimal::BigDecimal,
     gluesql_core::{
         ast::DataType::{Boolean, Int, Text},
-        data::{Literal, RowError, ValueError},
-        executor::{ExecuteError, FetchError},
+        data::{Literal, ValueError},
+        executor::{InsertError, SelectError},
         prelude::{DataType, Payload, Value::*},
     },
     std::borrow::Cow,
@@ -68,11 +68,11 @@ test_case!(values, async move {
         ),
         (
             "VALUES (1), (2, 'b')",
-            Err(RowError::NumberOfValuesDifferent.into()),
+            Err(SelectError::NumberOfValuesDifferent.into()),
         ),
         (
             "VALUES (1, 'a'), (2)",
-            Err(RowError::NumberOfValuesDifferent.into()),
+            Err(SelectError::NumberOfValuesDifferent.into()),
         ),
         (
             "VALUES (1, 'a'), (2, 3)",
@@ -138,50 +138,28 @@ test_case!(values, async move {
             )),
         ),
         (
-            "SELECT * FROM (VALUES (1, 'a'), (2, 'b')) AS Derived(id)",
-            Ok(select!(
-                id      | column2;
-                I64     | Str;
-                1         "a".to_owned();
-                2         "b".to_owned()
-            )),
-        ),
-        (
-            "SELECT * FROM (VALUES (1, 'a'), (2, 'b')) AS Derived(id, name)",
-            Ok(select!(
-                id      | name;
-                I64     | Str;
-                1         "a".to_owned();
-                2         "b".to_owned()
-            )),
-        ),
-        (
-            "SELECT * FROM (VALUES (1, 'a'), (2, 'b')) AS Derived(id, name, dummy)",
-            Err(FetchError::TooManyColumnAliases("Derived".into(), 2, 3).into()),
-        ),
-        (
             "INSERT INTO Items (id) VALUES (1);",
             Ok(Payload::Insert(1))
         ),
         (
             "INSERT INTO Items (id2) VALUES (1);",
-            Err(RowError::WrongColumnName("id2".to_owned()).into()),
+            Err(InsertError::WrongColumnName("id2".to_owned()).into()),
         ),
         (
             "INSERT INTO Items (name) VALUES ('glue');",
-            Err(RowError::LackOfRequiredColumn("id".to_owned()).into()),
+            Err(InsertError::LackOfRequiredColumn("id".to_owned()).into()),
         ),
         (
             "INSERT INTO Items (id) VALUES (3, 'sql')",
-            Err(RowError::ColumnAndValuesNotMatched.into()),
+            Err(InsertError::ColumnAndValuesNotMatched.into()),
         ),
         (
             "INSERT INTO Items VALUES (100, 'a', 'b', 1);",
-            Err(RowError::TooManyValues.into()),
+            Err(InsertError::TooManyValues.into()),
         ),
         (
             "INSERT INTO Nothing VALUES (1);",
-            Err(ExecuteError::TableNotFound("Nothing".to_owned()).into()),
+            Err(InsertError::TableNotFound("Nothing".to_owned()).into()),
         ),
     ];
     for (sql, expected) in test_cases {

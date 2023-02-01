@@ -4,38 +4,75 @@ use {
         ast::{Expr, Function},
         data::{Interval, Literal, Row, Value},
         result::Result,
+        store::DataRow,
     },
     chrono::prelude::Utc,
-    std::borrow::Cow,
+    std::{borrow::Cow, collections::HashMap},
 };
 
-type Columns<'a> = &'a [String];
+#[derive(Clone)]
+pub enum Context<'a> {
+    Vec {
+        columns: &'a [String],
+        values: &'a [Value],
+    },
+    Map(&'a HashMap<String, Value>),
+    None,
+}
 
-pub fn evaluate_stateless<'a>(
-    context: Option<(Columns, &'a Row)>,
+impl<'a> From<(&'a [String], &'a DataRow)> for Context<'a> {
+    fn from((columns, data_row): (&'a [String], &'a DataRow)) -> Self {
+        match data_row {
+            DataRow::Vec(values) => Self::Vec { columns, values },
+            DataRow::Map(values) => Self::Map(values),
+        }
+    }
+}
+
+impl<'a> From<Option<&'a Row>> for Context<'a> {
+    fn from(row: Option<&'a Row>) -> Self {
+        match row {
+            Some(Row::Vec { columns, values }) => Context::Vec { columns, values },
+            Some(Row::Map(values)) => Context::Map(values),
+            None => Self::None,
+        }
+    }
+}
+
+impl<'a> Context<'a> {
+    fn get_value(&'a self, target: &str) -> Option<&'a Value> {
+        match self {
+            Context::Vec { columns, values } => columns
+                .as_ref()
+                .iter()
+                .position(|column| column == target)
+                .and_then(|index| values.get(index)),
+            Context::Map(values) => values.get(target),
+            Context::None => None,
+        }
+    }
+}
+
+pub fn evaluate_stateless<'a, 'b, T: Into<Context<'b>>>(
+    context: T,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>> {
-    let eval = |expr| evaluate_stateless(context, expr);
+    evaluate(&context.into(), expr)
+}
+
+fn evaluate<'a>(context: &Context<'_>, expr: &'a Expr) -> Result<Evaluated<'a>> {
+    let eval = |expr| evaluate(context, expr);
 
     match expr {
         Expr::Literal(ast_literal) => expr::literal(ast_literal),
         Expr::TypedString { data_type, value } => {
             expr::typed_string(data_type, Cow::Borrowed(value))
         }
-        Expr::Identifier(ident) => {
-            let (columns, row) = match context {
-                Some(context) => context,
-                None => {
-                    return Err(EvaluateError::ValueNotFound(ident.to_owned()).into());
-                }
-            };
-
-            match row.get_value(columns, ident) {
-                Some(value) => Ok(value.clone()),
-                None => Err(EvaluateError::ValueNotFound(ident.to_owned()).into()),
-            }
-            .map(Evaluated::from)
+        Expr::Identifier(ident) => match context.get_value(ident) {
+            Some(value) => Ok(value.clone()),
+            None => Err(EvaluateError::ValueNotFound(ident.to_owned()).into()),
         }
+        .map(Evaluated::from),
         Expr::Nested(expr) => eval(expr),
         Expr::BinaryOp { op, left, right } => {
             let left = eval(left)?;
@@ -149,14 +186,11 @@ pub fn evaluate_stateless<'a>(
     }
 }
 
-fn evaluate_function<'a>(
-    context: Option<(Columns, &'a Row)>,
-    func: &'a Function,
-) -> Result<Evaluated<'a>> {
+fn evaluate_function<'a>(context: &Context<'_>, func: &'a Function) -> Result<Evaluated<'a>> {
     use function as f;
 
     let name = func.to_string();
-    let eval = |expr| evaluate_stateless(context, expr);
+    let eval = |expr| evaluate(context, expr);
     let eval_opt = |expr| -> Result<Option<_>> {
         match expr {
             Some(v) => Ok(Some(eval(v)?)),
@@ -241,6 +275,7 @@ fn evaluate_function<'a>(
         Function::IfNull { expr, then } => f::ifnull(eval(expr)?, eval(then)?),
         Function::Sign(expr) => f::sign(name, eval(expr)?),
         Function::Ceil(expr) => f::ceil(name, eval(expr)?),
+        Function::Rand(expr) => f::rand(name, eval_opt(expr.as_ref())?),
         Function::Round(expr) => f::round(name, eval(expr)?),
         Function::Floor(expr) => f::floor(name, eval(expr)?),
         Function::Radians(expr) => f::radians(name, eval(expr)?),

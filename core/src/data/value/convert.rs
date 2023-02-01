@@ -1,6 +1,7 @@
 use {
     super::{
         date::{parse_date, parse_time, parse_timestamp},
+        uuid::parse_uuid,
         Value, ValueError,
     },
     crate::{
@@ -132,13 +133,7 @@ impl TryFrom<&Value> for i8 {
 
     fn try_from(v: &Value) -> Result<i8> {
         Ok(match v {
-            Value::Bool(value) => {
-                if *value {
-                    1
-                } else {
-                    0
-                }
-            }
+            Value::Bool(value) => i8::from(*value),
             Value::I8(value) => *value,
             Value::I16(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
             Value::I32(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
@@ -170,13 +165,7 @@ impl TryFrom<&Value> for i16 {
 
     fn try_from(v: &Value) -> Result<i16> {
         Ok(match v {
-            Value::Bool(value) => {
-                if *value {
-                    1
-                } else {
-                    0
-                }
-            }
+            Value::Bool(value) => i16::from(*value),
             Value::I8(value) => *value as i16,
             Value::I16(value) => *value,
             Value::I32(value) => *value as i16,
@@ -208,13 +197,7 @@ impl TryFrom<&Value> for i32 {
 
     fn try_from(v: &Value) -> Result<i32> {
         Ok(match v {
-            Value::Bool(value) => {
-                if *value {
-                    1
-                } else {
-                    0
-                }
-            }
+            Value::Bool(value) => i32::from(*value),
             Value::I8(value) => *value as i32,
             Value::I16(value) => *value as i32,
             Value::I32(value) => *value,
@@ -246,13 +229,7 @@ impl TryFrom<&Value> for i64 {
 
     fn try_from(v: &Value) -> Result<i64> {
         Ok(match v {
-            Value::Bool(value) => {
-                if *value {
-                    1
-                } else {
-                    0
-                }
-            }
+            Value::Bool(value) => i64::from(*value),
             Value::I8(value) => *value as i64,
             Value::I16(value) => *value as i64,
             Value::I32(value) => *value as i64,
@@ -284,13 +261,7 @@ impl TryFrom<&Value> for i128 {
 
     fn try_from(v: &Value) -> Result<i128> {
         Ok(match v {
-            Value::Bool(value) => {
-                if *value {
-                    1
-                } else {
-                    0
-                }
-            }
+            Value::Bool(value) => i128::from(*value),
             Value::I8(value) => *value as i128,
             Value::I16(value) => *value as i128,
             Value::I32(value) => *value as i128,
@@ -322,13 +293,7 @@ impl TryFrom<&Value> for u8 {
 
     fn try_from(v: &Value) -> Result<u8> {
         Ok(match v {
-            Value::Bool(value) => {
-                if *value {
-                    1
-                } else {
-                    0
-                }
-            }
+            Value::Bool(value) => u8::from(*value),
             Value::I8(value) => value.to_u8().ok_or(ValueError::ImpossibleCast)?,
             Value::I16(value) => value.to_u8().ok_or(ValueError::ImpossibleCast)?,
             Value::I32(value) => value.to_u8().ok_or(ValueError::ImpossibleCast)?,
@@ -359,13 +324,7 @@ impl TryFrom<&Value> for u16 {
 
     fn try_from(v: &Value) -> Result<u16> {
         Ok(match v {
-            Value::Bool(value) => {
-                if *value {
-                    1
-                } else {
-                    0
-                }
-            }
+            Value::Bool(value) => u16::from(*value),
             Value::I8(value) => value.to_u16().ok_or(ValueError::ImpossibleCast)?,
             Value::I16(value) => value.to_u16().ok_or(ValueError::ImpossibleCast)?,
             Value::I32(value) => value.to_u16().ok_or(ValueError::ImpossibleCast)?,
@@ -435,13 +394,7 @@ impl TryFrom<&Value> for usize {
 
     fn try_from(v: &Value) -> Result<usize> {
         Ok(match v {
-            Value::Bool(value) => {
-                if *value {
-                    1
-                } else {
-                    0
-                }
-            }
+            Value::Bool(value) => usize::from(*value),
             Value::I8(value) => value.to_usize().ok_or(ValueError::ImpossibleCast)?,
             Value::I16(value) => value.to_usize().ok_or(ValueError::ImpossibleCast)?,
             Value::I32(value) => value.to_usize().ok_or(ValueError::ImpossibleCast)?,
@@ -578,6 +531,7 @@ impl TryFrom<&Value> for u128 {
     fn try_from(v: &Value) -> Result<u128> {
         match v {
             Value::Uuid(value) => Ok(*value),
+            Value::Str(value) => parse_uuid(value),
             _ => Err(ValueError::ImpossibleCast.into()),
         }
     }
@@ -586,7 +540,7 @@ impl TryFrom<&Value> for u128 {
 #[cfg(test)]
 mod tests {
     use {
-        super::{Value, ValueError},
+        super::{parse_uuid, Value, ValueError},
         crate::{data::Interval as I, result::Result},
         chrono::{self, NaiveDate, NaiveDateTime, NaiveTime},
         rust_decimal::Decimal,
@@ -1334,5 +1288,11 @@ mod tests {
         let uuid = 195965723427462096757863453463987888808;
         assert_eq!((&Value::Uuid(uuid)).try_into() as Result<u128>, Ok(uuid));
         assert_eq!(u128::try_from(&Value::Uuid(uuid)), Ok(uuid));
+
+        let uuid = "936DA01F9ABD4d9d80C702AF85C822A8";
+        assert_eq!(
+            u128::try_from(&Value::Str(uuid.to_owned())),
+            parse_uuid(uuid)
+        );
     }
 }

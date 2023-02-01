@@ -46,7 +46,7 @@ cfg_if! {
         impl<S: StoreMut + IndexMut + Transaction> GStoreMut for S {}
     } else if #[cfg(feature = "alter-table")] {
         pub trait GStoreMut: StoreMut + AlterTable {}
-        impl<S: StoreMut+ AlterTable> GStoreMut for S {}
+        impl<S: StoreMut + AlterTable> GStoreMut for S {}
     } else if #[cfg(feature = "index")] {
         pub trait GStoreMut: StoreMut + IndexMut {}
         impl<S: StoreMut + IndexMut> GStoreMut for S {}
@@ -59,15 +59,18 @@ cfg_if! {
     }
 }
 
+mod data_row;
+pub use data_row::DataRow;
+
 use {
     crate::{
-        data::{Key, Row, Schema},
-        result::{MutResult, Result},
+        data::{Key, Schema},
+        result::Result,
     },
     async_trait::async_trait,
 };
 
-pub type RowIter = Box<dyn Iterator<Item = Result<(Key, Row)>>>;
+pub type RowIter = Box<dyn Iterator<Item = Result<(Key, DataRow)>>>;
 
 /// By implementing `Store` trait, you can run `SELECT` query.
 #[async_trait(?Send)]
@@ -76,7 +79,7 @@ pub trait Store {
 
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>>;
 
-    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Row>>;
+    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>>;
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter>;
 }
@@ -84,17 +87,14 @@ pub trait Store {
 /// By implementing `StoreMut` trait,
 /// you can run `INSERT`, `CREATE TABLE`, `DELETE`, `UPDATE` and `DROP TABLE` queries.
 #[async_trait(?Send)]
-pub trait StoreMut
-where
-    Self: Sized,
-{
-    async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()>;
+pub trait StoreMut {
+    async fn insert_schema(&mut self, schema: &Schema) -> Result<()>;
 
-    async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()>;
+    async fn delete_schema(&mut self, table_name: &str) -> Result<()>;
 
-    async fn append_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()>;
+    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()>;
 
-    async fn insert_data(self, table_name: &str, rows: Vec<(Key, Row)>) -> MutResult<Self, ()>;
+    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()>;
 
-    async fn delete_data(self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()>;
+    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()>;
 }

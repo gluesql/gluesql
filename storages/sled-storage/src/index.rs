@@ -7,10 +7,10 @@ use {
     async_trait::async_trait,
     gluesql_core::{
         ast::IndexOperator,
-        data::{Key, Row},
+        data::Key,
         prelude::Value,
         result::{Error, Result},
-        store::{Index, IndexError, RowIter},
+        store::{DataRow, Index, IndexError, RowIter},
     },
     iter_enum::{DoubleEndedIterator, Iterator},
     sled::IVec,
@@ -134,7 +134,8 @@ impl Index for SledStorage {
                         .get(&key)
                         .map_err(err_into)?
                         .ok_or(IndexError::ConflictOnEmptyIndexValueScan)?;
-                    let snapshot: Snapshot<Row> = bincode::deserialize(&value).map_err(err_into)?;
+                    let snapshot: Snapshot<DataRow> =
+                        bincode::deserialize(&value).map_err(err_into)?;
                     let row = snapshot.extract(txid, lock_txid);
                     let key = key.into_iter().skip(prefix_len).collect();
                     let item = row.map(|row| (Key::Bytea(key), row));

@@ -39,7 +39,7 @@ pub fn test(found: Result<Payload>, expected: Result<Payload>) {
                 rows: b,
             },
         ) => {
-            assert_eq!(expected_labels, found_labels);
+            assert_eq!(found_labels, expected_labels);
 
             (a, b)
         }
@@ -58,7 +58,7 @@ pub fn test(found: Result<Payload>, expected: Result<Payload>) {
         expected
     );
 
-    let rows = expected.into_iter().zip(found.into_iter()).enumerate();
+    let rows = found.into_iter().zip(expected.into_iter()).enumerate();
 
     for (i, (found, expected)) in rows {
         assert_eq!(
@@ -70,9 +70,9 @@ pub fn test(found: Result<Payload>, expected: Result<Payload>) {
             expected
         );
 
-        expected
+        found
             .iter()
-            .zip(found.iter())
+            .zip(expected.iter())
             .for_each(|(found_val, expected_val)| {
                 if matches!((found_val, expected_val), (&Value::Null, &Value::Null)) {
                     return;
@@ -92,12 +92,10 @@ pub async fn run<T: GStore + GStoreMut>(
     glue: &mut Glue<T>,
     indexes: Option<Vec<IndexItem>>,
 ) -> Result<Payload> {
-    let storage = glue.storage.as_ref().unwrap();
-
     println!("[SQL] {}", sql);
     let parsed = parse(sql)?;
     let statement = translate(&parsed[0])?;
-    let statement = plan(storage, statement).await?;
+    let statement = plan(&glue.storage, statement).await?;
 
     test_indexes(&statement, indexes);
 
@@ -110,9 +108,9 @@ pub fn test_indexes(statement: &Statement, indexes: Option<Vec<IndexItem>>) {
 
         if expected.len() != found.len() {
             panic!(
-                "num of indexes does not match: expected({}) != found({})",
-                expected.len(),
+                "num of indexes does not match: found({}) != expected({})",
                 found.len(),
+                expected.len(),
             );
         }
 
@@ -184,10 +182,10 @@ pub fn type_match(expected: &[DataType], found: Result<Payload>) {
         assert_eq!(
             items.len(),
             expected.len(),
-            "\n[err: size of row] row index: {}\n expected: {:?}\n found: {:?}",
+            "\n[err: size of row] row index: {}\n found: {:?}\n expected: {:?}",
             i,
-            expected.len(),
-            items.len()
+            items.len(),
+            expected.len()
         );
 
         items
@@ -196,8 +194,8 @@ pub fn type_match(expected: &[DataType], found: Result<Payload>) {
             .for_each(|(value, data_type)| match value.validate_type(data_type) {
                 Ok(_) => {}
                 Err(_) => panic!(
-                    "[err: type match failed]\n expected {:?}\n found {:?}\n",
-                    data_type, value
+                    "[err: type match failed]\n found {:?}\n expected {:?}\n",
+                    value, data_type
                 ),
             })
     }
@@ -239,8 +237,6 @@ macro_rules! test_case {
             macro_rules! schema {
                 ($table_name: literal) => {
                     glue.storage
-                        .as_ref()
-                        .expect("storage is empty")
                         .fetch_schema($table_name)
                         .await
                         .expect("error fetching schema")

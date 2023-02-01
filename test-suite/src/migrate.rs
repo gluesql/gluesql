@@ -64,8 +64,8 @@ test_case!(migrate, async move {
             FetchError::TableNotFound("Nothing".to_owned()).into(),
         ),
         (
-            "TRUNCATE TABLE BlendUser;",
-            TranslateError::UnsupportedStatement("TRUNCATE TABLE BlendUser".to_owned()).into(),
+            "TRUNCATE TABLE ProjectUser;",
+            TranslateError::UnsupportedStatement("TRUNCATE TABLE ProjectUser".to_owned()).into(),
         ),
     ];
 

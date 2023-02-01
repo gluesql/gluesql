@@ -3,7 +3,7 @@ use {
     crate::{
         ast::{IndexOperator, OrderByExpr},
         data::Value,
-        result::{Error, MutResult, Result},
+        result::{Error, Result},
     },
     async_trait::async_trait,
     serde::Serialize,
@@ -11,7 +11,7 @@ use {
     thiserror::Error as ThisError,
 };
 
-#[derive(ThisError, Serialize, Debug, PartialEq)]
+#[derive(ThisError, Serialize, Debug, PartialEq, Eq)]
 pub enum IndexError {
     #[error("table not found: {0}")]
     TableNotFound(String),
@@ -54,24 +54,21 @@ pub trait Index {
 }
 
 #[async_trait(?Send)]
-pub trait IndexMut
-where
-    Self: Sized,
-{
+pub trait IndexMut {
     async fn create_index(
-        self,
+        &mut self,
         _table_name: &str,
         _index_name: &str,
         _column: &OrderByExpr,
-    ) -> MutResult<Self, ()> {
+    ) -> Result<()> {
         let msg = "[Storage] Index::create_index is not supported".to_owned();
 
-        Err((self, Error::StorageMsg(msg)))
+        Err(Error::StorageMsg(msg))
     }
 
-    async fn drop_index(self, _table_name: &str, _index_name: &str) -> MutResult<Self, ()> {
+    async fn drop_index(&mut self, _table_name: &str, _index_name: &str) -> Result<()> {
         let msg = "[Storage] Index::drop_index is not supported".to_owned();
 
-        Err((self, Error::StorageMsg(msg)))
+        Err(Error::StorageMsg(msg))
     }
 }

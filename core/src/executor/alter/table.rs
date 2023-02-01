@@ -5,11 +5,11 @@ use {
         data::{Schema, TableError},
         executor::{evaluate_stateless, select::select},
         prelude::{DataType, Value},
-        result::{Error, IntoControlFlow, MutResult, Result, TrySelf},
+        result::{Error, IntoControlFlow, Result},
         store::{GStore, GStoreMut},
     },
     chrono::Utc,
-    futures::stream::{self, TryStreamExt},
+    futures::stream::TryStreamExt,
     std::{
         iter,
         ops::ControlFlow::{Break, Continue},
@@ -17,92 +17,103 @@ use {
 };
 
 pub async fn create_table<T: GStore + GStoreMut>(
-    storage: T,
+    storage: &mut T,
     target_table_name: &str,
     column_defs: &[ColumnDef],
     if_not_exists: bool,
     source: &Option<Box<Query>>,
-) -> MutResult<T, ()> {
-    let schema = (|| async {
-        let target_columns_defs = match source.as_ref().map(AsRef::as_ref) {
-            Some(Query { body, .. }) => match body {
-                SetExpr::Select(select_query) => match &select_query.from.relation {
-                    TableFactor::Table { name, .. } => {
-                        let schema = storage.fetch_schema(name).await?;
-                        let Schema {
-                            column_defs: source_column_defs,
-                            ..
-                        } = schema.ok_or_else(|| -> Error {
-                            AlterError::CtasSourceTableNotFound(name.to_owned()).into()
-                        })?;
+) -> Result<()> {
+    let target_columns_defs = match source.as_deref() {
+        Some(Query { body, .. }) => match body {
+            SetExpr::Select(select_query) => match &select_query.from.relation {
+                TableFactor::Table { name, .. } => {
+                    let schema = storage.fetch_schema(name).await?;
+                    let Schema {
+                        column_defs: source_column_defs,
+                        ..
+                    } = schema.ok_or_else(|| -> Error {
+                        AlterError::CtasSourceTableNotFound(name.to_owned()).into()
+                    })?;
 
-                        source_column_defs
-                    }
-                    TableFactor::Series { .. } => {
-                        let column_def = ColumnDef {
-                            name: "N".into(),
-                            data_type: DataType::Int,
-                            nullable: false,
-                            options: Vec::new(),
-                        };
-
-                        vec![column_def]
-                    }
-                    _ => {
-                        return Err(Error::Table(TableError::Unreachable));
-                    }
-                },
-                SetExpr::Values(Values(values_list)) => {
-                    let first_len = values_list[0].len();
-                    let init_types = iter::repeat(None)
-                        .take(first_len)
-                        .collect::<Vec<Option<DataType>>>();
-                    let column_types =
-                        values_list
-                            .iter()
-                            .try_fold(init_types, |column_types, exprs| {
-                                let column_types = column_types
-                                    .iter()
-                                    .zip(exprs.iter())
-                                    .map(|(column_type, expr)| match column_type {
-                                        Some(data_type) => Ok(Some(data_type.to_owned())),
-                                        None => evaluate_stateless(None, expr)
-                                            .and_then(Value::try_from)
-                                            .map(|value| value.get_type()),
-                                    })
-                                    .collect::<Result<Vec<Option<DataType>>>>()
-                                    .into_control_flow()?;
-
-                                match column_types.iter().any(Option::is_none) {
-                                    true => Continue(column_types),
-                                    false => Break(Ok(column_types)),
-                                }
-                            });
-                    let column_types = match column_types {
-                        Continue(column_types) => column_types,
-                        Break(column_types) => column_types?,
+                    source_column_defs
+                }
+                TableFactor::Series { .. } => {
+                    let column_def = ColumnDef {
+                        name: "N".into(),
+                        data_type: DataType::Int,
+                        nullable: false,
+                        default: None,
+                        unique: None,
                     };
-                    let column_defs = column_types
-                        .iter()
-                        .map(|column_type| match column_type {
-                            Some(column_type) => column_type.to_owned(),
-                            None => DataType::Text,
-                        })
-                        .enumerate()
-                        .map(|(i, data_type)| ColumnDef {
-                            name: format!("column{}", i + 1),
-                            data_type,
-                            nullable: true,
-                            options: Vec::new(),
-                        })
-                        .collect::<Vec<_>>();
 
-                    column_defs
+                    Some(vec![column_def])
+                }
+                _ => {
+                    return Err(Error::Table(TableError::Unreachable));
                 }
             },
-            None => column_defs.to_vec(),
-        };
+            SetExpr::Values(Values(values_list)) => {
+                let first_len = values_list[0].len();
+                let init_types = iter::repeat(None)
+                    .take(first_len)
+                    .collect::<Vec<Option<DataType>>>();
+                let column_types =
+                    values_list
+                        .iter()
+                        .try_fold(init_types, |column_types, exprs| {
+                            let column_types = column_types
+                                .iter()
+                                .zip(exprs.iter())
+                                .map(|(column_type, expr)| match column_type {
+                                    Some(data_type) => Ok(Some(data_type.to_owned())),
+                                    None => evaluate_stateless(None, expr)
+                                        .and_then(Value::try_from)
+                                        .map(|value| value.get_type()),
+                                })
+                                .collect::<Result<Vec<Option<DataType>>>>()
+                                .into_control_flow()?;
 
+                            match column_types.iter().any(Option::is_none) {
+                                true => Continue(column_types),
+                                false => Break(Ok(column_types)),
+                            }
+                        });
+                let column_types = match column_types {
+                    Continue(column_types) => column_types,
+                    Break(column_types) => column_types?,
+                };
+                let column_defs = column_types
+                    .iter()
+                    .map(|column_type| match column_type {
+                        Some(column_type) => column_type.to_owned(),
+                        None => DataType::Text,
+                    })
+                    .enumerate()
+                    .map(|(i, data_type)| ColumnDef {
+                        name: format!("column{}", i + 1),
+                        data_type,
+                        nullable: true,
+                        default: None,
+                        unique: None,
+                    })
+                    .collect::<Vec<_>>();
+
+                Some(column_defs)
+            }
+        },
+        None if !column_defs.is_empty() => Some(column_defs.to_vec()),
+        None => None,
+    };
+
+    if let Some(column_defs) = target_columns_defs.as_deref() {
+        validate_column_names(column_defs)?;
+
+        for column_def in column_defs {
+            validate(column_def)?;
+        }
+    }
+
+    if storage.fetch_schema(target_table_name).await?.is_none() {
         let schema = Schema {
             table_name: target_table_name.to_owned(),
             column_defs: target_columns_defs,
@@ -110,68 +121,42 @@ pub async fn create_table<T: GStore + GStoreMut>(
             created: Utc::now().naive_utc(),
         };
 
-        validate_column_names(&schema.column_defs)?;
-
-        for column_def in &schema.column_defs {
-            validate(column_def)?;
-        }
-
-        match (
-            storage.fetch_schema(&schema.table_name).await?,
-            if_not_exists,
-        ) {
-            (None, _) => Ok(Some(schema)),
-            (Some(_), true) => Ok(None),
-            (Some(_), false) => {
-                Err(AlterError::TableAlreadyExists(schema.table_name.to_owned()).into())
-            }
-        }
-    })()
-    .await;
-
-    let storage = match schema.try_self(storage)? {
-        (storage, Some(schema)) => storage.insert_schema(&schema).await?.0,
-        (storage, None) => storage,
-    };
+        storage.insert_schema(&schema).await?;
+    } else if !if_not_exists {
+        return Err(AlterError::TableAlreadyExists(target_table_name.to_owned()).into());
+    }
 
     match source {
-        Some(q) => {
-            let (storage, rows) = async { select(&storage, q, None).await?.try_collect().await }
-                .await
-                .try_self(storage)?;
+        Some(query) => {
+            let rows = select(storage, query, None)
+                .await?
+                .map_ok(Into::into)
+                .try_collect()
+                .await?;
 
-            storage.append_data(target_table_name, rows).await
+            storage
+                .append_data(target_table_name, rows)
+                .await
+                .map(|_| ())
         }
-        None => Ok((storage, ())),
+        None => Ok(()),
     }
 }
 
 pub async fn drop_table<T: GStore + GStoreMut>(
-    storage: T,
+    storage: &mut T,
     table_names: &[String],
     if_exists: bool,
-) -> MutResult<T, ()> {
-    stream::iter(table_names.iter().map(Ok))
-        .try_fold((storage, ()), |(storage, _), table_name| async move {
-            let schema = (|| async {
-                let schema = storage.fetch_schema(table_name).await?;
+) -> Result<()> {
+    for table_name in table_names {
+        let schema = storage.fetch_schema(table_name).await?;
 
-                if !if_exists {
-                    schema.ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
-                }
+        if !if_exists {
+            schema.ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
+        }
 
-                Ok(table_name)
-            })()
-            .await;
+        storage.delete_schema(table_name).await?;
+    }
 
-            let schema = match schema {
-                Ok(s) => s,
-                Err(e) => {
-                    return Err((storage, e));
-                }
-            };
-
-            storage.delete_schema(schema).await
-        })
-        .await
+    Ok(())
 }

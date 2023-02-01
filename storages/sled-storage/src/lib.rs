@@ -97,15 +97,6 @@ impl SledStorage {
 
         Ok(())
     }
-
-    fn update_state(self, state: State) -> Self {
-        Self {
-            tree: self.tree,
-            id_offset: self.id_offset,
-            state,
-            tx_timeout: self.tx_timeout,
-        }
-    }
 }
 
 impl TryFrom<Config> for SledStorage {
@@ -143,7 +134,7 @@ fn fetch_schema(
     table_name: &str,
 ) -> ConflictableTransactionResult<(String, Option<Snapshot<Schema>>), Error> {
     let key = format!("schema/{}", table_name);
-    let value = tree.get(&key.as_bytes())?;
+    let value = tree.get(key.as_bytes())?;
     let schema_snapshot = value
         .map(|v| bincode::deserialize(&v))
         .transpose()
