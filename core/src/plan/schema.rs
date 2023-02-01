@@ -14,8 +14,8 @@ use {
     std::collections::HashMap,
 };
 
-pub async fn fetch_schema_map(
-    storage: &dyn Store,
+pub async fn fetch_schema_map<T: Store>(
+    storage: &T,
     statement: &Statement,
 ) -> Result<HashMap<String, Schema>> {
     match statement {
@@ -29,6 +29,20 @@ pub async fn fetch_schema_map(
                 .map(|schema| HashMap::from([(table_name.to_owned(), schema)]))
                 .unwrap_or_else(HashMap::new);
             let source_schema_list = scan_query(storage, source).await?;
+            let schema_list = table_schema.into_iter().chain(source_schema_list).collect();
+
+            Ok(schema_list)
+        }
+        Statement::CreateTable { name, source, .. } => {
+            let table_schema = storage
+                .fetch_schema(name)
+                .await?
+                .map(|schema| HashMap::from([(name.to_owned(), schema)]))
+                .unwrap_or_else(HashMap::new);
+            let source_schema_list = match source {
+                Some(source) => scan_query(storage, source).await?,
+                None => HashMap::new(),
+            };
             let schema_list = table_schema.into_iter().chain(source_schema_list).collect();
 
             Ok(schema_list)
@@ -49,7 +63,7 @@ pub async fn fetch_schema_map(
     }
 }
 
-async fn scan_query(storage: &dyn Store, query: &Query) -> Result<HashMap<String, Schema>> {
+async fn scan_query<T: Store>(storage: &T, query: &Query) -> Result<HashMap<String, Schema>> {
     let Query {
         body,
         limit,
@@ -78,7 +92,7 @@ async fn scan_query(storage: &dyn Store, query: &Query) -> Result<HashMap<String
     Ok(schema_list)
 }
 
-async fn scan_select(storage: &dyn Store, select: &Select) -> Result<HashMap<String, Schema>> {
+async fn scan_select<T: Store>(storage: &T, select: &Select) -> Result<HashMap<String, Schema>> {
     let Select {
         projection,
         from,
@@ -114,8 +128,8 @@ async fn scan_select(storage: &dyn Store, select: &Select) -> Result<HashMap<Str
         .collect())
 }
 
-async fn scan_table_with_joins(
-    storage: &dyn Store,
+async fn scan_table_with_joins<T: Store>(
+    storage: &T,
     table_with_joins: &TableWithJoins,
 ) -> Result<HashMap<String, Schema>> {
     let TableWithJoins { relation, joins } = table_with_joins;
@@ -131,7 +145,7 @@ async fn scan_table_with_joins(
         .collect())
 }
 
-async fn scan_join(storage: &dyn Store, join: &Join) -> Result<HashMap<String, Schema>> {
+async fn scan_join<T: Store>(storage: &T, join: &Join) -> Result<HashMap<String, Schema>> {
     let Join {
         relation,
         join_operator,
@@ -154,8 +168,8 @@ async fn scan_join(storage: &dyn Store, join: &Join) -> Result<HashMap<String, S
 }
 
 #[async_recursion(?Send)]
-async fn scan_table_factor(
-    storage: &dyn Store,
+async fn scan_table_factor<T: Store>(
+    storage: &T,
     table_factor: &TableFactor,
 ) -> Result<HashMap<String, Schema>> {
     match table_factor {
@@ -173,7 +187,7 @@ async fn scan_table_factor(
 }
 
 #[async_recursion(?Send)]
-async fn scan_expr(storage: &dyn Store, expr: &Expr) -> Result<HashMap<String, Schema>> {
+async fn scan_expr<T: Store>(storage: &T, expr: &Expr) -> Result<HashMap<String, Schema>> {
     let schema_list = match expr.into() {
         PlanExpr::None | PlanExpr::Identifier(_) | PlanExpr::CompoundIdentifier { .. } => {
             HashMap::new()

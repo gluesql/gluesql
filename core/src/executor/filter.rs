@@ -10,16 +10,16 @@ use {
     std::rc::Rc,
 };
 
-pub struct Filter<'a> {
-    storage: &'a dyn GStore,
+pub struct Filter<'a, T: GStore> {
+    storage: &'a T,
     where_clause: Option<&'a Expr>,
     context: Option<Rc<RowContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
 }
 
-impl<'a> Filter<'a> {
+impl<'a, T: GStore> Filter<'a, T> {
     pub fn new(
-        storage: &'a dyn GStore,
+        storage: &'a T,
         where_clause: Option<&'a Expr>,
         context: Option<Rc<RowContext<'a>>>,
         aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
@@ -51,8 +51,8 @@ impl<'a> Filter<'a> {
     }
 }
 
-pub async fn check_expr<'a>(
-    storage: &'a dyn GStore,
+pub async fn check_expr<'a, T: GStore>(
+    storage: &'a T,
     context: Option<Rc<RowContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
     expr: &'a Expr,
