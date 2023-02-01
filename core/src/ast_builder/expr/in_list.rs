@@ -6,7 +6,7 @@ use {
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum InListNode<'a> {
     InList(Vec<ExprNode<'a>>),
     Query(Box<QueryNode<'a>>),
@@ -41,7 +41,7 @@ macro_rules! impl_from_select_nodes {
     };
 }
 
-impl_from_select_nodes!(SelectNode);
+impl_from_select_nodes!(SelectNode<'a>);
 impl_from_select_nodes!(JoinNode<'a>);
 impl_from_select_nodes!(JoinConstraintNode<'a>);
 impl_from_select_nodes!(HashJoinNode<'a>);

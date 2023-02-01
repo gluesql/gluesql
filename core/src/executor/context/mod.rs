@@ -1,9 +1,4 @@
 mod aggregate_context;
-mod blend_context;
-mod filter_context;
+mod row_context;
 
-pub use {
-    aggregate_context::AggregateContext,
-    blend_context::{BlendContext, BlendContextRow},
-    filter_context::FilterContext,
-};
+pub use {aggregate_context::AggregateContext, row_context::RowContext};

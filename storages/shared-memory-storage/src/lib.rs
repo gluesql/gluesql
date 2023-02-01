@@ -7,9 +7,9 @@ mod transaction;
 use {
     async_trait::async_trait,
     gluesql_core::{
-        data::{Key, Row, Schema},
+        data::{Key, Schema},
         result::{MutResult, Result},
-        store::{RowIter, Store, StoreMut},
+        store::{Row, RowIter, Store, StoreMut},
     },
     memory_storage::MemoryStorage,
     std::sync::Arc,

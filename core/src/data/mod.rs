@@ -14,7 +14,7 @@ pub use {
     interval::{Interval, IntervalError},
     key::{Key, KeyError},
     literal::{Literal, LiteralError},
-    row::{Row, RowError},
+    row::Row,
     schema::{Schema, SchemaIndex, SchemaIndexOrd},
     string_ext::{StringExt, StringExtError},
     table::{get_alias, get_index, TableError},

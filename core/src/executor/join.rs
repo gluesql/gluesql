@@ -1,16 +1,12 @@
 use {
-    super::fetch::fetch_relation_rows,
+    super::fetch::{fetch_relation_columns, fetch_relation_rows},
     crate::{
         ast::{
             Expr, Join as AstJoin, JoinConstraint, JoinExecutor as AstJoinExecutor,
             JoinOperator as AstJoinOperator, TableFactor,
         },
-        data::{get_alias, Key, Row},
-        executor::{
-            context::{BlendContext, BlendContextRow::Single, FilterContext},
-            evaluate::evaluate,
-            filter::check_expr,
-        },
+        data::{get_alias, Key, Row, Value},
+        executor::{context::RowContext, evaluate::evaluate, filter::check_expr},
         result::{Error, Result},
         store::GStore,
     },
@@ -26,11 +22,10 @@ use {
 pub struct Join<'a> {
     storage: &'a dyn GStore,
     join_clauses: &'a [AstJoin],
-    join_columns: Vec<Rc<[String]>>,
-    filter_context: Option<Rc<FilterContext<'a>>>,
+    filter_context: Option<Rc<RowContext<'a>>>,
 }
 
-type JoinItem<'a> = Rc<BlendContext<'a>>;
+type JoinItem<'a> = Rc<RowContext<'a>>;
 type Joined<'a> =
     Pin<Box<dyn TryStream<Ok = JoinItem<'a>, Error = Error, Item = Result<JoinItem<'a>>> + 'a>>;
 
@@ -38,41 +33,27 @@ impl<'a> Join<'a> {
     pub fn new(
         storage: &'a dyn GStore,
         join_clauses: &'a [AstJoin],
-        join_columns: Vec<Rc<[String]>>,
-        filter_context: Option<Rc<FilterContext<'a>>>,
+        filter_context: Option<Rc<RowContext<'a>>>,
     ) -> Self {
         Self {
             storage,
             join_clauses,
-            join_columns,
             filter_context,
         }
     }
 
     pub async fn apply(
         self,
-        rows: impl Stream<Item = Result<BlendContext<'a>>> + 'a,
+        rows: impl Stream<Item = Result<RowContext<'a>>> + 'a,
     ) -> Result<Joined<'a>> {
         let init_rows: Joined = Box::pin(rows.map(|row| row.map(Rc::new)));
-        let joins = self
-            .join_clauses
-            .iter()
-            .zip(self.join_columns.iter().map(Rc::clone));
-        stream::iter(joins)
+
+        stream::iter(self.join_clauses)
             .map(Ok)
-            .try_fold(init_rows, |rows, (join_clause, join_columns)| {
+            .try_fold(init_rows, |rows, join_clause| {
                 let filter_context = self.filter_context.as_ref().map(Rc::clone);
 
-                async move {
-                    join(
-                        self.storage,
-                        filter_context,
-                        join_clause,
-                        join_columns,
-                        rows,
-                    )
-                    .await
-                }
+                async move { join(self.storage, filter_context, join_clause, rows).await }
             })
             .await
     }
@@ -80,9 +61,8 @@ impl<'a> Join<'a> {
 
 async fn join<'a>(
     storage: &'a dyn GStore,
-    filter_context: Option<Rc<FilterContext<'a>>>,
+    filter_context: Option<Rc<RowContext<'a>>>,
     ast_join: &'a AstJoin,
-    columns: Rc<[String]>,
     left_rows: impl TryStream<Ok = JoinItem<'a>, Error = Error, Item = Result<JoinItem<'a>>> + 'a,
 ) -> Result<Joined<'a>> {
     let AstJoin {
@@ -95,7 +75,6 @@ async fn join<'a>(
     let join_executor = JoinExecutor::new(
         storage,
         relation,
-        Rc::clone(&columns),
         filter_context.as_ref().map(Rc::clone),
         join_executor,
     )
@@ -113,22 +92,31 @@ async fn join<'a>(
         }
     };
 
-    let rows = left_rows.and_then(move |blend_context| {
+    let columns = fetch_relation_columns(storage, relation)
+        .await
+        .map(Rc::from)?;
+    let rows = left_rows.and_then(move |project_context| {
         let filter_context = filter_context.as_ref().map(Rc::clone);
         let columns = Rc::clone(&columns);
-        let init_context = Rc::new(BlendContext::new(
+        let init_context = Rc::new(RowContext::new(
             table_alias,
-            Rc::clone(&columns),
-            Single(None),
-            Some(Rc::clone(&blend_context)),
+            Cow::Owned(Row {
+                columns: Rc::clone(&columns),
+                values: columns.iter().map(|_| Value::Null).collect(),
+            }),
+            Some(Rc::clone(&project_context)),
         ));
         let join_executor = Rc::clone(&join_executor);
 
         async move {
-            let filter_context = Some(Rc::new(FilterContext::concat(
-                filter_context.as_ref().map(Rc::clone),
-                Some(&blend_context).map(Rc::clone),
-            )));
+            let filter_context = match filter_context {
+                Some(filter_context) => Rc::new(RowContext::concat(
+                    Rc::clone(&project_context),
+                    Rc::clone(&filter_context),
+                )),
+                None => Rc::clone(&project_context),
+            };
+            let filter_context = Some(filter_context);
 
             #[derive(futures_enum::Stream)]
             enum Rows<I1, I2, I3> {
@@ -138,16 +126,15 @@ async fn join<'a>(
             }
             let rows = match join_executor.as_ref() {
                 JoinExecutor::NestedLoop => {
-                    let rows = fetch_relation_rows(storage, relation, &filter_context).await?;
-                    let rows = rows
+                    let rows = fetch_relation_rows(storage, relation, &filter_context)
+                        .await?
                         .and_then(|row| future::ok(Cow::Owned(row)))
                         .try_filter_map(move |row| {
                             check_where_clause(
                                 storage,
                                 table_alias,
-                                Rc::clone(&columns),
                                 filter_context.as_ref().map(Rc::clone),
-                                Some(&blend_context).map(Rc::clone),
+                                Some(&project_context).map(Rc::clone),
                                 where_clause,
                                 row,
                             )
@@ -176,9 +163,8 @@ async fn join<'a>(
                                 check_where_clause(
                                     storage,
                                     table_alias,
-                                    Rc::clone(&columns),
                                     filter_context.as_ref().map(Rc::clone),
-                                    Some(&blend_context).map(Rc::clone),
+                                    Some(&project_context).map(Rc::clone),
                                     where_clause,
                                     row,
                                 )
@@ -225,8 +211,7 @@ impl<'a> JoinExecutor<'a> {
     async fn new(
         storage: &'a dyn GStore,
         relation: &TableFactor,
-        columns: Rc<[String]>,
-        filter_context: Option<Rc<FilterContext<'a>>>,
+        filter_context: Option<Rc<RowContext<'a>>>,
         ast_join_executor: &'a AstJoinExecutor,
     ) -> Result<JoinExecutor<'a>> {
         let (key_expr, value_expr, where_clause) = match ast_join_executor {
@@ -238,17 +223,15 @@ impl<'a> JoinExecutor<'a> {
             } => (key_expr, value_expr, where_clause),
         };
 
-        let rows_map = fetch_relation_rows(storage, relation, &filter_context).await?;
-        let rows_map = rows_map
+        let rows_map = fetch_relation_rows(storage, relation, &filter_context)
+            .await?
             .try_filter_map(|row| {
-                let columns = Rc::clone(&columns);
                 let filter_context = filter_context.as_ref().map(Rc::clone);
 
                 async move {
-                    let filter_context = Rc::new(FilterContext::new(
+                    let filter_context = Rc::new(RowContext::new(
                         get_alias(relation),
-                        columns,
-                        &row,
+                        Cow::Borrowed(&row),
                         filter_context,
                     ));
 
@@ -287,27 +270,19 @@ impl<'a> JoinExecutor<'a> {
 async fn check_where_clause<'a, 'b>(
     storage: &'a dyn GStore,
     table_alias: &'a str,
-    columns: Rc<[String]>,
-    filter_context: Option<Rc<FilterContext<'a>>>,
-    blend_context: Option<Rc<BlendContext<'a>>>,
+    filter_context: Option<Rc<RowContext<'a>>>,
+    project_context: Option<Rc<RowContext<'a>>>,
     where_clause: Option<&'a Expr>,
     row: Cow<'b, Row>,
-) -> Result<Option<Rc<BlendContext<'a>>>> {
-    let filter_context = FilterContext::new(table_alias, Rc::clone(&columns), &row, filter_context);
+) -> Result<Option<Rc<RowContext<'a>>>> {
+    let filter_context = RowContext::new(table_alias, Cow::Borrowed(&row), filter_context);
     let filter_context = Some(Rc::new(filter_context));
 
     match where_clause {
         Some(expr) => check_expr(storage, filter_context, None, expr).await?,
         None => true,
     }
-    .then(|| {
-        BlendContext::new(
-            table_alias,
-            columns,
-            Single(Some(row.into_owned())),
-            blend_context,
-        )
-    })
+    .then(|| RowContext::new(table_alias, Cow::Owned(row.into_owned()), project_context))
     .map(Rc::new)
     .map(Ok)
     .transpose()

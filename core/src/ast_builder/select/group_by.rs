@@ -3,16 +3,16 @@ use {
     crate::{
         ast_builder::{
             ExprList, ExprNode, FilterNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
-            LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, SelectItemList,
-            SelectNode,
+            LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
+            SelectItemList, SelectNode, TableFactorNode,
         },
         result::Result,
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum PrevNode<'a> {
-    Select(SelectNode),
+    Select(SelectNode<'a>),
     Join(Box<JoinNode<'a>>),
     JoinConstraint(Box<JoinConstraintNode<'a>>),
     HashJoin(Box<HashJoinNode<'a>>),
@@ -31,8 +31,8 @@ impl<'a> Prebuild for PrevNode<'a> {
     }
 }
 
-impl<'a> From<SelectNode> for PrevNode<'a> {
-    fn from(node: SelectNode) -> Self {
+impl<'a> From<SelectNode<'a>> for PrevNode<'a> {
+    fn from(node: SelectNode<'a>) -> Self {
         PrevNode::Select(node)
     }
 }
@@ -61,7 +61,7 @@ impl<'a> From<FilterNode<'a>> for PrevNode<'a> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct GroupByNode<'a> {
     prev_node: PrevNode<'a>,
     expr_list: ExprList<'a>,
@@ -93,6 +93,10 @@ impl<'a> GroupByNode<'a> {
 
     pub fn order_by<T: Into<OrderByExprList<'a>>>(self, expr_list: T) -> OrderByNode<'a> {
         OrderByNode::new(self, expr_list)
+    }
+
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
+        QueryNode::GroupByNode(self).alias_as(table_alias)
     }
 }
 
@@ -217,5 +221,15 @@ mod tests {
             }))
         };
         assert_eq!(actual, expected);
+
+        // select -> group by -> derived subquery
+        let actual = table("Foo")
+            .select()
+            .group_by("a")
+            .alias_as("Sub")
+            .select()
+            .build();
+        let expected = "SELECT * FROM (SELECT * FROM Foo GROUP BY a) Sub";
+        test(actual, expected);
     }
 }

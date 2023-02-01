@@ -235,7 +235,7 @@ impl ToSql for Assignment {
 #[cfg(test)]
 mod tests {
     #[cfg(feature = "alter-table")]
-    use crate::ast::{AlterTableOperation, ColumnOption};
+    use crate::ast::AlterTableOperation;
 
     #[cfg(feature = "index")]
     use crate::ast::OrderByExpr;
@@ -371,19 +371,22 @@ mod tests {
                         name: "id".to_owned(),
                         data_type: DataType::Int,
                         nullable: false,
-                        options: vec![]
+                        default: None,
+                        unique: None,
                     },
                     ColumnDef {
                         name: "num".to_owned(),
                         data_type: DataType::Int,
                         nullable: true,
-                        options: Vec::new()
+                        default: None,
+                        unique: None,
                     },
                     ColumnDef {
                         name: "name".to_owned(),
                         data_type: DataType::Text,
                         nullable: false,
-                        options: vec![]
+                        default: None,
+                        unique: None,
                     }
                 ],
                 source: None
@@ -463,9 +466,10 @@ mod tests {
                         name: "amount".to_owned(),
                         data_type: DataType::Int,
                         nullable: false,
-                        options: vec![ColumnOption::Default(Expr::Literal(AstLiteral::Number(
+                        default: Some(Expr::Literal(AstLiteral::Number(
                             BigDecimal::from_str("10").unwrap()
-                        )))]
+                        ))),
+                        unique: None,
                     }
                 }
             }

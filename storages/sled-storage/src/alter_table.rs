@@ -9,10 +9,10 @@ use {
     async_trait::async_trait,
     gluesql_core::{
         ast::ColumnDef,
-        data::{schema::Schema, Row, Value},
+        data::{schema::Schema, Value},
         executor::evaluate_stateless,
         result::{MutResult, Result, TrySelf},
-        store::{AlterTable, AlterTableError},
+        store::{AlterTable, AlterTableError, Row},
     },
     sled::transaction::ConflictableTransactionError,
     std::{iter::once, str},
@@ -183,7 +183,8 @@ impl AlterTable for SledStorage {
             let ColumnDef {
                 data_type,
                 nullable,
-                options,
+                default,
+                unique,
                 ..
             } = column_defs[i].clone();
 
@@ -191,7 +192,8 @@ impl AlterTable for SledStorage {
                 name: new_column_name.to_owned(),
                 data_type,
                 nullable,
-                options,
+                default,
+                unique,
             };
             let column_defs = Vector::from(column_defs).update(i, column_def).into();
 
@@ -270,10 +272,10 @@ impl AlterTable for SledStorage {
             let ColumnDef {
                 data_type,
                 nullable,
+                default,
                 ..
             } = column_def;
 
-            let default = column_def.get_default();
             let value = match (default, nullable) {
                 (Some(expr), _) => {
                     let evaluated = evaluate_stateless(None, expr)
@@ -301,7 +303,7 @@ impl AlterTable for SledStorage {
                         continue;
                     }
                 };
-                let row = Row(row.0.into_iter().chain(once(value.clone())).collect());
+                let row = row.into_iter().chain(once(value.clone())).collect();
 
                 let (snapshot, _) = snapshot.update(txid, row);
                 let snapshot = bincode::serialize(&snapshot)
@@ -418,12 +420,11 @@ impl AlterTable for SledStorage {
                         continue;
                     }
                 };
-                let row = Row(row
-                    .0
+                let row = row
                     .into_iter()
                     .enumerate()
                     .filter_map(|(i, v)| (i != column_index).then_some(v))
-                    .collect());
+                    .collect();
 
                 let (snapshot, _) = snapshot.update(txid, row);
                 let snapshot = bincode::serialize(&snapshot)

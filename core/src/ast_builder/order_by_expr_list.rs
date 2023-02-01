@@ -8,7 +8,7 @@ use {
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum OrderByExprList<'a> {
     Text(String),
     OrderByExprs(Vec<OrderByExprNode<'a>>),

@@ -1,58 +1,56 @@
 use {
     super::{join::JoinOperatorType, NodeData, Prebuild},
     crate::{
-        ast::{SelectItem, TableAlias, TableFactor},
+        ast::{Query, SelectItem, TableAlias, TableFactor},
         ast_builder::{
-            ExprList, ExprNode, FilterNode, GroupByNode, JoinNode, LimitNode, OffsetNode,
-            OrderByExprList, OrderByNode, ProjectNode, SelectItemList,
+            table_factor::TableType, ExprList, ExprNode, FilterNode, GroupByNode, JoinNode,
+            LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
+            SelectItemList, TableFactorNode,
         },
         result::Result,
+        translate::alias_or_name,
     },
 };
 
-#[derive(Clone)]
-pub struct SelectNode {
-    table_name: String,
-    table_alias: Option<String>,
+#[derive(Clone, Debug)]
+pub struct SelectNode<'a> {
+    table_node: TableFactorNode<'a>,
 }
 
-impl SelectNode {
-    pub fn new(table_name: String, table_alias: Option<String>) -> Self {
-        Self {
-            table_name,
-            table_alias,
-        }
+impl<'a> SelectNode<'a> {
+    pub fn new(table_node: TableFactorNode<'a>) -> Self {
+        Self { table_node }
     }
 
-    pub fn filter<'a, T: Into<ExprNode<'a>>>(self, expr: T) -> FilterNode<'a> {
+    pub fn filter<T: Into<ExprNode<'a>>>(self, expr: T) -> FilterNode<'a> {
         FilterNode::new(self, expr)
     }
 
-    pub fn group_by<'a, T: Into<ExprList<'a>>>(self, expr_list: T) -> GroupByNode<'a> {
+    pub fn group_by<T: Into<ExprList<'a>>>(self, expr_list: T) -> GroupByNode<'a> {
         GroupByNode::new(self, expr_list)
     }
 
-    pub fn offset<'a, T: Into<ExprNode<'a>>>(self, expr: T) -> OffsetNode<'a> {
+    pub fn offset<T: Into<ExprNode<'a>>>(self, expr: T) -> OffsetNode<'a> {
         OffsetNode::new(self, expr)
     }
 
-    pub fn limit<'a, T: Into<ExprNode<'a>>>(self, expr: T) -> LimitNode<'a> {
+    pub fn limit<T: Into<ExprNode<'a>>>(self, expr: T) -> LimitNode<'a> {
         LimitNode::new(self, expr)
     }
 
-    pub fn project<'a, T: Into<SelectItemList<'a>>>(self, select_items: T) -> ProjectNode<'a> {
+    pub fn project<T: Into<SelectItemList<'a>>>(self, select_items: T) -> ProjectNode<'a> {
         ProjectNode::new(self, select_items)
     }
 
-    pub fn order_by<'a, T: Into<OrderByExprList<'a>>>(self, order_by_exprs: T) -> OrderByNode<'a> {
+    pub fn order_by<T: Into<OrderByExprList<'a>>>(self, order_by_exprs: T) -> OrderByNode<'a> {
         OrderByNode::new(self, order_by_exprs)
     }
 
-    pub fn join<'a>(self, table_name: &str) -> JoinNode<'a> {
+    pub fn join(self, table_name: &str) -> JoinNode<'a> {
         JoinNode::new(self, table_name.to_owned(), None, JoinOperatorType::Inner)
     }
 
-    pub fn join_as<'a>(self, table_name: &str, alias: &str) -> JoinNode<'a> {
+    pub fn join_as(self, table_name: &str, alias: &str) -> JoinNode<'a> {
         JoinNode::new(
             self,
             table_name.to_owned(),
@@ -61,11 +59,11 @@ impl SelectNode {
         )
     }
 
-    pub fn left_join<'a>(self, table_name: &str) -> JoinNode<'a> {
+    pub fn left_join(self, table_name: &str) -> JoinNode<'a> {
         JoinNode::new(self, table_name.to_owned(), None, JoinOperatorType::Left)
     }
 
-    pub fn left_join_as<'a>(self, table_name: &str, alias: &str) -> JoinNode<'a> {
+    pub fn left_join_as(self, table_name: &str, alias: &str) -> JoinNode<'a> {
         JoinNode::new(
             self,
             table_name.to_owned(),
@@ -73,17 +71,40 @@ impl SelectNode {
             JoinOperatorType::Left,
         )
     }
+
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
+        QueryNode::SelectNode(self).alias_as(table_alias)
+    }
 }
 
-impl Prebuild for SelectNode {
+impl<'a> Prebuild for SelectNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
-        let relation = TableFactor::Table {
-            name: self.table_name,
-            alias: self.table_alias.map(|name| TableAlias {
-                name,
-                columns: Vec::new(),
-            }),
-            index: None,
+        let alias = self.table_node.table_alias.map(|name| TableAlias {
+            name,
+            columns: Vec::new(),
+        });
+
+        let relation = match self.table_node.table_type {
+            TableType::Table => TableFactor::Table {
+                name: self.table_node.table_name,
+                alias,
+                index: None,
+            },
+            TableType::Dictionary(dict) => TableFactor::Dictionary {
+                dict,
+                alias: alias_or_name(alias, self.table_node.table_name),
+            },
+            TableType::Series(args) => TableFactor::Series {
+                alias: alias_or_name(alias, self.table_node.table_name),
+                size: args.try_into()?,
+            },
+            TableType::Derived { subquery, alias } => TableFactor::Derived {
+                subquery: Query::try_from(*subquery)?,
+                alias: TableAlias {
+                    name: alias,
+                    columns: Vec::new(),
+                },
+            },
         };
 
         Ok(NodeData {
@@ -113,6 +134,11 @@ mod tests {
 
         let actual = table("Item").alias_as("i").select().build();
         let expected = "SELECT * FROM Item i";
+        test(actual, expected);
+
+        // select -> derived subquery
+        let actual = table("App").select().alias_as("Sub").select().build();
+        let expected = "SELECT * FROM (SELECT * FROM App) Sub";
         test(actual, expected);
     }
 }

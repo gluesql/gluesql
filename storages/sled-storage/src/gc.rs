@@ -4,10 +4,7 @@ use {
         lock::{get_txdata_key, Lock, TxData},
         SledStorage, Snapshot,
     },
-    gluesql_core::{
-        data::{Row, Schema},
-        result::Result,
-    },
+    gluesql_core::{data::Schema, result::Result, store::Row},
     std::time::{SystemTime, UNIX_EPOCH},
 };
 

@@ -8,11 +8,11 @@ use crate::store::Transaction;
 use crate::store::{Index, IndexMut};
 use {
     crate::{
-        data::{Key, Row, Schema},
+        data::{Key, Schema},
         executor::execute,
         parse_sql::parse,
         result::{Error, MutResult, Result},
-        store::{RowIter, Store, StoreMut},
+        store::{Row, RowIter, Store, StoreMut},
         translate::translate,
     },
     async_trait::async_trait,
@@ -182,7 +182,8 @@ mod tests {
                     name: "new_col".to_owned(),
                     data_type: DataType::Boolean,
                     nullable: false,
-                    options: Vec::new(),
+                    default: None,
+                    unique: None,
                 },
             ));
             let storage = test(storage.drop_column("Foo", "col", false));

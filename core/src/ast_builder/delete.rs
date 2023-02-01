@@ -6,7 +6,7 @@ use {
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DeleteNode<'a> {
     table_name: String,
     filter_expr: Option<ExprNode<'a>>,

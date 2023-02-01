@@ -61,12 +61,13 @@ cfg_if! {
 
 use {
     crate::{
-        data::{Key, Row, Schema},
+        data::{Key, Schema, Value},
         result::{MutResult, Result},
     },
     async_trait::async_trait,
 };
 
+pub type Row = Vec<Value>;
 pub type RowIter = Box<dyn Iterator<Item = Result<(Key, Row)>>>;
 
 /// By implementing `Store` trait, you can run `SELECT` query.

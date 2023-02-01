@@ -7,10 +7,10 @@ use {
     async_trait::async_trait,
     gluesql_core::{
         ast::IndexOperator,
-        data::{Key, Row},
+        data::Key,
         prelude::Value,
         result::{Error, Result},
-        store::{Index, IndexError, RowIter},
+        store::{Index, IndexError, Row, RowIter},
     },
     iter_enum::{DoubleEndedIterator, Iterator},
     sled::IVec,

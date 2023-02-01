@@ -36,7 +36,7 @@ use {
     std::borrow::Cow,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum ExprNode<'a> {
     Expr(Cow<'a, Expr>),
     SqlExpr(Cow<'a, str>),

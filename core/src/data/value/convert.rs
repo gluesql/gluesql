@@ -130,13 +130,7 @@ impl TryFrom<&Value> for i8 {
 
     fn try_from(v: &Value) -> Result<i8> {
         Ok(match v {
-            Value::Bool(value) => {
-                if *value {
-                    1
-                } else {
-                    0
-                }
-            }
+            Value::Bool(value) => i8::from(*value),
             Value::I8(value) => *value,
             Value::I16(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
             Value::I32(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
@@ -167,13 +161,7 @@ impl TryFrom<&Value> for i16 {
 
     fn try_from(v: &Value) -> Result<i16> {
         Ok(match v {
-            Value::Bool(value) => {
-                if *value {
-                    1
-                } else {
-                    0
-                }
-            }
+            Value::Bool(value) => i16::from(*value),
             Value::I8(value) => *value as i16,
             Value::I16(value) => *value,
             Value::I32(value) => *value as i16,
@@ -204,13 +192,7 @@ impl TryFrom<&Value> for i32 {
 
     fn try_from(v: &Value) -> Result<i32> {
         Ok(match v {
-            Value::Bool(value) => {
-                if *value {
-                    1
-                } else {
-                    0
-                }
-            }
+            Value::Bool(value) => i32::from(*value),
             Value::I8(value) => *value as i32,
             Value::I16(value) => *value as i32,
             Value::I32(value) => *value,
@@ -241,13 +223,7 @@ impl TryFrom<&Value> for i64 {
 
     fn try_from(v: &Value) -> Result<i64> {
         Ok(match v {
-            Value::Bool(value) => {
-                if *value {
-                    1
-                } else {
-                    0
-                }
-            }
+            Value::Bool(value) => i64::from(*value),
             Value::I8(value) => *value as i64,
             Value::I16(value) => *value as i64,
             Value::I32(value) => *value as i64,
@@ -278,13 +254,7 @@ impl TryFrom<&Value> for i128 {
 
     fn try_from(v: &Value) -> Result<i128> {
         Ok(match v {
-            Value::Bool(value) => {
-                if *value {
-                    1
-                } else {
-                    0
-                }
-            }
+            Value::Bool(value) => i128::from(*value),
             Value::I8(value) => *value as i128,
             Value::I16(value) => *value as i128,
             Value::I32(value) => *value as i128,
@@ -315,13 +285,7 @@ impl TryFrom<&Value> for u8 {
 
     fn try_from(v: &Value) -> Result<u8> {
         Ok(match v {
-            Value::Bool(value) => {
-                if *value {
-                    1
-                } else {
-                    0
-                }
-            }
+            Value::Bool(value) => u8::from(*value),
             Value::I8(value) => value.to_u8().ok_or(ValueError::ImpossibleCast)?,
             Value::I16(value) => value.to_u8().ok_or(ValueError::ImpossibleCast)?,
             Value::I32(value) => value.to_u8().ok_or(ValueError::ImpossibleCast)?,
@@ -351,13 +315,7 @@ impl TryFrom<&Value> for u16 {
 
     fn try_from(v: &Value) -> Result<u16> {
         Ok(match v {
-            Value::Bool(value) => {
-                if *value {
-                    1
-                } else {
-                    0
-                }
-            }
+            Value::Bool(value) => u16::from(*value),
             Value::I8(value) => value.to_u16().ok_or(ValueError::ImpossibleCast)?,
             Value::I16(value) => value.to_u16().ok_or(ValueError::ImpossibleCast)?,
             Value::I32(value) => value.to_u16().ok_or(ValueError::ImpossibleCast)?,
@@ -425,13 +383,7 @@ impl TryFrom<&Value> for usize {
 
     fn try_from(v: &Value) -> Result<usize> {
         Ok(match v {
-            Value::Bool(value) => {
-                if *value {
-                    1
-                } else {
-                    0
-                }
-            }
+            Value::Bool(value) => usize::from(*value),
             Value::I8(value) => value.to_usize().ok_or(ValueError::ImpossibleCast)?,
             Value::I16(value) => value.to_usize().ok_or(ValueError::ImpossibleCast)?,
             Value::I32(value) => value.to_usize().ok_or(ValueError::ImpossibleCast)?,

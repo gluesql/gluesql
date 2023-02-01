@@ -1,21 +1,21 @@
 use {
     super::{
-        context::FilterContext,
+        context::RowContext,
         evaluate::{evaluate, Evaluated},
     },
     crate::{
-        ast::{Assignment, ColumnDef, ColumnOption},
+        ast::{Assignment, ColumnDef, ColumnUniqueOption},
         data::{Row, Value},
         result::Result,
         store::GStore,
     },
     futures::stream::{self, TryStreamExt},
     serde::Serialize,
-    std::{fmt::Debug, rc::Rc},
+    std::{borrow::Cow, fmt::Debug, rc::Rc},
     thiserror::Error,
 };
 
-#[derive(Error, Serialize, Debug, PartialEq)]
+#[derive(Error, Serialize, Debug, PartialEq, Eq)]
 pub enum UpdateError {
     #[error("column not found {0}")]
     ColumnNotFound(String),
@@ -46,14 +46,8 @@ impl<'a> Update<'a> {
 
             if column_defs.iter().all(|col_def| &col_def.name != id) {
                 return Err(UpdateError::ColumnNotFound(id.to_owned()).into());
-            } else if column_defs.iter().any(|ColumnDef { name, options, .. }| {
-                if name != id {
-                    return false;
-                }
-
-                options
-                    .iter()
-                    .any(|option| option == &ColumnOption::Unique { is_primary: true })
+            } else if column_defs.iter().any(|ColumnDef { name, unique, .. }| {
+                name == id && matches!(unique, Some(ColumnUniqueOption { is_primary: true }))
             }) {
                 return Err(UpdateError::UpdateOnPrimaryKeyNotSupported(id.to_owned()).into());
             }
@@ -68,8 +62,7 @@ impl<'a> Update<'a> {
     }
 
     async fn find(&self, row: &Row, column_def: &ColumnDef) -> Result<Option<Value>> {
-        let all_columns = Rc::from(self.all_columns());
-        let context = FilterContext::new(self.table_name, Rc::clone(&all_columns), row, None);
+        let context = RowContext::new(self.table_name, Cow::Borrowed(row), None);
         let context = Some(Rc::new(context));
 
         match self
@@ -102,14 +95,17 @@ impl<'a> Update<'a> {
     }
 
     pub async fn apply(&self, row: Row) -> Result<Row> {
-        let Row(values) = &row;
-
-        let values = values.clone().into_iter().enumerate().map(|(i, value)| {
-            self.column_defs
-                .get(i)
-                .map(|col_def| (col_def, value))
-                .ok_or_else(|| UpdateError::ConflictOnSchema.into())
-        });
+        let values = row
+            .values
+            .clone()
+            .into_iter()
+            .enumerate()
+            .map(|(i, value)| {
+                self.column_defs
+                    .get(i)
+                    .map(|col_def| (col_def, value))
+                    .ok_or_else(|| UpdateError::ConflictOnSchema.into())
+            });
 
         stream::iter(values)
             .and_then(|(col_def, value)| {
@@ -124,7 +120,10 @@ impl<'a> Update<'a> {
             })
             .try_collect::<Vec<_>>()
             .await
-            .map(Row)
+            .map(|values| Row {
+                columns: Rc::clone(&row.columns),
+                values,
+            })
     }
 
     pub fn all_columns(&self) -> Vec<String> {

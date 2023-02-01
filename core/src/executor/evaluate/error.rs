@@ -5,7 +5,7 @@ use {
     thiserror::Error,
 };
 
-#[derive(Error, Serialize, Debug, PartialEq)]
+#[derive(Error, Serialize, Debug, PartialEq, Eq)]
 pub enum EvaluateError {
     #[error(transparent)]
     #[serde(serialize_with = "error_serialize")]

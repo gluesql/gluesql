@@ -99,7 +99,7 @@ impl<'a> JoinPlanner<'a> {
                     (context, joins)
                 });
         let joins = joins.into();
-        let context = Some(Rc::new(Context::concat(context, outer_context)));
+        let context = Context::concat(context, outer_context);
 
         (context, TableWithJoins { relation, joins })
     }
@@ -190,13 +190,12 @@ impl<'a> JoinPlanner<'a> {
                     let current = current_context.as_ref().map(Rc::clone);
                     let outer = outer_context.as_ref().map(Rc::clone);
 
-                    Some(Rc::new(Context::concat(current, outer)))
+                    Context::concat(current, outer)
                 };
                 let value_context = {
                     let context = Context::concat(current_context, inner_context);
-                    let context = Context::concat(Some(Rc::new(context)), outer_context);
 
-                    Some(Rc::new(context))
+                    Context::concat(context, outer_context)
                 };
 
                 let left_as_key = check_evaluable(key_context.as_ref().map(Rc::clone), &left);
@@ -255,7 +254,7 @@ impl<'a> JoinPlanner<'a> {
                         let current = current_context.as_ref().map(Rc::clone);
                         let outer = outer_context.as_ref().map(Rc::clone);
 
-                        Some(Rc::new(Context::concat(current, outer)))
+                        Context::concat(current, outer)
                     };
 
                     let expr = match left {
@@ -316,9 +315,9 @@ impl<'a> JoinPlanner<'a> {
                         value_expr,
                         where_clause,
                     } => {
-                        let context = Rc::new(Context::concat(current_context, outer_context));
+                        let context = Context::concat(current_context, outer_context);
                         let (evaluable_expr, expr) = expr
-                            .map(|expr| find_evaluable(Some(context), expr))
+                            .map(|expr| find_evaluable(context, expr))
                             .unwrap_or((None, None));
 
                         let where_clause = match (where_clause, evaluable_expr) {
@@ -346,8 +345,7 @@ impl<'a> JoinPlanner<'a> {
             }
             Expr::Subquery(query) => {
                 let context = Context::concat(current_context, inner_context);
-                let context = Context::concat(Some(Rc::new(context)), outer_context);
-                let context = Some(Rc::new(context));
+                let context = Context::concat(context, outer_context);
 
                 let query = self.query(context, *query);
                 let expr = Some(Expr::Subquery(Box::new(query)));

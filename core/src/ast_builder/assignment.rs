@@ -8,7 +8,7 @@ use {
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum AssignmentNode<'a> {
     Expr(String, ExprNode<'a>),
     Text(String),

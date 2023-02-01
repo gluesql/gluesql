@@ -3,22 +3,23 @@ use {
     crate::{
         ast_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
-            JoinNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode, SelectItemList,
-            SelectNode,
+            JoinNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryNode, SelectNode,
+            TableFactorNode,
         },
         result::Result,
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum PrevNode<'a> {
-    Select(SelectNode),
+    Select(SelectNode<'a>),
     Having(HavingNode<'a>),
     GroupBy(GroupByNode<'a>),
     Filter(FilterNode<'a>),
     JoinNode(JoinNode<'a>),
     JoinConstraint(JoinConstraintNode<'a>),
     HashJoin(Box<HashJoinNode<'a>>),
+    ProjectNode(Box<ProjectNode<'a>>),
 }
 
 impl<'a> Prebuild for PrevNode<'a> {
@@ -31,12 +32,13 @@ impl<'a> Prebuild for PrevNode<'a> {
             Self::JoinNode(node) => node.prebuild(),
             Self::JoinConstraint(node) => node.prebuild(),
             Self::HashJoin(node) => node.prebuild(),
+            Self::ProjectNode(node) => node.prebuild(),
         }
     }
 }
 
-impl<'a> From<SelectNode> for PrevNode<'a> {
-    fn from(node: SelectNode) -> Self {
+impl<'a> From<SelectNode<'a>> for PrevNode<'a> {
+    fn from(node: SelectNode<'a>) -> Self {
         PrevNode::Select(node)
     }
 }
@@ -77,7 +79,13 @@ impl<'a> From<HashJoinNode<'a>> for PrevNode<'a> {
     }
 }
 
-#[derive(Clone)]
+impl<'a> From<ProjectNode<'a>> for PrevNode<'a> {
+    fn from(node: ProjectNode<'a>) -> Self {
+        PrevNode::ProjectNode(Box::new(node))
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct OrderByNode<'a> {
     prev_node: PrevNode<'a>,
     expr_list: OrderByExprList<'a>,
@@ -102,8 +110,8 @@ impl<'a> OrderByNode<'a> {
         LimitNode::new(self, expr)
     }
 
-    pub fn project<T: Into<SelectItemList<'a>>>(self, select_items: T) -> ProjectNode<'a> {
-        ProjectNode::new(self, select_items)
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
+        QueryNode::OrderByNode(self).alias_as(table_alias)
     }
 }
 
@@ -194,6 +202,15 @@ mod tests {
             ORDER BY id ASC";
         test(actual, expected);
 
+        // project node -> order by node -> build
+        let actual = table("Foo")
+            .select()
+            .project("id")
+            .order_by("id asc")
+            .build();
+        let expected = "SELECT id FROM Foo ORDER BY id asc";
+        test(actual, expected);
+
         // join node -> order by node -> build
         let actual = table("Foo")
             .select()
@@ -267,5 +284,20 @@ mod tests {
             }))
         };
         assert_eq!(actual, expected);
+
+        // select -> order by node -> derived subquery
+        let actual = table("Foo")
+            .select()
+            .order_by(vec!["name desc"])
+            .alias_as("Sub")
+            .select()
+            .build();
+        let expected = "
+            SELECT * FROM (
+                SELECT * FROM Foo
+                ORDER BY name DESC
+            ) Sub
+        ";
+        test(actual, expected);
     }
 }

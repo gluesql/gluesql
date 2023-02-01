@@ -1,12 +1,12 @@
 use {
-    crate::ast::{ColumnDef, ColumnOption, Expr, Statement, ToSql},
+    crate::ast::{ColumnDef, Expr, Statement, ToSql},
     chrono::NaiveDateTime,
     serde::{Deserialize, Serialize},
     std::{fmt::Debug, iter},
     strum_macros::Display,
 };
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Display)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Display)]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 pub enum SchemaIndexOrd {
     Asc,
@@ -14,7 +14,7 @@ pub enum SchemaIndexOrd {
     Both,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SchemaIndex {
     pub name: String,
     pub expr: Expr,
@@ -22,7 +22,7 @@ pub struct SchemaIndex {
     pub created: NaiveDateTime,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Schema {
     pub table_name: String,
     pub column_defs: Vec<ColumnDef>,
@@ -61,20 +61,10 @@ impl Schema {
     }
 }
 
-impl ColumnDef {
-    pub fn get_default(&self) -> Option<&Expr> {
-        self.options.iter().find_map(|option| match option {
-            ColumnOption::Default(expr) => Some(expr),
-            _ => None,
-        })
-    }
-}
-
 #[cfg(test)]
 mod tests {
-
     use crate::{
-        ast::{AstLiteral, ColumnDef, ColumnOption, Expr},
+        ast::{AstLiteral, ColumnDef, ColumnUniqueOption, Expr},
         chrono::Utc,
         data::{Schema, SchemaIndex, SchemaIndexOrd},
         prelude::DataType,
@@ -89,15 +79,15 @@ mod tests {
                     name: "id".to_owned(),
                     data_type: DataType::Int,
                     nullable: false,
-                    options: Vec::new(),
+                    default: None,
+                    unique: None,
                 },
                 ColumnDef {
                     name: "name".to_owned(),
                     data_type: DataType::Text,
                     nullable: true,
-                    options: vec![ColumnOption::Default(Expr::Literal(
-                        AstLiteral::QuotedString("glue".to_owned()),
-                    ))],
+                    default: Some(Expr::Literal(AstLiteral::QuotedString("glue".to_owned()))),
+                    unique: None,
                 },
             ],
             indexes: Vec::new(),
@@ -118,7 +108,8 @@ mod tests {
                 name: "id".to_owned(),
                 data_type: DataType::Int,
                 nullable: false,
-                options: vec![ColumnOption::Unique { is_primary: true }],
+                default: None,
+                unique: Some(ColumnUniqueOption { is_primary: true }),
             }],
             indexes: Vec::new(),
             created: Utc::now().naive_utc(),
@@ -139,13 +130,15 @@ mod tests {
                     name: "id".to_owned(),
                     data_type: DataType::Int,
                     nullable: false,
-                    options: Vec::new(),
+                    default: None,
+                    unique: None,
                 },
                 ColumnDef {
                     name: "name".to_owned(),
                     data_type: DataType::Text,
                     nullable: false,
-                    options: Vec::new(),
+                    default: None,
+                    unique: None,
                 },
             ],
             indexes: vec![
