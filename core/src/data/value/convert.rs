@@ -569,7 +569,12 @@ mod tests {
         crate::{data::Interval as I, result::Result},
         chrono::{self, NaiveDate, NaiveDateTime, NaiveTime},
         rust_decimal::Decimal,
-        std::{collections::HashMap, net::IpAddr, str::FromStr},
+        std::{
+            collections::HashMap,
+            net::IpAddr,
+            net::{Ipv4Addr, Ipv6Addr},
+            str::FromStr,
+        },
     };
 
     fn timestamp(y: i32, m: u32, d: u32, hh: u32, mm: u32, ss: u32, ms: u32) -> NaiveDateTime {
@@ -696,6 +701,10 @@ mod tests {
         test!(Value::I32(3), Err(ValueError::ImpossibleCast.into()));
         test!(Value::I64(3), Err(ValueError::ImpossibleCast.into()));
         test!(Value::I128(3), Err(ValueError::ImpossibleCast.into()));
+        test!(
+            Value::Inet(IpAddr::from_str("::1").unwrap()),
+            Err(ValueError::ImpossibleCast.into())
+        );
     }
 
     #[test]
@@ -758,6 +767,10 @@ mod tests {
         test!(Value::U8(128), Err(ValueError::ImpossibleCast.into()));
         test!(Value::U16(128), Err(ValueError::ImpossibleCast.into()));
         test!(Value::F64(128.0), Err(ValueError::ImpossibleCast.into()));
+        test!(
+            Value::Inet(IpAddr::from_str("::1").unwrap()),
+            Err(ValueError::ImpossibleCast.into())
+        );
     }
 
     #[test]
@@ -811,6 +824,10 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+        test!(
+            Value::Inet(IpAddr::from_str("::1").unwrap()),
+            Err(ValueError::ImpossibleCast.into())
+        );
     }
 
     #[test]
@@ -865,6 +882,10 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+        test!(
+            Value::Inet(IpAddr::from_str("::1").unwrap()),
+            Err(ValueError::ImpossibleCast.into())
+        );
     }
 
     #[test]
@@ -919,6 +940,10 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+        test!(
+            Value::Inet(IpAddr::from_str("::1").unwrap()),
+            Err(ValueError::ImpossibleCast.into())
+        );
     }
 
     #[test]
@@ -973,6 +998,10 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+        test!(
+            Value::Inet(IpAddr::from_str("::1").unwrap()),
+            Err(ValueError::ImpossibleCast.into())
+        );
     }
 
     #[test]
@@ -1038,6 +1067,10 @@ mod tests {
         test!(Value::I64(256), Err(ValueError::ImpossibleCast.into()));
         test!(Value::I128(256), Err(ValueError::ImpossibleCast.into()));
         test!(Value::F64(256.0), Err(ValueError::ImpossibleCast.into()));
+        test!(
+            Value::Inet(IpAddr::from_str("::1").unwrap()),
+            Err(ValueError::ImpossibleCast.into())
+        );
     }
 
     #[test]
@@ -1091,6 +1124,10 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+        test!(
+            Value::Inet(IpAddr::from_str("::1").unwrap()),
+            Err(ValueError::ImpossibleCast.into())
+        );
     }
 
     #[test]
@@ -1147,6 +1184,10 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+        test!(
+            Value::Inet(IpAddr::from_str("::1").unwrap()),
+            Err(ValueError::ImpossibleCast.into())
+        );
     }
 
     #[test]
@@ -1201,6 +1242,10 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+        test!(
+            Value::Inet(IpAddr::from_str("::1").unwrap()),
+            Err(ValueError::ImpossibleCast.into())
+        );
     }
 
     #[test]
@@ -1270,6 +1315,15 @@ mod tests {
     }
 
     #[test]
+    fn try_into_u32() {
+        let ip = Ipv4Addr::from(1234567890);
+        assert_eq!(
+            u32::try_from(&Value::Inet(IpAddr::V4(ip))),
+            Ok(u32::from(ip))
+        );
+    }
+
+    #[test]
     fn try_into_u128() {
         let uuid = 195965723427462096757863453463987888808;
         assert_eq!((&Value::Uuid(uuid)).try_into() as Result<u128>, Ok(uuid));
@@ -1279,6 +1333,24 @@ mod tests {
         assert_eq!(
             u128::try_from(&Value::Str(uuid.to_owned())),
             parse_uuid(uuid)
+        );
+
+        let ip = Ipv6Addr::from(9876543210);
+        assert_eq!(
+            u128::try_from(&Value::Inet(IpAddr::V6(ip))),
+            Ok(u128::from(ip))
+        );
+    }
+
+    #[test]
+    fn try_into_ipaddr() {
+        assert_eq!(
+            IpAddr::try_from(&Value::Str("0.0.0.0".to_owned())),
+            Ok(IpAddr::from_str("0.0.0.0").unwrap())
+        );
+        assert_eq!(
+            IpAddr::try_from(&Value::Str("::1".to_owned())),
+            Ok(IpAddr::from_str("::1").unwrap())
         );
     }
 }
