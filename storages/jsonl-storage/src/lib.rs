@@ -11,6 +11,7 @@ use {
         store::{DataRow, RowIter, Store},
         {chrono::NaiveDateTime, store::StoreMut},
     },
+    iter_enum::Iterator,
     serde_json::Value as JsonValue,
     std::{
         collections::HashMap,
@@ -272,6 +273,12 @@ impl StoreMut for JsonlStorage {
     }
 
     async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
+        #[derive(Iterator)]
+        enum JsonIter<I1, I2> {
+            Map(I1),
+            Vec(I2),
+        }
+
         self.tables
             .get(table_name)
             .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())
@@ -286,36 +293,28 @@ impl StoreMut for JsonlStorage {
 
                 for row in rows {
                     let json_string = match row {
-                        DataRow::Map(hash_map) => {
-                            hash_map
-                                .into_iter()
-                                // todo! why even schemaless get to here? on_where.rs L55
-                                .map(|(key, value)| {
-                                    let value = JsonValue::try_from(value)?.to_string();
-
-                                    Ok(format!("\"{key}\": {value}"))
-                                })
-                                .collect::<Result<Vec<_>>>()?
-                        }
+                        DataRow::Map(hash_map) => JsonIter::Map(hash_map.into_iter()),
                         DataRow::Vec(values) => {
                             match &schema.column_defs {
                                 Some(column_defs) => {
                                     // todo! validate columns?
-                                    column_defs
-                                        .iter()
-                                        .map(|column_def| column_def.name.clone())
-                                        .zip(values.into_iter())
-                                        .map(|(key, value)| {
-                                            let value = JsonValue::try_from(value)?.to_string();
-
-                                            Ok(format!("\"{key}\": {value}"))
-                                        })
-                                        .collect::<Result<Vec<_>>>()?
+                                    JsonIter::Vec(
+                                        column_defs
+                                            .iter()
+                                            .map(|column_def| column_def.name.clone())
+                                            .zip(values.into_iter()),
+                                    )
                                 }
-                                None => unreachable!(),
+                                None => break,
                             }
                         }
                     }
+                    .map(|(key, value)| {
+                        let value = JsonValue::try_from(value)?.to_string();
+
+                        Ok(format!("\"{key}\": {value}"))
+                    })
+                    .collect::<Result<Vec<_>>>()?
                     .join(", ");
 
                     writeln!(file, "{{{json_string}}}").map_storage_err()?;
