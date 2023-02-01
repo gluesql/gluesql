@@ -285,9 +285,9 @@ impl StoreMut for JsonlStorage {
                     .map_storage_err()?;
 
                 for row in rows {
-                    match row {
+                    let json_string = match row {
                         DataRow::Map(hash_map) => {
-                            let json = hash_map
+                            hash_map
                                 .into_iter()
                                 // todo! why even schemaless get to here? on_where.rs L55
                                 .map(|(key, value)| {
@@ -295,15 +295,13 @@ impl StoreMut for JsonlStorage {
 
                                     Ok(format!("\"{key}\": {value}"))
                                 })
-                                .collect::<Result<Vec<_>>>()?;
-                            let json = json.join(", ");
-                            writeln!(file, "{{{json}}}").map_storage_err()?;
+                                .collect::<Result<Vec<_>>>()?
                         }
                         DataRow::Vec(values) => {
                             match &schema.column_defs {
                                 Some(column_defs) => {
                                     // todo! validate columns?
-                                    let json = column_defs
+                                    column_defs
                                         .iter()
                                         .map(|column_def| column_def.name.clone())
                                         .zip(values.into_iter())
@@ -312,14 +310,15 @@ impl StoreMut for JsonlStorage {
 
                                             Ok(format!("\"{key}\": {value}"))
                                         })
-                                        .collect::<Result<Vec<_>>>()?;
-                                    let json = json.join(", ");
-                                    writeln!(file, "{{{json}}}").map_storage_err()?;
+                                        .collect::<Result<Vec<_>>>()?
                                 }
                                 None => unreachable!(),
-                            };
+                            }
                         }
                     }
+                    .join(", ");
+
+                    writeln!(file, "{{{json_string}}}").map_storage_err()?;
                 }
 
                 Ok(())
