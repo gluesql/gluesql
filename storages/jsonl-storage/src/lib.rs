@@ -62,6 +62,7 @@ enum JsonlStorageError {
     CannotConvertToString,
     TableDoesNotExist,
     ColumnDoesNotExist,
+    WrongSchemaFile,
 }
 
 impl fmt::Display for JsonlStorageError {
@@ -71,6 +72,7 @@ impl fmt::Display for JsonlStorageError {
             JsonlStorageError::CannotConvertToString => "cannot convert to string",
             JsonlStorageError::TableDoesNotExist => "table does not exist",
             JsonlStorageError::ColumnDoesNotExist => "column does not exist",
+            JsonlStorageError::WrongSchemaFile => "schema file is wrong",
         };
 
         write!(f, "{}", payload)
@@ -78,37 +80,6 @@ impl fmt::Display for JsonlStorageError {
 }
 
 impl JsonlStorage {
-    // fn fetch_all_schemas(&self) -> Result<HashMap<String, Schema>> {
-    //     let paths = fs::read_dir(self.path).map_storage_err()?;
-    //     paths
-    //         .filter(|result| {
-    //             result
-    //                 .as_ref()
-    //                 .map(|dir_entry| {
-    //                     dir_entry
-    //                         .path()
-    //                         .extension()
-    //                         .map(|os_str| os_str.to_str() == Some("jsonl"))
-    //                         .unwrap_or(false)
-    //                 })
-    //                 .unwrap_or(false)
-    //         })
-    //         .map(|result| -> Result<_> {
-    //             let path = result.map_storage_err()?.path();
-    //             let table_name = path
-    //                 .file_stem()
-    //                 .map_storage_err(JsonlStorageError::FileNotFound.to_string())?
-    //                 .to_str()
-    //                 .map_storage_err(JsonlStorageError::CannotConvertToString.to_string())?
-    //                 .to_owned();
-
-    //             let jsonl_table = JsonlStorage::new_table(table_name.clone());
-
-    //             Ok((table_name, jsonl_table))
-    //         })
-    //         .collect::<Result<HashMap<String, Schema>>>()
-    // }
-
     pub fn new(path: &str) -> Result<Self> {
         fs::create_dir_all(path).map_storage_err()?;
         let path = PathBuf::from(path);
@@ -116,7 +87,7 @@ impl JsonlStorage {
         Ok(Self { path })
     }
 
-    fn get_schema(&self, table_name: &str) -> Result<Option<Schema>> {
+    fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         if !self.data_path(table_name).exists() {
             return Ok(None);
         };
@@ -133,9 +104,13 @@ impl JsonlStorage {
                 let statement = translate(&parsed)?;
 
                 let column_defs = match statement {
-                    gluesql_core::ast::Statement::CreateTable { columns, .. } => columns,
-                    _ => todo!(),
-                };
+                    gluesql_core::ast::Statement::CreateTable { columns, .. } => {
+                        Ok::<_, Error>(columns)
+                    }
+                    _ => Err(Error::StorageMsg(
+                        JsonlStorageError::WrongSchemaFile.to_string(),
+                    )),
+                }?;
 
                 Ok::<_, Error>(Some(column_defs))
             }
@@ -189,7 +164,7 @@ impl JsonlStorage {
         //     .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())?
         //     .to_owned();
         let schema = self
-            .get_schema(table_name)?
+            .fetch_schema(table_name)?
             .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())?;
         let data_path = self.data_path(table_name);
         let lines = read_lines(data_path).map_storage_err()?;
@@ -231,9 +206,7 @@ impl JsonlStorage {
 #[async_trait(?Send)]
 impl Store for JsonlStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
-        self.get_schema(table_name)
-        // Ok(Some(self.get_schema(table_name)))
-        // Ok(self.tables.get(table_name).map(ToOwned::to_owned))
+        self.fetch_schema(table_name)
     }
 
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
@@ -260,23 +233,10 @@ impl Store for JsonlStorage {
                     .map_storage_err(JsonlStorageError::CannotConvertToString.to_string())?
                     .to_owned();
 
-                // todo! check and add schema
-                // Ok(JsonlStorage::get_schema(table_name.clone()))
-                self.get_schema(table_name.as_str())?
+                self.fetch_schema(table_name.as_str())?
                     .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())
-
-                // Ok((table_name, jsonl_table))
             })
             .collect::<Result<Vec<Schema>>>()
-        // let mut vec = self
-        //     .tables
-        //     .iter()
-        //     .map(|table| table.1.to_owned())
-        //     .collect::<Vec<_>>();
-        // // vec.sort();
-        // vec.sort_by(|key_a, key_b| key_a.table_name.cmp(&key_b.table_name));
-
-        // Ok(vec)
     }
 
     async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<DataRow>> {
@@ -337,7 +297,7 @@ impl StoreMut for JsonlStorage {
         }
 
         let schema = self
-            .get_schema(table_name)?
+            .fetch_schema(table_name)?
             .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())?;
         let table_path = JsonlStorage::data_path(self, table_name);
 
@@ -352,15 +312,12 @@ impl StoreMut for JsonlStorage {
                 DataRow::Map(hash_map) => JsonIter::Map(hash_map.into_iter()),
                 DataRow::Vec(values) => {
                     match &schema.column_defs {
-                        Some(column_defs) => {
-                            // todo! validate columns?
-                            JsonIter::Vec(
-                                column_defs
-                                    .iter()
-                                    .map(|column_def| column_def.name.clone())
-                                    .zip(values.into_iter()),
-                            )
-                        }
+                        Some(column_defs) => JsonIter::Vec(
+                            column_defs
+                                .iter()
+                                .map(|column_def| column_def.name.clone())
+                                .zip(values.into_iter()),
+                        ),
                         None => break, // todo! looks like unreachable
                     }
                 }
@@ -427,10 +384,15 @@ impl StoreMut for JsonlStorage {
 
 #[test]
 fn jsonl_storage_test() {
-    use crate::*;
-    // use futures::executor::block_on;
-    use gluesql_core::prelude::Glue;
-    use gluesql_core::prelude::{Payload, Value};
+    use {
+        crate::*,
+        gluesql_core::{
+            data::ValueError,
+            prelude::{
+                Glue, {Payload, Value},
+            },
+        },
+    };
 
     let path = "./samples/";
     let jsonl_storage = JsonlStorage::new(path).unwrap();
@@ -452,31 +414,19 @@ fn jsonl_storage_test() {
     ]);
     assert_eq!(actual, &expected);
 
-    // let actual = glue.execute("SELECT * FROM Schema").unwrap();
-    // let actual = actual.get(0).unwrap();
-    // let expected = Payload::Select {
-    //     labels: ["id", "name"].into_iter().map(ToOwned::to_owned).collect(),
-    //     rows: vec![
-    //         vec![Value::I64(1), Value::Str("Glue".to_owned())],
-    //         vec![Value::I64(2), Value::Str("SQL".to_owned())],
-    //     ],
-    // };
-    // assert_eq!(actual, &expected);
+    let actual = glue.execute("SELECT * FROM Schema").unwrap();
+    let actual = actual.get(0).unwrap();
+    let expected = Payload::Select {
+        labels: ["id", "name"].into_iter().map(ToOwned::to_owned).collect(),
+        rows: vec![
+            vec![Value::I64(1), Value::Str("Glue".to_owned())],
+            vec![Value::I64(2), Value::Str("SQL".to_owned())],
+        ],
+    };
+    assert_eq!(actual, &expected);
 
-    // let table_name = "Items".to_string();
-    // let schema = Schema {
-    //     table_name: table_name.clone(),
-    //     column_defs: None,
-    //     indexes: Vec::new(),
-    //     created: NaiveDateTime::default(),
-    // };
-    // block_on(async {
-    //     jsonl_storage.insert_schema(&schema);
-    //     let actual = jsonl_storage
-    //         .fetch_schema(&table_name)
-    //         .await
-    //         .unwrap()
-    //         .unwrap();
-    //     assert_eq!(actual, schema);
-    // });
+    let actual = glue.execute("SELECT * FROM WrongFormat");
+    let expected = Err(ValueError::InvalidJsonString("{".to_owned()).into());
+
+    assert_eq!(actual, expected);
 }
