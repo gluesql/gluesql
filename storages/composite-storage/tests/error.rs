@@ -112,22 +112,3 @@ fn composite_storage_index() {
         Err(Error::StorageMsg("[Storage] Index::drop_index is not supported".to_owned()))
     );
 }
-
-/*
-#[cfg(feature = "transaction")]
-#[test]
-fn composite_storage_transaction() {
-    use gluesql_memory_storage::MemoryStorage;
-
-    let mut storage = CompositeStorage::default();
-    storage.push("mem", MemoryStorage::default());
-    storage.set_default("mem");
-
-    let mut glue = Glue::new(storage);
-
-    exec!(glue "CREATE TABLE TxTest (id INTEGER);");
-    test!(glue "BEGIN", Err(Error::StorageMsg("[Storage] Transaction::begin is not supported".to_owned())));
-    test!(glue "COMMIT", Err(Error::StorageMsg("[Storage] Transaction::commit is not supported".to_owned())));
-    test!(glue "ROLLBACK", Err(Error::StorageMsg("[Storage] Transaction::rollback is not supported".to_owned())));
-}
-*/
