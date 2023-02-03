@@ -16,9 +16,9 @@ test_case!(substr, async move {
             "INSERT INTO Item VALUES ('Blop mc blee'), ('B'), ('Steven the &long named$ folken!')",
             Ok(Payload::Insert(3)),
         ),
-        ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),
+        ("CREATE TABLE SingleItem (food TEXT)", Ok(Payload::Create)),
         (
-            r#"INSERT INTO SingleItem VALUES (0)"#,
+            "INSERT INTO SingleItem VALUES (SUBSTR('LobSter',1))",
             Ok(Payload::Insert(1)),
         ),
         (
