@@ -84,7 +84,18 @@ impl JsonlStorage {
         fs::create_dir_all(path).map_storage_err()?;
         let paths = fs::read_dir(path).map_storage_err()?;
         let tables = paths
-            .into_iter()
+            .filter(|result| {
+                result
+                    .as_ref()
+                    .map(|dir_entry| {
+                        dir_entry
+                            .path()
+                            .extension()
+                            .map(|os_str| os_str.to_str() == Some("json"))
+                            .unwrap_or(false)
+                    })
+                    .unwrap_or(false)
+            })
             .map(|result| -> Result<_> {
                 let path = result.map_storage_err()?.path();
                 let table_name = path
@@ -189,8 +200,6 @@ impl JsonlStorage {
                 }
                 None => DataRow::Map(hash_map),
             };
-            // todo! okay not to use UUID?
-            // todo! line starts from 1?
             let key = Key::I64((key + 1).try_into().map_storage_err()?);
 
             Ok((key, data_row))
@@ -305,7 +314,7 @@ impl StoreMut for JsonlStorage {
                                             .zip(values.into_iter()),
                                     )
                                 }
-                                None => break,
+                                None => break, // todo! looks like unreachable
                             }
                         }
                     }
