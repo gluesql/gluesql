@@ -23,15 +23,15 @@ pub enum SortError {
     Unreachable,
 }
 
-pub struct Sort<'a> {
-    storage: &'a dyn GStore,
+pub struct Sort<'a, T: GStore> {
+    storage: &'a T,
     context: Option<Rc<RowContext<'a>>>,
     order_by: &'a [OrderByExpr],
 }
 
-impl<'a> Sort<'a> {
+impl<'a, T: GStore> Sort<'a, T> {
     pub fn new(
-        storage: &'a dyn GStore,
+        storage: &'a T,
         context: Option<Rc<RowContext<'a>>>,
         order_by: &'a [OrderByExpr],
     ) -> Self {
@@ -155,45 +155,42 @@ impl<'a> Sort<'a> {
             .try_collect::<Vec<(Vec<(Value, Option<bool>)>, Row)>>()
             .await
             .map(Vector::from)?
-            .sort_by(|(values_a, ..), (values_b, ..)| Self::sort_by(values_a, values_b))
+            .sort_by(|(values_a, ..), (values_b, ..)| sort_by(values_a, values_b))
             .into_iter()
             .map(|(.., row)| Ok(row));
 
         Ok(Rows::OrderBy(stream::iter(rows)))
     }
+}
 
-    pub fn sort_by(
-        values_a: &[(Value, Option<bool>)],
-        values_b: &[(Value, Option<bool>)],
-    ) -> Ordering {
-        let pairs = values_a
-            .iter()
-            .map(|(a, _)| a)
-            .zip(values_b.iter())
-            .map(|(a, (b, asc))| (a, b, asc.unwrap_or(true)));
+pub fn sort_by(values_a: &[(Value, Option<bool>)], values_b: &[(Value, Option<bool>)]) -> Ordering {
+    let pairs = values_a
+        .iter()
+        .map(|(a, _)| a)
+        .zip(values_b.iter())
+        .map(|(a, (b, asc))| (a, b, asc.unwrap_or(true)));
 
-        for (value_a, value_b, asc) in pairs {
-            let apply_asc = |ord: Ordering| if asc { ord } else { ord.reverse() };
+    for (value_a, value_b, asc) in pairs {
+        let apply_asc = |ord: Ordering| if asc { ord } else { ord.reverse() };
 
-            match (value_a, value_b) {
-                (Value::Null, Value::Null) => {}
-                (Value::Null, _) => {
-                    return apply_asc(Ordering::Greater);
-                }
-                (_, Value::Null) => {
-                    return apply_asc(Ordering::Less);
-                }
-                _ => {}
-            };
-
-            match value_a.partial_cmp(value_b) {
-                Some(ord) if ord != Ordering::Equal => {
-                    return apply_asc(ord);
-                }
-                _ => {}
+        match (value_a, value_b) {
+            (Value::Null, Value::Null) => {}
+            (Value::Null, _) => {
+                return apply_asc(Ordering::Greater);
             }
-        }
+            (_, Value::Null) => {
+                return apply_asc(Ordering::Less);
+            }
+            _ => {}
+        };
 
-        Ordering::Equal
+        match value_a.partial_cmp(value_b) {
+            Some(ord) if ord != Ordering::Equal => {
+                return apply_asc(ord);
+            }
+            _ => {}
+        }
     }
+
+    Ordering::Equal
 }

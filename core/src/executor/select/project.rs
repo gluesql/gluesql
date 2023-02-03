@@ -11,15 +11,15 @@ use {
     std::rc::Rc,
 };
 
-pub struct Project<'a> {
-    storage: &'a dyn GStore,
+pub struct Project<'a, T: GStore> {
+    storage: &'a T,
     context: Option<Rc<RowContext<'a>>>,
     fields: &'a [SelectItem],
 }
 
-impl<'a> Project<'a> {
+impl<'a, T: GStore> Project<'a, T> {
     pub fn new(
-        storage: &'a dyn GStore,
+        storage: &'a T,
         context: Option<Rc<RowContext<'a>>>,
         fields: &'a [SelectItem],
     ) -> Self {

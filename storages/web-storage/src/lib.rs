@@ -6,7 +6,7 @@ use {
     gloo_storage::{errors::StorageError, LocalStorage, SessionStorage, Storage},
     gluesql_core::{
         data::{Key, Schema},
-        result::{Error, MutResult, Result, TrySelf},
+        result::{Error, Result},
         store::{DataRow, RowIter, Store, StoreMut},
     },
     serde::{Deserialize, Serialize},
@@ -123,8 +123,9 @@ impl Store for WebStorage {
     }
 }
 
-impl WebStorage {
-    pub fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
+#[async_trait(?Send)]
+impl StoreMut for WebStorage {
+    async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let mut table_names: Vec<String> = self.get(TABLE_NAMES_PATH)?.unwrap_or_default();
         table_names.push(schema.table_name.clone());
 
@@ -132,7 +133,7 @@ impl WebStorage {
         self.set(format!("{}/{}", SCHEMA_PATH, schema.table_name), schema)
     }
 
-    pub fn delete_schema(&mut self, table_name: &str) -> Result<()> {
+    async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         let mut table_names: Vec<String> = self.get(TABLE_NAMES_PATH)?.unwrap_or_default();
         table_names
             .iter()
@@ -142,11 +143,10 @@ impl WebStorage {
         self.set(TABLE_NAMES_PATH, table_names)?;
         self.delete(format!("{}/{}", SCHEMA_PATH, table_name));
         self.delete(format!("{}/{}", DATA_PATH, table_name));
-
         Ok(())
     }
 
-    pub fn append_data(&mut self, table_name: &str, new_rows: Vec<DataRow>) -> Result<()> {
+    async fn append_data(&mut self, table_name: &str, new_rows: Vec<DataRow>) -> Result<()> {
         let path = format!("{}/{}", DATA_PATH, table_name);
         let rows = self.get::<Vec<(Key, DataRow)>>(&path)?.unwrap_or_default();
         let new_rows = new_rows.into_iter().map(|row| {
@@ -160,7 +160,7 @@ impl WebStorage {
         self.set(path, rows)
     }
 
-    pub fn insert_data(&mut self, table_name: &str, new_rows: Vec<(Key, DataRow)>) -> Result<()> {
+    async fn insert_data(&mut self, table_name: &str, new_rows: Vec<(Key, DataRow)>) -> Result<()> {
         let path = format!("{}/{}", DATA_PATH, table_name);
         let mut rows = self.get::<Vec<(Key, DataRow)>>(&path)?.unwrap_or_default();
 
@@ -175,7 +175,7 @@ impl WebStorage {
         self.set(path, rows)
     }
 
-    pub fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
+    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let path = format!("{}/{}", DATA_PATH, table_name);
         let mut rows = self.get::<Vec<(Key, DataRow)>>(&path)?.unwrap_or_default();
 
@@ -186,33 +186,6 @@ impl WebStorage {
         }
 
         self.set(path, rows)
-    }
-}
-
-#[async_trait(?Send)]
-impl StoreMut for WebStorage {
-    async fn insert_schema(mut self, schema: &Schema) -> MutResult<Self, ()> {
-        WebStorage::insert_schema(&mut self, schema).try_self(self)
-    }
-
-    async fn delete_schema(mut self, table_name: &str) -> MutResult<Self, ()> {
-        WebStorage::delete_schema(&mut self, table_name).try_self(self)
-    }
-
-    async fn append_data(mut self, table_name: &str, rows: Vec<DataRow>) -> MutResult<Self, ()> {
-        WebStorage::append_data(&mut self, table_name, rows).try_self(self)
-    }
-
-    async fn insert_data(
-        mut self,
-        table_name: &str,
-        rows: Vec<(Key, DataRow)>,
-    ) -> MutResult<Self, ()> {
-        WebStorage::insert_data(&mut self, table_name, rows).try_self(self)
-    }
-
-    async fn delete_data(mut self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()> {
-        WebStorage::delete_data(&mut self, table_name, keys).try_self(self)
     }
 }
 

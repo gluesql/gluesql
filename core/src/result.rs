@@ -9,7 +9,6 @@ use {
             SelectError, SortError, UpdateError, ValidateError,
         },
         plan::PlanError,
-        store::{GStore, GStoreMut},
         translate::TranslateError,
     },
     serde::Serialize,
@@ -88,7 +87,6 @@ pub enum Error {
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
-pub type MutResult<T, U> = std::result::Result<(T, U), (T, Error)>;
 
 impl PartialEq for Error {
     fn eq(&self, other: &Error) -> bool {
@@ -122,22 +120,6 @@ impl PartialEq for Error {
             (StringExt(e), StringExt(e2)) => e == e2,
             (Plan(e), Plan(e2)) => e == e2,
             _ => false,
-        }
-    }
-}
-
-pub trait TrySelf<V>
-where
-    Self: Sized,
-{
-    fn try_self<T: GStore + GStoreMut>(self, storage: T) -> MutResult<T, V>;
-}
-
-impl<V> TrySelf<V> for Result<V> {
-    fn try_self<T: GStore + GStoreMut>(self, storage: T) -> MutResult<T, V> {
-        match self {
-            Ok(v) => Ok((storage, v)),
-            Err(e) => Err((storage, e)),
         }
     }
 }

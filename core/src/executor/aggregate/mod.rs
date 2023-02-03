@@ -21,8 +21,8 @@ use {
 
 pub use error::AggregateError;
 
-pub struct Aggregator<'a> {
-    storage: &'a dyn GStore,
+pub struct Aggregator<'a, T: GStore> {
+    storage: &'a T,
     fields: &'a [SelectItem],
     group_by: &'a [Expr],
     having: Option<&'a Expr>,
@@ -35,9 +35,9 @@ enum Stream<T1, T2> {
     Aggregate(T2),
 }
 
-impl<'a> Aggregator<'a> {
+impl<'a, T: GStore> Aggregator<'a, T> {
     pub fn new(
-        storage: &'a dyn GStore,
+        storage: &'a T,
         fields: &'a [SelectItem],
         group_by: &'a [Expr],
         having: Option<&'a Expr>,
@@ -121,7 +121,7 @@ impl<'a> Aggregator<'a> {
 
     pub fn group_by_having(
         &self,
-        state: State<'a>,
+        state: State<'a, T>,
     ) -> Result<
         impl TryStream<Ok = AggregateContext<'a>, Error = Error, Item = Result<AggregateContext<'a>>>,
     > {
@@ -190,11 +190,11 @@ impl<'a> Aggregator<'a> {
 }
 
 #[async_recursion(?Send)]
-async fn aggregate<'a>(
-    state: State<'a>,
+async fn aggregate<'a, T: GStore>(
+    state: State<'a, T>,
     filter_context: Option<Rc<RowContext<'a>>>,
     expr: &'a Expr,
-) -> Result<State<'a>> {
+) -> Result<State<'a, T>> {
     let aggr = |state, expr| aggregate(state, filter_context.as_ref().map(Rc::clone), expr);
 
     match expr {
