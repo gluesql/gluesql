@@ -38,6 +38,10 @@ impl CompositeStorage {
         self.default_engine = Some(default_engine.into());
     }
 
+    pub fn remove_default(&mut self) {
+        self.default_engine = None;
+    }
+
     pub fn push<T: Into<String>, U: Into<Box<dyn IStorage>>>(&mut self, engine: T, storage: U) {
         self.storages.insert(engine.into(), storage.into());
     }

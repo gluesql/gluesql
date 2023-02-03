@@ -17,9 +17,17 @@ impl StoreMut for CompositeStorage {
             .or(self.default_engine.as_ref())
             .and_then(|engine| self.storages.get_mut(engine));
 
-        match storage {
-            Some(storage) => storage.insert_schema(schema).await,
-            None => Err(Error::StorageMsg(format!(
+        match (storage, schema.engine.is_some()) {
+            (Some(storage), true) => storage.insert_schema(schema).await,
+            (Some(storage), false) => {
+                let schema = Schema {
+                    engine: self.default_engine.clone(),
+                    ..schema.clone()
+                };
+
+                storage.insert_schema(&schema).await
+            }
+            (None, _) => Err(Error::StorageMsg(format!(
                 "storage not found for table: {}",
                 schema.table_name
             ))),
