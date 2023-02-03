@@ -69,19 +69,26 @@ impl CompositeStorage {
             .ok_or_else(|| Error::StorageMsg(format!("engine not found for table: {table_name}")))
     }
 
-    async fn fetch_storage(&self, table_name: &str) -> Result<Option<&Box<dyn IStorage>>> {
+    async fn fetch_storage(&self, table_name: &str) -> Result<&Box<dyn IStorage>> {
         self.fetch_engine(table_name)
             .await
-            .map(|engine| self.storages.get(&engine))
+            .map(|engine| self.storages.get(&engine))?
+            .ok_or_else(|| {
+                Error::StorageMsg(format!(
+                    "[fetch_storage] storage not found for table: {table_name}"
+                ))
+            })
     }
 
-    async fn fetch_storage_mut(
-        &mut self,
-        table_name: &str,
-    ) -> Result<Option<&mut Box<dyn IStorage>>> {
+    async fn fetch_storage_mut(&mut self, table_name: &str) -> Result<&mut Box<dyn IStorage>> {
         self.fetch_engine(table_name)
             .await
-            .map(|engine| self.storages.get_mut(&engine))
+            .map(|engine| self.storages.get_mut(&engine))?
+            .ok_or_else(|| {
+                Error::StorageMsg(format!(
+                    "[fetch_storage_mut] storage not found for table: {table_name}"
+                ))
+            })
     }
 }
 

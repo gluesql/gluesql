@@ -35,30 +35,30 @@ impl StoreMut for CompositeStorage {
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
-        match self.fetch_storage_mut(table_name).await? {
-            Some(storage) => storage.delete_schema(table_name).await,
-            None => Ok(()),
-        }
+        self.fetch_storage_mut(table_name)
+            .await?
+            .delete_schema(table_name)
+            .await
     }
 
     async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
-        match self.fetch_storage_mut(table_name).await? {
-            Some(storage) => storage.append_data(table_name, rows).await,
-            None => Ok(()),
-        }
+        self.fetch_storage_mut(table_name)
+            .await?
+            .append_data(table_name, rows)
+            .await
     }
 
     async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
-        match self.fetch_storage_mut(table_name).await? {
-            Some(storage) => storage.insert_data(table_name, rows).await,
-            None => Ok(()),
-        }
+        self.fetch_storage_mut(table_name)
+            .await?
+            .insert_data(table_name, rows)
+            .await
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
-        match self.fetch_storage_mut(table_name).await? {
-            Some(storage) => storage.delete_data(table_name, keys).await,
-            None => Ok(()),
-        }
+        self.fetch_storage_mut(table_name)
+            .await?
+            .delete_data(table_name, keys)
+            .await
     }
 }

@@ -1,7 +1,12 @@
 use {
     futures::executor::block_on,
     gluesql_composite_storage::CompositeStorage,
-    gluesql_core::{prelude::Glue, result::Error, store::Store},
+    gluesql_core::{
+        prelude::Glue,
+        result::Error,
+        store::{Store, StoreMut},
+    },
+    gluesql_memory_storage::MemoryStorage,
 };
 
 #[test]
@@ -20,6 +25,34 @@ fn error() {
         glue.execute("CREATE TABLE Foo ENGINE = NONAME;"),
         Err(Error::StorageMsg(
             "storage not found for table: Foo".to_owned()
+        ))
+    );
+
+    let storage = {
+        let storage = MemoryStorage::default();
+        let mut glue = Glue::new(storage);
+        glue.execute("CREATE TABLE WrongEngine (id INTEGER) ENGINE = SomethingElse")
+            .unwrap();
+
+        glue.storage
+    };
+
+    glue.storage.push("Test", storage);
+    glue.storage.set_default("Test");
+
+    glue.execute("CREATE TABLE Foo (id INTEGER);").unwrap();
+
+    assert_eq!(
+        block_on(glue.storage.scan_data("WrongEngine")).map(|_| ()),
+        Err(Error::StorageMsg(
+            "[fetch_storage] storage not found for table: WrongEngine".to_owned()
+        ))
+    );
+
+    assert_eq!(
+        block_on(glue.storage.delete_schema("WrongEngine")).map(|_| ()),
+        Err(Error::StorageMsg(
+            "[fetch_storage_mut] storage not found for table: WrongEngine".to_owned()
         ))
     );
 }
