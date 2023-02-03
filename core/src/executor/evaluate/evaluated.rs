@@ -188,13 +188,6 @@ pub fn exceptional_int_val_to_eval<'a>(name: String, v: Value) -> Result<Evaluat
     }
 }
 
-pub fn exceptional_str_val_to_eval<'a>(name: String, v: Value) -> Result<Evaluated<'a>> {
-    match v {
-        Value::Null => Ok(Evaluated::from(Value::Null)),
-        _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
-    }
-}
-
 impl<'a> Evaluated<'a> {
     pub fn add<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
         binary_op(self, other, |l, r| l.add(r), |l, r| l.add(r))
@@ -346,24 +339,20 @@ impl<'a> Evaluated<'a> {
 
     pub fn ltrim(self, name: String, chars: Option<Evaluated<'_>>) -> Result<Evaluated<'a>> {
         let (source, range) = match self {
-            Evaluated::Literal(literal) => {
-                let value = Value::try_from(literal)?;
-                match value {
-                    Value::Str(string) => {
-                        let end = string.len();
-                        (string, 0..end)
-                    }
-                    _ => return exceptional_str_val_to_eval(name, value),
-                }
+            Evaluated::Literal(Literal::Text(v)) => {
+                let string = v.into_owned();
+                let end = string.len();
+                (string, 0..end)
+            }
+            Evaluated::Literal(Literal::Null) | Evaluated::Value(Value::Null) => {
+                return Ok(Evaluated::from(Value::Null))
             }
             Evaluated::StrSlice { source, range } => (source, range),
-            Evaluated::Value(value) => match value {
-                Value::Str(string) => {
-                    let end = string.len();
-                    (string, 0..end)
-                }
-                _ => return exceptional_str_val_to_eval(name, value),
-            },
+            Evaluated::Value(Value::Str(v)) => {
+                let end = v.len();
+                (v, 0..end)
+            }
+            _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
         };
 
         let expr_str = source.as_str();
@@ -432,24 +421,20 @@ impl<'a> Evaluated<'a> {
 
     pub fn rtrim(self, name: String, chars: Option<Evaluated<'_>>) -> Result<Evaluated<'a>> {
         let (source, range) = match self {
-            Evaluated::Literal(literal) => {
-                let value = Value::try_from(literal)?;
-                match value {
-                    Value::Str(string) => {
-                        let end = string.len();
-                        (string, 0..end)
-                    }
-                    _ => return exceptional_str_val_to_eval(name, value),
-                }
+            Evaluated::Literal(Literal::Text(v)) => {
+                let string = v.into_owned();
+                let end = string.len();
+                (string, 0..end)
+            }
+            Evaluated::Literal(Literal::Null) | Evaluated::Value(Value::Null) => {
+                return Ok(Evaluated::from(Value::Null))
             }
             Evaluated::StrSlice { source, range } => (source, range),
-            Evaluated::Value(value) => match value {
-                Value::Str(string) => {
-                    let end = string.len();
-                    (string, 0..end)
-                }
-                _ => return exceptional_str_val_to_eval(name, value),
-            },
+            Evaluated::Value(Value::Str(v)) => {
+                let end = v.len();
+                (v, 0..end)
+            }
+            _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
         };
 
         let expr_str = source.as_str();
@@ -515,24 +500,20 @@ impl<'a> Evaluated<'a> {
         count: Option<Evaluated<'a>>,
     ) -> Result<Evaluated<'a>> {
         let (source, range) = match self {
-            Evaluated::Literal(literal) => {
-                let value = Value::try_from(literal)?;
-                match value {
-                    Value::Str(string) => {
-                        let end = string.len();
-                        (string, 0..end)
-                    }
-                    _ => return exceptional_str_val_to_eval(name, value),
-                }
+            Evaluated::Literal(Literal::Text(v)) => {
+                let string = v.into_owned();
+                let end = string.len();
+                (string, 0..end)
+            }
+            Evaluated::Literal(Literal::Null) | Evaluated::Value(Value::Null) => {
+                return Ok(Evaluated::from(Value::Null))
             }
             Evaluated::StrSlice { source, range } => (source, range),
-            Evaluated::Value(value) => match value {
-                Value::Str(string) => {
-                    let end = string.len();
-                    (string, 0..end)
-                }
-                _ => return exceptional_str_val_to_eval(name, value),
-            },
+            Evaluated::Value(Value::Str(v)) => {
+                let end = v.len();
+                (v, 0..end)
+            }
+            _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
         };
 
         let start = {
@@ -575,24 +556,20 @@ impl<'a> Evaluated<'a> {
         trim_where_field: &'a Option<TrimWhereField>,
     ) -> Result<Evaluated<'a>> {
         let (source, range) = match self {
-            Evaluated::Literal(literal) => {
-                let value = Value::try_from(literal)?;
-                match value {
-                    Value::Str(string) => {
-                        let end = string.len();
-                        (string, 0..end)
-                    }
-                    _ => return exceptional_str_val_to_eval(name, value),
-                }
+            Evaluated::Literal(Literal::Text(v)) => {
+                let string = v.into_owned();
+                let end = string.len();
+                (string, 0..end)
+            }
+            Evaluated::Literal(Literal::Null) | Evaluated::Value(Value::Null) => {
+                return Ok(Evaluated::from(Value::Null))
             }
             Evaluated::StrSlice { source, range } => (source, range),
-            Evaluated::Value(value) => match value {
-                Value::Str(string) => {
-                    let end = string.len();
-                    (string, 0..end)
-                }
-                _ => return exceptional_str_val_to_eval(name, value),
-            },
+            Evaluated::Value(Value::Str(v)) => {
+                let end = v.len();
+                (v, 0..end)
+            }
+            _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
         };
 
         let expr_str = source.as_str();
