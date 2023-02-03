@@ -62,17 +62,20 @@ enum JsonlStorageError {
     CannotConvertToString,
     TableDoesNotExist,
     ColumnDoesNotExist,
-    WrongSchemaFile,
+    WrongSchemaFile(String),
 }
 
 impl fmt::Display for JsonlStorageError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let payload = match self {
-            JsonlStorageError::FileNotFound => "file not found",
-            JsonlStorageError::CannotConvertToString => "cannot convert to string",
-            JsonlStorageError::TableDoesNotExist => "table does not exist",
-            JsonlStorageError::ColumnDoesNotExist => "column does not exist",
-            JsonlStorageError::WrongSchemaFile => "schema file is wrong",
+            JsonlStorageError::FileNotFound => "file not found".to_owned(),
+            JsonlStorageError::CannotConvertToString => "cannot convert to string".to_owned(),
+            JsonlStorageError::TableDoesNotExist => "table does not exist".to_owned(),
+            JsonlStorageError::ColumnDoesNotExist => "column does not exist".to_owned(),
+            JsonlStorageError::WrongSchemaFile(schema_path) => {
+                "schema file is wrong: ".to_owned() + schema_path
+                // format!("schema file is wrong: {}", schema_path)
+            }
         };
 
         write!(f, "{}", payload)
@@ -96,7 +99,7 @@ impl JsonlStorage {
         // todo: try then_some
         let column_defs = match schema_path.exists() {
             true => {
-                let mut file = File::open(schema_path).map_storage_err()?;
+                let mut file = File::open(&schema_path).map_storage_err()?;
                 let mut ddl = String::new();
                 file.read_to_string(&mut ddl).map_storage_err()?;
 
@@ -108,7 +111,13 @@ impl JsonlStorage {
                         Ok::<_, Error>(columns)
                     }
                     _ => Err(Error::StorageMsg(
-                        JsonlStorageError::WrongSchemaFile.to_string(),
+                        JsonlStorageError::WrongSchemaFile(
+                            schema_path
+                                .to_str()
+                                .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())?
+                                .to_string(),
+                        )
+                        .to_string(),
                     )),
                 }?;
 
