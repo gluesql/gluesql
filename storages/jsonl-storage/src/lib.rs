@@ -91,7 +91,7 @@ impl JsonlStorage {
                         dir_entry
                             .path()
                             .extension()
-                            .map(|os_str| os_str.to_str() == Some("json"))
+                            .map(|os_str| os_str.to_str() == Some("jsonl"))
                             .unwrap_or(false)
                     })
                     .unwrap_or(false)
@@ -104,7 +104,7 @@ impl JsonlStorage {
                     .to_str()
                     .map_storage_err(JsonlStorageError::CannotConvertToString.to_string())?
                     .to_owned()
-                    .replace(".json", "");
+                    .replace(".jsonl", "");
 
                 let jsonl_table = JsonlStorage::new_table(table_name.clone());
 
@@ -127,7 +127,7 @@ impl JsonlStorage {
     }
 
     fn data_path(&self, table_name: &str) -> Result<PathBuf> {
-        let path = self.path_by(table_name, "json")?;
+        let path = self.path_by(table_name, "jsonl")?;
 
         Ok(PathBuf::from(path))
     }
@@ -253,7 +253,7 @@ where
 #[async_trait(?Send)]
 impl StoreMut for JsonlStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
-        let path = format!("{}/{}.json", self.path.display(), schema.table_name);
+        let path = format!("{}/{}.jsonl", self.path.display(), schema.table_name);
         let path = PathBuf::from(path);
 
         if schema.column_defs.is_some() {
