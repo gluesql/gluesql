@@ -91,7 +91,21 @@ impl JsonlStorage {
                         dir_entry
                             .path()
                             .extension()
-                            .map(|os_str| os_str.to_str() == Some("jsonl"))
+                            .map(|os_str| {
+                                os_str.to_str() == Some("jsonl")
+                                // match os_str.to_str() {
+                                //     Some(str) => match str {
+                                //         "jsonl" => true,
+                                //         "sql" => {
+                                //             let table_name = dir_entry.path().file_stem();
+                                //             todo!();
+                                //             false
+                                //         }
+                                //         _ => false,
+                                //     },
+                                //     None => false,
+                                // }
+                            })
                             .unwrap_or(false)
                     })
                     .unwrap_or(false)
@@ -99,12 +113,12 @@ impl JsonlStorage {
             .map(|result| -> Result<_> {
                 let path = result.map_storage_err()?.path();
                 let table_name = path
-                    .file_name()
+                    .file_stem()
                     .map_storage_err(JsonlStorageError::FileNotFound.to_string())?
                     .to_str()
                     .map_storage_err(JsonlStorageError::CannotConvertToString.to_string())?
-                    .to_owned()
-                    .replace(".jsonl", "");
+                    .to_owned();
+                // .replace(".jsonl", "");
 
                 let jsonl_table = JsonlStorage::new_table(table_name.clone());
 
@@ -381,24 +395,56 @@ impl StoreMut for JsonlStorage {
 
 #[test]
 fn jsonl_storage_test() {
+    use crate::*;
     use futures::executor::block_on;
+    use gluesql_core::prelude::Glue;
+    use gluesql_core::prelude::{Payload, Value};
 
-    let path = ".";
-    let mut jsonl_storage = JsonlStorage::new(path).unwrap();
-    let table_name = "Items".to_string();
-    let schema = Schema {
-        table_name: table_name.clone(),
-        column_defs: None,
-        indexes: Vec::new(),
-        created: NaiveDateTime::default(),
-    };
-    block_on(async {
-        jsonl_storage.insert_schema(&schema);
-        let actual = jsonl_storage
-            .fetch_schema(&table_name)
-            .await
-            .unwrap()
-            .unwrap();
-        assert_eq!(actual, schema);
-    });
+    let path = "./samples/";
+    let jsonl_storage = JsonlStorage::new(path).unwrap();
+    let mut glue = Glue::new(jsonl_storage);
+
+    let actual = glue.execute("SELECT * FROM Schemaless").unwrap();
+    let actual = actual.get(0).unwrap();
+    let expected = Payload::SelectMap(vec![
+        [("id".to_owned(), Value::I64(1))].into_iter().collect(),
+        [("name".to_owned(), Value::Str("Glue".to_owned()))]
+            .into_iter()
+            .collect(),
+        [
+            ("id".to_owned(), Value::I64(3)),
+            ("name".to_owned(), Value::Str("SQL".to_owned())),
+        ]
+        .into_iter()
+        .collect(),
+    ]);
+    assert_eq!(actual, &expected);
+
+    // let actual = glue.execute("SELECT * FROM Schema").unwrap();
+    // let actual = actual.get(0).unwrap();
+    // let expected = Payload::Select {
+    //     labels: ["id", "name"].into_iter().map(ToOwned::to_owned).collect(),
+    //     rows: vec![
+    //         vec![Value::I64(1), Value::Str("Glue".to_owned())],
+    //         vec![Value::I64(2), Value::Str("SQL".to_owned())],
+    //     ],
+    // };
+    // assert_eq!(actual, &expected);
+
+    // let table_name = "Items".to_string();
+    // let schema = Schema {
+    //     table_name: table_name.clone(),
+    //     column_defs: None,
+    //     indexes: Vec::new(),
+    //     created: NaiveDateTime::default(),
+    // };
+    // block_on(async {
+    //     jsonl_storage.insert_schema(&schema);
+    //     let actual = jsonl_storage
+    //         .fetch_schema(&table_name)
+    //         .await
+    //         .unwrap()
+    //         .unwrap();
+    //     assert_eq!(actual, schema);
+    // });
 }
