@@ -73,7 +73,10 @@ impl PartialOrd<Literal<'_>> for Value {
             (Value::F64(l), Literal::Number(r)) => {
                 r.to_f64().map(|r| l.partial_cmp(&r)).unwrap_or(None)
             }
-            (Value::Str(l), Literal::Text(r)) => Some(l.cmp(r.as_ref())),
+            (Value::Str(l), Literal::Text(r)) => {
+                let l: &str = l.as_ref();
+                Some(l.cmp(r))
+            }
             (Value::Date(l), Literal::Text(r)) => match r.parse::<NaiveDate>() {
                 Ok(r) => l.partial_cmp(&r),
                 Err(_) => None,
@@ -340,7 +343,7 @@ impl Value {
                 Ok(Value::Str(v.to_owned()))
             }
             (DataType::Interval, Literal::Text(v)) => {
-                Interval::try_from(v.as_str()).map(Value::Interval)
+                Interval::try_from(v.as_ref()).map(Value::Interval)
             }
             (DataType::Uuid, Literal::Text(v)) => parse_uuid(v).map(Value::Uuid),
             (DataType::Boolean, Literal::Null)

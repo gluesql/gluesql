@@ -39,7 +39,7 @@ pub enum LiteralError {
 pub enum Literal<'a> {
     Boolean(bool),
     Number(Cow<'a, BigDecimal>),
-    Text(Cow<'a, String>),
+    Text(Cow<'a, str>),
     Bytea(Vec<u8>),
     Null,
 }
@@ -247,7 +247,7 @@ mod tests {
         );
         test(
             AstLiteral::QuotedString("abc".to_owned()),
-            Ok(Text(Cow::Borrowed(&("abc".to_owned())))),
+            Ok(Text(Cow::Borrowed("abc"))),
         );
         test(
             AstLiteral::HexString("1A2B".to_owned()),
