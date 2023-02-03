@@ -30,10 +30,7 @@ impl TryFrom<Evaluated<'_>> for Value {
             Evaluated::StrSlice {
                 source: s,
                 range: r,
-            } => match s.as_str() {
-                "NULL" => Ok(Value::Null),
-                _ => Ok(Value::Str(s[r].to_owned())),
-            },
+            } => Ok(Value::Str(s[r].to_owned())),
             Evaluated::Value(v) => Ok(v),
         }
     }
@@ -93,9 +90,7 @@ impl TryFrom<Evaluated<'_>> for HashMap<String, Value> {
             Evaluated::Value(Value::Str(v)) => HashMap::parse_json_object(v.as_str()),
             Evaluated::Value(Value::Map(v)) => Ok(v),
             Evaluated::Value(v) => Err(EvaluateError::MapOrStringValueRequired(v.into()).into()),
-            Evaluated::StrSlice { source, range } => {
-                HashMap::parse_json_object(source[range].to_owned().as_str())
-            }
+            Evaluated::StrSlice { source, range } => HashMap::parse_json_object(&source[range]),
         }
     }
 }
