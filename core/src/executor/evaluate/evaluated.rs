@@ -102,44 +102,21 @@ impl<'a> PartialEq for Evaluated<'a> {
             (Evaluated::Literal(b), Evaluated::Value(a))
             | (Evaluated::Value(a), Evaluated::Literal(b)) => a == b,
             (Evaluated::Value(a), Evaluated::Value(b)) => a == b,
+            (Evaluated::Literal(a), Evaluated::StrSlice { source, range })
+            | (Evaluated::StrSlice { source, range }, Evaluated::Literal(a)) => {
+                a == &source[range.clone()].to_owned()
+            }
+            (Evaluated::Value(a), Evaluated::StrSlice { source, range })
+            | (Evaluated::StrSlice { source, range }, Evaluated::Value(a)) => {
+                a == &source[range.clone()].to_owned()
+            }
             (
-                Evaluated::Literal(a),
+                Evaluated::StrSlice { source, range },
                 Evaluated::StrSlice {
-                    source: b,
-                    range: r,
+                    source: source2,
+                    range: range2,
                 },
-            )
-            | (
-                Evaluated::StrSlice {
-                    source: b,
-                    range: r,
-                },
-                Evaluated::Literal(a),
-            ) => a == &b[r.clone()].to_owned(),
-            (
-                Evaluated::Value(a),
-                Evaluated::StrSlice {
-                    source: b,
-                    range: r,
-                },
-            )
-            | (
-                Evaluated::StrSlice {
-                    source: b,
-                    range: r,
-                },
-                Evaluated::Value(a),
-            ) => a == &b[r.clone()].to_owned(),
-            (
-                Evaluated::StrSlice {
-                    source: a,
-                    range: ar,
-                },
-                Evaluated::StrSlice {
-                    source: b,
-                    range: br,
-                },
-            ) => a[ar.clone()] == b[br.clone()],
+            ) => source[range.clone()] == source2[range2.clone()],
         }
     }
 }
