@@ -10,7 +10,7 @@ struct JsonlTester {
 #[async_trait(?Send)]
 impl Tester<JsonlStorage> for JsonlTester {
     async fn new(namespace: &str) -> Self {
-        let path = format!("/tmp/{}", namespace);
+        let path = format!("tmp/{}", namespace);
 
         if let Err(e) = remove_dir_all(&path) {
             println!("fs::remove_file {:?}", e);

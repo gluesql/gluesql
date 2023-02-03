@@ -6,7 +6,7 @@ use {
     async_trait::async_trait,
     gluesql_core::{
         data::{HashMapJsonExt, Schema},
-        prelude::Key,
+        prelude::{parse, translate, Key},
         result::{Error, Result},
         store::{DataRow, RowIter, Store},
         {chrono::NaiveDateTime, store::StoreMut},
@@ -25,14 +25,12 @@ use {
 
 #[derive(Debug)]
 pub struct JsonlStorage {
-    tables: HashMap<String, Schema>,
     pub path: PathBuf,
 }
 
 impl Default for JsonlStorage {
     fn default() -> Self {
         JsonlStorage {
-            tables: HashMap::new(),
             path: PathBuf::from("data"),
         }
     }
@@ -80,113 +78,120 @@ impl fmt::Display for JsonlStorageError {
 }
 
 impl JsonlStorage {
+    // fn fetch_all_schemas(&self) -> Result<HashMap<String, Schema>> {
+    //     let paths = fs::read_dir(self.path).map_storage_err()?;
+    //     paths
+    //         .filter(|result| {
+    //             result
+    //                 .as_ref()
+    //                 .map(|dir_entry| {
+    //                     dir_entry
+    //                         .path()
+    //                         .extension()
+    //                         .map(|os_str| os_str.to_str() == Some("jsonl"))
+    //                         .unwrap_or(false)
+    //                 })
+    //                 .unwrap_or(false)
+    //         })
+    //         .map(|result| -> Result<_> {
+    //             let path = result.map_storage_err()?.path();
+    //             let table_name = path
+    //                 .file_stem()
+    //                 .map_storage_err(JsonlStorageError::FileNotFound.to_string())?
+    //                 .to_str()
+    //                 .map_storage_err(JsonlStorageError::CannotConvertToString.to_string())?
+    //                 .to_owned();
+
+    //             let jsonl_table = JsonlStorage::new_table(table_name.clone());
+
+    //             Ok((table_name, jsonl_table))
+    //         })
+    //         .collect::<Result<HashMap<String, Schema>>>()
+    // }
+
     pub fn new(path: &str) -> Result<Self> {
         fs::create_dir_all(path).map_storage_err()?;
-        let paths = fs::read_dir(path).map_storage_err()?;
-        let tables = paths
-            .filter(|result| {
-                result
-                    .as_ref()
-                    .map(|dir_entry| {
-                        dir_entry
-                            .path()
-                            .extension()
-                            .map(|os_str| {
-                                os_str.to_str() == Some("jsonl")
-                                // match os_str.to_str() {
-                                //     Some(str) => match str {
-                                //         "jsonl" => true,
-                                //         "sql" => {
-                                //             let table_name = dir_entry.path().file_stem();
-                                //             todo!();
-                                //             false
-                                //         }
-                                //         _ => false,
-                                //     },
-                                //     None => false,
-                                // }
-                            })
-                            .unwrap_or(false)
-                    })
-                    .unwrap_or(false)
-            })
-            .map(|result| -> Result<_> {
-                let path = result.map_storage_err()?.path();
-                let table_name = path
-                    .file_stem()
-                    .map_storage_err(JsonlStorageError::FileNotFound.to_string())?
-                    .to_str()
-                    .map_storage_err(JsonlStorageError::CannotConvertToString.to_string())?
-                    .to_owned();
-                // .replace(".jsonl", "");
-
-                let jsonl_table = JsonlStorage::new_table(table_name.clone());
-
-                Ok((table_name, jsonl_table))
-            })
-            .collect::<Result<HashMap<String, Schema>>>()?;
-
         let path = PathBuf::from(path);
 
-        Ok(Self { tables, path })
+        Ok(Self { path })
     }
 
-    fn new_table(table_name: String) -> Schema {
-        Schema {
-            table_name,
-            column_defs: None,
+    fn get_schema(&self, table_name: &str) -> Result<Option<Schema>> {
+        if !self.data_path(table_name).exists() {
+            return Ok(None);
+        };
+
+        let schema_path = self.schema_path(table_name);
+        // todo: try then_some
+        let column_defs = match schema_path.exists() {
+            true => {
+                let mut file = File::open(schema_path).map_storage_err()?;
+                let mut ddl = String::new();
+                file.read_to_string(&mut ddl).map_storage_err()?;
+
+                let parsed = parse(ddl)?.into_iter().next().unwrap();
+                let statement = translate(&parsed)?;
+
+                let column_defs = match statement {
+                    gluesql_core::ast::Statement::CreateTable { columns, .. } => columns,
+                    _ => todo!(),
+                };
+
+                Ok::<_, Error>(Some(column_defs))
+            }
+            false => Ok(None),
+        }?;
+
+        Ok(Some(Schema {
+            table_name: table_name.to_owned(),
+            column_defs,
             indexes: vec![],
             created: NaiveDateTime::default(),
-        }
+        }))
     }
 
-    fn data_path(&self, table_name: &str) -> Result<PathBuf> {
-        let path = self.path_by(table_name, "jsonl")?;
+    fn data_path(&self, table_name: &str) -> PathBuf {
+        let path = self.path_by(table_name, "jsonl");
 
-        Ok(PathBuf::from(path))
+        PathBuf::from(path)
     }
 
-    fn schema_path(&self, table_name: &str) -> Option<PathBuf> {
-        let path = self.path_by(table_name, "sql").ok();
+    fn schema_path(&self, table_name: &str) -> PathBuf {
+        let path = self.path_by(table_name, "sql");
 
-        path.map(PathBuf::from)
+        PathBuf::from(path)
     }
 
-    fn path_by(&self, table_name: &str, extension: &str) -> Result<String, Error> {
-        let schema = self
-            .tables
-            .get(table_name)
-            .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())?;
-        let path = format!("{}/{}.{extension}", self.path.display(), schema.table_name);
+    fn path_by(&self, table_name: &str, extension: &str) -> String {
+        // let schema = self
+        //     .tables
+        //     .get(table_name)
+        //     .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())?;
+        let path = format!("{}/{}.{extension}", self.path.display(), table_name);
 
-        Ok(path)
-    }
-
-    fn insert_schema(&mut self, schema: &Schema) {
-        self.tables
-            .insert(schema.table_name.clone(), schema.to_owned());
-    }
-
-    pub fn delete_schema(&mut self, table_name: &str) {
-        self.tables.remove(table_name);
+        path
     }
 
     fn write_schema(&self, schema: &Schema) -> Result<()> {
-        let path = format!("{}/{}.sql", self.path.display(), schema.table_name);
+        // let schema_path = format!("{}/{}.sql", self.path.display(), schema.table_name);
+        let schema_path = self.schema_path(schema.table_name.as_str());
         let ddl = schema.clone().to_ddl();
-        let mut file = File::create(path).map_storage_err()?;
+        let mut file = File::create(schema_path).map_storage_err()?;
         write!(file, "{ddl}").map_storage_err()?;
 
         Ok(())
     }
 
     fn scan_data(&self, table_name: &str) -> Result<RowIter> {
+        // let schema = self
+        //     .tables
+        //     .get(table_name)
+        //     .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())?
+        //     .to_owned();
         let schema = self
-            .tables
-            .get(table_name)
-            .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())?
-            .to_owned();
-        let data_path = self.data_path(table_name)?;
+            .get_schema(table_name)?
+            .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())?;
+        let data_path = self.data_path(table_name);
         let lines = read_lines(data_path).map_storage_err()?;
         let row_iter = lines.enumerate().map(move |(key, line)| -> Result<_> {
             let hash_map = HashMap::parse_json_object(&line.map_storage_err()?)?;
@@ -226,19 +231,52 @@ impl JsonlStorage {
 #[async_trait(?Send)]
 impl Store for JsonlStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
-        Ok(self.tables.get(table_name).map(ToOwned::to_owned))
+        self.get_schema(table_name)
+        // Ok(Some(self.get_schema(table_name)))
+        // Ok(self.tables.get(table_name).map(ToOwned::to_owned))
     }
 
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
-        let mut vec = self
-            .tables
-            .iter()
-            .map(|table| table.1.to_owned())
-            .collect::<Vec<_>>();
-        // vec.sort();
-        vec.sort_by(|key_a, key_b| key_a.table_name.cmp(&key_b.table_name));
+        let paths = fs::read_dir(self.path.clone()).map_storage_err()?;
+        paths
+            .filter(|result| {
+                result
+                    .as_ref()
+                    .map(|dir_entry| {
+                        dir_entry
+                            .path()
+                            .extension()
+                            .map(|os_str| os_str.to_str() == Some("jsonl"))
+                            .unwrap_or(false)
+                    })
+                    .unwrap_or(false)
+            })
+            .map(|result| -> Result<_> {
+                let path = result.map_storage_err()?.path();
+                let table_name = path
+                    .file_stem()
+                    .map_storage_err(JsonlStorageError::FileNotFound.to_string())?
+                    .to_str()
+                    .map_storage_err(JsonlStorageError::CannotConvertToString.to_string())?
+                    .to_owned();
 
-        Ok(vec)
+                // todo! check and add schema
+                // Ok(JsonlStorage::get_schema(table_name.clone()))
+                self.get_schema(table_name.as_str())?
+                    .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())
+
+                // Ok((table_name, jsonl_table))
+            })
+            .collect::<Result<Vec<Schema>>>()
+        // let mut vec = self
+        //     .tables
+        //     .iter()
+        //     .map(|table| table.1.to_owned())
+        //     .collect::<Vec<_>>();
+        // // vec.sort();
+        // vec.sort_by(|key_a, key_b| key_a.table_name.cmp(&key_b.table_name));
+
+        // Ok(vec)
     }
 
     async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<DataRow>> {
@@ -267,29 +305,25 @@ where
 #[async_trait(?Send)]
 impl StoreMut for JsonlStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
-        let path = format!("{}/{}.jsonl", self.path.display(), schema.table_name);
-        let path = PathBuf::from(path);
+        let data_path = self.data_path(schema.table_name.as_str());
+        File::create(data_path).map_storage_err()?;
 
         if schema.column_defs.is_some() {
             self.write_schema(schema)?
         }
 
-        File::create(path).map_storage_err()?;
-        JsonlStorage::insert_schema(self, schema);
-
         Ok(())
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
-        if let Ok(table_path) = JsonlStorage::data_path(self, table_name) {
-            let schema_path = JsonlStorage::schema_path(self, table_name);
+        let data_path = self.data_path(table_name);
+        if data_path.exists() {
+            remove_file(data_path).map_storage_err()?;
+        }
 
-            remove_file(table_path).map_storage_err()?;
-            if let Some(schema_path) = schema_path {
-                remove_file(schema_path).map_storage_err()?;
-            }
-
-            JsonlStorage::delete_schema(self, table_name);
+        let schema_path = self.schema_path(table_name);
+        if schema_path.exists() {
+            remove_file(schema_path).map_storage_err()?;
         }
 
         Ok(())
@@ -302,49 +336,47 @@ impl StoreMut for JsonlStorage {
             Vec(I2),
         }
 
-        self.tables
-            .get(table_name)
-            .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())
-            .and_then(|schema| {
-                let table_path = JsonlStorage::data_path(self, table_name)?;
+        let schema = self
+            .get_schema(table_name)?
+            .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())?;
+        let table_path = JsonlStorage::data_path(self, table_name);
 
-                let mut file = OpenOptions::new()
-                    .write(true)
-                    .append(true)
-                    .open(table_path)
-                    .map_storage_err()?;
+        let mut file = OpenOptions::new()
+            .write(true)
+            .append(true)
+            .open(table_path)
+            .map_storage_err()?;
 
-                for row in rows {
-                    let json_string = match row {
-                        DataRow::Map(hash_map) => JsonIter::Map(hash_map.into_iter()),
-                        DataRow::Vec(values) => {
-                            match &schema.column_defs {
-                                Some(column_defs) => {
-                                    // todo! validate columns?
-                                    JsonIter::Vec(
-                                        column_defs
-                                            .iter()
-                                            .map(|column_def| column_def.name.clone())
-                                            .zip(values.into_iter()),
-                                    )
-                                }
-                                None => break, // todo! looks like unreachable
-                            }
+        for row in rows {
+            let json_string = match row {
+                DataRow::Map(hash_map) => JsonIter::Map(hash_map.into_iter()),
+                DataRow::Vec(values) => {
+                    match &schema.column_defs {
+                        Some(column_defs) => {
+                            // todo! validate columns?
+                            JsonIter::Vec(
+                                column_defs
+                                    .iter()
+                                    .map(|column_def| column_def.name.clone())
+                                    .zip(values.into_iter()),
+                            )
                         }
+                        None => break, // todo! looks like unreachable
                     }
-                    .map(|(key, value)| {
-                        let value = JsonValue::try_from(value)?.to_string();
-
-                        Ok(format!("\"{key}\": {value}"))
-                    })
-                    .collect::<Result<Vec<_>>>()?
-                    .join(", ");
-
-                    writeln!(file, "{{{json_string}}}").map_storage_err()?;
                 }
+            }
+            .map(|(key, value)| {
+                let value = JsonValue::try_from(value)?.to_string();
 
-                Ok(())
+                Ok(format!("\"{key}\": {value}"))
             })
+            .collect::<Result<Vec<_>>>()?
+            .join(", ");
+
+            writeln!(file, "{{{json_string}}}").map_storage_err()?;
+        }
+
+        Ok(())
     }
 
     async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
@@ -364,7 +396,7 @@ impl StoreMut for JsonlStorage {
 
         let rows = rows.into_iter().map(|(_, data_row)| data_row).collect();
 
-        let table_path = JsonlStorage::data_path(self, table_name)?;
+        let table_path = self.data_path(table_name);
         File::create(&table_path).map_storage_err()?;
 
         self.append_data(table_name, rows).await
@@ -386,7 +418,7 @@ impl StoreMut for JsonlStorage {
             })
             .collect::<Vec<_>>();
 
-        let table_path = JsonlStorage::data_path(self, table_name)?;
+        let table_path = self.data_path(table_name);
         File::create(&table_path).map_storage_err()?;
 
         self.append_data(table_name, rows).await
@@ -396,7 +428,7 @@ impl StoreMut for JsonlStorage {
 #[test]
 fn jsonl_storage_test() {
     use crate::*;
-    use futures::executor::block_on;
+    // use futures::executor::block_on;
     use gluesql_core::prelude::Glue;
     use gluesql_core::prelude::{Payload, Value};
 
