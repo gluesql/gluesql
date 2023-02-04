@@ -10,8 +10,10 @@ use {
         result::{Error, Result},
         store::{DataRow, GStore},
     },
-    async_recursion::async_recursion,
-    futures::stream::{self, StreamExt, TryStream, TryStreamExt},
+    futures::{
+        future::LocalBoxFuture,
+        stream::{self, StreamExt, TryStream, TryStreamExt},
+    },
     iter_enum::Iterator,
     itertools::Itertools,
     serde::Serialize,
@@ -352,119 +354,123 @@ pub async fn fetch_columns<T: GStore>(
     Ok(columns)
 }
 
-#[async_recursion(?Send)]
-pub async fn fetch_relation_columns<T: GStore>(
-    storage: &T,
-    table_factor: &TableFactor,
-) -> Result<Option<Vec<String>>> {
-    match table_factor {
-        TableFactor::Table { name, alias, .. } => {
-            let columns = fetch_columns(storage, name).await?;
-            match (columns, alias) {
-                (columns, None) => Ok(columns),
-                (None, Some(_)) => Ok(None),
-                (Some(columns), Some(alias)) if alias.columns.len() > columns.len() => {
-                    Err(FetchError::TooManyColumnAliases(
-                        name.to_string(),
-                        columns.len(),
-                        alias.columns.len(),
-                    )
-                    .into())
-                }
-                (Some(columns), Some(alias)) => Ok(Some(
-                    alias
-                        .columns
-                        .iter()
-                        .cloned()
-                        .chain(columns[alias.columns.len()..columns.len()].to_vec())
-                        .collect(),
-                )),
-            }
-        }
-        TableFactor::Series { .. } => Ok(Some(vec!["N".to_owned()])),
-        TableFactor::Dictionary { dict, .. } => Ok(Some(match dict {
-            Dictionary::GlueObjects => vec![
-                "OBJECT_NAME".to_owned(),
-                "OBJECT_TYPE".to_owned(),
-                "CREATED".to_owned(),
-            ],
-            Dictionary::GlueTables => vec!["TABLE_NAME".to_owned()],
-            Dictionary::GlueTableColumns => vec![
-                "TABLE_NAME".to_owned(),
-                "COLUMN_NAME".to_owned(),
-                "COLUMN_ID".to_owned(),
-            ],
-            Dictionary::GlueIndexes => vec![
-                "TABLE_NAME".to_owned(),
-                "INDEX_NAME".to_owned(),
-                "ORDER".to_owned(),
-                "EXPRESSION".to_owned(),
-                "UNIQUENESS".to_owned(),
-            ],
-        })),
-        TableFactor::Derived {
-            subquery: Query { body, .. },
-            alias:
-                TableAlias {
-                    columns: alias_columns,
-                    name,
-                },
-        } => match body {
-            SetExpr::Select(statement) => {
-                let Select {
-                    from:
-                        TableWithJoins {
-                            relation, joins, ..
-                        },
-                    projection,
-                    ..
-                } = statement.as_ref();
-
-                let labels = fetch_labels(storage, relation, joins, projection).await?;
-                match labels {
-                    None => Ok(None),
-                    Some(labels) if alias_columns.is_empty() => Ok(Some(labels)),
-                    Some(labels) if alias_columns.len() > labels.len() => {
+pub fn fetch_relation_columns<'async_recursion, 'storage, T: GStore>(
+    storage: &'storage T,
+    table_factor: &'storage TableFactor,
+) -> LocalBoxFuture<'async_recursion, Result<Option<Vec<String>>>>
+where
+    'storage: 'async_recursion,
+{
+    Box::pin(async move {
+        match table_factor {
+            TableFactor::Table { name, alias, .. } => {
+                let columns = fetch_columns(storage, name).await?;
+                match (columns, alias) {
+                    (columns, None) => Ok(columns),
+                    (None, Some(_)) => Ok(None),
+                    (Some(columns), Some(alias)) if alias.columns.len() > columns.len() => {
                         Err(FetchError::TooManyColumnAliases(
                             name.to_string(),
-                            labels.len(),
-                            alias_columns.len(),
+                            columns.len(),
+                            alias.columns.len(),
                         )
                         .into())
                     }
-                    Some(labels) => Ok(Some(
-                        alias_columns
+                    (Some(columns), Some(alias)) => Ok(Some(
+                        alias
+                            .columns
                             .iter()
                             .cloned()
-                            .chain(labels[alias_columns.len()..labels.len()].to_vec())
+                            .chain(columns[alias.columns.len()..columns.len()].to_vec())
                             .collect(),
                     )),
                 }
             }
-            SetExpr::Values(Values(values_list)) => {
-                let total_len = values_list[0].len();
-                let alias_len = alias_columns.len();
-                if alias_len > total_len {
-                    return Err(FetchError::TooManyColumnAliases(
-                        name.into(),
-                        total_len,
-                        alias_len,
-                    )
-                    .into());
-                }
-                let labels = (alias_len + 1..=total_len)
-                    .into_iter()
-                    .map(|i| format!("column{}", i));
-                let labels = alias_columns
-                    .iter()
-                    .cloned()
-                    .chain(labels)
-                    .collect::<Vec<_>>();
+            TableFactor::Series { .. } => Ok(Some(vec!["N".to_owned()])),
+            TableFactor::Dictionary { dict, .. } => Ok(Some(match dict {
+                Dictionary::GlueObjects => vec![
+                    "OBJECT_NAME".to_owned(),
+                    "OBJECT_TYPE".to_owned(),
+                    "CREATED".to_owned(),
+                ],
+                Dictionary::GlueTables => vec!["TABLE_NAME".to_owned()],
+                Dictionary::GlueTableColumns => vec![
+                    "TABLE_NAME".to_owned(),
+                    "COLUMN_NAME".to_owned(),
+                    "COLUMN_ID".to_owned(),
+                ],
+                Dictionary::GlueIndexes => vec![
+                    "TABLE_NAME".to_owned(),
+                    "INDEX_NAME".to_owned(),
+                    "ORDER".to_owned(),
+                    "EXPRESSION".to_owned(),
+                    "UNIQUENESS".to_owned(),
+                ],
+            })),
+            TableFactor::Derived {
+                subquery: Query { body, .. },
+                alias:
+                    TableAlias {
+                        columns: alias_columns,
+                        name,
+                    },
+            } => match body {
+                SetExpr::Select(statement) => {
+                    let Select {
+                        from:
+                            TableWithJoins {
+                                relation, joins, ..
+                            },
+                        projection,
+                        ..
+                    } = statement.as_ref();
 
-                Ok(Some(labels))
-            }
-        },
-    }
+                    let labels = fetch_labels(storage, relation, joins, projection).await?;
+                    match labels {
+                        None => Ok(None),
+                        Some(labels) if alias_columns.is_empty() => Ok(Some(labels)),
+                        Some(labels) if alias_columns.len() > labels.len() => {
+                            Err(FetchError::TooManyColumnAliases(
+                                name.to_string(),
+                                labels.len(),
+                                alias_columns.len(),
+                            )
+                            .into())
+                        }
+                        Some(labels) => Ok(Some(
+                            alias_columns
+                                .iter()
+                                .cloned()
+                                .chain(labels[alias_columns.len()..labels.len()].to_vec())
+                                .collect(),
+                        )),
+                    }
+                }
+                SetExpr::Values(Values(values_list)) => {
+                    let total_len = values_list[0].len();
+                    let alias_len = alias_columns.len();
+                    if alias_len > total_len {
+                        return Err(FetchError::TooManyColumnAliases(
+                            name.into(),
+                            total_len,
+                            alias_len,
+                        )
+                        .into());
+                    }
+                    let labels = (alias_len + 1..=total_len)
+                        .into_iter()
+                        .map(|i| format!("column{}", i));
+                    let labels = alias_columns
+                        .iter()
+                        .cloned()
+                        .chain(labels)
+                        .collect::<Vec<_>>();
+
+                    Ok(Some(labels))
+                }
+            },
+        }
+    })
 }
 
 async fn fetch_join_columns<'a, T: GStore>(

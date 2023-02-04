@@ -22,8 +22,10 @@ use {
         result::{Error, Result},
         store::GStore,
     },
-    async_recursion::async_recursion,
-    futures::stream::{self, StreamExt, TryStream, TryStreamExt},
+    futures::{
+        future::LocalBoxFuture,
+        stream::{self, StreamExt, TryStream, TryStreamExt},
+    },
     std::{borrow::Cow, iter, rc::Rc},
     utils::Vector,
 };
@@ -105,105 +107,112 @@ fn sort_stateless(rows: Vec<Result<Row>>, order_by: &[OrderByExpr]) -> Result<Ve
     Ok(sorted)
 }
 
-#[async_recursion(?Send)]
-pub async fn select_with_labels<'a, T: GStore>(
-    storage: &'a T,
-    query: &'a Query,
-    filter_context: Option<Rc<RowContext<'a>>>,
-) -> Result<(
-    Option<Vec<String>>,
-    impl TryStream<Ok = Row, Error = Error, Item = Result<Row>> + 'a,
-)> {
-    let Select {
-        from: table_with_joins,
-        selection: where_clause,
-        projection,
-        group_by,
-        having,
-    } = match &query.body {
-        SetExpr::Select(statement) => statement.as_ref(),
-        SetExpr::Values(Values(values_list)) => {
-            let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
-            let (rows, labels) = rows_with_labels(values_list);
-            let rows = sort_stateless(rows, &query.order_by)?;
-            let rows = stream::iter(rows);
-            let rows = limit.apply(rows);
+pub fn select_with_labels<'async_recursion, 'storage, T: GStore>(
+    storage: &'storage T,
+    query: &'storage Query,
+    filter_context: Option<Rc<RowContext<'storage>>>,
+) -> LocalBoxFuture<
+    'async_recursion,
+    Result<(
+        Option<Vec<String>>,
+        impl TryStream<Ok = Row, Error = Error, Item = Result<Row>> + 'storage,
+    )>,
+>
+where
+    'storage: 'async_recursion,
+{
+    Box::pin(async move {
+        let Select {
+            from: table_with_joins,
+            selection: where_clause,
+            projection,
+            group_by,
+            having,
+        } = match &query.body {
+            SetExpr::Select(statement) => statement.as_ref(),
+            SetExpr::Values(Values(values_list)) => {
+                let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
+                let (rows, labels) = rows_with_labels(values_list);
+                let rows = sort_stateless(rows, &query.order_by)?;
+                let rows = stream::iter(rows);
+                let rows = limit.apply(rows);
 
-            return Ok((Some(labels), rows));
-        }
-    };
+                return Ok((Some(labels), rows));
+            }
+        };
 
-    let TableWithJoins { relation, joins } = &table_with_joins;
-    let rows = fetch_relation_rows(storage, relation, &None)
-        .await?
-        .map(move |row| {
-            let row = row?;
-            let alias = get_alias(relation);
+        let TableWithJoins { relation, joins } = &table_with_joins;
+        let rows = fetch_relation_rows(storage, relation, &None)
+            .await?
+            .map(move |row| {
+                let row = row?;
+                let alias = get_alias(relation);
 
-            Ok(RowContext::new(alias, Cow::Owned(row), None))
+                Ok(RowContext::new(alias, Cow::Owned(row), None))
+            });
+
+        let join = Join::new(storage, joins, filter_context.as_ref().map(Rc::clone));
+        let aggregate = Aggregator::new(
+            storage,
+            projection,
+            group_by,
+            having.as_ref(),
+            filter_context.as_ref().map(Rc::clone),
+        );
+        let filter = Rc::new(Filter::new(
+            storage,
+            where_clause.as_ref(),
+            filter_context.as_ref().map(Rc::clone),
+            None,
+        ));
+        let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
+        let sort = Sort::new(
+            storage,
+            filter_context.as_ref().map(Rc::clone),
+            &query.order_by,
+        );
+
+        let rows = join.apply(rows).await?;
+        let rows = rows.try_filter_map(move |project_context| {
+            let filter = Rc::clone(&filter);
+
+            async move {
+                filter
+                    .check(Rc::clone(&project_context))
+                    .await
+                    .map(|pass| pass.then_some(project_context))
+            }
         });
 
-    let join = Join::new(storage, joins, filter_context.as_ref().map(Rc::clone));
-    let aggregate = Aggregator::new(
-        storage,
-        projection,
-        group_by,
-        having.as_ref(),
-        filter_context.as_ref().map(Rc::clone),
-    );
-    let filter = Rc::new(Filter::new(
-        storage,
-        where_clause.as_ref(),
-        filter_context.as_ref().map(Rc::clone),
-        None,
-    ));
-    let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
-    let sort = Sort::new(
-        storage,
-        filter_context.as_ref().map(Rc::clone),
-        &query.order_by,
-    );
+        let rows = aggregate.apply(rows).await?;
 
-    let rows = join.apply(rows).await?;
-    let rows = rows.try_filter_map(move |project_context| {
-        let filter = Rc::clone(&filter);
+        let labels = fetch_labels(storage, relation, joins, projection)
+            .await?
+            .map(Rc::from);
 
-        async move {
-            filter
-                .check(Rc::clone(&project_context))
-                .await
-                .map(|pass| pass.then_some(project_context))
-        }
-    });
+        let project = Rc::new(Project::new(storage, filter_context, projection));
+        let project_labels = labels.as_ref().map(Rc::clone);
+        let rows = rows.and_then(move |aggregate_context| {
+            let labels = project_labels.as_ref().map(Rc::clone);
+            let project = Rc::clone(&project);
+            let AggregateContext { aggregated, next } = aggregate_context;
+            let aggregated = aggregated.map(Rc::new);
 
-    let rows = aggregate.apply(rows).await?;
+            async move {
+                let row = project
+                    .apply(aggregated.as_ref().map(Rc::clone), labels, Rc::clone(&next))
+                    .await?;
 
-    let labels = fetch_labels(storage, relation, joins, projection)
-        .await?
-        .map(Rc::from);
+                Ok((aggregated, next, row))
+            }
+        });
 
-    let project = Rc::new(Project::new(storage, filter_context, projection));
-    let project_labels = labels.as_ref().map(Rc::clone);
-    let rows = rows.and_then(move |aggregate_context| {
-        let labels = project_labels.as_ref().map(Rc::clone);
-        let project = Rc::clone(&project);
-        let AggregateContext { aggregated, next } = aggregate_context;
-        let aggregated = aggregated.map(Rc::new);
+        let rows = sort.apply(rows, get_alias(relation)).await?;
+        let rows = limit.apply(rows);
+        let labels = labels.map(|labels| labels.iter().cloned().collect());
 
-        async move {
-            let row = project
-                .apply(aggregated.as_ref().map(Rc::clone), labels, Rc::clone(&next))
-                .await?;
-
-            Ok((aggregated, next, row))
-        }
-    });
-
-    let rows = sort.apply(rows, get_alias(relation)).await?;
-    let rows = limit.apply(rows);
-    let labels = labels.map(|labels| labels.iter().cloned().collect());
-
-    Ok((labels, rows))
+        Ok((labels, rows))
+    })
 }
 
 pub async fn select<'a, T: GStore>(

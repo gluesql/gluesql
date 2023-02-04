@@ -13,7 +13,6 @@ utils = { package = "gluesql-utils", path = "../utils", version = "0.13.0" }
 
 regex = "1"
 async-trait = "0.1"
-async-recursion = "1"
 cfg-if = "1"
 futures-enum = "0.1.17"
 futures = "0.3"

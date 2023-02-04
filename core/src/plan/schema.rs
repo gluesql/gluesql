@@ -9,8 +9,10 @@ use {
         result::Result,
         store::Store,
     },
-    async_recursion::async_recursion,
-    futures::stream::{self, StreamExt, TryStreamExt},
+    futures::{
+        future::LocalBoxFuture,
+        stream::{self, StreamExt, TryStreamExt},
+    },
     std::collections::HashMap,
 };
 
@@ -167,59 +169,71 @@ async fn scan_join<T: Store>(storage: &T, join: &Join) -> Result<HashMap<String,
     Ok(schema_list)
 }
 
-#[async_recursion(?Send)]
-async fn scan_table_factor<T: Store>(
-    storage: &T,
-    table_factor: &TableFactor,
-) -> Result<HashMap<String, Schema>> {
-    match table_factor {
-        TableFactor::Table { name, .. } => {
-            let schema = storage.fetch_schema(name).await?;
-            let schema_list: HashMap<String, Schema> = schema.map_or_else(HashMap::new, |schema| {
-                HashMap::from([(name.to_owned(), schema)])
-            });
+fn scan_table_factor<'async_recursion, 'storage, T: Store>(
+    storage: &'storage T,
+    table_factor: &'storage TableFactor,
+) -> LocalBoxFuture<'async_recursion, Result<HashMap<String, Schema>>>
+where
+    'storage: 'async_recursion,
+{
+    Box::pin(async move {
+        match table_factor {
+            TableFactor::Table { name, .. } => {
+                let schema = storage.fetch_schema(name).await?;
+                let schema_list: HashMap<String, Schema> = schema
+                    .map_or_else(HashMap::new, |schema| {
+                        HashMap::from([(name.to_owned(), schema)])
+                    });
 
-            Ok(schema_list)
+                Ok(schema_list)
+            }
+            TableFactor::Derived { subquery, .. } => scan_query(storage, subquery).await,
+            TableFactor::Series { .. } | TableFactor::Dictionary { .. } => Ok(HashMap::new()),
         }
-        TableFactor::Derived { subquery, .. } => scan_query(storage, subquery).await,
-        TableFactor::Series { .. } | TableFactor::Dictionary { .. } => Ok(HashMap::new()),
-    }
+    })
 }
 
-#[async_recursion(?Send)]
-async fn scan_expr<T: Store>(storage: &T, expr: &Expr) -> Result<HashMap<String, Schema>> {
-    let schema_list = match expr.into() {
-        PlanExpr::None | PlanExpr::Identifier(_) | PlanExpr::CompoundIdentifier { .. } => {
-            HashMap::new()
-        }
-        PlanExpr::Expr(expr) => scan_expr(storage, expr).await?,
-        PlanExpr::TwoExprs(expr, expr2) => scan_expr(storage, expr)
-            .await?
-            .into_iter()
-            .chain(scan_expr(storage, expr2).await?)
-            .collect(),
-        PlanExpr::ThreeExprs(expr, expr2, expr3) => scan_expr(storage, expr)
-            .await?
-            .into_iter()
-            .chain(scan_expr(storage, expr2).await?)
-            .chain(scan_expr(storage, expr3).await?)
-            .collect(),
-        PlanExpr::MultiExprs(exprs) => stream::iter(exprs)
-            .then(|expr| scan_expr(storage, expr))
-            .try_collect::<Vec<HashMap<String, Schema>>>()
-            .await?
-            .into_iter()
-            .flatten()
-            .collect(),
-        PlanExpr::Query(query) => scan_query(storage, query).await?,
-        PlanExpr::QueryAndExpr { query, expr } => scan_query(storage, query)
-            .await?
-            .into_iter()
-            .chain(scan_expr(storage, expr).await?)
-            .collect(),
-    };
+fn scan_expr<'async_recursion, 'storage, T: Store>(
+    storage: &'storage T,
+    expr: &'storage Expr,
+) -> LocalBoxFuture<'async_recursion, Result<HashMap<String, Schema>>>
+where
+    'storage: 'async_recursion,
+{
+    Box::pin(async move {
+        let schema_list = match expr.into() {
+            PlanExpr::None | PlanExpr::Identifier(_) | PlanExpr::CompoundIdentifier { .. } => {
+                HashMap::new()
+            }
+            PlanExpr::Expr(expr) => scan_expr(storage, expr).await?,
+            PlanExpr::TwoExprs(expr, expr2) => scan_expr(storage, expr)
+                .await?
+                .into_iter()
+                .chain(scan_expr(storage, expr2).await?)
+                .collect(),
+            PlanExpr::ThreeExprs(expr, expr2, expr3) => scan_expr(storage, expr)
+                .await?
+                .into_iter()
+                .chain(scan_expr(storage, expr2).await?)
+                .chain(scan_expr(storage, expr3).await?)
+                .collect(),
+            PlanExpr::MultiExprs(exprs) => stream::iter(exprs)
+                .then(|expr| scan_expr(storage, expr))
+                .try_collect::<Vec<HashMap<String, Schema>>>()
+                .await?
+                .into_iter()
+                .flatten()
+                .collect(),
+            PlanExpr::Query(query) => scan_query(storage, query).await?,
+            PlanExpr::QueryAndExpr { query, expr } => scan_query(storage, query)
+                .await?
+                .into_iter()
+                .chain(scan_expr(storage, expr).await?)
+                .collect(),
+        };
 
-    Ok(schema_list)
+        Ok(schema_list)
+    })
 }
 
 #[cfg(test)]
