@@ -23,12 +23,6 @@ pub struct CompositeStorage {
     pub default_engine: Option<String>,
 }
 
-impl<T: GStore + GStoreMut + 'static> From<T> for Box<dyn IStorage> {
-    fn from(storage: T) -> Self {
-        Box::new(storage) as Box<dyn IStorage>
-    }
-}
-
 impl CompositeStorage {
     pub fn new() -> Self {
         CompositeStorage::default()
@@ -42,8 +36,8 @@ impl CompositeStorage {
         self.default_engine = None;
     }
 
-    pub fn push<T: Into<String>, U: Into<Box<dyn IStorage>>>(&mut self, engine: T, storage: U) {
-        self.storages.insert(engine.into(), storage.into());
+    pub fn push<T: Into<String>, U: IStorage + 'static>(&mut self, engine: T, storage: U) {
+        self.storages.insert(engine.into(), Box::new(storage));
     }
 
     pub fn remove<T: AsRef<str>>(&mut self, engine: T) -> Option<Box<dyn IStorage>> {
