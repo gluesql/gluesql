@@ -73,8 +73,7 @@ impl fmt::Display for JsonlStorageError {
             JsonlStorageError::TableDoesNotExist => "table does not exist".to_owned(),
             JsonlStorageError::ColumnDoesNotExist => "column does not exist".to_owned(),
             JsonlStorageError::WrongSchemaFile(schema_path) => {
-                "schema file is wrong: ".to_owned() + schema_path
-                // format!("schema file is wrong: {}", schema_path)
+                format!("schema file is wrong: {schema_path}")
             }
         };
 
@@ -147,31 +146,12 @@ impl JsonlStorage {
     }
 
     fn path_by(&self, table_name: &str, extension: &str) -> String {
-        // let schema = self
-        //     .tables
-        //     .get(table_name)
-        //     .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())?;
         let path = format!("{}/{}.{extension}", self.path.display(), table_name);
 
         path
     }
 
-    fn write_schema(&self, schema: &Schema) -> Result<()> {
-        // let schema_path = format!("{}/{}.sql", self.path.display(), schema.table_name);
-        let schema_path = self.schema_path(schema.table_name.as_str());
-        let ddl = schema.clone().to_ddl();
-        let mut file = File::create(schema_path).map_storage_err()?;
-        write!(file, "{ddl}").map_storage_err()?;
-
-        Ok(())
-    }
-
     fn scan_data(&self, table_name: &str) -> Result<RowIter> {
-        // let schema = self
-        //     .tables
-        //     .get(table_name)
-        //     .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())?
-        //     .to_owned();
         let schema = self
             .fetch_schema(table_name)?
             .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())?;
@@ -278,7 +258,10 @@ impl StoreMut for JsonlStorage {
         File::create(data_path).map_storage_err()?;
 
         if schema.column_defs.is_some() {
-            self.write_schema(schema)?
+            let schema_path = self.schema_path(schema.table_name.as_str());
+            let ddl = schema.clone().to_ddl();
+            let mut file = File::create(schema_path).map_storage_err()?;
+            write!(file, "{ddl}").map_storage_err()?;
         }
 
         Ok(())
@@ -347,17 +330,14 @@ impl StoreMut for JsonlStorage {
 
     async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
         let prev_rows = self.scan_data(table_name)?;
-
-        // todo! impl without sort + vector.zip
         let prev_rows = prev_rows.collect::<Result<HashMap<Key, DataRow>>>()?;
-
         let rows = prev_rows.concat(rows.into_iter());
         let mut rows = rows.into_iter().collect::<Vec<_>>();
 
         rows.sort_by(|(key_a, _), (key_b, _)| {
             key_a
                 .partial_cmp(key_b)
-                .unwrap_or(std::cmp::Ordering::Equal) // todo! okay to be equal?
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         let rows = rows.into_iter().map(|(_, data_row)| data_row).collect();
