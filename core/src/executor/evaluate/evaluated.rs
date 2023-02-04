@@ -50,9 +50,7 @@ impl TryFrom<&Evaluated<'_>> for Key {
     fn try_from(evaluated: &Evaluated<'_>) -> Result<Self> {
         match evaluated {
             Evaluated::Literal(l) => Value::try_from(l)?.try_into(),
-            Evaluated::StrSlice { source, range } => {
-                Ok(Key::from(&source[range.clone()].to_owned()))
-            }
+            Evaluated::StrSlice { source, range } => Ok(Key::Str(source[range.clone()].to_owned())),
             Evaluated::Value(v) => v.try_into(),
         }
     }
@@ -355,7 +353,6 @@ impl<'a> Evaluated<'a> {
             _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
         };
 
-        let expr_str = source.as_str();
         let filter_chars = match chars {
             Some(expr) => match expr.try_into()? {
                 Value::Str(value) => value,
@@ -370,7 +367,7 @@ impl<'a> Evaluated<'a> {
             .collect::<Vec<_>>(),
             None => vec![' '],
         };
-        let sliced_expr = &expr_str[range.clone()];
+        let sliced_expr = &source[range.clone()];
         let matched_vec: Vec<_> = sliced_expr.match_indices(&filter_chars[..]).collect();
 
         //"x".trim_start_matches(['x','y','z']) => ""
@@ -404,7 +401,7 @@ impl<'a> Evaluated<'a> {
         };
 
         Ok(Evaluated::StrSlice {
-            source: expr_str.to_owned(),
+            source,
             range: range.start + start..range.end,
         })
     }
@@ -437,7 +434,6 @@ impl<'a> Evaluated<'a> {
             _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
         };
 
-        let expr_str = source.as_str();
         let filter_chars = match chars {
             Some(expr) => match expr.try_into()? {
                 Value::Str(value) => value,
@@ -452,7 +448,7 @@ impl<'a> Evaluated<'a> {
             .collect::<Vec<_>>(),
             None => vec![' '],
         };
-        let sliced_expr = &expr_str[range.clone()];
+        let sliced_expr = &source[range.clone()];
         let matched_vec: Vec<_> = sliced_expr.match_indices(&filter_chars[..]).collect();
 
         //"x".trim_end_matches(['x','y','z']) => ""
@@ -488,7 +484,7 @@ impl<'a> Evaluated<'a> {
         };
 
         Ok(Evaluated::StrSlice {
-            source: expr_str.to_owned(),
+            source,
             range: range.start..end,
         })
     }
@@ -572,7 +568,6 @@ impl<'a> Evaluated<'a> {
             _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
         };
 
-        let expr_str = source.as_str();
         let filter_chars = match filter_chars {
             Some(expr) => match expr.try_into()? {
                 Value::Str(value) => value,
@@ -587,7 +582,7 @@ impl<'a> Evaluated<'a> {
             .collect::<Vec<_>>(),
             None => vec![' '],
         };
-        let sliced_expr = &expr_str[range.clone()];
+        let sliced_expr = &source[range.clone()];
         let matched_vec: Vec<_> = sliced_expr.match_indices(&filter_chars[..]).collect();
         //filter_chars => ['x','y','z']
         //"x".trim_matches(filter_chars[..]) => ""
@@ -627,7 +622,7 @@ impl<'a> Evaluated<'a> {
                     };
 
                     return Ok(Evaluated::StrSlice {
-                        source: expr_str.to_owned(),
+                        source,
                         range: range.start + start..range.end,
                     });
                 }
@@ -652,7 +647,7 @@ impl<'a> Evaluated<'a> {
                     };
 
                     return Ok(Evaluated::StrSlice {
-                        source: expr_str.to_owned(),
+                        source,
                         range: range.start..end,
                     });
                 }
@@ -669,7 +664,7 @@ impl<'a> Evaluated<'a> {
                 let trim_range = matched_vec[pivot - 1].0..(matched_vec[pivot].0 + range.start);
 
                 Ok(Evaluated::StrSlice {
-                    source: expr_str.to_owned(),
+                    source,
                     range: range.start + trim_range.start + 1..trim_range.end,
                 })
             }
@@ -690,7 +685,7 @@ impl<'a> Evaluated<'a> {
                 };
 
                 Ok(Evaluated::StrSlice {
-                    source: expr_str.to_owned(),
+                    source,
                     range: range.start + start..range.end,
                 })
             }
@@ -714,12 +709,13 @@ impl<'a> Evaluated<'a> {
                 };
 
                 Ok(Evaluated::StrSlice {
-                    source: expr_str.to_owned(),
+                    source,
                     range: range.start..end,
                 })
             }
             None => {
-                let start = expr_str
+                let start = source
+                    .as_str()
                     .chars()
                     .skip(range.start)
                     .enumerate()
@@ -727,14 +723,15 @@ impl<'a> Evaluated<'a> {
                     .map(|(idx, _)| idx + range.start)
                     .unwrap_or(0);
 
-                let end = expr_str.len()
-                    - expr_str
+                let end = source.len()
+                    - source
+                        .as_str()
                         .chars()
                         .rev()
-                        .skip(expr_str.len() - range.end)
+                        .skip(source.len() - range.end)
                         .enumerate()
                         .find(|(_, c)| !c.is_whitespace())
-                        .map(|(idx, _)| expr_str.len() - (range.end - idx))
+                        .map(|(idx, _)| source.len() - (range.end - idx))
                         .unwrap_or(0);
 
                 Ok(Evaluated::StrSlice {

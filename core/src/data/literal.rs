@@ -62,6 +62,24 @@ impl<'a> TryFrom<&'a AstLiteral> for Literal<'a> {
     }
 }
 
+impl PartialEq<String> for Literal<'_> {
+    fn eq(&self, other: &String) -> bool {
+        match (self, other) {
+            (&Literal::Text(Cow::Borrowed(l)), r) => l == r,
+            _ => false,
+        }
+    }
+}
+
+impl PartialOrd<String> for Literal<'_> {
+    fn partial_cmp(&self, other: &String) -> Option<Ordering> {
+        match (self, other) {
+            (&Literal::Text(Cow::Borrowed(l)), r) => Some(l.cmp(r)),
+            _ => None,
+        }
+    }
+}
+
 impl PartialEq<Literal<'_>> for Literal<'_> {
     fn eq(&self, other: &Literal) -> bool {
         match (self, other) {

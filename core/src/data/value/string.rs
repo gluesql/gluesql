@@ -1,10 +1,4 @@
-use {
-    crate::{
-        data::{Literal, Value},
-        prelude::Key,
-    },
-    std::{borrow::Cow, cmp::Ordering},
-};
+use {crate::data::Value, std::cmp::Ordering};
 
 impl PartialEq<String> for Value {
     fn eq(&self, other: &String) -> bool {
@@ -24,38 +18,11 @@ impl PartialOrd<String> for Value {
     }
 }
 
-impl PartialEq<String> for Literal<'_> {
-    fn eq(&self, other: &String) -> bool {
-        match (self, other) {
-            (&Literal::Text(Cow::Borrowed(l)), r) => l == r,
-            _ => false,
-        }
-    }
-}
-
-impl PartialOrd<String> for Literal<'_> {
-    fn partial_cmp(&self, other: &String) -> Option<Ordering> {
-        match (self, other) {
-            (&Literal::Text(Cow::Borrowed(l)), r) => Some(l.cmp(r)),
-            _ => None,
-        }
-    }
-}
-
-impl From<&String> for Key {
-    fn from(s: &String) -> Self {
-        Key::Str(s.to_owned())
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::{borrow::Cow, cmp::Ordering};
 
-    use crate::{
-        data::Literal,
-        prelude::{Key, Value},
-    };
+    use crate::{data::Literal, prelude::Value};
 
     #[test]
     fn eq() {
@@ -81,19 +48,6 @@ mod tests {
                 Value::Str($text.to_owned())
             };
         }
-
-        assert_eq!(
-            "b".to_owned().partial_cmp(&"b".to_owned()),
-            Some(Ordering::Equal)
-        );
-        assert_eq!(
-            "a".to_owned().partial_cmp(&"b".to_owned()),
-            Some(Ordering::Less)
-        );
-        assert_eq!(
-            "c".to_owned().partial_cmp(&"b".to_owned()),
-            Some(Ordering::Greater)
-        );
 
         assert_eq!(
             literal_text!("b").partial_cmp(&"b".to_owned()),
@@ -124,10 +78,5 @@ mod tests {
             Some(Ordering::Greater)
         );
         assert_eq!(Value::I64(0).partial_cmp(&"0".to_owned()), None);
-    }
-
-    #[test]
-    fn from_key() {
-        assert_eq!(Key::from(&"apple".to_owned()), Key::Str("apple".to_owned()));
     }
 }
