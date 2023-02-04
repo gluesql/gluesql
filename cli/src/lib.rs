@@ -42,6 +42,7 @@ pub fn run() -> Result<()> {
 
     if let Some(path) = args.path {
         let path = path.as_path().to_str().expect("wrong path");
+
         if let Some(dump_path) = args.dump {
             let mut storage = SledStorage::new(path).expect("failed to load sled-storage");
             dump_database(&mut storage, dump_path)?;

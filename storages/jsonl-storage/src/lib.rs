@@ -95,7 +95,6 @@ impl JsonlStorage {
         };
 
         let schema_path = self.schema_path(table_name);
-        // todo: try then_some
         let column_defs = match schema_path.exists() {
             true => {
                 let mut file = File::open(&schema_path).map_storage_err()?;
@@ -302,17 +301,15 @@ impl StoreMut for JsonlStorage {
         for row in rows {
             let json_string = match row {
                 DataRow::Map(hash_map) => JsonIter::Map(hash_map.into_iter()),
-                DataRow::Vec(values) => {
-                    match &schema.column_defs {
-                        Some(column_defs) => JsonIter::Vec(
-                            column_defs
-                                .iter()
-                                .map(|column_def| column_def.name.clone())
-                                .zip(values.into_iter()),
-                        ),
-                        None => break, // todo! looks like unreachable
-                    }
-                }
+                DataRow::Vec(values) => match &schema.column_defs {
+                    Some(column_defs) => JsonIter::Vec(
+                        column_defs
+                            .iter()
+                            .map(|column_def| column_def.name.clone())
+                            .zip(values.into_iter()),
+                    ),
+                    None => break,
+                },
             }
             .map(|(key, value)| {
                 let value = JsonValue::try_from(value)?.to_string();
@@ -359,8 +356,6 @@ impl StoreMut for JsonlStorage {
                         preservable.then_some(data_row)
                     })
                     .unwrap_or(None)
-                // todo! how not to ignore error?
-                // can remove result from RowIter?
             })
             .collect::<Vec<_>>();
 
