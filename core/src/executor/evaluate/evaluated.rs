@@ -102,11 +102,11 @@ impl<'a> PartialEq for Evaluated<'a> {
             (Evaluated::Value(a), Evaluated::Value(b)) => a == b,
             (Evaluated::Literal(a), Evaluated::StrSlice { source, range })
             | (Evaluated::StrSlice { source, range }, Evaluated::Literal(a)) => {
-                a == &source[range.clone()].to_owned()
+                a == &source[range.clone()]
             }
             (Evaluated::Value(a), Evaluated::StrSlice { source, range })
             | (Evaluated::StrSlice { source, range }, Evaluated::Value(a)) => {
-                a == &source[range.clone()].to_owned()
+                a == &source[range.clone()]
             }
             (
                 Evaluated::StrSlice { source, range },
@@ -127,17 +127,17 @@ impl<'a> PartialOrd for Evaluated<'a> {
             (Evaluated::Value(l), Evaluated::Literal(r)) => l.partial_cmp(r),
             (Evaluated::Value(l), Evaluated::Value(r)) => l.partial_cmp(r),
             (Evaluated::Literal(l), Evaluated::StrSlice { source, range }) => {
-                l.partial_cmp(&source[range.clone()].to_owned())
+                l.partial_cmp(&source[range.clone()])
             }
             (Evaluated::Value(l), Evaluated::StrSlice { source, range }) => {
-                l.partial_cmp(&source[range.clone()].to_owned())
+                l.partial_cmp(&source[range.clone()])
             }
-            (Evaluated::StrSlice { source, range }, Evaluated::Literal(l)) => l
-                .partial_cmp(&source[range.clone()].to_owned())
-                .map(|o| o.reverse()),
-            (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => r
-                .partial_cmp(&source[range.clone()].to_owned())
-                .map(|o| o.reverse()),
+            (Evaluated::StrSlice { source, range }, Evaluated::Literal(l)) => {
+                l.partial_cmp(&source[range.clone()]).map(|o| o.reverse())
+            }
+            (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => {
+                r.partial_cmp(&source[range.clone()]).map(|o| o.reverse())
+            }
             (
                 Evaluated::StrSlice {
                     source: a,
