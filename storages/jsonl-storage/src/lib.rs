@@ -59,7 +59,6 @@ impl<T> OptionExt<T> for std::option::Option<T> {
 
 enum JsonlStorageError {
     FileNotFound,
-    CannotConvertToString,
     TableDoesNotExist,
     ColumnDoesNotExist,
     WrongSchemaFile(String),
@@ -69,7 +68,6 @@ impl fmt::Display for JsonlStorageError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let payload = match self {
             JsonlStorageError::FileNotFound => "file not found".to_owned(),
-            JsonlStorageError::CannotConvertToString => "cannot convert to string".to_owned(),
             JsonlStorageError::TableDoesNotExist => "table does not exist".to_owned(),
             JsonlStorageError::ColumnDoesNotExist => "column does not exist".to_owned(),
             JsonlStorageError::WrongSchemaFile(schema_path) => {
@@ -112,7 +110,7 @@ impl JsonlStorage {
                         JsonlStorageError::WrongSchemaFile(
                             schema_path
                                 .to_str()
-                                .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())?
+                                .map_storage_err(JsonlStorageError::FileNotFound.to_string())?
                                 .to_string(),
                         )
                         .to_string(),
@@ -218,7 +216,7 @@ impl Store for JsonlStorage {
                     .file_stem()
                     .map_storage_err(JsonlStorageError::FileNotFound.to_string())?
                     .to_str()
-                    .map_storage_err(JsonlStorageError::CannotConvertToString.to_string())?
+                    .map_storage_err(JsonlStorageError::FileNotFound.to_string())?
                     .to_owned();
 
                 self.fetch_schema(table_name.as_str())?
