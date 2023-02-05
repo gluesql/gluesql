@@ -73,7 +73,10 @@ impl PartialOrd<Literal<'_>> for Value {
             (Value::F64(l), Literal::Number(r)) => {
                 r.to_f64().map(|r| l.partial_cmp(&r)).unwrap_or(None)
             }
-            (Value::Str(l), Literal::Text(r)) => Some(l.cmp(r.as_ref())),
+            (Value::Str(l), Literal::Text(r)) => {
+                let l: &str = l.as_ref();
+                Some(l.cmp(r))
+            }
             (Value::Date(l), Literal::Text(r)) => match r.parse::<NaiveDate>() {
                 Ok(r) => l.partial_cmp(&r),
                 Err(_) => None,
@@ -340,7 +343,7 @@ impl Value {
                 Ok(Value::Str(v.to_owned()))
             }
             (DataType::Interval, Literal::Text(v)) => {
-                Interval::try_from(v.as_str()).map(Value::Interval)
+                Interval::try_from(v.as_ref()).map(Value::Interval)
             }
             (DataType::Uuid, Literal::Text(v)) => parse_uuid(v).map(Value::Uuid),
             (DataType::Boolean, Literal::Null)
@@ -421,12 +424,13 @@ mod tests {
 
         assert_eq!(Value::Bool(true), Literal::Boolean(true));
         assert_eq!(Value::I8(8), num!("8"));
-        //assert_eq!(Value::I32(32), num!("32"));   // should this work?
+        assert_eq!(Value::I16(16), num!("16"));
+        assert_eq!(Value::I32(32), num!("32"));
         assert_eq!(Value::I64(64), num!("64"));
         assert_eq!(Value::I128(128), num!("128"));
-        assert_eq!(Value::F64(7.123), num!("7.123"));
         assert_eq!(Value::U8(7), num!("7"));
         assert_eq!(Value::U16(64), num!("64"));
+        assert_eq!(Value::F64(7.123), num!("7.123"));
         assert_eq!(Value::Str("Hello".to_owned()), text!("Hello"));
         assert_eq!(Value::Bytea(bytea()), Literal::Bytea(bytea()));
         assert_eq!(Value::Date(date(2021, 11, 20)), text!("2021-11-20"));

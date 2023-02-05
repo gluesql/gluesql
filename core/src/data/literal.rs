@@ -39,7 +39,7 @@ pub enum LiteralError {
 pub enum Literal<'a> {
     Boolean(bool),
     Number(Cow<'a, BigDecimal>),
-    Text(Cow<'a, String>),
+    Text(Cow<'a, str>),
     Bytea(Vec<u8>),
     Null,
 }
@@ -62,8 +62,8 @@ impl<'a> TryFrom<&'a AstLiteral> for Literal<'a> {
     }
 }
 
-impl PartialEq<String> for Literal<'_> {
-    fn eq(&self, other: &String) -> bool {
+impl PartialEq<str> for Literal<'_> {
+    fn eq(&self, other: &str) -> bool {
         match (self, other) {
             (Literal::Text(l), r) => l.as_ref() == r,
             _ => false,
@@ -71,12 +71,24 @@ impl PartialEq<String> for Literal<'_> {
     }
 }
 
-impl PartialOrd<String> for Literal<'_> {
-    fn partial_cmp(&self, other: &String) -> Option<Ordering> {
+impl PartialOrd<str> for Literal<'_> {
+    fn partial_cmp(&self, other: &str) -> Option<Ordering> {
         match (self, other) {
             (Literal::Text(l), r) => Some(l.as_ref().cmp(r)),
             _ => None,
         }
+    }
+}
+
+impl<T: AsRef<str>> PartialEq<T> for Literal<'_> {
+    fn eq(&self, other: &T) -> bool {
+        PartialEq::<str>::eq(self, other.as_ref())
+    }
+}
+
+impl<T: AsRef<str>> PartialOrd<T> for Literal<'_> {
+    fn partial_cmp(&self, other: &T) -> Option<Ordering> {
+        PartialOrd::<str>::partial_cmp(self, other.as_ref())
     }
 }
 
@@ -247,7 +259,7 @@ mod tests {
         );
         test(
             AstLiteral::QuotedString("abc".to_owned()),
-            Ok(Text(Cow::Borrowed(&("abc".to_owned())))),
+            Ok(Text(Cow::Borrowed("abc"))),
         );
         test(
             AstLiteral::HexString("1A2B".to_owned()),
@@ -384,7 +396,7 @@ mod tests {
 
         //Boolean
         assert_eq!(Boolean(true), Boolean(true));
-        assert!(Boolean(true) != Boolean(false));
+        assert_ne!(Boolean(true), Boolean(false));
         //Number
         assert_eq!(num!("123"), num!("123"));
         assert_eq!(num!("12.0"), num!("12.0"));
@@ -437,6 +449,7 @@ mod tests {
         );
         assert_eq!(Boolean(true).partial_cmp(&num!("1")), None);
         assert_eq!(Boolean(true).partial_cmp(&text!("Foo")), None);
+        assert_eq!(Boolean(true).partial_cmp("true"), None);
         assert_eq!(Boolean(true).partial_cmp(&"true".to_owned()), None);
         assert_eq!(Boolean(true).partial_cmp(&Null), None);
         //Number - valid format -> (int, int), (float, int), (int, float), (float, float)
@@ -462,18 +475,9 @@ mod tests {
         assert_eq!(text!("a").partial_cmp(&text!("a")), Some(Ordering::Equal));
         assert_eq!(text!("b").partial_cmp(&text!("a")), Some(Ordering::Greater));
         assert_eq!(text!("a").partial_cmp(&Null), None);
-        assert_eq!(
-            text!("b").partial_cmp(&"b".to_owned()),
-            Some(Ordering::Equal)
-        );
-        assert_eq!(
-            text!("a").partial_cmp(&"b".to_owned()),
-            Some(Ordering::Less)
-        );
-        assert_eq!(
-            text!("c").partial_cmp(&"b".to_owned()),
-            Some(Ordering::Greater)
-        );
+        assert_eq!(text!("b").partial_cmp("b"), Some(Ordering::Equal));
+        assert_eq!(text!("a").partial_cmp("b"), Some(Ordering::Less));
+        assert_eq!(text!("c").partial_cmp("b"), Some(Ordering::Greater));
         //Bytea
         assert_eq!(
             bytea!("12").partial_cmp(&bytea!("20")),
