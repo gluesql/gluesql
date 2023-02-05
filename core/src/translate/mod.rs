@@ -71,6 +71,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             name,
             columns,
             query,
+            engine,
             ..
         } => Ok(Statement::CreateTable {
             if_not_exists: *if_not_exists,
@@ -83,6 +84,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 Some(v) => Some(translate_query(v).map(Box::new)?),
                 None => None,
             },
+            engine: engine.clone(),
         }),
         #[cfg(feature = "alter-table")]
         SqlStatement::AlterTable {
