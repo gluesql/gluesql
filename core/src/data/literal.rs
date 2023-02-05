@@ -65,7 +65,7 @@ impl<'a> TryFrom<&'a AstLiteral> for Literal<'a> {
 impl PartialEq<String> for Literal<'_> {
     fn eq(&self, other: &String) -> bool {
         match (self, other) {
-            (&Literal::Text(Cow::Borrowed(l)), r) => l == r,
+            (Literal::Text(l), r) => l.as_ref() == r,
             _ => false,
         }
     }
@@ -74,7 +74,7 @@ impl PartialEq<String> for Literal<'_> {
 impl PartialOrd<String> for Literal<'_> {
     fn partial_cmp(&self, other: &String) -> Option<Ordering> {
         match (self, other) {
-            (&Literal::Text(Cow::Borrowed(l)), r) => Some(l.cmp(r)),
+            (Literal::Text(l), r) => Some(l.as_ref().cmp(r)),
             _ => None,
         }
     }
@@ -437,6 +437,7 @@ mod tests {
         );
         assert_eq!(Boolean(true).partial_cmp(&num!("1")), None);
         assert_eq!(Boolean(true).partial_cmp(&text!("Foo")), None);
+        assert_eq!(Boolean(true).partial_cmp(&"true".to_owned()), None);
         assert_eq!(Boolean(true).partial_cmp(&Null), None);
         //Number - valid format -> (int, int), (float, int), (int, float), (float, float)
         assert_eq!(num!("123").partial_cmp(&num!("1234")), Some(Ordering::Less));
@@ -476,5 +477,17 @@ mod tests {
         );
         assert_eq!(bytea!("345D").partial_cmp(&Null), None);
         assert_eq!(Null.partial_cmp(&Null), None);
+        assert_eq!(
+            text!("b").partial_cmp(&"b".to_owned()),
+            Some(Ordering::Equal)
+        );
+        assert_eq!(
+            text!("a").partial_cmp(&"b".to_owned()),
+            Some(Ordering::Less)
+        );
+        assert_eq!(
+            text!("c").partial_cmp(&"b".to_owned()),
+            Some(Ordering::Greater)
+        );
     }
 }

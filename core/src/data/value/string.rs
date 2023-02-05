@@ -37,34 +37,11 @@ mod tests {
 
     #[test]
     fn cmp() {
-        macro_rules! literal_text {
-            ($text: expr) => {
-                Literal::Text(Cow::Borrowed(&$text.to_owned()))
-            };
-        }
-
         macro_rules! text {
             ($text: expr) => {
                 Value::Str($text.to_owned())
             };
         }
-
-        assert_eq!(
-            literal_text!("b").partial_cmp(&"b".to_owned()),
-            Some(Ordering::Equal)
-        );
-        assert_eq!(
-            literal_text!("a").partial_cmp(&"b".to_owned()),
-            Some(Ordering::Less)
-        );
-
-        assert_eq!(
-            literal_text!("c").partial_cmp(&"b".to_owned()),
-            Some(Ordering::Greater)
-        );
-
-        assert_eq!(Literal::Boolean(true).partial_cmp(&"true".to_owned()), None);
-
         assert_eq!(
             text!("wolf").partial_cmp(&"wolf".to_owned()),
             Some(Ordering::Equal)
