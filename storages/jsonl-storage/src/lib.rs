@@ -409,4 +409,11 @@ fn jsonl_storage_test() {
     let expected = Err(ValueError::InvalidJsonString("{".to_owned()).into());
 
     assert_eq!(actual, expected);
+
+    let actual = glue.execute("SELECT * FROM WrongSchema");
+    let expected = Err(Error::StorageMsg(
+        "schema file is wrong: ./samples//WrongSchema.sql".to_owned(),
+    ));
+
+    assert_eq!(actual, expected);
 }
