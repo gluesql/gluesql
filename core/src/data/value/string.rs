@@ -28,10 +28,7 @@ mod tests {
     fn eq() {
         assert_eq!(Value::Str("wolf".to_owned()), "wolf".to_owned());
         assert_ne!(Value::I8(2), "2".to_owned());
-        assert_eq!(
-            Literal::Text(Cow::Borrowed(&"fox".to_owned())),
-            "fox".to_owned()
-        );
+        assert_eq!(Literal::Text(Cow::Borrowed("fox")), "fox".to_owned());
         assert_ne!(Literal::Boolean(true), "true".to_owned(),);
     }
 
