@@ -571,8 +571,7 @@ mod tests {
         rust_decimal::Decimal,
         std::{
             collections::HashMap,
-            net::IpAddr,
-            net::{Ipv4Addr, Ipv6Addr},
+            net::{IpAddr, Ipv4Addr, Ipv6Addr},
             str::FromStr,
         },
     };
