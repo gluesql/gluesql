@@ -462,6 +462,18 @@ mod tests {
         assert_eq!(text!("a").partial_cmp(&text!("a")), Some(Ordering::Equal));
         assert_eq!(text!("b").partial_cmp(&text!("a")), Some(Ordering::Greater));
         assert_eq!(text!("a").partial_cmp(&Null), None);
+        assert_eq!(
+            text!("b").partial_cmp(&"b".to_owned()),
+            Some(Ordering::Equal)
+        );
+        assert_eq!(
+            text!("a").partial_cmp(&"b".to_owned()),
+            Some(Ordering::Less)
+        );
+        assert_eq!(
+            text!("c").partial_cmp(&"b".to_owned()),
+            Some(Ordering::Greater)
+        );
         //Bytea
         assert_eq!(
             bytea!("12").partial_cmp(&bytea!("20")),
@@ -477,17 +489,5 @@ mod tests {
         );
         assert_eq!(bytea!("345D").partial_cmp(&Null), None);
         assert_eq!(Null.partial_cmp(&Null), None);
-        assert_eq!(
-            text!("b").partial_cmp(&"b".to_owned()),
-            Some(Ordering::Equal)
-        );
-        assert_eq!(
-            text!("a").partial_cmp(&"b".to_owned()),
-            Some(Ordering::Less)
-        );
-        assert_eq!(
-            text!("c").partial_cmp(&"b".to_owned()),
-            Some(Ordering::Greater)
-        );
     }
 }
