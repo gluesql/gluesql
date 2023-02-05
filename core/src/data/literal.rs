@@ -80,27 +80,15 @@ impl PartialOrd<str> for Literal<'_> {
     }
 }
 
-impl PartialEq<String> for Literal<'_> {
-    fn eq(&self, other: &String) -> bool {
+impl<T: AsRef<str>> PartialEq<T> for Literal<'_> {
+    fn eq(&self, other: &T) -> bool {
         PartialEq::<str>::eq(self, other.as_ref())
     }
 }
 
-impl PartialOrd<String> for Literal<'_> {
-    fn partial_cmp(&self, other: &String) -> Option<Ordering> {
+impl<T: AsRef<str>> PartialOrd<T> for Literal<'_> {
+    fn partial_cmp(&self, other: &T) -> Option<Ordering> {
         PartialOrd::<str>::partial_cmp(self, other.as_ref())
-    }
-}
-
-impl PartialEq<&str> for Literal<'_> {
-    fn eq(&self, other: &&str) -> bool {
-        PartialEq::<str>::eq(self, *other)
-    }
-}
-
-impl PartialOrd<&str> for Literal<'_> {
-    fn partial_cmp(&self, other: &&str) -> Option<Ordering> {
-        PartialOrd::<str>::partial_cmp(self, *other)
     }
 }
 
@@ -408,7 +396,7 @@ mod tests {
 
         //Boolean
         assert_eq!(Boolean(true), Boolean(true));
-        assert!(Boolean(true) != Boolean(false));
+        assert_ne!(Boolean(true), Boolean(false));
         //Number
         assert_eq!(num!("123"), num!("123"));
         assert_eq!(num!("12.0"), num!("12.0"));
@@ -462,6 +450,7 @@ mod tests {
         assert_eq!(Boolean(true).partial_cmp(&num!("1")), None);
         assert_eq!(Boolean(true).partial_cmp(&text!("Foo")), None);
         assert_eq!(Boolean(true).partial_cmp("true"), None);
+        assert_eq!(Boolean(true).partial_cmp(&"true".to_owned()), None);
         assert_eq!(Boolean(true).partial_cmp(&Null), None);
         //Number - valid format -> (int, int), (float, int), (int, float), (float, float)
         assert_eq!(num!("123").partial_cmp(&num!("1234")), Some(Ordering::Less));

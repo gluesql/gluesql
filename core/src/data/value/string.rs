@@ -21,27 +21,15 @@ impl PartialOrd<str> for Value {
     }
 }
 
-impl PartialEq<String> for Value {
-    fn eq(&self, other: &String) -> bool {
+impl<T: AsRef<str>> PartialEq<T> for Value {
+    fn eq(&self, other: &T) -> bool {
         PartialEq::<str>::eq(self, other.as_ref())
     }
 }
 
-impl PartialOrd<String> for Value {
-    fn partial_cmp(&self, other: &String) -> Option<Ordering> {
+impl<T: AsRef<str>> PartialOrd<T> for Value {
+    fn partial_cmp(&self, other: &T) -> Option<Ordering> {
         PartialOrd::<str>::partial_cmp(self, other.as_ref())
-    }
-}
-
-impl PartialEq<&str> for Value {
-    fn eq(&self, other: &&str) -> bool {
-        PartialEq::<str>::eq(self, *other)
-    }
-}
-
-impl PartialOrd<&str> for Value {
-    fn partial_cmp(&self, other: &&str) -> Option<Ordering> {
-        PartialOrd::<str>::partial_cmp(self, *other)
     }
 }
 
@@ -54,8 +42,11 @@ mod tests {
     #[test]
     fn eq() {
         assert_eq!(Value::Str("wolf".to_owned()), "wolf");
+        assert_eq!(Value::Str("wolf".to_owned()), "wolf".to_owned());
         assert_ne!(Value::I8(2), "2");
+
         assert_eq!(Literal::Text(Cow::Borrowed("fox")), "fox");
+        assert_eq!(Literal::Text(Cow::Borrowed("fox")), "fox".to_owned());
         assert_ne!(Literal::Boolean(true), "true");
     }
 
