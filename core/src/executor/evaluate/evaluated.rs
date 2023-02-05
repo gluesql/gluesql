@@ -409,9 +409,7 @@ impl<'a> Evaluated<'a> {
     pub fn is_null(&self) -> bool {
         match self {
             Evaluated::Value(v) => v.is_null(),
-            Evaluated::StrSlice { source, range } => {
-                Value::Str(source[range.clone()].to_owned()).is_null()
-            }
+            Evaluated::StrSlice { .. } => false,
             Evaluated::Literal(v) => matches!(v, &Literal::Null),
         }
     }
@@ -549,7 +547,7 @@ impl<'a> Evaluated<'a> {
         self,
         name: String,
         filter_chars: Option<Evaluated<'_>>,
-        trim_where_field: &'a Option<TrimWhereField>,
+        trim_where_field: &Option<TrimWhereField>,
     ) -> Result<Evaluated<'a>> {
         let (source, range) = match self {
             Evaluated::Literal(Literal::Text(v)) => {
