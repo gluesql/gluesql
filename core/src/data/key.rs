@@ -313,11 +313,16 @@ mod tests {
         assert_eq!(convert("CAST(11 AS INT16)"), Ok(Key::I16(11)));
         assert_eq!(convert("CAST(11 AS INT32)"), Ok(Key::I32(11)));
         assert_eq!(convert("2048"), Ok(Key::I64(2048)));
+        assert_eq!(convert("CAST(1024 AS INT128)"), Ok(Key::I128(1024)));
         assert_eq!(convert("CAST(11 AS UINT8)"), Ok(Key::U8(11)));
         assert_eq!(convert("CAST(11 AS UINT16)"), Ok(Key::U16(11)));
         assert_eq!(
             convert("CAST(123.45 AS DECIMAL)"),
             Ok(Key::Decimal(Decimal::from_str("123.45").unwrap()))
+        );
+        assert_eq!(
+            convert("CAST(0 AS INET)"),
+            Ok(Key::Inet(IpAddr::from_str("0.0.0.0").unwrap()))
         );
 
         assert_eq!(
@@ -528,12 +533,15 @@ mod tests {
         let n2 = Inet(IpAddr::from_str("127.0.0.1").unwrap()).to_cmp_be_bytes();
         let n3 = Inet(IpAddr::from_str("10.0.0.1").unwrap()).to_cmp_be_bytes();
         let n4 = Inet(IpAddr::from_str("0.0.0.0").unwrap()).to_cmp_be_bytes();
+        let n5 = Inet(IpAddr::from_str("0:0:0:0:0:0:0:1").unwrap()).to_cmp_be_bytes();
+        let n6 = Inet(IpAddr::from_str("::1").unwrap()).to_cmp_be_bytes();
 
         assert_eq!(cmp(&n1, &n1), Ordering::Equal);
         assert_eq!(cmp(&n2, &n1), Ordering::Less);
         assert_eq!(cmp(&n2, &n3), Ordering::Greater);
         assert_eq!(cmp(&n3, &n4), Ordering::Greater);
         assert_eq!(cmp(&n1, &null), Ordering::Greater);
+        assert_eq!(cmp(&n5, &n6), Ordering::Equal);
 
         let n1 = Date(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap()).to_cmp_be_bytes();
         let n2 = Date(NaiveDate::from_ymd_opt(1989, 3, 20).unwrap()).to_cmp_be_bytes();
