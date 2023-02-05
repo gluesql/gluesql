@@ -31,25 +31,24 @@ pub struct Schema {
 }
 
 impl Schema {
-    pub fn to_ddl(self) -> String {
+    pub fn to_ddl(&self) -> String {
         let Schema {
             table_name,
-            column_defs: columns,
+            column_defs,
             indexes,
             ..
         } = self;
 
         let create_table = Statement::CreateTable {
             if_not_exists: false,
-            name: table_name.clone(),
-            columns: columns.unwrap_or_default(),
+            name: table_name.to_owned(),
+            columns: column_defs.to_owned().unwrap_or_default(),
             source: None,
         }
         .to_sql();
 
         let create_indexes = indexes.iter().map(|SchemaIndex { name, expr, .. }| {
             let expr = expr.to_sql();
-            let table_name = &table_name;
 
             format!("CREATE INDEX {name} ON {table_name} ({expr});")
         });

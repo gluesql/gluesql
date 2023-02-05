@@ -256,7 +256,7 @@ impl StoreMut for JsonlStorage {
 
         if schema.column_defs.is_some() {
             let schema_path = self.schema_path(schema.table_name.as_str());
-            let ddl = schema.clone().to_ddl();
+            let ddl = schema.to_ddl();
             let mut file = File::create(schema_path).map_storage_err()?;
             write!(file, "{ddl}").map_storage_err()?;
         }
@@ -296,18 +296,16 @@ impl StoreMut for JsonlStorage {
             .open(table_path)
             .map_storage_err()?;
 
+        let labels = schema
+            .column_defs
+            .unwrap_or_default()
+            .into_iter()
+            .map(|column_def| column_def.name);
+
         for row in rows {
             let json_string = match row {
                 DataRow::Map(hash_map) => JsonIter::Map(hash_map.into_iter()),
-                DataRow::Vec(values) => match &schema.column_defs {
-                    Some(column_defs) => JsonIter::Vec(
-                        column_defs
-                            .iter()
-                            .map(|column_def| column_def.name.clone())
-                            .zip(values.into_iter()),
-                    ),
-                    None => break,
-                },
+                DataRow::Vec(values) => JsonIter::Vec(labels.clone().zip(values.into_iter())),
             }
             .map(|(key, value)| {
                 let value = JsonValue::try_from(value)?.to_string();
