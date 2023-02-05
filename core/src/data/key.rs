@@ -287,7 +287,7 @@ impl Key {
 mod tests {
     use {
         crate::{
-            data::{Key, KeyError, Value},
+            data::{Interval, Key, KeyError, Value},
             executor::evaluate_stateless,
             parse_sql::parse_expr,
             result::Result,
@@ -381,6 +381,42 @@ mod tests {
         let size_r = rs.len();
 
         size_l.cmp(&size_r)
+    }
+
+    #[test]
+    fn key_partial_cmp() {
+        use uuid::Uuid;
+        macro_rules! equal {
+            ($expr: expr) => {
+                assert_eq!(&$expr.partial_cmp(&$expr), &Some(Ordering::Equal))
+            };
+        }
+        equal!(Key::Bool(true));
+        equal!(Key::I8(11));
+        equal!(Key::I16(11));
+        equal!(Key::I32(11));
+        equal!(Key::I64(2048));
+        equal!(Key::U8(11));
+        equal!(Key::U16(11));
+        equal!(Key::Decimal(Decimal::from_str("123.45").unwrap()));
+
+        equal!(Key::Str("Hello World".to_owned()));
+        equal!(Key::Bytea(hex::decode("1234").unwrap()));
+        equal!(Key::Date(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap()));
+        equal!(Key::Time(
+            NaiveTime::from_hms_milli_opt(20, 1, 9, 100).unwrap()
+        ));
+        equal!(Key::Timestamp(
+            NaiveDateTime::from_timestamp_millis(1662921288).unwrap()
+        ));
+        equal!(Key::Interval(Interval::Month(30)));
+        equal!(Key::Uuid(
+            Uuid::parse_str("550e8400-e29b-41d4-a716-446655440000")
+                .unwrap()
+                .as_u128()
+        ));
+        // None
+        assert_eq!(&Key::None.partial_cmp(&Key::None), &None);
     }
 
     #[test]
