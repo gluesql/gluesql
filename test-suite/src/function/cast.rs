@@ -57,6 +57,10 @@ test_case!(cast_literal, async move {
             Ok(select!(cast I64; 1)),
         ),
         (
+            "SELECT CAST(SUBSTR('123', 2, 3) AS INTEGER) AS cast FROM Item",
+            Ok(select!(cast I64; 23)),
+        ),
+        (
             "SELECT CAST('foo' AS INTEGER) AS cast FROM Item",
             Err(ValueError::LiteralCastFromTextToIntegerFailed("foo".to_owned()).into()),
         ),

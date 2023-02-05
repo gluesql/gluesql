@@ -107,7 +107,14 @@ test_case!(primary_key, async move {
             3     "foo".to_owned()
         ))
     );
-
+    run!(
+        "
+        CREATE TABLE Strslice (
+            name TEXT PRIMARY KEY
+        );
+        "
+    );
+    run!("INSERT INTO Strslice VALUES (SUBSTR(SUBSTR('foo', 1), 1));");
     // PRIMARY KEY includes UNIQUE constraint
     test!(
         "INSERT INTO Allegro VALUES (1, 'another hello');",
