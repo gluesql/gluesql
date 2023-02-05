@@ -156,7 +156,7 @@ impl JsonlStorage {
         let lines = read_lines(data_path).map_storage_err()?;
         let row_iter = lines.enumerate().map(move |(key, line)| -> Result<_> {
             let hash_map = HashMap::parse_json_object(&line.map_storage_err()?)?;
-            let data_row = match schema.clone().column_defs {
+            let data_row = match &schema.column_defs {
                 Some(column_defs) => {
                     let values = column_defs
                         .iter()
@@ -196,7 +196,7 @@ impl Store for JsonlStorage {
     }
 
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
-        let paths = fs::read_dir(self.path.clone()).map_storage_err()?;
+        let paths = fs::read_dir(&self.path).map_storage_err()?;
         paths
             .filter(|result| {
                 result
