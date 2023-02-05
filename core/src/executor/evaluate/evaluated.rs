@@ -5,13 +5,16 @@ use {
         data::{value::HashMapJsonExt, Key, Literal, Value},
         result::{Error, Result},
     },
-    std::{cmp::Ordering, collections::HashMap, ops::Range},
+    std::{borrow::Cow, cmp::Ordering, collections::HashMap, ops::Range},
 };
 
 #[derive(Clone, Debug)]
 pub enum Evaluated<'a> {
     Literal(Literal<'a>),
-    StrSlice { source: String, range: Range<usize> },
+    StrSlice {
+        source: Cow<'a, str>,
+        range: Range<usize>,
+    },
     Value(Value),
 }
 
@@ -337,10 +340,9 @@ impl<'a> Evaluated<'a> {
 
     pub fn ltrim(self, name: String, chars: Option<Evaluated<'_>>) -> Result<Evaluated<'a>> {
         let (source, range) = match self {
-            Evaluated::Literal(Literal::Text(v)) => {
-                let string = v.into_owned();
-                let end = string.len();
-                (string, 0..end)
+            Evaluated::Literal(Literal::Text(l)) => {
+                let end = l.len();
+                (l, 0..end)
             }
             Evaluated::Literal(Literal::Null) | Evaluated::Value(Value::Null) => {
                 return Ok(Evaluated::from(Value::Null))
@@ -348,7 +350,7 @@ impl<'a> Evaluated<'a> {
             Evaluated::StrSlice { source, range } => (source, range),
             Evaluated::Value(Value::Str(v)) => {
                 let end = v.len();
-                (v, 0..end)
+                (Cow::Owned(v), 0..end)
             }
             _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
         };
@@ -416,10 +418,9 @@ impl<'a> Evaluated<'a> {
 
     pub fn rtrim(self, name: String, chars: Option<Evaluated<'_>>) -> Result<Evaluated<'a>> {
         let (source, range) = match self {
-            Evaluated::Literal(Literal::Text(v)) => {
-                let string = v.into_owned();
-                let end = string.len();
-                (string, 0..end)
+            Evaluated::Literal(Literal::Text(l)) => {
+                let end = l.len();
+                (l, 0..end)
             }
             Evaluated::Literal(Literal::Null) | Evaluated::Value(Value::Null) => {
                 return Ok(Evaluated::from(Value::Null))
@@ -427,7 +428,7 @@ impl<'a> Evaluated<'a> {
             Evaluated::StrSlice { source, range } => (source, range),
             Evaluated::Value(Value::Str(v)) => {
                 let end = v.len();
-                (v, 0..end)
+                (Cow::Owned(v), 0..end)
             }
             _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
         };
@@ -494,10 +495,9 @@ impl<'a> Evaluated<'a> {
         count: Option<Evaluated<'a>>,
     ) -> Result<Evaluated<'a>> {
         let (source, range) = match self {
-            Evaluated::Literal(Literal::Text(v)) => {
-                let string = v.into_owned();
-                let end = string.len();
-                (string, 0..end)
+            Evaluated::Literal(Literal::Text(l)) => {
+                let end = l.len();
+                (l, 0..end)
             }
             Evaluated::Literal(Literal::Null) | Evaluated::Value(Value::Null) => {
                 return Ok(Evaluated::from(Value::Null))
@@ -505,7 +505,7 @@ impl<'a> Evaluated<'a> {
             Evaluated::StrSlice { source, range } => (source, range),
             Evaluated::Value(Value::Str(v)) => {
                 let end = v.len();
-                (v, 0..end)
+                (Cow::Owned(v), 0..end)
             }
             _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
         };
@@ -550,10 +550,9 @@ impl<'a> Evaluated<'a> {
         trim_where_field: &Option<TrimWhereField>,
     ) -> Result<Evaluated<'a>> {
         let (source, range) = match self {
-            Evaluated::Literal(Literal::Text(v)) => {
-                let string = v.into_owned();
-                let end = string.len();
-                (string, 0..end)
+            Evaluated::Literal(Literal::Text(l)) => {
+                let end = l.len();
+                (l, 0..end)
             }
             Evaluated::Literal(Literal::Null) | Evaluated::Value(Value::Null) => {
                 return Ok(Evaluated::from(Value::Null))
@@ -561,7 +560,7 @@ impl<'a> Evaluated<'a> {
             Evaluated::StrSlice { source, range } => (source, range),
             Evaluated::Value(Value::Str(v)) => {
                 let end = v.len();
-                (v, 0..end)
+                (Cow::Owned(v), 0..end)
             }
             _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
         };
@@ -713,7 +712,6 @@ impl<'a> Evaluated<'a> {
             }
             None => {
                 let start = source
-                    .as_str()
                     .chars()
                     .skip(range.start)
                     .enumerate()
@@ -723,7 +721,6 @@ impl<'a> Evaluated<'a> {
 
                 let end = source.len()
                     - source
-                        .as_str()
                         .chars()
                         .rev()
                         .skip(source.len() - range.end)
