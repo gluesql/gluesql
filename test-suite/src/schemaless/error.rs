@@ -31,6 +31,13 @@ test_case!(error, async move {
     )
     .as_str());
 
+    run!("CREATE TABLE Food");
+    run!(format!(
+        "INSERT INTO Food VALUES (SUBSTR(SUBSTR(' hi{}', 4), 1));",
+        json!({ "id": 1, "name": "meat", "weight": 10 }),
+    )
+    .as_str());
+
     test!(
         r#"
             INSERT INTO Item

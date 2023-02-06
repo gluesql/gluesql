@@ -95,6 +95,10 @@ impl<'a, T: GStore> Update<'a, T> {
                                     v.validate_type(data_type)?;
                                     v
                                 }
+                                Evaluated::StrSlice {
+                                    source: s,
+                                    range: r,
+                                } => Value::Str(s[r].to_owned()),
                             };
 
                             value.validate_null(*nullable)?;

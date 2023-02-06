@@ -39,6 +39,7 @@ impl Build for CreateTableNode {
             if_not_exists: self.if_not_exists,
             columns,
             source: None,
+            engine: None,
         })
     }
 }

@@ -6,11 +6,12 @@ use {
 test_case!(nullable, async move {
     run!(
         "
-CREATE TABLE Test (
-    id INTEGER NULL,
-    num INTEGER NOT NULL,
-    name TEXT
-)"
+        CREATE TABLE Test (
+            id INTEGER NULL,
+            num INTEGER NOT NULL,
+            name TEXT
+        )
+        "
     );
     run!(
         "
@@ -18,7 +19,7 @@ CREATE TABLE Test (
             (NULL, 2, 'Hello'),
             (   1, 9, 'World'),
             (   3, 4, 'Great');
-    "
+        "
     );
 
     let test_cases = [
@@ -43,6 +44,12 @@ CREATE TABLE Test (
             select_with_null!(
                 id   | num;
                 Null   I64(2)
+            ),
+        ),
+        (
+            "SELECT name FROM Test WHERE SUBSTR(name, 1) IS NULL",
+            select!(
+                name;
             ),
         ),
         (

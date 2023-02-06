@@ -54,6 +54,10 @@ test_case!(trim, async move {
             )),
         ),
         (
+            "SELECT TRIM(BOTH NULL FROM 'name') AS test",
+            Ok(select_with_null!(test; Value::Null)),
+        ),
+        (
             "SELECT TRIM(TRAILING NULL FROM name) FROM NullName;",
             Ok(select_with_null!(
                 "TRIM(TRAILING NULL FROM name)";
@@ -69,7 +73,7 @@ test_case!(trim, async move {
         ),
         ("CREATE TABLE Test (name TEXT)", Ok(Payload::Create)),
         (
-            "INSERT INTO Test VALUES 
+            "INSERT INTO Test VALUES
                     ('     blank     '), 
                     ('xxxyzblankxyzxx'), 
                     ('xxxyzblank     '),
@@ -128,6 +132,26 @@ test_case!(trim, async move {
                 Value::Str         | Value::Str           | Value::Str;
                 "hello".to_owned()   "hello  ".to_owned()   "  hello".to_owned()
             )),
+        ),
+        (
+            "SELECT
+                TRIM(BOTH TRIM(BOTH ' potato ')) AS Case1,
+                TRIM('xyz' FROM 'x') AS Case2,
+                TRIM(TRAILING 'xyz' FROM 'xx') AS Case3
+            ",
+            Ok(select!(
+                Case1               | Case2         | Case3
+                Value::Str          | Value::Str    | Value::Str;
+                "potato".to_owned()   "".to_owned()   "".to_owned()
+            )),
+        ),
+        (
+            "SELECT TRIM('1' FROM 1) AS test FROM Test",
+            Err(EvaluateError::FunctionRequiresStringValue("TRIM".to_owned()).into()),
+        ),
+        (
+            "SELECT TRIM(1 FROM TRIM('t' FROM 'tartare')) AS test FROM Test",
+            Err(EvaluateError::FunctionRequiresStringValue("TRIM".to_owned()).into()),
         ),
     ];
 

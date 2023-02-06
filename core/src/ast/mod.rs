@@ -62,6 +62,7 @@ pub enum Statement {
         /// Optional schema
         columns: Vec<ColumnDef>,
         source: Option<Box<Query>>,
+        engine: Option<String>,
     },
     /// ALTER TABLE
     #[cfg(feature = "alter-table")]
@@ -167,27 +168,37 @@ impl ToSql for Statement {
                 name,
                 columns,
                 source,
-            } => match source {
-                Some(query) => match if_not_exists {
-                    true => format!("CREATE TABLE IF NOT EXISTS {name} AS {};", query.to_sql()),
-                    false => format!("CREATE TABLE {name} AS {};", query.to_sql()),
-                },
-                None if columns.is_empty() => match if_not_exists {
-                    true => format!("CREATE TABLE IF NOT EXISTS {name};"),
-                    false => format!("CREATE TABLE {name};"),
-                },
-                None => {
-                    let columns = columns
-                        .iter()
-                        .map(ToSql::to_sql)
-                        .collect::<Vec<_>>()
-                        .join(", ");
-                    match if_not_exists {
-                        true => format!("CREATE TABLE IF NOT EXISTS {name} ({columns});"),
-                        false => format!("CREATE TABLE {name} ({columns});"),
+                engine,
+            } => {
+                let if_not_exists = if_not_exists.then_some("IF NOT EXISTS");
+                let body = match source {
+                    Some(query) => Some(format!("AS {}", query.to_sql())),
+                    None if columns.is_empty() => None,
+                    None => {
+                        let columns = columns
+                            .iter()
+                            .map(ToSql::to_sql)
+                            .collect::<Vec<_>>()
+                            .join(", ");
+
+                        Some(format!("({columns})"))
                     }
-                }
-            },
+                };
+                let engine = engine.as_ref().map(|engine| format!("ENGINE = {engine}"));
+                let sql = vec![
+                    Some("CREATE TABLE"),
+                    if_not_exists,
+                    Some(name),
+                    body.as_deref(),
+                    engine.as_deref(),
+                ]
+                .into_iter()
+                .flatten()
+                .collect::<Vec<&str>>()
+                .join(" ");
+
+                format!("{sql};")
+            }
             #[cfg(feature = "alter-table")]
             Statement::AlterTable { name, operation } => {
                 format!("ALTER TABLE {name} {};", operation.to_sql())
@@ -361,6 +372,7 @@ mod tests {
                 name: "Foo".into(),
                 columns: Vec::new(),
                 source: None,
+                engine: None,
             }
             .to_sql()
         );
@@ -372,6 +384,7 @@ mod tests {
                 name: "Foo".into(),
                 columns: Vec::new(),
                 source: None,
+                engine: None,
             }
             .to_sql()
         );
@@ -389,6 +402,7 @@ mod tests {
                     unique: None,
                 },],
                 source: None,
+                engine: None,
             }
             .to_sql()
         );
@@ -421,7 +435,8 @@ mod tests {
                         unique: None,
                     }
                 ],
-                source: None
+                source: None,
+                engine: None,
             }
             .to_sql()
         );
@@ -462,7 +477,8 @@ mod tests {
                     order_by: vec![],
                     limit: None,
                     offset: None
-                }))
+                })),
+                engine: None,
             }
             .to_sql()
         );
@@ -480,7 +496,41 @@ mod tests {
                     order_by: vec![],
                     limit: None,
                     offset: None
-                }))
+                })),
+                engine: None,
+            }
+            .to_sql()
+        );
+    }
+
+    #[test]
+    fn to_sql_create_table_with_engine() {
+        assert_eq!(
+            "CREATE TABLE Foo ENGINE = MEMORY;",
+            Statement::CreateTable {
+                if_not_exists: false,
+                name: "Foo".into(),
+                columns: Vec::new(),
+                source: None,
+                engine: Some("MEMORY".to_owned()),
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            "CREATE TABLE Foo (id BOOLEAN NOT NULL) ENGINE = SLED;",
+            Statement::CreateTable {
+                if_not_exists: false,
+                name: "Foo".into(),
+                columns: vec![ColumnDef {
+                    name: "id".to_owned(),
+                    data_type: DataType::Boolean,
+                    nullable: false,
+                    default: None,
+                    unique: None,
+                },],
+                source: None,
+                engine: Some("SLED".to_owned()),
             }
             .to_sql()
         );

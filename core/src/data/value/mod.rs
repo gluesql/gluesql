@@ -20,6 +20,7 @@ mod expr;
 mod json;
 mod literal;
 mod selector;
+mod string;
 mod uuid;
 
 pub use {

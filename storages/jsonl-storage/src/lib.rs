@@ -126,6 +126,7 @@ impl JsonlStorage {
             column_defs,
             indexes: vec![],
             created: NaiveDateTime::default(),
+            engine: None,
         }))
     }
 
