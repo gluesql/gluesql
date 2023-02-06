@@ -98,7 +98,15 @@ impl JsonlStorage {
                 let mut ddl = String::new();
                 file.read_to_string(&mut ddl).map_storage_err()?;
 
-                let parsed = parse(ddl)?.into_iter().next().unwrap();
+                let parsed = parse(ddl)?.into_iter().next().map_storage_err(
+                    JsonlStorageError::WrongSchemaFile(
+                        schema_path
+                            .to_str()
+                            .map_storage_err(JsonlStorageError::FileNotFound.to_string())?
+                            .to_string(),
+                    )
+                    .to_string(),
+                )?;
                 let statement = translate(&parsed)?;
 
                 let column_defs = match statement {
