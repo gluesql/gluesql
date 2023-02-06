@@ -2,7 +2,10 @@
 name = "gluesql_jsonl_storage"
 version = "0.13.0"
 edition = "2021"
-authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
+authors = [
+	"Hyoungkwan Cho <devgony@gmail.com>",
+	"Taehoon Moon <taehoon.moon@outlook.com>"
+]
 description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
 license = "Apache-2.0"
 repository = "https://github.com/gluesql/gluesql"
