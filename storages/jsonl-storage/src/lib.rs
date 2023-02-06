@@ -11,7 +11,7 @@ use {
         store::{DataRow, RowIter, Store},
         {chrono::NaiveDateTime, store::StoreMut},
     },
-    serde_json::Value as JsonValue,
+    serde_json::{Map, Value as JsonValue},
     std::{
         collections::HashMap,
         fmt,
@@ -290,33 +290,32 @@ impl StoreMut for JsonlStorage {
             .open(table_path)
             .map_storage_err()?;
 
-        let labels = schema.column_defs.unwrap_or_default();
-        let labels = labels
+        let column_defs = schema.column_defs.unwrap_or_default();
+        let labels = column_defs
             .iter()
             .map(|column_def| column_def.name.as_str())
             .collect::<Vec<_>>();
 
         for row in rows {
             let json_string = match row {
-                DataRow::Vec(values) => labels
-                    .iter()
-                    .zip(values.into_iter())
-                    .map(|(key, value)| {
-                        let value = JsonValue::try_from(value)?.to_string();
-                        Ok(format!("\"{}\": {}", key, value))
-                    })
-                    .collect::<Result<Vec<_>>>()?
-                    .join(", "),
-                DataRow::Map(hash_map) => hash_map
-                    .into_iter()
-                    .map(|(key, value)| {
-                        let value = JsonValue::try_from(value)?.to_string();
-                        Ok(format!("\"{}\": {}", key, value))
-                    })
-                    .collect::<Result<Vec<_>>>()?
-                    .join(", "),
+                DataRow::Vec(values) => {
+                    let mut json_map = Map::new();
+                    for (key, value) in labels.iter().zip(values.into_iter()) {
+                        json_map.insert(key.to_string(), value.try_into()?);
+                    }
+
+                    JsonValue::Object(json_map).to_string()
+                }
+                DataRow::Map(hash_map) => {
+                    let mut json_map = Map::new();
+                    for (key, value) in hash_map {
+                        json_map.insert(key.to_string(), value.try_into()?);
+                    }
+
+                    JsonValue::Object(json_map).to_string()
+                }
             };
-            writeln!(file, "{{{}}}", json_string).map_storage_err()?;
+            writeln!(file, "{json_string}").map_storage_err()?;
         }
 
         Ok(())
