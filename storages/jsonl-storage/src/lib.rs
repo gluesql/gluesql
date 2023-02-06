@@ -11,7 +11,6 @@ use {
         store::{DataRow, RowIter, Store},
         {chrono::NaiveDateTime, store::StoreMut},
     },
-    iter_enum::Iterator,
     serde_json::Value as JsonValue,
     std::{
         collections::HashMap,
@@ -279,12 +278,6 @@ impl StoreMut for JsonlStorage {
     }
 
     async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
-        #[derive(Iterator)]
-        enum JsonIter<I1, I2> {
-            Map(I1),
-            Vec(I2),
-        }
-
         let schema = self
             .fetch_schema(table_name)?
             .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())?;
@@ -296,26 +289,33 @@ impl StoreMut for JsonlStorage {
             .open(table_path)
             .map_storage_err()?;
 
-        let labels = schema
-            .column_defs
-            .unwrap_or_default()
-            .into_iter()
-            .map(|column_def| column_def.name);
+        let labels = schema.column_defs.unwrap_or_default();
+        let labels = labels
+            .iter()
+            .map(|column_def| column_def.name.as_str())
+            .collect::<Vec<_>>();
 
         for row in rows {
             let json_string = match row {
-                DataRow::Map(hash_map) => JsonIter::Map(hash_map.into_iter()),
-                DataRow::Vec(values) => JsonIter::Vec(labels.clone().zip(values.into_iter())),
-            }
-            .map(|(key, value)| {
-                let value = JsonValue::try_from(value)?.to_string();
-
-                Ok(format!("\"{key}\": {value}"))
-            })
-            .collect::<Result<Vec<_>>>()?
-            .join(", ");
-
-            writeln!(file, "{{{json_string}}}").map_storage_err()?;
+                DataRow::Vec(values) => labels
+                    .iter()
+                    .zip(values.into_iter())
+                    .map(|(key, value)| {
+                        let value = JsonValue::try_from(value)?.to_string();
+                        Ok(format!("\"{}\": {}", key, value))
+                    })
+                    .collect::<Result<Vec<_>>>()?
+                    .join(", "),
+                DataRow::Map(hash_map) => hash_map
+                    .into_iter()
+                    .map(|(key, value)| {
+                        let value = JsonValue::try_from(value)?.to_string();
+                        Ok(format!("\"{}\": {}", key, value))
+                    })
+                    .collect::<Result<Vec<_>>>()?
+                    .join(", "),
+            };
+            writeln!(file, "{{{}}}", json_string).map_storage_err()?;
         }
 
         Ok(())
