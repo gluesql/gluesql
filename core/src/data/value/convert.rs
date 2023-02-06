@@ -1315,10 +1315,13 @@ mod tests {
 
     #[test]
     fn try_into_u32() {
-        let ip = Ipv4Addr::from(1234567890);
         assert_eq!(
-            u32::try_from(&Value::Inet(IpAddr::V4(ip))),
-            Ok(u32::from(ip))
+            u32::try_from(&Value::Inet(IpAddr::from_str("0.0.0.0").unwrap())),
+            Ok(u32::from(Ipv4Addr::from(0)))
+        );
+        assert_eq!(
+            u32::try_from(&Value::Inet(IpAddr::from_str("::0").unwrap())),
+            Err(ValueError::ImpossibleCast.into())
         );
     }
 
@@ -1339,17 +1342,28 @@ mod tests {
             u128::try_from(&Value::Inet(IpAddr::V6(ip))),
             Ok(u128::from(ip))
         );
+
+        assert_eq!(
+            u128::try_from(&Value::Date(date(2021, 11, 20))),
+            Err(ValueError::ImpossibleCast.into())
+        );
     }
 
     #[test]
     fn try_into_ipaddr() {
+        macro_rules! test {
+            ($from: expr, $to: expr) => {
+                assert_eq!(IpAddr::try_from($from), Ok(IpAddr::from_str($to).unwrap()));
+                assert_eq!(IpAddr::try_from($from), Ok(IpAddr::from_str($to).unwrap()))
+            };
+        }
+        test!(&Value::Str("127.0.0.1".to_owned()), "127.0.0.1");
+        test!(&Value::Str("0.0.0.0".to_owned()), "0.0.0.0");
+        test!(IpAddr::from_str("::1").unwrap(), "::1");
+        test!(IpAddr::from_str("::2:4cb0:16ea").unwrap(), "::2:4cb0:16ea");
         assert_eq!(
-            IpAddr::try_from(&Value::Str("0.0.0.0".to_owned())),
-            Ok(IpAddr::from_str("0.0.0.0").unwrap())
-        );
-        assert_eq!(
-            IpAddr::try_from(&Value::Str("::1".to_owned())),
-            Ok(IpAddr::from_str("::1").unwrap())
+            IpAddr::try_from(&Value::Date(date(2021, 11, 20))),
+            Err(ValueError::ImpossibleCast.into())
         );
     }
 }

@@ -1402,13 +1402,13 @@ mod tests {
         }
 
         let bytea = Value::Bytea(hex::decode("0abc").unwrap());
-        let inet = Value::Inet(IpAddr::from_str("::1").unwrap());
+        let inet = |v| Value::Inet(IpAddr::from_str(v).unwrap());
 
         // Same as
         cast!(Bool(true)            => Boolean      , Bool(true));
         cast!(Str("a".to_owned())   => Text         , Str("a".to_owned()));
         cast!(bytea                 => Bytea        , bytea);
-        cast!(inet                  => Inet         , inet);
+        cast!(inet("::1")           => Inet         , inet("::1"));
         cast!(I8(1)                 => Int8         , I8(1));
         cast!(I16(1)                 => Int16         , I16(1));
         cast!(I32(1)                => Int32        , I32(1));
@@ -1494,7 +1494,7 @@ mod tests {
         cast!(U8(11)        => Text, Str("11".to_owned()));
         cast!(U16(11)        => Text, Str("11".to_owned()));
         cast!(F64(1.0)      => Text, Str("1".to_owned()));
-        cast!(Value::Inet(IpAddr::from_str("::1").unwrap()) => Text, Str("::1".to_owned()));
+        cast!(inet("::1")    => Text, Str("::1".to_owned()));
 
         let date = Value::Date(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap());
         cast!(date          => Text, Str("2021-05-01".to_owned()));
@@ -1535,6 +1535,17 @@ mod tests {
         assert_eq!(
             Value::Str("!@#$5".to_owned()).cast(&Bytea),
             Err(ValueError::CastFromHexToByteaFailed("!@#$5".to_owned()).into()),
+        );
+
+        // Inet
+        cast!(inet("::1") => Inet, inet("::1"));
+        cast!(Str("::1".to_owned()) => Inet, inet("::1"));
+        cast!(Str("0.0.0.0".to_owned()) => Inet, inet("0.0.0.0"));
+
+        // Casting error
+        assert_eq!(
+            Value::Uuid(123).cast(&List),
+            Err(ValueError::UnimplementedCast.into())
         );
     }
 

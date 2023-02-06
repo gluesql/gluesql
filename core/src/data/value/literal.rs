@@ -200,10 +200,10 @@ impl Value {
             (DataType::Inet, Literal::Number(v)) => {
                 if let Some(x) = v.to_u32() {
                     Ok(Value::Inet(IpAddr::V4(Ipv4Addr::from(x))))
-                } else if let Some(x) = v.to_u128() {
-                    Ok(Value::Inet(IpAddr::V6(Ipv6Addr::from(x))))
                 } else {
-                    Err(ValueError::FailedToParseInetString(v.to_string()).into())
+                    Ok(Value::Inet(IpAddr::V6(Ipv6Addr::from(
+                        v.to_u128().unwrap(),
+                    ))))
                 }
             }
             (DataType::Date, Literal::Text(v)) => v
@@ -473,6 +473,7 @@ mod tests {
         let uuid = parse_uuid(uuid_text).unwrap();
 
         let bytea = || hex::decode("123456").unwrap();
+        let inet = |v: &str| Value::Inet(IpAddr::from_str(v).unwrap());
 
         assert_eq!(Value::Bool(true), Literal::Boolean(true));
         assert_eq!(Value::I8(8), num!("8"));
@@ -484,12 +485,11 @@ mod tests {
         assert_eq!(Value::U16(64), num!("64"));
         assert_eq!(Value::Str("Hello".to_owned()), text!("Hello"));
         assert_eq!(Value::Bytea(bytea()), Literal::Bytea(bytea()));
-        assert_eq!(
-            Value::Inet(IpAddr::from_str("127.0.0.1").unwrap()),
-            text!("127.0.0.1")
-        );
-        assert_eq!(Value::Inet(IpAddr::from_str("::1").unwrap()), text!("::1"));
-        assert_eq!(Value::Inet(IpAddr::from_str("0.0.0.0").unwrap()), num!("0"));
+        assert_eq!(inet("127.0.0.1"), text!("127.0.0.1"));
+        assert_eq!(inet("::1"), text!("::1"));
+        assert_eq!(inet("0.0.0.0"), num!("0"));
+        assert_ne!(inet("::1"), num!("0"));
+        assert_eq!(inet("::2:4cb0:16ea"), num!("9876543210"));
         assert_eq!(Value::Date(date(2021, 11, 20)), text!("2021-11-20"));
         assert_ne!(Value::Date(date(2021, 11, 20)), text!("202=abcdef"));
         assert_eq!(
@@ -617,6 +617,11 @@ mod tests {
             DataType::Inet,
             num!("4294967295"),
             Value::Inet(inet("255.255.255.255"))
+        );
+        test!(
+            DataType::Inet,
+            num!("9876543210"),
+            Value::Inet(inet("::2:4cb0:16ea"))
         );
         test!(
             DataType::Inet,
