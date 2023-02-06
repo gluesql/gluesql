@@ -27,14 +27,6 @@ pub struct JsonlStorage {
     pub path: PathBuf,
 }
 
-impl Default for JsonlStorage {
-    fn default() -> Self {
-        JsonlStorage {
-            path: PathBuf::from("data"),
-        }
-    }
-}
-
 trait ResultExt<T, E: ToString> {
     fn map_storage_err(self) -> Result<T, Error>;
 }
