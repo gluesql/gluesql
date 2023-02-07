@@ -1,6 +1,7 @@
 pub mod bytea;
 pub mod date;
 pub mod decimal;
+pub mod inet;
 pub mod int128;
 pub mod int16;
 pub mod int32;
