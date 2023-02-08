@@ -329,7 +329,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 None => None,
             };
 
-            f::trim(name, expr, filter_chars, trim_where_field)
+            expr.trim(name, filter_chars, trim_where_field)
         }
         Function::Ltrim { expr, chars } => {
             let expr = eval(expr).await?;
@@ -338,7 +338,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 None => None,
             };
 
-            f::ltrim(name, expr, chars)
+            expr.ltrim(name, chars)
         }
         Function::Rtrim { expr, chars } => {
             let expr = eval(expr).await?;
@@ -347,7 +347,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 None => None,
             };
 
-            f::rtrim(name, expr, chars)
+            expr.rtrim(name, chars)
         }
         Function::Reverse(expr) => {
             let expr = eval(expr).await?;
@@ -367,8 +367,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 Some(v) => Some(eval(v).await?),
                 None => None,
             };
-
-            f::substr(name, expr, start, count)
+            expr.substr(name, start, count)
         }
         Function::Ascii(expr) => f::ascii(name, eval(expr).await?),
         Function::Chr(expr) => f::chr(name, eval(expr).await?),

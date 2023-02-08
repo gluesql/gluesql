@@ -1,15 +1,12 @@
 use {
     super::{EvaluateError, Evaluated},
     crate::{
-        ast::{DataType, DateTimeField, TrimWhereField},
+        ast::{DataType, DateTimeField},
         data::{Value, ValueError},
         result::Result,
     },
     rand::{rngs::StdRng, Rng, SeedableRng},
-    std::{
-        cmp::{max, min},
-        ops::ControlFlow,
-    },
+    std::ops::ControlFlow,
     uuid::Uuid,
 };
 
@@ -188,59 +185,6 @@ pub fn lpad_or_rpad<'a>(
     Ok(Evaluated::from(Value::Str(result)))
 }
 
-pub fn trim<'a>(
-    name: String,
-    expr: Evaluated<'_>,
-    filter_chars: Option<Evaluated<'_>>,
-    trim_where_field: &'a Option<TrimWhereField>,
-) -> Result<Evaluated<'a>> {
-    let expr_str = eval_to_str!(name, expr);
-    let expr_str = expr_str.as_str();
-    let filter_chars = match filter_chars {
-        Some(expr) => eval_to_str!(name, expr).chars().collect::<Vec<_>>(),
-        None => vec![' '],
-    };
-
-    let value = match trim_where_field {
-        Some(TrimWhereField::Both) => expr_str.trim_matches(&filter_chars[..]),
-        Some(TrimWhereField::Leading) => expr_str.trim_start_matches(&filter_chars[..]),
-        Some(TrimWhereField::Trailing) => expr_str.trim_end_matches(&filter_chars[..]),
-        None => expr_str.trim(),
-    };
-
-    Ok(Evaluated::from(Value::Str(value.to_owned())))
-}
-
-pub fn ltrim<'a>(
-    name: String,
-    expr: Evaluated<'_>,
-    chars: Option<Evaluated<'_>>,
-) -> Result<Evaluated<'a>> {
-    let expr = eval_to_str!(name, expr);
-    let chars = match chars {
-        Some(chars) => eval_to_str!(name, chars).chars().collect::<Vec<char>>(),
-        None => vec![' '],
-    };
-
-    let value = expr.trim_start_matches(chars.as_slice()).to_owned();
-    Ok(Evaluated::from(Value::Str(value)))
-}
-
-pub fn rtrim<'a>(
-    name: String,
-    expr: Evaluated<'_>,
-    chars: Option<Evaluated<'_>>,
-) -> Result<Evaluated<'a>> {
-    let expr = eval_to_str!(name, expr);
-    let chars = match chars {
-        Some(chars) => eval_to_str!(name, chars).chars().collect::<Vec<char>>(),
-        None => vec![' '],
-    };
-
-    let value = expr.trim_end_matches(chars.as_slice()).to_owned();
-    Ok(Evaluated::from(Value::Str(value)))
-}
-
 pub fn reverse(name: String, expr: Evaluated<'_>) -> Result<Evaluated> {
     let value = eval_to_str!(name, expr).chars().rev().collect::<String>();
 
@@ -253,30 +197,6 @@ pub fn repeat<'a>(name: String, expr: Evaluated<'_>, num: Evaluated<'_>) -> Resu
     let value = expr.repeat(num);
 
     Ok(Evaluated::from(Value::Str(value)))
-}
-
-pub fn substr<'a>(
-    name: String,
-    expr: Evaluated<'_>,
-    start: Evaluated<'_>,
-    count: Option<Evaluated<'_>>,
-) -> Result<Evaluated<'a>> {
-    let string = eval_to_str!(name, expr);
-    let start = eval_to_int!(name, start) - 1;
-    let count = match count {
-        Some(v) => eval_to_int!(name, v),
-        None => string.len() as i64,
-    };
-
-    let end = if count < 0 {
-        return Err(EvaluateError::NegativeSubstrLenNotAllowed.into());
-    } else {
-        min(max(start + count, 0) as usize, string.len())
-    };
-
-    let start = min(max(start, 0) as usize, string.len());
-    let string = String::from(&string[start..end]);
-    Ok(Evaluated::from(Value::Str(string)))
 }
 
 pub fn ascii<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {

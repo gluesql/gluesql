@@ -65,6 +65,7 @@ impl TryFrom<Value> for JsonValue {
                 .map_err(|_| ValueError::UnreachableJsonNumberParseFailure(v.to_string()).into()),
             Value::Str(v) => Ok(v.into()),
             Value::Bytea(v) => Ok(hex::encode(v).into()),
+            Value::Inet(v) => Ok(v.to_string().into()),
             Value::Date(v) => Ok(v.to_string().into()),
             Value::Timestamp(v) => Ok(DateTime::<Utc>::from_utc(v, Utc).to_string().into()),
             Value::Time(v) => Ok(v.to_string().into()),
@@ -124,6 +125,7 @@ mod tests {
         chrono::{NaiveDate, NaiveTime},
         rust_decimal::Decimal,
         serde_json::{json, Number as JsonNumber, Value as JsonValue},
+        std::{net::IpAddr, str::FromStr},
     };
 
     #[test]
@@ -180,6 +182,10 @@ mod tests {
         assert_eq!(
             Value::Bytea(hex::decode("a1b2").unwrap()).try_into(),
             Ok(JsonValue::String("a1b2".to_owned()))
+        );
+        assert_eq!(
+            Value::Inet(IpAddr::from_str("::1").unwrap()).try_into(),
+            Ok(JsonValue::String("::1".to_owned()))
         );
         assert_eq!(
             Value::Date(NaiveDate::from_ymd_opt(2020, 1, 3).unwrap()).try_into(),
