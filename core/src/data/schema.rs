@@ -35,7 +35,7 @@ impl Schema {
     pub fn to_ddl(self) -> String {
         let Schema {
             table_name,
-            column_defs: columns,
+            column_defs,
             indexes,
             engine,
             ..
@@ -44,7 +44,7 @@ impl Schema {
         let create_table = Statement::CreateTable {
             if_not_exists: false,
             name: table_name.clone(),
-            columns: columns.unwrap_or_default(),
+            columns: column_defs,
             engine,
             source: None,
         }

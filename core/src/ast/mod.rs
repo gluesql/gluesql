@@ -60,7 +60,7 @@ pub enum Statement {
         /// Table name
         name: String,
         /// Optional schema
-        columns: Vec<ColumnDef>,
+        columns: Option<Vec<ColumnDef>>,
         source: Option<Box<Query>>,
         engine: Option<String>,
     },
@@ -173,13 +173,18 @@ impl ToSql for Statement {
                 let if_not_exists = if_not_exists.then_some("IF NOT EXISTS");
                 let body = match source {
                     Some(query) => Some(format!("AS {}", query.to_sql())),
-                    None if columns.is_empty() => None,
+                    None if columns.is_none() => None,
                     None => {
                         let columns = columns
-                            .iter()
-                            .map(ToSql::to_sql)
-                            .collect::<Vec<_>>()
-                            .join(", ");
+                            .as_ref()
+                            .map(|columns| {
+                                columns
+                                    .iter()
+                                    .map(ToSql::to_sql)
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            })
+                            .unwrap_or("".to_owned());
 
                         Some(format!("({columns})"))
                     }
@@ -370,7 +375,7 @@ mod tests {
             Statement::CreateTable {
                 if_not_exists: true,
                 name: "Foo".into(),
-                columns: Vec::new(),
+                columns: None,
                 source: None,
                 engine: None,
             }
@@ -382,7 +387,7 @@ mod tests {
             Statement::CreateTable {
                 if_not_exists: false,
                 name: "Foo".into(),
-                columns: Vec::new(),
+                columns: None,
                 source: None,
                 engine: None,
             }
@@ -394,13 +399,13 @@ mod tests {
             Statement::CreateTable {
                 if_not_exists: true,
                 name: "Foo".into(),
-                columns: vec![ColumnDef {
+                columns: Some(vec![ColumnDef {
                     name: "id".to_owned(),
                     data_type: DataType::Boolean,
                     nullable: false,
                     default: None,
                     unique: None,
-                },],
+                },]),
                 source: None,
                 engine: None,
             }
@@ -412,7 +417,7 @@ mod tests {
             Statement::CreateTable {
                 if_not_exists: false,
                 name: "Foo".into(),
-                columns: vec![
+                columns: Some(vec![
                     ColumnDef {
                         name: "id".to_owned(),
                         data_type: DataType::Int,
@@ -434,7 +439,7 @@ mod tests {
                         default: None,
                         unique: None,
                     }
-                ],
+                ]),
                 source: None,
                 engine: None,
             }
@@ -449,7 +454,7 @@ mod tests {
             Statement::CreateTable {
                 if_not_exists: false,
                 name: "Foo".into(),
-                columns: vec![],
+                columns: None,
                 source: Some(Box::new(Query {
                     body: SetExpr::Select(Box::new(Select {
                         projection: vec![
@@ -488,7 +493,7 @@ mod tests {
             Statement::CreateTable {
                 if_not_exists: true,
                 name: "Foo".into(),
-                columns: vec![],
+                columns: None,
                 source: Some(Box::new(Query {
                     body: SetExpr::Values(Values(vec![vec![Expr::Literal(AstLiteral::Boolean(
                         true
@@ -510,7 +515,7 @@ mod tests {
             Statement::CreateTable {
                 if_not_exists: false,
                 name: "Foo".into(),
-                columns: Vec::new(),
+                columns: None,
                 source: None,
                 engine: Some("MEMORY".to_owned()),
             }
@@ -522,13 +527,13 @@ mod tests {
             Statement::CreateTable {
                 if_not_exists: false,
                 name: "Foo".into(),
-                columns: vec![ColumnDef {
+                columns: Some(vec![ColumnDef {
                     name: "id".to_owned(),
                     data_type: DataType::Boolean,
                     nullable: false,
                     default: None,
                     unique: None,
-                },],
+                },]),
                 source: None,
                 engine: Some("SLED".to_owned()),
             }
