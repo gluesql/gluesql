@@ -73,19 +73,25 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             query,
             engine,
             ..
-        } => Ok(Statement::CreateTable {
-            if_not_exists: *if_not_exists,
-            name: translate_object_name(name)?,
-            columns: columns
+        } => {
+            let columns = columns
                 .iter()
                 .map(translate_column_def)
-                .collect::<Result<_>>()?,
-            source: match query {
-                Some(v) => Some(translate_query(v).map(Box::new)?),
-                None => None,
-            },
-            engine: engine.clone(),
-        }),
+                .collect::<Result<Vec<_>>>()?;
+
+            let columns = (!columns.is_empty()).then_some(columns);
+
+            Ok(Statement::CreateTable {
+                if_not_exists: *if_not_exists,
+                name: translate_object_name(name)?,
+                columns,
+                source: match query {
+                    Some(v) => Some(translate_query(v).map(Box::new)?),
+                    None => None,
+                },
+                engine: engine.clone(),
+            })
+        }
         #[cfg(feature = "alter-table")]
         SqlStatement::AlterTable {
             name, operation, ..

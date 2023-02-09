@@ -52,7 +52,7 @@ impl Schema {
         let create_table = Statement::CreateTable {
             if_not_exists: false,
             name: table_name.to_owned(),
-            columns: column_defs.to_owned().unwrap_or_default(),
+            columns: column_defs.to_owned(),
             engine: engine.to_owned(),
             source: None,
         }
@@ -89,7 +89,7 @@ pub fn from_ddl(ddl: String) -> Result<Schema> {
             ..
         } => Ok(Schema {
             table_name: name,
-            column_defs: Some(columns),
+            column_defs: columns,
             indexes: Vec::new(),
             engine,
             created: Utc::now().naive_utc(),
