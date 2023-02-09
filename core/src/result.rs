@@ -2,7 +2,8 @@ use {
     crate::{
         ast_builder::AstBuilderError,
         data::{
-            IntervalError, KeyError, LiteralError, RowError, StringExtError, TableError, ValueError,
+            IntervalError, KeyError, LiteralError, RowError, SchemaParseError, StringExtError,
+            TableError, ValueError,
         },
         executor::{
             AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, InsertError,
@@ -16,7 +17,6 @@ use {
     thiserror::Error as ThisError,
 };
 
-use crate::data::schema::SchemaParseError;
 #[cfg(feature = "alter-table")]
 use crate::store::AlterTableError;
 
