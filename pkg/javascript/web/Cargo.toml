@@ -14,6 +14,8 @@ crate-type = ["cdylib", "rlib"]
 [features]
 default = ["console_error_panic_hook"]
 
+nodejs = ["console_error_panic_hook"]
+
 [dependencies]
 wasm-bindgen = { version = "0.2.79" }
 wasm-bindgen-futures = "0.4.29"
@@ -43,4 +45,3 @@ async-trait = "0.1"
 package = "gluesql-test-suite"
 path = "../../../test-suite"
 version = "0.13.1"
-features = ["alter-table"]

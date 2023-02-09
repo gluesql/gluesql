@@ -4,15 +4,19 @@ mod payload;
 mod utils;
 
 use {
-    composite_storage::CompositeStorage,
     gluesql_core::prelude::{execute, parse, plan, translate},
-    idb_storage::IdbStorage,
     js_sys::Promise,
     memory_storage::MemoryStorage,
     payload::convert,
     std::{cell::RefCell, rc::Rc},
     wasm_bindgen::prelude::*,
     wasm_bindgen_futures::future_to_promise,
+};
+
+#[cfg(not(feature = "nodejs"))]
+use {
+    composite_storage::CompositeStorage,
+    idb_storage::IdbStorage,
     web_storage::{WebStorage, WebStorageType},
 };
 
@@ -24,7 +28,11 @@ extern "C" {
 
 #[wasm_bindgen]
 pub struct Glue {
+    #[cfg(not(feature = "nodejs"))]
     storage: Rc<RefCell<Option<CompositeStorage>>>,
+
+    #[cfg(feature = "nodejs")]
+    storage: Rc<RefCell<Option<MemoryStorage>>>,
 }
 
 impl Default for Glue {
@@ -40,14 +48,20 @@ impl Glue {
     pub fn new() -> Self {
         utils::set_panic_hook();
 
-        let mut storage = CompositeStorage::default();
-        storage.push("memory", MemoryStorage::default());
-        storage.push("localStorage", WebStorage::new(WebStorageType::Local));
-        storage.push("sessionStorage", WebStorage::new(WebStorageType::Session));
-        storage.set_default("memory");
+        #[cfg(not(feature = "nodejs"))]
+        let storage = {
+            let mut storage = CompositeStorage::default();
+            storage.push("memory", MemoryStorage::default());
+            storage.push("localStorage", WebStorage::new(WebStorageType::Local));
+            storage.push("sessionStorage", WebStorage::new(WebStorageType::Session));
+            storage.set_default("memory");
+            log("[GlueSQL] loaded: memory, localStorage, sessionStorage");
+            log("[GlueSQL] default engine: memory");
 
-        log("[GlueSQL] loaded: memory, localStorage, sessionStorage");
-        log("[GlueSQL] default engine: memory");
+            storage
+        };
+        #[cfg(feature = "nodejs")]
+        let storage = MemoryStorage::default();
 
         let storage = Rc::new(RefCell::new(Some(storage)));
 
@@ -56,6 +70,7 @@ impl Glue {
         Self { storage }
     }
 
+    #[cfg(not(feature = "nodejs"))]
     #[wasm_bindgen(js_name = loadIndexedDB)]
     pub fn load_indexeddb(&mut self) -> Promise {
         let cell = Rc::clone(&self.storage);
@@ -87,6 +102,7 @@ impl Glue {
         })
     }
 
+    #[cfg(not(feature = "nodejs"))]
     #[wasm_bindgen(js_name = setDefaultEngine)]
     pub fn set_default_engine(&mut self, default_engine: String) -> Result<(), JsValue> {
         let cell = Rc::clone(&self.storage);
@@ -122,7 +138,7 @@ impl Glue {
             let queries = parse(&sql).map_err(|error| JsValue::from_str(&format!("{error}")))?;
 
             let mut payloads = vec![];
-            let mut storage: CompositeStorage = cell.replace(None).unwrap();
+            let mut storage = cell.replace(None).unwrap();
 
             for query in queries.iter() {
                 let statement = translate(query);

@@ -1,4 +1,4 @@
-#![cfg(target_arch = "wasm32")]
+#![cfg(all(target_arch = "wasm32", not(feature = "nodejs")))]
 
 wasm_bindgen_test_configure!(run_in_browser);
 
