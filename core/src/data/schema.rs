@@ -1,17 +1,14 @@
-use chrono::Utc;
-
-use crate::prelude::{parse, translate};
-
 use {
     crate::{
-        ast::{ColumnDef, Expr, Statement, ToSql},
+        ast::{ColumnDef, Expr, OrderByExpr, Statement, ToSql},
+        prelude::{parse, translate},
         result::Result,
     },
-    chrono::NaiveDateTime,
+    chrono::{NaiveDateTime, Utc},
     serde::{Deserialize, Serialize},
     std::{fmt::Debug, iter},
     strum_macros::Display,
-    thiserror::Error,
+    thiserror::Error as ThisError,
 };
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Display)]
@@ -71,30 +68,77 @@ impl Schema {
             .join("\n")
     }
 
-    pub fn from_ddl(ddl: String) -> Result<Schema> {
-        let parsed = parse(ddl)?.into_iter().next().unwrap();
-        let statement = translate(&parsed)?;
-        let schema = match statement {
-            Statement::CreateTable {
-                name,
-                columns,
-                engine,
-                ..
-            } => Ok(Schema {
-                table_name: name,
-                column_defs: columns,
-                indexes: Vec::new(),
-                engine,
-                created: Utc::now().naive_utc(),
-            }),
-            _ => Err(SchemaParseError::CannotParseDDL.into()),
-        };
+    pub fn from_ddl(ddl: &str) -> Result<Schema> {
+        let schema = parse(ddl)?.iter().enumerate().fold(
+            Err(SchemaParseError::CannotParseDDL.into()),
+            |schema, (i, parsed)| {
+                let translated = translate(parsed)?;
+                match i {
+                    0 => {
+                        let schema: Result<Schema> = match translated {
+                            Statement::CreateTable {
+                                name,
+                                columns,
+                                engine,
+                                ..
+                            } => Ok(Schema {
+                                table_name: name,
+                                column_defs: columns,
+                                indexes: Vec::new(),
+                                engine,
+                                created: Utc::now().naive_utc(),
+                            }),
+                            _ => Err(SchemaParseError::CannotParseDDL.into()),
+                        };
+
+                        schema
+                    }
+                    _ => match translated {
+                        Statement::CreateIndex {
+                            name,
+                            column: OrderByExpr { expr, asc },
+                            ..
+                        } => {
+                            let Schema {
+                                table_name,
+                                column_defs,
+                                indexes,
+                                engine,
+                                created,
+                            } = schema?;
+
+                            let order = asc
+                                .and_then(|bool| bool.then_some(SchemaIndexOrd::Asc))
+                                .unwrap_or(SchemaIndexOrd::Both);
+
+                            let index = SchemaIndex {
+                                name,
+                                expr,
+                                order,
+                                created,
+                            };
+
+                            let indexes = indexes.into_iter().chain(vec![index]).collect();
+
+                            Ok(Schema {
+                                table_name,
+                                column_defs,
+                                indexes,
+                                engine,
+                                created,
+                            })
+                        }
+                        _ => Err(SchemaParseError::CannotParseDDL.into()),
+                    },
+                }
+            },
+        );
 
         schema
     }
 }
 
-#[derive(Error, Debug, PartialEq, Eq, Serialize)]
+#[derive(ThisError, Debug, PartialEq, Eq, Serialize)]
 pub enum SchemaParseError {
     #[error("cannot parse ddl")]
     CannotParseDDL,
@@ -128,8 +172,27 @@ mod tests {
 
         assert_eq!(table_name, table_name_e);
         assert_eq!(column_defs, column_defs_e);
-        assert_eq!(indexes, indexes_e);
         assert_eq!(engine, engine_e);
+        indexes
+            .into_iter()
+            .zip(indexes_e)
+            .for_each(|(actual, expected)| assert_index(actual, expected));
+    }
+
+    fn assert_index(actual: SchemaIndex, expected: SchemaIndex) {
+        let SchemaIndex {
+            name, expr, order, ..
+        } = actual;
+        let SchemaIndex {
+            name: name_e,
+            expr: expr_e,
+            order: order_e,
+            ..
+        } = expected;
+
+        assert_eq!(name, name_e);
+        assert_eq!(expr, expr_e);
+        assert_eq!(order, order_e);
     }
 
     #[test]
@@ -160,7 +223,7 @@ mod tests {
         let ddl = "CREATE TABLE User (id INT NOT NULL, name TEXT NULL DEFAULT 'glue');";
         assert_eq!(schema.to_ddl(), ddl);
 
-        let actual = Schema::from_ddl(ddl.to_string()).unwrap();
+        let actual = Schema::from_ddl(ddl).unwrap();
         assert_schema(actual, schema);
 
         let schema = Schema {
@@ -173,7 +236,7 @@ mod tests {
         let ddl = "CREATE TABLE Test;";
         assert_eq!(schema.to_ddl(), ddl);
 
-        let actual = Schema::from_ddl(ddl.to_string()).unwrap();
+        let actual = Schema::from_ddl(ddl).unwrap();
         assert_schema(actual, schema);
     }
 
@@ -196,7 +259,7 @@ mod tests {
         let ddl = "CREATE TABLE User (id INT NOT NULL PRIMARY KEY);";
         assert_eq!(schema.to_ddl(), ddl);
 
-        let actual = Schema::from_ddl(ddl.to_string()).unwrap();
+        let actual = Schema::from_ddl(ddl).unwrap();
         assert_schema(actual, schema);
     }
 
@@ -238,11 +301,12 @@ mod tests {
             created: Utc::now().naive_utc(),
         };
 
-        assert_eq!(
-            schema.to_ddl(),
-            "CREATE TABLE User (id INT NOT NULL, name TEXT NOT NULL);
+        let ddl = "CREATE TABLE User (id INT NOT NULL, name TEXT NOT NULL);
 CREATE INDEX User_id ON User (id);
-CREATE INDEX User_name ON User (name);"
-        );
+CREATE INDEX User_name ON User (name);";
+        assert_eq!(schema.to_ddl(), ddl,);
+
+        let actual = Schema::from_ddl(ddl).unwrap();
+        assert_schema(actual, schema);
     }
 }
