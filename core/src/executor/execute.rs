@@ -120,7 +120,7 @@ pub async fn execute<T: GStore + GStoreMut>(
         } => create_table(
             storage,
             name,
-            columns.as_ref().map(|v| v.as_slice()),
+            columns.as_ref().map(Vec::as_slice),
             *if_not_exists,
             source,
             engine,

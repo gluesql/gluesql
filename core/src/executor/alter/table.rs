@@ -102,7 +102,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
                 Some(column_defs)
             }
         },
-        None if column_defs.is_some() => column_defs.map(|s| s.to_vec()),
+        None if column_defs.is_some() => column_defs.map(<[ColumnDef]>::to_vec),
         None => None,
     };
 
