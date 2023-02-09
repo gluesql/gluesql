@@ -1,9 +1,17 @@
+use chrono::Utc;
+
+use crate::prelude::{parse, translate};
+
 use {
-    crate::ast::{ColumnDef, Expr, Statement, ToSql},
+    crate::{
+        ast::{ColumnDef, Expr, Statement, ToSql},
+        result::Result,
+    },
     chrono::NaiveDateTime,
     serde::{Deserialize, Serialize},
     std::{fmt::Debug, iter},
     strum_macros::Display,
+    thiserror::Error,
 };
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Display)]
@@ -64,14 +72,65 @@ impl Schema {
     }
 }
 
+#[derive(Error, Debug, PartialEq, Eq, Serialize)]
+pub enum SchemaParseError {
+    #[error("cannot parse ddl")]
+    CannotParseDDL,
+}
+
+pub fn from_ddl(ddl: String) -> Result<Schema> {
+    let parsed = parse(ddl)?.into_iter().next().unwrap();
+    let statement = translate(&parsed)?;
+    let schema = match statement {
+        Statement::CreateTable {
+            name,
+            columns,
+            engine,
+            ..
+        } => Ok(Schema {
+            table_name: name,
+            column_defs: Some(columns),
+            indexes: Vec::new(),
+            engine,
+            created: Utc::now().naive_utc(),
+        }),
+        _ => Err(SchemaParseError::CannotParseDDL.into()),
+    };
+
+    schema
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
         ast::{AstLiteral, ColumnDef, ColumnUniqueOption, Expr},
         chrono::Utc,
-        data::{Schema, SchemaIndex, SchemaIndexOrd},
+        data::{schema::from_ddl, Schema, SchemaIndex, SchemaIndexOrd},
         prelude::DataType,
     };
+
+    fn assert_schema(actual: Schema, expected: Schema) {
+        let Schema {
+            table_name,
+            column_defs,
+            indexes,
+            engine,
+            ..
+        } = actual;
+
+        let Schema {
+            table_name: table_name_e,
+            column_defs: column_defs_e,
+            indexes: indexes_e,
+            engine: engine_e,
+            ..
+        } = expected;
+
+        assert_eq!(table_name, table_name_e);
+        assert_eq!(column_defs, column_defs_e);
+        assert_eq!(indexes, indexes_e);
+        assert_eq!(engine, engine_e);
+    }
 
     #[test]
     fn table_basic() {
@@ -98,10 +157,11 @@ mod tests {
             created: Utc::now().naive_utc(),
         };
 
-        assert_eq!(
-            schema.to_ddl(),
-            "CREATE TABLE User (id INT NOT NULL, name TEXT NULL DEFAULT 'glue');"
-        );
+        let ddl = "CREATE TABLE User (id INT NOT NULL, name TEXT NULL DEFAULT 'glue');";
+        assert_eq!(schema.clone().to_ddl(), ddl);
+
+        let actual = from_ddl(ddl.to_string()).unwrap();
+        assert_schema(actual, schema);
 
         let schema = Schema {
             table_name: "Test".to_owned(),
@@ -110,7 +170,11 @@ mod tests {
             engine: None,
             created: Utc::now().naive_utc(),
         };
-        assert_eq!(schema.to_ddl(), "CREATE TABLE Test;");
+        let ddl = "CREATE TABLE Test;";
+        assert_eq!(schema.clone().to_ddl(), ddl);
+
+        let actual = from_ddl(ddl.to_string()).unwrap();
+        assert_schema(actual, schema);
     }
 
     #[test]

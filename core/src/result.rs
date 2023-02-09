@@ -16,6 +16,7 @@ use {
     thiserror::Error as ThisError,
 };
 
+use crate::data::schema::SchemaParseError;
 #[cfg(feature = "alter-table")]
 use crate::store::AlterTableError;
 
@@ -84,6 +85,8 @@ pub enum Error {
     StringExt(#[from] StringExtError),
     #[error(transparent)]
     Plan(#[from] PlanError),
+    #[error(transparent)]
+    Schema(#[from] SchemaParseError),
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
