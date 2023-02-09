@@ -138,7 +138,7 @@ impl Schema {
     }
 }
 
-#[derive(ThisError, Debug, PartialEq, Eq, Serialize)]
+#[derive(ThisError, Debug, PartialEq, Serialize)]
 pub enum SchemaParseError {
     #[error("cannot parse ddl")]
     CannotParseDDL,
@@ -146,11 +146,14 @@ pub enum SchemaParseError {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        ast::{AstLiteral, ColumnDef, ColumnUniqueOption, Expr},
-        chrono::Utc,
-        data::{Schema, SchemaIndex, SchemaIndexOrd},
-        prelude::DataType,
+    use {
+        super::SchemaParseError,
+        crate::{
+            ast::{AstLiteral, ColumnDef, ColumnUniqueOption, Expr},
+            chrono::Utc,
+            data::{Schema, SchemaIndex, SchemaIndexOrd},
+            prelude::DataType,
+        },
     };
 
     fn assert_schema(actual: Schema, expected: Schema) {
@@ -308,5 +311,17 @@ CREATE INDEX User_name ON User (name);";
 
         let actual = Schema::from_ddl(ddl).unwrap();
         assert_schema(actual, schema);
+    }
+
+    #[test]
+    fn invalid_ddl() {
+        let alter_is_not_allowed = "ALTER TABLE User ADD COLUMN wrong INT";
+        let actual = Schema::from_ddl(alter_is_not_allowed);
+        assert_eq!(actual, Err(SchemaParseError::CannotParseDDL.into()));
+
+        let index_should_not_be_first = "CREATE INDEX User_id ON User (id);
+CREATE TABLE User (id INT NOT NULL, name TEXT NOT NULL);";
+        let actual = Schema::from_ddl(index_should_not_be_first);
+        assert_eq!(actual, Err(SchemaParseError::CannotParseDDL.into()));
     }
 }

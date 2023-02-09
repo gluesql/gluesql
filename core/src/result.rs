@@ -122,6 +122,7 @@ impl PartialEq for Error {
             (Interval(e), Interval(e2)) => e == e2,
             (StringExt(e), StringExt(e2)) => e == e2,
             (Plan(e), Plan(e2)) => e == e2,
+            (Schema(e), Schema(e2)) => e == e2,
             _ => false,
         }
     }
