@@ -155,7 +155,7 @@ mod tests {
         crate::{
             ast::{AstLiteral, ColumnDef, ColumnUniqueOption, Expr},
             chrono::Utc,
-            data::{Schema, SchemaIndex, SchemaIndexOrd},
+            data::{Schema, SchemaIndex},
             prelude::DataType,
         },
     };
@@ -280,6 +280,8 @@ mod tests {
     #[test]
     #[cfg(feature = "index")]
     fn table_with_index() {
+        use crate::data::SchemaIndexOrd;
+
         let schema = Schema {
             table_name: "User".to_owned(),
             column_defs: Some(vec![
