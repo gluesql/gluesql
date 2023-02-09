@@ -70,6 +70,28 @@ impl Schema {
             .collect::<Vec<_>>()
             .join("\n")
     }
+
+    pub fn from_ddl(ddl: String) -> Result<Schema> {
+        let parsed = parse(ddl)?.into_iter().next().unwrap();
+        let statement = translate(&parsed)?;
+        let schema = match statement {
+            Statement::CreateTable {
+                name,
+                columns,
+                engine,
+                ..
+            } => Ok(Schema {
+                table_name: name,
+                column_defs: columns,
+                indexes: Vec::new(),
+                engine,
+                created: Utc::now().naive_utc(),
+            }),
+            _ => Err(SchemaParseError::CannotParseDDL.into()),
+        };
+
+        schema
+    }
 }
 
 #[derive(Error, Debug, PartialEq, Eq, Serialize)]
@@ -78,34 +100,12 @@ pub enum SchemaParseError {
     CannotParseDDL,
 }
 
-pub fn from_ddl(ddl: String) -> Result<Schema> {
-    let parsed = parse(ddl)?.into_iter().next().unwrap();
-    let statement = translate(&parsed)?;
-    let schema = match statement {
-        Statement::CreateTable {
-            name,
-            columns,
-            engine,
-            ..
-        } => Ok(Schema {
-            table_name: name,
-            column_defs: columns,
-            indexes: Vec::new(),
-            engine,
-            created: Utc::now().naive_utc(),
-        }),
-        _ => Err(SchemaParseError::CannotParseDDL.into()),
-    };
-
-    schema
-}
-
 #[cfg(test)]
 mod tests {
     use crate::{
         ast::{AstLiteral, ColumnDef, ColumnUniqueOption, Expr},
         chrono::Utc,
-        data::{schema::from_ddl, Schema, SchemaIndex, SchemaIndexOrd},
+        data::{Schema, SchemaIndex, SchemaIndexOrd},
         prelude::DataType,
     };
 
@@ -160,7 +160,7 @@ mod tests {
         let ddl = "CREATE TABLE User (id INT NOT NULL, name TEXT NULL DEFAULT 'glue');";
         assert_eq!(schema.to_ddl(), ddl);
 
-        let actual = from_ddl(ddl.to_string()).unwrap();
+        let actual = Schema::from_ddl(ddl.to_string()).unwrap();
         assert_schema(actual, schema);
 
         let schema = Schema {
@@ -173,7 +173,7 @@ mod tests {
         let ddl = "CREATE TABLE Test;";
         assert_eq!(schema.to_ddl(), ddl);
 
-        let actual = from_ddl(ddl.to_string()).unwrap();
+        let actual = Schema::from_ddl(ddl.to_string()).unwrap();
         assert_schema(actual, schema);
     }
 
@@ -193,10 +193,11 @@ mod tests {
             created: Utc::now().naive_utc(),
         };
 
-        assert_eq!(
-            schema.to_ddl(),
-            "CREATE TABLE User (id INT NOT NULL PRIMARY KEY);"
-        );
+        let ddl = "CREATE TABLE User (id INT NOT NULL PRIMARY KEY);";
+        assert_eq!(schema.to_ddl(), ddl);
+
+        let actual = Schema::from_ddl(ddl.to_string()).unwrap();
+        assert_schema(actual, schema);
     }
 
     #[test]
