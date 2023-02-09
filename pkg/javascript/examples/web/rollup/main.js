@@ -5,7 +5,7 @@ async function run() {
 
   const result = await db.query(`
     CREATE TABLE Foo (id INTEGER, name TEXT);
-    INSERT INTO Foo VALUES (1, "hello"), (2, "world");
+    INSERT INTO Foo VALUES (1, 'hello'), (2, 'world');
     SELECT *, id as wow_id FROM Foo;
   `);
 
