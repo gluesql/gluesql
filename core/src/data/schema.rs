@@ -40,10 +40,10 @@ pub struct Schema {
 }
 
 impl Schema {
-    pub fn to_ddl(self) -> String {
+    pub fn to_ddl(&self) -> String {
         let Schema {
             table_name,
-            column_defs: columns,
+            column_defs,
             indexes,
             engine,
             ..
@@ -51,9 +51,9 @@ impl Schema {
 
         let create_table = Statement::CreateTable {
             if_not_exists: false,
-            name: table_name.clone(),
-            columns: columns.unwrap_or_default(),
-            engine,
+            name: table_name.to_owned(),
+            columns: column_defs.to_owned().unwrap_or_default(),
+            engine: engine.to_owned(),
             source: None,
         }
         .to_sql();
@@ -158,7 +158,7 @@ mod tests {
         };
 
         let ddl = "CREATE TABLE User (id INT NOT NULL, name TEXT NULL DEFAULT 'glue');";
-        assert_eq!(schema.clone().to_ddl(), ddl);
+        assert_eq!(schema.to_ddl(), ddl);
 
         let actual = from_ddl(ddl.to_string()).unwrap();
         assert_schema(actual, schema);
@@ -171,7 +171,7 @@ mod tests {
             created: Utc::now().naive_utc(),
         };
         let ddl = "CREATE TABLE Test;";
-        assert_eq!(schema.clone().to_ddl(), ddl);
+        assert_eq!(schema.to_ddl(), ddl);
 
         let actual = from_ddl(ddl.to_string()).unwrap();
         assert_schema(actual, schema);
