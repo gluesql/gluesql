@@ -271,6 +271,14 @@ mod tests {
     }
 
     #[test]
+    fn invalid_ddl() {
+        let invalid_ddl = "DROP TABLE Users";
+        let actual = Schema::from_ddl(invalid_ddl);
+        assert_eq!(actual, Err(SchemaParseError::CannotParseDDL.into()));
+    }
+
+    #[test]
+    #[cfg(feature = "index")]
     fn table_with_index() {
         let schema = Schema {
             table_name: "User".to_owned(),
@@ -307,30 +315,17 @@ mod tests {
             engine: None,
             created: Utc::now().naive_utc(),
         };
-
         let ddl = "CREATE TABLE User (id INT NOT NULL, name TEXT NOT NULL);
 CREATE INDEX User_id ON User (id);
 CREATE INDEX User_name ON User (name);";
-        assert_eq!(schema.to_ddl(), ddl,);
+        assert_eq!(schema.to_ddl(), ddl);
 
-        #[cfg(feature = "index")]
         let actual = Schema::from_ddl(ddl).unwrap();
-        #[cfg(feature = "index")]
         assert_schema(actual, schema);
-    }
 
-    #[test]
-    fn invalid_ddl() {
-        let wrong_ddl = "DROP TABLE Users";
-        let actual = Schema::from_ddl(wrong_ddl);
-        assert_eq!(actual, Err(SchemaParseError::CannotParseDDL.into()));
-
-        #[cfg(feature = "index")]
         let index_should_not_be_first = "CREATE INDEX User_id ON User (id);
 CREATE TABLE User (id INT NOT NULL, name TEXT NOT NULL);";
-        #[cfg(feature = "index")]
         let actual = Schema::from_ddl(index_should_not_be_first);
-        #[cfg(feature = "index")]
         assert_eq!(actual, Err(SchemaParseError::CannotParseDDL.into()));
     }
 }
