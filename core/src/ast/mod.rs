@@ -184,7 +184,7 @@ impl ToSql for Statement {
                                     .collect::<Vec<_>>()
                                     .join(", ")
                             })
-                            .unwrap_or("".to_owned());
+                            .unwrap_or_else(|| "".to_owned());
 
                         Some(format!("({columns})"))
                     }
