@@ -1,12 +1,12 @@
 [package]
 name = "gluesql-web-storage"
 version = "0.13.0"
+edition = "2021"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
-edition.workspace = true
-description.workspace = true
-license.workspace = true
-repository.workspace = true
-documentation.workspace = true
+description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
+license = "Apache-2.0"
+repository = "https://github.com/gluesql/gluesql"
+documentation = "https://docs.rs/gluesql/"
 
 [dependencies]
 gluesql-core = { path = "../../core", version = "0.13.0" }
