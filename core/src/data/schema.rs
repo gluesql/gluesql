@@ -1,6 +1,6 @@
 use {
     crate::{
-        ast::{ColumnDef, Expr, OrderByExpr, Statement, ToSql},
+        ast::{ColumnDef, Expr, Statement, ToSql},
         prelude::{parse, translate},
         result::Result,
     },
@@ -10,6 +10,9 @@ use {
     strum_macros::Display,
     thiserror::Error as ThisError,
 };
+
+#[cfg(feature = "index")]
+use crate::ast::OrderByExpr;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Display)]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
@@ -71,7 +74,7 @@ impl Schema {
     pub fn from_ddl(ddl: &str) -> Result<Schema> {
         let schema = parse(ddl)?.iter().enumerate().fold(
             Err(SchemaParseError::CannotParseDDL.into()),
-            |schema, (i, parsed)| {
+            |_schema, (i, parsed)| {
                 let translated = translate(parsed)?;
                 match i {
                     0 => {
@@ -94,6 +97,7 @@ impl Schema {
                         schema
                     }
                     _ => match translated {
+                        #[cfg(feature = "index")]
                         Statement::CreateIndex {
                             name,
                             column: OrderByExpr { expr, asc },
@@ -105,7 +109,7 @@ impl Schema {
                                 indexes,
                                 engine,
                                 created,
-                            } = schema?;
+                            } = _schema?;
 
                             let order = asc
                                 .and_then(|bool| bool.then_some(SchemaIndexOrd::Asc))
@@ -309,19 +313,24 @@ CREATE INDEX User_id ON User (id);
 CREATE INDEX User_name ON User (name);";
         assert_eq!(schema.to_ddl(), ddl,);
 
+        #[cfg(feature = "index")]
         let actual = Schema::from_ddl(ddl).unwrap();
+        #[cfg(feature = "index")]
         assert_schema(actual, schema);
     }
 
     #[test]
     fn invalid_ddl() {
-        let alter_is_not_allowed = "ALTER TABLE User ADD COLUMN wrong INT";
-        let actual = Schema::from_ddl(alter_is_not_allowed);
+        let wrong_ddl = "DROP TABLE Users";
+        let actual = Schema::from_ddl(wrong_ddl);
         assert_eq!(actual, Err(SchemaParseError::CannotParseDDL.into()));
 
+        #[cfg(feature = "index")]
         let index_should_not_be_first = "CREATE INDEX User_id ON User (id);
 CREATE TABLE User (id INT NOT NULL, name TEXT NOT NULL);";
+        #[cfg(feature = "index")]
         let actual = Schema::from_ddl(index_should_not_be_first);
+        #[cfg(feature = "index")]
         assert_eq!(actual, Err(SchemaParseError::CannotParseDDL.into()));
     }
 }
