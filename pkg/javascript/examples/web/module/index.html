@@ -10,11 +10,16 @@
 
       async function run() {
         const db = await gluesql();
+        await db.loadIndexedDB();
 
         const result = await db.query(`
-          CREATE TABLE Foo (id INTEGER, name TEXT);
+          DROP TABLE IF EXISTS Foo, Bar;
+          CREATE TABLE Foo (id INTEGER, name TEXT) ENGINE = indexedDB;
           INSERT INTO Foo VALUES (1, 'hello'), (2, 'world');
           SELECT *, id as wow_id FROM Foo;
+          CREATE TABLE Bar ENGINE = indexedDB;
+          INSERT INTO Bar VALUES ('{ "a": "schemaless", "b": 1024 }');
+          SELECT * FROM Bar;
         `);
 
         for (const item of result) {

@@ -2,11 +2,15 @@ import { gluesql } from 'gluesql/gluesql.rollup';
 
 async function run() {
   const db = await gluesql();
+  await db.loadIndexedDB();
 
   const result = await db.query(`
+    DROP TABLE IF EXISTS Foo, Bar;
     CREATE TABLE Foo (id INTEGER, name TEXT);
+    CREATE TABLE Bar (bar_id INTEGER) ENGINE = indexedDB;
     INSERT INTO Foo VALUES (1, 'hello'), (2, 'world');
-    SELECT *, id as wow_id FROM Foo;
+    INSERT INTO Bar VALUES (10), (20);
+    SELECT *, id as wow_id FROM Foo JOIN Bar;
   `);
 
   for (const item of result) {
