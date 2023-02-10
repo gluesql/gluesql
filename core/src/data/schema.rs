@@ -72,73 +72,56 @@ impl Schema {
     }
 
     pub fn from_ddl(ddl: &str) -> Result<Schema> {
-        let schema = parse(ddl)?.iter().enumerate().fold(
-            Err(SchemaParseError::CannotParseDDL.into()),
-            |_schema, (i, parsed)| {
-                let translated = translate(parsed)?;
-                match i {
-                    0 => {
-                        let schema: Result<Schema> = match translated {
-                            Statement::CreateTable {
-                                name,
-                                columns,
-                                engine,
-                                ..
-                            } => Ok(Schema {
-                                table_name: name,
-                                column_defs: columns,
-                                indexes: Vec::new(),
-                                engine,
-                                created: Utc::now().naive_utc(),
-                            }),
-                            _ => Err(SchemaParseError::CannotParseDDL.into()),
+        let statements = parse(ddl)?;
+        let statements = statements.as_slice();
+
+        let create_table = translate(&statements[0])?;
+        let create_indexes = &statements[1..];
+
+        let indexes = create_indexes
+            .iter()
+            .map(|create_index| {
+                let create_index = translate(create_index)?;
+                match create_index {
+                    #[cfg(feature = "index")]
+                    Statement::CreateIndex {
+                        name,
+                        column: OrderByExpr { expr, asc },
+                        ..
+                    } => {
+                        let order = asc
+                            .and_then(|bool| bool.then_some(SchemaIndexOrd::Asc))
+                            .unwrap_or(SchemaIndexOrd::Both);
+
+                        let index = SchemaIndex {
+                            name,
+                            expr,
+                            order,
+                            created: Utc::now().naive_utc(),
                         };
 
-                        schema
+                        Ok(index)
                     }
-                    _ => match translated {
-                        #[cfg(feature = "index")]
-                        Statement::CreateIndex {
-                            name,
-                            column: OrderByExpr { expr, asc },
-                            ..
-                        } => {
-                            let Schema {
-                                table_name,
-                                column_defs,
-                                indexes,
-                                engine,
-                                created,
-                            } = _schema?;
-
-                            let order = asc
-                                .and_then(|bool| bool.then_some(SchemaIndexOrd::Asc))
-                                .unwrap_or(SchemaIndexOrd::Both);
-
-                            let index = SchemaIndex {
-                                name,
-                                expr,
-                                order,
-                                created,
-                            };
-
-                            let indexes = indexes.into_iter().chain(vec![index]).collect();
-
-                            Ok(Schema {
-                                table_name,
-                                column_defs,
-                                indexes,
-                                engine,
-                                created,
-                            })
-                        }
-                        _ => Err(SchemaParseError::CannotParseDDL.into()),
-                    },
+                    _ => Err(SchemaParseError::CannotParseDDL.into()),
                 }
-            },
-        );
+            })
+            .collect::<Result<Vec<_>>>()?;
 
-        schema
+        match create_table {
+            Statement::CreateTable {
+                name,
+                columns,
+                engine,
+                ..
+            } => Ok(Schema {
+                table_name: name,
+                column_defs: columns,
+                indexes,
+                engine,
+                created: Utc::now().naive_utc(),
+            }),
+            _ => Err(SchemaParseError::CannotParseDDL.into()),
+        }
     }
 }
 
