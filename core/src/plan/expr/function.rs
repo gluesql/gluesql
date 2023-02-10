@@ -16,7 +16,9 @@ impl Function {
         }
 
         match self {
-            Self::Now() | Function::Pi() | Function::GenerateUuid() => Exprs::Empty(empty()),
+            Self::Now() | Function::Pi() | Function::GenerateUuid() | Self::Rand(None) => {
+                Exprs::Empty(empty())
+            }
             Self::Lower(expr)
             | Self::Upper(expr)
             | Self::Sin(expr)
@@ -28,6 +30,7 @@ impl Function {
             | Self::Radians(expr)
             | Self::Degrees(expr)
             | Self::Ceil(expr)
+            | Self::Rand(Some(expr))
             | Self::Round(expr)
             | Self::Floor(expr)
             | Self::Exp(expr)
@@ -180,6 +183,7 @@ mod tests {
         test("NOW()", &[]);
         test("PI()", &[]);
         test("GENERATE_UUID()", &[]);
+        test("RAND()", &[]);
 
         // Single
         test("LOWER(id)", &["id"]);
@@ -193,6 +197,7 @@ mod tests {
         test("RADIANS(180)", &["180"]);
         test("DEGREES(3.14)", &["3.14"]);
         test("CEIL(1.23)", &["1.23"]);
+        test("Rand(1.23)", &["1.23"]);
         test("ROUND(1.23)", &["1.23"]);
         test("FLOOR(1.23)", &["1.23"]);
         test("EXP(1.23)", &["1.23"]);

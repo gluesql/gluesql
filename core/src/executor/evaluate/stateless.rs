@@ -228,19 +228,19 @@ fn evaluate_function<'a>(context: &Context<'_>, func: &'a Function) -> Result<Ev
             let expr = eval(expr)?;
             let filter_chars = eval_opt(filter_chars.as_ref())?;
 
-            f::trim(name, expr, filter_chars, trim_where_field)
+            expr.trim(name, filter_chars, trim_where_field)
         }
         Function::Ltrim { expr, chars } => {
             let expr = eval(expr)?;
             let chars = eval_opt(chars.as_ref())?;
 
-            f::ltrim(name, expr, chars)
+            expr.ltrim(name, chars)
         }
         Function::Rtrim { expr, chars } => {
             let expr = eval(expr)?;
             let chars = eval_opt(chars.as_ref())?;
 
-            f::rtrim(name, expr, chars)
+            expr.rtrim(name, chars)
         }
         Function::Reverse(expr) => {
             let expr = eval(expr)?;
@@ -258,7 +258,7 @@ fn evaluate_function<'a>(context: &Context<'_>, func: &'a Function) -> Result<Ev
             let start = eval(start)?;
             let count = eval_opt(count.as_ref())?;
 
-            f::substr(name, expr, start, count)
+            expr.substr(name, start, count)
         }
         Function::Ascii(expr) => f::ascii(name, eval(expr)?),
         Function::Chr(expr) => f::chr(name, eval(expr)?),
@@ -275,6 +275,7 @@ fn evaluate_function<'a>(context: &Context<'_>, func: &'a Function) -> Result<Ev
         Function::IfNull { expr, then } => f::ifnull(eval(expr)?, eval(then)?),
         Function::Sign(expr) => f::sign(name, eval(expr)?),
         Function::Ceil(expr) => f::ceil(name, eval(expr)?),
+        Function::Rand(expr) => f::rand(name, eval_opt(expr.as_ref())?),
         Function::Round(expr) => f::round(name, eval(expr)?),
         Function::Floor(expr) => f::floor(name, eval(expr)?),
         Function::Radians(expr) => f::radians(name, eval(expr)?),

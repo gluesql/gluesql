@@ -25,8 +25,8 @@ use {
 pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
 
 #[async_recursion(?Send)]
-pub async fn evaluate<'a, 'b: 'a, 'c: 'a>(
-    storage: &'a dyn GStore,
+pub async fn evaluate<'a, 'b: 'a, 'c: 'a, T: GStore>(
+    storage: &'a T,
     context: Option<Rc<RowContext<'b>>>,
     aggregated: Option<Rc<HashMap<&'c Aggregate, Value>>>,
     expr: &'a Expr,
@@ -271,8 +271,8 @@ pub async fn evaluate<'a, 'b: 'a, 'c: 'a>(
     }
 }
 
-async fn evaluate_function<'a, 'b: 'a, 'c: 'a>(
-    storage: &'a dyn GStore,
+async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
+    storage: &'a T,
     context: Option<Rc<RowContext<'b>>>,
     aggregated: Option<Rc<HashMap<&'c Aggregate, Value>>>,
     func: &'b Function,
@@ -329,7 +329,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a>(
                 None => None,
             };
 
-            f::trim(name, expr, filter_chars, trim_where_field)
+            expr.trim(name, filter_chars, trim_where_field)
         }
         Function::Ltrim { expr, chars } => {
             let expr = eval(expr).await?;
@@ -338,7 +338,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a>(
                 None => None,
             };
 
-            f::ltrim(name, expr, chars)
+            expr.ltrim(name, chars)
         }
         Function::Rtrim { expr, chars } => {
             let expr = eval(expr).await?;
@@ -347,7 +347,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a>(
                 None => None,
             };
 
-            f::rtrim(name, expr, chars)
+            expr.rtrim(name, chars)
         }
         Function::Reverse(expr) => {
             let expr = eval(expr).await?;
@@ -367,8 +367,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a>(
                 Some(v) => Some(eval(v).await?),
                 None => None,
             };
-
-            f::substr(name, expr, start, count)
+            expr.substr(name, start, count)
         }
         Function::Ascii(expr) => f::ascii(name, eval(expr).await?),
         Function::Chr(expr) => f::chr(name, eval(expr).await?),
@@ -384,6 +383,13 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a>(
             f::power(name, expr, power)
         }
         Function::Ceil(expr) => f::ceil(name, eval(expr).await?),
+        Function::Rand(expr) => {
+            let expr = match expr {
+                Some(v) => Some(eval(v).await?),
+                None => None,
+            };
+            f::rand(name, expr)
+        }
         Function::Round(expr) => f::round(name, eval(expr).await?),
         Function::Floor(expr) => f::floor(name, eval(expr).await?),
         Function::Radians(expr) => f::radians(name, eval(expr).await?),

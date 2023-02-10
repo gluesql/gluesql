@@ -9,7 +9,7 @@ use {
     core::ops::Sub,
     rust_decimal::Decimal,
     serde::{Deserialize, Serialize},
-    std::{cmp::Ordering, collections::HashMap, fmt::Debug},
+    std::{cmp::Ordering, collections::HashMap, fmt::Debug, net::IpAddr},
 };
 
 mod binary_op;
@@ -20,6 +20,7 @@ mod expr;
 mod json;
 mod literal;
 mod selector;
+mod string;
 mod uuid;
 
 pub use {
@@ -44,6 +45,7 @@ pub enum Value {
     Decimal(Decimal),
     Str(String),
     Bytea(Vec<u8>),
+    Inet(IpAddr),
     Date(NaiveDate),
     Timestamp(NaiveDateTime),
     Time(NaiveTime),
@@ -72,6 +74,7 @@ impl PartialEq<Value> for Value {
             (Value::Bool(l), Value::Bool(r)) => l == r,
             (Value::Str(l), Value::Str(r)) => l == r,
             (Value::Bytea(l), Value::Bytea(r)) => l == r,
+            (Value::Inet(l), Value::Inet(r)) => l == r,
             (Value::Date(l), Value::Date(r)) => l == r,
             (Value::Date(l), Value::Timestamp(r)) => l
                 .and_hms_opt(0, 0, 0)
@@ -110,6 +113,7 @@ impl PartialOrd<Value> for Value {
             (Value::Bool(l), Value::Bool(r)) => Some(l.cmp(r)),
             (Value::Str(l), Value::Str(r)) => Some(l.cmp(r)),
             (Value::Bytea(l), Value::Bytea(r)) => Some(l.cmp(r)),
+            (Value::Inet(l), Value::Inet(r)) => Some(l.cmp(r)),
             (Value::Date(l), Value::Date(r)) => Some(l.cmp(r)),
             (Value::Date(l), Value::Timestamp(r)) => {
                 l.and_hms_opt(0, 0, 0).map(|date_time| date_time.cmp(r))
@@ -162,6 +166,7 @@ impl Value {
             Value::Bool(_) => Some(DataType::Boolean),
             Value::Str(_) => Some(DataType::Text),
             Value::Bytea(_) => Some(DataType::Bytea),
+            Value::Inet(_) => Some(DataType::Inet),
             Value::Date(_) => Some(DataType::Date),
             Value::Timestamp(_) => Some(DataType::Timestamp),
             Value::Time(_) => Some(DataType::Time),
@@ -190,6 +195,7 @@ impl Value {
             Value::Bool(_) => matches!(data_type, DataType::Boolean),
             Value::Str(_) => matches!(data_type, DataType::Text),
             Value::Bytea(_) => matches!(data_type, DataType::Bytea),
+            Value::Inet(_) => matches!(data_type, DataType::Inet),
             Value::Date(_) => matches!(data_type, DataType::Date),
             Value::Timestamp(_) => matches!(data_type, DataType::Timestamp),
             Value::Time(_) => matches!(data_type, DataType::Time),
@@ -236,6 +242,7 @@ impl Value {
             | (DataType::Boolean, Value::Bool(_))
             | (DataType::Text, Value::Str(_))
             | (DataType::Bytea, Value::Bytea(_))
+            | (DataType::Inet, Value::Inet(_))
             | (DataType::Date, Value::Date(_))
             | (DataType::Timestamp, Value::Timestamp(_))
             | (DataType::Time, Value::Time(_))
@@ -262,6 +269,10 @@ impl Value {
             (DataType::Timestamp, value) => value.try_into().map(Value::Timestamp),
             (DataType::Interval, value) => value.try_into().map(Value::Interval),
             (DataType::Uuid, value) => value.try_into().map(Value::Uuid),
+            (DataType::Inet, value) => value.try_into().map(Value::Inet),
+            (DataType::Bytea, Value::Str(value)) => hex::decode(value)
+                .map_err(|_| ValueError::CastFromHexToByteaFailed(value.clone()).into())
+                .map(Value::Bytea),
 
             _ => Err(ValueError::UnimplementedCast.into()),
         }
@@ -710,6 +721,7 @@ mod tests {
         crate::data::{value::uuid::parse_uuid, ValueError},
         chrono::{NaiveDate, NaiveTime},
         rust_decimal::Decimal,
+        std::{net::IpAddr, str::FromStr},
     };
 
     fn time(hour: u32, min: u32, sec: u32) -> NaiveTime {
@@ -729,6 +741,7 @@ mod tests {
         };
         let decimal = |n: i32| Decimal(n.into());
         let bytea = |v: &str| Bytea(hex::decode(v).unwrap());
+        let inet = |v: &str| Inet(IpAddr::from_str(v).unwrap());
 
         assert_ne!(Null, Null);
         assert_eq!(Bool(true), Bool(true));
@@ -747,6 +760,7 @@ mod tests {
         assert_eq!(F64(6.11), F64(6.11));
         assert_eq!(Str("Glue".to_owned()), Str("Glue".to_owned()));
         assert_eq!(bytea("1004"), bytea("1004"));
+        assert_eq!(inet("::1"), inet("::1"));
         assert_eq!(Interval::Month(1), Interval::Month(1));
         assert_eq!(
             Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap()),
@@ -823,6 +837,17 @@ mod tests {
             Some(Ordering::Greater)
         );
         assert_eq!(bytea("10").partial_cmp(&bytea("10")), Some(Ordering::Equal));
+
+        let inet = |v: &str| Inet(IpAddr::from_str(v).unwrap());
+        assert_eq!(
+            inet("0.0.0.0").partial_cmp(&inet("127.0.0.1")),
+            Some(Ordering::Less)
+        );
+        assert_eq!(
+            inet("192.168.0.1").partial_cmp(&inet("127.0.0.1")),
+            Some(Ordering::Greater)
+        );
+        assert_eq!(inet("::1").partial_cmp(&inet("::1")), Some(Ordering::Equal));
     }
 
     #[test]
@@ -1590,11 +1615,13 @@ mod tests {
         }
 
         let bytea = Value::Bytea(hex::decode("0abc").unwrap());
+        let inet = |v| Value::Inet(IpAddr::from_str(v).unwrap());
 
         // Same as
         cast!(Bool(true)            => Boolean      , Bool(true));
         cast!(Str("a".to_owned())   => Text         , Str("a".to_owned()));
         cast!(bytea                 => Bytea        , bytea);
+        cast!(inet("::1")           => Inet         , inet("::1"));
         cast!(I8(1)                 => Int8         , I8(1));
         cast!(I16(1)                 => Int16         , I16(1));
         cast!(I32(1)                => Int32        , I32(1));
@@ -1689,6 +1716,7 @@ mod tests {
         cast!(U8(11)        => Text, Str("11".to_owned()));
         cast!(U16(11)        => Text, Str("11".to_owned()));
         cast!(F64(1.0)      => Text, Str("1".to_owned()));
+        cast!(inet("::1")    => Text, Str("::1".to_owned()));
 
         let date = Value::Date(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap());
         cast!(date          => Text, Str("2021-05-01".to_owned()));
@@ -1723,6 +1751,24 @@ mod tests {
         cast!(Value::Date(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap()) => Timestamp, Value::Timestamp(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap().and_hms_opt(0, 0, 0).unwrap()));
         cast!(Str("2021-05-01 08:05:30".to_owned())                     => Timestamp, Value::Timestamp(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap().and_hms_opt(8, 5, 30).unwrap()));
         cast!(Null                                                      => Timestamp, Null);
+
+        // Bytea
+        cast!(Value::Str("0abc".to_owned()) => Bytea, Value::Bytea(hex::decode("0abc").unwrap()));
+        assert_eq!(
+            Value::Str("!@#$5".to_owned()).cast(&Bytea),
+            Err(ValueError::CastFromHexToByteaFailed("!@#$5".to_owned()).into()),
+        );
+
+        // Inet
+        cast!(inet("::1") => Inet, inet("::1"));
+        cast!(Str("::1".to_owned()) => Inet, inet("::1"));
+        cast!(Str("0.0.0.0".to_owned()) => Inet, inet("0.0.0.0"));
+
+        // Casting error
+        assert_eq!(
+            Value::Uuid(123).cast(&List),
+            Err(ValueError::UnimplementedCast.into())
+        );
     }
 
     #[test]
@@ -1772,6 +1818,7 @@ mod tests {
         let map = Value::parse_json_map(r#"{ "a": 10 }"#).unwrap();
         let list = Value::parse_json_list(r#"[ true ]"#).unwrap();
         let bytea = Bytea(hex::decode("9001").unwrap());
+        let inet = Inet(IpAddr::from_str("::1").unwrap());
 
         assert!(Bool(true).validate_type(&D::Boolean).is_ok());
         assert!(Bool(true).validate_type(&D::Int).is_err());
@@ -1806,6 +1853,10 @@ mod tests {
         assert!(Str("a".to_owned()).validate_type(&D::Int).is_err());
         assert!(bytea.validate_type(&D::Bytea).is_ok());
         assert!(bytea.validate_type(&D::Uuid).is_err());
+        assert!(inet.validate_type(&D::Inet).is_ok());
+        assert!(inet.validate_type(&D::Uuid).is_err());
+        assert!(inet.validate_type(&D::Inet).is_ok());
+        assert!(inet.validate_type(&D::Uuid).is_err());
         assert!(date.validate_type(&D::Date).is_ok());
         assert!(date.validate_type(&D::Text).is_err());
         assert!(timestamp.validate_type(&D::Timestamp).is_ok());
@@ -1945,6 +1996,7 @@ mod tests {
         let map = Value::parse_json_map(r#"{ "a": 10 }"#).unwrap();
         let list = Value::parse_json_list(r#"[ true ]"#).unwrap();
         let bytea = Bytea(hex::decode("9001").unwrap());
+        let inet = Inet(IpAddr::from_str("::1").unwrap());
 
         assert_eq!(I8(1).get_type(), Some(D::Int8));
         assert_eq!(I16(1).get_type(), Some(D::Int16));
@@ -1961,6 +2013,7 @@ mod tests {
         assert_eq!(Bool(true).get_type(), Some(D::Boolean));
         assert_eq!(Str('1'.into()).get_type(), Some(D::Text));
         assert_eq!(bytea.get_type(), Some(D::Bytea));
+        assert_eq!(inet.get_type(), Some(D::Inet));
         assert_eq!(date.get_type(), Some(D::Date));
         assert_eq!(timestamp.get_type(), Some(D::Timestamp));
         assert_eq!(time.get_type(), Some(D::Time));

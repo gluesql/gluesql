@@ -149,24 +149,24 @@ impl AggrValue {
     }
 }
 
-pub struct State<'a> {
+pub struct State<'a, T: GStore> {
+    storage: &'a T,
     index: usize,
     group: Group,
     values: IndexMap<(Group, &'a Aggregate), (usize, AggrValue)>,
     groups: HashSet<Group>,
     contexts: Vector<Rc<RowContext<'a>>>,
-    storage: &'a dyn GStore,
 }
 
-impl<'a> State<'a> {
-    pub fn new(storage: &'a dyn GStore) -> Self {
+impl<'a, T: GStore> State<'a, T> {
+    pub fn new(storage: &'a T) -> Self {
         State {
+            storage,
             index: 0,
             group: Rc::new(vec![Key::None]),
             values: IndexMap::new(),
             groups: HashSet::new(),
             contexts: Vector::new(),
-            storage,
         }
     }
 
@@ -240,7 +240,7 @@ impl<'a> State<'a> {
         self,
         filter_context: Option<Rc<RowContext<'a>>>,
         aggr: &'a Aggregate,
-    ) -> Result<State<'a>> {
+    ) -> Result<State<'a, T>> {
         let value = match aggr {
             Aggregate::Count(CountArgExpr::Wildcard) => Value::Null,
             Aggregate::Count(CountArgExpr::Expr(expr))

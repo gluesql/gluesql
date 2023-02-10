@@ -1,12 +1,12 @@
 [package]
 name = "gluesql-core"
 version = "0.13.1"
-edition = "2021"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
-description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
-license = "Apache-2.0"
-repository = "https://github.com/gluesql/gluesql"
-documentation = "https://docs.rs/gluesql/"
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [dependencies]
 utils = { package = "gluesql-utils", path = "../utils", version = "0.13.0" }
@@ -29,6 +29,7 @@ thiserror = "1.0"
 strum_macros = "0.24"
 bigdecimal = { version = "0.3", features = ["serde", "string-only"] }
 hex = "0.4"
+rand = "0.8"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies.uuid]
 version = "1"

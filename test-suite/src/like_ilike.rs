@@ -44,7 +44,24 @@ test_case!(like_ilike, async move {
     let test_cases = [
         (2, "SELECT name FROM Item WHERE name LIKE '_a%'"),
         (2, "SELECT name FROM Item WHERE name LIKE '%r%'"),
-        (2, "SELECT name FROM Item WHERE name LIKE '%a'"),
+        (2, "SELECT name FROM Item WHERE SUBSTR(name, 1) LIKE '%a'"),
+        (0, "SELECT name FROM Item WHERE 'name' LIKE SUBSTR('%a', 1)"),
+        (
+            2,
+            "SELECT name FROM Item WHERE SUBSTR(name, 1) LIKE SUBSTR('%a', 1)",
+        ),
+        (
+            2,
+            "SELECT name FROM Item WHERE SUBSTR(name, 1) LIKE SUBSTR('%a', 1)",
+        ),
+        (
+            2,
+            "SELECT name FROM Item WHERE LOWER(name) LIKE SUBSTR('%a', 1)",
+        ),
+        (
+            2,
+            "SELECT name FROM Item WHERE SUBSTR(name, 1) LIKE '%' || LOWER('A')",
+        ),
         (5, "SELECT name FROM Item WHERE name LIKE '%%'"),
         (0, "SELECT name FROM Item WHERE name LIKE 'g%'"),
         (2, "SELECT name FROM Item WHERE name ILIKE '_A%'"),

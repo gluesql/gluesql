@@ -46,7 +46,7 @@ cfg_if! {
         impl<S: StoreMut + IndexMut + Transaction> GStoreMut for S {}
     } else if #[cfg(feature = "alter-table")] {
         pub trait GStoreMut: StoreMut + AlterTable {}
-        impl<S: StoreMut+ AlterTable> GStoreMut for S {}
+        impl<S: StoreMut + AlterTable> GStoreMut for S {}
     } else if #[cfg(feature = "index")] {
         pub trait GStoreMut: StoreMut + IndexMut {}
         impl<S: StoreMut + IndexMut> GStoreMut for S {}
@@ -65,7 +65,7 @@ pub use data_row::DataRow;
 use {
     crate::{
         data::{Key, Schema},
-        result::{MutResult, Result},
+        result::Result,
     },
     async_trait::async_trait,
 };
@@ -87,17 +87,14 @@ pub trait Store {
 /// By implementing `StoreMut` trait,
 /// you can run `INSERT`, `CREATE TABLE`, `DELETE`, `UPDATE` and `DROP TABLE` queries.
 #[async_trait(?Send)]
-pub trait StoreMut
-where
-    Self: Sized,
-{
-    async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()>;
+pub trait StoreMut {
+    async fn insert_schema(&mut self, schema: &Schema) -> Result<()>;
 
-    async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()>;
+    async fn delete_schema(&mut self, table_name: &str) -> Result<()>;
 
-    async fn append_data(self, table_name: &str, rows: Vec<DataRow>) -> MutResult<Self, ()>;
+    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()>;
 
-    async fn insert_data(self, table_name: &str, rows: Vec<(Key, DataRow)>) -> MutResult<Self, ()>;
+    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()>;
 
-    async fn delete_data(self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()>;
+    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()>;
 }

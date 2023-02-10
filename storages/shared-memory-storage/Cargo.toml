@@ -1,15 +1,15 @@
 [package]
 name = "gluesql-shared-memory-storage"
 version = "0.13.0"
-edition = "2021"
 authors = [
 	"Jiseok CHOI <jiseok.dev@gmail.com>",
 	"Taehoon Moon <taehoon.moon@outlook.com>",
 ]
-description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
-license = "Apache-2.0"
-repository = "https://github.com/gluesql/gluesql"
-documentation = "https://docs.rs/gluesql/"
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [dependencies]
 memory-storage = { package = "gluesql_memory_storage", version = "0.13.0", path = "../memory-storage" }

@@ -25,6 +25,7 @@ async fn dump_and_import() {
             uinti8 UINT8,
             text TEXT,
             bytea BYTEA,
+            inet INET,
             date DATE,
             timestamp TIMESTAMP,
             time TIME,
@@ -44,6 +45,7 @@ async fn dump_and_import() {
          6,
          'a',
          X'123456',
+         '::1',
          DATE '2022-11-01',
          TIMESTAMP '2022-11-02',
          TIME '23:59:59',
@@ -66,7 +68,7 @@ async fn dump_and_import() {
         source_glue.execute(sql).unwrap();
     }
 
-    let source_storage = dump_database(source_glue.storage.unwrap(), dump_path.clone()).unwrap();
+    dump_database(&mut source_glue.storage, dump_path.clone()).unwrap();
 
     let data_path = "tmp/target";
     let config = sled::Config::default().path(data_path).temporary(true);
@@ -82,8 +84,6 @@ async fn dump_and_import() {
     for sql in sqls.split(';').filter(|sql| !sql.trim().is_empty()) {
         target_glue.execute(sql).unwrap();
     }
-
-    let mut source_glue = Glue::new(source_storage);
 
     // schemas should be identical
     let sql = "SELECT OBJECT_TYPE, OBJECT_NAME FROM GLUE_OBJECTS";

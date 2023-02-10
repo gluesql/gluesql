@@ -6,6 +6,7 @@ pub mod arithmetic;
 pub mod ast_builder;
 pub mod basic;
 pub mod case;
+pub mod column_alias;
 pub mod concat;
 pub mod data_type;
 pub mod default;
@@ -112,6 +113,7 @@ macro_rules! generate_store_tests {
         glue!(function_abs, function::abs::abs);
         glue!(function_ceil, function::ceil::ceil);
         glue!(function_round, function::round::round);
+        glue!(function_rand, function::rand::rand);
         glue!(function_floor, function::floor::floor);
         glue!(function_format, function::format::format);
         glue!(function_ln, function::exp_log::ln);
@@ -152,6 +154,7 @@ macro_rules! generate_store_tests {
         glue!(list, data_type::list::list);
         glue!(map, data_type::map::map);
         glue!(bytea, data_type::bytea::bytea);
+        glue!(inet, data_type::inet::inet);
         glue!(synthesize, synthesize::synthesize);
         glue!(validate_unique, validate::unique::unique);
         glue!(validate_types, validate::types::types);
@@ -171,6 +174,7 @@ macro_rules! generate_store_tests {
         );
         glue!(type_match, type_match::type_match);
         glue!(dictionary, dictionary::dictionary);
+        glue!(column_alias, column_alias::column_alias);
 
         // ast-builder
         glue!(ast_builder_basic, ast_builder::basic::basic);

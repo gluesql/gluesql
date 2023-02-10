@@ -1,6 +1,7 @@
 use {
     super::{
         date::{parse_date, parse_time, parse_timestamp},
+        uuid::parse_uuid,
         Value, ValueError,
     },
     crate::{
@@ -9,6 +10,7 @@ use {
     },
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     rust_decimal::prelude::{Decimal, FromPrimitive, FromStr, ToPrimitive},
+    std::net::IpAddr,
     uuid::Uuid,
 };
 
@@ -17,6 +19,7 @@ impl From<&Value> for String {
         match v {
             Value::Str(value) => value.to_owned(),
             Value::Bytea(value) => hex::encode(value),
+            Value::Inet(value) => value.to_string(),
             Value::Bool(value) => (if *value { "TRUE" } else { "FALSE" }).to_owned(),
             Value::I8(value) => value.to_string(),
             Value::I16(value) => value.to_string(),
@@ -138,6 +141,7 @@ impl TryFrom<&Value> for bool {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Inet(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -172,6 +176,7 @@ impl TryFrom<&Value> for i8 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Inet(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -206,6 +211,7 @@ impl TryFrom<&Value> for i16 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Inet(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -240,6 +246,7 @@ impl TryFrom<&Value> for i32 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Inet(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -274,6 +281,7 @@ impl TryFrom<&Value> for i64 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Inet(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -308,6 +316,7 @@ impl TryFrom<&Value> for i128 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Inet(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -342,6 +351,7 @@ impl TryFrom<&Value> for u8 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Inet(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -375,6 +385,7 @@ impl TryFrom<&Value> for u16 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Inet(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -517,6 +528,7 @@ impl TryFrom<&Value> for f64 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Inet(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -551,6 +563,7 @@ impl TryFrom<&Value> for usize {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Inet(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -591,6 +604,7 @@ impl TryFrom<&Value> for Decimal {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Inet(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -662,6 +676,19 @@ impl TryFrom<&Value> for Interval {
     }
 }
 
+impl TryFrom<&Value> for u32 {
+    type Error = Error;
+
+    fn try_from(v: &Value) -> Result<u32> {
+        match v {
+            Value::Inet(IpAddr::V4(v)) => Ok(u32::from(*v)),
+            _ => Err(ValueError::ImpossibleCast.into()),
+        }
+    }
+}
+
+impl TryFrom<&Value> for u128 {
+    type Error = Error;
 // impl TryFrom<&Value> for u128 {
 //     type Error = Error;
 
@@ -672,15 +699,40 @@ impl TryFrom<&Value> for Interval {
 //         }
 //     }
 // }
+    fn try_from(v: &Value) -> Result<u128> {
+        match v {
+            Value::Uuid(value) => Ok(*value),
+            Value::Str(value) => parse_uuid(value),
+            Value::Inet(IpAddr::V6(v)) => Ok(u128::from(*v)),
+            _ => Err(ValueError::ImpossibleCast.into()),
+        }
+    }
+}
+
+impl TryFrom<&Value> for IpAddr {
+    type Error = Error;
+
+    fn try_from(v: &Value) -> Result<IpAddr> {
+        Ok(match v {
+            Value::Inet(value) => *value,
+            Value::Str(value) => IpAddr::from_str(value).map_err(|_| ValueError::ImpossibleCast)?,
+            _ => return Err(ValueError::ImpossibleCast.into()),
+        })
+    }
+}
 
 #[cfg(test)]
 mod tests {
     use {
-        super::{Value, ValueError},
+        super::{parse_uuid, Value, ValueError},
         crate::{data::Interval as I, result::Result},
         chrono::{self, NaiveDate, NaiveDateTime, NaiveTime},
         rust_decimal::Decimal,
-        std::collections::HashMap,
+        std::{
+            collections::HashMap,
+            net::{IpAddr, Ipv4Addr, Ipv6Addr},
+            str::FromStr,
+        },
     };
 
     fn timestamp(y: i32, m: u32, d: u32, hh: u32, mm: u32, ss: u32, ms: u32) -> NaiveDateTime {
@@ -708,6 +760,7 @@ mod tests {
 
         test!(Value::Str("text".to_owned()), "text");
         test!(Value::Bytea(hex::decode("1234").unwrap()), "1234");
+        test!(Value::Inet(IpAddr::from_str("::1").unwrap()), "::1");
         test!(Value::Bool(true), "TRUE");
         test!(Value::I8(122), "122");
         test!(Value::I16(122), "122");
@@ -815,6 +868,10 @@ mod tests {
         test!(Value::I32(3), Err(ValueError::ImpossibleCast.into()));
         test!(Value::I64(3), Err(ValueError::ImpossibleCast.into()));
         test!(Value::I128(3), Err(ValueError::ImpossibleCast.into()));
+        test!(
+            Value::Inet(IpAddr::from_str("::1").unwrap()),
+            Err(ValueError::ImpossibleCast.into())
+        );
     }
 
     #[test]
@@ -883,6 +940,10 @@ mod tests {
         test!(Value::U64(128), Err(ValueError::ImpossibleCast.into()));
         test!(Value::U128(128), Err(ValueError::ImpossibleCast.into()));
         test!(Value::F64(128.0), Err(ValueError::ImpossibleCast.into()));
+        test!(
+            Value::Inet(IpAddr::from_str("::1").unwrap()),
+            Err(ValueError::ImpossibleCast.into())
+        );
     }
 
     #[test]
@@ -939,6 +1000,10 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+        test!(
+            Value::Inet(IpAddr::from_str("::1").unwrap()),
+            Err(ValueError::ImpossibleCast.into())
+        );
     }
 
     #[test]
@@ -996,6 +1061,10 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+        test!(
+            Value::Inet(IpAddr::from_str("::1").unwrap()),
+            Err(ValueError::ImpossibleCast.into())
+        );
     }
 
     #[test]
@@ -1053,6 +1122,10 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+        test!(
+            Value::Inet(IpAddr::from_str("::1").unwrap()),
+            Err(ValueError::ImpossibleCast.into())
+        );
     }
 
     #[test]
@@ -1110,6 +1183,10 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+        test!(
+            Value::Inet(IpAddr::from_str("::1").unwrap()),
+            Err(ValueError::ImpossibleCast.into())
+        );
     }
 
     #[test]
@@ -1178,6 +1255,10 @@ mod tests {
         test!(Value::I64(256), Err(ValueError::ImpossibleCast.into()));
         test!(Value::I128(256), Err(ValueError::ImpossibleCast.into()));
         test!(Value::F64(256.0), Err(ValueError::ImpossibleCast.into()));
+        test!(
+            Value::Inet(IpAddr::from_str("::1").unwrap()),
+            Err(ValueError::ImpossibleCast.into())
+        );
     }
 
     #[test]
@@ -1346,6 +1427,10 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+        test!(
+            Value::Inet(IpAddr::from_str("::1").unwrap()),
+            Err(ValueError::ImpossibleCast.into())
+        );
     }
 
     #[test]
@@ -1460,6 +1545,10 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+        test!(
+            Value::Inet(IpAddr::from_str("::1").unwrap()),
+            Err(ValueError::ImpossibleCast.into())
+        );
     }
 
     #[test]
@@ -1514,6 +1603,10 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+        test!(
+            Value::Inet(IpAddr::from_str("::1").unwrap()),
+            Err(ValueError::ImpossibleCast.into())
+        );
     }
 
     #[test]
@@ -1579,6 +1672,60 @@ mod tests {
         assert_eq!(
             I::try_from(&Value::Str("'+22-10' YEAR TO MONTH".to_owned())),
             Ok(I::Month(274))
+        );
+    }
+
+    #[test]
+    fn try_into_u32() {
+        assert_eq!(
+            u32::try_from(&Value::Inet(IpAddr::from_str("0.0.0.0").unwrap())),
+            Ok(u32::from(Ipv4Addr::from(0)))
+        );
+        assert_eq!(
+            u32::try_from(&Value::Inet(IpAddr::from_str("::0").unwrap())),
+            Err(ValueError::ImpossibleCast.into())
+        );
+    }
+
+    #[test]
+    fn try_into_u128() {
+        let uuid = 195965723427462096757863453463987888808;
+        assert_eq!((&Value::Uuid(uuid)).try_into() as Result<u128>, Ok(uuid));
+        assert_eq!(u128::try_from(&Value::Uuid(uuid)), Ok(uuid));
+
+        let uuid = "936DA01F9ABD4d9d80C702AF85C822A8";
+        assert_eq!(
+            u128::try_from(&Value::Str(uuid.to_owned())),
+            parse_uuid(uuid)
+        );
+
+        let ip = Ipv6Addr::from(9876543210);
+        assert_eq!(
+            u128::try_from(&Value::Inet(IpAddr::V6(ip))),
+            Ok(u128::from(ip))
+        );
+
+        assert_eq!(
+            u128::try_from(&Value::Date(date(2021, 11, 20))),
+            Err(ValueError::ImpossibleCast.into())
+        );
+    }
+
+    #[test]
+    fn try_into_ipaddr() {
+        macro_rules! test {
+            ($from: expr, $to: expr) => {
+                assert_eq!(IpAddr::try_from($from), Ok(IpAddr::from_str($to).unwrap()));
+                assert_eq!(IpAddr::try_from($from), Ok(IpAddr::from_str($to).unwrap()))
+            };
+        }
+        test!(&Value::Str("127.0.0.1".to_owned()), "127.0.0.1");
+        test!(&Value::Str("0.0.0.0".to_owned()), "0.0.0.0");
+        test!(IpAddr::from_str("::1").unwrap(), "::1");
+        test!(IpAddr::from_str("::2:4cb0:16ea").unwrap(), "::2:4cb0:16ea");
+        assert_eq!(
+            IpAddr::try_from(&Value::Date(date(2021, 11, 20))),
+            Err(ValueError::ImpossibleCast.into())
         );
     }
 }

@@ -59,6 +59,7 @@ impl TryFrom<Value> for Expr {
             )),
             Value::Str(v) => Expr::Literal(AstLiteral::QuotedString(v)),
             Value::Bytea(v) => Expr::Literal(AstLiteral::HexString(hex::encode(v))),
+            Value::Inet(v) => Expr::Literal(AstLiteral::QuotedString(v.to_string())),
             Value::Date(v) => Expr::TypedString {
                 data_type: DataType::Date,
                 value: v.to_string(),
