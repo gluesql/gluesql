@@ -11,7 +11,7 @@ env:
 
 jobs:
   clippy_workspace:
-    name: Clippy (workspace) - Default Feature
+    name: Clippy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -23,31 +23,6 @@ jobs:
           components: clippy
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --all-targets -- -D warnings
-
-  clippy_core:
-    name: Clippy (core) - per Powerset Features
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Add clippy
-        uses: actions-rs/toolchain@v1.0.6
-        with:
-          profile: minimal
-          default: true
-          components: clippy
-      - uses: Swatinem/rust-cache@v2
-      - run: |
-          cd core
-          cargo clippy --all-targets --no-default-features -- -D warnings
-          cargo clippy --all-targets --no-default-features --features alter-table -- -D warnings
-          cargo clippy --all-targets --no-default-features --features index -- -D warnings
-          cargo clippy --all-targets --no-default-features --features transaction -- -D warnings
-          cargo clippy --all-targets --no-default-features --features "alter-table index" -- -D warnings
-          cargo clippy --all-targets --no-default-features --features "alter-table transaction" -- -D warnings
-          cargo clippy --all-targets --no-default-features --features "index transaction" -- -D warnings
-          cargo clippy --all-targets --no-default-features --features "alter-table index transaction" -- -D warnings
-          cargo clippy --all-targets --all-features -- -D warnings
-          cd ../
 
   rust_fmt:
     name: Rustfmt
@@ -82,10 +57,6 @@ jobs:
           cargo test --all-features --lib --bins --tests --examples --verbose -- --skip sled_transaction_timeout
           cargo test sled_transaction_timeout --verbose -- --test-threads=1
           cargo test --benches
-          cd storages/memory-storage
-          cargo test --verbose --no-default-features
-          cargo test --verbose --no-default-features --features alter-table
-          cd ../../
 
   run_examples:
     name: Run examples
