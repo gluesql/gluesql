@@ -2,7 +2,8 @@ use {
     crate::{
         ast_builder::AstBuilderError,
         data::{
-            IntervalError, KeyError, LiteralError, RowError, StringExtError, TableError, ValueError,
+            IntervalError, KeyError, LiteralError, RowError, SchemaParseError, StringExtError,
+            TableError, ValueError,
         },
         executor::{
             AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, InsertError,
@@ -84,6 +85,8 @@ pub enum Error {
     StringExt(#[from] StringExtError),
     #[error(transparent)]
     Plan(#[from] PlanError),
+    #[error(transparent)]
+    Schema(#[from] SchemaParseError),
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -119,6 +122,7 @@ impl PartialEq for Error {
             (Interval(e), Interval(e2)) => e == e2,
             (StringExt(e), StringExt(e2)) => e == e2,
             (Plan(e), Plan(e2)) => e == e2,
+            (Schema(e), Schema(e2)) => e == e2,
             _ => false,
         }
     }
