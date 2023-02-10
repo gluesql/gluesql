@@ -1,5 +1,5 @@
 use {
-    crate::{data::Value, result::Result},
+    crate::{data::Value, result::Result, store::DataRow},
     serde::Serialize,
     std::{collections::HashMap, fmt::Debug, rc::Rc},
     thiserror::Error,

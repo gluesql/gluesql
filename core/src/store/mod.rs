@@ -22,6 +22,7 @@ use {
         result::Result,
     },
     async_trait::async_trait,
+    serde::{Deserialize, Serialize},
     strum_macros::Display,
 };
 
