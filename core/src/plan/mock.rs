@@ -191,8 +191,8 @@ mod tests {
         #[cfg(feature = "transaction")]
         {
             assert!(block_on(storage.begin(false)).is_err());
-            assert!(block_on(storage.rollback()).is_err());
-            assert!(block_on(storage.commit()).is_err());
+            assert!(block_on(storage.rollback()).is_ok());
+            assert!(block_on(storage.commit()).is_ok());
         };
 
         assert!(matches!(block_on(storage.fetch_schema("Foo")), Ok(None)));
