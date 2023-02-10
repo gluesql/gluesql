@@ -6,7 +6,7 @@ use {
     async_trait::async_trait,
     gluesql_core::{
         data::{HashMapJsonExt, Schema},
-        prelude::{parse, translate, Key},
+        prelude::Key,
         result::{Error, Result},
         store::{DataRow, RowIter, Store},
         {chrono::NaiveDateTime, store::StoreMut},
@@ -52,7 +52,6 @@ enum JsonlStorageError {
     FileNotFound,
     TableDoesNotExist,
     ColumnDoesNotExist,
-    WrongSchemaFile(String),
 }
 
 impl fmt::Display for JsonlStorageError {
@@ -61,9 +60,6 @@ impl fmt::Display for JsonlStorageError {
             JsonlStorageError::FileNotFound => "file not found".to_owned(),
             JsonlStorageError::TableDoesNotExist => "table does not exist".to_owned(),
             JsonlStorageError::ColumnDoesNotExist => "column does not exist".to_owned(),
-            JsonlStorageError::WrongSchemaFile(schema_path) => {
-                format!("schema file is wrong: {schema_path}")
-            }
         };
 
         write!(f, "{}", payload)
@@ -90,33 +86,7 @@ impl JsonlStorage {
                 let mut ddl = String::new();
                 file.read_to_string(&mut ddl).map_storage_err()?;
 
-                let parsed = parse(ddl)?.into_iter().next().map_storage_err(
-                    JsonlStorageError::WrongSchemaFile(
-                        schema_path
-                            .to_str()
-                            .map_storage_err(JsonlStorageError::FileNotFound.to_string())?
-                            .to_string(),
-                    )
-                    .to_string(),
-                )?;
-                let statement = translate(&parsed)?;
-
-                let column_defs = match statement {
-                    gluesql_core::ast::Statement::CreateTable { columns, .. } => {
-                        Ok::<_, Error>(columns)
-                    }
-                    _ => Err(Error::StorageMsg(
-                        JsonlStorageError::WrongSchemaFile(
-                            schema_path
-                                .to_str()
-                                .map_storage_err(JsonlStorageError::FileNotFound.to_string())?
-                                .to_string(),
-                        )
-                        .to_string(),
-                    )),
-                }?;
-
-                Ok::<_, Error>(Some(column_defs))
+                Schema::from_ddl(&ddl).map(|schema| schema.column_defs)
             }
             false => Ok(None),
         }?;
@@ -367,7 +337,7 @@ fn jsonl_storage_test() {
     use {
         crate::*,
         gluesql_core::{
-            data::ValueError,
+            data::{SchemaParseError, ValueError},
             prelude::{
                 Glue, {Payload, Value},
             },
@@ -411,9 +381,7 @@ fn jsonl_storage_test() {
     assert_eq!(actual, expected);
 
     let actual = glue.execute("SELECT * FROM WrongSchema");
-    let expected = Err(Error::StorageMsg(
-        "schema file is wrong: ./samples//WrongSchema.sql".to_owned(),
-    ));
+    let expected = Err(Error::Schema(SchemaParseError::CannotParseDDL));
 
     assert_eq!(actual, expected);
 }
