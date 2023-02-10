@@ -86,9 +86,6 @@ impl CompositeStorage {
     }
 }
 
-#[cfg(feature = "alter-table")]
 impl gluesql_core::store::AlterTable for CompositeStorage {}
-#[cfg(feature = "index")]
 impl gluesql_core::store::Index for CompositeStorage {}
-#[cfg(feature = "index")]
 impl gluesql_core::store::IndexMut for CompositeStorage {}

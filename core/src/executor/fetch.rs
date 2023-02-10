@@ -101,22 +101,14 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
         }
         TableFactor::Table { name, .. } => {
             let rows = {
-                #[cfg(feature = "index")]
                 #[derive(Iterator)]
                 enum Rows<I1, I2, I3> {
                     Indexed(I1),
                     PrimaryKey(I2),
                     FullScan(I3),
                 }
-                #[cfg(not(feature = "index"))]
-                #[derive(Iterator)]
-                enum Rows<I1, I2> {
-                    PrimaryKey(I1),
-                    FullScan(I2),
-                }
 
                 match get_index(table_factor) {
-                    #[cfg(feature = "index")]
                     Some(IndexItem::NonClustered {
                         name: index_name,
                         asc,

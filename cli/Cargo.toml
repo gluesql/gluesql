@@ -9,7 +9,7 @@ repository.workspace = true
 documentation.workspace = true
 
 [dependencies]
-gluesql-core = { path = "../core", version = "0.13.1", features = ["alter-table"] }
+gluesql-core = { path = "../core", version = "0.13.1" }
 gluesql_sled_storage = { path = "../storages/sled-storage", version = "0.13.0" }
 gluesql_memory_storage = { path = "../storages/memory-storage", version = "0.13.0" }
 
@@ -25,4 +25,3 @@ itertools = "0.10"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }
-

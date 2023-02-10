@@ -189,11 +189,7 @@ impl StoreMut for WebStorage {
     }
 }
 
-#[cfg(feature = "alter-table")]
 impl gluesql_core::store::AlterTable for WebStorage {}
-#[cfg(feature = "index")]
 impl gluesql_core::store::Index for WebStorage {}
-#[cfg(feature = "index")]
 impl gluesql_core::store::IndexMut for WebStorage {}
-#[cfg(feature = "transaction")]
 impl gluesql_core::store::Transaction for WebStorage {}

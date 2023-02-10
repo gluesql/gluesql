@@ -1,5 +1,3 @@
-#![cfg(feature = "index")]
-
 use {
     super::AlterError,
     crate::{

@@ -1,13 +1,8 @@
 use super::{
-    table_factor::TableType, CreateTableNode, DeleteNode, DropTableNode, InsertNode, SelectNode,
-    ShowColumnsNode, TableFactorNode, UpdateNode,
+    table_factor::TableType, AlterTableNode, CreateIndexNode, CreateTableNode, DeleteNode,
+    DropIndexNode, DropTableNode, InsertNode, OrderByExprNode, SelectNode, ShowColumnsNode,
+    TableFactorNode, UpdateNode,
 };
-
-#[cfg(feature = "alter-table")]
-use super::AlterTableNode;
-
-#[cfg(feature = "index")]
-use super::{CreateIndexNode, DropIndexNode, OrderByExprNode};
 
 #[derive(Clone, Debug)]
 pub struct TableNameNode {
@@ -65,12 +60,10 @@ impl<'a> TableNameNode {
         DropTableNode::new(self.table_name, true)
     }
 
-    #[cfg(feature = "index")]
     pub fn drop_index(self, name: &str) -> DropIndexNode {
         DropIndexNode::new(self.table_name, name.to_owned())
     }
 
-    #[cfg(feature = "index")]
     pub fn create_index<T: Into<OrderByExprNode<'a>>>(
         self,
         name: &str,
@@ -79,7 +72,6 @@ impl<'a> TableNameNode {
         CreateIndexNode::new(self.table_name, name.to_owned(), column.into())
     }
 
-    #[cfg(feature = "alter-table")]
     pub fn alter_table(self) -> AlterTableNode {
         AlterTableNode::new(self.table_name)
     }
