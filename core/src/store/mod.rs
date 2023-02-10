@@ -22,6 +22,7 @@ use {
         result::Result,
     },
     async_trait::async_trait,
+    strum_macros::Display,
 };
 
 pub type RowIter = Box<dyn Iterator<Item = Result<(Key, DataRow)>>>;
@@ -36,6 +37,38 @@ pub trait Store {
     async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>>;
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter>;
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display)]
+#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
+pub enum DictionaryView {
+    GlueTables,
+    GlueTableColumns,
+    GlueIndexes,
+    GlueObjects,
+}
+
+#[async_trait(?Send)]
+pub trait Metadata {
+    async fn scan_meta(&self, view_name: &DictionaryView) -> Result<RowIter> {
+        unimplemented!("unimplemented scan_meta");
+    }
+
+    async fn append_meta(&mut self, view_name: &DictionaryView, rows: Vec<DataRow>) -> Result<()> {
+        unimplemented!("unimplemented append_meta");
+    }
+
+    async fn insert_meta(
+        &mut self,
+        view_name: &DictionaryView,
+        rows: Vec<(Key, DataRow)>,
+    ) -> Result<()> {
+        unimplemented!("unimplemented insert_meta");
+    }
+
+    async fn delete_meta(&mut self, view_name: &DictionaryView, keys: Vec<Key>) -> Result<()> {
+        unimplemented!("unimplemented delete_meta");
+    }
 }
 
 /// By implementing `StoreMut` trait,

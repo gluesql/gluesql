@@ -1,5 +1,10 @@
 #![deny(clippy::str_to_string)]
 
+use gluesql_core::{
+    chrono::Utc,
+    store::{DictionaryView, Metadata},
+};
+
 mod alter_table;
 mod index;
 mod transaction;
@@ -24,10 +29,33 @@ pub struct Item {
     pub rows: BTreeMap<Key, DataRow>,
 }
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryStorage {
     pub id_counter: i64,
     pub items: HashMap<String, Item>,
+    pub metadata: HashMap<DictionaryView, Item>,
+}
+
+impl Default for MemoryStorage {
+    fn default() -> Self {
+        let schema = Schema {
+            table_name: DictionaryView::GlueTables.to_string(),
+            column_defs: None,
+            indexes: Vec::new(),
+            engine: None,
+            created: Utc::now().naive_utc(),
+        };
+
+        let rows = IndexMap::default();
+
+        let glue_tables = Item { schema, rows };
+
+        Self {
+            id_counter: 0,
+            items: HashMap::new(),
+            metadata: HashMap::from([(DictionaryView::GlueTables, glue_tables)]),
+        }
+    }
 }
 
 #[async_trait(?Send)]
@@ -65,6 +93,54 @@ impl Store for MemoryStorage {
         };
 
         Ok(rows)
+    }
+}
+
+#[async_trait(?Send)]
+impl Metadata for MemoryStorage {
+    async fn scan_meta(&self, view_name: &DictionaryView) -> Result<RowIter> {
+        let rows: RowIter = match self.metadata.get(view_name) {
+            Some(item) => Box::new(item.rows.clone().into_iter().map(Ok)),
+            None => Box::new(empty()),
+        };
+
+        Ok(rows)
+    }
+
+    async fn append_meta(&mut self, view_name: &DictionaryView, rows: Vec<DataRow>) -> Result<()> {
+        if let Some(item) = self.metadata.get_mut(view_name) {
+            for row in rows {
+                self.id_counter += 1;
+
+                item.rows.insert(Key::I64(self.id_counter), row);
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn insert_meta(
+        &mut self,
+        view_name: &DictionaryView,
+        rows: Vec<(Key, DataRow)>,
+    ) -> Result<()> {
+        if let Some(item) = self.metadata.get_mut(view_name) {
+            for (key, row) in rows {
+                item.rows.insert(key, row);
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn delete_meta(&mut self, view_name: &DictionaryView, keys: Vec<Key>) -> Result<()> {
+        if let Some(item) = self.metadata.get_mut(view_name) {
+            for key in keys {
+                item.rows.remove(&key);
+            }
+        }
+
+        Ok(())
     }
 }
 
