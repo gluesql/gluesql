@@ -689,16 +689,16 @@ impl TryFrom<&Value> for u32 {
 
 impl TryFrom<&Value> for u128 {
     type Error = Error;
-// impl TryFrom<&Value> for u128 {
-//     type Error = Error;
+    // impl TryFrom<&Value> for u128 {
+    //     type Error = Error;
 
-//     fn try_from(v: &Value) -> Result<u128> {
-//         match v {
-//             Value::Uuid(value) => Ok(*value),
-//             _ => Err(ValueError::ImpossibleCast.into()),
-//         }
-//     }
-// }
+    //     fn try_from(v: &Value) -> Result<u128> {
+    //         match v {
+    //             Value::Uuid(value) => Ok(*value),
+    //             _ => Err(ValueError::ImpossibleCast.into()),
+    //         }
+    //     }
+    // }
     fn try_from(v: &Value) -> Result<u128> {
         match v {
             Value::Uuid(value) => Ok(*value),
