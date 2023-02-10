@@ -2,7 +2,7 @@ use {
     crate::{
         ast::{ColumnDef, Expr, Statement, ToSql},
         prelude::{parse, translate},
-        result::Result,
+        result::{Error, Result},
     },
     chrono::{NaiveDateTime, Utc},
     serde::{Deserialize, Serialize},
@@ -73,13 +73,10 @@ impl Schema {
 
     pub fn from_ddl(ddl: &str) -> Result<Schema> {
         let statements = parse(ddl)?;
-        let statements = statements.as_slice();
 
-        let create_table = translate(&statements[0])?;
-        let create_indexes = &statements[1..];
-
-        let indexes = create_indexes
+        let indexes = statements
             .iter()
+            .skip(1)
             .map(|create_index| {
                 let create_index = translate(create_index)?;
                 match create_index {
@@ -106,6 +103,12 @@ impl Schema {
                 }
             })
             .collect::<Result<Vec<_>>>()?;
+
+        let create_table = statements
+            .get(0)
+            .map(Ok::<_, Error>)
+            .unwrap_or_else(|| Err(SchemaParseError::CannotParseDDL.into()))?;
+        let create_table = translate(create_table)?;
 
         match create_table {
             Statement::CreateTable {
