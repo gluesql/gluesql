@@ -97,7 +97,7 @@ fn sort_stateless(rows: Vec<Result<Row>>, order_by: &[OrderByExpr]) -> Result<Ve
         })
         .collect::<Result<Vec<_>>>()
         .map(Vector::from)?
-        .sort_by(|(values_a, _), (values_b, _)| Sort::sort_by(values_a, values_b))
+        .sort_by(|(values_a, _), (values_b, _)| super::sort::sort_by(values_a, values_b))
         .into_iter()
         .map(|(_, row)| row)
         .collect::<Vec<_>>();
@@ -106,8 +106,8 @@ fn sort_stateless(rows: Vec<Result<Row>>, order_by: &[OrderByExpr]) -> Result<Ve
 }
 
 #[async_recursion(?Send)]
-pub async fn select_with_labels<'a>(
-    storage: &'a dyn GStore,
+pub async fn select_with_labels<'a, T: GStore>(
+    storage: &'a T,
     query: &'a Query,
     filter_context: Option<Rc<RowContext<'a>>>,
 ) -> Result<(
@@ -206,8 +206,8 @@ pub async fn select_with_labels<'a>(
     Ok((labels, rows))
 }
 
-pub async fn select<'a>(
-    storage: &'a dyn GStore,
+pub async fn select<'a, T: GStore>(
+    storage: &'a T,
     query: &'a Query,
     filter_context: Option<Rc<RowContext<'a>>>,
 ) -> Result<impl TryStream<Ok = Row, Error = Error, Item = Result<Row>> + 'a> {

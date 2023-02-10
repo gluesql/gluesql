@@ -34,8 +34,8 @@ pub enum FetchError {
     TooManyColumnAliases(String, usize, usize),
 }
 
-pub async fn fetch<'a>(
-    storage: &'a dyn GStore,
+pub async fn fetch<'a, T: GStore>(
+    storage: &'a T,
     table_name: &'a str,
     columns: Option<Rc<[String]>>,
     where_clause: Option<&'a Expr>,
@@ -81,8 +81,8 @@ pub enum Rows<I1, I2, I3, I4> {
     Dictionary(I4),
 }
 
-pub async fn fetch_relation_rows<'a>(
-    storage: &'a dyn GStore,
+pub async fn fetch_relation_rows<'a, T: GStore>(
+    storage: &'a T,
     table_factor: &'a TableFactor,
     filter_context: &Option<Rc<RowContext<'a>>>,
 ) -> Result<impl TryStream<Ok = Row, Error = Error, Item = Result<Row>> + 'a> {
@@ -341,7 +341,10 @@ pub async fn fetch_relation_rows<'a>(
     }
 }
 
-pub async fn fetch_columns(storage: &dyn GStore, table_name: &str) -> Result<Option<Vec<String>>> {
+pub async fn fetch_columns<T: GStore>(
+    storage: &T,
+    table_name: &str,
+) -> Result<Option<Vec<String>>> {
     let columns = storage
         .fetch_schema(table_name)
         .await?
@@ -358,8 +361,8 @@ pub async fn fetch_columns(storage: &dyn GStore, table_name: &str) -> Result<Opt
 }
 
 #[async_recursion(?Send)]
-pub async fn fetch_relation_columns(
-    storage: &dyn GStore,
+pub async fn fetch_relation_columns<T: GStore>(
+    storage: &T,
     table_factor: &TableFactor,
 ) -> Result<Option<Vec<String>>> {
     match table_factor {
@@ -472,9 +475,9 @@ pub async fn fetch_relation_columns(
     }
 }
 
-async fn fetch_join_columns<'a>(
+async fn fetch_join_columns<'a, T: GStore>(
+    storage: &T,
     joins: &'a [Join],
-    storage: &dyn GStore,
 ) -> Result<Option<Vec<(&'a String, Vec<String>)>>> {
     let columns = stream::iter(joins.iter())
         .map(Ok::<_, Error>)
@@ -492,15 +495,15 @@ async fn fetch_join_columns<'a>(
     Ok((columns.len() == joins.len()).then_some(columns))
 }
 
-pub async fn fetch_labels(
-    storage: &dyn GStore,
+pub async fn fetch_labels<T: GStore>(
+    storage: &T,
     relation: &TableFactor,
     joins: &[Join],
     projection: &[SelectItem],
 ) -> Result<Option<Vec<String>>> {
     let table_alias = get_alias(relation);
     let columns = fetch_relation_columns(storage, relation).await?;
-    let join_columns = fetch_join_columns(joins, storage).await?;
+    let join_columns = fetch_join_columns(storage, joins).await?;
 
     if (columns.is_none() || join_columns.is_none())
         && projection.iter().any(|item| {

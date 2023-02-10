@@ -278,8 +278,7 @@ impl StoreMut for IdbStorage {
         let schema = JsValue::from_serde(&schema).err_into()?;
         store.add(&schema, Some(&key)).await.err_into()?;
 
-        transaction.commit().await.err_into()?;
-        Ok(())
+        transaction.commit().await.err_into()
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
@@ -356,8 +355,7 @@ impl StoreMut for IdbStorage {
         let key = JsValue::from_str(table_name);
         store.delete(Query::from(key)).await.err_into()?;
 
-        transaction.commit().await.err_into()?;
-        Ok(())
+        transaction.commit().await.err_into()
     }
 
     async fn append_data(&mut self, table_name: &str, new_rows: Vec<DataRow>) -> Result<()> {
@@ -379,8 +377,7 @@ impl StoreMut for IdbStorage {
             store.add(&row, None).await.err_into()?;
         }
 
-        transaction.commit().await.err_into()?;
-        Ok(())
+        transaction.commit().await.err_into()
     }
 
     async fn insert_data(&mut self, table_name: &str, new_rows: Vec<(Key, DataRow)>) -> Result<()> {
@@ -405,8 +402,7 @@ impl StoreMut for IdbStorage {
             store.put(&row, Some(&key)).await.err_into()?;
         }
 
-        transaction.commit().await.err_into()?;
-        Ok(())
+        transaction.commit().await.err_into()
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
@@ -424,8 +420,7 @@ impl StoreMut for IdbStorage {
             store.delete(key).await.err_into()?;
         }
 
-        transaction.commit().await.err_into()?;
-        Ok(())
+        transaction.commit().await.err_into()
     }
 }
 

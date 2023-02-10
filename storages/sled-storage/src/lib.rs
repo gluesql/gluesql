@@ -97,15 +97,6 @@ impl SledStorage {
 
         Ok(())
     }
-
-    fn update_state(self, state: State) -> Self {
-        Self {
-            tree: self.tree,
-            id_offset: self.id_offset,
-            state,
-            tx_timeout: self.tx_timeout,
-        }
-    }
 }
 
 impl TryFrom<Config> for SledStorage {

@@ -20,7 +20,7 @@ fn export_and_import() {
         .unwrap();
 
     let data1 = glue1.execute("SELECT * FROM Foo;").unwrap();
-    let export = glue1.storage.unwrap().export().unwrap();
+    let export = glue1.storage.export().unwrap();
 
     let mut storage2 = SledStorage::try_from(config2).unwrap();
     storage2.import(export).unwrap();
@@ -49,14 +49,14 @@ fn export_and_import_multiple_times() {
         .unwrap();
 
     let data1 = glue1.execute("SELECT * FROM Foo;").unwrap();
-    let export = glue1.storage.unwrap().export().unwrap();
+    let export = glue1.storage.export().unwrap();
 
     let mut storage2 = SledStorage::try_from(config2).unwrap();
     storage2.import(export).unwrap();
     let mut glue2 = Glue::new(storage2);
 
     let data2 = glue2.execute("SELECT * FROM Foo;").unwrap();
-    let export2 = glue2.storage.unwrap().export().unwrap();
+    let export2 = glue2.storage.export().unwrap();
     assert_eq!(data1, data2);
 
     let mut storage3 = SledStorage::try_from(config3).unwrap();

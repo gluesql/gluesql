@@ -32,6 +32,7 @@ pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
                 Some("INT128") => Ok(DataType::Int128),
                 Some("UINT8") => Ok(DataType::Uint8),
                 Some("UINT16") => Ok(DataType::Uint16),
+                Some("INET") => Ok(DataType::Inet),
 
                 _ => Err(TranslateError::UnsupportedDataType(sql_data_type.to_string()).into()),
             }

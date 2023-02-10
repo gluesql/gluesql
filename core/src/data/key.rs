@@ -6,7 +6,7 @@ use {
     chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
     rust_decimal::Decimal,
     serde::{Deserialize, Serialize},
-    std::{cmp::Ordering, fmt::Debug},
+    std::{cmp::Ordering, fmt::Debug, net::IpAddr},
     thiserror::Error as ThisError,
 };
 
@@ -35,6 +35,7 @@ pub enum Key {
     Bool(bool),
     Str(String),
     Bytea(Vec<u8>),
+    Inet(IpAddr),
     Date(NaiveDate),
     Timestamp(NaiveDateTime),
     Time(NaiveTime),
@@ -56,6 +57,7 @@ impl PartialOrd for Key {
             (Key::Bool(l), Key::Bool(r)) => Some(l.cmp(r)),
             (Key::Str(l), Key::Str(r)) => Some(l.cmp(r)),
             (Key::Bytea(l), Key::Bytea(r)) => Some(l.cmp(r)),
+            (Key::Inet(l), Key::Inet(r)) => Some(l.cmp(r)),
             (Key::Date(l), Key::Date(r)) => Some(l.cmp(r)),
             (Key::Timestamp(l), Key::Timestamp(r)) => Some(l.cmp(r)),
             (Key::Time(l), Key::Time(r)) => Some(l.cmp(r)),
@@ -84,6 +86,7 @@ impl TryFrom<Value> for Key {
             Decimal(v) => Ok(Key::Decimal(v)),
             Str(v) => Ok(Key::Str(v)),
             Bytea(v) => Ok(Key::Bytea(v)),
+            Inet(v) => Ok(Key::Inet(v)),
             Date(v) => Ok(Key::Date(v)),
             Timestamp(v) => Ok(Key::Timestamp(v)),
             Time(v) => Ok(Key::Time(v)),
@@ -119,6 +122,7 @@ impl From<Key> for Value {
             Key::Decimal(v) => Value::Decimal(v),
             Key::Str(v) => Value::Str(v),
             Key::Bytea(v) => Value::Bytea(v),
+            Key::Inet(v) => Value::Inet(v),
             Key::Date(v) => Value::Date(v),
             Key::Timestamp(v) => Value::Timestamp(v),
             Key::Time(v) => Value::Time(v),
@@ -223,6 +227,10 @@ impl Key {
                 .copied()
                 .collect::<Vec<_>>(),
             Key::Bytea(v) => v.to_vec(),
+            Key::Inet(v) => match v {
+                IpAddr::V4(v) => v.octets().to_vec(),
+                IpAddr::V6(v) => v.octets().to_vec(),
+            },
             Key::Date(date) => [VALUE]
                 .iter()
                 .chain(date.num_days_from_ce().to_be_bytes().iter())
@@ -287,7 +295,7 @@ mod tests {
         },
         chrono::{NaiveDate, NaiveDateTime, NaiveTime},
         rust_decimal::Decimal,
-        std::{cmp::Ordering, collections::HashMap, str::FromStr},
+        std::{cmp::Ordering, collections::HashMap, net::IpAddr, str::FromStr},
     };
 
     fn convert(sql: &str) -> Result<Key> {
@@ -305,11 +313,16 @@ mod tests {
         assert_eq!(convert("CAST(11 AS INT16)"), Ok(Key::I16(11)));
         assert_eq!(convert("CAST(11 AS INT32)"), Ok(Key::I32(11)));
         assert_eq!(convert("2048"), Ok(Key::I64(2048)));
+        assert_eq!(convert("CAST(1024 AS INT128)"), Ok(Key::I128(1024)));
         assert_eq!(convert("CAST(11 AS UINT8)"), Ok(Key::U8(11)));
         assert_eq!(convert("CAST(11 AS UINT16)"), Ok(Key::U16(11)));
         assert_eq!(
             convert("CAST(123.45 AS DECIMAL)"),
             Ok(Key::Decimal(Decimal::from_str("123.45").unwrap()))
+        );
+        assert_eq!(
+            convert("CAST(0 AS INET)"),
+            Ok(Key::Inet(IpAddr::from_str("0.0.0.0").unwrap()))
         );
 
         assert_eq!(
@@ -344,6 +357,10 @@ mod tests {
         assert_eq!(
             Key::try_from(Value::List(Vec::default())),
             Err(KeyError::ListTypeKeyNotSupported.into())
+        );
+        assert_eq!(
+            convert("SUBSTR('BEEF', 2, 3)"),
+            Ok(Key::Str("EEF".to_owned()))
         );
         assert_eq!(convert("POSITION('PORK' IN 'MEAT')"), Ok(Key::I64(0)));
         assert_eq!(
@@ -516,6 +533,20 @@ mod tests {
         assert_eq!(cmp(&n5, &n4), Ordering::Greater);
         assert_eq!(cmp(&n1, &null), Ordering::Less);
 
+        let n1 = Inet(IpAddr::from_str("192.168.0.1").unwrap()).to_cmp_be_bytes();
+        let n2 = Inet(IpAddr::from_str("127.0.0.1").unwrap()).to_cmp_be_bytes();
+        let n3 = Inet(IpAddr::from_str("10.0.0.1").unwrap()).to_cmp_be_bytes();
+        let n4 = Inet(IpAddr::from_str("0.0.0.0").unwrap()).to_cmp_be_bytes();
+        let n5 = Inet(IpAddr::from_str("0:0:0:0:0:0:0:1").unwrap()).to_cmp_be_bytes();
+        let n6 = Inet(IpAddr::from_str("::1").unwrap()).to_cmp_be_bytes();
+
+        assert_eq!(cmp(&n1, &n1), Ordering::Equal);
+        assert_eq!(cmp(&n2, &n1), Ordering::Less);
+        assert_eq!(cmp(&n2, &n3), Ordering::Greater);
+        assert_eq!(cmp(&n3, &n4), Ordering::Greater);
+        assert_eq!(cmp(&n1, &null), Ordering::Greater);
+        assert_eq!(cmp(&n5, &n6), Ordering::Equal);
+
         let n1 = Date(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap()).to_cmp_be_bytes();
         let n2 = Date(NaiveDate::from_ymd_opt(1989, 3, 20).unwrap()).to_cmp_be_bytes();
 
@@ -590,6 +621,10 @@ mod tests {
             Value::Str("abc".to_owned())
         );
         assert_eq!(Value::from(Key::Bytea(vec![])), Value::Bytea(vec![]));
+        assert_eq!(
+            Value::from(Key::Inet(IpAddr::from_str("::1").unwrap())),
+            Value::Inet(IpAddr::from_str("::1").unwrap())
+        );
         assert_eq!(
             Value::from(Key::Date(NaiveDate::from_ymd_opt(2023, 1, 23).unwrap())),
             Value::Date(NaiveDate::from_ymd_opt(2023, 1, 23).unwrap())

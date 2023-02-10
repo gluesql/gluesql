@@ -47,6 +47,9 @@ pub enum ValueError {
     #[error("failed to parse hex string: {0}")]
     FailedToParseHexString(String),
 
+    #[error("failed to parse inet string: {0}")]
+    FailedToParseInetString(String),
+
     #[error("non-numeric values {lhs:?} {operator} {rhs:?}")]
     NonNumericMathOperation {
         lhs: Value,

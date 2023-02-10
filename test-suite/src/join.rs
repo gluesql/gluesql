@@ -276,6 +276,14 @@ test_case!(project, async move {
             PlanError::ColumnReferenceAmbiguous("id".to_owned()).into(),
         ),
         (
+            "INSERT INTO Users SELECT id FROM Users A JOIN Users B on A.id = B.id",
+            PlanError::ColumnReferenceAmbiguous("id".to_owned()).into(),
+        ),
+        (
+            "CREATE TABLE Ids AS SELECT id FROM Users A JOIN Users B on A.id = B.id",
+            PlanError::ColumnReferenceAmbiguous("id".to_owned()).into(),
+        ),
+        (
             "SELECT * FROM ProjectUser, ProjectItem",
             TranslateError::TooManyTables.into(),
         ),

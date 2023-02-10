@@ -27,6 +27,7 @@ pub struct Schema {
     pub table_name: String,
     pub column_defs: Option<Vec<ColumnDef>>,
     pub indexes: Vec<SchemaIndex>,
+    pub engine: Option<String>,
     pub created: NaiveDateTime,
 }
 
@@ -34,15 +35,17 @@ impl Schema {
     pub fn to_ddl(self) -> String {
         let Schema {
             table_name,
-            column_defs: columns,
+            column_defs,
             indexes,
+            engine,
             ..
         } = self;
 
         let create_table = Statement::CreateTable {
             if_not_exists: false,
             name: table_name.clone(),
-            columns: columns.unwrap_or_default(),
+            columns: column_defs,
+            engine,
             source: None,
         }
         .to_sql();
@@ -91,6 +94,7 @@ mod tests {
                 },
             ]),
             indexes: Vec::new(),
+            engine: None,
             created: Utc::now().naive_utc(),
         };
 
@@ -103,6 +107,7 @@ mod tests {
             table_name: "Test".to_owned(),
             column_defs: None,
             indexes: Vec::new(),
+            engine: None,
             created: Utc::now().naive_utc(),
         };
         assert_eq!(schema.to_ddl(), "CREATE TABLE Test;");
@@ -120,6 +125,7 @@ mod tests {
                 unique: Some(ColumnUniqueOption { is_primary: true }),
             }]),
             indexes: Vec::new(),
+            engine: None,
             created: Utc::now().naive_utc(),
         };
 
@@ -163,6 +169,7 @@ mod tests {
                     created: Utc::now().naive_utc(),
                 },
             ],
+            engine: None,
             created: Utc::now().naive_utc(),
         };
 
