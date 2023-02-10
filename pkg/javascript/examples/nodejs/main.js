@@ -6,10 +6,10 @@ async function run() {
     CREATE TABLE User (id INTEGER, name TEXT);
     CREATE TABLE Device (name TEXT, userId INTEGER);
     INSERT INTO User VALUES
-      (1, "glue"), (2, "sticky"), (3, "watt");
+      (1, 'glue'), (2, 'sticky'), (3, 'watt');
     INSERT INTO Device VALUES
-      ("Phone", 1), ("Mic", 1), ("Monitor", 3),
-      ("Mouse", 2), ("Touchpad", 2);
+      ('Phone', 1), ('Mic', 1), ('Monitor', 3),
+      ('Mouse', 2), ('Touchpad', 2);
   `);
 
   let sql;
