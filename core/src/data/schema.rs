@@ -72,6 +72,7 @@ impl Schema {
     }
 
     pub fn from_ddl(ddl: &str) -> Result<Schema> {
+        let created = Utc::now().naive_utc();
         let statements = parse(ddl)?;
 
         let indexes = statements
@@ -94,7 +95,7 @@ impl Schema {
                             name,
                             expr,
                             order,
-                            created: Utc::now().naive_utc(),
+                            created,
                         };
 
                         Ok(index)
@@ -118,7 +119,7 @@ impl Schema {
                 column_defs: columns,
                 indexes,
                 engine,
-                created: Utc::now().naive_utc(),
+                created,
             }),
             _ => Err(SchemaParseError::CannotParseDDL.into()),
         }
