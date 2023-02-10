@@ -2,7 +2,7 @@ use {
     crate::{
         ast::{ColumnDef, Expr, Statement, ToSql},
         prelude::{parse, translate},
-        result::{Error, Result},
+        result::Result,
     },
     chrono::{NaiveDateTime, Utc},
     serde::{Deserialize, Serialize},
@@ -104,10 +104,7 @@ impl Schema {
             })
             .collect::<Result<Vec<_>>>()?;
 
-        let create_table = statements
-            .get(0)
-            .map(Ok::<_, Error>)
-            .unwrap_or_else(|| Err(SchemaParseError::CannotParseDDL.into()))?;
+        let create_table = statements.get(0).ok_or(SchemaParseError::CannotParseDDL)?;
         let create_table = translate(create_table)?;
 
         match create_table {
