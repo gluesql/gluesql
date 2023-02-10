@@ -14,6 +14,8 @@ crate-type = ["cdylib", "rlib"]
 [features]
 default = ["console_error_panic_hook"]
 
+nodejs = ["console_error_panic_hook"]
+
 [dependencies]
 wasm-bindgen = { version = "0.2.79" }
 wasm-bindgen-futures = "0.4.29"
@@ -31,6 +33,9 @@ console_error_panic_hook = { version = "0.1.6", optional = true }
 
 gluesql-core = { path = "../../../core", version = "0.13.1" }
 memory-storage = { package = "gluesql_memory_storage", path = "../../../storages/memory-storage", version = "0.13.0" }
+web-storage = { package = "gluesql-web-storage", path = "../../../storages/web-storage", version = "0.13.0" }
+idb-storage = { package = "gluesql-idb-storage", path = "../../../storages/idb-storage", version = "0.13.0" }
+composite-storage = { package = "gluesql-composite-storage", path = "../../../storages/composite-storage", version = "0.13.0" }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.13"
@@ -40,4 +45,3 @@ async-trait = "0.1"
 package = "gluesql-test-suite"
 path = "../../../test-suite"
 version = "0.13.1"
-features = ["alter-table"]

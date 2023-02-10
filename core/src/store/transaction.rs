@@ -16,14 +16,10 @@ pub trait Transaction {
     }
 
     async fn rollback(&mut self) -> Result<()> {
-        Err(Error::StorageMsg(
-            "[Storage] Transaction::rollback is not supported".to_owned(),
-        ))
+        Ok(())
     }
 
     async fn commit(&mut self) -> Result<()> {
-        Err(Error::StorageMsg(
-            "[Storage] Transaction::commit is not supported".to_owned(),
-        ))
+        Ok(())
     }
 }
