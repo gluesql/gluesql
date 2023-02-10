@@ -116,7 +116,15 @@ impl Store for IdbStorage {
         transaction.commit().await.err_into()?;
         schemas
             .into_iter()
-            .map(|v| serde_wasm_bindgen::from_value(v).err_into())
+            .map(|schema| {
+                schema
+                    .as_string()
+                    .as_deref()
+                    .ok_or_else(|| {
+                        Error::StorageMsg("conflict - invalid schema value: {schema:?}".to_owned())
+                    })
+                    .and_then(Schema::from_ddl)
+            })
             .collect::<Result<Vec<Schema>>>()
     }
 
@@ -127,9 +135,12 @@ impl Store for IdbStorage {
             .err_into()?;
 
         let store = transaction.object_store(SCHEMA_STORE).err_into()?;
-        let schema = store.get(JsValue::from_str(table_name)).await.err_into()?;
-        let schema = schema
-            .map(|v| serde_wasm_bindgen::from_value(v).err_into())
+        let schema = store
+            .get(JsValue::from_str(table_name))
+            .await
+            .err_into()?
+            .and_then(|schema| JsValue::as_string(&schema))
+            .map(|schema| Schema::from_ddl(schema.as_str()))
             .transpose()?;
 
         transaction.commit().await.err_into()?;
@@ -275,7 +286,7 @@ impl StoreMut for IdbStorage {
         let store = transaction.object_store(SCHEMA_STORE).err_into()?;
 
         let key = JsValue::from_str(&schema.table_name);
-        let schema = JsValue::from_serde(&schema).err_into()?;
+        let schema = JsValue::from(schema.to_ddl());
         store.add(&schema, Some(&key)).await.err_into()?;
 
         transaction.commit().await.err_into()
