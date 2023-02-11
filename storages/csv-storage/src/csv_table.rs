@@ -1,18 +1,13 @@
-use std::fs::OpenOptions;
-
 use {
     crate::error::StorageError,
     csv::ReaderBuilder,
     gluesql_core::{
-        ast::ColumnDef,
-        chrono::NaiveDateTime,
-        data::Schema,
-        prelude::{DataType, Key},
-        result::Result,
+        ast::ColumnDef, chrono::NaiveDateTime, data::Schema, prelude::DataType, result::Result,
         store::DataRow,
     },
     std::{
         ffi::OsStr,
+        fs::OpenOptions,
         io::prelude::*,
         path::{Path, PathBuf},
     },
@@ -113,36 +108,14 @@ impl CsvTable {
     /// Due to the nature of reading/writing csv file, this operation
     /// might take some time.
     pub fn append_data(&self, rows: Vec<DataRow>) -> Result<()> {
-        let column_defs = self
-            .schema
-            .column_defs
-            .as_ref()
-            .ok_or(StorageError::SchemaLessNotSupported)?
-            .into_iter()
-            .map(|cd| cd.data_type.to_owned());
-
         let rows = rows
             .into_iter()
-            .map(|row| {
-                match row {
-                    DataRow::Vec(val_vec) => {
-                        // The length of val_vec should equal to column_defs
-                        if val_vec.len() != column_defs.len() {
-                            return Err(StorageError::ColumnDefMismatch.into());
-                        }
-                        val_vec
-                            .into_iter()
-                            .zip(column_defs.clone())
-                            .map(|(val, dt)| -> Result<String> {
-                                val.validate_type(&dt)
-                                    .map_err(|_| StorageError::ColumnDefMismatch)?;
-
-                                Ok(val.into())
-                            })
-                            .collect::<Result<Vec<_>>>()
-                    }
-                    DataRow::Map(_) => Err(StorageError::SchemaLessNotSupported.into()),
-                }
+            .map(|row| match row {
+                DataRow::Vec(val_vec) => val_vec
+                    .into_iter()
+                    .map(|value| Ok(value.into()))
+                    .collect::<Result<Vec<String>>>(),
+                DataRow::Map(_) => Err(StorageError::SchemaLessNotSupported.into()),
             })
             .collect::<Result<Vec<_>>>()?;
 
