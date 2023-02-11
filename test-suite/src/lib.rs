@@ -6,6 +6,7 @@ pub mod arithmetic;
 pub mod ast_builder;
 pub mod basic;
 pub mod case;
+pub mod column_alias;
 pub mod concat;
 pub mod data_type;
 pub mod default;
@@ -26,6 +27,7 @@ pub mod order_by;
 pub mod ordering;
 pub mod primary_key;
 pub mod project;
+pub mod schemaless;
 pub mod series;
 pub mod show_columns;
 pub mod synthesize;
@@ -111,6 +113,7 @@ macro_rules! generate_store_tests {
         glue!(function_abs, function::abs::abs);
         glue!(function_ceil, function::ceil::ceil);
         glue!(function_round, function::round::round);
+        glue!(function_rand, function::rand::rand);
         glue!(function_floor, function::floor::floor);
         glue!(function_format, function::format::format);
         glue!(function_ln, function::exp_log::ln);
@@ -151,6 +154,7 @@ macro_rules! generate_store_tests {
         glue!(list, data_type::list::list);
         glue!(map, data_type::map::map);
         glue!(bytea, data_type::bytea::bytea);
+        glue!(inet, data_type::inet::inet);
         glue!(synthesize, synthesize::synthesize);
         glue!(validate_unique, validate::unique::unique);
         glue!(validate_types, validate::types::types);
@@ -170,6 +174,7 @@ macro_rules! generate_store_tests {
         );
         glue!(type_match, type_match::type_match);
         glue!(dictionary, dictionary::dictionary);
+        glue!(column_alias, column_alias::column_alias);
 
         // ast-builder
         glue!(ast_builder_basic, ast_builder::basic::basic);
@@ -179,10 +184,13 @@ macro_rules! generate_store_tests {
         glue!(ast_builder_update, ast_builder::update::update);
         glue!(ast_builder_delete, ast_builder::delete::delete);
         glue!(ast_builder_alias_as, ast_builder::alias_as::alias_as);
+
+        // schemaless data support
+        glue!(schemaless_basic, schemaless::basic);
+        glue!(schemaless_error, schemaless::error);
     };
 }
 
-#[cfg(feature = "alter-table")]
 #[macro_export]
 macro_rules! generate_alter_table_tests {
     ($test: meta, $storage: ident) => {
@@ -197,7 +205,6 @@ macro_rules! generate_alter_table_tests {
     };
 }
 
-#[cfg(feature = "index")]
 #[macro_export]
 macro_rules! generate_index_tests {
     ($test: meta, $storage: ident) => {
@@ -220,7 +227,6 @@ macro_rules! generate_index_tests {
     };
 }
 
-#[cfg(feature = "transaction")]
 #[macro_export]
 macro_rules! generate_transaction_tests {
     ($test: meta, $storage: ident) => {
@@ -238,7 +244,6 @@ macro_rules! generate_transaction_tests {
     };
 }
 
-#[cfg(all(feature = "alter-table", feature = "index"))]
 #[macro_export]
 macro_rules! generate_alter_table_index_tests {
     ($test: meta, $storage: ident) => {
@@ -253,7 +258,6 @@ macro_rules! generate_alter_table_index_tests {
     };
 }
 
-#[cfg(all(feature = "transaction", feature = "alter-table"))]
 #[macro_export]
 macro_rules! generate_transaction_alter_table_tests {
     ($test: meta, $storage: ident) => {
@@ -282,7 +286,6 @@ macro_rules! generate_transaction_alter_table_tests {
     };
 }
 
-#[cfg(all(feature = "transaction", feature = "index"))]
 #[macro_export]
 macro_rules! generate_transaction_index_tests {
     ($test: meta, $storage: ident) => {
@@ -297,7 +300,6 @@ macro_rules! generate_transaction_index_tests {
     };
 }
 
-#[cfg(all(feature = "transaction"))]
 #[macro_export]
 macro_rules! generate_transaction_dictionary_tests {
     ($test: meta, $storage: ident) => {

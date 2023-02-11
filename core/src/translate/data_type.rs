@@ -1,7 +1,10 @@
 use {
     super::TranslateError,
     crate::{ast::DataType, result::Result},
-    sqlparser::ast::{DataType as SqlDataType, TimezoneInfo as SqlTimezoneInfo},
+    sqlparser::ast::{
+        DataType as SqlDataType, ExactNumberInfo as SqlExactNumberInfo,
+        TimezoneInfo as SqlTimezoneInfo,
+    },
 };
 
 pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
@@ -12,12 +15,12 @@ pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
         SqlDataType::Text => Ok(DataType::Text),
         SqlDataType::Bytea => Ok(DataType::Bytea),
         SqlDataType::Date => Ok(DataType::Date),
-        SqlDataType::Timestamp(SqlTimezoneInfo::None) => Ok(DataType::Timestamp),
-        SqlDataType::Time(SqlTimezoneInfo::None) => Ok(DataType::Time),
+        SqlDataType::Timestamp(None, SqlTimezoneInfo::None) => Ok(DataType::Timestamp),
+        SqlDataType::Time(None, SqlTimezoneInfo::None) => Ok(DataType::Time),
         SqlDataType::Interval => Ok(DataType::Interval),
         SqlDataType::Uuid => Ok(DataType::Uuid),
-        SqlDataType::Decimal(None, None) => Ok(DataType::Decimal),
-        SqlDataType::Custom(name) => {
+        SqlDataType::Decimal(SqlExactNumberInfo::None) => Ok(DataType::Decimal),
+        SqlDataType::Custom(name, _idents) => {
             let name = name.0.get(0).map(|v| v.value.to_uppercase());
 
             match name.as_deref() {
@@ -29,6 +32,7 @@ pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
                 Some("INT128") => Ok(DataType::Int128),
                 Some("UINT8") => Ok(DataType::Uint8),
                 Some("UINT16") => Ok(DataType::Uint16),
+                Some("INET") => Ok(DataType::Inet),
 
                 _ => Err(TranslateError::UnsupportedDataType(sql_data_type.to_string()).into()),
             }

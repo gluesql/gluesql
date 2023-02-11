@@ -1,0 +1,24 @@
+[package]
+name = "gluesql-idb-storage"
+version = "0.13.0"
+edition = "2021"
+authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
+description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
+license = "Apache-2.0"
+repository = "https://github.com/gluesql/gluesql"
+documentation = "https://docs.rs/gluesql/"
+
+[dependencies]
+gluesql-core = { path = "../../core", version = "0.13.0" }
+async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
+idb = "0.4.0"
+serde-wasm-bindgen = "0.4.5"
+wasm-bindgen = "0.2.83"
+web-sys = { version = "0.3.60", features = ["console"] }
+serde_json = "1.0.91"
+gloo-utils = { version = "0.1.6", features = ["serde"] }
+
+[dev-dependencies]
+test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.13.0" }
+wasm-bindgen-test = "0.3.33"

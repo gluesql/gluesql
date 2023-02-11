@@ -1,4 +1,3 @@
-#[cfg(feature = "alter-table")]
 mod alter_table;
 mod assignment;
 mod build;
@@ -12,7 +11,6 @@ mod error;
 mod execute;
 mod expr;
 mod expr_list;
-#[cfg(feature = "index")]
 mod index;
 mod insert;
 mod order_by_expr;
@@ -24,7 +22,6 @@ mod select_item_list;
 mod show_columns;
 mod table_factor;
 mod table_name;
-#[cfg(feature = "transaction")]
 mod transaction;
 mod update;
 mod values;
@@ -66,12 +63,10 @@ pub use expr::{
     numeric::NumericNode, plus, subquery, text, time, timestamp, ExprNode,
 };
 
-#[cfg(feature = "alter-table")]
 pub use alter_table::{
     AddColumnNode, AlterTableNode, DropColumnNode, RenameColumnNode, RenameTableNode,
 };
 
-#[cfg(feature = "index")]
 pub use {index::CreateIndexNode, index::DropIndexNode};
 
 /// Available aggregate or normal SQL functions
@@ -80,13 +75,13 @@ pub use expr::{
     function::{
         abs, acos, asin, atan, cast, ceil, concat, concat_ws, cos, degrees, divide, exp, extract,
         floor, format, gcd, generate_uuid, ifnull, lcm, left, ln, log, log10, log2, lower, lpad,
-        ltrim, modulo, now, pi, position, power, radians, repeat, reverse, right, round, rpad,
-        rtrim, sign, sin, sqrt, substr, tan, to_date, to_time, to_timestamp, upper, FunctionNode,
+        ltrim, modulo, now, pi, position, power, radians, rand, repeat, reverse, right, round,
+        rpad, rtrim, sign, sin, sqrt, substr, tan, to_date, to_time, to_timestamp, upper,
+        FunctionNode,
     },
 };
 
 /// Functions for building transaction statements
-#[cfg(feature = "transaction")]
 pub use transaction::{begin, commit, rollback};
 
 #[cfg(test)]

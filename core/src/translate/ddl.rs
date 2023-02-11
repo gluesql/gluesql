@@ -1,29 +1,26 @@
 use {
-    super::{data_type::translate_data_type, expr::translate_expr, TranslateError},
+    super::{
+        data_type::translate_data_type, expr::translate_expr, translate_object_name, TranslateError,
+    },
     crate::{
-        ast::{ColumnDef, ColumnUniqueOption},
+        ast::{AlterTableOperation, ColumnDef, ColumnUniqueOption},
         result::Result,
     },
     sqlparser::ast::{
-        ColumnDef as SqlColumnDef, ColumnOption as SqlColumnOption,
-        ColumnOptionDef as SqlColumnOptionDef,
+        AlterTableOperation as SqlAlterTableOperation, ColumnDef as SqlColumnDef,
+        ColumnOption as SqlColumnOption, ColumnOptionDef as SqlColumnOptionDef,
     },
 };
 
-#[cfg(feature = "alter-table")]
-use {
-    super::translate_object_name, crate::ast::AlterTableOperation,
-    sqlparser::ast::AlterTableOperation as SqlAlterTableOperation,
-};
-
-#[cfg(feature = "alter-table")]
 pub fn translate_alter_table_operation(
     sql_alter_table_operation: &SqlAlterTableOperation,
 ) -> Result<AlterTableOperation> {
     match sql_alter_table_operation {
-        SqlAlterTableOperation::AddColumn { column_def } => Ok(AlterTableOperation::AddColumn {
-            column_def: translate_column_def(column_def)?,
-        }),
+        SqlAlterTableOperation::AddColumn { column_def, .. } => {
+            Ok(AlterTableOperation::AddColumn {
+                column_def: translate_column_def(column_def)?,
+            })
+        }
         SqlAlterTableOperation::DropColumn {
             column_name,
             if_exists,

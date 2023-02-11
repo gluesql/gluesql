@@ -8,16 +8,28 @@ use {
     uuid::Uuid,
 };
 
-impl Value {
-    pub fn parse_json_map(value: &str) -> Result<Value> {
+pub trait HashMapJsonExt {
+    fn parse_json_object(value: &str) -> Result<HashMap<String, Value>>;
+}
+
+impl HashMapJsonExt for HashMap<String, Value> {
+    fn parse_json_object(value: &str) -> Result<HashMap<String, Value>> {
         let value = serde_json::from_str(value)
             .map_err(|_| ValueError::InvalidJsonString(value.to_owned()))?;
 
-        if !matches!(value, JsonValue::Object(_)) {
-            return Err(ValueError::JsonObjectTypeRequired.into());
+        match value {
+            JsonValue::Object(json_map) => json_map
+                .into_iter()
+                .map(|(key, value)| value.try_into().map(|value| (key, value)))
+                .collect::<Result<HashMap<String, Value>>>(),
+            _ => Err(ValueError::JsonObjectTypeRequired.into()),
         }
+    }
+}
 
-        value.try_into()
+impl Value {
+    pub fn parse_json_map(value: &str) -> Result<Value> {
+        HashMap::parse_json_object(value).map(Value::Map)
     }
 
     pub fn parse_json_list(value: &str) -> Result<Value> {
@@ -53,6 +65,7 @@ impl TryFrom<Value> for JsonValue {
                 .map_err(|_| ValueError::UnreachableJsonNumberParseFailure(v.to_string()).into()),
             Value::Str(v) => Ok(v.into()),
             Value::Bytea(v) => Ok(hex::encode(v).into()),
+            Value::Inet(v) => Ok(v.to_string().into()),
             Value::Date(v) => Ok(v.to_string().into()),
             Value::Timestamp(v) => Ok(DateTime::<Utc>::from_utc(v, Utc).to_string().into()),
             Value::Time(v) => Ok(v.to_string().into()),
@@ -111,6 +124,7 @@ mod tests {
         chrono::{NaiveDate, NaiveTime},
         rust_decimal::Decimal,
         serde_json::{json, Number as JsonNumber, Value as JsonValue},
+        std::{net::IpAddr, str::FromStr},
     };
 
     #[test]
@@ -167,6 +181,10 @@ mod tests {
         assert_eq!(
             Value::Bytea(hex::decode("a1b2").unwrap()).try_into(),
             Ok(JsonValue::String("a1b2".to_owned()))
+        );
+        assert_eq!(
+            Value::Inet(IpAddr::from_str("::1").unwrap()).try_into(),
+            Ok(JsonValue::String("::1".to_owned()))
         );
         assert_eq!(
             Value::Date(NaiveDate::from_ymd_opt(2020, 1, 3).unwrap()).try_into(),

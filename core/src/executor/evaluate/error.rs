@@ -44,6 +44,12 @@ pub enum EvaluateError {
     #[error("expr requires map or list value")]
     MapOrListTypeRequired,
 
+    #[error("map or string value required for json map conversion: {0}")]
+    MapOrStringValueRequired(String),
+
+    #[error("text literal required for json map conversion: {0}")]
+    TextLiteralRequired(String),
+
     #[error("unsupported stateless expression: {0:#?}")]
     UnsupportedStatelessExpr(Expr),
 
@@ -62,6 +68,12 @@ pub enum EvaluateError {
     #[error("subquery returns more than one row")]
     MoreThanOneRowReturned,
 
+    #[error("schemaless projection is not allowed for IN (subquery)")]
+    SchemalessProjectionForInSubQuery,
+
+    #[error("schemaless projection is not allowed for subquery")]
+    SchemalessProjectionForSubQuery,
+
     #[error("format function does not support following data_type: {0}")]
     UnsupportedExprForFormatFunction(String),
 
@@ -73,6 +85,18 @@ pub enum EvaluateError {
 
     #[error("function requires integer value in range")]
     ChrFunctionRequiresIntegerValueInRange0To255,
+
+    #[error("unsupported evaluate binary arithmetic between {0} and {1}")]
+    UnsupportedBinaryArithmetic(String, String),
+
+    #[error("unsupported evaluate string unary plus: {0}")]
+    UnsupportedUnaryPlus(String),
+
+    #[error("unsupported evaluate string unary minus: {0}")]
+    UnsupportedUnaryMinus(String),
+
+    #[error("unsupported evaluate string unary factorial: {0}")]
+    UnsupportedUnaryFactorial(String),
 }
 
 fn error_serialize<S>(error: &chrono::format::ParseError, serializer: S) -> Result<S::Ok, S::Error>

@@ -47,6 +47,9 @@ pub enum ValueError {
     #[error("failed to parse hex string: {0}")]
     FailedToParseHexString(String),
 
+    #[error("failed to parse inet string: {0}")]
+    FailedToParseInetString(String),
+
     #[error("non-numeric values {lhs:?} {operator} {rhs:?}")]
     NonNumericMathOperation {
         lhs: Value,
@@ -84,6 +87,9 @@ pub enum ValueError {
 
     #[error("unimplemented cast")]
     UnimplementedCast,
+
+    #[error("failed to cast from hex string to bytea: {0}")]
+    CastFromHexToByteaFailed(String),
 
     #[error("function CONCAT requires at least 1 argument")]
     EmptyArgNotAllowedInConcat,

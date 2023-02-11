@@ -1,49 +1,36 @@
-#![cfg(feature = "index")]
-
 use {
     super::AlterError,
     crate::{
         ast::{ColumnDef, Expr, Function, OrderByExpr},
         data::Schema,
-        result::MutResult,
+        result::Result,
         store::{GStore, GStoreMut},
     },
 };
 
 pub async fn create_index<T: GStore + GStoreMut>(
-    storage: T,
+    storage: &mut T,
     table_name: &str,
     index_name: &str,
     column: &OrderByExpr,
-) -> MutResult<T, ()> {
-    let names = (|| async {
-        let expr = &column.expr;
-        let Schema { column_defs, .. } = storage
-            .fetch_schema(table_name)
-            .await?
-            .ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
-        let columns = column_defs
-            .into_iter()
-            .map(|ColumnDef { name, .. }| name)
-            .collect::<Vec<_>>();
+) -> Result<()> {
+    let expr = &column.expr;
+    let Schema { column_defs, .. } = storage
+        .fetch_schema(table_name)
+        .await?
+        .ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
+    let columns = column_defs
+        .unwrap_or_default()
+        .into_iter()
+        .map(|ColumnDef { name, .. }| name)
+        .collect::<Vec<_>>();
 
-        let (valid, has_ident) = validate_index_expr(&columns, expr);
-        if !valid {
-            return Err(AlterError::UnsupportedIndexExpr(expr.clone()).into());
-        } else if !has_ident {
-            return Err(AlterError::IdentifierNotFound(expr.clone()).into());
-        }
-
-        Ok((table_name, index_name))
-    })()
-    .await;
-
-    let (table_name, index_name) = match names {
-        Ok(s) => s,
-        Err(e) => {
-            return Err((storage, e));
-        }
-    };
+    let (valid, has_ident) = validate_index_expr(&columns, expr);
+    if !valid {
+        return Err(AlterError::UnsupportedIndexExpr(expr.clone()).into());
+    } else if !has_ident {
+        return Err(AlterError::IdentifierNotFound(expr.clone()).into());
+    }
 
     storage.create_index(table_name, index_name, column).await
 }

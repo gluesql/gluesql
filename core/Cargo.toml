@@ -1,12 +1,12 @@
 [package]
 name = "gluesql-core"
 version = "0.13.1"
-edition = "2021"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
-description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
-license = "Apache-2.0"
-repository = "https://github.com/gluesql/gluesql"
-documentation = "https://docs.rs/gluesql/"
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [dependencies]
 utils = { package = "gluesql-utils", path = "../utils", version = "0.13.0" }
@@ -24,11 +24,12 @@ iter-enum = "1"
 itertools = "0.10"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-sqlparser = { version = "0.25", features = ["serde", "bigdecimal"] }
+sqlparser = { version = "0.30", features = ["serde", "bigdecimal"] }
 thiserror = "1.0"
 strum_macros = "0.24"
 bigdecimal = { version = "0.3", features = ["serde", "string-only"] }
 hex = "0.4"
+rand = "0.8"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies.uuid]
 version = "1"
@@ -36,14 +37,3 @@ features = ["v4", "js"]
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies.uuid]
 version = "1"
 features = ["v4"]
-
-[features]
-# optional: ALTER TABLE
-# you can include whether ALTER TABLE support or not for your custom database implementation.
-alter-table = []
-
-# optional: INDEX
-index = []
-
-# optional: TRANSACTION
-transaction = []

@@ -15,18 +15,15 @@ pub use self::{
     query::{alias_or_name, translate_query, translate_select_item},
 };
 
-#[cfg(feature = "alter-table")]
-use ddl::translate_alter_table_operation;
-use sqlparser::ast::{TableFactor, TableWithJoins};
-
 use {
     crate::{
         ast::{Assignment, Statement, Variable},
         result::Result,
     },
+    ddl::translate_alter_table_operation,
     sqlparser::ast::{
         Assignment as SqlAssignment, Ident as SqlIdent, ObjectName as SqlObjectName,
-        ObjectType as SqlObjectType, Statement as SqlStatement,
+        ObjectType as SqlObjectType, Statement as SqlStatement, TableFactor, TableWithJoins,
     },
 };
 
@@ -71,20 +68,27 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             name,
             columns,
             query,
+            engine,
             ..
-        } => Ok(Statement::CreateTable {
-            if_not_exists: *if_not_exists,
-            name: translate_object_name(name)?,
-            columns: columns
+        } => {
+            let columns = columns
                 .iter()
                 .map(translate_column_def)
-                .collect::<Result<_>>()?,
-            source: match query {
-                Some(v) => Some(translate_query(v).map(Box::new)?),
-                None => None,
-            },
-        }),
-        #[cfg(feature = "alter-table")]
+                .collect::<Result<Vec<_>>>()?;
+
+            let columns = (!columns.is_empty()).then_some(columns);
+
+            Ok(Statement::CreateTable {
+                if_not_exists: *if_not_exists,
+                name: translate_object_name(name)?,
+                columns,
+                source: match query {
+                    Some(v) => Some(translate_query(v).map(Box::new)?),
+                    None => None,
+                },
+                engine: engine.clone(),
+            })
+        }
         SqlStatement::AlterTable {
             name, operation, ..
         } => Ok(Statement::AlterTable {
@@ -103,7 +107,6 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 .map(translate_object_name)
                 .collect::<Result<Vec<_>>>()?,
         }),
-        #[cfg(feature = "index")]
         SqlStatement::CreateIndex {
             name,
             table_name,
@@ -126,7 +129,6 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 column: translate_order_by_expr(&columns[0])?,
             })
         }
-        #[cfg(feature = "index")]
         SqlStatement::Drop {
             object_type: SqlObjectType::Index,
             names,
@@ -150,11 +152,8 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
 
             Ok(Statement::DropIndex { name, table_name })
         }
-        #[cfg(feature = "transaction")]
         SqlStatement::StartTransaction { .. } => Ok(Statement::StartTransaction),
-        #[cfg(feature = "transaction")]
         SqlStatement::Commit { .. } => Ok(Statement::Commit),
-        #[cfg(feature = "transaction")]
         SqlStatement::Rollback { .. } => Ok(Statement::Rollback),
         SqlStatement::ShowTables {
             filter: None,
@@ -166,7 +165,6 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 "VERSION" => Ok(Statement::ShowVariable(Variable::Version)),
                 v => Err(TranslateError::UnsupportedShowVariableKeyword(v.to_owned()).into()),
             },
-            #[cfg(feature = "index")]
             (3, Some(keyword)) => match keyword.value.to_uppercase().as_str() {
                 "INDEXES" => match variable.get(2) {
                     Some(tablename) => Ok(Statement::ShowIndexes(tablename.value.to_owned())),

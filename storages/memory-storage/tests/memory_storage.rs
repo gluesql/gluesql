@@ -23,24 +23,20 @@ impl Tester<MemoryStorage> for MemoryTester {
 
 generate_store_tests!(tokio::test, MemoryTester);
 
-#[cfg(feature = "alter-table")]
 generate_alter_table_tests!(tokio::test, MemoryTester);
 
-#[cfg(any(feature = "alter-table", feature = "index"))]
 macro_rules! exec {
     ($glue: ident $sql: literal) => {
         $glue.execute($sql).unwrap();
     };
 }
 
-#[cfg(any(feature = "alter-table", feature = "index"))]
 macro_rules! test {
     ($glue: ident $sql: literal, $result: expr) => {
         assert_eq!($glue.execute($sql), $result);
     };
 }
 
-#[cfg(feature = "index")]
 #[test]
 fn memory_storage_index() {
     use {
@@ -83,16 +79,18 @@ fn memory_storage_index() {
     );
 }
 
-#[cfg(feature = "transaction")]
 #[test]
 fn memory_storage_transaction() {
-    use gluesql_core::{prelude::Glue, result::Error};
+    use gluesql_core::{
+        prelude::{Glue, Payload},
+        result::Error,
+    };
 
     let storage = MemoryStorage::default();
     let mut glue = Glue::new(storage);
 
     exec!(glue "CREATE TABLE TxTest (id INTEGER);");
     test!(glue "BEGIN", Err(Error::StorageMsg("[MemoryStorage] transaction is not supported".to_owned())));
-    test!(glue "COMMIT", Err(Error::StorageMsg("[MemoryStorage] transaction is not supported".to_owned())));
-    test!(glue "ROLLBACK", Err(Error::StorageMsg("[MemoryStorage] transaction is not supported".to_owned())));
+    test!(glue "COMMIT", Ok(vec![Payload::Commit]));
+    test!(glue "ROLLBACK", Ok(vec![Payload::Rollback]));
 }

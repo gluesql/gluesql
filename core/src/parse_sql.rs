@@ -25,7 +25,8 @@ macro_rules! generate_parse_fn {
                 .tokenize()
                 .map_err(|e| Error::Parser(format!("{:#?}", e)))?;
 
-            Parser::new(tokens, &DIALECT)
+            Parser::new(&DIALECT)
+                .with_tokens(tokens)
                 .$fn_name()
                 .map_err(|e| Error::Parser(format!("{:#?}", e)))
         }
@@ -36,7 +37,8 @@ macro_rules! generate_parse_fn {
                 .tokenize()
                 .map_err(|e| Error::Parser(format!("{:#?}", e)))?;
 
-            Parser::new(tokens, &DIALECT)
+            Parser::new(&DIALECT)
+                .with_tokens(tokens)
                 .$parse_fn_name(Parser::$parse_fn_arg)
                 .map_err(|e| Error::Parser(format!("{:#?}", e)))
         }

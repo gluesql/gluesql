@@ -6,7 +6,7 @@ use {
         executor::evaluate_stateless,
         prelude::Value,
         result::{Error, Result},
-        store::{IndexError, Row},
+        store::{DataRow, IndexError},
     },
     sled::{
         transaction::{
@@ -22,7 +22,7 @@ pub struct IndexSync<'a> {
     tree: &'a TransactionalTree,
     txid: u64,
     table_name: &'a str,
-    columns: Vec<String>,
+    columns: Option<Vec<String>>,
     indexes: Cow<'a, Vec<SchemaIndex>>,
 }
 
@@ -35,10 +35,12 @@ impl<'a> IndexSync<'a> {
             ..
         } = schema;
 
-        let columns = column_defs
-            .iter()
-            .map(|column_def| column_def.name.to_owned())
-            .collect::<Vec<_>>();
+        let columns = column_defs.as_ref().map(|column_defs| {
+            column_defs
+                .iter()
+                .map(|column_def| column_def.name.to_owned())
+                .collect::<Vec<_>>()
+        });
 
         let indexes = Cow::Borrowed(indexes);
 
@@ -67,10 +69,12 @@ impl<'a> IndexSync<'a> {
             .map_err(err_into)
             .map_err(ConflictableTransactionError::Abort)?;
 
-        let columns = column_defs
-            .into_iter()
-            .map(|column_def| column_def.name)
-            .collect::<Vec<_>>();
+        let columns = column_defs.map(|column_defs| {
+            column_defs
+                .into_iter()
+                .map(|column_def| column_def.name)
+                .collect::<Vec<_>>()
+        });
 
         Ok(Self {
             tree,
@@ -81,7 +85,11 @@ impl<'a> IndexSync<'a> {
         })
     }
 
-    pub fn insert(&self, data_key: &IVec, row: &Row) -> ConflictableTransactionResult<(), Error> {
+    pub fn insert(
+        &self,
+        data_key: &IVec,
+        row: &DataRow,
+    ) -> ConflictableTransactionResult<(), Error> {
         for index in self.indexes.iter() {
             self.insert_index(index, data_key, row)?;
         }
@@ -93,7 +101,7 @@ impl<'a> IndexSync<'a> {
         &self,
         index: &SchemaIndex,
         data_key: &IVec,
-        row: &Row,
+        row: &DataRow,
     ) -> ConflictableTransactionResult<(), Error> {
         let SchemaIndex {
             name: index_name,
@@ -101,8 +109,13 @@ impl<'a> IndexSync<'a> {
             ..
         } = index;
 
-        let index_key =
-            &evaluate_index_key(self.table_name, index_name, index_expr, &self.columns, row)?;
+        let index_key = &evaluate_index_key(
+            self.table_name,
+            index_name,
+            index_expr,
+            self.columns.as_deref(),
+            row,
+        )?;
 
         self.insert_index_data(index_key, data_key)?;
 
@@ -112,8 +125,8 @@ impl<'a> IndexSync<'a> {
     pub fn update(
         &self,
         data_key: &IVec,
-        old_row: &Row,
-        new_row: &Row,
+        old_row: &DataRow,
+        new_row: &DataRow,
     ) -> ConflictableTransactionResult<(), Error> {
         for index in self.indexes.iter() {
             let SchemaIndex {
@@ -126,7 +139,7 @@ impl<'a> IndexSync<'a> {
                 self.table_name,
                 index_name,
                 index_expr,
-                &self.columns,
+                self.columns.as_deref(),
                 old_row,
             )?;
 
@@ -134,7 +147,7 @@ impl<'a> IndexSync<'a> {
                 self.table_name,
                 index_name,
                 index_expr,
-                &self.columns,
+                self.columns.as_deref(),
                 new_row,
             )?;
 
@@ -145,7 +158,11 @@ impl<'a> IndexSync<'a> {
         Ok(())
     }
 
-    pub fn delete(&self, data_key: &IVec, row: &Row) -> ConflictableTransactionResult<(), Error> {
+    pub fn delete(
+        &self,
+        data_key: &IVec,
+        row: &DataRow,
+    ) -> ConflictableTransactionResult<(), Error> {
         for index in self.indexes.iter() {
             self.delete_index(index, data_key, row)?;
         }
@@ -157,7 +174,7 @@ impl<'a> IndexSync<'a> {
         &self,
         index: &SchemaIndex,
         data_key: &IVec,
-        row: &Row,
+        row: &DataRow,
     ) -> ConflictableTransactionResult<(), Error> {
         let SchemaIndex {
             name: index_name,
@@ -165,8 +182,13 @@ impl<'a> IndexSync<'a> {
             ..
         } = index;
 
-        let index_key =
-            &evaluate_index_key(self.table_name, index_name, index_expr, &self.columns, row)?;
+        let index_key = &evaluate_index_key(
+            self.table_name,
+            index_name,
+            index_expr,
+            self.columns.as_deref(),
+            row,
+        )?;
 
         self.delete_index_data(index_key, data_key)?;
 
@@ -245,10 +267,11 @@ fn evaluate_index_key(
     table_name: &str,
     index_name: &str,
     index_expr: &Expr,
-    columns: &[String],
-    row: &Row,
+    columns: Option<&[String]>,
+    row: &DataRow,
 ) -> ConflictableTransactionResult<Vec<u8>, Error> {
-    let evaluated = evaluate_stateless(Some((columns, row)), index_expr)
+    let columns = columns.unwrap_or(&[]);
+    let evaluated = evaluate_stateless((columns, row), index_expr)
         .map_err(ConflictableTransactionError::Abort)?;
     let value: Value = evaluated
         .try_into()

@@ -1,13 +1,13 @@
 [package]
 name = "gluesql"
 version = "0.13.1"
-edition = "2021"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
 default-run = "gluesql"
-description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
-license = "Apache-2.0"
-repository = "https://github.com/gluesql/gluesql"
-documentation = "https://docs.rs/gluesql/"
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation.workspace = true
 readme = "../../README.md"
 keywords = [
 	"sql-database",
@@ -33,24 +33,9 @@ futures = "0.3"
 [features]
 # DB User
 default = [
-	"gluesql-core/alter-table",
-	"gluesql-core/index",
-	"gluesql-core/transaction",
 	"cli",
 	"test-suite",
 	"memory-storage",
 	"shared-memory-storage",
 	"sled-storage",
 ]
-
-# Storage Maker
-
-# optional: ALTER TABLE
-# you can include whether ALTER TABLE support or not for your custom database implementation.
-alter-table = ["gluesql-core/alter-table", "test-suite/alter-table"]
-
-# optional: INDEX
-index = ["gluesql-core/index", "test-suite/index"]
-
-# optional: TRANSACTION
-transaction = ["gluesql-core/transaction", "test-suite/transaction"]
