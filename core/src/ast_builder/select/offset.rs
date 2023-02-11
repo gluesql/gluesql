@@ -1,6 +1,7 @@
 use {
-    super::{NodeData, Prebuild},
+    super::Prebuild,
     crate::{
+        ast::Query,
         ast_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
             JoinNode, OffsetLimitNode, OrderByNode, ProjectNode, QueryNode, SelectNode,
@@ -24,8 +25,8 @@ pub enum PrevNode<'a> {
     ProjectNode(Box<ProjectNode<'a>>),
 }
 
-impl<'a> Prebuild for PrevNode<'a> {
-    fn prebuild(self) -> Result<NodeData> {
+impl<'a> Prebuild<Query> for PrevNode<'a> {
+    fn prebuild(self) -> Result<Query> {
         match self {
             Self::Select(node) => node.prebuild(),
             Self::Values(node) => node.prebuild(),
@@ -124,8 +125,8 @@ impl<'a> OffsetNode<'a> {
     }
 }
 
-impl<'a> Prebuild for OffsetNode<'a> {
-    fn prebuild(self) -> Result<NodeData> {
+impl<'a> Prebuild<Query> for OffsetNode<'a> {
+    fn prebuild(self) -> Result<Query> {
         let mut node_data = self.prev_node.prebuild()?;
         node_data.offset = Some(self.expr.try_into()?);
 

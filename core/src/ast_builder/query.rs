@@ -1,10 +1,8 @@
 use {
     super::{
-        select::{NodeData, Prebuild},
-        table_factor::TableType,
-        ExprList, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
-        LimitNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode,
-        TableFactorNode, ValuesNode,
+        select::Prebuild, table_factor::TableType, ExprList, FilterNode, GroupByNode, HashJoinNode,
+        HavingNode, JoinConstraintNode, JoinNode, LimitNode, OffsetLimitNode, OffsetNode,
+        OrderByNode, ProjectNode, SelectNode, TableFactorNode, ValuesNode,
     },
     crate::{
         ast::{Expr, Query, SetExpr, Values},
@@ -115,7 +113,6 @@ impl<'a> TryFrom<QueryNode<'a>> for Query {
             QueryNode::ProjectNode(node) => node.prebuild(),
             QueryNode::OrderByNode(node) => node.prebuild(),
         }
-        .map(NodeData::build_query)
     }
 }
 

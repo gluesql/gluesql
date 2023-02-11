@@ -1,4 +1,4 @@
-use crate::ast::Values;
+use crate::ast::SetExpr;
 
 mod filter;
 mod group_by;
@@ -27,95 +27,34 @@ pub use {
 use {
     super::Build,
     crate::{
-        ast::{
-            Expr, Join, OrderByExpr, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
-            TableWithJoins,
-        },
+        ast::{Query, Select, Statement},
         result::Result,
     },
 };
 
-pub trait Prebuild {
-    fn prebuild(self) -> Result<NodeData>;
+pub trait Prebuild<T> {
+    fn prebuild(self) -> Result<T>;
 }
 
-#[derive(Clone, Debug)]
-pub struct SelectData {
-    pub projection: Vec<SelectItem>,
-    pub relation: TableFactor,
-    pub joins: Vec<Join>,
-    pub filter: Option<Expr>,
-    /// WHERE
-    pub group_by: Vec<Expr>,
-    pub having: Option<Expr>,
-}
-
-#[derive(Clone, Debug)]
-pub enum QueryData {
-    Select(SelectData),
-    Values(Vec<Vec<Expr>>),
-}
-
-#[derive(Clone, Debug)]
-pub struct NodeData {
-    pub body: QueryData,
-    pub order_by: Vec<OrderByExpr>,
-    pub limit: Option<Expr>,
-    pub offset: Option<Expr>,
-}
-
-impl NodeData {
-    pub fn build_query(self) -> Query {
-        let NodeData {
+impl<T: Prebuild<Select>> Prebuild<Query> for T {
+    fn prebuild(self) -> Result<Query> {
+        let select = self.prebuild()?;
+        let body = SetExpr::Select(Box::new(select));
+        let query = Query {
             body,
-            order_by,
-            limit,
-            offset,
-        } = self;
-        let body = match body {
-            QueryData::Select(SelectData {
-                projection,
-                relation,
-                group_by,
-                having,
-                joins,
-                filter,
-            }) => {
-                let selection = filter.map(Expr::try_from).and_then(|expr| expr.ok());
-                let from = TableWithJoins { relation, joins };
-
-                let select = Select {
-                    projection,
-                    from,
-                    selection,
-                    group_by,
-                    having,
-                };
-
-                SetExpr::Select(Box::new(select))
-            }
-            QueryData::Values(values) => SetExpr::Values(Values(values)),
+            order_by: Vec::new(),
+            limit: None,
+            offset: None,
         };
 
-        Query {
-            body,
-            order_by,
-            limit,
-            offset,
-        }
-    }
-    fn build_stmt(self) -> Statement {
-        let query = self.build_query();
-
-        Statement::Query(query)
+        Ok(query)
     }
 }
 
-impl<T> Build for T
-where
-    T: Prebuild,
-{
+impl<T: Prebuild<Query>> Build for T {
     fn build(self) -> Result<Statement> {
-        self.prebuild().map(NodeData::build_stmt)
+        let query = self.prebuild()?;
+
+        Ok(Statement::Query(query))
     }
 }

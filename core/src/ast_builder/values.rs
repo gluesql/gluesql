@@ -1,10 +1,12 @@
 use {
     super::{
-        select::{NodeData, Prebuild, QueryData},
-        ExprList, ExprNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode, QueryNode,
-        TableFactorNode,
+        select::Prebuild, ExprList, ExprNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode,
+        QueryNode, TableFactorNode,
     },
-    crate::{ast::Expr, result::Result},
+    crate::{
+        ast::{Expr, Query, SetExpr, Values},
+        result::Result,
+    },
 };
 
 #[derive(Clone, Debug)]
@@ -30,17 +32,17 @@ impl<'a> ValuesNode<'a> {
     }
 }
 
-impl<'a> Prebuild for ValuesNode<'a> {
-    fn prebuild(self) -> Result<NodeData> {
+impl<'a> Prebuild<Query> for ValuesNode<'a> {
+    fn prebuild(self) -> Result<Query> {
         let values = self
             .values
             .into_iter()
             .map(TryInto::try_into)
             .collect::<Result<Vec<Vec<Expr>>>>()?;
 
-        let body = QueryData::Values(values);
+        let body = SetExpr::Values(Values(values));
 
-        Ok(NodeData {
+        Ok(Query {
             body,
             order_by: Vec::new(),
             limit: None,

@@ -1,5 +1,7 @@
+use crate::ast::{Select, TableWithJoins};
+
 use {
-    super::{join::JoinOperatorType, NodeData, Prebuild, QueryData, SelectData},
+    super::{join::JoinOperatorType, Prebuild},
     crate::{
         ast::{Query, SelectItem, TableAlias, TableFactor},
         ast_builder::{
@@ -77,8 +79,8 @@ impl<'a> SelectNode<'a> {
     }
 }
 
-impl<'a> Prebuild for SelectNode<'a> {
-    fn prebuild(self) -> Result<NodeData> {
+impl<'a> Prebuild<Select> for SelectNode<'a> {
+    fn prebuild(self) -> Result<Select> {
         let alias = self.table_node.table_alias.map(|name| TableAlias {
             name,
             columns: Vec::new(),
@@ -107,20 +109,17 @@ impl<'a> Prebuild for SelectNode<'a> {
             },
         };
 
-        let body = QueryData::Select(SelectData {
-            projection: vec![SelectItem::Wildcard],
+        let from = TableWithJoins {
             relation,
-            filter: None,
-            group_by: vec![],
-            having: None,
-            joins: vec![],
-        });
+            joins: Vec::new(),
+        };
 
-        Ok(NodeData {
-            body,
-            order_by: vec![],
-            limit: None,
-            offset: None,
+        Ok(Select {
+            projection: vec![SelectItem::Wildcard],
+            from,
+            selection: None,
+            group_by: Vec::new(),
+            having: None,
         })
     }
 }
