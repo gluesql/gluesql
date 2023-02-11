@@ -1,4 +1,3 @@
-#![cfg(feature = "index")]
 use {
     super::JsonlStorage,
     gluesql_core::store::{Index, IndexMut},

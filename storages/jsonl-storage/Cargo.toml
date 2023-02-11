@@ -22,14 +22,3 @@ utils = { package = "gluesql-utils", path = "../../utils", version = "0.13.0" }
 
 [dev-dependencies]
 test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.13.0" }
-
-[features]
-default = [
-	"alter-table",
-	"index",
-	"transaction",
-]
-
-alter-table = ["gluesql-core/alter-table"]
-index = ["gluesql-core/index"]
-transaction = ["gluesql-core/transaction"]
