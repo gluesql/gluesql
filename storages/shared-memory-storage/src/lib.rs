@@ -1,5 +1,7 @@
 #![deny(clippy::str_to_string)]
 
+use gluesql_core::store::Metadata;
+
 mod alter_table;
 mod index;
 mod transaction;
@@ -110,3 +112,5 @@ impl StoreMut for SharedMemoryStorage {
         database.delete_data(table_name, keys).await
     }
 }
+
+impl Metadata for SharedMemoryStorage {}

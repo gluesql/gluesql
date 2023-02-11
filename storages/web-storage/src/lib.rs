@@ -206,3 +206,4 @@ impl gluesql_core::store::AlterTable for WebStorage {}
 impl gluesql_core::store::Index for WebStorage {}
 impl gluesql_core::store::IndexMut for WebStorage {}
 impl gluesql_core::store::Transaction for WebStorage {}
+impl Metadata for WebStorage {}

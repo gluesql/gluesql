@@ -1,5 +1,7 @@
 #![deny(clippy::str_to_string)]
 
+use gluesql_core::store::Metadata;
+
 mod store;
 mod store_mut;
 mod transaction;
@@ -89,3 +91,4 @@ impl CompositeStorage {
 impl gluesql_core::store::AlterTable for CompositeStorage {}
 impl gluesql_core::store::Index for CompositeStorage {}
 impl gluesql_core::store::IndexMut for CompositeStorage {}
+impl Metadata for CompositeStorage {}

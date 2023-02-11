@@ -2,7 +2,7 @@
 
 use gluesql_core::{
     chrono::Utc,
-    store::{DictionaryView, Metadata},
+    store::{GlueObjects, Meta, MetaName, MetaRow, Metadata},
 };
 
 mod alter_table;
@@ -33,27 +33,21 @@ pub struct Item {
 pub struct MemoryStorage {
     pub id_counter: i64,
     pub items: HashMap<String, Item>,
-    pub metadata: HashMap<DictionaryView, Item>,
+    pub metadata: HashMap<MetaName, Item>,
 }
 
 impl Default for MemoryStorage {
     fn default() -> Self {
-        let schema = Schema {
-            table_name: DictionaryView::GlueTables.to_string(),
-            column_defs: None,
-            indexes: Vec::new(),
-            engine: None,
-            created: Utc::now().naive_utc(),
-        };
+        let schema = GlueObjects::to_schema();
 
         let rows = IndexMap::default();
 
-        let glue_tables = Item { schema, rows };
+        let glue_objects = Item { schema, rows };
 
         Self {
             id_counter: 0,
             items: HashMap::new(),
-            metadata: HashMap::from([(DictionaryView::GlueTables, glue_tables)]),
+            metadata: HashMap::from([(MetaName::GlueObjects, glue_objects)]),
         }
     }
 }
@@ -98,8 +92,8 @@ impl Store for MemoryStorage {
 
 #[async_trait(?Send)]
 impl Metadata for MemoryStorage {
-    async fn scan_meta(&self, view_name: &DictionaryView) -> Result<RowIter> {
-        let rows: RowIter = match self.metadata.get(view_name) {
+    async fn scan_meta(&self, meta: &MetaName) -> Result<RowIter> {
+        let rows: RowIter = match self.metadata.get(meta) {
             Some(item) => Box::new(item.rows.clone().into_iter().map(Ok)),
             None => Box::new(empty()),
         };
@@ -107,34 +101,30 @@ impl Metadata for MemoryStorage {
         Ok(rows)
     }
 
-    async fn append_meta(&mut self, view_name: &DictionaryView, rows: Vec<DataRow>) -> Result<()> {
-        if let Some(item) = self.metadata.get_mut(view_name) {
-            for row in rows {
-                self.id_counter += 1;
+    async fn append_meta(&mut self, meta: Meta) -> Result<()> {
+        if let Some(item) = self.metadata.get_mut(&meta.name) {
+            self.id_counter += 1;
+            let row = meta.row.to_values();
 
-                item.rows.insert(Key::I64(self.id_counter), row);
-            }
+            item.rows.insert(Key::I64(self.id_counter), row);
         }
 
         Ok(())
     }
 
-    async fn insert_meta(
-        &mut self,
-        view_name: &DictionaryView,
-        rows: Vec<(Key, DataRow)>,
-    ) -> Result<()> {
-        if let Some(item) = self.metadata.get_mut(view_name) {
-            for (key, row) in rows {
-                item.rows.insert(key, row);
-            }
-        }
+    async fn insert_meta(&mut self, meta: &Meta, rows: Vec<(Key, DataRow)>) -> Result<()> {
+        todo!();
+        // if let Some(item) = self.metadata.get_mut(&meta.name) {
+        //     for (key, row) in rows {
+        //         item.rows.insert(key, row);
+        //     }
+        // }
 
-        Ok(())
+        // Ok(())
     }
 
-    async fn delete_meta(&mut self, view_name: &DictionaryView, keys: Vec<Key>) -> Result<()> {
-        if let Some(item) = self.metadata.get_mut(view_name) {
+    async fn delete_meta(&mut self, meta: &Meta, keys: Vec<Key>) -> Result<()> {
+        if let Some(item) = self.metadata.get_mut(&meta.name) {
             for key in keys {
                 item.rows.remove(&key);
             }
@@ -192,5 +182,36 @@ impl StoreMut for MemoryStorage {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use gluesql_core::store::{MetaName, Metadata};
+
+    use crate::MemoryStorage;
+
+    #[test]
+    fn scan_meta_test() {
+        use futures::executor::block_on;
+        use gluesql_core::prelude::Glue;
+
+        let storage = MemoryStorage::default();
+        let mut glue = Glue::new(storage);
+
+        glue.execute("CREATE TABLE MetaTest").unwrap();
+        block_on(async {
+            let a = glue
+                .storage
+                .scan_meta(&MetaName::GlueObjects)
+                .await
+                .unwrap();
+
+            for b in a {
+                println!("{b:#?}");
+            }
+        });
+
+        assert!(false);
     }
 }

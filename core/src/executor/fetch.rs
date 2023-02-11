@@ -1,5 +1,3 @@
-use crate::store::DictionaryView;
-
 use {
     super::{context::RowContext, evaluate_stateless, filter::check_expr},
     crate::{
@@ -238,37 +236,32 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                         Rows::Objects(rows)
                     }
                     Dictionary::GlueTables => {
-                        if cfg!(feature = "metadata") {
-                            let view_name = DictionaryView::GlueTables;
+                        // let view_name = DictionaryView::GlueTables;
 
-                            // #[cfg(feature = "metadata")]
-                            let rows = storage.scan_meta(&view_name).await?.map(|a| {
-                                a.map(|(_, row)| {
-                                    let values = match row {
-                                        DataRow::Vec(values) => values,
-                                        DataRow::Map(_) => todo!(),
-                                    };
+                        // let rows = storage.scan_meta(&view_name).await?.map(|a| {
+                        //     a.map(|(_, row)| {
+                        //         let values = match row {
+                        //             DataRow::Vec(values) => values,
+                        //             DataRow::Map(_) => todo!(),
+                        //         };
 
-                                    Row::Vec {
-                                        columns: Rc::from(["TABLE_NAME".to_string()]),
-                                        values,
-                                    }
-                                })
-                            });
+                        //         Row::Vec {
+                        //             columns: Rc::from(["TABLE_NAME".to_string()]),
+                        //             values,
+                        //         }
+                        //     })
+                        // });
 
-                            Rows::Tables(rows)
-                        } else {
-                            todo!();
-                            // let schemas = storage.fetch_all_schemas().await?;
-                            // let rows = schemas.into_iter().map(move |schema| {
-                            //     Ok(Row::Vec {
-                            //         columns: Rc::clone(&columns),
-                            //         values: vec![Value::Str(schema.table_name)],
-                            //     })
-                            // });
+                        // Rows::Tables(rows);
+                        let schemas = storage.fetch_all_schemas().await?;
+                        let rows = schemas.into_iter().map(move |schema| {
+                            Ok(Row::Vec {
+                                columns: Rc::clone(&columns),
+                                values: vec![Value::Str(schema.table_name)],
+                            })
+                        });
 
-                            // Rows::Tables(rows)
-                        }
+                        Rows::Tables(rows)
                     }
                     Dictionary::GlueTableColumns => {
                         let schemas = storage.fetch_all_schemas().await?;

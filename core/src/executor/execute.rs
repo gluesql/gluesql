@@ -1,3 +1,7 @@
+use chrono::Utc;
+
+use crate::store::{DataRow, GlueObjects, GlueTables, Meta, MetaName, MetaRow};
+
 use {
     super::{
         alter::{alter_table, create_index, create_table, drop_table},
@@ -99,12 +103,19 @@ async fn execute_inner<T: GStore + GStoreMut>(
             engine,
             ..
         } => {
-            #[cfg(feature = "metadata")]
-            {
-                let view_name = DictionaryView::GlueTables;
-                let rows = vec![DataRow::Vec(vec![Value::Str(name.to_owned())])];
-                storage.append_meta(&view_name, rows).await?;
-            }
+            let row = MetaRow::GlueObjects(GlueObjects::new(
+                name.to_string(),
+                "Table".to_string(),
+                Utc::now().naive_utc(),
+                Utc::now().naive_utc(),
+            ));
+
+            let meta = Meta {
+                name: MetaName::GlueObjects,
+                row,
+            };
+
+            storage.append_meta(meta).await?;
 
             create_table(
                 storage,

@@ -6,7 +6,9 @@ use {
         executor::execute,
         parse_sql::parse,
         result::{Error, Result},
-        store::{AlterTable, DataRow, Index, IndexMut, RowIter, Store, StoreMut, Transaction},
+        store::{
+            AlterTable, DataRow, Index, IndexMut, Metadata, RowIter, Store, StoreMut, Transaction,
+        },
         translate::translate,
     },
     async_trait::async_trait,
@@ -169,5 +171,19 @@ mod tests {
         assert!(block_on(storage.commit()).is_ok());
 
         assert!(matches!(block_on(storage.fetch_schema("Foo")), Ok(None)));
+    }
+}
+
+impl Metadata for MockStorage {
+    fn scan_meta<'life0, 'life1, 'async_trait>(
+        &'life0 self,
+        meta: &'life1 crate::store::MetaName,
+    ) -> core::pin::Pin<Box<dyn core::future::Future<Output = Result<RowIter>> + 'async_trait>>
+    where
+        'life0: 'async_trait,
+        'life1: 'async_trait,
+        Self: 'async_trait,
+    {
+        todo!()
     }
 }

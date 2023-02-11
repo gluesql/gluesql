@@ -439,3 +439,4 @@ impl gluesql_core::store::AlterTable for IdbStorage {}
 impl gluesql_core::store::Index for IdbStorage {}
 impl gluesql_core::store::IndexMut for IdbStorage {}
 impl gluesql_core::store::Transaction for IdbStorage {}
+impl Metadata for IdbStorage {}
