@@ -1,3 +1,5 @@
+use gluesql_core::{result::Result, store::DataRow};
+
 use {
     crate::error::StorageError,
     csv::ReaderBuilder,
@@ -97,6 +99,59 @@ impl CsvTable {
             }
             _ => Err(StorageError::SchemaLessNotSupported.into()),
         }
+    }
+
+    /// Append row(s) to csv file.
+    /// Due to the nature of reading/writing csv file, this operation
+    /// might take some time.
+    pub fn append_data(&self, rows: Vec<DataRow>) -> Result<()> {
+        let column_defs = self
+            .schema
+            .column_defs
+            .as_ref()
+            .ok_or(StorageError::SchemaLessNotSupported)?
+            .into_iter()
+            .map(|cd| cd.data_type.to_owned());
+
+        let rows = rows
+            .into_iter()
+            .map(|row| {
+                match row {
+                    DataRow::Vec(val_vec) => {
+                        // The length of val_vec should equal to column_defs
+                        if val_vec.len() != column_defs.len() {
+                            return Err(StorageError::ColumnDefMismatch.into());
+                        }
+                        val_vec
+                            .into_iter()
+                            .zip(column_defs.clone())
+                            .map(|(val, dt)| -> Result<String> {
+                                val.validate_type(&dt)
+                                    .map_err(|_| StorageError::ColumnDefMismatch)?;
+
+                                Ok(val.into())
+                            })
+                            .collect::<Result<Vec<_>>>()
+                    }
+                    DataRow::Map(_) => Err(StorageError::SchemaLessNotSupported.into()),
+                }
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        let rows_string = rows
+            .into_iter()
+            .map(|row| row.join(","))
+            .reduce(|acc, row| format!("{acc}\n{row}"))
+            .unwrap_or("".into());
+
+        let original_data = std::fs::read_to_string(self.file_path.to_path_buf())
+            .map_err(|e| StorageError::FailedToProcessCsv(e.to_string()))?;
+
+        std::fs::write(
+            self.file_path.to_path_buf(),
+            format!("{original_data}\n{rows_string}"),
+        )
+        .map_err(|e| StorageError::FailedToAppendData(e.to_string()).into())
     }
 }
 

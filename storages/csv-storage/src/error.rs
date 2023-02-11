@@ -8,11 +8,17 @@ pub enum StorageError {
     #[error("cannot import file as table: {0}")]
     InvalidFileImport(String),
 
+    #[error("failed to append data: {0}")]
+    FailedToAppendData(String),
+
     #[error("failed to process csv record: {0}")]
     FailedToProcessCsv(String),
 
     #[error("given schema doesn't fit for csv table: {0}, {1}")]
     SchemaMismatch(String, String),
+
+    #[error("given row does not fit for column definition")]
+    ColumnDefMismatch,
 
     #[error("cannot read schema file: {0}")]
     InvalidSchemaFile(String),
