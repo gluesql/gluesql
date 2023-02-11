@@ -1,9 +1,7 @@
-use crate::ast::{Select, TableWithJoins};
-
 use {
     super::{join::JoinOperatorType, Prebuild},
     crate::{
-        ast::{Query, SelectItem, TableAlias, TableFactor},
+        ast::{Query, Select, SelectItem, TableAlias, TableFactor, TableWithJoins},
         ast_builder::{
             table_factor::TableType, ExprList, ExprNode, FilterNode, GroupByNode, JoinNode,
             LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
