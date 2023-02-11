@@ -1,11 +1,19 @@
-use gluesql_core::{result::Result, store::DataRow};
+use std::fs::OpenOptions;
 
 use {
     crate::error::StorageError,
     csv::ReaderBuilder,
-    gluesql_core::{ast::ColumnDef, chrono::NaiveDateTime, data::Schema, prelude::DataType},
+    gluesql_core::{
+        ast::ColumnDef,
+        chrono::NaiveDateTime,
+        data::Schema,
+        prelude::{DataType, Key},
+        result::Result,
+        store::DataRow,
+    },
     std::{
         ffi::OsStr,
+        io::prelude::*,
         path::{Path, PathBuf},
     },
 };
@@ -144,14 +152,14 @@ impl CsvTable {
             .reduce(|acc, row| format!("{acc}\n{row}"))
             .unwrap_or("".into());
 
-        let original_data = std::fs::read_to_string(self.file_path.to_path_buf())
-            .map_err(|e| StorageError::FailedToProcessCsv(e.to_string()))?;
+        let mut file = OpenOptions::new()
+            .write(true)
+            .append(true)
+            .open(self.file_path.to_path_buf())
+            .map_err(|e| StorageError::FailedToAppendData(e.to_string()))?;
 
-        std::fs::write(
-            self.file_path.to_path_buf(),
-            format!("{original_data}\n{rows_string}"),
-        )
-        .map_err(|e| StorageError::FailedToAppendData(e.to_string()).into())
+        write!(file, "\n{rows_string}")
+            .map_err(|e| StorageError::FailedToAppendData(e.to_string()).into())
     }
 }
 
