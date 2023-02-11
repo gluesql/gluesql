@@ -20,6 +20,23 @@ test_case!(values, async move {
     ));
     test(actual, expected);
 
+    let actual = values(vec![
+        vec!["1", "'Glue'"],
+        vec!["2", "'SQL'"],
+        vec!["3", "'Rust'"],
+    ])
+    .execute(glue)
+    .await;
+    let expected = Ok(select!(
+        column1 | column2
+        I64     | Str;
+        1         "Glue".to_owned();
+        2         "SQL".to_owned();
+        3         "Rust".to_owned()
+
+    ));
+    test(actual, expected);
+
     let actual = values(vec!["1, 'Glue'", "2, 'SQL'", "3, 'Rust'"])
         .order_by("column2 desc")
         .execute(glue)
