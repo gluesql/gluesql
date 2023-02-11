@@ -84,7 +84,7 @@ impl<'a> TryFrom<QueryNode<'a>> for Query {
     fn try_from(query_node: QueryNode<'a>) -> Result<Self> {
         match query_node {
             QueryNode::Text(query_node) => {
-                return parse_query(query_node).and_then(|item| translate_query(&item));
+                parse_query(query_node).and_then(|item| translate_query(&item))
             }
             QueryNode::Values(values) => {
                 let values: Vec<Vec<Expr>> = values
@@ -92,12 +92,12 @@ impl<'a> TryFrom<QueryNode<'a>> for Query {
                     .map(TryInto::try_into)
                     .collect::<Result<Vec<_>>>()?;
 
-                return Ok(Query {
+                Ok(Query {
                     body: SetExpr::Values(Values(values)),
                     order_by: Vec::new(),
                     limit: None,
                     offset: None,
-                });
+                })
             }
             QueryNode::SelectNode(node) => node.prebuild(),
             QueryNode::ValuesNode(node) => node.prebuild(),
