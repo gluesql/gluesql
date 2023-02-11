@@ -119,4 +119,7 @@ fn memory_storage_function() {
         glue "SELECT SAY() as msg",
         Ok(vec![Payload::Select { labels: vec!["msg".to_owned()], rows: vec![vec![Value::Str("Hello".to_owned())]] }])
     );
+
+    assert!(glue.storage.unregister_function("say", proxy).is_ok());
+    assert!(glue.storage.unregister_function("say", proxy).is_err());
 }
