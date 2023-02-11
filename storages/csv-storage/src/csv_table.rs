@@ -54,6 +54,7 @@ impl CsvTable {
                 column_defs: Some(column_defs),
                 indexes: vec![],
                 created: NaiveDateTime::default(),
+                engine: None,
             },
         })
     }
@@ -202,6 +203,7 @@ mod test {
                 ]),
                 indexes: vec![],
                 created: NaiveDateTime::default(),
+                engine: None,
             },
         }
     }
@@ -237,6 +239,7 @@ mod test {
             ]),
             indexes: vec![],
             created: NaiveDateTime::default(),
+            engine: None,
         };
         // Act
         let result = csv_table.adapt_schema(schema);
@@ -287,6 +290,7 @@ mod test {
             column_defs: Some(vec![]),
             indexes: vec![],
             created: NaiveDateTime::default(),
+            engine: None,
         };
         // Act
         let result = csv_table.adapt_schema(schema);
@@ -315,6 +319,7 @@ mod test {
             }]),
             indexes: vec![],
             created: NaiveDateTime::default(),
+            engine: None,
         };
         // Act
         let result = csv_table.adapt_schema(schema);

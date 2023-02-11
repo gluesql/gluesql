@@ -91,6 +91,7 @@ impl From<TomlTable> for Schema {
             column_defs: Some(column_defs),
             indexes: vec![],
             created: NaiveDateTime::default(),
+            engine: None,
         }
     }
 }
