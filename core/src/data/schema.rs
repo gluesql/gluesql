@@ -1,9 +1,14 @@
 use {
-    crate::ast::{ColumnDef, Expr, Statement, ToSql},
-    chrono::NaiveDateTime,
+    crate::{
+        ast::{ColumnDef, Expr, OrderByExpr, Statement, ToSql},
+        prelude::{parse, translate},
+        result::Result,
+    },
+    chrono::{NaiveDateTime, Utc},
     serde::{Deserialize, Serialize},
     std::{fmt::Debug, iter},
     strum_macros::Display,
+    thiserror::Error as ThisError,
 };
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Display)]
@@ -32,7 +37,7 @@ pub struct Schema {
 }
 
 impl Schema {
-    pub fn to_ddl(self) -> String {
+    pub fn to_ddl(&self) -> String {
         let Schema {
             table_name,
             column_defs,
@@ -43,9 +48,9 @@ impl Schema {
 
         let create_table = Statement::CreateTable {
             if_not_exists: false,
-            name: table_name.clone(),
-            columns: column_defs,
-            engine,
+            name: table_name.to_owned(),
+            columns: column_defs.to_owned(),
+            engine: engine.to_owned(),
             source: None,
         }
         .to_sql();
@@ -62,16 +67,120 @@ impl Schema {
             .collect::<Vec<_>>()
             .join("\n")
     }
+
+    pub fn from_ddl(ddl: &str) -> Result<Schema> {
+        let created = Utc::now().naive_utc();
+        let statements = parse(ddl)?;
+
+        let indexes = statements
+            .iter()
+            .skip(1)
+            .map(|create_index| {
+                let create_index = translate(create_index)?;
+                match create_index {
+                    Statement::CreateIndex {
+                        name,
+                        column: OrderByExpr { expr, asc },
+                        ..
+                    } => {
+                        let order = asc
+                            .and_then(|bool| bool.then_some(SchemaIndexOrd::Asc))
+                            .unwrap_or(SchemaIndexOrd::Both);
+
+                        let index = SchemaIndex {
+                            name,
+                            expr,
+                            order,
+                            created,
+                        };
+
+                        Ok(index)
+                    }
+                    _ => Err(SchemaParseError::CannotParseDDL.into()),
+                }
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        let create_table = statements.get(0).ok_or(SchemaParseError::CannotParseDDL)?;
+        let create_table = translate(create_table)?;
+
+        match create_table {
+            Statement::CreateTable {
+                name,
+                columns,
+                engine,
+                ..
+            } => Ok(Schema {
+                table_name: name,
+                column_defs: columns,
+                indexes,
+                engine,
+                created,
+            }),
+            _ => Err(SchemaParseError::CannotParseDDL.into()),
+        }
+    }
+}
+
+#[derive(ThisError, Debug, PartialEq, Serialize)]
+pub enum SchemaParseError {
+    #[error("cannot parse ddl")]
+    CannotParseDDL,
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        ast::{AstLiteral, ColumnDef, ColumnUniqueOption, Expr},
-        chrono::Utc,
-        data::{Schema, SchemaIndex, SchemaIndexOrd},
-        prelude::DataType,
+    use {
+        super::SchemaParseError,
+        crate::{
+            ast::{AstLiteral, ColumnDef, ColumnUniqueOption, Expr},
+            chrono::Utc,
+            data::{Schema, SchemaIndex},
+            prelude::DataType,
+        },
     };
+
+    fn assert_schema(actual: Schema, expected: Schema) {
+        let Schema {
+            table_name,
+            column_defs,
+            indexes,
+            engine,
+            ..
+        } = actual;
+
+        let Schema {
+            table_name: table_name_e,
+            column_defs: column_defs_e,
+            indexes: indexes_e,
+            engine: engine_e,
+            ..
+        } = expected;
+
+        assert_eq!(table_name, table_name_e);
+        assert_eq!(column_defs, column_defs_e);
+        assert_eq!(engine, engine_e);
+        indexes
+            .into_iter()
+            .zip(indexes_e)
+            .for_each(|(actual, expected)| assert_index(actual, expected));
+    }
+
+    fn assert_index(actual: SchemaIndex, expected: SchemaIndex) {
+        let SchemaIndex {
+            name, expr, order, ..
+        } = actual;
+        let SchemaIndex {
+            name: name_e,
+            expr: expr_e,
+            order: order_e,
+            ..
+        } = expected;
+
+        assert_eq!(name, name_e);
+        assert_eq!(expr, expr_e);
+        assert_eq!(order, order_e);
+    }
 
     #[test]
     fn table_basic() {
@@ -98,10 +207,11 @@ mod tests {
             created: Utc::now().naive_utc(),
         };
 
-        assert_eq!(
-            schema.to_ddl(),
-            "CREATE TABLE User (id INT NOT NULL, name TEXT NULL DEFAULT 'glue');"
-        );
+        let ddl = "CREATE TABLE User (id INT NOT NULL, name TEXT NULL DEFAULT 'glue');";
+        assert_eq!(schema.to_ddl(), ddl);
+
+        let actual = Schema::from_ddl(ddl).unwrap();
+        assert_schema(actual, schema);
 
         let schema = Schema {
             table_name: "Test".to_owned(),
@@ -110,7 +220,11 @@ mod tests {
             engine: None,
             created: Utc::now().naive_utc(),
         };
-        assert_eq!(schema.to_ddl(), "CREATE TABLE Test;");
+        let ddl = "CREATE TABLE Test;";
+        assert_eq!(schema.to_ddl(), ddl);
+
+        let actual = Schema::from_ddl(ddl).unwrap();
+        assert_schema(actual, schema);
     }
 
     #[test]
@@ -129,14 +243,24 @@ mod tests {
             created: Utc::now().naive_utc(),
         };
 
-        assert_eq!(
-            schema.to_ddl(),
-            "CREATE TABLE User (id INT NOT NULL PRIMARY KEY);"
-        );
+        let ddl = "CREATE TABLE User (id INT NOT NULL PRIMARY KEY);";
+        assert_eq!(schema.to_ddl(), ddl);
+
+        let actual = Schema::from_ddl(ddl).unwrap();
+        assert_schema(actual, schema);
+    }
+
+    #[test]
+    fn invalid_ddl() {
+        let invalid_ddl = "DROP TABLE Users";
+        let actual = Schema::from_ddl(invalid_ddl);
+        assert_eq!(actual, Err(SchemaParseError::CannotParseDDL.into()));
     }
 
     #[test]
     fn table_with_index() {
+        use crate::data::SchemaIndexOrd;
+
         let schema = Schema {
             table_name: "User".to_owned(),
             column_defs: Some(vec![
@@ -172,12 +296,17 @@ mod tests {
             engine: None,
             created: Utc::now().naive_utc(),
         };
-
-        assert_eq!(
-            schema.to_ddl(),
-            "CREATE TABLE User (id INT NOT NULL, name TEXT NOT NULL);
+        let ddl = "CREATE TABLE User (id INT NOT NULL, name TEXT NOT NULL);
 CREATE INDEX User_id ON User (id);
-CREATE INDEX User_name ON User (name);"
-        );
+CREATE INDEX User_name ON User (name);";
+        assert_eq!(schema.to_ddl(), ddl);
+
+        let actual = Schema::from_ddl(ddl).unwrap();
+        assert_schema(actual, schema);
+
+        let index_should_not_be_first = "CREATE INDEX User_id ON User (id);
+CREATE TABLE User (id INT NOT NULL, name TEXT NOT NULL);";
+        let actual = Schema::from_ddl(index_should_not_be_first);
+        assert_eq!(actual, Err(SchemaParseError::CannotParseDDL.into()));
     }
 }

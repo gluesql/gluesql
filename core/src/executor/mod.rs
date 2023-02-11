@@ -17,7 +17,7 @@ pub use {
     aggregate::AggregateError,
     alter::AlterError,
     evaluate::{evaluate_stateless, EvaluateError},
-    execute::{ExecuteError, Payload, PayloadVariable},
+    execute::{execute, ExecuteError, Payload, PayloadVariable},
     fetch::FetchError,
     insert::InsertError,
     select::SelectError,
@@ -25,8 +25,3 @@ pub use {
     update::UpdateError,
     validate::ValidateError,
 };
-
-#[cfg(not(feature = "transaction"))]
-pub use execute::execute;
-#[cfg(feature = "transaction")]
-pub use execute::execute_atomic as execute;

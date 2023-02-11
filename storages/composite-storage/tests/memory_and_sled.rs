@@ -1,5 +1,3 @@
-#![cfg(all(feature = "alter-table", feature = "index", feature = "transaction"))]
-
 use {
     gluesql_composite_storage::CompositeStorage,
     gluesql_core::{

@@ -34,24 +34,9 @@ futures = "0.3"
 [features]
 # DB User
 default = [
-	"gluesql-core/alter-table",
-	"gluesql-core/index",
-	"gluesql-core/transaction",
 	"cli",
 	"test-suite",
 	"memory-storage",
 	"shared-memory-storage",
 	"sled-storage",
 ]
-
-# Storage Maker
-
-# optional: ALTER TABLE
-# you can include whether ALTER TABLE support or not for your custom database implementation.
-alter-table = ["gluesql-core/alter-table", "test-suite/alter-table"]
-
-# optional: INDEX
-index = ["gluesql-core/index", "test-suite/index"]
-
-# optional: TRANSACTION
-transaction = ["gluesql-core/transaction", "test-suite/transaction"]

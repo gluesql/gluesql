@@ -1,18 +1,12 @@
 #![cfg(test)]
 
-#[cfg(feature = "alter-table")]
-use crate::store::AlterTable;
-#[cfg(feature = "transaction")]
-use crate::store::Transaction;
-#[cfg(feature = "index")]
-use crate::store::{Index, IndexMut};
 use {
     crate::{
         data::{Key, Schema},
         executor::execute,
         parse_sql::parse,
         result::{Error, Result},
-        store::{DataRow, RowIter, Store, StoreMut},
+        store::{AlterTable, DataRow, Index, IndexMut, RowIter, Store, StoreMut, Transaction},
         translate::translate,
     },
     async_trait::async_trait,
@@ -106,35 +100,19 @@ impl StoreMut for MockStorage {
     }
 }
 
-#[cfg(feature = "alter-table")]
 impl AlterTable for MockStorage {}
-
-#[cfg(feature = "index")]
 impl Index for MockStorage {}
-
-#[cfg(feature = "index")]
 impl IndexMut for MockStorage {}
-
-#[cfg(feature = "transaction")]
 impl Transaction for MockStorage {}
 
 #[cfg(test)]
 mod tests {
-    #[cfg(any(feature = "alter-table", feature = "index"))]
-    use crate::ast::DataType;
-    #[cfg(feature = "transaction")]
-    use crate::store::Transaction;
-    #[cfg(feature = "alter-table")]
-    use crate::{ast::ColumnDef, store::AlterTable};
-    #[cfg(feature = "index")]
-    use crate::{
-        ast::{Expr, OrderByExpr},
-        store::{Index, IndexMut},
-    };
     use {
         super::MockStorage,
         crate::{
+            ast::{ColumnDef, DataType, Expr, OrderByExpr},
             data::Key,
+            store::{AlterTable, Index, IndexMut, Transaction},
             store::{Store, StoreMut},
         },
         futures::executor::block_on,
@@ -144,6 +122,7 @@ mod tests {
     fn empty() {
         let mut storage = MockStorage::default();
 
+        // Store & StoreMut
         assert!(block_on(storage.scan_data("Foo")).is_err());
         assert!(block_on(storage.fetch_data("Foo", &Key::None)).is_err());
         assert!(block_on(storage.fetch_schema("__Err__")).is_err());
@@ -152,48 +131,42 @@ mod tests {
         assert!(block_on(storage.insert_data("Foo", Vec::new())).is_err());
         assert!(block_on(storage.delete_data("Foo", Vec::new())).is_err());
 
-        #[cfg(feature = "alter-table")]
-        {
-            assert!(block_on(storage.rename_schema("Foo", "Bar")).is_err());
-            assert!(block_on(storage.rename_column("Foo", "col_old", "col_new")).is_err());
-            assert!(block_on(storage.add_column(
-                "Foo",
-                &ColumnDef {
-                    name: "new_col".to_owned(),
+        // AlterTable
+        assert!(block_on(storage.rename_schema("Foo", "Bar")).is_err());
+        assert!(block_on(storage.rename_column("Foo", "col_old", "col_new")).is_err());
+        assert!(block_on(storage.add_column(
+            "Foo",
+            &ColumnDef {
+                name: "new_col".to_owned(),
+                data_type: DataType::Boolean,
+                nullable: false,
+                default: None,
+                unique: None,
+            },
+        ))
+        .is_err());
+        assert!(block_on(storage.drop_column("Foo", "col", false)).is_err());
+
+        // Index & IndexMut
+        assert!(block_on(storage.scan_indexed_data("Foo", "idx_col", None, None)).is_err());
+        assert!(block_on(storage.create_index(
+            "Foo",
+            "idx_col",
+            &OrderByExpr {
+                expr: Expr::TypedString {
                     data_type: DataType::Boolean,
-                    nullable: false,
-                    default: None,
-                    unique: None,
+                    value: "true".to_owned(),
                 },
-            ))
-            .is_err());
-            assert!(block_on(storage.drop_column("Foo", "col", false)).is_err());
-        };
+                asc: None,
+            },
+        ))
+        .is_err());
+        assert!(block_on(storage.drop_index("Foo", "idx_col")).is_err());
 
-        #[cfg(feature = "index")]
-        {
-            assert!(block_on(storage.scan_indexed_data("Foo", "idx_col", None, None)).is_err());
-            assert!(block_on(storage.create_index(
-                "Foo",
-                "idx_col",
-                &OrderByExpr {
-                    expr: Expr::TypedString {
-                        data_type: DataType::Boolean,
-                        value: "true".to_owned(),
-                    },
-                    asc: None,
-                },
-            ))
-            .is_err());
-            assert!(block_on(storage.drop_index("Foo", "idx_col")).is_err());
-        };
-
-        #[cfg(feature = "transaction")]
-        {
-            assert!(block_on(storage.begin(false)).is_err());
-            assert!(block_on(storage.rollback()).is_ok());
-            assert!(block_on(storage.commit()).is_ok());
-        };
+        // Transaction
+        assert!(block_on(storage.begin(false)).is_err());
+        assert!(block_on(storage.rollback()).is_ok());
+        assert!(block_on(storage.commit()).is_ok());
 
         assert!(matches!(block_on(storage.fetch_schema("Foo")), Ok(None)));
     }

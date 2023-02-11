@@ -37,14 +37,3 @@ features = ["v4", "js"]
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies.uuid]
 version = "1"
 features = ["v4"]
-
-[features]
-# optional: ALTER TABLE
-# you can include whether ALTER TABLE support or not for your custom database implementation.
-alter-table = []
-
-# optional: INDEX
-index = []
-
-# optional: TRANSACTION
-transaction = []

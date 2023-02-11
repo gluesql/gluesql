@@ -2,25 +2,21 @@ use {
     crate::{
         ast_builder::AstBuilderError,
         data::{
-            IntervalError, KeyError, LiteralError, RowError, StringExtError, TableError, ValueError,
+            IntervalError, KeyError, LiteralError, RowError, SchemaParseError, StringExtError,
+            TableError, ValueError,
         },
         executor::{
             AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, InsertError,
             SelectError, SortError, UpdateError, ValidateError,
         },
         plan::PlanError,
+        store::{AlterTableError, IndexError},
         translate::TranslateError,
     },
     serde::Serialize,
     std::{error::Error as StdError, fmt::Debug, ops::ControlFlow},
     thiserror::Error as ThisError,
 };
-
-#[cfg(feature = "alter-table")]
-use crate::store::AlterTableError;
-
-#[cfg(feature = "index")]
-use crate::store::IndexError;
 
 #[derive(ThisError, Serialize, Debug)]
 pub enum Error {
@@ -40,14 +36,10 @@ pub enum Error {
     #[error(transparent)]
     AstBuilder(#[from] AstBuilderError),
 
-    #[cfg(feature = "alter-table")]
     #[error(transparent)]
     AlterTable(#[from] AlterTableError),
-
-    #[cfg(feature = "index")]
     #[error(transparent)]
     Index(#[from] IndexError),
-
     #[error(transparent)]
     Execute(#[from] ExecuteError),
     #[error(transparent)]
@@ -84,6 +76,8 @@ pub enum Error {
     StringExt(#[from] StringExtError),
     #[error(transparent)]
     Plan(#[from] PlanError),
+    #[error(transparent)]
+    Schema(#[from] SchemaParseError),
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -97,9 +91,7 @@ impl PartialEq for Error {
             (StorageMsg(e), StorageMsg(e2)) => e == e2,
             (Translate(e), Translate(e2)) => e == e2,
             (AstBuilder(e), AstBuilder(e2)) => e == e2,
-            #[cfg(feature = "alter-table")]
             (AlterTable(e), AlterTable(e2)) => e == e2,
-            #[cfg(feature = "index")]
             (Index(e), Index(e2)) => e == e2,
             (Execute(e), Execute(e2)) => e == e2,
             (Alter(e), Alter(e2)) => e == e2,
@@ -119,6 +111,7 @@ impl PartialEq for Error {
             (Interval(e), Interval(e2)) => e == e2,
             (StringExt(e), StringExt(e2)) => e == e2,
             (Plan(e), Plan(e2)) => e == e2,
+            (Schema(e), Schema(e2)) => e == e2,
             _ => false,
         }
     }

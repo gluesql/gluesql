@@ -15,7 +15,7 @@ pub use {
     key::{Key, KeyError},
     literal::{Literal, LiteralError},
     row::{Row, RowError},
-    schema::{Schema, SchemaIndex, SchemaIndexOrd},
+    schema::{Schema, SchemaIndex, SchemaIndexOrd, SchemaParseError},
     string_ext::{StringExt, StringExtError},
     table::{get_alias, get_index, TableError},
     value::{NumericBinaryOperator, Value, ValueError},
