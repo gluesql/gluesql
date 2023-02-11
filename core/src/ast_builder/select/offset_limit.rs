@@ -1,6 +1,7 @@
 use {
-    super::{NodeData, Prebuild},
+    super::Prebuild,
     crate::{
+        ast::Query,
         ast_builder::{ExprNode, OffsetNode, QueryNode, TableFactorNode},
         result::Result,
     },
@@ -11,8 +12,8 @@ pub enum PrevNode<'a> {
     Offset(OffsetNode<'a>),
 }
 
-impl<'a> Prebuild for PrevNode<'a> {
-    fn prebuild(self) -> Result<NodeData> {
+impl<'a> Prebuild<Query> for PrevNode<'a> {
+    fn prebuild(self) -> Result<Query> {
         match self {
             Self::Offset(node) => node.prebuild(),
         }
@@ -44,12 +45,12 @@ impl<'a> OffsetLimitNode<'a> {
     }
 }
 
-impl<'a> Prebuild for OffsetLimitNode<'a> {
-    fn prebuild(self) -> Result<NodeData> {
-        let mut select_data = self.prev_node.prebuild()?;
-        select_data.limit = Some(self.expr.try_into()?);
+impl<'a> Prebuild<Query> for OffsetLimitNode<'a> {
+    fn prebuild(self) -> Result<Query> {
+        let mut node_data = self.prev_node.prebuild()?;
+        node_data.limit = Some(self.expr.try_into()?);
 
-        Ok(select_data)
+        Ok(node_data)
     }
 }
 

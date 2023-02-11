@@ -1,12 +1,11 @@
 use {
     super::{JoinConstraintData, JoinOperatorType},
     crate::{
-        ast::{Join, JoinExecutor},
+        ast::{Join, JoinExecutor, Select},
         ast_builder::{
-            select::{NodeData, Prebuild},
-            ExprList, ExprNode, FilterNode, GroupByNode, JoinConstraintNode, JoinNode, LimitNode,
-            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode, SelectItemList,
-            TableFactorNode,
+            select::Prebuild, ExprList, ExprNode, FilterNode, GroupByNode, JoinConstraintNode,
+            JoinNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
+            SelectItemList, TableFactorNode,
         },
         result::Result,
     },
@@ -113,9 +112,9 @@ impl<'a> HashJoinNode<'a> {
     }
 }
 
-impl<'a> Prebuild for HashJoinNode<'a> {
-    fn prebuild(self) -> Result<NodeData> {
-        let (mut select_data, relation, join_operator) = self.join_node.prebuild_for_hash_join()?;
+impl<'a> Prebuild<Select> for HashJoinNode<'a> {
+    fn prebuild(self) -> Result<Select> {
+        let (mut select, relation, join_operator) = self.join_node.prebuild_for_hash_join()?;
         let join_executor = build_join_executor(self.key_expr, self.value_expr, self.filter_expr)?;
 
         let join = Join {
@@ -124,8 +123,9 @@ impl<'a> Prebuild for HashJoinNode<'a> {
             join_executor,
         };
 
-        select_data.joins.push(join);
-        Ok(select_data)
+        select.from.joins.push(join);
+
+        Ok(select)
     }
 }
 

@@ -1,12 +1,11 @@
 use {
     super::{JoinConstraintData, JoinOperatorType},
     crate::{
-        ast::{Join, JoinConstraint, JoinOperator},
+        ast::{Join, JoinConstraint, JoinOperator, Select},
         ast_builder::{
-            select::{NodeData, Prebuild},
-            ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinNode, LimitNode,
-            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode, SelectItemList,
-            TableFactorNode,
+            select::Prebuild, ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinNode,
+            LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
+            SelectItemList, TableFactorNode,
         },
         result::Result,
     },
@@ -108,16 +107,16 @@ impl<'a> JoinConstraintNode<'a> {
     }
 }
 
-impl<'a> Prebuild for JoinConstraintNode<'a> {
-    fn prebuild(self) -> Result<NodeData> {
+impl<'a> Prebuild<Select> for JoinConstraintNode<'a> {
+    fn prebuild(self) -> Result<Select> {
         let JoinConstraintData {
-            mut node_data,
+            mut select,
             relation,
             operator_type,
             executor: join_executor,
         } = self.prev_node.prebuild_for_constraint()?;
 
-        node_data.joins.push(Join {
+        select.from.joins.push(Join {
             relation,
             join_operator: match operator_type {
                 JoinOperatorType::Inner => {
@@ -130,7 +129,7 @@ impl<'a> Prebuild for JoinConstraintNode<'a> {
             join_executor,
         });
 
-        Ok(node_data)
+        Ok(select)
     }
 }
 
