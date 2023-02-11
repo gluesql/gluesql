@@ -10,18 +10,13 @@ use {
             SelectError, SortError, UpdateError, ValidateError,
         },
         plan::PlanError,
+        store::{AlterTableError, IndexError},
         translate::TranslateError,
     },
     serde::Serialize,
     std::{error::Error as StdError, fmt::Debug, ops::ControlFlow},
     thiserror::Error as ThisError,
 };
-
-#[cfg(feature = "alter-table")]
-use crate::store::AlterTableError;
-
-#[cfg(feature = "index")]
-use crate::store::IndexError;
 
 #[derive(ThisError, Serialize, Debug)]
 pub enum Error {
@@ -41,14 +36,10 @@ pub enum Error {
     #[error(transparent)]
     AstBuilder(#[from] AstBuilderError),
 
-    #[cfg(feature = "alter-table")]
     #[error(transparent)]
     AlterTable(#[from] AlterTableError),
-
-    #[cfg(feature = "index")]
     #[error(transparent)]
     Index(#[from] IndexError),
-
     #[error(transparent)]
     Execute(#[from] ExecuteError),
     #[error(transparent)]
@@ -100,9 +91,7 @@ impl PartialEq for Error {
             (StorageMsg(e), StorageMsg(e2)) => e == e2,
             (Translate(e), Translate(e2)) => e == e2,
             (AstBuilder(e), AstBuilder(e2)) => e == e2,
-            #[cfg(feature = "alter-table")]
             (AlterTable(e), AlterTable(e2)) => e == e2,
-            #[cfg(feature = "index")]
             (Index(e), Index(e2)) => e == e2,
             (Execute(e), Execute(e2)) => e == e2,
             (Alter(e), Alter(e2)) => e == e2,

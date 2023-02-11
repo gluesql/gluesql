@@ -1,4 +1,3 @@
-#![cfg(feature = "alter-table")]
 use {
     super::Build,
     crate::{
@@ -133,7 +132,7 @@ impl Build for RenameTableNode {
     }
 }
 
-#[cfg(all(test, feature = "alter-table"))]
+#[cfg(test)]
 mod tests {
     use crate::ast_builder::{table, test, Build};
 

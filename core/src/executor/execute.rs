@@ -1,6 +1,6 @@
 use {
     super::{
-        alter::{create_table, drop_table},
+        alter::{alter_table, create_index, create_table, drop_table},
         fetch::{fetch, fetch_columns},
         insert::insert,
         select::{select, select_with_labels},
@@ -9,8 +9,8 @@ use {
     },
     crate::{
         ast::{
-            DataType, Dictionary, Expr, Query, SelectItem, SetExpr, Statement, TableAlias,
-            TableFactor, TableWithJoins, Variable,
+            AstLiteral, BinaryOperator, DataType, Dictionary, Expr, Query, SelectItem, SetExpr,
+            Statement, TableAlias, TableFactor, TableWithJoins, Variable,
         },
         data::{Key, Row, Schema, Value},
         result::Result,
@@ -20,15 +20,6 @@ use {
     serde::{Deserialize, Serialize},
     std::{collections::HashMap, env::var, fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
-};
-
-#[cfg(feature = "alter-table")]
-use super::alter::alter_table;
-
-#[cfg(feature = "index")]
-use {
-    super::alter::create_index,
-    crate::ast::{AstLiteral, BinaryOperator},
 };
 
 #[derive(ThisError, Serialize, Debug, PartialEq, Eq)]
@@ -50,21 +41,12 @@ pub enum Payload {
     Delete(usize),
     Update(usize),
     DropTable,
-
-    #[cfg(feature = "alter-table")]
     AlterTable,
-
-    #[cfg(feature = "index")]
     CreateIndex,
-    #[cfg(feature = "index")]
     DropIndex,
-    #[cfg(feature = "transaction")]
     StartTransaction,
-    #[cfg(feature = "transaction")]
     Commit,
-    #[cfg(feature = "transaction")]
     Rollback,
-
     ShowVariable(PayloadVariable),
 }
 
@@ -74,8 +56,7 @@ pub enum PayloadVariable {
     Version(String),
 }
 
-#[cfg(feature = "transaction")]
-pub async fn execute_atomic<T: GStore + GStoreMut>(
+pub async fn execute<T: GStore + GStoreMut>(
     storage: &mut T,
     statement: &Statement,
 ) -> Result<Payload> {
@@ -83,11 +64,11 @@ pub async fn execute_atomic<T: GStore + GStoreMut>(
         statement,
         Statement::StartTransaction | Statement::Rollback | Statement::Commit
     ) {
-        return execute(storage, statement).await;
+        return execute_inner(storage, statement).await;
     }
 
     let autocommit = storage.begin(true).await?;
-    let result = execute(storage, statement).await;
+    let result = execute_inner(storage, statement).await;
 
     if !autocommit {
         return result;
@@ -103,7 +84,7 @@ pub async fn execute_atomic<T: GStore + GStoreMut>(
     }
 }
 
-pub async fn execute<T: GStore + GStoreMut>(
+async fn execute_inner<T: GStore + GStoreMut>(
     storage: &mut T,
     statement: &Statement,
 ) -> Result<Payload> {
@@ -132,11 +113,9 @@ pub async fn execute<T: GStore + GStoreMut>(
         } => drop_table(storage, names, *if_exists)
             .await
             .map(|_| Payload::DropTable),
-        #[cfg(feature = "alter-table")]
         Statement::AlterTable { name, operation } => alter_table(storage, name, operation)
             .await
             .map(|_| Payload::AlterTable),
-        #[cfg(feature = "index")]
         Statement::CreateIndex {
             name,
             table_name,
@@ -144,20 +123,16 @@ pub async fn execute<T: GStore + GStoreMut>(
         } => create_index(storage, table_name, name, column)
             .await
             .map(|_| Payload::CreateIndex),
-        #[cfg(feature = "index")]
         Statement::DropIndex { name, table_name } => storage
             .drop_index(table_name, name)
             .await
             .map(|_| Payload::DropIndex),
         //- Transaction
-        #[cfg(feature = "transaction")]
         Statement::StartTransaction => storage
             .begin(false)
             .await
             .map(|_| Payload::StartTransaction),
-        #[cfg(feature = "transaction")]
         Statement::Commit => storage.commit().await.map(|_| Payload::Commit),
-        #[cfg(feature = "transaction")]
         Statement::Rollback => storage.rollback().await.map(|_| Payload::Rollback),
         //-- Rows
         Statement::Insert {
@@ -277,7 +252,6 @@ pub async fn execute<T: GStore + GStoreMut>(
 
             Ok(Payload::ShowColumns(output))
         }
-        #[cfg(feature = "index")]
         Statement::ShowIndexes(table_name) => {
             let query = Query {
                 body: SetExpr::Select(Box::new(crate::ast::Select {

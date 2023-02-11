@@ -435,11 +435,7 @@ impl StoreMut for IdbStorage {
     }
 }
 
-#[cfg(feature = "alter-table")]
 impl gluesql_core::store::AlterTable for IdbStorage {}
-#[cfg(feature = "index")]
 impl gluesql_core::store::Index for IdbStorage {}
-#[cfg(feature = "index")]
 impl gluesql_core::store::IndexMut for IdbStorage {}
-#[cfg(feature = "transaction")]
 impl gluesql_core::store::Transaction for IdbStorage {}

@@ -1,5 +1,3 @@
-#![cfg(all(feature = "transaction", feature = "alter-table"))]
-
 use {
     crate::*,
     gluesql_core::{executor::FetchError, prelude::Value::*},

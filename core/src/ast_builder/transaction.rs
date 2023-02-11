@@ -1,5 +1,3 @@
-#![cfg(feature = "transaction")]
-
 use crate::{ast::Statement, result::Result};
 
 pub fn begin() -> Result<Statement> {
@@ -12,7 +10,7 @@ pub fn rollback() -> Result<Statement> {
     Ok(Statement::Rollback)
 }
 
-#[cfg(all(test, feature = "transaction"))]
+#[cfg(test)]
 mod tests {
     use crate::ast_builder::{begin, commit, rollback, test};
 

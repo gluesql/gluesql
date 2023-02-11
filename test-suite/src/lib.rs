@@ -190,7 +190,6 @@ macro_rules! generate_store_tests {
     };
 }
 
-#[cfg(feature = "alter-table")]
 #[macro_export]
 macro_rules! generate_alter_table_tests {
     ($test: meta, $storage: ident) => {
@@ -205,7 +204,6 @@ macro_rules! generate_alter_table_tests {
     };
 }
 
-#[cfg(feature = "index")]
 #[macro_export]
 macro_rules! generate_index_tests {
     ($test: meta, $storage: ident) => {
@@ -228,7 +226,6 @@ macro_rules! generate_index_tests {
     };
 }
 
-#[cfg(feature = "transaction")]
 #[macro_export]
 macro_rules! generate_transaction_tests {
     ($test: meta, $storage: ident) => {
@@ -246,7 +243,6 @@ macro_rules! generate_transaction_tests {
     };
 }
 
-#[cfg(all(feature = "alter-table", feature = "index"))]
 #[macro_export]
 macro_rules! generate_alter_table_index_tests {
     ($test: meta, $storage: ident) => {
@@ -261,7 +257,6 @@ macro_rules! generate_alter_table_index_tests {
     };
 }
 
-#[cfg(all(feature = "transaction", feature = "alter-table"))]
 #[macro_export]
 macro_rules! generate_transaction_alter_table_tests {
     ($test: meta, $storage: ident) => {
@@ -290,7 +285,6 @@ macro_rules! generate_transaction_alter_table_tests {
     };
 }
 
-#[cfg(all(feature = "transaction", feature = "index"))]
 #[macro_export]
 macro_rules! generate_transaction_index_tests {
     ($test: meta, $storage: ident) => {
@@ -305,7 +299,6 @@ macro_rules! generate_transaction_index_tests {
     };
 }
 
-#[cfg(all(feature = "transaction"))]
 #[macro_export]
 macro_rules! generate_transaction_dictionary_tests {
     ($test: meta, $storage: ident) => {
