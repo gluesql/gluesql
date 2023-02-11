@@ -3,7 +3,8 @@ use {
     gluesql_core::{ast_builder::*, prelude::Value::*},
 };
 
-test_case!(values_test, async move {
+test_case!(values, async move {
+    use gluesql_core::ast_builder::values;
     let glue = get_glue!();
 
     let actual = values(vec!["1, 'Glue'", "2, 'SQL'", "3, 'Rust'"])

@@ -59,13 +59,12 @@ pub fn values<'a, T: Into<ExprList<'a>>>(values: Vec<T>) -> ValuesNode<'a> {
 
 #[cfg(test)]
 mod tests {
-    use {
-        super::values,
-        crate::ast_builder::{num, test, Build},
-    };
+    use crate::ast_builder::{num, test, Build};
 
     #[test]
-    fn values_test() {
+    fn values() {
+        use crate::ast_builder::values;
+
         let actual = values(vec![vec![num(7)]]).build();
         let expected = "VALUES(7)";
         test(actual, expected);
