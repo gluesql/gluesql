@@ -24,7 +24,6 @@ mod table_factor;
 mod table_name;
 mod transaction;
 mod update;
-mod values;
 
 pub use {
     assignment::AssignmentNode,
@@ -43,8 +42,8 @@ pub use {
     order_by_expr_list::OrderByExprList,
     query::QueryNode,
     select::{
-        FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode, LimitNode,
-        OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode,
+        values, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
+        LimitNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode,
     },
     select_item::SelectItemNode,
     select_item_list::SelectItemList,
@@ -54,7 +53,6 @@ pub use {
     },
     table_name::table,
     update::UpdateNode,
-    values::{values, ValuesNode},
 };
 
 /// Available expression builder functions

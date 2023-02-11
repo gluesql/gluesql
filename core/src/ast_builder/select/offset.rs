@@ -1,11 +1,11 @@
 use {
-    super::Prebuild,
+    super::{Prebuild, ValuesNode},
     crate::{
         ast::Query,
         ast_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
             JoinNode, OffsetLimitNode, OrderByNode, ProjectNode, QueryNode, SelectNode,
-            TableFactorNode, ValuesNode,
+            TableFactorNode,
         },
         result::Result,
     },

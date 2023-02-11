@@ -1,5 +1,3 @@
-use crate::ast::SetExpr;
-
 mod filter;
 mod group_by;
 mod having;
@@ -10,6 +8,7 @@ mod offset_limit;
 mod order_by;
 mod project;
 mod root;
+mod values;
 
 pub use {
     filter::FilterNode,
@@ -22,12 +21,13 @@ pub use {
     order_by::OrderByNode,
     project::ProjectNode,
     root::SelectNode,
+    values::{values, ValuesNode},
 };
 
 use {
     super::Build,
     crate::{
-        ast::{Query, Select, Statement},
+        ast::{Query, Select, SetExpr, Statement},
         result::Result,
     },
 };
