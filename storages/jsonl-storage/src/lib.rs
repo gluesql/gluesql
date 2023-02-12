@@ -1,3 +1,5 @@
+use gluesql_memory_storage::MemoryStorage;
+
 mod alter_table;
 mod index;
 mod transaction;
@@ -293,22 +295,57 @@ impl StoreMut for JsonlStorage {
 
     async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
         let prev_rows = self.scan_data(table_name)?;
-        let prev_rows = prev_rows.collect::<Result<HashMap<Key, DataRow>>>()?;
-        let rows = prev_rows.concat(rows.into_iter());
-        let mut rows = rows.into_iter().collect::<Vec<_>>();
+        let mut rows = rows;
 
-        rows.sort_by(|(key_a, _), (key_b, _)| {
-            key_a
-                .partial_cmp(key_b)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
+        println!("@@@@:insert_data start");
+        let rows = prev_rows
+            .map(|result| {
+                println!("@@@@{rows:#?}");
+                let (prev_key, prev_row) = result?;
+                let row = rows.clone().into_iter().find(|(key, _)| key <= &prev_key);
+                // let (rows, b): (Vec<_>, Vec<_>) =
+                //     rows.into_iter().partition(|(key, row)| key <= &prev_key);
+                let rows = match row {
+                    Some((key, row)) => {
+                        rows.retain(|(new_key, _)| new_key != &key);
 
-        let rows = rows.into_iter().map(|(_, data_row)| data_row).collect();
+                        match key == prev_key {
+                            true => vec![row],
+                            false => vec![row, prev_row],
+                        }
+                    }
+                    None => vec![prev_row],
+                };
+
+                Ok(rows)
+            })
+            .flat_map(|result| match result {
+                Ok(rows) => rows.into_iter().map(Ok).collect(),
+                Err(err) => vec![Err(err)],
+            })
+            .collect::<Result<Vec<DataRow>>>()?;
 
         let table_path = self.data_path(table_name);
         File::create(&table_path).map_storage_err()?;
 
         self.append_data(table_name, rows).await
+
+        // let prev_rows = prev_rows.collect::<Result<HashMap<Key, DataRow>>>()?;
+        // let rows = prev_rows.concat(rows.into_iter());
+        // let mut rows = rows.into_iter().collect::<Vec<_>>();
+
+        // rows.sort_by(|(key_a, _), (key_b, _)| {
+        //     key_a
+        //         .partial_cmp(key_b)
+        //         .unwrap_or(std::cmp::Ordering::Equal)
+        // });
+
+        // let rows = rows.into_iter().map(|(_, data_row)| data_row).collect();
+
+        // let table_path = self.data_path(table_name);
+        // File::create(&table_path).map_storage_err()?;
+
+        // self.append_data(table_name, rows).await
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
