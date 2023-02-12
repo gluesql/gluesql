@@ -10,6 +10,9 @@ use {
     std::{borrow::Cow, collections::HashMap},
 };
 
+#[cfg(feature = "function")]
+use crate::translate::TranslateError;
+
 #[derive(Clone)]
 pub enum Context<'a> {
     Vec {
@@ -202,7 +205,7 @@ fn evaluate_function<'a>(context: &Context<'_>, func: &'a Function) -> Result<Ev
         // --- text ---
         #[cfg(feature = "function")]
         Function::Custom { name: _, exprs: _ } => {
-            Err(EvaluateError::UnsupportedCustomFunction.into())
+            Err(TranslateError::UnsupportedFunction(name.to_string()).into())
         }
         Function::Concat(exprs) => {
             let exprs = exprs.iter().map(eval).collect::<Result<_>>()?;
