@@ -25,4 +25,8 @@ impl Function for MemoryStorage {
             )))
         }
     }
+    fn unregister_function(&mut self, _name: &str) -> Result<()> {
+        self.functions.remove(&_name.to_uppercase());
+        Ok(())
+    }
 }

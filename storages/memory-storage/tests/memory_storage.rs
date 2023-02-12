@@ -102,6 +102,7 @@ fn memory_storage_function() {
     use gluesql_core::{
         result::{Error, Result},
         store::Function,
+        translate::TranslateError,
     };
 
     let storage = MemoryStorage::default();
@@ -120,6 +121,10 @@ fn memory_storage_function() {
         Ok(vec![Payload::Select { labels: vec!["msg".to_owned()], rows: vec![vec![Value::Str("Hello".to_owned())]] }])
     );
 
-    assert!(glue.storage.unregister_function("say", proxy).is_ok());
-    assert!(glue.storage.unregister_function("say", proxy).is_err());
+    assert!(glue.storage.unregister_function("say").is_ok());
+
+    test!(
+        glue "SELECT SAY(1)",
+        Err(TranslateError::UnsupportedFunction("SAY".to_owned()).into())
+    );
 }
