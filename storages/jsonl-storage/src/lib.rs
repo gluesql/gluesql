@@ -294,13 +294,34 @@ impl StoreMut for JsonlStorage {
     }
 
     async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
-        let prev_rows = self.scan_data(table_name)?;
-        let mut rows = rows;
+        /*
+        1. prev_rows 0 => just insert
+        2. update => if key == prev_key, map to new rows
+        3. pk insert {
+            get key <= prev_key
+            [key, prev_key] => iter to prev_key again got error
 
+        }
+        */
+        let prev_rows = self.scan_data(table_name)?;
+
+        let mut prev_rows = prev_rows.peekable();
+        if prev_rows.peek().is_none() {
+            let rows = rows.into_iter().map(|(_, row)| row).collect();
+
+            let table_path = self.data_path(table_name);
+            File::create(&table_path).map_storage_err()?;
+
+            self.append_data(table_name, rows).await?;
+
+            return Ok(());
+        }
+
+        let mut rows = rows;
         println!("@@@@:insert_data start");
         let rows = prev_rows
             .map(|result| {
-                println!("@@@@{rows:#?}");
+                println!("@@@@rows:\n{rows:#?}");
                 let (prev_key, prev_row) = result?;
                 let row = rows.clone().into_iter().find(|(key, _)| key <= &prev_key);
                 // let (rows, b): (Vec<_>, Vec<_>) =
