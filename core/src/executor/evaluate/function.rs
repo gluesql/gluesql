@@ -543,10 +543,16 @@ pub fn extract<'a>(field: &DateTimeField, expr: Evaluated<'_>) -> Result<Evaluat
     Ok(Evaluated::from(Value::try_from(expr)?.extract(field)?))
 }
 
-pub fn stx<'a>(name: String, expr: Evaluated<'a>) -> Result<Evaluated<'a>> {
-    todo!()
+pub fn stx<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    match expr.try_into()? {
+        Value::Point((x, _)) => Ok(Evaluated::from(Value::F64(x))),
+        _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+    }
 }
 
-pub fn sty<'a>(name: String, expr: Evaluated<'a>) -> Result<Evaluated<'a>> {
-    todo!()
+pub fn sty<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    match expr.try_into()? {
+        Value::Point((_, y)) => Ok(Evaluated::from(Value::F64(y))),
+        _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+    }
 }
