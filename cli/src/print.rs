@@ -319,6 +319,7 @@ mod tests {
     use {
         super::Print,
         crate::command::{SetOption, ShowOption},
+        std::path::PathBuf,
     };
 
     #[test]
@@ -362,7 +363,7 @@ mod tests {
 
         macro_rules! test {
             ($payload: expr, $expected: literal ) => {
-                print.payload($payload).unwrap();
+                print.payloads(&[$payload]).unwrap();
 
                 assert_eq!(
                     String::from_utf8(print.output.clone())
@@ -376,30 +377,30 @@ mod tests {
             };
         }
 
-        test!(&Payload::Create, "Table created");
-        test!(&Payload::DropTable, "Table dropped");
-        test!(&Payload::AlterTable, "Table altered");
-        test!(&Payload::CreateIndex, "Index created");
-        test!(&Payload::DropIndex, "Index dropped");
-        test!(&Payload::Commit, "Commit completed");
-        test!(&Payload::Rollback, "Rollback completed");
-        test!(&Payload::StartTransaction, "Transaction started");
-        test!(&Payload::Insert(0), "0 row inserted");
-        test!(&Payload::Insert(1), "1 row inserted");
-        test!(&Payload::Insert(7), "7 rows inserted");
-        test!(&Payload::Delete(300), "300 rows deleted");
-        test!(&Payload::Update(123), "123 rows updated");
+        test!(Payload::Create, "Table created");
+        test!(Payload::DropTable, "Table dropped");
+        test!(Payload::AlterTable, "Table altered");
+        test!(Payload::CreateIndex, "Index created");
+        test!(Payload::DropIndex, "Index dropped");
+        test!(Payload::Commit, "Commit completed");
+        test!(Payload::Rollback, "Rollback completed");
+        test!(Payload::StartTransaction, "Transaction started");
+        test!(Payload::Insert(0), "0 row inserted");
+        test!(Payload::Insert(1), "1 row inserted");
+        test!(Payload::Insert(7), "7 rows inserted");
+        test!(Payload::Delete(300), "300 rows deleted");
+        test!(Payload::Update(123), "123 rows updated");
         test!(
-            &Payload::ShowVariable(PayloadVariable::Version("11.6.1989".to_owned())),
+            Payload::ShowVariable(PayloadVariable::Version("11.6.1989".to_owned())),
             "v11.6.1989"
         );
         test!(
-            &Payload::ShowVariable(PayloadVariable::Tables(Vec::new())),
+            Payload::ShowVariable(PayloadVariable::Tables(Vec::new())),
             "
 | tables |"
         );
         test!(
-            &Payload::ShowVariable(PayloadVariable::Tables(
+            Payload::ShowVariable(PayloadVariable::Tables(
                 [
                     "Allocator",
                     "ExtendFromWithin",
@@ -421,7 +422,7 @@ mod tests {
 | Splice           |"
         );
         test!(
-            &Payload::Select {
+            Payload::Select {
                 labels: vec!["id".to_owned()],
                 rows: [101, 202, 301, 505, 1001]
                     .into_iter()
@@ -439,7 +440,7 @@ mod tests {
 | 1001 |"
         );
         test!(
-            &Payload::Select {
+            Payload::Select {
                 labels: ["id", "title", "valid"]
                     .into_iter()
                     .map(ToOwned::to_owned)
@@ -483,7 +484,7 @@ mod tests {
         );
 
         test!(
-            &Payload::SelectMap(vec![
+            Payload::SelectMap(vec![
                 [
                     ("id".to_owned(), Value::I64(1)),
                     ("title".to_owned(), Value::Str("foo".to_owned()))
@@ -504,7 +505,7 @@ mod tests {
         );
 
         test!(
-            &Payload::ShowColumns(vec![
+            Payload::ShowColumns(vec![
                 ("id".to_owned(), DataType::Int),
                 ("name".to_owned(), DataType::Text),
                 ("isabear".to_owned(), DataType::Boolean),
@@ -518,7 +519,7 @@ mod tests {
         );
 
         test!(
-            &Payload::ShowColumns(vec![
+            Payload::ShowColumns(vec![
                 ("id".to_owned(), DataType::Int8),
                 ("calc1".to_owned(), DataType::Float),
                 ("cost".to_owned(), DataType::Decimal),
@@ -548,7 +549,7 @@ mod tests {
         // ".set tabular OFF" should print SELECTED payload without tabular option
         print.set_option(SetOption::Tabular(false));
         test!(
-            &Payload::Select {
+            Payload::Select {
                 labels: ["id", "title", "valid"]
                     .into_iter()
                     .map(ToOwned::to_owned)
@@ -573,7 +574,7 @@ id|title|valid
         );
 
         test!(
-            &Payload::SelectMap(vec![
+            Payload::SelectMap(vec![
                 [
                     ("id".to_owned(), Value::I64(1)),
                     ("title".to_owned(), Value::Str("foo".to_owned()))
@@ -597,7 +598,7 @@ id|title
         assert_eq!(print.option.format(ShowOption::Colsep), r#"colsep ",""#);
 
         test!(
-            &Payload::Select {
+            Payload::Select {
                 labels: ["id", "title", "valid"]
                     .into_iter()
                     .map(ToOwned::to_owned)
@@ -625,7 +626,7 @@ id,title,valid
         print.set_option(SetOption::Colwrap("'".into()));
         assert_eq!(print.option.format(ShowOption::Colwrap), r#"colwrap "'""#);
         test!(
-            &Payload::Select {
+            Payload::Select {
                 labels: ["id", "title", "valid"]
                     .into_iter()
                     .map(ToOwned::to_owned)
@@ -652,7 +653,7 @@ id,title,valid
         // ".set header OFF should print without column name"
         print.set_option(SetOption::Heading(false));
         test!(
-            &Payload::Select {
+            Payload::Select {
                 labels: ["id", "title", "valid"]
                     .into_iter()
                     .map(ToOwned::to_owned)
@@ -675,11 +676,60 @@ id,title,valid
 '2','bar','FALSE'"
         );
 
+        // ".set header ON should print without column name"
+        print.set_option(SetOption::Heading(true));
+        test!(
+            Payload::Select {
+                labels: ["id", "title", "valid"]
+                    .into_iter()
+                    .map(ToOwned::to_owned)
+                    .collect(),
+                rows: vec![
+                    vec![
+                        Value::I64(1),
+                        Value::Str("foo".to_owned()),
+                        Value::Bool(true)
+                    ],
+                    vec![
+                        Value::I64(2),
+                        Value::Str("bar".to_owned()),
+                        Value::Bool(false)
+                    ],
+                ],
+            },
+            "
+'id','title','valid'
+'1','foo','TRUE'
+'2','bar','FALSE'"
+        );
+
         // ".set tabular ON" should recover default option: colsep("|"), colwrap("")
         print.set_option(SetOption::Tabular(true));
         assert_eq!(print.option.format(ShowOption::Tabular), "tabular ON");
         assert_eq!(print.option.format(ShowOption::Colsep), r#"colsep "|""#);
         assert_eq!(print.option.format(ShowOption::Colwrap), r#"colwrap """#);
         assert_eq!(print.option.format(ShowOption::Heading), "heading ON");
+        assert_eq!(
+            print.option.format(ShowOption::All),
+            "
+tabular ON
+colsep \"|\"
+colwrap \"\"
+heading ON"
+                .trim_matches('\n')
+        );
+    }
+
+    #[test]
+    fn print_spool() {
+        use std::fs;
+
+        let mut print = Print::new(Vec::new(), None, Default::default());
+
+        // Spooling on file
+        fs::create_dir_all("tmp").unwrap();
+        assert!(print.spool_on(PathBuf::from("tmp/spool.txt")).is_ok());
+        assert!(print.write("Test").is_ok());
+        assert!(print.show_option(ShowOption::All).is_ok());
     }
 }
