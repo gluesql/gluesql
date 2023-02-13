@@ -100,7 +100,7 @@ impl<'a> Context<'a> {
     }
 }
 
-fn get_lables(schema: &Schema) -> Option<Vec<&str>> {
+fn get_labels(schema: &Schema) -> Option<Vec<&str>> {
     schema.column_defs.as_ref().map(|column_defs| {
         column_defs
             .iter()
@@ -133,7 +133,7 @@ fn contextualize_table_factor<'a>(
     match table_factor {
         TableFactor::Table { name, .. } => {
             let schema = schema_map.get(name);
-            schema.map(|schema| Rc::from(Context::new(get_lables(schema), None)))
+            schema.map(|schema| Rc::from(Context::new(get_labels(schema), None)))
         }
         TableFactor::Derived { subquery, .. } => contextualize_query(schema_map, subquery),
         TableFactor::Series { .. } | TableFactor::Dictionary { .. } => None,
