@@ -678,6 +678,7 @@ id,title,valid
 
         // ".set header ON should print without column name"
         print.set_option(SetOption::Heading(true));
+        print.set_option(SetOption::Tabular(false));
         test!(
             Payload::Select {
                 labels: ["id", "title", "valid"]
