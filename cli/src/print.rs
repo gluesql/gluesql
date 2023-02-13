@@ -676,7 +676,7 @@ id,title,valid
 '2','bar','FALSE'"
         );
 
-        // ".set header ON should print without column name"
+        // ".set header ON should print with column name"
         print.set_option(SetOption::Heading(true));
         print.set_option(SetOption::Tabular(false));
         test!(
@@ -702,6 +702,16 @@ id,title,valid
 'id','title','valid'
 '1','foo','TRUE'
 '2','bar','FALSE'"
+        );
+
+        print.set_option(SetOption::Heading(false));
+        print.set_option(SetOption::Tabular(false));
+        test!(
+            Payload::Select {
+                labels: ["id"].into_iter().map(ToOwned::to_owned).collect(),
+                rows: vec![vec![Value::I64(1),], vec![Value::I64(2),],],
+            },
+            "'1'\n'2'"
         );
 
         // ".set tabular ON" should recover default option: colsep("|"), colwrap("")
