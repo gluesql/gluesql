@@ -81,7 +81,7 @@ impl TryFrom<Value> for JsonValue {
                 .map(|value| value.try_into())
                 .collect::<Result<Vec<JsonValue>>>()
                 .map(|v| v.into()),
-            Value::Point(v) => todo!(),
+            Value::Point((x, y)) => Ok(format!("POINT({} {})", x, y).to_string().into()),
             Value::Null => Ok(JsonValue::Null),
         }
     }

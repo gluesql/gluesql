@@ -41,8 +41,8 @@ pub enum ValueError {
     #[error("failed to UUID: {0}")]
     FailedToParseUUID(String),
 
-    #[error("failed to parse point")]
-    FailedToParsePoint,
+    #[error("failed to parse point: {0}")]
+    FailedToParsePoint(String),
 
     #[error("failed to parse Decimal: {0}")]
     FailedToParseDecimal(String),

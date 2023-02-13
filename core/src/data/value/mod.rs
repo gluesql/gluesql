@@ -661,7 +661,7 @@ fn str_position(from_str: &String, sub_str: &String) -> usize {
 mod tests {
     use {
         super::{Interval, Value::*},
-        crate::data::{value::uuid::parse_uuid, ValueError},
+        crate::data::{value::point::parse_point, value::uuid::parse_uuid, ValueError},
         chrono::{NaiveDate, NaiveTime},
         rust_decimal::Decimal,
         std::{net::IpAddr, str::FromStr},
@@ -685,6 +685,7 @@ mod tests {
         let decimal = |n: i32| Decimal(n.into());
         let bytea = |v: &str| Bytea(hex::decode(v).unwrap());
         let inet = |v: &str| Inet(IpAddr::from_str(v).unwrap());
+        let point = |v: &str| Point(parse_point(v).unwrap());
 
         assert_ne!(Null, Null);
         assert_eq!(Bool(true), Bool(true));
@@ -718,6 +719,7 @@ mod tests {
             Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()),
             Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap())
         );
+        assert_eq!(point("POINT(1 2)"), point("POINT(1 2)"));
     }
 
     #[test]
@@ -1598,6 +1600,7 @@ mod tests {
         let time = Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap());
         let interval = Interval(I::hours(5));
         let uuid = Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap());
+        let point = Point(parse_point("POINT(1.0 2.0)").unwrap());
         let map = Value::parse_json_map(r#"{ "a": 10 }"#).unwrap();
         let list = Value::parse_json_list(r#"[ true ]"#).unwrap();
         let bytea = Bytea(hex::decode("9001").unwrap());
@@ -1644,6 +1647,8 @@ mod tests {
         assert!(interval.validate_type(&D::Date).is_err());
         assert!(uuid.validate_type(&D::Uuid).is_ok());
         assert!(uuid.validate_type(&D::Boolean).is_err());
+        assert!(point.validate_type(&D::Point).is_ok());
+        assert!(point.validate_type(&D::Boolean).is_err());
         assert!(map.validate_type(&D::Map).is_ok());
         assert!(map.validate_type(&D::Int).is_err());
         assert!(list.validate_type(&D::List).is_ok());
@@ -1764,6 +1769,7 @@ mod tests {
         let time = Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap());
         let interval = Interval(I::hours(5));
         let uuid = Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap());
+        let point = Point(parse_point("POINT(1.0 2.0)").unwrap());
         let map = Value::parse_json_map(r#"{ "a": 10 }"#).unwrap();
         let list = Value::parse_json_list(r#"[ true ]"#).unwrap();
         let bytea = Bytea(hex::decode("9001").unwrap());
@@ -1787,6 +1793,7 @@ mod tests {
         assert_eq!(time.get_type(), Some(D::Time));
         assert_eq!(interval.get_type(), Some(D::Interval));
         assert_eq!(uuid.get_type(), Some(D::Uuid));
+        assert_eq!(point.get_type(), Some(D::Point));
         assert_eq!(map.get_type(), Some(D::Map));
         assert_eq!(list.get_type(), Some(D::List));
         assert_eq!(Null.get_type(), None);
