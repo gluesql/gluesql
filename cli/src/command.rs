@@ -132,8 +132,7 @@ impl Command {
                 },
                 ".set" => match (params.get(1), params.get(2)) {
                     (Some(key), value) => Ok(Self::Set(SetOption::parse(key, value, option)?)),
-                    (None, Some(_)) => Err(CommandError::LackOfOption),
-                    (None, None) => Err(CommandError::LackOfOption),
+                    (None, _) => Err(CommandError::LackOfOption),
                 },
                 ".show" => match params.get(1) {
                     Some(key) => Ok(Self::Show(ShowOption::parse(key)?)),
@@ -229,6 +228,10 @@ mod tests {
         option.tabular(false);
         let parse = |command| Command::parse(command, &option);
 
+        assert_eq!(
+            parse(".set abc false"),
+            Err(CommandError::WrongOption("abc".to_owned()))
+        );
         assert_eq!(
             parse(".set tabular"),
             Err(CommandError::LackOfValue(

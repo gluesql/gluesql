@@ -731,5 +731,7 @@ heading ON"
         assert!(print.spool_on(PathBuf::from("tmp/spool.txt")).is_ok());
         assert!(print.write("Test").is_ok());
         assert!(print.show_option(ShowOption::All).is_ok());
+        print.spool_off();
+        assert!(print.write("Test").is_ok());
     }
 }
