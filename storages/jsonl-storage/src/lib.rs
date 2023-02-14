@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use gluesql_memory_storage::MemoryStorage;
 
 mod alter_table;
@@ -293,64 +295,72 @@ impl StoreMut for JsonlStorage {
         Ok(())
     }
 
-    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
-        let prev_rows = self.scan_data(table_name)?;
+    async fn insert_data(&mut self, table_name: &str, mut rows: Vec<(Key, DataRow)>) -> Result<()> {
+        let mut prev_rows = self.scan_data(table_name)?.peekable();
+        match prev_rows.peek() {
+            None => {
+                let rows = rows.into_iter().map(|(_, row)| row).collect();
 
-        let mut prev_rows = prev_rows.peekable();
-        if prev_rows.peek().is_none() {
-            let rows = rows.into_iter().map(|(_, row)| row).collect();
+                let table_path = self.data_path(table_name);
+                File::create(&table_path).map_storage_err()?;
 
-            let table_path = self.data_path(table_name);
-            File::create(&table_path).map_storage_err()?;
+                self.append_data(table_name, rows).await
+            }
+            Some(result) => {
+                let mut bucket: Vec<DataRow> = Vec::new();
+                // bucket.push(result?.1);
 
-            self.append_data(table_name, rows).await?;
-
-            return Ok(());
-        }
-
-        let mut rows = rows;
-        let rows = prev_rows
-            .map(|result| {
-                let (prev_key, prev_row) = result?;
-                let (mut targets, remains): (Vec<_>, Vec<_>) = rows
-                    .clone()
-                    .into_iter()
-                    .partition(|(key, _)| key <= &prev_key);
-                rows = remains;
-
-                targets.sort_by(|(key_a, _), (key_b, _)| {
+                println!("{rows:?}");
+                rows.sort_by(|(key_a, _), (key_b, _)| {
                     key_a
                         .partial_cmp(key_b)
                         .unwrap_or(std::cmp::Ordering::Equal)
                 });
+                let mut rows = rows.into_iter().peekable();
 
-                if let Some((last_key, last_row)) = targets.pop() {
-                    match last_key == prev_key {
-                        true => {
-                            targets.push((prev_key, prev_row));
-                        } // map row to prev_row
-                        false => {
-                            // insert prev_row to last
-                            targets.push((last_key, last_row));
-                            targets.push((prev_key, prev_row));
+                'outer: for result in prev_rows {
+                    // while let Some(result) = prev_rows.peek() {
+                    let (prev_key, prev_row) = result?;
+                    'inner: while let Some((key, row)) = rows.peek() {
+                        println!("prev_key:{prev_key:?}, key:{key:?}");
+                        println!("prev:{prev_row:?}");
+                        println!("row:{row:?}");
+                        println!("bucket:{bucket:?}");
+                        match prev_key.to_cmp_be_bytes().cmp(&key.to_cmp_be_bytes()) {
+                            Ordering::Less => {
+                                bucket.push(prev_row);
+                                // bucket.push(row);
+                                // prev_rows.next();
+                                continue 'outer;
+                            }
+                            Ordering::Greater => {
+                                bucket.push(row.to_owned());
+                                rows.next();
+                            }
+                            Ordering::Equal => {
+                                bucket.push(row.to_owned());
+                                rows.next();
+                                continue 'outer;
+                                // what about last elem of prev_rows?
+                            }
                         }
+                        // if prev_key < key {
+                        //     bucket.push(prev_row);
+                        //     continue 'outer;
+                        // }
+                        // else if prev_key > key {
+
+                        // }
                     }
-                };
+                    bucket.push(prev_row);
+                }
 
-                let rows = targets.into_iter().map(|(_, row)| row);
+                let table_path = self.data_path(table_name);
+                File::create(&table_path).map_storage_err()?;
 
-                Ok(rows)
-            })
-            .flat_map(|result| match result {
-                Ok(rows) => rows.into_iter().map(Ok).collect(),
-                Err(err) => vec![Err(err)],
-            })
-            .collect::<Result<Vec<DataRow>>>()?;
-
-        let table_path = self.data_path(table_name);
-        File::create(&table_path).map_storage_err()?;
-
-        self.append_data(table_name, rows).await
+                self.append_data(table_name, bucket).await
+            }
+        }
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {

@@ -54,6 +54,7 @@ test_case!(on_where, async move {
         (5, "UPDATE Arith SET id = id + 1;"),
         (0, "SELECT * FROM Arith WHERE id = 1;"),
         (4, "UPDATE Arith SET id = id - 1 WHERE id != 6;"),
+        (5, "SELECT * FROM Arith"), // new
         (2, "SELECT * FROM Arith WHERE id <= 2;"),
         (5, "UPDATE Arith SET id = id * 2;"),
         (5, "UPDATE Arith SET id = id / 2;"),
