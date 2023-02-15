@@ -1,7 +1,3 @@
-use std::cmp::Ordering;
-
-use gluesql_memory_storage::MemoryStorage;
-
 mod alter_table;
 mod index;
 mod transaction;
@@ -17,13 +13,13 @@ use {
     },
     serde_json::{Map, Value as JsonValue},
     std::{
+        cmp::Ordering,
         collections::HashMap,
         fmt,
         fs::{self, remove_file, File, OpenOptions},
         io::{self, prelude::*, BufRead},
         path::{Path, PathBuf},
     },
-    utils::HashMapExt,
 };
 
 #[derive(Debug)]
@@ -297,70 +293,60 @@ impl StoreMut for JsonlStorage {
 
     async fn insert_data(&mut self, table_name: &str, mut rows: Vec<(Key, DataRow)>) -> Result<()> {
         let mut prev_rows = self.scan_data(table_name)?.peekable();
-        match prev_rows.peek() {
-            None => {
-                let rows = rows.into_iter().map(|(_, row)| row).collect();
+        rows.sort_by(|(key_a, _), (key_b, _)| {
+            key_a
+                .partial_cmp(key_b)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        let mut rows = rows.into_iter().peekable();
+        let mut bucket: Vec<DataRow> = Vec::new();
 
-                let table_path = self.data_path(table_name);
-                File::create(&table_path).map_storage_err()?;
+        while prev_rows.peek().is_some() | rows.peek().is_some() {
+            match (prev_rows.peek(), rows.peek()) {
+                (Some(result), Some((key, row))) => {
+                    let (prev_key, prev_row) = result.as_ref().unwrap();
 
-                self.append_data(table_name, rows).await
-            }
-            Some(result) => {
-                let mut bucket: Vec<DataRow> = Vec::new();
-                // bucket.push(result?.1);
-
-                println!("{rows:?}");
-                rows.sort_by(|(key_a, _), (key_b, _)| {
-                    key_a
-                        .partial_cmp(key_b)
-                        .unwrap_or(std::cmp::Ordering::Equal)
-                });
-                let mut rows = rows.into_iter().peekable();
-
-                'outer: for result in prev_rows {
-                    // while let Some(result) = prev_rows.peek() {
-                    let (prev_key, prev_row) = result?;
-                    'inner: while let Some((key, row)) = rows.peek() {
-                        println!("prev_key:{prev_key:?}, key:{key:?}");
-                        println!("prev:{prev_row:?}");
-                        println!("row:{row:?}");
-                        println!("bucket:{bucket:?}");
-                        match prev_key.to_cmp_be_bytes().cmp(&key.to_cmp_be_bytes()) {
-                            Ordering::Less => {
-                                bucket.push(prev_row);
-                                // bucket.push(row);
-                                // prev_rows.next();
-                                continue 'outer;
-                            }
-                            Ordering::Greater => {
-                                bucket.push(row.to_owned());
-                                rows.next();
-                            }
-                            Ordering::Equal => {
-                                bucket.push(row.to_owned());
-                                rows.next();
-                                continue 'outer;
-                                // what about last elem of prev_rows?
-                            }
+                    match prev_key.to_cmp_be_bytes().cmp(&key.to_cmp_be_bytes()) {
+                        Ordering::Less => {
+                            bucket.push(prev_row.to_owned());
+                            prev_rows.next();
                         }
-                        // if prev_key < key {
-                        //     bucket.push(prev_row);
-                        //     continue 'outer;
-                        // }
-                        // else if prev_key > key {
-
-                        // }
+                        Ordering::Greater => {
+                            bucket.push(row.to_owned());
+                            rows.next();
+                        }
+                        Ordering::Equal => {
+                            bucket.push(row.to_owned());
+                            rows.next();
+                            prev_rows.next();
+                        }
                     }
-                    bucket.push(prev_row);
                 }
+                (Some(_), None) => {
+                    let prev_rows = prev_rows
+                        .map(|result| {
+                            let (_, prev_row) = result?;
+                            Ok(prev_row)
+                        })
+                        .collect::<Result<Vec<_>>>()?;
+                    bucket.extend(prev_rows);
 
-                let table_path = self.data_path(table_name);
-                File::create(&table_path).map_storage_err()?;
+                    break;
+                }
+                (None, Some(_)) => {
+                    let rows = rows.map(|(_, row)| row).collect::<Vec<_>>();
+                    bucket.extend(rows);
 
-                self.append_data(table_name, bucket).await
+                    break;
+                }
+                (None, None) => {}
             }
         }
+
+        let table_path = self.data_path(table_name);
+        File::create(&table_path).map_storage_err()?;
+
+        self.append_data(table_name, bucket).await
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
