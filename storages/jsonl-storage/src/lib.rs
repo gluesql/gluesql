@@ -232,15 +232,24 @@ impl Iterator for SortMerge {
         let (left, right) = match self.current.to_owned() {
             Some((is_left, key, row)) => match is_left {
                 true => (Some((key, row)), self.rows.next()),
-                false => (self.prev_rows.next().map(|a| a.unwrap()), Some((key, row))),
+                false => (self.prev_rows.next().map(Result::unwrap), Some((key, row))),
             },
-            None => (self.prev_rows.next().map(|a| a.unwrap()), self.rows.next()),
+            None => (self.prev_rows.next().map(Result::unwrap), self.rows.next()),
         };
 
         match (left, right) {
             (None, None) => None,
-            (None, Some((_, row))) => Some(row),
-            (Some((_, prev_row)), None) => Some(prev_row),
+            (None, Some((_, row))) => {
+                self.current = None;
+
+                Some(row)
+            }
+            (Some((_, prev_row)), None) => {
+                self.current = None;
+
+                Some(prev_row)
+            }
+
             (Some((prev_key, prev_row)), Some((key, row))) => {
                 match prev_key.to_cmp_be_bytes().cmp(&key.to_cmp_be_bytes()) {
                     Ordering::Less => {
