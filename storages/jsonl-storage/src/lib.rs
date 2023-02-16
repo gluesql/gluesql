@@ -219,53 +219,54 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
+type IsLeft = bool;
 struct SortMerge {
     prev_rows: Box<dyn Iterator<Item = Result<(Key, DataRow), Error>>>,
     rows: IntoIter<(Key, DataRow)>,
-    current: Option<(bool, Key, DataRow)>,
+    current: Option<(IsLeft, Key, DataRow)>,
 }
 
 impl Iterator for SortMerge {
-    type Item = DataRow;
+    type Item = Result<DataRow>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let (left, right) = match self.current.to_owned() {
             Some((is_left, key, row)) => match is_left {
-                true => (Some((key, row)), self.rows.next()),
-                false => (self.prev_rows.next().map(Result::unwrap), Some((key, row))),
+                true => (Some(Ok((key, row))), self.rows.next().map(Ok)),
+                false => (self.prev_rows.next(), Some(Ok((key, row)))),
             },
-            None => (self.prev_rows.next().map(Result::unwrap), self.rows.next()),
+            None => (self.prev_rows.next(), self.rows.next().map(Ok)),
         };
 
         match (left, right) {
             (None, None) => None,
-            (None, Some((_, row))) => {
+            (_, Some(Err(e))) | (Some(Err(e)), _) => Some(Err(e)),
+            (None, Some(Ok((_, row)))) => {
                 self.current = None;
 
-                Some(row)
+                Some(Ok(row))
             }
-            (Some((_, prev_row)), None) => {
+            (Some(Ok((_, prev_row))), None) => {
                 self.current = None;
 
-                Some(prev_row)
+                Some(Ok(prev_row))
             }
-
-            (Some((prev_key, prev_row)), Some((key, row))) => {
+            (Some(Ok((prev_key, prev_row))), Some(Ok((key, row)))) => {
                 match prev_key.to_cmp_be_bytes().cmp(&key.to_cmp_be_bytes()) {
                     Ordering::Less => {
                         self.current = Some((false, key, row));
 
-                        Some(prev_row)
+                        Some(Ok(prev_row))
                     }
                     Ordering::Greater => {
                         self.current = Some((true, prev_key, prev_row));
 
-                        Some(row)
+                        Some(Ok(row))
                     }
                     Ordering::Equal => {
                         self.current = None;
 
-                        Some(row)
+                        Some(Ok(row))
                     }
                 }
             }
@@ -360,8 +361,7 @@ impl StoreMut for JsonlStorage {
             rows,
             current: None,
         };
-
-        let merged = sort_merge.collect::<Vec<_>>();
+        let merged = sort_merge.collect::<Result<Vec<_>>>()?;
 
         let table_path = self.data_path(table_name);
         File::create(&table_path).map_storage_err()?;
