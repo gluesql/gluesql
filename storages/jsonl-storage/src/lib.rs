@@ -1,5 +1,3 @@
-use std::vec::IntoIter;
-
 mod alter_table;
 mod index;
 mod transaction;
@@ -21,6 +19,7 @@ use {
         fs::{self, remove_file, File, OpenOptions},
         io::{self, prelude::*, BufRead},
         path::{Path, PathBuf},
+        vec::IntoIter,
     },
 };
 
@@ -221,7 +220,6 @@ where
 }
 
 struct SortMerge {
-    // prev_rows: IntoIter<Result<(Key, DataRow)>>,
     prev_rows: Box<dyn Iterator<Item = Result<(Key, DataRow), Error>>>,
     rows: IntoIter<(Key, DataRow)>,
     current: Option<(bool, Key, DataRow)>,
@@ -340,69 +338,26 @@ impl StoreMut for JsonlStorage {
     }
 
     async fn insert_data(&mut self, table_name: &str, mut rows: Vec<(Key, DataRow)>) -> Result<()> {
-        let mut prev_rows = self.scan_data(table_name)?;
+        let prev_rows = self.scan_data(table_name)?;
         rows.sort_by(|(key_a, _), (key_b, _)| {
             key_a
                 .partial_cmp(key_b)
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
-        let mut rows = rows.into_iter();
-        let mut bucket: Vec<DataRow> = Vec::new();
+        let rows = rows.into_iter();
+
         let sort_merge = SortMerge {
             prev_rows,
             rows,
             current: None,
         };
 
-        let result = sort_merge.collect::<Vec<_>>();
-
-        // while prev_rows.peek().is_some() | rows.peek().is_some() {
-        //     match (prev_rows.peek(), rows.peek()) {
-        //         (Some(Ok((prev_key, prev_row))), Some((key, row))) => {
-        //             match prev_key.to_cmp_be_bytes().cmp(&key.to_cmp_be_bytes()) {
-        //                 Ordering::Less => {
-        //                     bucket.push(prev_row.to_owned());
-        //                     prev_rows.next();
-        //                 }
-        //                 Ordering::Greater => {
-        //                     bucket.push(row.to_owned());
-        //                     rows.next();
-        //                 }
-        //                 Ordering::Equal => {
-        //                     bucket.push(row.to_owned());
-        //                     rows.next();
-        //                     prev_rows.next();
-        //                 }
-        //             }
-        //         }
-        //         (Some(Err(_)), Some(_)) => {
-        //             return Err(prev_rows.next().unwrap().unwrap_err());
-        //         }
-        //         (Some(_), None) => {
-        //             let prev_rows = prev_rows
-        //                 .map(|result| {
-        //                     let (_, prev_row) = result?;
-        //                     Ok(prev_row)
-        //                 })
-        //                 .collect::<Result<Vec<_>>>()?;
-        //             bucket.extend(prev_rows);
-
-        //             break;
-        //         }
-        //         (None, Some(_)) => {
-        //             let rows = rows.map(|(_, row)| row).collect::<Vec<_>>();
-        //             bucket.extend(rows);
-
-        //             break;
-        //         }
-        //         (None, None) => {}
-        //     }
-        // }
+        let merged = sort_merge.collect::<Vec<_>>();
 
         let table_path = self.data_path(table_name);
         File::create(&table_path).map_storage_err()?;
 
-        self.append_data(table_name, result).await
+        self.append_data(table_name, merged).await
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
