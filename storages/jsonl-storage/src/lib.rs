@@ -220,13 +220,13 @@ where
 }
 
 type IsLeft = bool;
-struct SortMerge {
-    prev_rows: Box<dyn Iterator<Item = Result<(Key, DataRow), Error>>>,
+struct SortMerge<T: Iterator<Item = Result<(Key, DataRow)>>> {
+    prev_rows: T,
     rows: IntoIter<(Key, DataRow)>,
     current: Option<(IsLeft, Key, DataRow)>,
 }
 
-impl Iterator for SortMerge {
+impl<T: Iterator<Item = Result<(Key, DataRow)>>> Iterator for SortMerge<T> {
     type Item = Result<DataRow>;
 
     fn next(&mut self) -> Option<Self::Item> {
