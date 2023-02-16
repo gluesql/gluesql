@@ -1,3 +1,5 @@
+use std::vec::IntoIter;
+
 mod alter_table;
 mod index;
 mod transaction;
@@ -218,6 +220,52 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
+struct SortMerge {
+    // prev_rows: IntoIter<Result<(Key, DataRow)>>,
+    prev_rows: Box<dyn Iterator<Item = Result<(Key, DataRow), Error>>>,
+    rows: IntoIter<(Key, DataRow)>,
+    current: Option<(bool, Key, DataRow)>,
+}
+
+impl Iterator for SortMerge {
+    type Item = DataRow;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (left, right) = match self.current.to_owned() {
+            Some((is_left, key, row)) => match is_left {
+                true => (Some((key, row)), self.rows.next()),
+                false => (self.prev_rows.next().map(|a| a.unwrap()), Some((key, row))),
+            },
+            None => (self.prev_rows.next().map(|a| a.unwrap()), self.rows.next()),
+        };
+
+        match (left, right) {
+            (None, None) => None,
+            (None, Some((_, row))) => Some(row),
+            (Some((_, prev_row)), None) => Some(prev_row),
+            (Some((prev_key, prev_row)), Some((key, row))) => {
+                match prev_key.to_cmp_be_bytes().cmp(&key.to_cmp_be_bytes()) {
+                    Ordering::Less => {
+                        self.current = Some((false, key, row));
+
+                        Some(prev_row)
+                    }
+                    Ordering::Greater => {
+                        self.current = Some((true, prev_key, prev_row));
+
+                        Some(row)
+                    }
+                    Ordering::Equal => {
+                        self.current = None;
+
+                        Some(row)
+                    }
+                }
+            }
+        }
+    }
+}
+
 #[async_trait(?Send)]
 impl StoreMut for JsonlStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
@@ -292,61 +340,69 @@ impl StoreMut for JsonlStorage {
     }
 
     async fn insert_data(&mut self, table_name: &str, mut rows: Vec<(Key, DataRow)>) -> Result<()> {
-        let mut prev_rows = self.scan_data(table_name)?.peekable();
+        let mut prev_rows = self.scan_data(table_name)?;
         rows.sort_by(|(key_a, _), (key_b, _)| {
             key_a
                 .partial_cmp(key_b)
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
-        let mut rows = rows.into_iter().peekable();
+        let mut rows = rows.into_iter();
         let mut bucket: Vec<DataRow> = Vec::new();
+        let sort_merge = SortMerge {
+            prev_rows,
+            rows,
+            current: None,
+        };
 
-        while prev_rows.peek().is_some() | rows.peek().is_some() {
-            match (prev_rows.peek(), rows.peek()) {
-                (Some(result), Some((key, row))) => {
-                    let (prev_key, prev_row) = result.as_ref().unwrap();
+        let result = sort_merge.collect::<Vec<_>>();
 
-                    match prev_key.to_cmp_be_bytes().cmp(&key.to_cmp_be_bytes()) {
-                        Ordering::Less => {
-                            bucket.push(prev_row.to_owned());
-                            prev_rows.next();
-                        }
-                        Ordering::Greater => {
-                            bucket.push(row.to_owned());
-                            rows.next();
-                        }
-                        Ordering::Equal => {
-                            bucket.push(row.to_owned());
-                            rows.next();
-                            prev_rows.next();
-                        }
-                    }
-                }
-                (Some(_), None) => {
-                    let prev_rows = prev_rows
-                        .map(|result| {
-                            let (_, prev_row) = result?;
-                            Ok(prev_row)
-                        })
-                        .collect::<Result<Vec<_>>>()?;
-                    bucket.extend(prev_rows);
+        // while prev_rows.peek().is_some() | rows.peek().is_some() {
+        //     match (prev_rows.peek(), rows.peek()) {
+        //         (Some(Ok((prev_key, prev_row))), Some((key, row))) => {
+        //             match prev_key.to_cmp_be_bytes().cmp(&key.to_cmp_be_bytes()) {
+        //                 Ordering::Less => {
+        //                     bucket.push(prev_row.to_owned());
+        //                     prev_rows.next();
+        //                 }
+        //                 Ordering::Greater => {
+        //                     bucket.push(row.to_owned());
+        //                     rows.next();
+        //                 }
+        //                 Ordering::Equal => {
+        //                     bucket.push(row.to_owned());
+        //                     rows.next();
+        //                     prev_rows.next();
+        //                 }
+        //             }
+        //         }
+        //         (Some(Err(_)), Some(_)) => {
+        //             return Err(prev_rows.next().unwrap().unwrap_err());
+        //         }
+        //         (Some(_), None) => {
+        //             let prev_rows = prev_rows
+        //                 .map(|result| {
+        //                     let (_, prev_row) = result?;
+        //                     Ok(prev_row)
+        //                 })
+        //                 .collect::<Result<Vec<_>>>()?;
+        //             bucket.extend(prev_rows);
 
-                    break;
-                }
-                (None, Some(_)) => {
-                    let rows = rows.map(|(_, row)| row).collect::<Vec<_>>();
-                    bucket.extend(rows);
+        //             break;
+        //         }
+        //         (None, Some(_)) => {
+        //             let rows = rows.map(|(_, row)| row).collect::<Vec<_>>();
+        //             bucket.extend(rows);
 
-                    break;
-                }
-                (None, None) => {}
-            }
-        }
+        //             break;
+        //         }
+        //         (None, None) => {}
+        //     }
+        // }
 
         let table_path = self.data_path(table_name);
         File::create(&table_path).map_storage_err()?;
 
-        self.append_data(table_name, bucket).await
+        self.append_data(table_name, result).await
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
