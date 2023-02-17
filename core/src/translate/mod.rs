@@ -9,7 +9,7 @@ mod query;
 
 pub use self::{
     data_type::translate_data_type,
-    ddl::translate_column_def,
+    ddl::{translate_column_def, translate_operate_function_arg},
     error::TranslateError,
     expr::{translate_expr, translate_order_by_expr},
     query::{alias_or_name, translate_query, translate_select_item},
@@ -22,8 +22,12 @@ use {
     },
     ddl::translate_alter_table_operation,
     sqlparser::ast::{
-        Assignment as SqlAssignment, Ident as SqlIdent, ObjectName as SqlObjectName,
-        ObjectType as SqlObjectType, Statement as SqlStatement, TableFactor, TableWithJoins,
+        Assignment as SqlAssignment,
+        FunctionDefinition::{
+            DoubleDollarDef as SqlDoubleDollarDef, SingleQuotedDef as SqlSingleQuotedDef,
+        },
+        Ident as SqlIdent, ObjectName as SqlObjectName, ObjectType as SqlObjectType,
+        Statement as SqlStatement, TableFactor, TableWithJoins,
     },
 };
 
@@ -185,6 +189,39 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
         SqlStatement::ShowColumns { table_name, .. } => Ok(Statement::ShowColumns {
             table_name: translate_object_name(table_name)?,
         }),
+        SqlStatement::CreateFunction {
+            or_replace,
+            name,
+            args,
+            params,
+            ..
+        } => {
+            let args = if let Some(args) = args {
+                Some(
+                    args.iter()
+                        .map(translate_operate_function_arg)
+                        .collect::<Result<Vec<_>>>()?,
+                )
+            } else {
+                None
+            };
+            Ok(Statement::CreateFunction {
+                or_replace: *or_replace,
+                name: translate_object_name(name)?,
+                args,
+                body: params
+                    .as_
+                    .as_ref()
+                    .map(|v| {
+                        match v {
+                            SqlSingleQuotedDef(v) => v,
+                            SqlDoubleDollarDef(v) => v,
+                        }
+                        .to_owned()
+                    })
+                    .unwrap_or_else(|| "".to_owned()),
+            })
+        }
         _ => Err(TranslateError::UnsupportedStatement(sql_statement.to_string()).into()),
     }
 }

@@ -340,5 +340,6 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 Ok(payload)
             }
         },
+        Statement::CreateFunction { .. } => todo!(),
     }
 }

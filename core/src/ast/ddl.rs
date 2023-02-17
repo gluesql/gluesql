@@ -38,6 +38,14 @@ pub struct ColumnUniqueOption {
     pub is_primary: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct OperateFunctionArg {
+    pub name: Option<String>,
+    pub data_type: DataType,
+    /// `DEFAULT <restricted-expr>`
+    pub default: Option<Expr>,
+}
+
 impl ToSql for AlterTableOperation {
     fn to_sql(&self) -> String {
         match self {
@@ -102,9 +110,31 @@ impl ToSql for ColumnUniqueOption {
     }
 }
 
+impl ToSql for OperateFunctionArg {
+    fn to_sql(&self) -> String {
+        let OperateFunctionArg {
+            name,
+            data_type,
+            default,
+        } = self;
+        let default = default
+            .as_ref()
+            .map(|expr| format!("DEFAULT {}", expr.to_sql()));
+        let name = name.as_ref().map(|v| v.to_owned());
+        let arg_def = data_type.to_string();
+        [name, Some(arg_def), default]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::ast::{AstLiteral, ColumnDef, ColumnUniqueOption, DataType, Expr, ToSql};
+    use crate::ast::{
+        AstLiteral, ColumnDef, ColumnUniqueOption, DataType, Expr, OperateFunctionArg, ToSql,
+    };
 
     #[test]
     fn to_sql_column_def() {
@@ -164,6 +194,38 @@ mod tests {
                 nullable: false,
                 default: Some(Expr::Literal(AstLiteral::Boolean(false))),
                 unique: Some(ColumnUniqueOption { is_primary: false }),
+            }
+            .to_sql()
+        );
+    }
+
+    #[test]
+    fn to_sql_operate_function_arg() {
+        assert_eq!(
+            "name TEXT",
+            OperateFunctionArg {
+                name: Some("name".to_owned()),
+                data_type: DataType::Text,
+                default: None,
+            }
+            .to_sql()
+        );
+        assert_eq!(
+            "TEXT",
+            OperateFunctionArg {
+                name: None,
+                data_type: DataType::Text,
+                default: None,
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            "accepted BOOLEAN DEFAULT FALSE",
+            OperateFunctionArg {
+                name: Some("accepted".to_owned()),
+                data_type: DataType::Boolean,
+                default: Some(Expr::Literal(AstLiteral::Boolean(false))),
             }
             .to_sql()
         );

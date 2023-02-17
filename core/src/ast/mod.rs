@@ -68,6 +68,14 @@ pub enum Statement {
         source: Option<Box<Query>>,
         engine: Option<String>,
     },
+    /// CREATE FUNCTION
+    CreateFunction {
+        or_replace: bool,
+        name: String,
+        /// Optional schema
+        args: Option<Vec<OperateFunctionArg>>,
+        body: String,
+    },
     /// ALTER TABLE
     AlterTable {
         /// Table name
@@ -201,6 +209,25 @@ impl ToSql for Statement {
 
                 format!("{sql};")
             }
+            Statement::CreateFunction {
+                or_replace,
+                name,
+                args,
+                body,
+                ..
+            } => {
+                let or_replace = or_replace.then_some(" OR REPLACE").unwrap_or("");
+                let args = args
+                    .as_ref()
+                    .map(|args| {
+                        args.iter()
+                            .map(ToSql::to_sql)
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    })
+                    .unwrap_or_else(|| "".to_owned());
+                format!("CREATE{or_replace} FUNCTION {name}({args}) AS '{body}';")
+            }
             Statement::AlterTable { name, operation } => {
                 format!(r#"ALTER TABLE "{name}" {};"#, operation.to_sql())
             }
@@ -254,8 +281,8 @@ mod tests {
     use {
         crate::ast::{
             AlterTableOperation, Assignment, AstLiteral, BinaryOperator, ColumnDef, DataType, Expr,
-            OrderByExpr, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
-            TableWithJoins, ToSql, Values, Variable,
+            OperateFunctionArg, OrderByExpr, Query, Select, SelectItem, SetExpr, Statement,
+            TableFactor, TableWithJoins, ToSql, Values, Variable,
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,
@@ -528,6 +555,43 @@ mod tests {
                 },]),
                 source: None,
                 engine: Some("SLED".to_owned()),
+            }
+            .to_sql()
+        );
+    }
+
+    #[test]
+    fn to_sql_create_function() {
+        assert_eq!(
+            "CREATE FUNCTION add(num INT, INT DEFAULT 0) AS 'select num + $2;';",
+            Statement::CreateFunction {
+                or_replace: false,
+                name: "add".into(),
+                args: Some(vec![
+                    OperateFunctionArg {
+                        name: Some("num".into()),
+                        data_type: DataType::Int,
+                        default: None,
+                    },
+                    OperateFunctionArg {
+                        name: None,
+                        data_type: DataType::Int,
+                        default: Some(Expr::Literal(AstLiteral::Number(
+                            BigDecimal::from_str("0").unwrap()
+                        ))),
+                    },
+                ],),
+                body: "select num + $2;".into()
+            }
+            .to_sql()
+        );
+        assert_eq!(
+            "CREATE OR REPLACE FUNCTION add() AS 'select 1;';",
+            Statement::CreateFunction {
+                or_replace: true,
+                name: "add".into(),
+                args: None,
+                body: "select 1;".into()
             }
             .to_sql()
         );
