@@ -19,7 +19,6 @@ use {
         fs::{self, remove_file, File, OpenOptions},
         io::{self, prelude::*, BufRead},
         path::{Path, PathBuf},
-        vec::IntoIter,
     },
 };
 
@@ -220,22 +219,27 @@ where
 }
 
 type IsLeft = bool;
-struct SortMerge<T: Iterator<Item = Result<(Key, DataRow)>>> {
+struct SortMerge<
+    T: Iterator<Item = Result<(Key, DataRow)>>,
+    U: Iterator<Item = Result<(Key, DataRow)>>,
+> {
     prev_rows: T,
-    rows: IntoIter<(Key, DataRow)>,
+    rows: U,
     current: Option<(IsLeft, Key, DataRow)>,
 }
 
-impl<T: Iterator<Item = Result<(Key, DataRow)>>> Iterator for SortMerge<T> {
+impl<T: Iterator<Item = Result<(Key, DataRow)>>, U: Iterator<Item = Result<(Key, DataRow)>>>
+    Iterator for SortMerge<T, U>
+{
     type Item = Result<DataRow>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let (left, right) = match self.current.to_owned() {
             Some((is_left, key, row)) => match is_left {
-                true => (Some(Ok((key, row))), self.rows.next().map(Ok)),
+                true => (Some(Ok((key, row))), self.rows.next()),
                 false => (self.prev_rows.next(), Some(Ok((key, row)))),
             },
-            None => (self.prev_rows.next(), self.rows.next().map(Ok)),
+            None => (self.prev_rows.next(), self.rows.next()),
         };
 
         match (left, right) {
@@ -354,7 +358,7 @@ impl StoreMut for JsonlStorage {
                 .partial_cmp(key_b)
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
-        let rows = rows.into_iter();
+        let rows = rows.into_iter().map(Ok);
 
         let sort_merge = SortMerge {
             prev_rows,
