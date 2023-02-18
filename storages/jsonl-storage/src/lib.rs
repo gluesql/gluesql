@@ -353,9 +353,7 @@ impl StoreMut for JsonlStorage {
     async fn insert_data(&mut self, table_name: &str, mut rows: Vec<(Key, DataRow)>) -> Result<()> {
         let prev_rows = self.scan_data(table_name)?;
         rows.sort_by(|(key_a, _), (key_b, _)| {
-            key_a
-                .partial_cmp(key_b)
-                .unwrap_or(std::cmp::Ordering::Equal)
+            key_a.to_cmp_be_bytes().cmp(&key_b.to_cmp_be_bytes())
         });
         let rows = rows.into_iter();
 
