@@ -18,6 +18,7 @@ use {
         fmt,
         fs::{self, remove_file, File, OpenOptions},
         io::{self, prelude::*, BufRead},
+        iter::Peekable,
         path::{Path, PathBuf},
         vec::IntoIter,
     },
@@ -223,11 +224,9 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
-type IsLeft = bool;
 struct SortMerge<T: Iterator<Item = Result<(Key, DataRow)>>> {
-    left_rows: T,
-    right_rows: IntoIter<(Key, DataRow)>,
-    current_row: Option<(IsLeft, Key, DataRow)>,
+    left_rows: Peekable<T>,
+    right_rows: Peekable<IntoIter<(Key, DataRow)>>,
 }
 
 impl<T> SortMerge<T>
@@ -235,14 +234,15 @@ where
     T: Iterator<Item = Result<(Key, DataRow)>>,
 {
     fn new(left_rows: T, right_rows: IntoIter<(Key, DataRow)>) -> Self {
+        let left_rows = left_rows.peekable();
+        let right_rows = right_rows.peekable();
+
         Self {
             left_rows,
             right_rows,
-            current_row: None,
         }
     }
 }
-
 impl<T> Iterator for SortMerge<T>
 where
     T: Iterator<Item = Result<(Key, DataRow)>>,
@@ -250,49 +250,31 @@ where
     type Item = Result<DataRow>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut result = || -> Result<_> {
-            let left_right = match self.current_row.take() {
-                Some((true, key, row)) => (Some((key, row)), self.right_rows.next()),
-                Some((false, key, row)) => (self.left_rows.next().transpose()?, Some((key, row))),
-                None => (self.left_rows.next().transpose()?, self.right_rows.next()),
-            };
+        let left = self.left_rows.peek();
+        let right = self.right_rows.peek();
 
-            Ok(left_right)
-        };
-
-        let (left, right) = match result() {
-            Ok(left_right) => left_right,
-            Err(e) => return Some(Err(e)),
-        };
-
-        let data_row = match (left, right) {
-            (Some((left_key, left_row)), Some((right_key, right_row))) => {
-                match left_key.to_cmp_be_bytes().cmp(&right_key.to_cmp_be_bytes()) {
-                    Ordering::Less => {
-                        self.current_row = Some((false, right_key, right_row));
-
-                        Some(left_row)
-                    }
-                    Ordering::Greater => {
-                        self.current_row = Some((true, left_key, left_row));
-
-                        Some(right_row)
-                    }
-                    Ordering::Equal => {
-                        self.current_row = None;
-
-                        Some(right_row)
-                    }
-                }
+        let (left_key, right_key) = match (left, right) {
+            (Some(Ok((left_key, _))), Some((right_key, _))) => (left_key, right_key),
+            (Some(_), _) => {
+                return self.left_rows.next().map(|item| Ok(item?.1));
             }
-            (left, right) => {
-                self.current_row = None;
-
-                left.or(right).map(|(_, row)| row)
+            (None, Some(_)) => {
+                return self.right_rows.next().map(|item| item.1).map(Ok);
+            }
+            (None, None) => {
+                return None;
             }
         };
 
-        data_row.map(Ok)
+        match left_key.to_cmp_be_bytes().cmp(&right_key.to_cmp_be_bytes()) {
+            Ordering::Less => self.left_rows.next(),
+            Ordering::Greater => self.right_rows.next().map(Ok),
+            Ordering::Equal => {
+                self.left_rows.next();
+                self.right_rows.next().map(Ok)
+            }
+        }
+        .map(|item| Ok(item?.1))
     }
 }
 
