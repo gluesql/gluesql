@@ -164,20 +164,28 @@ async fn join<'a, T: GStore>(
                     match rows {
                         None => Rows::Empty(empty()),
                         Some(rows) => {
-                            let rows = stream::iter(rows.iter().map(Cow::Borrowed).map(Ok));
-                            let rows = rows.try_filter_map(move |row| {
-                                check_where_clause(
-                                    storage,
-                                    table_alias,
-                                    filter_context.as_ref().map(Rc::clone),
-                                    Some(&project_context).map(Rc::clone),
-                                    where_clause,
-                                    row,
-                                )
-                            });
-                            let rows = stream::iter(rows.collect::<Vec<_>>().await);
+                            let rows = stream::iter(rows)
+                                .filter_map(|row| {
+                                    let filter_context = filter_context.as_ref().map(Rc::clone);
+                                    let project_context = Some(&project_context).map(Rc::clone);
 
-                            Rows::Hash(rows)
+                                    async {
+                                        check_where_clause(
+                                            storage,
+                                            table_alias,
+                                            filter_context,
+                                            project_context,
+                                            where_clause,
+                                            Cow::Borrowed(row),
+                                        )
+                                        .await
+                                        .transpose()
+                                    }
+                                })
+                                .collect::<Vec<_>>()
+                                .await;
+
+                            Rows::Hash(stream::iter(rows))
                         }
                     }
                 }
