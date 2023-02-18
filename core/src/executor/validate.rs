@@ -27,11 +27,11 @@ pub enum ValidateError {
     DuplicateEntryOnPrimaryKeyField(Key),
 }
 
-pub enum ColumnValidation {
+pub enum ColumnValidation<'column_def> {
     /// `INSERT`
-    All(Rc<[ColumnDef]>),
+    All(&'column_def [ColumnDef]),
     /// `UPDATE`
-    SpecifiedColumns(Rc<[ColumnDef]>, Vec<String>),
+    SpecifiedColumns(&'column_def [ColumnDef], Vec<String>),
 }
 
 #[derive(Debug)]
@@ -84,7 +84,7 @@ impl UniqueConstraint {
 pub async fn validate_unique<T: Store>(
     storage: &T,
     table_name: &str,
-    column_validation: ColumnValidation,
+    column_validation: ColumnValidation<'_>,
     row_iter: impl Iterator<Item = &[Value]> + Clone,
 ) -> Result<()> {
     enum Columns {
