@@ -243,7 +243,10 @@ where
     }
 }
 
-impl<T: Iterator<Item = Result<(Key, DataRow)>>> Iterator for SortMerge<T> {
+impl<T> Iterator for SortMerge<T>
+where
+    T: Iterator<Item = Result<(Key, DataRow)>>,
+{
     type Item = Result<DataRow>;
 
     fn next(&mut self) -> Option<Self::Item> {
