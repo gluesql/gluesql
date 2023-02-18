@@ -508,44 +508,39 @@ pub async fn fetch_labels<T: GStore>(
         return Ok(None);
     }
 
-    let columns = Rc::new(columns.unwrap_or_default());
-    let join_columns = Rc::new(join_columns.unwrap_or_default());
+    let columns = columns.unwrap_or_default();
+    let join_columns = join_columns.unwrap_or_default();
 
     projection
         .iter()
-        .flat_map(move |item| {
-            let columns = Rc::clone(&columns);
-            let join_columns = Rc::clone(&join_columns);
+        .flat_map(|item| match item {
+            SelectItem::Wildcard => {
+                let columns = columns.iter().cloned();
+                let join_columns = join_columns.iter().flat_map(|(_, columns)| columns.clone());
 
-            match item {
-                SelectItem::Wildcard => {
-                    let columns = columns.iter().cloned();
-                    let join_columns = join_columns.iter().flat_map(|(_, columns)| columns.clone());
-
-                    columns.chain(join_columns).map(Ok).collect()
-                }
-                SelectItem::QualifiedWildcard(target_table_alias) => {
-                    if table_alias == target_table_alias {
-                        return columns.iter().cloned().map(Ok).collect();
-                    }
-
-                    let labels = join_columns
-                        .iter()
-                        .find(|(table_alias, _)| table_alias == &target_table_alias)
-                        .map(|(_, columns)| columns.clone());
-
-                    match labels {
-                        Some(columns) => columns.into_iter().map(Ok).collect(),
-                        None => {
-                            vec![Err(FetchError::TableAliasNotFound(
-                                target_table_alias.to_owned(),
-                            )
-                            .into())]
-                        }
-                    }
-                }
-                SelectItem::Expr { label, .. } => vec![Ok(label.to_owned())],
+                columns.chain(join_columns).map(Ok).collect()
             }
+            SelectItem::QualifiedWildcard(target_table_alias) => {
+                if table_alias == target_table_alias {
+                    return columns.iter().cloned().map(Ok).collect();
+                }
+
+                let labels = join_columns
+                    .iter()
+                    .find(|(table_alias, _)| table_alias == &target_table_alias)
+                    .map(|(_, columns)| columns.clone());
+
+                match labels {
+                    Some(columns) => columns.into_iter().map(Ok).collect(),
+                    None => {
+                        vec![Err(FetchError::TableAliasNotFound(
+                            target_table_alias.to_owned(),
+                        )
+                        .into())]
+                    }
+                }
+            }
+            SelectItem::Expr { label, .. } => vec![Ok(label.to_owned())],
         })
         .collect::<Result<_>>()
         .map(Some)
