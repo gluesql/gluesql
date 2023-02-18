@@ -81,30 +81,42 @@ test_case!(like_ilike, async move {
     let error_sqls = [
         (
             "SELECT name FROM Item WHERE 'ABC' LIKE 10",
-            LiteralError::LikeOnNonString(
-                format!("{:?}", Literal::Text(Cow::Owned("ABC".to_owned()))),
-                format!(
+            LiteralError::LikeOnNonString {
+                base: format!("{:?}", Literal::Text(Cow::Owned("ABC".to_owned()))),
+                pattern: format!(
                     "{:?}",
                     Literal::Number(Cow::Owned(BigDecimal::from_str("10").unwrap()))
                 ),
-            )
+                case_sensitive: true,
+            }
             .into(),
         ),
         (
-            "SELECT name FROM Item WHERE True LIKE '_B_'",
-            LiteralError::LikeOnNonString(
-                format!("{:?}", Literal::Boolean(true)),
-                format!("{:?}", Literal::Text(Cow::Owned("_B_".to_owned()))),
-            )
+            "SELECT name FROM Item WHERE True ILIKE '_B_'",
+            LiteralError::LikeOnNonString {
+                base: format!("{:?}", Literal::Boolean(true)),
+                pattern: format!("{:?}", Literal::Text(Cow::Owned("_B_".to_owned()))),
+                case_sensitive: false,
+            }
             .into(),
         ),
         (
             "SELECT name FROM Item WHERE name = 'Amelia' AND name LIKE 10",
-            ValueError::LikeOnNonString(Value::Str("Amelia".to_owned()), Value::I64(10)).into(),
+            ValueError::LikeOnNonString {
+                base: Value::Str("Amelia".to_owned()),
+                pattern: Value::I64(10),
+                case_sensitive: true,
+            }
+            .into(),
         ),
         (
             "SELECT name FROM Item WHERE name = 'Amelia' AND name ILIKE 10",
-            ValueError::ILikeOnNonString(Value::Str("Amelia".to_owned()), Value::I64(10)).into(),
+            ValueError::LikeOnNonString {
+                base: Value::Str("Amelia".to_owned()),
+                pattern: Value::I64(10),
+                case_sensitive: false,
+            }
+            .into(),
         ),
     ];
 
