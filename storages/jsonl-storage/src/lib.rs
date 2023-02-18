@@ -230,6 +230,19 @@ struct SortMerge<T: Iterator<Item = Result<(Key, DataRow)>>> {
     current: Option<(IsLeft, Key, DataRow)>,
 }
 
+impl<T> SortMerge<T>
+where
+    T: Iterator<Item = Result<(Key, DataRow)>>,
+{
+    fn new(prev_rows: T, rows: IntoIter<(Key, DataRow)>) -> Self {
+        Self {
+            prev_rows,
+            rows,
+            current: None,
+        }
+    }
+}
+
 impl<T: Iterator<Item = Result<(Key, DataRow)>>> Iterator for SortMerge<T> {
     type Item = Result<DataRow>;
 
@@ -366,11 +379,7 @@ impl StoreMut for JsonlStorage {
         });
         let rows = rows.into_iter();
 
-        let sort_merge = SortMerge {
-            prev_rows,
-            rows,
-            current: None,
-        };
+        let sort_merge = SortMerge::new(prev_rows, rows);
         let merged = sort_merge.collect::<Result<Vec<_>>>()?;
 
         let table_path = self.data_path(table_name);
