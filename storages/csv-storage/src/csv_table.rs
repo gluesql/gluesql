@@ -1,19 +1,18 @@
-use std::{borrow::Cow, collections::HashMap};
-
-use gluesql_core::{
-    ast::ColumnUniqueOption,
-    data::Literal,
-    prelude::{Key, Value},
-};
-
 use {
     crate::error::CsvStorageError,
     csv::ReaderBuilder,
     gluesql_core::{
-        ast::ColumnDef, chrono::NaiveDateTime, data::Schema, prelude::DataType, result::Result,
+        ast::{ColumnDef, ColumnUniqueOption},
+        chrono::NaiveDateTime,
+        data::Literal,
+        data::Schema,
+        prelude::{DataType, Key, Value},
+        result::Result,
         store::DataRow,
     },
     std::{
+        borrow::Cow,
+        collections::HashMap,
         ffi::OsStr,
         fs::OpenOptions,
         io::prelude::*,
