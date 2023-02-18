@@ -1,13 +1,15 @@
 mod alter_table;
+mod error;
 mod index;
 mod transaction;
 
 use {
     async_trait::async_trait,
+    error::{JsonlStorageError, OptionExt, ResultExt},
     gluesql_core::{
         data::{HashMapJsonExt, Schema},
         prelude::Key,
-        result::{Error, Result},
+        result::Result,
         store::{DataRow, RowIter, Store},
         {chrono::NaiveDateTime, store::StoreMut},
     },
@@ -15,9 +17,8 @@ use {
     std::{
         cmp::Ordering,
         collections::HashMap,
-        fmt,
         fs::{self, remove_file, File, OpenOptions},
-        io::{self, prelude::*, BufRead},
+        io::{self, BufRead, Read, Write},
         iter::Peekable,
         path::{Path, PathBuf},
         vec::IntoIter,
@@ -27,45 +28,6 @@ use {
 #[derive(Debug)]
 pub struct JsonlStorage {
     pub path: PathBuf,
-}
-
-trait ResultExt<T, E: ToString> {
-    fn map_storage_err(self) -> Result<T, Error>;
-}
-
-impl<T, E: ToString> ResultExt<T, E> for std::result::Result<T, E> {
-    fn map_storage_err(self) -> Result<T, Error> {
-        self.map_err(|e| e.to_string()).map_err(Error::StorageMsg)
-    }
-}
-
-trait OptionExt<T> {
-    fn map_storage_err(self, payload: String) -> Result<T, Error>;
-}
-
-impl<T> OptionExt<T> for std::option::Option<T> {
-    fn map_storage_err(self, payload: String) -> Result<T, Error> {
-        self.ok_or_else(|| payload.to_string())
-            .map_err(Error::StorageMsg)
-    }
-}
-
-enum JsonlStorageError {
-    FileNotFound,
-    TableDoesNotExist,
-    ColumnDoesNotExist,
-}
-
-impl fmt::Display for JsonlStorageError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let payload = match self {
-            JsonlStorageError::FileNotFound => "file not found".to_owned(),
-            JsonlStorageError::TableDoesNotExist => "table does not exist".to_owned(),
-            JsonlStorageError::ColumnDoesNotExist => "column does not exist".to_owned(),
-        };
-
-        write!(f, "{}", payload)
-    }
 }
 
 impl JsonlStorage {
@@ -397,6 +359,7 @@ fn jsonl_storage_test() {
             prelude::{
                 Glue, {Payload, Value},
             },
+            result::Error,
         },
     };
 
