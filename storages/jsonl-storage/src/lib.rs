@@ -225,20 +225,20 @@ where
 
 type IsLeft = bool;
 struct SortMerge<T: Iterator<Item = Result<(Key, DataRow)>>> {
-    prev_rows: T,
-    rows: IntoIter<(Key, DataRow)>,
-    current: Option<(IsLeft, Key, DataRow)>,
+    left_rows: T,
+    right_rows: IntoIter<(Key, DataRow)>,
+    current_row: Option<(IsLeft, Key, DataRow)>,
 }
 
 impl<T> SortMerge<T>
 where
     T: Iterator<Item = Result<(Key, DataRow)>>,
 {
-    fn new(prev_rows: T, rows: IntoIter<(Key, DataRow)>) -> Self {
+    fn new(left_rows: T, right_rows: IntoIter<(Key, DataRow)>) -> Self {
         Self {
-            prev_rows,
-            rows,
-            current: None,
+            left_rows,
+            right_rows,
+            current_row: None,
         }
     }
 }
@@ -251,10 +251,10 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut result = || -> Result<_> {
-            let left_right = match self.current.take() {
-                Some((true, key, row)) => (Some((key, row)), self.rows.next()),
-                Some((false, key, row)) => (self.prev_rows.next().transpose()?, Some((key, row))),
-                None => (self.prev_rows.next().transpose()?, self.rows.next()),
+            let left_right = match self.current_row.take() {
+                Some((true, key, row)) => (Some((key, row)), self.right_rows.next()),
+                Some((false, key, row)) => (self.left_rows.next().transpose()?, Some((key, row))),
+                None => (self.left_rows.next().transpose()?, self.right_rows.next()),
             };
 
             Ok(left_right)
@@ -266,27 +266,27 @@ where
         };
 
         let data_row = match (left, right) {
-            (Some((prev_key, prev_row)), Some((key, row))) => {
-                match prev_key.to_cmp_be_bytes().cmp(&key.to_cmp_be_bytes()) {
+            (Some((left_key, left_row)), Some((right_key, right_row))) => {
+                match left_key.to_cmp_be_bytes().cmp(&right_key.to_cmp_be_bytes()) {
                     Ordering::Less => {
-                        self.current = Some((false, key, row));
+                        self.current_row = Some((false, right_key, right_row));
 
-                        Some(prev_row)
+                        Some(left_row)
                     }
                     Ordering::Greater => {
-                        self.current = Some((true, prev_key, prev_row));
+                        self.current_row = Some((true, left_key, left_row));
 
-                        Some(row)
+                        Some(right_row)
                     }
                     Ordering::Equal => {
-                        self.current = None;
+                        self.current_row = None;
 
-                        Some(row)
+                        Some(right_row)
                     }
                 }
             }
             (left, right) => {
-                self.current = None;
+                self.current_row = None;
 
                 left.or(right).map(|(_, row)| row)
             }
