@@ -471,15 +471,15 @@ async fn fetch_join_columns<'a, T: GStore>(
     storage: &T,
     joins: &'a [Join],
 ) -> Result<Option<Vec<(&'a String, Vec<String>)>>> {
-    let columns = stream::iter(joins.iter())
-        .map(Ok::<_, Error>)
-        .try_filter_map(|join| async move {
+    let columns = stream::iter(joins)
+        .filter_map(|join| async {
             let relation = &join.relation;
             let alias = get_alias(relation);
 
-            Ok(fetch_relation_columns(storage, relation)
-                .await?
-                .map(|columns| (alias, columns)))
+            fetch_relation_columns(storage, relation)
+                .await
+                .map(|columns| Some((alias, columns?)))
+                .transpose()
         })
         .try_collect::<Vec<_>>()
         .await?;
