@@ -891,6 +891,16 @@ mod tests {
         );
 
         assert_eq!(
+            "FIND_IDX('goat', 'goat cheese')",
+            &Expr::Function(Box::new(Function::FindIdx {
+                sub_expr: Expr::Literal(AstLiteral::QuotedString("goat".to_owned())),
+                from_expr: Expr::Literal(AstLiteral::QuotedString("goat cheese".to_owned())),
+                start: None
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
             "ASCII('H')",
             &Expr::Function(Box::new(Function::Ascii(Expr::Literal(
                 AstLiteral::QuotedString("H".to_owned())
