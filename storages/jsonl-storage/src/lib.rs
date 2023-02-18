@@ -232,10 +232,8 @@ impl<T: Iterator<Item = Result<(Key, DataRow)>>> Iterator for SortMerge<T> {
     fn next(&mut self) -> Option<Self::Item> {
         let mut result = || -> Result<Option<DataRow>> {
             let (left, right) = match self.current.take() {
-                Some((is_left, key, row)) => match is_left {
-                    true => (Some((key, row)), self.rows.next()),
-                    false => (self.prev_rows.next().transpose()?, Some((key, row))),
-                },
+                Some((true, key, row)) => (Some((key, row)), self.rows.next()),
+                Some((false, key, row)) => (self.prev_rows.next().transpose()?, Some((key, row))),
                 None => (self.prev_rows.next().transpose()?, self.rows.next()),
             };
 
