@@ -263,17 +263,6 @@ impl<T: Iterator<Item = Result<(Key, DataRow)>>> Iterator for SortMerge<T> {
         };
 
         let data_row = match (left, right) {
-            (None, None) => None,
-            (None, Some((_, row))) => {
-                self.current = None;
-
-                Some(row)
-            }
-            (Some((_, prev_row)), None) => {
-                self.current = None;
-
-                Some(prev_row)
-            }
             (Some((prev_key, prev_row)), Some((key, row))) => {
                 match prev_key.to_cmp_be_bytes().cmp(&key.to_cmp_be_bytes()) {
                     Ordering::Less => {
@@ -292,6 +281,11 @@ impl<T: Iterator<Item = Result<(Key, DataRow)>>> Iterator for SortMerge<T> {
                         Some(row)
                     }
                 }
+            }
+            (left, right) => {
+                self.current = None;
+
+                left.or(right).map(|(_, row)| row)
             }
         };
 
