@@ -11,7 +11,7 @@ use {
         store::{DataRow, GStore},
     },
     async_recursion::async_recursion,
-    futures::stream::{self, StreamExt, TryStream, TryStreamExt},
+    futures::stream::{self, Stream, StreamExt, TryStreamExt},
     iter_enum::Iterator,
     itertools::Itertools,
     serde::Serialize,
@@ -39,7 +39,7 @@ pub async fn fetch<'a, T: GStore>(
     table_name: &'a str,
     columns: Option<Rc<[String]>>,
     where_clause: Option<&'a Expr>,
-) -> Result<impl TryStream<Ok = (Key, Row), Error = Error> + 'a> {
+) -> Result<impl Stream<Item = Result<(Key, Row)>> + 'a> {
     let columns = columns.unwrap_or_else(|| Rc::from([]));
     let rows = storage
         .scan_data(table_name)
@@ -85,7 +85,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
     storage: &'a T,
     table_factor: &'a TableFactor,
     filter_context: &Option<Rc<RowContext<'a>>>,
-) -> Result<impl TryStream<Ok = Row, Error = Error, Item = Result<Row>> + 'a> {
+) -> Result<impl Stream<Item = Result<Row>> + 'a> {
     let columns = Rc::from(
         fetch_relation_columns(storage, table_factor)
             .await?
