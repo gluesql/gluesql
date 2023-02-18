@@ -6,7 +6,7 @@ mod store_mut;
 
 use {
     csv_table::CsvTable,
-    error::StorageError,
+    error::CsvStorageError,
     std::{collections::HashMap, path::Path},
 };
 
@@ -17,7 +17,7 @@ pub struct CsvStorage {
 }
 
 impl CsvStorage {
-    pub fn from_toml(toml_file: impl AsRef<Path>) -> Result<Self, StorageError> {
+    pub fn from_toml(toml_file: impl AsRef<Path>) -> Result<Self, CsvStorageError> {
         Ok(Self {
             tables: HashMap::new(),
         })

@@ -1,5 +1,5 @@
 use {
-    crate::{csv_table::CsvTable, error::StorageError, CsvStorage},
+    crate::{csv_table::CsvTable, error::CsvStorageError, CsvStorage},
     async_trait::async_trait,
     gluesql_core::{
         data::{schema::Schema, Key},
@@ -24,14 +24,14 @@ impl StoreMut for CsvStorage {
 
                 Ok(())
             }
-            Err(_) => Err(StorageError::FailedToCreateTableFile.into()),
+            Err(_) => Err(CsvStorageError::FailedToCreateTableFile.into()),
         }
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         match self.tables.remove(table_name) {
             Some(_) => Ok(()),
-            None => Err(StorageError::TableNotFound(table_name.to_string()).into()),
+            None => Err(CsvStorageError::TableNotFound(table_name.to_string()).into()),
         }
     }
 
@@ -52,7 +52,7 @@ impl CsvStorage {
     fn check_table_existence(&self, table_name: &str) -> Result<&CsvTable> {
         match self.tables.get(table_name) {
             Some(table) => Ok(table),
-            None => Err(StorageError::TableNotFound(table_name.to_string()).into()),
+            None => Err(CsvStorageError::TableNotFound(table_name.to_string()).into()),
         }
     }
 }

@@ -1,5 +1,5 @@
 use {
-    crate::{csv_table::CsvTable, error::StorageError, CsvStorage},
+    crate::{csv_table::CsvTable, error::CsvStorageError, CsvStorage},
     async_trait::async_trait,
     csv::ReaderBuilder,
     gluesql_core::{
@@ -46,7 +46,7 @@ impl Store for CsvStorage {
         let CsvTable { schema, file_path } = self
             .tables
             .get(table_name)
-            .ok_or(StorageError::TableNotFound(table_name.to_string()))?;
+            .ok_or(CsvStorageError::TableNotFound(table_name.to_string()))?;
 
         let column_defs = schema.column_defs.to_owned();
         match column_defs {
@@ -54,11 +54,11 @@ impl Store for CsvStorage {
             Some(cds) => {
                 let rows = ReaderBuilder::new()
                     .from_path(file_path)
-                    .map_err(StorageError::from_csv_error)?
+                    .map_err(CsvStorageError::from_csv_error)?
                     .into_records()
                     .map(move |row| -> Result<DataRow> {
                         let data_row_vec = row
-                            .map_err(StorageError::from_csv_error)?
+                            .map_err(CsvStorageError::from_csv_error)?
                             .into_iter()
                             .zip(cds.clone().into_iter().map(|cd| cd.data_type))
                             .map(|(value, data_type)| {
@@ -79,7 +79,7 @@ impl Store for CsvStorage {
                 )))
             }
             // Schema-less, which isn't supported yet for CSV storage
-            None => Err(StorageError::SchemaLessNotSupported.into()),
+            None => Err(CsvStorageError::SchemaLessNotSupported.into()),
         }
     }
 }

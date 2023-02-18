@@ -7,7 +7,7 @@ use gluesql_core::{
 };
 
 use {
-    crate::error::StorageError,
+    crate::error::CsvStorageError,
     csv::ReaderBuilder,
     gluesql_core::{
         ast::ColumnDef, chrono::NaiveDateTime, data::Schema, prelude::DataType, result::Result,
@@ -30,12 +30,12 @@ pub struct CsvTable {
 impl CsvTable {
     /// Create csv table from given path.
     /// Columns are defaulted as string type.
-    pub fn from_path(path: impl AsRef<Path>) -> Result<Self, StorageError> {
+    pub fn from_path(path: impl AsRef<Path>) -> Result<Self, CsvStorageError> {
         let column_defs: Vec<ColumnDef> = ReaderBuilder::new()
             .from_path(&path)
-            .map_err(StorageError::from_csv_error)?
+            .map_err(CsvStorageError::from_csv_error)?
             .headers()
-            .map_err(StorageError::from_csv_error)?
+            .map_err(CsvStorageError::from_csv_error)?
             .into_iter()
             .map(|col| ColumnDef {
                 name: col.to_owned(),
@@ -77,9 +77,9 @@ impl CsvTable {
     /// Following info should be identical between `schema` and `CsvTable`:
     /// - `table_name`
     /// - `column_def.name` for every item in `column_defs`
-    pub fn adapt_schema(self, given_schema: Schema) -> Result<Self, StorageError> {
+    pub fn adapt_schema(self, given_schema: Schema) -> Result<Self, CsvStorageError> {
         if self.schema.table_name != given_schema.table_name {
-            return Err(StorageError::SchemaMismatch(
+            return Err(CsvStorageError::SchemaMismatch(
                 format!("Csv table name: {}", self.schema.table_name),
                 format!("Schema table name: {}", given_schema.table_name),
             ));
@@ -92,14 +92,14 @@ impl CsvTable {
                     .zip(given_cds.iter())
                     .map(|(s_col, g_col)| {
                         if s_col.name != g_col.name {
-                            return Err(StorageError::SchemaMismatch(
+                            return Err(CsvStorageError::SchemaMismatch(
                                 format!("Csv column name: {}", s_col.name),
                                 format!("Schema column name: {}", g_col.name),
                             ));
                         }
                         Ok(s_col.to_owned())
                     })
-                    .collect::<Result<Vec<_>, StorageError>>()?;
+                    .collect::<Result<Vec<_>, CsvStorageError>>()?;
                 Ok(Self {
                     file_path: self.file_path,
                     schema: Schema {
@@ -108,7 +108,7 @@ impl CsvTable {
                     },
                 })
             }
-            _ => Err(StorageError::SchemaLessNotSupported.into()),
+            _ => Err(CsvStorageError::SchemaLessNotSupported.into()),
         }
     }
 
@@ -123,7 +123,7 @@ impl CsvTable {
                     .into_iter()
                     .map(|value| Ok(value.into()))
                     .collect::<Result<Vec<String>>>(),
-                DataRow::Map(_) => Err(StorageError::SchemaLessNotSupported.into()),
+                DataRow::Map(_) => Err(CsvStorageError::SchemaLessNotSupported.into()),
             })
             .collect::<Result<Vec<_>>>()?;
 
@@ -137,10 +137,10 @@ impl CsvTable {
             .write(true)
             .append(true)
             .open(self.file_path.to_path_buf())
-            .map_err(|e| StorageError::FailedToWriteTableFile(e.to_string()))?;
+            .map_err(|e| CsvStorageError::FailedToWriteTableFile(e.to_string()))?;
 
         write!(file, "\n{rows_string}")
-            .map_err(|e| StorageError::FailedToWriteTableFile(e.to_string()).into())
+            .map_err(|e| CsvStorageError::FailedToWriteTableFile(e.to_string()).into())
     }
 
     /// Insert row in key position
@@ -149,7 +149,7 @@ impl CsvTable {
             .schema
             .column_defs
             .as_ref()
-            .ok_or(StorageError::InvalidKeyType)?;
+            .ok_or(CsvStorageError::InvalidKeyType)?;
         // If the table uses primary key, should insert right away
         match column_defs
             .into_iter()
@@ -162,7 +162,7 @@ impl CsvTable {
         {
             Some(pkey_idx) => {
                 let csv_file = std::fs::read_to_string(self.file_path.as_path())
-                    .map_err(|e| StorageError::InvalidFileImport(e.to_string()))?;
+                    .map_err(|e| CsvStorageError::InvalidFileImport(e.to_string()))?;
                 let mut data_map = csv_file
                     .split("\n")
                     .skip(1) // skip header
@@ -173,7 +173,7 @@ impl CsvTable {
                                 csv_row
                                     .split(",")
                                     .nth(pkey_idx)
-                                    .ok_or(StorageError::ColumnDefMismatch)?,
+                                    .ok_or(CsvStorageError::ColumnDefMismatch)?,
                             )),
                         )?)?;
 
@@ -195,7 +195,9 @@ impl CsvTable {
 
                             data_map.insert(key, csv_row);
                         }
-                        DataRow::Map(_) => return Err(StorageError::SchemaLessNotSupported.into()),
+                        DataRow::Map(_) => {
+                            return Err(CsvStorageError::SchemaLessNotSupported.into())
+                        }
                     }
                 }
 
@@ -207,9 +209,9 @@ impl CsvTable {
                 let header = csv_file.split(",").next().unwrap_or("");
 
                 std::fs::write(self.file_path.as_path(), format!("{header}\n{csv_rows}"))
-                    .map_err(|e| StorageError::FailedToWriteTableFile(e.to_string()).into())
+                    .map_err(|e| CsvStorageError::FailedToWriteTableFile(e.to_string()).into())
             }
-            None => Err(StorageError::InvalidKeyType.into()),
+            None => Err(CsvStorageError::InvalidKeyType.into()),
         }
     }
 
@@ -218,7 +220,7 @@ impl CsvTable {
             .schema
             .column_defs
             .as_ref()
-            .ok_or(StorageError::InvalidKeyType)?;
+            .ok_or(CsvStorageError::InvalidKeyType)?;
         // If the table uses primary key, should insert right away
         match column_defs
             .into_iter()
@@ -231,7 +233,7 @@ impl CsvTable {
         {
             Some(pkey_idx) => {
                 let csv_file = std::fs::read_to_string(self.file_path.as_path())
-                    .map_err(|e| StorageError::InvalidFileImport(e.to_string()))?;
+                    .map_err(|e| CsvStorageError::InvalidFileImport(e.to_string()))?;
                 let data_map = csv_file
                     .split("\n")
                     .skip(1) // skip header
@@ -242,7 +244,7 @@ impl CsvTable {
                                 csv_row
                                     .split(",")
                                     .nth(pkey_idx)
-                                    .ok_or(StorageError::ColumnDefMismatch)?,
+                                    .ok_or(CsvStorageError::ColumnDefMismatch)?,
                             )),
                         )?)?;
 
@@ -266,9 +268,9 @@ impl CsvTable {
                 let header = csv_file.split(",").next().unwrap_or("");
 
                 std::fs::write(self.file_path.as_path(), format!("{header}\n{csv_rows}"))
-                    .map_err(|e| StorageError::FailedToWriteTableFile(e.to_string()).into())
+                    .map_err(|e| CsvStorageError::FailedToWriteTableFile(e.to_string()).into())
             }
-            None => Err(StorageError::InvalidKeyType.into()),
+            None => Err(CsvStorageError::InvalidKeyType.into()),
         }
     }
 }
@@ -277,7 +279,7 @@ impl CsvTable {
 mod test {
     use {
         super::*,
-        crate::error::StorageError,
+        crate::error::CsvStorageError,
         gluesql_core::{ast::ColumnDef, chrono::NaiveDateTime, data::Schema, prelude::DataType},
         std::{fs, path::PathBuf, str::FromStr},
     };
@@ -469,7 +471,7 @@ mod test {
         let result = csv_table.adapt_schema(schema);
         // Assert
         assert_eq!(
-            Err(StorageError::SchemaMismatch(
+            Err(CsvStorageError::SchemaMismatch(
                 "Csv table name: users".to_string(),
                 "Schema table name: animals".to_string()
             )),
@@ -498,7 +500,7 @@ mod test {
         let result = csv_table.adapt_schema(schema);
         // Assert
         assert_eq!(
-            Err(StorageError::SchemaMismatch(
+            Err(CsvStorageError::SchemaMismatch(
                 "Csv column name: id".to_string(),
                 "Schema column name: identifier".to_string()
             )),

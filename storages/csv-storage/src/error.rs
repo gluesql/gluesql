@@ -1,7 +1,7 @@
 use {gluesql_core::result::Error, thiserror::Error as ThisError};
 
 #[derive(ThisError, Debug, PartialEq, Eq)]
-pub enum StorageError {
+pub enum CsvStorageError {
     #[error("failed to create table file")]
     FailedToCreateTableFile,
 
@@ -33,14 +33,14 @@ pub enum StorageError {
     SchemaLessNotSupported,
 }
 
-impl StorageError {
+impl CsvStorageError {
     pub fn from_csv_error(e: csv::Error) -> Self {
         Self::FailedToProcessCsv(e.to_string())
     }
 }
 
-impl From<StorageError> for Error {
-    fn from(e: StorageError) -> Self {
+impl From<CsvStorageError> for Error {
+    fn from(e: CsvStorageError) -> Self {
         Self::Storage(Box::new(e))
     }
 }

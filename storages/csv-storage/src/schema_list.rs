@@ -1,5 +1,5 @@
 use {
-    crate::error::StorageError,
+    crate::error::CsvStorageError,
     gluesql_core::{
         ast::{ColumnDef, ColumnUniqueOption, Expr},
         chrono::NaiveDateTime,
@@ -103,17 +103,17 @@ pub struct TomlSchemaList {
 }
 
 /// Load table schema list from schema file.
-pub fn load_schema_list(file_path: impl AsRef<Path>) -> Result<TomlSchemaList, StorageError> {
+pub fn load_schema_list(file_path: impl AsRef<Path>) -> Result<TomlSchemaList, CsvStorageError> {
     let toml_str = fs::read_to_string(file_path)
-        .map_err(|e| StorageError::InvalidSchemaFile(e.to_string()))?;
+        .map_err(|e| CsvStorageError::InvalidSchemaFile(e.to_string()))?;
     let schema_list: TomlSchemaList =
-        toml::from_str(&toml_str).map_err(|e| StorageError::InvalidSchemaFile(e.to_string()))?;
+        toml::from_str(&toml_str).map_err(|e| CsvStorageError::InvalidSchemaFile(e.to_string()))?;
 
     Ok(schema_list)
 }
 
 /// Get schema list from given schema file.
-pub fn get_schema_list(file_path: impl AsRef<Path>) -> Result<Vec<Schema>, StorageError> {
+pub fn get_schema_list(file_path: impl AsRef<Path>) -> Result<Vec<Schema>, CsvStorageError> {
     let toml_schema_list = load_schema_list(file_path)?;
     let schema_list: Vec<Schema> = toml_schema_list
         .tables
