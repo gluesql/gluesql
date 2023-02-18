@@ -127,6 +127,7 @@ macro_rules! generate_store_tests {
         glue!(function_ascii, function::ascii::ascii);
         glue!(function_chr, function::chr::chr);
         glue!(function_position, function::position::position);
+        glue!(function_find_idx, function::find_idx::find_idx);
         glue!(join, join::join);
         glue!(join_project, join::project);
         glue!(migrate, migrate::migrate);

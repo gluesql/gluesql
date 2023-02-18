@@ -476,6 +476,19 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let sub_expr = eval(sub_expr).await?;
             f::position(from_expr, sub_expr)
         }
+        Function::FindIdx {
+            sub_expr,
+            from_expr,
+            start,
+        } => {
+            let sub_expr = eval(sub_expr).await?;
+            let from_expr = eval(from_expr).await?;
+            let start = match start {
+                Some(idx) => Some(eval(idx).await?),
+                None => None,
+            };
+            f::find_idx(name, sub_expr, from_expr, start)
+        }
         Function::Cast { expr, data_type } => {
             let expr = eval(expr).await?;
             f::cast(expr, data_type)

@@ -189,6 +189,12 @@ pub enum ValueError {
     #[error("non-string parameter in position: {} IN {}", String::from(.from), String::from(.sub))]
     NonStringParameterInPosition { from: Value, sub: Value },
 
+    #[error("non-string parameter in find idx: {}, {}", String::from(.sub), String::from(.from))]
+    NonStringParameterInFindIdx { sub: Value, from: Value },
+
+    #[error("non positive offset in find idx: {0}")]
+    NonPositiveIntegerOffsetInFindIdx(String),
+
     #[error("failed to convert Value to Expr")]
     ValueToExprConversionFailure,
 }

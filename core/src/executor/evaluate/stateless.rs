@@ -366,6 +366,16 @@ fn evaluate_function<'a>(context: &Context<'_>, func: &'a Function) -> Result<Ev
             let sub_expr = eval(sub_expr)?;
             f::position(from_expr, sub_expr)
         }
+        Function::FindIdx {
+            sub_expr,
+            from_expr,
+            start,
+        } => {
+            let sub_expr = eval(sub_expr)?;
+            let from_expr = eval(from_expr)?;
+            let start = eval_opt(start.as_ref())?;
+            f::find_idx(name, sub_expr, from_expr, start)
+        }
         Function::Cast { expr, data_type } => {
             let expr = eval(expr)?;
             f::cast(expr, data_type)

@@ -641,6 +641,22 @@ impl Value {
             .into()),
         }
     }
+
+    pub fn find_idx(&self, from_val: &Value, start: &Value) -> Result<Value> {
+        use Value::*;
+        let start: i64 = start.try_into()?;
+        if start <= 0 {
+            return Err(ValueError::NonPositiveIntegerOffsetInFindIdx(start.to_string()).into());
+        }
+        let sub = &String::from(self);
+        let from = &String::from(from_val);
+        let position = str_position(&from[(start - 1) as usize..].to_owned(), sub) as i64;
+        let position = match position {
+            0 => 0,
+            _ => position + start - 1,
+        };
+        Ok(I64(position))
+    }
 }
 
 fn str_position(from_str: &String, sub_str: &String) -> usize {
