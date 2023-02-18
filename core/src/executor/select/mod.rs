@@ -111,6 +111,12 @@ pub async fn select_with_labels<'a, T: GStore>(
     query: &'a Query,
     filter_context: Option<Rc<RowContext<'a>>>,
 ) -> Result<(Option<Vec<String>>, impl Stream<Item = Result<Row>> + 'a)> {
+    #[derive(futures_enum::Stream)]
+    enum Row<S1, S2> {
+        Select(S2),
+        Values(S1),
+    }
+
     let Select {
         from: table_with_joins,
         selection: where_clause,
@@ -126,7 +132,7 @@ pub async fn select_with_labels<'a, T: GStore>(
             let rows = stream::iter(rows);
             let rows = limit.apply(rows);
 
-            return Ok((Some(labels), rows));
+            return Ok((Some(labels), Row::Values(rows)));
         }
     };
 
@@ -200,7 +206,7 @@ pub async fn select_with_labels<'a, T: GStore>(
     let rows = limit.apply(rows);
     let labels = labels.map(|labels| labels.iter().cloned().collect());
 
-    Ok((labels, rows))
+    Ok((labels, Row::Select(rows)))
 }
 
 pub async fn select<'a, T: GStore>(
