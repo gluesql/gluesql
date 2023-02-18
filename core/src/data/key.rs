@@ -363,6 +363,7 @@ mod tests {
             Ok(Key::Str("EEF".to_owned()))
         );
         assert_eq!(convert("POSITION('PORK' IN 'MEAT')"), Ok(Key::I64(0)));
+        assert_eq!(convert("FIND_IDX('zone', 'Calzone')"), Ok(Key::I64(4)));
         assert_eq!(
             convert("EXTRACT(SECOND FROM INTERVAL '8' SECOND)"),
             Ok(Key::I64(8))
