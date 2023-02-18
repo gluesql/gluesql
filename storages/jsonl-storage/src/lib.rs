@@ -230,7 +230,7 @@ impl<T: Iterator<Item = Result<(Key, DataRow)>>> Iterator for SortMerge<T> {
     type Item = Result<DataRow>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let (left, right) = match self.current.to_owned() {
+        let (left, right) = match self.current.take() {
             Some((is_left, key, row)) => match is_left {
                 true => (Some((key, row)), self.rows.next()),
                 false => (
@@ -252,7 +252,6 @@ impl<T: Iterator<Item = Result<(Key, DataRow)>>> Iterator for SortMerge<T> {
 
         match (left, right) {
             (None, None) => None,
-            // (_, Some(Err(e))) | (Some(Err(e)), _) => Some(Err(e)),
             (None, Some((_, row))) => {
                 self.current = None;
 
