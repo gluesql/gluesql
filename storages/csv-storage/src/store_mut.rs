@@ -50,6 +50,9 @@ impl StoreMut for CsvStorage {
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
-        todo!()
+        match self.tables.get(table_name) {
+            Some(table) => table.delete_data(keys),
+            None => Err(StorageError::TableNotFound(table_name.into()).into()),
+        }
     }
 }

@@ -5,14 +5,11 @@ pub enum StorageError {
     #[error("failed to create table file")]
     FailedToCreateTableFile,
 
+    #[error("failed to write csv file: {0}")]
+    FailedToWriteTableFile(String),
+
     #[error("cannot import file as table: {0}")]
     InvalidFileImport(String),
-
-    #[error("failed to append data: {0}")]
-    FailedToAppendData(String),
-
-    #[error("failed to insert data: {0}")]
-    FailedToInsertData(String),
 
     #[error("failed to process csv record: {0}")]
     FailedToProcessCsv(String),

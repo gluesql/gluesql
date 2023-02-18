@@ -137,10 +137,10 @@ impl CsvTable {
             .write(true)
             .append(true)
             .open(self.file_path.to_path_buf())
-            .map_err(|e| StorageError::FailedToAppendData(e.to_string()))?;
+            .map_err(|e| StorageError::FailedToWriteTableFile(e.to_string()))?;
 
         write!(file, "\n{rows_string}")
-            .map_err(|e| StorageError::FailedToAppendData(e.to_string()).into())
+            .map_err(|e| StorageError::FailedToWriteTableFile(e.to_string()).into())
     }
 
     /// Insert row in key position
@@ -207,7 +207,66 @@ impl CsvTable {
                 let header = csv_file.split(",").next().unwrap_or("");
 
                 std::fs::write(self.file_path.as_path(), format!("{header}\n{csv_rows}"))
-                    .map_err(|e| StorageError::FailedToInsertData(e.to_string()).into())
+                    .map_err(|e| StorageError::FailedToWriteTableFile(e.to_string()).into())
+            }
+            None => Err(StorageError::InvalidKeyType.into()),
+        }
+    }
+
+    pub fn delete_data(&self, keys: Vec<Key>) -> Result<()> {
+        let column_defs = self
+            .schema
+            .column_defs
+            .as_ref()
+            .ok_or(StorageError::InvalidKeyType)?;
+        // If the table uses primary key, should insert right away
+        match column_defs
+            .into_iter()
+            .enumerate()
+            .map_while(|(idx, cd)| match cd.unique {
+                Some(ColumnUniqueOption { is_primary: true }) => Some(idx),
+                _ => None,
+            })
+            .next()
+        {
+            Some(pkey_idx) => {
+                let csv_file = std::fs::read_to_string(self.file_path.as_path())
+                    .map_err(|e| StorageError::InvalidFileImport(e.to_string()))?;
+                let data_map = csv_file
+                    .split("\n")
+                    .skip(1) // skip header
+                    .map(|csv_row| -> Result<(Key, String)> {
+                        let primary_key = Key::try_from(Value::try_from_literal(
+                            &column_defs[pkey_idx].data_type,
+                            &Literal::Text(Cow::Borrowed(
+                                csv_row
+                                    .split(",")
+                                    .nth(pkey_idx)
+                                    .ok_or(StorageError::ColumnDefMismatch)?,
+                            )),
+                        )?)?;
+
+                        Ok((primary_key, csv_row.to_string()))
+                    })
+                    .filter_map(|row_result| -> Option<String> {
+                        match row_result {
+                            Ok((pkey, row)) => {
+                                if keys.iter().any(|key| key.eq(&pkey)) {
+                                    return None;
+                                }
+
+                                Some(row.to_string())
+                            }
+                            _ => None,
+                        }
+                    })
+                    .collect::<Vec<_>>();
+
+                let csv_rows = data_map.join("\n");
+                let header = csv_file.split(",").next().unwrap_or("");
+
+                std::fs::write(self.file_path.as_path(), format!("{header}\n{csv_rows}"))
+                    .map_err(|e| StorageError::FailedToWriteTableFile(e.to_string()).into())
             }
             None => Err(StorageError::InvalidKeyType.into()),
         }
