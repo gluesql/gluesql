@@ -168,7 +168,7 @@ impl Store for JsonlStorage {
 
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         let paths = fs::read_dir(&self.path).map_storage_err()?;
-        paths
+        let mut schemas = paths
             .filter(|result| {
                 result
                     .as_ref()
@@ -193,7 +193,11 @@ impl Store for JsonlStorage {
                 self.fetch_schema(table_name.as_str())?
                     .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())
             })
-            .collect::<Result<Vec<Schema>>>()
+            .collect::<Result<Vec<Schema>>>()?;
+
+        schemas.sort_by(|a, b| a.table_name.cmp(&b.table_name));
+
+        Ok(schemas)
     }
 
     async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<DataRow>> {
