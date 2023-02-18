@@ -7,7 +7,7 @@ use {
         },
         data::{get_alias, get_index, Key, Row, Value},
         executor::{evaluate::evaluate, select::select},
-        result::{Error, Result},
+        result::Result,
         store::{DataRow, GStore},
     },
     async_recursion::async_recursion,
