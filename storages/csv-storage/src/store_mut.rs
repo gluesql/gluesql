@@ -36,23 +36,23 @@ impl StoreMut for CsvStorage {
     }
 
     async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
-        match self.tables.get(table_name) {
-            Some(table) => table.append_data(rows),
-            None => Err(StorageError::TableNotFound(table_name.into()).into()),
-        }
+        self.check_table_existence(table_name)?.append_data(rows)
     }
 
     async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
-        match self.tables.get(table_name) {
-            Some(table) => table.insert_data(rows),
-            None => Err(StorageError::TableNotFound(table_name.into()).into()),
-        }
+        self.check_table_existence(table_name)?.insert_data(rows)
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
+        self.check_table_existence(table_name)?.delete_data(keys)
+    }
+}
+
+impl CsvStorage {
+    fn check_table_existence(&self, table_name: &str) -> Result<&CsvTable> {
         match self.tables.get(table_name) {
-            Some(table) => table.delete_data(keys),
-            None => Err(StorageError::TableNotFound(table_name.into()).into()),
+            Some(table) => Ok(table),
+            None => Err(StorageError::TableNotFound(table_name.to_string()).into()),
         }
     }
 }
