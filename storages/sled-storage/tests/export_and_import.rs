@@ -85,5 +85,10 @@ fn invalid_id_offset() {
         .insert("id_offset", "something wrong value")
         .unwrap();
 
-    assert!(matches!(storage2.import(export), Err(Error::Storage(_))));
+    assert_eq!(
+        storage2.import(export),
+        Err(Error::StorageMsg(
+            "could not convert slice to array".to_owned()
+        ))
+    );
 }

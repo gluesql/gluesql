@@ -32,11 +32,11 @@ impl From<StorageError> for Error {
         use StorageError::*;
 
         match e {
-            Sled(e) => Error::Storage(Box::new(e)),
-            Bincode(e) => Error::Storage(e),
-            Str(e) => Error::Storage(Box::new(e)),
-            SystemTime(e) => Error::Storage(Box::new(e)),
-            TryFromSlice(e) => Error::Storage(Box::new(e)),
+            Sled(e) => Error::StorageMsg(e.to_string()),
+            Bincode(e) => Error::StorageMsg(e.to_string()),
+            Str(e) => Error::StorageMsg(e.to_string()),
+            SystemTime(e) => Error::StorageMsg(e.to_string()),
+            TryFromSlice(e) => Error::StorageMsg(e.to_string()),
             AlterTable(e) => e.into(),
             Index(e) => e.into(),
         }
