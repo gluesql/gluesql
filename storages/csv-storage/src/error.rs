@@ -11,6 +11,9 @@ pub enum StorageError {
     #[error("failed to append data: {0}")]
     FailedToAppendData(String),
 
+    #[error("failed to insert data: {0}")]
+    FailedToInsertData(String),
+
     #[error("failed to process csv record: {0}")]
     FailedToProcessCsv(String),
 
@@ -22,6 +25,9 @@ pub enum StorageError {
 
     #[error("cannot read schema file: {0}")]
     InvalidSchemaFile(String),
+
+    #[error("key should be i128 number")]
+    InvalidKeyType,
 
     #[error("table not found: {0}")]
     TableNotFound(String),

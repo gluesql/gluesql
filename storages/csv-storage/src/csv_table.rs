@@ -1,3 +1,11 @@
+use std::{borrow::Cow, collections::HashMap};
+
+use gluesql_core::{
+    ast::ColumnUniqueOption,
+    data::Literal,
+    prelude::{Key, Value},
+};
+
 use {
     crate::error::StorageError,
     csv::ReaderBuilder,
@@ -133,6 +141,76 @@ impl CsvTable {
 
         write!(file, "\n{rows_string}")
             .map_err(|e| StorageError::FailedToAppendData(e.to_string()).into())
+    }
+
+    /// Insert row in key position
+    pub fn insert_data(&self, rows: Vec<(Key, DataRow)>) -> Result<()> {
+        let column_defs = self
+            .schema
+            .column_defs
+            .as_ref()
+            .ok_or(StorageError::InvalidKeyType)?;
+        // If the table uses primary key, should insert right away
+        match column_defs
+            .into_iter()
+            .enumerate()
+            .map_while(|(idx, cd)| match cd.unique {
+                Some(ColumnUniqueOption { is_primary: true }) => Some(idx),
+                _ => None,
+            })
+            .next()
+        {
+            Some(pkey_idx) => {
+                let csv_file = std::fs::read_to_string(self.file_path.as_path())
+                    .map_err(|e| StorageError::InvalidFileImport(e.to_string()))?;
+                let mut data_map = csv_file
+                    .split("\n")
+                    .skip(1) // skip header
+                    .map(|csv_row| -> Result<(Key, String)> {
+                        let primary_key = Key::try_from(Value::try_from_literal(
+                            &column_defs[pkey_idx].data_type,
+                            &Literal::Text(Cow::Borrowed(
+                                csv_row
+                                    .split(",")
+                                    .nth(pkey_idx)
+                                    .ok_or(StorageError::ColumnDefMismatch)?,
+                            )),
+                        )?)?;
+
+                        Ok((primary_key, csv_row.to_string()))
+                    })
+                    .collect::<Result<HashMap<_, _>>>()?;
+
+                for (key, data_row) in rows {
+                    match data_row {
+                        DataRow::Vec(row_vec) => {
+                            let csv_row = row_vec
+                                .into_iter()
+                                .map(|val| match val.cast(&DataType::Text) {
+                                    Ok(Value::Str(val_text)) => val_text,
+                                    _ => "".to_string(),
+                                })
+                                .collect::<Vec<_>>()
+                                .join(",");
+
+                            data_map.insert(key, csv_row);
+                        }
+                        DataRow::Map(_) => return Err(StorageError::SchemaLessNotSupported.into()),
+                    }
+                }
+
+                let csv_rows = data_map
+                    .into_iter()
+                    .map(|(_, v)| v)
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                let header = csv_file.split(",").next().unwrap_or("");
+
+                std::fs::write(self.file_path.as_path(), format!("{header}\n{csv_rows}"))
+                    .map_err(|e| StorageError::FailedToInsertData(e.to_string()).into())
+            }
+            None => Err(StorageError::InvalidKeyType.into()),
+        }
     }
 }
 
