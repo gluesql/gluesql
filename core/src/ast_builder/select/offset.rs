@@ -1,6 +1,7 @@
 use {
-    super::{NodeData, Prebuild},
+    super::{Prebuild, ValuesNode},
     crate::{
+        ast::Query,
         ast_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
             JoinNode, OffsetLimitNode, OrderByNode, ProjectNode, QueryNode, SelectNode,
@@ -13,6 +14,7 @@ use {
 #[derive(Clone, Debug)]
 pub enum PrevNode<'a> {
     Select(SelectNode<'a>),
+    Values(ValuesNode<'a>),
     GroupBy(GroupByNode<'a>),
     Having(HavingNode<'a>),
     Join(Box<JoinNode<'a>>),
@@ -23,10 +25,11 @@ pub enum PrevNode<'a> {
     ProjectNode(Box<ProjectNode<'a>>),
 }
 
-impl<'a> Prebuild for PrevNode<'a> {
-    fn prebuild(self) -> Result<NodeData> {
+impl<'a> Prebuild<Query> for PrevNode<'a> {
+    fn prebuild(self) -> Result<Query> {
         match self {
             Self::Select(node) => node.prebuild(),
+            Self::Values(node) => node.prebuild(),
             Self::GroupBy(node) => node.prebuild(),
             Self::Having(node) => node.prebuild(),
             Self::Join(node) => node.prebuild(),
@@ -42,6 +45,12 @@ impl<'a> Prebuild for PrevNode<'a> {
 impl<'a> From<SelectNode<'a>> for PrevNode<'a> {
     fn from(node: SelectNode<'a>) -> Self {
         PrevNode::Select(node)
+    }
+}
+
+impl<'a> From<ValuesNode<'a>> for PrevNode<'a> {
+    fn from(node: ValuesNode<'a>) -> Self {
+        PrevNode::Values(node)
     }
 }
 
@@ -116,12 +125,12 @@ impl<'a> OffsetNode<'a> {
     }
 }
 
-impl<'a> Prebuild for OffsetNode<'a> {
-    fn prebuild(self) -> Result<NodeData> {
-        let mut select_data = self.prev_node.prebuild()?;
-        select_data.offset = Some(self.expr.try_into()?);
+impl<'a> Prebuild<Query> for OffsetNode<'a> {
+    fn prebuild(self) -> Result<Query> {
+        let mut node_data = self.prev_node.prebuild()?;
+        node_data.offset = Some(self.expr.try_into()?);
 
-        Ok(select_data)
+        Ok(node_data)
     }
 }
 

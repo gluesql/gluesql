@@ -179,6 +179,7 @@ macro_rules! generate_store_tests {
         // ast-builder
         glue!(ast_builder_basic, ast_builder::basic::basic);
         glue!(ast_builder_select, ast_builder::select::select);
+        glue!(ast_builder_values, ast_builder::values::values);
         glue!(ast_builder_insert, ast_builder::insert::insert);
         glue!(ast_builder_update, ast_builder::update::update);
         glue!(ast_builder_delete, ast_builder::delete::delete);

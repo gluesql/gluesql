@@ -132,8 +132,7 @@ impl Command {
                 },
                 ".set" => match (params.get(1), params.get(2)) {
                     (Some(key), value) => Ok(Self::Set(SetOption::parse(key, value, option)?)),
-                    (None, Some(_)) => Err(CommandError::LackOfOption),
-                    (None, None) => Err(CommandError::LackOfOption),
+                    (None, _) => Err(CommandError::LackOfOption),
                 },
                 ".show" => match params.get(1) {
                     Some(key) => Ok(Self::Show(ShowOption::parse(key)?)),
@@ -156,7 +155,7 @@ mod tests {
 
     #[test]
     fn parse_command() {
-        use super::Command;
+        use super::{Command, SetOption, ShowOption};
         let option = PrintOption::default();
         let parse = |command| Command::parse(command, &option);
 
@@ -207,11 +206,32 @@ mod tests {
             parse(".set heading off"),
             Err(CommandError::WrongOption("run .set tabular OFF".into()))
         );
+        assert_eq!(parse(".abc"), Err(CommandError::NotSupported));
+        assert_eq!(
+            parse(".set abc"),
+            Err(CommandError::WrongOption("abc".to_owned()))
+        );
+        assert_eq!(
+            parse(".set tabular abc"),
+            Err(CommandError::WrongOption("abc".to_owned()))
+        );
+        assert_eq!(
+            parse(".set tabular off"),
+            Ok(Command::Set(SetOption::Tabular(false)))
+        );
+        assert_eq!(
+            parse(".set tabular on"),
+            Ok(Command::Set(SetOption::Tabular(true)))
+        );
 
         let mut option = PrintOption::default();
         option.tabular(false);
         let parse = |command| Command::parse(command, &option);
 
+        assert_eq!(
+            parse(".set abc false"),
+            Err(CommandError::WrongOption("abc".to_owned()))
+        );
         assert_eq!(
             parse(".set tabular"),
             Err(CommandError::LackOfValue(
@@ -236,5 +256,25 @@ mod tests {
                 "Usage: .set heading {ON|OFF}".into()
             ))
         );
+        assert_eq!(parse(".set"), Err(CommandError::LackOfOption));
+        assert_eq!(
+            parse(".show tabular"),
+            Ok(Command::Show(ShowOption::Tabular))
+        );
+        assert_eq!(parse(".show colsep"), Ok(Command::Show(ShowOption::Colsep)));
+        assert_eq!(
+            parse(".show colwrap"),
+            Ok(Command::Show(ShowOption::Colwrap))
+        );
+        assert_eq!(
+            parse(".show heading"),
+            Ok(Command::Show(ShowOption::Heading))
+        );
+        assert_eq!(parse(".show all"), Ok(Command::Show(ShowOption::All)));
+        assert_eq!(
+            parse(".show abc"),
+            Err(CommandError::WrongOption("abc".to_owned()))
+        );
+        assert_eq!(parse(".show"), Err(CommandError::LackOfOption));
     }
 }

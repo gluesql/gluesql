@@ -1,12 +1,11 @@
 use {
     super::{JoinConstraintData, JoinOperatorType},
     crate::{
-        ast::{Join, JoinExecutor, JoinOperator, TableAlias, TableFactor},
+        ast::{Join, JoinExecutor, JoinOperator, Select, TableAlias, TableFactor},
         ast_builder::{
-            select::{NodeData, Prebuild},
-            ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinConstraintNode,
-            LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
-            SelectItemList, SelectNode, TableFactorNode,
+            select::Prebuild, ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode,
+            JoinConstraintNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode,
+            QueryNode, SelectItemList, SelectNode, TableFactorNode,
         },
         result::Result,
     },
@@ -20,8 +19,8 @@ pub enum PrevNode<'a> {
     HashJoin(Box<HashJoinNode<'a>>),
 }
 
-impl<'a> Prebuild for PrevNode<'a> {
-    fn prebuild(self) -> Result<NodeData> {
+impl<'a> Prebuild<Select> for PrevNode<'a> {
+    fn prebuild(self) -> Result<Select> {
         match self {
             Self::Select(node) => node.prebuild(),
             Self::Join(node) => node.prebuild(),
@@ -158,14 +157,14 @@ impl<'a> JoinNode<'a> {
 
     pub fn prebuild_for_constraint(self) -> Result<JoinConstraintData> {
         Ok(JoinConstraintData {
-            node_data: self.prev_node.prebuild()?,
+            select: self.prev_node.prebuild()?,
             relation: self.relation,
             operator_type: self.join_operator_type,
             executor: JoinExecutor::NestedLoop,
         })
     }
 
-    pub fn prebuild_for_hash_join(self) -> Result<(NodeData, TableFactor, JoinOperator)> {
+    pub fn prebuild_for_hash_join(self) -> Result<(Select, TableFactor, JoinOperator)> {
         let select_data = self.prev_node.prebuild()?;
         let join_operator = JoinOperator::from(self.join_operator_type);
 
@@ -173,15 +172,17 @@ impl<'a> JoinNode<'a> {
     }
 }
 
-impl<'a> Prebuild for JoinNode<'a> {
-    fn prebuild(self) -> Result<NodeData> {
-        let mut select_data = self.prev_node.prebuild()?;
-        select_data.joins.push(Join {
+impl<'a> Prebuild<Select> for JoinNode<'a> {
+    fn prebuild(self) -> Result<Select> {
+        let mut select: Select = self.prev_node.prebuild()?;
+
+        select.from.joins.push(Join {
             relation: self.relation,
             join_operator: JoinOperator::from(self.join_operator_type),
             join_executor: JoinExecutor::NestedLoop,
         });
-        Ok(select_data)
+
+        Ok(select)
     }
 }
 

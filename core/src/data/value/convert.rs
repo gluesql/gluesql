@@ -656,6 +656,7 @@ mod tests {
         test!(Value::U16(2), Err(ValueError::ImpossibleCast.into()));
         test!(Value::F64(1.0), Ok(true));
         test!(Value::F64(0.0), Ok(false));
+        test!(Value::F64(2.0), Err(ValueError::ImpossibleCast.into()));
         test!(Value::Str("true".to_owned()), Ok(true));
         test!(Value::Str("false".to_owned()), Ok(false));
         test!(Value::Decimal(Decimal::new(10, 1)), Ok(true));
@@ -1262,6 +1263,7 @@ mod tests {
             Ok(date(2021, 11, 20))
         );
         test!(&Value::Str("2021-11-20".to_owned()), Ok(date(2021, 11, 20)));
+        test!(&Value::F64(1.0), Err(ValueError::ImpossibleCast.into()));
     }
 
     #[test]
@@ -1275,6 +1277,7 @@ mod tests {
 
         test!(&Value::Time(time(10, 0, 0, 0)), Ok(time(10, 0, 0, 0)));
         test!(&Value::Str("10:00:00".to_owned()), Ok(time(10, 0, 0, 0)));
+        test!(&Value::F64(1.0), Err(ValueError::ImpossibleCast.into()));
     }
 
     #[test]
@@ -1299,6 +1302,7 @@ mod tests {
             &Value::Str("2021-11-20".to_owned()),
             Ok(datetime(date(2021, 11, 20), time(0, 0, 0, 0)))
         );
+        test!(&Value::F64(1.0), Err(ValueError::ImpossibleCast.into()));
     }
 
     #[test]
@@ -1310,6 +1314,10 @@ mod tests {
         assert_eq!(
             I::try_from(&Value::Str("'+22-10' YEAR TO MONTH".to_owned())),
             Ok(I::Month(274))
+        );
+        assert_eq!(
+            I::try_from(&Value::F64(1.0)),
+            Err(ValueError::ImpossibleCast.into())
         );
     }
 
@@ -1357,6 +1365,7 @@ mod tests {
                 assert_eq!(IpAddr::try_from($from), Ok(IpAddr::from_str($to).unwrap()))
             };
         }
+        test!(&Value::Inet(IpAddr::from_str("::1").unwrap()), "::1");
         test!(&Value::Str("127.0.0.1".to_owned()), "127.0.0.1");
         test!(&Value::Str("0.0.0.0".to_owned()), "0.0.0.0");
         test!(IpAddr::from_str("::1").unwrap(), "::1");
