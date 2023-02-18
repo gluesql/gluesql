@@ -230,50 +230,55 @@ impl<T: Iterator<Item = Result<(Key, DataRow)>>> Iterator for SortMerge<T> {
     type Item = Result<DataRow>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut result = || -> Result<Option<DataRow>> {
-            let (left, right) = match self.current.take() {
+        let mut result = || -> Result<_> {
+            let left_right = match self.current.take() {
                 Some((true, key, row)) => (Some((key, row)), self.rows.next()),
                 Some((false, key, row)) => (self.prev_rows.next().transpose()?, Some((key, row))),
                 None => (self.prev_rows.next().transpose()?, self.rows.next()),
             };
 
-            let data_row = match (left, right) {
-                (None, None) => None,
-                (None, Some((_, row))) => {
-                    self.current = None;
-
-                    Some(row)
-                }
-                (Some((_, prev_row)), None) => {
-                    self.current = None;
-
-                    Some(prev_row)
-                }
-                (Some((prev_key, prev_row)), Some((key, row))) => {
-                    match prev_key.to_cmp_be_bytes().cmp(&key.to_cmp_be_bytes()) {
-                        Ordering::Less => {
-                            self.current = Some((false, key, row));
-
-                            Some(prev_row)
-                        }
-                        Ordering::Greater => {
-                            self.current = Some((true, prev_key, prev_row));
-
-                            Some(row)
-                        }
-                        Ordering::Equal => {
-                            self.current = None;
-
-                            Some(row)
-                        }
-                    }
-                }
-            };
-
-            Ok(data_row)
+            Ok(left_right)
         };
 
-        result().transpose()
+        let (left, right) = match result() {
+            Ok(left_right) => left_right,
+            Err(e) => return Some(Err(e)),
+        };
+
+        let data_row = match (left, right) {
+            (None, None) => None,
+            (None, Some((_, row))) => {
+                self.current = None;
+
+                Some(row)
+            }
+            (Some((_, prev_row)), None) => {
+                self.current = None;
+
+                Some(prev_row)
+            }
+            (Some((prev_key, prev_row)), Some((key, row))) => {
+                match prev_key.to_cmp_be_bytes().cmp(&key.to_cmp_be_bytes()) {
+                    Ordering::Less => {
+                        self.current = Some((false, key, row));
+
+                        Some(prev_row)
+                    }
+                    Ordering::Greater => {
+                        self.current = Some((true, prev_key, prev_row));
+
+                        Some(row)
+                    }
+                    Ordering::Equal => {
+                        self.current = None;
+
+                        Some(row)
+                    }
+                }
+            }
+        };
+
+        data_row.map(Ok)
     }
 }
 
