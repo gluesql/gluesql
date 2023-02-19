@@ -57,8 +57,6 @@ macro_rules! eval_to_float {
 #[derive(Debug, Clone)]
 pub struct FunctionProxy {
     pub func: fn(Vec<Value>) -> Result<Value>,
-    // args: Vec<Value>,
-    // r#return: Value
 }
 
 #[cfg(feature = "function")]
@@ -74,9 +72,6 @@ impl FunctionProxy {
         Ok(Evaluated::from(value))
     }
     pub fn call(&self, args: Vec<Value>) -> Result<Value> {
-        // TODO
-        // Verify len or len range
-        // Verify types
         (self.func)(args)
     }
 }
