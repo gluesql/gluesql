@@ -7,7 +7,7 @@ mod stateless;
 use {
     super::{context::RowContext, select::select},
     crate::{
-        ast::{Aggregate, Expr, Function},
+        ast::{Aggregate, Expr, Function, ToSql},
         data::{Interval, Literal, Row, Value},
         result::{Error, Result},
         store::GStore,
@@ -23,6 +23,8 @@ use {
 };
 
 pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
+
+use crate::translate::TranslateError;
 
 #[async_recursion(?Send)]
 pub async fn evaluate<'a, 'b: 'a, 'c: 'a, T: GStore>(
@@ -293,6 +295,44 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         Function::Concat(exprs) => {
             let exprs = stream::iter(exprs).then(eval).try_collect().await?;
             f::concat(exprs)
+        }
+        Function::Custom { name, exprs } => {
+            let custom_func = storage
+                .fetch_function(name)
+                .await
+                .map_err(|_| TranslateError::UnsupportedFunction(name.to_string()))?;
+            if let Some(custom_func) = custom_func {
+                let args: Vec<Evaluated<'_>> = stream::iter(exprs).then(eval).try_collect().await?;
+
+                // let args = args
+                //     .into_iter()
+                //     .map(|expr| Value::try_from(expr).unwrap())
+                //     .collect::<Vec<_>>();
+
+                let empty = vec![];
+
+                let fargs = custom_func.args.as_ref().unwrap_or(&empty);
+
+                let value = if fargs.len() == args.len() {
+                    args.clone().into_iter().zip(fargs.iter()).try_for_each(|(arg, farg)| {
+                        let arg = Value::try_from(arg).unwrap();
+                        arg.validate_type(&farg.data_type)?;
+                        arg.validate_null(farg.default.is_some())
+                    })?;
+                    let args = exprs.iter().enumerate().map(|(i, expr)| if args[i].is_null() { fargs[i].default.as_ref().unwrap().to_sql() } else { expr.to_sql() });
+                    Ok(Value::Null)
+                } else {
+                    Err(TranslateError::FunctionArgsLengthNotMatching {
+                        name: custom_func.func_name.to_owned(),
+                        expected: fargs.len(),
+                        found: args.len()
+                    })
+                };
+
+                Ok(Evaluated::from(value?))
+            } else {
+                Err(TranslateError::UnsupportedFunction(name.to_string()).into())
+            }
         }
         Function::ConcatWs { separator, exprs } => {
             let separator = eval(separator).await?;

@@ -38,19 +38,19 @@ pub struct MemoryStorage {
 #[async_trait(?Send)]
 impl Function for MemoryStorage {
     async fn fetch_function(&self, func_name: &str) -> Result<Option<CustomFunction>> {
-        Ok(self.functions.get(func_name).cloned())
+        Ok(self.functions.get(&func_name.to_uppercase()).cloned())
     }
 }
 
 #[async_trait(?Send)]
 impl FunctionMut for MemoryStorage {
     async fn create_function(&mut self, func: CustomFunction) -> Result<()> {
-        self.functions.insert(func.func_name.to_owned(), func);
+        self.functions.insert(func.func_name.to_uppercase(), func);
         Ok(())
     }
 
     async fn drop_function(&mut self, func_name: &str) -> Result<()> {
-        self.functions.remove(func_name);
+        self.functions.remove(&func_name.to_uppercase());
         Ok(())
     }
 }

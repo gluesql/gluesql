@@ -42,6 +42,10 @@ pub enum Function {
         separator: Expr,
         exprs: Vec<Expr>,
     },
+    Custom {
+        name: String,
+        exprs: Vec<Expr>,
+    },
     IfNull {
         expr: Expr,
         then: Expr,
@@ -193,6 +197,14 @@ impl ToSql for Function {
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("CONCAT({items})")
+            }
+            Function::Custom { name, exprs } => {
+                let exprs = exprs
+                    .iter()
+                    .map(ToSql::to_sql)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("{name}({exprs})")
             }
             Function::ConcatWs { separator, exprs } => {
                 let exprs = exprs
@@ -499,7 +511,37 @@ mod tests {
         );
 
         assert_eq!(
-            r#"CONCAT("Tic", "tac", "toe")"#,
+            "CUSTOM_FUNC(Tic, 1, num, 'abc')",
+            &Expr::Function(Box::new(Function::Custom {
+                name: "CUSTOM_FUNC".to_owned(),
+                exprs: vec![
+                    Expr::Identifier("Tic".to_owned()),
+                    Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
+                    Expr::Identifier("num".to_owned()),
+                    Expr::Literal(AstLiteral::QuotedString("abc".to_owned()))
+                ]
+            }))
+            .to_sql()
+        );
+        assert_eq!(
+            "CUSTOM_FUNC(num)",
+            &Expr::Function(Box::new(Function::Custom {
+                name: "CUSTOM_FUNC".to_owned(),
+                exprs: vec![Expr::Identifier("num".to_owned())]
+            }))
+            .to_sql()
+        );
+        assert_eq!(
+            "CUSTOM_FUNC()",
+            &Expr::Function(Box::new(Function::Custom {
+                name: "CUSTOM_FUNC".to_owned(),
+                exprs: vec![]
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            "CONCAT(Tic, tac, toe)",
             &Expr::Function(Box::new(Function::Concat(vec![
                 Expr::Identifier("Tic".to_owned()),
                 Expr::Identifier("tac".to_owned()),

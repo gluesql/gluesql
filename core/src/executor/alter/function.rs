@@ -50,15 +50,8 @@ pub async fn drop_function<T: GStore + GStoreMut>(
     func_names: &[&str],
     if_exists: bool,
 ) -> Result<()> {
-//     for table_name in table_names {
-//         let schema = storage.fetch_function(table_name).await?;
-
-//         if !if_exists {
-//             schema.ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
-//         }
-
-//         storage.delete_schema(table_name).await?;
-//     }
-
+    for func_name in func_names {
+        storage.drop_function(&func_name).await?;
+    }
     Ok(())
 }

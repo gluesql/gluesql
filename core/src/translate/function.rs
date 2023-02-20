@@ -495,6 +495,12 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::Append { expr, value })))
         }
-        _ => Err(TranslateError::UnsupportedFunction(name).into()),
+        _ => {
+            let exprs = args
+                .into_iter()
+                .map(translate_expr)
+                .collect::<Result<Vec<_>>>()?;
+            Ok(Expr::Function(Box::new(Function::Custom { name, exprs })))
+        }
     }
 }
