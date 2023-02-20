@@ -4,10 +4,15 @@ use {
     gluesql_core::{
         data::{Key, Schema},
         result::{Error, Result},
-        store::{DataRow, RowIter, Store},
+        store::{DataRow, RowIter, Store, Function, FunctionMut},
     },
     std::str,
 };
+
+#[async_trait(?Send)]
+impl Function for SledStorage {}
+#[async_trait(?Send)]
+impl FunctionMut for SledStorage {}
 
 const SCHEMA_PREFIX: &str = "schema/";
 

@@ -5,6 +5,7 @@ mod literal;
 mod row;
 mod string_ext;
 mod table;
+pub mod function;
 
 pub mod schema;
 pub mod value;
@@ -19,4 +20,5 @@ pub use {
     string_ext::{StringExt, StringExtError},
     table::{get_alias, get_index, TableError},
     value::{HashMapJsonExt, NumericBinaryOperator, Value, ValueError},
+    function::{CustomFunction}
 };

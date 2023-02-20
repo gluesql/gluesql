@@ -9,10 +9,10 @@ use {
     async_trait::async_trait,
     gluesql_core::{
         chrono::Utc,
-        data::{Key, Schema},
+        data::{Key, Schema, CustomFunction},
         prelude::Value,
         result::Result,
-        store::{DataRow, RowIter, Store, StoreMut},
+        store::{DataRow, RowIter, Store, StoreMut, FunctionMut, Function},
     },
     serde::{Deserialize, Serialize},
     std::{
@@ -32,6 +32,27 @@ pub struct MemoryStorage {
     pub id_counter: i64,
     pub items: HashMap<String, Item>,
     pub metadata: HashMap<String, HashMap<String, Value>>,
+    pub functions: HashMap<String, CustomFunction>,
+}
+
+#[async_trait(?Send)]
+impl Function for MemoryStorage {
+    async fn fetch_function(&self, func_name: &str) -> Result<Option<CustomFunction>> {
+        Ok(self.functions.get(func_name).cloned())
+    }
+}
+
+#[async_trait(?Send)]
+impl FunctionMut for MemoryStorage {
+    async fn create_function(&mut self, func: CustomFunction) -> Result<()> {
+        self.functions.insert(func.func_name.to_owned(), func);
+        Ok(())
+    }
+
+    async fn drop_function(&mut self, func_name: &str) -> Result<()> {
+        self.functions.remove(func_name);
+        Ok(())
+    }
 }
 
 #[async_trait(?Send)]

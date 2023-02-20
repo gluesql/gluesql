@@ -13,7 +13,7 @@ use {
         prelude::Key,
         result::Error,
         result::Result,
-        store::{DataRow, Metadata, RowIter},
+        store::{DataRow, Metadata, RowIter, Function, FunctionMut},
     },
     iter_enum::Iterator,
     serde_json::Value as JsonValue,
@@ -202,3 +202,5 @@ where
 }
 
 impl Metadata for JsonStorage {}
+impl Function for JsonStorage {}
+impl FunctionMut for JsonStorage {}

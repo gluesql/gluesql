@@ -1,7 +1,7 @@
 use {
     super::AlterError,
     crate::{
-        ast::{ColumnDef, ColumnUniqueOption, DataType},
+        ast::{ColumnDef, ColumnUniqueOption, DataType, OperateFunctionArg},
         executor::evaluate_stateless,
         result::Result,
     },
@@ -34,6 +34,20 @@ pub fn validate(column_def: &ColumnDef) -> Result<()> {
     Ok(())
 }
 
+pub fn validate_arg(arg: &OperateFunctionArg) -> Result<()> {
+    let OperateFunctionArg {
+        data_type,
+        default,
+        name,
+    } = arg;
+
+    if let Some(expr) = default {
+        evaluate_stateless(None, expr)?;
+    }
+
+    Ok(())
+}
+
 pub fn validate_column_names(column_defs: &[ColumnDef]) -> Result<()> {
     let duplicate_column_name = column_defs
         .iter()
@@ -48,6 +62,24 @@ pub fn validate_column_names(column_defs: &[ColumnDef]) -> Result<()> {
 
     match duplicate_column_name {
         Some(v) => Err(AlterError::DuplicateColumnName(v.to_owned()).into()),
+        None => Ok(()),
+    }
+}
+
+pub fn validate_arg_names(args: &[OperateFunctionArg]) -> Result<()> {
+    let duplicate_arg_name = args
+        .iter()
+        .enumerate()
+        .find(|(i, base_arg)| {
+            args
+                .iter()
+                .skip(i + 1)
+                .any(|target_arg| target_arg.name.is_some() && base_arg.name == target_arg.name)
+        })
+        .map(|(_, arg)| arg.name.as_ref().unwrap());
+
+    match duplicate_arg_name {
+        Some(v) => Err(AlterError::DuplicateArgName(v.to_string()).into()),
         None => Ok(()),
     }
 }

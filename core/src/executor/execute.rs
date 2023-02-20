@@ -1,6 +1,6 @@
 use {
     super::{
-        alter::{alter_table, create_index, create_table, drop_table},
+        alter::{alter_table, create_index, create_table, drop_table, create_function, drop_function},
         fetch::{fetch, fetch_columns},
         insert::insert,
         select::{select, select_with_labels},
@@ -340,6 +340,14 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 Ok(payload)
             }
         },
-        Statement::CreateFunction { .. } => todo!(),
+        Statement::CreateFunction { or_replace, name, args, body } => create_function(
+            storage,
+            name,
+            args.clone(),
+            *or_replace,
+            body
+        )
+        .await
+        .map(|_| Payload::Create),
     }
 }

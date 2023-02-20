@@ -11,6 +11,9 @@ pub enum AlterError {
     #[error("table already exists: {0}")]
     TableAlreadyExists(String),
 
+    #[error("function already exists: {0}")]
+    FunctionAlreadyExists(String),
+
     // CREATE INDEX, DROP TABLE
     #[error("table does not exist: {0}")]
     TableNotFound(String),
@@ -31,4 +34,7 @@ pub enum AlterError {
 
     #[error("duplicate column name: {0}")]
     DuplicateColumnName(String),
+
+    #[error("duplicate arg name: {0}")]
+    DuplicateArgName(String),
 }

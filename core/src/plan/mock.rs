@@ -2,12 +2,13 @@
 
 use {
     crate::{
-        data::{Key, Schema},
+        data::{Key, Schema, CustomFunction},
         executor::execute,
         parse_sql::parse,
         result::{Error, Result},
         store::{
             AlterTable, DataRow, Index, IndexMut, Metadata, RowIter, Store, StoreMut, Transaction,
+            Function, FunctionMut
         },
         translate::translate,
     },
@@ -32,6 +33,13 @@ pub fn run(sql: &str) -> MockStorage {
 pub struct MockStorage {
     schema_map: HashMap<String, Schema>,
 }
+
+#[async_trait(?Send)]
+impl Function for MockStorage {}
+
+#[async_trait(?Send)]
+impl FunctionMut for MockStorage {}
+
 
 #[async_trait(?Send)]
 impl Store for MockStorage {
