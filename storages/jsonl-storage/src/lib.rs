@@ -94,7 +94,10 @@ impl JsonlStorage {
                         .map(|column_def| -> Result<_> {
                             let value = hash_map
                                 .get(&column_def.name)
-                                .map_storage_err(JsonlStorageError::ColumnDoesNotExist.to_string())?
+                                .map_storage_err(
+                                    JsonlStorageError::ColumnDoesNotExist(column_def.name.clone())
+                                        .to_string(),
+                                )?
                                 .clone();
                             let data_type = value.get_type();
                             match data_type {
@@ -133,12 +136,14 @@ fn jsonl_storage_test() {
     use {
         crate::*,
         gluesql_core::{
-            data::{SchemaParseError, ValueError},
+            data::{Interval, SchemaParseError, ValueError},
             prelude::{
                 Glue, {Payload, Value},
             },
             result::Error,
         },
+        std::net::{IpAddr, Ipv4Addr},
+        uuid::Uuid as UUID,
     };
 
     let path = "./samples/";
@@ -161,14 +166,60 @@ fn jsonl_storage_test() {
     ]);
     assert_eq!(actual, &expected);
 
+    macro_rules! date {
+        ($date: expr) => {
+            $date.parse().unwrap()
+        };
+    }
+    let parse_uuid = |v| UUID::parse_str(v).unwrap().as_u128();
+    let bytea = |v| hex::decode(v).unwrap();
+    let m = |s: &str| Value::parse_json_map(s).unwrap();
+    let l = |s: &str| Value::parse_json_list(s).unwrap();
+
     let actual = glue.execute("SELECT * FROM Schema").unwrap();
     let actual = actual.get(0).unwrap();
     let expected = Payload::Select {
-        labels: ["id", "name"].into_iter().map(ToOwned::to_owned).collect(),
-        rows: vec![
-            vec![Value::I64(1), Value::Str("Glue".to_owned())],
-            vec![Value::I64(2), Value::Str("SQL".to_owned())],
-        ],
+        labels: [
+            "boolean",
+            "int8",
+            "int16",
+            "int32",
+            "int64",
+            "int128",
+            "uint8",
+            "text",
+            "bytea",
+            "inet",
+            "date",
+            "timestamp",
+            "time",
+            "interval",
+            "uuid",
+            "map",
+            "list",
+        ]
+        .into_iter()
+        .map(ToOwned::to_owned)
+        .collect(),
+        rows: vec![vec![
+            Value::Bool(true),
+            Value::I8(93),
+            Value::I16(18550),
+            Value::I32(1726758346),
+            Value::I64(5724242792803127000),
+            Value::I128(26574198945213317000),
+            Value::U8(159),
+            Value::Str("Blake Funk".to_owned()),
+            Value::Bytea(bytea("f5DD42C123")),
+            Value::Inet(IpAddr::V4(Ipv4Addr::new(14, 232, 199, 19))),
+            Value::Date(date!("2022-08-14")),
+            Value::Timestamp(date!("2023-02-10T00:03:21")),
+            Value::Time(date!("10:26:32")),
+            Value::Interval(Interval::hours(35)),
+            Value::Uuid(parse_uuid("54afd535-13ef-429a-8555-8025afe4d5e1")),
+            m(r#"{"age": 55, "city": "East Nicofurt"}"#),
+            l(r#"["fuchsia", "olive", "tan"]"#),
+        ]],
     };
     assert_eq!(actual, &expected);
 

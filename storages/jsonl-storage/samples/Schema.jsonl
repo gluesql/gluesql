@@ -1,2 +1,1 @@
-{"id": 1, "name": "Glue"}
-{"id": 2, "name": "SQL"}
+{"boolean":true,"int8":93,"int16":18550,"int32":1726758346,"int64":5724242792803127000,"int128":26574198945213317000,"uint8":159,"text":"Blake Funk","inet":"14.232.199.19","bytea":"f5DD42C123","date":"2022-08-14","timestamp":"2023-02-10T00:03:21","time":"10:26:32","interval":"'35' HOUR","uuid":"54afd535-13ef-429a-8555-8025afe4d5e1","map":{"age": 55, "city": "East Nicofurt"},"list":["fuchsia","olive","tan"]}

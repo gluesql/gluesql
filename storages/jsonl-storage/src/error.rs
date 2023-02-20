@@ -24,7 +24,7 @@ impl<T> OptionExt<T> for std::option::Option<T> {
 pub enum JsonlStorageError {
     FileNotFound,
     TableDoesNotExist,
-    ColumnDoesNotExist,
+    ColumnDoesNotExist(String),
 }
 
 impl fmt::Display for JsonlStorageError {
@@ -32,7 +32,9 @@ impl fmt::Display for JsonlStorageError {
         let payload = match self {
             JsonlStorageError::FileNotFound => "file not found".to_owned(),
             JsonlStorageError::TableDoesNotExist => "table does not exist".to_owned(),
-            JsonlStorageError::ColumnDoesNotExist => "column does not exist".to_owned(),
+            JsonlStorageError::ColumnDoesNotExist(column) => {
+                format! {"column does not exist: {column}"}
+            }
         };
 
         write!(f, "{}", payload)
