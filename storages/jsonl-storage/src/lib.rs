@@ -131,8 +131,8 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
-#[test]
-fn jsonl_storage_test() {
+#[cfg(test)]
+mod tests {
     use {
         crate::*,
         gluesql_core::{
@@ -146,90 +146,93 @@ fn jsonl_storage_test() {
         uuid::Uuid as UUID,
     };
 
-    let path = "./samples/";
-    let jsonl_storage = JsonlStorage::new(path).unwrap();
-    let mut glue = Glue::new(jsonl_storage);
+    #[test]
+    fn jsonl_storage_test() {
+        let path = "./samples/";
+        let jsonl_storage = JsonlStorage::new(path).unwrap();
+        let mut glue = Glue::new(jsonl_storage);
 
-    let actual = glue.execute("SELECT * FROM Schemaless").unwrap();
-    let actual = actual.get(0).unwrap();
-    let expected = Payload::SelectMap(vec![
-        [("id".to_owned(), Value::I64(1))].into_iter().collect(),
-        [("name".to_owned(), Value::Str("Glue".to_owned()))]
+        let actual = glue.execute("SELECT * FROM Schemaless").unwrap();
+        let actual = actual.get(0).unwrap();
+        let expected = Payload::SelectMap(vec![
+            [("id".to_owned(), Value::I64(1))].into_iter().collect(),
+            [("name".to_owned(), Value::Str("Glue".to_owned()))]
+                .into_iter()
+                .collect(),
+            [
+                ("id".to_owned(), Value::I64(3)),
+                ("name".to_owned(), Value::Str("SQL".to_owned())),
+            ]
             .into_iter()
             .collect(),
-        [
-            ("id".to_owned(), Value::I64(3)),
-            ("name".to_owned(), Value::Str("SQL".to_owned())),
-        ]
-        .into_iter()
-        .collect(),
-    ]);
-    assert_eq!(actual, &expected);
+        ]);
+        assert_eq!(actual, &expected);
 
-    macro_rules! date {
-        ($date: expr) => {
-            $date.parse().unwrap()
+        macro_rules! date {
+            ($date: expr) => {
+                $date.parse().unwrap()
+            };
+        }
+        let parse_uuid = |v| UUID::parse_str(v).unwrap().as_u128();
+        let bytea = |v| hex::decode(v).unwrap();
+        let m = |s: &str| Value::parse_json_map(s).unwrap();
+        let l = |s: &str| Value::parse_json_list(s).unwrap();
+
+        let actual = glue.execute("SELECT * FROM Schema").unwrap();
+        let actual = actual.get(0).unwrap();
+        let expected = Payload::Select {
+            labels: [
+                "boolean",
+                "int8",
+                "int16",
+                "int32",
+                "int64",
+                "int128",
+                "uint8",
+                "text",
+                "bytea",
+                "inet",
+                "date",
+                "timestamp",
+                "time",
+                "interval",
+                "uuid",
+                "map",
+                "list",
+            ]
+            .into_iter()
+            .map(ToOwned::to_owned)
+            .collect(),
+            rows: vec![vec![
+                Value::Bool(true),
+                Value::I8(93),
+                Value::I16(18550),
+                Value::I32(1726758346),
+                Value::I64(5724242792803127000),
+                Value::I128(26574198945213317000),
+                Value::U8(159),
+                Value::Str("Blake Funk".to_owned()),
+                Value::Bytea(bytea("f5DD42C123")),
+                Value::Inet(IpAddr::V4(Ipv4Addr::new(14, 232, 199, 19))),
+                Value::Date(date!("2022-08-14")),
+                Value::Timestamp(date!("2023-02-10T00:03:21")),
+                Value::Time(date!("10:26:32")),
+                Value::Interval(Interval::hours(35)),
+                Value::Uuid(parse_uuid("54afd535-13ef-429a-8555-8025afe4d5e1")),
+                m(r#"{"age": 55, "city": "East Nicofurt"}"#),
+                l(r#"["fuchsia", "olive", "tan"]"#),
+            ]],
         };
+        assert_eq!(actual, &expected);
+
+        let actual = glue.execute("SELECT * FROM WrongFormat");
+        let expected = Err(ValueError::InvalidJsonString("{".to_owned()).into());
+
+        assert_eq!(actual, expected);
+
+        let actual = glue.execute("SELECT * FROM WrongSchema");
+        let expected = Err(Error::Schema(SchemaParseError::CannotParseDDL));
+
+        assert_eq!(actual, expected);
     }
-    let parse_uuid = |v| UUID::parse_str(v).unwrap().as_u128();
-    let bytea = |v| hex::decode(v).unwrap();
-    let m = |s: &str| Value::parse_json_map(s).unwrap();
-    let l = |s: &str| Value::parse_json_list(s).unwrap();
-
-    let actual = glue.execute("SELECT * FROM Schema").unwrap();
-    let actual = actual.get(0).unwrap();
-    let expected = Payload::Select {
-        labels: [
-            "boolean",
-            "int8",
-            "int16",
-            "int32",
-            "int64",
-            "int128",
-            "uint8",
-            "text",
-            "bytea",
-            "inet",
-            "date",
-            "timestamp",
-            "time",
-            "interval",
-            "uuid",
-            "map",
-            "list",
-        ]
-        .into_iter()
-        .map(ToOwned::to_owned)
-        .collect(),
-        rows: vec![vec![
-            Value::Bool(true),
-            Value::I8(93),
-            Value::I16(18550),
-            Value::I32(1726758346),
-            Value::I64(5724242792803127000),
-            Value::I128(26574198945213317000),
-            Value::U8(159),
-            Value::Str("Blake Funk".to_owned()),
-            Value::Bytea(bytea("f5DD42C123")),
-            Value::Inet(IpAddr::V4(Ipv4Addr::new(14, 232, 199, 19))),
-            Value::Date(date!("2022-08-14")),
-            Value::Timestamp(date!("2023-02-10T00:03:21")),
-            Value::Time(date!("10:26:32")),
-            Value::Interval(Interval::hours(35)),
-            Value::Uuid(parse_uuid("54afd535-13ef-429a-8555-8025afe4d5e1")),
-            m(r#"{"age": 55, "city": "East Nicofurt"}"#),
-            l(r#"["fuchsia", "olive", "tan"]"#),
-        ]],
-    };
-    assert_eq!(actual, &expected);
-
-    let actual = glue.execute("SELECT * FROM WrongFormat");
-    let expected = Err(ValueError::InvalidJsonString("{".to_owned()).into());
-
-    assert_eq!(actual, expected);
-
-    let actual = glue.execute("SELECT * FROM WrongSchema");
-    let expected = Err(Error::Schema(SchemaParseError::CannotParseDDL));
-
-    assert_eq!(actual, expected);
 }
