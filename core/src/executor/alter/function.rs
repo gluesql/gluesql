@@ -1,8 +1,8 @@
 use {
     super::{validate_arg, validate_arg_names, AlterError},
     crate::{
-        ast::{ColumnDef, Query, SetExpr, TableFactor, Values, OperateFunctionArg},
-        data::{Schema, TableError, CustomFunction},
+        ast::{ColumnDef, OperateFunctionArg, Query, SetExpr, TableFactor, Values},
+        data::{CustomFunction, Schema, TableError},
         executor::{evaluate_stateless, select::select},
         prelude::{DataType, Value},
         result::{Error, IntoControlFlow, Result},

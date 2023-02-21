@@ -71,8 +71,7 @@ pub fn validate_arg_names(args: &[OperateFunctionArg]) -> Result<()> {
         .iter()
         .enumerate()
         .find(|(i, base_arg)| {
-            args
-                .iter()
+            args.iter()
                 .skip(i + 1)
                 .any(|target_arg| target_arg.name.is_some() && base_arg.name == target_arg.name)
         })

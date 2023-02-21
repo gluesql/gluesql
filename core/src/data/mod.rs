@@ -1,17 +1,18 @@
 mod bigdecimal_ext;
+pub mod function;
 mod interval;
 mod key;
 mod literal;
 mod row;
 mod string_ext;
 mod table;
-pub mod function;
 
 pub mod schema;
 pub mod value;
 
 pub use {
     bigdecimal_ext::BigDecimalExt,
+    function::CustomFunction,
     interval::{Interval, IntervalError},
     key::{Key, KeyError},
     literal::{Literal, LiteralError},
@@ -20,5 +21,4 @@ pub use {
     string_ext::{StringExt, StringExtError},
     table::{get_alias, get_index, TableError},
     value::{HashMapJsonExt, NumericBinaryOperator, Value, ValueError},
-    function::{CustomFunction}
 };

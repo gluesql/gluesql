@@ -13,7 +13,7 @@ use {
         prelude::Key,
         result::Error,
         result::Result,
-        store::{DataRow, Metadata, RowIter, Function, FunctionMut},
+        store::{DataRow, Function, FunctionMut, Metadata, RowIter},
     },
     iter_enum::Iterator,
     serde_json::Value as JsonValue,

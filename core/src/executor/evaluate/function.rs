@@ -2,7 +2,7 @@ use {
     super::{EvaluateError, Evaluated, TranslateError},
     crate::{
         ast::{DataType, DateTimeField},
-        data::{Value, ValueError, CustomFunction},
+        data::{CustomFunction, Value, ValueError},
         result::Result,
     },
     rand::{rngs::StdRng, Rng, SeedableRng},

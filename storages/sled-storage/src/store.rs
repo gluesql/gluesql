@@ -4,7 +4,7 @@ use {
     gluesql_core::{
         data::{Key, Schema},
         result::{Error, Result},
-        store::{DataRow, RowIter, Store, Function, FunctionMut},
+        store::{DataRow, Function, FunctionMut, RowIter, Store},
     },
     std::str,
 };

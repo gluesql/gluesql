@@ -314,18 +314,29 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 let fargs = custom_func.args.as_ref().unwrap_or(&empty);
 
                 let value = if fargs.len() == args.len() {
-                    args.clone().into_iter().zip(fargs.iter()).try_for_each(|(arg, farg)| {
-                        let arg = Value::try_from(arg).unwrap();
-                        arg.validate_type(&farg.data_type)?;
-                        arg.validate_null(farg.default.is_some())
-                    })?;
-                    let args = exprs.iter().enumerate().map(|(i, expr)| if args[i].is_null() { fargs[i].default.as_ref().unwrap().to_sql() } else { expr.to_sql() });
+                    args.clone()
+                        .into_iter()
+                        .zip(fargs.iter())
+                        .try_for_each(|(arg, farg)| {
+                            let arg = Value::try_from(arg).unwrap();
+                            arg.validate_type(&farg.data_type)?;
+                            arg.validate_null(farg.default.is_some())
+                        })?;
+                    // replace null by default value
+                    let args = exprs.iter().enumerate().map(|(i, expr)| {
+                        if args[i].is_null() {
+                            fargs[i].default.as_ref().unwrap().to_sql()
+                        } else {
+                            expr.to_sql()
+                        }
+                    });
+                    // set variable in body and execute
                     Ok(Value::Null)
                 } else {
                     Err(TranslateError::FunctionArgsLengthNotMatching {
                         name: custom_func.func_name.to_owned(),
                         expected: fargs.len(),
-                        found: args.len()
+                        found: args.len(),
                     })
                 };
 

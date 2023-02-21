@@ -2,13 +2,13 @@
 
 use {
     crate::{
-        data::{Key, Schema, CustomFunction},
+        data::{CustomFunction, Key, Schema},
         executor::execute,
         parse_sql::parse,
         result::{Error, Result},
         store::{
-            AlterTable, DataRow, Index, IndexMut, Metadata, RowIter, Store, StoreMut, Transaction,
-            Function, FunctionMut
+            AlterTable, DataRow, Function, FunctionMut, Index, IndexMut, Metadata, RowIter, Store,
+            StoreMut, Transaction,
         },
         translate::translate,
     },
@@ -39,7 +39,6 @@ impl Function for MockStorage {}
 
 #[async_trait(?Send)]
 impl FunctionMut for MockStorage {}
-
 
 #[async_trait(?Send)]
 impl Store for MockStorage {

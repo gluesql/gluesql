@@ -9,10 +9,10 @@ use {
     async_trait::async_trait,
     gluesql_core::{
         chrono::Utc,
-        data::{Key, Schema, CustomFunction},
+        data::{CustomFunction, Key, Schema},
         prelude::Value,
         result::Result,
-        store::{DataRow, RowIter, Store, StoreMut, FunctionMut, Function},
+        store::{DataRow, Function, FunctionMut, RowIter, Store, StoreMut},
     },
     serde::{Deserialize, Serialize},
     std::{
