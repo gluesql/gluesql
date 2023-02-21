@@ -4,7 +4,6 @@ CREATE TABLE Schema (
   int16 INT16,
   int32 INT32,
   int64 INT,
-  int128 INT128,
   uint8 UINT8,
   text TEXT,
   bytea BYTEA,
