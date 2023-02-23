@@ -323,13 +323,20 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                             arg.validate_null(farg.default.is_some())
                         })?;
                     // replace null by default value
-                    let args = exprs.iter().enumerate().map(|(i, expr)| {
-                        if args[i].is_null() {
-                            fargs[i].default.as_ref().unwrap().to_sql()
-                        } else {
-                            expr.to_sql()
-                        }
-                    });
+                    let body =
+                        exprs
+                            .iter()
+                            .enumerate()
+                            .fold(custom_func.body, |body, (i, expr)| {
+                                let name = fargs[i].name.to_owned().unwrap_or(i.to_string());
+                                let value = if args[i].is_null() {
+                                    fargs[i].default.as_ref().unwrap().to_sql()
+                                } else {
+                                    expr.to_sql()
+                                };
+                                body.replace(&format!("{}{}{}", "{", name, "}"), &value)
+                            });
+                    println!("{:?}", body);
                     // set variable in body and execute
                     Ok(Value::Null)
                 } else {
