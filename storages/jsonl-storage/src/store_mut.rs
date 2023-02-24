@@ -110,9 +110,9 @@ impl StoreMut for JsonlStorage {
 
                         preservable.then_some(data_row)
                     })
-                    .unwrap_or(None)
+                    .transpose()
             })
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>>>()?;
 
         let table_path = self.data_path(table_name);
         File::create(&table_path).map_storage_err()?;
