@@ -47,7 +47,7 @@ impl StoreMut for JsonlStorage {
         let schema = self
             .fetch_schema(table_name)?
             .map_storage_err(JsonlStorageError::TableDoesNotExist)?;
-        let table_path = JsonlStorage::data_path(self, table_name);
+        let table_path = self.data_path(table_name);
 
         let mut file = OpenOptions::new()
             .write(true)
