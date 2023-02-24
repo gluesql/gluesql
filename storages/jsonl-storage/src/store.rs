@@ -8,8 +8,9 @@ use {
         result::Result,
         store::{DataRow, RowIter, Store},
     },
-    std::fs,
+    std::{ffi::OsStr, fs},
 };
+
 #[async_trait(?Send)]
 impl Store for JsonlStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
@@ -35,13 +36,11 @@ impl Store for JsonlStorage {
                 let path = result.map_storage_err()?.path();
                 let table_name = path
                     .file_stem()
-                    .map_storage_err(JsonlStorageError::FileNotFound.to_string())?
-                    .to_str()
-                    .map_storage_err(JsonlStorageError::FileNotFound.to_string())?
-                    .to_owned();
+                    .and_then(OsStr::to_str)
+                    .map_storage_err(JsonlStorageError::FileNotFound)?;
 
-                self.fetch_schema(table_name.as_str())?
-                    .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())
+                self.fetch_schema(table_name)?
+                    .map_storage_err(JsonlStorageError::TableDoesNotExist)
             })
             .collect::<Result<Vec<Schema>>>()?;
 
