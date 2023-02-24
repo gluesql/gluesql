@@ -1,6 +1,8 @@
 use {
-    crate::error::{JsonlStorageError, OptionExt, ResultExt},
-    crate::JsonlStorage,
+    crate::{
+        error::{JsonlStorageError, OptionExt, ResultExt},
+        JsonlStorage,
+    },
     async_trait::async_trait,
     gluesql_core::{data::Schema, prelude::Key, result::Result, store::DataRow, store::StoreMut},
     serde_json::{Map, Value as JsonValue},
