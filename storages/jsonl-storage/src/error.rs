@@ -1,4 +1,4 @@
-use {gluesql_core::result::Error, std::fmt};
+use {gluesql_core::result::Error, thiserror::Error};
 
 pub trait ResultExt<T, E: ToString> {
     fn map_storage_err(self) -> Result<T, Error>;
@@ -21,22 +21,12 @@ impl<T, E: ToString> OptionExt<T, E> for std::option::Option<T> {
     }
 }
 
+#[derive(Error, Debug)]
 pub enum JsonlStorageError {
+    #[error("file not found")]
     FileNotFound,
+    #[error("table does not exist")]
     TableDoesNotExist,
+    #[error("column does not exist: {0}")]
     ColumnDoesNotExist(String),
-}
-
-impl fmt::Display for JsonlStorageError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let payload = match self {
-            JsonlStorageError::FileNotFound => "file not found".to_owned(),
-            JsonlStorageError::TableDoesNotExist => "table does not exist".to_owned(),
-            JsonlStorageError::ColumnDoesNotExist(column) => {
-                format! {"column does not exist: {column}"}
-            }
-        };
-
-        write!(f, "{}", payload)
-    }
 }
