@@ -22,7 +22,6 @@ use {
     },
 };
 
-#[derive(Debug)]
 pub struct JsonlStorage {
     pub path: PathBuf,
 }
