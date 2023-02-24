@@ -44,7 +44,7 @@ impl StoreMut for JsonlStorage {
     async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
         let schema = self
             .fetch_schema(table_name)?
-            .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())?;
+            .map_storage_err(JsonlStorageError::TableDoesNotExist)?;
         let table_path = JsonlStorage::data_path(self, table_name);
 
         let mut file = OpenOptions::new()
