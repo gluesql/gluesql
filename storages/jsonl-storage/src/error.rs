@@ -10,12 +10,12 @@ impl<T, E: ToString> ResultExt<T, E> for std::result::Result<T, E> {
     }
 }
 
-pub trait OptionExt<T> {
-    fn map_storage_err(self, payload: String) -> Result<T, Error>;
+pub trait OptionExt<T, U: ToString> {
+    fn map_storage_err(self, payload: U) -> Result<T, Error>;
 }
 
-impl<T> OptionExt<T> for std::option::Option<T> {
-    fn map_storage_err(self, payload: String) -> Result<T, Error> {
+impl<T, U: ToString> OptionExt<T, U> for std::option::Option<T> {
+    fn map_storage_err(self, payload: U) -> Result<T, Error> {
         self.ok_or_else(|| payload.to_string())
             .map_err(Error::StorageMsg)
     }

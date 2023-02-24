@@ -82,7 +82,7 @@ impl JsonlStorage {
     fn scan_data(&self, table_name: &str) -> Result<RowIter> {
         let schema = self
             .fetch_schema(table_name)?
-            .map_storage_err(JsonlStorageError::TableDoesNotExist.to_string())?;
+            .map_storage_err(JsonlStorageError::TableDoesNotExist)?;
         let data_path = self.data_path(table_name);
         let lines = read_lines(data_path).map_storage_err()?;
         let row_iter = lines.enumerate().map(move |(key, line)| -> Result<_> {
@@ -94,10 +94,9 @@ impl JsonlStorage {
                         .map(|column_def| -> Result<_> {
                             let value = hash_map
                                 .get(&column_def.name)
-                                .map_storage_err(
-                                    JsonlStorageError::ColumnDoesNotExist(column_def.name.clone())
-                                        .to_string(),
-                                )?
+                                .map_storage_err(JsonlStorageError::ColumnDoesNotExist(
+                                    column_def.name.clone(),
+                                ))?
                                 .clone();
                             let data_type = value.get_type();
                             match data_type {
