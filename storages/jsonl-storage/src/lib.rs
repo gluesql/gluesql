@@ -8,10 +8,11 @@ mod transaction;
 use {
     error::{JsonlStorageError, OptionExt, ResultExt},
     gluesql_core::{
+        ast::ColumnDef,
         chrono::NaiveDateTime,
         data::{value::HashMapJsonExt, Schema},
         prelude::Key,
-        result::Result,
+        result::{Error::StorageMsg, Result},
         store::{DataRow, RowIter},
     },
     std::{
@@ -50,6 +51,8 @@ impl JsonlStorage {
             }
             false => Ok(None),
         }?;
+
+        validate_primary_key(&column_defs)?;
 
         Ok(Some(Schema {
             table_name: table_name.to_owned(),
@@ -121,4 +124,23 @@ where
 {
     let file = File::open(filename)?;
     Ok(io::BufReader::new(file).lines())
+}
+
+fn validate_primary_key(column_defs: &Option<Vec<ColumnDef>>) -> Result<()> {
+    let is_primary = column_defs.iter().any(|column_defs| {
+        column_defs.iter().any(|column_def| {
+            column_def
+                .unique
+                .map(|column_unique_option| column_unique_option.is_primary)
+                .unwrap_or(false)
+        })
+    });
+
+    if is_primary {
+        Err(StorageMsg(
+            JsonlStorageError::PrimaryKeyNotSupported.to_string(),
+        ))
+    } else {
+        Ok(())
+    }
 }

@@ -1,7 +1,7 @@
 use {
     crate::{
         error::{JsonlStorageError, OptionExt, ResultExt},
-        JsonlStorage,
+        validate_primary_key, JsonlStorage,
     },
     async_trait::async_trait,
     gluesql_core::{data::Schema, prelude::Key, result::Result, store::DataRow, store::StoreMut},
@@ -20,6 +20,8 @@ impl StoreMut for JsonlStorage {
         File::create(data_path).map_storage_err()?;
 
         if schema.column_defs.is_some() {
+            validate_primary_key(&schema.column_defs)?;
+
             let schema_path = self.schema_path(schema.table_name.as_str());
             let ddl = schema.to_ddl();
             let mut file = File::create(schema_path).map_storage_err()?;

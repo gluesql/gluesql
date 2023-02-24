@@ -8,6 +8,7 @@ use {
     },
     gluesql_jsonl_storage::JsonlStorage,
     std::net::{IpAddr, Ipv4Addr},
+    test_suite::test,
     uuid::Uuid as UUID,
 };
 
@@ -263,4 +264,10 @@ fn jsonl_storage_sample() {
     let expected = Err(Error::Schema(SchemaParseError::CannotParseDDL));
 
     assert_eq!(actual, expected);
+
+    test(
+        glue.execute("SELECT * FROM UnsupportedPrimaryKey")
+            .map(|mut payloads| payloads.remove(0)),
+        Err(Error::StorageMsg("primary key is not supported".to_owned())),
+    );
 }

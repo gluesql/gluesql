@@ -31,4 +31,7 @@ pub enum JsonlStorageError {
 
     #[error("column does not exist: {0}")]
     ColumnDoesNotExist(String),
+
+    #[error("primary key is not supported")]
+    PrimaryKeyNotSupported,
 }
