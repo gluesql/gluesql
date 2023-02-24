@@ -32,7 +32,7 @@ impl Store for JsonlStorage {
                             .map(|os_str| os_str.to_str() == Some("jsonl"))
                             .unwrap_or(false)
                     })
-                    .unwrap_or(false)
+                    .unwrap_or(true)
             })
             .map(|result| -> Result<_> {
                 let path = result.map_storage_err()?.path();
