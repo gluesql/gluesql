@@ -22,7 +22,6 @@ utils = { package = "gluesql-utils", path = "../../utils", version = "0.13.0" }
 gluesql_memory_storage = { path = "../memory-storage", version = "0.13.0" }
 hex = "0.4"
 
-[dependencies.uuid]
-
 [dev-dependencies]
 test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.13.0" }
+uuid = "1"
