@@ -92,19 +92,15 @@ impl JsonlStorage {
                     let values = column_defs
                         .iter()
                         .map(|column_def| -> Result<_> {
-                            let value = hash_map
-                                .get(&column_def.name)
-                                .map_storage_err(JsonlStorageError::ColumnDoesNotExist(
-                                    column_def.name.clone(),
-                                ))?
-                                .clone();
-                            let data_type = value.get_type();
-                            match data_type {
-                                Some(data_type) => match data_type == column_def.data_type {
-                                    true => Ok(value),
-                                    false => value.cast(&column_def.data_type),
-                                },
-                                None => Ok(value),
+                            let value = hash_map.get(&column_def.name).map_storage_err(
+                                JsonlStorageError::ColumnDoesNotExist(column_def.name.clone()),
+                            )?;
+
+                            match value.get_type() {
+                                Some(data_type) if data_type != column_def.data_type => {
+                                    value.cast(&column_def.data_type)
+                                }
+                                Some(_) | None => Ok(value.clone()),
                             }
                         })
                         .collect::<Result<Vec<_>>>()?;
