@@ -63,23 +63,18 @@ impl StoreMut for JsonlStorage {
 
         for row in rows {
             let json_string = match row {
-                DataRow::Vec(values) => {
-                    let mut json_map = Map::new();
-                    for (key, value) in labels.iter().zip(values.into_iter()) {
-                        json_map.insert(key.to_string(), value.try_into()?);
-                    }
+                DataRow::Vec(values) => labels
+                    .iter()
+                    .zip(values.into_iter())
+                    .map(|(key, value)| Ok((key.to_string(), value.try_into()?)))
+                    .collect::<Result<Map<String, JsonValue>>>(),
+                DataRow::Map(hash_map) => hash_map
+                    .into_iter()
+                    .map(|(key, value)| Ok((key, value.try_into()?)))
+                    .collect(),
+            }
+            .map(JsonValue::Object)?;
 
-                    JsonValue::Object(json_map).to_string()
-                }
-                DataRow::Map(hash_map) => {
-                    let mut json_map = Map::new();
-                    for (key, value) in hash_map {
-                        json_map.insert(key.to_string(), value.try_into()?);
-                    }
-
-                    JsonValue::Object(json_map).to_string()
-                }
-            };
             writeln!(file, "{json_string}").map_storage_err()?;
         }
 
