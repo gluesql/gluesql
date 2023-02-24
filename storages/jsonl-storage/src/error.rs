@@ -25,8 +25,10 @@ impl<T, E: ToString> OptionExt<T, E> for std::option::Option<T> {
 pub enum JsonlStorageError {
     #[error("file not found")]
     FileNotFound,
+
     #[error("table does not exist")]
     TableDoesNotExist,
+
     #[error("column does not exist: {0}")]
     ColumnDoesNotExist(String),
 }
