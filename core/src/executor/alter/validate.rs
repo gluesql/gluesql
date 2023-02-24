@@ -73,9 +73,9 @@ pub fn validate_arg_names(args: &[OperateFunctionArg]) -> Result<()> {
         .find(|(i, base_arg)| {
             args.iter()
                 .skip(i + 1)
-                .any(|target_arg| target_arg.name.is_some() && base_arg.name == target_arg.name)
+                .any(|target_arg| base_arg.name == target_arg.name)
         })
-        .map(|(_, arg)| arg.name.as_ref().unwrap());
+        .map(|(_, arg)| arg.name.to_owned());
 
     match duplicate_arg_name {
         Some(v) => Err(AlterError::DuplicateArgName(v.to_string()).into()),

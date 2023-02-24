@@ -4,7 +4,7 @@ use async_trait::async_trait;
 
 #[async_trait(?Send)]
 pub trait Function {
-    async fn fetch_function(&self, func_name: &str) -> Result<Option<CustomFunction>> {
+    async fn fetch_function(&self, func_name: &str) -> Result<Option<&CustomFunction>> {
         Err(Error::StorageMsg(
             "[Storage] Function is not supported".to_owned(),
         ))

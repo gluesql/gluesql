@@ -5,5 +5,5 @@ use serde::{Deserialize, Serialize};
 pub struct CustomFunction {
     pub func_name: String,
     pub args: Option<Vec<OperateFunctionArg>>,
-    pub body: String,
+    pub return_: Option<Expr>,
 }

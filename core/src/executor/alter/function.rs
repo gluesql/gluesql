@@ -1,7 +1,7 @@
 use {
     super::{validate_arg, validate_arg_names, AlterError},
     crate::{
-        ast::{ColumnDef, OperateFunctionArg, Query, SetExpr, TableFactor, Values},
+        ast::{ColumnDef, Expr, Function, OperateFunctionArg, Query, SetExpr, TableFactor, Values},
         data::{CustomFunction, Schema, TableError},
         executor::{evaluate_stateless, select::select},
         prelude::{DataType, Value},
@@ -19,29 +19,27 @@ use {
 pub async fn create_function<T: GStore + GStoreMut>(
     storage: &mut T,
     func_name: &str,
-    args: Option<Vec<OperateFunctionArg>>,
+    args: &Option<Vec<OperateFunctionArg>>,
     or_replace: bool,
-    body: &str,
+    return_: &Option<Expr>,
 ) -> Result<()> {
-    if let Some(args) = &args {
+    if let Some(args) = args {
         validate_arg_names(args)?;
-
-        for arg in args {
-            validate_arg(arg)?;
-        }
+        args.iter().try_for_each(|arg| validate_arg(arg))?;
     }
-    let func = CustomFunction {
-        func_name: func_name.to_owned(),
-        args: args,
-        body: body.to_owned(),
-    };
 
     if storage.fetch_function(func_name).await?.is_none() || or_replace {
         storage.drop_function(&func_name).await?;
-        storage.create_function(func).await?;
-        return Ok(());
+        storage
+            .create_function(CustomFunction {
+                func_name: func_name.to_owned(),
+                args: args.to_owned(),
+                return_: return_.to_owned(),
+            })
+            .await?;
+        Ok(())
     } else {
-        return Err(AlterError::FunctionAlreadyExists(func_name.to_owned()).into());
+        Err(AlterError::FunctionAlreadyExists(func_name.to_owned()).into())
     }
 }
 

@@ -346,8 +346,8 @@ async fn execute_inner<T: GStore + GStoreMut>(
             or_replace,
             name,
             args,
-            body,
-        } => create_function(storage, name, args.clone(), *or_replace, body)
+            return_,
+        } => create_function(storage, name, args, *or_replace, return_)
             .await
             .map(|_| Payload::Create),
     }

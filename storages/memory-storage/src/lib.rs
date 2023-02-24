@@ -37,8 +37,8 @@ pub struct MemoryStorage {
 
 #[async_trait(?Send)]
 impl Function for MemoryStorage {
-    async fn fetch_function(&self, func_name: &str) -> Result<Option<CustomFunction>> {
-        Ok(self.functions.get(&func_name.to_uppercase()).cloned())
+    async fn fetch_function(&self, func_name: &str) -> Result<Option<&CustomFunction>> {
+        Ok(self.functions.get(&func_name.to_uppercase()))
     }
 }
 

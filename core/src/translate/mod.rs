@@ -209,17 +209,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 or_replace: *or_replace,
                 name: translate_object_name(name)?,
                 args,
-                body: params
-                    .as_
-                    .as_ref()
-                    .map(|v| {
-                        match v {
-                            SqlSingleQuotedDef(v) => v,
-                            SqlDoubleDollarDef(v) => v,
-                        }
-                        .to_owned()
-                    })
-                    .unwrap_or_else(|| "".to_owned()),
+                return_: params.return_.as_ref().map(translate_expr).transpose()?,
             })
         }
         _ => Err(TranslateError::UnsupportedStatement(sql_statement.to_string()).into()),

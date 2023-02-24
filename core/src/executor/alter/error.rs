@@ -29,6 +29,10 @@ pub enum AlterError {
     #[error("unsupported index expr: {0:#?}")]
     UnsupportedIndexExpr(Expr),
 
+    // validate index expr
+    #[error("unsupported unnamed argument")]
+    UnsupportedUnnamedArg,
+
     #[error("identifier not found: {0:#?}")]
     IdentifierNotFound(Expr),
 

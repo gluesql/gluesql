@@ -74,7 +74,7 @@ pub enum Statement {
         name: String,
         /// Optional schema
         args: Option<Vec<OperateFunctionArg>>,
-        body: String,
+        return_: Option<Expr>,
     },
     /// ALTER TABLE
     AlterTable {
@@ -213,7 +213,7 @@ impl ToSql for Statement {
                 or_replace,
                 name,
                 args,
-                body,
+                return_,
                 ..
             } => {
                 let or_replace = or_replace.then_some(" OR REPLACE").unwrap_or("");
@@ -226,7 +226,11 @@ impl ToSql for Statement {
                             .join(", ")
                     })
                     .unwrap_or_else(|| "".to_owned());
-                format!("CREATE{or_replace} FUNCTION {name}({args}) AS '{body}';")
+                let return_ = return_
+                    .as_ref()
+                    .map(|v| format!(" RETURN {}", v.to_sql()))
+                    .unwrap_or_else(|| "".to_owned());
+                format!("CREATE{or_replace} FUNCTION {name}({args}){return_};")
             }
             Statement::AlterTable { name, operation } => {
                 format!(r#"ALTER TABLE "{name}" {};"#, operation.to_sql())
@@ -563,35 +567,30 @@ mod tests {
     #[test]
     fn to_sql_create_function() {
         assert_eq!(
-            "CREATE FUNCTION add(num INT, INT DEFAULT 0) AS 'select num + $2;';",
+            "CREATE FUNCTION add(num INT DEFAULT 0) RETURN num;",
             Statement::CreateFunction {
                 or_replace: false,
                 name: "add".into(),
-                args: Some(vec![
-                    OperateFunctionArg {
-                        name: Some("num".into()),
-                        data_type: DataType::Int,
-                        default: None,
-                    },
-                    OperateFunctionArg {
-                        name: None,
-                        data_type: DataType::Int,
-                        default: Some(Expr::Literal(AstLiteral::Number(
-                            BigDecimal::from_str("0").unwrap()
-                        ))),
-                    },
-                ],),
-                body: "select num + $2;".into()
+                args: Some(vec![OperateFunctionArg {
+                    name: "num".into(),
+                    data_type: DataType::Int,
+                    default: Some(Expr::Literal(AstLiteral::Number(
+                        BigDecimal::from_str("0").unwrap()
+                    ))),
+                }],),
+                return_: Some(Expr::Identifier("num".to_owned()))
             }
             .to_sql()
         );
         assert_eq!(
-            "CREATE OR REPLACE FUNCTION add() AS 'select 1;';",
+            "CREATE OR REPLACE FUNCTION add() RETURN 1;",
             Statement::CreateFunction {
                 or_replace: true,
                 name: "add".into(),
                 args: None,
-                body: "select 1;".into()
+                return_: Some(Expr::Literal(AstLiteral::Number(
+                    BigDecimal::from_str("1").unwrap()
+                )))
             }
             .to_sql()
         );

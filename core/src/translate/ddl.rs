@@ -91,7 +91,11 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> 
 }
 
 pub fn translate_operate_function_arg(arg: &SqlOperateFunctionArg) -> Result<OperateFunctionArg> {
-    let name = arg.name.as_ref().map(|v| v.value.to_owned());
+    let name = if let Some(v) = &arg.name {
+        v.value.to_owned()
+    } else {
+        return Err(TranslateError::UnNamedFunctionArgNotSupported.into());
+    };
     let data_type = translate_data_type(&arg.data_type)?;
     let default = if let Some(default) = &arg.default_expr {
         Some(translate_expr(default)?)

@@ -48,6 +48,9 @@ pub enum TranslateError {
     #[error("named function arg is not supported")]
     NamedFunctionArgNotSupported,
 
+    #[error("unnamed function arg is not supported")]
+    UnNamedFunctionArgNotSupported,
+
     #[error("wildcard function arg is not accepted")]
     WildcardFunctionArgNotAccepted,
 

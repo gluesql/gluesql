@@ -40,7 +40,7 @@ pub struct ColumnUniqueOption {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct OperateFunctionArg {
-    pub name: Option<String>,
+    pub name: String,
     pub data_type: DataType,
     /// `DEFAULT <restricted-expr>`
     pub default: Option<Expr>,
@@ -119,14 +119,9 @@ impl ToSql for OperateFunctionArg {
         } = self;
         let default = default
             .as_ref()
-            .map(|expr| format!("DEFAULT {}", expr.to_sql()));
-        let name = name.as_ref().map(|v| v.to_owned());
-        let arg_def = data_type.to_string();
-        [name, Some(arg_def), default]
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>()
-            .join(" ")
+            .map(|expr| format!(" DEFAULT {}", expr.to_sql()))
+            .unwrap_or_else(|| "".to_owned());
+        format!("{name} {data_type}{default}")
     }
 }
 
@@ -204,16 +199,7 @@ mod tests {
         assert_eq!(
             "name TEXT",
             OperateFunctionArg {
-                name: Some("name".to_owned()),
-                data_type: DataType::Text,
-                default: None,
-            }
-            .to_sql()
-        );
-        assert_eq!(
-            "TEXT",
-            OperateFunctionArg {
-                name: None,
+                name: "name".to_owned(),
                 data_type: DataType::Text,
                 default: None,
             }
@@ -223,7 +209,7 @@ mod tests {
         assert_eq!(
             "accepted BOOLEAN DEFAULT FALSE",
             OperateFunctionArg {
-                name: Some("accepted".to_owned()),
+                name: "accepted".to_owned(),
                 data_type: DataType::Boolean,
                 default: Some(Expr::Literal(AstLiteral::Boolean(false))),
             }
