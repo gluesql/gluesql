@@ -62,19 +62,17 @@ impl JsonlStorage {
     }
 
     fn data_path(&self, table_name: &str) -> PathBuf {
-        let path = self.path_by(table_name, "jsonl");
-
-        PathBuf::from(path)
+        self.path_by(table_name, "jsonl")
     }
 
     fn schema_path(&self, table_name: &str) -> PathBuf {
-        let path = self.path_by(table_name, "sql");
-
-        PathBuf::from(path)
+        self.path_by(table_name, "sql")
     }
 
-    fn path_by(&self, table_name: &str, extension: &str) -> String {
-        let path = format!("{}/{}.{extension}", self.path.display(), table_name);
+    fn path_by(&self, table_name: &str, extension: &str) -> PathBuf {
+        let path = self.path.as_path();
+        let mut path = path.join(table_name);
+        path.set_extension(extension);
 
         path
     }
