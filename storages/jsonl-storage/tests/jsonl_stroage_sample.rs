@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use {
     gluesql_core::{
         data::{value::HashMapJsonExt, Interval, SchemaParseError, ValueError},
@@ -13,7 +11,10 @@ use {
         result::Error,
     },
     gluesql_jsonl_storage::JsonlStorage,
-    std::net::{IpAddr, Ipv4Addr},
+    std::{
+        collections::HashMap,
+        net::{IpAddr, Ipv4Addr},
+    },
     test_suite::{concat_with, row, select, stringify_label, test},
     uuid::Uuid as UUID,
 };
