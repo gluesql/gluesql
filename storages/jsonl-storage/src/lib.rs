@@ -89,7 +89,7 @@ impl JsonlStorage {
             let mut key: Option<Key> = None;
             let data_row = match &schema.column_defs {
                 Some(column_defs) => {
-                    let mut values = vec![];
+                    let mut values = Vec::new();
                     for column_def in column_defs {
                         let value = json_row.get(&column_def.name).map_storage_err(
                             JsonlStorageError::ColumnDoesNotExist(column_def.name.clone()),
@@ -117,9 +117,10 @@ impl JsonlStorage {
                 }
                 None => DataRow::Map(json_row),
             };
+
             let key = match key {
                 Some(key) => key,
-                None => index.try_into().map_storage_err().map(Key::I64)?,
+                None => index.try_into().map(Key::I64).map_storage_err()?,
             };
 
             Ok((key, data_row))
