@@ -1,5 +1,5 @@
 mod alter_table;
-mod error;
+pub mod error;
 mod index;
 mod store;
 mod store_mut;
@@ -12,7 +12,7 @@ use {
         chrono::NaiveDateTime,
         data::{value::HashMapJsonExt, Schema},
         prelude::Key,
-        result::{Error::StorageMsg, Result},
+        result::Result,
         store::{DataRow, RowIter},
     },
     std::{
@@ -52,8 +52,6 @@ impl JsonlStorage {
             false => Ok(None),
         }?;
 
-        validate_primary_key(&column_defs)?;
-
         Ok(Some(Schema {
             table_name: table_name.to_owned(),
             column_defs,
@@ -85,31 +83,65 @@ impl JsonlStorage {
             .map_storage_err(JsonlStorageError::TableDoesNotExist)?;
         let data_path = self.data_path(table_name);
         let lines = read_lines(data_path).map_storage_err()?;
+
         let row_iter = lines.enumerate().map(move |(key, line)| -> Result<_> {
             let hash_map = HashMap::parse_json_object(&line.map_storage_err()?)?;
+
+            let mut key_temp: Option<Key> = None;
             let data_row = match &schema.column_defs {
                 Some(column_defs) => {
-                    let values = column_defs
-                        .iter()
-                        .map(|column_def| -> Result<_> {
-                            let value = hash_map.get(&column_def.name).map_storage_err(
-                                JsonlStorageError::ColumnDoesNotExist(column_def.name.clone()),
-                            )?;
+                    let mut values = vec![];
+                    for column_def in column_defs {
+                        let value = hash_map.get(&column_def.name).map_storage_err(
+                            JsonlStorageError::ColumnDoesNotExist(column_def.name.clone()),
+                        )?;
 
-                            match value.get_type() {
-                                Some(data_type) if data_type != column_def.data_type => {
-                                    value.cast(&column_def.data_type)
-                                }
-                                Some(_) | None => Ok(value.clone()),
+                        if column_def
+                            .unique
+                            .map(|column_unique_option| column_unique_option.is_primary)
+                            .unwrap_or(false)
+                        {
+                            key_temp = Some(value.clone().try_into().map_storage_err()?);
+                        }
+
+                        let value = match value.get_type() {
+                            Some(data_type) if data_type != column_def.data_type => {
+                                value.cast(&column_def.data_type)?
                             }
-                        })
-                        .collect::<Result<Vec<_>>>()?;
+                            Some(_) | None => value.clone(),
+                        };
+
+                        values.push(value);
+                    }
+
+                    // let values = column_defs
+                    //     .iter()
+                    //     .map(|column_def| -> Result<_> {
+                    //         let value = hash_map.get(&column_def.name).map_storage_err(
+                    //             JsonlStorageError::ColumnDoesNotExist(column_def.name.clone()),
+                    //         )?;
+
+                    //         match value.get_type() {
+                    //             Some(data_type) if data_type != column_def.data_type => {
+                    //                 value.cast(&column_def.data_type)
+                    //             }
+                    //             Some(_) | None => Ok(value.clone()),
+                    //         }
+                    //     })
+                    //     .collect::<Result<Vec<_>>>()?;
 
                     DataRow::Vec(values)
                 }
-                None => DataRow::Map(hash_map),
+                None => DataRow::Map(hash_map.clone()),
             };
-            let key = Key::I64((key + 1).try_into().map_storage_err()?);
+            let key = match key_temp {
+                Some(key) => key,
+                None => (key + 1).try_into().map_storage_err().map(Key::I64)?,
+            };
+            // let key = match &primary_key {
+            //     Some(primary_key) => hash_map.get(primary_key).unwrap().try_into()?,
+            //     None => Key::I64((key + 1).try_into().map_storage_err()?),
+            // };
 
             Ok((key, data_row))
         });
@@ -126,21 +158,16 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
-fn validate_primary_key(column_defs: &Option<Vec<ColumnDef>>) -> Result<()> {
-    let is_primary = column_defs.iter().any(|column_defs| {
-        column_defs.iter().any(|column_def| {
-            column_def
-                .unique
-                .map(|column_unique_option| column_unique_option.is_primary)
-                .unwrap_or(false)
+fn get_primary_key(column_defs: &Option<Vec<ColumnDef>>) -> Option<String> {
+    column_defs
+        .as_ref()
+        .and_then(|column_defs| {
+            column_defs.iter().find(|column_def| {
+                column_def
+                    .unique
+                    .map(|column_unique_option| column_unique_option.is_primary)
+                    .unwrap_or(false)
+            })
         })
-    });
-
-    if is_primary {
-        Err(StorageMsg(
-            JsonlStorageError::PrimaryKeyNotSupported.to_string(),
-        ))
-    } else {
-        Ok(())
-    }
+        .map(|column_def| column_def.name.to_owned())
 }

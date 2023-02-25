@@ -2,13 +2,17 @@ use {
     gluesql_core::{
         data::{Interval, SchemaParseError, ValueError},
         prelude::{
-            Glue, {Payload, Value},
+            Glue,
+            {
+                Payload,
+                Value::{self, Str, I64},
+            },
         },
         result::Error,
     },
     gluesql_jsonl_storage::JsonlStorage,
     std::net::{IpAddr, Ipv4Addr},
-    test_suite::test,
+    test_suite::{concat_with, row, select, stringify_label, test},
     uuid::Uuid as UUID,
 };
 
@@ -265,9 +269,20 @@ fn jsonl_storage_sample() {
 
     assert_eq!(actual, expected);
 
+    glue.execute("DELETE FROM SchemaWithPK;").unwrap();
+    glue.execute("INSERT INTO SchemaWithPK VALUES(2, 'b')")
+        .unwrap();
+    glue.execute("INSERT INTO SchemaWithPK VALUES(1, 'a')")
+        .unwrap();
     test(
-        glue.execute("SELECT * FROM UnsupportedPrimaryKey")
+        glue.execute("SELECT * FROM SchemaWithPK")
             .map(|mut payloads| payloads.remove(0)),
-        Err(Error::StorageMsg("primary key is not supported".to_owned())),
+        Ok(select!(
+            id | name
+            I64 | Str;
+            1 "a".to_owned();
+            2 "b".to_owned()
+        )),
     );
+    glue.execute("DELETE FROM SchemaWithPK;").unwrap();
 }
