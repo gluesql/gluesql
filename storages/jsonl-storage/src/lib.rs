@@ -8,6 +8,7 @@ mod transaction;
 use {
     error::{JsonlStorageError, OptionExt, ResultExt},
     gluesql_core::{
+        ast::ColumnUniqueOption,
         chrono::NaiveDateTime,
         data::{value::HashMapJsonExt, Schema},
         prelude::Key,
@@ -84,46 +85,47 @@ impl JsonlStorage {
         let lines = read_lines(data_path).map_storage_err()?;
 
         let row_iter = lines.enumerate().map(move |(index, line)| -> Result<_> {
+            let get_index_key = || index.try_into().map(Key::I64).map_storage_err();
             let json_row = HashMap::parse_json_object(&line.map_storage_err()?)?;
 
-            let mut key: Option<Key> = None;
-            let data_row = match &schema.column_defs {
-                Some(column_defs) => {
-                    let mut values = Vec::new();
-                    for column_def in column_defs {
-                        let value = json_row.get(&column_def.name).map_storage_err(
-                            JsonlStorageError::ColumnDoesNotExist(column_def.name.clone()),
-                        )?;
+            let column_defs = match &schema.column_defs {
+                Some(column_defs) => column_defs,
+                None => {
+                    let key = get_index_key()?;
+                    let row = DataRow::Map(json_row);
 
-                        if column_def
-                            .unique
-                            .map(|column_unique_option| column_unique_option.is_primary)
-                            .unwrap_or(false)
-                        {
-                            key = Some(value.clone().try_into().map_storage_err()?);
-                        }
-
-                        let value = match value.get_type() {
-                            Some(data_type) if data_type != column_def.data_type => {
-                                value.cast(&column_def.data_type)?
-                            }
-                            Some(_) | None => value.clone(),
-                        };
-
-                        values.push(value);
-                    }
-
-                    DataRow::Vec(values)
+                    return Ok((key, row));
                 }
-                None => DataRow::Map(json_row),
             };
+
+            let mut key: Option<Key> = None;
+            let mut values = Vec::with_capacity(column_defs.len());
+            for column_def in column_defs {
+                let value = json_row.get(&column_def.name).map_storage_err(
+                    JsonlStorageError::ColumnDoesNotExist(column_def.name.clone()),
+                )?;
+
+                if column_def.unique == Some(ColumnUniqueOption { is_primary: true }) {
+                    key = Some(value.clone().try_into().map_storage_err()?);
+                }
+
+                let value = match value.get_type() {
+                    Some(data_type) if data_type != column_def.data_type => {
+                        value.cast(&column_def.data_type)?
+                    }
+                    Some(_) | None => value.clone(),
+                };
+
+                values.push(value);
+            }
 
             let key = match key {
                 Some(key) => key,
-                None => index.try_into().map(Key::I64).map_storage_err()?,
+                None => get_index_key()?,
             };
+            let row = DataRow::Vec(values);
 
-            Ok((key, data_row))
+            Ok((key, row))
         });
 
         Ok(Box::new(row_iter))
