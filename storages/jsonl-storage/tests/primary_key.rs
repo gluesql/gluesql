@@ -11,7 +11,7 @@ use {
 #[test]
 fn jsonl_primary_key() {
     let path = "tmp/jsonl_primary_key/";
-    if let Err(e) = remove_dir_all(&path) {
+    if let Err(e) = remove_dir_all(path) {
         println!("fs::remove_file {:?}", e);
     };
     let jsonl_storage = JsonlStorage::new(path).unwrap();
