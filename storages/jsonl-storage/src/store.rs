@@ -22,10 +22,8 @@ impl Store for JsonlStorage {
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         let paths = fs::read_dir(&self.path).map_storage_err()?;
         let mut schemas = paths
-            .filter(|result| match result.as_ref() {
-                Ok(dir_entry) => {
-                    dir_entry.path().extension().and_then(OsStr::to_str) == Some("jsonl")
-                }
+            .filter(|result| match result {
+                Ok(entry) => entry.path().extension().and_then(OsStr::to_str) == Some("jsonl"),
                 Err(_) => true,
             })
             .map(|result| -> Result<_> {
