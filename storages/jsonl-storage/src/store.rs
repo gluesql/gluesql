@@ -22,17 +22,11 @@ impl Store for JsonlStorage {
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         let paths = fs::read_dir(&self.path).map_storage_err()?;
         let mut schemas = paths
-            .filter(|result| {
-                result
-                    .as_ref()
-                    .map(|dir_entry| {
-                        dir_entry
-                            .path()
-                            .extension()
-                            .map(|os_str| os_str.to_str() == Some("jsonl"))
-                            .unwrap_or(false)
-                    })
-                    .unwrap_or(true)
+            .filter(|result| match result.as_ref() {
+                Ok(dir_entry) => {
+                    dir_entry.path().extension().and_then(OsStr::to_str) == Some("jsonl")
+                }
+                Err(_) => true,
             })
             .map(|result| -> Result<_> {
                 let path = result.map_storage_err()?.path();
