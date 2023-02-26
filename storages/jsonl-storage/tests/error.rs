@@ -9,7 +9,7 @@ use {
 };
 
 #[test]
-fn jsonl_primary_key() {
+fn jsonl_error() {
     let path = "./tests/samples/";
     let jsonl_storage = JsonlStorage::new(path).unwrap();
     let mut glue = Glue::new(jsonl_storage);

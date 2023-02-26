@@ -16,7 +16,7 @@ use {
 };
 
 #[test]
-fn jsonl_storage_sample() {
+fn jsonl_schema() {
     let path = "./tests/samples/";
     let jsonl_storage = JsonlStorage::new(path).unwrap();
     let mut glue = Glue::new(jsonl_storage);
