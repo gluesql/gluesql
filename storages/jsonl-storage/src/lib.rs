@@ -1,3 +1,5 @@
+use gluesql_core::result::Error;
+
 mod alter_table;
 pub mod error;
 mod index;
@@ -47,10 +49,17 @@ impl JsonlStorage {
                 let mut ddl = String::new();
                 file.read_to_string(&mut ddl).map_storage_err()?;
 
-                Schema::from_ddl(&ddl).map(|schema| schema.column_defs)
+                let schema = Schema::from_ddl(&ddl)?;
+                if schema.table_name != table_name {
+                    return Err(Error::StorageMsg(
+                        JsonlStorageError::TableNameDoesNotMatchWithFile.to_string(),
+                    ));
+                }
+
+                schema.column_defs
             }
-            false => Ok(None),
-        }?;
+            false => None,
+        };
 
         Ok(Some(Schema {
             table_name: table_name.to_owned(),

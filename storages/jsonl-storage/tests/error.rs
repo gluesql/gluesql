@@ -4,7 +4,7 @@ use {
         prelude::Glue,
         result::Error,
     },
-    gluesql_jsonl_storage::JsonlStorage,
+    gluesql_jsonl_storage::{error::JsonlStorageError, JsonlStorage},
     test_suite::test,
 };
 
@@ -22,6 +22,12 @@ fn jsonl_error() {
         (
             glue.execute("SELECT * FROM WrongSchema"),
             Err(Error::Schema(SchemaParseError::CannotParseDDL)),
+        ),
+        (
+            glue.execute("SELECT * FROM WrongTableName"),
+            Err(Error::StorageMsg(
+                JsonlStorageError::TableNameDoesNotMatchWithFile.to_string(),
+            )),
         ),
     ];
 
