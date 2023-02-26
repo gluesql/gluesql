@@ -1,5 +1,3 @@
-use gluesql_core::result::Error;
-
 mod alter_table;
 pub mod error;
 mod index;
@@ -14,6 +12,7 @@ use {
         chrono::NaiveDateTime,
         data::{value::HashMapJsonExt, Schema},
         prelude::Key,
+        result::Error,
         result::Result,
         store::{DataRow, RowIter},
     },
