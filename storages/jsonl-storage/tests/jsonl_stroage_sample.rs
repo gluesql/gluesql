@@ -50,13 +50,11 @@ fn jsonl_storage_sample() {
     let bytea = |v| hex::decode(v).unwrap();
     let ip = |a, b, c, d| IpAddr::V4(Ipv4Addr::new(a, b, c, d));
     let m = |s: &str| HashMap::parse_json_object(s).unwrap();
-    let l = |s: &str| {
-        let list = Value::parse_json_list(s).unwrap();
-
-        match list {
-            List(values) => values,
-            _ => panic!("not a list"),
-        }
+    let l = |values: [&str; 3]| {
+        values
+            .iter()
+            .map(|str| Value::Str(str.to_string()))
+            .collect()
     };
 
     let cases = vec![
@@ -167,16 +165,16 @@ fn jsonl_storage_sample() {
             Ok(select!(
               list
               List;
-              l(r#"["olive", "turquoise", "plum"]"#);
-              l(r#"["red", "sky blue", "grey"]"#);
-              l(r#"["indigo", "turquoise", "indigo"]"#);
-              l(r#"["black", "turquoise", "purple"]"#);
-              l(r#"["turquoise", "lavender", "red"]"#);
-              l(r#"["turquoise", "magenta", "salmon"]"#);
-              l(r#"["maroon", "violet", "lavender"]"#);
-              l(r#"["pink", "teal", "indigo"]"#);
-              l(r#"["black", "red", "purple"]"#);
-              l(r#"["pink", "indigo", "plum"]"#)
+              l(["olive", "turquoise", "plum"]);
+              l(["red", "sky blue", "grey"]);
+              l(["indigo", "turquoise", "indigo"]);
+              l(["black", "turquoise", "purple"]);
+              l(["turquoise", "lavender", "red"]);
+              l(["turquoise", "magenta", "salmon"]);
+              l(["maroon", "violet", "lavender"]);
+              l(["pink", "teal", "indigo"]);
+              l(["black", "red", "purple"]);
+              l(["pink", "indigo", "plum"])
             )),
         ),
         (
