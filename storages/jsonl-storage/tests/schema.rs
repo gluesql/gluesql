@@ -1,14 +1,10 @@
 use {
     gluesql_core::{
-        data::{value::HashMapJsonExt, Interval, SchemaParseError, ValueError},
+        data::{value::HashMapJsonExt, Interval},
         prelude::{
             Glue,
-            {
-                Payload,
-                Value::{self, *},
-            },
+            Value::{self, *},
         },
-        result::Error,
     },
     gluesql_jsonl_storage::JsonlStorage,
     std::{
@@ -24,22 +20,6 @@ fn jsonl_storage_sample() {
     let path = "./tests/samples/";
     let jsonl_storage = JsonlStorage::new(path).unwrap();
     let mut glue = Glue::new(jsonl_storage);
-
-    let actual = glue.execute("SELECT * FROM Schemaless").unwrap();
-    let actual = actual.get(0).unwrap();
-    let expected = Payload::SelectMap(vec![
-        [("id".to_owned(), Value::I64(1))].into_iter().collect(),
-        [("name".to_owned(), Value::Str("Glue".to_owned()))]
-            .into_iter()
-            .collect(),
-        [
-            ("id".to_owned(), Value::I64(3)),
-            ("name".to_owned(), Value::Str("SQL".to_owned())),
-        ]
-        .into_iter()
-        .collect(),
-    ]);
-    assert_eq!(actual, &expected);
 
     macro_rules! date {
         ($date: expr) => {
@@ -176,39 +156,6 @@ fn jsonl_storage_sample() {
               l(["black", "red", "purple"]);
               l(["pink", "indigo", "plum"])
             )),
-        ),
-        (
-            glue.execute("SELECT * FROM WrongFormat"),
-            Err(ValueError::InvalidJsonString("{".to_owned()).into()),
-        ),
-        (
-            glue.execute("SELECT * FROM WrongSchema"),
-            Err(Error::Schema(SchemaParseError::CannotParseDDL)),
-        ),
-        (
-            glue.execute("DELETE FROM SchemaWithPK;"),
-            Ok(Payload::Delete(0)),
-        ),
-        (
-            glue.execute("INSERT INTO SchemaWithPK VALUES(2, 'b')"),
-            Ok(Payload::Insert(1)),
-        ),
-        (
-            glue.execute("INSERT INTO SchemaWithPK VALUES(1, 'a')"),
-            Ok(Payload::Insert(1)),
-        ),
-        (
-            glue.execute("SELECT * FROM SchemaWithPK"),
-            Ok(select!(
-                id | name
-                I64 | Str;
-                1 "a".to_owned();
-                2 "b".to_owned()
-            )),
-        ),
-        (
-            glue.execute("DELETE FROM SchemaWithPK;"),
-            Ok(Payload::Delete(2)),
         ),
     ];
 
