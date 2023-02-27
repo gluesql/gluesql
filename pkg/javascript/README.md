@@ -43,10 +43,9 @@ console.log(rows);
 ```
 
 ## Examples
-* [JavaScript modules](https://github.com/gluesql/gluesql/tree/main/gluesql-js/examples/web/module)
-* [Rollup](https://github.com/gluesql/gluesql/tree/main/gluesql-js/examples/web/rollup)
-* [Webpack](https://github.com/gluesql/gluesql/tree/main/gluesql-js/examples/web/webpack)
-* [Node.js](https://github.com/gluesql/gluesql/tree/main/gluesql-js/examples/nodejs)
+* [JavaScript modules](https://github.com/gluesql/gluesql/tree/main/pkg/javascript/examples/web/module)
+* [Rollup](https://github.com/gluesql/gluesql/tree/main/pkg/javascript/examples/web/rollup)
+* [Webpack](https://github.com/gluesql/gluesql/tree/main/pkg/javascript/examples/web/webpack)
 
 ## 🚧 Documentation- WIP
 * [General examples](https://github.com/gluesql/gluesql/tree/main/test-suite/src)
