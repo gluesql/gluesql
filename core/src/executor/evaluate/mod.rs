@@ -19,7 +19,7 @@ use {
         stream::{self, StreamExt, TryStreamExt},
     },
     im_rc::HashMap,
-    std::{borrow::Cow, rc::Rc},
+    std::{borrow::Cow, rc::Rc, collections::HashMap as StdHashMap},
 };
 
 pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
@@ -288,6 +288,13 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         evaluate(storage, context, aggregated, expr)
     };
 
+    let eval_with_context = |expr: &Expr, context: Rc<RowContext>| {
+        let context = Some(Rc::clone(&context));
+        let aggregated = aggregated.as_ref().map(Rc::clone);
+
+        evaluate(storage, context, aggregated, expr)
+    };
+
     let name = func.to_string();
 
     match func {
@@ -304,42 +311,41 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             if let Some(custom_func) = custom_func {
                 let args: Vec<Evaluated<'_>> = stream::iter(exprs).then(eval).try_collect().await?;
 
-                // let args = args
-                //     .into_iter()
-                //     .map(|expr| Value::try_from(expr).unwrap())
-                //     .collect::<Vec<_>>();
+                let args = args
+                    .into_iter()
+                    .map(|expr| Value::try_from(expr).unwrap())
+                    .collect::<Vec<_>>();
 
                 let empty = vec![];
 
                 let fargs = custom_func.args.as_ref().unwrap_or(&empty);
 
                 let value = if fargs.len() == args.len() {
-                    args.clone()
-                        .into_iter()
-                        .zip(fargs.iter())
-                        .try_for_each(|(arg, farg)| {
-                            let arg = Value::try_from(arg).unwrap();
-                            arg.validate_type(&farg.data_type)?;
-                            arg.validate_null(farg.default.is_some())
-                        })?;
-                    // replace null by default value
-                    let exprs = exprs
-                        .iter()
-                        .enumerate()
-                        .map(|(i, expr)| {
-                            if args[i].is_null() {
-                                fargs[i].default.as_ref().unwrap()
-                            } else {
-                                expr
-                            }
-                        })
-                        .collect::<Vec<&Expr>>();
-                    println!("{:?} {:?}", exprs, custom_func.return_);
-                    if let Some(v) = &custom_func.return_ {
-                        Ok(eval(v).await?)
+                    let mut hm = StdHashMap::new();
+
+                    args.iter().enumerate().try_for_each(|(i, arg)| -> Result<()> {
+                        arg.validate_type(&fargs[i].data_type)?;
+                        arg.validate_null(fargs[i].default.is_some())?;
+                        let value = if arg.is_null() {
+                            // fargs[i].default.as_ref().unwrap()
+                            &args[i]
+                        } else {
+                            &args[i]
+                        };
+                        hm.insert(fargs[i].name.to_owned(), value.to_owned());
+                        Ok(())
+                    })?;
+
+                    let row = Row::Map(hm);
+                    let rowcontext = RowContext::new(name, Cow::Borrowed(&row), None);
+                    let context = Rc::new(rowcontext);
+
+                    let value = if let Some(v) = &custom_func.return_ {
+                        eval_with_context(v, context).await?
                     } else {
-                        Ok(Evaluated::from(Value::Null))
-                    }
+                        Evaluated::from(Value::Null)
+                    };
+                    Ok(value)
                 } else {
                     Err(TranslateError::FunctionArgsLengthNotMatching {
                         name: custom_func.func_name.to_owned(),
