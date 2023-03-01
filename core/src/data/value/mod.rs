@@ -757,8 +757,8 @@ mod tests {
             Some(Ordering::Less)
         );
         assert_eq!(
-            Interval::Microsecond(1).partial_cmp(&Interval::Month(2)),
-            None
+            Interval::Microsecond(1).cmp(&Interval::Month(2)),
+            Ordering::Less
         );
 
         assert_eq!(one.partial_cmp(&two), Some(Ordering::Less));

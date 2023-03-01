@@ -315,6 +315,13 @@ mod tests {
         chrono::{NaiveDate, NaiveTime},
     };
 
+    #[test]
+    fn cmp() {
+        assert!(Interval::Month(12) > Interval::Month(1));
+        assert!(Interval::Microsecond(300) > Interval::Microsecond(1));
+        assert!(Interval::Month(1) > Interval::Microsecond(1000));
+    }
+
     fn date(year: i32, month: u32, day: u32) -> NaiveDate {
         NaiveDate::from_ymd_opt(year, month, day).unwrap()
     }
