@@ -117,13 +117,10 @@ impl Store for IdbStorage {
         schemas
             .into_iter()
             .map(|schema| {
-                schema
-                    .as_string()
-                    .as_deref()
-                    .ok_or_else(|| {
-                        Error::StorageMsg("conflict - invalid schema value: {schema:?}".to_owned())
-                    })
-                    .and_then(Schema::from_ddl)
+                let Some(ddl) = schema.as_string().as_deref() else {
+                    return Err(Error::StorageMsg("conflict - invalid schema value: {schema:?}".to_owned()));
+                };
+                Schema::from_ddl(ddl)
             })
             .collect::<Result<Vec<Schema>>>()
     }
