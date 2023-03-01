@@ -174,16 +174,4 @@ mod tests {
     }
 }
 
-impl Metadata for MockStorage {
-    fn scan_meta<'life0, 'life1, 'async_trait>(
-        &'life0 self,
-        meta: &'life1 crate::store::MetaName,
-    ) -> core::pin::Pin<Box<dyn core::future::Future<Output = Result<RowIter>> + 'async_trait>>
-    where
-        'life0: 'async_trait,
-        'life1: 'async_trait,
-        Self: 'async_trait,
-    {
-        todo!()
-    }
-}
+impl Metadata for MockStorage {}

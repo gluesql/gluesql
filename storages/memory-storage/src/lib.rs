@@ -1,9 +1,6 @@
 #![deny(clippy::str_to_string)]
 
-use gluesql_core::{
-    chrono::Utc,
-    store::{GlueObjects, Meta, MetaName, MetaRow, Metadata},
-};
+use gluesql_core::{prelude::Value, store::Metadata};
 
 mod alter_table;
 mod index;
@@ -29,28 +26,31 @@ pub struct Item {
     pub rows: BTreeMap<Key, DataRow>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct MemoryStorage {
     pub id_counter: i64,
     pub items: HashMap<String, Item>,
-    pub metadata: HashMap<MetaName, Item>,
+    pub metadata: HashMap<String, Value>,
 }
 
-impl Default for MemoryStorage {
-    fn default() -> Self {
-        let schema = GlueObjects::to_schema();
+/*
+table_name metadata */
 
-        let rows = IndexMap::default();
+// impl Default for MemoryStorage {
+//     fn default() -> Self {
+//         let schema = GlueObjects::to_schema();
 
-        let glue_objects = Item { schema, rows };
+//         let rows = IndexMap::default();
 
-        Self {
-            id_counter: 0,
-            items: HashMap::new(),
-            metadata: HashMap::from([(MetaName::GlueObjects, glue_objects)]),
-        }
-    }
-}
+//         let glue_objects = Item { schema, rows };
+
+//         Self {
+//             id_counter: 0,
+//             items: HashMap::new(),
+//             metadata: HashMap::from([(MetaName::GlueObjects, glue_objects)]),
+//         }
+//     }
+// }
 
 #[async_trait(?Send)]
 impl Store for MemoryStorage {
@@ -92,46 +92,61 @@ impl Store for MemoryStorage {
 
 #[async_trait(?Send)]
 impl Metadata for MemoryStorage {
-    async fn scan_meta(&self, meta: &MetaName) -> Result<RowIter> {
-        let rows: RowIter = match self.metadata.get(meta) {
-            Some(item) => Box::new(item.rows.clone().into_iter().map(Ok)),
-            None => Box::new(empty()),
-        };
-
-        Ok(rows)
+    async fn scan_meta(&self, meta_name: &str) -> Value {
+        self.metadata.get(meta_name).unwrap().clone()
     }
 
-    async fn append_meta(&mut self, meta: Meta) -> Result<()> {
-        if let Some(item) = self.metadata.get_mut(&meta.name) {
-            self.id_counter += 1;
-            let row = meta.row.to_values();
-
-            item.rows.insert(Key::I64(self.id_counter), row);
-        }
+    async fn append_meta(&mut self, meta: HashMap<String, Value>) -> Result<()> {
+        self.metadata.extend(meta);
 
         Ok(())
     }
 
-    async fn insert_meta(&mut self, meta: &Meta, rows: Vec<(Key, DataRow)>) -> Result<()> {
-        todo!();
-        // if let Some(item) = self.metadata.get_mut(&meta.name) {
-        //     for (key, row) in rows {
-        //         item.rows.insert(key, row);
-        //     }
-        // }
-
-        // Ok(())
-    }
-
-    async fn delete_meta(&mut self, meta: &Meta, keys: Vec<Key>) -> Result<()> {
-        if let Some(item) = self.metadata.get_mut(&meta.name) {
-            for key in keys {
-                item.rows.remove(&key);
-            }
-        }
+    async fn delete_meta(&mut self, meta_name: &str) -> Result<()> {
+        self.metadata.remove(meta_name);
 
         Ok(())
     }
+    // async fn scan_meta(&self, meta: &MetaName) -> Result<RowIter> {
+    //     let rows: RowIter = match self.metadata.get(meta) {
+    //         Some(item) => Box::new(item.rows.clone().into_iter().map(Ok)),
+    //         None => Box::new(empty()),
+    //     };
+
+    //     Ok(rows)
+    // }
+
+    // async fn append_meta(&mut self, meta: Meta) -> Result<()> {
+    //     if let Some(item) = self.metadata.get_mut(&meta.name) {
+    //         self.id_counter += 1;
+    //         let row = meta.row.to_values();
+
+    //         item.rows.insert(Key::I64(self.id_counter), row);
+    //     }
+
+    //     Ok(())
+    // }
+
+    // async fn insert_meta(&mut self, meta: &Meta, rows: Vec<(Key, DataRow)>) -> Result<()> {
+    //     todo!();
+    //     // if let Some(item) = self.metadata.get_mut(&meta.name) {
+    //     //     for (key, row) in rows {
+    //     //         item.rows.insert(key, row);
+    //     //     }
+    //     // }
+
+    //     // Ok(())
+    // }
+
+    // async fn delete_meta(&mut self, meta: &Meta, keys: Vec<Key>) -> Result<()> {
+    //     if let Some(item) = self.metadata.get_mut(&meta.name) {
+    //         for key in keys {
+    //             item.rows.remove(&key);
+    //         }
+    //     }
+
+    //     Ok(())
+    // }
 }
 
 #[async_trait(?Send)]
@@ -187,9 +202,10 @@ impl StoreMut for MemoryStorage {
 
 #[cfg(test)]
 mod tests {
-    use gluesql_core::store::{MetaName, Metadata};
-
     use crate::MemoryStorage;
+    use gluesql_core::prelude::{Payload, Value::*};
+    use gluesql_core::store::Metadata;
+    use test_suite::{concat_with, row, select, stringify_label, test};
 
     #[test]
     fn scan_meta_test() {
@@ -199,19 +215,25 @@ mod tests {
         let storage = MemoryStorage::default();
         let mut glue = Glue::new(storage);
 
-        glue.execute("CREATE TABLE MetaTest").unwrap();
-        block_on(async {
-            let a = glue
-                .storage
-                .scan_meta(&MetaName::GlueObjects)
-                .await
-                .unwrap();
+        let cases = vec![
+            (glue.execute("CREATE TABLE TableMeta"), Ok(Payload::Create)),
+            (
+                glue.execute(
+                    "
+                    SELECT OBJECT_NAME, OBJECT_TYPE
+                    FROM GLUE_OBJECTS
+                    WHERE CREATED > NOW() - INTERVAL 1 MINUTE",
+                ),
+                Ok(select!(
+                    OBJECT_NAME            | OBJECT_TYPE       ;
+                    Str                    | Str               ;
+                    "TableMeta".to_owned()   "TABLE".to_owned()
+                )),
+            ),
+        ];
 
-            for b in a {
-                println!("{b:#?}");
-            }
-        });
-
-        assert!(false);
+        for (actual, expected) in cases {
+            test(actual.map(|mut payloads| payloads.remove(0)), expected);
+        }
     }
 }

@@ -1,7 +1,5 @@
 use chrono::Utc;
 
-use crate::store::{DataRow, GlueObjects, GlueTables, Meta, MetaName, MetaRow};
-
 use {
     super::{
         alter::{alter_table, create_index, create_table, drop_table},
@@ -103,17 +101,11 @@ async fn execute_inner<T: GStore + GStoreMut>(
             engine,
             ..
         } => {
-            let row = MetaRow::GlueObjects(GlueObjects::new(
-                name.to_string(),
-                "Table".to_string(),
-                Utc::now().naive_utc(),
-                Utc::now().naive_utc(),
-            ));
-
-            let meta = Meta {
-                name: MetaName::GlueObjects,
-                row,
-            };
+            let created = Value::Map(HashMap::from([(
+                "created".to_owned(),
+                Value::Timestamp(Utc::now().naive_utc()),
+            )]));
+            let meta = HashMap::from([(name.to_owned(), created)]);
 
             storage.append_meta(meta).await?;
 
