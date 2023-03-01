@@ -467,10 +467,10 @@ mod tests {
         );
 
         assert!(Key::Inet(inet("127.0.0.1")) > Key::Inet(inet("0.0.0.1")));
-        assert!(Key::I8(100) < Key::None);
         assert!(Key::Inet(inet("192.168.1.19")) < Key::None);
 
         assert_eq!(Key::None.partial_cmp(&Key::None), Some(Ordering::Equal));
+        assert!(Key::None > Key::I8(100));
     }
 
     #[test]
