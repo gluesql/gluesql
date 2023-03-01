@@ -1,0 +1,49 @@
+name: JavaScript
+
+on:
+  push:
+    branches: [main, release-*]
+  pull_request:
+    branches: [main, release-*]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  js_build:
+    name: Build - JavaScript
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - uses: browser-actions/setup-firefox@latest
+      - name: Set up wasm pack
+        uses: jetli/wasm-pack-action@v0.3.0
+      - run: |
+          cd pkg/javascript/web
+          yarn install
+          yarn build
+          yarn test:firefox
+          cd ../../../
+
+  js_storage_tests:
+    name: Storage tests - JavaScript
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - uses: browser-actions/setup-firefox@latest
+      - name: Set up wasm pack
+        uses: jetli/wasm-pack-action@v0.3.0
+      - run: |
+          cd storages/web-storage
+          wasm-pack test --headless --firefox
+          cd ../idb-storage
+          WASM_BINDGEN_TEST_TIMEOUT=60 wasm-pack test --headless --firefox
+          cd ../../
