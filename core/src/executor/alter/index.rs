@@ -15,15 +15,18 @@ pub async fn create_index<T: GStore + GStoreMut>(
     column: &OrderByExpr,
 ) -> Result<()> {
     let expr = &column.expr;
-    let Schema { column_defs, .. } = storage
+    let Some(Schema { column_defs, .. }) = storage
         .fetch_schema(table_name)
-        .await?
-        .ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
-    let columns = column_defs
-        .unwrap_or_default()
-        .into_iter()
-        .map(|ColumnDef { name, .. }| name)
-        .collect::<Vec<_>>();
+        .await? else {
+            return Err(AlterError::TableNotFound(table_name.to_owned()).into());
+        };
+    let columns = if let Some(v) = column_defs {
+        (v.into_iter())
+            .map(|ColumnDef { name, .. }| name)
+            .collect::<Vec<_>>()
+    } else {
+        Vec::new()
+    };
 
     let (valid, has_ident) = validate_index_expr(&columns, expr);
     if !valid {

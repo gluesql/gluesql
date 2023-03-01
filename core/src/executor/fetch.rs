@@ -337,19 +337,17 @@ pub async fn fetch_columns<T: GStore>(
     storage: &T,
     table_name: &str,
 ) -> Result<Option<Vec<String>>> {
-    let columns = storage
+    let Some(columns) = storage
         .fetch_schema(table_name)
-        .await?
-        .ok_or_else(|| FetchError::TableNotFound(table_name.to_owned()))?
-        .column_defs
-        .map(|column_defs| {
-            column_defs
-                .into_iter()
-                .map(|column_def| column_def.name)
-                .collect()
-        });
+        .await? else {
+            return Err(FetchError::TableNotFound(table_name.to_owned()).into());
+        };
 
-    Ok(columns)
+    Ok((columns.column_defs).map(|column_defs| {
+        (column_defs.into_iter())
+            .map(|column_def| column_def.name)
+            .collect()
+    }))
 }
 
 #[async_recursion(?Send)]

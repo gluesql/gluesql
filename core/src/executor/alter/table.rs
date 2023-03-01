@@ -29,12 +29,12 @@ pub async fn create_table<T: GStore + GStoreMut>(
             SetExpr::Select(select_query) => match &select_query.from.relation {
                 TableFactor::Table { name, .. } => {
                     let schema = storage.fetch_schema(name).await?;
-                    let Schema {
+                    let Some(Schema {
                         column_defs: source_column_defs,
                         ..
-                    } = schema.ok_or_else(|| -> Error {
-                        AlterError::CtasSourceTableNotFound(name.to_owned()).into()
-                    })?;
+                    }) = schema else {
+                        return Err(AlterError::CtasSourceTableNotFound(name.to_owned()).into());
+                    };
 
                     source_column_defs
                 }
@@ -151,10 +151,12 @@ pub async fn drop_table<T: GStore + GStoreMut>(
     if_exists: bool,
 ) -> Result<()> {
     for table_name in table_names {
-        let schema = storage.fetch_schema(table_name).await?;
+        let Some(_) = storage.fetch_schema(table_name).await? else {
+            return Err(AlterError::TableNotFound(table_name.to_owned()).into());
+        };
 
         if !if_exists {
-            schema.ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
+            return Err(AlterError::TableNotFound(table_name.to_owned()).into());
         }
 
         storage.delete_schema(table_name).await?;

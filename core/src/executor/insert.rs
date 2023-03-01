@@ -51,10 +51,11 @@ pub async fn insert<T: GStore + GStoreMut>(
     columns: &[String],
     source: &Query,
 ) -> Result<usize> {
-    let Schema { column_defs, .. } = storage
+    let Some(Schema { column_defs, .. }) = storage
         .fetch_schema(table_name)
-        .await?
-        .ok_or_else(|| InsertError::TableNotFound(table_name.to_owned()))?;
+        .await? else {
+            return Err(InsertError::TableNotFound(table_name.to_owned()).into());
+        };
 
     let rows = match column_defs {
         Some(column_defs) => {

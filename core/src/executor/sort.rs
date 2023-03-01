@@ -90,15 +90,13 @@ impl<'a, T: GStore> Sort<'a, T> {
 
                         match (big_decimal, &row) {
                             (Some(n), Row::Vec { values, .. }) => {
-                                let index = n
-                                    .to_usize()
-                                    .ok_or_else(|| -> Error { SortError::Unreachable.into() })?;
-                                let zero_based = index.checked_sub(1).ok_or_else(|| -> Error {
-                                    SortError::ColumnIndexOutOfRange(index).into()
-                                })?;
-                                let value = values.get(zero_based).ok_or_else(|| -> Error {
-                                    SortError::ColumnIndexOutOfRange(index).into()
-                                })?;
+                                let Some(index) = n.to_usize() else {
+                                    return Err(SortError::Unreachable.into());
+                                };
+                                let Some(value) = index.checked_sub(1)
+                                    .and_then(|zero_based| values.get(zero_based)) else {
+                                    return Err(SortError::ColumnIndexOutOfRange(index).into());
+                                };
 
                                 Ok((SortType::Value(value.clone()), *asc))
                             }
