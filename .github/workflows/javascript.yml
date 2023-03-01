@@ -11,7 +11,7 @@ env:
 
 jobs:
   js_build:
-    name: Build - JavaScript
+    name: Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -30,7 +30,7 @@ jobs:
           cd ../../../
 
   js_storage_tests:
-    name: Storage tests - JavaScript
+    name: Storage tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
