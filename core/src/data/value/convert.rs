@@ -504,14 +504,18 @@ impl TryFrom<&Value> for NaiveDateTime {
     type Error = Error;
 
     fn try_from(v: &Value) -> Result<NaiveDateTime> {
-        Ok(match v {
-            Value::Date(value) => value
-                .and_hms_opt(0, 0, 0)
-                .ok_or_else(|| IntervalError::FailedToParseTime(value.to_string()))?,
+        let date_time = match v {
+            Value::Date(value) => {
+                let Some(date_time) = value.and_hms_opt(0,0,0) else {
+                    return Err(IntervalError::FailedToParseTime(value.to_string()).into());
+                };
+                date_time
+            }
             Value::Str(value) => parse_timestamp(value).ok_or(ValueError::ImpossibleCast)?,
             Value::Timestamp(value) => *value,
             _ => return Err(ValueError::ImpossibleCast.into()),
-        })
+        };
+        Ok(date_time)
     }
 }
 

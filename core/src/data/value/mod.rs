@@ -322,20 +322,20 @@ impl Value {
             (Date(a), Date(b)) => Ok(Interval(I::days((*a - *b).num_days() as i32))),
             (Date(a), Interval(b)) => b.subtract_from_date(a).map(Timestamp),
             (Timestamp(a), Interval(b)) => b.subtract_from_timestamp(a).map(Timestamp),
-            (Timestamp(a), Timestamp(b)) => a
-                .sub(*b)
-                .num_microseconds()
-                .ok_or_else(|| {
-                    ValueError::UnreachableIntegerOverflow(format!("{:?} - {:?}", a, b)).into()
-                })
-                .map(|v| Interval(I::microseconds(v))),
-            (Time(a), Time(b)) => a
-                .sub(*b)
-                .num_microseconds()
-                .ok_or_else(|| {
-                    ValueError::UnreachableIntegerOverflow(format!("{:?} - {:?}", a, b)).into()
-                })
-                .map(|v| Interval(I::microseconds(v))),
+            (Timestamp(a), Timestamp(b)) => {
+                if let Some(i) = a.sub(*b).num_microseconds() {
+                    Ok(Interval(I::microseconds(i)))
+                } else {
+                    Err(ValueError::UnreachableIntegerOverflow(format!("{:?} - {:?}", a, b)).into())
+                }
+            }
+            (Time(a), Time(b)) => {
+                if let Some(i) = a.sub(*b).num_microseconds() {
+                    Ok(Interval(I::microseconds(i)))
+                } else {
+                    Err(ValueError::UnreachableIntegerOverflow(format!("{:?} - {:?}", a, b)).into())
+                }
+            }
             (Time(a), Interval(b)) => b.subtract_from_time(a).map(Time),
             (Interval(a), Interval(b)) => a.subtract(b).map(Interval),
             (Null, I8(_))

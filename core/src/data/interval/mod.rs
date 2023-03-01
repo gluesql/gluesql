@@ -64,19 +64,17 @@ impl Interval {
     }
 
     pub fn add_date(&self, date: &NaiveDate) -> Result<NaiveDateTime> {
-        self.add_timestamp(
-            &date
-                .and_hms_opt(0, 0, 0)
-                .ok_or_else(|| IntervalError::FailedToParseTime(date.to_string()))?,
-        )
+        let Some(timestamp) = date.and_hms_opt(0, 0, 0) else {
+            return Err(IntervalError::FailedToParseTime(date.to_string()).into());
+        };
+        self.add_timestamp(&timestamp)
     }
 
     pub fn subtract_from_date(&self, date: &NaiveDate) -> Result<NaiveDateTime> {
-        self.subtract_from_timestamp(
-            &date
-                .and_hms_opt(0, 0, 0)
-                .ok_or_else(|| IntervalError::FailedToParseTime(date.to_string()))?,
-        )
+        let Some(timestamp) = date.and_hms_opt(0, 0, 0) else {
+            return Err(IntervalError::FailedToParseTime(date.to_string()).into());
+        };
+        self.subtract_from_timestamp(&timestamp)
     }
 
     pub fn add_timestamp(&self, timestamp: &NaiveDateTime) -> Result<NaiveDateTime> {
@@ -198,13 +196,12 @@ impl Interval {
         };
 
         let parse_decimal = |duration: i64| {
-            let parsed = Decimal::from_str(value)
-                .map_err(|_| IntervalError::FailedToParseDecimal(value.to_owned()))?;
-
-            (parsed * Decimal::from(duration))
-                .to_i64()
-                .ok_or_else(|| IntervalError::FailedToParseDecimal(value.to_owned()).into())
-                .map(Interval::Microsecond)
+            if let Ok(parsed) = Decimal::from_str(value) {
+                if let Some(decimal) = (parsed * Decimal::from(duration)).to_i64() {
+                    return Ok(Interval::Microsecond(decimal));
+                }
+            }
+            Err(IntervalError::FailedToParseDecimal(value.to_owned()).into())
         };
 
         let parse_time = |v: &str| {
