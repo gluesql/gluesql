@@ -352,6 +352,33 @@ impl<'a> JoinPlanner<'a> {
 
                 (JoinExecutor::NestedLoop, expr)
             }
+            Expr::InSubquery {
+                expr,
+                subquery,
+                negated,
+            } => {
+                let context = Context::concat(current_context, inner_context);
+                let context = Context::concat(context, outer_context);
+
+                let subquery = self.query(context, *subquery);
+                let expr = Some(Expr::InSubquery {
+                    expr: expr,
+                    subquery: Box::new(subquery),
+                    negated: negated,
+                });
+                (JoinExecutor::NestedLoop, expr)
+            }
+            Expr::Exists { subquery, negated } => {
+                let context = Context::concat(current_context, inner_context);
+                let context = Context::concat(context, outer_context);
+
+                let subquery = self.query(context, *subquery);
+                let expr = Some(Expr::Exists {
+                    subquery: Box::new(subquery),
+                    negated: negated,
+                });
+                (JoinExecutor::NestedLoop, expr)
+            }
             _ => (JoinExecutor::NestedLoop, Some(expr)),
         }
     }
@@ -725,6 +752,59 @@ mod tests {
             expected,
             "hash join with join_constraint AND where_clause 2:\n{sql}"
         );
+
+        let sql = "
+            SELECT * 
+            FROM Player
+            JOIN PlayerItem ON 
+                (SELECT * FROM Player JOIN PlayerItem ON Player.id = PlayerItem.user_id)
+        ";
+        let actual = plan_join(&storage, sql);
+        let expected = table("Player").select().join("PlayerItem").on(subquery(
+            table("Player")
+                .select()
+                .join("PlayerItem")
+                .hash_executor("Player.id", "PlayerItem.user_id"),
+        ));
+        test!(
+            actual,
+            expected,
+            "hash join with join_constraint subquery:\n{sql}"
+        );
+
+        let sql = "
+            SELECT *
+            FROM Player
+            JOIN PlayerItem ON
+                1 IN (SELECT * FROM PlayerItem JOIN Player ON PlayerItem.user_id = Player.id)
+            WHERE True    
+        ";
+        let actual = plan_join(&storage, sql);
+        let expected = table("Player")
+            .select()
+            .join("PlayerItem")
+            .on(num(1).in_list(
+                table("PlayerItem").select().join("Player").hash_executor("PlayerItem.user_id", "Player.id")
+            ))
+            .filter(true);
+        test!(actual, expected, "hash join with join constraint in subquery");
+
+        let sql = "
+            SELECT *
+            FROM Player
+            JOIN PlayerItem ON
+                EXISTS (SELECT * FROM PlayerItem JOIN Player ON PlayerItem.user_id = Player.id WHERE Player.id > 3)
+            WHERE True    
+        ";
+        let actual = plan_join(&storage, sql);
+        let expected = table("Player")
+            .select()
+            .join("PlayerItem")
+            .on(exists(
+                table("PlayerItem").select().join("Player").hash_executor("PlayerItem.user_id", "Player.id").filter("Player.id > 3")
+            ))
+            .filter(true);
+        test!(actual, expected, "hash join with join constraint in subquery");
     }
 
     #[test]
