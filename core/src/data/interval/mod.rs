@@ -20,13 +20,20 @@ pub enum Interval {
     Microsecond(i64),
 }
 
+impl Ord for Interval {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (Interval::Month(l), Interval::Month(r)) => l.cmp(r),
+            (Interval::Microsecond(l), Interval::Microsecond(r)) => l.cmp(r),
+            (Interval::Month(_), Interval::Microsecond(_)) => Ordering::Greater,
+            (Interval::Microsecond(_), Interval::Month(_)) => Ordering::Less,
+        }
+    }
+}
+
 impl PartialOrd<Interval> for Interval {
     fn partial_cmp(&self, other: &Interval) -> Option<Ordering> {
-        match (self, other) {
-            (Interval::Month(l), Interval::Month(r)) => Some(l.cmp(r)),
-            (Interval::Microsecond(l), Interval::Microsecond(r)) => Some(l.cmp(r)),
-            _ => None,
-        }
+        Some(self.cmp(other))
     }
 }
 

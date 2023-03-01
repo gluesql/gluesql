@@ -30,41 +30,67 @@ pub enum Key {
     I64(i64),
     I128(i128),
     U8(u8),
-    Decimal(Decimal),
     U16(u16),
+    Decimal(Decimal),
     Bool(bool),
     Str(String),
     Bytea(Vec<u8>),
-    Inet(IpAddr),
     Date(NaiveDate),
     Timestamp(NaiveDateTime),
     Time(NaiveTime),
     Interval(Interval),
     Uuid(u128),
+    Inet(IpAddr),
     None,
+}
+
+impl Ord for Key {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (Key::I8(l), Key::I8(r)) => l.cmp(r),
+            (Key::I16(l), Key::I16(r)) => l.cmp(r),
+            (Key::I32(l), Key::I32(r)) => l.cmp(r),
+            (Key::I64(l), Key::I64(r)) => l.cmp(r),
+            (Key::I128(l), Key::I128(r)) => l.cmp(r),
+            (Key::U8(l), Key::U8(r)) => l.cmp(r),
+            (Key::U16(l), Key::U16(r)) => l.cmp(r),
+            (Key::Decimal(l), Key::Decimal(r)) => l.cmp(r),
+            (Key::Bool(l), Key::Bool(r)) => l.cmp(r),
+            (Key::Str(l), Key::Str(r)) => l.cmp(r),
+            (Key::Bytea(l), Key::Bytea(r)) => l.cmp(r),
+            (Key::Date(l), Key::Date(r)) => l.cmp(r),
+            (Key::Timestamp(l), Key::Timestamp(r)) => l.cmp(r),
+            (Key::Time(l), Key::Time(r)) => l.cmp(r),
+            (Key::Interval(l), Key::Interval(r)) => l.cmp(r),
+            (Key::Uuid(l), Key::Uuid(r)) => l.cmp(r),
+            (Key::Inet(l), Key::Inet(r)) => l.cmp(r),
+
+            (Key::I8(_), _)
+            | (Key::I16(_), _)
+            | (Key::I32(_), _)
+            | (Key::I64(_), _)
+            | (Key::I128(_), _)
+            | (Key::U8(_), _)
+            | (Key::U16(_), _)
+            | (Key::Decimal(_), _)
+            | (Key::Bool(_), _)
+            | (Key::Str(_), _)
+            | (Key::Bytea(_), _)
+            | (Key::Date(_), _)
+            | (Key::Timestamp(_), _)
+            | (Key::Time(_), _)
+            | (Key::Interval(_), _)
+            | (Key::Uuid(_), _)
+            | (Key::Inet(_), _) => Ordering::Greater,
+            (Key::None, Key::None) => Ordering::Equal,
+            (Key::None, _) => Ordering::Less,
+        }
+    }
 }
 
 impl PartialOrd for Key {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        match (self, other) {
-            (Key::I8(l), Key::I8(r)) => Some(l.cmp(r)),
-            (Key::I16(l), Key::I16(r)) => Some(l.cmp(r)),
-            (Key::I32(l), Key::I32(r)) => Some(l.cmp(r)),
-            (Key::I64(l), Key::I64(r)) => Some(l.cmp(r)),
-            (Key::U8(l), Key::U8(r)) => Some(l.cmp(r)),
-            (Key::U16(l), Key::U16(r)) => Some(l.cmp(r)),
-            (Key::Decimal(l), Key::Decimal(r)) => Some(l.cmp(r)),
-            (Key::Bool(l), Key::Bool(r)) => Some(l.cmp(r)),
-            (Key::Str(l), Key::Str(r)) => Some(l.cmp(r)),
-            (Key::Bytea(l), Key::Bytea(r)) => Some(l.cmp(r)),
-            (Key::Inet(l), Key::Inet(r)) => Some(l.cmp(r)),
-            (Key::Date(l), Key::Date(r)) => Some(l.cmp(r)),
-            (Key::Timestamp(l), Key::Timestamp(r)) => Some(l.cmp(r)),
-            (Key::Time(l), Key::Time(r)) => Some(l.cmp(r)),
-            (Key::Interval(l), Key::Interval(r)) => l.partial_cmp(r),
-            (Key::Uuid(l), Key::Uuid(r)) => Some(l.cmp(r)),
-            _ => None,
-        }
+        Some(self.cmp(other))
     }
 }
 
