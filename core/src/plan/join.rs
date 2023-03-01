@@ -362,9 +362,9 @@ impl<'a> JoinPlanner<'a> {
 
                 let subquery = self.query(context, *subquery);
                 let expr = Some(Expr::InSubquery {
-                    expr: expr,
+                    expr,
                     subquery: Box::new(subquery),
-                    negated: negated,
+                    negated,
                 });
                 (JoinExecutor::NestedLoop, expr)
             }
@@ -375,7 +375,7 @@ impl<'a> JoinPlanner<'a> {
                 let subquery = self.query(context, *subquery);
                 let expr = Some(Expr::Exists {
                     subquery: Box::new(subquery),
-                    negated: negated,
+                    negated,
                 });
                 (JoinExecutor::NestedLoop, expr)
             }
@@ -784,10 +784,17 @@ mod tests {
             .select()
             .join("PlayerItem")
             .on(num(1).in_list(
-                table("PlayerItem").select().join("Player").hash_executor("PlayerItem.user_id", "Player.id")
+                table("PlayerItem")
+                    .select()
+                    .join("Player")
+                    .hash_executor("PlayerItem.user_id", "Player.id"),
             ))
             .filter(true);
-        test!(actual, expected, "hash join with join constraint in subquery");
+        test!(
+            actual,
+            expected,
+            "hash join with join constraint in subquery"
+        );
 
         let sql = "
             SELECT *
@@ -801,10 +808,18 @@ mod tests {
             .select()
             .join("PlayerItem")
             .on(exists(
-                table("PlayerItem").select().join("Player").hash_executor("PlayerItem.user_id", "Player.id").filter("Player.id > 3")
+                table("PlayerItem")
+                    .select()
+                    .join("Player")
+                    .hash_executor("PlayerItem.user_id", "Player.id")
+                    .filter("Player.id > 3"),
             ))
             .filter(true);
-        test!(actual, expected, "hash join with join constraint in subquery");
+        test!(
+            actual,
+            expected,
+            "hash join with join constraint in subquery"
+        );
     }
 
     #[test]
