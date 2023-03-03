@@ -7,11 +7,11 @@ use {
         },
         data::{get_alias, get_index, Key, Row, Value},
         executor::{evaluate::evaluate, select::select},
-        result::{Error, Result},
+        result::Result,
         store::{DataRow, GStore},
     },
     async_recursion::async_recursion,
-    futures::stream::{self, StreamExt, TryStream, TryStreamExt},
+    futures::stream::{self, Stream, StreamExt, TryStreamExt},
     iter_enum::Iterator,
     itertools::Itertools,
     serde::Serialize,
@@ -39,7 +39,7 @@ pub async fn fetch<'a, T: GStore>(
     table_name: &'a str,
     columns: Option<Rc<[String]>>,
     where_clause: Option<&'a Expr>,
-) -> Result<impl TryStream<Ok = (Key, Row), Error = Error> + 'a> {
+) -> Result<impl Stream<Item = Result<(Key, Row)>> + 'a> {
     let columns = columns.unwrap_or_else(|| Rc::from([]));
     let rows = storage
         .scan_data(table_name)
@@ -85,7 +85,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
     storage: &'a T,
     table_factor: &'a TableFactor,
     filter_context: &Option<Rc<RowContext<'a>>>,
-) -> Result<impl TryStream<Ok = Row, Error = Error, Item = Result<Row>> + 'a> {
+) -> Result<impl Stream<Item = Result<Row>> + 'a> {
     let columns = Rc::from(
         fetch_relation_columns(storage, table_factor)
             .await?
@@ -471,15 +471,15 @@ async fn fetch_join_columns<'a, T: GStore>(
     storage: &T,
     joins: &'a [Join],
 ) -> Result<Option<Vec<(&'a String, Vec<String>)>>> {
-    let columns = stream::iter(joins.iter())
-        .map(Ok::<_, Error>)
-        .try_filter_map(|join| async move {
+    let columns = stream::iter(joins)
+        .filter_map(|join| async {
             let relation = &join.relation;
             let alias = get_alias(relation);
 
-            Ok(fetch_relation_columns(storage, relation)
-                .await?
-                .map(|columns| (alias, columns)))
+            fetch_relation_columns(storage, relation)
+                .await
+                .map(|columns| Some((alias, columns?)))
+                .transpose()
         })
         .try_collect::<Vec<_>>()
         .await?;
@@ -508,44 +508,39 @@ pub async fn fetch_labels<T: GStore>(
         return Ok(None);
     }
 
-    let columns = Rc::new(columns.unwrap_or_default());
-    let join_columns = Rc::new(join_columns.unwrap_or_default());
+    let columns = columns.unwrap_or_default();
+    let join_columns = join_columns.unwrap_or_default();
 
     projection
         .iter()
-        .flat_map(move |item| {
-            let columns = Rc::clone(&columns);
-            let join_columns = Rc::clone(&join_columns);
+        .flat_map(|item| match item {
+            SelectItem::Wildcard => {
+                let columns = columns.iter().cloned();
+                let join_columns = join_columns.iter().flat_map(|(_, columns)| columns.clone());
 
-            match item {
-                SelectItem::Wildcard => {
-                    let columns = columns.iter().cloned();
-                    let join_columns = join_columns.iter().flat_map(|(_, columns)| columns.clone());
-
-                    columns.chain(join_columns).map(Ok).collect()
-                }
-                SelectItem::QualifiedWildcard(target_table_alias) => {
-                    if table_alias == target_table_alias {
-                        return columns.iter().cloned().map(Ok).collect();
-                    }
-
-                    let labels = join_columns
-                        .iter()
-                        .find(|(table_alias, _)| table_alias == &target_table_alias)
-                        .map(|(_, columns)| columns.clone());
-
-                    match labels {
-                        Some(columns) => columns.into_iter().map(Ok).collect(),
-                        None => {
-                            vec![Err(FetchError::TableAliasNotFound(
-                                target_table_alias.to_owned(),
-                            )
-                            .into())]
-                        }
-                    }
-                }
-                SelectItem::Expr { label, .. } => vec![Ok(label.to_owned())],
+                columns.chain(join_columns).map(Ok).collect()
             }
+            SelectItem::QualifiedWildcard(target_table_alias) => {
+                if table_alias == target_table_alias {
+                    return columns.iter().cloned().map(Ok).collect();
+                }
+
+                let labels = join_columns
+                    .iter()
+                    .find(|(table_alias, _)| table_alias == &target_table_alias)
+                    .map(|(_, columns)| columns.clone());
+
+                match labels {
+                    Some(columns) => columns.into_iter().map(Ok).collect(),
+                    None => {
+                        vec![Err(FetchError::TableAliasNotFound(
+                            target_table_alias.to_owned(),
+                        )
+                        .into())]
+                    }
+                }
+            }
+            SelectItem::Expr { label, .. } => vec![Ok(label.to_owned())],
         })
         .collect::<Result<_>>()
         .map(Some)

@@ -19,11 +19,11 @@ use {
         ast::{Expr, OrderByExpr, Query, Select, SetExpr, TableWithJoins, Values},
         data::{get_alias, Row},
         prelude::{DataType, Value},
-        result::{Error, Result},
+        result::Result,
         store::GStore,
     },
     async_recursion::async_recursion,
-    futures::stream::{self, StreamExt, TryStream, TryStreamExt},
+    futures::stream::{self, Stream, StreamExt, TryStreamExt},
     std::{borrow::Cow, iter, rc::Rc},
     utils::Vector,
 };
@@ -110,10 +110,13 @@ pub async fn select_with_labels<'a, T: GStore>(
     storage: &'a T,
     query: &'a Query,
     filter_context: Option<Rc<RowContext<'a>>>,
-) -> Result<(
-    Option<Vec<String>>,
-    impl TryStream<Ok = Row, Error = Error, Item = Result<Row>> + 'a,
-)> {
+) -> Result<(Option<Vec<String>>, impl Stream<Item = Result<Row>> + 'a)> {
+    #[derive(futures_enum::Stream)]
+    enum Row<S1, S2> {
+        Select(S2),
+        Values(S1),
+    }
+
     let Select {
         from: table_with_joins,
         selection: where_clause,
@@ -129,7 +132,7 @@ pub async fn select_with_labels<'a, T: GStore>(
             let rows = stream::iter(rows);
             let rows = limit.apply(rows);
 
-            return Ok((Some(labels), rows));
+            return Ok((Some(labels), Row::Values(rows)));
         }
     };
 
@@ -203,14 +206,14 @@ pub async fn select_with_labels<'a, T: GStore>(
     let rows = limit.apply(rows);
     let labels = labels.map(|labels| labels.iter().cloned().collect());
 
-    Ok((labels, rows))
+    Ok((labels, Row::Select(rows)))
 }
 
 pub async fn select<'a, T: GStore>(
     storage: &'a T,
     query: &'a Query,
     filter_context: Option<Rc<RowContext<'a>>>,
-) -> Result<impl TryStream<Ok = Row, Error = Error, Item = Result<Row>> + 'a> {
+) -> Result<impl Stream<Item = Result<Row>> + 'a> {
     select_with_labels(storage, query, filter_context)
         .await
         .map(|(_, rows)| rows)

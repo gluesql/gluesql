@@ -7,7 +7,7 @@ use {
     },
     im_rc::HashSet,
     serde::Serialize,
-    std::{fmt::Debug, rc::Rc},
+    std::fmt::Debug,
     thiserror::Error as ThisError,
     utils::Vector,
 };
@@ -27,11 +27,11 @@ pub enum ValidateError {
     DuplicateEntryOnPrimaryKeyField(Key),
 }
 
-pub enum ColumnValidation {
+pub enum ColumnValidation<'column_def> {
     /// `INSERT`
-    All(Rc<[ColumnDef]>),
+    All(&'column_def [ColumnDef]),
     /// `UPDATE`
-    SpecifiedColumns(Rc<[ColumnDef]>, Vec<String>),
+    SpecifiedColumns(&'column_def [ColumnDef], Vec<String>),
 }
 
 #[derive(Debug)]
@@ -84,7 +84,7 @@ impl UniqueConstraint {
 pub async fn validate_unique<T: Store>(
     storage: &T,
     table_name: &str,
-    column_validation: ColumnValidation,
+    column_validation: ColumnValidation<'_>,
     row_iter: impl Iterator<Item = &[Value]> + Clone,
 ) -> Result<()> {
     enum Columns {
@@ -140,7 +140,7 @@ pub async fn validate_unique<T: Store>(
                 return Ok(());
             }
 
-            let unique_constraints = Rc::new(unique_constraints);
+            let unique_constraints = &unique_constraints;
             storage.scan_data(table_name).await?.try_for_each(|result| {
                 let (_, data_row) = result?;
                 let values = match data_row {
@@ -150,18 +150,16 @@ pub async fn validate_unique<T: Store>(
                     }
                 };
 
-                Rc::clone(&unique_constraints)
-                    .iter()
-                    .try_for_each(|constraint| {
-                        let col_idx = constraint.column_index;
-                        let val = values
-                            .get(col_idx)
-                            .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
+                unique_constraints.iter().try_for_each(|constraint| {
+                    let col_idx = constraint.column_index;
+                    let val = values
+                        .get(col_idx)
+                        .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
 
-                        constraint.check(val)?;
+                    constraint.check(val)?;
 
-                        Ok(())
-                    })
+                    Ok(())
+                })
             })
         }
     }

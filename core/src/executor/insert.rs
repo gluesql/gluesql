@@ -97,7 +97,7 @@ async fn fetch_vec_rows<T: GStore>(
             .collect::<Vec<_>>(),
     );
     let column_defs = Rc::from(column_defs);
-    let column_validation = ColumnValidation::All(Rc::clone(&column_defs));
+    let column_validation = ColumnValidation::All(&column_defs);
 
     #[derive(futures_enum::Stream)]
     enum Rows<I1, I2> {

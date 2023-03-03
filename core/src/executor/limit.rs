@@ -6,7 +6,6 @@ use {
         result::Result,
     },
     futures::stream::{Stream, StreamExt},
-    std::pin::Pin,
 };
 
 pub struct Limit {
@@ -31,12 +30,20 @@ impl Limit {
     pub fn apply<'a>(
         &self,
         rows: impl Stream<Item = Result<Row>> + 'a,
-    ) -> Pin<Box<dyn Stream<Item = Result<Row>> + 'a>> {
+    ) -> impl Stream<Item = Result<Row>> + 'a {
+        #[derive(futures_enum::Stream)]
+        enum S<S1, S2, S3, S4> {
+            Both(S3),
+            Offset(S2),
+            Limit(S1),
+            None(S4),
+        }
+
         match (self.offset, self.limit) {
-            (Some(offset), Some(limit)) => Box::pin(rows.skip(offset).take(limit)),
-            (Some(offset), None) => Box::pin(rows.skip(offset)),
-            (None, Some(limit)) => Box::pin(rows.take(limit)),
-            (None, None) => Box::pin(rows),
+            (Some(offset), Some(limit)) => S::Both(rows.skip(offset).take(limit)),
+            (Some(offset), None) => S::Offset(rows.skip(offset)),
+            (None, Some(limit)) => S::Limit(rows.take(limit)),
+            (None, None) => S::None(rows),
         }
     }
 }

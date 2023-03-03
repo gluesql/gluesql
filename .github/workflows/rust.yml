@@ -70,27 +70,3 @@ jobs:
           cargo run --package gluesql --example memory_storage_usage
           cargo run --package gluesql --example sled_multi_threaded
           cargo run --package gluesql --example using_config
-
-  gluesql_js_build_and_tests:
-    name: Build and run tests (gluesql-js)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 16
-      - uses: browser-actions/setup-firefox@latest
-      - name: Set up wasm pack
-        uses: jetli/wasm-pack-action@v0.3.0
-      - run: |
-          cd pkg/javascript/web
-          yarn install
-          yarn build
-          yarn test:firefox
-          cd ../../../
-          cd storages/web-storage
-          wasm-pack test --headless --firefox
-          cd ../idb-storage
-          WASM_BINDGEN_TEST_TIMEOUT=60 wasm-pack test --headless --firefox
-          cd ../../

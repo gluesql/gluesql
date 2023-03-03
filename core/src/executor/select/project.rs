@@ -3,7 +3,7 @@ use {
         ast::{Aggregate, SelectItem},
         data::{Row, Value},
         executor::{context::RowContext, evaluate::evaluate},
-        result::{Error, Result},
+        result::Result,
         store::GStore,
     },
     futures::stream::{self, StreamExt, TryStreamExt},
@@ -46,9 +46,8 @@ impl<'a, T: GStore> Project<'a, T> {
         let filter_context = Some(filter_context);
         let context = &context;
 
-        let entries = stream::iter(self.fields.iter())
-            .map(Ok::<&'a SelectItem, Error>)
-            .and_then(|item| {
+        let entries = stream::iter(self.fields)
+            .then(|item| {
                 let filter_context = filter_context.as_ref().map(Rc::clone);
                 let aggregated = aggregated.as_ref().map(Rc::clone);
 

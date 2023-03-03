@@ -57,7 +57,6 @@ impl Schema {
 
         let create_indexes = indexes.iter().map(|SchemaIndex { name, expr, .. }| {
             let expr = expr.to_sql();
-            let table_name = &table_name;
 
             format!("CREATE INDEX {name} ON {table_name} ({expr});")
         });

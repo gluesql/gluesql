@@ -551,10 +551,12 @@ impl Value {
 
         match (self, other) {
             (Str(a), Str(b)) => a.like(b, case_sensitive).map(Bool),
-            _ => match case_sensitive {
-                true => Err(ValueError::LikeOnNonString(self.clone(), other.clone()).into()),
-                false => Err(ValueError::ILikeOnNonString(self.clone(), other.clone()).into()),
-            },
+            _ => Err(ValueError::LikeOnNonString {
+                base: self.clone(),
+                pattern: other.clone(),
+                case_sensitive,
+            }
+            .into()),
         }
     }
 
