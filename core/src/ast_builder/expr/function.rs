@@ -285,16 +285,16 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
                 })
             }
             FunctionNode::FindIdx {
-                sub_expr,
                 from_expr,
+                sub_expr,
                 start,
             } => {
                 let from_expr = from_expr.try_into()?;
                 let sub_expr = sub_expr.try_into()?;
                 let start = start.map(TryInto::try_into).transpose()?;
                 Ok(Function::FindIdx {
-                    sub_expr,
                     from_expr,
+                    sub_expr,
                     start,
                 })
             }
