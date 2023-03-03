@@ -644,13 +644,13 @@ impl Value {
         }
     }
 
-    pub fn find_idx(&self, from_val: &Value, start: &Value) -> Result<Value> {
+    pub fn find_idx(&self, sub_val: &Value, start: &Value) -> Result<Value> {
         let start: i64 = start.try_into()?;
         if start <= 0 {
             return Err(ValueError::NonPositiveIntegerOffsetInFindIdx(start.to_string()).into());
         }
-        let sub = &String::from(self);
-        let from = &String::from(from_val);
+        let from = &String::from(self);
+        let sub = &String::from(sub_val);
         let position = str_position(&from[(start - 1) as usize..].to_owned(), sub) as i64;
         let position = match position {
             0 => 0,
