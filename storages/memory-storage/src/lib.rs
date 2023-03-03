@@ -96,6 +96,10 @@ impl Metadata for MemoryStorage {
         self.metadata.get(meta_name).unwrap().clone()
     }
 
+    async fn scan_all_metas(&self) -> HashMap<String, Value> {
+        self.metadata.clone()
+    }
+
     async fn append_meta(&mut self, meta: HashMap<String, Value>) -> Result<()> {
         self.metadata.extend(meta);
 

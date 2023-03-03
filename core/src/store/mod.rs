@@ -72,6 +72,10 @@ pub trait Metadata {
         unimplemented!("unimplemented scan_meta");
     }
 
+    async fn scan_all_metas(&self) -> HashMap<String, Value> {
+        unimplemented!("unimplemented scan_meta");
+    }
+
     async fn append_meta(&mut self, meta: HashMap<String, Value>) -> Result<()> {
         unimplemented!("unimplemented append_meta");
     }

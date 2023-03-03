@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use {
     super::{context::RowContext, evaluate_stateless, filter::check_expr},
     crate::{
@@ -73,280 +75,330 @@ pub async fn fetch<'a, T: GStore>(
     Ok(rows)
 }
 
-#[derive(futures_enum::Stream)]
-pub enum Rows<I1, I2, I3, I4> {
-    Derived(I1),
-    Table(I2),
-    Series(I3),
-    Dictionary(I4),
-}
+// #[derive(futures_enum::Stream)]
+// pub enum Rows<I1, I2, I3, I4> {
+//     Derived(I1),
+//     Table(I2),
+//     Series(I3),
+//     Dictionary(I4),
+// }
 
 pub async fn fetch_relation_rows<'a, T: GStore>(
     storage: &'a T,
     table_factor: &'a TableFactor,
     filter_context: &Option<Rc<RowContext<'a>>>,
-) -> Result<impl Stream<Item = Result<Row>> + 'a> {
-    let columns = Rc::from(
-        fetch_relation_columns(storage, table_factor)
-            .await?
-            .unwrap_or_default(),
-    );
+) -> Result<impl TryStream<Ok = Row, Error = Error, Item = Result<Row>> + 'a> {
+    // let columns = Rc::from(
+    //     fetch_relation_columns(storage, table_factor)
+    //         .await?
+    //         .unwrap_or_default(),
+    // );
 
     match table_factor {
-        TableFactor::Derived { subquery, .. } => {
-            let filter_context = filter_context.as_ref().map(Rc::clone);
-            let rows = select(storage, subquery, filter_context).await?;
+        // TableFactor::Derived { subquery, .. } => {
+        //     let filter_context = filter_context.as_ref().map(Rc::clone);
+        //     let rows = select(storage, subquery, filter_context).await?;
 
-            Ok(Rows::Derived(rows))
-        }
-        TableFactor::Table { name, .. } => {
-            let rows = {
-                #[derive(Iterator)]
-                enum Rows<I1, I2, I3> {
-                    Indexed(I1),
-                    PrimaryKey(I2),
-                    FullScan(I3),
-                }
+        //     Ok(Rows::Derived(rows))
+        // }
+        // TableFactor::Table { name, .. } => {
+        //     let rows = {
+        //         #[derive(Iterator)]
+        //         enum Rows<I1, I2, I3> {
+        //             Indexed(I1),
+        //             PrimaryKey(I2),
+        //             FullScan(I3),
+        //         }
 
-                match get_index(table_factor) {
-                    Some(IndexItem::NonClustered {
-                        name: index_name,
-                        asc,
-                        cmp_expr,
-                    }) => {
-                        let cmp_value = match cmp_expr {
-                            Some((op, expr)) => {
-                                let evaluated = evaluate(storage, None, None, expr).await?;
+        //         match get_index(table_factor) {
+        //             Some(IndexItem::NonClustered {
+        //                 name: index_name,
+        //                 asc,
+        //                 cmp_expr,
+        //             }) => {
+        //                 let cmp_value = match cmp_expr {
+        //                     Some((op, expr)) => {
+        //                         let evaluated = evaluate(storage, None, None, expr).await?;
 
-                                Some((op, evaluated.try_into()?))
-                            }
-                            None => None,
-                        };
+        //                         Some((op, evaluated.try_into()?))
+        //                     }
+        //                     None => None,
+        //                 };
 
-                        let rows = storage
-                            .scan_indexed_data(name, index_name, *asc, cmp_value)
-                            .await?
-                            .map_ok(move |(_, data_row)| match data_row {
-                                DataRow::Vec(values) => Row::Vec {
-                                    columns: Rc::clone(&columns),
-                                    values,
-                                },
-                                DataRow::Map(values) => Row::Map(values),
-                            });
+        //                 let rows = storage
+        //                     .scan_indexed_data(name, index_name, *asc, cmp_value)
+        //                     .await?
+        //                     .map_ok(move |(_, data_row)| match data_row {
+        //                         DataRow::Vec(values) => Row::Vec {
+        //                             columns: Rc::clone(&columns),
+        //                             values,
+        //                         },
+        //                         DataRow::Map(values) => Row::Map(values),
+        //                     });
 
-                        Rows::Indexed(rows)
-                    }
-                    Some(IndexItem::PrimaryKey(expr)) => {
-                        let filter_context = filter_context.as_ref().map(Rc::clone);
-                        let key = evaluate(storage, filter_context, None, expr)
-                            .await
-                            .and_then(Value::try_from)
-                            .and_then(Key::try_from)?;
+        //                 Rows::Indexed(rows)
+        //             }
+        //             Some(IndexItem::PrimaryKey(expr)) => {
+        //                 let filter_context = filter_context.as_ref().map(Rc::clone);
+        //                 let key = evaluate(storage, filter_context, None, expr)
+        //                     .await
+        //                     .and_then(Value::try_from)
+        //                     .and_then(Key::try_from)?;
 
-                        let rows = storage
-                            .fetch_data(name, &key)
-                            .await
-                            .transpose()
-                            .map(|row| vec![row])
-                            .unwrap_or_else(Vec::new);
+        //                 let rows = storage
+        //                     .fetch_data(name, &key)
+        //                     .await
+        //                     .transpose()
+        //                     .map(|row| vec![row])
+        //                     .unwrap_or_else(Vec::new);
 
-                        Rows::PrimaryKey(rows.into_iter().map_ok(move |data_row| match data_row {
-                            DataRow::Vec(values) => Row::Vec {
-                                columns: Rc::clone(&columns),
-                                values,
-                            },
-                            DataRow::Map(values) => Row::Map(values),
-                        }))
-                    }
-                    _ => {
-                        let rows = storage.scan_data(name).await?.map_ok(move |(_, data_row)| {
-                            match data_row {
-                                DataRow::Vec(values) => Row::Vec {
-                                    columns: Rc::clone(&columns),
-                                    values,
-                                },
-                                DataRow::Map(values) => Row::Map(values),
-                            }
-                        });
+        //                 Rows::PrimaryKey(rows.into_iter().map_ok(move |data_row| match data_row {
+        //                     DataRow::Vec(values) => Row::Vec {
+        //                         columns: Rc::clone(&columns),
+        //                         values,
+        //                     },
+        //                     DataRow::Map(values) => Row::Map(values),
+        //                 }))
+        //             }
+        //             _ => {
+        //                 let rows = storage.scan_data(name).await?.map_ok(move |(_, data_row)| {
+        //                     match data_row {
+        //                         DataRow::Vec(values) => Row::Vec {
+        //                             columns: Rc::clone(&columns),
+        //                             values,
+        //                         },
+        //                         DataRow::Map(values) => Row::Map(values),
+        //                     }
+        //                 });
 
-                        Rows::FullScan(rows)
-                    }
-                }
-            };
+        //                 Rows::FullScan(rows)
+        //             }
+        //         }
+        //     };
 
-            Ok(Rows::Table(stream::iter(rows)))
-        }
-        TableFactor::Series { size, .. } => {
-            let value: Value = evaluate_stateless(None, size)?.try_into()?;
-            let size: i64 = value.try_into()?;
-            let size = match size {
-                n if n >= 0 => size,
-                n => return Err(FetchError::SeriesSizeWrong(n).into()),
-            };
+        //     Ok(Rows::Table(stream::iter(rows)))
+        // }
+        // TableFactor::Series { size, .. } => {
+        //     let value: Value = evaluate_stateless(None, size)?.try_into()?;
+        //     let size: i64 = value.try_into()?;
+        //     let size = match size {
+        //         n if n >= 0 => size,
+        //         n => return Err(FetchError::SeriesSizeWrong(n).into()),
+        //     };
 
-            let columns = Rc::from(vec!["N".to_owned()]);
-            let rows = (1..=size).map(move |v| {
-                Ok(Row::Vec {
-                    columns: Rc::clone(&columns),
-                    values: vec![Value::I64(v)],
-                })
-            });
+        //     let columns = Rc::from(vec!["N".to_owned()]);
+        //     let rows = (1..=size).map(move |v| {
+        //         Ok(Row::Vec {
+        //             columns: Rc::clone(&columns),
+        //             values: vec![Value::I64(v)],
+        //         })
+        //     });
 
-            Ok(Rows::Series(stream::iter(rows)))
-        }
+        //     Ok(Rows::Series(stream::iter(rows)))
+        // }
         TableFactor::Dictionary { dict, .. } => {
             let rows = {
-                #[derive(Iterator)]
-                enum Rows<I1, I2, I3, I4> {
-                    Tables(I1),
-                    TableColumns(I2),
-                    Indexes(I3),
-                    Objects(I4),
-                }
+                // #[derive(Iterator)]
+                // enum Rows<I1, I2, I3, I4> {
+                //     Tables(I1),
+                //     TableColumns(I2),
+                //     Indexes(I3),
+                //     Objects(I4),
+                // }
                 match dict {
                     Dictionary::GlueObjects => {
                         let schemas = storage.fetch_all_schemas().await?;
-                        let rows = schemas.into_iter().flat_map(move |schema| {
-                            let table_rows = vec![Ok(Row::Vec {
-                                columns: Rc::clone(&columns),
-                                values: vec![
-                                    Value::Str(schema.table_name),
-                                    Value::Str("TABLE".to_owned()),
-                                    Value::Timestamp(schema.created),
-                                ],
-                            })];
-
-                            let columns = Rc::clone(&columns);
-                            let index_rows = schema.indexes.into_iter().map(move |index| {
-                                let values = vec![
-                                    Value::Str(index.name.clone()),
-                                    Value::Str("INDEX".to_owned()),
-                                    Value::Timestamp(index.created),
-                                ];
-
-                                Ok(Row::Vec {
-                                    columns: Rc::clone(&columns),
-                                    values,
-                                })
-                            });
-
-                            table_rows.into_iter().chain(index_rows)
-                        });
-
-                        Rows::Objects(rows)
-                    }
-                    Dictionary::GlueTables => {
-                        // let view_name = DictionaryView::GlueTables;
-
-                        // let rows = storage.scan_meta(&view_name).await?.map(|a| {
-                        //     a.map(|(_, row)| {
-                        //         let values = match row {
-                        //             DataRow::Vec(values) => values,
-                        //             DataRow::Map(_) => todo!(),
-                        //         };
-
-                        //         Row::Vec {
-                        //             columns: Rc::from(["TABLE_NAME".to_string()]),
-                        //             values,
-                        //         }
-                        //     })
-                        // });
-
-                        // Rows::Tables(rows);
-                        let schemas = storage.fetch_all_schemas().await?;
+                        let metas = storage.scan_all_metas().await;
                         let rows = schemas.into_iter().map(move |schema| {
-                            Ok(Row::Vec {
-                                columns: Rc::clone(&columns),
-                                values: vec![Value::Str(schema.table_name)],
-                            })
-                        });
+                            let meta = metas.get(&schema.table_name);
+                            let physical_table = HashMap::from([
+                                ("TABLE_NAME".to_owned(), Value::Str(schema.table_name)),
+                                ("OBJECT_TYPE".to_owned(), Value::Str("TABLE".to_owned())),
+                            ]);
 
-                        Rows::Tables(rows)
-                    }
-                    Dictionary::GlueTableColumns => {
-                        let schemas = storage.fetch_all_schemas().await?;
-                        let rows = schemas.into_iter().flat_map(move |schema| {
-                            let columns = Rc::clone(&columns);
-                            let table_name = schema.table_name;
+                            let table_rows = match meta {
+                                Some(Value::Map(meta)) => {
+                                    let created =
+                                        meta.get("OBJECT_TYPE").and_then(|value| match value {
+                                            Value::Str(object_type) if object_type == "TABLE" => {
+                                                meta.get("CREATED")
+                                            }
+                                            _ => None,
+                                        });
 
-                            schema
-                                .column_defs
-                                .unwrap_or_default()
-                                .into_iter()
-                                .enumerate()
-                                .map(move |(index, column_def)| {
-                                    let values = vec![
-                                        Value::Str(table_name.clone()),
-                                        Value::Str(column_def.name),
-                                        Value::I64(index as i64 + 1),
-                                    ];
-
-                                    Ok(Row::Vec {
-                                        columns: Rc::clone(&columns),
-                                        values,
-                                    })
-                                })
-                        });
-
-                        Rows::TableColumns(rows)
-                    }
-                    Dictionary::GlueIndexes => {
-                        let schemas = storage.fetch_all_schemas().await?;
-                        let rows = schemas.into_iter().flat_map(move |schema| {
-                            let column_defs = schema.column_defs.unwrap_or_default();
-                            let primary_column = column_defs.iter().find_map(|column_def| {
-                                let ColumnDef { name, unique, .. } = column_def;
-
-                                (unique == &Some(ColumnUniqueOption { is_primary: true }))
-                                    .then_some(name)
-                            });
-
-                            let clustered = match primary_column {
-                                Some(column_name) => {
-                                    let values = vec![
-                                        Value::Str(schema.table_name.clone()),
-                                        Value::Str("PRIMARY".to_owned()),
-                                        Value::Str("BOTH".to_owned()),
-                                        Value::Str(column_name.to_owned()),
-                                        Value::Bool(true),
-                                    ];
-
-                                    let row = Row::Vec {
-                                        columns: Rc::clone(&columns),
-                                        values,
-                                    };
-
-                                    vec![Ok(row)]
+                                    match created {
+                                        Some(Value::Timestamp(created)) => physical_table
+                                            .into_iter()
+                                            .chain(HashMap::from([(
+                                                "CREATED".to_owned(),
+                                                Value::Timestamp(*created),
+                                            )]))
+                                            .collect(),
+                                        _ => physical_table,
+                                    }
                                 }
-                                None => Vec::new(),
+                                _ => physical_table,
                             };
 
-                            let columns = Rc::clone(&columns);
-                            let non_clustered = schema.indexes.into_iter().map(move |index| {
-                                let values = vec![
-                                    Value::Str(schema.table_name.clone()),
-                                    Value::Str(index.name),
-                                    Value::Str(index.order.to_string()),
-                                    Value::Str(index.expr.to_sql()),
-                                    Value::Bool(false),
-                                ];
+                            let index_rows = schema
+                                .indexes
+                                .into_iter()
+                                .flat_map(|index| {
+                                    let index_row = HashMap::from([
+                                        ("OBJECT_NAME".to_owned(), Value::Str(index.name.clone())),
+                                        ("OBJECT_TYPE".to_owned(), Value::Str("INDEX".to_owned())),
+                                    ]);
 
-                                Ok(Row::Vec {
-                                    columns: Rc::clone(&columns),
-                                    values,
+                                    let meta = metas.get(&index.name);
+                                    match meta {
+                                        Some(Value::Map(meta)) => {
+                                            match (meta.get("OBJECT_TYPE"), meta.get("CREATED")) {
+                                                (
+                                                    Some(Value::Str(object_type)),
+                                                    Some(Value::Timestamp(created)),
+                                                ) if object_type == "INDEX" => index_row
+                                                    .into_iter()
+                                                    .chain(HashMap::from([(
+                                                        "CREATED".to_owned(),
+                                                        Value::Timestamp(*created),
+                                                    )]))
+                                                    .collect(),
+                                                _ => index_row,
+                                            }
+                                        }
+                                        _ => index_row,
+                                    }
                                 })
-                            });
+                                .collect::<HashMap<String, Value>>();
 
-                            clustered.into_iter().chain(non_clustered)
+                            // let table_rows = vec![Ok(Row::Vec {
+                            //     columns: Rc::clone(&columns),
+                            //     values: vec![
+                            //         Value::Str(schema.table_name),
+                            //         Value::Str("TABLE".to_owned()),
+                            //         // Value::Timestamp(schema.created),
+                            //         // if let Some(meta), put meta.created here, else not
+                            //     ],
+                            // })];
+
+                            // let columns = Rc::clone(&columns);
+                            // let index_rows = schema.indexes.into_iter().map(move |index| {
+                            //     let values = vec![
+                            //         Value::Str(index.name.clone()),
+                            //         Value::Str("INDEX".to_owned()),
+                            //         Value::Timestamp(index.created),
+                            //     ];
+
+                            //     Ok(Row::Vec {
+                            //         columns: Rc::clone(&columns),
+                            //         values,
+                            //     })
+                            // });
+
+                            let rows = table_rows.into_iter().chain(index_rows).collect();
+
+                            Ok(Row::Map(rows))
                         });
 
-                        Rows::Indexes(rows)
+                        rows
                     }
+                    // Dictionary::GlueTables => {
+                    //     let schemas = storage.fetch_all_schemas().await?;
+                    //     let rows = schemas.into_iter().map(move |schema| {
+                    //         Ok(Row::Vec {
+                    //             columns: Rc::clone(&columns),
+                    //             values: vec![Value::Str(schema.table_name)],
+                    //         })
+                    //     });
+
+                    //     Rows::Tables(rows)
+                    // }
+                    _ => todo!(),
+                    // Dictionary::GlueTableColumns => {
+                    //     let schemas = storage.fetch_all_schemas().await?;
+                    //     let rows = schemas.into_iter().flat_map(move |schema| {
+                    //         let columns = Rc::clone(&columns);
+                    //         let table_name = schema.table_name;
+
+                    //         schema
+                    //             .column_defs
+                    //             .unwrap_or_default()
+                    //             .into_iter()
+                    //             .enumerate()
+                    //             .map(move |(index, column_def)| {
+                    //                 let values = vec![
+                    //                     Value::Str(table_name.clone()),
+                    //                     Value::Str(column_def.name),
+                    //                     Value::I64(index as i64 + 1),
+                    //                 ];
+
+                    //                 Ok(Row::Vec {
+                    //                     columns: Rc::clone(&columns),
+                    //                     values,
+                    //                 })
+                    //             })
+                    //     });
+
+                    //     Rows::TableColumns(rows)
+                    // }
+                    // Dictionary::GlueIndexes => {
+                    //     let schemas = storage.fetch_all_schemas().await?;
+                    //     let rows = schemas.into_iter().flat_map(move |schema| {
+                    //         let column_defs = schema.column_defs.unwrap_or_default();
+                    //         let primary_column = column_defs.iter().find_map(|column_def| {
+                    //             let ColumnDef { name, unique, .. } = column_def;
+
+                    //             (unique == &Some(ColumnUniqueOption { is_primary: true }))
+                    //                 .then_some(name)
+                    //         });
+
+                    //         let clustered = match primary_column {
+                    //             Some(column_name) => {
+                    //                 let values = vec![
+                    //                     Value::Str(schema.table_name.clone()),
+                    //                     Value::Str("PRIMARY".to_owned()),
+                    //                     Value::Str("BOTH".to_owned()),
+                    //                     Value::Str(column_name.to_owned()),
+                    //                     Value::Bool(true),
+                    //                 ];
+
+                    //                 let row = Row::Vec {
+                    //                     columns: Rc::clone(&columns),
+                    //                     values,
+                    //                 };
+
+                    //                 vec![Ok(row)]
+                    //             }
+                    //             None => Vec::new(),
+                    //         };
+
+                    //         let columns = Rc::clone(&columns);
+                    //         let non_clustered = schema.indexes.into_iter().map(move |index| {
+                    //             let values = vec![
+                    //                 Value::Str(schema.table_name.clone()),
+                    //                 Value::Str(index.name),
+                    //                 Value::Str(index.order.to_string()),
+                    //                 Value::Str(index.expr.to_sql()),
+                    //                 Value::Bool(false),
+                    //             ];
+
+                    //             Ok(Row::Vec {
+                    //                 columns: Rc::clone(&columns),
+                    //                 values,
+                    //             })
+                    //         });
+
+                    //         clustered.into_iter().chain(non_clustered)
+                    //     });
+
+                    //     Rows::Indexes(rows)
+                    // }
                 }
             };
 
-            Ok(Rows::Dictionary(stream::iter(rows)))
+            Ok(stream::iter(rows))
         }
+        _ => todo!(),
     }
 }
 
