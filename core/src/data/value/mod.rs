@@ -643,7 +643,6 @@ impl Value {
     }
 
     pub fn find_idx(&self, from_val: &Value, start: &Value) -> Result<Value> {
-        use Value::I64;
         let start: i64 = start.try_into()?;
         if start <= 0 {
             return Err(ValueError::NonPositiveIntegerOffsetInFindIdx(start.to_string()).into());
@@ -655,7 +654,7 @@ impl Value {
             0 => 0,
             _ => position + start - 1,
         };
-        Ok(I64(position))
+        Ok(Value::I64(position))
     }
 }
 
