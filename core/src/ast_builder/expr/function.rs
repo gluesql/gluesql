@@ -123,8 +123,8 @@ pub enum FunctionNode<'a> {
         sub_expr: ExprNode<'a>,
     },
     FindIdx {
-        sub_expr: ExprNode<'a>,
         from_expr: ExprNode<'a>,
+        sub_expr: ExprNode<'a>,
         start: Option<ExprNode<'a>>,
     },
     Cast {
@@ -445,7 +445,7 @@ impl<'a> ExprNode<'a> {
         sub: T,
         start: Option<ExprNode<'a>>,
     ) -> ExprNode<'a> {
-        find_idx(sub, self, start)
+        find_idx(self, sub, start)
     }
     pub fn cast<T: Into<DataTypeNode>>(self, data_type: T) -> ExprNode<'a> {
         cast(self, data_type)
@@ -723,13 +723,13 @@ pub fn position<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
 }
 
 pub fn find_idx<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
-    sub_expr: T,
-    from_expr: U,
+    from_expr: T,
+    sub_expr: U,
     start: Option<ExprNode<'a>>,
 ) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::FindIdx {
-        sub_expr: sub_expr.into(),
         from_expr: from_expr.into(),
+        sub_expr: sub_expr.into(),
         start,
     }))
 }
@@ -1348,20 +1348,20 @@ mod tests {
 
     #[test]
     fn function_find_idx() {
-        let actual = find_idx(text("meal"), expr("oatmeal"), Some(num(2)));
-        let expected = "FIND_IDX('meal', oatmeal, 2)";
+        let actual = find_idx(expr("oatmeal"), text("meal"), Some(num(2)));
+        let expected = "FIND_IDX(oatmeal, 'meal', 2)";
         test_expr(actual, expected);
 
-        let actual = find_idx(text("berry"), expr("strawberry"), None);
-        let expected = "FIND_IDX('berry', strawberry)";
+        let actual = find_idx(expr("strawberry"), text("berry"), None);
+        let expected = "FIND_IDX(strawberry, 'berry')";
         test_expr(actual, expected);
 
         let actual = expr("blackberry").find_idx(text("black"), Some(num(1)));
-        let expected = "FIND_IDX('black', blackberry, 1)";
+        let expected = "FIND_IDX(blackberry, 'black', 1)";
         test_expr(actual, expected);
 
         let actual = text("blue cheese").find_idx(text("blue"), None);
-        let expected = "FIND_IDX('blue', 'blue cheese')";
+        let expected = "FIND_IDX('blue cheese', 'blue')";
         test_expr(actual, expected);
     }
 

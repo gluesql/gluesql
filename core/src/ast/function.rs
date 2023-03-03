@@ -139,8 +139,8 @@ pub enum Function {
         sub_expr: Expr,
     },
     FindIdx {
-        sub_expr: Expr,
         from_expr: Expr,
+        sub_expr: Expr,
         start: Option<Expr>,
     },
     Ascii(Expr),
@@ -296,15 +296,15 @@ impl ToSql for Function {
                 sub_expr,
             } => format!("POSITION({} IN {})", sub_expr.to_sql(), from_expr.to_sql()),
             Function::FindIdx {
-                sub_expr,
                 from_expr,
+                sub_expr,
                 start,
             } => match start {
-                None => format!("FIND_IDX({}, {})", sub_expr.to_sql(), from_expr.to_sql()),
+                None => format!("FIND_IDX({}, {})", from_expr.to_sql(), sub_expr.to_sql()),
                 Some(start_expr) => format!(
                     "FIND_IDX({}, {}, {})",
-                    sub_expr.to_sql(),
                     from_expr.to_sql(),
+                    sub_expr.to_sql(),
                     start_expr.to_sql()
                 ),
             },
@@ -879,10 +879,10 @@ mod tests {
         );
 
         assert_eq!(
-            "FIND_IDX('o', 'noodle', 2)",
+            "FIND_IDX('noodle', 'o', 2)",
             &Expr::Function(Box::new(Function::FindIdx {
-                sub_expr: Expr::Literal(AstLiteral::QuotedString("o".to_owned())),
                 from_expr: Expr::Literal(AstLiteral::QuotedString("noodle".to_owned())),
+                sub_expr: Expr::Literal(AstLiteral::QuotedString("o".to_owned())),
                 start: Some(Expr::Literal(AstLiteral::Number(
                     BigDecimal::from_str("2").unwrap()
                 )))
@@ -891,10 +891,10 @@ mod tests {
         );
 
         assert_eq!(
-            "FIND_IDX('goat', 'goat cheese')",
+            "FIND_IDX('goat cheese', 'goat')",
             &Expr::Function(Box::new(Function::FindIdx {
-                sub_expr: Expr::Literal(AstLiteral::QuotedString("goat".to_owned())),
                 from_expr: Expr::Literal(AstLiteral::QuotedString("goat cheese".to_owned())),
+                sub_expr: Expr::Literal(AstLiteral::QuotedString("goat".to_owned())),
                 start: None
             }))
             .to_sql()

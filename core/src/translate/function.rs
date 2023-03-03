@@ -240,15 +240,15 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         "FIND_IDX" => {
             check_len_range(name, args.len(), 2, 3)?;
 
-            let sub_expr = translate_expr(args[0])?;
             let from_expr = translate_expr(args[1])?;
+            let sub_expr = translate_expr(args[0])?;
             let start = (args.len() > 2)
                 .then(|| translate_expr(args[2]))
                 .transpose()?;
 
             Ok(Expr::Function(Box::new(Function::FindIdx {
-                sub_expr,
                 from_expr,
+                sub_expr,
                 start,
             })))
         }

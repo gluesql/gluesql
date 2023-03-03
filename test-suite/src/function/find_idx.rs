@@ -13,39 +13,39 @@ test_case!(find_idx, async move {
         ("INSERT INTO Meal VALUES ('pork')", Ok(Payload::Insert(1))),
         ("INSERT INTO Meal VALUES ('burger')", Ok(Payload::Insert(1))),
         (
-            "SELECT FIND_IDX('rg', menu) AS test FROM Meal",
+            "SELECT FIND_IDX(menu, 'rg') AS test FROM Meal",
             Ok(select!(test; I64; 0; 3)),
         ),
         (
-            "SELECT FIND_IDX('r', menu, 4) AS test FROM Meal",
+            "SELECT FIND_IDX(menu, 'r', 4) AS test FROM Meal",
             Ok(select!(test; I64; 0; 6)),
         ),
         (
-            "SELECT FIND_IDX('', 'cheese') AS test",
+            "SELECT FIND_IDX('cheese', '') AS test",
             Ok(select!(test; I64; 0)),
         ),
         (
-            "SELECT FIND_IDX('s', 'cheese') AS test",
+            "SELECT FIND_IDX('cheese', 's') AS test",
             Ok(select!(test; I64; 5)),
         ),
         (
-            "SELECT FIND_IDX('e', 'cheese burger', 5) AS test",
+            "SELECT FIND_IDX('cheese burger', 'e', 5) AS test",
             Ok(select!(test; I64; 6)),
         ),
         (
-            "SELECT FIND_IDX(NULL, 'cheese') AS test",
+            "SELECT FIND_IDX('cheese', NULL) AS test",
             Ok(select_with_null!(test; Null)),
         ),
         (
-            "SELECT FIND_IDX(1, 'cheese') AS test",
+            "SELECT FIND_IDX('cheese', 1) AS test",
             Err(EvaluateError::FunctionRequiresStringValue(String::from("FIND_IDX")).into()),
         ),
         (
-            "SELECT FIND_IDX('s', 'cheese', '5') AS test",
+            "SELECT FIND_IDX('cheese', 's', '5') AS test",
             Err(EvaluateError::FunctionRequiresIntegerValue(String::from("FIND_IDX")).into()),
         ),
         (
-            "SELECT FIND_IDX('s', 'cheese', -1) AS test",
+            "SELECT FIND_IDX('cheese', 's', -1) AS test",
             Err(ValueError::NonPositiveIntegerOffsetInFindIdx(String::from("-1")).into()),
         ),
     ];
