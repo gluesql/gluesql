@@ -729,6 +729,7 @@ mod tests {
         assert_eq!(Value::from(Key::I128(32)), Value::I128(32));
         assert_eq!(Value::from(Key::U8(64)), Value::U8(64));
         assert_eq!(Value::from(Key::U16(128)), Value::U16(128));
+        assert_eq!(Value::from(Key::F64(1.0.into())), Value::F64(1.0));
         assert_eq!(
             Value::from(Key::Decimal(Decimal::from_str("123.45").unwrap())),
             Value::Decimal(Decimal::from_str("123.45").unwrap())
