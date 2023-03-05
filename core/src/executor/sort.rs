@@ -2,7 +2,7 @@ use {
     super::{context::RowContext, evaluate::evaluate},
     crate::{
         ast::{Aggregate, AstLiteral, Expr, OrderByExpr, UnaryOperator},
-        data::{Row, Value},
+        data::{Key, Row, Value},
         result::{Error, Result},
         store::GStore,
     },
@@ -122,25 +122,23 @@ impl<'a, T: GStore> Sort<'a, T> {
                         Rc::clone(&label_context),
                     ));
 
-                    let order_by = order_by?;
-
-                    let values = stream::iter(order_by.into_iter());
-                    let values = values
+                    let keys = order_by
+                        .map(stream::iter)?
                         .then(|(sort_type, asc)| {
                             let context = Some(Rc::clone(&filter_context));
                             let aggregated = aggregated.as_ref().map(Rc::clone);
 
                             async move {
-                                let value: Value = match sort_type {
+                                match sort_type {
                                     SortType::Value(value) => value,
                                     SortType::Expr(expr) => {
                                         evaluate(self.storage, context, aggregated, expr)
                                             .await?
                                             .try_into()?
                                     }
-                                };
-
-                                Ok::<_, Error>((value, asc))
+                                }
+                                .try_into()
+                                .map(|key| (key, asc))
                             }
                         })
                         .try_collect::<Vec<_>>()
@@ -149,13 +147,13 @@ impl<'a, T: GStore> Sort<'a, T> {
                     drop(label_context);
                     drop(filter_context);
 
-                    Ok((values, row))
+                    Ok((keys, row))
                 }
             })
-            .try_collect::<Vec<(Vec<(Value, Option<bool>)>, Row)>>()
+            .try_collect::<Vec<(Vec<(Key, Option<bool>)>, Row)>>()
             .await
             .map(Vector::from)?
-            .sort_by(|(values_a, ..), (values_b, ..)| sort_by(values_a, values_b))
+            .sort_by(|(keys_a, ..), (keys_b, ..)| sort_by(keys_a, keys_b))
             .into_iter()
             .map(|(.., row)| Ok(row));
 
@@ -163,32 +161,18 @@ impl<'a, T: GStore> Sort<'a, T> {
     }
 }
 
-pub fn sort_by(values_a: &[(Value, Option<bool>)], values_b: &[(Value, Option<bool>)]) -> Ordering {
-    let pairs = values_a
+pub fn sort_by(keys_a: &[(Key, Option<bool>)], keys_b: &[(Key, Option<bool>)]) -> Ordering {
+    let pairs = keys_a
         .iter()
         .map(|(a, _)| a)
-        .zip(values_b.iter())
+        .zip(keys_b.iter())
         .map(|(a, (b, asc))| (a, b, asc.unwrap_or(true)));
 
-    for (value_a, value_b, asc) in pairs {
-        let apply_asc = |ord: Ordering| if asc { ord } else { ord.reverse() };
-
-        match (value_a, value_b) {
-            (Value::Null, Value::Null) => {}
-            (Value::Null, _) => {
-                return apply_asc(Ordering::Greater);
-            }
-            (_, Value::Null) => {
-                return apply_asc(Ordering::Less);
-            }
-            _ => {}
-        };
-
-        match value_a.partial_cmp(value_b) {
-            Some(ord) if ord != Ordering::Equal => {
-                return apply_asc(ord);
-            }
-            _ => {}
+    for (key_a, key_b, asc) in pairs {
+        match (key_a.cmp(key_b), asc) {
+            (Ordering::Equal, _) => continue,
+            (ord, true) => return ord,
+            (ord, false) => return ord.reverse(),
         }
     }
 

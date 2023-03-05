@@ -30,6 +30,7 @@ strum_macros = "0.24"
 bigdecimal = { version = "0.3", features = ["serde", "string-only"] }
 hex = "0.4"
 rand = "0.8"
+ordered-float = { version = "3.4.0", features = ["serde"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies.uuid]
 version = "1"

@@ -603,7 +603,7 @@ impl Value {
 
     /// Value to Big-Endian for comparison purpose
     pub fn to_cmp_be_bytes(&self) -> Result<Vec<u8>> {
-        self.try_into().map(|key: Key| key.to_cmp_be_bytes())
+        self.try_into().and_then(|key: Key| key.to_cmp_be_bytes())
     }
 
     /// # Description

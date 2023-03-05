@@ -4,6 +4,7 @@ use {
         result::{Error, Result},
     },
     chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
+    ordered_float::OrderedFloat,
     rust_decimal::Decimal,
     serde::{Deserialize, Serialize},
     std::{cmp::Ordering, fmt::Debug, net::IpAddr},
@@ -12,8 +13,8 @@ use {
 
 #[derive(ThisError, Debug, PartialEq, Eq, Serialize)]
 pub enum KeyError {
-    #[error("FLOAT data type cannot be used as Key")]
-    FloatTypeKeyNotSupported,
+    #[error("FLOAT data type cannot be converted to Big-Endian bytes for comparision")]
+    FloatToCmpBigEndianNotSupported,
 
     #[error("MAP data type cannot be used as Key")]
     MapTypeKeyNotSupported,
@@ -31,6 +32,7 @@ pub enum Key {
     I128(i128),
     U8(u8),
     U16(u16),
+    F64(OrderedFloat<f64>),
     Decimal(Decimal),
     Bool(bool),
     Str(String),
@@ -54,6 +56,7 @@ impl Ord for Key {
             (Key::I128(l), Key::I128(r)) => l.cmp(r),
             (Key::U8(l), Key::U8(r)) => l.cmp(r),
             (Key::U16(l), Key::U16(r)) => l.cmp(r),
+            (Key::F64(l), Key::F64(r)) => l.total_cmp(&r.0),
             (Key::Decimal(l), Key::Decimal(r)) => l.cmp(r),
             (Key::Bool(l), Key::Bool(r)) => l.cmp(r),
             (Key::Str(l), Key::Str(r)) => l.cmp(r),
@@ -75,6 +78,7 @@ impl Ord for Key {
             | (Key::I128(_), _)
             | (Key::U8(_), _)
             | (Key::U16(_), _)
+            | (Key::F64(_), _)
             | (Key::Decimal(_), _)
             | (Key::Bool(_), _)
             | (Key::Str(_), _)
@@ -110,6 +114,7 @@ impl TryFrom<Value> for Key {
             I128(v) => Ok(Key::I128(v)),
             U8(v) => Ok(Key::U8(v)),
             U16(v) => Ok(Key::U16(v)),
+            F64(v) => Ok(Key::F64(OrderedFloat(v))),
             Decimal(v) => Ok(Key::Decimal(v)),
             Str(v) => Ok(Key::Str(v)),
             Bytea(v) => Ok(Key::Bytea(v)),
@@ -120,7 +125,6 @@ impl TryFrom<Value> for Key {
             Interval(v) => Ok(Key::Interval(v)),
             Uuid(v) => Ok(Key::Uuid(v)),
             Null => Ok(Key::None),
-            F64(_) => Err(KeyError::FloatTypeKeyNotSupported.into()),
             Map(_) => Err(KeyError::MapTypeKeyNotSupported.into()),
             List(_) => Err(KeyError::ListTypeKeyNotSupported.into()),
         }
@@ -146,6 +150,7 @@ impl From<Key> for Value {
             Key::I128(v) => Value::I128(v),
             Key::U8(v) => Value::U8(v),
             Key::U16(v) => Value::U16(v),
+            Key::F64(v) => Value::F64(v.0),
             Key::Decimal(v) => Value::Decimal(v),
             Key::Str(v) => Value::Str(v),
             Key::Bytea(v) => Value::Bytea(v),
@@ -165,8 +170,8 @@ const NONE: u8 = 1;
 
 impl Key {
     /// Key to Big-Endian for comparison purpose
-    pub fn to_cmp_be_bytes(&self) -> Vec<u8> {
-        match self {
+    pub fn to_cmp_be_bytes(&self) -> Result<Vec<u8>> {
+        Ok(match self {
             Key::Bool(v) => {
                 if *v {
                     vec![VALUE, 1]
@@ -229,6 +234,9 @@ impl Key {
                 .chain(v.to_be_bytes().iter())
                 .copied()
                 .collect::<Vec<_>>(),
+            Key::F64(_) => {
+                return Err(KeyError::FloatToCmpBigEndianNotSupported.into());
+            }
             Key::Decimal(v) => {
                 let sign = u8::from(v.is_sign_positive());
                 let convert = |v: Decimal| {
@@ -306,7 +314,7 @@ impl Key {
                 .copied()
                 .collect::<Vec<_>>(),
             Key::None => vec![NONE],
-        }
+        })
     }
 }
 
@@ -343,6 +351,8 @@ mod tests {
         assert_eq!(convert("CAST(1024 AS INT128)"), Ok(Key::I128(1024)));
         assert_eq!(convert("CAST(11 AS UINT8)"), Ok(Key::U8(11)));
         assert_eq!(convert("CAST(11 AS UINT16)"), Ok(Key::U16(11)));
+        assert!(matches!(convert("12.03"), Ok(Key::F64(_))));
+
         assert_eq!(
             convert("CAST(123.45 AS DECIMAL)"),
             Ok(Key::Decimal(Decimal::from_str("123.45").unwrap()))
@@ -373,10 +383,6 @@ mod tests {
         assert_eq!(convert("NULL"), Ok(Key::None));
 
         // Error
-        assert_eq!(
-            convert("12.03"),
-            Err(KeyError::FloatTypeKeyNotSupported.into())
-        );
         assert_eq!(
             Key::try_from(Value::Map(HashMap::default())),
             Err(KeyError::MapTypeKeyNotSupported.into())
@@ -478,7 +484,10 @@ mod tests {
     fn cmp_big_endian() {
         use crate::data::{Interval as I, Key::*};
 
-        fn cmp(ls: &[u8], rs: &[u8]) -> Ordering {
+        fn cmp(ls: &Result<Vec<u8>>, rs: &Result<Vec<u8>>) -> Ordering {
+            let ls = ls.as_ref().unwrap();
+            let rs = rs.as_ref().unwrap();
+
             for (l, r) in ls.iter().zip(rs.iter()) {
                 match l.cmp(r) {
                     Ordering::Equal => continue,
@@ -624,11 +633,11 @@ mod tests {
         assert_eq!(cmp(&n5, &n4), Ordering::Greater);
         assert_eq!(cmp(&n1, &null), Ordering::Less);
 
-        let n1 = Bytea(n1).to_cmp_be_bytes();
-        let n2 = Bytea(n2).to_cmp_be_bytes();
-        let n3 = Bytea(n3).to_cmp_be_bytes();
-        let n4 = Bytea(n4).to_cmp_be_bytes();
-        let n5 = Bytea(n5).to_cmp_be_bytes();
+        let n1 = Bytea(n1.unwrap()).to_cmp_be_bytes();
+        let n2 = Bytea(n2.unwrap()).to_cmp_be_bytes();
+        let n3 = Bytea(n3.unwrap()).to_cmp_be_bytes();
+        let n4 = Bytea(n4.unwrap()).to_cmp_be_bytes();
+        let n5 = Bytea(n5.unwrap()).to_cmp_be_bytes();
 
         assert_eq!(cmp(&n2, &n2), Ordering::Equal);
         assert_eq!(cmp(&n1, &n2), Ordering::Less);
@@ -703,6 +712,11 @@ mod tests {
         assert_eq!(cmp(&n1, &n2), Ordering::Less);
         assert_eq!(cmp(&n2, &n1), Ordering::Greater);
         assert_eq!(cmp(&n1, &null), Ordering::Less);
+
+        assert_eq!(
+            F64(12.34.into()).to_cmp_be_bytes(),
+            Err(KeyError::FloatToCmpBigEndianNotSupported.into())
+        );
     }
 
     #[test]
@@ -716,6 +730,7 @@ mod tests {
         assert_eq!(Value::from(Key::I128(32)), Value::I128(32));
         assert_eq!(Value::from(Key::U8(64)), Value::U8(64));
         assert_eq!(Value::from(Key::U16(128)), Value::U16(128));
+        assert_eq!(Value::from(Key::F64(1.0.into())), Value::F64(1.0));
         assert_eq!(
             Value::from(Key::Decimal(Decimal::from_str("123.45").unwrap())),
             Value::Decimal(Decimal::from_str("123.45").unwrap())
