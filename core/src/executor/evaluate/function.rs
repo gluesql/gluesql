@@ -535,6 +535,29 @@ pub fn position<'a>(from_expr: Evaluated<'_>, sub_expr: Evaluated<'_>) -> Result
     from.position(&sub).map(Evaluated::from)
 }
 
+pub fn find_idx<'a>(
+    name: String,
+    from: Evaluated<'a>,
+    sub: Evaluated<'a>,
+    start: Option<Evaluated<'a>>,
+) -> Result<Evaluated<'a>> {
+    let from_expr = eval_to_str!(name, from);
+    let sub_expr = eval_to_str!(name, sub);
+
+    match start {
+        Some(start) => {
+            let start = eval_to_int!(name, start);
+            Value::find_idx(
+                &Value::Str(from_expr),
+                &Value::Str(sub_expr),
+                &Value::I64(start),
+            )
+        }
+        None => Value::position(&Value::Str(from_expr), &Value::Str(sub_expr)),
+    }
+    .map(Evaluated::from)
+}
+
 pub fn cast<'a>(expr: Evaluated<'a>, data_type: &DataType) -> Result<Evaluated<'a>> {
     expr.cast(data_type)
 }

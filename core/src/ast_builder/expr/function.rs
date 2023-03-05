@@ -122,6 +122,11 @@ pub enum FunctionNode<'a> {
         from_expr: ExprNode<'a>,
         sub_expr: ExprNode<'a>,
     },
+    FindIdx {
+        from_expr: ExprNode<'a>,
+        sub_expr: ExprNode<'a>,
+        start: Option<ExprNode<'a>>,
+    },
     Cast {
         expr: ExprNode<'a>,
         data_type: DataTypeNode,
@@ -279,6 +284,20 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
                     sub_expr,
                 })
             }
+            FunctionNode::FindIdx {
+                from_expr,
+                sub_expr,
+                start,
+            } => {
+                let from_expr = from_expr.try_into()?;
+                let sub_expr = sub_expr.try_into()?;
+                let start = start.map(TryInto::try_into).transpose()?;
+                Ok(Function::FindIdx {
+                    from_expr,
+                    sub_expr,
+                    start,
+                })
+            }
             FunctionNode::Cast { expr, data_type } => {
                 let expr = expr.try_into()?;
                 let data_type = data_type.try_into()?;
@@ -420,6 +439,13 @@ impl<'a> ExprNode<'a> {
     }
     pub fn position<T: Into<ExprNode<'a>>>(self, format: T) -> ExprNode<'a> {
         position(self, format)
+    }
+    pub fn find_idx<T: Into<ExprNode<'a>>>(
+        self,
+        sub: T,
+        start: Option<ExprNode<'a>>,
+    ) -> ExprNode<'a> {
+        find_idx(self, sub, start)
     }
     pub fn cast<T: Into<DataTypeNode>>(self, data_type: T) -> ExprNode<'a> {
         cast(self, data_type)
@@ -696,6 +722,18 @@ pub fn position<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
     }))
 }
 
+pub fn find_idx<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
+    from_expr: T,
+    sub_expr: U,
+    start: Option<ExprNode<'a>>,
+) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::FindIdx {
+        from_expr: from_expr.into(),
+        sub_expr: sub_expr.into(),
+        start,
+    }))
+}
+
 pub fn cast<'a, T: Into<ExprNode<'a>>, U: Into<DataTypeNode>>(
     expr: T,
     data_type: U,
@@ -719,10 +757,10 @@ mod tests {
         ast::DateTimeField,
         ast_builder::{
             abs, acos, asin, atan, cast, ceil, col, concat, concat_ws, cos, date, degrees, divide,
-            exp, expr, extract, floor, format, gcd, generate_uuid, ifnull, lcm, left, ln, log,
-            log10, log2, lower, lpad, ltrim, modulo, now, num, pi, position, power, radians, rand,
-            repeat, reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr, tan, test_expr,
-            text, time, timestamp, to_date, to_time, to_timestamp, upper,
+            exp, expr, extract, find_idx, floor, format, gcd, generate_uuid, ifnull, lcm, left, ln,
+            log, log10, log2, lower, lpad, ltrim, modulo, now, num, pi, position, power, radians,
+            rand, repeat, reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr, tan,
+            test_expr, text, time, timestamp, to_date, to_time, to_timestamp, upper,
         },
         prelude::DataType,
     };
@@ -1305,6 +1343,25 @@ mod tests {
 
         let actual = text("rice").position(text("cake"));
         let expected = "POSITION('cake' IN 'rice')";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_find_idx() {
+        let actual = find_idx(expr("oatmeal"), text("meal"), Some(num(2)));
+        let expected = "FIND_IDX(oatmeal, 'meal', 2)";
+        test_expr(actual, expected);
+
+        let actual = find_idx(expr("strawberry"), text("berry"), None);
+        let expected = "FIND_IDX(strawberry, 'berry')";
+        test_expr(actual, expected);
+
+        let actual = expr("blackberry").find_idx(text("black"), Some(num(1)));
+        let expected = "FIND_IDX(blackberry, 'black', 1)";
+        test_expr(actual, expected);
+
+        let actual = text("blue cheese").find_idx(text("blue"), None);
+        let expected = "FIND_IDX('blue cheese', 'blue')";
         test_expr(actual, expected);
     }
 

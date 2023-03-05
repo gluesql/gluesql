@@ -128,6 +128,11 @@ impl Function {
             | Self::Position {
                 from_expr: expr2,
                 sub_expr: expr,
+            }
+            | Self::FindIdx {
+                from_expr: expr,
+                sub_expr: expr2,
+                start: None,
             } => Exprs::Double([expr, expr2].into_iter()),
             Self::Lpad {
                 expr,
@@ -143,6 +148,11 @@ impl Function {
                 expr,
                 start: expr2,
                 count: Some(expr3),
+            }
+            | Self::FindIdx {
+                from_expr: expr,
+                sub_expr: expr2,
+                start: Some(expr3),
             } => Exprs::Triple([expr, expr2, expr3].into_iter()),
             Self::Concat(exprs) => Exprs::VariableArgs(exprs.iter()),
             Self::ConcatWs { separator, exprs } => {
@@ -228,6 +238,7 @@ mod tests {
         // Double
         test(r#"LEFT("hello", 2)"#, &[r#""hello""#, "2"]);
         test(r#"RIGHT("hello", 2)"#, &[r#""hello""#, "2"]);
+        test(r#"FIND_IDX("Calzone", "zone")"#, &[r#"Calzone"#, r#"zone"#]);
         test(r#"LPAD(value, 5)"#, &["value", "5"]);
         test(r#"RPAD(value, 5)"#, &["value", "5"]);
         test(
