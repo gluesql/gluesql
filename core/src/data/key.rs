@@ -30,41 +30,68 @@ pub enum Key {
     I64(i64),
     I128(i128),
     U8(u8),
-    Decimal(Decimal),
     U16(u16),
+    Decimal(Decimal),
     Bool(bool),
     Str(String),
     Bytea(Vec<u8>),
-    Inet(IpAddr),
     Date(NaiveDate),
     Timestamp(NaiveDateTime),
     Time(NaiveTime),
     Interval(Interval),
     Uuid(u128),
+    Inet(IpAddr),
     None,
+}
+
+impl Ord for Key {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (Key::I8(l), Key::I8(r)) => l.cmp(r),
+            (Key::I16(l), Key::I16(r)) => l.cmp(r),
+            (Key::I32(l), Key::I32(r)) => l.cmp(r),
+            (Key::I64(l), Key::I64(r)) => l.cmp(r),
+            (Key::I128(l), Key::I128(r)) => l.cmp(r),
+            (Key::U8(l), Key::U8(r)) => l.cmp(r),
+            (Key::U16(l), Key::U16(r)) => l.cmp(r),
+            (Key::Decimal(l), Key::Decimal(r)) => l.cmp(r),
+            (Key::Bool(l), Key::Bool(r)) => l.cmp(r),
+            (Key::Str(l), Key::Str(r)) => l.cmp(r),
+            (Key::Bytea(l), Key::Bytea(r)) => l.cmp(r),
+            (Key::Date(l), Key::Date(r)) => l.cmp(r),
+            (Key::Timestamp(l), Key::Timestamp(r)) => l.cmp(r),
+            (Key::Time(l), Key::Time(r)) => l.cmp(r),
+            (Key::Interval(l), Key::Interval(r)) => l.cmp(r),
+            (Key::Uuid(l), Key::Uuid(r)) => l.cmp(r),
+            (Key::Inet(l), Key::Inet(r)) => l.cmp(r),
+            (Key::None, Key::None) => Ordering::Equal,
+            (Key::None, _) => Ordering::Greater,
+            (_, Key::None) => Ordering::Less,
+
+            (Key::I8(_), _)
+            | (Key::I16(_), _)
+            | (Key::I32(_), _)
+            | (Key::I64(_), _)
+            | (Key::I128(_), _)
+            | (Key::U8(_), _)
+            | (Key::U16(_), _)
+            | (Key::Decimal(_), _)
+            | (Key::Bool(_), _)
+            | (Key::Str(_), _)
+            | (Key::Bytea(_), _)
+            | (Key::Date(_), _)
+            | (Key::Timestamp(_), _)
+            | (Key::Time(_), _)
+            | (Key::Interval(_), _)
+            | (Key::Uuid(_), _)
+            | (Key::Inet(_), _) => Ordering::Greater,
+        }
+    }
 }
 
 impl PartialOrd for Key {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        match (self, other) {
-            (Key::I8(l), Key::I8(r)) => Some(l.cmp(r)),
-            (Key::I16(l), Key::I16(r)) => Some(l.cmp(r)),
-            (Key::I32(l), Key::I32(r)) => Some(l.cmp(r)),
-            (Key::I64(l), Key::I64(r)) => Some(l.cmp(r)),
-            (Key::U8(l), Key::U8(r)) => Some(l.cmp(r)),
-            (Key::U16(l), Key::U16(r)) => Some(l.cmp(r)),
-            (Key::Decimal(l), Key::Decimal(r)) => Some(l.cmp(r)),
-            (Key::Bool(l), Key::Bool(r)) => Some(l.cmp(r)),
-            (Key::Str(l), Key::Str(r)) => Some(l.cmp(r)),
-            (Key::Bytea(l), Key::Bytea(r)) => Some(l.cmp(r)),
-            (Key::Inet(l), Key::Inet(r)) => Some(l.cmp(r)),
-            (Key::Date(l), Key::Date(r)) => Some(l.cmp(r)),
-            (Key::Timestamp(l), Key::Timestamp(r)) => Some(l.cmp(r)),
-            (Key::Time(l), Key::Time(r)) => Some(l.cmp(r)),
-            (Key::Interval(l), Key::Interval(r)) => l.partial_cmp(r),
-            (Key::Uuid(l), Key::Uuid(r)) => Some(l.cmp(r)),
-            _ => None,
-        }
+        Some(self.cmp(other))
     }
 }
 
@@ -369,59 +396,100 @@ mod tests {
         );
     }
 
-    fn cmp(ls: &[u8], rs: &[u8]) -> Ordering {
-        for (l, r) in ls.iter().zip(rs.iter()) {
-            match l.cmp(r) {
-                Ordering::Equal => continue,
-                ordering => return ordering,
-            }
-        }
-
-        let size_l = ls.len();
-        let size_r = rs.len();
-
-        size_l.cmp(&size_r)
-    }
-
     #[test]
-    fn key_partial_cmp() {
-        use uuid::Uuid;
-        macro_rules! equal {
-            ($expr: expr) => {
-                assert_eq!(&$expr.partial_cmp(&$expr), &Some(Ordering::Equal))
-            };
-        }
-        equal!(Key::Bool(true));
-        equal!(Key::I8(11));
-        equal!(Key::I16(11));
-        equal!(Key::I32(11));
-        equal!(Key::I64(2048));
-        equal!(Key::U8(11));
-        equal!(Key::U16(11));
-        equal!(Key::Decimal(Decimal::from_str("123.45").unwrap()));
+    fn cmp() {
+        use {
+            std::{net::IpAddr, str::FromStr},
+            uuid::Uuid,
+        };
 
-        equal!(Key::Str("Hello World".to_owned()));
-        equal!(Key::Bytea(hex::decode("1234").unwrap()));
-        equal!(Key::Date(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap()));
-        equal!(Key::Time(
-            NaiveTime::from_hms_milli_opt(20, 1, 9, 100).unwrap()
-        ));
-        equal!(Key::Timestamp(
-            NaiveDateTime::from_timestamp_millis(1662921288).unwrap()
-        ));
-        equal!(Key::Interval(Interval::Month(30)));
-        equal!(Key::Uuid(
-            Uuid::parse_str("550e8400-e29b-41d4-a716-446655440000")
-                .unwrap()
-                .as_u128()
-        ));
-        // None
-        assert_eq!(&Key::None.partial_cmp(&Key::None), &None);
+        let dec = |v| Decimal::from_str(v).unwrap();
+        let date = |y, m, d| NaiveDate::from_ymd_opt(y, m, d).unwrap();
+        let timestamp = |v| NaiveDateTime::from_timestamp_millis(v).unwrap();
+        let time = |h, m, s| NaiveTime::from_hms_milli_opt(h, m, s, 0).unwrap();
+        let uuid = |v| Uuid::parse_str(v).unwrap().as_u128();
+        let inet = |v| IpAddr::from_str(v).unwrap();
+
+        assert!(Key::I8(10) > Key::I8(3));
+        assert!(Key::I8(1) > Key::I16(1));
+
+        assert!(Key::I16(10) > Key::I16(3));
+        assert!(Key::I16(1) > Key::I32(1));
+
+        assert!(Key::I32(10) > Key::I32(3));
+        assert!(Key::I32(1) > Key::I64(1));
+
+        assert!(Key::I64(10) > Key::I64(3));
+        assert!(Key::I64(1) > Key::I128(1));
+
+        assert!(Key::I128(10) > Key::I128(3));
+        assert!(Key::I128(1) > Key::U8(1));
+
+        assert!(Key::U8(10) > Key::U8(3));
+        assert!(Key::U8(1) > Key::U16(1));
+
+        assert!(Key::U16(10) > Key::U16(3));
+        assert!(Key::U16(1) > Key::Decimal(dec("1")));
+
+        assert!(Key::Decimal(dec("123.45")) > Key::Decimal(dec("0.11")));
+        assert!(Key::Decimal(dec("1")) > Key::Bool(true));
+
+        assert!(Key::Bool(true) > Key::Bool(false));
+        assert!(Key::Bool(true) > Key::Str("zzz".to_owned()));
+
+        assert!(Key::Str("def".to_owned()) > Key::Str("abcd".to_owned()));
+        assert!(Key::Str("hi".to_owned()) > Key::Bytea(vec![101]));
+
+        assert!(Key::Bytea(vec![100]) > Key::Bytea(vec![3]));
+        assert!(Key::Bytea(vec![0]) > Key::Date(date(2023, 1, 1)));
+
+        assert!(Key::Date(date(2023, 3, 1)) > Key::Date(date(1999, 6, 11)));
+        assert!(Key::Date(date(2022, 6, 1)) > Key::Timestamp(timestamp(1669000003)));
+
+        assert!(Key::Timestamp(timestamp(1662921288)) > Key::Timestamp(timestamp(1661000000)));
+        assert!(Key::Timestamp(timestamp(1668919293)) > Key::Time(time(23, 1, 59)));
+
+        assert!(Key::Time(time(20, 1, 9)) > Key::Time(time(10, 0, 3)));
+        assert!(Key::Time(time(1, 2, 3)) > Key::Interval(Interval::Month(12)));
+
+        assert!(Key::Interval(Interval::Month(3)) > Key::Interval(Interval::Month(1)));
+        assert!(
+            Key::Interval(Interval::microseconds(1))
+                > Key::Uuid(uuid("dc98e386-a4d0-45c7-babe-b4238de4b139"))
+        );
+
+        assert!(
+            Key::Uuid(uuid("dc98e386-a4d0-45c7-babe-b4238de4b139"))
+                > Key::Uuid(uuid("550e8400-e29b-41d4-a716-446655440000"))
+        );
+        assert!(
+            Key::Uuid(uuid("dc98e386-a4d0-45c7-babe-b4238de4b139")) > Key::Inet(inet("127.0.0.1"))
+        );
+
+        assert!(Key::Inet(inet("127.0.0.1")) > Key::Inet(inet("0.0.0.1")));
+        assert!(Key::Inet(inet("192.168.1.19")) < Key::None);
+
+        assert_eq!(Key::None.partial_cmp(&Key::None), Some(Ordering::Equal));
+        assert!(Key::None > Key::I8(100));
     }
 
     #[test]
     fn cmp_big_endian() {
         use crate::data::{Interval as I, Key::*};
+
+        fn cmp(ls: &[u8], rs: &[u8]) -> Ordering {
+            for (l, r) in ls.iter().zip(rs.iter()) {
+                match l.cmp(r) {
+                    Ordering::Equal => continue,
+                    ordering => return ordering,
+                }
+            }
+
+            let size_l = ls.len();
+            let size_r = rs.len();
+
+            size_l.cmp(&size_r)
+        }
 
         let null = None.to_cmp_be_bytes();
 
