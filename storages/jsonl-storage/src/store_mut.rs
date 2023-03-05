@@ -157,7 +157,7 @@ where
             }
         };
 
-        match left_key.to_cmp_be_bytes().cmp(&right_key.to_cmp_be_bytes()) {
+        match left_key.cmp(right_key) {
             Ordering::Less => self.left_rows.next(),
             Ordering::Greater => self.right_rows.next().map(Ok),
             Ordering::Equal => {

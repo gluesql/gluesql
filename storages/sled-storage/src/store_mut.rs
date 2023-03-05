@@ -220,7 +220,11 @@ impl StoreMut for SledStorage {
             let index_sync = IndexSync::new(tree, txid, table_name)?;
 
             for (key, new_row) in tx_rows.iter() {
-                let key = key::data(table_name, key.to_cmp_be_bytes());
+                let key = key
+                    .to_cmp_be_bytes()
+                    .map_err(ConflictableTransactionError::Abort)
+                    .map(|key| key::data(table_name, key))?;
+
                 let snapshot = match tree.get(&key)? {
                     Some(snapshot) => {
                         let snapshot: Snapshot<DataRow> = bincode::deserialize(&snapshot)
@@ -290,7 +294,11 @@ impl StoreMut for SledStorage {
             let index_sync = IndexSync::new(tree, txid, table_name)?;
 
             for key in tx_keys.iter() {
-                let key = key::data(table_name, key.to_cmp_be_bytes());
+                let key = key
+                    .to_cmp_be_bytes()
+                    .map_err(ConflictableTransactionError::Abort)
+                    .map(|key| key::data(table_name, key))?;
+
                 let snapshot = tree
                     .get(&key)?
                     .ok_or_else(|| IndexError::ConflictOnEmptyIndexValueDelete.into())

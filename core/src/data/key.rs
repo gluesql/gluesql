@@ -13,8 +13,8 @@ use {
 
 #[derive(ThisError, Debug, PartialEq, Eq, Serialize)]
 pub enum KeyError {
-    #[error("FLOAT data type cannot be used as Key")]
-    FloatTypeKeyNotSupported,
+    #[error("FLOAT data type cannot be converted to Big-Endian bytes for comparision")]
+    FloatToCmpBigEndianNotSupported,
 
     #[error("MAP data type cannot be used as Key")]
     MapTypeKeyNotSupported,
@@ -170,8 +170,8 @@ const NONE: u8 = 1;
 
 impl Key {
     /// Key to Big-Endian for comparison purpose
-    pub fn to_cmp_be_bytes(&self) -> Vec<u8> {
-        match self {
+    pub fn to_cmp_be_bytes(&self) -> Result<Vec<u8>> {
+        Ok(match self {
             Key::Bool(v) => {
                 if *v {
                     vec![VALUE, 1]
@@ -235,7 +235,7 @@ impl Key {
                 .copied()
                 .collect::<Vec<_>>(),
             Key::F64(_) => {
-                todo!();
+                return Err(KeyError::FloatToCmpBigEndianNotSupported.into());
             }
             Key::Decimal(v) => {
                 let sign = u8::from(v.is_sign_positive());
@@ -314,7 +314,7 @@ impl Key {
                 .copied()
                 .collect::<Vec<_>>(),
             Key::None => vec![NONE],
-        }
+        })
     }
 }
 
@@ -483,7 +483,10 @@ mod tests {
     fn cmp_big_endian() {
         use crate::data::{Interval as I, Key::*};
 
-        fn cmp(ls: &[u8], rs: &[u8]) -> Ordering {
+        fn cmp(ls: &Result<Vec<u8>>, rs: &Result<Vec<u8>>) -> Ordering {
+            let ls = ls.as_ref().unwrap();
+            let rs = rs.as_ref().unwrap();
+
             for (l, r) in ls.iter().zip(rs.iter()) {
                 match l.cmp(r) {
                     Ordering::Equal => continue,
@@ -629,11 +632,11 @@ mod tests {
         assert_eq!(cmp(&n5, &n4), Ordering::Greater);
         assert_eq!(cmp(&n1, &null), Ordering::Less);
 
-        let n1 = Bytea(n1).to_cmp_be_bytes();
-        let n2 = Bytea(n2).to_cmp_be_bytes();
-        let n3 = Bytea(n3).to_cmp_be_bytes();
-        let n4 = Bytea(n4).to_cmp_be_bytes();
-        let n5 = Bytea(n5).to_cmp_be_bytes();
+        let n1 = Bytea(n1.unwrap()).to_cmp_be_bytes();
+        let n2 = Bytea(n2.unwrap()).to_cmp_be_bytes();
+        let n3 = Bytea(n3.unwrap()).to_cmp_be_bytes();
+        let n4 = Bytea(n4.unwrap()).to_cmp_be_bytes();
+        let n5 = Bytea(n5.unwrap()).to_cmp_be_bytes();
 
         assert_eq!(cmp(&n2, &n2), Ordering::Equal);
         assert_eq!(cmp(&n1, &n2), Ordering::Less);
@@ -708,6 +711,11 @@ mod tests {
         assert_eq!(cmp(&n1, &n2), Ordering::Less);
         assert_eq!(cmp(&n2, &n1), Ordering::Greater);
         assert_eq!(cmp(&n1, &null), Ordering::Less);
+
+        assert_eq!(
+            F64(12.34.into()).to_cmp_be_bytes(),
+            Err(KeyError::FloatToCmpBigEndianNotSupported.into())
+        );
     }
 
     #[test]
