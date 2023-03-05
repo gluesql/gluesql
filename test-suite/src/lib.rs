@@ -75,7 +75,6 @@ macro_rules! generate_store_tests {
         glue!(aggregate_sum, aggregate::sum::sum);
         glue!(aggregate_variance, aggregate::variance::variance);
         glue!(aggregate_error, aggregate::error::error);
-        glue!(aggregate_error_group_by, aggregate::error::error_group_by);
         glue!(arithmetic_error, arithmetic::error::error);
         glue!(arithmetic_project, arithmetic::project::project);
         glue!(arithmetic_on_where, arithmetic::on_where::on_where);

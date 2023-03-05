@@ -16,9 +16,8 @@ use {
         sort::Sort,
     },
     crate::{
-        ast::{Expr, OrderByExpr, Query, Select, SetExpr, TableWithJoins, Values},
-        data::{get_alias, Row},
-        prelude::{DataType, Value},
+        ast::{DataType, Expr, OrderByExpr, Query, Select, SetExpr, TableWithJoins, Values},
+        data::{get_alias, Key, Row, Value},
         result::Result,
         store::GStore,
     },
@@ -83,21 +82,21 @@ fn sort_stateless(rows: Vec<Result<Row>>, order_by: &[OrderByExpr]) -> Result<Ve
     let sorted = rows
         .into_iter()
         .map(|row| {
-            let values = order_by
+            order_by
                 .iter()
                 .map(|OrderByExpr { expr, asc }| -> Result<_> {
                     let row = row.as_ref().ok();
                     let value: Value = evaluate_stateless(row, expr)?.try_into()?;
+                    let key: Key = value.try_into()?;
 
-                    Ok((value, *asc))
+                    Ok((key, *asc))
                 })
-                .collect::<Result<Vec<_>>>();
-
-            values.map(|values| (values, row))
+                .collect::<Result<Vec<_>>>()
+                .map(|keys| (keys, row))
         })
         .collect::<Result<Vec<_>>>()
         .map(Vector::from)?
-        .sort_by(|(values_a, _), (values_b, _)| super::sort::sort_by(values_a, values_b))
+        .sort_by(|(keys_a, _), (keys_b, _)| super::sort::sort_by(keys_a, keys_b))
         .into_iter()
         .map(|(_, row)| row)
         .collect::<Vec<_>>();

@@ -4,6 +4,7 @@ use {
         result::{Error, Result},
     },
     chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
+    ordered_float::OrderedFloat,
     rust_decimal::Decimal,
     serde::{Deserialize, Serialize},
     std::{cmp::Ordering, fmt::Debug, net::IpAddr},
@@ -31,6 +32,7 @@ pub enum Key {
     I128(i128),
     U8(u8),
     U16(u16),
+    F64(OrderedFloat<f64>),
     Decimal(Decimal),
     Bool(bool),
     Str(String),
@@ -54,6 +56,7 @@ impl Ord for Key {
             (Key::I128(l), Key::I128(r)) => l.cmp(r),
             (Key::U8(l), Key::U8(r)) => l.cmp(r),
             (Key::U16(l), Key::U16(r)) => l.cmp(r),
+            (Key::F64(l), Key::F64(r)) => l.total_cmp(&r.0),
             (Key::Decimal(l), Key::Decimal(r)) => l.cmp(r),
             (Key::Bool(l), Key::Bool(r)) => l.cmp(r),
             (Key::Str(l), Key::Str(r)) => l.cmp(r),
@@ -75,6 +78,7 @@ impl Ord for Key {
             | (Key::I128(_), _)
             | (Key::U8(_), _)
             | (Key::U16(_), _)
+            | (Key::F64(_), _)
             | (Key::Decimal(_), _)
             | (Key::Bool(_), _)
             | (Key::Str(_), _)
@@ -110,6 +114,7 @@ impl TryFrom<Value> for Key {
             I128(v) => Ok(Key::I128(v)),
             U8(v) => Ok(Key::U8(v)),
             U16(v) => Ok(Key::U16(v)),
+            F64(v) => Ok(Key::F64(OrderedFloat(v))),
             Decimal(v) => Ok(Key::Decimal(v)),
             Str(v) => Ok(Key::Str(v)),
             Bytea(v) => Ok(Key::Bytea(v)),
@@ -120,7 +125,6 @@ impl TryFrom<Value> for Key {
             Interval(v) => Ok(Key::Interval(v)),
             Uuid(v) => Ok(Key::Uuid(v)),
             Null => Ok(Key::None),
-            F64(_) => Err(KeyError::FloatTypeKeyNotSupported.into()),
             Map(_) => Err(KeyError::MapTypeKeyNotSupported.into()),
             List(_) => Err(KeyError::ListTypeKeyNotSupported.into()),
         }
@@ -146,6 +150,7 @@ impl From<Key> for Value {
             Key::I128(v) => Value::I128(v),
             Key::U8(v) => Value::U8(v),
             Key::U16(v) => Value::U16(v),
+            Key::F64(v) => Value::F64(v.0),
             Key::Decimal(v) => Value::Decimal(v),
             Key::Str(v) => Value::Str(v),
             Key::Bytea(v) => Value::Bytea(v),
@@ -229,6 +234,9 @@ impl Key {
                 .chain(v.to_be_bytes().iter())
                 .copied()
                 .collect::<Vec<_>>(),
+            Key::F64(_) => {
+                todo!();
+            }
             Key::Decimal(v) => {
                 let sign = u8::from(v.is_sign_positive());
                 let convert = |v: Decimal| {
@@ -343,6 +351,8 @@ mod tests {
         assert_eq!(convert("CAST(1024 AS INT128)"), Ok(Key::I128(1024)));
         assert_eq!(convert("CAST(11 AS UINT8)"), Ok(Key::U8(11)));
         assert_eq!(convert("CAST(11 AS UINT16)"), Ok(Key::U16(11)));
+        assert!(matches!(convert("12.03"), Ok(Key::F64(_))));
+
         assert_eq!(
             convert("CAST(123.45 AS DECIMAL)"),
             Ok(Key::Decimal(Decimal::from_str("123.45").unwrap()))
@@ -373,10 +383,6 @@ mod tests {
         assert_eq!(convert("NULL"), Ok(Key::None));
 
         // Error
-        assert_eq!(
-            convert("12.03"),
-            Err(KeyError::FloatTypeKeyNotSupported.into())
-        );
         assert_eq!(
             Key::try_from(Value::Map(HashMap::default())),
             Err(KeyError::MapTypeKeyNotSupported.into())

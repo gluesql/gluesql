@@ -15,10 +15,10 @@ test_case!(group_by, async move {
         "
         INSERT INTO Item (id, quantity, city, ratio) VALUES
             (1,   10,   'Seoul',  0.2),
-            (2,    0,   'Dhaka',  0.9),
+            (2,    0,   'Dhaka', 6.11),
             (3, NULL, 'Beijing',  1.1),
-            (3,   30, 'Daejeon',  3.2),
-            (4,   11,   'Seoul',   11),
+            (3,   30, 'Daejeon',  0.2),
+            (4,   11,   'Seoul',  1.1),
             (5,   24, 'Seattle', 6.11);
     "
     );
@@ -63,12 +63,22 @@ test_case!(group_by, async move {
             ),
         ),
         (
-            "SELECT ratio FROM Item GROUP BY id, city",
-            select!(ratio; F64; 0.2; 0.9; 1.1; 3.2; 11.0; 6.11),
+            "SELECT ratio, COUNT(*) FROM Item GROUP BY ratio",
+            select!(
+                ratio | "COUNT(*)"
+                F64   | I64;
+                0.2     2;
+                6.11    2;
+                1.1     2
+            ),
         ),
         (
-            "SELECT ratio FROM Item GROUP BY id, city HAVING ratio > 10",
-            select!(ratio; F64; 11.0),
+            "SELECT ratio FROM Item GROUP BY id, city",
+            select!(ratio; F64; 0.2; 6.11; 1.1; 0.2; 1.1; 6.11),
+        ),
+        (
+            "SELECT id, ratio FROM Item GROUP BY id, city HAVING ratio > 6",
+            select!(id | ratio; I64 | F64; 2 6.11; 5 6.11),
         ),
         (
             "SELECT SUM(quantity), COUNT(*), city FROM Item GROUP BY city HAVING COUNT(*) > 1",
