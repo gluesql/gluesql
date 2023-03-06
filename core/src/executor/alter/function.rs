@@ -1,18 +1,10 @@
 use {
     super::{validate_arg, validate_arg_names, AlterError},
     crate::{
-        ast::{ColumnDef, Expr, Function, OperateFunctionArg, Query, SetExpr, TableFactor, Values},
-        data::{CustomFunction, Schema, TableError},
-        executor::{evaluate_stateless, select::select},
-        prelude::{DataType, Value},
-        result::{Error, IntoControlFlow, Result},
+        ast::{Expr, OperateFunctionArg},
+        data::CustomFunction,
+        result::Result,
         store::{GStore, GStoreMut},
-    },
-    chrono::Utc,
-    futures::stream::TryStreamExt,
-    std::{
-        iter,
-        ops::ControlFlow::{Break, Continue},
     },
 };
 

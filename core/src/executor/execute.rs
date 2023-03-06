@@ -1,8 +1,6 @@
 use {
     super::{
-        alter::{
-            alter_table, create_function, create_index, create_table, drop_function, drop_table,
-        },
+        alter::{alter_table, create_function, create_index, create_table, drop_table},
         fetch::{fetch, fetch_columns},
         insert::insert,
         select::{select, select_with_labels},

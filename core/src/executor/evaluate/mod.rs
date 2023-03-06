@@ -7,7 +7,7 @@ mod stateless;
 use {
     super::{context::RowContext, select::select},
     crate::{
-        ast::{Aggregate, Expr, Function, ToSql},
+        ast::{Aggregate, Expr, Function},
         data::{Interval, Literal, Row, Value},
         result::{Error, Result},
         store::GStore,
@@ -19,7 +19,7 @@ use {
         stream::{self, StreamExt, TryStreamExt},
     },
     im_rc::HashMap,
-    std::{borrow::Cow, rc::Rc, collections::HashMap as StdHashMap},
+    std::{borrow::Cow, collections::HashMap as StdHashMap, rc::Rc},
 };
 
 pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};

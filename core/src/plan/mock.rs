@@ -2,7 +2,7 @@
 
 use {
     crate::{
-        data::{CustomFunction, Key, Schema},
+        data::{Key, Schema},
         executor::execute,
         parse_sql::parse,
         result::{Error, Result},

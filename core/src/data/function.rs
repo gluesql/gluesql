@@ -1,4 +1,4 @@
-use crate::ast::{DataType, Expr, OperateFunctionArg};
+use crate::ast::{Expr, OperateFunctionArg};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

@@ -1,8 +1,8 @@
 use {
-    super::{EvaluateError, Evaluated, TranslateError},
+    super::{EvaluateError, Evaluated},
     crate::{
         ast::{DataType, DateTimeField},
-        data::{CustomFunction, Value, ValueError},
+        data::{Value, ValueError},
         result::Result,
     },
     rand::{rngs::StdRng, Rng, SeedableRng},

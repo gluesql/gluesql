@@ -22,12 +22,8 @@ use {
     },
     ddl::translate_alter_table_operation,
     sqlparser::ast::{
-        Assignment as SqlAssignment,
-        FunctionDefinition::{
-            DoubleDollarDef as SqlDoubleDollarDef, SingleQuotedDef as SqlSingleQuotedDef,
-        },
-        Ident as SqlIdent, ObjectName as SqlObjectName, ObjectType as SqlObjectType,
-        Statement as SqlStatement, TableFactor, TableWithJoins,
+        Assignment as SqlAssignment, Ident as SqlIdent, ObjectName as SqlObjectName,
+        ObjectType as SqlObjectType, Statement as SqlStatement, TableFactor, TableWithJoins,
     },
 };
 
