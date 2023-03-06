@@ -23,9 +23,7 @@ use {
         result::Result,
     },
     async_trait::async_trait,
-    serde::{Deserialize, Serialize},
     std::collections::HashMap,
-    strum_macros::Display,
 };
 
 pub type RowIter = Box<dyn Iterator<Item = Result<(Key, DataRow)>>>;

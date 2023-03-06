@@ -9,12 +9,11 @@ use {
     error::{JsonlStorageError, OptionExt, ResultExt},
     gluesql_core::{
         ast::ColumnUniqueOption,
-        chrono::NaiveDateTime,
         data::{value::HashMapJsonExt, Schema},
         prelude::Key,
         result::Error,
         result::Result,
-        store::{DataRow, RowIter},
+        store::{DataRow, Metadata, RowIter},
     },
     std::{
         collections::HashMap,
@@ -64,7 +63,6 @@ impl JsonlStorage {
             table_name: table_name.to_owned(),
             column_defs,
             indexes: vec![],
-            created: NaiveDateTime::default(),
             engine: None,
         }))
     }
@@ -147,3 +145,5 @@ where
     let file = File::open(filename)?;
     Ok(io::BufReader::new(file).lines())
 }
+
+impl Metadata for JsonlStorage {}
