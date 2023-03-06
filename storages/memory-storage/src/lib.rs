@@ -1,6 +1,6 @@
 #![deny(clippy::str_to_string)]
 
-use gluesql_core::{prelude::Value, store::Metadata};
+use gluesql_core::{chrono::Utc, prelude::Value, store::Metadata};
 
 mod alter_table;
 mod index;
@@ -92,11 +92,7 @@ impl Store for MemoryStorage {
 
 #[async_trait(?Send)]
 impl Metadata for MemoryStorage {
-    async fn scan_meta(&self, meta_name: &str) -> Value {
-        self.metadata.get(meta_name).unwrap().clone()
-    }
-
-    async fn scan_all_metas(&self) -> HashMap<String, Value> {
+    async fn scan_meta(&self) -> HashMap<String, Value> {
         self.metadata.clone()
     }
 
@@ -111,63 +107,35 @@ impl Metadata for MemoryStorage {
 
         Ok(())
     }
-    // async fn scan_meta(&self, meta: &MetaName) -> Result<RowIter> {
-    //     let rows: RowIter = match self.metadata.get(meta) {
-    //         Some(item) => Box::new(item.rows.clone().into_iter().map(Ok)),
-    //         None => Box::new(empty()),
-    //     };
-
-    //     Ok(rows)
-    // }
-
-    // async fn append_meta(&mut self, meta: Meta) -> Result<()> {
-    //     if let Some(item) = self.metadata.get_mut(&meta.name) {
-    //         self.id_counter += 1;
-    //         let row = meta.row.to_values();
-
-    //         item.rows.insert(Key::I64(self.id_counter), row);
-    //     }
-
-    //     Ok(())
-    // }
-
-    // async fn insert_meta(&mut self, meta: &Meta, rows: Vec<(Key, DataRow)>) -> Result<()> {
-    //     todo!();
-    //     // if let Some(item) = self.metadata.get_mut(&meta.name) {
-    //     //     for (key, row) in rows {
-    //     //         item.rows.insert(key, row);
-    //     //     }
-    //     // }
-
-    //     // Ok(())
-    // }
-
-    // async fn delete_meta(&mut self, meta: &Meta, keys: Vec<Key>) -> Result<()> {
-    //     if let Some(item) = self.metadata.get_mut(&meta.name) {
-    //         for key in keys {
-    //             item.rows.remove(&key);
-    //         }
-    //     }
-
-    //     Ok(())
-    // }
 }
 
 #[async_trait(?Send)]
 impl StoreMut for MemoryStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
+        let created = Value::Map(HashMap::from([
+            ("OBJECT_TYPE".to_owned(), Value::Str("TABLE".to_owned())),
+            (
+                "CREATED".to_owned(),
+                Value::Timestamp(Utc::now().naive_utc()),
+            ),
+        ]));
+        let meta = HashMap::from([(schema.table_name.clone(), created)]);
+        self.append_meta(meta).await?;
+
         let table_name = schema.table_name.clone();
         let item = Item {
             schema: schema.clone(),
             rows: BTreeMap::new(),
         };
-
         self.items.insert(table_name, item);
+
         Ok(())
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         self.items.remove(table_name);
+        self.delete_meta(table_name).await?;
+
         Ok(())
     }
 
@@ -206,33 +174,47 @@ impl StoreMut for MemoryStorage {
 
 #[cfg(test)]
 mod tests {
-    use crate::MemoryStorage;
-    use gluesql_core::prelude::{Payload, Value::*};
-    use gluesql_core::store::Metadata;
-    use test_suite::{concat_with, row, select, stringify_label, test};
+    use {
+        crate::MemoryStorage,
+        gluesql_core::prelude::{Payload, Value::*},
+        test_suite::{row, select, stringify_label, test},
+    };
 
     #[test]
     fn scan_meta_test() {
-        use futures::executor::block_on;
         use gluesql_core::prelude::Glue;
 
         let storage = MemoryStorage::default();
         let mut glue = Glue::new(storage);
 
         let cases = vec![
-            (glue.execute("CREATE TABLE TableMeta"), Ok(Payload::Create)),
+            (
+                glue.execute("CREATE TABLE Meta (id INT, name TEXT)"),
+                Ok(Payload::Create),
+            ),
             (
                 glue.execute(
-                    "
-                    SELECT OBJECT_NAME, OBJECT_TYPE
-                    FROM GLUE_OBJECTS
-                    WHERE CREATED > NOW() - INTERVAL 1 MINUTE",
+                    "SELECT OBJECT_NAME, OBJECT_TYPE
+                     FROM GLUE_OBJECTS
+                     WHERE CREATED > NOW() - INTERVAL 1 MINUTE",
                 ),
                 Ok(select!(
-                    OBJECT_NAME            | OBJECT_TYPE       ;
-                    Str                    | Str               ;
-                    "TableMeta".to_owned()   "TABLE".to_owned()
+                    OBJECT_NAME       | OBJECT_TYPE       ;
+                    Str               | Str               ;
+                    "Meta".to_owned()   "TABLE".to_owned()
                 )),
+            ),
+            (glue.execute("DROP TABLE Meta"), Ok(Payload::DropTable)),
+            (
+                glue.execute(
+                    "SELECT COUNT(*)
+                     FROM GLUE_OBJECTS
+                     WHERE CREATED > NOW() - INTERVAL 1 MINUTE",
+                ),
+                Ok(Payload::Select {
+                    labels: vec!["COUNT(*)".to_owned()],
+                    rows: Vec::new(),
+                }),
             ),
         ];
 

@@ -1,5 +1,3 @@
-use chrono::Utc;
-
 use {
     super::{
         alter::{alter_table, create_index, create_table, drop_table},
@@ -100,26 +98,16 @@ async fn execute_inner<T: GStore + GStoreMut>(
             source,
             engine,
             ..
-        } => {
-            let created = Value::Map(HashMap::from([(
-                "created".to_owned(),
-                Value::Timestamp(Utc::now().naive_utc()),
-            )]));
-            let meta = HashMap::from([(name.to_owned(), created)]);
-
-            storage.append_meta(meta).await?;
-
-            create_table(
-                storage,
-                name,
-                columns.as_ref().map(Vec::as_slice),
-                *if_not_exists,
-                source,
-                engine,
-            )
-            .await
-            .map(|_| Payload::Create)
-        }
+        } => create_table(
+            storage,
+            name,
+            columns.as_ref().map(Vec::as_slice),
+            *if_not_exists,
+            source,
+            engine,
+        )
+        .await
+        .map(|_| Payload::Create),
         Statement::DropTable {
             names, if_exists, ..
         } => drop_table(storage, names, *if_exists)

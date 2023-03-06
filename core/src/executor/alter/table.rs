@@ -8,7 +8,6 @@ use {
         result::{Error, IntoControlFlow, Result},
         store::{GStore, GStoreMut},
     },
-    chrono::Utc,
     futures::stream::TryStreamExt,
     std::{
         iter,

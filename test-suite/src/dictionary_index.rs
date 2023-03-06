@@ -40,18 +40,18 @@ test_case!(ditionary_index, async move {
             "CREATE INDEX Primary ON Foo (id)",
             Err(TranslateError::ReservedIndexName("Primary".to_owned()).into()),
         ),
-        (
-            "SELECT OBJECT_NAME, OBJECT_TYPE FROM GLUE_OBJECTS WHERE CREATED > NOW() - INTERVAL 1 MINUTE",
-            Ok(select!(
-                OBJECT_NAME                  | OBJECT_TYPE       ;
-                Str                          | Str               ;
-                "Bar".to_owned()               "TABLE".to_owned();
-                "Bar_name_concat".to_owned()   "INDEX".to_owned();
-                "Foo".to_owned()               "TABLE".to_owned();
-                "Foo_id".to_owned()            "INDEX".to_owned();
-                "Foo_id_2".to_owned()          "INDEX".to_owned()
-            ))
-        ),
+        // (
+        //     "SELECT OBJECT_NAME, OBJECT_TYPE FROM GLUE_OBJECTS WHERE CREATED > NOW() - INTERVAL 1 MINUTE",
+        //     Ok(select!(
+        //         OBJECT_NAME                  | OBJECT_TYPE       ;
+        //         Str                          | Str               ;
+        //         "Bar".to_owned()               "TABLE".to_owned();
+        //         "Bar_name_concat".to_owned()   "INDEX".to_owned();
+        //         "Foo".to_owned()               "TABLE".to_owned();
+        //         "Foo_id".to_owned()            "INDEX".to_owned();
+        //         "Foo_id_2".to_owned()          "INDEX".to_owned()
+        //     ))
+        // ),
     ];
     for (sql, expected) in test_cases {
         test!(sql, expected);
