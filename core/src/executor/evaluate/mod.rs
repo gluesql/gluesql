@@ -288,12 +288,12 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         evaluate(storage, context, aggregated, expr)
     };
 
-    let eval_with_context = |expr: &Expr, context: Rc<RowContext>| {
-        let context = Some(Rc::clone(&context));
-        let aggregated = aggregated.as_ref().map(Rc::clone);
+    // let eval_with_context = |expr: &Expr, context: Rc<RowContext>| {
+    //     let context = Some(Rc::clone(&context));
+    //     let aggregated = aggregated.as_ref().map(Rc::clone);
 
-        evaluate(storage, context, aggregated, expr)
-    };
+    //     evaluate(storage, context, aggregated, expr)
+    // };
 
     let name = func.to_string();
 
@@ -311,10 +311,12 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             if let Some(custom_func) = custom_func {
                 let args: Vec<Evaluated<'_>> = stream::iter(exprs).then(eval).try_collect().await?;
 
-                let args = args
-                    .into_iter()
-                    .map(|expr| Value::try_from(expr).unwrap())
-                    .collect::<Vec<_>>();
+                let fargs: Vec<Evaluated<'_>> = if let Some(fargs) = &custom_func.args {
+                    let fargs: Vec<Expr> = fargs.iter().filter_map(|y| y.default.clone()).collect();
+                    stream::iter(&fargs).then(eval).try_collect().await?
+                } else {
+                    vec![]
+                };
 
                 let empty = vec![];
 
@@ -323,25 +325,28 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 let value = if fargs.len() == args.len() {
                     let mut hm = StdHashMap::new();
 
-                    args.iter().enumerate().try_for_each(|(i, arg)| -> Result<()> {
-                        arg.validate_type(&fargs[i].data_type)?;
-                        arg.validate_null(fargs[i].default.is_some())?;
-                        let value = if arg.is_null() {
-                            // fargs[i].default.as_ref().unwrap()
-                            &args[i]
-                        } else {
-                            &args[i]
-                        };
-                        hm.insert(fargs[i].name.to_owned(), value.to_owned());
-                        Ok(())
-                    })?;
+                    args.into_iter()
+                        .map(|expr| Value::try_from(expr).unwrap())
+                        .zip(fargs.iter())
+                        .try_for_each(|(arg, farg)| -> Result<()> {
+                            arg.validate_type(&farg.data_type)?;
+                            arg.validate_null(farg.default.is_some())?;
+                            let value = if arg.is_null() {
+                                // farg.default.as_ref().unwrap()
+                                &arg
+                            } else {
+                                &arg
+                            };
+                            hm.insert(farg.name.to_owned(), value.to_owned());
+                            Ok(())
+                        })?;
 
                     let row = Row::Map(hm);
                     let rowcontext = RowContext::new(name, Cow::Borrowed(&row), None);
                     let context = Rc::new(rowcontext);
 
                     let value = if let Some(v) = &custom_func.return_ {
-                        eval_with_context(v, context).await?
+                        eval/*_with_context*/(v/*, context*/).await?
                     } else {
                         Evaluated::from(Value::Null)
                     };
