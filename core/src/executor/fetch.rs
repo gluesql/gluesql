@@ -7,11 +7,11 @@ use {
         },
         data::{get_alias, get_index, Key, Row, Value},
         executor::{evaluate::evaluate, select::select},
-        result::{Error, Result},
+        result::Result,
         store::{DataRow, GStore},
     },
     async_recursion::async_recursion,
-    futures::stream::{self, Stream, StreamExt, TryStream, TryStreamExt},
+    futures::stream::{self, Stream, StreamExt, TryStreamExt},
     iter_enum::Iterator,
     itertools::Itertools,
     serde::Serialize,
@@ -85,7 +85,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
     storage: &'a T,
     table_factor: &'a TableFactor,
     filter_context: &Option<Rc<RowContext<'a>>>,
-) -> Result<impl TryStream<Ok = Row, Error = Error, Item = Result<Row>> + 'a> {
+) -> Result<impl Stream<Item = Result<Row>> + 'a> {
     let columns = Rc::from(
         fetch_relation_columns(storage, table_factor)
             .await?
