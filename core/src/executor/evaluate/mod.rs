@@ -288,12 +288,12 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         evaluate(storage, context, aggregated, expr)
     };
 
-    // let eval_with_context = |expr: &Expr, context: Rc<RowContext>| {
-    //     let context = Some(Rc::clone(&context));
-    //     let aggregated = aggregated.as_ref().map(Rc::clone);
+    let eval_with_context = |expr: &Expr, context: Rc<RowContext>| {
+        let context = Some(Rc::clone(&context));
+        let aggregated = aggregated.as_ref().map(Rc::clone);
 
-    //     evaluate(storage, context, aggregated, expr)
-    // };
+        evaluate(storage, context, aggregated, expr)
+    };
 
     let name = func.to_string();
 
@@ -362,7 +362,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                     println!("{:?}", context);
 
                     let value = if let Some(v) = &custom_func.return_ {
-                        eval/*_with_context*/(v/*, context*/).await?
+                        eval_with_context(v, context).await?
                     } else {
                         Evaluated::from(Value::Null)
                     };
