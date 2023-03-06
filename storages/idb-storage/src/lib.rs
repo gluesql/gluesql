@@ -12,7 +12,7 @@ use {
     gluesql_core::{
         data::{Key, Schema, Value},
         result::{Error, Result},
-        store::{DataRow, RowIter, Store, StoreMut},
+        store::{DataRow, Metadata, RowIter, Store, StoreMut},
     },
     idb::{CursorDirection, Database, Factory, ObjectStoreParams, Query, TransactionMode},
     serde_json::Value as JsonValue,

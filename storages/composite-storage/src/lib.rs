@@ -1,7 +1,5 @@
 #![deny(clippy::str_to_string)]
 
-use gluesql_core::store::Metadata;
-
 mod store;
 mod store_mut;
 mod transaction;
@@ -10,7 +8,7 @@ use {
     gluesql_core::{
         data::Schema,
         result::{Error, Result},
-        store::{GStore, GStoreMut, Store},
+        store::{GStore, GStoreMut, Metadata, Store},
     },
     std::collections::HashMap,
 };

@@ -1,7 +1,5 @@
 #![deny(clippy::str_to_string)]
 
-use gluesql_core::store::Metadata;
-
 mod alter_table;
 mod index;
 mod transaction;
@@ -11,7 +9,7 @@ use {
     gluesql_core::{
         data::{Key, Schema},
         result::Result,
-        store::{DataRow, RowIter, Store, StoreMut},
+        store::{DataRow, Metadata, RowIter, Store, StoreMut},
     },
     memory_storage::MemoryStorage,
     std::sync::Arc,

@@ -8,7 +8,7 @@ use {
         ast::ColumnUniqueOption,
         data::{Key, Schema},
         result::{Error, Result},
-        store::{DataRow, RowIter, Store, StoreMut},
+        store::{DataRow, Metadata, RowIter, Store, StoreMut},
     },
     serde::{Deserialize, Serialize},
     uuid::Uuid,
