@@ -311,19 +311,30 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             if let Some(custom_func) = custom_func {
                 let args: Vec<Evaluated<'_>> = stream::iter(exprs).then(eval).try_collect().await?;
 
-                let fargs: Vec<Evaluated<'_>> = if let Some(fargs) = &custom_func.args {
-                    let fargs: Vec<Expr> = fargs.iter().filter_map(|y| y.default.clone()).collect();
-                    stream::iter(&fargs).then(eval).try_collect().await?
+                let empty = vec![];
+
+                let fargs = if let Some(fargs) = &custom_func.args {
+                    fargs
+                } else {
+                    &empty
+                };
+
+                let dargs: Vec<Value> = if let Some(fargs) = &custom_func.args {
+                    let dargs: Vec<&Expr> =
+                        fargs.iter().filter_map(|y| y.default.as_ref()).collect();
+                    let dargs: Vec<Evaluated<'_>> =
+                        stream::iter(dargs).then(eval).try_collect().await?;
+                    dargs
+                        .into_iter()
+                        .map(|expr| Value::try_from(expr).unwrap())
+                        .collect()
                 } else {
                     vec![]
                 };
 
-                let empty = vec![];
-
-                let fargs = custom_func.args.as_ref().unwrap_or(&empty);
-
                 let value = if fargs.len() == args.len() {
                     let mut hm = StdHashMap::new();
+                    let mut id = 0;
 
                     args.into_iter()
                         .map(|expr| Value::try_from(expr).unwrap())
@@ -332,8 +343,11 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                             arg.validate_type(&farg.data_type)?;
                             arg.validate_null(farg.default.is_some())?;
                             let value = if arg.is_null() {
-                                // farg.default.as_ref().unwrap()
-                                &arg
+                                &dargs[{
+                                    let tmp = id;
+                                    id += 1;
+                                    tmp
+                                }]
                             } else {
                                 &arg
                             };
@@ -344,6 +358,8 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                     let row = Row::Map(hm);
                     let rowcontext = RowContext::new(name, Cow::Borrowed(&row), None);
                     let context = Rc::new(rowcontext);
+
+                    println!("{:?}", context);
 
                     let value = if let Some(v) = &custom_func.return_ {
                         eval/*_with_context*/(v/*, context*/).await?
