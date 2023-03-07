@@ -4,6 +4,7 @@ mod index;
 mod store;
 mod store_mut;
 mod transaction;
+mod function;
 
 use {
     error::{JsonStorageError, OptionExt, ResultExt},
@@ -202,5 +203,3 @@ where
 }
 
 impl Metadata for JsonStorage {}
-impl Function for JsonStorage {}
-impl FunctionMut for JsonStorage {}
