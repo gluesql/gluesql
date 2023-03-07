@@ -288,7 +288,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         evaluate(storage, context, aggregated, expr)
     };
 
-    let eval_with_context = |expr: &Expr, context: Rc<RowContext>| {
+    let eval_with_context = |expr: &'a Expr, context: Rc<RowContext<'b>>| {
         let context = Some(Rc::clone(&context));
         let aggregated = aggregated.as_ref().map(Rc::clone);
 
@@ -310,6 +310,10 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 .map_err(|_| TranslateError::UnsupportedFunction(name.to_string()))?;
             if let Some(custom_func) = custom_func {
                 let args: Vec<Evaluated<'_>> = stream::iter(exprs).then(eval).try_collect().await?;
+                let args: Vec<Value> = args
+                    .into_iter()
+                    .map(|v| Value::try_from(v).unwrap())
+                    .collect();
 
                 let empty = vec![];
 
@@ -332,14 +336,18 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                     vec![]
                 };
 
-                let value = if fargs.len() == args.len() {
+                let min = fargs.len() - dargs.len();
+                let max = fargs.len();
+
+                let value = if (min..=max).contains(&args.len()) {
                     let mut hm = StdHashMap::new();
                     let mut id = 0;
 
-                    args.into_iter()
-                        .map(|expr| Value::try_from(expr).unwrap())
-                        .zip(fargs.iter())
-                        .try_for_each(|(arg, farg)| -> Result<()> {
+                    fargs
+                        .iter()
+                        .enumerate()
+                        .try_for_each(|(i, farg)| -> Result<()> {
+                            let arg = args.get(i).unwrap_or(&Value::Null);
                             arg.validate_type(&farg.data_type)?;
                             arg.validate_null(farg.default.is_some())?;
                             let value = if arg.is_null() {
@@ -356,10 +364,8 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                         })?;
 
                     let row = Row::Map(hm);
-                    let rowcontext = RowContext::new(name, Cow::Borrowed(&row), None);
+                    let rowcontext = RowContext::new(name, Cow::Owned(row), None);
                     let context = Rc::new(rowcontext);
-
-                    println!("{:?}", context);
 
                     let value = if let Some(v) = &custom_func.return_ {
                         eval_with_context(v, context).await?
@@ -368,9 +374,10 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                     };
                     Ok(value)
                 } else {
-                    Err(TranslateError::FunctionArgsLengthNotMatching {
+                    Err(TranslateError::FunctionArgsLengthNotWithinRange {
                         name: custom_func.func_name.to_owned(),
-                        expected: fargs.len(),
+                        expected_minimum: min,
+                        expected_maximum: max,
                         found: args.len(),
                     })
                 };
