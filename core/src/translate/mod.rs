@@ -107,6 +107,17 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 .map(translate_object_name)
                 .collect::<Result<Vec<_>>>()?,
         }),
+        SqlStatement::DropFunction {
+            if_exists,
+            func_desc,
+            ..
+        } => Ok(Statement::DropFunction {
+            if_exists: *if_exists,
+            names: func_desc
+                .iter()
+                .map(|v| translate_object_name(&v.name))
+                .collect::<Result<Vec<_>>>()?,
+        }),
         SqlStatement::CreateIndex {
             name,
             table_name,

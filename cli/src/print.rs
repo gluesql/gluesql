@@ -105,6 +105,7 @@ impl<'a, W: Write> Print<W> {
         match payload {
             Payload::Create => self.write("Table created")?,
             Payload::DropTable => self.write("Table dropped")?,
+            Payload::DropFunction => self.write("Function dropped")?,
             Payload::AlterTable => self.write("Table altered")?,
             Payload::CreateIndex => self.write("Index created")?,
             Payload::DropIndex => self.write("Index dropped")?,

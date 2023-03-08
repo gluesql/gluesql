@@ -89,6 +89,13 @@ pub enum Statement {
         /// One or more objects to drop. (ANSI SQL requires exactly one.)
         names: Vec<String>,
     },
+    /// DROP FUNCTION
+    DropFunction {
+        /// An optional `IF EXISTS` clause. (Non-standard.)
+        if_exists: bool,
+        /// One or more objects to drop. (ANSI SQL requires exactly one.)
+        names: Vec<String>,
+    },
     /// CREATE INDEX
     CreateIndex {
         name: String,
@@ -244,6 +251,13 @@ impl ToSql for Statement {
                 match if_exists {
                     true => format!("DROP TABLE IF EXISTS {};", names),
                     false => format!("DROP TABLE {};", names),
+                }
+            }
+            Statement::DropFunction { if_exists, names } => {
+                let names = names.join(", ");
+                match if_exists {
+                    true => format!("DROP FUNCTION IF EXISTS {};", names),
+                    false => format!("DROP FUNCTION {};", names),
                 }
             }
             Statement::CreateIndex {
@@ -688,6 +702,36 @@ mod tests {
         assert_eq!(
             r#"DROP TABLE "Foo", "Bar";"#,
             Statement::DropTable {
+                if_exists: false,
+                names: vec!["Foo".into(), "Bar".into(),]
+            }
+            .to_sql()
+        );
+    }
+
+    #[test]
+    fn to_sql_drop_function() {
+        assert_eq!(
+            "DROP FUNCTION Test;",
+            Statement::DropFunction {
+                if_exists: false,
+                names: vec!["Test".into()]
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            "DROP FUNCTION IF EXISTS Test;",
+            Statement::DropFunction {
+                if_exists: true,
+                names: vec!["Test".into()]
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            "DROP FUNCTION Foo, Bar;",
+            Statement::DropFunction {
                 if_exists: false,
                 names: vec!["Foo".into(), "Bar".into(),]
             }

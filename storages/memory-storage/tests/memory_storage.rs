@@ -177,6 +177,14 @@ fn memory_storage_function() {
             "SELECT add_two(1, 2)",
             Err(ValueError::NullValueOnNotNullField.into()),
         ),
+        (
+            "DROP FUNCTION add_one, add_two",
+            Ok(vec![Payload::DropFunction]),
+        ),
+        (
+            "DROP FUNCTION IF EXISTS add_one, add_two, add_none",
+            Ok(vec![Payload::DropFunction]),
+        ),
     ];
 
     for (sql, expected) in test_cases {

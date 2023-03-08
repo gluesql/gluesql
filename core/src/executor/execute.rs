@@ -1,6 +1,6 @@
 use {
     super::{
-        alter::{alter_table, create_function, create_index, create_table, drop_table},
+        alter::{alter_table, create_function, drop_function, create_index, create_table, drop_table},
         fetch::{fetch, fetch_columns},
         insert::insert,
         select::{select, select_with_labels},
@@ -41,6 +41,7 @@ pub enum Payload {
     Delete(usize),
     Update(usize),
     DropTable,
+    DropFunction,
     AlterTable,
     CreateIndex,
     DropIndex,
@@ -348,5 +349,9 @@ async fn execute_inner<T: GStore + GStoreMut>(
         } => create_function(storage, name, args, *or_replace, return_)
             .await
             .map(|_| Payload::Create),
+        Statement::DropFunction {
+            if_exists,
+            names
+        } => drop_function(storage, names, *if_exists).await.map(|_| Payload::DropFunction),
     }
 }
