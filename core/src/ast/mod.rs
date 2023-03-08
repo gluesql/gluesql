@@ -127,6 +127,7 @@ pub struct Assignment {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Variable {
     Tables,
+    Functions,
     Version,
 }
 
@@ -278,6 +279,7 @@ impl ToSql for Statement {
             Statement::Rollback => "ROLLBACK;".to_owned(),
             Statement::ShowVariable(variable) => match variable {
                 Variable::Tables => "SHOW TABLES;".to_owned(),
+                Variable::Functions => "SHOW FUNCTIONS;".to_owned(),
                 Variable::Version => "SHOW VERSIONS;".to_owned(),
             },
             Statement::ShowIndexes(object_name) => {
@@ -779,6 +781,10 @@ mod tests {
         assert_eq!(
             "SHOW TABLES;",
             Statement::ShowVariable(Variable::Tables).to_sql()
+        );
+        assert_eq!(
+            "SHOW FUNCTIONS;",
+            Statement::ShowVariable(Variable::Functions).to_sql()
         );
         assert_eq!(
             "SHOW VERSIONS;",

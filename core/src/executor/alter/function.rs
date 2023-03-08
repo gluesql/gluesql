@@ -42,7 +42,9 @@ pub async fn drop_function<T: GStore + GStoreMut>(
 ) -> Result<()> {
     for func_name in func_names {
         let result = storage.drop_function(func_name).await;
-        if result.is_err() && !if_exists { result? };
+        if result.is_err() && !if_exists {
+            result?
+        };
     }
     Ok(())
 }

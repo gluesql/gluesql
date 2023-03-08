@@ -1,8 +1,4 @@
-use gluesql_core::{
-    data::ValueError,
-    prelude::{Value::*},
-    translate::TranslateError,
-};
+use gluesql_core::{data::ValueError, prelude::Value::*, translate::TranslateError};
 use {
     async_trait::async_trait, gluesql_core::prelude::Glue, gluesql_memory_storage::MemoryStorage,
     test_suite::*,
@@ -104,9 +100,7 @@ fn memory_storage_transaction() {
 
 #[test]
 fn memory_storage_function() {
-    use gluesql_core::{
-        prelude::{Glue, Payload},
-    };
+    use gluesql_core::prelude::{Glue, Payload};
 
     let storage = MemoryStorage::default();
     let mut glue = Glue::new(storage);

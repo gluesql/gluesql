@@ -9,6 +9,11 @@ pub trait Function {
             "[Storage] Function is not supported".to_owned(),
         ))
     }
+    async fn show_functions(&self) -> Result<Vec<String>> {
+        Err(Error::StorageMsg(
+            "[Storage] Function is not supported".to_owned(),
+        ))
+    }
 }
 
 #[async_trait(?Send)]

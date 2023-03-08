@@ -40,6 +40,9 @@ impl Function for MemoryStorage {
     async fn fetch_function(&self, func_name: &str) -> Result<Option<&CustomFunction>> {
         Ok(self.functions.get(&func_name.to_uppercase()))
     }
+    async fn show_functions(&self) -> Result<Vec<String>> {
+        Ok(self.functions.keys().map(|v| v.to_owned()).collect())
+    }
 }
 
 #[async_trait(?Send)]

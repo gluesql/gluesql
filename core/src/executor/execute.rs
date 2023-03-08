@@ -1,6 +1,8 @@
 use {
     super::{
-        alter::{alter_table, create_function, drop_function, create_index, create_table, drop_table},
+        alter::{
+            alter_table, create_function, create_index, create_table, drop_function, drop_table,
+        },
         fetch::{fetch, fetch_columns},
         insert::insert,
         select::{select, select_with_labels},
@@ -54,6 +56,7 @@ pub enum Payload {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum PayloadVariable {
     Tables(Vec<String>),
+    Functions(Vec<String>),
     Version(String),
 }
 
@@ -333,6 +336,12 @@ async fn execute_inner<T: GStore + GStoreMut>(
 
                 Ok(Payload::ShowVariable(PayloadVariable::Tables(table_names)))
             }
+            Variable::Functions => {
+                let function_names = storage.show_functions().await?;
+                Ok(Payload::ShowVariable(PayloadVariable::Functions(
+                    function_names,
+                )))
+            }
             Variable::Version => {
                 let version = var("CARGO_PKG_VERSION")
                     .unwrap_or_else(|_| env!("CARGO_PKG_VERSION").to_owned());
@@ -349,9 +358,8 @@ async fn execute_inner<T: GStore + GStoreMut>(
         } => create_function(storage, name, args, *or_replace, return_)
             .await
             .map(|_| Payload::Create),
-        Statement::DropFunction {
-            if_exists,
-            names
-        } => drop_function(storage, names, *if_exists).await.map(|_| Payload::DropFunction),
+        Statement::DropFunction { if_exists, names } => drop_function(storage, names, *if_exists)
+            .await
+            .map(|_| Payload::DropFunction),
     }
 }

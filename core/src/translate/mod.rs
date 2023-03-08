@@ -171,6 +171,9 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             db_name: None,
             ..
         } => Ok(Statement::ShowVariable(Variable::Tables)),
+        SqlStatement::ShowFunctions { filter: None } => {
+            Ok(Statement::ShowVariable(Variable::Functions))
+        }
         SqlStatement::ShowVariable { variable } => match (variable.len(), variable.get(0)) {
             (1, Some(keyword)) => match keyword.value.to_uppercase().as_str() {
                 "VERSION" => Ok(Statement::ShowVariable(Variable::Version)),
