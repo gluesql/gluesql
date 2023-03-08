@@ -1,3 +1,8 @@
+use gluesql_core::{
+    data::ValueError,
+    prelude::{Value::*},
+    translate::TranslateError,
+};
 use {
     async_trait::async_trait, gluesql_core::prelude::Glue, gluesql_memory_storage::MemoryStorage,
     test_suite::*,
@@ -34,7 +39,7 @@ macro_rules! exec {
 }
 
 macro_rules! test {
-    ($glue: ident $sql: literal, $result: expr) => {
+    ($glue: ident $sql: expr, $result: expr) => {
         assert_eq!($glue.execute($sql), $result);
     };
 }
@@ -95,4 +100,86 @@ fn memory_storage_transaction() {
     test!(glue "BEGIN", Err(Error::StorageMsg("[MemoryStorage] transaction is not supported".to_owned())));
     test!(glue "COMMIT", Ok(vec![Payload::Commit]));
     test!(glue "ROLLBACK", Ok(vec![Payload::Rollback]));
+}
+
+#[test]
+fn memory_storage_function() {
+    use gluesql_core::{
+        prelude::{Glue, Payload},
+    };
+
+    let storage = MemoryStorage::default();
+    let mut glue = Glue::new(storage);
+
+    let test_cases = [
+        ("CREATE FUNCTION add_none ()", Ok(vec![Payload::Create])),
+        (
+            "CREATE FUNCTION add_one (n INT, x INT DEFAULT 1) RETURN n + x",
+            Ok(vec![Payload::Create]),
+        ),
+        (
+            "CREATE FUNCTION add_two (n INT, x INT DEFAULT 1, y INT) RETURN n + x + y",
+            Ok(vec![Payload::Create]),
+        ),
+        // (
+        //     "SELECT add_none() AS r",
+        //     Ok(vec![select!(
+        //                     r
+        //                     I64;
+        //                     2
+        //                 )]),
+        // ),
+        (
+            "SELECT add_one(1) AS r",
+            Ok(vec![select!(
+                r
+                I64;
+                2
+            )]),
+        ),
+        (
+            "SELECT add_one(1, 8) AS r",
+            Ok(vec![select!(
+                r
+                I64;
+                9
+            )]),
+        ),
+        (
+            "SELECT add_one(1, 2, 4)",
+            Err(TranslateError::FunctionArgsLengthNotWithinRange {
+                name: "add_one".to_owned(),
+                expected_minimum: 1,
+                expected_maximum: 2,
+                found: 3,
+            }
+            .into()),
+        ),
+        (
+            "SELECT add_one()",
+            Err(TranslateError::FunctionArgsLengthNotWithinRange {
+                name: "add_one".to_owned(),
+                expected_minimum: 1,
+                expected_maximum: 2,
+                found: 0,
+            }
+            .into()),
+        ),
+        (
+            "SELECT add_two(1, null, 2) as r",
+            Ok(vec![select!(
+                r
+                I64;
+                4
+            )]),
+        ),
+        (
+            "SELECT add_two(1, 2)",
+            Err(ValueError::NullValueOnNotNullField.into()),
+        ),
+    ];
+
+    for (sql, expected) in test_cases {
+        test!(glue sql, expected);
+    }
 }

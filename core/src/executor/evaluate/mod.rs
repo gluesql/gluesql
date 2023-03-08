@@ -357,7 +357,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                                     tmp
                                 }]
                             } else {
-                                &arg
+                                arg
                             };
                             hm.insert(farg.name.to_owned(), value.to_owned());
                             Ok(())
@@ -382,7 +382,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                     })
                 };
 
-                Ok(Evaluated::from(value?))
+                Ok(value?)
             } else {
                 Err(TranslateError::UnsupportedFunction(name.to_string()).into())
             }

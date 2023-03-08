@@ -36,9 +36,8 @@ pub fn validate(column_def: &ColumnDef) -> Result<()> {
 
 pub fn validate_arg(arg: &OperateFunctionArg) -> Result<()> {
     let OperateFunctionArg {
-        data_type,
         default,
-        name,
+        ..
     } = arg;
 
     if let Some(expr) = default {
@@ -78,7 +77,7 @@ pub fn validate_arg_names(args: &[OperateFunctionArg]) -> Result<()> {
         .map(|(_, arg)| arg.name.to_owned());
 
     match duplicate_arg_name {
-        Some(v) => Err(AlterError::DuplicateArgName(v.to_string()).into()),
+        Some(v) => Err(AlterError::DuplicateArgName(v).into()),
         None => Ok(()),
     }
 }

@@ -4,7 +4,7 @@ use async_trait::async_trait;
 
 #[async_trait(?Send)]
 pub trait Function {
-    async fn fetch_function(&self, func_name: &str) -> Result<Option<&CustomFunction>> {
+    async fn fetch_function(&self, _func_name: &str) -> Result<Option<&CustomFunction>> {
         Err(Error::StorageMsg(
             "[Storage] Function is not supported".to_owned(),
         ))
@@ -13,13 +13,13 @@ pub trait Function {
 
 #[async_trait(?Send)]
 pub trait FunctionMut {
-    async fn create_function(&mut self, func: CustomFunction) -> Result<()> {
+    async fn create_function(&mut self, _func: CustomFunction) -> Result<()> {
         Err(Error::StorageMsg(
             "[Storage] Function is not supported".to_owned(),
         ))
     }
 
-    async fn drop_function(&mut self, func_name: &str) -> Result<()> {
+    async fn drop_function(&mut self, _func_name: &str) -> Result<()> {
         Err(Error::StorageMsg(
             "[Storage] Function is not supported".to_owned(),
         ))
