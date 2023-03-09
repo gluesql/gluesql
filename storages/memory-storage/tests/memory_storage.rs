@@ -1,4 +1,9 @@
-use gluesql_core::{data::ValueError, prelude::{Value::*, PayloadVariable}, translate::TranslateError, executor::EvaluateError};
+use gluesql_core::{
+    data::ValueError,
+    executor::EvaluateError,
+    prelude::{PayloadVariable, Value::*},
+    translate::TranslateError,
+};
 use {
     async_trait::async_trait, gluesql_core::prelude::Glue, gluesql_memory_storage::MemoryStorage,
     test_suite::*,
@@ -173,7 +178,9 @@ fn memory_storage_function() {
         ),
         (
             "SHOW FUNCTIONS",
-            Ok(vec![Payload::ShowVariable(PayloadVariable::Functions(vec!["ADD_NONE".to_owned()]))])
+            Ok(vec![Payload::ShowVariable(PayloadVariable::Functions(
+                vec!["ADD_NONE".to_owned()],
+            ))]),
         ),
         (
             "DROP FUNCTION IF EXISTS add_one, add_two, add_none",
