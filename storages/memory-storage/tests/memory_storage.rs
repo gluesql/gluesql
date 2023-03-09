@@ -1,4 +1,4 @@
-use gluesql_core::{data::ValueError, prelude::Value::*, translate::TranslateError};
+use gluesql_core::{data::ValueError, prelude::{Value::*, PayloadVariable}, translate::TranslateError, executor::EvaluateError};
 use {
     async_trait::async_trait, gluesql_core::prelude::Glue, gluesql_memory_storage::MemoryStorage,
     test_suite::*,
@@ -117,11 +117,7 @@ fn memory_storage_function() {
         ),
         // (
         //     "SELECT add_none() AS r",
-        //     Ok(vec![select!(
-        //                     r
-        //                     I64;
-        //                     2
-        //                 )]),
+        //     Ok(vec![select_with_null!(r; Null)]),
         // ),
         (
             "SELECT add_one(1) AS r",
@@ -176,8 +172,20 @@ fn memory_storage_function() {
             Ok(vec![Payload::DropFunction]),
         ),
         (
+            "SHOW FUNCTIONS",
+            Ok(vec![Payload::ShowVariable(PayloadVariable::Functions(vec!["ADD_NONE".to_owned()]))])
+        ),
+        (
             "DROP FUNCTION IF EXISTS add_one, add_two, add_none",
             Ok(vec![Payload::DropFunction]),
+        ),
+        (
+            "CREATE FUNCTION test(INT)",
+            Err(TranslateError::UnNamedFunctionArgNotSupported.into()),
+        ),
+        (
+            "CREATE TABLE test(a INT DEFAULT test())",
+            Err(EvaluateError::UnsupportedCustomFunction.into()),
         ),
     ];
 
