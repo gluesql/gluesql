@@ -37,7 +37,7 @@ impl From<&Value> for String {
             Value::Map(_) => "[MAP]".to_owned(),
             Value::List(_) => "[LIST]".to_owned(),
             Value::Decimal(value) => value.to_string(),
-            Value::Point((x, y)) => format!("POINT({} {})", x, y),
+            Value::Point((x, y)) => format!("POINT({x} {y})"),
             Value::Null => String::from("NULL"),
         }
     }
@@ -636,7 +636,7 @@ mod tests {
         );
         test!(Value::Map(HashMap::new()), "[MAP]");
         test!(Value::List(Vec::new()), "[LIST]");
-        test!(Value::Point((1.0, 2.0)), "POINT(1.0 2,0)");
+        test!(Value::Point((1.0313, 2.0314)), "POINT(1.0313 2.0314)");
         test!(Value::Decimal(Decimal::new(2000, 1)), "200.0");
         test!(Value::Null, "NULL");
     }
