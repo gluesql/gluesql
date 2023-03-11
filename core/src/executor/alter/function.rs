@@ -8,7 +8,7 @@ use {
     },
 };
 
-pub async fn create_function<T: GStore + GStoreMut>(
+pub async fn insert_function<T: GStore + GStoreMut>(
     storage: &mut T,
     func_name: &str,
     args: &Option<Vec<OperateFunctionArg>>,
@@ -21,9 +21,9 @@ pub async fn create_function<T: GStore + GStoreMut>(
     }
 
     if storage.fetch_function(func_name).await?.is_none() || or_replace {
-        storage.drop_function(func_name).await?;
+        storage.delete_function(func_name).await?;
         storage
-            .create_function(CustomFunction {
+            .insert_function(CustomFunction {
                 func_name: func_name.to_owned(),
                 args: args.to_owned(),
                 return_: return_.to_owned(),
@@ -35,13 +35,13 @@ pub async fn create_function<T: GStore + GStoreMut>(
     }
 }
 
-pub async fn drop_function<T: GStore + GStoreMut>(
+pub async fn delete_function<T: GStore + GStoreMut>(
     storage: &mut T,
     func_names: &[String],
     if_exists: bool,
 ) -> Result<()> {
     for func_name in func_names {
-        let result = storage.drop_function(func_name).await;
+        let result = storage.delete_function(func_name).await;
         if result.is_err() && !if_exists {
             result?
         };

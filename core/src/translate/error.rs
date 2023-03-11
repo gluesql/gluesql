@@ -60,9 +60,6 @@ pub enum TranslateError {
     #[error("order by - NULLS (FIRST | LAST) is not supported")]
     OrderByNullsFirstOrLastNotSupported,
 
-    #[error("unsupported function: {0}")]
-    UnsupportedFunction(String),
-
     #[error("unsupported SHOW VARIABLE keyword: {0}")]
     UnsupportedShowVariableKeyword(String),
 

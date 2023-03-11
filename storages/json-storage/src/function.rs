@@ -1,7 +1,7 @@
 use {
     super::JsonStorage,
-    gluesql_core::store::{Function, FunctionMut},
+    gluesql_core::store::{CustomFunction, CustomFunctionMut},
 };
 
-impl Function for JsonStorage {}
-impl FunctionMut for JsonStorage {}
+impl CustomFunction for JsonStorage {}
+impl CustomFunctionMut for JsonStorage {}

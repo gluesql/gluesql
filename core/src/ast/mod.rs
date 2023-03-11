@@ -581,7 +581,7 @@ mod tests {
     }
 
     #[test]
-    fn to_sql_create_function() {
+    fn to_sql_insert_function() {
         assert_eq!(
             "CREATE FUNCTION add(num INT DEFAULT 0) RETURN num;",
             Statement::CreateFunction {
@@ -712,7 +712,7 @@ mod tests {
     }
 
     #[test]
-    fn to_sql_drop_function() {
+    fn to_sql_delete_function() {
         assert_eq!(
             "DROP FUNCTION Test;",
             Statement::DropFunction {

@@ -14,7 +14,7 @@ use {
         prelude::Key,
         result::Error,
         result::Result,
-        store::{DataRow, Function, FunctionMut, Metadata, RowIter},
+        store::{DataRow, Metadata, RowIter},
     },
     iter_enum::Iterator,
     serde_json::Value as JsonValue,

@@ -1,11 +1,13 @@
-use gluesql_core::{
-    data::ValueError,
-    executor::EvaluateError,
-    prelude::{PayloadVariable, Value::*},
-    translate::TranslateError,
-};
 use {
-    async_trait::async_trait, gluesql_core::prelude::Glue, gluesql_memory_storage::MemoryStorage,
+    async_trait::async_trait,
+    gluesql_core::prelude::Glue,
+    gluesql_core::{
+        data::ValueError,
+        executor::EvaluateError,
+        prelude::{PayloadVariable, Value::*},
+        translate::TranslateError,
+    },
+    gluesql_memory_storage::MemoryStorage,
     test_suite::*,
 };
 
@@ -142,7 +144,7 @@ fn memory_storage_function() {
         ),
         (
             "SELECT add_one(1, 2, 4)",
-            Err(TranslateError::FunctionArgsLengthNotWithinRange {
+            Err(EvaluateError::FunctionArgsLengthNotWithinRange {
                 name: "add_one".to_owned(),
                 expected_minimum: 1,
                 expected_maximum: 2,
@@ -152,7 +154,7 @@ fn memory_storage_function() {
         ),
         (
             "SELECT add_one()",
-            Err(TranslateError::FunctionArgsLengthNotWithinRange {
+            Err(EvaluateError::FunctionArgsLengthNotWithinRange {
                 name: "add_one".to_owned(),
                 expected_minimum: 1,
                 expected_maximum: 2,
@@ -179,7 +181,7 @@ fn memory_storage_function() {
         (
             "SHOW FUNCTIONS",
             Ok(vec![Payload::ShowVariable(PayloadVariable::Functions(
-                vec!["ADD_NONE".to_owned()],
+                vec!["add_none()".to_owned()],
             ))]),
         ),
         (

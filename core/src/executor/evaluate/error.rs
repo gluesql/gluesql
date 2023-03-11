@@ -103,6 +103,17 @@ pub enum EvaluateError {
 
     #[error("unsupported custom function in subqueries")]
     UnsupportedCustomFunction,
+
+    #[error("function args.length not matching: {name}, expected: {expected_minimum} ~ {expected_maximum}, found: {found}")]
+    FunctionArgsLengthNotWithinRange {
+        name: String,
+        expected_minimum: usize,
+        expected_maximum: usize,
+        found: usize,
+    },
+
+    #[error("unsupported function: {0}")]
+    UnsupportedFunction(String),
 }
 
 fn error_serialize<S>(error: &chrono::format::ParseError, serializer: S) -> Result<S::Ok, S::Error>

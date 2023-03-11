@@ -7,8 +7,8 @@ use {
         parse_sql::parse,
         result::{Error, Result},
         store::{
-            AlterTable, DataRow, Function, FunctionMut, Index, IndexMut, Metadata, RowIter, Store,
-            StoreMut, Transaction,
+            AlterTable, DataRow, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata,
+            RowIter, Store, StoreMut, Transaction,
         },
         translate::translate,
     },
@@ -35,10 +35,10 @@ pub struct MockStorage {
 }
 
 #[async_trait(?Send)]
-impl Function for MockStorage {}
+impl CustomFunction for MockStorage {}
 
 #[async_trait(?Send)]
-impl FunctionMut for MockStorage {}
+impl CustomFunctionMut for MockStorage {}
 
 #[async_trait(?Send)]
 impl Store for MockStorage {

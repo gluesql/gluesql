@@ -112,5 +112,5 @@ impl StoreMut for SharedMemoryStorage {
 }
 
 impl Metadata for SharedMemoryStorage {}
-impl gluesql_core::store::Function for SharedMemoryStorage {}
-impl gluesql_core::store::FunctionMut for SharedMemoryStorage {}
+impl gluesql_core::store::CustomFunction for SharedMemoryStorage {}
+impl gluesql_core::store::CustomFunctionMut for SharedMemoryStorage {}

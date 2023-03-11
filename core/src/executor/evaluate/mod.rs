@@ -24,8 +24,6 @@ use {
 
 pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
 
-use crate::translate::TranslateError;
-
 #[async_recursion(?Send)]
 pub async fn evaluate<'a, 'b: 'a, 'c: 'a, T: GStore>(
     storage: &'a T,
@@ -307,7 +305,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let custom_func = storage
                 .fetch_function(name)
                 .await
-                .map_err(|_| TranslateError::UnsupportedFunction(name.to_string()))?;
+                .map_err(|_| EvaluateError::UnsupportedFunction(name.to_string()))?;
             if let Some(custom_func) = custom_func {
                 let args: Vec<Evaluated<'_>> = stream::iter(exprs).then(eval).try_collect().await?;
                 let args: Vec<Value> = args
@@ -374,7 +372,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                     };
                     Ok(value)
                 } else {
-                    Err(TranslateError::FunctionArgsLengthNotWithinRange {
+                    Err(EvaluateError::FunctionArgsLengthNotWithinRange {
                         name: custom_func.func_name.to_owned(),
                         expected_minimum: min,
                         expected_maximum: max,
@@ -384,7 +382,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
 
                 Ok(value?)
             } else {
-                Err(TranslateError::UnsupportedFunction(name.to_string()).into())
+                Err(EvaluateError::UnsupportedFunction(name.to_string()).into())
             }
         }
         Function::ConcatWs { separator, exprs } => {

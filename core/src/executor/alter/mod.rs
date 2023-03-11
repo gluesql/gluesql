@@ -10,7 +10,7 @@ use validate::{validate, validate_arg, validate_arg_names, validate_column_names
 pub use {
     alter_table::alter_table,
     error::AlterError,
-    function::{create_function, drop_function},
+    function::{delete_function, insert_function},
     index::create_index,
     table::{create_table, drop_table},
 };

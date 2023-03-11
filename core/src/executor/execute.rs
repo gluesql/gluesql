@@ -1,7 +1,7 @@
 use {
     super::{
         alter::{
-            alter_table, create_function, create_index, create_table, drop_function, drop_table,
+            alter_table, create_index, create_table, delete_function, drop_table, insert_function,
         },
         fetch::{fetch, fetch_columns},
         insert::insert,
@@ -337,9 +337,14 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 Ok(Payload::ShowVariable(PayloadVariable::Tables(table_names)))
             }
             Variable::Functions => {
-                let function_names = storage.show_functions().await?;
+                let function_desc = storage
+                    .fetch_all_functions()
+                    .await?
+                    .iter()
+                    .map(|f| f.to_str())
+                    .collect();
                 Ok(Payload::ShowVariable(PayloadVariable::Functions(
-                    function_names,
+                    function_desc,
                 )))
             }
             Variable::Version => {
@@ -355,10 +360,10 @@ async fn execute_inner<T: GStore + GStoreMut>(
             name,
             args,
             return_,
-        } => create_function(storage, name, args, *or_replace, return_)
+        } => insert_function(storage, name, args, *or_replace, return_)
             .await
             .map(|_| Payload::Create),
-        Statement::DropFunction { if_exists, names } => drop_function(storage, names, *if_exists)
+        Statement::DropFunction { if_exists, names } => delete_function(storage, names, *if_exists)
             .await
             .map(|_| Payload::DropFunction),
     }
