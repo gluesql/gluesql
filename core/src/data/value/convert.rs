@@ -37,7 +37,7 @@ impl From<&Value> for String {
             Value::Map(_) => "[MAP]".to_owned(),
             Value::List(_) => "[LIST]".to_owned(),
             Value::Decimal(value) => value.to_string(),
-            Value::Point((x, y)) => format!("POINT({x} {y})"),
+            Value::Point(value) => value.to_string(),
             Value::Null => String::from("NULL"),
         }
     }
@@ -576,6 +576,8 @@ impl TryFrom<&Value> for IpAddr {
 
 #[cfg(test)]
 mod tests {
+    use crate::data::point;
+
     use {
         super::{parse_uuid, Value, ValueError},
         crate::{data::Interval as I, result::Result},
@@ -636,7 +638,10 @@ mod tests {
         );
         test!(Value::Map(HashMap::new()), "[MAP]");
         test!(Value::List(Vec::new()), "[LIST]");
-        test!(Value::Point((1.0313, 2.0314)), "POINT(1.0313 2.0314)");
+        test!(
+            Value::Point(point::Point::new(1.0313, 2.0314)),
+            "POINT(1.0313 2.0314)"
+        );
         test!(Value::Decimal(Decimal::new(2000, 1)), "200.0");
         test!(Value::Null, "NULL");
     }
@@ -706,7 +711,7 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
-            Value::Point((1.0, 1.0)),
+            Value::Point(point::Point::new(1.0313, 2.0314)),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
@@ -775,7 +780,7 @@ mod tests {
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
         test!(
-            Value::Point((1.0, 1.0)),
+            Value::Point(point::Point::new(1.0313, 2.0314)),
             Err(ValueError::ImpossibleCast.into())
         );
 
@@ -844,7 +849,7 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
-            Value::Point((1.0, 1.0)),
+            Value::Point(point::Point::new(1.0313, 2.0314)),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
@@ -906,7 +911,7 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
-            Value::Point((1.0, 1.0)),
+            Value::Point(point::Point::new(1.0313, 2.0314)),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
@@ -968,7 +973,7 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
-            Value::Point((1.0, 1.0)),
+            Value::Point(point::Point::new(1.0313, 2.0314)),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
@@ -1030,7 +1035,7 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
-            Value::Point((1.0, 1.0)),
+            Value::Point(point::Point::new(1.0313, 2.0314)),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
@@ -1096,7 +1101,7 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
-            Value::Point((1.0, 1.0)),
+            Value::Point(point::Point::new(1.0313, 2.0314)),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
@@ -1164,7 +1169,7 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
-            Value::Point((1.0, 1.0)),
+            Value::Point(point::Point::new(1.0313, 2.0314)),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
@@ -1228,7 +1233,7 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
-            Value::Point((1.0, 1.0)),
+            Value::Point(point::Point::new(1.0313, 2.0314)),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
@@ -1290,7 +1295,7 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
-            Value::Point((1.0, 1.0)),
+            Value::Point(point::Point::new(1.0313, 2.0314)),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));

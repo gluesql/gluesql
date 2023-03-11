@@ -289,6 +289,8 @@ impl Key {
 
 #[cfg(test)]
 mod tests {
+    use crate::data::point::Point;
+
     use {
         crate::{
             data::{Key, KeyError, Value},
@@ -372,7 +374,7 @@ mod tests {
             Ok(Key::I64(8))
         );
         assert_eq!(
-            Key::try_from(Value::Point((1.0, 2.0))),
+            Key::try_from(Value::Point(Point::new(1.0, 2.0))),
             Err(KeyError::PointTypeKeyNotSupported.into())
         );
     }

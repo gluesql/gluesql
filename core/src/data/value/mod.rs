@@ -2,6 +2,7 @@ use {
     super::{Interval, Key, StringExt},
     crate::{
         ast::{DataType, DateTimeField},
+        data::point::Point,
         result::Result,
     },
     binary_op::TryBinaryOperator,
@@ -19,7 +20,6 @@ mod error;
 mod expr;
 mod json;
 mod literal;
-mod point;
 mod selector;
 mod string;
 mod uuid;
@@ -51,7 +51,7 @@ pub enum Value {
     Uuid(u128),
     Map(HashMap<String, Value>),
     List(Vec<Value>),
-    Point((f64, f64)),
+    Point(Point),
     Null,
 }
 
@@ -660,9 +660,11 @@ fn str_position(from_str: &String, sub_str: &String) -> usize {
 
 #[cfg(test)]
 mod tests {
+    use crate::data::point;
+
     use {
         super::{Interval, Value::*},
-        crate::data::{value::point::parse_point, value::uuid::parse_uuid, ValueError},
+        crate::data::{value::uuid::parse_uuid, ValueError},
         chrono::{NaiveDate, NaiveTime},
         rust_decimal::Decimal,
         std::{net::IpAddr, str::FromStr},
@@ -686,7 +688,6 @@ mod tests {
         let decimal = |n: i32| Decimal(n.into());
         let bytea = |v: &str| Bytea(hex::decode(v).unwrap());
         let inet = |v: &str| Inet(IpAddr::from_str(v).unwrap());
-        let point = |v: &str| Point(parse_point(v).unwrap());
 
         assert_ne!(Null, Null);
         assert_eq!(Bool(true), Bool(true));
@@ -720,7 +721,7 @@ mod tests {
             Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()),
             Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap())
         );
-        assert_eq!(point("POINT(1 2)"), point("POINT(1 2)"));
+        assert_eq!(point::Point::new(1.0, 2.0), point::Point::new(1.0, 2.0));
     }
 
     #[test]
@@ -1601,7 +1602,7 @@ mod tests {
         let time = Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap());
         let interval = Interval(I::hours(5));
         let uuid = Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap());
-        let point = Point(parse_point("POINT(1.0 2.0)").unwrap());
+        let point = Point(point::Point::new(1.0, 2.0));
         let map = Value::parse_json_map(r#"{ "a": 10 }"#).unwrap();
         let list = Value::parse_json_list(r#"[ true ]"#).unwrap();
         let bytea = Bytea(hex::decode("9001").unwrap());
@@ -1770,7 +1771,7 @@ mod tests {
         let time = Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap());
         let interval = Interval(I::hours(5));
         let uuid = Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap());
-        let point = Point(parse_point("POINT(1.0 2.0)").unwrap());
+        let point = Point(point::Point::new(1.0, 2.0));
         let map = Value::parse_json_map(r#"{ "a": 10 }"#).unwrap();
         let list = Value::parse_json_list(r#"[ true ]"#).unwrap();
         let bytea = Bytea(hex::decode("9001").unwrap());

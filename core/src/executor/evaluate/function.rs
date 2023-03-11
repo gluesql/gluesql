@@ -545,14 +545,14 @@ pub fn extract<'a>(field: &DateTimeField, expr: Evaluated<'_>) -> Result<Evaluat
 
 pub fn stx<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
     match expr.try_into()? {
-        Value::Point((x, _)) => Ok(Evaluated::from(Value::F64(x))),
+        Value::Point(v) => Ok(Evaluated::from(Value::F64(v.x()))),
         _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
     }
 }
 
 pub fn sty<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
     match expr.try_into()? {
-        Value::Point((_, y)) => Ok(Evaluated::from(Value::F64(y))),
+        Value::Point(v) => Ok(Evaluated::from(Value::F64(v.y()))),
         _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
     }
 }
