@@ -95,7 +95,16 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
     match table_factor {
         TableFactor::Derived { subquery, .. } => {
             let filter_context = filter_context.as_ref().map(Rc::clone);
-            let rows = select(storage, subquery, filter_context).await?;
+            let rows =
+                select(storage, subquery, filter_context)
+                    .await?
+                    .map_ok(move |row| match row {
+                        Row::Vec { values, .. } => Row::Vec {
+                            columns: Rc::clone(&columns),
+                            values,
+                        },
+                        Row::Map(values) => Row::Map(values),
+                    });
 
             Ok(Rows::Derived(rows))
         }
@@ -510,7 +519,7 @@ pub async fn fetch_labels<T: GStore>(
 
     let columns = columns.unwrap_or_default();
     let join_columns = join_columns.unwrap_or_default();
-
+    
     projection
         .iter()
         .flat_map(|item| match item {
