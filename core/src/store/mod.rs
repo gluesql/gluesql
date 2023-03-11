@@ -23,10 +23,12 @@ use {
         result::Result,
     },
     async_trait::async_trait,
-    std::collections::HashMap,
+    std::{collections::HashMap, iter::empty},
 };
 
 pub type RowIter = Box<dyn Iterator<Item = Result<(Key, DataRow)>>>;
+pub type MetaIter = Box<dyn Iterator<Item = Result<(TableName, HashMap<String, Value>)>>>;
+type TableName = String;
 
 /// By implementing `Store` trait, you can run `SELECT` query.
 #[async_trait(?Send)]
@@ -42,16 +44,8 @@ pub trait Store {
 
 #[async_trait(?Send)]
 pub trait Metadata {
-    async fn scan_meta(&self) -> HashMap<String, Value> {
-        HashMap::new()
-    }
-
-    async fn append_meta(&mut self, _: HashMap<String, Value>) -> Result<()> {
-        unimplemented!("unimplemented append_meta");
-    }
-
-    async fn delete_meta(&mut self, _: &str) -> Result<()> {
-        unimplemented!("unimplemented delete_meta");
+    async fn scan_meta(&self) -> Result<MetaIter> {
+        Ok(Box::new(empty()))
     }
 }
 

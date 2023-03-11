@@ -10,9 +10,9 @@ use {
         chrono::Utc,
         data::{Key, Schema},
         prelude::Value,
-        result::Result,
+        result::{Error, Result},
         store::Metadata,
-        store::{DataRow, RowIter, Store, StoreMut},
+        store::{DataRow, MetaIter, RowIter, Store, StoreMut},
     },
     serde::{Deserialize, Serialize},
     std::{
@@ -74,20 +74,17 @@ impl Store for MemoryStorage {
 
 #[async_trait(?Send)]
 impl Metadata for MemoryStorage {
-    async fn scan_meta(&self) -> HashMap<String, Value> {
-        self.metadata.clone()
-    }
+    async fn scan_meta(&self) -> Result<MetaIter> {
+        let meta = self
+            .metadata
+            .clone()
+            .into_iter()
+            .map(|(name, value)| match value {
+                Value::Map(map) => Ok((name, map)),
+                _ => Err(Error::StorageMsg("Invalid metadata".to_owned())),
+            });
 
-    async fn append_meta(&mut self, meta: HashMap<String, Value>) -> Result<()> {
-        self.metadata.extend(meta);
-
-        Ok(())
-    }
-
-    async fn delete_meta(&mut self, meta_name: &str) -> Result<()> {
-        self.metadata.remove(meta_name);
-
-        Ok(())
+        Ok(Box::new(meta))
     }
 }
 
@@ -102,7 +99,7 @@ impl StoreMut for MemoryStorage {
             ),
         ]));
         let meta = HashMap::from([(schema.table_name.clone(), created)]);
-        self.append_meta(meta).await?;
+        self.metadata.extend(meta);
 
         let table_name = schema.table_name.clone();
         let item = Item {
@@ -116,7 +113,7 @@ impl StoreMut for MemoryStorage {
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         self.items.remove(table_name);
-        self.delete_meta(table_name).await?;
+        self.metadata.remove(table_name);
 
         Ok(())
     }

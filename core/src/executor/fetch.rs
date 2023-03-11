@@ -206,16 +206,26 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                 match dict {
                     Dictionary::GlueObjects => {
                         let schemas = storage.fetch_all_schemas().await?;
-                        let metas = storage.scan_meta().await;
+                        let mut metas = storage.scan_meta().await?;
                         let rows = schemas.into_iter().map(move |schema| {
-                            let meta = metas.get(&schema.table_name);
+                            let meta = metas.find_map(|result| {
+                                result
+                                    .map(|(table_name, hash_map)| {
+                                        if table_name == schema.table_name {
+                                            Some(Value::Map(hash_map.clone()))
+                                        } else {
+                                            None
+                                        }
+                                    })
+                                    .transpose()
+                            });
                             let table_row = HashMap::from([
                                 ("OBJECT_NAME".to_owned(), Value::Str(schema.table_name)),
                                 ("OBJECT_TYPE".to_owned(), Value::Str("TABLE".to_owned())),
                             ]);
 
                             let table_rows = match meta {
-                                Some(Value::Map(meta)) => {
+                                Some(Ok(Value::Map(meta))) => {
                                     match (meta.get("OBJECT_TYPE"), meta.get("CREATED")) {
                                         (
                                             Some(Value::Str(object_type)),
@@ -230,6 +240,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                         _ => table_row,
                                     }
                                 }
+                                // todo!() should handle error
                                 _ => table_row,
                             };
 
@@ -242,9 +253,20 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                         ("OBJECT_TYPE".to_owned(), Value::Str("INDEX".to_owned())),
                                     ]);
 
-                                    let meta = metas.get(&index.name);
+                                    // let meta = metas.get(&index.name);
+                                    let meta = metas.find_map(|result| {
+                                        result
+                                            .map(|(table_name, hash_map)| {
+                                                if table_name == index.name {
+                                                    Some(Value::Map(hash_map.clone()))
+                                                } else {
+                                                    None
+                                                }
+                                            })
+                                            .transpose()
+                                    });
                                     match meta {
-                                        Some(Value::Map(meta)) => {
+                                        Some(Ok(Value::Map(meta))) => {
                                             match (meta.get("OBJECT_TYPE"), meta.get("CREATED")) {
                                                 (
                                                     Some(Value::Str(object_type)),
