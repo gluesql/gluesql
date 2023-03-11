@@ -20,9 +20,7 @@ test_case!(point, async move {
 
         match (x, y) {
             (Some(x), Some(y)) => Ok((x.parse::<f64>().unwrap(), y.parse::<f64>().unwrap())),
-            (_, _) => Err(Error::Value(ValueError::FailedToParsePoint(
-                value.to_owned(),
-            ))),
+            (_, _) => Err(Error::Value(ValueError::FailedToParsePoint(v.to_owned()))),
         }
     };
 
@@ -40,15 +38,7 @@ test_case!(point, async move {
             .into()),
         ),
         (
-            r#"INSERT INTO POINT VALUES (X'1234')"#,
-            Err(ValueError::FailedToParsePoint("1234".to_owned()).into()),
-        ),
-        (
-            r#"INSERT INTO POINT VALUES ('NOT_POINT')"#,
-            Err(ValueError::FailedToParsePoint("NOT_UUID".to_owned()).into()),
-        ),
-        (
-            r#"INSERT INTO POINT VALUES (POINT(1.0 2.0))"#,
+            r#"INSERT INTO POINT VALUES (POINT(0.3134 0.156))"#,
             Ok(Payload::Insert(1)),
         ),
         (

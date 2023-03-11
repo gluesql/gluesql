@@ -155,6 +155,7 @@ macro_rules! generate_store_tests {
         glue!(map, data_type::map::map);
         glue!(bytea, data_type::bytea::bytea);
         glue!(inet, data_type::inet::inet);
+        glue!(point, data_type::point::point);
         glue!(synthesize, synthesize::synthesize);
         glue!(validate_unique, validate::unique::unique);
         glue!(validate_types, validate::types::types);
