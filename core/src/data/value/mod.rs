@@ -86,6 +86,7 @@ impl PartialEq<Value> for Value {
             (Value::Uuid(l), Value::Uuid(r)) => l == r,
             (Value::Map(l), Value::Map(r)) => l == r,
             (Value::List(l), Value::List(r)) => l == r,
+            (Value::Point(l), Value::Point(r)) => l == r,
             _ => false,
         }
     }

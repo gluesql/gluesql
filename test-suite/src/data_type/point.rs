@@ -5,7 +5,7 @@ use {
         ast::DataType,
         data::{Literal, ValueError},
         executor::Payload,
-        prelude::Value::*,
+        prelude::Value::Point,
         result::Error,
     },
     std::borrow::Cow,
@@ -34,7 +34,7 @@ test_case!(point, async move {
         (
             r#"INSERT INTO POINT VALUES (0)"#,
             Err(ValueError::IncompatibleLiteralForDataType {
-                data_type: DataType::Uuid,
+                data_type: DataType::Point,
                 literal: format!("{:?}", Literal::Number(Cow::Owned(BigDecimal::from(0)))),
             }
             .into()),
@@ -66,9 +66,9 @@ test_case!(point, async move {
         (
             r#"SELECT point_field AS point_field, COUNT(*) FROM POINT GROUP BY point_field"#,
             Ok(select!(
-                point_field | "COUNT(*)"
-                Point | I64;
-                parse_point("POINT(2.0 1.0)").unwrap() 1
+                point_field
+                Point;
+                parse_point("POINT(2.0 1.0)").unwrap()
             )),
         ),
         (
