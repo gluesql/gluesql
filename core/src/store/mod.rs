@@ -1,6 +1,7 @@
 mod alter_table;
 mod data_row;
 mod index;
+mod metadata;
 mod transaction;
 
 pub trait GStore: Store + Index + Metadata {}
