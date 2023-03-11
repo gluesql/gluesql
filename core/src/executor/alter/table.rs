@@ -1,3 +1,6 @@
+use crate::{ast::SelectItem, executor::select::select_with_labels};
+use futures::StreamExt;
+
 use {
     super::{validate, validate_column_names, AlterError},
     crate::{
@@ -25,34 +28,77 @@ pub async fn create_table<T: GStore + GStoreMut>(
     engine: &Option<String>,
 ) -> Result<()> {
     let target_columns_defs = match source.as_deref() {
-        Some(Query { body, .. }) => match body {
-            SetExpr::Select(select_query) => match &select_query.from.relation {
-                TableFactor::Table { name, .. } => {
-                    let schema = storage.fetch_schema(name).await?;
-                    let Schema {
-                        column_defs: source_column_defs,
-                        ..
-                    } = schema.ok_or_else(|| -> Error {
-                        AlterError::CtasSourceTableNotFound(name.to_owned()).into()
-                    })?;
+        Some(Query {
+            body,
+            order_by,
+            limit,
+            offset,
+        }) => match body {
+            SetExpr::Select(select_query) => {
+                let query = Query {
+                    body: SetExpr::Select(select_query.clone()),
+                    order_by: order_by.clone(),
+                    limit: limit.clone(),
+                    offset: offset.clone(),
+                };
 
-                    source_column_defs
-                }
-                TableFactor::Series { .. } => {
-                    let column_def = ColumnDef {
-                        name: "N".into(),
-                        data_type: DataType::Int,
-                        nullable: false,
-                        default: None,
-                        unique: None,
-                    };
+                let (labels, rows) = select_with_labels(storage, &query, None).await?;
 
-                    Some(vec![column_def])
+                match labels {
+                    Some(labels) => {
+                        let rows = rows
+                            .map(|row| row?.try_into_vec())
+                            .try_collect::<Vec<_>>()
+                            .await?;
+
+                        let first_len = labels.len();
+                        let init_types = iter::repeat(None)
+                            .take(first_len)
+                            .collect::<Vec<Option<DataType>>>();
+                        let column_types =
+                            rows.iter().try_fold(init_types, |column_types, values| {
+                                let column_types = column_types
+                                    .iter()
+                                    .zip(values.iter())
+                                    .map(|(column_type, value)| match column_type {
+                                        Some(data_type) => Ok(Some(data_type.to_owned())),
+                                        None => Ok(value.get_type()),
+                                    })
+                                    .collect::<Result<Vec<Option<DataType>>>>()
+                                    .into_control_flow()?;
+
+                                match column_types.iter().any(Option::is_none) {
+                                    true => Continue(column_types),
+                                    false => Break(Ok(column_types)),
+                                }
+                            });
+
+                        let column_types = match column_types {
+                            Continue(column_types) => column_types,
+                            Break(column_types) => column_types?,
+                        };
+
+                        let column_defs = column_types
+                            .iter()
+                            .map(|column_type| match column_type {
+                                Some(column_type) => column_type.to_owned(),
+                                None => DataType::Text,
+                            })
+                            .zip(labels.into_iter())
+                            .map(|(data_type, name)| ColumnDef {
+                                name,
+                                data_type,
+                                nullable: true,
+                                default: None,
+                                unique: None,
+                            })
+                            .collect::<Vec<_>>();
+
+                        Some(column_defs)
+                    }
+                    None => None,
                 }
-                _ => {
-                    return Err(Error::Table(TableError::Unreachable));
-                }
-            },
+            }
             SetExpr::Values(Values(values_list)) => {
                 let first_len = values_list[0].len();
                 let init_types = iter::repeat(None)

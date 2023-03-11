@@ -144,7 +144,7 @@ test_case!(series, async move {
         (
             "SELECT * FROM TargetTable",
             Ok(select!(
-                N
+                "1"
                 I64;
                 1
             )),
