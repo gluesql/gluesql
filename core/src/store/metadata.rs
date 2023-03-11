@@ -4,8 +4,8 @@ use {
     std::{collections::HashMap, iter::empty},
 };
 
-type TableName = String;
-pub type MetaIter = Box<dyn Iterator<Item = Result<(TableName, HashMap<String, Value>)>>>;
+type ObjectName = String;
+pub type MetaIter = Box<dyn Iterator<Item = Result<(ObjectName, HashMap<String, Value>)>>>;
 
 #[async_trait(?Send)]
 pub trait Metadata {
