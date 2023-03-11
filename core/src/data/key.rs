@@ -371,6 +371,10 @@ mod tests {
             convert("EXTRACT(SECOND FROM INTERVAL '8' SECOND)"),
             Ok(Key::I64(8))
         );
+        assert_eq!(
+            Key::try_from(Value::Point((1.0, 2.0))),
+            Err(KeyError::PointTypeKeyNotSupported.into())
+        );
     }
 
     fn cmp(ls: &[u8], rs: &[u8]) -> Ordering {

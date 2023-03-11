@@ -636,6 +636,7 @@ mod tests {
         );
         test!(Value::Map(HashMap::new()), "[MAP]");
         test!(Value::List(Vec::new()), "[LIST]");
+        test!(Value::Point((1.0, 2.0)), "POINT(1.0 2,0)");
         test!(Value::Decimal(Decimal::new(2000, 1)), "200.0");
         test!(Value::Null, "NULL");
     }
