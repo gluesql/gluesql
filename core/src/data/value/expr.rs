@@ -104,7 +104,7 @@ impl TryFrom<Value> for Expr {
                 Expr::Literal(AstLiteral::QuotedString(json.to_string()))
             }
             Value::Point((x, y)) => Expr::Literal(
-                AstLiteral::QuotedString(format!("POINT({},{})", x, y).to_string()).into(),
+                AstLiteral::QuotedString(format!("POINT({} {})", x, y).to_string()).into(),
             ),
             Value::Null => Expr::Literal(AstLiteral::Null),
         };
@@ -251,5 +251,11 @@ mod tests {
             )))
         );
         assert_eq!(Value::Null.try_into(), Ok(Expr::Literal(AstLiteral::Null)));
+        assert_eq!(
+            Value::Point((1.0, 2.0)).try_into(),
+            Ok(Expr::Literal(AstLiteral::QuotedString(
+                "POINT(1 2)".to_owned()
+            )))
+        );
     }
 }
