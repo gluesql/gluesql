@@ -519,7 +519,7 @@ pub async fn fetch_labels<T: GStore>(
 
     let columns = columns.unwrap_or_default();
     let join_columns = join_columns.unwrap_or_default();
-    
+
     projection
         .iter()
         .flat_map(|item| match item {
