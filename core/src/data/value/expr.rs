@@ -252,9 +252,9 @@ mod tests {
         );
         assert_eq!(Value::Null.try_into(), Ok(Expr::Literal(AstLiteral::Null)));
         assert_eq!(
-            Value::Point((1.0, 2.0)).try_into(),
+            Value::Point((0.31413, 0.3415)).try_into(),
             Ok(Expr::Literal(AstLiteral::QuotedString(
-                "POINT(1 2)".to_owned()
+                "POINT(0.31413 0.3415)".to_owned()
             )))
         );
     }
