@@ -23,13 +23,13 @@ impl<T: Clone> Snapshot<T> {
     }
 
     pub fn update(mut self, txid: u64, data: T) -> (Self, Option<T>) {
-        let old_data = if !self.0.is_empty() && self.0[0].deleted_by.is_none() {
-            self.0[0].deleted_by = Some(txid);
+        let old_data = (!self.0.is_empty()).then(|| {
+            if self.0[0].deleted_by.is_none() {
+                self.0[0].deleted_by = Some(txid);
+            }
 
-            Some(self.0[0].data.clone())
-        } else {
-            None
-        };
+            self.0[0].data.clone()
+        });
 
         let new_item = SnapshotItem {
             data,
