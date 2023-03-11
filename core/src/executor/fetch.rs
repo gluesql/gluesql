@@ -239,7 +239,6 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                         _ => table_row,
                                     }
                                 }
-                                // todo!() should handle error
                                 _ => table_row,
                             };
 
