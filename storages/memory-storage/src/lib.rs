@@ -11,8 +11,7 @@ use {
         data::{Key, Schema},
         prelude::Value,
         result::{Error, Result},
-        store::Metadata,
-        store::{DataRow, MetaIter, RowIter, Store, StoreMut},
+        store::{DataRow, MetaIter, Metadata, RowIter, Store, StoreMut},
     },
     serde::{Deserialize, Serialize},
     std::{

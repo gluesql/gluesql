@@ -11,6 +11,7 @@ pub trait GStoreMut: StoreMut + IndexMut + AlterTable + Transaction {}
 impl<S: StoreMut + IndexMut + AlterTable + Transaction> GStoreMut for S {}
 
 pub use {
+    self::metadata::{MetaIter, Metadata},
     alter_table::{AlterTable, AlterTableError},
     data_row::DataRow,
     index::{Index, IndexError, IndexMut},
@@ -20,16 +21,12 @@ pub use {
 use {
     crate::{
         data::{Key, Schema},
-        prelude::Value,
         result::Result,
     },
     async_trait::async_trait,
-    std::{collections::HashMap, iter::empty},
 };
 
 pub type RowIter = Box<dyn Iterator<Item = Result<(Key, DataRow)>>>;
-pub type MetaIter = Box<dyn Iterator<Item = Result<(TableName, HashMap<String, Value>)>>>;
-type TableName = String;
 
 /// By implementing `Store` trait, you can run `SELECT` query.
 #[async_trait(?Send)]
@@ -41,13 +38,6 @@ pub trait Store {
     async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>>;
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter>;
-}
-
-#[async_trait(?Send)]
-pub trait Metadata {
-    async fn scan_meta(&self) -> Result<MetaIter> {
-        Ok(Box::new(empty()))
-    }
 }
 
 /// By implementing `StoreMut` trait,
