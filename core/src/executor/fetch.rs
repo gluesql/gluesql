@@ -209,33 +209,28 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                         let metas = storage.scan_meta().await;
                         let rows = schemas.into_iter().map(move |schema| {
                             let meta = metas.get(&schema.table_name);
-                            let physical_table = HashMap::from([
+                            let table_row = HashMap::from([
                                 ("OBJECT_NAME".to_owned(), Value::Str(schema.table_name)),
                                 ("OBJECT_TYPE".to_owned(), Value::Str("TABLE".to_owned())),
                             ]);
 
                             let table_rows = match meta {
                                 Some(Value::Map(meta)) => {
-                                    let created =
-                                        meta.get("OBJECT_TYPE").and_then(|value| match value {
-                                            Value::Str(object_type) if object_type == "TABLE" => {
-                                                meta.get("CREATED")
-                                            }
-                                            _ => None,
-                                        });
-
-                                    match created {
-                                        Some(Value::Timestamp(created)) => physical_table
+                                    match (meta.get("OBJECT_TYPE"), meta.get("CREATED")) {
+                                        (
+                                            Some(Value::Str(object_type)),
+                                            Some(Value::Timestamp(created)),
+                                        ) if object_type == "TABLE" => table_row
                                             .into_iter()
                                             .chain(HashMap::from([(
                                                 "CREATED".to_owned(),
                                                 Value::Timestamp(*created),
                                             )]))
                                             .collect(),
-                                        _ => physical_table,
+                                        _ => table_row,
                                     }
                                 }
-                                _ => physical_table,
+                                _ => table_row,
                             };
 
                             let index_rows = schema
