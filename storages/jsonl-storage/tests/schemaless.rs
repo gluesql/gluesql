@@ -26,4 +26,24 @@ fn jsonl_schemaless() {
     ]));
 
     assert_eq!(actual, expected);
+
+    let actual = glue
+        .execute("SELECT * FROM ArrayJson")
+        .map(|mut payloads| payloads.remove(0));
+    let expected = Ok(Payload::SelectMap(vec![
+        [
+            ("id".to_owned(), Value::I64(1)),
+            ("name".to_owned(), Value::Str("Glue".to_owned())),
+        ]
+        .into_iter()
+        .collect(),
+        [
+            ("id".to_owned(), Value::I64(2)),
+            ("name".to_owned(), Value::Str("SQL".to_owned())),
+        ]
+        .into_iter()
+        .collect(),
+    ]));
+
+    assert_eq!(actual, expected);
 }

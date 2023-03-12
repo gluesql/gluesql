@@ -27,6 +27,35 @@ impl HashMapJsonExt for HashMap<String, Value> {
     }
 }
 
+pub trait VecJsonExt {
+    fn parse_json_array(value: &str) -> Result<Vec<HashMap<String, Value>>>;
+}
+
+impl VecJsonExt for Vec<Value> {
+    fn parse_json_array(value: &str) -> Result<Vec<HashMap<String, Value>>> {
+        let value = serde_json::from_str(value)
+            .map_err(|_| ValueError::InvalidJsonString(value.to_owned()))?;
+
+        match value {
+            JsonValue::Array(values) => values
+                .into_iter()
+                .map(|value| match value {
+                    JsonValue::Object(json_map) => json_map
+                        .into_iter()
+                        .map(|(key, value)| value.try_into().map(|value| (key, value)))
+                        .collect::<Result<HashMap<String, Value>>>(),
+                    _ => Err(ValueError::JsonObjectTypeRequired.into()),
+                })
+                .collect::<Result<Vec<_>>>(),
+            JsonValue::Object(json_map) => Ok(vec![json_map
+                .into_iter()
+                .map(|(key, value)| value.try_into().map(|value| (key, value)))
+                .collect::<Result<HashMap<String, Value>>>()?]),
+            _ => Err(ValueError::JsonArrayTypeRequired.into()),
+        }
+    }
+}
+
 impl Value {
     pub fn parse_json_map(value: &str) -> Result<Value> {
         HashMap::parse_json_object(value).map(Value::Map)

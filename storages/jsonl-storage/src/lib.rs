@@ -10,8 +10,12 @@ use {
     gluesql_core::{
         ast::ColumnUniqueOption,
         chrono::NaiveDateTime,
-        data::{value::HashMapJsonExt, Schema},
+        data::{
+            value::{HashMapJsonExt, VecJsonExt},
+            Schema,
+        },
         prelude::Key,
+        prelude::Value,
         result::Error,
         result::Result,
         store::{DataRow, RowIter},
@@ -90,54 +94,76 @@ impl JsonlStorage {
             .fetch_schema(table_name)?
             .map_storage_err(JsonlStorageError::TableDoesNotExist)?;
         let data_path = self.data_path(table_name);
-        let lines = read_lines(data_path).map_storage_err()?;
+
+        let json_file_str = fs::read_to_string(&data_path).map_storage_err()?;
+        let jsons = Vec::parse_json_array(&json_file_str);
+
+        if let Ok(jsons) = jsons {
+            let row_iter = jsons
+                .into_iter()
+                .enumerate()
+                .map(move |(index, json)| json_to_row(index, json, &schema));
+
+            return Ok(Box::new(row_iter));
+        }
+
+        let lines = read_lines(&data_path).map_storage_err()?;
 
         let row_iter = lines.enumerate().map(move |(index, line)| -> Result<_> {
-            let get_index_key = || index.try_into().map(Key::I64).map_storage_err();
-            let json_row = HashMap::parse_json_object(&line.map_storage_err()?)?;
+            let json = HashMap::parse_json_object(&line.map_storage_err()?)?;
 
-            let column_defs = match &schema.column_defs {
-                Some(column_defs) => column_defs,
-                None => {
-                    let key = get_index_key()?;
-                    let row = DataRow::Map(json_row);
-
-                    return Ok((key, row));
-                }
-            };
-
-            let mut key: Option<Key> = None;
-            let mut values = Vec::with_capacity(column_defs.len());
-            for column_def in column_defs {
-                let value = json_row.get(&column_def.name).map_storage_err(
-                    JsonlStorageError::ColumnDoesNotExist(column_def.name.clone()),
-                )?;
-
-                if column_def.unique == Some(ColumnUniqueOption { is_primary: true }) {
-                    key = Some(value.clone().try_into().map_storage_err()?);
-                }
-
-                let value = match value.get_type() {
-                    Some(data_type) if data_type != column_def.data_type => {
-                        value.cast(&column_def.data_type)?
-                    }
-                    Some(_) | None => value.clone(),
-                };
-
-                values.push(value);
-            }
-
-            let key = match key {
-                Some(key) => key,
-                None => get_index_key()?,
-            };
-            let row = DataRow::Vec(values);
-
-            Ok((key, row))
+            json_to_row(index, json, &schema)
         });
 
         Ok(Box::new(row_iter))
     }
+}
+
+fn json_to_row(
+    index: usize,
+    json_row: HashMap<String, Value>,
+    schema: &Schema,
+) -> Result<(Key, DataRow)> {
+    let get_index_key = || index.try_into().map(Key::I64).map_storage_err();
+
+    let column_defs = match &schema.column_defs {
+        Some(column_defs) => column_defs,
+        None => {
+            let key = get_index_key()?;
+            let row = DataRow::Map(json_row);
+
+            return Ok((key, row));
+        }
+    };
+
+    let mut key: Option<Key> = None;
+    let mut values = Vec::with_capacity(column_defs.len());
+    for column_def in column_defs {
+        let value = json_row.get(&column_def.name).map_storage_err(
+            JsonlStorageError::ColumnDoesNotExist(column_def.name.clone()),
+        )?;
+
+        if column_def.unique == Some(ColumnUniqueOption { is_primary: true }) {
+            key = Some(value.clone().try_into().map_storage_err()?);
+        }
+
+        let value = match value.get_type() {
+            Some(data_type) if data_type != column_def.data_type => {
+                value.cast(&column_def.data_type)?
+            }
+            Some(_) | None => value.clone(),
+        };
+
+        values.push(value);
+    }
+
+    let key = match key {
+        Some(key) => key,
+        None => get_index_key()?,
+    };
+    let row = DataRow::Vec(values);
+
+    Ok((key, row))
 }
 
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
