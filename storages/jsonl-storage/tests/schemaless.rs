@@ -1,6 +1,8 @@
 use {
-    gluesql_core::prelude::{Glue, Payload, Value},
+    gluesql_core::prelude::{Glue, Value},
     gluesql_jsonl_storage::JsonlStorage,
+    serde_json::json,
+    test_suite::{select_map, test},
 };
 
 #[test]
@@ -9,41 +11,42 @@ fn jsonl_schemaless() {
     let jsonl_storage = JsonlStorage::new(path).unwrap();
     let mut glue = Glue::new(jsonl_storage);
 
-    let actual = glue
-        .execute("SELECT * FROM Schemaless")
-        .map(|mut payloads| payloads.remove(0));
-    let expected = Ok(Payload::SelectMap(vec![
-        [("id".to_owned(), Value::I64(1))].into_iter().collect(),
-        [("name".to_owned(), Value::Str("Glue".to_owned()))]
-            .into_iter()
-            .collect(),
-        [
-            ("id".to_owned(), Value::I64(3)),
-            ("name".to_owned(), Value::Str("SQL".to_owned())),
-        ]
-        .into_iter()
-        .collect(),
-    ]));
+    let cases = vec![
+        (
+            glue.execute("SELECT * FROM Schemaless"),
+            Ok(select_map![
+                json!({"id": 1}),
+                json!({"name": "Glue"}),
+                json!({"id": 3, "name": "SQL"})
+            ]),
+        ),
+        (
+            glue.execute("SELECT * FROM ArrayJsonSchemaless"),
+            Ok(select_map![
+                json!({ "id": 1, "name": "Glue" }),
+                json!({ "id": 2, "name": "SQL" })
+            ]),
+        ),
+        (
+            glue.execute("SELECT * FROM SingleJsonSchemaless"),
+            Ok(select_map![json!(
+                {
+                  "data": [
+                    {
+                      "id": 1,
+                      "name": "Glue"
+                    },
+                    {
+                      "id": 2,
+                      "name": "SQL"
+                    },
+                  ]
+                }
+            )]),
+        ),
+    ];
 
-    assert_eq!(actual, expected);
-
-    let actual = glue
-        .execute("SELECT * FROM ArrayJson")
-        .map(|mut payloads| payloads.remove(0));
-    let expected = Ok(Payload::SelectMap(vec![
-        [
-            ("id".to_owned(), Value::I64(1)),
-            ("name".to_owned(), Value::Str("Glue".to_owned())),
-        ]
-        .into_iter()
-        .collect(),
-        [
-            ("id".to_owned(), Value::I64(2)),
-            ("name".to_owned(), Value::Str("SQL".to_owned())),
-        ]
-        .into_iter()
-        .collect(),
-    ]));
-
-    assert_eq!(actual, expected);
+    for (actual, expected) in cases {
+        test(actual.map(|mut payloads| payloads.remove(0)), expected);
+    }
 }

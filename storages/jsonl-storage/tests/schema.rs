@@ -11,7 +11,9 @@ use {
         collections::HashMap,
         net::{IpAddr, Ipv4Addr},
     },
-    test_suite::{concat_with, row, select, stringify_label, test},
+    test_suite::{
+        concat_with, concat_with_null, row, select, select_with_null, stringify_label, test,
+    },
     uuid::Uuid as UUID,
 };
 
@@ -30,12 +32,7 @@ fn jsonl_schema() {
     let bytea = |v| hex::decode(v).unwrap();
     let ip = |a, b, c, d| IpAddr::V4(Ipv4Addr::new(a, b, c, d));
     let m = |s: &str| HashMap::parse_json_object(s).unwrap();
-    let l = |values: [&str; 3]| {
-        values
-            .iter()
-            .map(|str| Value::Str(str.to_string()))
-            .collect()
-    };
+    let l = |s: &str| Value::parse_json_list(s).unwrap();
 
     let cases = vec![
         (
@@ -142,19 +139,38 @@ fn jsonl_schema() {
         ),
         (
             glue.execute("SELECT list FROM Schema"),
+            Ok(select_with_null!(
+              list;
+              l(r#"["olive", "turquoise", "plum"]"#);
+              l(r#"["red", "sky blue", "grey"]"#);
+              l(r#"["indigo", "turquoise", "indigo"]"#);
+              l(r#"["black", "turquoise", "purple"]"#);
+              l(r#"["turquoise", "lavender", "red"]"#);
+              l(r#"["turquoise", "magenta", "salmon"]"#);
+              l(r#"["maroon", "violet", "lavender"]"#);
+              l(r#"["pink", "teal", "indigo"]"#);
+              l(r#"["black", "red", "purple"]"#);
+              l(r#"["pink", "indigo", "plum"]"#)
+            )),
+        ),
+        (
+            glue.execute("SELECT * FROM ArrayJsonSchema"),
             Ok(select!(
-              list
-              List;
-              l(["olive", "turquoise", "plum"]);
-              l(["red", "sky blue", "grey"]);
-              l(["indigo", "turquoise", "indigo"]);
-              l(["black", "turquoise", "purple"]);
-              l(["turquoise", "lavender", "red"]);
-              l(["turquoise", "magenta", "salmon"]);
-              l(["maroon", "violet", "lavender"]);
-              l(["pink", "teal", "indigo"]);
-              l(["black", "red", "purple"]);
-              l(["pink", "indigo", "plum"])
+              id   | name
+              I64  | Str;
+              1      "Glue".to_owned();
+              2      "SQL".to_owned()
+            )),
+        ),
+        (
+            glue.execute("SELECT * FROM SingleJsonSchema"),
+            Ok(select_with_null!(
+              data;
+              l(r#"[
+                     {"id": 1, "name": "Glue"},
+                     {"id": 2, "name": "SQL"}
+                   ]"#
+              )
             )),
         ),
     ];
