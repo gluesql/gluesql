@@ -5,7 +5,9 @@ use {
         translate_data_type, translate_object_name, TranslateError,
     },
     crate::{
+        ast::data_type::DataType,
         ast::{Aggregate, CountArgExpr, Expr, Function},
+        data::Point,
         result::Result,
     },
     sqlparser::ast::{
@@ -472,6 +474,16 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             let expr = translate_expr(args[0])?;
             Ok(Expr::Function(Box::new(Function::Chr(expr))))
+        }
+        "POINT" => {
+            check_len(name, args.len(), 2)?;
+
+            let x = translate_expr(args[0])?;
+            let y = translate_expr(args[1])?;
+            Ok(Expr::TypedString {
+                data_type: crate::prelude::DataType::Point,
+                value: crate::data::Point::new(x, y),
+            })
         }
         "ST_X" => {
             check_len(name, args.len(), 1)?;

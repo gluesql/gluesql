@@ -1,5 +1,7 @@
-use serde::{Deserialize, Serialize};
-use std::fmt;
+use {
+    serde::{Deserialize, Serialize},
+    std::fmt,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Point {

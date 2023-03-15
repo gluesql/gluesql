@@ -11,6 +11,7 @@ pub enum AstLiteral {
     Number(BigDecimal),
     QuotedString(String),
     HexString(String),
+    Point(String, String),
     Null,
 }
 
@@ -21,6 +22,7 @@ impl ToSql for AstLiteral {
             AstLiteral::Number(n) => n.to_string(),
             AstLiteral::QuotedString(qs) => format!("'{qs}'"),
             AstLiteral::HexString(hs) => format!("'{hs}'"),
+            AstLiteral::Point(x, y) => format!("POINT({x} {y})"),
             AstLiteral::Null => "NULL".to_owned(),
         }
     }

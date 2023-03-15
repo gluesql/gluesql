@@ -1,3 +1,5 @@
+use crate::data::{point, Point};
+
 use {
     super::{
         date::{parse_date, parse_time, parse_timestamp},
@@ -209,6 +211,8 @@ impl Value {
                     ))))
                 }
             }
+            (DataType::Point, Literal::Text(v)) =>
+
             (DataType::Date, Literal::Text(v)) => v
                 .parse::<NaiveDate>()
                 .map(Value::Date)
