@@ -18,7 +18,7 @@ impl CustomFunction {
             .as_ref()
             .map(|args| {
                 args.iter()
-                    .map(|arg| format!("{}:{}", arg.name, arg.data_type))
+                    .map(|arg| format!("{}: {}", arg.name, arg.data_type))
                     .collect::<Vec<String>>()
                     .join(", ")
             })

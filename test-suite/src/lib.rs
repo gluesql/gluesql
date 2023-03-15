@@ -208,6 +208,19 @@ macro_rules! generate_alter_table_tests {
 }
 
 #[macro_export]
+macro_rules! generate_custom_function_tests {
+    ($test: meta, $storage: ident) => {
+        macro_rules! glue {
+            ($title: ident, $func: path) => {
+                declare_test_fn!($test, $storage, $title, $func);
+            };
+        }
+
+        glue!(function_custom, function::custom::custom);
+    };
+}
+
+#[macro_export]
 macro_rules! generate_index_tests {
     ($test: meta, $storage: ident) => {
         macro_rules! glue {
