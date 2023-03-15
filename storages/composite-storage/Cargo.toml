@@ -1,0 +1,21 @@
+[package]
+name = "gluesql-composite-storage"
+version = "0.13.0"
+authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation.workspace = true
+
+[dependencies]
+gluesql-core = { path = "../../core", version = "0.13.0" }
+async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
+futures = "0.3"
+
+[dev-dependencies]
+test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.13.0" }
+gluesql_memory_storage = { path = "../memory-storage", version = "0.13.0" }
+gluesql_sled_storage = { path = "../sled-storage", version = "0.13.0" }
+tokio = { version = "1", features = ["rt", "macros"] }

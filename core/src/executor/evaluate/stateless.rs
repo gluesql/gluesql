@@ -228,19 +228,19 @@ fn evaluate_function<'a>(context: &Context<'_>, func: &'a Function) -> Result<Ev
             let expr = eval(expr)?;
             let filter_chars = eval_opt(filter_chars.as_ref())?;
 
-            f::trim(name, expr, filter_chars, trim_where_field)
+            expr.trim(name, filter_chars, trim_where_field)
         }
         Function::Ltrim { expr, chars } => {
             let expr = eval(expr)?;
             let chars = eval_opt(chars.as_ref())?;
 
-            f::ltrim(name, expr, chars)
+            expr.ltrim(name, chars)
         }
         Function::Rtrim { expr, chars } => {
             let expr = eval(expr)?;
             let chars = eval_opt(chars.as_ref())?;
 
-            f::rtrim(name, expr, chars)
+            expr.rtrim(name, chars)
         }
         Function::Reverse(expr) => {
             let expr = eval(expr)?;
@@ -258,7 +258,7 @@ fn evaluate_function<'a>(context: &Context<'_>, func: &'a Function) -> Result<Ev
             let start = eval(start)?;
             let count = eval_opt(count.as_ref())?;
 
-            f::substr(name, expr, start, count)
+            expr.substr(name, start, count)
         }
         Function::Ascii(expr) => f::ascii(name, eval(expr)?),
         Function::Chr(expr) => f::chr(name, eval(expr)?),
@@ -365,6 +365,16 @@ fn evaluate_function<'a>(context: &Context<'_>, func: &'a Function) -> Result<Ev
             let from_expr = eval(from_expr)?;
             let sub_expr = eval(sub_expr)?;
             f::position(from_expr, sub_expr)
+        }
+        Function::FindIdx {
+            from_expr,
+            sub_expr,
+            start,
+        } => {
+            let from_expr = eval(from_expr)?;
+            let sub_expr = eval(sub_expr)?;
+            let start = eval_opt(start.as_ref())?;
+            f::find_idx(name, from_expr, sub_expr, start)
         }
         Function::Cast { expr, data_type } => {
             let expr = eval(expr)?;

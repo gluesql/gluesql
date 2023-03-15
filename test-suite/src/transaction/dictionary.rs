@@ -1,5 +1,3 @@
-#![cfg(all(feature = "transaction"))]
-
 use {crate::*, gluesql_core::prelude::*};
 
 test_case!(dictionary, async move {

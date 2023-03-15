@@ -49,6 +49,7 @@ impl AlterTable for SledStorage {
             let Schema {
                 column_defs,
                 indexes,
+                engine,
                 created,
                 ..
             } = old_schema
@@ -59,6 +60,7 @@ impl AlterTable for SledStorage {
                 table_name: new_table_name.to_owned(),
                 column_defs,
                 indexes,
+                engine,
                 created,
             };
 
@@ -157,6 +159,7 @@ impl AlterTable for SledStorage {
             let Schema {
                 column_defs,
                 indexes,
+                engine,
                 created,
                 ..
             } = snapshot
@@ -205,6 +208,7 @@ impl AlterTable for SledStorage {
                 table_name: table_name.to_owned(),
                 column_defs: Some(column_defs),
                 indexes,
+                engine,
                 created,
             };
             let (snapshot, _) = snapshot.update(txid, schema);
@@ -257,6 +261,7 @@ impl AlterTable for SledStorage {
                 table_name,
                 column_defs,
                 indexes,
+                engine,
                 created,
                 ..
             } = schema_snapshot
@@ -354,6 +359,7 @@ impl AlterTable for SledStorage {
                 table_name,
                 column_defs: Some(column_defs),
                 indexes,
+                engine,
                 created,
             };
             let (schema_snapshot, _) = schema_snapshot.update(txid, schema);
@@ -409,6 +415,7 @@ impl AlterTable for SledStorage {
                 table_name,
                 column_defs,
                 indexes,
+                engine,
                 created,
                 ..
             } = schema_snapshot
@@ -492,6 +499,7 @@ impl AlterTable for SledStorage {
                 table_name,
                 column_defs: Some(column_defs),
                 indexes,
+                engine,
                 created,
             };
             let (schema_snapshot, _) = schema_snapshot.update(txid, schema);

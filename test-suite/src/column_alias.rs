@@ -64,7 +64,7 @@ test_case!(column_alias, async move {
             )),
         ),
         (
-            // column alias (non-wildcard)
+            // column alias (identifier)
             "SELECT a FROM User AS Table(a, b)",
             Ok(select!( a; I64; 1; 2; 3)),
         ),
@@ -77,6 +77,17 @@ test_case!(column_alias, async move {
         (
             // column alias with wildcard
             "SELECT * FROM (SELECT * FROM InnerTable) AS InlineView(a, b)",
+            Ok(select!(
+                    a   | b
+                    I64 | Str;
+                    1     "GLUE".to_owned();
+                    2     "SQL".to_owned();
+                    3     "SQL".to_owned()
+            )),
+        ),
+        (
+            // column alias (identifier)
+            "SELECT a, b FROM (SELECT * FROM InnerTable) AS InlineView(a, b)",
             Ok(select!(
                     a   | b
                     I64 | Str;
@@ -112,6 +123,16 @@ test_case!(column_alias, async move {
         ),
         (
             "SELECT * FROM (VALUES (1, 'a'), (2, 'b')) AS Derived(id, name)",
+            Ok(select!(
+                id      | name;
+                I64     | Str;
+                1         "a".to_owned();
+                2         "b".to_owned()
+            )),
+        ),
+        (
+            // column alias (identifier)
+            "SELECT Derived.id, Derived.name FROM (VALUES (1, 'a'), (2, 'b')) AS Derived(id, name)",
             Ok(select!(
                 id      | name;
                 I64     | Str;

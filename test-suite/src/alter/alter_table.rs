@@ -1,5 +1,3 @@
-#![cfg(feature = "alter-table")]
-
 use {
     crate::*,
     gluesql_core::{

@@ -8,6 +8,7 @@ mod offset_limit;
 mod order_by;
 mod project;
 mod root;
+mod values;
 
 pub use {
     filter::FilterNode,
@@ -20,81 +21,40 @@ pub use {
     order_by::OrderByNode,
     project::ProjectNode,
     root::SelectNode,
+    values::{values, ValuesNode},
 };
 
 use {
     super::Build,
     crate::{
-        ast::{
-            Expr, Join, OrderByExpr, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
-            TableWithJoins,
-        },
+        ast::{Query, Select, SetExpr, Statement},
         result::Result,
     },
 };
 
-pub trait Prebuild {
-    fn prebuild(self) -> Result<NodeData>;
+pub trait Prebuild<T> {
+    fn prebuild(self) -> Result<T>;
 }
 
-#[derive(Clone, Debug)]
-pub struct NodeData {
-    pub projection: Vec<SelectItem>,
-    pub relation: TableFactor,
-    pub joins: Vec<Join>,
-    pub filter: Option<Expr>,
-    /// WHERE
-    pub group_by: Vec<Expr>,
-    pub having: Option<Expr>,
-    pub order_by: Vec<OrderByExpr>,
-    pub limit: Option<Expr>,
-    pub offset: Option<Expr>,
-}
-
-impl NodeData {
-    pub fn build_query(self) -> Query {
-        let NodeData {
-            projection,
-            relation,
-            group_by,
-            having,
-            order_by,
-            offset,
-            limit,
-            joins,
-            filter,
-        } = self;
-
-        let selection = filter.map(Expr::try_from).and_then(|expr| expr.ok());
-        let from = TableWithJoins { relation, joins };
-
-        let select = Select {
-            projection,
-            from,
-            selection,
-            group_by,
-            having,
+impl<T: Prebuild<Select>> Prebuild<Query> for T {
+    fn prebuild(self) -> Result<Query> {
+        let select = self.prebuild()?;
+        let body = SetExpr::Select(Box::new(select));
+        let query = Query {
+            body,
+            order_by: Vec::new(),
+            limit: None,
+            offset: None,
         };
 
-        Query {
-            body: SetExpr::Select(Box::new(select)),
-            order_by,
-            offset,
-            limit,
-        }
-    }
-    fn build_stmt(self) -> Statement {
-        let query = self.build_query();
-
-        Statement::Query(query)
+        Ok(query)
     }
 }
 
-impl<T> Build for T
-where
-    T: Prebuild,
-{
+impl<T: Prebuild<Query>> Build for T {
     fn build(self) -> Result<Statement> {
-        self.prebuild().map(NodeData::build_stmt)
+        let query = self.prebuild()?;
+
+        Ok(Statement::Query(query))
     }
 }

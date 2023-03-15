@@ -70,6 +70,7 @@ impl IndexMut for SledStorage {
             let Schema {
                 column_defs,
                 indexes,
+                engine,
                 created,
                 ..
             } = schema
@@ -97,6 +98,7 @@ impl IndexMut for SledStorage {
                 table_name: table_name.to_owned(),
                 column_defs,
                 indexes,
+                engine,
                 created,
             };
 
@@ -108,7 +110,10 @@ impl IndexMut for SledStorage {
                 .map_err(ConflictableTransactionError::Abort)?;
 
             for (data_key, row) in rows.iter() {
-                let data_key = key::data(table_name, data_key.to_cmp_be_bytes());
+                let data_key = data_key
+                    .to_cmp_be_bytes()
+                    .map_err(ConflictableTransactionError::Abort)
+                    .map(|key| key::data(table_name, key))?;
 
                 index_sync.insert_index(&index, &data_key, row)?;
             }
@@ -153,6 +158,7 @@ impl IndexMut for SledStorage {
             let Schema {
                 column_defs,
                 indexes,
+                engine,
                 created,
                 ..
             } = schema
@@ -175,6 +181,7 @@ impl IndexMut for SledStorage {
                 table_name: table_name.to_owned(),
                 column_defs,
                 indexes,
+                engine,
                 created,
             };
 
@@ -186,7 +193,10 @@ impl IndexMut for SledStorage {
                 .map_err(ConflictableTransactionError::Abort)?;
 
             for (data_key, row) in rows.iter() {
-                let data_key = key::data(table_name, data_key.to_cmp_be_bytes());
+                let data_key = data_key
+                    .to_cmp_be_bytes()
+                    .map_err(ConflictableTransactionError::Abort)
+                    .map(|key| key::data(table_name, key))?;
 
                 index_sync.delete_index(&index, &data_key, row)?;
             }

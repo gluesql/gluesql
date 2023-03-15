@@ -1,6 +1,6 @@
 use {
     super::{
-        select::{NodeData, Prebuild},
+        select::{Prebuild, ValuesNode},
         table_factor::TableType,
         ExprList, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
         LimitNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode,
@@ -19,6 +19,7 @@ pub enum QueryNode<'a> {
     Text(String),
     Values(Vec<ExprList<'a>>),
     SelectNode(SelectNode<'a>),
+    ValuesNode(ValuesNode<'a>),
     JoinNode(JoinNode<'a>),
     JoinConstraintNode(JoinConstraintNode<'a>),
     HashJoinNode(HashJoinNode<'a>),
@@ -85,7 +86,7 @@ impl<'a> TryFrom<QueryNode<'a>> for Query {
     fn try_from(query_node: QueryNode<'a>) -> Result<Self> {
         match query_node {
             QueryNode::Text(query_node) => {
-                return parse_query(query_node).and_then(|item| translate_query(&item));
+                parse_query(query_node).and_then(|item| translate_query(&item))
             }
             QueryNode::Values(values) => {
                 let values: Vec<Vec<Expr>> = values
@@ -93,14 +94,15 @@ impl<'a> TryFrom<QueryNode<'a>> for Query {
                     .map(TryInto::try_into)
                     .collect::<Result<Vec<_>>>()?;
 
-                return Ok(Query {
+                Ok(Query {
                     body: SetExpr::Values(Values(values)),
                     order_by: Vec::new(),
                     limit: None,
                     offset: None,
-                });
+                })
             }
             QueryNode::SelectNode(node) => node.prebuild(),
+            QueryNode::ValuesNode(node) => node.prebuild(),
             QueryNode::JoinNode(node) => node.prebuild(),
             QueryNode::JoinConstraintNode(node) => node.prebuild(),
             QueryNode::HashJoinNode(node) => node.prebuild(),
@@ -113,7 +115,6 @@ impl<'a> TryFrom<QueryNode<'a>> for Query {
             QueryNode::ProjectNode(node) => node.prebuild(),
             QueryNode::OrderByNode(node) => node.prebuild(),
         }
-        .map(NodeData::build_query)
     }
 }
 

@@ -88,4 +88,40 @@ test_case!(concat, async move {
             Str("1123Bar".to_owned())   Str("1TRUE3.5Foo".to_owned())   Null
         ))
     );
+
+    test!(
+        "SELECT 'sand' || SUBSTR('swich', 2) AS test FROM Concat;",
+        Ok(select!(
+           test
+           Str;
+           "sandwich".to_owned()
+        ))
+    );
+
+    test!(
+        "SELECT SUBSTR('ssand', 2) || 'wich' AS test from Concat;",
+        Ok(select!(
+           test
+           Str;
+           "sandwich".to_owned()
+        ))
+    );
+
+    test!(
+        "SELECT LOWER('SAND') || SUBSTR('swich', 2) AS test FROM Concat;",
+        Ok(select!(
+           test
+           Str;
+           "sandwich".to_owned()
+        ))
+    );
+
+    test!(
+        "SELECT SUBSTR('ssand', 2) || LOWER('WICH') AS test FROM Concat;",
+        Ok(select!(
+           test
+           Str;
+           "sandwich".to_owned()
+        ))
+    );
 });

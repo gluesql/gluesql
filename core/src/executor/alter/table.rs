@@ -19,9 +19,10 @@ use {
 pub async fn create_table<T: GStore + GStoreMut>(
     storage: &mut T,
     target_table_name: &str,
-    column_defs: &[ColumnDef],
+    column_defs: Option<&[ColumnDef]>,
     if_not_exists: bool,
     source: &Option<Box<Query>>,
+    engine: &Option<String>,
 ) -> Result<()> {
     let target_columns_defs = match source.as_deref() {
         Some(Query { body, .. }) => match body {
@@ -101,7 +102,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
                 Some(column_defs)
             }
         },
-        None if !column_defs.is_empty() => Some(column_defs.to_vec()),
+        None if column_defs.is_some() => column_defs.map(<[ColumnDef]>::to_vec),
         None => None,
     };
 
@@ -118,6 +119,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
             table_name: target_table_name.to_owned(),
             column_defs: target_columns_defs,
             indexes: vec![],
+            engine: engine.clone(),
             created: Utc::now().naive_utc(),
         };
 

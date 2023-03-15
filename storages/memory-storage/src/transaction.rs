@@ -1,5 +1,3 @@
-#![cfg(feature = "transaction")]
-
 use {
     super::MemoryStorage,
     async_trait::async_trait,
@@ -22,14 +20,10 @@ impl Transaction for MemoryStorage {
     }
 
     async fn rollback(&mut self) -> Result<()> {
-        Err(Error::StorageMsg(
-            "[MemoryStorage] transaction is not supported".to_owned(),
-        ))
+        Ok(())
     }
 
     async fn commit(&mut self) -> Result<()> {
-        Err(Error::StorageMsg(
-            "[MemoryStorage] transaction is not supported".to_owned(),
-        ))
+        Ok(())
     }
 }

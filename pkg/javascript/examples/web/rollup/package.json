@@ -14,11 +14,11 @@
   },
   "homepage": "https://github.com/gluesql/gluesql#readme",
   "scripts": {
-    "build": "rollup -c"
+    "build": "yarn upgrade gluesql && rollup -c"
   },
   "devDependencies": {
     "@rollup/plugin-node-resolve": "^13.2.1",
-    "gluesql": "file:../../../",
+    "gluesql": "file:../../..",
     "rollup": "^2.70.2"
   }
 }

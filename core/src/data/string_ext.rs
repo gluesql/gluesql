@@ -10,7 +10,7 @@ pub trait StringExt {
     fn like(&self, pattern: &str, case_sensitive: bool) -> Result<bool>;
 }
 
-impl StringExt for String {
+impl StringExt for str {
     fn like(&self, pattern: &str, case_sensitive: bool) -> Result<bool> {
         let (match_string, match_pattern) = match case_sensitive {
             true => (self.to_owned(), pattern.to_owned()),
