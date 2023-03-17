@@ -1,6 +1,9 @@
 use {
     super::{Value, ValueError},
-    crate::result::{Error, Result},
+    crate::{
+        data::geojson::Geojson,
+        result::{Error, Result},
+    },
     chrono::{offset::Utc, DateTime},
     core::str::FromStr,
     serde_json::{Map as JsonMap, Number as JsonNumber, Value as JsonValue},
@@ -81,7 +84,7 @@ impl TryFrom<Value> for JsonValue {
                 .map(|value| value.try_into())
                 .collect::<Result<Vec<JsonValue>>>()
                 .map(|v| v.into()),
-            Value::Point(v) => Ok(v.to_string().into()),
+            Value::Point(v) => Ok(serde_json::to_value(Geojson::from(v)).unwrap()),
             Value::Null => Ok(JsonValue::Null),
         }
     }
@@ -236,7 +239,14 @@ mod tests {
         );
         assert_eq!(
             Value::Point(crate::data::Point::new(0.34, 0.56)).try_into(),
-            Ok(JsonValue::String("POINT (0.34 0.56)".into()))
+            Ok(json!({
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [0.34, 0.56],
+                },
+                "properties": {},
+                "type" : "Feature",
+            }))
         );
         assert_eq!(Value::Null.try_into(), Ok(JsonValue::Null));
     }

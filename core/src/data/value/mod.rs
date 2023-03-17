@@ -227,6 +227,7 @@ impl Value {
             | (DataType::Text, Value::Str(_))
             | (DataType::Bytea, Value::Bytea(_))
             | (DataType::Inet, Value::Inet(_))
+            | (DataType::Point, Value::Point(_))
             | (DataType::Date, Value::Date(_))
             | (DataType::Timestamp, Value::Timestamp(_))
             | (DataType::Time, Value::Time(_))
@@ -251,6 +252,7 @@ impl Value {
             (DataType::Interval, value) => value.try_into().map(Value::Interval),
             (DataType::Uuid, value) => value.try_into().map(Value::Uuid),
             (DataType::Inet, value) => value.try_into().map(Value::Inet),
+            (DataType::Point, value) => value.try_into().map(Value::Point),
             (DataType::Bytea, Value::Str(value)) => hex::decode(value)
                 .map_err(|_| ValueError::CastFromHexToByteaFailed(value.clone()).into())
                 .map(Value::Bytea),
@@ -1429,6 +1431,7 @@ mod tests {
 
         let bytea = Value::Bytea(hex::decode("0abc").unwrap());
         let inet = |v| Value::Inet(IpAddr::from_str(v).unwrap());
+        let point = |x, y| Value::Point(crate::data::Point::new(x, y));
 
         // Same as
         cast!(Bool(true)            => Boolean      , Bool(true));
@@ -1567,6 +1570,9 @@ mod tests {
         cast!(inet("::1") => Inet, inet("::1"));
         cast!(Str("::1".to_owned()) => Inet, inet("::1"));
         cast!(Str("0.0.0.0".to_owned()) => Inet, inet("0.0.0.0"));
+
+        // Point
+        cast!(point(0.32, 0.52) => Point, point(0.32, 0.52));
 
         // Casting error
         assert_eq!(

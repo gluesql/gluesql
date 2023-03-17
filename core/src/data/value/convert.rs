@@ -574,6 +574,17 @@ impl TryFrom<&Value> for IpAddr {
     }
 }
 
+impl TryFrom<&Value> for crate::data::Point {
+    type Error = Error;
+
+    fn try_from(v: &Value) -> Result<crate::data::Point> {
+        Ok(match v {
+            Value::Point(value) => *value,
+            _ => return Err(ValueError::ImpossibleCast.into()),
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::data::point;
@@ -783,10 +794,6 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
-        test!(
-            Value::Point(point::Point::new(1.0313, 2.0314)),
-            Err(ValueError::ImpossibleCast.into())
-        );
 
         // impossible casts to i8
         test!(Value::I16(128), Err(ValueError::ImpossibleCast.into()));
@@ -798,6 +805,10 @@ mod tests {
         test!(Value::F64(128.0), Err(ValueError::ImpossibleCast.into()));
         test!(
             Value::Inet(IpAddr::from_str("::1").unwrap()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Point(point::Point::new(1.0313, 2.0314)),
             Err(ValueError::ImpossibleCast.into())
         );
     }

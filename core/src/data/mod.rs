@@ -7,6 +7,7 @@ mod row;
 mod string_ext;
 mod table;
 
+mod geojson;
 pub mod schema;
 pub mod value;
 
