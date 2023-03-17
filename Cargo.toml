@@ -22,3 +22,10 @@ default-members = [
 # enable this only for gluesql-js build
 # [profile.release]
 # opt-level = "s"
+
+[workspace.package]
+edition = "2021"
+description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
+license = "Apache-2.0"
+repository = "https://github.com/gluesql/gluesql"
+documentation = "https://docs.rs/gluesql/"

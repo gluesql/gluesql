@@ -7,7 +7,7 @@
   "scripts": {
     "build:rollup": "yarn rollup -c && cp ../dist/bundler/gluesql.js ../gluesql.rollup.js",
     "build:browser": "wasm-pack build --target web --no-typescript --release --out-dir ../dist/web",
-    "build:nodejs": "wasm-pack build --target nodejs --no-typescript --release --out-dir ../dist/nodejs",
+    "build:nodejs": "wasm-pack build --target nodejs --no-typescript --release --out-dir ../dist/nodejs -- --no-default-features --features nodejs",
     "build": "yarn run build:rollup && yarn run build:browser && yarn run build:nodejs",
     "test:firefox": "wasm-pack test --headless --firefox",
     "test:chrome": "wasm-pack test --headless --chrome",

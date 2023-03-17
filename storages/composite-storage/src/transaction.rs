@@ -1,5 +1,3 @@
-#![cfg(feature = "transaction")]
-
 use {
     super::CompositeStorage,
     async_trait::async_trait,

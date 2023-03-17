@@ -1,5 +1,3 @@
-#![cfg(all(feature = "transaction", feature = "index"))]
-
 use {
     crate::*,
     gluesql_core::{ast::IndexOperator::*, prelude::Value::*},

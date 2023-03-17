@@ -57,21 +57,18 @@ fn error() {
     );
 }
 
-#[cfg(any(feature = "alter-table", feature = "index"))]
 macro_rules! exec {
     ($glue: ident $sql: literal) => {
         $glue.execute($sql).unwrap();
     };
 }
 
-#[cfg(any(feature = "alter-table", feature = "index"))]
 macro_rules! test {
     ($glue: ident $sql: literal, $result: expr) => {
         assert_eq!($glue.execute($sql), $result);
     };
 }
 
-#[cfg(feature = "index")]
 #[test]
 fn composite_storage_index() {
     use {

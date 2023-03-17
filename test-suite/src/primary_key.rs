@@ -17,7 +17,7 @@ test_case!(primary_key, async move {
     "
     );
     test!(
-        "INSERT INTO Allegro VALUES (1, 'hello'), (2, 'world');",
+        "INSERT INTO Allegro VALUES (1, 'hello'), (3, 'world');",
         Ok(Payload::Insert(2))
     );
 
@@ -27,7 +27,7 @@ test_case!(primary_key, async move {
             id  | name
             I64 | Str;
             1     "hello".to_owned();
-            2     "world".to_owned()
+            3     "world".to_owned()
         ))
     );
     test!(
@@ -53,7 +53,7 @@ test_case!(primary_key, async move {
             JOIN Allegro a2
             WHERE a.id = a2.id;
         ",
-        Ok(select!(id I64; 1; 2))
+        Ok(select!(id I64; 1; 3))
     );
     test!(
         "
@@ -61,10 +61,10 @@ test_case!(primary_key, async move {
                 SELECT id FROM Allegro WHERE id = id
             );
         ",
-        Ok(select!(id I64; 1; 2))
+        Ok(select!(id I64; 1; 3))
     );
 
-    run!("INSERT INTO Allegro VALUES (3, 'foo'), (4, 'bar'), (5, 'neon');");
+    run!("INSERT INTO Allegro VALUES (5, 'neon'), (2, 'foo'), (4, 'bar');");
 
     test!(
         "SELECT id, name FROM Allegro",
@@ -72,8 +72,8 @@ test_case!(primary_key, async move {
             id  | name
             I64 | Str;
             1     "hello".to_owned();
-            2     "world".to_owned();
-            3     "foo".to_owned();
+            2     "foo".to_owned();
+            3     "world".to_owned();
             4     "bar".to_owned();
             5     "neon".to_owned()
         ))
@@ -83,7 +83,7 @@ test_case!(primary_key, async move {
         Ok(select!(
             id  | name
             I64 | Str;
-            2     "world".to_owned();
+            2     "foo".to_owned();
             4     "bar".to_owned()
         ))
     );
@@ -103,8 +103,8 @@ test_case!(primary_key, async move {
             id  | name
             I64 | Str;
             1     "hello".to_owned();
-            2     "world".to_owned();
-            3     "foo".to_owned()
+            2     "foo".to_owned();
+            3     "world".to_owned()
         ))
     );
     run!(

@@ -9,6 +9,7 @@ pub mod degrees;
 pub mod div_mod;
 pub mod exp_log;
 pub mod extract;
+pub mod find_idx;
 pub mod floor;
 pub mod format;
 pub mod gcd_lcm;

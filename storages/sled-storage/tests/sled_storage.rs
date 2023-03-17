@@ -35,6 +35,57 @@ impl Tester<SledStorage> for SledTester {
     }
 }
 
+#[tokio::test]
+async fn delete() {
+    use gluesql_core::prelude::*;
+
+    let mut tester = SledTester::new("delete").await;
+    let glue = tester.get_glue();
+
+    macro_rules! execute {
+        ($sql:expr) => {{
+            let mut payloads = glue.execute_async($sql).await.unwrap();
+            payloads.remove(0)
+        }};
+    }
+
+    macro_rules! select {
+        ($label: literal, $rows:expr) => {
+            Payload::Select {
+                labels: vec![$label.to_owned()],
+                rows: $rows,
+            }
+        };
+
+        ($label: literal) => {
+            Payload::Select {
+                labels: vec![$label.to_owned()],
+                rows: vec![],
+            }
+        };
+    }
+
+    execute!("CREATE TABLE Foo(id INTEGER PRIMARY KEY);");
+    execute!("INSERT INTO Foo VALUES (1), (2);");
+
+    assert_eq!(
+        execute!("SELECT * FROM Foo;"),
+        select!("id", vec![vec![Value::I64(1)], vec![Value::I64(2)]])
+    );
+
+    execute!("DELETE FROM Foo where id = 1;");
+    assert_eq!(
+        execute!("SELECT * FROM Foo;"),
+        select!("id", vec![vec![Value::I64(2)]])
+    );
+
+    execute!("INSERT INTO Foo VALUES(1);");
+    assert_eq!(
+        execute!("SELECT * FROM Foo;"),
+        select!("id", vec![vec![Value::I64(1)], vec![Value::I64(2)]])
+    );
+}
+
 generate_store_tests!(tokio::test, SledTester);
 generate_index_tests!(tokio::test, SledTester);
 generate_transaction_tests!(tokio::test, SledTester);

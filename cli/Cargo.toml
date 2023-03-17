@@ -1,15 +1,15 @@
 [package]
 name = "gluesql-cli"
 version = "0.13.1"
-edition = "2021"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
-description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
-license = "Apache-2.0"
-repository = "https://github.com/gluesql/gluesql"
-documentation = "https://docs.rs/gluesql/"
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [dependencies]
-gluesql-core = { path = "../core", version = "0.13.1", features = ["alter-table"] }
+gluesql-core = { path = "../core", version = "0.13.1" }
 gluesql_sled_storage = { path = "../storages/sled-storage", version = "0.13.0" }
 gluesql_memory_storage = { path = "../storages/memory-storage", version = "0.13.0" }
 
@@ -25,4 +25,3 @@ itertools = "0.10"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }
-

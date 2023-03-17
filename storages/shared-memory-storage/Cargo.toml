@@ -1,32 +1,24 @@
 [package]
 name = "gluesql-shared-memory-storage"
 version = "0.13.0"
-edition = "2021"
 authors = [
 	"Jiseok CHOI <jiseok.dev@gmail.com>",
 	"Taehoon Moon <taehoon.moon@outlook.com>",
 ]
-description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
-license = "Apache-2.0"
-repository = "https://github.com/gluesql/gluesql"
-documentation = "https://docs.rs/gluesql/"
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [dependencies]
 memory-storage = { package = "gluesql_memory_storage", version = "0.13.0", path = "../memory-storage" }
-gluesql-core = { path = "../../core", version = "0.13.0", features = [
-	"alter-table",
-	"index",
-	"transaction",
-] }
+gluesql-core = { path = "../../core", version = "0.13.0" }
 async-trait = "0.1"
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["sync"] }
 
 [dev-dependencies]
-test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.13.0", features = [
-	"alter-table",
-	"index",
-	"transaction",
-] }
+test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.13.0" }
 futures = "0.3"
 tokio = { version = "1", features = ["rt", "macros"] }

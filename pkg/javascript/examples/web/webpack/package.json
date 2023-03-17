@@ -14,10 +14,10 @@
   },
   "homepage": "https://github.com/gluesql/gluesql#readme",
   "scripts": {
-    "build": "webpack"
+    "build": "yarn upgrade gluesql && webpack"
   },
   "devDependencies": {
-    "gluesql": "file:../../../",
+    "gluesql": "file:../../..",
     "webpack": "^5.72.0",
     "webpack-cli": "^4.9.2"
   }

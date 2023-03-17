@@ -7,7 +7,7 @@ use {
 pub struct CreateTableNode {
     table_name: String,
     if_not_exists: bool,
-    columns: Vec<ColumnDefNode>,
+    columns: Option<Vec<ColumnDefNode>>,
 }
 
 impl CreateTableNode {
@@ -15,12 +15,20 @@ impl CreateTableNode {
         Self {
             table_name,
             if_not_exists: not_exists,
-            columns: Vec::new(),
+            columns: None,
         }
     }
 
     pub fn add_column<T: Into<ColumnDefNode>>(mut self, column: T) -> Self {
-        self.columns.push(column.into());
+        match self.columns {
+            Some(ref mut columns) => {
+                columns.push(column.into());
+            }
+            None => {
+                self.columns = Some(vec![column.into()]);
+            }
+        }
+
         self
     }
 }
@@ -28,11 +36,15 @@ impl CreateTableNode {
 impl Build for CreateTableNode {
     fn build(self) -> Result<Statement> {
         let table_name = self.table_name;
-        let columns = self
-            .columns
-            .into_iter()
-            .map(TryInto::try_into)
-            .collect::<Result<Vec<_>>>()?;
+        let columns = match self.columns {
+            Some(columns) => Some(
+                columns
+                    .into_iter()
+                    .map(TryInto::try_into)
+                    .collect::<Result<Vec<_>>>()?,
+            ),
+            None => None,
+        };
 
         Ok(Statement::CreateTable {
             name: table_name,

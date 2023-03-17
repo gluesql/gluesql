@@ -31,8 +31,12 @@ pub enum LiteralError {
     #[error("failed to decode hex string: {0}")]
     FailedToDecodeHexString(String),
 
-    #[error("operator doesn't exist: {0:?} LIKE {1:?}")]
-    LikeOnNonString(String, String),
+    #[error("operator doesn't exist: {base:?} {case} {pattern:?}", case = if *case_sensitive { "LIKE" } else { "ILIKE" })]
+    LikeOnNonString {
+        base: String,
+        pattern: String,
+        case_sensitive: bool,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -226,9 +230,12 @@ impl<'a> Literal<'a> {
     pub fn like(&self, other: &Literal<'a>, case_sensitive: bool) -> Result<Self> {
         match (self, other) {
             (Text(l), Text(r)) => l.like(r, case_sensitive).map(Boolean),
-            _ => Err(
-                LiteralError::LikeOnNonString(format!("{:?}", self), format!("{:?}", other)).into(),
-            ),
+            _ => Err(LiteralError::LikeOnNonString {
+                base: format!("{:?}", self),
+                pattern: format!("{:?}", other),
+                case_sensitive,
+            }
+            .into()),
         }
     }
 }

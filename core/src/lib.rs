@@ -23,6 +23,7 @@ pub mod prelude {
         glue::Glue,
         parse_sql::parse,
         plan::plan,
+        result::Error,
         translate::translate,
     };
 }
