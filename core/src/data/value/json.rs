@@ -118,8 +118,8 @@ impl TryFrom<JsonValue> for Value {
             JsonValue::Object(json_map) => {
                 let is_geo = json_map.get("geometry");
 
-                if is_geo.is_some() {
-                    let geo = is_geo.unwrap().clone();
+                if let Some(g) = is_geo {
+                    let geo = g.clone();
                     let geometry: Geometry = serde_json::from_value(geo).unwrap();
                     return Ok(Value::Point(geometry.into()));
                 }
