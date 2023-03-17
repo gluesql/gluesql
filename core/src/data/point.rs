@@ -1,3 +1,5 @@
+use super::geojson::{Geojson, Geometry};
+
 use {
     serde::{Deserialize, Serialize},
     std::fmt,
@@ -34,5 +36,17 @@ impl Eq for Point {}
 impl fmt::Display for Point {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "POINT({} {})", self.x, self.y)
+    }
+}
+
+impl From<Geojson> for Point {
+    fn from(value: Geojson) -> Point {
+        Point::new(value.geometry.coordinates[0], value.geometry.coordinates[1])
+    }
+}
+
+impl From<Geometry> for Point {
+    fn from(value: Geometry) -> Point {
+        Point::new(value.coordinates[0], value.coordinates[1])
     }
 }

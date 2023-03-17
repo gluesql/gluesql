@@ -1,3 +1,5 @@
+use crate::data::geojson::Geometry;
+
 use {
     super::{Value, ValueError},
     crate::{
@@ -112,11 +114,22 @@ impl TryFrom<JsonValue> for Value {
                 .map(Value::try_from)
                 .collect::<Result<Vec<Value>>>()
                 .map(Value::List),
-            JsonValue::Object(json_map) => json_map
-                .into_iter()
-                .map(|(key, value)| value.try_into().map(|value| (key, value)))
-                .collect::<Result<HashMap<String, Value>>>()
-                .map(Value::Map),
+
+            JsonValue::Object(json_map) => {
+                let is_geo = json_map.get("geometry");
+
+                if is_geo.is_some() {
+                    let geo = is_geo.unwrap().clone();
+                    let geometry: Geometry = serde_json::from_value(geo).unwrap();
+                    return Ok(Value::Point(geometry.into()));
+                }
+
+                json_map
+                    .into_iter()
+                    .map(|(key, value)| value.try_into().map(|value| (key, value)))
+                    .collect::<Result<HashMap<String, Value>>>()
+                    .map(Value::Map)
+            }
         }
     }
 }
