@@ -1,8 +1,11 @@
+mod alter_table;
 mod csv_table;
 mod error;
+mod index;
 mod schema_list;
 mod store;
 mod store_mut;
+mod transaction;
 
 use {
     csv_table::CsvTable,

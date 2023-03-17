@@ -793,6 +793,7 @@ dependencies = [
  "futures",
  "gluesql-cli",
  "gluesql-core",
+ "gluesql-csv-storage",
  "gluesql-shared-memory-storage",
  "gluesql-test-suite",
  "gluesql_memory_storage",
@@ -858,6 +859,20 @@ dependencies = [
  "strum_macros",
  "thiserror",
  "uuid",
+]
+
+[[package]]
+name = "gluesql-csv-storage"
+version = "0.13.0"
+dependencies = [
+ "async-trait",
+ "csv",
+ "gluesql-core",
+ "gluesql-test-suite",
+ "serde",
+ "thiserror",
+ "tokio",
+ "toml",
 ]
 
 [[package]]

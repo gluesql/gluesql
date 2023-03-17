@@ -41,6 +41,6 @@ impl CsvStorageError {
 
 impl From<CsvStorageError> for Error {
     fn from(e: CsvStorageError) -> Self {
-        Self::Storage(Box::new(e))
+        e.into()
     }
 }
