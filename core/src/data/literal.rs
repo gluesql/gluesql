@@ -41,6 +41,7 @@ pub enum Literal<'a> {
     Number(Cow<'a, BigDecimal>),
     Text(Cow<'a, str>),
     Bytea(Vec<u8>),
+    Point(f64, f64),
     Null,
 }
 
@@ -54,6 +55,15 @@ impl<'a> TryFrom<&'a AstLiteral> for Literal<'a> {
             AstLiteral::QuotedString(v) => Text(Cow::Borrowed(v)),
             AstLiteral::HexString(v) => {
                 Bytea(hex::decode(v).map_err(|_| LiteralError::FailedToDecodeHexString(v.clone()))?)
+            }
+            AstLiteral::Point(x, y) => {
+                let x = x
+                    .parse::<f64>()
+                    .map_err(|_| LiteralError::FailedToDecodeHexString(x.clone()))?;
+                let y = y
+                    .parse::<f64>()
+                    .map_err(|_| LiteralError::FailedToDecodeHexString(y.clone()))?;
+                Point(x, y)
             }
             AstLiteral::Null => Null,
         };
@@ -99,6 +109,7 @@ impl PartialEq<Literal<'_>> for Literal<'_> {
             (Number(l), Number(r)) => l == r,
             (Text(l), Text(r)) => l == r,
             (Bytea(l), Bytea(r)) => l == r,
+            (Point(l, r), Point(x, y)) => l == x && r == y,
             _ => false,
         }
     }
@@ -142,7 +153,7 @@ impl<'a> Literal<'a> {
             }),
             Number(v) => Some(v.to_string()),
             Text(v) => Some(v.into_owned()),
-            Bytea(_) | Null => None,
+            Bytea(_) | Point(_, _) | Null => None,
         };
 
         match (convert(self), convert(other)) {

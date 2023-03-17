@@ -5,9 +5,7 @@ use {
         translate_data_type, translate_object_name, TranslateError,
     },
     crate::{
-        ast::data_type::DataType,
         ast::{Aggregate, CountArgExpr, Expr, Function},
-        data::Point,
         result::Result,
     },
     sqlparser::ast::{
@@ -208,6 +206,26 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         };
 
         return Ok(Expr::Aggregate(Box::new(Aggregate::Count(count_arg))));
+    }
+
+    if name.as_str() == "POINT" {
+        check_len(name, args.len(), 2)?;
+
+        match (function_arg_exprs[0], function_arg_exprs[1]) {
+            (SqlFunctionArgExpr::Expr(expr1), SqlFunctionArgExpr::Expr(expr2)) => {
+                let x = translate_expr(expr1)?;
+                let y = translate_expr(expr2)?;
+
+                todo!();
+            }
+            (_, _) => {
+                return Err(TranslateError::UnsupportedExpr(format!(
+                    "POINT({:?}, {:?})",
+                    function_arg_exprs[0], function_arg_exprs[1]
+                ))
+                .into())
+            }
+        };
     }
 
     let args = translate_function_arg_exprs(function_arg_exprs)?;
@@ -474,16 +492,6 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             let expr = translate_expr(args[0])?;
             Ok(Expr::Function(Box::new(Function::Chr(expr))))
-        }
-        "POINT" => {
-            check_len(name, args.len(), 2)?;
-
-            let x = translate_expr(args[0])?;
-            let y = translate_expr(args[1])?;
-            Ok(Expr::TypedString {
-                data_type: crate::prelude::DataType::Point,
-                value: crate::data::Point::new(x, y),
-            })
         }
         "ST_X" => {
             check_len(name, args.len(), 1)?;

@@ -1,5 +1,3 @@
-use crate::data::{point, Point};
-
 use {
     super::{
         date::{parse_date, parse_time, parse_timestamp},
@@ -8,7 +6,7 @@ use {
     },
     crate::{
         ast::DataType,
-        data::{value::uuid::parse_uuid, BigDecimalExt, Interval, Literal},
+        data::{value::uuid::parse_uuid, BigDecimalExt, Interval, Literal, Point},
         result::{Error, Result},
     },
     chrono::NaiveDate,
@@ -142,6 +140,7 @@ impl TryFrom<&Literal<'_>> for Value {
             Literal::Boolean(v) => Ok(Value::Bool(*v)),
             Literal::Text(v) => Ok(Value::Str(v.as_ref().to_owned())),
             Literal::Bytea(v) => Ok(Value::Bytea(v.to_vec())),
+            Literal::Point(x, y) => Ok(Value::Point(Point::new(*x, *y))),
             Literal::Null => Ok(Value::Null),
         }
     }
@@ -211,8 +210,7 @@ impl Value {
                     ))))
                 }
             }
-            (DataType::Point, Literal::Text(v)) =>
-
+            (DataType::Point, Literal::Point(x, y)) => Ok(Value::Point(Point::new(*x, *y))),
             (DataType::Date, Literal::Text(v)) => v
                 .parse::<NaiveDate>()
                 .map(Value::Date)
