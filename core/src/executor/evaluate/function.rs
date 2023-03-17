@@ -543,6 +543,13 @@ pub fn extract<'a>(field: &DateTimeField, expr: Evaluated<'_>) -> Result<Evaluat
     Ok(Evaluated::from(Value::try_from(expr)?.extract(field)?))
 }
 
+pub fn point<'a>(x: Evaluated<'_>, y: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let x = eval_to_float!("point".to_owned(), x);
+    let y = eval_to_float!("point".to_owned(), y);
+
+    Ok(Evaluated::from(Value::Point(crate::data::Point::new(x, y))))
+}
+
 pub fn stx<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
     match expr.try_into()? {
         Value::Point(v) => Ok(Evaluated::from(Value::F64(v.x()))),

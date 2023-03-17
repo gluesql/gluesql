@@ -488,5 +488,11 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let expr = eval(expr).await?;
             f::extract(field, expr)
         }
+        Function::Point(x, y) => {
+            let x = eval(x).await?;
+            let y = eval(y).await?;
+
+            f::point(x, y)
+        }
     }
 }

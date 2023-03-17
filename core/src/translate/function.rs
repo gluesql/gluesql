@@ -216,7 +216,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 let x = translate_expr(expr1)?;
                 let y = translate_expr(expr2)?;
 
-                todo!();
+                return Ok(Expr::Function(Box::new(Function::Point(x, y))));
             }
             (_, _) => {
                 return Err(TranslateError::UnsupportedExpr(format!(

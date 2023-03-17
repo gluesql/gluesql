@@ -382,6 +382,12 @@ fn evaluate_function<'a>(context: &Context<'_>, func: &'a Function) -> Result<Ev
         }
 
         // --- spatial ---
+        Function::Point(x, y) => {
+            let x = eval(x)?;
+            let y = eval(y)?;
+
+            f::point(x, y)
+        }
         Function::StX(expr) => f::stx(name, eval(expr)?),
         Function::StY(expr) => f::sty(name, eval(expr)?),
     }

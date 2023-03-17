@@ -142,6 +142,7 @@ pub enum Function {
     Chr(Expr),
     StX(Expr),
     StY(Expr),
+    Point(Expr, Expr),
 }
 
 impl ToSql for Function {
@@ -299,6 +300,7 @@ impl ToSql for Function {
             Function::Chr(e) => format!("CHR({})", e.to_sql()),
             Function::StX(e) => format!("ST_X({})", e.to_sql()),
             Function::StY(e) => format!("ST_Y({})", e.to_sql()),
+            Function::Point(x, y) => format!("POINT({}, {})", x.to_sql(), y.to_sql()),
         }
     }
 }
