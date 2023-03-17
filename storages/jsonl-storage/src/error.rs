@@ -37,4 +37,7 @@ pub enum JsonlStorageError {
 
     #[error("table name does not match with file")]
     TableNameDoesNotMatchWithFile,
+
+    #[error("both {0}.jsonl and {0}.json files exist. remove or rename one")]
+    BothJsonlAndJsonExist(String),
 }

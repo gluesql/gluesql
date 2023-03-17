@@ -45,6 +45,12 @@ fn jsonl_error() {
                 JsonlStorageError::TableNameDoesNotMatchWithFile.to_string(),
             )),
         ),
+        (
+            glue.execute("SELECT * FROM Duplicated"),
+            Err(Error::StorageMsg(
+                JsonlStorageError::BothJsonlAndJsonExist("Duplicated".to_owned()).to_string(),
+            )),
+        ),
     ];
 
     for (actual, expected) in cases {
