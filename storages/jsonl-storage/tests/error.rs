@@ -16,8 +16,24 @@ fn jsonl_error() {
 
     let cases = vec![
         (
-            glue.execute("SELECT * FROM WrongFormat"),
-            Err(ValueError::InvalidJsonString("{".to_owned()).into()),
+            glue.execute("SELECT * FROM WrongFormatJsonl"),
+            Err(ValueError::InvalidJsonString("[".to_owned()).into()),
+        ),
+        (
+            glue.execute("SELECT * FROM WrongFormatJson"),
+            Err(ValueError::InvalidJsonString(
+                r#"{
+  "id": 1,
+  "notice": "*.json usage1: An array of jsons"
+},
+{
+  "id": 2,
+  "notice": "*.json usage2: A single json in a file"
+}
+"#
+                .to_owned(),
+            )
+            .into()),
         ),
         (
             glue.execute("SELECT * FROM WrongSchema"),

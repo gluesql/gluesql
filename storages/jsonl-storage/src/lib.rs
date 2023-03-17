@@ -41,7 +41,7 @@ impl JsonlStorage {
     }
 
     fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
-        if !self.data_path(table_name).exists() {
+        if !self.jsonl_path(table_name).exists() && !self.json_path(table_name).exists() {
             return Ok(None);
         };
 
@@ -73,8 +73,12 @@ impl JsonlStorage {
         }))
     }
 
-    fn data_path(&self, table_name: &str) -> PathBuf {
+    fn jsonl_path(&self, table_name: &str) -> PathBuf {
         self.path_by(table_name, "jsonl")
+    }
+
+    fn json_path(&self, table_name: &str) -> PathBuf {
+        self.path_by(table_name, "json")
     }
 
     fn schema_path(&self, table_name: &str) -> PathBuf {
@@ -93,21 +97,32 @@ impl JsonlStorage {
         let schema = self
             .fetch_schema(table_name)?
             .map_storage_err(JsonlStorageError::TableDoesNotExist)?;
-        let data_path = self.data_path(table_name);
 
-        let json_file_str = fs::read_to_string(&data_path).map_storage_err()?;
-        let jsons = Vec::parse_json_array(&json_file_str);
+        let json_path = self.json_path(table_name);
+        if let Ok(json_file_str) = fs::read_to_string(&json_path) {
+            let jsons = Vec::parse_json_array(&json_file_str);
 
-        if let Ok(jsons) = jsons {
-            let row_iter = jsons
-                .into_iter()
-                .enumerate()
-                .map(move |(index, json)| json_to_row(index, json, &schema));
+            return jsons.map(|jsons| {
+                let row_iter = jsons
+                    .into_iter()
+                    .enumerate()
+                    .map(move |(index, json)| json_to_row(index, json, &schema));
 
-            return Ok(Box::new(row_iter));
+                Box::new(row_iter) as RowIter
+            });
+
+            // if let Ok(jsons) = jsons {
+            //     let row_iter = jsons
+            //         .into_iter()
+            //         .enumerate()
+            //         .map(move |(index, json)| json_to_row(index, json, &schema));
+
+            //     return Ok(Box::new(row_iter));
+            // }
         }
 
-        let lines = read_lines(&data_path).map_storage_err()?;
+        let jsonl_path = self.jsonl_path(table_name);
+        let lines = read_lines(&jsonl_path).map_storage_err()?;
 
         let row_iter = lines.enumerate().map(move |(index, line)| -> Result<_> {
             let json = HashMap::parse_json_object(&line.map_storage_err()?)?;

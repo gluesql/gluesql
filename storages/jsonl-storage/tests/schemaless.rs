@@ -21,7 +21,7 @@ fn jsonl_schemaless() {
             ]),
         ),
         (
-            glue.execute("SELECT * FROM ArrayJsonSchemaless"),
+            glue.execute("SELECT * FROM ArrayOfJsonsSchemaless"),
             Ok(select_map![
                 json!({ "id": 1, "name": "Glue" }),
                 json!({ "id": 2, "name": "SQL" })

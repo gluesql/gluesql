@@ -16,7 +16,7 @@ use {
 #[async_trait(?Send)]
 impl StoreMut for JsonlStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
-        let data_path = self.data_path(schema.table_name.as_str());
+        let data_path = self.jsonl_path(schema.table_name.as_str());
         File::create(data_path).map_storage_err()?;
 
         if schema.column_defs.is_some() {
@@ -30,7 +30,7 @@ impl StoreMut for JsonlStorage {
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
-        let data_path = self.data_path(table_name);
+        let data_path = self.jsonl_path(table_name);
         if data_path.exists() {
             remove_file(data_path).map_storage_err()?;
         }
@@ -47,7 +47,7 @@ impl StoreMut for JsonlStorage {
         let schema = self
             .fetch_schema(table_name)?
             .map_storage_err(JsonlStorageError::TableDoesNotExist)?;
-        let table_path = self.data_path(table_name);
+        let table_path = self.jsonl_path(table_name);
 
         let mut file = OpenOptions::new()
             .write(true)
@@ -88,7 +88,7 @@ impl StoreMut for JsonlStorage {
         let sort_merge = SortMerge::new(prev_rows, rows.into_iter());
         let merged = sort_merge.collect::<Result<Vec<_>>>()?;
 
-        let table_path = self.data_path(table_name);
+        let table_path = self.jsonl_path(table_name);
         File::create(&table_path).map_storage_err()?;
 
         self.append_data(table_name, merged).await
@@ -108,7 +108,7 @@ impl StoreMut for JsonlStorage {
             })
             .collect::<Result<Vec<_>>>()?;
 
-        let table_path = self.data_path(table_name);
+        let table_path = self.jsonl_path(table_name);
         File::create(&table_path).map_storage_err()?;
 
         self.append_data(table_name, rows).await

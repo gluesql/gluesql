@@ -1,0 +1,8 @@
+{
+  "id": 1,
+  "notice": "*.json usage1: An array of jsons"
+},
+{
+  "id": 2,
+  "notice": "*.json usage2: A single json in a file"
+}

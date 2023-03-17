@@ -154,7 +154,7 @@ fn jsonl_schema() {
             )),
         ),
         (
-            glue.execute("SELECT * FROM ArrayJsonSchema"),
+            glue.execute("SELECT * FROM ArrayOfJsonsSchema"),
             Ok(select!(
               id   | name
               I64  | Str;
