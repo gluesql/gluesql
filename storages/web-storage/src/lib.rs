@@ -5,6 +5,7 @@ use {
     async_trait::async_trait,
     gloo_storage::{errors::StorageError, LocalStorage, SessionStorage, Storage},
     gluesql_core::{
+        ast::ColumnUniqueOption,
         data::{Key, Schema},
         result::{Error, Result},
         store::{DataRow, RowIter, Store, StoreMut},
@@ -113,13 +114,25 @@ impl Store for WebStorage {
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
         let path = format!("{}/{}", DATA_PATH, table_name);
-        let rows = self
-            .get::<Vec<(Key, DataRow)>>(path)?
-            .unwrap_or_default()
-            .into_iter()
-            .map(Ok);
+        let mut rows = self.get::<Vec<(Key, DataRow)>>(path)?.unwrap_or_default();
 
-        Ok(Box::new(rows))
+        match self.get(format!("{}/{}", SCHEMA_PATH, table_name))? {
+            Some(Schema {
+                column_defs: Some(column_defs),
+                ..
+            }) if column_defs.iter().any(|column_def| {
+                matches!(
+                    column_def.unique,
+                    Some(ColumnUniqueOption { is_primary: true })
+                )
+            }) =>
+            {
+                rows.sort_by(|(key_a, _), (key_b, _)| key_a.cmp(key_b));
+            }
+            _ => {}
+        }
+
+        Ok(Box::new(rows.into_iter().map(Ok)))
     }
 }
 

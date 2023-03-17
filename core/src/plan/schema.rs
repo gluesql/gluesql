@@ -49,12 +49,12 @@ pub async fn fetch_schema_map<T: Store>(
         }
         Statement::DropTable { names, .. } => {
             stream::iter(names)
-                .map(Ok)
-                .try_filter_map(|table_name| async move {
-                    Ok(storage
+                .filter_map(|table_name| async {
+                    storage
                         .fetch_schema(table_name)
-                        .await?
-                        .map(|schema| (table_name.clone(), schema)))
+                        .await
+                        .map(|schema| Some((table_name.clone(), schema?)))
+                        .transpose()
                 })
                 .try_collect()
                 .await

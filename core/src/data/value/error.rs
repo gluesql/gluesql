@@ -149,14 +149,15 @@ pub enum ValueError {
     #[error("unreachable integer overflow: {0}")]
     UnreachableIntegerOverflow(String),
 
-    #[error("operator doesn't exist: {0:?} LIKE {1:?}")]
-    LikeOnNonString(Value, Value),
+    #[error("operator doesn't exist: {base:?} {case} {pattern:?}", case = if *case_sensitive { "LIKE" } else { "ILIKE" })]
+    LikeOnNonString {
+        base: Value,
+        pattern: Value,
+        case_sensitive: bool,
+    },
 
     #[error("extract format not matched: {value:?} FROM {field:?})")]
     ExtractFormatNotMatched { value: Value, field: DateTimeField },
-
-    #[error("operator doesn't exist: {0:?} ILIKE {1:?}")]
-    ILikeOnNonString(Value, Value),
 
     #[error("big endian export not supported for {0} type")]
     BigEndianExportNotSupported(String),
@@ -188,6 +189,12 @@ pub enum ValueError {
 
     #[error("non-string parameter in position: {} IN {}", String::from(.from), String::from(.sub))]
     NonStringParameterInPosition { from: Value, sub: Value },
+
+    #[error("non-string parameter in find idx: {}, {}", String::from(.sub), String::from(.from))]
+    NonStringParameterInFindIdx { sub: Value, from: Value },
+
+    #[error("non positive offset in find idx: {0}")]
+    NonPositiveIntegerOffsetInFindIdx(String),
 
     #[error("failed to convert Value to Expr")]
     ValueToExprConversionFailure,

@@ -182,7 +182,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
 
             if let Some(column_defs) = column_defs {
                 let column_validation =
-                    ColumnValidation::SpecifiedColumns(Rc::from(column_defs), columns_to_update);
+                    ColumnValidation::SpecifiedColumns(&column_defs, columns_to_update);
                 let rows = rows.iter().filter_map(|(_, row)| match row {
                     Row::Vec { values, .. } => Some(values.as_slice()),
                     Row::Map(_) => None,

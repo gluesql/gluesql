@@ -7,12 +7,12 @@ use {
         },
         data::{get_alias, Key, Row, Value},
         executor::{context::RowContext, evaluate::evaluate, filter::check_expr},
-        result::{Error, Result},
+        result::Result,
         store::GStore,
     },
     futures::{
         future,
-        stream::{self, empty, once, Stream, StreamExt, TryStream, TryStreamExt},
+        stream::{self, empty, once, Stream, StreamExt, TryStreamExt},
     },
     itertools::Itertools,
     std::{borrow::Cow, collections::HashMap, pin::Pin, rc::Rc},
@@ -26,8 +26,7 @@ pub struct Join<'a, T: GStore> {
 }
 
 type JoinItem<'a> = Rc<RowContext<'a>>;
-type Joined<'a> =
-    Pin<Box<dyn TryStream<Ok = JoinItem<'a>, Error = Error, Item = Result<JoinItem<'a>>> + 'a>>;
+type Joined<'a> = Pin<Box<dyn Stream<Item = Result<JoinItem<'a>>> + 'a>>;
 
 impl<'a, T: GStore> Join<'a, T> {
     pub fn new(
@@ -63,7 +62,7 @@ async fn join<'a, T: GStore>(
     storage: &'a T,
     filter_context: Option<Rc<RowContext<'a>>>,
     ast_join: &'a AstJoin,
-    left_rows: impl TryStream<Ok = JoinItem<'a>, Error = Error, Item = Result<JoinItem<'a>>> + 'a,
+    left_rows: impl Stream<Item = Result<JoinItem<'a>>> + 'a,
 ) -> Result<Joined<'a>> {
     let AstJoin {
         relation,
@@ -164,20 +163,28 @@ async fn join<'a, T: GStore>(
                     match rows {
                         None => Rows::Empty(empty()),
                         Some(rows) => {
-                            let rows = stream::iter(rows.iter().map(Cow::Borrowed).map(Ok));
-                            let rows = rows.try_filter_map(move |row| {
-                                check_where_clause(
-                                    storage,
-                                    table_alias,
-                                    filter_context.as_ref().map(Rc::clone),
-                                    Some(&project_context).map(Rc::clone),
-                                    where_clause,
-                                    row,
-                                )
-                            });
-                            let rows = stream::iter(rows.collect::<Vec<_>>().await);
+                            let rows = stream::iter(rows)
+                                .filter_map(|row| {
+                                    let filter_context = filter_context.as_ref().map(Rc::clone);
+                                    let project_context = Some(&project_context).map(Rc::clone);
 
-                            Rows::Hash(rows)
+                                    async {
+                                        check_where_clause(
+                                            storage,
+                                            table_alias,
+                                            filter_context,
+                                            project_context,
+                                            where_clause,
+                                            Cow::Borrowed(row),
+                                        )
+                                        .await
+                                        .transpose()
+                                    }
+                                })
+                                .collect::<Vec<_>>()
+                                .await;
+
+                            Rows::Hash(stream::iter(rows))
                         }
                     }
                 }

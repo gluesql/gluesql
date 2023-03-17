@@ -12,7 +12,6 @@ documentation.workspace = true
 gluesql-core = { path = "../../core", version = "0.13.0" }
 async-trait = "0.1"
 serde = { version = "1", features = ["derive"] }
-indexmap = { version = "1.8", features = ["serde"] }
 
 [dev-dependencies]
 test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.13.0" }
