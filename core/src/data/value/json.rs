@@ -234,6 +234,10 @@ mod tests {
                 .try_into(),
             Ok(json!([1, 2, { "a": 3 }]))
         );
+        assert_eq!(
+            Value::Point(crate::data::Point::new(0.34, 0.56)).try_into(),
+            Ok(JsonValue::String("POINT (0.34 0.56)".into()))
+        );
         assert_eq!(Value::Null.try_into(), Ok(JsonValue::Null));
     }
 
