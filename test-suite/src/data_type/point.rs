@@ -37,7 +37,7 @@ test_case!(point, async move {
             )),
         ),
         (
-            r#"UPDATE POINT SET point_field = 'POINT(2.0, 1.0)' WHERE point_field='POINT(2.0, 1.0)'"#,
+            r#"UPDATE POINT SET point_field=POINT(2.0, 1.0) WHERE point_field=POINT(0.3134, 0.156)"#,
             Ok(Payload::Update(1)),
         ),
         (
@@ -49,8 +49,8 @@ test_case!(point, async move {
             )),
         ),
         (
-            r#"DELETE FROM POINT WHERE point_field='POINT(2.0, 1.0)'"#,
-            Ok(Payload::Delete(0)),
+            r#"DELETE FROM POINT WHERE point_field=POINT(2.0, 1.0)"#,
+            Ok(Payload::Delete(1)),
         ),
     ];
 
