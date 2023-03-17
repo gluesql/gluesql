@@ -99,7 +99,7 @@ impl JsonlStorage {
             .map_storage_err(JsonlStorageError::TableDoesNotExist)?;
 
         let json_path = self.json_path(table_name);
-        if let Ok(json_file_str) = fs::read_to_string(&json_path) {
+        if let Ok(json_file_str) = fs::read_to_string(json_path) {
             let jsons = Vec::parse_json_array(&json_file_str);
 
             return jsons.map(|jsons| {
@@ -110,19 +110,10 @@ impl JsonlStorage {
 
                 Box::new(row_iter) as RowIter
             });
-
-            // if let Ok(jsons) = jsons {
-            //     let row_iter = jsons
-            //         .into_iter()
-            //         .enumerate()
-            //         .map(move |(index, json)| json_to_row(index, json, &schema));
-
-            //     return Ok(Box::new(row_iter));
-            // }
         }
 
         let jsonl_path = self.jsonl_path(table_name);
-        let lines = read_lines(&jsonl_path).map_storage_err()?;
+        let lines = read_lines(jsonl_path).map_storage_err()?;
 
         let row_iter = lines.enumerate().map(move |(index, line)| -> Result<_> {
             let json = HashMap::parse_json_object(&line.map_storage_err()?)?;
