@@ -1,11 +1,6 @@
-use crate::data::geojson::Geometry;
-
 use {
     super::{Value, ValueError},
-    crate::{
-        data::geojson::Geojson,
-        result::{Error, Result},
-    },
+    crate::result::{Error, Result},
     chrono::{offset::Utc, DateTime},
     core::str::FromStr,
     serde_json::{Map as JsonMap, Number as JsonNumber, Value as JsonValue},
@@ -86,7 +81,7 @@ impl TryFrom<Value> for JsonValue {
                 .map(|value| value.try_into())
                 .collect::<Result<Vec<JsonValue>>>()
                 .map(|v| v.into()),
-            Value::Point(v) => Ok(serde_json::to_value(Geojson::from(v)).unwrap()),
+            Value::Point(v) => Ok(v.to_string().into()),
             Value::Null => Ok(JsonValue::Null),
         }
     }
@@ -115,21 +110,11 @@ impl TryFrom<JsonValue> for Value {
                 .collect::<Result<Vec<Value>>>()
                 .map(Value::List),
 
-            JsonValue::Object(json_map) => {
-                let is_geo = json_map.get("geometry");
-
-                if let Some(g) = is_geo {
-                    let geo = g.clone();
-                    let geometry: Geometry = serde_json::from_value(geo).unwrap();
-                    return Ok(Value::Point(geometry.into()));
-                }
-
-                json_map
-                    .into_iter()
-                    .map(|(key, value)| value.try_into().map(|value| (key, value)))
-                    .collect::<Result<HashMap<String, Value>>>()
-                    .map(Value::Map)
-            }
+            JsonValue::Object(json_map) => json_map
+                .into_iter()
+                .map(|(key, value)| value.try_into().map(|value| (key, value)))
+                .collect::<Result<HashMap<String, Value>>>()
+                .map(Value::Map),
         }
     }
 }
@@ -252,14 +237,7 @@ mod tests {
         );
         assert_eq!(
             Value::Point(crate::data::Point::new(0.34, 0.56)).try_into(),
-            Ok(json!({
-                "geometry": {
-                    "type": "Point",
-                    "coordinates": [0.34, 0.56],
-                },
-                "properties": {},
-                "type" : "Feature",
-            }))
+            Ok(JsonValue::String("POINT(0.34 0.56)".to_owned()))
         );
         assert_eq!(Value::Null.try_into(), Ok(JsonValue::Null));
     }

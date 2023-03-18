@@ -580,6 +580,9 @@ impl TryFrom<&Value> for crate::data::Point {
     fn try_from(v: &Value) -> Result<crate::data::Point> {
         Ok(match v {
             Value::Point(value) => *value,
+            Value::Str(value) => {
+                crate::data::Point::from_wkt(value).map_err(|_| ValueError::ImpossibleCast)?
+            }
             _ => return Err(ValueError::ImpossibleCast.into()),
         })
     }

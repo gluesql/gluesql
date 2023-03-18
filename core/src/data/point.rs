@@ -1,6 +1,7 @@
-use super::geojson::{Geojson, Geometry};
-
 use {
+    super::ValueError,
+    crate::result::{Error, Result},
+    regex::Regex,
     serde::{Deserialize, Serialize},
     std::fmt,
 };
@@ -23,6 +24,18 @@ impl Point {
     pub fn y(&self) -> f64 {
         self.y
     }
+
+    pub fn from_wkt(v: &str) -> Result<Self> {
+        let re = Regex::new(r"POINT\s*\((\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\)").unwrap();
+
+        if let Some(captures) = re.captures(v) {
+            let x = captures[1].parse::<f64>().ok().unwrap();
+            let y = captures[2].parse::<f64>().ok().unwrap();
+            Ok(Self { x, y })
+        } else {
+            Err(Error::Value(ValueError::FailedToParsePoint(v.to_owned())))
+        }
+    }
 }
 
 impl PartialEq for Point {
@@ -36,17 +49,5 @@ impl Eq for Point {}
 impl fmt::Display for Point {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "POINT({} {})", self.x, self.y)
-    }
-}
-
-impl From<Geojson> for Point {
-    fn from(value: Geojson) -> Point {
-        Point::new(value.geometry.coordinates[0], value.geometry.coordinates[1])
-    }
-}
-
-impl From<Geometry> for Point {
-    fn from(value: Geometry) -> Point {
-        Point::new(value.coordinates[0], value.coordinates[1])
     }
 }
