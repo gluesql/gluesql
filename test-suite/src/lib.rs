@@ -315,7 +315,7 @@ macro_rules! generate_transaction_dictionary_tests {
 }
 
 #[macro_export]
-macro_rules! generate_metadata_tests {
+macro_rules! generate_metadata_table_tests {
     ($test: meta, $storage: ident) => {
         macro_rules! glue {
             ($title: ident, $func: path) => {
@@ -324,5 +324,18 @@ macro_rules! generate_metadata_tests {
         }
 
         glue!(metadata_table, metadata::table::table);
+    };
+}
+
+#[macro_export]
+macro_rules! generate_metadata_index_tests {
+    ($test: meta, $storage: ident) => {
+        macro_rules! glue {
+            ($title: ident, $func: path) => {
+                declare_test_fn!($test, $storage, $title, $func);
+            };
+        }
+
+        glue!(metadata_index, metadata::index::index);
     };
 }
