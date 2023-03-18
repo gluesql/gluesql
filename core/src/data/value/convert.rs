@@ -1450,4 +1450,20 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
     }
+
+    #[test]
+    fn try_into_point() {
+        assert_eq!(
+            crate::data::Point::try_from(&Value::Str("POINT(0.2 0.1)".to_owned())),
+            Ok(crate::data::Point::from_wkt("POINT(0.2 0.1)").unwrap())
+        );
+        assert_eq!(
+            crate::data::Point::try_from(&Value::Point(crate::data::Point::new(0.1, 0.2))),
+            Ok(crate::data::Point::from_wkt("POINT(0.1 0.2)").unwrap())
+        );
+        assert_eq!(
+            crate::data::Point::try_from(&Value::Date(date(2021, 11, 20))),
+            Err(ValueError::ImpossibleCast.into())
+        );
+    }
 }
