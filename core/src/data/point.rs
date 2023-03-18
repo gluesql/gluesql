@@ -29,8 +29,12 @@ impl Point {
         let re = Regex::new(r"POINT\s*\(\s*(-?\d*\.?\d+)\s+(-?\d*\.?\d+)\s*\)").unwrap();
 
         if let Some(captures) = re.captures(v) {
-            let x = captures[1].parse::<f64>().ok().unwrap();
-            let y = captures[2].parse::<f64>().ok().unwrap();
+            let x = captures[1]
+                .parse::<f64>()
+                .map_err(|_| Error::Value(ValueError::FailedToParsePoint(v.to_owned())))?;
+            let y = captures[2]
+                .parse::<f64>()
+                .map_err(|_| Error::Value(ValueError::FailedToParsePoint(v.to_owned())))?;
             Ok(Self { x, y })
         } else {
             Err(Error::Value(ValueError::FailedToParsePoint(v.to_owned())))
