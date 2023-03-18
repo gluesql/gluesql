@@ -951,7 +951,11 @@ mod tests {
 
         assert_eq!(
             "POINT(0.1, 0.2)",
-            &Expr::Function(Box::new(Function::Point(0.1, 0.2))).to_sql()
+            &Expr::Function(Box::new(Function::Point(
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("0.1").unwrap())),
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("0.2").unwrap()))
+            )))
+            .to_sql()
         );
 
         assert_eq!(
