@@ -9,6 +9,10 @@ use {
 test_case!(st_y, async move {
     let test_cases = [
         (
+            "CREATE TABLE SingleItem (id FLOAT DEFAULT ST_Y(POINT(0.3134, 0.156)))",
+            Ok(Payload::Create),
+        ),
+        (
             r#"SELECT ST_Y(ST_GEOFROMTEXT('POINT(0.1 -0.2)')) AS ptx"#,
             Ok(select!(
                 ptx
