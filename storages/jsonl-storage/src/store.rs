@@ -23,7 +23,10 @@ impl Store for JsonlStorage {
         let paths = fs::read_dir(&self.path).map_storage_err()?;
         let mut schemas = paths
             .filter(|result| match result {
-                Ok(entry) => entry.path().extension().and_then(OsStr::to_str) == Some("jsonl"),
+                Ok(entry) => {
+                    entry.path().extension().and_then(OsStr::to_str) == Some("jsonl")
+                        || entry.path().extension().and_then(OsStr::to_str) == Some("json")
+                }
                 Err(_) => true,
             })
             .map(|result| -> Result<_> {

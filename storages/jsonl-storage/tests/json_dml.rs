@@ -1,9 +1,5 @@
 use {
-    gluesql_core::{
-        executor::FetchError,
-        prelude::{Glue, Payload, Value},
-        result::Error,
-    },
+    gluesql_core::prelude::{Glue, Payload, Value},
     gluesql_jsonl_storage::JsonlStorage,
     serde_json::json,
     std::{
@@ -73,13 +69,13 @@ fn json_dml() {
               "notice": "should keep this array of jsons format"
             })]),
         ),
-        // (
-        //     glue.execute("SELECT COUNT(*) FROM GLUE_TABLES WHERE TABLE_NAME = 'JsonDML'"),
-        //     Ok(Payload::Select {
-        //         labels: vec!["COUNT(*)".to_owned()],
-        //         rows: vec![vec![Value::I64(1)]],
-        //     }),
-        // ),
+        (
+            glue.execute("SELECT COUNT(*) FROM GLUE_TABLES WHERE TABLE_NAME = 'JsonDML'"),
+            Ok(Payload::Select {
+                labels: vec!["COUNT(*)".to_owned()],
+                rows: vec![vec![Value::I64(1)]],
+            }),
+        ),
         (glue.execute("DROP TABLE JsonDML"), Ok(Payload::DropTable)),
         (
             glue.execute("SELECT COUNT(*) FROM GLUE_TABLES WHERE TABLE_NAME = 'JsonDML'"),
