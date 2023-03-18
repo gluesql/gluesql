@@ -49,8 +49,13 @@ test_case!(append, async move {
         Ok(Payload::Create)
     );
 
+    run!(
+        r#"
+            INSERT INTO Foo VALUES (1);
+        "#
+    );
     test!(
-        r#"select append(items, 4) as myappend from Append;"#,
+        r#"select append(values, 4) as myappend from Foo;"#,
         Ok(select!(
            myappend
            List;
