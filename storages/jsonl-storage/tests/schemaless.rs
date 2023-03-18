@@ -1,7 +1,5 @@
-use gluesql_core::prelude::Payload;
-
 use {
-    gluesql_core::prelude::{Glue, Value},
+    gluesql_core::prelude::{Glue, Payload, Value},
     gluesql_jsonl_storage::JsonlStorage,
     serde_json::json,
     test_suite::{select_map, test},

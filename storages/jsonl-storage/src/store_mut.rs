@@ -1,7 +1,3 @@
-use std::fs;
-
-use serde_json::to_string_pretty;
-
 use {
     crate::{
         error::{JsonlStorageError, OptionExt, ResultExt},
@@ -9,7 +5,7 @@ use {
     },
     async_trait::async_trait,
     gluesql_core::{data::Schema, prelude::Key, result::Result, store::DataRow, store::StoreMut},
-    serde_json::{Map, Value as JsonValue},
+    serde_json::{to_string_pretty, Map, Value as JsonValue},
     std::{
         fs::{remove_file, File, OpenOptions},
         io::Write,
@@ -53,7 +49,7 @@ impl StoreMut for JsonlStorage {
             .map_storage_err(JsonlStorageError::TableDoesNotExist)?;
 
         if self.json_path(table_name).exists() {
-            let start = self.scan_data(table_name)?.collect::<Vec<_>>().len();
+            let start = self.scan_data(table_name)?.count();
             let rows = rows
                 .into_iter()
                 .enumerate()
