@@ -2,6 +2,7 @@
 
 mod alter_table;
 mod index;
+mod metadata;
 mod transaction;
 
 use {
@@ -10,8 +11,8 @@ use {
         chrono::Utc,
         data::{Key, Schema},
         prelude::Value,
-        result::{Error, Result},
-        store::{DataRow, MetaIter, Metadata, RowIter, Store, StoreMut},
+        result::Result,
+        store::{DataRow, RowIter, Store, StoreMut},
     },
     serde::{Deserialize, Serialize},
     std::{
@@ -68,22 +69,6 @@ impl Store for MemoryStorage {
         };
 
         Ok(rows)
-    }
-}
-
-#[async_trait(?Send)]
-impl Metadata for MemoryStorage {
-    async fn scan_meta(&self) -> Result<MetaIter> {
-        let meta = self
-            .metadata
-            .clone()
-            .into_iter()
-            .map(|(name, value)| match value {
-                Value::Map(map) => Ok((name, map)),
-                _ => Err(Error::StorageMsg("Invalid metadata".to_owned())),
-            });
-
-        Ok(Box::new(meta))
     }
 }
 
