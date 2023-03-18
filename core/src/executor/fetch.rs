@@ -232,7 +232,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
 
                             let index_rows = schema.indexes.into_iter().flat_map(|index| {
                                 HashMap::from([
-                                    ("OBJECT_NAME".to_owned(), Value::Str(index.name.clone())),
+                                    ("OBJECT_NAME".to_owned(), Value::Str(index.name)),
                                     ("OBJECT_TYPE".to_owned(), Value::Str("INDEX".to_owned())),
                                 ])
                             });
