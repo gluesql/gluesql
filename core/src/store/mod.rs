@@ -11,10 +11,10 @@ pub trait GStoreMut: StoreMut + IndexMut + AlterTable + Transaction {}
 impl<S: StoreMut + IndexMut + AlterTable + Transaction> GStoreMut for S {}
 
 pub use {
-    self::metadata::{MetaIter, Metadata},
     alter_table::{AlterTable, AlterTableError},
     data_row::DataRow,
     index::{Index, IndexError, IndexMut},
+    metadata::{MetaIter, Metadata},
     transaction::Transaction,
 };
 
