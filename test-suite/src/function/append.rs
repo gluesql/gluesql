@@ -1,6 +1,7 @@
-use gluesql_core::executor::EvaluateError;
-
-use {crate::*, gluesql_core::prelude::Value::*};
+use {
+    crate::*,
+    gluesql_core::{executor::EvaluateError, prelude::Payload, prelude::Value::*},
+};
 test_case!(append, async move {
     run!(
         "
@@ -38,5 +39,22 @@ test_case!(append, async move {
     test!(
         r#"select append(element, element2) as myappend from Append"#,
         Err(EvaluateError::ListTypeRequired.into())
+    );
+
+    test!(
+        r#"CREATE TABLE Foo (
+                id INTEGER, 
+                values LIST DEFAULT '[1,2,3]'
+            );"#,
+        Ok(Payload::Create)
+    );
+
+    test!(
+        r#"select append(items, 4) as myappend from Append;"#,
+        Ok(select!(
+           myappend
+           List;
+           vec![I64(1), I64(2), I64(3), I64(4)]
+        ))
     );
 });
