@@ -6,12 +6,20 @@ use {
 test_case!(st_x, async move {
     let test_cases = [
         (
-            r#"SELECT ST_X(ST_GEOFROMTEXT('POINT(-71.064544 42.28787)')) AS ptx"#,
+            r#"SELECT ST_X(ST_GEOFROMTEXT('POINT(0.1 -0.2)')) AS ptx"#,
             Ok(select!(
                 ptx
                 F64;
-                -71.064544
+                0.1
 
+            )),
+        ),
+        (
+            r#"SELECT ST_X(POINT(0.1, -0.2)) AS ptx"#,
+            Ok(select!(
+                ptx
+                F64;
+                0.1
             )),
         ),
         (
