@@ -323,6 +323,6 @@ macro_rules! generate_metadata_tests {
             };
         }
 
-        glue!(metadata_table, metadata::table);
+        glue!(metadata_table, metadata::table::table);
     };
 }
