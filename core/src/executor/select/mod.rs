@@ -30,7 +30,6 @@ use {
 fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> (Vec<Result<Row>>, Vec<String>) {
     let first_len = exprs_list[0].len();
     let labels = (1..=first_len)
-        .into_iter()
         .map(|i| format!("column{}", i))
         .collect::<Vec<_>>();
 
