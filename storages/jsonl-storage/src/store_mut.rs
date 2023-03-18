@@ -1,3 +1,7 @@
+use std::fs;
+
+use serde_json::to_string_pretty;
+
 use {
     crate::{
         error::{JsonlStorageError, OptionExt, ResultExt},
@@ -47,19 +51,33 @@ impl StoreMut for JsonlStorage {
         let schema = self
             .fetch_schema(table_name)?
             .map_storage_err(JsonlStorageError::TableDoesNotExist)?;
-        let table_path = self.jsonl_path(table_name);
 
-        let mut file = OpenOptions::new()
-            .write(true)
-            .append(true)
-            .open(table_path)
-            .map_storage_err()?;
+        if self.json_path(table_name).exists() {
+            let start = self.scan_data(table_name)?.collect::<Vec<_>>().len();
+            let rows = rows
+                .into_iter()
+                .enumerate()
+                .map(|(i, row)| {
+                    let key = Key::I64((start + i).try_into().unwrap());
 
+                    (key, row)
+                })
+                .collect::<Vec<_>>();
+
+            return self.insert_data(table_name, rows).await;
+        };
+
+        let jsonl_path = self.jsonl_path(table_name);
         let column_defs = schema.column_defs.unwrap_or_default();
         let labels = column_defs
             .iter()
             .map(|column_def| column_def.name.as_str())
             .collect::<Vec<_>>();
+        let mut file = OpenOptions::new()
+            .write(true)
+            .append(true)
+            .open(jsonl_path)
+            .map_storage_err()?;
 
         for row in rows {
             let json_string = match row {
@@ -88,10 +106,17 @@ impl StoreMut for JsonlStorage {
         let sort_merge = SortMerge::new(prev_rows, rows.into_iter());
         let merged = sort_merge.collect::<Result<Vec<_>>>()?;
 
-        let table_path = self.jsonl_path(table_name);
-        File::create(&table_path).map_storage_err()?;
+        let json_path = self.json_path(table_name);
+        if json_path.exists() {
+            File::create(&json_path).map_storage_err()?;
 
-        self.append_data(table_name, merged).await
+            self.append_data_json(table_name, merged).await
+        } else {
+            let jsonl_path = self.jsonl_path(table_name);
+            File::create(&jsonl_path).map_storage_err()?;
+
+            self.append_data(table_name, merged).await
+        }
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
@@ -108,10 +133,17 @@ impl StoreMut for JsonlStorage {
             })
             .collect::<Result<Vec<_>>>()?;
 
-        let table_path = self.jsonl_path(table_name);
-        File::create(&table_path).map_storage_err()?;
+        let json_path = self.json_path(table_name);
+        if json_path.exists() {
+            File::create(&json_path).map_storage_err()?;
 
-        self.append_data(table_name, rows).await
+            self.append_data_json(table_name, rows).await
+        } else {
+            let jsonl_path = self.jsonl_path(table_name);
+            File::create(&jsonl_path).map_storage_err()?;
+
+            self.append_data(table_name, rows).await
+        }
     }
 }
 
@@ -166,5 +198,47 @@ where
             }
         }
         .map(|item| Ok(item?.1))
+    }
+}
+
+impl JsonlStorage {
+    async fn append_data_json(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
+        let schema = self
+            .fetch_schema(table_name)?
+            .map_storage_err(JsonlStorageError::TableDoesNotExist)?;
+
+        let json_path = self.json_path(table_name);
+        let column_defs = schema.column_defs.unwrap_or_default();
+        let labels = column_defs
+            .iter()
+            .map(|column_def| column_def.name.as_str())
+            .collect::<Vec<_>>();
+        let mut file = OpenOptions::new()
+            .write(true)
+            .append(true)
+            .open(json_path)
+            .map_storage_err()?;
+
+        let json_array = JsonValue::Array(
+            rows.into_iter()
+                .map(|row| match row {
+                    DataRow::Vec(values) => labels
+                        .iter()
+                        .zip(values.into_iter())
+                        .map(|(key, value)| Ok((key.to_string(), value.try_into()?)))
+                        .collect::<Result<Map<String, JsonValue>>>(),
+                    DataRow::Map(hash_map) => hash_map
+                        .into_iter()
+                        .map(|(key, value)| Ok((key, value.try_into()?)))
+                        .collect(),
+                })
+                .map(|result| result.map(JsonValue::Object))
+                .collect::<Result<Vec<_>>>()?,
+        );
+        let json_array = to_string_pretty(&json_array).map_storage_err()?;
+
+        writeln!(file, "{json_array}").map_storage_err()?;
+
+        Ok(())
     }
 }
