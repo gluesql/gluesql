@@ -950,6 +950,11 @@ mod tests {
         );
 
         assert_eq!(
+            "POINT(0.1, 0.2)",
+            &Expr::Function(Box::new(Function::Point(0.1, 0.2))).to_sql()
+        );
+
+        assert_eq!(
             "ST_GEOFROMTEXT('POINT(-71.064544 42.28787)')",
             &Expr::Function(Box::new(Function::StGeomFromText(Expr::Literal(
                 AstLiteral::QuotedString("POINT(-71.064544 42.28787)".to_owned())
