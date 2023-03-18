@@ -210,22 +210,10 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
     if name.as_str() == "POINT" {
         check_len(name, args.len(), 2)?;
-
-        match (function_arg_exprs[0], function_arg_exprs[1]) {
-            (SqlFunctionArgExpr::Expr(expr1), SqlFunctionArgExpr::Expr(expr2)) => {
-                let x = translate_expr(expr1)?;
-                let y = translate_expr(expr2)?;
-
-                return Ok(Expr::Function(Box::new(Function::Point(x, y))));
-            }
-            (_, _) => {
-                return Err(TranslateError::UnsupportedExpr(format!(
-                    "POINT({:?}, {:?})",
-                    function_arg_exprs[0], function_arg_exprs[1]
-                ))
-                .into())
-            }
-        };
+        let args = translate_function_arg_exprs(function_arg_exprs)?;
+        let x = translate_expr(args[0])?;
+        let y = translate_expr(args[1])?;
+        return Ok(Expr::Function(Box::new(Function::Point(x, y))));
     }
 
     let args = translate_function_arg_exprs(function_arg_exprs)?;
