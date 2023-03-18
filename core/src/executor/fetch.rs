@@ -452,9 +452,7 @@ pub async fn fetch_relation_columns<T: GStore>(
                     )
                     .into());
                 }
-                let labels = (alias_len + 1..=total_len)
-                    .into_iter()
-                    .map(|i| format!("column{}", i));
+                let labels = (alias_len + 1..=total_len).map(|i| format!("column{}", i));
                 let labels = alias_columns
                     .iter()
                     .cloned()
