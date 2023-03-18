@@ -1,3 +1,5 @@
+use gluesql_core::translate::TranslateError;
+
 use {
     crate::*,
     bigdecimal::BigDecimal,
@@ -15,14 +17,6 @@ test_case!(point, async move {
         (
             "CREATE TABLE POINT (point_field POINT)",
             Ok(Payload::Create),
-        ),
-        (
-            r#"INSERT INTO POINT VALUES (0)"#,
-            Err(ValueError::IncompatibleLiteralForDataType {
-                data_type: DataType::Point,
-                literal: format!("{:?}", Literal::Number(Cow::Owned(BigDecimal::from(0)))),
-            }
-            .into()),
         ),
         (
             r#"INSERT INTO POINT VALUES (POINT(0.3134, 0.156))"#,
@@ -51,6 +45,23 @@ test_case!(point, async move {
         (
             r#"DELETE FROM POINT WHERE point_field=POINT(2.0, 1.0)"#,
             Ok(Payload::Delete(1)),
+        ),
+        (
+            r#"INSERT INTO POINT VALUES (0)"#,
+            Err(ValueError::IncompatibleLiteralForDataType {
+                data_type: DataType::Point,
+                literal: format!("{:?}", Literal::Number(Cow::Owned(BigDecimal::from(0)))),
+            }
+            .into()),
+        ),
+        (
+            r#"INSERT INTO POINT VALUES (POINT(0.3134))"#,
+            Err(TranslateError::FunctionArgsLengthNotMatching {
+                name: "POINT".to_owned(),
+                expected: 2,
+                found: 1,
+            }
+            .into()),
         ),
     ];
 
