@@ -206,12 +206,12 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                 match dict {
                     Dictionary::GlueObjects => {
                         let schemas = storage.fetch_all_schemas().await?;
-                        let metas = storage
-                            .scan_meta()
+                        let table_metas = storage
+                            .scan_table_meta()
                             .await?
                             .collect::<Result<HashMap<_, _>>>()?;
                         let rows = schemas.into_iter().map(move |schema| {
-                            let meta = metas.iter().find_map(|(table_name, hash_map)| {
+                            let meta = table_metas.iter().find_map(|(table_name, hash_map)| {
                                 if table_name == &schema.table_name {
                                     Some(Value::Map(hash_map.clone()))
                                 } else {
@@ -225,59 +225,17 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
 
                             let table_rows = match meta {
                                 Some(Value::Map(meta)) => {
-                                    match (meta.get("OBJECT_TYPE"), meta.get("CREATED")) {
-                                        (
-                                            Some(Value::Str(object_type)),
-                                            Some(Value::Timestamp(created)),
-                                        ) if object_type == "TABLE" => table_row
-                                            .into_iter()
-                                            .chain(HashMap::from([(
-                                                "CREATED".to_owned(),
-                                                Value::Timestamp(*created),
-                                            )]))
-                                            .collect(),
-                                        _ => table_row,
-                                    }
+                                    table_row.into_iter().chain(meta).collect()
                                 }
                                 _ => table_row,
                             };
 
-                            let index_rows = schema
-                                .indexes
-                                .into_iter()
-                                .flat_map(|index| {
-                                    let index_row = HashMap::from([
-                                        ("OBJECT_NAME".to_owned(), Value::Str(index.name.clone())),
-                                        ("OBJECT_TYPE".to_owned(), Value::Str("INDEX".to_owned())),
-                                    ]);
-                                    let meta = metas.iter().find_map(|(table_name, hash_map)| {
-                                        if table_name == &index.name {
-                                            Some(Value::Map(hash_map.clone()))
-                                        } else {
-                                            None
-                                        }
-                                    });
-
-                                    match meta {
-                                        Some(Value::Map(meta)) => {
-                                            match (meta.get("OBJECT_TYPE"), meta.get("CREATED")) {
-                                                (
-                                                    Some(Value::Str(object_type)),
-                                                    Some(Value::Timestamp(created)),
-                                                ) if object_type == "INDEX" => index_row
-                                                    .into_iter()
-                                                    .chain(HashMap::from([(
-                                                        "CREATED".to_owned(),
-                                                        Value::Timestamp(*created),
-                                                    )]))
-                                                    .collect(),
-                                                _ => index_row,
-                                            }
-                                        }
-                                        _ => index_row,
-                                    }
-                                })
-                                .collect::<HashMap<String, Value>>();
+                            let index_rows = schema.indexes.into_iter().flat_map(|index| {
+                                HashMap::from([
+                                    ("OBJECT_NAME".to_owned(), Value::Str(index.name.clone())),
+                                    ("OBJECT_TYPE".to_owned(), Value::Str("INDEX".to_owned())),
+                                ])
+                            });
 
                             let rows = table_rows.into_iter().chain(index_rows).collect();
 

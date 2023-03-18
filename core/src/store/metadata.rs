@@ -9,7 +9,7 @@ pub type MetaIter = Box<dyn Iterator<Item = Result<(ObjectName, HashMap<String, 
 
 #[async_trait(?Send)]
 pub trait Metadata {
-    async fn scan_meta(&self) -> Result<MetaIter> {
+    async fn scan_table_meta(&self) -> Result<MetaIter> {
         Ok(Box::new(empty()))
     }
 }
