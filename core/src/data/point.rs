@@ -26,7 +26,7 @@ impl Point {
     }
 
     pub fn from_wkt(v: &str) -> Result<Self> {
-        let re = Regex::new(r"POINT\s*\((\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\)").unwrap();
+        let re = Regex::new(r"POINT\s*\(\s*(-?\d*\.?\d+)\s+(-?\d*\.?\d+)\s*\)").unwrap();
 
         if let Some(captures) = re.captures(v) {
             let x = captures[1].parse::<f64>().ok().unwrap();

@@ -147,6 +147,7 @@ pub enum Function {
     Chr(Expr),
     StX(Expr),
     StY(Expr),
+    StGeomFromText(Expr),
     Point(Expr, Expr),
 }
 
@@ -318,6 +319,7 @@ impl ToSql for Function {
             Function::Chr(e) => format!("CHR({})", e.to_sql()),
             Function::StX(e) => format!("ST_X({})", e.to_sql()),
             Function::StY(e) => format!("ST_Y({})", e.to_sql()),
+            Function::StGeomFromText(e) => format!("ST_GEOFROMTEXT({})", e.to_sql()),
             Function::Point(x, y) => format!("POINT({}, {})", x.to_sql(), y.to_sql()),
         }
     }
@@ -945,7 +947,15 @@ mod tests {
                 "point".to_owned()
             ))))
             .to_sql()
-        )
+        );
+
+        assert_eq!(
+            "ST_GEOFROMTEXT('POINT(-71.064544 42.28787)')",
+            &Expr::Function(Box::new(Function::StGeomFromText(Expr::Literal(
+                AstLiteral::QuotedString("POINT(-71.064544 42.28787)".to_owned())
+            ))))
+            .to_sql()
+        );
     }
 
     #[test]

@@ -586,3 +586,9 @@ pub fn sty<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
         _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
     }
 }
+
+pub fn stgeofromtext<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let text = eval_to_str!(name, expr);
+    let point = crate::data::Point::from_wkt(text.as_str())?;
+    Ok(Evaluated::from(Value::Point(point)))
+}

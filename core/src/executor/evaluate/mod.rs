@@ -441,6 +441,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         // --- spatial ---
         Function::StX(expr) => f::stx(name, eval(expr).await?),
         Function::StY(expr) => f::sty(name, eval(expr).await?),
+        Function::StGeomFromText(expr) => f::stgeofromtext(name, eval(expr).await?),
 
         // --- etc ---
         Function::Unwrap { expr, selector } => {
