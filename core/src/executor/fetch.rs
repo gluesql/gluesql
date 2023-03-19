@@ -15,7 +15,7 @@ use {
     iter_enum::Iterator,
     itertools::Itertools,
     serde::Serialize,
-    std::{borrow::Cow, collections::HashMap, fmt::Debug, rc::Rc},
+    std::{borrow::Cow, collections::HashMap, fmt::Debug, iter, rc::Rc},
     thiserror::Error as ThisError,
 };
 
@@ -210,36 +210,34 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                             .scan_table_meta()
                             .await?
                             .collect::<Result<HashMap<_, _>>>()?;
-                        let rows = schemas.into_iter().map(move |schema| {
-                            let meta = table_metas.iter().find_map(|(table_name, hash_map)| {
-                                if table_name == &schema.table_name {
-                                    Some(Value::Map(hash_map.clone()))
-                                } else {
-                                    None
-                                }
-                            });
-                            let table_row = HashMap::from([
+                        let rows = schemas.into_iter().flat_map(move |schema| {
+                            let meta = table_metas
+                                .iter()
+                                .find_map(|(table_name, hash_map)| {
+                                    (table_name == &schema.table_name).then(|| hash_map.clone())
+                                })
+                                .unwrap_or_default();
+
+                            let table_rows = HashMap::from([
                                 ("OBJECT_NAME".to_owned(), Value::Str(schema.table_name)),
                                 ("OBJECT_TYPE".to_owned(), Value::Str("TABLE".to_owned())),
-                            ]);
+                            ])
+                            .into_iter()
+                            .chain(meta)
+                            .collect::<HashMap<_, _>>();
 
-                            let table_rows = match meta {
-                                Some(Value::Map(meta)) => {
-                                    table_row.into_iter().chain(meta).collect()
-                                }
-                                _ => table_row,
-                            };
-
-                            let index_rows = schema.indexes.into_iter().flat_map(|index| {
+                            let index_rows = schema.indexes.into_iter().map(|index| {
                                 HashMap::from([
                                     ("OBJECT_NAME".to_owned(), Value::Str(index.name)),
                                     ("OBJECT_TYPE".to_owned(), Value::Str("INDEX".to_owned())),
                                 ])
                             });
 
-                            let rows = table_rows.into_iter().chain(index_rows).collect();
+                            let rows = iter::once(table_rows)
+                                .chain(index_rows)
+                                .map(|hash_map| Ok(Row::Map(hash_map)));
 
-                            Ok(Row::Map(rows))
+                            rows
                         });
 
                         Rows::Objects(rows)

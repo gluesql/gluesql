@@ -11,13 +11,17 @@ test_case!(index, async move {
             Ok(Payload::CreateIndex),
         ),
         (
-            "SELECT OBJECT_NAME, OBJECT_TYPE
-                     FROM GLUE_OBJECTS",
+            "CREATE INDEX Meta_name ON Meta (name)",
+            Ok(Payload::CreateIndex),
+        ),
+        (
+            "SELECT OBJECT_NAME, OBJECT_TYPE FROM GLUE_OBJECTS",
             Ok(select!(
-                OBJECT_NAME          | OBJECT_TYPE       ;
-                Str                  | Str               ;
-                "Meta_id".to_owned()   "INDEX".to_owned();
-                "Meta".to_owned()      "TABLE".to_owned()
+                OBJECT_NAME            | OBJECT_TYPE       ;
+                Str                    | Str               ;
+                "Meta".to_owned()        "TABLE".to_owned();
+                "Meta_id".to_owned()     "INDEX".to_owned();
+                "Meta_name".to_owned()   "INDEX".to_owned()
             )),
         ),
     ];
