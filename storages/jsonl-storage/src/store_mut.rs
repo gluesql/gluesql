@@ -122,17 +122,7 @@ impl StoreMut for JsonlStorage {
         let sort_merge = SortMerge::new(prev_rows, rows.into_iter());
         let merged = sort_merge.collect::<Result<Vec<_>>>()?;
 
-        let json_path = self.json_path(table_name);
-        if json_path.exists() {
-            File::create(&json_path).map_storage_err()?;
-
-            self.append_data_json(table_name, merged).await
-        } else {
-            let jsonl_path = self.jsonl_path(table_name);
-            File::create(&jsonl_path).map_storage_err()?;
-
-            self.append_data(table_name, merged).await
-        }
+        self.write(table_name, merged).await
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
@@ -149,17 +139,7 @@ impl StoreMut for JsonlStorage {
             })
             .collect::<Result<Vec<_>>>()?;
 
-        let json_path = self.json_path(table_name);
-        if json_path.exists() {
-            File::create(&json_path).map_storage_err()?;
-
-            self.append_data_json(table_name, rows).await
-        } else {
-            let jsonl_path = self.jsonl_path(table_name);
-            File::create(&jsonl_path).map_storage_err()?;
-
-            self.append_data(table_name, rows).await
-        }
+        self.write(table_name, rows).await
     }
 }
 
@@ -256,5 +236,19 @@ impl JsonlStorage {
         writeln!(file, "{json_array}").map_storage_err()?;
 
         Ok(())
+    }
+
+    async fn write(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
+        let json_path = self.json_path(table_name);
+        if json_path.exists() {
+            File::create(&json_path).map_storage_err()?;
+
+            self.append_data_json(table_name, rows).await
+        } else {
+            let jsonl_path = self.jsonl_path(table_name);
+            File::create(&jsonl_path).map_storage_err()?;
+
+            self.append_data(table_name, rows).await
+        }
     }
 }
