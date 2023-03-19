@@ -233,11 +233,9 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                 ])
                             });
 
-                            let rows = iter::once(table_rows)
+                            iter::once(table_rows)
                                 .chain(index_rows)
-                                .map(|hash_map| Ok(Row::Map(hash_map)));
-
-                            rows
+                                .map(|hash_map| Ok(Row::Map(hash_map)))
                         });
 
                         Rows::Objects(rows)
