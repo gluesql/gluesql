@@ -75,13 +75,10 @@ impl Store for MemoryStorage {
 #[async_trait(?Send)]
 impl StoreMut for MemoryStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
-        let created = HashMap::from([
-            ("OBJECT_TYPE".to_owned(), Value::Str("TABLE".to_owned())),
-            (
-                "CREATED".to_owned(),
-                Value::Timestamp(Utc::now().naive_utc()),
-            ),
-        ]);
+        let created = HashMap::from([(
+            "CREATED".to_owned(),
+            Value::Timestamp(Utc::now().naive_utc()),
+        )]);
         let meta = HashMap::from([(schema.table_name.clone(), created)]);
         self.metadata.extend(meta);
 
