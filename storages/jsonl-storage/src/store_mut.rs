@@ -74,11 +74,12 @@ impl StoreMut for JsonlStorage {
                 .into_iter()
                 .enumerate()
                 .map(|(i, row)| {
-                    let key = Key::I64((start + i).try_into().unwrap());
+                    let key_index = (start + i).try_into().map_storage_err()?;
+                    let key = Key::I64(key_index);
 
-                    (key, row)
+                    Ok((key, row))
                 })
-                .collect::<Vec<_>>();
+                .collect::<Result<Vec<_>>>()?;
 
             return self.insert_data(table_name, rows).await;
         };
