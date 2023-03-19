@@ -24,8 +24,10 @@ impl Store for JsonlStorage {
         let mut schemas = paths
             .filter(|result| match result {
                 Ok(entry) => {
-                    entry.path().extension().and_then(OsStr::to_str) == Some("jsonl")
-                        || entry.path().extension().and_then(OsStr::to_str) == Some("json")
+                    let path = entry.path();
+                    let extension = path.extension().and_then(OsStr::to_str);
+
+                    extension == Some("jsonl") || extension == Some("json")
                 }
                 Err(_) => true,
             })
