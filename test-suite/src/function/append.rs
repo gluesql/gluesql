@@ -43,19 +43,18 @@ test_case!(append, async move {
 
     test!(
         r#"CREATE TABLE Foo (
-                id INTEGER, 
-                values LIST DEFAULT '[1,2,3]'
+                elements LIST
             );"#,
         Ok(Payload::Create)
     );
 
     run!(
         r#"
-            INSERT INTO Foo VALUES (1);
+            INSERT INTO Foo VALUES (APPEND(CAST('[1, 2, 3]' AS LIST), 4));
         "#
     );
     test!(
-        r#"select append(values, 4) as myappend from Foo;"#,
+        r#"select elements as myappend from Foo;"#,
         Ok(select!(
            myappend
            List;
