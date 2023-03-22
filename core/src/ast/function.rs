@@ -951,7 +951,7 @@ mod tests {
                 value: Expr::Identifier("value".to_owned())
             }))
             .to_sql()
-        )
+        );
 
         assert_eq!(
             "ST_X(point)",
