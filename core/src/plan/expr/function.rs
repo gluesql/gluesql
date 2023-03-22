@@ -133,7 +133,8 @@ impl Function {
                 from_expr: expr,
                 sub_expr: expr2,
                 start: None,
-            } => Exprs::Double([expr, expr2].into_iter()),
+            }
+            | Self::Append { expr, value: expr2 } => Exprs::Double([expr, expr2].into_iter()),
             Self::Lpad {
                 expr,
                 size: expr2,

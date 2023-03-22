@@ -145,6 +145,10 @@ pub enum Function {
     },
     Ascii(Expr),
     Chr(Expr),
+    Append {
+        expr: Expr,
+        value: Expr,
+    },
 }
 
 impl ToSql for Function {
@@ -313,6 +317,13 @@ impl ToSql for Function {
             }
             Function::Ascii(e) => format!("ASCII({})", e.to_sql()),
             Function::Chr(e) => format!("CHR({})", e.to_sql()),
+            Function::Append { expr, value } => {
+                format!(
+                    "APPEND({items}, {value})",
+                    items = expr.to_sql(),
+                    value = value.to_sql()
+                )
+            }
         }
     }
 }
@@ -924,6 +935,15 @@ mod tests {
             }))
             .to_sql()
         );
+
+        assert_eq!(
+            "APPEND(list, value)",
+            &Expr::Function(Box::new(Function::Append {
+                expr: Expr::Identifier("list".to_owned()),
+                value: Expr::Identifier("value".to_owned())
+            }))
+            .to_sql()
+        )
     }
 
     #[test]
