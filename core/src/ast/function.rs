@@ -145,6 +145,10 @@ pub enum Function {
     },
     Ascii(Expr),
     Chr(Expr),
+    Append {
+        expr: Expr,
+        value: Expr,
+    },
     StX(Expr),
     StY(Expr),
     StGeomFromText(Expr),
@@ -317,6 +321,13 @@ impl ToSql for Function {
             }
             Function::Ascii(e) => format!("ASCII({})", e.to_sql()),
             Function::Chr(e) => format!("CHR({})", e.to_sql()),
+            Function::Append { expr, value } => {
+                format!(
+                    "APPEND({items}, {value})",
+                    items = expr.to_sql(),
+                    value = value.to_sql()
+                )
+            }
             Function::StX(e) => format!("ST_X({})", e.to_sql()),
             Function::StY(e) => format!("ST_Y({})", e.to_sql()),
             Function::StGeomFromText(e) => format!("ST_GEOFROMTEXT({})", e.to_sql()),
@@ -932,6 +943,15 @@ mod tests {
             }))
             .to_sql()
         );
+
+        assert_eq!(
+            "APPEND(list, value)",
+            &Expr::Function(Box::new(Function::Append {
+                expr: Expr::Identifier("list".to_owned()),
+                value: Expr::Identifier("value".to_owned())
+            }))
+            .to_sql()
+        )
 
         assert_eq!(
             "ST_X(point)",

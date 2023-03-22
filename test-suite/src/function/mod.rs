@@ -1,4 +1,5 @@
 pub mod abs;
+pub mod append;
 pub mod ascii;
 pub mod cast;
 pub mod ceil;
