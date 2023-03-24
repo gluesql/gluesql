@@ -15,6 +15,7 @@ use {
         result::{Error, Result},
         store::{DataRow, RowIter},
     },
+    iter_enum::Iterator,
     serde_json::Value as JsonValue,
     std::{
         collections::HashMap,
@@ -104,49 +105,57 @@ impl JsonlStorage {
             .map_storage_err(JsonlStorageError::TableDoesNotExist)?;
 
         let json_path = self.json_path(table_name);
-        if let Ok(json_file_str) = fs::read_to_string(json_path) {
-            let value = serde_json::from_str(&json_file_str).map_err(|_| {
-                Error::StorageMsg(
-                    JsonlStorageError::InvalidJsonString(json_file_str.to_owned()).to_string(),
-                )
-            })?;
 
-            let jsons = match value {
-                JsonValue::Array(values) => values
-                    .into_iter()
-                    .map(|value| match value {
-                        JsonValue::Object(json_map) => HashMap::try_from_json_map(json_map),
-                        _ => Err(Error::StorageMsg(
-                            JsonlStorageError::JsonObjectTypeRequired.to_string(),
-                        )),
-                    })
-                    .collect::<Result<Vec<_>>>(),
-                JsonValue::Object(json_map) => Ok(vec![HashMap::try_from_json_map(json_map)?]),
-                _ => Err(Error::StorageMsg(
-                    JsonlStorageError::JsonArrayTypeRequired.to_string(),
-                )),
-            };
-
-            return jsons.map(|jsons| {
-                let row_iter = jsons
-                    .into_iter()
-                    .enumerate()
-                    .map(move |(index, json)| json_to_row(index, json, &schema));
-
-                Box::new(row_iter) as RowIter
-            });
+        #[derive(Iterator)]
+        enum Jsons<I1, I2> {
+            A(I1),
+            B(I2),
         }
 
-        let jsonl_path = self.jsonl_path(table_name);
-        let lines = read_lines(jsonl_path).map_storage_err()?;
+        let jsons = match fs::read_to_string(json_path) {
+            Ok(json_file_str) => {
+                let value = serde_json::from_str(&json_file_str).map_err(|_| {
+                    Error::StorageMsg(
+                        JsonlStorageError::InvalidJsonString(json_file_str.to_owned()).to_string(),
+                    )
+                })?;
 
-        let row_iter = lines.enumerate().map(move |(index, line)| -> Result<_> {
-            let json = HashMap::parse_json_object(&line.map_storage_err()?)?;
+                let jsons = match value {
+                    JsonValue::Array(values) => values
+                        .into_iter()
+                        .map(|value| match value {
+                            JsonValue::Object(json_map) => HashMap::try_from_json_map(json_map),
+                            _ => Err(Error::StorageMsg(
+                                JsonlStorageError::JsonObjectTypeRequired.to_string(),
+                            )),
+                        })
+                        .collect::<Result<Vec<_>>>(),
+                    JsonValue::Object(json_map) => Ok(vec![HashMap::try_from_json_map(json_map)?]),
+                    _ => Err(Error::StorageMsg(
+                        JsonlStorageError::JsonArrayTypeRequired.to_string(),
+                    )),
+                }?;
 
-            json_to_row(index, json, &schema)
+                Jsons::A(jsons.into_iter().map(Ok))
+            }
+            Err(_) => {
+                let jsonl_path = self.jsonl_path(table_name);
+                let lines = read_lines(jsonl_path).map_storage_err()?;
+
+                let jsons = lines.map(|line| HashMap::parse_json_object(&line.map_storage_err()?));
+
+                Jsons::B(jsons)
+            }
+        };
+
+        let rows = jsons.enumerate().map(move |(index, json)| -> Result<_> {
+            let json = json?;
+            let row = json_to_row(index, json, &schema)?;
+
+            Ok(row)
         });
 
-        Ok(Box::new(row_iter))
+        Ok(Box::new(rows))
     }
 }
 
