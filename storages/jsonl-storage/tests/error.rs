@@ -53,6 +53,24 @@ fn jsonl_error() {
                 JsonlStorageError::BothJsonlAndJsonExist("Duplicated".to_owned()).to_string(),
             )),
         ),
+        (
+            glue.execute("DROP TABLE Duplicated"),
+            Err(Error::StorageMsg(
+                JsonlStorageError::BothJsonlAndJsonExist("Duplicated".to_owned()).to_string(),
+            )),
+        ),
+        (
+            glue.execute("SELECT * FROM JsonObjectTypeRequired"),
+            Err(Error::StorageMsg(
+                JsonlStorageError::JsonObjectTypeRequired.to_string(),
+            )),
+        ),
+        (
+            glue.execute("SELECT * FROM JsonArrayTypeRequired"),
+            Err(Error::StorageMsg(
+                JsonlStorageError::JsonArrayTypeRequired.to_string(),
+            )),
+        ),
     ];
 
     for (actual, expected) in cases {
