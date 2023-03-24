@@ -14,10 +14,8 @@ use {
             value::{HashMapJsonExt, VecJsonExt},
             Schema,
         },
-        prelude::Key,
-        prelude::Value,
-        result::Error,
-        result::Result,
+        prelude::{Key, Value},
+        result::{Error, Result},
         store::{DataRow, RowIter},
     },
     std::{
