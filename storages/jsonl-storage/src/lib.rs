@@ -10,14 +10,12 @@ use {
     gluesql_core::{
         ast::ColumnUniqueOption,
         chrono::NaiveDateTime,
-        data::{
-            value::{HashMapJsonExt, VecJsonExt},
-            Schema,
-        },
+        data::{value::HashMapJsonExt, Schema},
         prelude::{Key, Value},
         result::{Error, Result},
         store::{DataRow, RowIter},
     },
+    serde_json::Value as JsonValue,
     std::{
         collections::HashMap,
         fs::{self, File},
@@ -107,7 +105,27 @@ impl JsonlStorage {
 
         let json_path = self.json_path(table_name);
         if let Ok(json_file_str) = fs::read_to_string(json_path) {
-            let jsons = Vec::parse_json_array(&json_file_str);
+            let value = serde_json::from_str(&json_file_str).map_err(|_| {
+                Error::StorageMsg(
+                    JsonlStorageError::InvalidJsonString(json_file_str.to_owned()).to_string(),
+                )
+            })?;
+
+            let jsons = match value {
+                JsonValue::Array(values) => values
+                    .into_iter()
+                    .map(|value| match value {
+                        JsonValue::Object(json_map) => HashMap::try_from_json_map(json_map),
+                        _ => Err(Error::StorageMsg(
+                            JsonlStorageError::JsonObjectTypeRequired.to_string(),
+                        )),
+                    })
+                    .collect::<Result<Vec<_>>>(),
+                JsonValue::Object(json_map) => Ok(vec![HashMap::try_from_json_map(json_map)?]),
+                _ => Err(Error::StorageMsg(
+                    JsonlStorageError::JsonArrayTypeRequired.to_string(),
+                )),
+            };
 
             return jsons.map(|jsons| {
                 let row_iter = jsons

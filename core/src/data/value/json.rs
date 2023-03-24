@@ -10,6 +10,8 @@ use {
 
 pub trait HashMapJsonExt {
     fn parse_json_object(value: &str) -> Result<HashMap<String, Value>>;
+
+    fn try_from_json_map(json_map: JsonMap<String, JsonValue>) -> Result<HashMap<String, Value>>;
 }
 
 impl HashMapJsonExt for HashMap<String, Value> {
@@ -18,9 +20,16 @@ impl HashMapJsonExt for HashMap<String, Value> {
             .map_err(|_| ValueError::InvalidJsonString(value.to_owned()))?;
 
         match value {
-            JsonValue::Object(json_map) => try_into_hash_map(json_map),
+            JsonValue::Object(json_map) => HashMap::try_from_json_map(json_map),
             _ => Err(ValueError::JsonObjectTypeRequired.into()),
         }
+    }
+
+    fn try_from_json_map(json_map: JsonMap<String, JsonValue>) -> Result<HashMap<String, Value>> {
+        json_map
+            .into_iter()
+            .map(|(key, value)| value.try_into().map(|value| (key, value)))
+            .collect::<Result<HashMap<String, Value>>>()
     }
 }
 
@@ -37,21 +46,14 @@ impl VecJsonExt for Vec<Value> {
             JsonValue::Array(values) => values
                 .into_iter()
                 .map(|value| match value {
-                    JsonValue::Object(json_map) => try_into_hash_map(json_map),
+                    JsonValue::Object(json_map) => HashMap::try_from_json_map(json_map),
                     _ => Err(ValueError::JsonObjectTypeRequired.into()),
                 })
                 .collect::<Result<Vec<_>>>(),
-            JsonValue::Object(json_map) => Ok(vec![try_into_hash_map(json_map)?]),
+            JsonValue::Object(json_map) => Ok(vec![HashMap::try_from_json_map(json_map)?]),
             _ => Err(ValueError::JsonArrayTypeRequired.into()),
         }
     }
-}
-
-fn try_into_hash_map(json_map: JsonMap<String, JsonValue>) -> Result<HashMap<String, Value>> {
-    json_map
-        .into_iter()
-        .map(|(key, value)| value.try_into().map(|value| (key, value)))
-        .collect::<Result<HashMap<String, Value>>>()
 }
 
 impl Value {

@@ -21,8 +21,9 @@ fn jsonl_error() {
         ),
         (
             glue.execute("SELECT * FROM WrongFormatJson"),
-            Err(ValueError::InvalidJsonString(
-                r#"{
+            Err(Error::StorageMsg(
+                JsonlStorageError::InvalidJsonString(
+                    r#"{
   "id": 1,
   "notice": "*.json usage1: An array of jsons"
 },
@@ -31,9 +32,10 @@ fn jsonl_error() {
   "notice": "*.json usage2: A single json in a file"
 }
 "#
-                .to_owned(),
-            )
-            .into()),
+                    .to_owned(),
+                )
+                .to_string(),
+            )),
         ),
         (
             glue.execute("SELECT * FROM WrongSchema"),
