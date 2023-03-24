@@ -7,7 +7,7 @@ use {
     gluesql_core::{
         data::Schema,
         prelude::Key,
-        result::{Error, Result},
+        result::Result,
         store::{DataRow, StoreMut},
     },
     serde_json::{to_string_pretty, Map, Value as JsonValue},
@@ -39,14 +39,9 @@ impl StoreMut for JsonlStorage {
         let jsonl_path = self.jsonl_path(table_name);
 
         match (json_path.exists(), jsonl_path.exists()) {
-            (true, true) => {
-                return Err(Error::StorageMsg(
-                    JsonlStorageError::BothJsonlAndJsonExist(table_name.to_owned()).to_string(),
-                ))
-            }
             (true, false) => remove_file(json_path).map_storage_err()?,
             (false, true) => remove_file(jsonl_path).map_storage_err()?,
-            (false, false) => {}
+            _ => {}
         }
 
         let schema_path = self.schema_path(table_name);
