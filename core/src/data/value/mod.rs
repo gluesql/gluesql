@@ -25,7 +25,7 @@ mod uuid;
 
 pub use {
     error::{NumericBinaryOperator, ValueError},
-    json::{HashMapJsonExt, VecJsonExt},
+    json::HashMapJsonExt,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
