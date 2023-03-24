@@ -8,8 +8,7 @@ use {
         data::Schema,
         prelude::Key,
         result::{Error, Result},
-        store::DataRow,
-        store::StoreMut,
+        store::{DataRow, StoreMut},
     },
     serde_json::{to_string_pretty, Map, Value as JsonValue},
     std::{
