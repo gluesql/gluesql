@@ -223,7 +223,7 @@ impl JsonlStorage {
         );
         let json_array = to_string_pretty(&json_array).map_storage_err()?;
 
-        writeln!(file, "{json_array}").map_storage_err()?;
+        file.write_all(json_array.as_bytes()).map_storage_err()?;
 
         Ok(())
     }
