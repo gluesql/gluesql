@@ -11,7 +11,7 @@ use {
         ast::ColumnUniqueOption,
         chrono::NaiveDateTime,
         data::{value::HashMapJsonExt, Schema},
-        prelude::{Key, Value},
+        prelude::Key,
         result::{Error, Result},
         store::{DataRow, RowIter},
     },
@@ -104,14 +104,12 @@ impl JsonlStorage {
             .fetch_schema(table_name)?
             .map_storage_err(JsonlStorageError::TableDoesNotExist)?;
 
-        let json_path = self.json_path(table_name);
-
         #[derive(Iterator)]
-        enum Jsons<I1, I2> {
-            A(I1),
-            B(I2),
+        enum Extension<I1, I2> {
+            Json(I1),
+            Jsonl(I2),
         }
-
+        let json_path = self.json_path(table_name);
         let jsons = match fs::read_to_string(json_path) {
             Ok(json_file_str) => {
                 let value = serde_json::from_str(&json_file_str).map_err(|_| {
@@ -136,74 +134,63 @@ impl JsonlStorage {
                     )),
                 }?;
 
-                Jsons::A(jsons.into_iter().map(Ok))
+                Extension::Json(jsons.into_iter().map(Ok))
             }
             Err(_) => {
                 let jsonl_path = self.jsonl_path(table_name);
                 let lines = read_lines(jsonl_path).map_storage_err()?;
-
                 let jsons = lines.map(|line| HashMap::parse_json_object(&line.map_storage_err()?));
 
-                Jsons::B(jsons)
+                Extension::Jsonl(jsons)
             }
         };
 
         let rows = jsons.enumerate().map(move |(index, json)| -> Result<_> {
             let json = json?;
-            let row = json_to_row(index, json, &schema)?;
+            let get_index_key = || index.try_into().map(Key::I64).map_storage_err();
 
-            Ok(row)
+            let column_defs = match &schema.column_defs {
+                Some(column_defs) => column_defs,
+                None => {
+                    let key = get_index_key()?;
+                    let row = DataRow::Map(json);
+
+                    return Ok((key, row));
+                }
+            };
+
+            let mut key: Option<Key> = None;
+            let mut values = Vec::with_capacity(column_defs.len());
+            for column_def in column_defs {
+                let value = json.get(&column_def.name).map_storage_err(
+                    JsonlStorageError::ColumnDoesNotExist(column_def.name.clone()),
+                )?;
+
+                if column_def.unique == Some(ColumnUniqueOption { is_primary: true }) {
+                    key = Some(value.clone().try_into().map_storage_err()?);
+                }
+
+                let value = match value.get_type() {
+                    Some(data_type) if data_type != column_def.data_type => {
+                        value.cast(&column_def.data_type)?
+                    }
+                    Some(_) | None => value.clone(),
+                };
+
+                values.push(value);
+            }
+
+            let key = match key {
+                Some(key) => key,
+                None => get_index_key()?,
+            };
+            let row = DataRow::Vec(values);
+
+            Ok((key, row))
         });
 
         Ok(Box::new(rows))
     }
-}
-
-fn json_to_row(
-    index: usize,
-    json_row: HashMap<String, Value>,
-    schema: &Schema,
-) -> Result<(Key, DataRow)> {
-    let get_index_key = || index.try_into().map(Key::I64).map_storage_err();
-
-    let column_defs = match &schema.column_defs {
-        Some(column_defs) => column_defs,
-        None => {
-            let key = get_index_key()?;
-            let row = DataRow::Map(json_row);
-
-            return Ok((key, row));
-        }
-    };
-
-    let mut key: Option<Key> = None;
-    let mut values = Vec::with_capacity(column_defs.len());
-    for column_def in column_defs {
-        let value = json_row.get(&column_def.name).map_storage_err(
-            JsonlStorageError::ColumnDoesNotExist(column_def.name.clone()),
-        )?;
-
-        if column_def.unique == Some(ColumnUniqueOption { is_primary: true }) {
-            key = Some(value.clone().try_into().map_storage_err()?);
-        }
-
-        let value = match value.get_type() {
-            Some(data_type) if data_type != column_def.data_type => {
-                value.cast(&column_def.data_type)?
-            }
-            Some(_) | None => value.clone(),
-        };
-
-        values.push(value);
-    }
-
-    let key = match key {
-        Some(key) => key,
-        None => get_index_key()?,
-    };
-    let row = DataRow::Vec(values);
-
-    Ok((key, row))
 }
 
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
