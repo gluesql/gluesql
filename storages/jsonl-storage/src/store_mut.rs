@@ -37,21 +37,16 @@ impl StoreMut for JsonlStorage {
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         let json_path = self.json_path(table_name);
         let jsonl_path = self.jsonl_path(table_name);
-        let json_exists = json_path.exists();
-        let jsonl_exists = jsonl_path.exists();
 
-        if jsonl_exists && json_exists {
-            return Err(Error::StorageMsg(
-                JsonlStorageError::BothJsonlAndJsonExist(table_name.to_owned()).to_string(),
-            ));
-        }
-
-        if json_exists {
-            remove_file(json_path).map_storage_err()?;
-        }
-
-        if jsonl_exists {
-            remove_file(jsonl_path).map_storage_err()?;
+        match (json_path.exists(), jsonl_path.exists()) {
+            (true, true) => {
+                return Err(Error::StorageMsg(
+                    JsonlStorageError::BothJsonlAndJsonExist(table_name.to_owned()).to_string(),
+                ))
+            }
+            (true, false) => remove_file(json_path).map_storage_err()?,
+            (false, true) => remove_file(jsonl_path).map_storage_err()?,
+            (false, false) => {}
         }
 
         let schema_path = self.schema_path(table_name);

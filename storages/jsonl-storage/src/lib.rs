@@ -39,17 +39,17 @@ impl JsonlStorage {
     }
 
     fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
-        let jsonl_exists = self.jsonl_path(table_name).exists();
-        let json_exists = self.json_path(table_name).exists();
-
-        if !jsonl_exists && !json_exists {
-            return Ok(None);
-        };
-
-        if jsonl_exists && json_exists {
-            return Err(Error::StorageMsg(
-                JsonlStorageError::BothJsonlAndJsonExist(table_name.to_owned()).to_string(),
-            ));
+        match (
+            self.jsonl_path(table_name).exists(),
+            self.json_path(table_name).exists(),
+        ) {
+            (true, true) => {
+                return Err(Error::StorageMsg(
+                    JsonlStorageError::BothJsonlAndJsonExist(table_name.to_owned()).to_string(),
+                ))
+            }
+            (false, false) => return Ok(None),
+            _ => {}
         }
 
         let schema_path = self.schema_path(table_name);
