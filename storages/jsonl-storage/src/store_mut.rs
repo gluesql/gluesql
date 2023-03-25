@@ -149,6 +149,24 @@ where
 }
 
 impl JsonlStorage {
+    async fn write(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
+        let schema = self
+            .fetch_schema(table_name)?
+            .map_storage_err(JsonlStorageError::TableDoesNotExist)?;
+
+        let json_path = self.json_path(table_name);
+        if json_path.exists() {
+            File::create(json_path).map_storage_err()?;
+
+            self.write_json(schema, rows)
+        } else {
+            let jsonl_path = self.jsonl_path(table_name);
+            File::create(jsonl_path).map_storage_err()?;
+
+            self.write_jsonl(schema, rows)
+        }
+    }
+
     fn write_json(&mut self, schema: Schema, rows: Vec<DataRow>) -> Result<()> {
         let json_path = self.json_path(&schema.table_name);
         let column_defs = schema.column_defs.unwrap_or_default();
@@ -183,24 +201,6 @@ impl JsonlStorage {
         file.write_all(json_array.as_bytes()).map_storage_err()?;
 
         Ok(())
-    }
-
-    async fn write(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
-        let schema = self
-            .fetch_schema(table_name)?
-            .map_storage_err(JsonlStorageError::TableDoesNotExist)?;
-
-        let json_path = self.json_path(table_name);
-        if json_path.exists() {
-            File::create(json_path).map_storage_err()?;
-
-            self.write_json(schema, rows)
-        } else {
-            let jsonl_path = self.jsonl_path(table_name);
-            File::create(jsonl_path).map_storage_err()?;
-
-            self.write_jsonl(schema, rows)
-        }
     }
 
     fn write_jsonl(&mut self, schema: Schema, rows: Vec<DataRow>) -> Result<()> {
