@@ -1,7 +1,7 @@
 use {
     crate::{
-        error::{JsonlStorageError, OptionExt, ResultExt},
-        JsonlStorage,
+        error::{JsonStorageError, OptionExt, ResultExt},
+        JsonStorage,
     },
     async_trait::async_trait,
     gluesql_core::{
@@ -19,7 +19,7 @@ use {
 };
 
 #[async_trait(?Send)]
-impl StoreMut for JsonlStorage {
+impl StoreMut for JsonStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let data_path = self.jsonl_path(schema.table_name.as_str());
         File::create(data_path).map_storage_err()?;
@@ -69,7 +69,7 @@ impl StoreMut for JsonlStorage {
         } else {
             let schema = self
                 .fetch_schema(table_name)?
-                .map_storage_err(JsonlStorageError::TableDoesNotExist)?;
+                .map_storage_err(JsonStorageError::TableDoesNotExist)?;
 
             let file = OpenOptions::new()
                 .write(true)
@@ -155,7 +155,7 @@ where
     }
 }
 
-impl JsonlStorage {
+impl JsonStorage {
     fn rewrite(&mut self, schema: Schema, rows: Vec<DataRow>) -> Result<()> {
         let json_path = self.json_path(&schema.table_name);
         let (path, is_json) = match json_path.exists() {

@@ -6,7 +6,7 @@ mod store_mut;
 mod transaction;
 
 use {
-    error::{JsonlStorageError, OptionExt, ResultExt},
+    error::{JsonStorageError, OptionExt, ResultExt},
     gluesql_core::{
         ast::ColumnUniqueOption,
         chrono::NaiveDateTime,
@@ -25,11 +25,11 @@ use {
     },
 };
 
-pub struct JsonlStorage {
+pub struct JsonStorage {
     pub path: PathBuf,
 }
 
-impl JsonlStorage {
+impl JsonStorage {
     pub fn new(path: &str) -> Result<Self> {
         fs::create_dir_all(path).map_storage_err()?;
         let path = PathBuf::from(path);
@@ -44,7 +44,7 @@ impl JsonlStorage {
         ) {
             (true, true) => {
                 return Err(Error::StorageMsg(
-                    JsonlStorageError::BothJsonlAndJsonExist(table_name.to_owned()).to_string(),
+                    JsonStorageError::BothJsonlAndJsonExist(table_name.to_owned()).to_string(),
                 ))
             }
             (false, false) => return Ok(None),
@@ -61,7 +61,7 @@ impl JsonlStorage {
                 let schema = Schema::from_ddl(&ddl)?;
                 if schema.table_name != table_name {
                     return Err(Error::StorageMsg(
-                        JsonlStorageError::TableNameDoesNotMatchWithFile.to_string(),
+                        JsonStorageError::TableNameDoesNotMatchWithFile.to_string(),
                     ));
                 }
 
@@ -102,7 +102,7 @@ impl JsonlStorage {
     fn scan_data(&self, table_name: &str) -> Result<(RowIter, Schema)> {
         let schema = self
             .fetch_schema(table_name)?
-            .map_storage_err(JsonlStorageError::TableDoesNotExist)?;
+            .map_storage_err(JsonStorageError::TableDoesNotExist)?;
 
         #[derive(Iterator)]
         enum Extension<I1, I2> {
@@ -114,7 +114,7 @@ impl JsonlStorage {
             Ok(json_file_str) => {
                 let value = serde_json::from_str(&json_file_str).map_err(|_| {
                     Error::StorageMsg(
-                        JsonlStorageError::InvalidJsonString(json_file_str.to_owned()).to_string(),
+                        JsonStorageError::InvalidJsonString(json_file_str.to_owned()).to_string(),
                     )
                 })?;
 
@@ -124,13 +124,13 @@ impl JsonlStorage {
                         .map(|value| match value {
                             JsonValue::Object(json_map) => HashMap::try_from_json_map(json_map),
                             _ => Err(Error::StorageMsg(
-                                JsonlStorageError::JsonObjectTypeRequired.to_string(),
+                                JsonStorageError::JsonObjectTypeRequired.to_string(),
                             )),
                         })
                         .collect::<Result<Vec<_>>>(),
                     JsonValue::Object(json_map) => Ok(vec![HashMap::try_from_json_map(json_map)?]),
                     _ => Err(Error::StorageMsg(
-                        JsonlStorageError::JsonArrayTypeRequired.to_string(),
+                        JsonStorageError::JsonArrayTypeRequired.to_string(),
                     )),
                 }?;
 
@@ -164,7 +164,7 @@ impl JsonlStorage {
             let mut values = Vec::with_capacity(column_defs.len());
             for column_def in column_defs {
                 let value = json.get(&column_def.name).map_storage_err(
-                    JsonlStorageError::ColumnDoesNotExist(column_def.name.clone()),
+                    JsonStorageError::ColumnDoesNotExist(column_def.name.clone()),
                 )?;
 
                 if column_def.unique == Some(ColumnUniqueOption { is_primary: true }) {

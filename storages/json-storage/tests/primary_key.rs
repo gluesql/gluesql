@@ -3,19 +3,19 @@ use {
         Glue,
         {Payload, Value::*},
     },
-    gluesql_jsonl_storage::JsonlStorage,
+    gluesql_json_storage::JsonStorage,
     std::fs::remove_dir_all,
     test_suite::{concat_with, row, select, stringify_label, test},
 };
 
 #[test]
-fn jsonl_primary_key() {
-    let path = "tmp/jsonl_primary_key/";
+fn json_primary_key() {
+    let path = "tmp/json_primary_key/";
     if let Err(e) = remove_dir_all(path) {
         println!("fs::remove_file {:?}", e);
     };
-    let jsonl_storage = JsonlStorage::new(path).unwrap();
-    let mut glue = Glue::new(jsonl_storage);
+    let json_storage = JsonStorage::new(path).unwrap();
+    let mut glue = Glue::new(json_storage);
 
     let cases = vec![
         (

@@ -1,7 +1,7 @@
 use {
     crate::{
-        error::{JsonlStorageError, OptionExt, ResultExt},
-        JsonlStorage,
+        error::{JsonStorageError, OptionExt, ResultExt},
+        JsonStorage,
     },
     async_trait::async_trait,
     gluesql_core::{
@@ -14,7 +14,7 @@ use {
 };
 
 #[async_trait(?Send)]
-impl Store for JsonlStorage {
+impl Store for JsonStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         self.fetch_schema(table_name)
     }
@@ -36,10 +36,10 @@ impl Store for JsonlStorage {
                 let table_name = path
                     .file_stem()
                     .and_then(OsStr::to_str)
-                    .map_storage_err(JsonlStorageError::FileNotFound)?;
+                    .map_storage_err(JsonStorageError::FileNotFound)?;
 
                 self.fetch_schema(table_name)?
-                    .map_storage_err(JsonlStorageError::TableDoesNotExist)
+                    .map_storage_err(JsonStorageError::TableDoesNotExist)
             })
             .collect::<Result<Vec<Schema>>>()?;
 

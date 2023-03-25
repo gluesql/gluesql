@@ -899,7 +899,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "gluesql-jsonl-storage"
+name = "gluesql-json-storage"
 version = "0.13.0"
 dependencies = [
  "async-trait",
@@ -909,6 +909,7 @@ dependencies = [
  "gluesql-utils",
  "gluesql_memory_storage",
  "hex",
+ "iter-enum",
  "serde",
  "serde_json",
  "thiserror",

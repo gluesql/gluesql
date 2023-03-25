@@ -6,7 +6,7 @@ use {
             Value::{self, *},
         },
     },
-    gluesql_jsonl_storage::JsonlStorage,
+    gluesql_json_storage::JsonStorage,
     std::{
         collections::HashMap,
         net::{IpAddr, Ipv4Addr},
@@ -18,10 +18,10 @@ use {
 };
 
 #[test]
-fn jsonl_schema() {
+fn json_schema() {
     let path = "./tests/samples/";
-    let jsonl_storage = JsonlStorage::new(path).unwrap();
-    let mut glue = Glue::new(jsonl_storage);
+    let json_storage = JsonStorage::new(path).unwrap();
+    let mut glue = Glue::new(json_storage);
 
     macro_rules! date {
         ($date: expr) => {

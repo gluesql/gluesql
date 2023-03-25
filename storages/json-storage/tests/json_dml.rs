@@ -1,6 +1,6 @@
 use {
     gluesql_core::prelude::{Glue, Payload, Value},
-    gluesql_jsonl_storage::JsonlStorage,
+    gluesql_json_storage::JsonStorage,
     serde_json::json,
     std::{
         fs::{remove_dir_all, File},
@@ -15,8 +15,8 @@ fn json_dml() {
     if let Err(e) = remove_dir_all(path) {
         println!("fs::remove_file {:?}", e);
     };
-    let jsonl_storage = JsonlStorage::new(path).unwrap();
-    let mut glue = Glue::new(jsonl_storage);
+    let json_storage = JsonStorage::new(path).unwrap();
+    let mut glue = Glue::new(json_storage);
 
     let dir = format!("{path}/JsonDML.json");
     let mut file = File::create(dir).unwrap();

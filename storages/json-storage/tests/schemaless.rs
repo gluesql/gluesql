@@ -1,15 +1,15 @@
 use {
     gluesql_core::prelude::{Glue, Value},
-    gluesql_jsonl_storage::JsonlStorage,
+    gluesql_json_storage::JsonStorage,
     serde_json::json,
     test_suite::{select_map, test},
 };
 
 #[test]
-fn jsonl_schemaless() {
+fn json_schemaless() {
     let path = "./tests/samples/";
-    let jsonl_storage = JsonlStorage::new(path).unwrap();
-    let mut glue = Glue::new(jsonl_storage);
+    let json_storage = JsonStorage::new(path).unwrap();
+    let mut glue = Glue::new(json_storage);
 
     let cases = vec![
         (
