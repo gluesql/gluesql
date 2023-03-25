@@ -479,11 +479,13 @@ impl TryFrom<&Value> for u128 {
             Value::U64(value) => value.to_u128().ok_or(ValueError::ImpossibleCast)?,
             Value::U128(value) => *value,
             Value::F64(value) => value.to_u128().ok_or(ValueError::ImpossibleCast)?,
-            Value::Str(value) => value
-                .parse::<u128>()
-                .map_err(|_| ValueError::ImpossibleCast)?,
+            Value::Str(value) => {
+                value.parse::<u128>().map_err(|_| ValueError::ImpossibleCast)?;
+                parse_uuid(value)
+            }
             Value::Decimal(value) => value.to_u128().ok_or(ValueError::ImpossibleCast)?,
             Value::Inet(IpAddr::V6(v)) => u128::from(*v),
+            Value::Uuid(value) => *value,
             Value::Date(_)
             | Value::Timestamp(_)
             | Value::Time(_)
@@ -491,7 +493,6 @@ impl TryFrom<&Value> for u128 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Inet(IpAddr::V4(_))
-            | Value::Uuid(_)
             | Value::Bytea(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
@@ -1463,8 +1464,8 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
-        //let uuid = 195965723427462096757863453463987888808;
-        //assert_eq!((&Value::Uuid(uuid)).try_into() as Result<u128>, Ok(uuid));
+        let uuid = 195965723427462096757863453463987888808;
+        assert_eq!((&Value::Uuid(uuid)).try_into() as Result<u128>, Ok(uuid));
         //assert_eq!(u128::try_from(&Value::Uuid(uuid)), Ok(uuid));
 
         //let uuid = "936DA01F9ABD4d9d80C702AF85C822A8";
