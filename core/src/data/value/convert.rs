@@ -479,10 +479,10 @@ impl TryFrom<&Value> for u128 {
             Value::U64(value) => value.to_u128().ok_or(ValueError::ImpossibleCast)?,
             Value::U128(value) => *value,
             Value::F64(value) => value.to_u128().ok_or(ValueError::ImpossibleCast)?,
-            Value::Str(value) => {
-                value.parse::<u128>().map_err(|_| ValueError::ImpossibleCast)?;
-                parse_uuid(value).unwrap()
-            }
+            Value::Str(value) => value
+                .parse::<u128>()
+                .map_err(|_| ValueError::ImpossibleCast)
+                .and_then(|_| Ok(parse_uuid(value))),
             Value::Decimal(value) => value.to_u128().ok_or(ValueError::ImpossibleCast)?,
             Value::Inet(IpAddr::V6(v)) => u128::from(*v),
             Value::Uuid(value) => *value,
