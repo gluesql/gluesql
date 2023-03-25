@@ -482,7 +482,11 @@ impl TryFrom<&Value> for u128 {
             Value::Str(value) => value
                 .parse::<u128>()
                 .map_err(|_| ValueError::ImpossibleCast)
-                .and_then(|_| Ok(parse_uuid(value))),
+                .and_then(|_| {
+                    parse_uuid(value)
+                        .map_err(|_| ValueError::FailedToParseUUID)
+                        .and_then(|uuid| Ok(uuid))
+            }),
             Value::Decimal(value) => value.to_u128().ok_or(ValueError::ImpossibleCast)?,
             Value::Inet(IpAddr::V6(v)) => u128::from(*v),
             Value::Uuid(value) => *value,
@@ -1470,8 +1474,8 @@ mod tests {
 
         let uuid = "936DA01F9ABD4d9d80C702AF85C822A8";
         assert_eq!(
-           u128::try_from(&Value::Str(uuid.to_owned())),
-           parse_uuid(uuid)
+            u128::try_from(&Value::Str(uuid.to_owned())),
+            parse_uuid(uuid)
         );
 
         let ip = Ipv6Addr::from(9876543210);
