@@ -49,13 +49,15 @@ impl Store for JsonlStorage {
     }
 
     async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<DataRow>> {
-        self.scan_data(table_name)?
-            .find_map(|result| {
-                result
-                    .map(|(key, row)| (&key == target).then_some(row))
-                    .transpose()
-            })
-            .transpose()
+        for item in self.scan_data(table_name)? {
+            let (key, row) = item?;
+
+            if &key == target {
+                return Ok(Some(row));
+            }
+        }
+
+        Ok(None)
     }
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {

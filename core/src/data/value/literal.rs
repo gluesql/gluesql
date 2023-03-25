@@ -420,6 +420,7 @@ impl Value {
             (DataType::Inet, Literal::Text(v)) => IpAddr::from_str(v)
                 .map(Value::Inet)
                 .map_err(|_| ValueError::FailedToParseInetString(v.to_string()).into()),
+            (DataType::List, Literal::Text(v)) => Value::parse_json_list(v),
             _ => Err(ValueError::UnimplementedLiteralCast {
                 data_type: data_type.clone(),
                 literal: format!("{:?}", literal),
