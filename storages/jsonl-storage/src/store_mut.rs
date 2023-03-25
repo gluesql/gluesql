@@ -62,7 +62,6 @@ impl StoreMut for JsonlStorage {
         if json_path.exists() {
             let rows = self
                 .scan_data(table_name)?
-                .into_iter()
                 .map(|item| Ok(item?.1))
                 .chain(rows.into_iter().map(Ok))
                 .collect::<Result<Vec<_>>>()?;
@@ -193,12 +192,12 @@ impl JsonlStorage {
 
         let json_path = self.json_path(table_name);
         if json_path.exists() {
-            File::create(&json_path).map_storage_err()?;
+            File::create(json_path).map_storage_err()?;
 
             self.write_json(schema, rows)
         } else {
             let jsonl_path = self.jsonl_path(table_name);
-            File::create(&jsonl_path).map_storage_err()?;
+            File::create(jsonl_path).map_storage_err()?;
 
             self.write_jsonl(&schema, rows)
         }
