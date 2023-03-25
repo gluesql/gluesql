@@ -16,8 +16,26 @@ fn jsonl_error() {
 
     let cases = vec![
         (
-            glue.execute("SELECT * FROM WrongFormat"),
-            Err(ValueError::InvalidJsonString("{".to_owned()).into()),
+            glue.execute("SELECT * FROM WrongFormatJsonl"),
+            Err(ValueError::InvalidJsonString("[".to_owned()).into()),
+        ),
+        (
+            glue.execute("SELECT * FROM WrongFormatJson"),
+            Err(Error::StorageMsg(
+                JsonlStorageError::InvalidJsonString(
+                    r#"{
+  "id": 1,
+  "notice": "*.json usage1: An array of jsons"
+},
+{
+  "id": 2,
+  "notice": "*.json usage2: A single json in a file"
+}
+"#
+                    .to_owned(),
+                )
+                .to_string(),
+            )),
         ),
         (
             glue.execute("SELECT * FROM WrongSchema"),
@@ -27,6 +45,30 @@ fn jsonl_error() {
             glue.execute("SELECT * FROM WrongTableName"),
             Err(Error::StorageMsg(
                 JsonlStorageError::TableNameDoesNotMatchWithFile.to_string(),
+            )),
+        ),
+        (
+            glue.execute("SELECT * FROM Duplicated"),
+            Err(Error::StorageMsg(
+                JsonlStorageError::BothJsonlAndJsonExist("Duplicated".to_owned()).to_string(),
+            )),
+        ),
+        (
+            glue.execute("DROP TABLE Duplicated"),
+            Err(Error::StorageMsg(
+                JsonlStorageError::BothJsonlAndJsonExist("Duplicated".to_owned()).to_string(),
+            )),
+        ),
+        (
+            glue.execute("SELECT * FROM JsonObjectTypeRequired"),
+            Err(Error::StorageMsg(
+                JsonlStorageError::JsonObjectTypeRequired.to_string(),
+            )),
+        ),
+        (
+            glue.execute("SELECT * FROM JsonArrayTypeRequired"),
+            Err(Error::StorageMsg(
+                JsonlStorageError::JsonArrayTypeRequired.to_string(),
             )),
         ),
     ];
