@@ -412,7 +412,7 @@ impl TryFrom<&Value> for u32 {
                 .parse::<u32>()
                 .map_err(|_| ValueError::ImpossibleCast)?,
             Value::Decimal(value) => value.to_u32().ok_or(ValueError::ImpossibleCast)?,
-            Value::Inet(IpAddr::V4(v)) => Ok(u32::from(*v)),
+            Value::Inet(IpAddr::V4(value)) => u32::from(*value),
             Value::Date(_)
             | Value::Timestamp(_)
             | Value::Time(_)
@@ -482,7 +482,7 @@ impl TryFrom<&Value> for u128 {
                 .map_err(|_| ValueError::ImpossibleCast)?,
             Value::Decimal(value) => value.to_u128().ok_or(ValueError::ImpossibleCast)?,
             Value::Uuid(value) => *value,
-            Value::Inet(IpAddr::V6(v)) => Ok(u128::from(*v)),
+            Value::Inet(IpAddr::V6(v)) => u128::from(*v),
             Value::Date(_)
             | Value::Timestamp(_)
             | Value::Time(_)
