@@ -62,30 +62,36 @@ impl StoreMut for JsonlStorage {
         if json_path.exists() {
             let rows = self
                 .scan_data(table_name)?
+                .0
                 .map(|item| Ok(item?.1))
                 .chain(rows.into_iter().map(Ok))
                 .collect::<Result<Vec<_>>>()?;
 
-            File::create(&json_path).map_storage_err()?;
+            let file = File::create(&json_path).map_storage_err()?;
 
-            self.write_json(schema, rows)
+            self.write(schema, rows, file, true)
         } else {
-            self.write_jsonl(schema, rows)
+            let file = OpenOptions::new()
+                .write(true)
+                .append(true)
+                .open(self.jsonl_path(&schema.table_name))
+                .map_storage_err()?;
+            self.write(schema, rows, file, false)
         }
     }
 
     async fn insert_data(&mut self, table_name: &str, mut rows: Vec<(Key, DataRow)>) -> Result<()> {
-        let prev_rows = self.scan_data(table_name)?;
+        let prev_rows = self.scan_data(table_name)?.0;
         rows.sort_by(|(key_a, _), (key_b, _)| key_a.cmp(key_b));
 
         let sort_merge = SortMerge::new(prev_rows, rows.into_iter());
         let merged = sort_merge.collect::<Result<Vec<_>>>()?;
 
-        self.write(table_name, merged).await
+        self.rewrite(table_name, merged)
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
-        let prev_rows = self.scan_data(table_name)?;
+        let prev_rows = self.scan_data(table_name)?.0;
         let rows = prev_rows
             .filter_map(|result| {
                 result
@@ -98,7 +104,7 @@ impl StoreMut for JsonlStorage {
             })
             .collect::<Result<Vec<_>>>()?;
 
-        self.write(table_name, rows).await
+        self.rewrite(table_name, rows)
     }
 }
 
@@ -149,75 +155,39 @@ where
 }
 
 impl JsonlStorage {
-    async fn write(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
+    fn rewrite(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
         let schema = self
             .fetch_schema(table_name)?
             .map_storage_err(JsonlStorageError::TableDoesNotExist)?;
 
         let json_path = self.json_path(table_name);
-        if json_path.exists() {
-            File::create(json_path).map_storage_err()?;
+        let (file, is_json) = match json_path.exists() {
+            true => (File::create(json_path).map_storage_err()?, true),
+            false => {
+                let jsonl_path = self.jsonl_path(table_name);
 
-            self.write_json(schema, rows)
-        } else {
-            let jsonl_path = self.jsonl_path(table_name);
-            File::create(jsonl_path).map_storage_err()?;
+                (File::create(jsonl_path).map_storage_err()?, false)
+            }
+        };
 
-            self.write_jsonl(schema, rows)
-        }
+        self.write(schema, rows, file, is_json)
     }
 
-    fn write_json(&mut self, schema: Schema, rows: Vec<DataRow>) -> Result<()> {
-        let json_path = self.json_path(&schema.table_name);
+    fn write(
+        &mut self,
+        schema: Schema,
+        rows: Vec<DataRow>,
+        mut file: File,
+        is_json: bool,
+    ) -> Result<()> {
         let column_defs = schema.column_defs.unwrap_or_default();
         let labels = column_defs
             .iter()
             .map(|column_def| column_def.name.as_str())
             .collect::<Vec<_>>();
-        let mut file = OpenOptions::new()
-            .write(true)
-            .append(true)
-            .open(json_path)
-            .map_storage_err()?;
-
-        let json_array = JsonValue::Array(
-            rows.into_iter()
-                .map(|row| match row {
-                    DataRow::Vec(values) => labels
-                        .iter()
-                        .zip(values.into_iter())
-                        .map(|(key, value)| Ok((key.to_string(), value.try_into()?)))
-                        .collect::<Result<Map<String, JsonValue>>>(),
-                    DataRow::Map(hash_map) => hash_map
-                        .into_iter()
-                        .map(|(key, value)| Ok((key, value.try_into()?)))
-                        .collect(),
-                })
-                .map(|result| result.map(JsonValue::Object))
-                .collect::<Result<Vec<_>>>()?,
-        );
-        let json_array = to_string_pretty(&json_array).map_storage_err()?;
-
-        file.write_all(json_array.as_bytes()).map_storage_err()?;
-
-        Ok(())
-    }
-
-    fn write_jsonl(&mut self, schema: Schema, rows: Vec<DataRow>) -> Result<()> {
-        let jsonl_path = self.jsonl_path(&schema.table_name);
-        let column_defs = schema.column_defs.unwrap_or_default();
-        let labels = column_defs
-            .iter()
-            .map(|column_def| column_def.name.as_str())
-            .collect::<Vec<_>>();
-        let mut file = OpenOptions::new()
-            .write(true)
-            .append(true)
-            .open(jsonl_path)
-            .map_storage_err()?;
-
-        for row in rows {
-            let json_value = match row {
+        let rows = rows
+            .into_iter()
+            .map(|row| match row {
                 DataRow::Vec(values) => labels
                     .iter()
                     .zip(values.into_iter())
@@ -227,11 +197,23 @@ impl JsonlStorage {
                     .into_iter()
                     .map(|(key, value)| Ok((key, value.try_into()?)))
                     .collect(),
-            }
-            .map(JsonValue::Object)?;
+            })
+            .map(|result| result.map(JsonValue::Object));
 
-            let json_string = json_value.to_string() + "\n";
-            file.write_all(json_string.as_bytes()).map_storage_err()?;
+        if is_json {
+            let rows = rows.collect::<Result<Vec<_>>>().and_then(|rows| {
+                let rows = JsonValue::Array(rows);
+
+                to_string_pretty(&rows).map_storage_err()
+            })?;
+
+            file.write_all(rows.as_bytes()).map_storage_err()?;
+        } else {
+            for row in rows {
+                let row = row?;
+
+                writeln!(file, "{row}").map_storage_err()?;
+            }
         }
 
         Ok(())

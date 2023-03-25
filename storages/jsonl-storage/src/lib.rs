@@ -99,7 +99,7 @@ impl JsonlStorage {
         path
     }
 
-    fn scan_data(&self, table_name: &str) -> Result<RowIter> {
+    fn scan_data(&self, table_name: &str) -> Result<(RowIter, Schema)> {
         let schema = self
             .fetch_schema(table_name)?
             .map_storage_err(JsonlStorageError::TableDoesNotExist)?;
@@ -145,11 +145,12 @@ impl JsonlStorage {
             }
         };
 
+        let schema2 = schema.clone();
         let rows = jsons.enumerate().map(move |(index, json)| -> Result<_> {
             let json = json?;
             let get_index_key = || index.try_into().map(Key::I64).map_storage_err();
 
-            let column_defs = match &schema.column_defs {
+            let column_defs = match &schema2.column_defs {
                 Some(column_defs) => column_defs,
                 None => {
                     let key = get_index_key()?;
@@ -189,7 +190,7 @@ impl JsonlStorage {
             Ok((key, row))
         });
 
-        Ok(Box::new(rows))
+        Ok((Box::new(rows), schema))
     }
 }
 

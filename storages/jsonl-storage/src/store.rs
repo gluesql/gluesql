@@ -49,7 +49,7 @@ impl Store for JsonlStorage {
     }
 
     async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<DataRow>> {
-        for item in self.scan_data(table_name)? {
+        for item in self.scan_data(table_name)?.0 {
             let (key, row) = item?;
 
             if &key == target {
@@ -61,6 +61,6 @@ impl Store for JsonlStorage {
     }
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
-        self.scan_data(table_name)
+        Ok(self.scan_data(table_name)?.0)
     }
 }
