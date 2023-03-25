@@ -1,5 +1,5 @@
 [package]
-name = "gluesql-jsonl-storage"
+name = "gluesql-json-storage"
 version = "0.13.0"
 edition = "2021"
 authors = [

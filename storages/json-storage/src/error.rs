@@ -22,7 +22,7 @@ impl<T, E: ToString> OptionExt<T, E> for std::option::Option<T> {
 }
 
 #[derive(Error, Debug)]
-pub enum JsonlStorageError {
+pub enum JsonStorageError {
     #[error("file not found")]
     FileNotFound,
 
