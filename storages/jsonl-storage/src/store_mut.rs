@@ -54,15 +54,11 @@ impl StoreMut for JsonlStorage {
     }
 
     async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
-        let schema = self
-            .fetch_schema(table_name)?
-            .map_storage_err(JsonlStorageError::TableDoesNotExist)?;
-
         let json_path = self.json_path(table_name);
         if json_path.exists() {
-            let rows = self
-                .scan_data(table_name)?
-                .0
+            let (prev_rows, schema) = self.scan_data(table_name)?;
+
+            let rows = prev_rows
                 .map(|item| Ok(item?.1))
                 .chain(rows.into_iter().map(Ok))
                 .collect::<Result<Vec<_>>>()?;
@@ -71,27 +67,32 @@ impl StoreMut for JsonlStorage {
 
             self.write(schema, rows, file, true)
         } else {
+            let schema = self
+                .fetch_schema(table_name)?
+                .map_storage_err(JsonlStorageError::TableDoesNotExist)?;
+
             let file = OpenOptions::new()
                 .write(true)
                 .append(true)
                 .open(self.jsonl_path(&schema.table_name))
                 .map_storage_err()?;
+
             self.write(schema, rows, file, false)
         }
     }
 
     async fn insert_data(&mut self, table_name: &str, mut rows: Vec<(Key, DataRow)>) -> Result<()> {
-        let prev_rows = self.scan_data(table_name)?.0;
+        let (prev_rows, schema) = self.scan_data(table_name)?;
         rows.sort_by(|(key_a, _), (key_b, _)| key_a.cmp(key_b));
 
         let sort_merge = SortMerge::new(prev_rows, rows.into_iter());
         let merged = sort_merge.collect::<Result<Vec<_>>>()?;
 
-        self.rewrite(table_name, merged)
+        self.rewrite(schema, merged)
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
-        let prev_rows = self.scan_data(table_name)?.0;
+        let (prev_rows, schema) = self.scan_data(table_name)?;
         let rows = prev_rows
             .filter_map(|result| {
                 result
@@ -104,7 +105,7 @@ impl StoreMut for JsonlStorage {
             })
             .collect::<Result<Vec<_>>>()?;
 
-        self.rewrite(table_name, rows)
+        self.rewrite(schema, rows)
     }
 }
 
@@ -155,20 +156,17 @@ where
 }
 
 impl JsonlStorage {
-    fn rewrite(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
-        let schema = self
-            .fetch_schema(table_name)?
-            .map_storage_err(JsonlStorageError::TableDoesNotExist)?;
-
-        let json_path = self.json_path(table_name);
-        let (file, is_json) = match json_path.exists() {
-            true => (File::create(json_path).map_storage_err()?, true),
+    fn rewrite(&mut self, schema: Schema, rows: Vec<DataRow>) -> Result<()> {
+        let json_path = self.json_path(&schema.table_name);
+        let (path, is_json) = match json_path.exists() {
+            true => (json_path, true),
             false => {
-                let jsonl_path = self.jsonl_path(table_name);
+                let jsonl_path = self.jsonl_path(&schema.table_name);
 
-                (File::create(jsonl_path).map_storage_err()?, false)
+                (jsonl_path, false)
             }
         };
+        let file = File::create(path).map_storage_err()?;
 
         self.write(schema, rows, file, is_json)
     }
