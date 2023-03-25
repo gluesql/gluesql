@@ -201,54 +201,64 @@ where
     'context: 'async_recursion,
     'expr: 'async_recursion,
 {
-    Box::pin(async move {
-        let aggr = |state, expr| aggregate(state, filter_context.as_ref().map(Rc::clone), expr);
+    Box::pin(aggregate_inner(state, filter_context, expr))
+}
 
-        match expr {
-            Expr::Between {
-                expr, low, high, ..
-            } => {
-                stream::iter([expr, low, high])
-                    .fold(
-                        Ok(state),
-                        |state, expr| async move { aggr(state?, expr).await },
-                    )
-                    .await
-            }
-            Expr::BinaryOp { left, right, .. } => {
-                stream::iter([left, right])
-                    .fold(
-                        Ok(state),
-                        |state, expr| async move { aggr(state?, expr).await },
-                    )
-                    .await
-            }
-            Expr::UnaryOp { expr, .. } => aggr(state, expr).await,
-            Expr::Nested(expr) => aggr(state, expr).await,
-            Expr::Case {
-                operand,
-                when_then,
-                else_result,
-            } => {
-                let operand = std::iter::once(operand.as_ref())
-                    .filter_map(|operand| operand.map(|operand| &**operand));
-                let when_then = when_then
-                    .iter()
-                    .flat_map(|(when, then)| std::iter::once(when).chain(std::iter::once(then)));
-                let else_result = std::iter::once(else_result.as_ref())
-                    .filter_map(|else_result| else_result.map(|else_result| &**else_result));
+async fn aggregate_inner<'state, 'context, 'expr, T: GStore>(
+    state: State<'state, T>,
+    filter_context: Option<Rc<RowContext<'context>>>,
+    expr: &'expr Expr,
+) -> Result<State<'state, T>>
+where
+    'expr: 'state,
+    'context: 'state,
+{
+    let aggr = |state, expr| aggregate(state, filter_context.as_ref().map(Rc::clone), expr);
 
-                stream::iter(operand.chain(when_then).chain(else_result))
-                    .fold(
-                        Ok(state),
-                        |state, expr| async move { aggr(state?, expr).await },
-                    )
-                    .await
-            }
-            Expr::Aggregate(aggr) => state.accumulate(filter_context, aggr.as_ref()).await,
-            _ => Ok(state),
+    match expr {
+        Expr::Between {
+            expr, low, high, ..
+        } => {
+            stream::iter([expr, low, high])
+                .fold(
+                    Ok(state),
+                    |state, expr| async move { aggr(state?, expr).await },
+                )
+                .await
         }
-    })
+        Expr::BinaryOp { left, right, .. } => {
+            stream::iter([left, right])
+                .fold(
+                    Ok(state),
+                    |state, expr| async move { aggr(state?, expr).await },
+                )
+                .await
+        }
+        Expr::UnaryOp { expr, .. } => aggr(state, expr).await,
+        Expr::Nested(expr) => aggr(state, expr).await,
+        Expr::Case {
+            operand,
+            when_then,
+            else_result,
+        } => {
+            let operand = std::iter::once(operand.as_ref())
+                .filter_map(|operand| operand.map(|operand| &**operand));
+            let when_then = when_then
+                .iter()
+                .flat_map(|(when, then)| std::iter::once(when).chain(std::iter::once(then)));
+            let else_result = std::iter::once(else_result.as_ref())
+                .filter_map(|else_result| else_result.map(|else_result| &**else_result));
+
+            stream::iter(operand.chain(when_then).chain(else_result))
+                .fold(
+                    Ok(state),
+                    |state, expr| async move { aggr(state?, expr).await },
+                )
+                .await
+        }
+        Expr::Aggregate(aggr) => state.accumulate(filter_context, aggr.as_ref()).await,
+        _ => Ok(state),
+    }
 }
 
 fn check(expr: &Expr) -> bool {
