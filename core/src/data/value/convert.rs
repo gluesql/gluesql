@@ -481,7 +481,7 @@ impl TryFrom<&Value> for u128 {
             Value::F64(value) => value.to_u128().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => {
                 value.parse::<u128>().map_err(|_| ValueError::ImpossibleCast)?;
-                parse_uuid(value)
+                parse_uuid(value).unwrap()
             }
             Value::Decimal(value) => value.to_u128().ok_or(ValueError::ImpossibleCast)?,
             Value::Inet(IpAddr::V6(v)) => u128::from(*v),
@@ -1466,13 +1466,13 @@ mod tests {
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
         let uuid = 195965723427462096757863453463987888808;
         assert_eq!((&Value::Uuid(uuid)).try_into() as Result<u128>, Ok(uuid));
-        //assert_eq!(u128::try_from(&Value::Uuid(uuid)), Ok(uuid));
+        assert_eq!(u128::try_from(&Value::Uuid(uuid)), Ok(uuid));
 
-        //let uuid = "936DA01F9ABD4d9d80C702AF85C822A8";
-        //assert_eq!(
-        //    u128::try_from(&Value::Str(uuid.to_owned())),
-        //    parse_uuid(uuid)
-        //);
+        let uuid = "936DA01F9ABD4d9d80C702AF85C822A8";
+        assert_eq!(
+           u128::try_from(&Value::Str(uuid.to_owned())),
+           parse_uuid(uuid)
+        );
 
         let ip = Ipv6Addr::from(9876543210);
         assert_eq!(
