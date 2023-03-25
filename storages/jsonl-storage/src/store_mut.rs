@@ -144,27 +144,19 @@ where
         let left = self.left_rows.peek();
         let right = self.right_rows.peek();
 
-        let (left_key, right_key) = match (left, right) {
-            (Some(Ok((left_key, _))), Some((right_key, _))) => (left_key, right_key),
-            (Some(_), _) => {
-                return self.left_rows.next().map(|item| Ok(item?.1));
+        match (left, right) {
+            (Some(Ok((left_key, _))), Some((right_key, _))) => match left_key.cmp(right_key) {
+                Ordering::Less => self.left_rows.next(),
+                Ordering::Greater => self.right_rows.next().map(Ok),
+                Ordering::Equal => {
+                    self.left_rows.next();
+                    self.right_rows.next().map(Ok)
+                }
             }
-            (None, Some(_)) => {
-                return self.right_rows.next().map(|item| item.1).map(Ok);
-            }
-            (None, None) => {
-                return None;
-            }
-        };
-
-        match left_key.cmp(right_key) {
-            Ordering::Less => self.left_rows.next(),
-            Ordering::Greater => self.right_rows.next().map(Ok),
-            Ordering::Equal => {
-                self.left_rows.next();
-                self.right_rows.next().map(Ok)
-            }
+            .map(|item| Ok(item?.1)),
+            (Some(_), _) => self.left_rows.next().map(|item| Ok(item?.1)),
+            (None, Some(_)) => self.right_rows.next().map(|item| Ok(item.1)),
+            (None, None) => None,
         }
-        .map(|item| Ok(item?.1))
     }
 }
