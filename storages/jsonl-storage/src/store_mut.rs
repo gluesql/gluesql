@@ -28,7 +28,8 @@ impl StoreMut for JsonlStorage {
             let schema_path = self.schema_path(schema.table_name.as_str());
             let ddl = schema.to_ddl();
             let mut file = File::create(schema_path).map_storage_err()?;
-            write!(file, "{ddl}").map_storage_err()?;
+
+            file.write_all(ddl.as_bytes()).map_storage_err()?;
         }
 
         Ok(())
@@ -86,7 +87,7 @@ impl StoreMut for JsonlStorage {
             .map_storage_err()?;
 
         for row in rows {
-            let json_string = match row {
+            let json_value = match row {
                 DataRow::Vec(values) => labels
                     .iter()
                     .zip(values.into_iter())
@@ -99,7 +100,8 @@ impl StoreMut for JsonlStorage {
             }
             .map(JsonValue::Object)?;
 
-            writeln!(file, "{json_string}").map_storage_err()?;
+            let json_string = json_value.to_string() + "\n";
+            file.write_all(json_string.as_bytes()).map_storage_err()?;
         }
 
         Ok(())
