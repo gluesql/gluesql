@@ -509,9 +509,9 @@ mod tests {
         );
 
         assert_eq!(
-            r#"CONCAT_WS(-, "Tic", "tac", "toe")"#,
+            r#"CONCAT_WS('-', "Tic", "tac", "toe")"#,
             &Expr::Function(Box::new(Function::ConcatWs {
-                separator: Expr::Identifier("-".to_owned()),
+                separator: Expr::Literal(AstLiteral::QuotedString("-".to_owned())),
                 exprs: vec![
                     Expr::Identifier("Tic".to_owned()),
                     Expr::Identifier("tac".to_owned()),
