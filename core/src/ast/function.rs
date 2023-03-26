@@ -313,7 +313,7 @@ impl ToSql for Function {
                 ),
             },
             Function::Extract { field, expr } => {
-                format!("EXTRACT({field} FROM '{}')", expr.to_sql())
+                format!("EXTRACT({field} FROM {})", expr.to_sql())
             }
             Function::Ascii(e) => format!("ASCII({})", e.to_sql()),
             Function::Chr(e) => format!("CHR({})", e.to_sql()),
@@ -928,10 +928,10 @@ mod tests {
         );
 
         assert_eq!(
-            r#"EXTRACT("MINUTE" FROM '2022-05-05 01:02:03')"#,
+            r#"EXTRACT(MINUTE FROM '2022-05-05 01:02:03')"#,
             &Expr::Function(Box::new(Function::Extract {
                 field: DateTimeField::Minute,
-                expr: Expr::Identifier("2022-05-05 01:02:03".to_owned())
+                expr: Expr::Literal(AstLiteral::QuotedString("2022-05-05 01:02:03".to_owned()))
             }))
             .to_sql()
         );
