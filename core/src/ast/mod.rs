@@ -212,7 +212,10 @@ impl ToSql for Statement {
                 table_name,
                 column,
             } => {
-                format!("CREATE INDEX {name} ON {table_name} {};", column.to_sql())
+                format!(
+                    r#"CREATE INDEX "{name}" ON "{table_name}" ({});"#,
+                    column.to_sql()
+                )
             }
             Statement::DropIndex { name, table_name } => {
                 format!("DROP INDEX {table_name}.{name};")
@@ -327,7 +330,7 @@ mod tests {
     #[test]
     fn to_sql_delete() {
         assert_eq!(
-            "DELETE FROM Foo;",
+            r#"DELETE FROM "Foo";"#,
             Statement::Delete {
                 table_name: "Foo".into(),
                 selection: None
@@ -336,7 +339,7 @@ mod tests {
         );
 
         assert_eq!(
-            "DELETE FROM Foo WHERE item = 'glue';",
+            r#"DELETE FROM "Foo" WHERE "item" = 'glue';"#,
             Statement::Delete {
                 table_name: "Foo".into(),
                 selection: Some(Expr::BinaryOp {
@@ -352,7 +355,7 @@ mod tests {
     #[test]
     fn to_sql_create_table() {
         assert_eq!(
-            "CREATE TABLE IF NOT EXISTS Foo;",
+            r#"CREATE TABLE IF NOT EXISTS "Foo";"#,
             Statement::CreateTable {
                 if_not_exists: true,
                 name: "Foo".into(),
@@ -364,7 +367,7 @@ mod tests {
         );
 
         assert_eq!(
-            "CREATE TABLE Foo;",
+            r#"CREATE TABLE "Foo";"#,
             Statement::CreateTable {
                 if_not_exists: false,
                 name: "Foo".into(),
@@ -376,7 +379,7 @@ mod tests {
         );
 
         assert_eq!(
-            "CREATE TABLE IF NOT EXISTS Foo (id BOOLEAN NOT NULL);",
+            r#"CREATE TABLE IF NOT EXISTS "Foo" ("id" BOOLEAN NOT NULL);"#,
             Statement::CreateTable {
                 if_not_exists: true,
                 name: "Foo".into(),
@@ -394,7 +397,7 @@ mod tests {
         );
 
         assert_eq!(
-            "CREATE TABLE Foo (id INT NOT NULL, num INT NULL, name TEXT NOT NULL);",
+            r#"CREATE TABLE "Foo" ("id" INT NOT NULL, "num" INT NULL, "name" TEXT NOT NULL);"#,
             Statement::CreateTable {
                 if_not_exists: false,
                 name: "Foo".into(),
@@ -431,7 +434,7 @@ mod tests {
     #[test]
     fn to_sql_create_table_as() {
         assert_eq!(
-            "CREATE TABLE Foo AS SELECT id, count FROM Bar;",
+            r#"CREATE TABLE "Foo" AS SELECT "id", "count" FROM "Bar";"#,
             Statement::CreateTable {
                 if_not_exists: false,
                 name: "Foo".into(),
@@ -470,7 +473,7 @@ mod tests {
         );
 
         assert_eq!(
-            "CREATE TABLE IF NOT EXISTS Foo AS VALUES (TRUE);",
+            r#"CREATE TABLE IF NOT EXISTS "Foo" AS VALUES (TRUE);"#,
             Statement::CreateTable {
                 if_not_exists: true,
                 name: "Foo".into(),
@@ -492,7 +495,7 @@ mod tests {
     #[test]
     fn to_sql_create_table_with_engine() {
         assert_eq!(
-            "CREATE TABLE Foo ENGINE = MEMORY;",
+            r#"CREATE TABLE "Foo" ENGINE = MEMORY;"#,
             Statement::CreateTable {
                 if_not_exists: false,
                 name: "Foo".into(),
@@ -504,7 +507,7 @@ mod tests {
         );
 
         assert_eq!(
-            "CREATE TABLE Foo (id BOOLEAN NOT NULL) ENGINE = SLED;",
+            r#"CREATE TABLE "Foo" ("id" BOOLEAN NOT NULL) ENGINE = SLED;"#,
             Statement::CreateTable {
                 if_not_exists: false,
                 name: "Foo".into(),
@@ -525,7 +528,7 @@ mod tests {
     #[test]
     fn to_sql_alter_table() {
         assert_eq!(
-            "ALTER TABLE Foo ADD COLUMN amount INT NOT NULL DEFAULT 10;",
+            r#"ALTER TABLE "Foo" ADD COLUMN "amount" INT NOT NULL DEFAULT 10;"#,
             Statement::AlterTable {
                 name: "Foo".into(),
                 operation: AlterTableOperation::AddColumn {
@@ -544,7 +547,7 @@ mod tests {
         );
 
         assert_eq!(
-            "ALTER TABLE Foo DROP COLUMN something;",
+            r#"ALTER TABLE "Foo" DROP COLUMN "something";"#,
             Statement::AlterTable {
                 name: "Foo".into(),
                 operation: AlterTableOperation::DropColumn {
@@ -556,7 +559,7 @@ mod tests {
         );
 
         assert_eq!(
-            "ALTER TABLE Foo DROP COLUMN IF EXISTS something;",
+            r#"ALTER TABLE "Foo" DROP COLUMN IF EXISTS "something";"#,
             Statement::AlterTable {
                 name: "Foo".into(),
                 operation: AlterTableOperation::DropColumn {
@@ -568,7 +571,7 @@ mod tests {
         );
 
         assert_eq!(
-            "ALTER TABLE Bar RENAME COLUMN id TO new_id;",
+            r#"ALTER TABLE "Bar" RENAME COLUMN "id" TO "new_id";"#,
             Statement::AlterTable {
                 name: "Bar".into(),
                 operation: AlterTableOperation::RenameColumn {
@@ -580,7 +583,7 @@ mod tests {
         );
 
         assert_eq!(
-            "ALTER TABLE Foo RENAME TO Bar;",
+            r#"ALTER TABLE "Foo" RENAME TO "Bar";"#,
             Statement::AlterTable {
                 name: "Foo".to_owned(),
                 operation: AlterTableOperation::RenameTable {
@@ -594,7 +597,7 @@ mod tests {
     #[test]
     fn to_sql_drop_table() {
         assert_eq!(
-            "DROP TABLE Test;",
+            r#"DROP TABLE "Test";"#,
             Statement::DropTable {
                 if_exists: false,
                 names: vec!["Test".into()]
@@ -603,7 +606,7 @@ mod tests {
         );
 
         assert_eq!(
-            "DROP TABLE IF EXISTS Test;",
+            r#"DROP TABLE IF EXISTS "Test";"#,
             Statement::DropTable {
                 if_exists: true,
                 names: vec!["Test".into()]
@@ -612,7 +615,7 @@ mod tests {
         );
 
         assert_eq!(
-            "DROP TABLE Foo, Bar;",
+            r#"DROP TABLE "Foo", "Bar";"#,
             Statement::DropTable {
                 if_exists: false,
                 names: vec!["Foo".into(), "Bar".into(),]
@@ -624,7 +627,7 @@ mod tests {
     #[test]
     fn to_sql_create_index() {
         assert_eq!(
-            "CREATE INDEX idx_name ON Test LastName;",
+            r#"CREATE INDEX "idx_name" ON "Test" ("LastName");"#,
             Statement::CreateIndex {
                 name: "idx_name".into(),
                 table_name: "Test".into(),

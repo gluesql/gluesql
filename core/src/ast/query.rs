@@ -727,7 +727,7 @@ mod tests {
 
     #[test]
     fn to_sql_order_by_expr() {
-        let actual = "foo ASC".to_owned();
+        let actual = r#""foo" ASC"#;
         let expected = OrderByExpr {
             expr: Expr::Identifier("foo".to_owned()),
             asc: Some(true),
@@ -735,7 +735,7 @@ mod tests {
         .to_sql();
         assert_eq!(actual, expected);
 
-        let actual = "foo DESC".to_owned();
+        let actual = r#""foo" DESC"#;
         let expected = OrderByExpr {
             expr: Expr::Identifier("foo".to_owned()),
             asc: Some(false),
@@ -743,7 +743,7 @@ mod tests {
         .to_sql();
         assert_eq!(actual, expected);
 
-        let actual = "foo".to_owned();
+        let actual = r#""foo""#;
         let expected = OrderByExpr {
             expr: Expr::Identifier("foo".to_owned()),
             asc: None,
