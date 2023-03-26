@@ -142,19 +142,19 @@ impl ToSql for Statement {
                 match selection {
                     Some(expr) => {
                         format!(
-                            "UPDATE {table_name} SET {assignments} WHERE {};",
+                            r#"UPDATE "{table_name}" SET {assignments} WHERE {};"#,
                             expr.to_sql()
                         )
                     }
-                    None => format!("UPDATE {table_name} SET {assignments};"),
+                    None => format!(r#"UPDATE "{table_name}" SET {assignments};"#),
                 }
             }
             Statement::Delete {
                 table_name,
                 selection,
             } => match selection {
-                Some(expr) => format!("DELETE FROM {table_name} WHERE {};", expr.to_sql()),
-                None => format!("DELETE FROM {table_name};"),
+                Some(expr) => format!(r#"DELETE FROM "{table_name}" WHERE {};"#, expr.to_sql()),
+                None => format!(r#"DELETE FROM "{table_name}";"#),
             },
             Statement::CreateTable {
                 if_not_exists,
@@ -237,7 +237,7 @@ impl ToSql for Statement {
 
 impl ToSql for Assignment {
     fn to_sql(&self) -> String {
-        format!("{} = {}", self.id, self.value.to_sql())
+        format!(r#""{}" = {}"#, self.id, self.value.to_sql())
     }
 }
 
@@ -289,7 +289,7 @@ mod tests {
     #[test]
     fn to_sql_update() {
         assert_eq!(
-            "UPDATE Foo SET id = 4, color = 'blue';",
+            r#"UPDATE "Foo" SET "id" = 4, "color" = 'blue';"#,
             Statement::Update {
                 table_name: "Foo".into(),
                 assignments: vec![
@@ -310,7 +310,7 @@ mod tests {
         );
 
         assert_eq!(
-            "UPDATE Foo SET name = 'first' WHERE a > b;",
+            r#"UPDATE "Foo" SET "name" = 'first' WHERE "a" > "b";"#,
             Statement::Update {
                 table_name: "Foo".into(),
                 assignments: vec![Assignment {
