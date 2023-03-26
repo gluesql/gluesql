@@ -261,7 +261,7 @@ impl ToSql for TableFactor {
     fn to_sql(&self) -> String {
         match self {
             TableFactor::Table { name, alias, .. } => match alias {
-                Some(alias) => format!("{} {}", name, alias.to_sql()),
+                Some(alias) => format!(r#""{}" {}"#, name, alias.to_sql()),
                 None => name.to_owned(),
             },
             TableFactor::Derived { subquery, alias } => {
@@ -281,7 +281,7 @@ impl ToSql for TableAlias {
     fn to_sql(&self) -> String {
         let TableAlias { name, .. } = self;
 
-        format!("AS {}", name)
+        format!(r#"AS "{}""#, name)
     }
 }
 
@@ -300,9 +300,9 @@ impl ToSql for Join {
                     .filter(|sql| !sql.is_empty())
                     .join(" AND ");
                 if constraint.is_empty() {
-                    format!("INNER JOIN {}", relation.to_sql())
+                    format!(r#"INNER JOIN "{}""#, relation.to_sql())
                 } else {
-                    format!("INNER JOIN {} ON {constraint}", relation.to_sql())
+                    format!(r#"INNER JOIN "{}" ON {constraint}"#, relation.to_sql())
                 }
             }
             JoinOperator::LeftOuter(constraint) => {
@@ -311,9 +311,9 @@ impl ToSql for Join {
                     .filter(|sql| !sql.is_empty())
                     .join(" AND ");
                 if constraint.is_empty() {
-                    format!("LEFT OUTER JOIN {}", relation.to_sql())
+                    format!(r#"LEFT OUTER JOIN "{}""#, relation.to_sql())
                 } else {
-                    format!("LEFT OUTER JOIN {} ON {constraint}", relation.to_sql())
+                    format!(r#"LEFT OUTER JOIN "{}" ON {constraint}"#, relation.to_sql())
                 }
             }
         }
@@ -645,7 +645,7 @@ mod tests {
 
     #[test]
     fn to_sql_join() {
-        let actual = "INNER JOIN PlayerItem";
+        let actual = r#"INNER JOIN "PlayerItem""#;
         let expected = Join {
             relation: TableFactor::Table {
                 name: "PlayerItem".to_owned(),
@@ -658,7 +658,7 @@ mod tests {
         .to_sql();
         assert_eq!(actual, expected);
 
-        let actual = "INNER JOIN PlayerItem ON PlayerItem.user_id = Player.id";
+        let actual = r#"INNER JOIN "PlayerItem" ON "PlayerItem"."user_id" = "Player"."id""#;
         let expected = Join {
             relation: TableFactor::Table {
                 name: "PlayerItem".to_owned(),
@@ -666,14 +666,14 @@ mod tests {
                 index: None,
             },
             join_operator: JoinOperator::Inner(JoinConstraint::On(expr(
-                "PlayerItem.user_id = Player.id",
+                r#""PlayerItem"."user_id" = "Player"."id""#,
             ))),
             join_executor: JoinExecutor::NestedLoop,
         }
         .to_sql();
         assert_eq!(actual, expected);
 
-        let actual = "LEFT OUTER JOIN PlayerItem";
+        let actual = r#"LEFT OUTER JOIN "PlayerItem""#;
         let expected = Join {
             relation: TableFactor::Table {
                 name: "PlayerItem".to_owned(),
@@ -686,7 +686,7 @@ mod tests {
         .to_sql();
         assert_eq!(actual, expected);
 
-        let actual = "LEFT OUTER JOIN PlayerItem ON PlayerItem.user_id = Player.id";
+        let actual = r#"LEFT OUTER JOIN "PlayerItem" ON "PlayerItem"."user_id" = "Player"."id""#;
         let expected = Join {
             relation: TableFactor::Table {
                 name: "PlayerItem".to_owned(),
@@ -703,7 +703,7 @@ mod tests {
         .to_sql();
         assert_eq!(actual, expected);
 
-        let actual = "LEFT OUTER JOIN PlayerItem ON PlayerItem.age > Player.age AND PlayerItem.user_id = Player.id AND PlayerItem.amount > 10 AND PlayerItem.amount * 3 <= 2";
+        let actual = r#"LEFT OUTER JOIN "PlayerItem" ON "PlayerItem"."age" > "Player"."age" AND "PlayerItem"."user_id" = "Player"."id" AND "PlayerItem"."amount" > 10 AND "PlayerItem"."amount" * 3 <= 2"#;
         let expected = Join {
             relation: TableFactor::Table {
                 name: "PlayerItem".to_owned(),
@@ -711,13 +711,13 @@ mod tests {
                 index: None,
             },
             join_operator: JoinOperator::LeftOuter(JoinConstraint::On(expr(
-                "PlayerItem.age > Player.age",
+                r#""PlayerItem"."age" > "Player"."age""#,
             ))),
             join_executor: JoinExecutor::Hash {
                 key_expr: expr("PlayerItem.user_id"),
                 value_expr: expr("Player.id"),
                 where_clause: Some(expr(
-                    "PlayerItem.amount > 10 AND PlayerItem.amount * 3 <= 2",
+                    r#""PlayerItem"."amount" > 10 AND "PlayerItem"."amount" * 3 <= 2"#,
                 )),
             },
         }
