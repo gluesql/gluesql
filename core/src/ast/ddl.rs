@@ -48,15 +48,15 @@ impl ToSql for AlterTableOperation {
                 column_name,
                 if_exists,
             } => match if_exists {
-                true => format!("DROP COLUMN IF EXISTS {column_name}"),
-                false => format!("DROP COLUMN {column_name}"),
+                true => format!(r#"DROP COLUMN IF EXISTS "{column_name}""#),
+                false => format!(r#"DROP COLUMN "{column_name}""#),
             },
             AlterTableOperation::RenameColumn {
                 old_column_name,
                 new_column_name,
-            } => format!("RENAME COLUMN {old_column_name} TO {new_column_name}"),
+            } => format!(r#"RENAME COLUMN "{old_column_name}" TO "{new_column_name}""#),
             AlterTableOperation::RenameTable { table_name } => {
-                format!("RENAME TO {table_name}")
+                format!(r#"RENAME TO "{table_name}""#)
             }
         }
     }

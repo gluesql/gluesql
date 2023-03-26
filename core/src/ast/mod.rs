@@ -198,10 +198,14 @@ impl ToSql for Statement {
                 format!("{sql};")
             }
             Statement::AlterTable { name, operation } => {
-                format!("ALTER TABLE {name} {};", operation.to_sql())
+                format!(r#"ALTER TABLE "{name}" {};"#, operation.to_sql())
             }
             Statement::DropTable { if_exists, names } => {
-                let names = names.join(", ");
+                let names = names
+                    .iter()
+                    .map(|name| format!(r#""{name}""#))
+                    .collect::<Vec<_>>()
+                    .join(", ");
                 match if_exists {
                     true => format!("DROP TABLE IF EXISTS {};", names),
                     false => format!("DROP TABLE {};", names),
