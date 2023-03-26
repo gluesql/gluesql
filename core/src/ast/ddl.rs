@@ -109,7 +109,7 @@ mod tests {
     #[test]
     fn to_sql_column_def() {
         assert_eq!(
-            "name TEXT NOT NULL UNIQUE",
+            r#""name" TEXT NOT NULL UNIQUE"#,
             ColumnDef {
                 name: "name".to_owned(),
                 data_type: DataType::Text,
@@ -121,7 +121,7 @@ mod tests {
         );
 
         assert_eq!(
-            "accepted BOOLEAN NULL",
+            r#""accepted" BOOLEAN NULL"#,
             ColumnDef {
                 name: "accepted".to_owned(),
                 data_type: DataType::Boolean,
@@ -133,7 +133,7 @@ mod tests {
         );
 
         assert_eq!(
-            "id INT NOT NULL PRIMARY KEY",
+            r#""id" INT NOT NULL PRIMARY KEY"#,
             ColumnDef {
                 name: "id".to_owned(),
                 data_type: DataType::Int,
@@ -145,7 +145,7 @@ mod tests {
         );
 
         assert_eq!(
-            "accepted BOOLEAN NOT NULL DEFAULT FALSE",
+            r#""accepted" BOOLEAN NOT NULL DEFAULT FALSE"#,
             ColumnDef {
                 name: "accepted".to_owned(),
                 data_type: DataType::Boolean,
@@ -157,7 +157,7 @@ mod tests {
         );
 
         assert_eq!(
-            "accepted BOOLEAN NOT NULL DEFAULT FALSE UNIQUE",
+            r#""accepted" BOOLEAN NOT NULL DEFAULT FALSE UNIQUE"#,
             ColumnDef {
                 name: "accepted".to_owned(),
                 data_type: DataType::Boolean,

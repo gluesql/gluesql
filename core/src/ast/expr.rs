@@ -86,7 +86,7 @@ impl ToSql for Expr {
             Expr::BinaryOp { left, op, right } => {
                 format!("{} {} {}", left.to_sql(), op.to_sql(), right.to_sql())
             }
-            Expr::CompoundIdentifier { alias, ident } => format!("{alias}.{ident}"),
+            Expr::CompoundIdentifier { alias, ident } => format!(r#""{alias}"."{ident}""#),
             Expr::IsNull(s) => format!("{} IS NULL", s.to_sql()),
             Expr::IsNotNull(s) => format!("{} IS NOT NULL", s.to_sql()),
             Expr::InList {
@@ -238,10 +238,10 @@ mod tests {
         let re = Regex::new(r"\n\s+").unwrap();
         let trim = |s: &str| re.replace_all(s.trim(), "\n").into_owned();
 
-        assert_eq!("id", Expr::Identifier("id".to_owned()).to_sql());
+        assert_eq!(r#""id""#, Expr::Identifier("id".to_owned()).to_sql());
 
         assert_eq!(
-            "id + num",
+            r#""id" + "num""#,
             Expr::BinaryOp {
                 left: Box::new(Expr::Identifier("id".to_owned())),
                 op: BinaryOperator::Plus,
@@ -250,7 +250,7 @@ mod tests {
             .to_sql()
         );
         assert_eq!(
-            "-id",
+            r#"-"id""#,
             Expr::UnaryOp {
                 op: UnaryOperator::Minus,
                 expr: Box::new(Expr::Identifier("id".to_owned())),
@@ -259,7 +259,7 @@ mod tests {
         );
 
         assert_eq!(
-            "alias.column",
+            r#""alias"."column""#,
             Expr::CompoundIdentifier {
                 alias: "alias".into(),
                 ident: "column".into()
@@ -268,10 +268,10 @@ mod tests {
         );
 
         let id_expr: Box<Expr> = Box::new(Expr::Identifier("id".to_owned()));
-        assert_eq!("id IS NULL", Expr::IsNull(id_expr).to_sql());
+        assert_eq!(r#""id" IS NULL"#, Expr::IsNull(id_expr).to_sql());
 
         let id_expr: Box<Expr> = Box::new(Expr::Identifier("id".to_owned()));
-        assert_eq!("id IS NOT NULL", Expr::IsNotNull(id_expr).to_sql());
+        assert_eq!(r#""id" IS NOT NULL"#, Expr::IsNotNull(id_expr).to_sql());
 
         assert_eq!(
             "INT '1'",
@@ -283,12 +283,12 @@ mod tests {
         );
 
         assert_eq!(
-            "(id)",
+            r#"("id")"#,
             Expr::Nested(Box::new(Expr::Identifier("id".to_owned()))).to_sql(),
         );
 
         assert_eq!(
-            "id BETWEEN low AND high",
+            r#""id" BETWEEN "low" AND "high""#,
             Expr::Between {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 negated: false,
@@ -299,7 +299,7 @@ mod tests {
         );
 
         assert_eq!(
-            "id NOT BETWEEN low AND high",
+            r#""id" NOT BETWEEN "low" AND "high""#,
             Expr::Between {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 negated: true,
@@ -310,7 +310,7 @@ mod tests {
         );
 
         assert_eq!(
-            "id LIKE '%abc'",
+            r#""id" LIKE '%abc'"#,
             Expr::Like {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 negated: false,
@@ -319,7 +319,7 @@ mod tests {
             .to_sql()
         );
         assert_eq!(
-            "id NOT LIKE '%abc'",
+            r#""id" NOT LIKE '%abc'"#,
             Expr::Like {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 negated: true,
@@ -329,7 +329,7 @@ mod tests {
         );
 
         assert_eq!(
-            "id ILIKE '%abc_'",
+            r#""id" ILIKE '%abc_'"#,
             Expr::ILike {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 negated: false,
@@ -338,7 +338,7 @@ mod tests {
             .to_sql()
         );
         assert_eq!(
-            "id NOT ILIKE '%abc_'",
+            r#""id" NOT ILIKE '%abc_'"#,
             Expr::ILike {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 negated: true,
@@ -348,7 +348,7 @@ mod tests {
         );
 
         assert_eq!(
-            "id IN ('a', 'b', 'c')",
+            r#""id" IN ('a', 'b', 'c')"#,
             Expr::InList {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 list: vec![
@@ -362,7 +362,7 @@ mod tests {
         );
 
         assert_eq!(
-            "id NOT IN ('a', 'b', 'c')",
+            r#""id" NOT IN ('a', 'b', 'c')"#,
             Expr::InList {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 list: vec![
@@ -376,7 +376,7 @@ mod tests {
         );
 
         assert_eq!(
-            "id IN (SELECT * FROM FOO)",
+            r#""id" IN (SELECT * FROM "FOO")"#,
             Expr::InSubquery {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 subquery: Box::new(Query {
@@ -404,7 +404,7 @@ mod tests {
         );
 
         assert_eq!(
-            "id NOT IN (SELECT * FROM FOO)",
+            r#""id" NOT IN (SELECT * FROM "FOO")"#,
             Expr::InSubquery {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 subquery: Box::new(Query {
@@ -432,7 +432,7 @@ mod tests {
         );
 
         assert_eq!(
-            "EXISTS(SELECT * FROM FOO)",
+            r#"EXISTS(SELECT * FROM "FOO")"#,
             Expr::Exists {
                 subquery: Box::new(Query {
                     body: SetExpr::Select(Box::new(Select {
@@ -459,7 +459,7 @@ mod tests {
         );
 
         assert_eq!(
-            "NOT EXISTS(SELECT * FROM FOO)",
+            r#"NOT EXISTS(SELECT * FROM "FOO")"#,
             Expr::Exists {
                 subquery: Box::new(Query {
                     body: SetExpr::Select(Box::new(Select {
@@ -486,7 +486,7 @@ mod tests {
         );
 
         assert_eq!(
-            "(SELECT * FROM FOO)",
+            r#"(SELECT * FROM "FOO")"#,
             Expr::Subquery(Box::new(Query {
                 body: SetExpr::Select(Box::new(Select {
                     projection: vec![SelectItem::Wildcard],
@@ -511,11 +511,11 @@ mod tests {
 
         assert_eq!(
             trim(
-                "CASE id
+                r#"CASE "id"
                   WHEN 1 THEN 'a'
                   WHEN 2 THEN 'b'
                   ELSE 'c'
-                END",
+                END"#,
             ),
             Expr::Case {
                 operand: Some(Box::new(Expr::Identifier("id".to_owned()))),
@@ -537,7 +537,7 @@ mod tests {
         );
 
         assert_eq!(
-            "choco[1][2]",
+            r#""choco"[1][2]"#,
             Expr::ArrayIndex {
                 obj: Box::new(Expr::Identifier("choco".to_owned())),
                 indexes: vec![
@@ -549,7 +549,7 @@ mod tests {
         );
 
         assert_eq!(
-            "INTERVAL col1 + 3 DAY",
+            r#"INTERVAL "col1" + 3 DAY"#,
             &Expr::Interval {
                 expr: Box::new(Expr::BinaryOp {
                     left: Box::new(Expr::Identifier("col1".to_owned())),
