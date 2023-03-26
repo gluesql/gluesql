@@ -76,7 +76,7 @@ impl ToSql for ColumnDef {
                 true => "NULL",
                 false => "NOT NULL",
             };
-            let column_def = format!("{name} {data_type} {nullable}");
+            let column_def = format!(r#""{name}" {data_type} {nullable}"#);
             let default = default
                 .as_ref()
                 .map(|expr| format!("DEFAULT {}", expr.to_sql()));

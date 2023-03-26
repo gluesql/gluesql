@@ -82,7 +82,7 @@ pub enum Expr {
 impl ToSql for Expr {
     fn to_sql(&self) -> String {
         match self {
-            Expr::Identifier(s) => s.to_owned(),
+            Expr::Identifier(s) => format! {r#""{s}""#},
             Expr::BinaryOp { left, op, right } => {
                 format!("{} {} {}", left.to_sql(), op.to_sql(), right.to_sql())
             }

@@ -186,7 +186,7 @@ impl ToSql for Statement {
                 let sql = vec![
                     Some("CREATE TABLE"),
                     if_not_exists,
-                    Some(name),
+                    Some(&format! {r#""{name}""#}),
                     body.as_deref(),
                     engine.as_deref(),
                 ]
