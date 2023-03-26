@@ -228,7 +228,7 @@ impl ToSql for Statement {
                 Variable::Version => "SHOW VERSIONS;".to_owned(),
             },
             Statement::ShowIndexes(object_name) => {
-                format!("SHOW INDEXES FROM {object_name};")
+                format!(r#"SHOW INDEXES FROM "{object_name}";"#)
             }
             _ => "(..statement..)".to_owned(),
         }
@@ -674,7 +674,7 @@ mod tests {
     #[test]
     fn to_sql_show_indexes() {
         assert_eq!(
-            "SHOW INDEXES FROM Test;",
+            r#"SHOW INDEXES FROM "Test";"#,
             Statement::ShowIndexes("Test".into()).to_sql()
         );
     }
@@ -682,7 +682,7 @@ mod tests {
     #[test]
     fn to_sql_assignment() {
         assert_eq!(
-            "count = 5",
+            r#""count" = 5"#,
             Assignment {
                 id: "count".to_owned(),
                 value: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("5").unwrap()))
