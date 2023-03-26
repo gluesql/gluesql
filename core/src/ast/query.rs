@@ -221,7 +221,7 @@ impl ToSql for Select {
             false => format!(" {}", condition),
         };
 
-        format!(r#"SELECT {projection} FROM "{}"{condition}"#, from.to_sql())
+        format!(r#"SELECT {projection} FROM {}{condition}"#, from.to_sql())
     }
 }
 
@@ -232,10 +232,10 @@ impl ToSql for SelectItem {
                 let expr = expr.to_sql();
                 match label.is_empty() {
                     true => expr,
-                    false => format!("{expr} AS {label}"),
+                    false => format!(r#"{expr} AS "{label}""#),
                 }
             }
-            SelectItem::QualifiedWildcard(obj) => format!("{}.*", obj),
+            SelectItem::QualifiedWildcard(obj) => format!(r#""{}".*"#, obj),
             SelectItem::Wildcard => "*".to_owned(),
         }
     }
@@ -262,7 +262,7 @@ impl ToSql for TableFactor {
         match self {
             TableFactor::Table { name, alias, .. } => match alias {
                 Some(alias) => format!(r#""{}" {}"#, name, alias.to_sql()),
-                None => name.to_owned(),
+                None => format!(r#""{name}""#),
             },
             TableFactor::Derived { subquery, alias } => {
                 format!("({}) {}", subquery.to_sql(), alias.to_sql())
@@ -271,7 +271,7 @@ impl ToSql for TableFactor {
                 format!("SERIES({}) {}", size.to_sql(), alias.to_sql())
             }
             TableFactor::Dictionary { dict, alias } => {
-                format!("{dict} {}", alias.to_sql())
+                format!(r#""{dict}" {}"#, alias.to_sql())
             }
         }
     }
@@ -300,9 +300,9 @@ impl ToSql for Join {
                     .filter(|sql| !sql.is_empty())
                     .join(" AND ");
                 if constraint.is_empty() {
-                    format!(r#"INNER JOIN "{}""#, relation.to_sql())
+                    format!("INNER JOIN {}", relation.to_sql())
                 } else {
-                    format!(r#"INNER JOIN "{}" ON {constraint}"#, relation.to_sql())
+                    format!("INNER JOIN {} ON {constraint}", relation.to_sql())
                 }
             }
             JoinOperator::LeftOuter(constraint) => {
@@ -311,9 +311,9 @@ impl ToSql for Join {
                     .filter(|sql| !sql.is_empty())
                     .join(" AND ");
                 if constraint.is_empty() {
-                    format!(r#"LEFT OUTER JOIN "{}""#, relation.to_sql())
+                    format!("LEFT OUTER JOIN {}", relation.to_sql())
                 } else {
-                    format!(r#"LEFT OUTER JOIN "{}" ON {constraint}"#, relation.to_sql())
+                    format!("LEFT OUTER JOIN {} ON {constraint}", relation.to_sql())
                 }
             }
         }
@@ -400,7 +400,8 @@ mod tests {
             expr: Expr::Identifier("name".to_owned()),
             asc: Some(true),
         }];
-        let actual = "SELECT * FROM FOO AS F ORDER BY name ASC LIMIT 10 OFFSET 3".to_owned();
+        let actual =
+            r#"SELECT * FROM "FOO" AS "F" ORDER BY "name" ASC LIMIT 10 OFFSET 3"#.to_owned();
         let expected = Query {
             body: SetExpr::Select(Box::new(Select {
                 projection: vec![SelectItem::Wildcard],
@@ -433,7 +434,7 @@ mod tests {
 
     #[test]
     fn to_sql_set_expr() {
-        let actual = "SELECT * FROM FOO AS F INNER JOIN PlayerItem".to_owned();
+        let actual = r#"SELECT * FROM "FOO" AS "F" INNER JOIN "PlayerItem""#.to_owned();
         let expected = SetExpr::Select(Box::new(Select {
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
@@ -481,7 +482,8 @@ mod tests {
 
     #[test]
     fn to_sql_select() {
-        let actual = "SELECT * FROM FOO AS F GROUP BY name HAVING name = 'glue'".to_owned();
+        let actual =
+            r#"SELECT * FROM "FOO" AS "F" GROUP BY "name" HAVING "name" = 'glue'"#.to_owned();
         let expected = Select {
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
@@ -506,7 +508,7 @@ mod tests {
         .to_sql();
         assert_eq!(actual, expected);
 
-        let actual = "SELECT * FROM FOO WHERE name = 'glue'".to_owned();
+        let actual = r#"SELECT * FROM "FOO" WHERE "name" = 'glue'"#.to_owned();
         let expected = Select {
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
@@ -531,7 +533,7 @@ mod tests {
 
     #[test]
     fn to_sql_select_item() {
-        let actual = "name AS n".to_owned();
+        let actual = r#""name" AS "n""#.to_owned();
         let expected = SelectItem::Expr {
             expr: Expr::Identifier("name".to_owned()),
             label: "n".to_owned(),
@@ -539,7 +541,7 @@ mod tests {
         .to_sql();
         assert_eq!(actual, expected);
 
-        let actual = "foo.*".to_owned();
+        let actual = r#""foo".*"#.to_owned();
         let expected = SelectItem::QualifiedWildcard("foo".to_owned()).to_sql();
         assert_eq!(actual, expected);
 
@@ -550,7 +552,7 @@ mod tests {
 
     #[test]
     fn to_sql_table_with_joins() {
-        let actual = "FOO AS F";
+        let actual = r#""FOO" AS "F""#;
         let expected = TableWithJoins {
             relation: TableFactor::Table {
                 name: "FOO".to_owned(),
@@ -568,7 +570,7 @@ mod tests {
 
     #[test]
     fn to_sql_table_factor() {
-        let actual = "FOO AS F";
+        let actual = r#""FOO" AS "F""#;
         let expected = TableFactor::Table {
             name: "FOO".to_owned(),
             alias: Some(TableAlias {
@@ -580,7 +582,7 @@ mod tests {
         .to_sql();
         assert_eq!(actual, expected);
 
-        let actual = "(SELECT * FROM FOO) AS F";
+        let actual = r#"(SELECT * FROM "FOO") AS "F""#;
         let expected = TableFactor::Derived {
             subquery: Query {
                 body: SetExpr::Select(Box::new(Select {
@@ -609,7 +611,7 @@ mod tests {
         .to_sql();
         assert_eq!(actual, expected);
 
-        let actual = "SERIES(3) AS S";
+        let actual = r#"SERIES(3) AS "S""#;
         let expected = TableFactor::Series {
             alias: TableAlias {
                 name: "S".to_owned(),
@@ -620,7 +622,7 @@ mod tests {
         .to_sql();
         assert_eq!(actual, expected);
 
-        let actual = "GLUE_TABLES AS glue";
+        let actual = r#""GLUE_TABLES" AS "glue""#;
         let expected = TableFactor::Dictionary {
             dict: Dictionary::GlueTables,
             alias: TableAlias {
@@ -634,7 +636,7 @@ mod tests {
 
     #[test]
     fn to_sql_table_alias() {
-        let actual = "AS F";
+        let actual = r#"AS "F""#;
         let expected = TableAlias {
             name: "F".to_owned(),
             columns: Vec::new(),
