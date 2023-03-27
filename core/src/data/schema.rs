@@ -321,7 +321,7 @@ CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);"#;
                     unique: None,
                 },
                 ColumnDef {
-                    name: ";".to_string(),
+                    name: ";".to_owned(),
                     data_type: DataType::Int,
                     nullable: true,
                     default: None,
@@ -329,8 +329,8 @@ CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);"#;
                 },
             ]),
             indexes: vec![SchemaIndex {
-                name: ".".to_string(),
-                expr: Expr::Identifier(";".to_string()),
+                name: ".".to_owned(),
+                expr: Expr::Identifier(";".to_owned()),
                 order: SchemaIndexOrd::Both,
                 created: Utc::now().naive_utc(),
             }],
