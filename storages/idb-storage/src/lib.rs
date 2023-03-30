@@ -166,8 +166,10 @@ impl Store for IdbStorage {
 
         transaction.commit().await.err_into()?;
 
-        row.map(|row| convert(row, column_defs.as_deref()))
-            .transpose()
+        match row {
+            Some(row) => convert(row, column_defs.as_deref()).await.map(Some),
+            None => Ok(None),
+        }
     }
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
@@ -201,7 +203,7 @@ impl Store for IdbStorage {
             let key: JsonValue = current_key.into_serde().err_into()?;
             let key: Key = Value::try_from(key)?.try_into()?;
 
-            let row = convert(current_row, column_defs.as_deref())?;
+            let row = convert(current_row, column_defs.as_deref()).await?;
 
             rows.push((key, row));
 
