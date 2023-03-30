@@ -82,11 +82,11 @@ pub enum Expr {
 impl ToSql for Expr {
     fn to_sql(&self) -> String {
         match self {
-            Expr::Identifier(s) => format! {r#""{s}""#},
+            Expr::Identifier(s) => s.to_owned(),
             Expr::BinaryOp { left, op, right } => {
                 format!("{} {} {}", left.to_sql(), op.to_sql(), right.to_sql())
             }
-            Expr::CompoundIdentifier { alias, ident } => format!(r#""{alias}"."{ident}""#),
+            Expr::CompoundIdentifier { alias, ident } => format!("{alias}.{ident}"),
             Expr::IsNull(s) => format!("{} IS NULL", s.to_sql()),
             Expr::IsNotNull(s) => format!("{} IS NOT NULL", s.to_sql()),
             Expr::InList {
@@ -221,32 +221,28 @@ impl ToSql for Expr {
     }
 }
 
-impl From<Expr> for String {
-    fn from(expr: Expr) -> Self {
-        match expr {
-            Expr::Identifier(s) => s,
+// enum Usage {
+//     SQL,
+//     DDL,
+// }
+impl Expr {
+    // fn to_string_with(&self, usage: Usage) {}
+    pub fn to_ddl(&self) -> String {
+        match self {
+            Expr::Identifier(s) => format! {r#""{s}""#},
             Expr::BinaryOp { left, op, right } => {
-                format!(
-                    "{} {} {}",
-                    String::from(*left),
-                    op.to_sql(),
-                    String::from(*right)
-                )
+                format!("{} {} {}", left.to_ddl(), op.to_sql(), right.to_ddl(),)
             }
-            Expr::CompoundIdentifier { alias, ident } => format!("{alias}.{ident}"),
-            Expr::IsNull(s) => format!("{} IS NULL", String::from(*s)),
-            Expr::IsNotNull(s) => format!("{} IS NOT NULL", String::from(*s)),
+            Expr::CompoundIdentifier { alias, ident } => format!(r#""{alias}"."{ident}""#),
+            Expr::IsNull(s) => format!("{} IS NULL", s.to_ddl()),
+            Expr::IsNotNull(s) => format!("{} IS NOT NULL", s.to_ddl()),
             Expr::InList {
                 expr,
                 list,
                 negated,
             } => {
-                let expr = String::from(*expr);
-                let list = list
-                    .iter()
-                    .map(|s| String::from(s.to_owned()))
-                    .collect::<Vec<_>>()
-                    .join(", ");
+                let expr = expr.to_ddl();
+                let list = list.iter().map(Expr::to_ddl).collect::<Vec<_>>().join(", ");
 
                 match negated {
                     true => format!("{expr} NOT IN ({list})"),
@@ -259,9 +255,9 @@ impl From<Expr> for String {
                 low,
                 high,
             } => {
-                let expr = String::from(*expr);
-                let low = String::from(*low);
-                let high = String::from(*high);
+                let expr = expr.to_ddl();
+                let low = low.to_ddl();
+                let high = high.to_ddl();
 
                 match negated {
                     true => format!("{expr} NOT BETWEEN {low} AND {high}"),
@@ -273,8 +269,8 @@ impl From<Expr> for String {
                 negated,
                 pattern,
             } => {
-                let expr = String::from(*expr);
-                let pattern = String::from(*pattern);
+                let expr = expr.to_ddl();
+                let pattern = pattern.to_ddl();
 
                 match negated {
                     true => format!("{expr} NOT LIKE {pattern}"),
@@ -286,8 +282,8 @@ impl From<Expr> for String {
                 negated,
                 pattern,
             } => {
-                let expr = String::from(*expr);
-                let pattern = String::from(*pattern);
+                let expr = expr.to_ddl();
+                let pattern = pattern.to_ddl();
 
                 match negated {
                     true => format!("{expr} NOT ILIKE {pattern}"),
@@ -295,71 +291,65 @@ impl From<Expr> for String {
                 }
             }
             Expr::UnaryOp { op, expr } => match op {
-                UnaryOperator::Factorial => format!("{}{}", String::from(*expr), op.to_sql()),
-                _ => format!("{}{}", op.to_sql(), String::from(*expr)),
+                UnaryOperator::Factorial => format!("{}{}", expr.to_ddl(), op.to_sql()),
+                _ => format!("{}{}", op.to_sql(), expr.to_ddl()),
             },
-            Expr::Nested(expr) => format!("({})", String::from(*expr)),
-            Expr::Literal(s) => s.to_sql(),
-            Expr::TypedString { data_type, value } => format!("{data_type} '{value}'"),
+            Expr::Nested(expr) => format!("({})", expr.to_ddl()),
+            // Expr::Literal(s) => s.to_sql(),
+            // Expr::TypedString { data_type, value } => format!("{data_type} '{value}'"),
             Expr::Case {
                 operand,
                 when_then,
                 else_result,
             } => {
                 let operand = match operand {
-                    Some(operand) => format!("CASE {}", String::from(*operand)),
+                    Some(operand) => format!("CASE {}", operand.to_ddl()),
                     None => "CASE".to_owned(),
                 };
 
                 let when_then = when_then
                     .iter()
-                    .map(|(when, then)| {
-                        format!(
-                            "WHEN {} THEN {}",
-                            String::from(when.to_owned()),
-                            String::from(then.to_owned())
-                        )
-                    })
+                    .map(|(when, then)| format!("WHEN {} THEN {}", when.to_ddl(), then.to_ddl()))
                     .collect::<Vec<_>>()
                     .join("\n");
 
                 let else_result = match else_result {
-                    Some(else_result) => format!("ELSE {}", String::from(*else_result)),
+                    Some(else_result) => format!("ELSE {}", else_result.to_ddl()),
                     None => String::new(),
                 };
 
                 [operand, when_then, else_result, "END".to_owned()].join("\n")
             }
-            Expr::Aggregate(a) => a.to_sql(),
-            Expr::Function(func) => func.to_sql(),
+            // Expr::Aggregate(a) => a.to_sql(),
+            // Expr::Function(func) => func.to_sql(),
             Expr::InSubquery {
                 expr,
                 subquery,
                 negated,
             } => match negated {
-                true => format!("{} NOT IN ({})", String::from(*expr), subquery.to_sql()),
-                false => format!("{} IN ({})", String::from(*expr), subquery.to_sql()),
+                true => format!("{} NOT IN ({})", expr.to_ddl(), subquery.to_sql()),
+                false => format!("{} IN ({})", expr.to_ddl(), subquery.to_sql()),
             },
-            Expr::Exists { subquery, negated } => match negated {
-                true => format!("NOT EXISTS({})", subquery.to_sql()),
-                false => format!("EXISTS({})", subquery.to_sql()),
-            },
+            // Expr::Exists { subquery, negated } => match negated {
+            //     true => format!("NOT EXISTS({})", subquery.to_sql()),
+            //     false => format!("EXISTS({})", subquery.to_sql()),
+            // },
             Expr::ArrayIndex { obj, indexes } => {
-                let obj = String::from(*obj);
+                let obj = obj.to_ddl();
                 let indexes = indexes
                     .iter()
-                    .map(|index| format!("[{}]", String::from(index.to_owned())))
+                    .map(|index| format!("[{}]", index.to_ddl()))
                     .collect::<Vec<_>>()
                     .join("");
                 format!("{obj}{indexes}")
             }
-            Expr::Subquery(query) => format!("({})", query.to_sql()),
+            // Expr::Subquery(query) => format!("({})", query.to_sql()),
             Expr::Interval {
                 expr,
                 leading_field,
                 last_field,
             } => {
-                let expr = String::from(*expr);
+                let expr = expr.to_ddl();
                 let leading_field = leading_field
                     .as_ref()
                     .map(|field| field.to_string())
@@ -370,6 +360,7 @@ impl From<Expr> for String {
                     None => format!("INTERVAL {expr} {leading_field}"),
                 }
             }
+            _ => self.to_sql(),
         }
     }
 }

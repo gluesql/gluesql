@@ -44,7 +44,7 @@ impl<'a> TryFrom<SelectItemNode<'a>> for SelectItem {
             }
             SelectItemNode::Expr(expr_node) => {
                 let expr = Expr::try_from(expr_node)?;
-                let label = expr.clone().into();
+                let label = expr.to_ddl();
 
                 Ok(SelectItem::Expr { expr, label })
             }

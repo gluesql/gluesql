@@ -319,7 +319,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                     Value::Str(schema.table_name.clone()),
                                     Value::Str(index.name),
                                     Value::Str(index.order.to_string()),
-                                    Value::Str(index.expr.into()),
+                                    Value::Str(index.expr.to_ddl()),
                                     Value::Bool(false),
                                 ];
 
