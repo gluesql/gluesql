@@ -35,12 +35,10 @@ pub fn validate(column_def: &ColumnDef) -> Result<()> {
 }
 
 pub fn validate_arg(arg: &OperateFunctionArg) -> Result<()> {
-    let OperateFunctionArg { default, .. } = arg;
-
-    if let Some(expr) = default {
-        evaluate_stateless(None, expr)?;
-    }
-
+    arg.default
+        .as_ref()
+        .map(|expr| evaluate_stateless(None, expr))
+        .transpose()?;
     Ok(())
 }
 

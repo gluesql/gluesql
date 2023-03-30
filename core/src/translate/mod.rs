@@ -206,15 +206,14 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             params,
             ..
         } => {
-            let args = if let Some(args) = args {
-                Some(
+            let args = args
+                .as_ref()
+                .map(|args| {
                     args.iter()
                         .map(translate_operate_function_arg)
-                        .collect::<Result<Vec<_>>>()?,
-                )
-            } else {
-                None
-            };
+                        .collect::<Result<Vec<_>>>()
+                })
+                .transpose()?;
             Ok(Statement::CreateFunction {
                 or_replace: *or_replace,
                 name: translate_object_name(name)?,

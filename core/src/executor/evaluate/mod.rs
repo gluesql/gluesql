@@ -304,86 +304,77 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         Function::Custom { name, exprs } => {
             let custom_func = storage
                 .fetch_function(name)
-                .await
-                .map_err(|_| EvaluateError::UnsupportedFunction(name.to_string()))?;
-            if let Some(custom_func) = custom_func {
-                let args: Vec<Evaluated<'_>> = stream::iter(exprs).then(eval).try_collect().await?;
-                let args: Vec<Value> = args
+                .await?
+                .ok_or_else(|| EvaluateError::UnsupportedFunction(name.to_string()))?;
+            let args: Vec<Evaluated<'_>> = stream::iter(exprs).then(eval).try_collect().await?;
+            let args: Vec<Value> = args
+                .into_iter()
+                .map(|v| Value::try_from(v).unwrap())
+                .collect();
+
+            let empty = vec![];
+
+            let fargs = custom_func.args.as_ref().unwrap_or(&empty);
+
+            let dargs: Vec<Value> = if let Some(fargs) = &custom_func.args {
+                let dargs: Vec<&Expr> = fargs.iter().filter_map(|y| y.default.as_ref()).collect();
+                let dargs: Vec<Evaluated<'_>> =
+                    stream::iter(dargs).then(eval).try_collect().await?;
+                dargs
                     .into_iter()
-                    .map(|v| Value::try_from(v).unwrap())
-                    .collect();
-
-                let empty = vec![];
-
-                let fargs = if let Some(fargs) = &custom_func.args {
-                    fargs
-                } else {
-                    &empty
-                };
-
-                let dargs: Vec<Value> = if let Some(fargs) = &custom_func.args {
-                    let dargs: Vec<&Expr> =
-                        fargs.iter().filter_map(|y| y.default.as_ref()).collect();
-                    let dargs: Vec<Evaluated<'_>> =
-                        stream::iter(dargs).then(eval).try_collect().await?;
-                    dargs
-                        .into_iter()
-                        .map(|expr| Value::try_from(expr).unwrap())
-                        .collect()
-                } else {
-                    vec![]
-                };
-
-                let min = fargs.len() - dargs.len();
-                let max = fargs.len();
-
-                let value = if (min..=max).contains(&args.len()) {
-                    let mut hm = StdHashMap::new();
-                    let mut id = 0;
-
-                    fargs
-                        .iter()
-                        .enumerate()
-                        .try_for_each(|(i, farg)| -> Result<()> {
-                            let arg = args.get(i).unwrap_or(&Value::Null);
-                            arg.validate_type(&farg.data_type)?;
-                            arg.validate_null(farg.default.is_some())?;
-                            let value = if arg.is_null() {
-                                &dargs[{
-                                    let tmp = id;
-                                    id += 1;
-                                    tmp
-                                }]
-                            } else {
-                                arg
-                            };
-                            hm.insert(farg.name.to_owned(), value.to_owned());
-                            Ok(())
-                        })?;
-
-                    let row = Row::Map(hm);
-                    let rowcontext = RowContext::new(name, Cow::Owned(row), None);
-                    let context = Rc::new(rowcontext);
-
-                    let value = if let Some(v) = &custom_func.return_ {
-                        eval_with_context(v, context).await?
-                    } else {
-                        Evaluated::from(Value::Null)
-                    };
-                    Ok(value)
-                } else {
-                    Err(EvaluateError::FunctionArgsLengthNotWithinRange {
-                        name: custom_func.func_name.to_owned(),
-                        expected_minimum: min,
-                        expected_maximum: max,
-                        found: args.len(),
-                    })
-                };
-
-                Ok(value?)
+                    .map(|expr| Value::try_from(expr).unwrap())
+                    .collect()
             } else {
-                Err(EvaluateError::UnsupportedFunction(name.to_string()).into())
-            }
+                vec![]
+            };
+
+            let min = fargs.len() - dargs.len();
+            let max = fargs.len();
+
+            let value = if (min..=max).contains(&args.len()) {
+                let mut hm = StdHashMap::new();
+                let mut id = 0;
+
+                fargs
+                    .iter()
+                    .enumerate()
+                    .try_for_each(|(i, farg)| -> Result<()> {
+                        let arg = args.get(i).unwrap_or(&Value::Null);
+                        arg.validate_type(&farg.data_type)?;
+                        arg.validate_null(farg.default.is_some())?;
+                        let value = if arg.is_null() {
+                            &dargs[{
+                                let tmp = id;
+                                id += 1;
+                                tmp
+                            }]
+                        } else {
+                            arg
+                        };
+                        hm.insert(farg.name.to_owned(), value.to_owned());
+                        Ok(())
+                    })?;
+
+                let row = Row::Map(hm);
+                let rowcontext = RowContext::new(name, Cow::Owned(row), None);
+                let context = Rc::new(rowcontext);
+
+                if let Some(v) = &custom_func.return_ {
+                    eval_with_context(v, context).await
+                } else {
+                    Ok(Evaluated::from(Value::Null))
+                }
+            } else {
+                Err((EvaluateError::FunctionArgsLengthNotWithinRange {
+                    name: custom_func.func_name.to_owned(),
+                    expected_minimum: min,
+                    expected_maximum: max,
+                    found: args.len(),
+                })
+                .into())
+            };
+
+            Ok(value?)
         }
         Function::ConcatWs { separator, exprs } => {
             let separator = eval(separator).await?;
