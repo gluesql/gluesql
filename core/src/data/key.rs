@@ -329,6 +329,7 @@ mod tests {
             translate::translate_expr,
         },
         chrono::{NaiveDate, NaiveDateTime, NaiveTime},
+        futures::executor::block_on,
         rust_decimal::Decimal,
         std::{cmp::Ordering, collections::HashMap, net::IpAddr, str::FromStr},
     };
@@ -337,7 +338,9 @@ mod tests {
         let parsed = parse_expr(sql).expect(sql);
         let expr = translate_expr(&parsed).expect(sql);
 
-        evaluate_stateless(None, &expr).expect(sql).try_into()
+        block_on(evaluate_stateless(None, &expr))
+            .expect(sql)
+            .try_into()
     }
 
     #[test]

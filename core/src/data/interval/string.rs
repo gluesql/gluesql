@@ -1,19 +1,13 @@
 use {
     super::{Interval, IntervalError, DAY, HOUR, MINUTE, SECOND},
     crate::{
-        ast::Expr,
-        data::Value,
-        executor::evaluate_stateless,
-        parse_sql::parse_interval,
-        result::{Error, Result},
-        translate::translate_expr,
+        ast::Expr, data::Value, executor::evaluate_stateless, parse_sql::parse_interval,
+        result::Result, translate::translate_expr,
     },
 };
 
-impl TryFrom<&str> for Interval {
-    type Error = Error;
-
-    fn try_from(s: &str) -> Result<Self> {
+impl Interval {
+    pub async fn parse(s: &str) -> Result<Self> {
         let parsed = parse_interval(s)?;
 
         match translate_expr(&parsed)? {
@@ -23,6 +17,7 @@ impl TryFrom<&str> for Interval {
                 last_field,
             } => {
                 let value = evaluate_stateless(None, &expr)
+                    .await
                     .and_then(Value::try_from)
                     .map(String::from)?;
 
@@ -155,7 +150,7 @@ impl From<Interval> for String {
 
 #[cfg(test)]
 mod tests {
-    use super::Interval;
+    use {super::Interval, futures::executor::block_on};
 
     #[test]
     fn into_owned() {
@@ -164,7 +159,8 @@ mod tests {
                 let interval = interval!($( $value $duration ),*);
                 let interval_str = format!("'{}' {}", $result, stringify!($from_to));
 
-                assert_eq!(Ok(interval), Interval::try_from(interval_str.as_str()));
+                let expected = block_on(Interval::parse(interval_str.as_str()));
+                assert_eq!(Ok(interval), expected);
                 assert_eq!(String::from(interval), interval_str);
             };
             ($( $value: literal $duration: ident ),* => $result: literal $from: tt TO $to: tt) => {
@@ -176,7 +172,8 @@ mod tests {
                     stringify!($to),
                 );
 
-                assert_eq!(Ok(interval), Interval::try_from(interval_str.as_str()));
+                let expected = block_on(Interval::parse(interval_str.as_str()));
+                assert_eq!(Ok(interval), expected);
                 assert_eq!(String::from(interval), interval_str);
             };
         }

@@ -5,15 +5,12 @@ use {
         data::{Schema, TableError},
         executor::{evaluate_stateless, select::select},
         prelude::{DataType, Value},
-        result::{Error, IntoControlFlow, Result},
+        result::{Error, Result},
         store::{GStore, GStoreMut},
     },
     chrono::Utc,
     futures::stream::TryStreamExt,
-    std::{
-        iter,
-        ops::ControlFlow::{Break, Continue},
-    },
+    std::iter,
 };
 
 pub async fn create_table<T: GStore + GStoreMut>(
@@ -55,34 +52,27 @@ pub async fn create_table<T: GStore + GStoreMut>(
             },
             SetExpr::Values(Values(values_list)) => {
                 let first_len = values_list[0].len();
-                let init_types = iter::repeat(None)
+                let mut column_types = iter::repeat(None)
                     .take(first_len)
                     .collect::<Vec<Option<DataType>>>();
-                let column_types =
-                    values_list
-                        .iter()
-                        .try_fold(init_types, |column_types, exprs| {
-                            let column_types = column_types
-                                .iter()
-                                .zip(exprs.iter())
-                                .map(|(column_type, expr)| match column_type {
-                                    Some(data_type) => Ok(Some(data_type.to_owned())),
-                                    None => evaluate_stateless(None, expr)
-                                        .and_then(Value::try_from)
-                                        .map(|value| value.get_type()),
-                                })
-                                .collect::<Result<Vec<Option<DataType>>>>()
-                                .into_control_flow()?;
 
-                            match column_types.iter().any(Option::is_none) {
-                                true => Continue(column_types),
-                                false => Break(Ok(column_types)),
-                            }
-                        });
-                let column_types = match column_types {
-                    Continue(column_types) => column_types,
-                    Break(column_types) => column_types?,
-                };
+                for exprs in values_list {
+                    for (i, expr) in exprs.iter().enumerate() {
+                        if column_types[i].is_some() {
+                            continue;
+                        }
+
+                        column_types[i] = evaluate_stateless(None, expr)
+                            .await
+                            .and_then(Value::try_from)
+                            .map(|value| value.get_type())?;
+                    }
+
+                    if column_types.iter().all(Option::is_some) {
+                        break;
+                    }
+                }
+
                 let column_defs = column_types
                     .iter()
                     .map(|column_type| match column_type {
@@ -110,7 +100,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
         validate_column_names(column_defs)?;
 
         for column_def in column_defs {
-            validate(column_def)?;
+            validate(column_def).await?;
         }
     }
 

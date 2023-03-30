@@ -7,7 +7,7 @@ use {
     },
 };
 
-pub fn validate(column_def: &ColumnDef) -> Result<()> {
+pub async fn validate(column_def: &ColumnDef) -> Result<()> {
     let ColumnDef {
         data_type,
         default,
@@ -28,7 +28,7 @@ pub fn validate(column_def: &ColumnDef) -> Result<()> {
     }
 
     if let Some(expr) = default {
-        evaluate_stateless(None, expr)?;
+        evaluate_stateless(None, expr).await?;
     }
 
     Ok(())

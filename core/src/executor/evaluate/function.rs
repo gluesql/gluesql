@@ -572,8 +572,8 @@ pub fn find_idx<'a>(
     .map(Evaluated::from)
 }
 
-pub fn cast<'a>(expr: Evaluated<'a>, data_type: &DataType) -> Result<Evaluated<'a>> {
-    expr.cast(data_type)
+pub async fn cast<'a>(expr: Evaluated<'a>, data_type: &DataType) -> Result<Evaluated<'a>> {
+    expr.cast(data_type).await
 }
 
 pub fn extract<'a>(field: &DateTimeField, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {

@@ -207,7 +207,7 @@ impl Value {
         Ok(())
     }
 
-    pub fn cast(&self, data_type: &DataType) -> Result<Self> {
+    pub async fn cast(&self, data_type: &DataType) -> Result<Self> {
         match (data_type, self) {
             (DataType::Int8, Value::I8(_))
             | (DataType::Int16, Value::I16(_))
@@ -243,7 +243,7 @@ impl Value {
             (DataType::Date, value) => value.try_into().map(Value::Date),
             (DataType::Time, value) => value.try_into().map(Value::Time),
             (DataType::Timestamp, value) => value.try_into().map(Value::Timestamp),
-            (DataType::Interval, value) => value.try_into().map(Value::Interval),
+            (DataType::Interval, value) => value.try_into_interval().await.map(Value::Interval),
             (DataType::Uuid, value) => value.try_into().map(Value::Uuid),
             (DataType::Inet, value) => value.try_into().map(Value::Inet),
             (DataType::Bytea, Value::Str(value)) => hex::decode(value)
@@ -675,6 +675,7 @@ mod tests {
         super::{Interval, Value::*},
         crate::data::{value::uuid::parse_uuid, ValueError},
         chrono::{NaiveDate, NaiveTime},
+        futures::executor::block_on,
         rust_decimal::Decimal,
         std::{net::IpAddr, str::FromStr},
     };
@@ -1407,7 +1408,7 @@ mod tests {
 
         macro_rules! cast {
             ($input: expr => $data_type: expr, $expected: expr) => {
-                let found = $input.cast(&$data_type).unwrap();
+                let found = block_on($input.cast(&$data_type)).unwrap();
 
                 match ($expected, found) {
                     (Null, Null) => {}
@@ -1550,7 +1551,7 @@ mod tests {
         // Bytea
         cast!(Value::Str("0abc".to_owned()) => Bytea, Value::Bytea(hex::decode("0abc").unwrap()));
         assert_eq!(
-            Value::Str("!@#$5".to_owned()).cast(&Bytea),
+            block_on(Value::Str("!@#$5".to_owned()).cast(&Bytea)),
             Err(ValueError::CastFromHexToByteaFailed("!@#$5".to_owned()).into()),
         );
 
@@ -1561,7 +1562,7 @@ mod tests {
 
         // Casting error
         assert_eq!(
-            Value::Uuid(123).cast(&List),
+            block_on(Value::Uuid(123).cast(&List)),
             Err(ValueError::UnimplementedCast.into())
         );
     }

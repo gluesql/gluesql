@@ -1,5 +1,5 @@
 use {
-    super::{context::RowContext, evaluate_stateless, filter::check_expr},
+    super::{context::RowContext, evaluate::evaluate_stateless, filter::check_expr},
     crate::{
         ast::{
             ColumnDef, ColumnUniqueOption, Dictionary, Expr, IndexItem, Join, Query, Select,
@@ -186,7 +186,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
             Ok(Rows::Table(stream::iter(rows)))
         }
         TableFactor::Series { size, .. } => {
-            let value: Value = evaluate_stateless(None, size)?.try_into()?;
+            let value: Value = evaluate_stateless(None, size).await?.try_into()?;
             let size: i64 = value.try_into()?;
             let size = match size {
                 n if n >= 0 => size,

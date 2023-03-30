@@ -15,6 +15,7 @@ use {
         store::{AlterTable, AlterTableError, DataRow},
     },
     sled::transaction::ConflictableTransactionError,
+    smol::block_on,
     std::{iter::once, str},
     utils::Vector,
 };
@@ -292,7 +293,7 @@ impl AlterTable for SledStorage {
 
             let value = match (default, nullable) {
                 (Some(expr), _) => {
-                    let evaluated = evaluate_stateless(None, expr)
+                    let evaluated = block_on(evaluate_stateless(None, expr))
                         .map_err(ConflictableTransactionError::Abort)?;
 
                     evaluated

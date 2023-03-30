@@ -1,5 +1,5 @@
 use {
-    crate::ast::{Aggregate, Expr},
+    crate::ast::{Aggregate, Expr, ToSql},
     serde::{Serialize, Serializer},
     std::fmt::Debug,
     thiserror::Error,
@@ -53,11 +53,11 @@ pub enum EvaluateError {
     #[error("text literal required for json map conversion: {0}")]
     TextLiteralRequired(String),
 
-    #[error("unsupported stateless expression: {0:#?}")]
+    #[error("unsupported stateless expression: {}", .0.to_sql())]
     UnsupportedStatelessExpr(Expr),
 
-    #[error("unreachable empty context")]
-    UnreachableEmptyContext,
+    #[error("context is required for identifier evaluation: {}", .0.to_sql())]
+    ContextRequiredForIdentEvaluation(Expr),
 
     #[error("unreachable empty aggregate value: {0:?}")]
     UnreachableEmptyAggregateValue(Aggregate),
