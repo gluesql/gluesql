@@ -6,9 +6,9 @@ mod function;
 use {
     super::{context::RowContext, select::select},
     crate::{
-        mock::MockStorage,
         ast::{Aggregate, Expr, Function},
         data::{Interval, Literal, Row, Value},
+        mock::MockStorage,
         result::{Error, Result},
         store::GStore,
     },
@@ -22,10 +22,7 @@ use {
     std::{borrow::Cow, rc::Rc},
 };
 
-pub use {
-    error::EvaluateError,
-    evaluated::Evaluated,
-};
+pub use {error::EvaluateError, evaluated::Evaluated};
 
 #[async_recursion(?Send)]
 pub async fn evaluate<'a, 'b: 'a, 'c: 'a, T: GStore>(
