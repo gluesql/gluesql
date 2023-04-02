@@ -24,8 +24,6 @@ pub trait ToSql {
 
 pub trait ToSqlUnquoted {
     fn to_sql_unquoted(&self) -> String;
-
-    fn to_sql_with(&self, qouted: bool) -> String;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
