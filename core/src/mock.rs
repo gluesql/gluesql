@@ -2,7 +2,9 @@ use {
     crate::{
         data::{Key, Schema},
         result::{Error, Result},
-        store::{AlterTable, DataRow, Index, IndexMut, RowIter, Store, StoreMut, Transaction},
+        store::{
+            AlterTable, DataRow, Index, IndexMut, Metadata, RowIter, Store, StoreMut, Transaction,
+        },
     },
     async_trait::async_trait,
     std::collections::HashMap,
@@ -172,3 +174,5 @@ mod tests {
         assert!(matches!(block_on(storage.fetch_schema("Foo")), Ok(None)));
     }
 }
+
+impl Metadata for MockStorage {}
