@@ -23,8 +23,6 @@ edit = "0.1.4"
 futures = "0.3"
 anyhow = "1.0"
 itertools = "0.10"
-strum_macros = "0.24"
-strum = "0.24"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }
