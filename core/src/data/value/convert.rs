@@ -542,7 +542,9 @@ impl TryFrom<&Value> for u128 {
     fn try_from(v: &Value) -> Result<u128> {
         match v {
             Value::Uuid(value) => Ok(*value),
-            Value::Str(value) =>u128::from_str_radix(value,10).map_err(|_| ValueError::FailedToParseNumber.into()),
+            Value::Str(value) => {
+                u128::from_str_radix(value, 10).map_err(|_| ValueError::FailedToParseNumber.into())
+            }
             Value::Inet(IpAddr::V6(v)) => Ok(u128::from(*v)),
             _ => Err(ValueError::ImpossibleCast.into()),
         }
@@ -565,10 +567,7 @@ impl TryFrom<&Value> for IpAddr {
 mod tests {
     use {
         super::{Value, ValueError},
-        crate::{
-            data::{Interval as I},
-            result::Result,
-        },
+        crate::{data::Interval as I, result::Result},
         chrono::{self, NaiveDate, NaiveDateTime, NaiveTime},
         rust_decimal::Decimal,
         std::{
