@@ -226,7 +226,26 @@ impl ToSql for Expr {
 //     DDL,
 // }
 impl Expr {
-    // fn to_string_with(&self, usage: Usage) {}
+    fn to_string_with(&self, qouted: bool) -> String {
+        match self {
+            Expr::Identifier(s) => match qouted {
+                true => format! {r#""{s}""#},
+                false => s.to_string(),
+            },
+            Expr::BinaryOp { left, op, right } => format!(
+                "{} {} {}",
+                left.to_string_with(qouted),
+                op.to_sql(),
+                right.to_string_with(qouted)
+            ),
+            Expr::CompoundIdentifier { alias, ident } => match qouted {
+                true => format!(r#""{alias}"."{ident}""#),
+                false => self.to_sql(),
+            },
+            Expr::IsNull(s) => format!("{} IS NULL", s.to_string_with(qouted)),
+            _ => todo!(),
+        }
+    }
     pub fn to_ddl(&self) -> String {
         match self {
             Expr::Identifier(s) => format! {r#""{s}""#},
