@@ -19,8 +19,7 @@ use {
     gluesql_memory_storage::MemoryStorage,
     gluesql_sled_storage::SledStorage,
     itertools::Itertools,
-    std::{fmt::Debug, fs::File, io::Write, path::PathBuf, str::FromStr},
-    strum_macros::EnumString,
+    std::{fmt::Debug, fs::File, io::Write, path::PathBuf},
 };
 
 #[derive(Parser, Debug)]
@@ -40,12 +39,11 @@ struct Args {
 
     /// Storage type to store data
     #[clap(short, long, value_parser)]
-    storage: Option<String>,
+    storage: Option<FileStorage>,
 }
 
-#[derive(EnumString)]
-#[strum(ascii_case_insensitive)]
-enum CliStorageType {
+#[derive(clap::ValueEnum, Debug, Clone)]
+enum FileStorage {
     Sled,
     Json,
 }
@@ -57,9 +55,8 @@ pub fn run() -> Result<()> {
         (Some(path), Some(storage)) => {
             let path = path.as_path().to_str().expect("wrong path");
 
-            let storage = CliStorageType::from_str(&storage).expect("wrong storage type");
             match storage {
-                CliStorageType::Sled => {
+                FileStorage::Sled => {
                     println!("[sled-storage] connected to {}", path);
                     run(
                         SledStorage::new(path).expect("failed to load sled-storage"),
@@ -74,7 +71,7 @@ pub fn run() -> Result<()> {
                         return Ok::<_, Error>(());
                     }
                 }
-                CliStorageType::Json => {
+                FileStorage::Json => {
                     println!("[json-storage] connected to {}", path);
                     run(
                         JsonStorage::new(path).expect("failed to load json-storage"),
