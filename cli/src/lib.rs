@@ -68,7 +68,7 @@ pub fn run() -> Result<()> {
 
     match storage {
         Storage::Memory => {
-            panic!("[memory-storage] should be without path");
+            panic!("failed to load memory-storage: it should be without path");
         }
         Storage::Sled => {
             println!("[sled-storage] connected to {}", path);
