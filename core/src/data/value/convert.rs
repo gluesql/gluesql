@@ -1,7 +1,6 @@
 use {
     super::{
         date::{parse_date, parse_time, parse_timestamp},
-        uuid::parse_uuid,
         Value, ValueError,
     },
     crate::{
@@ -567,7 +566,7 @@ mod tests {
     use {
         super::{Value, ValueError},
         crate::{
-            data::{value::uuid::parse_uuid, Interval as I},
+            data::{Interval as I},
             result::Result,
         },
         chrono::{self, NaiveDate, NaiveDateTime, NaiveTime},
