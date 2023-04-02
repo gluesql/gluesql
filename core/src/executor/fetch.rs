@@ -3,7 +3,7 @@ use {
     crate::{
         ast::{
             ColumnDef, ColumnUniqueOption, Dictionary, Expr, IndexItem, Join, Query, Select,
-            SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, Values,
+            SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, ToSql, Values,
         },
         data::{get_alias, get_index, Key, Row, Value},
         executor::{evaluate::evaluate, select::select},
@@ -319,7 +319,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                     Value::Str(schema.table_name.clone()),
                                     Value::Str(index.name),
                                     Value::Str(index.order.to_string()),
-                                    Value::Str(index.expr.to_ddl()),
+                                    Value::Str(index.expr.to_sql_unquoted()),
                                     Value::Bool(false),
                                 ];
 

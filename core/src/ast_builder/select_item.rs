@@ -1,7 +1,7 @@
 use {
     super::ExprNode,
     crate::{
-        ast::{Expr, SelectItem},
+        ast::{Expr, SelectItem, ToSql},
         parse_sql::parse_select_item,
         result::{Error, Result},
         translate::translate_select_item,
@@ -44,7 +44,7 @@ impl<'a> TryFrom<SelectItemNode<'a>> for SelectItem {
             }
             SelectItemNode::Expr(expr_node) => {
                 let expr = Expr::try_from(expr_node)?;
-                let label = expr.to_ddl();
+                let label = expr.to_sql_unquoted();
 
                 Ok(SelectItem::Expr { expr, label })
             }

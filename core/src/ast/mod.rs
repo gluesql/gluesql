@@ -20,6 +20,10 @@ use serde::{Deserialize, Serialize};
 
 pub trait ToSql {
     fn to_sql(&self) -> String;
+
+    fn to_sql_unquoted(&self) -> String {
+        panic!("to_sql_unquoted is not implemented");
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

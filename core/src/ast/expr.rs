@@ -81,23 +81,44 @@ pub enum Expr {
 
 impl ToSql for Expr {
     fn to_sql(&self) -> String {
+        self.to_sql_with(true)
+    }
+
+    fn to_sql_unquoted(&self) -> String {
+        self.to_sql_with(false)
+    }
+}
+
+impl Expr {
+    fn to_sql_with(&self, qouted: bool) -> String {
         match self {
-            Expr::Identifier(s) => s.to_owned(),
+            Expr::Identifier(s) => match qouted {
+                true => format! {r#""{s}""#},
+                false => s.to_owned(),
+            },
             Expr::BinaryOp { left, op, right } => {
-                format!("{} {} {}", left.to_sql(), op.to_sql(), right.to_sql())
+                format!(
+                    "{} {} {}",
+                    left.to_sql_with(qouted),
+                    op.to_sql(),
+                    right.to_sql_with(qouted),
+                )
             }
-            Expr::CompoundIdentifier { alias, ident } => format!("{alias}.{ident}"),
-            Expr::IsNull(s) => format!("{} IS NULL", s.to_sql()),
-            Expr::IsNotNull(s) => format!("{} IS NOT NULL", s.to_sql()),
+            Expr::CompoundIdentifier { alias, ident } => match qouted {
+                true => format!(r#""{alias}"."{ident}""#),
+                false => format!("{alias}.{ident}"),
+            },
+            Expr::IsNull(s) => format!("{} IS NULL", s.to_sql_with(qouted)),
+            Expr::IsNotNull(s) => format!("{} IS NOT NULL", s.to_sql_with(qouted)),
             Expr::InList {
                 expr,
                 list,
                 negated,
             } => {
-                let expr = expr.to_sql();
+                let expr = expr.to_sql_with(qouted);
                 let list = list
                     .iter()
-                    .map(ToSql::to_sql)
+                    .map(|expr| expr.to_sql_with(qouted))
                     .collect::<Vec<_>>()
                     .join(", ");
 
@@ -112,9 +133,9 @@ impl ToSql for Expr {
                 low,
                 high,
             } => {
-                let expr = expr.to_sql();
-                let low = low.to_sql();
-                let high = high.to_sql();
+                let expr = expr.to_sql_with(qouted);
+                let low = low.to_sql_with(qouted);
+                let high = high.to_sql_with(qouted);
 
                 match negated {
                     true => format!("{expr} NOT BETWEEN {low} AND {high}"),
@@ -126,8 +147,8 @@ impl ToSql for Expr {
                 negated,
                 pattern,
             } => {
-                let expr = expr.to_sql();
-                let pattern = pattern.to_sql();
+                let expr = expr.to_sql_with(qouted);
+                let pattern = pattern.to_sql_with(qouted);
 
                 match negated {
                     true => format!("{expr} NOT LIKE {pattern}"),
@@ -139,8 +160,8 @@ impl ToSql for Expr {
                 negated,
                 pattern,
             } => {
-                let expr = expr.to_sql();
-                let pattern = pattern.to_sql();
+                let expr = expr.to_sql_with(qouted);
+                let pattern = pattern.to_sql_with(qouted);
 
                 match negated {
                     true => format!("{expr} NOT ILIKE {pattern}"),
@@ -148,10 +169,12 @@ impl ToSql for Expr {
                 }
             }
             Expr::UnaryOp { op, expr } => match op {
-                UnaryOperator::Factorial => format!("{}{}", expr.to_sql(), op.to_sql()),
-                _ => format!("{}{}", op.to_sql(), expr.to_sql()),
+                UnaryOperator::Factorial => {
+                    format!("{}{}", expr.to_sql_with(qouted), op.to_sql())
+                }
+                _ => format!("{}{}", op.to_sql(), expr.to_sql_with(qouted)),
             },
-            Expr::Nested(expr) => format!("({})", expr.to_sql()),
+            Expr::Nested(expr) => format!("({})", expr.to_sql_with(qouted)),
             Expr::Literal(s) => s.to_sql(),
             Expr::TypedString { data_type, value } => format!("{data_type} '{value}'"),
             Expr::Case {
@@ -160,18 +183,24 @@ impl ToSql for Expr {
                 else_result,
             } => {
                 let operand = match operand {
-                    Some(operand) => format!("CASE {}", operand.to_sql()),
+                    Some(operand) => format!("CASE {}", operand.to_sql_with(qouted)),
                     None => "CASE".to_owned(),
                 };
 
                 let when_then = when_then
                     .iter()
-                    .map(|(when, then)| format!("WHEN {} THEN {}", when.to_sql(), then.to_sql()))
+                    .map(|(when, then)| {
+                        format!(
+                            "WHEN {} THEN {}",
+                            when.to_sql_with(qouted),
+                            then.to_sql_with(qouted)
+                        )
+                    })
                     .collect::<Vec<_>>()
                     .join("\n");
 
                 let else_result = match else_result {
-                    Some(else_result) => format!("ELSE {}", else_result.to_sql()),
+                    Some(else_result) => format!("ELSE {}", else_result.to_sql_with(qouted)),
                     None => String::new(),
                 };
 
@@ -184,18 +213,22 @@ impl ToSql for Expr {
                 subquery,
                 negated,
             } => match negated {
-                true => format!("{} NOT IN ({})", expr.to_sql(), subquery.to_sql()),
-                false => format!("{} IN ({})", expr.to_sql(), subquery.to_sql()),
+                true => format!(
+                    "{} NOT IN ({})",
+                    expr.to_sql_with(qouted),
+                    subquery.to_sql()
+                ),
+                false => format!("{} IN ({})", expr.to_sql_with(qouted), subquery.to_sql()),
             },
             Expr::Exists { subquery, negated } => match negated {
                 true => format!("NOT EXISTS({})", subquery.to_sql()),
                 false => format!("EXISTS({})", subquery.to_sql()),
             },
             Expr::ArrayIndex { obj, indexes } => {
-                let obj = obj.to_sql();
+                let obj = obj.to_sql_with(qouted);
                 let indexes = indexes
                     .iter()
-                    .map(|index| format!("[{}]", index.to_sql()))
+                    .map(|index| format!("[{}]", index.to_sql_with(qouted)))
                     .collect::<Vec<_>>()
                     .join("");
                 format!("{obj}{indexes}")
@@ -206,7 +239,7 @@ impl ToSql for Expr {
                 leading_field,
                 last_field,
             } => {
-                let expr = expr.to_sql();
+                let expr = expr.to_sql_with(qouted);
                 let leading_field = leading_field
                     .as_ref()
                     .map(|field| field.to_string())
@@ -217,169 +250,6 @@ impl ToSql for Expr {
                     None => format!("INTERVAL {expr} {leading_field}"),
                 }
             }
-        }
-    }
-}
-
-// enum Usage {
-//     SQL,
-//     DDL,
-// }
-impl Expr {
-    fn to_string_with(&self, qouted: bool) -> String {
-        match self {
-            Expr::Identifier(s) => match qouted {
-                true => format! {r#""{s}""#},
-                false => s.to_string(),
-            },
-            Expr::BinaryOp { left, op, right } => format!(
-                "{} {} {}",
-                left.to_string_with(qouted),
-                op.to_sql(),
-                right.to_string_with(qouted)
-            ),
-            Expr::CompoundIdentifier { alias, ident } => match qouted {
-                true => format!(r#""{alias}"."{ident}""#),
-                false => self.to_sql(),
-            },
-            Expr::IsNull(s) => format!("{} IS NULL", s.to_string_with(qouted)),
-            _ => todo!(),
-        }
-    }
-    pub fn to_ddl(&self) -> String {
-        match self {
-            Expr::Identifier(s) => format! {r#""{s}""#},
-            Expr::BinaryOp { left, op, right } => {
-                format!("{} {} {}", left.to_ddl(), op.to_sql(), right.to_ddl(),)
-            }
-            Expr::CompoundIdentifier { alias, ident } => format!(r#""{alias}"."{ident}""#),
-            Expr::IsNull(s) => format!("{} IS NULL", s.to_ddl()),
-            Expr::IsNotNull(s) => format!("{} IS NOT NULL", s.to_ddl()),
-            Expr::InList {
-                expr,
-                list,
-                negated,
-            } => {
-                let expr = expr.to_ddl();
-                let list = list.iter().map(Expr::to_ddl).collect::<Vec<_>>().join(", ");
-
-                match negated {
-                    true => format!("{expr} NOT IN ({list})"),
-                    false => format!("{expr} IN ({list})"),
-                }
-            }
-            Expr::Between {
-                expr,
-                negated,
-                low,
-                high,
-            } => {
-                let expr = expr.to_ddl();
-                let low = low.to_ddl();
-                let high = high.to_ddl();
-
-                match negated {
-                    true => format!("{expr} NOT BETWEEN {low} AND {high}"),
-                    false => format!("{expr} BETWEEN {low} AND {high}"),
-                }
-            }
-            Expr::Like {
-                expr,
-                negated,
-                pattern,
-            } => {
-                let expr = expr.to_ddl();
-                let pattern = pattern.to_ddl();
-
-                match negated {
-                    true => format!("{expr} NOT LIKE {pattern}"),
-                    false => format!("{expr} LIKE {pattern}"),
-                }
-            }
-            Expr::ILike {
-                expr,
-                negated,
-                pattern,
-            } => {
-                let expr = expr.to_ddl();
-                let pattern = pattern.to_ddl();
-
-                match negated {
-                    true => format!("{expr} NOT ILIKE {pattern}"),
-                    false => format!("{expr} ILIKE {pattern}"),
-                }
-            }
-            Expr::UnaryOp { op, expr } => match op {
-                UnaryOperator::Factorial => format!("{}{}", expr.to_ddl(), op.to_sql()),
-                _ => format!("{}{}", op.to_sql(), expr.to_ddl()),
-            },
-            Expr::Nested(expr) => format!("({})", expr.to_ddl()),
-            // Expr::Literal(s) => s.to_sql(),
-            // Expr::TypedString { data_type, value } => format!("{data_type} '{value}'"),
-            Expr::Case {
-                operand,
-                when_then,
-                else_result,
-            } => {
-                let operand = match operand {
-                    Some(operand) => format!("CASE {}", operand.to_ddl()),
-                    None => "CASE".to_owned(),
-                };
-
-                let when_then = when_then
-                    .iter()
-                    .map(|(when, then)| format!("WHEN {} THEN {}", when.to_ddl(), then.to_ddl()))
-                    .collect::<Vec<_>>()
-                    .join("\n");
-
-                let else_result = match else_result {
-                    Some(else_result) => format!("ELSE {}", else_result.to_ddl()),
-                    None => String::new(),
-                };
-
-                [operand, when_then, else_result, "END".to_owned()].join("\n")
-            }
-            // Expr::Aggregate(a) => a.to_sql(),
-            // Expr::Function(func) => func.to_sql(),
-            Expr::InSubquery {
-                expr,
-                subquery,
-                negated,
-            } => match negated {
-                true => format!("{} NOT IN ({})", expr.to_ddl(), subquery.to_sql()),
-                false => format!("{} IN ({})", expr.to_ddl(), subquery.to_sql()),
-            },
-            // Expr::Exists { subquery, negated } => match negated {
-            //     true => format!("NOT EXISTS({})", subquery.to_sql()),
-            //     false => format!("EXISTS({})", subquery.to_sql()),
-            // },
-            Expr::ArrayIndex { obj, indexes } => {
-                let obj = obj.to_ddl();
-                let indexes = indexes
-                    .iter()
-                    .map(|index| format!("[{}]", index.to_ddl()))
-                    .collect::<Vec<_>>()
-                    .join("");
-                format!("{obj}{indexes}")
-            }
-            // Expr::Subquery(query) => format!("({})", query.to_sql()),
-            Expr::Interval {
-                expr,
-                leading_field,
-                last_field,
-            } => {
-                let expr = expr.to_ddl();
-                let leading_field = leading_field
-                    .as_ref()
-                    .map(|field| field.to_string())
-                    .unwrap_or_else(|| "".to_owned());
-
-                match last_field {
-                    Some(last_field) => format!("INTERVAL {expr} {leading_field} TO {last_field}"),
-                    None => format!("INTERVAL {expr} {leading_field}"),
-                }
-            }
-            _ => self.to_sql(),
         }
     }
 }
