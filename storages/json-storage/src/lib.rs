@@ -201,4 +201,4 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
-impl Metadata for JsonlStorage {}
+impl Metadata for JsonStorage {}
