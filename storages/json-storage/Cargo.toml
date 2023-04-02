@@ -1,10 +1,10 @@
 [package]
-name = "gluesql-jsonl-storage"
+name = "gluesql-json-storage"
 version = "0.13.0"
 edition = "2021"
 authors = [
-	"Hyoungkwan Cho <devgony@gmail.com>",
-	"Taehoon Moon <taehoon.moon@outlook.com>"
+  "Hyoungkwan Cho <devgony@gmail.com>",
+  "Taehoon Moon <taehoon.moon@outlook.com>",
 ]
 description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
 license = "Apache-2.0"
@@ -19,9 +19,9 @@ serde_json = "1"
 futures = "0.3"
 tokio = { version = "1", features = ["rt", "macros"] }
 utils = { package = "gluesql-utils", path = "../../utils", version = "0.13.0" }
-gluesql_memory_storage = { path = "../memory-storage", version = "0.13.0" }
 hex = "0.4"
 thiserror = "1.0"
+iter-enum = "1"
 
 [dev-dependencies]
 test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.13.0" }

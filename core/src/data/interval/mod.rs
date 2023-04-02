@@ -197,7 +197,7 @@ impl Interval {
     ) -> Result<Self> {
         use DateTimeField::*;
 
-        let sign = || if value.get(0..1) == Some("-") { -1 } else { 1 };
+        let sign = if value.get(0..1) == Some("-") { -1 } else { 1 };
 
         let parse_integer = |v: &str| {
             v.parse::<i32>()
@@ -244,7 +244,7 @@ impl Interval {
 
                 match (nums.first(), nums.get(1)) {
                     (Some(years), Some(months)) => {
-                        Ok(Interval::months(sign() * (12 * years + months)))
+                        Ok(Interval::months(sign * (12 * years + months)))
                     }
                     _ => Err(IntervalError::FailedToParseYearToMonth(value.to_owned()).into()),
                 }
@@ -257,7 +257,7 @@ impl Interval {
                     .collect::<Result<Vec<_>>>()?;
 
                 match (nums.first(), nums.get(1)) {
-                    (Some(days), Some(hours)) => Ok(Interval::hours(sign() * (24 * days + hours))),
+                    (Some(days), Some(hours)) => Ok(Interval::hours(sign * (24 * days + hours))),
                     _ => Err(IntervalError::FailedToParseDayToHour(value.to_owned()).into()),
                 }
             }
@@ -271,7 +271,7 @@ impl Interval {
 
                         Interval::days(days)
                             .add(&parse_time(&time)?)
-                            .map(|interval| sign() * interval)
+                            .map(|interval| sign * interval)
                     }
                     _ => Err(IntervalError::FailedToParseDayToMinute(value.to_owned()).into()),
                 }
@@ -285,7 +285,7 @@ impl Interval {
 
                         Interval::days(days)
                             .add(&parse_time(time)?)
-                            .map(|interval| sign() * interval)
+                            .map(|interval| sign * interval)
                     }
                     _ => Err(IntervalError::FailedToParseDayToSecond(value.to_owned()).into()),
                 }
@@ -295,7 +295,7 @@ impl Interval {
             (Some(Minute), Some(Second)) => {
                 let time = value.trim_start_matches('-');
 
-                parse_time(&format!("00:{}", time)).map(|v| sign() * v)
+                parse_time(&format!("00:{}", time)).map(|v| sign * v)
             }
             (Some(from), Some(to)) => Err(IntervalError::UnsupportedRange(
                 format!("{:?}", from),

@@ -1,7 +1,7 @@
 use {
     crate::{
-        error::{JsonlStorageError, OptionExt, ResultExt},
-        JsonlStorage,
+        error::{JsonStorageError, OptionExt, ResultExt},
+        JsonStorage,
     },
     async_trait::async_trait,
     gluesql_core::{
@@ -14,7 +14,7 @@ use {
 };
 
 #[async_trait(?Send)]
-impl Store for JsonlStorage {
+impl Store for JsonStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         self.fetch_schema(table_name)
     }
@@ -23,7 +23,12 @@ impl Store for JsonlStorage {
         let paths = fs::read_dir(&self.path).map_storage_err()?;
         let mut schemas = paths
             .filter(|result| match result {
-                Ok(entry) => entry.path().extension().and_then(OsStr::to_str) == Some("jsonl"),
+                Ok(entry) => {
+                    let path = entry.path();
+                    let extension = path.extension().and_then(OsStr::to_str);
+
+                    extension == Some("jsonl") || extension == Some("json")
+                }
                 Err(_) => true,
             })
             .map(|result| -> Result<_> {
@@ -31,10 +36,10 @@ impl Store for JsonlStorage {
                 let table_name = path
                     .file_stem()
                     .and_then(OsStr::to_str)
-                    .map_storage_err(JsonlStorageError::FileNotFound)?;
+                    .map_storage_err(JsonStorageError::FileNotFound)?;
 
                 self.fetch_schema(table_name)?
-                    .map_storage_err(JsonlStorageError::TableDoesNotExist)
+                    .map_storage_err(JsonStorageError::TableDoesNotExist)
             })
             .collect::<Result<Vec<Schema>>>()?;
 
@@ -44,16 +49,18 @@ impl Store for JsonlStorage {
     }
 
     async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<DataRow>> {
-        self.scan_data(table_name)?
-            .find_map(|result| {
-                result
-                    .map(|(key, row)| (&key == target).then_some(row))
-                    .transpose()
-            })
-            .transpose()
+        for item in self.scan_data(table_name)?.0 {
+            let (key, row) = item?;
+
+            if &key == target {
+                return Ok(Some(row));
+            }
+        }
+
+        Ok(None)
     }
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
-        self.scan_data(table_name)
+        Ok(self.scan_data(table_name)?.0)
     }
 }
