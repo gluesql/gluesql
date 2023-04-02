@@ -33,7 +33,6 @@ pub struct Schema {
     pub column_defs: Option<Vec<ColumnDef>>,
     pub indexes: Vec<SchemaIndex>,
     pub engine: Option<String>,
-    pub created: NaiveDateTime,
 }
 
 impl Schema {
@@ -114,7 +113,6 @@ impl Schema {
                 column_defs: columns,
                 indexes,
                 engine,
-                created,
             }),
             _ => Err(SchemaParseError::CannotParseDDL.into()),
         }
@@ -203,7 +201,6 @@ mod tests {
             ]),
             indexes: Vec::new(),
             engine: None,
-            created: Utc::now().naive_utc(),
         };
 
         let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NULL DEFAULT 'glue');"#;
@@ -217,7 +214,6 @@ mod tests {
             column_defs: None,
             indexes: Vec::new(),
             engine: None,
-            created: Utc::now().naive_utc(),
         };
         let ddl = r#"CREATE TABLE "Test";"#;
         assert_eq!(schema.to_ddl(), ddl);
@@ -239,7 +235,6 @@ mod tests {
             }]),
             indexes: Vec::new(),
             engine: None,
-            created: Utc::now().naive_utc(),
         };
 
         let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL PRIMARY KEY);"#;
@@ -292,7 +287,6 @@ mod tests {
                 },
             ],
             engine: None,
-            created: Utc::now().naive_utc(),
         };
         let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);
 CREATE INDEX "User_id" ON "User" ("id");

@@ -2,12 +2,15 @@
 
 mod alter_table;
 mod index;
+mod metadata;
 mod transaction;
 
 use {
     async_trait::async_trait,
     gluesql_core::{
+        chrono::Utc,
         data::{Key, Schema},
+        prelude::Value,
         result::Result,
         store::{DataRow, RowIter, Store, StoreMut},
     },
@@ -24,10 +27,11 @@ pub struct Item {
     pub rows: BTreeMap<Key, DataRow>,
 }
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct MemoryStorage {
     pub id_counter: i64,
     pub items: HashMap<String, Item>,
+    pub metadata: HashMap<String, HashMap<String, Value>>,
 }
 
 #[async_trait(?Send)]
@@ -71,18 +75,27 @@ impl Store for MemoryStorage {
 #[async_trait(?Send)]
 impl StoreMut for MemoryStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
+        let created = HashMap::from([(
+            "CREATED".to_owned(),
+            Value::Timestamp(Utc::now().naive_utc()),
+        )]);
+        let meta = HashMap::from([(schema.table_name.clone(), created)]);
+        self.metadata.extend(meta);
+
         let table_name = schema.table_name.clone();
         let item = Item {
             schema: schema.clone(),
             rows: BTreeMap::new(),
         };
-
         self.items.insert(table_name, item);
+
         Ok(())
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         self.items.remove(table_name);
+        self.metadata.remove(table_name);
+
         Ok(())
     }
 

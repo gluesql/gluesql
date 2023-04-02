@@ -9,7 +9,7 @@ use {
     gluesql_core::{
         data::{Key, Schema},
         result::Result,
-        store::{DataRow, RowIter, Store, StoreMut},
+        store::{DataRow, Metadata, RowIter, Store, StoreMut},
     },
     memory_storage::MemoryStorage,
     std::sync::Arc,
@@ -110,3 +110,5 @@ impl StoreMut for SharedMemoryStorage {
         database.delete_data(table_name, keys).await
     }
 }
+
+impl Metadata for SharedMemoryStorage {}
