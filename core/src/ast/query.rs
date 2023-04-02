@@ -216,12 +216,11 @@ impl ToSql for Select {
             .filter(|sql| !sql.is_empty())
             .join(" ");
 
-        let condition = match condition.is_empty() {
-            true => "".to_owned(),
-            false => format!(" {}", condition),
-        };
-
-        format!(r#"SELECT {projection} FROM {}{condition}"#, from.to_sql())
+        if condition.is_empty() {
+            format!("SELECT {projection} FROM {}", from.to_sql())
+        } else {
+            format!("SELECT {projection} FROM {} {condition}", from.to_sql())
+        }
     }
 }
 
