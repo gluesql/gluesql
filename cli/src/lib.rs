@@ -25,10 +25,6 @@ use {
 #[derive(Parser, Debug)]
 #[clap(name = "gluesql", about, version)]
 struct Args {
-    /// sled-storage path to load
-    #[clap(short, long, value_parser)]
-    path: Option<PathBuf>,
-
     /// SQL file to execute
     #[clap(short, long, value_parser)]
     execute: Option<PathBuf>,
@@ -37,55 +33,63 @@ struct Args {
     #[clap(short, long, value_parser)]
     dump: Option<PathBuf>,
 
-    /// Storage type to store data
+    /// Storage type to store data, default is memory
     #[clap(short, long, value_parser)]
-    storage: Option<FileStorage>,
+    storage: Option<Storage>,
+
+    /// Storage path to load
+    #[clap(short, long, value_parser)]
+    path: Option<PathBuf>,
 }
 
 #[derive(clap::ValueEnum, Debug, Clone)]
-enum FileStorage {
+enum Storage {
+    Memory,
     Sled,
     Json,
 }
 
 pub fn run() -> Result<()> {
     let args = Args::parse();
-
-    match (args.path, args.storage) {
-        (Some(path), Some(storage)) => {
-            let path = path.as_path().to_str().expect("wrong path");
-
-            match storage {
-                FileStorage::Sled => {
-                    println!("[sled-storage] connected to {}", path);
-                    run(
-                        SledStorage::new(path).expect("failed to load sled-storage"),
-                        args.execute,
-                    );
-
-                    if let Some(dump_path) = args.dump {
-                        let mut storage =
-                            SledStorage::new(path).expect("failed to load sled-storage");
-                        dump_database(&mut storage, dump_path)?;
-
-                        return Ok::<_, Error>(());
-                    }
-                }
-                FileStorage::Json => {
-                    println!("[json-storage] connected to {}", path);
-                    run(
-                        JsonStorage::new(path).expect("failed to load json-storage"),
-                        args.execute,
-                    );
-                }
-            };
-        }
-        (None, None) => {
+    let (path, storage) = match (args.path, args.storage) {
+        (None, None) | (None, Some(Storage::Memory)) => {
             println!("[memory-storage] initialized");
             run(MemoryStorage::default(), args.execute);
+
+            return Ok(());
         }
         (None, Some(_)) | (Some(_), None) => {
             panic!("both path and storage should be specified")
+        }
+        (Some(path), Some(storage)) => (path, storage),
+    };
+
+    let path = path.as_path().to_str().expect("wrong path");
+
+    match storage {
+        Storage::Memory => {
+            panic!("[memory-storage] should be without path");
+        }
+        Storage::Sled => {
+            println!("[sled-storage] connected to {}", path);
+            run(
+                SledStorage::new(path).expect("failed to load sled-storage"),
+                args.execute,
+            );
+
+            if let Some(dump_path) = args.dump {
+                let mut storage = SledStorage::new(path).expect("failed to load sled-storage");
+                dump_database(&mut storage, dump_path)?;
+
+                return Ok::<_, Error>(());
+            }
+        }
+        Storage::Json => {
+            println!("[json-storage] connected to {}", path);
+            run(
+                JsonStorage::new(path).expect("failed to load json-storage"),
+                args.execute,
+            );
         }
     }
 
