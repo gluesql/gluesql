@@ -1,5 +1,5 @@
 use {
-    super::{Expr, IndexOperator},
+    super::{Expr, IndexOperator, ToSqlUnquoted},
     crate::ast::ToSql,
     itertools::Itertools,
     serde::{Deserialize, Serialize},
@@ -133,6 +133,23 @@ pub struct Values(pub Vec<Vec<Expr>>);
 
 impl ToSql for Query {
     fn to_sql(&self) -> String {
+        self.to_sql_with(true)
+    }
+}
+
+impl ToSqlUnquoted for Query {
+    fn to_sql_unquoted(&self) -> String {
+        self.to_sql_with(false)
+    }
+}
+
+impl Query {
+    fn to_sql_with(&self, qouted: bool) -> String {
+        let to_sql = |expr: &Expr| match qouted {
+            true => expr.to_sql(),
+            false => expr.to_sql_unquoted(),
+        };
+
         let Query {
             body,
             order_by,
@@ -145,17 +162,20 @@ impl ToSql for Query {
         } else {
             format!(
                 "ORDER BY {}",
-                order_by.iter().map(|expr| expr.to_sql()).join(" ")
+                order_by
+                    .iter()
+                    .map(|expr| expr.to_sql_with(qouted))
+                    .join(" ")
             )
         };
 
         let limit = match limit {
-            Some(expr) => format!("LIMIT {}", expr.to_sql()),
+            Some(expr) => format!("LIMIT {}", to_sql(expr)),
             _ => "".to_owned(),
         };
 
         let offset = match offset {
-            Some(expr) => format!("OFFSET {}", expr.to_sql()),
+            Some(expr) => format!("OFFSET {}", to_sql(expr)),
             _ => "".to_owned(),
         };
 
@@ -165,24 +185,53 @@ impl ToSql for Query {
             .join(" ");
 
         if string.is_empty() {
-            body.to_sql()
+            body.to_sql_with(qouted)
         } else {
-            format!("{} {}", body.to_sql(), string)
+            format!("{} {}", body.to_sql_with(qouted), string)
         }
     }
 }
 
 impl ToSql for SetExpr {
     fn to_sql(&self) -> String {
+        self.to_sql_with(true)
+    }
+}
+
+impl ToSqlUnquoted for SetExpr {
+    fn to_sql_unquoted(&self) -> String {
+        self.to_sql_with(false)
+    }
+}
+
+impl SetExpr {
+    fn to_sql_with(&self, qouted: bool) -> String {
         match self {
-            SetExpr::Select(expr) => expr.to_sql(),
-            SetExpr::Values(value) => format!("VALUES {}", value.to_sql()),
+            SetExpr::Select(expr) => expr.to_sql_with(qouted),
+            SetExpr::Values(value) => format!("VALUES {}", value.to_sql_with(qouted)),
         }
     }
 }
 
 impl ToSql for Select {
     fn to_sql(&self) -> String {
+        self.to_sql_with(true)
+    }
+}
+
+impl ToSqlUnquoted for Select {
+    fn to_sql_unquoted(&self) -> String {
+        self.to_sql_with(false)
+    }
+}
+
+impl Select {
+    fn to_sql_with(&self, qouted: bool) -> String {
+        let to_sql = |expr: &Expr| match qouted {
+            true => expr.to_sql(),
+            false => expr.to_sql_unquoted(),
+        };
+
         let Select {
             projection,
             from,
@@ -190,10 +239,13 @@ impl ToSql for Select {
             group_by,
             having,
         } = self;
-        let projection = projection.iter().map(|item| item.to_sql()).join(", ");
+        let projection = projection
+            .iter()
+            .map(|item| item.to_sql_with(qouted))
+            .join(", ");
 
         let selection = match selection {
-            Some(expr) => format!("WHERE {}", expr.to_sql()),
+            Some(expr) => format!("WHERE {}", to_sql(expr)),
             None => "".to_owned(),
         };
 
@@ -202,12 +254,12 @@ impl ToSql for Select {
         } else {
             format!(
                 "GROUP BY {}",
-                group_by.iter().map(|item| item.to_sql()).join(", ")
+                group_by.iter().map(|item| to_sql(item)).join(", ")
             )
         };
 
         let having = match having {
-            Some(having) => format!("HAVING {}", having.to_sql()),
+            Some(having) => format!("HAVING {}", to_sql(having)),
             None => "".to_owned(),
         };
 
@@ -217,24 +269,48 @@ impl ToSql for Select {
             .join(" ");
 
         if condition.is_empty() {
-            format!("SELECT {projection} FROM {}", from.to_sql())
+            format!("SELECT {projection} FROM {}", from.to_sql_with(qouted))
         } else {
-            format!("SELECT {projection} FROM {} {condition}", from.to_sql())
+            format!(
+                "SELECT {projection} FROM {} {condition}",
+                from.to_sql_with(qouted)
+            )
         }
     }
 }
 
 impl ToSql for SelectItem {
     fn to_sql(&self) -> String {
+        self.to_sql_with(true)
+    }
+}
+
+impl ToSqlUnquoted for SelectItem {
+    fn to_sql_unquoted(&self) -> String {
+        self.to_sql_with(false)
+    }
+}
+
+impl SelectItem {
+    fn to_sql_with(&self, qouted: bool) -> String {
+        let to_sql = |expr: &Expr| match qouted {
+            true => expr.to_sql(),
+            false => expr.to_sql_unquoted(),
+        };
+
         match self {
             SelectItem::Expr { expr, label } => {
-                let expr = expr.to_sql();
-                match label.is_empty() {
-                    true => expr,
-                    false => format!(r#"{expr} AS "{label}""#),
+                let expr = to_sql(expr);
+                match (label.is_empty(), qouted) {
+                    (true, _) => expr,
+                    (false, true) => format!(r#"{expr} AS "{label}""#),
+                    (false, false) => format!("{expr} AS {label}"),
                 }
             }
-            SelectItem::QualifiedWildcard(obj) => format!(r#""{}".*"#, obj),
+            SelectItem::QualifiedWildcard(obj) => match qouted {
+                true => format!(r#""{}".*"#, obj),
+                false => format!("{}.*", obj),
+            },
             SelectItem::Wildcard => "*".to_owned(),
         }
     }
@@ -242,15 +318,27 @@ impl ToSql for SelectItem {
 
 impl ToSql for TableWithJoins {
     fn to_sql(&self) -> String {
+        self.to_sql_with(true)
+    }
+}
+
+impl ToSqlUnquoted for TableWithJoins {
+    fn to_sql_unquoted(&self) -> String {
+        self.to_sql_with(false)
+    }
+}
+
+impl TableWithJoins {
+    fn to_sql_with(&self, qouted: bool) -> String {
         let TableWithJoins { relation, joins } = self;
 
         if joins.is_empty() {
-            relation.to_sql()
+            relation.to_sql_with(qouted)
         } else {
             format!(
                 "{} {}",
-                relation.to_sql(),
-                joins.iter().map(|join| join.to_sql()).join(" ")
+                relation.to_sql_with(qouted),
+                joins.iter().map(|join| join.to_sql_with(qouted)).join(" ")
             )
         }
     }
@@ -258,19 +346,38 @@ impl ToSql for TableWithJoins {
 
 impl ToSql for TableFactor {
     fn to_sql(&self) -> String {
-        match self {
-            TableFactor::Table { name, alias, .. } => match alias {
+        self.to_sql_with(true)
+    }
+}
+
+impl ToSqlUnquoted for TableFactor {
+    fn to_sql_unquoted(&self) -> String {
+        self.to_sql_with(false)
+    }
+}
+
+impl TableFactor {
+    fn to_sql_with(&self, qouted: bool) -> String {
+        match (self, qouted) {
+            (TableFactor::Table { name, alias, .. }, true) => match alias {
                 Some(alias) => format!(r#""{}" {}"#, name, alias.to_sql()),
                 None => format!(r#""{name}""#),
             },
-            TableFactor::Derived { subquery, alias } => {
+            (TableFactor::Table { name, alias, .. }, false) => match alias {
+                Some(alias) => format!("{} {}", name, alias.to_sql()),
+                None => name.to_owned(),
+            },
+            (TableFactor::Derived { subquery, alias }, _) => {
                 format!("({}) {}", subquery.to_sql(), alias.to_sql())
             }
-            TableFactor::Series { alias, size } => {
+            (TableFactor::Series { alias, size }, _) => {
                 format!("SERIES({}) {}", size.to_sql(), alias.to_sql())
             }
-            TableFactor::Dictionary { dict, alias } => {
+            (TableFactor::Dictionary { dict, alias }, true) => {
                 format!(r#""{dict}" {}"#, alias.to_sql())
+            }
+            (TableFactor::Dictionary { dict, alias }, false) => {
+                format!("{dict} {}", alias.to_sql())
             }
         }
     }
@@ -286,6 +393,18 @@ impl ToSql for TableAlias {
 
 impl ToSql for Join {
     fn to_sql(&self) -> String {
+        self.to_sql_with(true)
+    }
+}
+
+impl ToSqlUnquoted for Join {
+    fn to_sql_unquoted(&self) -> String {
+        self.to_sql_with(false)
+    }
+}
+
+impl Join {
+    fn to_sql_with(&self, qouted: bool) -> String {
         let Join {
             relation,
             join_operator,
@@ -294,25 +413,37 @@ impl ToSql for Join {
 
         match join_operator {
             JoinOperator::Inner(constraint) => {
-                let constraint = vec![constraint.to_sql(), join_executor.to_sql()]
-                    .iter()
-                    .filter(|sql| !sql.is_empty())
-                    .join(" AND ");
+                let constraint = vec![
+                    constraint.to_sql_with(qouted),
+                    join_executor.to_sql_with(qouted),
+                ]
+                .iter()
+                .filter(|sql| !sql.is_empty())
+                .join(" AND ");
                 if constraint.is_empty() {
-                    format!("INNER JOIN {}", relation.to_sql())
+                    format!("INNER JOIN {}", relation.to_sql_with(qouted))
                 } else {
-                    format!("INNER JOIN {} ON {constraint}", relation.to_sql())
+                    format!(
+                        "INNER JOIN {} ON {constraint}",
+                        relation.to_sql_with(qouted)
+                    )
                 }
             }
             JoinOperator::LeftOuter(constraint) => {
-                let constraint = vec![constraint.to_sql(), join_executor.to_sql()]
-                    .iter()
-                    .filter(|sql| !sql.is_empty())
-                    .join(" AND ");
+                let constraint = vec![
+                    constraint.to_sql_with(qouted),
+                    join_executor.to_sql_with(qouted),
+                ]
+                .iter()
+                .filter(|sql| !sql.is_empty())
+                .join(" AND ");
                 if constraint.is_empty() {
-                    format!("LEFT OUTER JOIN {}", relation.to_sql())
+                    format!("LEFT OUTER JOIN {}", relation.to_sql_with(qouted))
                 } else {
-                    format!("LEFT OUTER JOIN {} ON {constraint}", relation.to_sql())
+                    format!(
+                        "LEFT OUTER JOIN {} ON {constraint}",
+                        relation.to_sql_with(qouted)
+                    )
                 }
             }
         }
@@ -321,6 +452,23 @@ impl ToSql for Join {
 
 impl ToSql for JoinExecutor {
     fn to_sql(&self) -> String {
+        self.to_sql_with(true)
+    }
+}
+
+impl ToSqlUnquoted for JoinExecutor {
+    fn to_sql_unquoted(&self) -> String {
+        self.to_sql_with(false)
+    }
+}
+
+impl JoinExecutor {
+    fn to_sql_with(&self, qouted: bool) -> String {
+        let to_sql = |expr: &Expr| match qouted {
+            true => expr.to_sql(),
+            false => expr.to_sql_unquoted(),
+        };
+
         match self {
             JoinExecutor::NestedLoop => "".to_owned(),
             JoinExecutor::Hash {
@@ -328,9 +476,9 @@ impl ToSql for JoinExecutor {
                 value_expr,
                 where_clause,
             } => {
-                let key_value = format!("{} = {}", key_expr.to_sql(), value_expr.to_sql());
+                let key_value = format!("{} = {}", to_sql(key_expr), to_sql(value_expr));
                 match where_clause {
-                    Some(expr) => format!("{key_value} AND {}", expr.to_sql()),
+                    Some(expr) => format!("{key_value} AND {}", to_sql(expr)),
                     None => key_value,
                 }
             }
@@ -340,17 +488,45 @@ impl ToSql for JoinExecutor {
 
 impl ToSql for JoinConstraint {
     fn to_sql(&self) -> String {
-        match self {
-            JoinConstraint::On(expr) => expr.to_sql(),
-            JoinConstraint::None => "".to_owned(),
+        self.to_sql_with(true)
+    }
+}
+
+impl ToSqlUnquoted for JoinConstraint {
+    fn to_sql_unquoted(&self) -> String {
+        self.to_sql_with(false)
+    }
+}
+
+impl JoinConstraint {
+    fn to_sql_with(&self, qouted: bool) -> String {
+        match (self, qouted) {
+            (JoinConstraint::On(expr), true) => expr.to_sql(),
+            (JoinConstraint::On(expr), false) => expr.to_sql_unquoted(),
+            (JoinConstraint::None, _) => "".to_owned(),
         }
     }
 }
 
 impl ToSql for OrderByExpr {
     fn to_sql(&self) -> String {
+        self.to_sql_with(true)
+    }
+}
+
+impl ToSqlUnquoted for OrderByExpr {
+    fn to_sql_unquoted(&self) -> String {
+        self.to_sql_with(false)
+    }
+}
+
+impl OrderByExpr {
+    fn to_sql_with(&self, qouted: bool) -> String {
         let OrderByExpr { expr, asc } = self;
-        let expr = expr.to_sql();
+        let expr = match qouted {
+            true => expr.to_sql(),
+            false => expr.to_sql_unquoted(),
+        };
 
         match asc {
             Some(true) => format!("{} ASC", expr),
@@ -362,10 +538,33 @@ impl ToSql for OrderByExpr {
 
 impl ToSql for Values {
     fn to_sql(&self) -> String {
+        self.to_sql_with(true)
+    }
+}
+
+impl ToSqlUnquoted for Values {
+    fn to_sql_unquoted(&self) -> String {
+        self.to_sql_with(false)
+    }
+}
+
+impl Values {
+    fn to_sql_with(&self, qouted: bool) -> String {
         let Values(expr) = self;
 
         expr.iter()
-            .map(|value| format!("({})", value.iter().map(|expr| expr.to_sql()).join(", ")))
+            .map(|value| {
+                format!(
+                    "({})",
+                    value
+                        .iter()
+                        .map(|expr| match qouted {
+                            true => expr.to_sql(),
+                            false => expr.to_sql_unquoted(),
+                        })
+                        .join(", ")
+                )
+            })
             .join(", ")
     }
 }
