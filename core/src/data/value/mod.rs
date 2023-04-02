@@ -584,7 +584,6 @@ impl Value {
             }
 
             (1_i128..(a + 1_i128))
-                .into_iter()
                 .try_fold(1_i128, |mul, x| mul.checked_mul(x))
                 .ok_or_else(|| ValueError::FactorialOverflow.into())
         }
@@ -611,10 +610,12 @@ impl Value {
 
         match (self, other) {
             (Str(a), Str(b)) => a.like(b, case_sensitive).map(Bool),
-            _ => match case_sensitive {
-                true => Err(ValueError::LikeOnNonString(self.clone(), other.clone()).into()),
-                false => Err(ValueError::ILikeOnNonString(self.clone(), other.clone()).into()),
-            },
+            _ => Err(ValueError::LikeOnNonString {
+                base: self.clone(),
+                pattern: other.clone(),
+                case_sensitive,
+            }
+            .into()),
         }
     }
 
@@ -662,7 +663,7 @@ impl Value {
 
     /// Value to Big-Endian for comparison purpose
     pub fn to_cmp_be_bytes(&self) -> Result<Vec<u8>> {
-        self.try_into().map(|key: Key| key.to_cmp_be_bytes())
+        self.try_into().and_then(|key: Key| key.to_cmp_be_bytes())
     }
 
     /// # Description
@@ -701,6 +702,21 @@ impl Value {
             }
             .into()),
         }
+    }
+
+    pub fn find_idx(&self, sub_val: &Value, start: &Value) -> Result<Value> {
+        let start: i64 = start.try_into()?;
+        if start <= 0 {
+            return Err(ValueError::NonPositiveIntegerOffsetInFindIdx(start.to_string()).into());
+        }
+        let from = &String::from(self);
+        let sub = &String::from(sub_val);
+        let position = str_position(&from[(start - 1) as usize..].to_owned(), sub) as i64;
+        let position = match position {
+            0 => 0,
+            _ => position + start - 1,
+        };
+        Ok(Value::I64(position))
     }
 }
 
@@ -819,8 +835,8 @@ mod tests {
             Some(Ordering::Less)
         );
         assert_eq!(
-            Interval::Microsecond(1).partial_cmp(&Interval::Month(2)),
-            None
+            Interval::Microsecond(1).cmp(&Interval::Month(2)),
+            Ordering::Less
         );
 
         assert_eq!(one.partial_cmp(&two), Some(Ordering::Less));

@@ -10,25 +10,16 @@ use {
             SelectError, SortError, UpdateError, ValidateError,
         },
         plan::PlanError,
+        store::{AlterTableError, IndexError},
         translate::TranslateError,
     },
     serde::Serialize,
-    std::{error::Error as StdError, fmt::Debug, ops::ControlFlow},
+    std::{fmt::Debug, ops::ControlFlow},
     thiserror::Error as ThisError,
 };
 
-#[cfg(feature = "alter-table")]
-use crate::store::AlterTableError;
-
-#[cfg(feature = "index")]
-use crate::store::IndexError;
-
-#[derive(ThisError, Serialize, Debug)]
+#[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum Error {
-    #[error(transparent)]
-    #[serde(with = "stringify")]
-    Storage(#[from] Box<dyn StdError + Send + Sync>),
-
     #[error("storage error: {0}")]
     StorageMsg(String),
 
@@ -41,14 +32,10 @@ pub enum Error {
     #[error(transparent)]
     AstBuilder(#[from] AstBuilderError),
 
-    #[cfg(feature = "alter-table")]
     #[error(transparent)]
     AlterTable(#[from] AlterTableError),
-
-    #[cfg(feature = "index")]
     #[error(transparent)]
     Index(#[from] IndexError),
-
     #[error(transparent)]
     Execute(#[from] ExecuteError),
     #[error(transparent)]
@@ -90,55 +77,6 @@ pub enum Error {
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
-
-impl PartialEq for Error {
-    fn eq(&self, other: &Error) -> bool {
-        use Error::*;
-
-        match (self, other) {
-            (Parser(e), Parser(e2)) => e == e2,
-            (StorageMsg(e), StorageMsg(e2)) => e == e2,
-            (Translate(e), Translate(e2)) => e == e2,
-            (AstBuilder(e), AstBuilder(e2)) => e == e2,
-            #[cfg(feature = "alter-table")]
-            (AlterTable(e), AlterTable(e2)) => e == e2,
-            #[cfg(feature = "index")]
-            (Index(e), Index(e2)) => e == e2,
-            (Execute(e), Execute(e2)) => e == e2,
-            (Alter(e), Alter(e2)) => e == e2,
-            (Fetch(e), Fetch(e2)) => e == e2,
-            (Select(e), Select(e2)) => e == e2,
-            (Evaluate(e), Evaluate(e2)) => e == e2,
-            (Aggregate(e), Aggregate(e2)) => e == e2,
-            (Sort(e), Sort(e2)) => e == e2,
-            (Insert(e), Insert(e2)) => e == e2,
-            (Update(e), Update(e2)) => e == e2,
-            (Table(e), Table(e2)) => e == e2,
-            (Validate(e), Validate(e2)) => e == e2,
-            (Row(e), Row(e2)) => e == e2,
-            (Key(e), Key(e2)) => e == e2,
-            (Value(e), Value(e2)) => e == e2,
-            (Literal(e), Literal(e2)) => e == e2,
-            (Interval(e), Interval(e2)) => e == e2,
-            (StringExt(e), StringExt(e2)) => e == e2,
-            (Plan(e), Plan(e2)) => e == e2,
-            (Schema(e), Schema(e2)) => e == e2,
-            _ => false,
-        }
-    }
-}
-
-mod stringify {
-    use {serde::Serializer, std::fmt::Display};
-
-    pub fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        T: Display,
-        S: Serializer,
-    {
-        serializer.collect_str(value)
-    }
-}
 
 pub trait IntoControlFlow<T> {
     fn into_control_flow(self) -> ControlFlow<Result<T>, T>;

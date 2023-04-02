@@ -44,6 +44,9 @@ pub enum EvaluateError {
     #[error("expr requires map or list value")]
     MapOrListTypeRequired,
 
+    #[error("expr requires list value")]
+    ListTypeRequired,
+
     #[error("map or string value required for json map conversion: {0}")]
     MapOrStringValueRequired(String),
 

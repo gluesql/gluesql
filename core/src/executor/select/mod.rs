@@ -16,14 +16,13 @@ use {
         sort::Sort,
     },
     crate::{
-        ast::{Expr, OrderByExpr, Query, Select, SetExpr, TableWithJoins, Values},
-        data::{get_alias, Row},
-        prelude::{DataType, Value},
-        result::{Error, Result},
+        ast::{DataType, Expr, OrderByExpr, Query, Select, SetExpr, TableWithJoins, Values},
+        data::{get_alias, Key, Row, Value},
+        result::Result,
         store::GStore,
     },
     async_recursion::async_recursion,
-    futures::stream::{self, StreamExt, TryStream, TryStreamExt},
+    futures::stream::{self, Stream, StreamExt, TryStreamExt},
     std::{borrow::Cow, iter, rc::Rc},
     utils::Vector,
 };
@@ -31,7 +30,6 @@ use {
 fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> (Vec<Result<Row>>, Vec<String>) {
     let first_len = exprs_list[0].len();
     let labels = (1..=first_len)
-        .into_iter()
         .map(|i| format!("column{}", i))
         .collect::<Vec<_>>();
 
@@ -83,21 +81,21 @@ fn sort_stateless(rows: Vec<Result<Row>>, order_by: &[OrderByExpr]) -> Result<Ve
     let sorted = rows
         .into_iter()
         .map(|row| {
-            let values = order_by
+            order_by
                 .iter()
                 .map(|OrderByExpr { expr, asc }| -> Result<_> {
                     let row = row.as_ref().ok();
                     let value: Value = evaluate_stateless(row, expr)?.try_into()?;
+                    let key: Key = value.try_into()?;
 
-                    Ok((value, *asc))
+                    Ok((key, *asc))
                 })
-                .collect::<Result<Vec<_>>>();
-
-            values.map(|values| (values, row))
+                .collect::<Result<Vec<_>>>()
+                .map(|keys| (keys, row))
         })
         .collect::<Result<Vec<_>>>()
         .map(Vector::from)?
-        .sort_by(|(values_a, _), (values_b, _)| super::sort::sort_by(values_a, values_b))
+        .sort_by(|(keys_a, _), (keys_b, _)| super::sort::sort_by(keys_a, keys_b))
         .into_iter()
         .map(|(_, row)| row)
         .collect::<Vec<_>>();
@@ -110,10 +108,13 @@ pub async fn select_with_labels<'a, T: GStore>(
     storage: &'a T,
     query: &'a Query,
     filter_context: Option<Rc<RowContext<'a>>>,
-) -> Result<(
-    Option<Vec<String>>,
-    impl TryStream<Ok = Row, Error = Error, Item = Result<Row>> + 'a,
-)> {
+) -> Result<(Option<Vec<String>>, impl Stream<Item = Result<Row>> + 'a)> {
+    #[derive(futures_enum::Stream)]
+    enum Row<S1, S2> {
+        Select(S2),
+        Values(S1),
+    }
+
     let Select {
         from: table_with_joins,
         selection: where_clause,
@@ -129,7 +130,7 @@ pub async fn select_with_labels<'a, T: GStore>(
             let rows = stream::iter(rows);
             let rows = limit.apply(rows);
 
-            return Ok((Some(labels), rows));
+            return Ok((Some(labels), Row::Values(rows)));
         }
     };
 
@@ -203,14 +204,14 @@ pub async fn select_with_labels<'a, T: GStore>(
     let rows = limit.apply(rows);
     let labels = labels.map(|labels| labels.iter().cloned().collect());
 
-    Ok((labels, rows))
+    Ok((labels, Row::Select(rows)))
 }
 
 pub async fn select<'a, T: GStore>(
     storage: &'a T,
     query: &'a Query,
     filter_context: Option<Rc<RowContext<'a>>>,
-) -> Result<impl TryStream<Ok = Row, Error = Error, Item = Result<Row>> + 'a> {
+) -> Result<impl Stream<Item = Result<Row>> + 'a> {
     select_with_labels(storage, query, filter_context)
         .await
         .map(|(_, rows)| rows)

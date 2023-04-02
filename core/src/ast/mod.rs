@@ -65,7 +65,6 @@ pub enum Statement {
         engine: Option<String>,
     },
     /// ALTER TABLE
-    #[cfg(feature = "alter-table")]
     AlterTable {
         /// Table name
         name: String,
@@ -79,30 +78,24 @@ pub enum Statement {
         names: Vec<String>,
     },
     /// CREATE INDEX
-    #[cfg(feature = "index")]
     CreateIndex {
         name: String,
         table_name: String,
         column: OrderByExpr,
     },
     /// DROP INDEX
-    #[cfg(feature = "index")]
     DropIndex {
         name: String,
         table_name: String,
     },
     /// START TRANSACTION, BEGIN
-    #[cfg(feature = "transaction")]
     StartTransaction,
     /// COMMIT
-    #[cfg(feature = "transaction")]
     Commit,
     /// ROLLBACK
-    #[cfg(feature = "transaction")]
     Rollback,
     /// SHOW VARIABLE
     ShowVariable(Variable),
-    #[cfg(feature = "index")]
     ShowIndexes(String),
 }
 
@@ -204,7 +197,6 @@ impl ToSql for Statement {
 
                 format!("{sql};")
             }
-            #[cfg(feature = "alter-table")]
             Statement::AlterTable { name, operation } => {
                 format!("ALTER TABLE {name} {};", operation.to_sql())
             }
@@ -215,7 +207,6 @@ impl ToSql for Statement {
                     false => format!("DROP TABLE {};", names),
                 }
             }
-            #[cfg(feature = "index")]
             Statement::CreateIndex {
                 name,
                 table_name,
@@ -223,21 +214,16 @@ impl ToSql for Statement {
             } => {
                 format!("CREATE INDEX {name} ON {table_name} {};", column.to_sql())
             }
-            #[cfg(feature = "index")]
             Statement::DropIndex { name, table_name } => {
                 format!("DROP INDEX {table_name}.{name};")
             }
-            #[cfg(feature = "transaction")]
             Statement::StartTransaction => "START TRANSACTION;".to_owned(),
-            #[cfg(feature = "transaction")]
             Statement::Commit => "COMMIT;".to_owned(),
-            #[cfg(feature = "transaction")]
             Statement::Rollback => "ROLLBACK;".to_owned(),
             Statement::ShowVariable(variable) => match variable {
                 Variable::Tables => "SHOW TABLES;".to_owned(),
                 Variable::Version => "SHOW VERSIONS;".to_owned(),
             },
-            #[cfg(feature = "index")]
             Statement::ShowIndexes(object_name) => {
                 format!("SHOW INDEXES FROM {object_name};")
             }
@@ -254,16 +240,11 @@ impl ToSql for Assignment {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "alter-table")]
-    use crate::ast::AlterTableOperation;
-
-    #[cfg(feature = "index")]
-    use crate::ast::OrderByExpr;
-
     use {
         crate::ast::{
-            Assignment, AstLiteral, BinaryOperator, ColumnDef, DataType, Expr, Query, Select,
-            SelectItem, SetExpr, Statement, TableFactor, TableWithJoins, ToSql, Values, Variable,
+            AlterTableOperation, Assignment, AstLiteral, BinaryOperator, ColumnDef, DataType, Expr,
+            OrderByExpr, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
+            TableWithJoins, ToSql, Values, Variable,
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,
@@ -542,7 +523,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "alter-table")]
     fn to_sql_alter_table() {
         assert_eq!(
             "ALTER TABLE Foo ADD COLUMN amount INT NOT NULL DEFAULT 10;",
@@ -642,7 +622,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "index")]
     fn to_sql_create_index() {
         assert_eq!(
             "CREATE INDEX idx_name ON Test LastName;",
@@ -659,7 +638,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "index")]
     fn to_sql_drop_index() {
         assert_eq!(
             "DROP INDEX Test.idx_id;",
@@ -672,7 +650,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "transaction")]
     fn to_sql_transaction() {
         assert_eq!("START TRANSACTION;", Statement::StartTransaction.to_sql());
         assert_eq!("COMMIT;", Statement::Commit.to_sql());
@@ -692,7 +669,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "index")]
     fn to_sql_show_indexes() {
         assert_eq!(
             "SHOW INDEXES FROM Test;",

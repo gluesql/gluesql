@@ -11,15 +11,17 @@ use {
         result::Result,
         store::{DataRow, RowIter, Store, StoreMut},
     },
-    indexmap::IndexMap,
     serde::{Deserialize, Serialize},
-    std::{collections::HashMap, iter::empty},
+    std::{
+        collections::{BTreeMap, HashMap},
+        iter::empty,
+    },
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Item {
     pub schema: Schema,
-    pub rows: IndexMap<Key, DataRow>,
+    pub rows: BTreeMap<Key, DataRow>,
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -72,7 +74,7 @@ impl StoreMut for MemoryStorage {
         let table_name = schema.table_name.clone();
         let item = Item {
             schema: schema.clone(),
-            rows: IndexMap::new(),
+            rows: BTreeMap::new(),
         };
 
         self.items.insert(table_name, item);

@@ -1,6 +1,6 @@
 use {
     crate::{
-        ast::{ColumnDef, Expr, Statement, ToSql},
+        ast::{ColumnDef, Expr, OrderByExpr, Statement, ToSql},
         prelude::{parse, translate},
         result::Result,
     },
@@ -10,9 +10,6 @@ use {
     strum_macros::Display,
     thiserror::Error as ThisError,
 };
-
-#[cfg(feature = "index")]
-use crate::ast::OrderByExpr;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Display)]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
@@ -60,7 +57,6 @@ impl Schema {
 
         let create_indexes = indexes.iter().map(|SchemaIndex { name, expr, .. }| {
             let expr = expr.to_sql();
-            let table_name = &table_name;
 
             format!("CREATE INDEX {name} ON {table_name} ({expr});")
         });
@@ -81,7 +77,6 @@ impl Schema {
             .map(|create_index| {
                 let create_index = translate(create_index)?;
                 match create_index {
-                    #[cfg(feature = "index")]
                     Statement::CreateIndex {
                         name,
                         column: OrderByExpr { expr, asc },
@@ -262,7 +257,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "index")]
     fn table_with_index() {
         use crate::data::SchemaIndexOrd;
 

@@ -6,9 +6,9 @@ mod validate;
 
 use validate::{validate, validate_column_names};
 
-#[cfg(feature = "alter-table")]
-pub use alter_table::alter_table;
-pub use error::AlterError;
-#[cfg(feature = "index")]
-pub use index::create_index;
-pub use table::{create_table, drop_table};
+pub use {
+    alter_table::alter_table,
+    error::AlterError,
+    index::create_index,
+    table::{create_table, drop_table},
+};

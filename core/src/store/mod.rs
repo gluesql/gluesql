@@ -1,66 +1,20 @@
-use cfg_if::cfg_if;
-
-cfg_if! {
-    if #[cfg(feature = "alter-table")] {
-        mod alter_table;
-        pub use alter_table::{AlterTable, AlterTableError};
-    }
-}
-
-cfg_if! {
-    if #[cfg(feature = "index")] {
-        mod index;
-        pub use index::{Index, IndexError, IndexMut};
-    }
-}
-
-cfg_if! {
-    if #[cfg(feature = "transaction")] {
-        mod transaction;
-        pub use transaction::Transaction;
-    }
-}
-
-cfg_if! {
-    if #[cfg(feature = "index")] {
-        pub trait GStore: Store + Index {}
-        impl<S: Store + Index> GStore for S {}
-    } else {
-        pub trait GStore: Store {}
-        impl<S: Store> GStore for S {}
-    }
-}
-
-cfg_if! {
-    if #[cfg(all(feature = "alter-table", feature = "index", feature = "transaction"))] {
-        pub trait GStoreMut: StoreMut + IndexMut + AlterTable + Transaction {}
-        impl<S: StoreMut + IndexMut + AlterTable+ Transaction> GStoreMut for S {}
-    } else if #[cfg(all(feature = "alter-table", feature = "index"))] {
-        pub trait GStoreMut: StoreMut + IndexMut + AlterTable {}
-        impl<S: StoreMut + IndexMut + AlterTable> GStoreMut for S {}
-    } else if #[cfg(all(feature = "alter-table", feature = "transaction"))] {
-        pub trait GStoreMut: StoreMut + Transaction + AlterTable {}
-        impl<S: StoreMut + Transaction + AlterTable> GStoreMut for S {}
-    } else if #[cfg(all(feature = "index", feature = "transaction"))] {
-        pub trait GStoreMut: StoreMut + IndexMut + Transaction {}
-        impl<S: StoreMut + IndexMut + Transaction> GStoreMut for S {}
-    } else if #[cfg(feature = "alter-table")] {
-        pub trait GStoreMut: StoreMut + AlterTable {}
-        impl<S: StoreMut + AlterTable> GStoreMut for S {}
-    } else if #[cfg(feature = "index")] {
-        pub trait GStoreMut: StoreMut + IndexMut {}
-        impl<S: StoreMut + IndexMut> GStoreMut for S {}
-    } else if #[cfg(feature = "transaction")] {
-        pub trait GStoreMut: StoreMut + Transaction {}
-        impl<S: StoreMut + Transaction> GStoreMut for S {}
-    } else {
-        pub trait GStoreMut: StoreMut {}
-        impl<S: StoreMut> GStoreMut for S {}
-    }
-}
-
+mod alter_table;
 mod data_row;
-pub use data_row::DataRow;
+mod index;
+mod transaction;
+
+pub trait GStore: Store + Index {}
+impl<S: Store + Index> GStore for S {}
+
+pub trait GStoreMut: StoreMut + IndexMut + AlterTable + Transaction {}
+impl<S: StoreMut + IndexMut + AlterTable + Transaction> GStoreMut for S {}
+
+pub use {
+    alter_table::{AlterTable, AlterTableError},
+    data_row::DataRow,
+    index::{Index, IndexError, IndexMut},
+    transaction::Transaction,
+};
 
 use {
     crate::{

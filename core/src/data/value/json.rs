@@ -10,6 +10,8 @@ use {
 
 pub trait HashMapJsonExt {
     fn parse_json_object(value: &str) -> Result<HashMap<String, Value>>;
+
+    fn try_from_json_map(json_map: JsonMap<String, JsonValue>) -> Result<HashMap<String, Value>>;
 }
 
 impl HashMapJsonExt for HashMap<String, Value> {
@@ -18,12 +20,16 @@ impl HashMapJsonExt for HashMap<String, Value> {
             .map_err(|_| ValueError::InvalidJsonString(value.to_owned()))?;
 
         match value {
-            JsonValue::Object(json_map) => json_map
-                .into_iter()
-                .map(|(key, value)| value.try_into().map(|value| (key, value)))
-                .collect::<Result<HashMap<String, Value>>>(),
+            JsonValue::Object(json_map) => HashMap::try_from_json_map(json_map),
             _ => Err(ValueError::JsonObjectTypeRequired.into()),
         }
+    }
+
+    fn try_from_json_map(json_map: JsonMap<String, JsonValue>) -> Result<HashMap<String, Value>> {
+        json_map
+            .into_iter()
+            .map(|(key, value)| value.try_into().map(|value| (key, value)))
+            .collect::<Result<HashMap<String, Value>>>()
     }
 }
 

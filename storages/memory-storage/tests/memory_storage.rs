@@ -23,24 +23,20 @@ impl Tester<MemoryStorage> for MemoryTester {
 
 generate_store_tests!(tokio::test, MemoryTester);
 
-#[cfg(feature = "alter-table")]
 generate_alter_table_tests!(tokio::test, MemoryTester);
 
-#[cfg(any(feature = "alter-table", feature = "index"))]
 macro_rules! exec {
     ($glue: ident $sql: literal) => {
         $glue.execute($sql).unwrap();
     };
 }
 
-#[cfg(any(feature = "alter-table", feature = "index"))]
 macro_rules! test {
     ($glue: ident $sql: literal, $result: expr) => {
         assert_eq!($glue.execute($sql), $result);
     };
 }
 
-#[cfg(feature = "index")]
 #[test]
 fn memory_storage_index() {
     use {
@@ -83,7 +79,6 @@ fn memory_storage_index() {
     );
 }
 
-#[cfg(feature = "transaction")]
 #[test]
 fn memory_storage_transaction() {
     use gluesql_core::{

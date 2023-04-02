@@ -366,6 +366,16 @@ fn evaluate_function<'a>(context: &Context<'_>, func: &'a Function) -> Result<Ev
             let sub_expr = eval(sub_expr)?;
             f::position(from_expr, sub_expr)
         }
+        Function::FindIdx {
+            from_expr,
+            sub_expr,
+            start,
+        } => {
+            let from_expr = eval(from_expr)?;
+            let sub_expr = eval(sub_expr)?;
+            let start = eval_opt(start.as_ref())?;
+            f::find_idx(name, from_expr, sub_expr, start)
+        }
         Function::Cast { expr, data_type } => {
             let expr = eval(expr)?;
             f::cast(expr, data_type)
@@ -379,6 +389,11 @@ fn evaluate_function<'a>(context: &Context<'_>, func: &'a Function) -> Result<Ev
             let exprs = exprs.iter().map(eval).collect::<Result<Vec<_>>>()?;
 
             f::concat_ws(name, separator, exprs)
+        }
+        Function::Append { expr, value } => {
+            let expr = eval(expr)?;
+            let value = eval(value)?;
+            f::append(expr, value)
         }
     }
 }

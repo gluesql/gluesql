@@ -1,6 +1,7 @@
 use {
-    super::{NodeData, Prebuild},
+    super::Prebuild,
     crate::{
+        ast::Select,
         ast_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
             JoinNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode, QueryNode,
@@ -21,8 +22,8 @@ pub enum PrevNode<'a> {
     Filter(FilterNode<'a>),
 }
 
-impl<'a> Prebuild for PrevNode<'a> {
-    fn prebuild(self) -> Result<NodeData> {
+impl<'a> Prebuild<Select> for PrevNode<'a> {
+    fn prebuild(self) -> Result<Select> {
         match self {
             Self::Select(node) => node.prebuild(),
             Self::GroupBy(node) => node.prebuild(),
@@ -117,10 +118,10 @@ impl<'a> ProjectNode<'a> {
     }
 }
 
-impl<'a> Prebuild for ProjectNode<'a> {
-    fn prebuild(self) -> Result<NodeData> {
-        let mut select_data = self.prev_node.prebuild()?;
-        select_data.projection = self
+impl<'a> Prebuild<Select> for ProjectNode<'a> {
+    fn prebuild(self) -> Result<Select> {
+        let mut query: Select = self.prev_node.prebuild()?;
+        query.projection = self
             .select_items_list
             .into_iter()
             .map(TryInto::try_into)
@@ -129,7 +130,7 @@ impl<'a> Prebuild for ProjectNode<'a> {
             .flatten()
             .collect::<Vec<_>>();
 
-        Ok(select_data)
+        Ok(query)
     }
 }
 
