@@ -15,10 +15,12 @@ use {
         data::Value,
         store::{DataRow, GStore, GStoreMut, Store, Transaction},
     },
+    gluesql_json_storage::JsonStorage,
     gluesql_memory_storage::MemoryStorage,
     gluesql_sled_storage::SledStorage,
     itertools::Itertools,
-    std::{fmt::Debug, fs::File, io::Write, path::PathBuf},
+    std::{fmt::Debug, fs::File, io::Write, path::PathBuf, str::FromStr},
+    strum_macros::EnumString,
 };
 
 #[derive(Parser, Debug)]
@@ -35,29 +37,59 @@ struct Args {
     /// PATH to dump whole database
     #[clap(short, long, value_parser)]
     dump: Option<PathBuf>,
+
+    /// Storage type to store data
+    #[clap(short, long, value_parser)]
+    storage: Option<String>,
+}
+
+#[derive(EnumString)]
+#[strum(ascii_case_insensitive)]
+enum CliStorageType {
+    Sled,
+    Json,
 }
 
 pub fn run() -> Result<()> {
     let args = Args::parse();
 
-    if let Some(path) = args.path {
-        let path = path.as_path().to_str().expect("wrong path");
+    match (args.path, args.storage) {
+        (Some(path), Some(storage)) => {
+            let path = path.as_path().to_str().expect("wrong path");
 
-        if let Some(dump_path) = args.dump {
-            let mut storage = SledStorage::new(path).expect("failed to load sled-storage");
-            dump_database(&mut storage, dump_path)?;
+            let storage = CliStorageType::from_str(&storage).expect("wrong storage type");
+            match storage {
+                CliStorageType::Sled => {
+                    println!("[sled-storage] connected to {}", path);
+                    run(
+                        SledStorage::new(path).expect("failed to load sled-storage"),
+                        args.execute,
+                    );
 
-            return Ok::<_, Error>(());
+                    if let Some(dump_path) = args.dump {
+                        let mut storage =
+                            SledStorage::new(path).expect("failed to load sled-storage");
+                        dump_database(&mut storage, dump_path)?;
+
+                        return Ok::<_, Error>(());
+                    }
+                }
+                CliStorageType::Json => {
+                    println!("[json-storage] connected to {}", path);
+                    run(
+                        JsonStorage::new(path).expect("failed to load json-storage"),
+                        args.execute,
+                    );
+                }
+            };
         }
-
-        println!("[sled-storage] connected to {}", path);
-        run(
-            SledStorage::new(path).expect("failed to load sled-storage"),
-            args.execute,
-        );
-    } else {
-        println!("[memory-storage] initialized");
-        run(MemoryStorage::default(), args.execute);
+        (None, None) => {
+            println!("[memory-storage] initialized");
+            run(MemoryStorage::default(), args.execute);
+        }
+        (None, Some(_)) | (Some(_), None) => {
+            panic!("both path and storage should be specified")
+        }
     }
 
     fn run<T: GStore + GStoreMut>(storage: T, input: Option<PathBuf>) {

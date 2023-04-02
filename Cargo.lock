@@ -808,11 +808,14 @@ dependencies = [
  "edit",
  "futures",
  "gluesql-core",
+ "gluesql-json-storage",
  "gluesql_memory_storage",
  "gluesql_sled_storage",
  "itertools",
  "rustyline",
  "rustyline-derive",
+ "strum",
+ "strum_macros",
  "tabled",
  "thiserror",
  "tokio",
@@ -907,7 +910,6 @@ dependencies = [
  "gluesql-core",
  "gluesql-test-suite",
  "gluesql-utils",
- "gluesql_memory_storage",
  "hex",
  "iter-enum",
  "serde",
@@ -1887,6 +1889,12 @@ name = "strsim"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
+
+[[package]]
+name = "strum"
+version = "0.24.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "063e6045c0e62079840579a7e47a355ae92f60eb74daaf156fb1e84ba164e63f"
 
 [[package]]
 name = "strum_macros"
