@@ -697,11 +697,6 @@ mod tests {
     use {
         super::{ Value, ValueError},
         crate::{data::Interval as I, result::Result},
-        super::{Value, ValueError},
-        crate::{
-            data::{value::uuid::parse_uuid, Interval as I},
-            result::Result,
-        },
         chrono::{self, NaiveDate, NaiveDateTime, NaiveTime},
         rust_decimal::Decimal,
         std::{

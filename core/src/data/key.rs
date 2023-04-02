@@ -59,6 +59,9 @@ impl Ord for Key {
             (Key::I128(l), Key::I128(r)) => l.cmp(r),
             (Key::U8(l), Key::U8(r)) => l.cmp(r),
             (Key::U16(l), Key::U16(r)) => l.cmp(r),
+            (Key::U32(l),Key::U32(r))=> l.cmp(r),
+            (Key::U64(l),Key::U64(r))=> l.cmp(r),
+            (Key::U128(l),Key::U128(r))=> l.cmp(r),
             (Key::F64(l), Key::F64(r)) => l.total_cmp(&r.0),
             (Key::Decimal(l), Key::Decimal(r)) => l.cmp(r),
             (Key::Bool(l), Key::Bool(r)) => l.cmp(r),
@@ -81,6 +84,9 @@ impl Ord for Key {
             | (Key::I128(_), _)
             | (Key::U8(_), _)
             | (Key::U16(_), _)
+            | (Key::U32(_),_)
+            | (Key::U64(_),_)
+            | (Key::U128(_),_)    
             | (Key::F64(_), _)
             | (Key::Decimal(_), _)
             | (Key::Bool(_), _)
@@ -119,7 +125,7 @@ impl PartialOrd for Key {
             (Key::Interval(l), Key::Interval(r)) => l.partial_cmp(r),
             (Key::Uuid(l), Key::Uuid(r)) => Some(l.cmp(r)),
             _ => None,
-        }
+        };
         Some(self.cmp(other))
     }
 }
