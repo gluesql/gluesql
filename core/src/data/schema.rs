@@ -329,7 +329,6 @@ CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);"#;
                 created: Utc::now().naive_utc(),
             }],
             engine: None,
-            created: Utc::now().naive_utc(),
         };
         let ddl = r#"CREATE TABLE "1" ("2" INT NULL, ";" INT NULL);
 CREATE INDEX "." ON "1" (";");"#;
