@@ -542,10 +542,9 @@ impl TryFrom<&Value> for u128 {
     fn try_from(v: &Value) -> Result<u128> {
         match v {
             Value::Uuid(value) => Ok(*value),
-             Value::Str(value) => value
+            Value::Str(value) => value
                 .parse::<u128>()
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
-            
             Value::Inet(IpAddr::V6(v)) => Ok(u128::from(*v)),
             _ => Err(ValueError::ImpossibleCast.into()),
         }
