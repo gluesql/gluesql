@@ -1345,7 +1345,16 @@ mod tests {
             u128::try_from(&Value::Inet(IpAddr::V6(ip))),
             Ok(u128::from(ip))
         );
-
+        let num = "340282366920938463463374607431768211455";
+        assert_eq!(
+            u128::try_from(&Value::Str(num.to_owned())),
+            Ok(340282366920938463463374607431768211455)
+        );
+        let uuid = "936DA01F9ABD4d9d80C702AF85C822A8";
+        assert_eq!(
+            u128::try_from(&Value::Str(uuid.to_owned())),
+            Err(ValueError::FailedToParseNumber.into())
+        );
         assert_eq!(
             u128::try_from(&Value::Date(date(2021, 11, 20))),
             Err(ValueError::ImpossibleCast.into())
