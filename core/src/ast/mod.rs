@@ -22,7 +22,7 @@ pub trait ToSql {
     fn to_sql(&self) -> String;
 
     fn to_sql_unquoted(&self) -> String {
-        panic!("to_sql_unquoted is not implemented");
+        unimplemented!("to_sql_unquoted is not implemented");
     }
 }
 
