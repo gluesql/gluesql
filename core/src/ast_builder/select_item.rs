@@ -1,7 +1,7 @@
 use {
     super::ExprNode,
     crate::{
-        ast::{Expr, SelectItem, ToSql},
+        ast::{Expr, SelectItem, ToSqlUnquoted},
         parse_sql::parse_select_item,
         result::{Error, Result},
         translate::translate_select_item,

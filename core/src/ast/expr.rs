@@ -1,7 +1,7 @@
 use {
     super::{
         Aggregate, AstLiteral, BinaryOperator, DataType, DateTimeField, Function, Query, ToSql,
-        UnaryOperator,
+        ToSqlUnquoted, UnaryOperator,
     },
     serde::{Deserialize, Serialize},
 };
@@ -83,13 +83,13 @@ impl ToSql for Expr {
     fn to_sql(&self) -> String {
         self.to_sql_with(true)
     }
+}
 
+impl ToSqlUnquoted for Expr {
     fn to_sql_unquoted(&self) -> String {
         self.to_sql_with(false)
     }
-}
 
-impl Expr {
     fn to_sql_with(&self, qouted: bool) -> String {
         match self {
             Expr::Identifier(s) => match qouted {

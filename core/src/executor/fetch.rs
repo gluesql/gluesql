@@ -3,7 +3,7 @@ use {
     crate::{
         ast::{
             ColumnDef, ColumnUniqueOption, Dictionary, Expr, IndexItem, Join, Query, Select,
-            SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, ToSql, Values,
+            SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, ToSqlUnquoted, Values,
         },
         data::{get_alias, get_index, Key, Row, Value},
         executor::{evaluate::evaluate, select::select},
