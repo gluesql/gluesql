@@ -9,11 +9,11 @@ use {
     error::{JsonStorageError, OptionExt, ResultExt},
     gluesql_core::{
         ast::ColumnUniqueOption,
-        chrono::NaiveDateTime,
         data::{value::HashMapJsonExt, Schema},
         prelude::Key,
-        result::{Error, Result},
-        store::{DataRow, RowIter},
+        result::Error,
+        result::Result,
+        store::{DataRow, Metadata, RowIter},
     },
     iter_enum::Iterator,
     serde_json::Value as JsonValue,
@@ -74,7 +74,6 @@ impl JsonStorage {
             table_name: table_name.to_owned(),
             column_defs,
             indexes: vec![],
-            created: NaiveDateTime::default(),
             engine: None,
         }))
     }
@@ -201,3 +200,5 @@ where
     let file = File::open(filename)?;
     Ok(io::BufReader::new(file).lines())
 }
+
+impl Metadata for JsonStorage {}
