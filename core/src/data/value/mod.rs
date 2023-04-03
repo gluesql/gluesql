@@ -244,6 +244,7 @@ impl Value {
             (DataType::Time, value) => value.try_into().map(Value::Time),
             (DataType::Timestamp, value) => value.try_into().map(Value::Timestamp),
             (DataType::Interval, value) => value.try_into().map(Value::Interval),
+            (DataType::Uuid, Value::Str(value)) => uuid::parse_uuid(value).map(Value::Uuid),
             (DataType::Uuid, value) => value.try_into().map(Value::Uuid),
             (DataType::Inet, value) => value.try_into().map(Value::Inet),
             (DataType::Bytea, Value::Str(value)) => hex::decode(value)

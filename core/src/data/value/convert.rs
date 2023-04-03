@@ -1,7 +1,6 @@
 use {
     super::{
         date::{parse_date, parse_time, parse_timestamp},
-        uuid::parse_uuid,
         Value, ValueError,
     },
     crate::{
@@ -543,7 +542,9 @@ impl TryFrom<&Value> for u128 {
     fn try_from(v: &Value) -> Result<u128> {
         match v {
             Value::Uuid(value) => Ok(*value),
-            Value::Str(value) => parse_uuid(value),
+            Value::Str(value) => value
+                .parse::<u128>()
+                .map_err(|_| ValueError::FailedToParseNumber.into()),
             Value::Inet(IpAddr::V6(v)) => Ok(u128::from(*v)),
             _ => Err(ValueError::ImpossibleCast.into()),
         }
@@ -566,10 +567,7 @@ impl TryFrom<&Value> for IpAddr {
 mod tests {
     use {
         super::{Value, ValueError},
-        crate::{
-            data::{value::uuid::parse_uuid, Interval as I},
-            result::Result,
-        },
+        crate::{data::Interval as I, result::Result},
         chrono::{self, NaiveDate, NaiveDateTime, NaiveTime},
         rust_decimal::Decimal,
         std::{
@@ -1342,18 +1340,21 @@ mod tests {
         assert_eq!((&Value::Uuid(uuid)).try_into() as Result<u128>, Ok(uuid));
         assert_eq!(u128::try_from(&Value::Uuid(uuid)), Ok(uuid));
 
-        let uuid = "936DA01F9ABD4d9d80C702AF85C822A8";
-        assert_eq!(
-            u128::try_from(&Value::Str(uuid.to_owned())),
-            parse_uuid(uuid)
-        );
-
         let ip = Ipv6Addr::from(9876543210);
         assert_eq!(
             u128::try_from(&Value::Inet(IpAddr::V6(ip))),
             Ok(u128::from(ip))
         );
-
+        let num = "340282366920938463463374607431768211455";
+        assert_eq!(
+            u128::try_from(&Value::Str(num.to_owned())),
+            Ok(340282366920938463463374607431768211455)
+        );
+        let uuid = "936DA01F9ABD4d9d80C702AF85C822A8";
+        assert_eq!(
+            u128::try_from(&Value::Str(uuid.to_owned())),
+            Err(ValueError::FailedToParseNumber.into())
+        );
         assert_eq!(
             u128::try_from(&Value::Date(date(2021, 11, 20))),
             Err(ValueError::ImpossibleCast.into())
