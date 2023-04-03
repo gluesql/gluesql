@@ -56,11 +56,7 @@ enum Storage {
 
 pub fn run() -> Result<()> {
     let args = Args::parse();
-    let path = args
-        .path
-        .as_ref()
-        .map(PathBuf::as_path)
-        .and_then(Path::to_str);
+    let path = args.path.as_deref().and_then(Path::to_str);
 
     match (path, args.storage, args.dump) {
         (None, None, _) | (None, Some(Storage::Memory), _) => {
