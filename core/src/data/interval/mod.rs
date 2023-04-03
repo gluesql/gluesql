@@ -20,13 +20,20 @@ pub enum Interval {
     Microsecond(i64),
 }
 
+impl Ord for Interval {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (Interval::Month(l), Interval::Month(r)) => l.cmp(r),
+            (Interval::Microsecond(l), Interval::Microsecond(r)) => l.cmp(r),
+            (Interval::Month(_), Interval::Microsecond(_)) => Ordering::Greater,
+            (Interval::Microsecond(_), Interval::Month(_)) => Ordering::Less,
+        }
+    }
+}
+
 impl PartialOrd<Interval> for Interval {
     fn partial_cmp(&self, other: &Interval) -> Option<Ordering> {
-        match (self, other) {
-            (Interval::Month(l), Interval::Month(r)) => Some(l.cmp(r)),
-            (Interval::Microsecond(l), Interval::Microsecond(r)) => Some(l.cmp(r)),
-            _ => None,
-        }
+        Some(self.cmp(other))
     }
 }
 
@@ -190,7 +197,7 @@ impl Interval {
     ) -> Result<Self> {
         use DateTimeField::*;
 
-        let sign = || if value.get(0..1) == Some("-") { -1 } else { 1 };
+        let sign = if value.get(0..1) == Some("-") { -1 } else { 1 };
 
         let parse_integer = |v: &str| {
             v.parse::<i32>()
@@ -237,7 +244,7 @@ impl Interval {
 
                 match (nums.first(), nums.get(1)) {
                     (Some(years), Some(months)) => {
-                        Ok(Interval::months(sign() * (12 * years + months)))
+                        Ok(Interval::months(sign * (12 * years + months)))
                     }
                     _ => Err(IntervalError::FailedToParseYearToMonth(value.to_owned()).into()),
                 }
@@ -250,7 +257,7 @@ impl Interval {
                     .collect::<Result<Vec<_>>>()?;
 
                 match (nums.first(), nums.get(1)) {
-                    (Some(days), Some(hours)) => Ok(Interval::hours(sign() * (24 * days + hours))),
+                    (Some(days), Some(hours)) => Ok(Interval::hours(sign * (24 * days + hours))),
                     _ => Err(IntervalError::FailedToParseDayToHour(value.to_owned()).into()),
                 }
             }
@@ -264,7 +271,7 @@ impl Interval {
 
                         Interval::days(days)
                             .add(&parse_time(&time)?)
-                            .map(|interval| sign() * interval)
+                            .map(|interval| sign * interval)
                     }
                     _ => Err(IntervalError::FailedToParseDayToMinute(value.to_owned()).into()),
                 }
@@ -278,7 +285,7 @@ impl Interval {
 
                         Interval::days(days)
                             .add(&parse_time(time)?)
-                            .map(|interval| sign() * interval)
+                            .map(|interval| sign * interval)
                     }
                     _ => Err(IntervalError::FailedToParseDayToSecond(value.to_owned()).into()),
                 }
@@ -288,7 +295,7 @@ impl Interval {
             (Some(Minute), Some(Second)) => {
                 let time = value.trim_start_matches('-');
 
-                parse_time(&format!("00:{}", time)).map(|v| sign() * v)
+                parse_time(&format!("00:{}", time)).map(|v| sign * v)
             }
             (Some(from), Some(to)) => Err(IntervalError::UnsupportedRange(
                 format!("{:?}", from),
@@ -307,6 +314,13 @@ mod tests {
         crate::ast::DateTimeField,
         chrono::{NaiveDate, NaiveTime},
     };
+
+    #[test]
+    fn cmp() {
+        assert!(Interval::Month(12) > Interval::Month(1));
+        assert!(Interval::Microsecond(300) > Interval::Microsecond(1));
+        assert!(Interval::Month(1) > Interval::Microsecond(1000));
+    }
 
     fn date(year: i32, month: u32, day: u32) -> NaiveDate {
         NaiveDate::from_ymd_opt(year, month, day).unwrap()

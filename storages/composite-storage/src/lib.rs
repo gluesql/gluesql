@@ -8,7 +8,7 @@ use {
     gluesql_core::{
         data::Schema,
         result::{Error, Result},
-        store::{GStore, GStoreMut, Store},
+        store::{GStore, GStoreMut, Metadata, Store},
     },
     std::collections::HashMap,
 };
@@ -89,3 +89,4 @@ impl CompositeStorage {
 impl gluesql_core::store::AlterTable for CompositeStorage {}
 impl gluesql_core::store::Index for CompositeStorage {}
 impl gluesql_core::store::IndexMut for CompositeStorage {}
+impl Metadata for CompositeStorage {}

@@ -237,6 +237,21 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 exprs,
             })))
         }
+        "FIND_IDX" => {
+            check_len_range(name, args.len(), 2, 3)?;
+
+            let from_expr = translate_expr(args[0])?;
+            let sub_expr = translate_expr(args[1])?;
+            let start = (args.len() > 2)
+                .then(|| translate_expr(args[2]))
+                .transpose()?;
+
+            Ok(Expr::Function(Box::new(Function::FindIdx {
+                from_expr,
+                sub_expr,
+                start,
+            })))
+        }
         "LOWER" => translate_function_one_arg(Function::Lower, args, name),
         "UPPER" => translate_function_one_arg(Function::Upper, args, name),
         "LEFT" => {
@@ -472,6 +487,13 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             let expr = translate_expr(args[0])?;
             Ok(Expr::Function(Box::new(Function::Chr(expr))))
+        }
+        "APPEND" => {
+            check_len(name, args.len(), 2)?;
+            let expr = translate_expr(args[0])?;
+            let value = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Append { expr, value })))
         }
         _ => Err(TranslateError::UnsupportedFunction(name).into()),
     }

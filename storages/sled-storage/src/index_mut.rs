@@ -71,7 +71,6 @@ impl IndexMut for SledStorage {
                 column_defs,
                 indexes,
                 engine,
-                created,
                 ..
             } = schema
                 .ok_or_else(|| IndexError::ConflictTableNotFound(table_name.to_owned()).into())
@@ -99,7 +98,6 @@ impl IndexMut for SledStorage {
                 column_defs,
                 indexes,
                 engine,
-                created,
             };
 
             let index_sync = IndexSync::from_schema(tree, txid, &schema);
@@ -110,7 +108,10 @@ impl IndexMut for SledStorage {
                 .map_err(ConflictableTransactionError::Abort)?;
 
             for (data_key, row) in rows.iter() {
-                let data_key = key::data(table_name, data_key.to_cmp_be_bytes());
+                let data_key = data_key
+                    .to_cmp_be_bytes()
+                    .map_err(ConflictableTransactionError::Abort)
+                    .map(|key| key::data(table_name, key))?;
 
                 index_sync.insert_index(&index, &data_key, row)?;
             }
@@ -156,7 +157,6 @@ impl IndexMut for SledStorage {
                 column_defs,
                 indexes,
                 engine,
-                created,
                 ..
             } = schema
                 .ok_or_else(|| IndexError::ConflictTableNotFound(table_name.to_owned()).into())
@@ -179,7 +179,6 @@ impl IndexMut for SledStorage {
                 column_defs,
                 indexes,
                 engine,
-                created,
             };
 
             let index_sync = IndexSync::from_schema(tree, txid, &schema);
@@ -190,7 +189,10 @@ impl IndexMut for SledStorage {
                 .map_err(ConflictableTransactionError::Abort)?;
 
             for (data_key, row) in rows.iter() {
-                let data_key = key::data(table_name, data_key.to_cmp_be_bytes());
+                let data_key = data_key
+                    .to_cmp_be_bytes()
+                    .map_err(ConflictableTransactionError::Abort)
+                    .map(|key| key::data(table_name, key))?;
 
                 index_sync.delete_index(&index, &data_key, row)?;
             }

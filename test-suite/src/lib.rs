@@ -20,6 +20,7 @@ pub mod insert;
 pub mod join;
 pub mod like_ilike;
 pub mod limit;
+pub mod metadata;
 pub mod migrate;
 pub mod nested_select;
 pub mod nullable;
@@ -75,7 +76,6 @@ macro_rules! generate_store_tests {
         glue!(aggregate_sum, aggregate::sum::sum);
         glue!(aggregate_variance, aggregate::variance::variance);
         glue!(aggregate_error, aggregate::error::error);
-        glue!(aggregate_error_group_by, aggregate::error::error_group_by);
         glue!(arithmetic_error, arithmetic::error::error);
         glue!(arithmetic_project, arithmetic::project::project);
         glue!(arithmetic_on_where, arithmetic::on_where::on_where);
@@ -127,6 +127,7 @@ macro_rules! generate_store_tests {
         glue!(function_ascii, function::ascii::ascii);
         glue!(function_chr, function::chr::chr);
         glue!(function_position, function::position::position);
+        glue!(function_find_idx, function::find_idx::find_idx);
         glue!(join, join::join);
         glue!(join_project, join::project);
         glue!(migrate, migrate::migrate);
@@ -174,6 +175,7 @@ macro_rules! generate_store_tests {
         );
         glue!(type_match, type_match::type_match);
         glue!(dictionary, dictionary::dictionary);
+        glue!(function_append, function::append::append);
         glue!(column_alias, column_alias::column_alias);
 
         // ast-builder
@@ -310,5 +312,31 @@ macro_rules! generate_transaction_dictionary_tests {
         }
 
         glue!(transaction_dictionary, transaction::dictionary);
+    };
+}
+
+#[macro_export]
+macro_rules! generate_metadata_table_tests {
+    ($test: meta, $storage: ident) => {
+        macro_rules! glue {
+            ($title: ident, $func: path) => {
+                declare_test_fn!($test, $storage, $title, $func);
+            };
+        }
+
+        glue!(metadata_table, metadata::table::table);
+    };
+}
+
+#[macro_export]
+macro_rules! generate_metadata_index_tests {
+    ($test: meta, $storage: ident) => {
+        macro_rules! glue {
+            ($title: ident, $func: path) => {
+                declare_test_fn!($test, $storage, $title, $func);
+            };
+        }
+
+        glue!(metadata_index, metadata::index::index);
     };
 }

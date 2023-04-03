@@ -85,7 +85,7 @@ pub fn dump_database(storage: &mut SledStorage, dump_path: PathBuf) -> Result<()
         storage.begin(true).await?;
         let schemas = storage.fetch_all_schemas().await?;
         for schema in schemas {
-            writeln!(&file, "{}", schema.clone().to_ddl())?;
+            writeln!(&file, "{}", schema.to_ddl())?;
 
             let rows_list = storage
                 .scan_data(&schema.table_name)

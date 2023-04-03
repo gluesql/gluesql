@@ -244,6 +244,7 @@ impl Value {
             (DataType::Time, value) => value.try_into().map(Value::Time),
             (DataType::Timestamp, value) => value.try_into().map(Value::Timestamp),
             (DataType::Interval, value) => value.try_into().map(Value::Interval),
+            (DataType::Uuid, Value::Str(value)) => uuid::parse_uuid(value).map(Value::Uuid),
             (DataType::Uuid, value) => value.try_into().map(Value::Uuid),
             (DataType::Inet, value) => value.try_into().map(Value::Inet),
             (DataType::Bytea, Value::Str(value)) => hex::decode(value)
@@ -527,7 +528,6 @@ impl Value {
             }
 
             (1_i128..(a + 1_i128))
-                .into_iter()
                 .try_fold(1_i128, |mul, x| mul.checked_mul(x))
                 .ok_or_else(|| ValueError::FactorialOverflow.into())
         }
@@ -603,7 +603,7 @@ impl Value {
 
     /// Value to Big-Endian for comparison purpose
     pub fn to_cmp_be_bytes(&self) -> Result<Vec<u8>> {
-        self.try_into().map(|key: Key| key.to_cmp_be_bytes())
+        self.try_into().and_then(|key: Key| key.to_cmp_be_bytes())
     }
 
     /// # Description
@@ -642,6 +642,21 @@ impl Value {
             }
             .into()),
         }
+    }
+
+    pub fn find_idx(&self, sub_val: &Value, start: &Value) -> Result<Value> {
+        let start: i64 = start.try_into()?;
+        if start <= 0 {
+            return Err(ValueError::NonPositiveIntegerOffsetInFindIdx(start.to_string()).into());
+        }
+        let from = &String::from(self);
+        let sub = &String::from(sub_val);
+        let position = str_position(&from[(start - 1) as usize..].to_owned(), sub) as i64;
+        let position = match position {
+            0 => 0,
+            _ => position + start - 1,
+        };
+        Ok(Value::I64(position))
     }
 }
 
@@ -757,8 +772,8 @@ mod tests {
             Some(Ordering::Less)
         );
         assert_eq!(
-            Interval::Microsecond(1).partial_cmp(&Interval::Month(2)),
-            None
+            Interval::Microsecond(1).cmp(&Interval::Month(2)),
+            Ordering::Less
         );
 
         assert_eq!(one.partial_cmp(&two), Some(Ordering::Less));

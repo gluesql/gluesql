@@ -6,7 +6,9 @@ use {
         executor::execute,
         parse_sql::parse,
         result::{Error, Result},
-        store::{AlterTable, DataRow, Index, IndexMut, RowIter, Store, StoreMut, Transaction},
+        store::{
+            AlterTable, DataRow, Index, IndexMut, Metadata, RowIter, Store, StoreMut, Transaction,
+        },
         translate::translate,
     },
     async_trait::async_trait,
@@ -171,3 +173,5 @@ mod tests {
         assert!(matches!(block_on(storage.fetch_schema("Foo")), Ok(None)));
     }
 }
+
+impl Metadata for MockStorage {}
