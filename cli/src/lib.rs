@@ -7,7 +7,7 @@ mod print;
 
 use {
     crate::cli::Cli,
-    anyhow::{Error, Result},
+    anyhow::Result,
     clap::Parser,
     futures::executor::block_on,
     gluesql_core::{
@@ -19,7 +19,12 @@ use {
     gluesql_memory_storage::MemoryStorage,
     gluesql_sled_storage::SledStorage,
     itertools::Itertools,
-    std::{fmt::Debug, fs::File, io::Write, path::PathBuf},
+    std::{
+        fmt::Debug,
+        fs::File,
+        io::Write,
+        path::{Path, PathBuf},
+    },
 };
 
 #[derive(Parser, Debug)]
@@ -51,45 +56,44 @@ enum Storage {
 
 pub fn run() -> Result<()> {
     let args = Args::parse();
-    let (path, storage) = match (args.path, args.storage) {
-        (None, None) | (None, Some(Storage::Memory)) => {
+    let path = args
+        .path
+        .as_ref()
+        .map(PathBuf::as_path)
+        .and_then(Path::to_str);
+
+    match (path, args.storage, args.dump) {
+        (None, None, _) | (None, Some(Storage::Memory), _) => {
             println!("[memory-storage] initialized");
+
             run(MemoryStorage::default(), args.execute);
-
-            return Ok(());
         }
-        (None, Some(_)) | (Some(_), None) => {
-            panic!("both path and storage should be specified")
-        }
-        (Some(path), Some(storage)) => (path, storage),
-    };
-
-    let path = path.as_path().to_str().expect("wrong path");
-
-    match storage {
-        Storage::Memory => {
+        (Some(_), Some(Storage::Memory), _) => {
             panic!("failed to load memory-storage: it should be without path");
         }
-        Storage::Sled => {
+        (Some(path), Some(Storage::Sled), _) => {
             println!("[sled-storage] connected to {}", path);
+
             run(
                 SledStorage::new(path).expect("failed to load sled-storage"),
                 args.execute,
             );
-
-            if let Some(dump_path) = args.dump {
-                let mut storage = SledStorage::new(path).expect("failed to load sled-storage");
-                dump_database(&mut storage, dump_path)?;
-
-                return Ok::<_, Error>(());
-            }
         }
-        Storage::Json => {
+        (Some(path), Some(Storage::Json), _) => {
             println!("[json-storage] connected to {}", path);
+
             run(
                 JsonStorage::new(path).expect("failed to load json-storage"),
                 args.execute,
             );
+        }
+        (Some(path), None, Some(dump_path)) => {
+            let mut storage = SledStorage::new(path).expect("failed to load sled-storage");
+
+            dump_database(&mut storage, dump_path)?;
+        }
+        (None, Some(_), _) | (Some(_), None, None) => {
+            panic!("both path and storage should be specified");
         }
     }
 
