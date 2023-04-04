@@ -12,11 +12,12 @@ documentation.workspace = true
 gluesql-core = { path = "../core", version = "0.13.1" }
 gluesql_sled_storage = { path = "../storages/sled-storage", version = "0.13.0" }
 gluesql_memory_storage = { path = "../storages/memory-storage", version = "0.13.0" }
+gluesql-json-storage = { path = "../storages/json-storage", version = "0.13.0" }
 
 clap = { version = "3.2.2", features = ["derive"] }
 rustyline = "9.1"
 rustyline-derive = "0.6"
-tabled ="0.8"
+tabled = "0.8"
 thiserror = "1.0"
 edit = "0.1.4"
 futures = "0.3"

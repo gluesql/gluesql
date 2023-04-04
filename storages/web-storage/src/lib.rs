@@ -8,7 +8,7 @@ use {
         ast::ColumnUniqueOption,
         data::{Key, Schema},
         result::{Error, Result},
-        store::{DataRow, RowIter, Store, StoreMut},
+        store::{DataRow, Metadata, RowIter, Store, StoreMut},
     },
     serde::{Deserialize, Serialize},
     uuid::Uuid,
@@ -206,3 +206,4 @@ impl gluesql_core::store::AlterTable for WebStorage {}
 impl gluesql_core::store::Index for WebStorage {}
 impl gluesql_core::store::IndexMut for WebStorage {}
 impl gluesql_core::store::Transaction for WebStorage {}
+impl Metadata for WebStorage {}

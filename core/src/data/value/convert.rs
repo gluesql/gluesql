@@ -680,6 +680,7 @@ impl TryFrom<&Value> for Interval {
     }
 }
 
+
 impl TryFrom<&Value> for IpAddr {
     type Error = Error;
 
@@ -695,7 +696,7 @@ impl TryFrom<&Value> for IpAddr {
 #[cfg(test)]
 mod tests {
     use {
-        super::{ Value, ValueError},
+        super::{Value, ValueError},
         crate::{data::Interval as I, result::Result},
         chrono::{self, NaiveDate, NaiveDateTime, NaiveTime},
         rust_decimal::Decimal,

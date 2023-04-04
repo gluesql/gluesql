@@ -94,3 +94,4 @@ generate_alter_table_index_tests!(tokio::test, SledTester);
 generate_transaction_alter_table_tests!(tokio::test, SledTester);
 generate_transaction_index_tests!(tokio::test, SledTester);
 generate_transaction_dictionary_tests!(tokio::test, SledTester);
+generate_metadata_index_tests!(tokio::test, SledTester);
