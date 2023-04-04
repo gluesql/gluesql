@@ -680,7 +680,6 @@ impl TryFrom<&Value> for Interval {
     }
 }
 
-
 impl TryFrom<&Value> for IpAddr {
     type Error = Error;
 
