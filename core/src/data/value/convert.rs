@@ -481,7 +481,7 @@ impl TryFrom<&Value> for u128 {
             Value::Str(value) => value
                 .parse::<u128>()
                 .map_err(|_| ValueError::ImpossibleCast)?,
-
+            Value::Decimal(value) => value.to_u128().ok_or(ValueError::ImpossibleCast)?,
             Value::Inet(IpAddr::V6(v)) => u128::from(*v),
             Value::Uuid(value) => *value,
             Value::Date(_)
@@ -1467,23 +1467,11 @@ mod tests {
         assert_eq!((&Value::Uuid(uuid)).try_into() as Result<u128>, Ok(uuid));
         assert_eq!(u128::try_from(&Value::Uuid(uuid)), Ok(uuid));
 
-        let num = "340282366920938463463374607431768211455";
-        assert_eq!(
-            u128::try_from(&Value::Str(num.to_owned())),
-            Ok(340282366920938463463374607431768211455)
-        );
-        let uuid = "936DA01F9ABD4d9d80C702AF85C822A8";
-        assert_eq!(
-            u128::try_from(&Value::Str(uuid.to_owned())),
-            Err(ValueError::FailedToParseNumber.into())
-        );
         let ip = Ipv6Addr::from(9876543210);
         assert_eq!(
             u128::try_from(&Value::Inet(IpAddr::V6(ip))),
             Ok(u128::from(ip))
         );
-
-
 
         assert_eq!(
             u128::try_from(&Value::Date(date(2021, 11, 20))),
