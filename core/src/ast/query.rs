@@ -358,26 +358,35 @@ impl ToSqlUnquoted for TableFactor {
 
 impl TableFactor {
     fn to_sql_with(&self, qouted: bool) -> String {
+        let to_sql = |expr: &Expr| match qouted {
+            true => expr.to_sql(),
+            false => expr.to_sql_unquoted(),
+        };
+
         match (self, qouted) {
             (TableFactor::Table { name, alias, .. }, true) => match alias {
-                Some(alias) => format!(r#""{}" {}"#, name, alias.to_sql()),
+                Some(alias) => format!(r#""{}" {}"#, name, alias.to_sql_with(qouted)),
                 None => format!(r#""{name}""#),
             },
             (TableFactor::Table { name, alias, .. }, false) => match alias {
-                Some(alias) => format!("{} {}", name, alias.to_sql()),
+                Some(alias) => format!("{} {}", name, alias.to_sql_with(qouted)),
                 None => name.to_owned(),
             },
             (TableFactor::Derived { subquery, alias }, _) => {
-                format!("({}) {}", subquery.to_sql(), alias.to_sql())
+                format!(
+                    "({}) {}",
+                    subquery.to_sql_with(qouted),
+                    alias.to_sql_with(qouted)
+                )
             }
             (TableFactor::Series { alias, size }, _) => {
-                format!("SERIES({}) {}", size.to_sql(), alias.to_sql())
+                format!("SERIES({}) {}", to_sql(size), alias.to_sql_with(qouted))
             }
             (TableFactor::Dictionary { dict, alias }, true) => {
-                format!(r#""{dict}" {}"#, alias.to_sql())
+                format!(r#""{dict}" {}"#, alias.to_sql_with(qouted))
             }
             (TableFactor::Dictionary { dict, alias }, false) => {
-                format!("{dict} {}", alias.to_sql())
+                format!("{dict} {}", alias.to_sql_with(qouted))
             }
         }
     }
@@ -385,9 +394,24 @@ impl TableFactor {
 
 impl ToSql for TableAlias {
     fn to_sql(&self) -> String {
+        self.to_sql_with(true)
+    }
+}
+
+impl ToSqlUnquoted for TableAlias {
+    fn to_sql_unquoted(&self) -> String {
+        self.to_sql_with(false)
+    }
+}
+
+impl TableAlias {
+    fn to_sql_with(&self, qouted: bool) -> String {
         let TableAlias { name, .. } = self;
 
-        format!(r#"AS "{}""#, name)
+        match qouted {
+            true => format!(r#"AS "{name}""#),
+            false => format!("AS {name}"),
+        }
     }
 }
 
@@ -571,13 +595,12 @@ impl Values {
 
 #[cfg(test)]
 mod tests {
-
     use {
         crate::{
             ast::{
                 AstLiteral, BinaryOperator, Dictionary, Expr, Join, JoinConstraint, JoinExecutor,
                 JoinOperator, OrderByExpr, Query, Select, SelectItem, SetExpr, TableAlias,
-                TableFactor, TableWithJoins, ToSql, Values,
+                TableFactor, TableWithJoins, ToSql, ToSqlUnquoted, Values,
             },
             parse_sql::parse_expr,
             translate::translate_expr,
@@ -627,6 +650,43 @@ mod tests {
             ))),
         }
         .to_sql();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn to_sql_unqouted_query() {
+        let order_by = vec![OrderByExpr {
+            expr: Expr::Identifier("name".to_owned()),
+            asc: Some(true),
+        }];
+        let actual = "SELECT * FROM FOO AS F ORDER BY name ASC LIMIT 10 OFFSET 3".to_owned();
+        let expected = Query {
+            body: SetExpr::Select(Box::new(Select {
+                projection: vec![SelectItem::Wildcard],
+                from: TableWithJoins {
+                    relation: TableFactor::Table {
+                        name: "FOO".to_owned(),
+                        alias: Some(TableAlias {
+                            name: "F".to_owned(),
+                            columns: Vec::new(),
+                        }),
+                        index: None,
+                    },
+                    joins: Vec::new(),
+                },
+                selection: None,
+                group_by: Vec::new(),
+                having: None,
+            })),
+            order_by,
+            limit: Some(Expr::Literal(AstLiteral::Number(
+                BigDecimal::from_str("10").unwrap(),
+            ))),
+            offset: Some(Expr::Literal(AstLiteral::Number(
+                BigDecimal::from_str("3").unwrap(),
+            ))),
+        }
+        .to_sql_unquoted();
         assert_eq!(actual, expected);
     }
 
