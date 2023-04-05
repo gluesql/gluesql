@@ -579,6 +579,42 @@ mod tests {
 
         assert_eq!(
             trim(
+                r#"CASE
+                  WHEN "id" = 1 THEN 'a'
+                  WHEN "id" = 2 THEN 'b'
+                END"#,
+            ),
+            Expr::Case {
+                operand: None,
+                when_then: vec![
+                    (
+                        Expr::BinaryOp {
+                            left: Box::new(Expr::Identifier("id".to_owned())),
+                            op: BinaryOperator::Eq,
+                            right: Box::new(Expr::Literal(AstLiteral::Number(
+                                BigDecimal::from_str("1").unwrap()
+                            )))
+                        },
+                        Expr::Literal(AstLiteral::QuotedString("a".to_owned()))
+                    ),
+                    (
+                        Expr::BinaryOp {
+                            left: Box::new(Expr::Identifier("id".to_owned())),
+                            op: BinaryOperator::Eq,
+                            right: Box::new(Expr::Literal(AstLiteral::Number(
+                                BigDecimal::from_str("2").unwrap()
+                            )))
+                        },
+                        Expr::Literal(AstLiteral::QuotedString("b".to_owned()))
+                    )
+                ],
+                else_result: None,
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            trim(
                 r#"CASE "id"
                   WHEN 1 THEN 'a'
                   WHEN 2 THEN 'b'
