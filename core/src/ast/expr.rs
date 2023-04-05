@@ -262,10 +262,11 @@ impl Expr {
 
 #[cfg(test)]
 mod tests {
+
     use {
         crate::ast::{
             AstLiteral, BinaryOperator, DataType, DateTimeField, Expr, Query, Select, SelectItem,
-            SetExpr, TableFactor, TableWithJoins, ToSql, UnaryOperator,
+            SetExpr, TableFactor, TableWithJoins, ToSql, ToSqlUnquoted, UnaryOperator,
         },
         bigdecimal::BigDecimal,
         regex::Regex,
@@ -304,6 +305,15 @@ mod tests {
                 ident: "column".into()
             }
             .to_sql()
+        );
+
+        assert_eq!(
+            "alias.column",
+            Expr::CompoundIdentifier {
+                alias: "alias".into(),
+                ident: "column".into()
+            }
+            .to_sql_unquoted()
         );
 
         let id_expr: Box<Expr> = Box::new(Expr::Identifier("id".to_owned()));

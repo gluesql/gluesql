@@ -654,7 +654,7 @@ mod tests {
     }
 
     #[test]
-    fn to_sql_unqouted_query() {
+    fn to_sql_unquoted_query() {
         let order_by = vec![OrderByExpr {
             expr: Expr::Identifier("name".to_owned()),
             asc: Some(true),
@@ -739,6 +739,54 @@ mod tests {
     }
 
     #[test]
+    fn to_sql_unquoted_set_expr() {
+        let actual = "SELECT * FROM FOO AS F INNER JOIN PlayerItem".to_owned();
+        let expected = SetExpr::Select(Box::new(Select {
+            projection: vec![SelectItem::Wildcard],
+            from: TableWithJoins {
+                relation: TableFactor::Table {
+                    name: "FOO".to_owned(),
+                    alias: Some(TableAlias {
+                        name: "F".to_owned(),
+                        columns: Vec::new(),
+                    }),
+                    index: None,
+                },
+                joins: vec![Join {
+                    relation: TableFactor::Table {
+                        name: "PlayerItem".to_owned(),
+                        alias: None,
+                        index: None,
+                    },
+                    join_operator: JoinOperator::Inner(JoinConstraint::None),
+                    join_executor: JoinExecutor::NestedLoop,
+                }],
+            },
+            selection: None,
+            group_by: Vec::new(),
+            having: None,
+        }))
+        .to_sql_unquoted();
+        assert_eq!(actual, expected);
+
+        let actual = "VALUES (1, 'glue', 3), (2, 'sql', 2)".to_owned(); // TODO: can we use identifer here?
+        let expected = SetExpr::Values(Values(vec![
+            vec![
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
+                Expr::Literal(AstLiteral::QuotedString("glue".to_owned())),
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("3").unwrap())),
+            ],
+            vec![
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())),
+                Expr::Literal(AstLiteral::QuotedString("sql".to_owned())),
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())),
+            ],
+        ]))
+        .to_sql_unquoted();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
     fn to_sql_select() {
         let actual =
             r#"SELECT * FROM "FOO" AS "F" GROUP BY "name" HAVING "name" = 'glue'"#.to_owned();
@@ -790,6 +838,56 @@ mod tests {
     }
 
     #[test]
+    fn to_sql_unquoted_select() {
+        let actual = "SELECT * FROM FOO AS F GROUP BY name HAVING name = 'glue'".to_owned();
+        let expected = Select {
+            projection: vec![SelectItem::Wildcard],
+            from: TableWithJoins {
+                relation: TableFactor::Table {
+                    name: "FOO".to_owned(),
+                    alias: Some(TableAlias {
+                        name: "F".to_owned(),
+                        columns: Vec::new(),
+                    }),
+                    index: None,
+                },
+                joins: Vec::new(),
+            },
+            selection: None,
+            group_by: vec![Expr::Identifier("name".to_owned())],
+            having: Some(Expr::BinaryOp {
+                left: Box::new(Expr::Identifier("name".to_owned())),
+                op: BinaryOperator::Eq,
+                right: Box::new(Expr::Literal(AstLiteral::QuotedString("glue".to_owned()))),
+            }),
+        }
+        .to_sql_unquoted();
+        assert_eq!(actual, expected);
+
+        let actual = "SELECT * FROM FOO WHERE name = 'glue'".to_owned();
+        let expected = Select {
+            projection: vec![SelectItem::Wildcard],
+            from: TableWithJoins {
+                relation: TableFactor::Table {
+                    name: "FOO".to_owned(),
+                    alias: None,
+                    index: None,
+                },
+                joins: Vec::new(),
+            },
+            selection: Some(Expr::BinaryOp {
+                left: Box::new(Expr::Identifier("name".to_owned())),
+                op: BinaryOperator::Eq,
+                right: Box::new(Expr::Literal(AstLiteral::QuotedString("glue".to_owned()))),
+            }),
+            group_by: Vec::new(),
+            having: None,
+        }
+        .to_sql_unquoted();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
     fn to_sql_select_item() {
         let actual = r#""name" AS "n""#.to_owned();
         let expected = SelectItem::Expr {
@@ -809,6 +907,21 @@ mod tests {
     }
 
     #[test]
+    fn to_sql_unquoted_select_item() {
+        let actual = "name AS n".to_owned();
+        let expected = SelectItem::Expr {
+            expr: Expr::Identifier("name".to_owned()),
+            label: "n".to_owned(),
+        }
+        .to_sql_unquoted();
+        assert_eq!(actual, expected);
+
+        let actual = "foo.*".to_owned();
+        let expected = SelectItem::QualifiedWildcard("foo".to_owned()).to_sql_unquoted();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
     fn to_sql_table_with_joins() {
         let actual = r#""FOO" AS "F""#;
         let expected = TableWithJoins {
@@ -823,6 +936,24 @@ mod tests {
             joins: Vec::new(),
         }
         .to_sql();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn to_sql_unquoted_table_with_joins() {
+        let actual = "FOO AS F";
+        let expected = TableWithJoins {
+            relation: TableFactor::Table {
+                name: "FOO".to_owned(),
+                alias: Some(TableAlias {
+                    name: "F".to_owned(),
+                    columns: Vec::new(),
+                }),
+                index: None,
+            },
+            joins: Vec::new(),
+        }
+        .to_sql_unquoted();
         assert_eq!(actual, expected);
     }
 
@@ -893,6 +1024,72 @@ mod tests {
     }
 
     #[test]
+    fn to_sql_unquoted_table_factor() {
+        let actual = "FOO AS F";
+        let expected = TableFactor::Table {
+            name: "FOO".to_owned(),
+            alias: Some(TableAlias {
+                name: "F".to_owned(),
+                columns: Vec::new(),
+            }),
+            index: None,
+        }
+        .to_sql_unquoted();
+        assert_eq!(actual, expected);
+
+        let actual = "(SELECT * FROM FOO) AS F";
+        let expected = TableFactor::Derived {
+            subquery: Query {
+                body: SetExpr::Select(Box::new(Select {
+                    projection: vec![SelectItem::Wildcard],
+                    from: TableWithJoins {
+                        relation: TableFactor::Table {
+                            name: "FOO".to_owned(),
+                            alias: None,
+                            index: None,
+                        },
+                        joins: Vec::new(),
+                    },
+                    selection: None,
+                    group_by: Vec::new(),
+                    having: None,
+                })),
+                order_by: Vec::new(),
+                limit: None,
+                offset: None,
+            },
+            alias: TableAlias {
+                name: "F".to_owned(),
+                columns: Vec::new(),
+            },
+        }
+        .to_sql_unquoted();
+        assert_eq!(actual, expected);
+
+        let actual = "SERIES(3) AS S";
+        let expected = TableFactor::Series {
+            alias: TableAlias {
+                name: "S".to_owned(),
+                columns: Vec::new(),
+            },
+            size: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("3").unwrap())),
+        }
+        .to_sql_unquoted();
+        assert_eq!(actual, expected);
+
+        let actual = "GLUE_TABLES AS glue";
+        let expected = TableFactor::Dictionary {
+            dict: Dictionary::GlueTables,
+            alias: TableAlias {
+                name: "glue".to_owned(),
+                columns: Vec::new(),
+            },
+        }
+        .to_sql_unquoted();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
     fn to_sql_table_alias() {
         let actual = r#"AS "F""#;
         let expected = TableAlias {
@@ -900,6 +1097,17 @@ mod tests {
             columns: Vec::new(),
         }
         .to_sql();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn to_sql_unquoted_table_alias() {
+        let actual = "AS F";
+        let expected = TableAlias {
+            name: "F".to_owned(),
+            columns: Vec::new(),
+        }
+        .to_sql_unquoted();
         assert_eq!(actual, expected);
     }
 
@@ -986,6 +1194,88 @@ mod tests {
     }
 
     #[test]
+    fn to_sql_unquoted_join() {
+        let actual = "INNER JOIN PlayerItem";
+        let expected = Join {
+            relation: TableFactor::Table {
+                name: "PlayerItem".to_owned(),
+                alias: None,
+                index: None,
+            },
+            join_operator: JoinOperator::Inner(JoinConstraint::None),
+            join_executor: JoinExecutor::NestedLoop,
+        }
+        .to_sql_unquoted();
+        assert_eq!(actual, expected);
+
+        let actual = "INNER JOIN PlayerItem ON PlayerItem.user_id = Player.id";
+        let expected = Join {
+            relation: TableFactor::Table {
+                name: "PlayerItem".to_owned(),
+                alias: None,
+                index: None,
+            },
+            join_operator: JoinOperator::Inner(JoinConstraint::On(expr(
+                "PlayerItem.user_id = Player.id",
+            ))),
+            join_executor: JoinExecutor::NestedLoop,
+        }
+        .to_sql_unquoted();
+        assert_eq!(actual, expected);
+
+        let actual = "LEFT OUTER JOIN PlayerItem";
+        let expected = Join {
+            relation: TableFactor::Table {
+                name: "PlayerItem".to_owned(),
+                alias: None,
+                index: None,
+            },
+            join_operator: JoinOperator::LeftOuter(JoinConstraint::None),
+            join_executor: JoinExecutor::NestedLoop,
+        }
+        .to_sql_unquoted();
+        assert_eq!(actual, expected);
+
+        let actual = "LEFT OUTER JOIN PlayerItem ON PlayerItem.user_id = Player.id";
+        let expected = Join {
+            relation: TableFactor::Table {
+                name: "PlayerItem".to_owned(),
+                alias: None,
+                index: None,
+            },
+            join_operator: JoinOperator::LeftOuter(JoinConstraint::None),
+            join_executor: JoinExecutor::Hash {
+                key_expr: expr("PlayerItem.user_id"),
+                value_expr: expr("Player.id"),
+                where_clause: None,
+            },
+        }
+        .to_sql_unquoted();
+        assert_eq!(actual, expected);
+
+        let actual = "LEFT OUTER JOIN PlayerItem ON PlayerItem.age > Player.age AND PlayerItem.user_id = Player.id AND PlayerItem.amount > 10 AND PlayerItem.amount * 3 <= 2";
+        let expected = Join {
+            relation: TableFactor::Table {
+                name: "PlayerItem".to_owned(),
+                alias: None,
+                index: None,
+            },
+            join_operator: JoinOperator::LeftOuter(JoinConstraint::On(expr(
+                "PlayerItem.age > Player.age",
+            ))),
+            join_executor: JoinExecutor::Hash {
+                key_expr: expr("PlayerItem.user_id"),
+                value_expr: expr("Player.id"),
+                where_clause: Some(expr(
+                    "PlayerItem.amount > 10 AND PlayerItem.amount * 3 <= 2",
+                )),
+            },
+        }
+        .to_sql_unquoted();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
     fn to_sql_order_by_expr() {
         let actual = r#""foo" ASC"#;
         let expected = OrderByExpr {
@@ -1009,6 +1299,33 @@ mod tests {
             asc: None,
         }
         .to_sql();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn to_sql_unquoted_order_by_expr() {
+        let actual = "foo ASC";
+        let expected = OrderByExpr {
+            expr: Expr::Identifier("foo".to_owned()),
+            asc: Some(true),
+        }
+        .to_sql_unquoted();
+        assert_eq!(actual, expected);
+
+        let actual = "foo DESC";
+        let expected = OrderByExpr {
+            expr: Expr::Identifier("foo".to_owned()),
+            asc: Some(false),
+        }
+        .to_sql_unquoted();
+        assert_eq!(actual, expected);
+
+        let actual = "foo";
+        let expected = OrderByExpr {
+            expr: Expr::Identifier("foo".to_owned()),
+            asc: None,
+        }
+        .to_sql_unquoted();
         assert_eq!(actual, expected);
     }
 }
