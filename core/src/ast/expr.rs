@@ -201,12 +201,16 @@ impl Expr {
                     .collect::<Vec<_>>()
                     .join("\n");
 
-                let else_result = match else_result {
-                    Some(else_result) => format!("ELSE {}", else_result.to_sql_with(qouted)),
-                    None => String::new(),
-                };
+                let else_result = else_result
+                    .as_ref()
+                    .map(|else_result| format!("ELSE {}", else_result.to_sql_with(qouted)));
 
-                [operand, when_then, else_result, "END".to_owned()].join("\n")
+                match else_result {
+                    Some(else_result) => {
+                        [operand, when_then, else_result, "END".to_owned()].join("\n")
+                    }
+                    None => [operand, when_then, "END".to_owned()].join("\n"),
+                }
             }
             Expr::Aggregate(a) => a.to_sql(),
             Expr::Function(func) => func.to_sql(),
@@ -353,6 +357,7 @@ mod tests {
             }
             .to_sql()
         );
+
         assert_eq!(
             r#""id" NOT LIKE '%abc'"#,
             Expr::Like {
@@ -372,6 +377,7 @@ mod tests {
             }
             .to_sql()
         );
+
         assert_eq!(
             r#""id" NOT ILIKE '%abc_'"#,
             Expr::ILike {
@@ -572,6 +578,30 @@ mod tests {
         );
 
         assert_eq!(
+            trim(
+                r#"CASE "id"
+                  WHEN 1 THEN 'a'
+                  WHEN 2 THEN 'b'
+                END"#,
+            ),
+            Expr::Case {
+                operand: Some(Box::new(Expr::Identifier("id".to_owned()))),
+                when_then: vec![
+                    (
+                        Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
+                        Expr::Literal(AstLiteral::QuotedString("a".to_owned()))
+                    ),
+                    (
+                        Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())),
+                        Expr::Literal(AstLiteral::QuotedString("b".to_owned()))
+                    )
+                ],
+                else_result: None,
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
             r#""choco"[1][2]"#,
             Expr::ArrayIndex {
                 obj: Box::new(Expr::Identifier("choco".to_owned())),
@@ -596,6 +626,7 @@ mod tests {
             }
             .to_sql()
         );
+
         assert_eq!(
             "INTERVAL '3-5' HOUR TO MINUTE",
             &Expr::Interval {
