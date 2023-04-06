@@ -128,4 +128,7 @@ pub enum TranslateError {
 
     #[error("cannot drop primary index")]
     CannotDropPrimary,
+
+    #[error("unsupported recursive cte")]
+    UnsupportedRecursiveCte,
 }
