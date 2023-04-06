@@ -196,7 +196,7 @@ mod tests {
         assert_eq!(
             Value::U128(128).try_into(),
             Ok(Expr::Literal(AstLiteral::Number(
-                BigDecimal::from_u32(128).unwrap()
+                BigDecimal::from_u128(128).unwrap()
             )))
         );
 
