@@ -12,8 +12,7 @@ use {
 #[async_trait(?Send)]
 impl AlterTable for MemoryStorage {
     async fn rename_schema(&mut self, table_name: &str, new_table_name: &str) -> Result<()> {
-        let mut item = self
-            .items
+        let mut item = (self.items)
             .remove(table_name)
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
 
@@ -29,14 +28,11 @@ impl AlterTable for MemoryStorage {
         old_column_name: &str,
         new_column_name: &str,
     ) -> Result<()> {
-        let item = self
-            .items
+        let item = (self.items)
             .get_mut(table_name)
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
 
-        let column_defs = item
-            .schema
-            .column_defs
+        let column_defs = (item.schema.column_defs)
             .as_mut()
             .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.to_owned()))?;
 
@@ -58,14 +54,11 @@ impl AlterTable for MemoryStorage {
     }
 
     async fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
-        let item = self
-            .items
+        let item = (self.items)
             .get_mut(table_name)
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
 
-        let column_defs = item
-            .schema
-            .column_defs
+        let column_defs = (item.schema.column_defs)
             .as_mut()
             .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.to_owned()))?;
 
@@ -121,14 +114,11 @@ impl AlterTable for MemoryStorage {
         column_name: &str,
         if_exists: bool,
     ) -> Result<()> {
-        let item = self
-            .items
+        let item = (self.items)
             .get_mut(table_name)
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
 
-        let column_defs = item
-            .schema
-            .column_defs
+        let column_defs = (item.schema.column_defs)
             .as_mut()
             .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.to_owned()))?;
 

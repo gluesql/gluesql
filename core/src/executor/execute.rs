@@ -147,10 +147,11 @@ async fn execute_inner<T: GStore + GStoreMut>(
             selection,
             assignments,
         } => {
-            let Schema { column_defs, .. } = storage
+            let Some(Schema { column_defs, .. }) = storage
                 .fetch_schema(table_name)
-                .await?
-                .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
+                .await? else {
+                    return Err(ExecuteError::TableNotFound(table_name.to_owned()).into());
+                };
 
             let all_columns = column_defs.as_deref().map(|columns| {
                 columns
@@ -239,10 +240,11 @@ async fn execute_inner<T: GStore + GStoreMut>(
             }
         }
         Statement::ShowColumns { table_name } => {
-            let Schema { column_defs, .. } = storage
+            let Some(Schema { column_defs, .. }) = storage
                 .fetch_schema(table_name)
-                .await?
-                .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
+                .await? else{
+                    return Err( ExecuteError::TableNotFound(table_name.to_owned()).into());
+                };
 
             let output: Vec<(String, DataType)> = column_defs
                 .unwrap_or_default()
