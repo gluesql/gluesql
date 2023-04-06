@@ -1287,6 +1287,14 @@ mod tests {
         test!(multiply U64(3),   U8(2)     => U64(6));
         test!(multiply U64(3),   F64(2.0)  => F64(6.0));
 
+        test!(multiply U128(3),   I8(2)     => U128(6));
+        test!(multiply U128(3),   I16(2)    => U128(6));
+        test!(multiply U128(3),   I32(2)    => U128(6));
+        test!(multiply U128(3),   I64(2)    => U128(6));
+        test!(multiply U128(3),   I128(2)   => U128(6));
+        test!(multiply U128(3),   U8(2)     => U128(6));
+        test!(multiply U128(3),   F64(2.0)  => F64(6.0));
+
         test!(multiply F64(3.0), F64(2.0) => F64(6.0));
         test!(multiply F64(3.0), I8(2)    => F64(6.0));
         test!(multiply F64(3.0), I32(2)   => F64(6.0));
