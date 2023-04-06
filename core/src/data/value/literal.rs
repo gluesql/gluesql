@@ -551,7 +551,7 @@ mod tests {
 
         assert_eq!(Value::Bool(true), Literal::Boolean(true));
         assert_eq!(Value::I8(8), num!("8"));
-        assert_eq!(Value::I32(32), num!("32")); // should this work?
+        assert_eq!(Value::I32(32), num!("32"));
         assert_eq!(Value::I16(16), num!("16"));
         assert_eq!(Value::I32(32), num!("32"));
         assert_eq!(Value::I64(64), num!("64"));
