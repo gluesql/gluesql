@@ -492,6 +492,15 @@ mod tests {
 
         assert!(Key::U16(10) > Key::U16(3));
         assert!(Key::U16(1) > Key::Decimal(dec("1")));
+        
+        assert!(Key::U32(10) > Key::U16(3));
+        assert!(Key::U32(1) > Key::Decimal(dec("1")));
+
+        assert!(Key::U64(10) > Key::U64(3));
+        assert!(Key::U64(1) > Key::Decimal(dec("1")));
+
+        assert!(Key::U128(10) > Key::U128(3));
+        assert!(Key::U128(1) > Key::Decimal(dec("1")));
 
         assert!(Key::Decimal(dec("123.45")) > Key::Decimal(dec("0.11")));
         assert!(Key::Decimal(dec("1")) > Key::Bool(true));
@@ -812,6 +821,9 @@ mod tests {
         assert_eq!(Value::from(Key::I128(32)), Value::I128(32));
         assert_eq!(Value::from(Key::U8(64)), Value::U8(64));
         assert_eq!(Value::from(Key::U16(128)), Value::U16(128));
+        assert_eq!(Value::from(Key::U32(128)), Value::U32(128));
+        assert_eq!(Value::from(Key::U64(128)), Value::U64(128));
+        assert_eq!(Value::from(Key::U128(128)), Value::U128(128));
         assert_eq!(Value::from(Key::F64(1.0.into())), Value::F64(1.0));
         assert_eq!(
             Value::from(Key::Decimal(Decimal::from_str("123.45").unwrap())),
