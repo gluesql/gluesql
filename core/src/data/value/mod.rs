@@ -1717,6 +1717,30 @@ mod tests {
         cast!(Str("11".to_owned())  => Uint8, U8(11));
         cast!(Null                  => Uint8, Null);
 
+        cast!(Bool(true)            => Uint16, U16(1));
+        cast!(Bool(false)           => Uint16, U16(0));
+        cast!(F64(1.1)              => Uint16, U16(1));
+        cast!(Str("11".to_owned())  => Uint16, U16(11));
+        cast!(Null                  => Uint16, Null);
+
+        cast!(Bool(true)            => Uint32, U32(1));
+        cast!(Bool(false)           => Uint32, U32(0));
+        cast!(F64(1.1)              => Uint32, U32(1));
+        cast!(Str("11".to_owned())  => Uint32, U32(11));
+        cast!(Null                  => Uint32, Null);
+
+        cast!(Bool(true)            => Uint64, U64(1));
+        cast!(Bool(false)           => Uint64, U64(0));
+        cast!(F64(1.1)              => Uint64, U64(1));
+        cast!(Str("11".to_owned())  => Uint64, U64(11));
+        cast!(Null                  => Uint64, Null);
+
+        cast!(Bool(true)            => Uint128, U128(1));
+        cast!(Bool(false)           => Uint128, U128(0));
+        cast!(F64(1.1)              => Uint128, U128(1));
+        cast!(Str("11".to_owned())  => Uint128, U128(11));
+        cast!(Null                  => Uint128, Null);
+
         // Float
         cast!(Bool(true)            => Float, F64(1.0));
         cast!(Bool(false)           => Float, F64(0.0));
@@ -1727,6 +1751,9 @@ mod tests {
         cast!(I128(1)               => Float, F64(1.0));
         cast!(U8(1)                 => Float, F64(1.0));
         cast!(U16(1)                 => Float, F64(1.0));
+        cast!(U32(1)                 => Float, F64(1.0));
+        cast!(U64(1)                 => Float, F64(1.0));
+        cast!(U128(1)                 => Float, F64(1.0));
         cast!(Str("11".to_owned())  => Float, F64(11.0));
         cast!(Null                  => Float, Null);
 
@@ -1740,6 +1767,9 @@ mod tests {
         cast!(I128(11)        => Text, Str("11".to_owned()));
         cast!(U8(11)        => Text, Str("11".to_owned()));
         cast!(U16(11)        => Text, Str("11".to_owned()));
+        cast!(U32(11)        => Text, Str("11".to_owned()));
+        cast!(U64(11)        => Text, Str("11".to_owned()));
+        cast!(U128(11)        => Text, Str("11".to_owned()));
         cast!(F64(1.0)      => Text, Str("1".to_owned()));
         cast!(inet("::1")    => Text, Str("::1".to_owned()));
 
@@ -1813,6 +1843,9 @@ mod tests {
         assert_eq!(Str("A".to_owned()).concat(I128(1)), Str("A1".to_owned()));
         assert_eq!(Str("A".to_owned()).concat(U8(1)), Str("A1".to_owned()));
         assert_eq!(Str("A".to_owned()).concat(U16(1)), Str("A1".to_owned()));
+        assert_eq!(Str("A".to_owned()).concat(U32(1)), Str("A1".to_owned()));
+        assert_eq!(Str("A".to_owned()).concat(U64(1)), Str("A1".to_owned()));
+        assert_eq!(Str("A".to_owned()).concat(U128(1)), Str("A1".to_owned()));
         assert_eq!(Str("A".to_owned()).concat(F64(1.0)), Str("A1".to_owned()));
         assert_eq!(
             List(vec![I64(1)]).concat(List(vec![I64(2)])),
