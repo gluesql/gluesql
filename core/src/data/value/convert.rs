@@ -840,6 +840,11 @@ mod tests {
         test!(Value::I32(3), Err(ValueError::ImpossibleCast.into()));
         test!(Value::I64(3), Err(ValueError::ImpossibleCast.into()));
         test!(Value::I128(3), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::U8(3), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::U16(3), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::U32(3), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::U64(3), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::U128(3), Err(ValueError::ImpossibleCast.into()));
         test!(
             Value::Inet(IpAddr::from_str("::1").unwrap()),
             Err(ValueError::ImpossibleCast.into())
@@ -1560,6 +1565,9 @@ mod tests {
         test!(Value::I128(122), Ok(122));
         test!(Value::U8(122), Ok(122));
         test!(Value::U16(122), Ok(122));
+        test!(Value::U32(122), Ok(122));
+        test!(Value::U64(122), Ok(122));
+        test!(Value::U128(122), Ok(122));
         test!(Value::I64(1234567890), Ok(1234567890));
         test!(Value::F64(1234567890.0), Ok(1234567890));
         test!(Value::F64(1234567890.1), Ok(1234567890));
