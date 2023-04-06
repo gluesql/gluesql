@@ -492,7 +492,7 @@ mod tests {
 
         assert!(Key::U16(10) > Key::U16(3));
         assert!(Key::U16(1) > Key::Decimal(dec("1")));
-        
+
         assert!(Key::U32(10) > Key::U16(3));
         assert!(Key::U32(1) > Key::Decimal(dec("1")));
 
