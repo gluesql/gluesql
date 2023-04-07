@@ -808,6 +808,7 @@ dependencies = [
  "edit",
  "futures",
  "gluesql-core",
+ "gluesql-json-storage",
  "gluesql_memory_storage",
  "gluesql_sled_storage",
  "itertools",
