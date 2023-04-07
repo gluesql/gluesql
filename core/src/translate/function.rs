@@ -503,17 +503,17 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::Append { expr, value })))
         }
-        "ST_X" => {
+        "GET_X" => {
             check_len(name, args.len(), 1)?;
 
             let expr = translate_expr(args[0])?;
-            Ok(Expr::Function(Box::new(Function::StX(expr))))
+            Ok(Expr::Function(Box::new(Function::GetX(expr))))
         }
-        "ST_Y" => {
+        "GET_Y" => {
             check_len(name, args.len(), 1)?;
 
             let expr = translate_expr(args[0])?;
-            Ok(Expr::Function(Box::new(Function::StY(expr))))
+            Ok(Expr::Function(Box::new(Function::GetY(expr))))
         }
         "ST_GEOFROMTEXT" => {
             check_len(name, args.len(), 1)?;

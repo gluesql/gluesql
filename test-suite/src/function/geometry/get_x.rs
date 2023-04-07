@@ -1,36 +1,34 @@
 use {
     crate::*,
-    gluesql_core::{
-        executor::{EvaluateError, Payload},
-        prelude::Value::*,
-    },
+    gluesql_core::{executor::EvaluateError, executor::Payload, prelude::Value::*},
 };
 
-test_case!(st_y, async move {
+test_case!(get_x, async move {
     let test_cases = [
         (
-            "CREATE TABLE SingleItem (id FLOAT DEFAULT ST_Y(POINT(0.3134, 0.156)))",
+            "CREATE TABLE SingleItem (id FLOAT DEFAULT GET_X(POINT(0.3134, 0.156)))",
             Ok(Payload::Create),
         ),
         (
-            r#"SELECT ST_Y(ST_GEOFROMTEXT('POINT(0.1 -0.2)')) AS ptx"#,
+            r#"SELECT GET_X(ST_GEOFROMTEXT('POINT(0.1 -0.2)')) AS ptx"#,
             Ok(select!(
                 ptx
                 F64;
-                -0.2
+                0.1
+
             )),
         ),
         (
-            r#"SELECT ST_Y(POINT(0.1, -0.2)) AS ptx"#,
+            r#"SELECT GET_X(POINT(0.1, -0.2)) AS ptx"#,
             Ok(select!(
                 ptx
                 F64;
-                -0.2
+                0.1
             )),
         ),
         (
-            r#"SELECT ST_Y('cheese') AS ptx"#,
-            Err(EvaluateError::FunctionRequiresPointValue("ST_Y".to_owned()).into()),
+            r#"SELECT GET_X('cheese') AS ptx"#,
+            Err(EvaluateError::FunctionRequiresPointValue("GET_X".to_owned()).into()),
         ),
         (
             "CREATE TABLE POINT (point_field POINT)",
@@ -41,11 +39,11 @@ test_case!(st_y, async move {
             Ok(Payload::Insert(1)),
         ),
         (
-            r#"SELECT ST_Y(point_field) AS point_field FROM POINT;"#,
+            r#"SELECT GET_X(point_field) AS point_field FROM POINT;"#,
             Ok(select!(
                 point_field
                 F64;
-                0.156
+                0.3134
             )),
         ),
     ];

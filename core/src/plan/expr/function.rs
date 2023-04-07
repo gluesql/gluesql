@@ -52,8 +52,8 @@ impl Function {
             | Self::Reverse(expr)
             | Self::Cast { expr, .. }
             | Self::Extract { expr, .. }
-            | Self::StX(expr)
-            | Self::StY(expr)
+            | Self::GetX(expr)
+            | Self::GetY(expr)
             | Self::StGeomFromText(expr) => Exprs::Single([expr].into_iter()),
             Self::Left { expr, size: expr2 }
             | Self::Right { expr, size: expr2 }

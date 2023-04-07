@@ -149,8 +149,8 @@ pub enum Function {
         expr: Expr,
         value: Expr,
     },
-    StX(Expr),
-    StY(Expr),
+    GetX(Expr),
+    GetY(Expr),
     StGeomFromText(Expr),
     Point(Expr, Expr),
 }
@@ -328,8 +328,8 @@ impl ToSql for Function {
                     value = value.to_sql()
                 )
             }
-            Function::StX(e) => format!("ST_X({})", e.to_sql()),
-            Function::StY(e) => format!("ST_Y({})", e.to_sql()),
+            Function::GetX(e) => format!("GET_X({})", e.to_sql()),
+            Function::GetY(e) => format!("GET_Y({})", e.to_sql()),
             Function::StGeomFromText(e) => format!("ST_GEOFROMTEXT({})", e.to_sql()),
             Function::Point(x, y) => format!("POINT({}, {})", x.to_sql(), y.to_sql()),
         }
@@ -954,16 +954,16 @@ mod tests {
         );
 
         assert_eq!(
-            "ST_X(point)",
-            &Expr::Function(Box::new(Function::StX(Expr::Identifier(
+            "GET_X(point)",
+            &Expr::Function(Box::new(Function::GetX(Expr::Identifier(
                 "point".to_owned()
             ))))
             .to_sql()
         );
 
         assert_eq!(
-            "ST_Y(point)",
-            &Expr::Function(Box::new(Function::StY(Expr::Identifier(
+            "GET_Y(point)",
+            &Expr::Function(Box::new(Function::GetY(Expr::Identifier(
                 "point".to_owned()
             ))))
             .to_sql()

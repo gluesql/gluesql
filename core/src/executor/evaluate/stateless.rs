@@ -403,8 +403,8 @@ fn evaluate_function<'a>(context: &Context<'_>, func: &'a Function) -> Result<Ev
 
             f::point(x, y)
         }
-        Function::StX(expr) => f::stx(name, eval(expr)?),
-        Function::StY(expr) => f::sty(name, eval(expr)?),
+        Function::GetX(expr) => f::getx(name, eval(expr)?),
+        Function::GetY(expr) => f::gety(name, eval(expr)?),
         Function::StGeomFromText(expr) => f::stgeofromtext(name, eval(expr)?),
     }
 }
