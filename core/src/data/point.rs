@@ -17,14 +17,6 @@ impl Point {
         Self { x, y }
     }
 
-    pub fn x(&self) -> f64 {
-        self.x
-    }
-
-    pub fn y(&self) -> f64 {
-        self.y
-    }
-
     pub fn from_wkt(v: &str) -> Result<Self> {
         let re = Regex::new(r"POINT\s*\(\s*(-?\d*\.?\d+)\s+(-?\d*\.?\d+)\s*\)").unwrap();
 

@@ -589,14 +589,14 @@ pub fn point<'a>(x: Evaluated<'_>, y: Evaluated<'_>) -> Result<Evaluated<'a>> {
 
 pub fn stx<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
     match expr.try_into()? {
-        Value::Point(v) => Ok(Evaluated::from(Value::F64(v.x()))),
+        Value::Point(v) => Ok(Evaluated::from(Value::F64(v.x))),
         _ => Err(EvaluateError::FunctionRequiresPointValue(name).into()),
     }
 }
 
 pub fn sty<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
     match expr.try_into()? {
-        Value::Point(v) => Ok(Evaluated::from(Value::F64(v.y()))),
+        Value::Point(v) => Ok(Evaluated::from(Value::F64(v.y))),
         _ => Err(EvaluateError::FunctionRequiresPointValue(name).into()),
     }
 }
