@@ -1617,22 +1617,26 @@ mod tests {
             };
         }
 
-        test!(Value::Bool(true), Ok(1));
-        test!(Value::Bool(false), Ok(0));
-        test!(Value::I8(122), Ok(122));
-        test!(Value::I16(122), Ok(122));
-        test!(Value::I32(122), Ok(122));
-        test!(Value::I64(122), Ok(122));
-        test!(Value::I128(122), Ok(122));
-        test!(Value::U8(122), Ok(122));
-        test!(Value::U16(122), Ok(122));
-        test!(Value::U32(122), Ok(122));
-        test!(Value::U64(122), Ok(122));
-        test!(Value::U128(122), Ok(122));
-        test!(Value::F64(122.0), Ok(122));
-        test!(Value::F64(122.1), Ok(122));
-        test!(Value::Str("122".to_owned()), Ok(122));
-        test!(Value::Decimal(Decimal::new(122, 0)), Ok(122));
+        test!(Value::Bool(true), Ok(Decimal::new(1, 0)));
+        test!(Value::Bool(false), Ok(Decimal::new(0, 0)));
+        test!(Value::I8(122), Ok(Decimal::new(122, 0)));
+        test!(Value::I16(122), Ok(Decimal::new(122, 0)));
+        test!(Value::I32(122), Ok(Decimal::new(122, 0)));
+        test!(Value::I64(122), Ok(Decimal::new(122, 0)));
+        test!(Value::I128(122), Ok(Decimal::new(122, 0)));
+        test!(Value::U8(122), Ok(Decimal::new(122, 0)));
+        test!(Value::U16(122), Ok(Decimal::new(122, 0)));
+        test!(Value::U32(122), Ok(Decimal::new(122, 0)));
+        test!(Value::U64(122), Ok(Decimal::new(122, 0)));
+        test!(Value::U128(122), Ok(Decimal::new(122, 0)));
+        test!(Value::F64(122.0), Ok(Decimal::new(122, 0)));
+        test!(Value::F64(122.1), Ok(Decimal::new(1221, 1)));
+        test!(Value::Str("122".to_owned()), Ok(Decimal::new(122, 0)));
+        test!(
+            Value::Decimal(Decimal::new(122, 0)),
+            Ok(Decimal::new(122, 0))
+        );
+
         test!(
             Value::Date(date(2021, 11, 20)),
             Err(ValueError::ImpossibleCast.into())
@@ -1650,6 +1654,10 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
+            Value::Uuid(195965723427462096757863453463987888808),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
             Value::Map(HashMap::new()),
             Err(ValueError::ImpossibleCast.into())
         );
@@ -1658,18 +1666,8 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
-        let uuid = 195965723427462096757863453463987888808;
-        assert_eq!((&Value::Uuid(uuid)).try_into() as Result<u128>, Ok(uuid));
-        assert_eq!(u128::try_from(&Value::Uuid(uuid)), Ok(uuid));
-
-        let ip = Ipv6Addr::from(9876543210);
-        assert_eq!(
-            u128::try_from(&Value::Inet(IpAddr::V6(ip))),
-            Ok(u128::from(ip))
-        );
-
-        assert_eq!(
-            u128::try_from(&Value::Date(date(2021, 11, 20))),
+        test!(
+            Value::Inet(IpAddr::from_str("::1").unwrap()),
             Err(ValueError::ImpossibleCast.into())
         );
     }
