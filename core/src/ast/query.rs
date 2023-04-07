@@ -206,9 +206,20 @@ impl ToSqlUnquoted for SetExpr {
 
 impl SetExpr {
     fn to_sql_with(&self, qouted: bool) -> String {
+        enum Ast<'a> {
+            Select(&'a Select),
+            Values(&'a Values),
+        }
+        let to_sql = |ast: Ast| match (qouted, ast) {
+            (true, Ast::Select(select)) => select.to_sql(),
+            (true, Ast::Values(values)) => values.to_sql(),
+            (false, Ast::Select(select)) => select.to_sql_unquoted(),
+            (false, Ast::Values(values)) => values.to_sql_unquoted(),
+        };
+
         match self {
-            SetExpr::Select(expr) => expr.to_sql_with(qouted),
-            SetExpr::Values(value) => format!("VALUES {}", value.to_sql_with(qouted)),
+            SetExpr::Select(expr) => to_sql(Ast::Select(expr)),
+            SetExpr::Values(value) => format!("VALUES {}", to_sql(Ast::Values(value))),
         }
     }
 }
@@ -429,6 +440,17 @@ impl ToSqlUnquoted for Join {
 
 impl Join {
     fn to_sql_with(&self, qouted: bool) -> String {
+        enum Ast<'a> {
+            JoinConstraint(&'a JoinConstraint),
+            JoinExecutor(&'a JoinExecutor),
+        }
+        let to_sql = |ast: Ast| match (qouted, ast) {
+            (true, Ast::JoinConstraint(join_constraint)) => join_constraint.to_sql(),
+            (true, Ast::JoinExecutor(join_executor)) => join_executor.to_sql(),
+            (false, Ast::JoinConstraint(join_constraint)) => join_constraint.to_sql_unquoted(),
+            (false, Ast::JoinExecutor(join_executor)) => join_executor.to_sql_unquoted(),
+        };
+
         let Join {
             relation,
             join_operator,
@@ -438,8 +460,8 @@ impl Join {
         match join_operator {
             JoinOperator::Inner(constraint) => {
                 let constraint = vec![
-                    constraint.to_sql_with(qouted),
-                    join_executor.to_sql_with(qouted),
+                    to_sql(Ast::JoinConstraint(constraint)),
+                    to_sql(Ast::JoinExecutor(join_executor)),
                 ]
                 .iter()
                 .filter(|sql| !sql.is_empty())
