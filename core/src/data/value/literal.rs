@@ -986,4 +986,6 @@ mod tests {
             Value::Inet(IpAddr::from_str("::1").unwrap())
         );
     }
+    #[test]
+    fn partial_cmp() {}
 }
