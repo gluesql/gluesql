@@ -502,6 +502,8 @@ impl Value {
 
 #[cfg(test)]
 mod tests {
+    use std::cmp::Ordering;
+
     use {
         crate::{data::Literal, prelude::Value},
         bigdecimal::BigDecimal,
@@ -987,5 +989,27 @@ mod tests {
         );
     }
     #[test]
-    fn partial_cmp() {}
+    fn partial_cmp() {
+        use {
+            super::parse_uuid,
+            std::{borrow::Cow, str::FromStr},
+        };
+
+        macro_rules! num {
+            ($num: expr) => {
+                Literal::Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
+            };
+        }
+
+        macro_rules! text {
+            ($text: expr) => {
+                Literal::Text(Cow::Owned($text.to_owned()))
+            };
+        }
+
+        test!(
+            DataType::U32(10).partial_cmp(num!("5")),
+            Some(Ordering::Greater)
+        );
+    }
 }
