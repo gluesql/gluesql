@@ -1006,6 +1006,7 @@ mod tests {
             "AVG(pay)",
             &Expr::Aggregate(Box::new(Aggregate::Avg(Expr::Identifier("pay".to_owned())))).to_sql()
         );
+
         assert_eq!(
             "VARIANCE(pay)",
             &Expr::Aggregate(Box::new(Aggregate::Variance(Expr::Identifier(
@@ -1013,6 +1014,7 @@ mod tests {
             ))))
             .to_sql()
         );
+
         assert_eq!(
             "STDEV(total)",
             &Expr::Aggregate(Box::new(Aggregate::Stdev(Expr::Identifier(
