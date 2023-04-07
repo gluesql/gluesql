@@ -206,20 +206,11 @@ impl ToSqlUnquoted for SetExpr {
 
 impl SetExpr {
     fn to_sql_with(&self, qouted: bool) -> String {
-        enum Ast<'a> {
-            Select(&'a Select),
-            Values(&'a Values),
-        }
-        let to_sql = |ast: Ast| match (qouted, ast) {
-            (true, Ast::Select(select)) => select.to_sql(),
-            (true, Ast::Values(values)) => values.to_sql(),
-            (false, Ast::Select(select)) => select.to_sql_unquoted(),
-            (false, Ast::Values(values)) => values.to_sql_unquoted(),
-        };
-
-        match self {
-            SetExpr::Select(expr) => to_sql(Ast::Select(expr)),
-            SetExpr::Values(value) => format!("VALUES {}", to_sql(Ast::Values(value))),
+        match (self, qouted) {
+            (SetExpr::Select(select), true) => select.to_sql(),
+            (SetExpr::Select(select), false) => select.to_sql_unquoted(),
+            (SetExpr::Values(values), true) => format!("VALUES {}", values.to_sql()),
+            (SetExpr::Values(values), false) => format!("VALUES {}", values.to_sql_unquoted()),
         }
     }
 }
@@ -440,58 +431,37 @@ impl ToSqlUnquoted for Join {
 
 impl Join {
     fn to_sql_with(&self, qouted: bool) -> String {
-        enum Ast<'a> {
-            JoinConstraint(&'a JoinConstraint),
-            JoinExecutor(&'a JoinExecutor),
-        }
-        let to_sql = |ast: Ast| match (qouted, ast) {
-            (true, Ast::JoinConstraint(join_constraint)) => join_constraint.to_sql(),
-            (true, Ast::JoinExecutor(join_executor)) => join_executor.to_sql(),
-            (false, Ast::JoinConstraint(join_constraint)) => join_constraint.to_sql_unquoted(),
-            (false, Ast::JoinExecutor(join_executor)) => join_executor.to_sql_unquoted(),
-        };
-
         let Join {
             relation,
             join_operator,
             join_executor,
         } = self;
 
-        match join_operator {
-            JoinOperator::Inner(constraint) => {
-                let constraint = vec![
-                    to_sql(Ast::JoinConstraint(constraint)),
-                    to_sql(Ast::JoinExecutor(join_executor)),
-                ]
-                .iter()
-                .filter(|sql| !sql.is_empty())
-                .join(" AND ");
-                if constraint.is_empty() {
-                    format!("INNER JOIN {}", relation.to_sql_with(qouted))
-                } else {
-                    format!(
-                        "INNER JOIN {} ON {constraint}",
-                        relation.to_sql_with(qouted)
-                    )
-                }
-            }
-            JoinOperator::LeftOuter(constraint) => {
-                let constraint = vec![
-                    constraint.to_sql_with(qouted),
-                    join_executor.to_sql_with(qouted),
-                ]
-                .iter()
-                .filter(|sql| !sql.is_empty())
-                .join(" AND ");
-                if constraint.is_empty() {
-                    format!("LEFT OUTER JOIN {}", relation.to_sql_with(qouted))
-                } else {
-                    format!(
-                        "LEFT OUTER JOIN {} ON {constraint}",
-                        relation.to_sql_with(qouted)
-                    )
-                }
-            }
+        let (join_operator, join_constraint) = match join_operator {
+            JoinOperator::Inner(join_constraint) => ("INNER JOIN", join_constraint),
+            JoinOperator::LeftOuter(join_constraint) => ("LEFT OUTER JOIN", join_constraint),
+        };
+
+        let (join_constraint, join_executor) = match qouted {
+            true => (join_constraint.to_sql(), join_executor.to_sql()),
+            false => (
+                join_constraint.to_sql_unquoted(),
+                join_executor.to_sql_unquoted(),
+            ),
+        };
+
+        let join_constraints = vec![join_constraint, join_executor]
+            .iter()
+            .filter(|sql| !sql.is_empty())
+            .join(" AND ");
+
+        if join_constraints.is_empty() {
+            format!("{join_operator} {}", relation.to_sql_with(qouted))
+        } else {
+            format!(
+                "{join_operator} {} ON {join_constraints}",
+                relation.to_sql_with(qouted)
+            )
         }
     }
 }
