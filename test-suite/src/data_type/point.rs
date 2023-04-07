@@ -7,7 +7,7 @@ use {
         ast::DataType,
         data::{Literal, ValueError},
         executor::Payload,
-        prelude::Value::Point,
+        prelude::Value::*,
     },
     std::borrow::Cow,
 };
@@ -61,6 +61,22 @@ test_case!(point, async move {
                 expected: 2,
                 found: 1,
             }
+            .into()),
+        ),
+        (
+            r#"SELECT CAST('POINT(-71.064544 42.28787)' AS POINT) AS pt"#,
+            Ok(select!(
+                pt
+                Point;
+                gluesql_core::data::Point::new(-71.064544, 42.28787)
+
+            )),
+        ),
+        (
+            r#"SELECT CAST('POINT(-71.06454t4 42.28787)' AS POINT) AS pt"#,
+            Err(ValueError::FailedToParsePoint(
+                Str("POINT(-71.06454t4 42.28787)".to_owned()).into(),
+            )
             .into()),
         ),
     ];

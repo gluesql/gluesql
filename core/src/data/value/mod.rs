@@ -1832,6 +1832,7 @@ mod tests {
 
         // Point
         cast!(point(0.32, 0.52) => Point, point(0.32, 0.52));
+        cast!(Str("POINT(0.32 0.52)".to_owned()) => Point, point(0.32, 0.52));
 
         // Casting error
         assert_eq!(
