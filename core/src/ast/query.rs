@@ -769,17 +769,31 @@ mod tests {
         .to_sql_unquoted();
         assert_eq!(actual, expected);
 
-        let actual = "VALUES (1, 'glue', 3), (2, 'sql', 2)".to_owned(); // TODO: can we use identifer here?
+        let actual = "VALUES (1 + 1, 'glue'), (3 - 2, 'sql')".to_owned();
         let expected = SetExpr::Values(Values(vec![
             vec![
-                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
+                Expr::BinaryOp {
+                    left: Box::new(Expr::Literal(AstLiteral::Number(
+                        BigDecimal::from_str("1").unwrap(),
+                    ))),
+                    op: BinaryOperator::Plus,
+                    right: Box::new(Expr::Literal(AstLiteral::Number(
+                        BigDecimal::from_str("1").unwrap(),
+                    ))),
+                },
                 Expr::Literal(AstLiteral::QuotedString("glue".to_owned())),
-                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("3").unwrap())),
             ],
             vec![
-                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())),
+                Expr::BinaryOp {
+                    left: Box::new(Expr::Literal(AstLiteral::Number(
+                        BigDecimal::from_str("3").unwrap(),
+                    ))),
+                    op: BinaryOperator::Minus,
+                    right: Box::new(Expr::Literal(AstLiteral::Number(
+                        BigDecimal::from_str("2").unwrap(),
+                    ))),
+                },
                 Expr::Literal(AstLiteral::QuotedString("sql".to_owned())),
-                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())),
             ],
         ]))
         .to_sql_unquoted();
@@ -1208,7 +1222,7 @@ mod tests {
         .to_sql_unquoted();
         assert_eq!(actual, expected);
 
-        let actual = "INNER JOIN PlayerItem ON PlayerItem.user_id = Player.id";
+        let actual = "INNER JOIN PlayerItem ON PlayerItem.user_id = Player.id AND PlayerItem.group_id = Player.group_id";
         let expected = Join {
             relation: TableFactor::Table {
                 name: "PlayerItem".to_owned(),
@@ -1218,7 +1232,11 @@ mod tests {
             join_operator: JoinOperator::Inner(JoinConstraint::On(expr(
                 "PlayerItem.user_id = Player.id",
             ))),
-            join_executor: JoinExecutor::NestedLoop,
+            join_executor: JoinExecutor::Hash {
+                key_expr: expr("PlayerItem.group_id"),
+                value_expr: expr("Player.group_id"),
+                where_clause: None,
+            },
         }
         .to_sql_unquoted();
         assert_eq!(actual, expected);
