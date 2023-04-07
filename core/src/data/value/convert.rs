@@ -430,6 +430,7 @@ impl TryFrom<&Value> for u32 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -465,6 +466,7 @@ impl TryFrom<&Value> for u64 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -501,6 +503,7 @@ impl TryFrom<&Value> for u128 {
             | Value::List(_)
             | Value::Inet(IpAddr::V4(_))
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
