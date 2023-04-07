@@ -10,7 +10,7 @@ test_case!(get_x, async move {
             Ok(Payload::Create),
         ),
         (
-            r#"SELECT GET_X(ST_GEOFROMTEXT('POINT(0.1 -0.2)')) AS ptx"#,
+            r#"SELECT GET_X(CAST('POINT(0.1 -0.2)' AS POINT)) AS ptx"#,
             Ok(select!(
                 ptx
                 F64;

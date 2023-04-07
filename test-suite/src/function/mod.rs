@@ -31,7 +31,6 @@ pub mod reverse;
 pub mod round;
 pub mod sign;
 pub mod sqrt_power;
-pub mod st_geofromtext;
 pub mod substr;
 pub mod to_date;
 pub mod trim;

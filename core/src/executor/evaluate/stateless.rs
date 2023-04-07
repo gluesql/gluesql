@@ -405,6 +405,5 @@ fn evaluate_function<'a>(context: &Context<'_>, func: &'a Function) -> Result<Ev
         }
         Function::GetX(expr) => f::getx(name, eval(expr)?),
         Function::GetY(expr) => f::gety(name, eval(expr)?),
-        Function::StGeomFromText(expr) => f::stgeofromtext(name, eval(expr)?),
     }
 }

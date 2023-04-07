@@ -53,8 +53,7 @@ impl Function {
             | Self::Cast { expr, .. }
             | Self::Extract { expr, .. }
             | Self::GetX(expr)
-            | Self::GetY(expr)
-            | Self::StGeomFromText(expr) => Exprs::Single([expr].into_iter()),
+            | Self::GetY(expr) => Exprs::Single([expr].into_iter()),
             Self::Left { expr, size: expr2 }
             | Self::Right { expr, size: expr2 }
             | Self::Lpad {

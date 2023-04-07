@@ -515,12 +515,6 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             let expr = translate_expr(args[0])?;
             Ok(Expr::Function(Box::new(Function::GetY(expr))))
         }
-        "ST_GEOFROMTEXT" => {
-            check_len(name, args.len(), 1)?;
-
-            let expr = translate_expr(args[0])?;
-            Ok(Expr::Function(Box::new(Function::StGeomFromText(expr))))
-        }
         _ => Err(TranslateError::UnsupportedFunction(name).into()),
     }
 }

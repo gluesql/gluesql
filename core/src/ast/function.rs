@@ -151,7 +151,6 @@ pub enum Function {
     },
     GetX(Expr),
     GetY(Expr),
-    StGeomFromText(Expr),
     Point(Expr, Expr),
 }
 
@@ -330,7 +329,6 @@ impl ToSql for Function {
             }
             Function::GetX(e) => format!("GET_X({})", e.to_sql()),
             Function::GetY(e) => format!("GET_Y({})", e.to_sql()),
-            Function::StGeomFromText(e) => format!("ST_GEOFROMTEXT({})", e.to_sql()),
             Function::Point(x, y) => format!("POINT({}, {})", x.to_sql(), y.to_sql()),
         }
     }
@@ -975,14 +973,6 @@ mod tests {
                 Expr::Literal(AstLiteral::Number(BigDecimal::from_str("0.1").unwrap())),
                 Expr::Literal(AstLiteral::Number(BigDecimal::from_str("0.2").unwrap()))
             )))
-            .to_sql()
-        );
-
-        assert_eq!(
-            "ST_GEOFROMTEXT('POINT(-71.064544 42.28787)')",
-            &Expr::Function(Box::new(Function::StGeomFromText(Expr::Literal(
-                AstLiteral::QuotedString("POINT(-71.064544 42.28787)".to_owned())
-            ))))
             .to_sql()
         );
     }

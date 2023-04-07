@@ -128,12 +128,8 @@ macro_rules! generate_store_tests {
         glue!(function_chr, function::chr::chr);
         glue!(function_position, function::position::position);
         glue!(function_find_idx, function::find_idx::find_idx);
-        glue!(function_get_x, function::geometry::get_x::get_x);
-        glue!(function_get_y, function::geometry::get_y::get_y);
-        glue!(
-            function_st_geofromtext,
-            function::st_geofromtext::st_geofromtext
-        );
+        glue!(function_geometry_get_x, function::geometry::get_x::get_x);
+        glue!(function_geometry_get_y, function::geometry::get_y::get_y);
         glue!(join, join::join);
         glue!(join_project, join::project);
         glue!(migrate, migrate::migrate);
