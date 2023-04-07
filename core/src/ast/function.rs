@@ -952,7 +952,7 @@ mod tests {
         );
 
         assert_eq!(
-            "GET_X(point)",
+            "GET_X(\"point\")",
             &Expr::Function(Box::new(Function::GetX(Expr::Identifier(
                 "point".to_owned()
             ))))
@@ -960,7 +960,7 @@ mod tests {
         );
 
         assert_eq!(
-            "GET_Y(point)",
+            "GET_Y(\"point\")",
             &Expr::Function(Box::new(Function::GetY(Expr::Identifier(
                 "point".to_owned()
             ))))
