@@ -41,7 +41,15 @@ impl TryFrom<Value> for Expr {
             Value::U16(v) => Expr::Literal(AstLiteral::Number(
                 BigDecimal::from_u16(v).ok_or(ValueToExprConversionFailure)?,
             )),
-
+            Value::U32(v) => Expr::Literal(AstLiteral::Number(
+                BigDecimal::from_u32(v).ok_or(ValueToExprConversionFailure)?,
+            )),
+            Value::U64(v) => Expr::Literal(AstLiteral::Number(
+                BigDecimal::from_u64(v).ok_or(ValueToExprConversionFailure)?,
+            )),
+            Value::U128(v) => Expr::Literal(AstLiteral::Number(
+                BigDecimal::from_u128(v).ok_or(ValueToExprConversionFailure)?,
+            )),
             Value::F64(v) => Expr::Literal(AstLiteral::Number(
                 BigDecimal::from_f64(v).ok_or(ValueToExprConversionFailure)?,
             )),
@@ -170,6 +178,31 @@ mod tests {
                 BigDecimal::from_u8(8).unwrap()
             )))
         );
+        assert_eq!(
+            Value::U16(16).try_into(),
+            Ok(Expr::Literal(AstLiteral::Number(
+                BigDecimal::from_u16(16).unwrap()
+            )))
+        );
+        assert_eq!(
+            Value::U32(32).try_into(),
+            Ok(Expr::Literal(AstLiteral::Number(
+                BigDecimal::from_u32(32).unwrap()
+            )))
+        );
+        assert_eq!(
+            Value::U64(64).try_into(),
+            Ok(Expr::Literal(AstLiteral::Number(
+                BigDecimal::from_u64(64).unwrap()
+            )))
+        );
+        assert_eq!(
+            Value::U128(128).try_into(),
+            Ok(Expr::Literal(AstLiteral::Number(
+                BigDecimal::from_u128(128).unwrap()
+            )))
+        );
+
         assert_eq!(
             Value::F64(64.4).try_into(),
             Ok(Expr::Literal(AstLiteral::Number(

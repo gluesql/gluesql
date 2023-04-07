@@ -808,6 +808,7 @@ dependencies = [
  "edit",
  "futures",
  "gluesql-core",
+ "gluesql-json-storage",
  "gluesql_memory_storage",
  "gluesql_sled_storage",
  "itertools",
@@ -899,7 +900,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "gluesql-jsonl-storage"
+name = "gluesql-json-storage"
 version = "0.13.0"
 dependencies = [
  "async-trait",
@@ -907,8 +908,8 @@ dependencies = [
  "gluesql-core",
  "gluesql-test-suite",
  "gluesql-utils",
- "gluesql_memory_storage",
  "hex",
+ "iter-enum",
  "serde",
  "serde_json",
  "thiserror",

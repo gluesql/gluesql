@@ -22,6 +22,7 @@ use {
     gluesql_core::{
         data::Schema,
         result::{Error, Result},
+        store::Metadata,
     },
     sled::{
         transaction::{
@@ -143,3 +144,5 @@ fn fetch_schema(
 
     Ok((key, schema_snapshot))
 }
+
+impl Metadata for SledStorage {}
