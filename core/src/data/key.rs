@@ -32,6 +32,9 @@ pub enum Key {
     I128(i128),
     U8(u8),
     U16(u16),
+    U32(u32),
+    U64(u64),
+    U128(u128),
     F64(OrderedFloat<f64>),
     Decimal(Decimal),
     Bool(bool),
@@ -56,6 +59,9 @@ impl Ord for Key {
             (Key::I128(l), Key::I128(r)) => l.cmp(r),
             (Key::U8(l), Key::U8(r)) => l.cmp(r),
             (Key::U16(l), Key::U16(r)) => l.cmp(r),
+            (Key::U32(l), Key::U32(r)) => l.cmp(r),
+            (Key::U64(l), Key::U64(r)) => l.cmp(r),
+            (Key::U128(l), Key::U128(r)) => l.cmp(r),
             (Key::F64(l), Key::F64(r)) => l.total_cmp(&r.0),
             (Key::Decimal(l), Key::Decimal(r)) => l.cmp(r),
             (Key::Bool(l), Key::Bool(r)) => l.cmp(r),
@@ -78,6 +84,9 @@ impl Ord for Key {
             | (Key::I128(_), _)
             | (Key::U8(_), _)
             | (Key::U16(_), _)
+            | (Key::U32(_), _)
+            | (Key::U64(_), _)
+            | (Key::U128(_), _)
             | (Key::F64(_), _)
             | (Key::Decimal(_), _)
             | (Key::Bool(_), _)
@@ -95,6 +104,28 @@ impl Ord for Key {
 
 impl PartialOrd for Key {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match (self, other) {
+            (Key::I8(l), Key::I8(r)) => Some(l.cmp(r)),
+            (Key::I16(l), Key::I16(r)) => Some(l.cmp(r)),
+            (Key::I32(l), Key::I32(r)) => Some(l.cmp(r)),
+            (Key::I64(l), Key::I64(r)) => Some(l.cmp(r)),
+            (Key::U8(l), Key::U8(r)) => Some(l.cmp(r)),
+            (Key::U16(l), Key::U16(r)) => Some(l.cmp(r)),
+            (Key::U32(l), Key::U32(r)) => Some(l.cmp(r)),
+            (Key::U64(l), Key::U64(r)) => Some(l.cmp(r)),
+            (Key::U128(l), Key::U128(r)) => Some(l.cmp(r)),
+            (Key::Decimal(l), Key::Decimal(r)) => Some(l.cmp(r)),
+            (Key::Bool(l), Key::Bool(r)) => Some(l.cmp(r)),
+            (Key::Str(l), Key::Str(r)) => Some(l.cmp(r)),
+            (Key::Bytea(l), Key::Bytea(r)) => Some(l.cmp(r)),
+            (Key::Inet(l), Key::Inet(r)) => Some(l.cmp(r)),
+            (Key::Date(l), Key::Date(r)) => Some(l.cmp(r)),
+            (Key::Timestamp(l), Key::Timestamp(r)) => Some(l.cmp(r)),
+            (Key::Time(l), Key::Time(r)) => Some(l.cmp(r)),
+            (Key::Interval(l), Key::Interval(r)) => l.partial_cmp(r),
+            (Key::Uuid(l), Key::Uuid(r)) => Some(l.cmp(r)),
+            _ => None,
+        };
         Some(self.cmp(other))
     }
 }
@@ -114,6 +145,9 @@ impl TryFrom<Value> for Key {
             I128(v) => Ok(Key::I128(v)),
             U8(v) => Ok(Key::U8(v)),
             U16(v) => Ok(Key::U16(v)),
+            U32(v) => Ok(Key::U32(v)),
+            U64(v) => Ok(Key::U64(v)),
+            U128(v) => Ok(Key::U128(v)),
             F64(v) => Ok(Key::F64(OrderedFloat(v))),
             Decimal(v) => Ok(Key::Decimal(v)),
             Str(v) => Ok(Key::Str(v)),
@@ -150,6 +184,9 @@ impl From<Key> for Value {
             Key::I128(v) => Value::I128(v),
             Key::U8(v) => Value::U8(v),
             Key::U16(v) => Value::U16(v),
+            Key::U32(v) => Value::U32(v),
+            Key::U64(v) => Value::U64(v),
+            Key::U128(v) => Value::U128(v),
             Key::F64(v) => Value::F64(v.0),
             Key::Decimal(v) => Value::Decimal(v),
             Key::Str(v) => Value::Str(v),
@@ -230,6 +267,21 @@ impl Key {
                 .copied()
                 .collect::<Vec<_>>(),
             Key::U16(v) => [VALUE, 1]
+                .iter()
+                .chain(v.to_be_bytes().iter())
+                .copied()
+                .collect::<Vec<_>>(),
+            Key::U32(v) => [VALUE, 1]
+                .iter()
+                .chain(v.to_be_bytes().iter())
+                .copied()
+                .collect::<Vec<_>>(),
+            Key::U64(v) => [VALUE, 1]
+                .iter()
+                .chain(v.to_be_bytes().iter())
+                .copied()
+                .collect::<Vec<_>>(),
+            Key::U128(v) => [VALUE, 1]
                 .iter()
                 .chain(v.to_be_bytes().iter())
                 .copied()
@@ -354,6 +406,9 @@ mod tests {
         assert_eq!(convert("CAST(1024 AS INT128)"), Ok(Key::I128(1024)));
         assert_eq!(convert("CAST(11 AS UINT8)"), Ok(Key::U8(11)));
         assert_eq!(convert("CAST(11 AS UINT16)"), Ok(Key::U16(11)));
+        assert_eq!(convert("CAST(11 AS UINT32)"), Ok(Key::U32(11)));
+        assert_eq!(convert("CAST(11 AS UINT64)"), Ok(Key::U64(11)));
+        assert_eq!(convert("CAST(11 AS UINT128)"), Ok(Key::U128(11)));
         assert!(matches!(convert("12.03"), Ok(Key::F64(_))));
 
         assert_eq!(
@@ -440,6 +495,15 @@ mod tests {
 
         assert!(Key::U16(10) > Key::U16(3));
         assert!(Key::U16(1) > Key::Decimal(dec("1")));
+
+        assert!(Key::U32(10) > Key::U32(3));
+        assert!(Key::U32(1) > Key::Decimal(dec("1")));
+
+        assert!(Key::U64(10) > Key::U64(3));
+        assert!(Key::U64(1) > Key::Decimal(dec("1")));
+
+        assert!(Key::U128(10) > Key::U128(3));
+        assert!(Key::U128(1) > Key::Decimal(dec("1")));
 
         assert!(Key::Decimal(dec("123.45")) > Key::Decimal(dec("0.11")));
         assert!(Key::Decimal(dec("1")) > Key::Bool(true));
@@ -607,6 +671,33 @@ mod tests {
         assert_eq!(cmp(&n1, &n4), Ordering::Less);
         assert_eq!(cmp(&n3, &n4), Ordering::Equal);
 
+        let n1 = U32(0).to_cmp_be_bytes();
+        let n2 = U32(3).to_cmp_be_bytes();
+        let n3 = U32(20).to_cmp_be_bytes();
+        let n4 = U32(20).to_cmp_be_bytes();
+        assert_eq!(cmp(&n1, &n2), Ordering::Less);
+        assert_eq!(cmp(&n3, &n2), Ordering::Greater);
+        assert_eq!(cmp(&n1, &n4), Ordering::Less);
+        assert_eq!(cmp(&n3, &n4), Ordering::Equal);
+
+        let n1 = U64(0).to_cmp_be_bytes();
+        let n2 = U64(3).to_cmp_be_bytes();
+        let n3 = U64(20).to_cmp_be_bytes();
+        let n4 = U64(20).to_cmp_be_bytes();
+        assert_eq!(cmp(&n1, &n2), Ordering::Less);
+        assert_eq!(cmp(&n3, &n2), Ordering::Greater);
+        assert_eq!(cmp(&n1, &n4), Ordering::Less);
+        assert_eq!(cmp(&n3, &n4), Ordering::Equal);
+
+        let n1 = U128(0).to_cmp_be_bytes();
+        let n2 = U128(3).to_cmp_be_bytes();
+        let n3 = U128(20).to_cmp_be_bytes();
+        let n4 = U128(20).to_cmp_be_bytes();
+        assert_eq!(cmp(&n1, &n2), Ordering::Less);
+        assert_eq!(cmp(&n3, &n2), Ordering::Greater);
+        assert_eq!(cmp(&n1, &n4), Ordering::Less);
+        assert_eq!(cmp(&n3, &n4), Ordering::Equal);
+
         let dec = |n| Decimal(rust_decimal::Decimal::from_str(n).unwrap());
         let n1 = dec("-1200.345678").to_cmp_be_bytes();
         let n2 = dec("-1.01").to_cmp_be_bytes();
@@ -733,6 +824,9 @@ mod tests {
         assert_eq!(Value::from(Key::I128(32)), Value::I128(32));
         assert_eq!(Value::from(Key::U8(64)), Value::U8(64));
         assert_eq!(Value::from(Key::U16(128)), Value::U16(128));
+        assert_eq!(Value::from(Key::U32(128)), Value::U32(128));
+        assert_eq!(Value::from(Key::U64(128)), Value::U64(128));
+        assert_eq!(Value::from(Key::U128(128)), Value::U128(128));
         assert_eq!(Value::from(Key::F64(1.0.into())), Value::F64(1.0));
         assert_eq!(
             Value::from(Key::Decimal(Decimal::from_str("123.45").unwrap())),
