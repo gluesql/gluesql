@@ -48,15 +48,15 @@ impl ToSql for AlterTableOperation {
                 column_name,
                 if_exists,
             } => match if_exists {
-                true => format!("DROP COLUMN IF EXISTS {column_name}"),
-                false => format!("DROP COLUMN {column_name}"),
+                true => format!(r#"DROP COLUMN IF EXISTS "{column_name}""#),
+                false => format!(r#"DROP COLUMN "{column_name}""#),
             },
             AlterTableOperation::RenameColumn {
                 old_column_name,
                 new_column_name,
-            } => format!("RENAME COLUMN {old_column_name} TO {new_column_name}"),
+            } => format!(r#"RENAME COLUMN "{old_column_name}" TO "{new_column_name}""#),
             AlterTableOperation::RenameTable { table_name } => {
-                format!("RENAME TO {table_name}")
+                format!(r#"RENAME TO "{table_name}""#)
             }
         }
     }
@@ -76,7 +76,7 @@ impl ToSql for ColumnDef {
                 true => "NULL",
                 false => "NOT NULL",
             };
-            let column_def = format!("{name} {data_type} {nullable}");
+            let column_def = format!(r#""{name}" {data_type} {nullable}"#);
             let default = default
                 .as_ref()
                 .map(|expr| format!("DEFAULT {}", expr.to_sql()));
@@ -109,7 +109,7 @@ mod tests {
     #[test]
     fn to_sql_column_def() {
         assert_eq!(
-            "name TEXT NOT NULL UNIQUE",
+            r#""name" TEXT NOT NULL UNIQUE"#,
             ColumnDef {
                 name: "name".to_owned(),
                 data_type: DataType::Text,
@@ -121,7 +121,7 @@ mod tests {
         );
 
         assert_eq!(
-            "accepted BOOLEAN NULL",
+            r#""accepted" BOOLEAN NULL"#,
             ColumnDef {
                 name: "accepted".to_owned(),
                 data_type: DataType::Boolean,
@@ -133,7 +133,7 @@ mod tests {
         );
 
         assert_eq!(
-            "id INT NOT NULL PRIMARY KEY",
+            r#""id" INT NOT NULL PRIMARY KEY"#,
             ColumnDef {
                 name: "id".to_owned(),
                 data_type: DataType::Int,
@@ -145,7 +145,7 @@ mod tests {
         );
 
         assert_eq!(
-            "accepted BOOLEAN NOT NULL DEFAULT FALSE",
+            r#""accepted" BOOLEAN NOT NULL DEFAULT FALSE"#,
             ColumnDef {
                 name: "accepted".to_owned(),
                 data_type: DataType::Boolean,
@@ -157,7 +157,7 @@ mod tests {
         );
 
         assert_eq!(
-            "accepted BOOLEAN NOT NULL DEFAULT FALSE UNIQUE",
+            r#""accepted" BOOLEAN NOT NULL DEFAULT FALSE UNIQUE"#,
             ColumnDef {
                 name: "accepted".to_owned(),
                 data_type: DataType::Boolean,
