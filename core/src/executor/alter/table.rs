@@ -1,17 +1,17 @@
-use crate::{ast::SelectItem, executor::select::select_with_labels};
-use futures::StreamExt;
-
 use {
     super::{validate, validate_column_names, AlterError},
     crate::{
-        ast::{ColumnDef, Query, SetExpr, TableFactor, Values},
-        data::{Schema, TableError},
-        executor::{evaluate_stateless, select::select},
+        ast::{ColumnDef, Query, SetExpr, Values},
+        data::Schema,
+        executor::{
+            evaluate_stateless,
+            select::{select, select_with_labels},
+        },
         prelude::{DataType, Value},
-        result::{Error, IntoControlFlow, Result},
+        result::{IntoControlFlow, Result},
         store::{GStore, GStoreMut},
     },
-    futures::stream::TryStreamExt,
+    futures::stream::{StreamExt, TryStreamExt},
     std::{
         iter,
         ops::ControlFlow::{Break, Continue},
