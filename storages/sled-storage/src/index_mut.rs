@@ -7,6 +7,7 @@ use {
         transaction::TxPayload,
         SledStorage, Snapshot,
     },
+    async_io::block_on,
     async_trait::async_trait,
     gluesql_core::{
         ast::OrderByExpr,
@@ -18,7 +19,6 @@ use {
     sled::transaction::{
         ConflictableTransactionError, ConflictableTransactionResult, TransactionalTree,
     },
-    smol::block_on,
     std::iter::once,
 };
 

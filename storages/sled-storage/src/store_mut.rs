@@ -7,6 +7,7 @@ use {
         transaction::TxPayload,
         tx_err_into, SledStorage, Snapshot,
     },
+    async_io::block_on,
     async_trait::async_trait,
     gluesql_core::{
         data::{Key, Schema},
@@ -14,7 +15,6 @@ use {
         store::{DataRow, IndexError, StoreMut},
     },
     sled::transaction::{ConflictableTransactionError, ConflictableTransactionResult},
-    smol::block_on,
 };
 
 #[async_trait(?Send)]

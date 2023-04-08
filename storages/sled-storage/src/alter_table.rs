@@ -6,6 +6,7 @@ use {
         transaction::TxPayload,
         SledStorage, Snapshot,
     },
+    async_io::block_on,
     async_trait::async_trait,
     gluesql_core::{
         ast::ColumnDef,
@@ -15,7 +16,6 @@ use {
         store::{AlterTable, AlterTableError, DataRow},
     },
     sled::transaction::ConflictableTransactionError,
-    smol::block_on,
     std::{iter::once, str},
     utils::Vector,
 };

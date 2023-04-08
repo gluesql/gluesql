@@ -6,6 +6,7 @@ mod store_mut;
 mod transaction;
 
 use {
+    async_io::block_on,
     error::{JsonStorageError, OptionExt, ResultExt},
     gluesql_core::{
         ast::ColumnUniqueOption,
@@ -17,7 +18,6 @@ use {
     },
     iter_enum::Iterator,
     serde_json::Value as JsonValue,
-    smol::block_on,
     std::{
         collections::HashMap,
         fs::{self, File},
