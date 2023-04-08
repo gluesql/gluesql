@@ -10,6 +10,8 @@ use {
 
 pub trait HashMapJsonExt {
     fn parse_json_object(value: &str) -> Result<HashMap<String, Value>>;
+
+    fn try_from_json_map(json_map: JsonMap<String, JsonValue>) -> Result<HashMap<String, Value>>;
 }
 
 impl HashMapJsonExt for HashMap<String, Value> {
@@ -18,12 +20,16 @@ impl HashMapJsonExt for HashMap<String, Value> {
             .map_err(|_| ValueError::InvalidJsonString(value.to_owned()))?;
 
         match value {
-            JsonValue::Object(json_map) => json_map
-                .into_iter()
-                .map(|(key, value)| value.try_into().map(|value| (key, value)))
-                .collect::<Result<HashMap<String, Value>>>(),
+            JsonValue::Object(json_map) => HashMap::try_from_json_map(json_map),
             _ => Err(ValueError::JsonObjectTypeRequired.into()),
         }
+    }
+
+    fn try_from_json_map(json_map: JsonMap<String, JsonValue>) -> Result<HashMap<String, Value>> {
+        json_map
+            .into_iter()
+            .map(|(key, value)| value.try_into().map(|value| (key, value)))
+            .collect::<Result<HashMap<String, Value>>>()
     }
 }
 
@@ -59,6 +65,11 @@ impl TryFrom<Value> for JsonValue {
                 .map_err(|_| ValueError::UnreachableJsonNumberParseFailure(v.to_string()).into()),
             Value::U8(v) => Ok(v.into()),
             Value::U16(v) => Ok(v.into()),
+            Value::U32(v) => Ok(v.into()),
+            Value::U64(v) => Ok(v.into()),
+            Value::U128(v) => JsonNumber::from_str(&v.to_string())
+                .map(JsonValue::Number)
+                .map_err(|_| ValueError::UnreachableJsonNumberParseFailure(v.to_string()).into()),
             Value::F64(v) => Ok(v.into()),
             Value::Decimal(v) => JsonNumber::from_str(&v.to_string())
                 .map(JsonValue::Number)
@@ -162,6 +173,18 @@ mod tests {
         assert_eq!(Value::U8(100).try_into(), Ok(JsonValue::Number(100.into())));
         assert_eq!(
             Value::U16(100).try_into(),
+            Ok(JsonValue::Number(100.into()))
+        );
+        assert_eq!(
+            Value::U32(100).try_into(),
+            Ok(JsonValue::Number(100.into()))
+        );
+        assert_eq!(
+            Value::U64(100).try_into(),
+            Ok(JsonValue::Number(100.into()))
+        );
+        assert_eq!(
+            Value::U128(100).try_into(),
             Ok(JsonValue::Number(100.into()))
         );
         assert!(JsonValue::try_from(Value::I128(i128::MAX)).is_ok());

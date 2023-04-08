@@ -390,5 +390,10 @@ fn evaluate_function<'a>(context: &Context<'_>, func: &'a Function) -> Result<Ev
 
             f::concat_ws(name, separator, exprs)
         }
+        Function::Append { expr, value } => {
+            let expr = eval(expr)?;
+            let value = eval(value)?;
+            f::append(expr, value)
+        }
     }
 }

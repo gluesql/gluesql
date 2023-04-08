@@ -20,6 +20,7 @@ pub mod insert;
 pub mod join;
 pub mod like_ilike;
 pub mod limit;
+pub mod metadata;
 pub mod migrate;
 pub mod nested_select;
 pub mod nullable;
@@ -174,6 +175,7 @@ macro_rules! generate_store_tests {
         );
         glue!(type_match, type_match::type_match);
         glue!(dictionary, dictionary::dictionary);
+        glue!(function_append, function::append::append);
         glue!(column_alias, column_alias::column_alias);
 
         // ast-builder
@@ -310,5 +312,31 @@ macro_rules! generate_transaction_dictionary_tests {
         }
 
         glue!(transaction_dictionary, transaction::dictionary);
+    };
+}
+
+#[macro_export]
+macro_rules! generate_metadata_table_tests {
+    ($test: meta, $storage: ident) => {
+        macro_rules! glue {
+            ($title: ident, $func: path) => {
+                declare_test_fn!($test, $storage, $title, $func);
+            };
+        }
+
+        glue!(metadata_table, metadata::table::table);
+    };
+}
+
+#[macro_export]
+macro_rules! generate_metadata_index_tests {
+    ($test: meta, $storage: ident) => {
+        macro_rules! glue {
+            ($title: ident, $func: path) => {
+                declare_test_fn!($test, $storage, $title, $func);
+            };
+        }
+
+        glue!(metadata_index, metadata::index::index);
     };
 }

@@ -5,7 +5,7 @@
 [![LICENSE](https://img.shields.io/crates/l/gluesql.svg)](https://github.com/gluesql/gluesql/blob/main/LICENSE)
 ![Rust](https://github.com/gluesql/gluesql/workflows/Rust/badge.svg)
 [![docs.rs](https://docs.rs/gluesql/badge.svg)](https://docs.rs/gluesql)
-[![Chat](https://img.shields.io/discord/780298017940176946)](https://discord.gg/C6TDEgzDzY)
+[![Chat](https://img.shields.io/discord/780298017940176946?logo=discord&logoColor=white)](https://discord.gg/C6TDEgzDzY)
 [![Coverage Status](https://coveralls.io/repos/github/gluesql/gluesql/badge.svg?branch=main)](https://coveralls.io/github/gluesql/gluesql?branch=main)
 
 ## SQL Database Engine as a Library
@@ -41,7 +41,7 @@ $ cargo install gluesql
 - Run CLI
 
 ```sh
-$ gluesql [--path ~/data_path] [--execute ~/sql_path]
+$ gluesql [--execute ~/sql_path] [--path ~/data_path --storage={sled | json}]
 ```
 
 ### Migration using CLI
@@ -63,8 +63,22 @@ INSERT INTO User VALUES (1, 'Foo'), (2, 'Bar') ..
 
 #### Import database
 
+1. To File storage
+
 ```sh
-$ gluesql --path ~/new_data --execute ./dump.sql
+$ gluesql --execute ./dump.sql --path ~/new_data --storage=sled
+```
+
+or
+
+```sh
+$ gluesql --execute ./dump.sql --path ~/new_data --storage=json
+```
+
+2. To Memory storage
+
+```sh
+$ gluesql --execute ./dump.sql
 ```
 
 ### Usage
@@ -173,11 +187,11 @@ GlueSQL currently supports a limited subset of queries. It's being actively deve
 
 #### Data Types
 
-| Category | Type                                                                       |
-| -------- | -------------------------------------------------------------------------- |
-| Numeric  | `INT8`, `INT16`, `INT32`, `INTEGER`, `INT128`, `UINT8`, `FLOAT`, `DECIMAL` |
-| Date     | `DATE`, `TIME`, `TIMESTAMP`, `INTERVAL`                                    |
-| Others   | `BOOLEAN`, `TEXT`, `UUID`, `MAP`, `LIST`, `BYTEA`                          |
+| Category | Type                                                                                                            |
+| -------- | --------------------------------------------------------------------------------------------------------------- |
+| Numeric  | `INT8`, `INT16`, `INT32`, `INTEGER`, `INT128`, `UINT8`, `UINT16`,`UINT32`,`UINT64`,`UINT128`,`FLOAT`, `DECIMAL` |
+| Date     | `DATE`, `TIME`, `TIMESTAMP`, `INTERVAL`                                                                         |
+| Others   | `BOOLEAN`, `TEXT`, `UUID`, `MAP`, `LIST`, `BYTEA`                                                               |
 
 #### Queries
 

@@ -3,7 +3,7 @@ use {
     crate::{
         ast::{
             ColumnDef, ColumnUniqueOption, Dictionary, Expr, IndexItem, Join, Query, Select,
-            SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, ToSql, Values,
+            SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, ToSqlUnquoted, Values,
         },
         data::{get_alias, get_index, Key, Row, Value},
         executor::{evaluate::evaluate, select::select},
@@ -15,7 +15,7 @@ use {
     iter_enum::Iterator,
     itertools::Itertools,
     serde::Serialize,
-    std::{borrow::Cow, fmt::Debug, rc::Rc},
+    std::{borrow::Cow, collections::HashMap, fmt::Debug, iter, rc::Rc},
     thiserror::Error as ThisError,
 };
 
@@ -95,7 +95,16 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
     match table_factor {
         TableFactor::Derived { subquery, .. } => {
             let filter_context = filter_context.as_ref().map(Rc::clone);
-            let rows = select(storage, subquery, filter_context).await?;
+            let rows =
+                select(storage, subquery, filter_context)
+                    .await?
+                    .map_ok(move |row| match row {
+                        Row::Vec { values, .. } => Row::Vec {
+                            columns: Rc::clone(&columns),
+                            values,
+                        },
+                        Row::Map(values) => Row::Map(values),
+                    });
 
             Ok(Rows::Derived(rows))
         }
@@ -206,31 +215,36 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                 match dict {
                     Dictionary::GlueObjects => {
                         let schemas = storage.fetch_all_schemas().await?;
+                        let table_metas = storage
+                            .scan_table_meta()
+                            .await?
+                            .collect::<Result<HashMap<_, _>>>()?;
                         let rows = schemas.into_iter().flat_map(move |schema| {
-                            let table_rows = vec![Ok(Row::Vec {
-                                columns: Rc::clone(&columns),
-                                values: vec![
-                                    Value::Str(schema.table_name),
-                                    Value::Str("TABLE".to_owned()),
-                                    Value::Timestamp(schema.created),
-                                ],
-                            })];
-
-                            let columns = Rc::clone(&columns);
-                            let index_rows = schema.indexes.into_iter().map(move |index| {
-                                let values = vec![
-                                    Value::Str(index.name.clone()),
-                                    Value::Str("INDEX".to_owned()),
-                                    Value::Timestamp(index.created),
-                                ];
-
-                                Ok(Row::Vec {
-                                    columns: Rc::clone(&columns),
-                                    values,
+                            let meta = table_metas
+                                .iter()
+                                .find_map(|(table_name, hash_map)| {
+                                    (table_name == &schema.table_name).then(|| hash_map.clone())
                                 })
+                                .unwrap_or_default();
+
+                            let table_rows = HashMap::from([
+                                ("OBJECT_NAME".to_owned(), Value::Str(schema.table_name)),
+                                ("OBJECT_TYPE".to_owned(), Value::Str("TABLE".to_owned())),
+                            ])
+                            .into_iter()
+                            .chain(meta)
+                            .collect::<HashMap<_, _>>();
+
+                            let index_rows = schema.indexes.into_iter().map(|index| {
+                                HashMap::from([
+                                    ("OBJECT_NAME".to_owned(), Value::Str(index.name)),
+                                    ("OBJECT_TYPE".to_owned(), Value::Str("INDEX".to_owned())),
+                                ])
                             });
 
-                            table_rows.into_iter().chain(index_rows)
+                            iter::once(table_rows)
+                                .chain(index_rows)
+                                .map(|hash_map| Ok(Row::Map(hash_map)))
                         });
 
                         Rows::Objects(rows)
@@ -310,7 +324,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                     Value::Str(schema.table_name.clone()),
                                     Value::Str(index.name),
                                     Value::Str(index.order.to_string()),
-                                    Value::Str(index.expr.to_sql()),
+                                    Value::Str(index.expr.to_sql_unquoted()),
                                     Value::Bool(false),
                                 ];
 
@@ -452,9 +466,7 @@ pub async fn fetch_relation_columns<T: GStore>(
                     )
                     .into());
                 }
-                let labels = (alias_len + 1..=total_len)
-                    .into_iter()
-                    .map(|i| format!("column{}", i));
+                let labels = (alias_len + 1..=total_len).map(|i| format!("column{}", i));
                 let labels = alias_columns
                     .iter()
                     .cloned()

@@ -11,7 +11,6 @@ use {
         result::{Error, IntoControlFlow, Result},
         store::{GStore, GStoreMut},
     },
-    chrono::Utc,
     futures::stream::TryStreamExt,
     std::{
         iter,
@@ -166,7 +165,6 @@ pub async fn create_table<T: GStore + GStoreMut>(
             column_defs: target_columns_defs,
             indexes: vec![],
             engine: engine.clone(),
-            created: Utc::now().naive_utc(),
         };
 
         storage.insert_schema(&schema).await?;

@@ -1,0 +1,14 @@
+[
+  {
+    "id": 1,
+    "notice": "*.jsonl is a newline-delimited JSON file"
+  },
+  {
+    "id": 2,
+    "notice": "Only a single json must be written to a single line"
+  },
+  {
+    "id": 3,
+    "notice": "To use this array of jsons format, use *.json extension"
+  }
+]
