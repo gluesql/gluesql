@@ -990,10 +990,7 @@ mod tests {
     }
     #[test]
     fn partial_cmp() {
-        use {
-            super::parse_uuid,
-            std::{borrow::Cow, str::FromStr},
-        };
+        use std::{borrow::Cow, str::FromStr};
 
         macro_rules! num {
             ($num: expr) => {
@@ -1001,14 +998,8 @@ mod tests {
             };
         }
 
-        macro_rules! text {
-            ($text: expr) => {
-                Literal::Text(Cow::Owned($text.to_owned()))
-            };
-        }
-
-        test!(
-            DataType::U32(10).partial_cmp(num!("5")),
+        assert_eq!(
+            Value::U32(10).partial_cmp(&num!("5")),
             Some(Ordering::Greater)
         );
     }
