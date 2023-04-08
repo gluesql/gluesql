@@ -47,6 +47,9 @@ pub enum ValueError {
     #[error("failed to parse hex string: {0}")]
     FailedToParseHexString(String),
 
+    #[error("failed to parse inet string: {0}")]
+    FailedToParseInetString(String),
+
     #[error("non-numeric values {lhs:?} {operator} {rhs:?}")]
     NonNumericMathOperation {
         lhs: Value,
@@ -85,6 +88,9 @@ pub enum ValueError {
     #[error("unimplemented cast")]
     UnimplementedCast,
 
+    #[error("failed to cast from hex string to bytea: {0}")]
+    CastFromHexToByteaFailed(String),
+
     #[error("function CONCAT requires at least 1 argument")]
     EmptyArgNotAllowedInConcat,
 
@@ -97,6 +103,15 @@ pub enum ValueError {
 
     #[error("literal cast failed from text to UINT16: {0}")]
     LiteralCastFromTextToUint16Failed(String),
+
+    #[error("literal cast failed from text to UINT32: {0}")]
+    LiteralCastFromTextToUint32Failed(String),
+
+    #[error("literal cast failed from text to UINT64: {0}")]
+    LiteralCastFromTextToUint64Failed(String),
+
+    #[error("literal cast failed from text to UINT128: {0}")]
+    LiteralCastFromTextToUint128Failed(String),
 
     #[error("literal cast failed from text to float: {0}")]
     LiteralCastFromTextToFloatFailed(String),
@@ -122,6 +137,15 @@ pub enum ValueError {
     #[error("literal cast failed to UINT16: {0}")]
     LiteralCastToUint16Failed(String),
 
+    #[error("literal cast failed to UNIT32: {0}")]
+    LiteralCastToUint32Failed(String),
+
+    #[error("literal cast failed to UNIT64: {0}")]
+    LiteralCastToUint64Failed(String),
+
+    #[error("literal cast failed to UNIT128: {0}")]
+    LiteralCastToUint128Failed(String),
+
     #[error("literal cast failed to time: {0}")]
     LiteralCastToTimeFailed(String),
 
@@ -143,14 +167,15 @@ pub enum ValueError {
     #[error("unreachable integer overflow: {0}")]
     UnreachableIntegerOverflow(String),
 
-    #[error("operator doesn't exist: {0:?} LIKE {1:?}")]
-    LikeOnNonString(Value, Value),
+    #[error("operator doesn't exist: {base:?} {case} {pattern:?}", case = if *case_sensitive { "LIKE" } else { "ILIKE" })]
+    LikeOnNonString {
+        base: Value,
+        pattern: Value,
+        case_sensitive: bool,
+    },
 
     #[error("extract format not matched: {value:?} FROM {field:?})")]
     ExtractFormatNotMatched { value: Value, field: DateTimeField },
-
-    #[error("operator doesn't exist: {0:?} ILIKE {1:?}")]
-    ILikeOnNonString(Value, Value),
 
     #[error("big endian export not supported for {0} type")]
     BigEndianExportNotSupported(String),
@@ -182,6 +207,12 @@ pub enum ValueError {
 
     #[error("non-string parameter in position: {} IN {}", String::from(.from), String::from(.sub))]
     NonStringParameterInPosition { from: Value, sub: Value },
+
+    #[error("non-string parameter in find idx: {}, {}", String::from(.sub), String::from(.from))]
+    NonStringParameterInFindIdx { sub: Value, from: Value },
+
+    #[error("non positive offset in find idx: {0}")]
+    NonPositiveIntegerOffsetInFindIdx(String),
 
     #[error("failed to convert Value to Expr")]
     ValueToExprConversionFailure,

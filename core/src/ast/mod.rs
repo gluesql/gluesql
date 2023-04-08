@@ -22,6 +22,10 @@ pub trait ToSql {
     fn to_sql(&self) -> String;
 }
 
+pub trait ToSqlUnquoted {
+    fn to_sql_unquoted(&self) -> String;
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Statement {
     ShowColumns {
@@ -60,11 +64,11 @@ pub enum Statement {
         /// Table name
         name: String,
         /// Optional schema
-        columns: Vec<ColumnDef>,
+        columns: Option<Vec<ColumnDef>>,
         source: Option<Box<Query>>,
+        engine: Option<String>,
     },
     /// ALTER TABLE
-    #[cfg(feature = "alter-table")]
     AlterTable {
         /// Table name
         name: String,
@@ -78,30 +82,24 @@ pub enum Statement {
         names: Vec<String>,
     },
     /// CREATE INDEX
-    #[cfg(feature = "index")]
     CreateIndex {
         name: String,
         table_name: String,
         column: OrderByExpr,
     },
     /// DROP INDEX
-    #[cfg(feature = "index")]
     DropIndex {
         name: String,
         table_name: String,
     },
     /// START TRANSACTION, BEGIN
-    #[cfg(feature = "transaction")]
     StartTransaction,
     /// COMMIT
-    #[cfg(feature = "transaction")]
     Commit,
     /// ROLLBACK
-    #[cfg(feature = "transaction")]
     Rollback,
     /// SHOW VARIABLE
     ShowVariable(Variable),
-    #[cfg(feature = "index")]
     ShowIndexes(String),
 }
 
@@ -148,82 +146,97 @@ impl ToSql for Statement {
                 match selection {
                     Some(expr) => {
                         format!(
-                            "UPDATE {table_name} SET {assignments} WHERE {};",
+                            r#"UPDATE "{table_name}" SET {assignments} WHERE {};"#,
                             expr.to_sql()
                         )
                     }
-                    None => format!("UPDATE {table_name} SET {assignments};"),
+                    None => format!(r#"UPDATE "{table_name}" SET {assignments};"#),
                 }
             }
             Statement::Delete {
                 table_name,
                 selection,
             } => match selection {
-                Some(expr) => format!("DELETE FROM {table_name} WHERE {};", expr.to_sql()),
-                None => format!("DELETE FROM {table_name};"),
+                Some(expr) => format!(r#"DELETE FROM "{table_name}" WHERE {};"#, expr.to_sql()),
+                None => format!(r#"DELETE FROM "{table_name}";"#),
             },
             Statement::CreateTable {
                 if_not_exists,
                 name,
                 columns,
                 source,
-            } => match source {
-                Some(query) => match if_not_exists {
-                    true => format!("CREATE TABLE IF NOT EXISTS {name} AS {};", query.to_sql()),
-                    false => format!("CREATE TABLE {name} AS {};", query.to_sql()),
-                },
-                None if columns.is_empty() => match if_not_exists {
-                    true => format!("CREATE TABLE IF NOT EXISTS {name};"),
-                    false => format!("CREATE TABLE {name};"),
-                },
-                None => {
-                    let columns = columns
-                        .iter()
-                        .map(ToSql::to_sql)
-                        .collect::<Vec<_>>()
-                        .join(", ");
-                    match if_not_exists {
-                        true => format!("CREATE TABLE IF NOT EXISTS {name} ({columns});"),
-                        false => format!("CREATE TABLE {name} ({columns});"),
+                engine,
+            } => {
+                let if_not_exists = if_not_exists.then_some("IF NOT EXISTS");
+                let body = match source {
+                    Some(query) => Some(format!("AS {}", query.to_sql())),
+                    None if columns.is_none() => None,
+                    None => {
+                        let columns = columns
+                            .as_ref()
+                            .map(|columns| {
+                                columns
+                                    .iter()
+                                    .map(ToSql::to_sql)
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            })
+                            .unwrap_or_else(|| "".to_owned());
+
+                        Some(format!("({columns})"))
                     }
-                }
-            },
-            #[cfg(feature = "alter-table")]
+                };
+                let engine = engine.as_ref().map(|engine| format!("ENGINE = {engine}"));
+                let sql = vec![
+                    Some("CREATE TABLE"),
+                    if_not_exists,
+                    Some(&format! {r#""{name}""#}),
+                    body.as_deref(),
+                    engine.as_deref(),
+                ]
+                .into_iter()
+                .flatten()
+                .collect::<Vec<&str>>()
+                .join(" ");
+
+                format!("{sql};")
+            }
             Statement::AlterTable { name, operation } => {
-                format!("ALTER TABLE {name} {};", operation.to_sql())
+                format!(r#"ALTER TABLE "{name}" {};"#, operation.to_sql())
             }
             Statement::DropTable { if_exists, names } => {
-                let names = names.join(", ");
+                let names = names
+                    .iter()
+                    .map(|name| format!(r#""{name}""#))
+                    .collect::<Vec<_>>()
+                    .join(", ");
                 match if_exists {
                     true => format!("DROP TABLE IF EXISTS {};", names),
                     false => format!("DROP TABLE {};", names),
                 }
             }
-            #[cfg(feature = "index")]
             Statement::CreateIndex {
                 name,
                 table_name,
                 column,
             } => {
-                format!("CREATE INDEX {name} ON {table_name} {};", column.to_sql())
+                format!(
+                    r#"CREATE INDEX "{name}" ON "{table_name}" ({});"#,
+                    column.to_sql()
+                )
             }
-            #[cfg(feature = "index")]
             Statement::DropIndex { name, table_name } => {
                 format!("DROP INDEX {table_name}.{name};")
             }
-            #[cfg(feature = "transaction")]
             Statement::StartTransaction => "START TRANSACTION;".to_owned(),
-            #[cfg(feature = "transaction")]
             Statement::Commit => "COMMIT;".to_owned(),
-            #[cfg(feature = "transaction")]
             Statement::Rollback => "ROLLBACK;".to_owned(),
             Statement::ShowVariable(variable) => match variable {
                 Variable::Tables => "SHOW TABLES;".to_owned(),
                 Variable::Version => "SHOW VERSIONS;".to_owned(),
             },
-            #[cfg(feature = "index")]
             Statement::ShowIndexes(object_name) => {
-                format!("SHOW INDEXES FROM {object_name};")
+                format!(r#"SHOW INDEXES FROM "{object_name}";"#)
             }
             _ => "(..statement..)".to_owned(),
         }
@@ -232,22 +245,17 @@ impl ToSql for Statement {
 
 impl ToSql for Assignment {
     fn to_sql(&self) -> String {
-        format!("{} = {}", self.id, self.value.to_sql())
+        format!(r#""{}" = {}"#, self.id, self.value.to_sql())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "alter-table")]
-    use crate::ast::AlterTableOperation;
-
-    #[cfg(feature = "index")]
-    use crate::ast::OrderByExpr;
-
     use {
         crate::ast::{
-            Assignment, AstLiteral, BinaryOperator, ColumnDef, DataType, Expr, Query, Select,
-            SelectItem, SetExpr, Statement, TableFactor, TableWithJoins, ToSql, Values, Variable,
+            AlterTableOperation, Assignment, AstLiteral, BinaryOperator, ColumnDef, DataType, Expr,
+            OrderByExpr, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
+            TableWithJoins, ToSql, Values, Variable,
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,
@@ -289,7 +297,7 @@ mod tests {
     #[test]
     fn to_sql_update() {
         assert_eq!(
-            "UPDATE Foo SET id = 4, color = 'blue';",
+            r#"UPDATE "Foo" SET "id" = 4, "color" = 'blue';"#,
             Statement::Update {
                 table_name: "Foo".into(),
                 assignments: vec![
@@ -310,7 +318,7 @@ mod tests {
         );
 
         assert_eq!(
-            "UPDATE Foo SET name = 'first' WHERE a > b;",
+            r#"UPDATE "Foo" SET "name" = 'first' WHERE "a" > "b";"#,
             Statement::Update {
                 table_name: "Foo".into(),
                 assignments: vec![Assignment {
@@ -330,7 +338,7 @@ mod tests {
     #[test]
     fn to_sql_delete() {
         assert_eq!(
-            "DELETE FROM Foo;",
+            r#"DELETE FROM "Foo";"#,
             Statement::Delete {
                 table_name: "Foo".into(),
                 selection: None
@@ -339,7 +347,7 @@ mod tests {
         );
 
         assert_eq!(
-            "DELETE FROM Foo WHERE item = 'glue';",
+            r#"DELETE FROM "Foo" WHERE "item" = 'glue';"#,
             Statement::Delete {
                 table_name: "Foo".into(),
                 selection: Some(Expr::BinaryOp {
@@ -355,50 +363,53 @@ mod tests {
     #[test]
     fn to_sql_create_table() {
         assert_eq!(
-            "CREATE TABLE IF NOT EXISTS Foo;",
+            r#"CREATE TABLE IF NOT EXISTS "Foo";"#,
             Statement::CreateTable {
                 if_not_exists: true,
                 name: "Foo".into(),
-                columns: Vec::new(),
+                columns: None,
                 source: None,
+                engine: None,
             }
             .to_sql()
         );
 
         assert_eq!(
-            "CREATE TABLE Foo;",
+            r#"CREATE TABLE "Foo";"#,
             Statement::CreateTable {
                 if_not_exists: false,
                 name: "Foo".into(),
-                columns: Vec::new(),
+                columns: None,
                 source: None,
+                engine: None,
             }
             .to_sql()
         );
 
         assert_eq!(
-            "CREATE TABLE IF NOT EXISTS Foo (id BOOLEAN NOT NULL);",
+            r#"CREATE TABLE IF NOT EXISTS "Foo" ("id" BOOLEAN NOT NULL);"#,
             Statement::CreateTable {
                 if_not_exists: true,
                 name: "Foo".into(),
-                columns: vec![ColumnDef {
+                columns: Some(vec![ColumnDef {
                     name: "id".to_owned(),
                     data_type: DataType::Boolean,
                     nullable: false,
                     default: None,
                     unique: None,
-                },],
+                },]),
                 source: None,
+                engine: None,
             }
             .to_sql()
         );
 
         assert_eq!(
-            "CREATE TABLE Foo (id INT NOT NULL, num INT NULL, name TEXT NOT NULL);",
+            r#"CREATE TABLE "Foo" ("id" INT NOT NULL, "num" INT NULL, "name" TEXT NOT NULL);"#,
             Statement::CreateTable {
                 if_not_exists: false,
                 name: "Foo".into(),
-                columns: vec![
+                columns: Some(vec![
                     ColumnDef {
                         name: "id".to_owned(),
                         data_type: DataType::Int,
@@ -420,8 +431,9 @@ mod tests {
                         default: None,
                         unique: None,
                     }
-                ],
-                source: None
+                ]),
+                source: None,
+                engine: None,
             }
             .to_sql()
         );
@@ -430,11 +442,11 @@ mod tests {
     #[test]
     fn to_sql_create_table_as() {
         assert_eq!(
-            "CREATE TABLE Foo AS SELECT id, count FROM Bar;",
+            r#"CREATE TABLE "Foo" AS SELECT "id", "count" FROM "Bar";"#,
             Statement::CreateTable {
                 if_not_exists: false,
                 name: "Foo".into(),
-                columns: vec![],
+                columns: None,
                 source: Some(Box::new(Query {
                     body: SetExpr::Select(Box::new(Select {
                         projection: vec![
@@ -462,17 +474,18 @@ mod tests {
                     order_by: vec![],
                     limit: None,
                     offset: None
-                }))
+                })),
+                engine: None,
             }
             .to_sql()
         );
 
         assert_eq!(
-            "CREATE TABLE IF NOT EXISTS Foo AS VALUES (TRUE);",
+            r#"CREATE TABLE IF NOT EXISTS "Foo" AS VALUES (TRUE);"#,
             Statement::CreateTable {
                 if_not_exists: true,
                 name: "Foo".into(),
-                columns: vec![],
+                columns: None,
                 source: Some(Box::new(Query {
                     body: SetExpr::Values(Values(vec![vec![Expr::Literal(AstLiteral::Boolean(
                         true
@@ -480,17 +493,50 @@ mod tests {
                     order_by: vec![],
                     limit: None,
                     offset: None
-                }))
+                })),
+                engine: None,
             }
             .to_sql()
         );
     }
 
     #[test]
-    #[cfg(feature = "alter-table")]
+    fn to_sql_create_table_with_engine() {
+        assert_eq!(
+            r#"CREATE TABLE "Foo" ENGINE = MEMORY;"#,
+            Statement::CreateTable {
+                if_not_exists: false,
+                name: "Foo".into(),
+                columns: None,
+                source: None,
+                engine: Some("MEMORY".to_owned()),
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"CREATE TABLE "Foo" ("id" BOOLEAN NOT NULL) ENGINE = SLED;"#,
+            Statement::CreateTable {
+                if_not_exists: false,
+                name: "Foo".into(),
+                columns: Some(vec![ColumnDef {
+                    name: "id".to_owned(),
+                    data_type: DataType::Boolean,
+                    nullable: false,
+                    default: None,
+                    unique: None,
+                },]),
+                source: None,
+                engine: Some("SLED".to_owned()),
+            }
+            .to_sql()
+        );
+    }
+
+    #[test]
     fn to_sql_alter_table() {
         assert_eq!(
-            "ALTER TABLE Foo ADD COLUMN amount INT NOT NULL DEFAULT 10;",
+            r#"ALTER TABLE "Foo" ADD COLUMN "amount" INT NOT NULL DEFAULT 10;"#,
             Statement::AlterTable {
                 name: "Foo".into(),
                 operation: AlterTableOperation::AddColumn {
@@ -509,7 +555,7 @@ mod tests {
         );
 
         assert_eq!(
-            "ALTER TABLE Foo DROP COLUMN something;",
+            r#"ALTER TABLE "Foo" DROP COLUMN "something";"#,
             Statement::AlterTable {
                 name: "Foo".into(),
                 operation: AlterTableOperation::DropColumn {
@@ -521,7 +567,7 @@ mod tests {
         );
 
         assert_eq!(
-            "ALTER TABLE Foo DROP COLUMN IF EXISTS something;",
+            r#"ALTER TABLE "Foo" DROP COLUMN IF EXISTS "something";"#,
             Statement::AlterTable {
                 name: "Foo".into(),
                 operation: AlterTableOperation::DropColumn {
@@ -533,7 +579,7 @@ mod tests {
         );
 
         assert_eq!(
-            "ALTER TABLE Bar RENAME COLUMN id TO new_id;",
+            r#"ALTER TABLE "Bar" RENAME COLUMN "id" TO "new_id";"#,
             Statement::AlterTable {
                 name: "Bar".into(),
                 operation: AlterTableOperation::RenameColumn {
@@ -545,7 +591,7 @@ mod tests {
         );
 
         assert_eq!(
-            "ALTER TABLE Foo RENAME TO Bar;",
+            r#"ALTER TABLE "Foo" RENAME TO "Bar";"#,
             Statement::AlterTable {
                 name: "Foo".to_owned(),
                 operation: AlterTableOperation::RenameTable {
@@ -559,7 +605,7 @@ mod tests {
     #[test]
     fn to_sql_drop_table() {
         assert_eq!(
-            "DROP TABLE Test;",
+            r#"DROP TABLE "Test";"#,
             Statement::DropTable {
                 if_exists: false,
                 names: vec!["Test".into()]
@@ -568,7 +614,7 @@ mod tests {
         );
 
         assert_eq!(
-            "DROP TABLE IF EXISTS Test;",
+            r#"DROP TABLE IF EXISTS "Test";"#,
             Statement::DropTable {
                 if_exists: true,
                 names: vec!["Test".into()]
@@ -577,7 +623,7 @@ mod tests {
         );
 
         assert_eq!(
-            "DROP TABLE Foo, Bar;",
+            r#"DROP TABLE "Foo", "Bar";"#,
             Statement::DropTable {
                 if_exists: false,
                 names: vec!["Foo".into(), "Bar".into(),]
@@ -587,10 +633,9 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "index")]
     fn to_sql_create_index() {
         assert_eq!(
-            "CREATE INDEX idx_name ON Test LastName;",
+            r#"CREATE INDEX "idx_name" ON "Test" ("LastName");"#,
             Statement::CreateIndex {
                 name: "idx_name".into(),
                 table_name: "Test".into(),
@@ -604,7 +649,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "index")]
     fn to_sql_drop_index() {
         assert_eq!(
             "DROP INDEX Test.idx_id;",
@@ -617,7 +661,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "transaction")]
     fn to_sql_transaction() {
         assert_eq!("START TRANSACTION;", Statement::StartTransaction.to_sql());
         assert_eq!("COMMIT;", Statement::Commit.to_sql());
@@ -637,10 +680,9 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "index")]
     fn to_sql_show_indexes() {
         assert_eq!(
-            "SHOW INDEXES FROM Test;",
+            r#"SHOW INDEXES FROM "Test";"#,
             Statement::ShowIndexes("Test".into()).to_sql()
         );
     }
@@ -648,7 +690,7 @@ mod tests {
     #[test]
     fn to_sql_assignment() {
         assert_eq!(
-            "count = 5",
+            r#""count" = 5"#,
             Assignment {
                 id: "count".to_owned(),
                 value: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("5").unwrap()))

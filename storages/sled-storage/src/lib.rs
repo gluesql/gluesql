@@ -22,6 +22,7 @@ use {
     gluesql_core::{
         data::Schema,
         result::{Error, Result},
+        store::Metadata,
     },
     sled::{
         transaction::{
@@ -97,15 +98,6 @@ impl SledStorage {
 
         Ok(())
     }
-
-    fn update_state(self, state: State) -> Self {
-        Self {
-            tree: self.tree,
-            id_offset: self.id_offset,
-            state,
-            tx_timeout: self.tx_timeout,
-        }
-    }
 }
 
 impl TryFrom<Config> for SledStorage {
@@ -152,3 +144,5 @@ fn fetch_schema(
 
     Ok((key, schema_snapshot))
 }
+
+impl Metadata for SledStorage {}

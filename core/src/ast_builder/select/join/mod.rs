@@ -4,10 +4,7 @@ mod root;
 
 pub use {hash_join::HashJoinNode, join_constraint::JoinConstraintNode, root::JoinNode};
 
-use crate::{
-    ast::{JoinConstraint, JoinExecutor, JoinOperator, TableFactor},
-    ast_builder::select::NodeData,
-};
+use crate::ast::{JoinConstraint, JoinExecutor, JoinOperator, Select, TableFactor};
 
 #[derive(Clone, Copy, Debug)]
 pub enum JoinOperatorType {
@@ -25,7 +22,7 @@ impl From<JoinOperatorType> for JoinOperator {
 }
 
 pub struct JoinConstraintData {
-    node_data: NodeData,
+    select: Select,
     relation: TableFactor,
     operator_type: JoinOperatorType,
     executor: JoinExecutor,

@@ -11,7 +11,11 @@ use {
     },
     chrono::NaiveDate,
     rust_decimal::Decimal,
-    std::cmp::Ordering,
+    std::{
+        cmp::Ordering,
+        net::{IpAddr, Ipv4Addr, Ipv6Addr},
+        str::FromStr,
+    },
 };
 
 impl PartialEq<Literal<'_>> for Value {
@@ -25,6 +29,9 @@ impl PartialEq<Literal<'_>> for Value {
             (Value::I128(l), Literal::Number(r)) => r.to_i128().map(|r| *l == r).unwrap_or(false),
             (Value::U8(l), Literal::Number(r)) => r.to_u8().map(|r| *l == r).unwrap_or(false),
             (Value::U16(l), Literal::Number(r)) => r.to_u16().map(|r| *l == r).unwrap_or(false),
+            (Value::U32(l), Literal::Number(r)) => r.to_u32().map(|r| *l == r).unwrap_or(false),
+            (Value::U64(l), Literal::Number(r)) => r.to_u64().map(|r| *l == r).unwrap_or(false),
+            (Value::U128(l), Literal::Number(r)) => r.to_u128().map(|r| *l == r).unwrap_or(false),
             (Value::F64(l), Literal::Number(r)) => r.to_f64().map(|r| *l == r).unwrap_or(false),
             (Value::Str(l), Literal::Text(r)) => l == r.as_ref(),
             (Value::Bytea(l), Literal::Bytea(r)) => l == r,
@@ -41,6 +48,19 @@ impl PartialEq<Literal<'_>> for Value {
                 None => false,
             },
             (Value::Uuid(l), Literal::Text(r)) => parse_uuid(r).map(|r| l == &r).unwrap_or(false),
+            (Value::Inet(l), Literal::Text(r)) => match IpAddr::from_str(r) {
+                Ok(x) => l == &x,
+                Err(_) => false,
+            },
+            (Value::Inet(l), Literal::Number(r)) => {
+                if let Some(x) = r.to_u32() {
+                    l == &Ipv4Addr::from(x)
+                } else if let Some(x) = r.to_u128() {
+                    l == &Ipv6Addr::from(x)
+                } else {
+                    false
+                }
+            }
             _ => false,
         }
     }
@@ -70,10 +90,23 @@ impl PartialOrd<Literal<'_>> for Value {
             (Value::U16(l), Literal::Number(r)) => {
                 r.to_u16().map(|r| l.partial_cmp(&r)).unwrap_or(None)
             }
+            (Value::U32(l), Literal::Number(r)) => {
+                r.to_u32().map(|r| l.partial_cmp(&r)).unwrap_or(None)
+            }
+            (Value::U64(l), Literal::Number(r)) => {
+                r.to_u64().map(|r| l.partial_cmp(&r)).unwrap_or(None)
+            }
+            (Value::U128(l), Literal::Number(r)) => {
+                r.to_u128().map(|r| l.partial_cmp(&r)).unwrap_or(None)
+            }
+
             (Value::F64(l), Literal::Number(r)) => {
                 r.to_f64().map(|r| l.partial_cmp(&r)).unwrap_or(None)
             }
-            (Value::Str(l), Literal::Text(r)) => Some(l.cmp(r.as_ref())),
+            (Value::Str(l), Literal::Text(r)) => {
+                let l: &str = l.as_ref();
+                Some(l.cmp(r))
+            }
             (Value::Date(l), Literal::Text(r)) => match r.parse::<NaiveDate>() {
                 Ok(r) => l.partial_cmp(&r),
                 Err(_) => None,
@@ -88,6 +121,19 @@ impl PartialOrd<Literal<'_>> for Value {
             },
             (Value::Uuid(l), Literal::Text(r)) => {
                 parse_uuid(r).map(|r| l.partial_cmp(&r)).unwrap_or(None)
+            }
+            (Value::Inet(l), Literal::Text(r)) => match IpAddr::from_str(r) {
+                Ok(x) => l.partial_cmp(&x),
+                Err(_) => None,
+            },
+            (Value::Inet(l), Literal::Number(r)) => {
+                if let Some(x) = r.to_u32() {
+                    l.partial_cmp(&Ipv4Addr::from(x))
+                } else if let Some(x) = r.to_u128() {
+                    l.partial_cmp(&Ipv6Addr::from(x))
+                } else {
+                    None
+                }
             }
             _ => None,
         }
@@ -155,6 +201,18 @@ impl Value {
                 .to_u16()
                 .map(Value::U16)
                 .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+            (DataType::Uint32, Literal::Number(v)) => v
+                .to_u32()
+                .map(Value::U32)
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+            (DataType::Uint64, Literal::Number(v)) => v
+                .to_u64()
+                .map(Value::U64)
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+            (DataType::Uint128, Literal::Number(v)) => v
+                .to_u128()
+                .map(Value::U128)
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
             (DataType::Float, Literal::Number(v)) => v
                 .to_f64()
                 .map(Value::F64)
@@ -164,6 +222,18 @@ impl Value {
             (DataType::Bytea, Literal::Text(v)) => hex::decode(v.as_ref())
                 .map(Value::Bytea)
                 .map_err(|_| ValueError::FailedToParseHexString(v.to_string()).into()),
+            (DataType::Inet, Literal::Text(v)) => IpAddr::from_str(v.as_ref())
+                .map(Value::Inet)
+                .map_err(|_| ValueError::FailedToParseInetString(v.to_string()).into()),
+            (DataType::Inet, Literal::Number(v)) => {
+                if let Some(x) = v.to_u32() {
+                    Ok(Value::Inet(IpAddr::V4(Ipv4Addr::from(x))))
+                } else {
+                    Ok(Value::Inet(IpAddr::V6(Ipv6Addr::from(
+                        v.to_u128().unwrap(),
+                    ))))
+                }
+            }
             (DataType::Date, Literal::Text(v)) => v
                 .parse::<NaiveDate>()
                 .map(Value::Date)
@@ -305,6 +375,48 @@ impl Value {
 
                 Ok(Value::U16(v))
             }
+            (DataType::Uint32, Literal::Text(v)) => v
+                .parse::<u32>()
+                .map(Value::U32)
+                .map_err(|_| ValueError::LiteralCastFromTextToUint32Failed(v.to_string()).into()),
+            (DataType::Uint32, Literal::Number(v)) => match v.to_u32() {
+                Some(x) => Ok(Value::U32(x)),
+                None => Err(ValueError::LiteralCastToUint32Failed(v.to_string()).into()),
+            },
+            (DataType::Uint32, Literal::Boolean(v)) => {
+                let v = u32::from(*v);
+
+                Ok(Value::U32(v))
+            }
+
+            (DataType::Uint64, Literal::Text(v)) => v
+                .parse::<u64>()
+                .map(Value::U64)
+                .map_err(|_| ValueError::LiteralCastFromTextToUint64Failed(v.to_string()).into()),
+            (DataType::Uint64, Literal::Number(v)) => match v.to_u64() {
+                Some(x) => Ok(Value::U64(x)),
+                None => Err(ValueError::LiteralCastToUint64Failed(v.to_string()).into()),
+            },
+            (DataType::Uint64, Literal::Boolean(v)) => {
+                let v = u64::from(*v);
+
+                Ok(Value::U64(v))
+            }
+
+            (DataType::Uint128, Literal::Text(v)) => v
+                .parse::<u128>()
+                .map(Value::U128)
+                .map_err(|_| ValueError::LiteralCastFromTextToUint128Failed(v.to_string()).into()),
+            (DataType::Uint128, Literal::Number(v)) => match v.to_u128() {
+                Some(x) => Ok(Value::U128(x)),
+                None => Err(ValueError::LiteralCastToUint128Failed(v.to_string()).into()),
+            },
+            (DataType::Uint128, Literal::Boolean(v)) => {
+                let v = u128::from(*v);
+
+                Ok(Value::U128(v))
+            }
+
             (DataType::Float, Literal::Text(v)) => v
                 .parse::<f64>()
                 .map(Value::F64)
@@ -340,7 +452,7 @@ impl Value {
                 Ok(Value::Str(v.to_owned()))
             }
             (DataType::Interval, Literal::Text(v)) => {
-                Interval::try_from(v.as_str()).map(Value::Interval)
+                Interval::try_from(v.as_ref()).map(Value::Interval)
             }
             (DataType::Uuid, Literal::Text(v)) => parse_uuid(v).map(Value::Uuid),
             (DataType::Boolean, Literal::Null)
@@ -351,6 +463,9 @@ impl Value {
             | (DataType::Int128, Literal::Null)
             | (DataType::Uint8, Literal::Null)
             | (DataType::Uint16, Literal::Null)
+            | (DataType::Uint32, Literal::Null)
+            | (DataType::Uint64, Literal::Null)
+            | (DataType::Uint128, Literal::Null)
             | (DataType::Float, Literal::Null)
             | (DataType::Decimal, Literal::Null)
             | (DataType::Text, Literal::Null) => Ok(Value::Null),
@@ -363,6 +478,19 @@ impl Value {
             (DataType::Timestamp, Literal::Text(v)) => parse_timestamp(v)
                 .map(Value::Timestamp)
                 .ok_or_else(|| ValueError::LiteralCastToTimestampFailed(v.to_string()).into()),
+            (DataType::Inet, Literal::Number(v)) => {
+                if let Some(x) = v.to_u32() {
+                    Ok(Value::Inet(IpAddr::V4(Ipv4Addr::from(x))))
+                } else if let Some(x) = v.to_u128() {
+                    Ok(Value::Inet(IpAddr::V6(Ipv6Addr::from(x))))
+                } else {
+                    Err(ValueError::FailedToParseInetString(v.to_string()).into())
+                }
+            }
+            (DataType::Inet, Literal::Text(v)) => IpAddr::from_str(v)
+                .map(Value::Inet)
+                .map_err(|_| ValueError::FailedToParseInetString(v.to_string()).into()),
+            (DataType::List, Literal::Text(v)) => Value::parse_json_list(v),
             _ => Err(ValueError::UnimplementedLiteralCast {
                 data_type: data_type.clone(),
                 literal: format!("{:?}", literal),
@@ -378,6 +506,7 @@ mod tests {
         crate::{data::Literal, prelude::Value},
         bigdecimal::BigDecimal,
         chrono::{NaiveDate, NaiveDateTime, NaiveTime},
+        std::net::{IpAddr, Ipv4Addr, Ipv6Addr},
     };
 
     fn date(year: i32, month: u32, day: u32) -> NaiveDate {
@@ -418,17 +547,28 @@ mod tests {
         let uuid = parse_uuid(uuid_text).unwrap();
 
         let bytea = || hex::decode("123456").unwrap();
+        let inet = |v: &str| Value::Inet(IpAddr::from_str(v).unwrap());
 
         assert_eq!(Value::Bool(true), Literal::Boolean(true));
         assert_eq!(Value::I8(8), num!("8"));
-        //assert_eq!(Value::I32(32), num!("32"));   // should this work?
+        assert_eq!(Value::I32(32), num!("32"));
+        assert_eq!(Value::I16(16), num!("16"));
+        assert_eq!(Value::I32(32), num!("32"));
         assert_eq!(Value::I64(64), num!("64"));
         assert_eq!(Value::I128(128), num!("128"));
-        assert_eq!(Value::F64(7.123), num!("7.123"));
         assert_eq!(Value::U8(7), num!("7"));
         assert_eq!(Value::U16(64), num!("64"));
+        assert_eq!(Value::U32(64), num!("64"));
+        assert_eq!(Value::U64(64), num!("64"));
+        assert_eq!(Value::U128(64), num!("64"));
+        assert_eq!(Value::F64(7.123), num!("7.123"));
         assert_eq!(Value::Str("Hello".to_owned()), text!("Hello"));
         assert_eq!(Value::Bytea(bytea()), Literal::Bytea(bytea()));
+        assert_eq!(inet("127.0.0.1"), text!("127.0.0.1"));
+        assert_eq!(inet("::1"), text!("::1"));
+        assert_eq!(inet("0.0.0.0"), num!("0"));
+        assert_ne!(inet("::1"), num!("0"));
+        assert_eq!(inet("::2:4cb0:16ea"), num!("9876543210"));
         assert_eq!(Value::Date(date(2021, 11, 20)), text!("2021-11-20"));
         assert_ne!(Value::Date(date(2021, 11, 20)), text!("202=abcdef"));
         assert_eq!(
@@ -523,6 +663,7 @@ mod tests {
         }
 
         let bytea = |v| hex::decode(v).unwrap();
+        let inet = |v| IpAddr::from_str(v).unwrap();
 
         test!(DataType::Boolean, Literal::Boolean(true), Value::Bool(true));
         test!(DataType::Int, num!("123456789"), Value::I64(123456789));
@@ -533,7 +674,9 @@ mod tests {
         test!(DataType::Int128, num!("64"), Value::I128(64));
         test!(DataType::Uint8, num!("8"), Value::U8(8));
         test!(DataType::Uint16, num!("64"), Value::U16(64));
-
+        test!(DataType::Uint32, num!("64"), Value::U32(64));
+        test!(DataType::Uint64, num!("64"), Value::U64(64));
+        test!(DataType::Uint128, num!("64"), Value::U128(64));
         test!(DataType::Float, num!("123456789"), Value::F64(123456789.0));
         test!(
             DataType::Text,
@@ -549,6 +692,26 @@ mod tests {
         assert_eq!(
             Value::try_from_literal(&DataType::Bytea, &text!("123")),
             Err(ValueError::FailedToParseHexString("123".to_owned()).into())
+        );
+        test!(DataType::Inet, text!("::1"), Value::Inet(inet("::1")));
+        test!(
+            DataType::Inet,
+            num!("4294967295"),
+            Value::Inet(inet("255.255.255.255"))
+        );
+        test!(
+            DataType::Inet,
+            num!("9876543210"),
+            Value::Inet(inet("::2:4cb0:16ea"))
+        );
+        test!(
+            DataType::Inet,
+            num!("9876543210"),
+            Value::Inet(inet("::2:4cb0:16ea"))
+        );
+        assert_eq!(
+            Value::try_from_literal(&DataType::Inet, &text!("123")),
+            Err(ValueError::FailedToParseInetString("123".to_owned()).into())
         );
         test!(
             DataType::Date,
@@ -737,6 +900,21 @@ mod tests {
         test!(DataType::Uint16, Literal::Boolean(true), Value::U16(1));
         test!(DataType::Uint16, Literal::Boolean(false), Value::U16(0));
 
+        test!(DataType::Uint32, text!("127"), Value::U32(127));
+        test!(DataType::Uint32, num!("125"), Value::U32(125));
+        test!(DataType::Uint32, Literal::Boolean(true), Value::U32(1));
+        test!(DataType::Uint32, Literal::Boolean(false), Value::U32(0));
+
+        test!(DataType::Uint64, text!("127"), Value::U64(127));
+        test!(DataType::Uint64, num!("125"), Value::U64(125));
+        test!(DataType::Uint64, Literal::Boolean(true), Value::U64(1));
+        test!(DataType::Uint64, Literal::Boolean(false), Value::U64(0));
+
+        test!(DataType::Uint128, text!("127"), Value::U128(127));
+        test!(DataType::Uint128, num!("125"), Value::U128(125));
+        test!(DataType::Uint128, Literal::Boolean(true), Value::U128(1));
+        test!(DataType::Uint128, Literal::Boolean(false), Value::U128(0));
+
         test!(DataType::Float, text!("12345.6789"), Value::F64(12345.6789));
         test!(DataType::Float, num!("123456.789"), Value::F64(123456.789));
         test!(DataType::Float, Literal::Boolean(true), Value::F64(1.0));
@@ -772,6 +950,9 @@ mod tests {
         test_null!(DataType::Int8, Literal::Null);
         test_null!(DataType::Uint8, Literal::Null);
         test_null!(DataType::Uint16, Literal::Null);
+        test_null!(DataType::Uint32, Literal::Null);
+        test_null!(DataType::Uint64, Literal::Null);
+        test_null!(DataType::Uint128, Literal::Null);
         test_null!(DataType::Float, Literal::Null);
         test_null!(DataType::Text, Literal::Null);
         test!(
@@ -788,6 +969,21 @@ mod tests {
             DataType::Timestamp,
             text!("2022-12-20 10:00:00.987"),
             Value::Timestamp(timestamp(2022, 12, 20, 10, 0, 0, 987))
+        );
+        test!(
+            DataType::Inet,
+            num!("1234567890"),
+            Value::Inet(IpAddr::from(Ipv4Addr::from(1234567890)))
+        );
+        test!(
+            DataType::Inet,
+            num!("91234567890"),
+            Value::Inet(IpAddr::from(Ipv6Addr::from(91234567890)))
+        );
+        test!(
+            DataType::Inet,
+            text!("::1"),
+            Value::Inet(IpAddr::from_str("::1").unwrap())
         );
     }
 }

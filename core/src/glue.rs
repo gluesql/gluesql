@@ -16,19 +16,17 @@ use {
 };
 
 pub struct Glue<T: GStore + GStoreMut> {
-    pub storage: Option<T>,
+    pub storage: T,
 }
 
 impl<T: GStore + GStoreMut> Glue<T> {
     pub fn new(storage: T) -> Self {
-        Self {
-            storage: Some(storage),
-        }
+        Self { storage }
     }
 
-    pub async fn plan<Sql: AsRef<str>>(&self, sql: Sql) -> Result<Vec<Statement>> {
+    pub async fn plan<Sql: AsRef<str>>(&mut self, sql: Sql) -> Result<Vec<Statement>> {
         let parsed = parse(sql)?;
-        let storage = self.storage.as_ref().unwrap();
+        let storage = &self.storage;
         stream::iter(parsed)
             .map(|p| translate(&p))
             .then(|statement| async move { plan(storage, statement?).await })
@@ -46,20 +44,7 @@ impl<T: GStore + GStoreMut> Glue<T> {
     }
 
     pub async fn execute_stmt_async(&mut self, statement: &Statement) -> Result<Payload> {
-        let storage = self.storage.take().unwrap();
-
-        match execute(storage, statement).await {
-            Ok((storage, payload)) => {
-                self.storage = Some(storage);
-
-                Ok(payload)
-            }
-            Err((storage, error)) => {
-                self.storage = Some(storage);
-
-                Err(error)
-            }
-        }
+        execute(&mut self.storage, statement).await
     }
 
     pub async fn execute_async<Sql: AsRef<str>>(&mut self, sql: Sql) -> Result<Vec<Payload>> {

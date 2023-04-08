@@ -1,6 +1,7 @@
 use {
-    super::{NodeData, Prebuild},
+    super::{Prebuild, ValuesNode},
     crate::{
+        ast::Query,
         ast_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
             JoinNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryNode, SelectNode,
@@ -20,10 +21,11 @@ pub enum PrevNode<'a> {
     JoinConstraint(JoinConstraintNode<'a>),
     HashJoin(Box<HashJoinNode<'a>>),
     ProjectNode(Box<ProjectNode<'a>>),
+    Values(ValuesNode<'a>),
 }
 
-impl<'a> Prebuild for PrevNode<'a> {
-    fn prebuild(self) -> Result<NodeData> {
+impl<'a> Prebuild<Query> for PrevNode<'a> {
+    fn prebuild(self) -> Result<Query> {
         match self {
             Self::Select(node) => node.prebuild(),
             Self::Having(node) => node.prebuild(),
@@ -33,6 +35,7 @@ impl<'a> Prebuild for PrevNode<'a> {
             Self::JoinConstraint(node) => node.prebuild(),
             Self::HashJoin(node) => node.prebuild(),
             Self::ProjectNode(node) => node.prebuild(),
+            Self::Values(node) => node.prebuild(),
         }
     }
 }
@@ -85,6 +88,12 @@ impl<'a> From<ProjectNode<'a>> for PrevNode<'a> {
     }
 }
 
+impl<'a> From<ValuesNode<'a>> for PrevNode<'a> {
+    fn from(node: ValuesNode<'a>) -> Self {
+        PrevNode::Values(node)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct OrderByNode<'a> {
     prev_node: PrevNode<'a>,
@@ -115,12 +124,12 @@ impl<'a> OrderByNode<'a> {
     }
 }
 
-impl<'a> Prebuild for OrderByNode<'a> {
-    fn prebuild(self) -> Result<NodeData> {
-        let mut select_data = self.prev_node.prebuild()?;
-        select_data.order_by = self.expr_list.try_into()?;
+impl<'a> Prebuild<Query> for OrderByNode<'a> {
+    fn prebuild(self) -> Result<Query> {
+        let mut node_data = self.prev_node.prebuild()?;
+        node_data.order_by = self.expr_list.try_into()?;
 
-        Ok(select_data)
+        Ok(node_data)
     }
 }
 

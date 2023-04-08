@@ -3,7 +3,7 @@ use {
         ast::{Aggregate, SelectItem},
         data::{Row, Value},
         executor::{context::RowContext, evaluate::evaluate},
-        result::{Error, Result},
+        result::Result,
         store::GStore,
     },
     futures::stream::{self, StreamExt, TryStreamExt},
@@ -11,15 +11,15 @@ use {
     std::rc::Rc,
 };
 
-pub struct Project<'a> {
-    storage: &'a dyn GStore,
+pub struct Project<'a, T: GStore> {
+    storage: &'a T,
     context: Option<Rc<RowContext<'a>>>,
     fields: &'a [SelectItem],
 }
 
-impl<'a> Project<'a> {
+impl<'a, T: GStore> Project<'a, T> {
     pub fn new(
-        storage: &'a dyn GStore,
+        storage: &'a T,
         context: Option<Rc<RowContext<'a>>>,
         fields: &'a [SelectItem],
     ) -> Self {
@@ -46,9 +46,8 @@ impl<'a> Project<'a> {
         let filter_context = Some(filter_context);
         let context = &context;
 
-        let entries = stream::iter(self.fields.iter())
-            .map(Ok::<&'a SelectItem, Error>)
-            .and_then(|item| {
+        let entries = stream::iter(self.fields)
+            .then(|item| {
                 let filter_context = filter_context.as_ref().map(Rc::clone);
                 let aggregated = aggregated.as_ref().map(Rc::clone);
 

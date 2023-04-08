@@ -1,71 +1,27 @@
-use cfg_if::cfg_if;
-
-cfg_if! {
-    if #[cfg(feature = "alter-table")] {
-        mod alter_table;
-        pub use alter_table::{AlterTable, AlterTableError};
-    }
-}
-
-cfg_if! {
-    if #[cfg(feature = "index")] {
-        mod index;
-        pub use index::{Index, IndexError, IndexMut};
-    }
-}
-
-cfg_if! {
-    if #[cfg(feature = "transaction")] {
-        mod transaction;
-        pub use transaction::Transaction;
-    }
-}
-
-cfg_if! {
-    if #[cfg(feature = "index")] {
-        pub trait GStore: Store + Index {}
-        impl<S: Store + Index> GStore for S {}
-    } else {
-        pub trait GStore: Store {}
-        impl<S: Store> GStore for S {}
-    }
-}
-
-cfg_if! {
-    if #[cfg(all(feature = "alter-table", feature = "index", feature = "transaction"))] {
-        pub trait GStoreMut: StoreMut + IndexMut + AlterTable + Transaction {}
-        impl<S: StoreMut + IndexMut + AlterTable+ Transaction> GStoreMut for S {}
-    } else if #[cfg(all(feature = "alter-table", feature = "index"))] {
-        pub trait GStoreMut: StoreMut + IndexMut + AlterTable {}
-        impl<S: StoreMut + IndexMut + AlterTable> GStoreMut for S {}
-    } else if #[cfg(all(feature = "alter-table", feature = "transaction"))] {
-        pub trait GStoreMut: StoreMut + Transaction + AlterTable {}
-        impl<S: StoreMut + Transaction + AlterTable> GStoreMut for S {}
-    } else if #[cfg(all(feature = "index", feature = "transaction"))] {
-        pub trait GStoreMut: StoreMut + IndexMut + Transaction {}
-        impl<S: StoreMut + IndexMut + Transaction> GStoreMut for S {}
-    } else if #[cfg(feature = "alter-table")] {
-        pub trait GStoreMut: StoreMut + AlterTable {}
-        impl<S: StoreMut+ AlterTable> GStoreMut for S {}
-    } else if #[cfg(feature = "index")] {
-        pub trait GStoreMut: StoreMut + IndexMut {}
-        impl<S: StoreMut + IndexMut> GStoreMut for S {}
-    } else if #[cfg(feature = "transaction")] {
-        pub trait GStoreMut: StoreMut + Transaction {}
-        impl<S: StoreMut + Transaction> GStoreMut for S {}
-    } else {
-        pub trait GStoreMut: StoreMut {}
-        impl<S: StoreMut> GStoreMut for S {}
-    }
-}
-
+mod alter_table;
 mod data_row;
-pub use data_row::DataRow;
+mod index;
+mod metadata;
+mod transaction;
+
+pub trait GStore: Store + Index + Metadata {}
+impl<S: Store + Index + Metadata> GStore for S {}
+
+pub trait GStoreMut: StoreMut + IndexMut + AlterTable + Transaction {}
+impl<S: StoreMut + IndexMut + AlterTable + Transaction> GStoreMut for S {}
+
+pub use {
+    alter_table::{AlterTable, AlterTableError},
+    data_row::DataRow,
+    index::{Index, IndexError, IndexMut},
+    metadata::{MetaIter, Metadata},
+    transaction::Transaction,
+};
 
 use {
     crate::{
         data::{Key, Schema},
-        result::{MutResult, Result},
+        result::Result,
     },
     async_trait::async_trait,
 };
@@ -87,17 +43,14 @@ pub trait Store {
 /// By implementing `StoreMut` trait,
 /// you can run `INSERT`, `CREATE TABLE`, `DELETE`, `UPDATE` and `DROP TABLE` queries.
 #[async_trait(?Send)]
-pub trait StoreMut
-where
-    Self: Sized,
-{
-    async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()>;
+pub trait StoreMut {
+    async fn insert_schema(&mut self, schema: &Schema) -> Result<()>;
 
-    async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()>;
+    async fn delete_schema(&mut self, table_name: &str) -> Result<()>;
 
-    async fn append_data(self, table_name: &str, rows: Vec<DataRow>) -> MutResult<Self, ()>;
+    async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()>;
 
-    async fn insert_data(self, table_name: &str, rows: Vec<(Key, DataRow)>) -> MutResult<Self, ()>;
+    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()>;
 
-    async fn delete_data(self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()>;
+    async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()>;
 }

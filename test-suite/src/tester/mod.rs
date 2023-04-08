@@ -92,12 +92,10 @@ pub async fn run<T: GStore + GStoreMut>(
     glue: &mut Glue<T>,
     indexes: Option<Vec<IndexItem>>,
 ) -> Result<Payload> {
-    let storage = glue.storage.as_ref().unwrap();
-
     println!("[SQL] {}", sql);
     let parsed = parse(sql)?;
     let statement = translate(&parsed[0])?;
-    let statement = plan(storage, statement).await?;
+    let statement = plan(&glue.storage, statement).await?;
 
     test_indexes(&statement, indexes);
 
@@ -239,8 +237,6 @@ macro_rules! test_case {
             macro_rules! schema {
                 ($table_name: literal) => {
                     glue.storage
-                        .as_ref()
-                        .expect("storage is empty")
                         .fetch_schema($table_name)
                         .await
                         .expect("error fetching schema")

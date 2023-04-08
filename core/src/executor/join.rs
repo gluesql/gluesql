@@ -7,31 +7,30 @@ use {
         },
         data::{get_alias, Key, Row, Value},
         executor::{context::RowContext, evaluate::evaluate, filter::check_expr},
-        result::{Error, Result},
+        result::Result,
         store::GStore,
     },
     futures::{
         future,
-        stream::{self, empty, once, Stream, StreamExt, TryStream, TryStreamExt},
+        stream::{self, empty, once, Stream, StreamExt, TryStreamExt},
     },
     itertools::Itertools,
     std::{borrow::Cow, collections::HashMap, pin::Pin, rc::Rc},
     utils::OrStream,
 };
 
-pub struct Join<'a> {
-    storage: &'a dyn GStore,
+pub struct Join<'a, T: GStore> {
+    storage: &'a T,
     join_clauses: &'a [AstJoin],
     filter_context: Option<Rc<RowContext<'a>>>,
 }
 
 type JoinItem<'a> = Rc<RowContext<'a>>;
-type Joined<'a> =
-    Pin<Box<dyn TryStream<Ok = JoinItem<'a>, Error = Error, Item = Result<JoinItem<'a>>> + 'a>>;
+type Joined<'a> = Pin<Box<dyn Stream<Item = Result<JoinItem<'a>>> + 'a>>;
 
-impl<'a> Join<'a> {
+impl<'a, T: GStore> Join<'a, T> {
     pub fn new(
-        storage: &'a dyn GStore,
+        storage: &'a T,
         join_clauses: &'a [AstJoin],
         filter_context: Option<Rc<RowContext<'a>>>,
     ) -> Self {
@@ -59,11 +58,11 @@ impl<'a> Join<'a> {
     }
 }
 
-async fn join<'a>(
-    storage: &'a dyn GStore,
+async fn join<'a, T: GStore>(
+    storage: &'a T,
     filter_context: Option<Rc<RowContext<'a>>>,
     ast_join: &'a AstJoin,
-    left_rows: impl TryStream<Ok = JoinItem<'a>, Error = Error, Item = Result<JoinItem<'a>>> + 'a,
+    left_rows: impl Stream<Item = Result<JoinItem<'a>>> + 'a,
 ) -> Result<Joined<'a>> {
     let AstJoin {
         relation,
@@ -164,20 +163,28 @@ async fn join<'a>(
                     match rows {
                         None => Rows::Empty(empty()),
                         Some(rows) => {
-                            let rows = stream::iter(rows.iter().map(Cow::Borrowed).map(Ok));
-                            let rows = rows.try_filter_map(move |row| {
-                                check_where_clause(
-                                    storage,
-                                    table_alias,
-                                    filter_context.as_ref().map(Rc::clone),
-                                    Some(&project_context).map(Rc::clone),
-                                    where_clause,
-                                    row,
-                                )
-                            });
-                            let rows = stream::iter(rows.collect::<Vec<_>>().await);
+                            let rows = stream::iter(rows)
+                                .filter_map(|row| {
+                                    let filter_context = filter_context.as_ref().map(Rc::clone);
+                                    let project_context = Some(&project_context).map(Rc::clone);
 
-                            Rows::Hash(rows)
+                                    async {
+                                        check_where_clause(
+                                            storage,
+                                            table_alias,
+                                            filter_context,
+                                            project_context,
+                                            where_clause,
+                                            Cow::Borrowed(row),
+                                        )
+                                        .await
+                                        .transpose()
+                                    }
+                                })
+                                .collect::<Vec<_>>()
+                                .await;
+
+                            Rows::Hash(stream::iter(rows))
                         }
                     }
                 }
@@ -214,8 +221,8 @@ enum JoinExecutor<'a> {
 }
 
 impl<'a> JoinExecutor<'a> {
-    async fn new(
-        storage: &'a dyn GStore,
+    async fn new<T: GStore>(
+        storage: &'a T,
         relation: &TableFactor,
         filter_context: Option<Rc<RowContext<'a>>>,
         ast_join_executor: &'a AstJoinExecutor,
@@ -273,8 +280,8 @@ impl<'a> JoinExecutor<'a> {
     }
 }
 
-async fn check_where_clause<'a, 'b>(
-    storage: &'a dyn GStore,
+async fn check_where_clause<'a, 'b, T: GStore>(
+    storage: &'a T,
     table_alias: &'a str,
     filter_context: Option<Rc<RowContext<'a>>>,
     project_context: Option<Rc<RowContext<'a>>>,

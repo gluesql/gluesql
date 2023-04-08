@@ -25,8 +25,8 @@ use {
 pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
 
 #[async_recursion(?Send)]
-pub async fn evaluate<'a, 'b: 'a, 'c: 'a>(
-    storage: &'a dyn GStore,
+pub async fn evaluate<'a, 'b: 'a, 'c: 'a, T: GStore>(
+    storage: &'a T,
     context: Option<Rc<RowContext<'b>>>,
     aggregated: Option<Rc<HashMap<&'c Aggregate, Value>>>,
     expr: &'a Expr,
@@ -271,8 +271,8 @@ pub async fn evaluate<'a, 'b: 'a, 'c: 'a>(
     }
 }
 
-async fn evaluate_function<'a, 'b: 'a, 'c: 'a>(
-    storage: &'a dyn GStore,
+async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
+    storage: &'a T,
     context: Option<Rc<RowContext<'b>>>,
     aggregated: Option<Rc<HashMap<&'c Aggregate, Value>>>,
     func: &'b Function,
@@ -330,7 +330,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a>(
                 None => None,
             };
 
-            f::trim(name, expr, filter_chars, trim_where_field)
+            expr.trim(name, filter_chars, trim_where_field)
         }
         Function::Ltrim { expr, chars } => {
             let expr = eval(expr).await?;
@@ -339,7 +339,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a>(
                 None => None,
             };
 
-            f::ltrim(name, expr, chars)
+            expr.ltrim(name, chars)
         }
         Function::Rtrim { expr, chars } => {
             let expr = eval(expr).await?;
@@ -348,7 +348,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a>(
                 None => None,
             };
 
-            f::rtrim(name, expr, chars)
+            expr.rtrim(name, chars)
         }
         Function::Reverse(expr) => {
             let expr = eval(expr).await?;
@@ -368,8 +368,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a>(
                 Some(v) => Some(eval(v).await?),
                 None => None,
             };
-
-            f::substr(name, expr, start, count)
+            expr.substr(name, start, count)
         }
         Function::Ascii(expr) => f::ascii(name, eval(expr).await?),
         Function::Chr(expr) => f::chr(name, eval(expr).await?),
@@ -478,6 +477,19 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a>(
             let sub_expr = eval(sub_expr).await?;
             f::position(from_expr, sub_expr)
         }
+        Function::FindIdx {
+            from_expr,
+            sub_expr,
+            start,
+        } => {
+            let from_expr = eval(from_expr).await?;
+            let sub_expr = eval(sub_expr).await?;
+            let start = match start {
+                Some(idx) => Some(eval(idx).await?),
+                None => None,
+            };
+            f::find_idx(name, from_expr, sub_expr, start)
+        }
         Function::Cast { expr, data_type } => {
             let expr = eval(expr).await?;
             f::cast(expr, data_type)
@@ -485,6 +497,13 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a>(
         Function::Extract { field, expr } => {
             let expr = eval(expr).await?;
             f::extract(field, expr)
+        }
+
+        // --- list ---
+        Function::Append { expr, value } => {
+            let expr = eval(expr).await?;
+            let value = eval(value).await?;
+            f::append(expr, value)
         }
     }
 }

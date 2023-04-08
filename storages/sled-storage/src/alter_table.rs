@@ -11,7 +11,7 @@ use {
         ast::ColumnDef,
         data::{schema::Schema, Value},
         executor::evaluate_stateless,
-        result::{Error, MutResult, Result, TrySelf},
+        result::{Error, Result},
         store::{AlterTable, AlterTableError, DataRow},
     },
     sled::transaction::ConflictableTransactionError,
@@ -21,14 +21,13 @@ use {
 
 #[async_trait(?Send)]
 impl AlterTable for SledStorage {
-    async fn rename_schema(self, table_name: &str, new_table_name: &str) -> MutResult<Self, ()> {
+    async fn rename_schema(&mut self, table_name: &str, new_table_name: &str) -> Result<()> {
         let prefix = format!("data/{}/", table_name);
         let items = self
             .tree
             .scan_prefix(prefix.as_bytes())
             .map(|item| item.map_err(err_into))
-            .collect::<Result<Vec<_>>>();
-        let (self, items) = items.try_self(self)?;
+            .collect::<Result<Vec<_>>>()?;
 
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
@@ -50,7 +49,7 @@ impl AlterTable for SledStorage {
             let Schema {
                 column_defs,
                 indexes,
-                created,
+                engine,
                 ..
             } = old_schema
                 .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())
@@ -60,7 +59,7 @@ impl AlterTable for SledStorage {
                 table_name: new_table_name.to_owned(),
                 column_defs,
                 indexes,
-                created,
+                engine,
             };
 
             bincode::serialize(&old_snapshot)
@@ -127,18 +126,19 @@ impl AlterTable for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        self.check_and_retry(tx_result, |storage| {
-            storage.rename_schema(table_name, new_table_name)
-        })
-        .await
+        if self.check_retry(tx_result)? {
+            self.rename_schema(table_name, new_table_name).await?;
+        }
+
+        Ok(())
     }
 
     async fn rename_column(
-        self,
+        &mut self,
         table_name: &str,
         old_column_name: &str,
         new_column_name: &str,
-    ) -> MutResult<Self, ()> {
+    ) -> Result<()> {
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
         let tx_result = self.tree.transaction(move |tree| {
@@ -157,7 +157,7 @@ impl AlterTable for SledStorage {
             let Schema {
                 column_defs,
                 indexes,
-                created,
+                engine,
                 ..
             } = snapshot
                 .get(txid, None)
@@ -205,7 +205,7 @@ impl AlterTable for SledStorage {
                 table_name: table_name.to_owned(),
                 column_defs: Some(column_defs),
                 indexes,
-                created,
+                engine,
             };
             let (snapshot, _) = snapshot.update(txid, schema);
             let value = bincode::serialize(&snapshot)
@@ -222,20 +222,21 @@ impl AlterTable for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        self.check_and_retry(tx_result, |storage| {
-            storage.rename_column(table_name, old_column_name, new_column_name)
-        })
-        .await
+        if self.check_retry(tx_result)? {
+            self.rename_column(table_name, old_column_name, new_column_name)
+                .await?;
+        }
+
+        Ok(())
     }
 
-    async fn add_column(self, table_name: &str, column_def: &ColumnDef) -> MutResult<Self, ()> {
+    async fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
         let prefix = format!("data/{}/", table_name);
         let items = self
             .tree
             .scan_prefix(prefix.as_bytes())
             .map(|item| item.map_err(err_into))
-            .collect::<Result<Vec<_>>>();
-        let (self, items) = items.try_self(self)?;
+            .collect::<Result<Vec<_>>>()?;
 
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
@@ -256,7 +257,7 @@ impl AlterTable for SledStorage {
                 table_name,
                 column_defs,
                 indexes,
-                created,
+                engine,
                 ..
             } = schema_snapshot
                 .get(txid, None)
@@ -353,7 +354,7 @@ impl AlterTable for SledStorage {
                 table_name,
                 column_defs: Some(column_defs),
                 indexes,
-                created,
+                engine,
             };
             let (schema_snapshot, _) = schema_snapshot.update(txid, schema);
             let schema_value = bincode::serialize(&schema_snapshot)
@@ -369,25 +370,25 @@ impl AlterTable for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        self.check_and_retry(tx_result, |storage| {
-            storage.add_column(table_name, column_def)
-        })
-        .await
+        if self.check_retry(tx_result)? {
+            self.add_column(table_name, column_def).await?;
+        }
+
+        Ok(())
     }
 
     async fn drop_column(
-        self,
+        &mut self,
         table_name: &str,
         column_name: &str,
         if_exists: bool,
-    ) -> MutResult<Self, ()> {
+    ) -> Result<()> {
         let prefix = format!("data/{}/", table_name);
         let items = self
             .tree
             .scan_prefix(prefix.as_bytes())
             .map(|item| item.map_err(err_into))
-            .collect::<Result<Vec<_>>>();
-        let (self, items) = items.try_self(self)?;
+            .collect::<Result<Vec<_>>>()?;
 
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
@@ -408,7 +409,7 @@ impl AlterTable for SledStorage {
                 table_name,
                 column_defs,
                 indexes,
-                created,
+                engine,
                 ..
             } = schema_snapshot
                 .get(txid, None)
@@ -491,7 +492,7 @@ impl AlterTable for SledStorage {
                 table_name,
                 column_defs: Some(column_defs),
                 indexes,
-                created,
+                engine,
             };
             let (schema_snapshot, _) = schema_snapshot.update(txid, schema);
             let schema_value = bincode::serialize(&schema_snapshot)
@@ -506,9 +507,10 @@ impl AlterTable for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        self.check_and_retry(tx_result, |storage| {
-            storage.drop_column(table_name, column_name, if_exists)
-        })
-        .await
+        if self.check_retry(tx_result)? {
+            self.drop_column(table_name, column_name, if_exists).await?;
+        }
+
+        Ok(())
     }
 }

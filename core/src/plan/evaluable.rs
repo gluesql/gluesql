@@ -140,15 +140,15 @@ fn check_table_factor(context: Option<Rc<Context<'_>>>, table_factor: &TableFact
     let alias = match table_factor {
         TableFactor::Table { name, alias, .. } => alias
             .as_ref()
-            .map(|TableAlias { name, .. }| name.clone())
-            .unwrap_or_else(|| name.clone()),
+            .map(|TableAlias { name, .. }| name)
+            .unwrap_or_else(|| name),
         TableFactor::Derived { alias, .. }
         | TableFactor::Series { alias, .. }
-        | TableFactor::Dictionary { alias, .. } => alias.name.to_owned(),
+        | TableFactor::Dictionary { alias, .. } => &alias.name,
     };
 
     context
-        .map(|context| context.contains_alias(&alias))
+        .map(|context| context.contains_alias(alias))
         .unwrap_or(false)
 }
 

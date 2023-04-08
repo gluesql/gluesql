@@ -6,6 +6,7 @@ pub mod arithmetic;
 pub mod ast_builder;
 pub mod basic;
 pub mod case;
+pub mod column_alias;
 pub mod concat;
 pub mod data_type;
 pub mod default;
@@ -19,6 +20,7 @@ pub mod insert;
 pub mod join;
 pub mod like_ilike;
 pub mod limit;
+pub mod metadata;
 pub mod migrate;
 pub mod nested_select;
 pub mod nullable;
@@ -74,7 +76,6 @@ macro_rules! generate_store_tests {
         glue!(aggregate_sum, aggregate::sum::sum);
         glue!(aggregate_variance, aggregate::variance::variance);
         glue!(aggregate_error, aggregate::error::error);
-        glue!(aggregate_error_group_by, aggregate::error::error_group_by);
         glue!(arithmetic_error, arithmetic::error::error);
         glue!(arithmetic_project, arithmetic::project::project);
         glue!(arithmetic_on_where, arithmetic::on_where::on_where);
@@ -129,6 +130,7 @@ macro_rules! generate_store_tests {
         glue!(function_ascii, function::ascii::ascii);
         glue!(function_chr, function::chr::chr);
         glue!(function_position, function::position::position);
+        glue!(function_find_idx, function::find_idx::find_idx);
         glue!(join, join::join);
         glue!(join_project, join::project);
         glue!(migrate, migrate::migrate);
@@ -156,6 +158,7 @@ macro_rules! generate_store_tests {
         glue!(list, data_type::list::list);
         glue!(map, data_type::map::map);
         glue!(bytea, data_type::bytea::bytea);
+        glue!(inet, data_type::inet::inet);
         glue!(synthesize, synthesize::synthesize);
         glue!(validate_unique, validate::unique::unique);
         glue!(validate_types, validate::types::types);
@@ -175,10 +178,13 @@ macro_rules! generate_store_tests {
         );
         glue!(type_match, type_match::type_match);
         glue!(dictionary, dictionary::dictionary);
+        glue!(function_append, function::append::append);
+        glue!(column_alias, column_alias::column_alias);
 
         // ast-builder
         glue!(ast_builder_basic, ast_builder::basic::basic);
         glue!(ast_builder_select, ast_builder::select::select);
+        glue!(ast_builder_values, ast_builder::values::values);
         glue!(ast_builder_insert, ast_builder::insert::insert);
         glue!(ast_builder_update, ast_builder::update::update);
         glue!(ast_builder_delete, ast_builder::delete::delete);
@@ -190,7 +196,6 @@ macro_rules! generate_store_tests {
     };
 }
 
-#[cfg(feature = "alter-table")]
 #[macro_export]
 macro_rules! generate_alter_table_tests {
     ($test: meta, $storage: ident) => {
@@ -205,7 +210,6 @@ macro_rules! generate_alter_table_tests {
     };
 }
 
-#[cfg(feature = "index")]
 #[macro_export]
 macro_rules! generate_index_tests {
     ($test: meta, $storage: ident) => {
@@ -228,7 +232,6 @@ macro_rules! generate_index_tests {
     };
 }
 
-#[cfg(feature = "transaction")]
 #[macro_export]
 macro_rules! generate_transaction_tests {
     ($test: meta, $storage: ident) => {
@@ -246,7 +249,6 @@ macro_rules! generate_transaction_tests {
     };
 }
 
-#[cfg(all(feature = "alter-table", feature = "index"))]
 #[macro_export]
 macro_rules! generate_alter_table_index_tests {
     ($test: meta, $storage: ident) => {
@@ -261,7 +263,6 @@ macro_rules! generate_alter_table_index_tests {
     };
 }
 
-#[cfg(all(feature = "transaction", feature = "alter-table"))]
 #[macro_export]
 macro_rules! generate_transaction_alter_table_tests {
     ($test: meta, $storage: ident) => {
@@ -290,7 +291,6 @@ macro_rules! generate_transaction_alter_table_tests {
     };
 }
 
-#[cfg(all(feature = "transaction", feature = "index"))]
 #[macro_export]
 macro_rules! generate_transaction_index_tests {
     ($test: meta, $storage: ident) => {
@@ -305,7 +305,6 @@ macro_rules! generate_transaction_index_tests {
     };
 }
 
-#[cfg(all(feature = "transaction"))]
 #[macro_export]
 macro_rules! generate_transaction_dictionary_tests {
     ($test: meta, $storage: ident) => {
@@ -316,5 +315,31 @@ macro_rules! generate_transaction_dictionary_tests {
         }
 
         glue!(transaction_dictionary, transaction::dictionary);
+    };
+}
+
+#[macro_export]
+macro_rules! generate_metadata_table_tests {
+    ($test: meta, $storage: ident) => {
+        macro_rules! glue {
+            ($title: ident, $func: path) => {
+                declare_test_fn!($test, $storage, $title, $func);
+            };
+        }
+
+        glue!(metadata_table, metadata::table::table);
+    };
+}
+
+#[macro_export]
+macro_rules! generate_metadata_index_tests {
+    ($test: meta, $storage: ident) => {
+        macro_rules! glue {
+            ($title: ident, $func: path) => {
+                declare_test_fn!($test, $storage, $title, $func);
+            };
+        }
+
+        glue!(metadata_index, metadata::index::index);
     };
 }

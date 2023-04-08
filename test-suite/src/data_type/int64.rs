@@ -2,9 +2,12 @@ use {
     crate::*,
     gluesql_core::{
         data::ValueError,
-        prelude::{DataType, Payload, Value::*},
+        prelude::{DataType, Value::*},
     },
 };
+
+#[cfg(not(target_arch = "wasm32"))]
+use gluesql_core::prelude::Payload;
 
 test_case!(int64, async move {
     run!(
@@ -115,6 +118,7 @@ test_case!(int64, async move {
     );
 
     // try inserting i64 max and i64 min
+    #[cfg(not(target_arch = "wasm32"))]
     test!(
         &format!("INSERT INTO Item VALUES ({}, {})", i64::MAX, i64::MIN),
         Ok(Payload::Insert(1))

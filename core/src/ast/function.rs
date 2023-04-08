@@ -139,8 +139,17 @@ pub enum Function {
         from_expr: Expr,
         sub_expr: Expr,
     },
+    FindIdx {
+        from_expr: Expr,
+        sub_expr: Expr,
+        start: Option<Expr>,
+    },
     Ascii(Expr),
     Chr(Expr),
+    Append {
+        expr: Expr,
+        value: Expr,
+    },
 }
 
 impl ToSql for Function {
@@ -292,11 +301,31 @@ impl ToSql for Function {
                 from_expr,
                 sub_expr,
             } => format!("POSITION({} IN {})", sub_expr.to_sql(), from_expr.to_sql()),
+            Function::FindIdx {
+                from_expr,
+                sub_expr,
+                start,
+            } => match start {
+                None => format!("FIND_IDX({}, {})", from_expr.to_sql(), sub_expr.to_sql()),
+                Some(start_expr) => format!(
+                    "FIND_IDX({}, {}, {})",
+                    from_expr.to_sql(),
+                    sub_expr.to_sql(),
+                    start_expr.to_sql()
+                ),
+            },
             Function::Extract { field, expr } => {
-                format!("EXTRACT({field} FROM '{}')", expr.to_sql())
+                format!("EXTRACT({field} FROM {})", expr.to_sql())
             }
             Function::Ascii(e) => format!("ASCII({})", e.to_sql()),
             Function::Chr(e) => format!("CHR({})", e.to_sql()),
+            Function::Append { expr, value } => {
+                format!(
+                    "APPEND({items}, {value})",
+                    items = expr.to_sql(),
+                    value = value.to_sql()
+                )
+            }
         }
     }
 }
@@ -355,7 +384,7 @@ mod tests {
     #[test]
     fn to_sql_function() {
         assert_eq!(
-            "ABS(num)",
+            r#"ABS("num")"#,
             &Expr::Function(Box::new(Function::Abs(Expr::Identifier("num".to_owned())))).to_sql()
         );
 
@@ -402,7 +431,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"ASIN(2)"#,
+            "ASIN(2)",
             &Expr::Function(Box::new(Function::Asin(Expr::Literal(AstLiteral::Number(
                 BigDecimal::from_str("2").unwrap()
             )))))
@@ -410,7 +439,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"ACOS(2)"#,
+            "ACOS(2)",
             &Expr::Function(Box::new(Function::Acos(Expr::Literal(AstLiteral::Number(
                 BigDecimal::from_str("2").unwrap()
             )))))
@@ -418,7 +447,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"ATAN(2)"#,
+            "ATAN(2)",
             &Expr::Function(Box::new(Function::Atan(Expr::Literal(AstLiteral::Number(
                 BigDecimal::from_str("2").unwrap()
             )))))
@@ -475,12 +504,12 @@ mod tests {
         );
 
         assert_eq!(
-            "CEIL(num)",
+            r#"CEIL("num")"#,
             &Expr::Function(Box::new(Function::Ceil(Expr::Identifier("num".to_owned())))).to_sql()
         );
 
         assert_eq!(
-            "CONCAT(Tic, tac, toe)",
+            r#"CONCAT("Tic", "tac", "toe")"#,
             &Expr::Function(Box::new(Function::Concat(vec![
                 Expr::Identifier("Tic".to_owned()),
                 Expr::Identifier("tac".to_owned()),
@@ -490,9 +519,9 @@ mod tests {
         );
 
         assert_eq!(
-            "CONCAT_WS(-, Tic, tac, toe)",
+            r#"CONCAT_WS('-', "Tic", "tac", "toe")"#,
             &Expr::Function(Box::new(Function::ConcatWs {
-                separator: Expr::Identifier("-".to_owned()),
+                separator: Expr::Literal(AstLiteral::QuotedString("-".to_owned())),
                 exprs: vec![
                     Expr::Identifier("Tic".to_owned()),
                     Expr::Identifier("tac".to_owned()),
@@ -503,7 +532,7 @@ mod tests {
         );
 
         assert_eq!(
-            "IFNULL(updated_at, created_at)",
+            r#"IFNULL("updated_at", "created_at")"#,
             &Expr::Function(Box::new(Function::IfNull {
                 expr: Expr::Identifier("updated_at".to_owned()),
                 then: Expr::Identifier("created_at".to_owned())
@@ -517,7 +546,7 @@ mod tests {
         );
 
         assert_eq!(
-            "RAND(num)",
+            r#"RAND("num")"#,
             &Expr::Function(Box::new(Function::Rand(Some(Expr::Identifier(
                 "num".to_owned()
             )))))
@@ -525,7 +554,7 @@ mod tests {
         );
 
         assert_eq!(
-            "ROUND(num)",
+            r#"ROUND("num")"#,
             &Expr::Function(Box::new(Function::Round(Expr::Identifier(
                 "num".to_owned()
             ))))
@@ -533,7 +562,7 @@ mod tests {
         );
 
         assert_eq!(
-            "FLOOR(num)",
+            r#"FLOOR("num")"#,
             &Expr::Function(Box::new(Function::Floor(Expr::Identifier(
                 "num".to_owned()
             ))))
@@ -541,7 +570,7 @@ mod tests {
         );
 
         assert_eq!(
-            "TRIM(name)",
+            r#"TRIM("name")"#,
             &Expr::Function(Box::new(Function::Trim {
                 expr: Expr::Identifier("name".to_owned()),
                 filter_chars: None,
@@ -551,7 +580,7 @@ mod tests {
         );
 
         assert_eq!(
-            "TRIM('*' FROM name)",
+            r#"TRIM('*' FROM "name")"#,
             &Expr::Function(Box::new(Function::Trim {
                 expr: Expr::Identifier("name".to_owned()),
                 filter_chars: Some(Expr::Literal(AstLiteral::QuotedString("*".to_owned()))),
@@ -561,7 +590,7 @@ mod tests {
         );
 
         assert_eq!(
-            "TRIM(BOTH '*' FROM name)",
+            r#"TRIM(BOTH '*' FROM "name")"#,
             &Expr::Function(Box::new(Function::Trim {
                 expr: Expr::Identifier("name".to_owned()),
                 filter_chars: Some(Expr::Literal(AstLiteral::QuotedString("*".to_owned()))),
@@ -571,7 +600,7 @@ mod tests {
         );
 
         assert_eq!(
-            "TRIM(LEADING '*' FROM name)",
+            r#"TRIM(LEADING '*' FROM "name")"#,
             &Expr::Function(Box::new(Function::Trim {
                 expr: Expr::Identifier("name".to_owned()),
                 filter_chars: Some(Expr::Literal(AstLiteral::QuotedString("*".to_owned()))),
@@ -581,7 +610,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"TRIM(LEADING name)"#,
+            r#"TRIM(LEADING "name")"#,
             &Expr::Function(Box::new(Function::Trim {
                 expr: Expr::Identifier("name".to_owned()),
                 filter_chars: None,
@@ -616,12 +645,12 @@ mod tests {
         );
 
         assert_eq!(
-            "LOG2(num)",
+            r#"LOG2("num")"#,
             &Expr::Function(Box::new(Function::Log2(Expr::Identifier("num".to_owned())))).to_sql()
         );
 
         assert_eq!(
-            "LOG10(num)",
+            r#"LOG10("num")"#,
             &Expr::Function(Box::new(Function::Log10(Expr::Identifier(
                 "num".to_owned()
             ))))
@@ -762,7 +791,7 @@ mod tests {
         );
 
         assert_eq!(
-            "REVERSE(name)",
+            r#"REVERSE("name")"#,
             &Expr::Function(Box::new(Function::Reverse(Expr::Identifier(
                 "name".to_owned()
             ))))
@@ -809,7 +838,7 @@ mod tests {
         );
 
         assert_eq!(
-            "UNWRAP(nested, 'a.foo')",
+            r#"UNWRAP("nested", 'a.foo')"#,
             &Expr::Function(Box::new(Function::Unwrap {
                 expr: Expr::Identifier("nested".to_owned()),
                 selector: Expr::Literal(AstLiteral::QuotedString("a.foo".to_owned()))
@@ -871,6 +900,28 @@ mod tests {
         );
 
         assert_eq!(
+            "FIND_IDX('noodle', 'o', 2)",
+            &Expr::Function(Box::new(Function::FindIdx {
+                from_expr: Expr::Literal(AstLiteral::QuotedString("noodle".to_owned())),
+                sub_expr: Expr::Literal(AstLiteral::QuotedString("o".to_owned())),
+                start: Some(Expr::Literal(AstLiteral::Number(
+                    BigDecimal::from_str("2").unwrap()
+                )))
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            "FIND_IDX('goat cheese', 'goat')",
+            &Expr::Function(Box::new(Function::FindIdx {
+                from_expr: Expr::Literal(AstLiteral::QuotedString("goat cheese".to_owned())),
+                sub_expr: Expr::Literal(AstLiteral::QuotedString("goat".to_owned())),
+                start: None
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
             "ASCII('H')",
             &Expr::Function(Box::new(Function::Ascii(Expr::Literal(
                 AstLiteral::QuotedString("H".to_owned())
@@ -887,19 +938,28 @@ mod tests {
         );
 
         assert_eq!(
-            "EXTRACT(MINUTE FROM '2022-05-05 01:02:03')",
+            r#"EXTRACT(MINUTE FROM '2022-05-05 01:02:03')"#,
             &Expr::Function(Box::new(Function::Extract {
                 field: DateTimeField::Minute,
-                expr: Expr::Identifier("2022-05-05 01:02:03".to_owned())
+                expr: Expr::Literal(AstLiteral::QuotedString("2022-05-05 01:02:03".to_owned()))
             }))
             .to_sql()
         );
+
+        assert_eq!(
+            r#"APPEND("list", "value")"#,
+            &Expr::Function(Box::new(Function::Append {
+                expr: Expr::Identifier("list".to_owned()),
+                value: Expr::Identifier("value".to_owned())
+            }))
+            .to_sql()
+        )
     }
 
     #[test]
     fn to_sql_aggregate() {
         assert_eq!(
-            "MAX(id)",
+            r#"MAX("id")"#,
             Expr::Aggregate(Box::new(Aggregate::Max(Expr::Identifier("id".to_owned())))).to_sql()
         );
 
@@ -909,12 +969,12 @@ mod tests {
         );
 
         assert_eq!(
-            "MIN(id)",
+            r#"MIN("id")"#,
             Expr::Aggregate(Box::new(Aggregate::Min(Expr::Identifier("id".to_owned())))).to_sql()
         );
 
         assert_eq!(
-            "SUM(price)",
+            r#"SUM("price")"#,
             &Expr::Aggregate(Box::new(Aggregate::Sum(Expr::Identifier(
                 "price".to_owned()
             ))))
@@ -922,18 +982,18 @@ mod tests {
         );
 
         assert_eq!(
-            "AVG(pay)",
+            r#"AVG("pay")"#,
             &Expr::Aggregate(Box::new(Aggregate::Avg(Expr::Identifier("pay".to_owned())))).to_sql()
         );
         assert_eq!(
-            "VARIANCE(pay)",
+            r#"VARIANCE("pay")"#,
             &Expr::Aggregate(Box::new(Aggregate::Variance(Expr::Identifier(
                 "pay".to_owned()
             ))))
             .to_sql()
         );
         assert_eq!(
-            "STDEV(total)",
+            r#"STDEV("total")"#,
             &Expr::Aggregate(Box::new(Aggregate::Stdev(Expr::Identifier(
                 "total".to_owned()
             ))))

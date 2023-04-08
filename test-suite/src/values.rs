@@ -4,7 +4,7 @@ use {
     gluesql_core::{
         ast::DataType::{Boolean, Int, Text},
         data::{Literal, ValueError},
-        executor::{FetchError, InsertError, SelectError},
+        executor::{InsertError, SelectError},
         prelude::{DataType, Payload, Value::*},
     },
     std::borrow::Cow,
@@ -136,28 +136,6 @@ test_case!(values, async move {
                 1         "a".to_owned();
                 2         "b".to_owned()
             )),
-        ),
-        (
-            "SELECT * FROM (VALUES (1, 'a'), (2, 'b')) AS Derived(id)",
-            Ok(select!(
-                id      | column2;
-                I64     | Str;
-                1         "a".to_owned();
-                2         "b".to_owned()
-            )),
-        ),
-        (
-            "SELECT * FROM (VALUES (1, 'a'), (2, 'b')) AS Derived(id, name)",
-            Ok(select!(
-                id      | name;
-                I64     | Str;
-                1         "a".to_owned();
-                2         "b".to_owned()
-            )),
-        ),
-        (
-            "SELECT * FROM (VALUES (1, 'a'), (2, 'b')) AS Derived(id, name, dummy)",
-            Err(FetchError::TooManyColumnAliases("Derived".into(), 2, 3).into()),
         ),
         (
             "INSERT INTO Items (id) VALUES (1);",

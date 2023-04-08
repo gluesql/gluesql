@@ -11,18 +11,18 @@ use {
     crate::{
         ast::{Expr, SelectItem},
         data::Key,
-        result::{Error, Result},
+        result::Result,
         store::GStore,
     },
     async_recursion::async_recursion,
-    futures::stream::{self, StreamExt, TryStream, TryStreamExt},
+    futures::stream::{self, Stream, StreamExt, TryStreamExt},
     std::{convert::identity, rc::Rc},
 };
 
 pub use error::AggregateError;
 
-pub struct Aggregator<'a> {
-    storage: &'a dyn GStore,
+pub struct Aggregator<'a, T: GStore> {
+    storage: &'a T,
     fields: &'a [SelectItem],
     group_by: &'a [Expr],
     having: Option<&'a Expr>,
@@ -30,14 +30,14 @@ pub struct Aggregator<'a> {
 }
 
 #[derive(futures_enum::Stream)]
-enum Stream<T1, T2> {
+enum S<T1, T2> {
     NonAggregate(T1),
     Aggregate(T2),
 }
 
-impl<'a> Aggregator<'a> {
+impl<'a, T: GStore> Aggregator<'a, T> {
     pub fn new(
-        storage: &'a dyn GStore,
+        storage: &'a T,
         fields: &'a [SelectItem],
         group_by: &'a [Expr],
         having: Option<&'a Expr>,
@@ -54,16 +54,14 @@ impl<'a> Aggregator<'a> {
 
     pub async fn apply(
         &self,
-        rows: impl TryStream<Ok = Rc<RowContext<'a>>, Error = Error>,
-    ) -> Result<
-        impl TryStream<Ok = AggregateContext<'a>, Error = Error, Item = Result<AggregateContext<'a>>>,
-    > {
+        rows: impl Stream<Item = Result<Rc<RowContext<'a>>>>,
+    ) -> Result<impl Stream<Item = Result<AggregateContext<'a>>>> {
         if !self.check_aggregate() {
             let rows = rows.map_ok(|project_context| AggregateContext {
                 aggregated: None,
                 next: project_context,
             });
-            return Ok(Stream::NonAggregate(rows));
+            return Ok(S::NonAggregate(rows));
         }
 
         let state = rows
@@ -116,15 +114,13 @@ impl<'a> Aggregator<'a> {
             )
             .await?;
 
-        Ok(Stream::Aggregate(self.group_by_having(state)?))
+        self.group_by_having(state).map(S::Aggregate)
     }
 
     pub fn group_by_having(
         &self,
-        state: State<'a>,
-    ) -> Result<
-        impl TryStream<Ok = AggregateContext<'a>, Error = Error, Item = Result<AggregateContext<'a>>>,
-    > {
+        state: State<'a, T>,
+    ) -> Result<impl Stream<Item = Result<AggregateContext<'a>>>> {
         let storage = self.storage;
         let filter_context = self.filter_context.as_ref().map(Rc::clone);
         let having = self.having;
@@ -190,11 +186,11 @@ impl<'a> Aggregator<'a> {
 }
 
 #[async_recursion(?Send)]
-async fn aggregate<'a>(
-    state: State<'a>,
+async fn aggregate<'a, T: GStore>(
+    state: State<'a, T>,
     filter_context: Option<Rc<RowContext<'a>>>,
     expr: &'a Expr,
-) -> Result<State<'a>> {
+) -> Result<State<'a, T>> {
     let aggr = |state, expr| aggregate(state, filter_context.as_ref().map(Rc::clone), expr);
 
     match expr {

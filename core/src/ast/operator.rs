@@ -100,15 +100,18 @@ impl From<IndexOperator> for BinaryOperator {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{BinaryOperator, Expr, ToSql, UnaryOperator};
+    use {
+        crate::ast::{AstLiteral, BinaryOperator, Expr, ToSql, UnaryOperator},
+        bigdecimal::BigDecimal,
+    };
     #[test]
     fn to_sql() {
         assert_eq!(
             "1 + 2",
             Expr::BinaryOp {
-                left: Box::new(Expr::Identifier(1.to_string())),
+                left: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(1)))),
                 op: BinaryOperator::Plus,
-                right: Box::new(Expr::Identifier(2.to_string()))
+                right: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(2))))
             }
             .to_sql()
         );
@@ -116,9 +119,9 @@ mod tests {
         assert_eq!(
             "100 - 10",
             Expr::BinaryOp {
-                left: Box::new(Expr::Identifier(100.to_string())),
+                left: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(100)))),
                 op: BinaryOperator::Minus,
-                right: Box::new(Expr::Identifier(10.to_string()))
+                right: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(10))))
             }
             .to_sql()
         );
@@ -126,9 +129,9 @@ mod tests {
         assert_eq!(
             "1024 * 1024",
             Expr::BinaryOp {
-                left: Box::new(Expr::Identifier(1024.to_string())),
+                left: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(1024)))),
                 op: BinaryOperator::Multiply,
-                right: Box::new(Expr::Identifier(1024.to_string()))
+                right: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(1024))))
             }
             .to_sql()
         );
@@ -136,9 +139,9 @@ mod tests {
         assert_eq!(
             "1024 / 8",
             Expr::BinaryOp {
-                left: Box::new(Expr::Identifier(1024.to_string())),
+                left: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(1024)))),
                 op: BinaryOperator::Divide,
-                right: Box::new(Expr::Identifier(8.to_string()))
+                right: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(8))))
             }
             .to_sql()
         );
@@ -146,78 +149,78 @@ mod tests {
         assert_eq!(
             "1024 % 4",
             &Expr::BinaryOp {
-                left: Box::new(Expr::Identifier(1024.to_string())),
+                left: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(1024)))),
                 op: BinaryOperator::Modulo,
-                right: Box::new(Expr::Identifier(4.to_string()))
+                right: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(4))))
             }
             .to_sql()
         );
 
         assert_eq!(
-            "Glue + SQL",
+            "'Glue' + 'SQL'",
             &Expr::BinaryOp {
-                left: Box::new(Expr::Identifier("Glue".to_owned())),
+                left: Box::new(Expr::Literal(AstLiteral::QuotedString("Glue".to_owned()))),
                 op: BinaryOperator::StringConcat,
-                right: Box::new(Expr::Identifier("SQL".to_owned()))
+                right: Box::new(Expr::Literal(AstLiteral::QuotedString("SQL".to_owned())))
             }
             .to_sql()
         );
         assert_eq!(
             "1024 > 4",
             &Expr::BinaryOp {
-                left: Box::new(Expr::Identifier(1024.to_string())),
+                left: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(1024)))),
                 op: BinaryOperator::Gt,
-                right: Box::new(Expr::Identifier(4.to_string()))
+                right: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(4))))
             }
             .to_sql()
         );
         assert_eq!(
             "8 < 1024",
             &Expr::BinaryOp {
-                left: Box::new(Expr::Identifier(8.to_string())),
+                left: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(8)))),
                 op: BinaryOperator::Lt,
-                right: Box::new(Expr::Identifier(1024.to_string()))
+                right: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(1024))))
             }
             .to_sql()
         );
         assert_eq!(
             "1024 >= 1024",
             &Expr::BinaryOp {
-                left: Box::new(Expr::Identifier(1024.to_string())),
+                left: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(1024)))),
                 op: BinaryOperator::GtEq,
-                right: Box::new(Expr::Identifier(1024.to_string()))
+                right: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(1024))))
             }
             .to_sql()
         );
         assert_eq!(
             "8 <= 8",
             &Expr::BinaryOp {
-                left: Box::new(Expr::Identifier(8.to_string())),
+                left: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(8)))),
                 op: BinaryOperator::LtEq,
-                right: Box::new(Expr::Identifier(8.to_string()))
+                right: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(8))))
             }
             .to_sql()
         );
         assert_eq!(
             "1024 = 1024",
             &Expr::BinaryOp {
-                left: Box::new(Expr::Identifier(1024.to_string())),
+                left: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(1024)))),
                 op: BinaryOperator::Eq,
-                right: Box::new(Expr::Identifier(1024.to_string()))
+                right: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(1024))))
             }
             .to_sql()
         );
         assert_eq!(
             "1024 <> 1024",
             &Expr::BinaryOp {
-                left: Box::new(Expr::Identifier(1024.to_string())),
+                left: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(1024)))),
                 op: BinaryOperator::NotEq,
-                right: Box::new(Expr::Identifier(1024.to_string()))
+                right: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(1024))))
             }
             .to_sql()
         );
         assert_eq!(
-            "condition_0 AND condition_1",
+            r#""condition_0" AND "condition_1""#,
             &Expr::BinaryOp {
                 left: Box::new(Expr::Identifier("condition_0".to_owned())),
                 op: BinaryOperator::And,
@@ -226,7 +229,7 @@ mod tests {
             .to_sql()
         );
         assert_eq!(
-            "condition_0 OR condition_1",
+            r#""condition_0" OR "condition_1""#,
             &Expr::BinaryOp {
                 left: Box::new(Expr::Identifier("condition_0".to_owned())),
                 op: BinaryOperator::Or,
@@ -235,7 +238,7 @@ mod tests {
             .to_sql()
         );
         assert_eq!(
-            "condition_0 XOR condition_1",
+            r#""condition_0" XOR "condition_1""#,
             &Expr::BinaryOp {
                 left: Box::new(Expr::Identifier("condition_0".to_owned())),
                 op: BinaryOperator::Xor,
@@ -248,7 +251,7 @@ mod tests {
             "+8",
             Expr::UnaryOp {
                 op: UnaryOperator::Plus,
-                expr: Box::new(Expr::Identifier("8".to_owned())),
+                expr: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(8)))),
             }
             .to_sql(),
         );
@@ -257,13 +260,13 @@ mod tests {
             "-8",
             Expr::UnaryOp {
                 op: UnaryOperator::Minus,
-                expr: Box::new(Expr::Identifier("8".to_owned())),
+                expr: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(8)))),
             }
             .to_sql(),
         );
 
         assert_eq!(
-            "NOT id",
+            r#"NOT "id""#,
             Expr::UnaryOp {
                 op: UnaryOperator::Not,
                 expr: Box::new(Expr::Identifier("id".to_owned())),
@@ -275,7 +278,7 @@ mod tests {
             "5!",
             Expr::UnaryOp {
                 op: UnaryOperator::Factorial,
-                expr: Box::new(Expr::Identifier("5".to_owned())),
+                expr: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(5)))),
             }
             .to_sql(),
         )

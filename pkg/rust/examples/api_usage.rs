@@ -2,29 +2,8 @@
 mod api_usage {
     use {
         futures::executor::block_on,
-        gluesql::prelude::{execute, parse, translate, Glue, SledStorage},
+        gluesql::prelude::{Glue, SledStorage},
     };
-
-    fn immutable_api() {
-        let storage = SledStorage::new("data/immutable-api").unwrap();
-
-        let sqls = "
-            CREATE TABLE Glue (id INTEGER);
-            INSERT INTO Glue VALUES (100);
-            INSERT INTO Glue VALUES (200);
-            DROP TABLE Glue;
-        ";
-
-        parse(sqls)
-            .unwrap()
-            .iter()
-            .fold(storage, |storage, parsed| {
-                let statement = translate(parsed).unwrap();
-                let (storage, _) = block_on(execute(storage, &statement)).unwrap();
-
-                storage
-            });
-    }
 
     fn mutable_api() {
         let storage = SledStorage::new("data/mutable-api").unwrap();
@@ -60,7 +39,6 @@ mod api_usage {
 
     pub fn run() {
         mutable_api();
-        immutable_api();
         block_on(async_mutable_api());
     }
 }
