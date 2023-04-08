@@ -57,7 +57,7 @@ impl Schema {
         let create_indexes = indexes.iter().map(|SchemaIndex { name, expr, .. }| {
             let expr = expr.to_sql();
 
-            format!("CREATE INDEX {name} ON {table_name} ({expr});")
+            format!(r#"CREATE INDEX "{name}" ON "{table_name}" ({expr});"#)
         });
 
         iter::once(create_table)
@@ -132,7 +132,7 @@ mod tests {
         crate::{
             ast::{AstLiteral, ColumnDef, ColumnUniqueOption, Expr},
             chrono::Utc,
-            data::{Schema, SchemaIndex},
+            data::{Schema, SchemaIndex, SchemaIndexOrd},
             prelude::DataType,
         },
     };
@@ -203,7 +203,7 @@ mod tests {
             engine: None,
         };
 
-        let ddl = "CREATE TABLE User (id INT NOT NULL, name TEXT NULL DEFAULT 'glue');";
+        let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NULL DEFAULT 'glue');"#;
         assert_eq!(schema.to_ddl(), ddl);
 
         let actual = Schema::from_ddl(ddl).unwrap();
@@ -215,7 +215,7 @@ mod tests {
             indexes: Vec::new(),
             engine: None,
         };
-        let ddl = "CREATE TABLE Test;";
+        let ddl = r#"CREATE TABLE "Test";"#;
         assert_eq!(schema.to_ddl(), ddl);
 
         let actual = Schema::from_ddl(ddl).unwrap();
@@ -237,7 +237,7 @@ mod tests {
             engine: None,
         };
 
-        let ddl = "CREATE TABLE User (id INT NOT NULL PRIMARY KEY);";
+        let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL PRIMARY KEY);"#;
         assert_eq!(schema.to_ddl(), ddl);
 
         let actual = Schema::from_ddl(ddl).unwrap();
@@ -246,15 +246,14 @@ mod tests {
 
     #[test]
     fn invalid_ddl() {
-        let invalid_ddl = "DROP TABLE Users";
+        // Only Statement::CreateTable is supported
+        let invalid_ddl = r#"DROP TABLE "Users";"#;
         let actual = Schema::from_ddl(invalid_ddl);
         assert_eq!(actual, Err(SchemaParseError::CannotParseDDL.into()));
     }
 
     #[test]
     fn table_with_index() {
-        use crate::data::SchemaIndexOrd;
-
         let schema = Schema {
             table_name: "User".to_owned(),
             column_defs: Some(vec![
@@ -289,17 +288,53 @@ mod tests {
             ],
             engine: None,
         };
-        let ddl = "CREATE TABLE User (id INT NOT NULL, name TEXT NOT NULL);
-CREATE INDEX User_id ON User (id);
-CREATE INDEX User_name ON User (name);";
+        let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);
+CREATE INDEX "User_id" ON "User" ("id");
+CREATE INDEX "User_name" ON "User" ("name");"#;
         assert_eq!(schema.to_ddl(), ddl);
 
         let actual = Schema::from_ddl(ddl).unwrap();
         assert_schema(actual, schema);
 
-        let index_should_not_be_first = "CREATE INDEX User_id ON User (id);
-CREATE TABLE User (id INT NOT NULL, name TEXT NOT NULL);";
+        let index_should_not_be_first = r#"CREATE INDEX "User_id" ON "User" ("id");
+CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);"#;
         let actual = Schema::from_ddl(index_should_not_be_first);
         assert_eq!(actual, Err(SchemaParseError::CannotParseDDL.into()));
+    }
+
+    #[test]
+    fn non_word_identifier() {
+        let schema = Schema {
+            table_name: 1.to_string(),
+            column_defs: Some(vec![
+                ColumnDef {
+                    name: 2.to_string(),
+                    data_type: DataType::Int,
+                    nullable: true,
+                    default: None,
+                    unique: None,
+                },
+                ColumnDef {
+                    name: ";".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: true,
+                    default: None,
+                    unique: None,
+                },
+            ]),
+            indexes: vec![SchemaIndex {
+                name: ".".to_owned(),
+                expr: Expr::Identifier(";".to_owned()),
+                order: SchemaIndexOrd::Both,
+                created: Utc::now().naive_utc(),
+            }],
+            engine: None,
+        };
+        let ddl = r#"CREATE TABLE "1" ("2" INT NULL, ";" INT NULL);
+CREATE INDEX "." ON "1" (";");"#;
+        assert_eq!(schema.to_ddl(), ddl);
+
+        let actual = Schema::from_ddl(ddl).unwrap();
+        assert_schema(actual, schema);
     }
 }
