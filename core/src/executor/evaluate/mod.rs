@@ -306,24 +306,30 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 .fetch_function(name)
                 .await?
                 .ok_or_else(|| EvaluateError::UnsupportedFunction(name.to_string()))?;
-            let args: Vec<Evaluated<'_>> = stream::iter(exprs).then(eval).try_collect().await?;
-            let args: Vec<Value> = args
+            let args = stream::iter(exprs)
+                .then(eval)
+                .try_collect::<Vec<_>>()
+                .await?;
+            let args = args
                 .into_iter()
-                .map(|v| Value::try_from(v).unwrap())
-                .collect();
+                .map(Value::try_from)
+                .collect::<Result<Vec<_>>>()?;
 
-            let empty = vec![];
+            let fargs = custom_func.args.as_deref().unwrap_or_default();
 
-            let fargs = custom_func.args.as_ref().unwrap_or(&empty);
-
-            let dargs: Vec<Value> = if let Some(fargs) = &custom_func.args {
-                let dargs: Vec<&Expr> = fargs.iter().filter_map(|y| y.default.as_ref()).collect();
-                let dargs: Vec<Evaluated<'_>> =
-                    stream::iter(dargs).then(eval).try_collect().await?;
+            let dargs = if let Some(fargs) = &custom_func.args {
+                let dargs = fargs
+                    .iter()
+                    .filter_map(|y| y.default.as_ref())
+                    .collect::<Vec<_>>();
+                let dargs = stream::iter(dargs)
+                    .then(eval)
+                    .try_collect::<Vec<_>>()
+                    .await?;
                 dargs
                     .into_iter()
-                    .map(|expr| Value::try_from(expr).unwrap())
-                    .collect()
+                    .map(Value::try_from)
+                    .collect::<Result<Vec<_>>>()?
             } else {
                 vec![]
             };

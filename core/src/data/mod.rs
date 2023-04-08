@@ -1,5 +1,5 @@
 mod bigdecimal_ext;
-pub mod function;
+mod function;
 mod interval;
 mod key;
 mod literal;
