@@ -2,7 +2,7 @@ use {
     crate::*,
     gluesql_core::{
         data::ValueError,
-        executor::EvaluateError,
+        executor::{EvaluateError, AlterError},
         prelude::{Payload, PayloadVariable, Value::*},
         translate::TranslateError,
     },
@@ -11,6 +11,7 @@ use {
 test_case!(custom, async move {
     let test_cases = [
         ("CREATE FUNCTION add_none ()", Ok(Payload::Create)),
+        ("CREATE FUNCTION add_none ()", Err(AlterError::FunctionAlreadyExists("add_none".to_owned()).into())),
         (
             "CREATE FUNCTION add_one (n INT, x INT DEFAULT 1) RETURN n + x",
             Ok(Payload::Create),
@@ -84,8 +85,12 @@ test_case!(custom, async move {
             Err(TranslateError::UnNamedFunctionArgNotSupported.into()),
         ),
         (
-            "CREATE TABLE test(a INT DEFAULT test())",
+            "CREATE FUNCTION test(a INT DEFAULT test())",
             Err(EvaluateError::UnsupportedCustomFunction.into()),
+        ),
+        (
+            "CREATE FUNCTION test(a INT, a BOOLEAN)",
+            Err(AlterError::DuplicateArgName("a".to_owned()).into()),
         ),
     ];
 

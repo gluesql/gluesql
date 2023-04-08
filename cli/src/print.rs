@@ -439,6 +439,28 @@ mod tests {
 | Splice           |"
         );
         test!(
+            Payload::ShowVariable(PayloadVariable::Functions(
+                [
+                    "Allocator",
+                    "ExtendFromWithin",
+                    "IntoRawParts",
+                    "Reserve",
+                    "Splice",
+                ]
+                .into_iter()
+                .map(ToOwned::to_owned)
+                .collect()
+            )),
+            "
+| functions        |
+|------------------|
+| Allocator        |
+| ExtendFromWithin |
+| IntoRawParts     |
+| Reserve          |
+| Splice           |"
+        );
+        test!(
             Payload::Select {
                 labels: vec!["id".to_owned()],
                 rows: [101, 202, 301, 505, 1001]
