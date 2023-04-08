@@ -765,10 +765,10 @@ mod tests {
         ast::DateTimeField,
         ast_builder::{
             abs, acos, asin, atan, cast, ceil, col, concat, concat_ws, cos, date, degrees, divide,
-            exp, expr, extract, find_idx, floor, format, gcd, generate_uuid, ifnull, initcap, lcm, left, ln,
-            log, log10, log2, lower, lpad, ltrim, modulo, now, num, pi, position, power, radians,
-            rand, repeat, reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr, tan,
-            test_expr, text, time, timestamp, to_date, to_time, to_timestamp, upper,
+            exp, expr, extract, find_idx, floor, format, gcd, generate_uuid, ifnull, initcap, lcm,
+            left, ln, log, log10, log2, lower, lpad, ltrim, modulo, now, num, pi, position, power,
+            radians, rand, repeat, reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr,
+            tan, test_expr, text, time, timestamp, to_date, to_time, to_timestamp, upper,
         },
         prelude::DataType,
     };
