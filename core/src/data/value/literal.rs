@@ -999,7 +999,27 @@ mod tests {
         }
 
         assert_eq!(
+            Value::U8(10).partial_cmp(&num!("5")),
+            Some(Ordering::Greater)
+        );
+
+        assert_eq!(
+            Value::U16(10).partial_cmp(&num!("5")),
+            Some(Ordering::Greater)
+        );
+
+        assert_eq!(
             Value::U32(10).partial_cmp(&num!("5")),
+            Some(Ordering::Greater)
+        );
+
+        assert_eq!(
+            Value::U64(10).partial_cmp(&num!("5")),
+            Some(Ordering::Greater)
+        );
+
+        assert_eq!(
+            Value::U128(10).partial_cmp(&num!("5")),
             Some(Ordering::Greater)
         );
     }
