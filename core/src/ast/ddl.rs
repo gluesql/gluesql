@@ -1,6 +1,6 @@
 use {
     super::{DataType, Expr},
-    crate::ast::ToSql,
+    crate::ast::{ToSql, ToSqlUnquoted},
     serde::{Deserialize, Serialize},
 };
 
@@ -119,7 +119,7 @@ impl ToSql for OperateFunctionArg {
         } = self;
         let default = default
             .as_ref()
-            .map(|expr| format!(" DEFAULT {}", expr.to_sql()))
+            .map(|expr| format!(" DEFAULT {}", expr.to_sql_unquoted()))
             .unwrap_or_else(|| "".to_owned());
         format!("{name} {data_type}{default}")
     }

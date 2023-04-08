@@ -7,7 +7,7 @@ use {
         parse_sql::parse,
         result::{Error, Result},
         store::{
-            AlterTable, DataRow, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata,
+            AlterTable, CustomFunction, CustomFunctionMut, DataRow, Index, IndexMut, Metadata,
             RowIter, Store, StoreMut, Transaction,
         },
         translate::translate,

@@ -236,7 +236,7 @@ impl ToSql for Statement {
                     .unwrap_or_else(|| "".to_owned());
                 let return_ = return_
                     .as_ref()
-                    .map(|v| format!(" RETURN {}", v.to_sql()))
+                    .map(|v| format!(" RETURN {}", v.to_sql_unquoted()))
                     .unwrap_or_else(|| "".to_owned());
                 format!("CREATE{or_replace} FUNCTION {name}({args}){return_};")
             }

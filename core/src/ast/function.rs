@@ -1,6 +1,6 @@
 use {
     super::{ast_literal::TrimWhereField, DataType, DateTimeField, Expr},
-    crate::ast::ToSql,
+    crate::ast::{ToSql, ToSqlUnquoted},
     serde::{Deserialize, Serialize},
     strum_macros::Display,
 };
@@ -201,7 +201,7 @@ impl ToSql for Function {
             Function::Custom { name, exprs } => {
                 let exprs = exprs
                     .iter()
-                    .map(ToSql::to_sql)
+                    .map(ToSqlUnquoted::to_sql_unquoted)
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("{name}({exprs})")
@@ -541,7 +541,7 @@ mod tests {
         );
 
         assert_eq!(
-            "CONCAT(Tic, tac, toe)",
+            "CONCAT(\"Tic\", \"tac\", \"toe\")",
             &Expr::Function(Box::new(Function::Concat(vec![
                 Expr::Identifier("Tic".to_owned()),
                 Expr::Identifier("tac".to_owned()),
