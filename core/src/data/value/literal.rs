@@ -997,27 +997,42 @@ mod tests {
                 Literal::Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
             };
         }
-
+        assert_eq!(
+            Value::I8(10).partial_cmp(&num!("5")),
+            Some(Ordering::Greater)
+        );
+        assert_eq!(
+            Value::I16(10).partial_cmp(&num!("5")),
+            Some(Ordering::Greater)
+        );
+        assert_eq!(
+            Value::I32(10).partial_cmp(&num!("5")),
+            Some(Ordering::Greater)
+        );
+        assert_eq!(
+            Value::I64(10).partial_cmp(&num!("5")),
+            Some(Ordering::Greater)
+        );
+        assert_eq!(
+            Value::I128(10).partial_cmp(&num!("5")),
+            Some(Ordering::Greater)
+        );
         assert_eq!(
             Value::U8(10).partial_cmp(&num!("5")),
             Some(Ordering::Greater)
         );
-
         assert_eq!(
             Value::U16(10).partial_cmp(&num!("5")),
             Some(Ordering::Greater)
         );
-
         assert_eq!(
             Value::U32(10).partial_cmp(&num!("5")),
             Some(Ordering::Greater)
         );
-
         assert_eq!(
             Value::U64(10).partial_cmp(&num!("5")),
             Some(Ordering::Greater)
         );
-
         assert_eq!(
             Value::U128(10).partial_cmp(&num!("5")),
             Some(Ordering::Greater)
