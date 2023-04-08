@@ -166,9 +166,9 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
             subquery,
             negated,
         } => {
-            let target = eval(target_expr).await?;
             let storage =
                 storage.ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(expr.clone()))?;
+            let target = eval(target_expr).await?;
 
             select(storage, subquery, context)
                 .await?

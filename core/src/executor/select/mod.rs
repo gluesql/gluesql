@@ -16,14 +16,14 @@ use {
         sort::Sort,
     },
     crate::{
-        ast::{DataType, Expr, OrderByExpr, Query, Select, SetExpr, TableWithJoins, Values},
+        ast::{Expr, OrderByExpr, Query, Select, SetExpr, TableWithJoins, Values},
         data::{get_alias, Key, Row, Value},
         result::Result,
         store::GStore,
     },
     async_recursion::async_recursion,
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
-    std::{borrow::Cow, iter, rc::Rc},
+    std::{borrow::Cow, rc::Rc},
     utils::Vector,
 };
 
@@ -34,9 +34,7 @@ async fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> Result<(Vec<Row>, Vec<Str
         .collect::<Vec<_>>();
     let columns = Rc::from(labels.clone());
 
-    let mut column_types = iter::repeat(None)
-        .take(first_len)
-        .collect::<Vec<Option<DataType>>>();
+    let mut column_types = vec![None; first_len];
     let mut rows = Vec::with_capacity(exprs_list.len());
 
     for exprs in exprs_list {
@@ -79,7 +77,7 @@ async fn sort_stateless(rows: Vec<Row>, order_by: &[OrderByExpr]) -> Result<Vec<
                     let row = Some(&row);
 
                     async move {
-                        evaluate_stateless(row.map(Into::into), expr)
+                        evaluate_stateless(row.map(Row::as_context), expr)
                             .await
                             .and_then(Value::try_from)
                             .and_then(Key::try_from)

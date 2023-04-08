@@ -274,8 +274,8 @@ async fn evaluate_index_key(
     columns: Option<&[String]>,
     row: &DataRow,
 ) -> ConflictableTransactionResult<Vec<u8>, Error> {
-    let columns = columns.unwrap_or(&[]);
-    let evaluated = evaluate_stateless(Some((columns, row).into()), index_expr)
+    let context = Some(row.as_context(columns));
+    let evaluated = evaluate_stateless(context, index_expr)
         .await
         .map_err(ConflictableTransactionError::Abort)?;
     let value: Value = evaluated

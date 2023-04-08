@@ -1,8 +1,5 @@
 use {
-    crate::{
-        data::{Row, Value},
-        store::DataRow,
-    },
+    crate::data::{Row, Value},
     std::{borrow::Cow, collections::HashMap, fmt::Debug, rc::Rc},
 };
 
@@ -119,24 +116,6 @@ impl<'a> RowContext<'a> {
                 [left.get_all_entries(), right.get_all_entries()].concat()
             }
             _ => vec![],
-        }
-    }
-}
-
-impl<'a> From<(&'a [String], &'a DataRow)> for RowContext<'a> {
-    fn from((columns, data_row): (&'a [String], &'a DataRow)) -> Self {
-        match data_row {
-            DataRow::Vec(values) => Self::RefVecData { columns, values },
-            DataRow::Map(values) => Self::RefMapData(values),
-        }
-    }
-}
-
-impl<'a> From<&'a Row> for RowContext<'a> {
-    fn from(row: &'a Row) -> Self {
-        match row {
-            Row::Vec { columns, values } => Self::RefVecData { columns, values },
-            Row::Map(values) => Self::RefMapData(values),
         }
     }
 }

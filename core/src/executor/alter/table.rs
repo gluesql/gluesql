@@ -9,7 +9,6 @@ use {
         store::{GStore, GStoreMut},
     },
     futures::stream::TryStreamExt,
-    std::iter,
 };
 
 pub async fn create_table<T: GStore + GStoreMut>(
@@ -51,9 +50,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
             },
             SetExpr::Values(Values(values_list)) => {
                 let first_len = values_list[0].len();
-                let mut column_types = iter::repeat(None)
-                    .take(first_len)
-                    .collect::<Vec<Option<DataType>>>();
+                let mut column_types = vec![None; first_len];
 
                 for exprs in values_list {
                     for (i, expr) in exprs.iter().enumerate() {
