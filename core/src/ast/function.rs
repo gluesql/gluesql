@@ -1,6 +1,6 @@
 use {
     super::{ast_literal::TrimWhereField, DataType, DateTimeField, Expr},
-    crate::ast::{ToSql, ToSqlUnquoted},
+    crate::ast::ToSql,
     serde::{Deserialize, Serialize},
     strum_macros::Display,
 };
@@ -201,7 +201,7 @@ impl ToSql for Function {
             Function::Custom { name, exprs } => {
                 let exprs = exprs
                     .iter()
-                    .map(ToSqlUnquoted::to_sql_unquoted)
+                    .map(ToSql::to_sql)
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("{name}({exprs})")
@@ -511,7 +511,7 @@ mod tests {
         );
 
         assert_eq!(
-            "CUSTOM_FUNC(Tic, 1, num, 'abc')",
+            r#"CUSTOM_FUNC("Tic", 1, "num", 'abc')"#,
             &Expr::Function(Box::new(Function::Custom {
                 name: "CUSTOM_FUNC".to_owned(),
                 exprs: vec![
@@ -524,7 +524,7 @@ mod tests {
             .to_sql()
         );
         assert_eq!(
-            "CUSTOM_FUNC(num)",
+            r#"CUSTOM_FUNC("num")"#,
             &Expr::Function(Box::new(Function::Custom {
                 name: "CUSTOM_FUNC".to_owned(),
                 exprs: vec![Expr::Identifier("num".to_owned())]

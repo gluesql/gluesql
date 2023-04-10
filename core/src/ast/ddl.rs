@@ -1,6 +1,6 @@
 use {
     super::{DataType, Expr},
-    crate::ast::{ToSql, ToSqlUnquoted},
+    crate::ast::ToSql,
     serde::{Deserialize, Serialize},
 };
 
@@ -119,9 +119,9 @@ impl ToSql for OperateFunctionArg {
         } = self;
         let default = default
             .as_ref()
-            .map(|expr| format!(" DEFAULT {}", expr.to_sql_unquoted()))
+            .map(|expr| format!(" DEFAULT {}", expr.to_sql()))
             .unwrap_or_else(|| "".to_owned());
-        format!("{name} {data_type}{default}")
+        format!(r#""{name}" {data_type}{default}"#)
     }
 }
 
@@ -197,7 +197,7 @@ mod tests {
     #[test]
     fn to_sql_operate_function_arg() {
         assert_eq!(
-            "name TEXT",
+            r#""name" TEXT"#,
             OperateFunctionArg {
                 name: "name".to_owned(),
                 data_type: DataType::Text,
@@ -207,7 +207,7 @@ mod tests {
         );
 
         assert_eq!(
-            "accepted BOOLEAN DEFAULT FALSE",
+            r#""accepted" BOOLEAN DEFAULT FALSE"#,
             OperateFunctionArg {
                 name: "accepted".to_owned(),
                 data_type: DataType::Boolean,

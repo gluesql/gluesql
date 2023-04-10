@@ -230,7 +230,7 @@ impl ToSql for Statement {
                     .map(ToSql::to_sql)
                     .collect::<Vec<_>>()
                     .join(", ");
-                let return_ = format!(" RETURN {}", return_.to_sql_unquoted());
+                let return_ = format!(" RETURN {}", return_.to_sql());
                 format!("CREATE{or_replace} FUNCTION {name}({args}){return_};")
             }
             Statement::AlterTable { name, operation } => {
@@ -576,7 +576,7 @@ mod tests {
     #[test]
     fn to_sql_insert_function() {
         assert_eq!(
-            "CREATE FUNCTION add(num INT DEFAULT 0) RETURN num;",
+            r#"CREATE FUNCTION add("num" INT DEFAULT 0) RETURN "num";"#,
             Statement::CreateFunction {
                 or_replace: false,
                 name: "add".into(),
