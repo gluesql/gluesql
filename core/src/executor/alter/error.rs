@@ -44,4 +44,7 @@ pub enum AlterError {
 
     #[error("duplicate arg name: {0}")]
     DuplicateArgName(String),
+
+    #[error("non-default argument should not follow the default argument")]
+    NonDefaultArgumentFollowsDefaultArgument,
 }

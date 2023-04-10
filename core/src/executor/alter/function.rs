@@ -1,5 +1,5 @@
 use {
-    super::{validate_arg, validate_arg_names, AlterError},
+    super::{validate_arg_names, validate_default_args, AlterError},
     crate::{
         ast::{Expr, OperateFunctionArg},
         data::CustomFunction,
@@ -16,7 +16,7 @@ pub async fn insert_function<T: GStore + GStoreMut>(
     body: &Expr,
 ) -> Result<()> {
     validate_arg_names(args)?;
-    args.iter().try_for_each(validate_arg)?;
+    validate_default_args(args)?;
 
     if storage.fetch_function(func_name).await?.is_none() || or_replace {
         storage.delete_function(func_name).await?;

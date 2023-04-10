@@ -1,7 +1,6 @@
 use {
     crate::*,
     gluesql_core::{
-        data::ValueError,
         executor::{AlterError, EvaluateError},
         prelude::{Payload, PayloadVariable, Value::*},
         translate::TranslateError,
@@ -15,6 +14,10 @@ test_case!(custom, async move {
             Err(TranslateError::UnsupportedEmptyFunctionBody.into()),
         ),
         (
+            "CREATE FUNCTION add_none(x INT DEFAULT 1) RETURN x",
+            Ok(Payload::Create),
+        ),
+        (
             "CREATE FUNCTION add_one (n INT, x INT DEFAULT 1) RETURN n + x",
             Ok(Payload::Create),
         ),
@@ -24,6 +27,10 @@ test_case!(custom, async move {
         ),
         (
             "CREATE FUNCTION add_two (n INT, x INT DEFAULT 1, y INT) RETURN n + x + y",
+            Err(AlterError::NonDefaultArgumentFollowsDefaultArgument.into()),
+        ),
+        (
+            "CREATE FUNCTION add_two (n INT, x INT DEFAULT 1, y INT DEFAULT 1) RETURN n + x + y",
             Ok(Payload::Create),
         ),
         (
@@ -71,9 +78,14 @@ test_case!(custom, async move {
             )),
         ),
         (
-            "SELECT add_two(1, 2)",
-            Err(ValueError::NullValueOnNotNullField.into()),
+            "SELECT add_two(1, 2) as r",
+            Ok(select!(
+                r
+                I64;
+                4
+            )),
         ),
+        ("DROP FUNCTION add_none", Ok(Payload::DropFunction)),
         (
             "SHOW FUNCTIONS",
             Ok(Payload::ShowVariable(PayloadVariable::Functions(vec![
@@ -81,13 +93,12 @@ test_case!(custom, async move {
                 "add_two(n: INT, x: INT, y: INT)".to_owned(),
             ]))),
         ),
-        ("DROP FUNCTION add_one", Ok(Payload::DropFunction)),
         (
-            "DROP FUNCTION add_one",
-            Err(AlterError::FunctionNotFound("add_one".to_owned()).into()),
+            "DROP FUNCTION add_none",
+            Err(AlterError::FunctionNotFound("add_none".to_owned()).into()),
         ),
         (
-            "DROP FUNCTION IF EXISTS add_one, add_two, abc",
+            "DROP FUNCTION IF EXISTS add_none, add_one, add_two",
             Ok(Payload::DropFunction),
         ),
         (

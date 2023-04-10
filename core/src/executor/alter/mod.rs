@@ -5,7 +5,7 @@ mod index;
 mod table;
 mod validate;
 
-use validate::{validate, validate_arg, validate_arg_names, validate_column_names};
+use validate::{validate, validate_arg_names, validate_column_names, validate_default_args};
 
 pub use {
     alter_table::alter_table,
