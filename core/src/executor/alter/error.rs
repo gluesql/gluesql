@@ -14,6 +14,9 @@ pub enum AlterError {
     #[error("function already exists: {0}")]
     FunctionAlreadyExists(String),
 
+    #[error("function does not exist: {0}")]
+    FunctionNotFound(String),
+
     // CREATE INDEX, DROP TABLE
     #[error("table does not exist: {0}")]
     TableNotFound(String),

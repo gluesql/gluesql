@@ -217,8 +217,13 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             Ok(Statement::CreateFunction {
                 or_replace: *or_replace,
                 name: translate_object_name(name)?,
-                args,
-                return_: params.return_.as_ref().map(translate_expr).transpose()?,
+                args: args.unwrap_or_default(),
+                return_: params
+                    .return_
+                    .as_ref()
+                    .map(translate_expr)
+                    .transpose()?
+                    .ok_or(TranslateError::UnsupportedEmptyFunctionBody)?,
             })
         }
         _ => Err(TranslateError::UnsupportedStatement(sql_statement.to_string()).into()),

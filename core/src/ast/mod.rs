@@ -73,8 +73,8 @@ pub enum Statement {
         or_replace: bool,
         name: String,
         /// Optional schema
-        args: Option<Vec<OperateFunctionArg>>,
-        return_: Option<Expr>,
+        args: Vec<OperateFunctionArg>,
+        return_: Expr,
     },
     /// ALTER TABLE
     AlterTable {
@@ -226,18 +226,11 @@ impl ToSql for Statement {
             } => {
                 let or_replace = or_replace.then_some(" OR REPLACE").unwrap_or("");
                 let args = args
-                    .as_ref()
-                    .map(|args| {
-                        args.iter()
-                            .map(ToSql::to_sql)
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    })
-                    .unwrap_or_else(|| "".to_owned());
-                let return_ = return_
-                    .as_ref()
-                    .map(|v| format!(" RETURN {}", v.to_sql_unquoted()))
-                    .unwrap_or_else(|| "".to_owned());
+                    .iter()
+                    .map(ToSql::to_sql)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let return_ = format!(" RETURN {}", return_.to_sql_unquoted());
                 format!("CREATE{or_replace} FUNCTION {name}({args}){return_};")
             }
             Statement::AlterTable { name, operation } => {
@@ -587,14 +580,14 @@ mod tests {
             Statement::CreateFunction {
                 or_replace: false,
                 name: "add".into(),
-                args: Some(vec![OperateFunctionArg {
+                args: vec![OperateFunctionArg {
                     name: "num".into(),
                     data_type: DataType::Int,
                     default: Some(Expr::Literal(AstLiteral::Number(
                         BigDecimal::from_str("0").unwrap()
                     ))),
-                }],),
-                return_: Some(Expr::Identifier("num".to_owned()))
+                }],
+                return_: Expr::Identifier("num".to_owned())
             }
             .to_sql()
         );
@@ -603,10 +596,8 @@ mod tests {
             Statement::CreateFunction {
                 or_replace: true,
                 name: "add".into(),
-                args: None,
-                return_: Some(Expr::Literal(AstLiteral::Number(
-                    BigDecimal::from_str("1").unwrap()
-                )))
+                args: vec![],
+                return_: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap()))
             }
             .to_sql()
         );

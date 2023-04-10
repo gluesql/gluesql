@@ -11,14 +11,12 @@ use {
 pub async fn insert_function<T: GStore + GStoreMut>(
     storage: &mut T,
     func_name: &str,
-    args: &Option<Vec<OperateFunctionArg>>,
+    args: &Vec<OperateFunctionArg>,
     or_replace: bool,
-    return_: &Option<Expr>,
+    body: &Expr,
 ) -> Result<()> {
-    if let Some(args) = args {
-        validate_arg_names(args)?;
-        args.iter().try_for_each(validate_arg)?;
-    }
+    validate_arg_names(args)?;
+    args.iter().try_for_each(validate_arg)?;
 
     if storage.fetch_function(func_name).await?.is_none() || or_replace {
         storage.delete_function(func_name).await?;
@@ -26,7 +24,7 @@ pub async fn insert_function<T: GStore + GStoreMut>(
             .insert_function(CustomFunction {
                 func_name: func_name.to_owned(),
                 args: args.to_owned(),
-                return_: return_.to_owned(),
+                body: body.to_owned(),
             })
             .await?;
         Ok(())

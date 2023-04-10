@@ -315,24 +315,20 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 .map(Value::try_from)
                 .collect::<Result<Vec<_>>>()?;
 
-            let fargs = custom_func.args.as_deref().unwrap_or_default();
+            let fargs = &custom_func.args;
 
-            let dargs = if let Some(fargs) = &custom_func.args {
-                let dargs = fargs
-                    .iter()
-                    .filter_map(|y| y.default.as_ref())
-                    .collect::<Vec<_>>();
-                let dargs = stream::iter(dargs)
-                    .then(eval)
-                    .try_collect::<Vec<_>>()
-                    .await?;
-                dargs
-                    .into_iter()
-                    .map(Value::try_from)
-                    .collect::<Result<Vec<_>>>()?
-            } else {
-                vec![]
-            };
+            let dargs = fargs
+                .iter()
+                .filter_map(|y| y.default.as_ref())
+                .collect::<Vec<_>>();
+            let dargs = stream::iter(dargs)
+                .then(eval)
+                .try_collect::<Vec<_>>()
+                .await?;
+            let dargs = dargs
+                .into_iter()
+                .map(Value::try_from)
+                .collect::<Result<Vec<_>>>()?;
 
             let min = fargs.len() - dargs.len();
             let max = fargs.len();
@@ -365,11 +361,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 let rowcontext = RowContext::new(name, Cow::Owned(row), None);
                 let context = Rc::new(rowcontext);
 
-                if let Some(v) = &custom_func.return_ {
-                    eval_with_context(v, context).await
-                } else {
-                    Ok(Evaluated::from(Value::Null))
-                }
+                eval_with_context(&custom_func.body, context).await
             } else {
                 Err((EvaluateError::FunctionArgsLengthNotWithinRange {
                     name: custom_func.func_name.to_owned(),
