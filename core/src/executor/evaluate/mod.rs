@@ -329,13 +329,13 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 .into_iter()
                 .map(Value::try_from)
                 .collect::<Result<Vec<_>>>()?;
+            let mut dargs = dargs.iter();
 
             let min = fargs.len() - dargs.len();
             let max = fargs.len();
 
             let value = if (min..=max).contains(&args.len()) {
                 let mut hm = StdHashMap::new();
-                let mut id = 0;
 
                 fargs
                     .iter()
@@ -345,11 +345,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                         arg.validate_type(&farg.data_type)?;
                         arg.validate_null(farg.default.is_some())?;
                         let value = if arg.is_null() {
-                            &dargs[{
-                                let tmp = id;
-                                id += 1;
-                                tmp
-                            }]
+                            dargs.next().unwrap()
                         } else {
                             arg
                         };
