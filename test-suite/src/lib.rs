@@ -91,6 +91,7 @@ macro_rules! generate_store_tests {
         glue!(values, values::values);
         glue!(unary_operator, unary_operator::unary_operator);
         glue!(function_upper_lower, function::upper_lower::upper_lower);
+        glue!(function_initcap, function::initcap::initcap);
         glue!(function_gcd_lcm, function::gcd_lcm::gcd_lcm);
         glue!(function_left_right, function::left_right::left_right);
         glue!(function_sqrt, function::sqrt_power::sqrt);
