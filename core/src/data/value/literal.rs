@@ -32,6 +32,7 @@ impl PartialEq<Literal<'_>> for Value {
             (Value::U32(l), Literal::Number(r)) => r.to_u32().map(|r| *l == r).unwrap_or(false),
             (Value::U64(l), Literal::Number(r)) => r.to_u64().map(|r| *l == r).unwrap_or(false),
             (Value::U128(l), Literal::Number(r)) => r.to_u128().map(|r| *l == r).unwrap_or(false),
+            (Value::F32(l), Literal::Number(r)) => r.to_f32().map(|r| *l == r).unwrap_or(false),
             (Value::F64(l), Literal::Number(r)) => r.to_f64().map(|r| *l == r).unwrap_or(false),
             (Value::Str(l), Literal::Text(r)) => l == r.as_ref(),
             (Value::Bytea(l), Literal::Bytea(r)) => l == r,
@@ -100,6 +101,9 @@ impl PartialOrd<Literal<'_>> for Value {
                 r.to_u128().map(|r| l.partial_cmp(&r)).unwrap_or(None)
             }
 
+            (Value::F32(l), Literal::Number(r)) => {
+                r.to_f32().map(|r| l.partial_cmp(&r)).unwrap_or(None)
+            }
             (Value::F64(l), Literal::Number(r)) => {
                 r.to_f64().map(|r| l.partial_cmp(&r)).unwrap_or(None)
             }
@@ -213,6 +217,10 @@ impl Value {
                 .to_u128()
                 .map(Value::U128)
                 .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+            (DataType::Float32, Literal::Number(v)) => v
+                .to_f32()
+                .map(Value::F32)
+                .ok_or_else(|| ValueError::UnreachableNumberParsing.into()),
             (DataType::Float, Literal::Number(v)) => v
                 .to_f64()
                 .map(Value::F64)
@@ -420,6 +428,20 @@ impl Value {
                 Ok(Value::U128(v))
             }
 
+            (DataType::Float32, Literal::Text(v)) => v
+                .parse::<f32>()
+                .map(Value::F32)
+                .map_err(|_| ValueError::LiteralCastFromTextToFloatFailed(v.to_string()).into()),
+            (DataType::Float32, Literal::Number(v)) => {
+                v.to_f32().map(Value::F32).ok_or_else(|| {
+                    ValueError::UnreachableLiteralCastFromNumberToFloat(v.to_string()).into()
+                })
+            }
+            (DataType::Float32, Literal::Boolean(v)) => {
+                let v = if *v { 1.0 } else { 0.0 };
+
+                Ok(Value::F32(v))
+            }
             (DataType::Float, Literal::Text(v)) => v
                 .parse::<f64>()
                 .map(Value::F64)
@@ -469,6 +491,7 @@ impl Value {
             | (DataType::Uint32, Literal::Null)
             | (DataType::Uint64, Literal::Null)
             | (DataType::Uint128, Literal::Null)
+            | (DataType::Float32, Literal::Null)
             | (DataType::Float, Literal::Null)
             | (DataType::Decimal, Literal::Null)
             | (DataType::Text, Literal::Null) => Ok(Value::Null),
@@ -567,6 +590,7 @@ mod tests {
         assert_eq!(Value::U32(64), num!("64"));
         assert_eq!(Value::U64(64), num!("64"));
         assert_eq!(Value::U128(64), num!("64"));
+        assert_eq!(Value::F32(7.123), num!("7.123"));
         assert_eq!(Value::F64(7.123), num!("7.123"));
         assert_eq!(Value::Str("Hello".to_owned()), text!("Hello"));
         assert_eq!(Value::Bytea(bytea()), Literal::Bytea(bytea()));
@@ -575,6 +599,8 @@ mod tests {
         assert_eq!(inet("0.0.0.0"), num!("0"));
         assert_ne!(inet("::1"), num!("0"));
         assert_eq!(inet("::2:4cb0:16ea"), num!("9876543210"));
+        assert_ne!(inet("::1"), text!("-1"));
+        assert_ne!(inet("::1"), num!("-1"));
         assert_eq!(Value::Date(date(2021, 11, 20)), text!("2021-11-20"));
         assert_ne!(Value::Date(date(2021, 11, 20)), text!("202=abcdef"));
         assert_eq!(
@@ -683,6 +709,11 @@ mod tests {
         test!(DataType::Uint32, num!("64"), Value::U32(64));
         test!(DataType::Uint64, num!("64"), Value::U64(64));
         test!(DataType::Uint128, num!("64"), Value::U128(64));
+        test!(
+            DataType::Float32,
+            num!("123456789"),
+            Value::F32(123456789.0_f32)
+        );
         test!(DataType::Float, num!("123456789"), Value::F64(123456789.0));
         test!(
             DataType::Text,
@@ -815,7 +846,8 @@ mod tests {
         test!(Literal::Bytea(bytea("1234")), Value::Bytea(bytea("1234")));
         test!(&Literal::Bytea(bytea("1234")), Value::Bytea(bytea("1234")));
         test!(num!("1234567890"), Value::I64(1234567890));
-        test!(num!("12345678.90"), Value::F64(12345678.90));
+        test!(num!("1.0"), Value::F32(1.0_f32));
+        test!(num!("1.0"), Value::F64(1.0));
         test!(&Literal::Boolean(false), Value::Bool(false));
         assert!(matches!(Value::try_from(&Literal::Null), Ok(Value::Null)))
     }
@@ -924,6 +956,27 @@ mod tests {
         test!(DataType::Uint128, Literal::Boolean(true), Value::U128(1));
         test!(DataType::Uint128, Literal::Boolean(false), Value::U128(0));
 
+        test!(
+            DataType::Float32,
+            text!("12345.67"),
+            Value::F32(12345.67_f32)
+        );
+        test!(
+            DataType::Float32,
+            num!("123456.78"),
+            Value::F32(123456.78_f32)
+        );
+        test!(
+            DataType::Float32,
+            Literal::Boolean(true),
+            Value::F32(1.0_f32)
+        );
+        test!(
+            DataType::Float32,
+            Literal::Boolean(false),
+            Value::F32(0.0_f32)
+        );
+
         test!(DataType::Float, text!("12345.6789"), Value::F64(12345.6789));
         test!(DataType::Float, num!("123456.789"), Value::F64(123456.789));
         test!(DataType::Float, Literal::Boolean(true), Value::F64(1.0));
@@ -962,6 +1015,7 @@ mod tests {
         test_null!(DataType::Uint32, Literal::Null);
         test_null!(DataType::Uint64, Literal::Null);
         test_null!(DataType::Uint128, Literal::Null);
+        test_null!(DataType::Float32, Literal::Null);
         test_null!(DataType::Float, Literal::Null);
         test_null!(DataType::Text, Literal::Null);
         test!(
