@@ -337,12 +337,13 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 Ok(Payload::ShowVariable(PayloadVariable::Tables(table_names)))
             }
             Variable::Functions => {
-                let function_desc = storage
+                let mut function_desc: Vec<_> = storage
                     .fetch_all_functions()
                     .await?
                     .iter()
                     .map(|f| f.to_str())
                     .collect();
+                function_desc.sort();
                 Ok(Payload::ShowVariable(PayloadVariable::Functions(
                     function_desc,
                 )))

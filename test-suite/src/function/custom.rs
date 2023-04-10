@@ -10,20 +10,22 @@ use {
 
 test_case!(custom, async move {
     let test_cases = [
-        ("CREATE FUNCTION add_none ()", Ok(Payload::Create)),
         (
-            "CREATE FUNCTION add_none ()",
-            Err(AlterError::FunctionAlreadyExists("add_none".to_owned()).into()),
+            "CREATE FUNCTION add_none()",
+            Err(TranslateError::UnsupportedEmptyFunctionBody.into()),
         ),
         (
             "CREATE FUNCTION add_one (n INT, x INT DEFAULT 1) RETURN n + x",
             Ok(Payload::Create),
         ),
         (
+            "CREATE FUNCTION add_one(n INT) RETURN n + 1",
+            Err(AlterError::FunctionAlreadyExists("add_one".to_owned()).into()),
+        ),
+        (
             "CREATE FUNCTION add_two (n INT, x INT DEFAULT 1, y INT) RETURN n + x + y",
             Ok(Payload::Create),
         ),
-        ("SELECT add_none() AS r", Ok(select_with_null!(r; Null))),
         (
             "SELECT add_one(1) AS r",
             Ok(select!(
@@ -72,27 +74,32 @@ test_case!(custom, async move {
             "SELECT add_two(1, 2)",
             Err(ValueError::NullValueOnNotNullField.into()),
         ),
-        ("DROP FUNCTION add_one, add_two", Ok(Payload::DropFunction)),
         (
             "SHOW FUNCTIONS",
             Ok(Payload::ShowVariable(PayloadVariable::Functions(vec![
-                "add_none()".to_owned(),
+                "add_one(n: INT, x: INT)".to_owned(),
+                "add_two(n: INT, x: INT, y: INT)".to_owned(),
             ]))),
         ),
+        ("DROP FUNCTION add_one", Ok(Payload::DropFunction)),
         (
-            "DROP FUNCTION IF EXISTS add_one, add_two, add_none",
+            "DROP FUNCTION add_one",
+            Err(AlterError::FunctionNotFound("add_one".to_owned()).into()),
+        ),
+        (
+            "DROP FUNCTION IF EXISTS add_one, add_two, abc",
             Ok(Payload::DropFunction),
         ),
         (
-            "CREATE FUNCTION test(INT)",
+            "CREATE FUNCTION test(INT) RETURN 1",
             Err(TranslateError::UnNamedFunctionArgNotSupported.into()),
         ),
         (
-            "CREATE FUNCTION test(a INT DEFAULT test())",
+            "CREATE FUNCTION test(a INT DEFAULT test()) RETURN 1",
             Err(EvaluateError::UnsupportedCustomFunction.into()),
         ),
         (
-            "CREATE FUNCTION test(a INT, a BOOLEAN)",
+            "CREATE FUNCTION test(a INT, a BOOLEAN) RETURN 1",
             Err(AlterError::DuplicateArgName("a".to_owned()).into()),
         ),
     ];

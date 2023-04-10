@@ -39,10 +39,13 @@ pub async fn delete_function<T: GStore + GStoreMut>(
     if_exists: bool,
 ) -> Result<()> {
     for func_name in func_names {
-        let result = storage.delete_function(func_name).await;
-        if result.is_err() && !if_exists {
-            result?
-        };
+        let function = storage.fetch_function(func_name).await?;
+
+        if !if_exists {
+            function.ok_or_else(|| AlterError::FunctionNotFound(func_name.to_owned()))?;
+        }
+
+        storage.delete_function(func_name).await?;
     }
     Ok(())
 }
