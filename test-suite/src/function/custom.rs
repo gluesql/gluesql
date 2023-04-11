@@ -14,16 +14,20 @@ test_case!(custom, async move {
             Err(TranslateError::UnsupportedEmptyFunctionBody.into()),
         ),
         (
-            "CREATE FUNCTION add_none(x INT DEFAULT 1) RETURN x",
+            "CREATE FUNCTION add_none() RETURN null",
             Ok(Payload::Create),
+        ),
+        (
+            "CREATE FUNCTION add_zero(n INT) RETURN n",
+            Ok(Payload::Create),
+        ),
+        (
+            "CREATE FUNCTION add_zero(n INT) RETURN n",
+            Err(AlterError::FunctionAlreadyExists("add_zero".to_owned()).into()),
         ),
         (
             "CREATE FUNCTION add_one (n INT, x INT DEFAULT 1) RETURN n + x",
             Ok(Payload::Create),
-        ),
-        (
-            "CREATE FUNCTION add_one(n INT) RETURN n + 1",
-            Err(AlterError::FunctionAlreadyExists("add_one".to_owned()).into()),
         ),
         (
             "CREATE FUNCTION add_two (n INT, x INT DEFAULT 1, y INT) RETURN n + x + y",
@@ -33,6 +37,7 @@ test_case!(custom, async move {
             "CREATE FUNCTION add_two (n INT, x INT DEFAULT 1, y INT DEFAULT 1) RETURN n + x + y",
             Ok(Payload::Create),
         ),
+        ("SELECT add_none() AS r", Ok(select_with_null!(r; Null))),
         (
             "SELECT add_one(1) AS r",
             Ok(select!(
@@ -91,6 +96,7 @@ test_case!(custom, async move {
             Ok(Payload::ShowVariable(PayloadVariable::Functions(vec![
                 "add_one(n: INT, x: INT)".to_owned(),
                 "add_two(n: INT, x: INT, y: INT)".to_owned(),
+                "add_zero(n: INT)".to_owned(),
             ]))),
         ),
         (
@@ -98,7 +104,7 @@ test_case!(custom, async move {
             Err(AlterError::FunctionNotFound("add_none".to_owned()).into()),
         ),
         (
-            "DROP FUNCTION IF EXISTS add_none, add_one, add_two",
+            "DROP FUNCTION IF EXISTS add_zero, add_one, add_two",
             Ok(Payload::DropFunction),
         ),
         (

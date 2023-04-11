@@ -116,7 +116,7 @@ fn composite_storage_function() {
     let mut glue = Glue::new(storage);
 
     test!(
-        glue "CREATE FUNCTION abc();",
+        glue "CREATE FUNCTION abc() RETURN 1;",
         Err(Error::StorageMsg("[Storage] CustomFunction is not supported".to_owned()))
     );
     test!(
@@ -124,7 +124,7 @@ fn composite_storage_function() {
         Err(Error::StorageMsg("[Storage] CustomFunction is not supported".to_owned()))
     );
     test!(
-        glue "DROP FUNCTIONS abc;",
+        glue "DROP FUNCTION abc;",
         Err(Error::StorageMsg("[Storage] CustomFunction is not supported".to_owned()))
     );
     test!(
