@@ -1609,6 +1609,70 @@ mod tests {
     }
 
     #[test]
+    fn try_into_decimal() {
+        macro_rules! test {
+            ($from: expr, $to: expr) => {
+                assert_eq!($from.try_into() as Result<Decimal>, $to);
+                assert_eq!(Decimal::try_from($from), $to);
+            };
+        }
+
+        test!(Value::Bool(true), Ok(Decimal::new(1, 0)));
+        test!(Value::Bool(false), Ok(Decimal::new(0, 0)));
+        test!(Value::I8(122), Ok(Decimal::new(122, 0)));
+        test!(Value::I16(122), Ok(Decimal::new(122, 0)));
+        test!(Value::I32(122), Ok(Decimal::new(122, 0)));
+        test!(Value::I64(122), Ok(Decimal::new(122, 0)));
+        test!(Value::I128(122), Ok(Decimal::new(122, 0)));
+        test!(Value::U8(122), Ok(Decimal::new(122, 0)));
+        test!(Value::U16(122), Ok(Decimal::new(122, 0)));
+        test!(Value::U32(122), Ok(Decimal::new(122, 0)));
+        test!(Value::U64(122), Ok(Decimal::new(122, 0)));
+        test!(Value::U128(122), Ok(Decimal::new(122, 0)));
+        test!(Value::F64(122.0), Ok(Decimal::new(122, 0)));
+        test!(Value::F64(122.1), Ok(Decimal::new(1221, 1)));
+        test!(Value::Str("122".to_owned()), Ok(Decimal::new(122, 0)));
+        test!(
+            Value::Decimal(Decimal::new(122, 0)),
+            Ok(Decimal::new(122, 0))
+        );
+
+        test!(
+            Value::Date(date(2021, 11, 20)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Time(time(10, 0, 0, 0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Interval(I::Month(1)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Uuid(195965723427462096757863453463987888808),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Map(HashMap::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::List(Vec::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+        test!(
+            Value::Inet(IpAddr::from_str("::1").unwrap()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+    }
+
+    #[test]
     fn try_into_naive_date() {
         macro_rules! test {
             ($from: expr, $to: expr) => {

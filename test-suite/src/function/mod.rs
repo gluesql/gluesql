@@ -16,6 +16,7 @@ pub mod format;
 pub mod gcd_lcm;
 pub mod generate_uuid;
 pub mod ifnull;
+pub mod initcap;
 pub mod left_right;
 pub mod lpad_rpad;
 pub mod ltrim_rtrim;
