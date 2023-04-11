@@ -76,18 +76,16 @@ test_case!(custom, async move {
         ),
         (
             "SELECT add_two(1, null, 2) as r",
-            Ok(select!(
-                r
-                I64;
-                4
+            Ok(select_with_null!(
+                r; Null
             )),
         ),
         (
-            "SELECT add_two(1, 2) as r",
+            "SELECT add_two(1) as r",
             Ok(select!(
                 r
                 I64;
-                4
+                3
             )),
         ),
         ("DROP FUNCTION add_none", Ok(Payload::DropFunction)),
