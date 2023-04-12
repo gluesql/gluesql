@@ -8,6 +8,7 @@ pub mod basic;
 pub mod case;
 pub mod column_alias;
 pub mod concat;
+pub mod custom_function;
 pub mod data_type;
 pub mod default;
 pub mod dictionary;
@@ -216,7 +217,7 @@ macro_rules! generate_custom_function_tests {
             };
         }
 
-        glue!(function_custom, function::custom::custom);
+        glue!(function_custom, custom_function::custom);
     };
 }
 
