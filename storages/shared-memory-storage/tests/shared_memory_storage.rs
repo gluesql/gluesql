@@ -91,3 +91,28 @@ fn shared_memory_storage_transaction() {
     test!(glue "COMMIT", Err(Error::StorageMsg("[Shared MemoryStorage] transaction is not supported".to_owned())));
     test!(glue "ROLLBACK", Err(Error::StorageMsg("[Shared MemoryStorage] transaction is not supported".to_owned())));
 }
+
+#[test]
+fn shared_memory_storage_function() {
+    use gluesql_core::result::Error;
+
+    let storage = SharedMemoryStorage::new();
+    let mut glue = Glue::new(storage);
+
+    test!(
+        glue "CREATE FUNCTION abc() RETURN 1;",
+        Err(Error::StorageMsg("[Storage] CustomFunction is not supported".to_owned()))
+    );
+    test!(
+        glue "SELECT abc();",
+        Err(Error::StorageMsg("[Storage] CustomFunction is not supported".to_owned()))
+    );
+    test!(
+        glue "DROP FUNCTION abc;",
+        Err(Error::StorageMsg("[Storage] CustomFunction is not supported".to_owned()))
+    );
+    test!(
+        glue "SHOW FUNCTIONS;",
+        Err(Error::StorageMsg("[Storage] CustomFunction is not supported".to_owned()))
+    );
+}

@@ -117,6 +117,7 @@ impl Command {
                 ".help" => Ok(Self::Help),
                 ".quit" => Ok(Self::Quit),
                 ".tables" => Ok(Self::Execute("SHOW TABLES".to_owned())),
+                ".functions" => Ok(Self::Execute("SHOW FUNCTIONS".to_owned())),
                 ".columns" => match params.get(1) {
                     Some(table_name) => {
                         Ok(Self::Execute(format!("SHOW COLUMNS FROM {}", table_name)))
@@ -173,6 +174,10 @@ mod tests {
         assert_eq!(
             parse(".tables"),
             Ok(Command::Execute("SHOW TABLES".to_owned())),
+        );
+        assert_eq!(
+            parse(".functions"),
+            Ok(Command::Execute("SHOW FUNCTIONS".to_owned())),
         );
         assert_eq!(
             parse(".columns Foo"),

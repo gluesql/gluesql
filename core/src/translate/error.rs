@@ -48,6 +48,12 @@ pub enum TranslateError {
     #[error("named function arg is not supported")]
     NamedFunctionArgNotSupported,
 
+    #[error("unnamed function arg is not supported")]
+    UnNamedFunctionArgNotSupported,
+
+    #[error("empty function body is not supported")]
+    UnsupportedEmptyFunctionBody,
+
     #[error("wildcard function arg is not accepted")]
     WildcardFunctionArgNotAccepted,
 
@@ -56,9 +62,6 @@ pub enum TranslateError {
 
     #[error("order by - NULLS (FIRST | LAST) is not supported")]
     OrderByNullsFirstOrLastNotSupported,
-
-    #[error("unsupported function: {0}")]
-    UnsupportedFunction(String),
 
     #[error("unsupported SHOW VARIABLE keyword: {0}")]
     UnsupportedShowVariableKeyword(String),
