@@ -1,47 +1,53 @@
 ---
+title: "Introduction"
 sidebar_position: 1
 ---
 
-# Sql Xynawijef Tutorial Intro
+# Introduction to SQL Syntax
 
-Let's discover **Docusaurus in less than 5 minutes**.
+Welcome to the Introduction page for the SQL Syntax category in GlueSQL! In this section, we'll provide a brief overview of the SQL syntax supported by GlueSQL. You can find more in-depth examples and details by browsing the other pages in this category.
 
-## Getting Started
+GlueSQL is a SQL database engine written in Rust, designed to be lightweight, fast, and easy to integrate with various data storage systems. It supports a wide range of SQL features, including creating and managing tables, inserting and updating data, and performing various types of queries.
 
-Get started by **creating a new site**.
+Here's a list of some basic SQL statements you can use with GlueSQL:
 
-Or **try Docusaurus immediately** with **[docusaurus.new](https://docusaurus.new)**.
+## Creating Tables
 
-### What you'll need
-
-- [Node.js](https://nodejs.org/en/download/) version 16.14 or above:
-  - When installing Node.js, you are recommended to check all checkboxes related to dependencies.
-
-## Generate a new site
-
-Generate a new Docusaurus site using the **classic template**.
-
-The classic template will automatically be added to your project after you run the command:
-
-```bash
-npm init docusaurus@latest my-website classic
+```sql
+CREATE TABLE table_name (
+    column_name1 data_type1,
+    column_name2 data_type2,
+    ...
+);
 ```
 
-You can type this command into Command Prompt, Powershell, Terminal, or any other integrated terminal of your code editor.
+## Inserting Data
 
-The command also installs all necessary dependencies you need to run Docusaurus.
-
-## Start your site
-
-Run the development server:
-
-```bash
-cd my-website
-npm run start
+```sql
+INSERT INTO table_name (column1, column2, ...) VALUES (value1, value2, ...);
 ```
 
-The `cd` command changes the directory you're working with. In order to work with your newly created Docusaurus site, you'll need to navigate the terminal there.
+## Selecting Data
 
-The `npm run start` command builds your website locally and serves it through a development server, ready for you to view at http://localhost:3000/.
+```sql
+SELECT column1, column2, ... FROM table_name WHERE conditions;
+```
 
-Open `docs/intro.md` (this page) and edit some lines: the site **reloads automatically** and displays your changes.
+## Updating Data
+
+```sql
+UPDATE table_name SET column1 = value1, column2 = value2, ... WHERE conditions;
+```
+
+## Deleting Data
+
+```sql
+DELETE FROM table_name WHERE conditions;
+```
+
+For a complete list of supported SQL features, you can visit the GlueSQL GitHub repository's test suite folder, even if you're not familiar with Rust code:
+[https://github.com/gluesql/gluesql/tree/main/test-suite/src](https://github.com/gluesql/gluesql/tree/main/test-suite/src)
+
+This folder contains tests for all the functionalities supported by GlueSQL, providing you with an extensive reference for syntax and usage.
+
+Feel free to explore the other pages in this category to dive deeper into GlueSQL's SQL syntax and capabilities!
