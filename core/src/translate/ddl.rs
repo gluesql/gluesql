@@ -3,12 +3,13 @@ use {
         data_type::translate_data_type, expr::translate_expr, translate_object_name, TranslateError,
     },
     crate::{
-        ast::{AlterTableOperation, ColumnDef, ColumnUniqueOption},
+        ast::{AlterTableOperation, ColumnDef, ColumnUniqueOption, OperateFunctionArg},
         result::Result,
     },
     sqlparser::ast::{
         AlterTableOperation as SqlAlterTableOperation, ColumnDef as SqlColumnDef,
         ColumnOption as SqlColumnOption, ColumnOptionDef as SqlColumnOptionDef,
+        OperateFunctionArg as SqlOperateFunctionArg,
     },
 };
 
@@ -86,5 +87,20 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> 
         nullable,
         default,
         unique,
+    })
+}
+
+pub fn translate_operate_function_arg(arg: &SqlOperateFunctionArg) -> Result<OperateFunctionArg> {
+    let name = arg
+        .name
+        .as_ref()
+        .map(|v| v.value.to_owned())
+        .ok_or(TranslateError::UnNamedFunctionArgNotSupported)?;
+    let data_type = translate_data_type(&arg.data_type)?;
+    let default = arg.default_expr.as_ref().map(translate_expr).transpose()?;
+    Ok(OperateFunctionArg {
+        name,
+        data_type,
+        default,
     })
 }

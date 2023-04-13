@@ -146,3 +146,5 @@ fn fetch_schema(
 }
 
 impl Metadata for SledStorage {}
+impl gluesql_core::store::CustomFunction for SledStorage {}
+impl gluesql_core::store::CustomFunctionMut for SledStorage {}

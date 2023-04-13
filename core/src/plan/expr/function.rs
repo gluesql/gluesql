@@ -20,6 +20,7 @@ impl Function {
                 Exprs::Empty(empty())
             }
             Self::Lower(expr)
+            | Self::Initcap(expr)
             | Self::Upper(expr)
             | Self::Sin(expr)
             | Self::Cos(expr)
@@ -155,6 +156,7 @@ impl Function {
                 sub_expr: expr2,
                 start: Some(expr3),
             } => Exprs::Triple([expr, expr2, expr3].into_iter()),
+            Self::Custom { name: _, exprs } => Exprs::VariableArgs(exprs.iter()),
             Self::Concat(exprs) => Exprs::VariableArgs(exprs.iter()),
             Self::ConcatWs { separator, exprs } => {
                 Exprs::VariableArgsWithSingle(once(separator).chain(exprs.iter()))
@@ -195,9 +197,11 @@ mod tests {
         test("PI()", &[]);
         test("GENERATE_UUID()", &[]);
         test("RAND()", &[]);
+        test("CUSTOM_FUNC()", &[]);
 
         // Single
         test("LOWER(id)", &["id"]);
+        test("INITCAP(id)", &["id"]);
         test(r#"UPPER("Hello")"#, &[r#""Hello""#]);
         test("SIN(3.14)", &["3.14"]);
         test("COS(3.14)", &["3.14"]);
@@ -278,6 +282,11 @@ mod tests {
         test(r#"CONCAT("abc", "123")"#, &[r#""abc""#, r#""123""#]);
 
         test(r#"CONCAT("a", "b", "c")"#, &[r#""a""#, r#""b""#, r#""c""#]);
+
+        test(
+            r#"CUSTOM_FUNC("a", "b", "c")"#,
+            &[r#""a""#, r#""b""#, r#""c""#],
+        );
 
         test(
             r#"CONCAT("gluesql", " ", "is", " ", "cool")"#,

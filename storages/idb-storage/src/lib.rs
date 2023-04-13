@@ -442,3 +442,5 @@ impl gluesql_core::store::Index for IdbStorage {}
 impl gluesql_core::store::IndexMut for IdbStorage {}
 impl gluesql_core::store::Transaction for IdbStorage {}
 impl Metadata for IdbStorage {}
+impl gluesql_core::store::CustomFunction for IdbStorage {}
+impl gluesql_core::store::CustomFunctionMut for IdbStorage {}

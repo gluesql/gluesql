@@ -8,6 +8,7 @@ pub mod basic;
 pub mod case;
 pub mod column_alias;
 pub mod concat;
+pub mod custom_function;
 pub mod data_type;
 pub mod default;
 pub mod dictionary;
@@ -91,6 +92,7 @@ macro_rules! generate_store_tests {
         glue!(values, values::values);
         glue!(unary_operator, unary_operator::unary_operator);
         glue!(function_upper_lower, function::upper_lower::upper_lower);
+        glue!(function_initcap, function::initcap::initcap);
         glue!(function_gcd_lcm, function::gcd_lcm::gcd_lcm);
         glue!(function_left_right, function::left_right::left_right);
         glue!(function_sqrt, function::sqrt_power::sqrt);
@@ -148,6 +150,9 @@ macro_rules! generate_store_tests {
         glue!(int128, data_type::int128::int128);
         glue!(uint16, data_type::uint16::uint16);
         glue!(uint8, data_type::uint8::uint8);
+        glue!(uint64, data_type::uint64::uint64);
+        glue!(uint32, data_type::uint32::uint32);
+        glue!(uint128, data_type::uint128::uint128);
         glue!(date, data_type::date::date);
         glue!(timestamp, data_type::timestamp::timestamp);
         glue!(time, data_type::time::time);
@@ -204,6 +209,19 @@ macro_rules! generate_alter_table_tests {
 
         glue!(alter_table_rename, alter::alter_table_rename);
         glue!(alter_table_add_drop, alter::alter_table_add_drop);
+    };
+}
+
+#[macro_export]
+macro_rules! generate_custom_function_tests {
+    ($test: meta, $storage: ident) => {
+        macro_rules! glue {
+            ($title: ident, $func: path) => {
+                declare_test_fn!($test, $storage, $title, $func);
+            };
+        }
+
+        glue!(function_custom, custom_function::custom);
     };
 }
 

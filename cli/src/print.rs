@@ -105,6 +105,7 @@ impl<'a, W: Write> Print<W> {
         match payload {
             Payload::Create => self.write("Table created")?,
             Payload::DropTable => self.write("Table dropped")?,
+            Payload::DropFunction => self.write("Function dropped")?,
             Payload::AlterTable => self.write("Table altered")?,
             Payload::CreateIndex => self.write("Index created")?,
             Payload::DropIndex => self.write("Index dropped")?,
@@ -117,6 +118,14 @@ impl<'a, W: Write> Print<W> {
             Payload::ShowVariable(PayloadVariable::Version(v)) => self.write(format!("v{v}"))?,
             Payload::ShowVariable(PayloadVariable::Tables(names)) => {
                 let mut table = self.get_table(["tables"]);
+                for name in names {
+                    table.add_record([name]);
+                }
+                let table = self.build_table(table);
+                self.write(table)?;
+            }
+            Payload::ShowVariable(PayloadVariable::Functions(names)) => {
+                let mut table = self.get_table(["functions"]);
                 for name in names {
                     table.add_record([name]);
                 }
@@ -252,10 +261,11 @@ impl<'a, W: Write> Print<W> {
 
     pub fn help(&mut self) -> IOResult<()> {
         const HEADER: [&str; 2] = ["command", "description"];
-        const CONTENT: [[&str; 2]; 11] = [
+        const CONTENT: [[&str; 2]; 12] = [
             [".help", "show help"],
             [".quit", "quit program"],
             [".tables", "show table names"],
+            [".functions", "show function names"],
             [".columns TABLE", "show columns from TABLE"],
             [".version", "show version"],
             [".execute PATH", "execute SQL from PATH"],
@@ -337,6 +347,7 @@ mod tests {
 | .help           | show help                             |
 | .quit           | quit program                          |
 | .tables         | show table names                      |
+| .functions      | show function names                   |
 | .columns TABLE  | show columns from TABLE               |
 | .version        | show version                          |
 | .execute PATH   | execute SQL from PATH                 |
@@ -382,6 +393,7 @@ mod tests {
         test!(Payload::AlterTable, "Table altered");
         test!(Payload::CreateIndex, "Index created");
         test!(Payload::DropIndex, "Index dropped");
+        test!(Payload::DropFunction, "Function dropped");
         test!(Payload::Commit, "Commit completed");
         test!(Payload::Rollback, "Rollback completed");
         test!(Payload::StartTransaction, "Transaction started");
@@ -400,6 +412,11 @@ mod tests {
 | tables |"
         );
         test!(
+            Payload::ShowVariable(PayloadVariable::Functions(Vec::new())),
+            "
+| functions |"
+        );
+        test!(
             Payload::ShowVariable(PayloadVariable::Tables(
                 [
                     "Allocator",
@@ -414,6 +431,28 @@ mod tests {
             )),
             "
 | tables           |
+|------------------|
+| Allocator        |
+| ExtendFromWithin |
+| IntoRawParts     |
+| Reserve          |
+| Splice           |"
+        );
+        test!(
+            Payload::ShowVariable(PayloadVariable::Functions(
+                [
+                    "Allocator",
+                    "ExtendFromWithin",
+                    "IntoRawParts",
+                    "Reserve",
+                    "Splice",
+                ]
+                .into_iter()
+                .map(ToOwned::to_owned)
+                .collect()
+            )),
+            "
+| functions        |
 |------------------|
 | Allocator        |
 | ExtendFromWithin |

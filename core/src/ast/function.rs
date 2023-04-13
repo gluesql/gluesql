@@ -10,6 +10,7 @@ use {
 pub enum Function {
     Abs(Expr),
     Lower(Expr),
+    Initcap(Expr),
     Upper(Expr),
     Left {
         expr: Expr,
@@ -40,6 +41,10 @@ pub enum Function {
     Concat(Vec<Expr>),
     ConcatWs {
         separator: Expr,
+        exprs: Vec<Expr>,
+    },
+    Custom {
+        name: String,
         exprs: Vec<Expr>,
     },
     IfNull {
@@ -155,6 +160,7 @@ impl ToSql for Function {
     fn to_sql(&self) -> String {
         match self {
             Function::Abs(e) => format!("ABS({})", e.to_sql()),
+            Function::Initcap(e) => format!("INITCAP({})", e.to_sql()),
             Function::Lower(e) => format!("LOWER({})", e.to_sql()),
             Function::Upper(e) => format!("UPPER({})", e.to_sql()),
             Function::Left { expr, size } => format!("LEFT({}, {})", expr.to_sql(), size.to_sql()),
@@ -193,6 +199,14 @@ impl ToSql for Function {
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("CONCAT({items})")
+            }
+            Function::Custom { name, exprs } => {
+                let exprs = exprs
+                    .iter()
+                    .map(ToSql::to_sql)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("{name}({exprs})")
             }
             Function::ConcatWs { separator, exprs } => {
                 let exprs = exprs
@@ -395,6 +409,14 @@ mod tests {
         );
 
         assert_eq!(
+            "INITCAP('Bye')",
+            &Expr::Function(Box::new(Function::Initcap(Expr::Literal(
+                AstLiteral::QuotedString("Bye".to_owned())
+            ))))
+            .to_sql()
+        );
+
+        assert_eq!(
             "UPPER('Hi')",
             &Expr::Function(Box::new(Function::Upper(Expr::Literal(
                 AstLiteral::QuotedString("Hi".to_owned())
@@ -499,7 +521,37 @@ mod tests {
         );
 
         assert_eq!(
-            r#"CONCAT("Tic", "tac", "toe")"#,
+            r#"CUSTOM_FUNC("Tic", 1, "num", 'abc')"#,
+            &Expr::Function(Box::new(Function::Custom {
+                name: "CUSTOM_FUNC".to_owned(),
+                exprs: vec![
+                    Expr::Identifier("Tic".to_owned()),
+                    Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
+                    Expr::Identifier("num".to_owned()),
+                    Expr::Literal(AstLiteral::QuotedString("abc".to_owned()))
+                ]
+            }))
+            .to_sql()
+        );
+        assert_eq!(
+            r#"CUSTOM_FUNC("num")"#,
+            &Expr::Function(Box::new(Function::Custom {
+                name: "CUSTOM_FUNC".to_owned(),
+                exprs: vec![Expr::Identifier("num".to_owned())]
+            }))
+            .to_sql()
+        );
+        assert_eq!(
+            "CUSTOM_FUNC()",
+            &Expr::Function(Box::new(Function::Custom {
+                name: "CUSTOM_FUNC".to_owned(),
+                exprs: vec![]
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            "CONCAT(\"Tic\", \"tac\", \"toe\")",
             &Expr::Function(Box::new(Function::Concat(vec![
                 Expr::Identifier("Tic".to_owned()),
                 Expr::Identifier("tac".to_owned()),

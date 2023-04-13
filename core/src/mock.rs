@@ -3,7 +3,8 @@ use {
         data::{Key, Schema},
         result::{Error, Result},
         store::{
-            AlterTable, DataRow, Index, IndexMut, Metadata, RowIter, Store, StoreMut, Transaction,
+            AlterTable, CustomFunction, CustomFunctionMut, DataRow, Index, IndexMut, Metadata,
+            RowIter, Store, StoreMut, Transaction,
         },
     },
     async_trait::async_trait,
@@ -33,6 +34,12 @@ pub fn run(sql: &str) -> MockStorage {
 pub struct MockStorage {
     schema_map: HashMap<String, Schema>,
 }
+
+#[async_trait(?Send)]
+impl CustomFunction for MockStorage {}
+
+#[async_trait(?Send)]
+impl CustomFunctionMut for MockStorage {}
 
 #[async_trait(?Send)]
 impl Store for MockStorage {
