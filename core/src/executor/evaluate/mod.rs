@@ -332,6 +332,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 args,
                 body,
             } = storage
+                .ok_or(EvaluateError::UnsupportedCustomFunction)?
                 .fetch_function(name)
                 .await?
                 .ok_or_else(|| EvaluateError::UnsupportedFunction(name.to_string()))?;
@@ -370,7 +371,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                     Some(Rc::new(context))
                 })?;
 
-            evaluate(storage, context, None, body).await
+            evaluate_inner(storage, context, None, body).await
         }
         Function::ConcatWs { separator, exprs } => {
             let separator = eval(separator).await?;

@@ -69,18 +69,19 @@ pub fn validate_arg_names(args: &[OperateFunctionArg]) -> Result<()> {
     }
 }
 
-pub fn validate_default_args(args: &[OperateFunctionArg]) -> Result<()> {
-    args.iter().enumerate().try_for_each(|(i, arg)| {
-        arg.default
-            .as_ref()
-            .map(|expr| evaluate_stateless(None, expr))
-            .transpose()?;
-        match (
-            arg.default.is_some(),
-            args.get(i + 1).map(|v| v.default.is_some()).unwrap_or(true),
-        ) {
-            (true, false) => Err(AlterError::NonDefaultArgumentFollowsDefaultArgument.into()),
-            _ => Ok(()),
-        }
-    })
+pub async fn validate_default_args(args: &[OperateFunctionArg]) -> Result<()> {
+    for expr in args.iter().filter_map(|arg| arg.default.as_ref()) {
+        evaluate_stateless(None, expr).await?;
+    }
+
+    if args
+        .iter()
+        .map(|arg| arg.default.as_ref())
+        .skip_while(Option::is_none)
+        .all(|default| default.is_some())
+    {
+        Ok(())
+    } else {
+        Err(AlterError::NonDefaultArgumentFollowsDefaultArgument.into())
+    }
 }
