@@ -6,13 +6,13 @@ use {
             Expr as SqlExpr, Ident as SqlIdent, OrderByExpr as SqlOrderByExpr, Query as SqlQuery,
             SelectItem as SqlSelectItem, Statement as SqlStatement,
         },
-        dialect::GenericDialect,
+        dialect::PostgreSqlDialect,
         parser::Parser,
         tokenizer::Tokenizer,
     },
 };
 
-const DIALECT: GenericDialect = GenericDialect {};
+const DIALECT: PostgreSqlDialect = PostgreSqlDialect {};
 
 pub fn parse<Sql: AsRef<str>>(sql: Sql) -> Result<Vec<SqlStatement>> {
     Parser::parse_sql(&DIALECT, sql.as_ref()).map_err(|e| Error::Parser(format!("{:#?}", e)))

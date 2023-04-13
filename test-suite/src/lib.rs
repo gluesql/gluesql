@@ -8,6 +8,7 @@ pub mod basic;
 pub mod case;
 pub mod column_alias;
 pub mod concat;
+pub mod custom_function;
 pub mod data_type;
 pub mod default;
 pub mod dictionary;
@@ -208,6 +209,19 @@ macro_rules! generate_alter_table_tests {
 
         glue!(alter_table_rename, alter::alter_table_rename);
         glue!(alter_table_add_drop, alter::alter_table_add_drop);
+    };
+}
+
+#[macro_export]
+macro_rules! generate_custom_function_tests {
+    ($test: meta, $storage: ident) => {
+        macro_rules! glue {
+            ($title: ident, $func: path) => {
+                declare_test_fn!($test, $storage, $title, $func);
+            };
+        }
+
+        glue!(function_custom, custom_function::custom);
     };
 }
 

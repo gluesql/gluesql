@@ -109,3 +109,26 @@ fn composite_storage_index() {
         Err(Error::StorageMsg("[Storage] Index::drop_index is not supported".to_owned()))
     );
 }
+
+#[test]
+fn composite_storage_function() {
+    let storage = CompositeStorage::default();
+    let mut glue = Glue::new(storage);
+
+    test!(
+        glue "CREATE FUNCTION abc() RETURN 1;",
+        Err(Error::StorageMsg("[Storage] CustomFunction is not supported".to_owned()))
+    );
+    test!(
+        glue "SELECT abc();",
+        Err(Error::StorageMsg("[Storage] CustomFunction is not supported".to_owned()))
+    );
+    test!(
+        glue "DROP FUNCTION abc;",
+        Err(Error::StorageMsg("[Storage] CustomFunction is not supported".to_owned()))
+    );
+    test!(
+        glue "SHOW FUNCTIONS;",
+        Err(Error::StorageMsg("[Storage] CustomFunction is not supported".to_owned()))
+    );
+}

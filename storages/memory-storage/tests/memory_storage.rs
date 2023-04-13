@@ -27,6 +27,8 @@ generate_alter_table_tests!(tokio::test, MemoryTester);
 
 generate_metadata_table_tests!(tokio::test, MemoryTester);
 
+generate_custom_function_tests!(tokio::test, MemoryTester);
+
 macro_rules! exec {
     ($glue: ident $sql: literal) => {
         $glue.execute($sql).unwrap();
@@ -34,7 +36,7 @@ macro_rules! exec {
 }
 
 macro_rules! test {
-    ($glue: ident $sql: literal, $result: expr) => {
+    ($glue: ident $sql: expr, $result: expr) => {
         assert_eq!($glue.execute($sql), $result);
     };
 }

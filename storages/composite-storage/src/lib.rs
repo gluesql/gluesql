@@ -90,3 +90,5 @@ impl gluesql_core::store::AlterTable for CompositeStorage {}
 impl gluesql_core::store::Index for CompositeStorage {}
 impl gluesql_core::store::IndexMut for CompositeStorage {}
 impl Metadata for CompositeStorage {}
+impl gluesql_core::store::CustomFunction for CompositeStorage {}
+impl gluesql_core::store::CustomFunctionMut for CompositeStorage {}
