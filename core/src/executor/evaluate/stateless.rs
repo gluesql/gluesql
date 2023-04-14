@@ -399,5 +399,10 @@ fn evaluate_function<'a>(context: &Context<'_>, func: &'a Function) -> Result<Ev
             let value = eval(value)?;
             f::append(expr, value)
         }
+        Function::Prepend { expr, value } => {
+            let expr = eval(expr)?;
+            let value = eval(value)?;
+            f::prepend(expr, value)
+        }
     }
 }

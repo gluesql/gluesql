@@ -154,6 +154,10 @@ pub enum Function {
         expr: Expr,
         value: Expr,
     },
+    Prepend {
+        expr: Expr,
+        value: Expr,
+    },
 }
 
 impl ToSql for Function {
@@ -337,6 +341,13 @@ impl ToSql for Function {
                     items = expr.to_sql(),
                     value = value.to_sql()
                 )
+            }
+            Function::Prepend { expr, value } => {
+                format! {
+                    "PREPEND({items}, {value})",
+                    items = expr.to_sql(),
+                    value = value.to_sql()
+                }
             }
         }
     }
@@ -995,7 +1006,16 @@ mod tests {
                 value: Expr::Identifier("value".to_owned())
             }))
             .to_sql()
-        )
+        );
+
+        assert_eq!(
+            r#"PREPEND("list", "value")"#,
+            &Expr::Function(Box::new(Function::Prepend {
+                expr: Expr::Identifier("list".to_owned()),
+                value: Expr::Identifier("value".to_owned())
+            }))
+            .to_sql()
+        );
     }
 
     #[test]
