@@ -401,13 +401,13 @@ fn evaluate_function<'a>(context: &Context<'_>, func: &'a Function) -> Result<Ev
         }
 
         // --- spatial ---
-        Function::Point(x, y) => {
+        Function::Point { x, y } => {
             let x = eval(x)?;
             let y = eval(y)?;
 
             f::point(x, y)
         }
-        Function::GetX(expr) => f::getx(name, eval(expr)?),
-        Function::GetY(expr) => f::gety(name, eval(expr)?),
+        Function::GetX(expr) => f::get_x(name, eval(expr)?),
+        Function::GetY(expr) => f::get_y(name, eval(expr)?),
     }
 }

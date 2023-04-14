@@ -156,7 +156,10 @@ pub enum Function {
     },
     GetX(Expr),
     GetY(Expr),
-    Point(Expr, Expr),
+    Point {
+        x: Expr,
+        y: Expr,
+    },
 }
 
 impl ToSql for Function {
@@ -343,7 +346,7 @@ impl ToSql for Function {
             }
             Function::GetX(e) => format!("GET_X({})", e.to_sql()),
             Function::GetY(e) => format!("GET_Y({})", e.to_sql()),
-            Function::Point(x, y) => format!("POINT({}, {})", x.to_sql(), y.to_sql()),
+            Function::Point { x, y } => format!("POINT({}, {})", x.to_sql(), y.to_sql()),
         }
     }
 }
@@ -1021,10 +1024,10 @@ mod tests {
 
         assert_eq!(
             "POINT(0.1, 0.2)",
-            &Expr::Function(Box::new(Function::Point(
-                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("0.1").unwrap())),
-                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("0.2").unwrap()))
-            )))
+            &Expr::Function(Box::new(Function::Point {
+                x: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("0.1").unwrap())),
+                y: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("0.2").unwrap()))
+            }))
             .to_sql()
         );
     }
@@ -1058,7 +1061,6 @@ mod tests {
             r#"AVG("pay")"#,
             &Expr::Aggregate(Box::new(Aggregate::Avg(Expr::Identifier("pay".to_owned())))).to_sql()
         );
-
         assert_eq!(
             r#"VARIANCE("pay")"#,
             &Expr::Aggregate(Box::new(Aggregate::Variance(Expr::Identifier(
@@ -1066,7 +1068,6 @@ mod tests {
             ))))
             .to_sql()
         );
-
         assert_eq!(
             r#"STDEV("total")"#,
             &Expr::Aggregate(Box::new(Aggregate::Stdev(Expr::Identifier(

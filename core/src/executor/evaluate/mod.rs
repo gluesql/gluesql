@@ -486,8 +486,14 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         }
 
         // --- spatial ---
-        Function::GetX(expr) => f::getx(name, eval(expr).await?),
-        Function::GetY(expr) => f::gety(name, eval(expr).await?),
+        Function::Point { x, y } => {
+            let x = eval(x).await?;
+            let y = eval(y).await?;
+
+            f::point(x, y)
+        }
+        Function::GetX(expr) => f::get_x(name, eval(expr).await?),
+        Function::GetY(expr) => f::get_y(name, eval(expr).await?),
 
         // --- etc ---
         Function::Unwrap { expr, selector } => {
@@ -554,12 +560,6 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let expr = eval(expr).await?;
             let value = eval(value).await?;
             f::append(expr, value)
-        }
-        Function::Point(x, y) => {
-            let x = eval(x).await?;
-            let y = eval(y).await?;
-
-            f::point(x, y)
         }
     }
 }

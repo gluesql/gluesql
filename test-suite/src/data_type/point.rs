@@ -1,5 +1,3 @@
-use gluesql_core::translate::TranslateError;
-
 use {
     crate::*,
     bigdecimal::BigDecimal,
@@ -8,6 +6,7 @@ use {
         data::{Literal, ValueError},
         executor::Payload,
         prelude::Value::*,
+        translate::TranslateError,
     },
     std::borrow::Cow,
 };

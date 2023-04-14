@@ -120,7 +120,6 @@ impl TryFrom<JsonValue> for Value {
                 .map(Value::try_from)
                 .collect::<Result<Vec<Value>>>()
                 .map(Value::List),
-
             JsonValue::Object(json_map) => json_map
                 .into_iter()
                 .map(|(key, value)| value.try_into().map(|value| (key, value)))
