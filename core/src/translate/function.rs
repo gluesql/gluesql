@@ -208,14 +208,6 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         return Ok(Expr::Aggregate(Box::new(Aggregate::Count(count_arg))));
     }
 
-    if name.as_str() == "POINT" {
-        check_len(name, args.len(), 2)?;
-        let args = translate_function_arg_exprs(function_arg_exprs)?;
-        let x = translate_expr(args[0])?;
-        let y = translate_expr(args[1])?;
-        return Ok(Expr::Function(Box::new(Function::Point(x, y))));
-    }
-
     let args = translate_function_arg_exprs(function_arg_exprs)?;
 
     match name.as_str() {
@@ -503,6 +495,12 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             let value = translate_expr(args[1])?;
 
             Ok(Expr::Function(Box::new(Function::Append { expr, value })))
+        }
+        "POINT" => {
+            check_len(name, args.len(), 2)?;
+            let x = translate_expr(args[0])?;
+            let y = translate_expr(args[1])?;
+            return Ok(Expr::Function(Box::new(Function::Point(x, y))));
         }
         "GET_X" => {
             check_len(name, args.len(), 1)?;

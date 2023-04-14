@@ -2,7 +2,7 @@ use {
     super::{EvaluateError, Evaluated},
     crate::{
         ast::{DataType, DateTimeField},
-        data::{Value, ValueError},
+        data::{Point, Value, ValueError},
         result::Result,
     },
     rand::{rngs::StdRng, Rng, SeedableRng},
@@ -601,7 +601,7 @@ pub fn point<'a>(x: Evaluated<'_>, y: Evaluated<'_>) -> Result<Evaluated<'a>> {
     let x = eval_to_float!("point".to_owned(), x);
     let y = eval_to_float!("point".to_owned(), y);
 
-    Ok(Evaluated::from(Value::Point(crate::data::Point::new(x, y))))
+    Ok(Evaluated::from(Value::Point(Point::new(x, y))))
 }
 
 pub fn getx<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {

@@ -4,7 +4,7 @@ use {
         Value, ValueError,
     },
     crate::{
-        data::{Interval, IntervalError},
+        data::{Interval, IntervalError, Point},
         result::{Error, Result},
     },
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
@@ -707,15 +707,13 @@ impl TryFrom<&Value> for IpAddr {
     }
 }
 
-impl TryFrom<&Value> for crate::data::Point {
+impl TryFrom<&Value> for Point {
     type Error = Error;
 
-    fn try_from(v: &Value) -> Result<crate::data::Point> {
+    fn try_from(v: &Value) -> Result<Point> {
         Ok(match v {
             Value::Point(value) => *value,
-            Value::Str(value) => {
-                crate::data::Point::from_wkt(value).map_err(|_| ValueError::ImpossibleCast)?
-            }
+            Value::Str(value) => Point::from_wkt(value).map_err(|_| ValueError::ImpossibleCast)?,
             _ => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -723,11 +721,10 @@ impl TryFrom<&Value> for crate::data::Point {
 
 #[cfg(test)]
 mod tests {
-    use crate::data::point;
 
     use {
         super::{Value, ValueError},
-        crate::{data::Interval as I, result::Result},
+        crate::{data::point, data::Interval as I, data::Point, result::Result},
         chrono::{self, NaiveDate, NaiveDateTime, NaiveTime},
         rust_decimal::Decimal,
         std::{
@@ -1842,15 +1839,15 @@ mod tests {
     #[test]
     fn try_into_point() {
         assert_eq!(
-            crate::data::Point::try_from(&Value::Str("POINT(0.2 0.1)".to_owned())),
-            Ok(crate::data::Point::from_wkt("POINT(0.2 0.1)").unwrap())
+            Point::try_from(&Value::Str("POINT(0.2 0.1)".to_owned())),
+            Ok(Point::from_wkt("POINT(0.2 0.1)").unwrap())
         );
         assert_eq!(
-            crate::data::Point::try_from(&Value::Point(crate::data::Point::new(0.1, 0.2))),
-            Ok(crate::data::Point::from_wkt("POINT(0.1 0.2)").unwrap())
+            Point::try_from(&Value::Point(Point::new(0.1, 0.2))),
+            Ok(Point::from_wkt("POINT(0.1 0.2)").unwrap())
         );
         assert_eq!(
-            crate::data::Point::try_from(&Value::Date(date(2021, 11, 20))),
+            Point::try_from(&Value::Date(date(2021, 11, 20))),
             Err(ValueError::ImpossibleCast.into())
         );
     }

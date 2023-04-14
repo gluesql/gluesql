@@ -133,7 +133,7 @@ impl TryFrom<JsonValue> for Value {
 #[cfg(test)]
 mod tests {
     use {
-        crate::data::{value::uuid::parse_uuid, Interval, Value, ValueError},
+        crate::data::{value::uuid::parse_uuid, Interval, Point, Value, ValueError},
         chrono::{NaiveDate, NaiveTime},
         rust_decimal::Decimal,
         serde_json::{json, Number as JsonNumber, Value as JsonValue},
@@ -259,7 +259,7 @@ mod tests {
             Ok(json!([1, 2, { "a": 3 }]))
         );
         assert_eq!(
-            Value::Point(crate::data::Point::new(0.34, 0.56)).try_into(),
+            Value::Point(Point::new(0.34, 0.56)).try_into(),
             Ok(JsonValue::String("POINT(0.34 0.56)".to_owned()))
         );
         assert_eq!(Value::Null.try_into(), Ok(JsonValue::Null));

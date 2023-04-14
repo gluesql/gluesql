@@ -121,12 +121,10 @@ impl TryFrom<Value> for Expr {
 
 #[cfg(test)]
 mod tests {
-    use crate::data::point;
-
     use {
         crate::{
             ast::{AstLiteral, DateTimeField, Expr},
-            data::Interval,
+            data::{Interval, Point},
             prelude::{DataType, Value},
         },
         bigdecimal::{BigDecimal, FromPrimitive},
@@ -285,7 +283,7 @@ mod tests {
         );
         assert_eq!(Value::Null.try_into(), Ok(Expr::Literal(AstLiteral::Null)));
         assert_eq!(
-            Value::Point(point::Point::new(0.31413, 0.3415)).try_into(),
+            Value::Point(Point::new(0.31413, 0.3415)).try_into(),
             Ok(Expr::Literal(AstLiteral::QuotedString(
                 "POINT(0.31413 0.3415)".to_owned()
             )))

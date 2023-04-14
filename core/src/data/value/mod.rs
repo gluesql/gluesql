@@ -740,11 +740,9 @@ fn str_position(from_str: &String, sub_str: &String) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use crate::data::point;
-
     use {
         super::{Interval, Value::*},
-        crate::data::{value::uuid::parse_uuid, ValueError},
+        crate::data::{point::Point, value::uuid::parse_uuid, ValueError},
         chrono::{NaiveDate, NaiveTime},
         rust_decimal::Decimal,
         std::{net::IpAddr, str::FromStr},
@@ -804,7 +802,7 @@ mod tests {
             Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()),
             Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap())
         );
-        assert_eq!(point::Point::new(1.0, 2.0), point::Point::new(1.0, 2.0));
+        assert_eq!(Point::new(1.0, 2.0), Point::new(1.0, 2.0));
     }
 
     #[test]
@@ -1632,7 +1630,7 @@ mod tests {
     #[test]
     fn cast() {
         use {
-            crate::{ast::DataType::*, prelude::Value},
+            crate::{ast::DataType::*, data::Point, prelude::Value},
             chrono::{NaiveDate, NaiveTime},
         };
 
@@ -1651,7 +1649,7 @@ mod tests {
 
         let bytea = Value::Bytea(hex::decode("0abc").unwrap());
         let inet = |v| Value::Inet(IpAddr::from_str(v).unwrap());
-        let point = |x, y| Value::Point(crate::data::Point::new(x, y));
+        let point = |x, y| Value::Point(Point::new(x, y));
 
         // Same as
         cast!(Bool(true)            => Boolean      , Bool(true));
@@ -1874,7 +1872,7 @@ mod tests {
     fn validate_type() {
         use {
             super::{Value, ValueError},
-            crate::{ast::DataType as D, data::Interval as I},
+            crate::{ast::DataType as D, data::Interval as I, data::Point},
             chrono::{NaiveDate, NaiveTime},
         };
 
@@ -1888,7 +1886,7 @@ mod tests {
         let time = Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap());
         let interval = Interval(I::hours(5));
         let uuid = Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap());
-        let point = Point(point::Point::new(1.0, 2.0));
+        let point = Point(Point::new(1.0, 2.0));
         let map = Value::parse_json_map(r#"{ "a": 10 }"#).unwrap();
         let list = Value::parse_json_list(r#"[ true ]"#).unwrap();
         let bytea = Bytea(hex::decode("9001").unwrap());
@@ -2054,7 +2052,7 @@ mod tests {
     fn get_type() {
         use {
             super::Value,
-            crate::{ast::DataType as D, data::Interval as I},
+            crate::{ast::DataType as D, data::Interval as I, data::Point},
             chrono::{NaiveDate, NaiveTime},
         };
 
@@ -2069,7 +2067,7 @@ mod tests {
         let time = Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap());
         let interval = Interval(I::hours(5));
         let uuid = Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap());
-        let point = Point(point::Point::new(1.0, 2.0));
+        let point = Point(Point::new(1.0, 2.0));
         let map = Value::parse_json_map(r#"{ "a": 10 }"#).unwrap();
         let list = Value::parse_json_list(r#"[ true ]"#).unwrap();
         let bytea = Bytea(hex::decode("9001").unwrap());
