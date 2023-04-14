@@ -1,5 +1,3 @@
-use crate::data::Point;
-
 use {
     super::{
         date::{parse_date, parse_time, parse_timestamp},
@@ -8,7 +6,7 @@ use {
     },
     crate::{
         ast::DataType,
-        data::{value::uuid::parse_uuid, BigDecimalExt, Interval, Literal},
+        data::{value::uuid::parse_uuid, BigDecimalExt, Interval, Literal, Point},
         result::{Error, Result},
     },
     chrono::NaiveDate,

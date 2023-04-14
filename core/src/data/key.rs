@@ -376,11 +376,9 @@ impl Key {
 
 #[cfg(test)]
 mod tests {
-    use crate::data::point::Point;
-
     use {
         crate::{
-            data::{Interval, Key, KeyError, Value},
+            data::{Interval, Key, KeyError, Point, Value},
             executor::evaluate_stateless,
             parse_sql::parse_expr,
             result::Result,
