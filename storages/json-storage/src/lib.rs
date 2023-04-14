@@ -1,5 +1,6 @@
 mod alter_table;
 pub mod error;
+mod function;
 mod index;
 mod store;
 mod store_mut;

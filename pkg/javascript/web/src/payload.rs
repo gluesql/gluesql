@@ -110,5 +110,12 @@ fn convert_payload(payload: Payload) -> Json {
                 "tables": table_names
             })
         }
+        Payload::DropFunction => json!({ "type": "DROP FUNCTION" }),
+        Payload::ShowVariable(PayloadVariable::Functions(function_names)) => {
+            json!({
+                "type": "SHOW FUNCTIONS",
+                "functions": function_names
+            })
+        }
     }
 }

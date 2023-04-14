@@ -261,6 +261,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             })))
         }
         "LOWER" => translate_function_one_arg(Function::Lower, args, name),
+        "INITCAP" => translate_function_one_arg(Function::Initcap, args, name),
         "UPPER" => translate_function_one_arg(Function::Upper, args, name),
         "LEFT" => {
             check_len(name, args.len(), 2)?;
@@ -515,6 +516,12 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             let expr = translate_expr(args[0])?;
             Ok(Expr::Function(Box::new(Function::GetY(expr))))
         }
-        _ => Err(TranslateError::UnsupportedFunction(name).into()),
+        _ => {
+            let exprs = args
+                .into_iter()
+                .map(translate_expr)
+                .collect::<Result<Vec<_>>>()?;
+            Ok(Expr::Function(Box::new(Function::Custom { name, exprs })))
+        }
     }
 }

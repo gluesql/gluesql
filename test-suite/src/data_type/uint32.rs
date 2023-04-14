@@ -13,7 +13,7 @@ test_case!(uint32, async move {
     run!(r#"INSERT INTO Item VALUES (1, 1), (2, 2), (3, 3), (4, 4);"#);
 
     test!(
-        "INSERT INTO Item VALUES (327689,327689);",
+        "INSERT INTO Item VALUES (4294967296,4294967296);",
         Err(ValueError::FailedToParseNumber.into())
     );
 

@@ -8,7 +8,7 @@ use {
     super::{context::RowContext, select::select},
     crate::{
         ast::{Aggregate, Expr, Function},
-        data::{Interval, Literal, Row, Value},
+        data::{CustomFunction, Interval, Literal, Row, Value},
         result::{Error, Result},
         store::GStore,
     },
@@ -294,6 +294,52 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let exprs = stream::iter(exprs).then(eval).try_collect().await?;
             f::concat(exprs)
         }
+        Function::Custom { name, exprs } => {
+            let CustomFunction {
+                func_name,
+                args,
+                body,
+            } = storage
+                .fetch_function(name)
+                .await?
+                .ok_or_else(|| EvaluateError::UnsupportedFunction(name.to_string()))?;
+
+            let min = args.iter().filter(|arg| arg.default.is_none()).count();
+            let max = args.len();
+
+            if !(min..=max).contains(&exprs.len()) {
+                return Err((EvaluateError::FunctionArgsLengthNotWithinRange {
+                    name: func_name.to_owned(),
+                    expected_minimum: min,
+                    expected_maximum: max,
+                    found: exprs.len(),
+                })
+                .into());
+            }
+
+            let exprs = exprs.iter().chain(
+                args.iter()
+                    .skip(exprs.len())
+                    .filter_map(|arg| arg.default.as_ref()),
+            );
+
+            let context = stream::iter(args.iter().zip(exprs))
+                .then(|(arg, expr)| async {
+                    eval(expr)
+                        .await?
+                        .try_into_value(&arg.data_type, true)
+                        .map(|value| (arg.name.to_owned(), value))
+                })
+                .try_collect()
+                .await
+                .map(|values| {
+                    let row = Cow::Owned(Row::Map(values));
+                    let context = RowContext::new(name, row, None);
+                    Some(Rc::new(context))
+                })?;
+
+            evaluate(storage, context, None, body).await
+        }
         Function::ConcatWs { separator, exprs } => {
             let separator = eval(separator).await?;
             let exprs = stream::iter(exprs).then(eval).try_collect().await?;
@@ -301,6 +347,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         }
         Function::IfNull { expr, then } => f::ifnull(eval(expr).await?, eval(then).await?),
         Function::Lower(expr) => f::lower(name, eval(expr).await?),
+        Function::Initcap(expr) => f::initcap(name, eval(expr).await?),
         Function::Upper(expr) => f::upper(name, eval(expr).await?),
         Function::Left { expr, size } | Function::Right { expr, size } => {
             let expr = eval(expr).await?;
