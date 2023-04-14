@@ -500,7 +500,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             check_len(name, args.len(), 2)?;
             let x = translate_expr(args[0])?;
             let y = translate_expr(args[1])?;
-            return Ok(Expr::Function(Box::new(Function::Point(x, y))));
+            Ok(Expr::Function(Box::new(Function::Point(x, y))))
         }
         "GET_X" => {
             check_len(name, args.len(), 1)?;
