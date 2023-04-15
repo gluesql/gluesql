@@ -4,7 +4,7 @@ use {
         Value, ValueError,
     },
     crate::{
-        data::{Interval, IntervalError},
+        data::{Interval, IntervalError, Point},
         result::{Error, Result},
     },
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
@@ -39,6 +39,7 @@ impl From<&Value> for String {
             Value::Map(_) => "[MAP]".to_owned(),
             Value::List(_) => "[LIST]".to_owned(),
             Value::Decimal(value) => value.to_string(),
+            Value::Point(value) => value.to_string(),
             Value::Null => String::from("NULL"),
         }
     }
@@ -140,6 +141,7 @@ impl TryFrom<&Value> for bool {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Inet(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
@@ -175,6 +177,7 @@ impl TryFrom<&Value> for i8 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Inet(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
@@ -210,6 +213,7 @@ impl TryFrom<&Value> for i16 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Inet(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
@@ -245,6 +249,7 @@ impl TryFrom<&Value> for i32 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Inet(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
@@ -280,6 +285,7 @@ impl TryFrom<&Value> for i64 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Inet(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
@@ -315,6 +321,7 @@ impl TryFrom<&Value> for i128 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Inet(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
@@ -350,6 +357,7 @@ impl TryFrom<&Value> for u8 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Inet(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
@@ -384,6 +392,7 @@ impl TryFrom<&Value> for u16 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Inet(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
@@ -421,6 +430,7 @@ impl TryFrom<&Value> for u32 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -456,6 +466,7 @@ impl TryFrom<&Value> for u64 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -492,6 +503,7 @@ impl TryFrom<&Value> for u128 {
             | Value::List(_)
             | Value::Inet(IpAddr::V4(_))
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -532,6 +544,7 @@ impl TryFrom<&Value> for f64 {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Inet(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
@@ -567,6 +580,7 @@ impl TryFrom<&Value> for usize {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Inet(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
@@ -608,6 +622,7 @@ impl TryFrom<&Value> for Decimal {
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
+            | Value::Point(_)
             | Value::Inet(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
@@ -692,11 +707,24 @@ impl TryFrom<&Value> for IpAddr {
     }
 }
 
+impl TryFrom<&Value> for Point {
+    type Error = Error;
+
+    fn try_from(v: &Value) -> Result<Point> {
+        Ok(match v {
+            Value::Point(value) => *value,
+            Value::Str(value) => Point::from_wkt(value).map_err(|_| ValueError::ImpossibleCast)?,
+            _ => return Err(ValueError::ImpossibleCast.into()),
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
+
     use {
         super::{Value, ValueError},
-        crate::{data::Interval as I, result::Result},
+        crate::{data::point, data::Interval as I, data::Point, result::Result},
         chrono::{self, NaiveDate, NaiveDateTime, NaiveTime},
         rust_decimal::Decimal,
         std::{
@@ -757,6 +785,10 @@ mod tests {
         );
         test!(Value::Map(HashMap::new()), "[MAP]");
         test!(Value::List(Vec::new()), "[LIST]");
+        test!(
+            Value::Point(point::Point::new(1.0313, 2.0314)),
+            "POINT(1.0313 2.0314)"
+        );
         test!(Value::Decimal(Decimal::new(2000, 1)), "200.0");
         test!(Value::Null, "NULL");
     }
@@ -830,6 +862,10 @@ mod tests {
         );
         test!(
             Value::List(Vec::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Point(point::Point::new(1.0313, 2.0314)),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
@@ -921,6 +957,10 @@ mod tests {
             Value::Inet(IpAddr::from_str("::1").unwrap()),
             Err(ValueError::ImpossibleCast.into())
         );
+        test!(
+            Value::Point(point::Point::new(1.0313, 2.0314)),
+            Err(ValueError::ImpossibleCast.into())
+        );
     }
 
     #[test]
@@ -974,6 +1014,10 @@ mod tests {
         );
         test!(
             Value::List(Vec::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Point(point::Point::new(1.0313, 2.0314)),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
@@ -1037,6 +1081,10 @@ mod tests {
             Value::List(Vec::new()),
             Err(ValueError::ImpossibleCast.into())
         );
+        test!(
+            Value::Point(point::Point::new(1.0313, 2.0314)),
+            Err(ValueError::ImpossibleCast.into())
+        );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
         test!(
             Value::Inet(IpAddr::from_str("::1").unwrap()),
@@ -1098,6 +1146,10 @@ mod tests {
             Value::List(Vec::new()),
             Err(ValueError::ImpossibleCast.into())
         );
+        test!(
+            Value::Point(point::Point::new(1.0313, 2.0314)),
+            Err(ValueError::ImpossibleCast.into())
+        );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
         test!(
             Value::Inet(IpAddr::from_str("::1").unwrap()),
@@ -1157,6 +1209,10 @@ mod tests {
         );
         test!(
             Value::List(Vec::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Point(point::Point::new(1.0313, 2.0314)),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
@@ -1222,6 +1278,10 @@ mod tests {
         );
         test!(
             Value::List(Vec::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Point(point::Point::new(1.0313, 2.0314)),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
@@ -1411,6 +1471,10 @@ mod tests {
             Value::List(Vec::new()),
             Err(ValueError::ImpossibleCast.into())
         );
+        test!(
+            Value::Point(point::Point::new(1.0313, 2.0314)),
+            Err(ValueError::ImpossibleCast.into())
+        );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
         test!(
             Value::Inet(IpAddr::from_str("::1").unwrap()),
@@ -1540,6 +1604,10 @@ mod tests {
             Value::List(Vec::new()),
             Err(ValueError::ImpossibleCast.into())
         );
+        test!(
+            Value::Point(point::Point::new(1.0313, 2.0314)),
+            Err(ValueError::ImpossibleCast.into())
+        );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
         test!(
             Value::Inet(IpAddr::from_str("::1").unwrap()),
@@ -1599,6 +1667,10 @@ mod tests {
         );
         test!(
             Value::List(Vec::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Point(point::Point::new(1.0313, 2.0314)),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
@@ -1760,6 +1832,22 @@ mod tests {
         test!(IpAddr::from_str("::2:4cb0:16ea").unwrap(), "::2:4cb0:16ea");
         assert_eq!(
             IpAddr::try_from(&Value::Date(date(2021, 11, 20))),
+            Err(ValueError::ImpossibleCast.into())
+        );
+    }
+
+    #[test]
+    fn try_into_point() {
+        assert_eq!(
+            Point::try_from(&Value::Str("POINT(0.2 0.1)".to_owned())),
+            Ok(Point::from_wkt("POINT(0.2 0.1)").unwrap())
+        );
+        assert_eq!(
+            Point::try_from(&Value::Point(Point::new(0.1, 0.2))),
+            Ok(Point::from_wkt("POINT(0.1 0.2)").unwrap())
+        );
+        assert_eq!(
+            Point::try_from(&Value::Date(date(2021, 11, 20))),
             Err(ValueError::ImpossibleCast.into())
         );
     }

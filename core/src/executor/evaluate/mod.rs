@@ -485,6 +485,16 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             f::lcm(name, left, right)
         }
 
+        // --- spatial ---
+        Function::Point { x, y } => {
+            let x = eval(x).await?;
+            let y = eval(y).await?;
+
+            f::point(x, y)
+        }
+        Function::GetX(expr) => f::get_x(name, eval(expr).await?),
+        Function::GetY(expr) => f::get_y(name, eval(expr).await?),
+
         // --- etc ---
         Function::Unwrap { expr, selector } => {
             let expr = eval(expr).await?;

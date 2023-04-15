@@ -6,7 +6,7 @@ use {
     },
     crate::{
         ast::DataType,
-        data::{value::uuid::parse_uuid, BigDecimalExt, Interval, Literal},
+        data::{value::uuid::parse_uuid, BigDecimalExt, Interval, Literal, Point},
         result::{Error, Result},
     },
     chrono::NaiveDate,
@@ -490,6 +490,9 @@ impl Value {
             (DataType::Inet, Literal::Text(v)) => IpAddr::from_str(v)
                 .map(Value::Inet)
                 .map_err(|_| ValueError::FailedToParseInetString(v.to_string()).into()),
+            (DataType::Point, Literal::Text(v)) => Point::from_wkt(v)
+                .map(Value::Point)
+                .map_err(|_| ValueError::FailedToParsePoint(v.to_string()).into()),
             (DataType::List, Literal::Text(v)) => Value::parse_json_list(v),
             _ => Err(ValueError::UnimplementedLiteralCast {
                 data_type: data_type.clone(),

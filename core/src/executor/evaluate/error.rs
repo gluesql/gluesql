@@ -35,6 +35,9 @@ pub enum EvaluateError {
     #[error("function requires map value: {0}")]
     FunctionRequiresMapValue(String),
 
+    #[error("function requires point value: {0}")]
+    FunctionRequiresPointValue(String),
+
     #[error("value not found: {0}")]
     ValueNotFound(String),
 
