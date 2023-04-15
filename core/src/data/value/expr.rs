@@ -111,6 +111,7 @@ impl TryFrom<Value> for Expr {
 
                 Expr::Literal(AstLiteral::QuotedString(json.to_string()))
             }
+            Value::Point(v) => Expr::Literal(AstLiteral::QuotedString(v.to_string())),
             Value::Null => Expr::Literal(AstLiteral::Null),
         };
 
@@ -123,7 +124,7 @@ mod tests {
     use {
         crate::{
             ast::{AstLiteral, DateTimeField, Expr},
-            data::Interval,
+            data::{Interval, Point},
             prelude::{DataType, Value},
         },
         bigdecimal::{BigDecimal, FromPrimitive},
@@ -281,5 +282,11 @@ mod tests {
             )))
         );
         assert_eq!(Value::Null.try_into(), Ok(Expr::Literal(AstLiteral::Null)));
+        assert_eq!(
+            Value::Point(Point::new(0.31413, 0.3415)).try_into(),
+            Ok(Expr::Literal(AstLiteral::QuotedString(
+                "POINT(0.31413 0.3415)".to_owned()
+            )))
+        );
     }
 }

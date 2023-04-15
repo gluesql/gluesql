@@ -14,15 +14,21 @@ pub struct Limit {
 }
 
 impl Limit {
-    pub fn new(limit: Option<&Expr>, offset: Option<&Expr>) -> Result<Self> {
-        let eval = |expr| -> Result<usize> {
-            let value: Value = evaluate_stateless(None, expr)?.try_into()?;
+    pub async fn new(limit: Option<&Expr>, offset: Option<&Expr>) -> Result<Self> {
+        let eval = |expr| async move {
+            let expr = match expr {
+                Some(expr) => expr,
+                None => return Ok(None),
+            };
 
-            value.try_into()
+            let evaluated = evaluate_stateless(None, expr).await?;
+            let size: Result<usize> = Value::try_from(evaluated)?.try_into();
+
+            size.map(Some)
         };
 
-        let limit = limit.map(eval).transpose()?;
-        let offset = offset.map(eval).transpose()?;
+        let limit = eval(limit).await?;
+        let offset = eval(offset).await?;
 
         Ok(Self { limit, offset })
     }

@@ -1,22 +1,23 @@
-#![cfg(test)]
-
 use {
     crate::{
         data::{Key, Schema},
-        executor::execute,
-        parse_sql::parse,
         result::{Error, Result},
         store::{
             AlterTable, CustomFunction, CustomFunctionMut, DataRow, Index, IndexMut, Metadata,
             RowIter, Store, StoreMut, Transaction,
         },
-        translate::translate,
     },
     async_trait::async_trait,
-    futures::executor::block_on,
     std::collections::HashMap,
 };
 
+#[cfg(test)]
+use {
+    crate::{executor::execute, parse_sql::parse, translate::translate},
+    futures::executor::block_on,
+};
+
+#[cfg(test)]
 pub fn run(sql: &str) -> MockStorage {
     let mut storage = MockStorage::default();
 

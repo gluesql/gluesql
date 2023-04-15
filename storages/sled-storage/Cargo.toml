@@ -17,6 +17,7 @@ serde = { version = "1", features = ["derive"] }
 thiserror = "1"
 bincode = "1"
 sled = "0.34"
+async-io = "1"
 
 [dev-dependencies]
 test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.13.0" }

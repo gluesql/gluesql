@@ -2,7 +2,7 @@ use {
     super::{EvaluateError, Evaluated},
     crate::{
         ast::{DataType, DateTimeField},
-        data::{Value, ValueError},
+        data::{Point, Value, ValueError},
         result::Result,
     },
     rand::{rngs::StdRng, Rng, SeedableRng},
@@ -589,10 +589,31 @@ pub fn find_idx<'a>(
     .map(Evaluated::from)
 }
 
-pub fn cast<'a>(expr: Evaluated<'a>, data_type: &DataType) -> Result<Evaluated<'a>> {
-    expr.cast(data_type)
+pub async fn cast<'a>(expr: Evaluated<'a>, data_type: &DataType) -> Result<Evaluated<'a>> {
+    expr.cast(data_type).await
 }
 
 pub fn extract<'a>(field: &DateTimeField, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
     Ok(Evaluated::from(Value::try_from(expr)?.extract(field)?))
+}
+
+pub fn point<'a>(x: Evaluated<'_>, y: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let x = eval_to_float!("point".to_owned(), x);
+    let y = eval_to_float!("point".to_owned(), y);
+
+    Ok(Evaluated::from(Value::Point(Point::new(x, y))))
+}
+
+pub fn get_x<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    match expr.try_into()? {
+        Value::Point(v) => Ok(Evaluated::from(Value::F64(v.x))),
+        _ => Err(EvaluateError::FunctionRequiresPointValue(name).into()),
+    }
+}
+
+pub fn get_y<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    match expr.try_into()? {
+        Value::Point(v) => Ok(Evaluated::from(Value::F64(v.y))),
+        _ => Err(EvaluateError::FunctionRequiresPointValue(name).into()),
+    }
 }

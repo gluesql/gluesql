@@ -223,11 +223,9 @@ mod tests {
                 JoinOperator, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
                 TableWithJoins, Values,
             },
+            mock::{run, MockStorage},
             parse_sql::{parse, parse_expr},
-            plan::{
-                fetch_schema_map,
-                mock::{run, MockStorage},
-            },
+            plan::fetch_schema_map,
             translate::{translate, translate_expr},
         },
         futures::executor::block_on,

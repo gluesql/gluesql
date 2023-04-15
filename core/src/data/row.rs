@@ -1,5 +1,5 @@
 use {
-    crate::{data::Value, result::Result},
+    crate::{data::Value, executor::RowContext, result::Result},
     serde::Serialize,
     std::{collections::HashMap, fmt::Debug, rc::Rc},
     thiserror::Error,
@@ -58,6 +58,13 @@ impl Row {
         match self {
             Self::Vec { .. } => Err(RowError::ConflictOnUnexpectedVecRowFound.into()),
             Self::Map(values) => Ok(values),
+        }
+    }
+
+    pub fn as_context(&self) -> RowContext<'_> {
+        match self {
+            Self::Vec { columns, values } => RowContext::RefVecData { columns, values },
+            Self::Map(values) => RowContext::RefMapData(values),
         }
     }
 }

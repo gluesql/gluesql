@@ -16,7 +16,7 @@ pub async fn insert_function<T: GStore + GStoreMut>(
     body: &Expr,
 ) -> Result<()> {
     validate_arg_names(args)?;
-    validate_default_args(args)?;
+    validate_default_args(args).await?;
 
     if storage.fetch_function(func_name).await?.is_none() || or_replace {
         storage.delete_function(func_name).await?;

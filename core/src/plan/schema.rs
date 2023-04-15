@@ -227,8 +227,8 @@ mod tests {
     use {
         super::fetch_schema_map,
         crate::{
+            mock::{run, MockStorage},
             parse_sql::parse,
-            plan::mock::{run, MockStorage},
             result::Result,
             translate::translate,
         },

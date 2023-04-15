@@ -87,7 +87,7 @@ impl AlterTable for MemoryStorage {
 
         let value = match (default, nullable) {
             (Some(expr), _) => {
-                let evaluated = gluesql_core::executor::evaluate_stateless(None, expr)?;
+                let evaluated = gluesql_core::executor::evaluate_stateless(None, expr).await?;
 
                 evaluated.try_into_value(data_type, *nullable)?
             }
