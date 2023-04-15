@@ -158,6 +158,12 @@ pub enum Function {
         expr: Expr,
         value: Expr,
     },
+    GetX(Expr),
+    GetY(Expr),
+    Point {
+        x: Expr,
+        y: Expr,
+    },
 }
 
 impl ToSql for Function {
@@ -349,6 +355,9 @@ impl ToSql for Function {
                     value = value.to_sql()
                 }
             }
+            Function::GetX(e) => format!("GET_X({})", e.to_sql()),
+            Function::GetY(e) => format!("GET_Y({})", e.to_sql()),
+            Function::Point { x, y } => format!("POINT({}, {})", x.to_sql(), y.to_sql()),
         }
     }
 }
@@ -1013,6 +1022,31 @@ mod tests {
             &Expr::Function(Box::new(Function::Prepend {
                 expr: Expr::Identifier("list".to_owned()),
                 value: Expr::Identifier("value".to_owned())
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            "GET_X(\"point\")",
+            &Expr::Function(Box::new(Function::GetX(Expr::Identifier(
+                "point".to_owned()
+            ))))
+            .to_sql()
+        );
+
+        assert_eq!(
+            "GET_Y(\"point\")",
+            &Expr::Function(Box::new(Function::GetY(Expr::Identifier(
+                "point".to_owned()
+            ))))
+            .to_sql()
+        );
+
+        assert_eq!(
+            "POINT(0.1, 0.2)",
+            &Expr::Function(Box::new(Function::Point {
+                x: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("0.1").unwrap())),
+                y: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("0.2").unwrap()))
             }))
             .to_sql()
         );

@@ -130,6 +130,8 @@ macro_rules! generate_store_tests {
         glue!(function_chr, function::chr::chr);
         glue!(function_position, function::position::position);
         glue!(function_find_idx, function::find_idx::find_idx);
+        glue!(function_geometry_get_x, function::geometry::get_x::get_x);
+        glue!(function_geometry_get_y, function::geometry::get_y::get_y);
         glue!(join, join::join);
         glue!(join_project, join::project);
         glue!(migrate, migrate::migrate);
@@ -161,6 +163,7 @@ macro_rules! generate_store_tests {
         glue!(map, data_type::map::map);
         glue!(bytea, data_type::bytea::bytea);
         glue!(inet, data_type::inet::inet);
+        glue!(point, data_type::point::point);
         glue!(synthesize, synthesize::synthesize);
         glue!(validate_unique, validate::unique::unique);
         glue!(validate_types, validate::types::types);
