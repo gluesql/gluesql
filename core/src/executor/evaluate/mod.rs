@@ -2,13 +2,13 @@ mod error;
 mod evaluated;
 mod expr;
 mod function;
-mod stateless;
 
 use {
     super::{context::RowContext, select::select},
     crate::{
         ast::{Aggregate, Expr, Function},
         data::{CustomFunction, Interval, Literal, Row, Value},
+        mock::MockStorage,
         result::{Error, Result},
         store::GStore,
     },
@@ -22,7 +22,7 @@ use {
     std::{borrow::Cow, rc::Rc},
 };
 
-pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
+pub use {error::EvaluateError, evaluated::Evaluated};
 
 #[async_recursion(?Send)]
 pub async fn evaluate<'a, 'b: 'a, 'c: 'a, T: GStore>(
@@ -31,11 +31,31 @@ pub async fn evaluate<'a, 'b: 'a, 'c: 'a, T: GStore>(
     aggregated: Option<Rc<HashMap<&'c Aggregate, Value>>>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>> {
+    evaluate_inner(Some(storage), context, aggregated, expr).await
+}
+
+pub async fn evaluate_stateless<'a, 'b: 'a>(
+    context: Option<RowContext<'b>>,
+    expr: &'a Expr,
+) -> Result<Evaluated<'a>> {
+    let context = context.map(Rc::new);
+    let storage: Option<&MockStorage> = None;
+
+    evaluate_inner(storage, context, None, expr).await
+}
+
+#[async_recursion(?Send)]
+async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
+    storage: Option<&'a T>,
+    context: Option<Rc<RowContext<'b>>>,
+    aggregated: Option<Rc<HashMap<&'c Aggregate, Value>>>,
+    expr: &'a Expr,
+) -> Result<Evaluated<'a>> {
     let eval = |expr| {
         let context = context.as_ref().map(Rc::clone);
         let aggregated = aggregated.as_ref().map(Rc::clone);
 
-        evaluate(storage, context, aggregated, expr)
+        evaluate_inner(storage, context, aggregated, expr)
     };
 
     match expr {
@@ -44,7 +64,8 @@ pub async fn evaluate<'a, 'b: 'a, 'c: 'a, T: GStore>(
             expr::typed_string(data_type, Cow::Borrowed(value))
         }
         Expr::Identifier(ident) => {
-            let context = context.ok_or(EvaluateError::UnreachableEmptyContext)?;
+            let context = context
+                .ok_or_else(|| EvaluateError::ContextRequiredForIdentEvaluation(expr.clone()))?;
 
             match context.get_value(ident) {
                 Some(value) => Ok(value.clone()),
@@ -56,7 +77,8 @@ pub async fn evaluate<'a, 'b: 'a, 'c: 'a, T: GStore>(
         Expr::CompoundIdentifier { alias, ident } => {
             let table_alias = &alias;
             let column = &ident;
-            let context = context.ok_or(EvaluateError::UnreachableEmptyContext)?;
+            let context = context
+                .ok_or_else(|| EvaluateError::ContextRequiredForIdentEvaluation(expr.clone()))?;
 
             match context.get_alias_value(table_alias, column) {
                 Some(value) => Ok(value.clone()),
@@ -65,6 +87,9 @@ pub async fn evaluate<'a, 'b: 'a, 'c: 'a, T: GStore>(
             .map(Evaluated::from)
         }
         Expr::Subquery(query) => {
+            let storage =
+                storage.ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(expr.clone()))?;
+
             let evaluations = select(storage, query, context.as_ref().map(Rc::clone))
                 .await?
                 .map(|row| {
@@ -137,11 +162,13 @@ pub async fn evaluate<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 .map(Evaluated::from)
         }
         Expr::InSubquery {
-            expr,
+            expr: target_expr,
             subquery,
             negated,
         } => {
-            let target = eval(expr).await?;
+            let storage =
+                storage.ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(expr.clone()))?;
+            let target = eval(target_expr).await?;
 
             select(storage, subquery, context)
                 .await?
@@ -209,13 +236,18 @@ pub async fn evaluate<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 false => evaluated,
             })
         }
-        Expr::Exists { subquery, negated } => select(storage, subquery, context)
-            .await?
-            .try_next()
-            .await
-            .map(|v| v.is_some() ^ negated)
-            .map(Value::Bool)
-            .map(Evaluated::from),
+        Expr::Exists { subquery, negated } => {
+            let storage =
+                storage.ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(expr.clone()))?;
+
+            select(storage, subquery, context)
+                .await?
+                .try_next()
+                .await
+                .map(|v| v.is_some() ^ negated)
+                .map(Value::Bool)
+                .map(Evaluated::from)
+        }
         Expr::IsNull(expr) => {
             let v = eval(expr).await?.is_null();
 
@@ -272,7 +304,7 @@ pub async fn evaluate<'a, 'b: 'a, 'c: 'a, T: GStore>(
 }
 
 async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
-    storage: &'a T,
+    storage: Option<&'a T>,
     context: Option<Rc<RowContext<'b>>>,
     aggregated: Option<Rc<HashMap<&'c Aggregate, Value>>>,
     func: &'b Function,
@@ -283,7 +315,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         let context = context.as_ref().map(Rc::clone);
         let aggregated = aggregated.as_ref().map(Rc::clone);
 
-        evaluate(storage, context, aggregated, expr)
+        evaluate_inner(storage, context, aggregated, expr)
     };
 
     let name = func.to_string();
@@ -300,6 +332,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 args,
                 body,
             } = storage
+                .ok_or(EvaluateError::UnsupportedCustomFunction)?
                 .fetch_function(name)
                 .await?
                 .ok_or_else(|| EvaluateError::UnsupportedFunction(name.to_string()))?;
@@ -338,7 +371,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                     Some(Rc::new(context))
                 })?;
 
-            evaluate(storage, context, None, body).await
+            evaluate_inner(storage, context, None, body).await
         }
         Function::ConcatWs { separator, exprs } => {
             let separator = eval(separator).await?;
@@ -548,7 +581,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         }
         Function::Cast { expr, data_type } => {
             let expr = eval(expr).await?;
-            f::cast(expr, data_type)
+            f::cast(expr, data_type).await
         }
         Function::Extract { field, expr } => {
             let expr = eval(expr).await?;

@@ -4,6 +4,7 @@
 pub use {chrono, sqlparser};
 
 mod glue;
+mod mock;
 
 pub mod ast;
 pub mod ast_builder;

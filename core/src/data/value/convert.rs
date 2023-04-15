@@ -684,12 +684,10 @@ impl TryFrom<&Value> for NaiveDateTime {
     }
 }
 
-impl TryFrom<&Value> for Interval {
-    type Error = Error;
-
-    fn try_from(v: &Value) -> Result<Interval> {
-        match v {
-            Value::Str(value) => Interval::try_from(value.as_str()),
+impl Value {
+    pub async fn try_into_interval(&self) -> Result<Interval> {
+        match self {
+            Value::Str(value) => Interval::parse(value.as_str()).await,
             _ => Err(ValueError::ImpossibleCast.into()),
         }
     }
@@ -726,6 +724,7 @@ mod tests {
         super::{Value, ValueError},
         crate::{data::point, data::Interval as I, data::Point, result::Result},
         chrono::{self, NaiveDate, NaiveDateTime, NaiveTime},
+        futures::executor::block_on,
         rust_decimal::Decimal,
         std::{
             collections::HashMap,
@@ -1804,15 +1803,15 @@ mod tests {
     #[test]
     fn try_into_interval() {
         assert_eq!(
-            (&Value::Str("'+22-10' YEAR TO MONTH".to_owned())).try_into() as Result<I>,
+            block_on(Value::Str("'+22-10' YEAR TO MONTH".to_owned()).try_into_interval()),
             Ok(I::Month(274))
         );
         assert_eq!(
-            I::try_from(&Value::Str("'+22-10' YEAR TO MONTH".to_owned())),
+            block_on(Value::Str("'+22-10' YEAR TO MONTH".to_owned()).try_into_interval()),
             Ok(I::Month(274))
         );
         assert_eq!(
-            I::try_from(&Value::F64(1.0)),
+            block_on(Value::F64(1.0).try_into_interval()),
             Err(ValueError::ImpossibleCast.into())
         );
     }

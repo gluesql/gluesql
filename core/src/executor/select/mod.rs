@@ -8,7 +8,7 @@ use {
     super::{
         aggregate::Aggregator,
         context::{AggregateContext, RowContext},
-        evaluate_stateless,
+        evaluate::evaluate_stateless,
         fetch::{fetch_labels, fetch_relation_rows},
         filter::Filter,
         join::Join,
@@ -16,84 +16,80 @@ use {
         sort::Sort,
     },
     crate::{
-        ast::{DataType, Expr, OrderByExpr, Query, Select, SetExpr, TableWithJoins, Values},
+        ast::{Expr, OrderByExpr, Query, Select, SetExpr, TableWithJoins, Values},
         data::{get_alias, Key, Row, Value},
         result::Result,
         store::GStore,
     },
     async_recursion::async_recursion,
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
-    std::{borrow::Cow, iter, rc::Rc},
+    std::{borrow::Cow, rc::Rc},
     utils::Vector,
 };
 
-fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> (Vec<Result<Row>>, Vec<String>) {
+async fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> Result<(Vec<Row>, Vec<String>)> {
     let first_len = exprs_list[0].len();
     let labels = (1..=first_len)
         .map(|i| format!("column{}", i))
         .collect::<Vec<_>>();
-
     let columns = Rc::from(labels.clone());
-    let rows = exprs_list
-        .iter()
-        .scan(
-            iter::repeat(None)
-                .take(first_len)
-                .collect::<Vec<Option<DataType>>>(),
-            move |column_types, exprs| {
-                if exprs.len() != first_len {
-                    return Some(Err(SelectError::NumberOfValuesDifferent.into()));
+
+    let mut column_types = vec![None; first_len];
+    let mut rows = Vec::with_capacity(exprs_list.len());
+
+    for exprs in exprs_list {
+        if exprs.len() != first_len {
+            return Err(SelectError::NumberOfValuesDifferent.into());
+        }
+
+        let mut values = Vec::with_capacity(exprs.len());
+
+        for (i, expr) in exprs.iter().enumerate() {
+            let evaluated = evaluate_stateless(None, expr).await?;
+
+            let value = match column_types[i] {
+                Some(ref data_type) => evaluated.try_into_value(data_type, true)?,
+                None => {
+                    let value: Value = evaluated.try_into()?;
+                    column_types[i] = value.get_type();
+
+                    value
                 }
+            };
 
-                let values = column_types
-                    .iter_mut()
-                    .zip(exprs.iter())
-                    .map(|(column_type, expr)| -> Result<_> {
-                        let evaluated = evaluate_stateless(None, expr)?;
+            values.push(value);
+        }
 
-                        let value = match column_type {
-                            Some(data_type) => evaluated.try_into_value(data_type, true)?,
-                            None => {
-                                let value: Value = evaluated.try_into()?;
-                                *column_type = value.get_type();
+        rows.push(Row::Vec {
+            columns: Rc::clone(&columns),
+            values,
+        });
+    }
 
-                                value
-                            }
-                        };
-
-                        Ok(value)
-                    })
-                    .collect::<Result<Vec<_>>>()
-                    .map(|values| Row::Vec {
-                        columns: Rc::clone(&columns),
-                        values,
-                    });
-
-                Some(values)
-            },
-        )
-        .collect::<Vec<_>>();
-
-    (rows, labels)
+    Ok((rows, labels))
 }
 
-fn sort_stateless(rows: Vec<Result<Row>>, order_by: &[OrderByExpr]) -> Result<Vec<Result<Row>>> {
-    let sorted = rows
-        .into_iter()
-        .map(|row| {
-            order_by
-                .iter()
-                .map(|OrderByExpr { expr, asc }| -> Result<_> {
-                    let row = row.as_ref().ok();
-                    let value: Value = evaluate_stateless(row, expr)?.try_into()?;
-                    let key: Key = value.try_into()?;
+async fn sort_stateless(rows: Vec<Row>, order_by: &[OrderByExpr]) -> Result<Vec<Row>> {
+    let sorted = stream::iter(rows.into_iter())
+        .then(|row| async move {
+            stream::iter(order_by)
+                .then(|OrderByExpr { expr, asc }| {
+                    let row = Some(&row);
 
-                    Ok((key, *asc))
+                    async move {
+                        evaluate_stateless(row.map(Row::as_context), expr)
+                            .await
+                            .and_then(Value::try_from)
+                            .and_then(Key::try_from)
+                            .map(|key| (key, *asc))
+                    }
                 })
-                .collect::<Result<Vec<_>>>()
+                .try_collect::<Vec<_>>()
+                .await
                 .map(|keys| (keys, row))
         })
-        .collect::<Result<Vec<_>>>()
+        .try_collect::<Vec<_>>()
+        .await
         .map(Vector::from)?
         .sort_by(|(keys_a, _), (keys_b, _)| super::sort::sort_by(keys_a, keys_b))
         .into_iter()
@@ -124,10 +120,10 @@ pub async fn select_with_labels<'a, T: GStore>(
     } = match &query.body {
         SetExpr::Select(statement) => statement.as_ref(),
         SetExpr::Values(Values(values_list)) => {
-            let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
-            let (rows, labels) = rows_with_labels(values_list);
-            let rows = sort_stateless(rows, &query.order_by)?;
-            let rows = stream::iter(rows);
+            let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref()).await?;
+            let (rows, labels) = rows_with_labels(values_list).await?;
+            let rows = sort_stateless(rows, &query.order_by).await?;
+            let rows = stream::iter(rows.into_iter().map(Ok));
             let rows = limit.apply(rows);
 
             return Ok((Some(labels), Row::Values(rows)));
@@ -158,7 +154,7 @@ pub async fn select_with_labels<'a, T: GStore>(
         filter_context.as_ref().map(Rc::clone),
         None,
     ));
-    let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
+    let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref()).await?;
     let sort = Sort::new(
         storage,
         filter_context.as_ref().map(Rc::clone),

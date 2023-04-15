@@ -26,7 +26,7 @@ pub async fn alter_table<T: GStore + GStoreMut>(
                 .await
         }
         AlterTableOperation::AddColumn { column_def } => {
-            validate(column_def)?;
+            validate(column_def).await?;
 
             storage.add_column(table_name, column_def).await
         }

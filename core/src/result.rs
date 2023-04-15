@@ -14,7 +14,7 @@ use {
         translate::TranslateError,
     },
     serde::Serialize,
-    std::{fmt::Debug, ops::ControlFlow},
+    std::fmt::Debug,
     thiserror::Error as ThisError,
 };
 
@@ -77,16 +77,3 @@ pub enum Error {
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
-
-pub trait IntoControlFlow<T> {
-    fn into_control_flow(self) -> ControlFlow<Result<T>, T>;
-}
-
-impl<T> IntoControlFlow<T> for Result<T> {
-    fn into_control_flow(self) -> ControlFlow<Result<T>, T> {
-        match self {
-            Ok(v) => ControlFlow::Continue(v),
-            e => ControlFlow::Break(e),
-        }
-    }
-}
