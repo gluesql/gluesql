@@ -52,7 +52,9 @@ impl Function {
             }
             | Self::Reverse(expr)
             | Self::Cast { expr, .. }
-            | Self::Extract { expr, .. } => Exprs::Single([expr].into_iter()),
+            | Self::Extract { expr, .. }
+            | Self::GetX(expr)
+            | Self::GetY(expr) => Exprs::Single([expr].into_iter()),
             Self::Left { expr, size: expr2 }
             | Self::Right { expr, size: expr2 }
             | Self::Lpad {
@@ -135,7 +137,8 @@ impl Function {
                 sub_expr: expr2,
                 start: None,
             }
-            | Self::Append { expr, value: expr2 } => Exprs::Double([expr, expr2].into_iter()),
+            | Self::Append { expr, value: expr2 }
+            | Self::Point { x: expr, y: expr2 } => Exprs::Double([expr, expr2].into_iter()),
             Self::Lpad {
                 expr,
                 size: expr2,

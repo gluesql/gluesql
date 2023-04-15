@@ -2,6 +2,7 @@ use {
     super::{Interval, Key, StringExt},
     crate::{
         ast::{DataType, DateTimeField},
+        data::point::Point,
         result::Result,
     },
     binary_op::TryBinaryOperator,
@@ -53,6 +54,7 @@ pub enum Value {
     Uuid(u128),
     Map(HashMap<String, Value>),
     List(Vec<Value>),
+    Point(Point),
     Null,
 }
 
@@ -90,6 +92,7 @@ impl PartialEq<Value> for Value {
             (Value::Uuid(l), Value::Uuid(r)) => l == r,
             (Value::Map(l), Value::Map(r)) => l == r,
             (Value::List(l), Value::List(r)) => l == r,
+            (Value::Point(l), Value::Point(r)) => l == r,
             _ => false,
         }
     }
@@ -174,6 +177,7 @@ impl Value {
             Value::Uuid(_) => Some(DataType::Uuid),
             Value::Map(_) => Some(DataType::Map),
             Value::List(_) => Some(DataType::List),
+            Value::Point(_) => Some(DataType::Point),
             Value::Null => None,
         }
     }
@@ -203,6 +207,7 @@ impl Value {
             Value::Uuid(_) => matches!(data_type, DataType::Uuid),
             Value::Map(_) => matches!(data_type, DataType::Map),
             Value::List(_) => matches!(data_type, DataType::List),
+            Value::Point(_) => matches!(data_type, DataType::Point),
             Value::Null => true,
         };
 
@@ -243,6 +248,7 @@ impl Value {
             | (DataType::Text, Value::Str(_))
             | (DataType::Bytea, Value::Bytea(_))
             | (DataType::Inet, Value::Inet(_))
+            | (DataType::Point, Value::Point(_))
             | (DataType::Date, Value::Date(_))
             | (DataType::Timestamp, Value::Timestamp(_))
             | (DataType::Time, Value::Time(_))
@@ -271,6 +277,7 @@ impl Value {
             (DataType::Uuid, Value::Str(value)) => uuid::parse_uuid(value).map(Value::Uuid),
             (DataType::Uuid, value) => value.try_into().map(Value::Uuid),
             (DataType::Inet, value) => value.try_into().map(Value::Inet),
+            (DataType::Point, value) => value.try_into().map(Value::Point),
             (DataType::Bytea, Value::Str(value)) => hex::decode(value)
                 .map_err(|_| ValueError::CastFromHexToByteaFailed(value.clone()).into())
                 .map(Value::Bytea),
@@ -735,7 +742,7 @@ fn str_position(from_str: &String, sub_str: &String) -> usize {
 mod tests {
     use {
         super::{Interval, Value::*},
-        crate::data::{value::uuid::parse_uuid, ValueError},
+        crate::data::{point::Point, value::uuid::parse_uuid, ValueError},
         chrono::{NaiveDate, NaiveTime},
         futures::executor::block_on,
         rust_decimal::Decimal,
@@ -796,6 +803,7 @@ mod tests {
             Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()),
             Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap())
         );
+        assert_eq!(Point::new(1.0, 2.0), Point::new(1.0, 2.0));
     }
 
     #[test]
@@ -1623,7 +1631,7 @@ mod tests {
     #[test]
     fn cast() {
         use {
-            crate::{ast::DataType::*, prelude::Value},
+            crate::{ast::DataType::*, data::Point, prelude::Value},
             chrono::{NaiveDate, NaiveTime},
         };
 
@@ -1642,6 +1650,7 @@ mod tests {
 
         let bytea = Value::Bytea(hex::decode("0abc").unwrap());
         let inet = |v| Value::Inet(IpAddr::from_str(v).unwrap());
+        let point = |x, y| Value::Point(Point::new(x, y));
 
         // Same as
         cast!(Bool(true)            => Boolean      , Bool(true));
@@ -1820,6 +1829,10 @@ mod tests {
         cast!(Str("::1".to_owned()) => Inet, inet("::1"));
         cast!(Str("0.0.0.0".to_owned()) => Inet, inet("0.0.0.0"));
 
+        // Point
+        cast!(point(0.32, 0.52) => Point, point(0.32, 0.52));
+        cast!(Str("POINT(0.32 0.52)".to_owned()) => Point, point(0.32, 0.52));
+
         // Casting error
         assert_eq!(
             block_on(Value::Uuid(123).cast(&List)),
@@ -1860,7 +1873,7 @@ mod tests {
     fn validate_type() {
         use {
             super::{Value, ValueError},
-            crate::{ast::DataType as D, data::Interval as I},
+            crate::{ast::DataType as D, data::Interval as I, data::Point},
             chrono::{NaiveDate, NaiveTime},
         };
 
@@ -1874,6 +1887,7 @@ mod tests {
         let time = Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap());
         let interval = Interval(I::hours(5));
         let uuid = Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap());
+        let point = Point(Point::new(1.0, 2.0));
         let map = Value::parse_json_map(r#"{ "a": 10 }"#).unwrap();
         let list = Value::parse_json_list(r#"[ true ]"#).unwrap();
         let bytea = Bytea(hex::decode("9001").unwrap());
@@ -1926,6 +1940,8 @@ mod tests {
         assert!(interval.validate_type(&D::Date).is_err());
         assert!(uuid.validate_type(&D::Uuid).is_ok());
         assert!(uuid.validate_type(&D::Boolean).is_err());
+        assert!(point.validate_type(&D::Point).is_ok());
+        assert!(point.validate_type(&D::Boolean).is_err());
         assert!(map.validate_type(&D::Map).is_ok());
         assert!(map.validate_type(&D::Int).is_err());
         assert!(list.validate_type(&D::List).is_ok());
@@ -2037,7 +2053,7 @@ mod tests {
     fn get_type() {
         use {
             super::Value,
-            crate::{ast::DataType as D, data::Interval as I},
+            crate::{ast::DataType as D, data::Interval as I, data::Point},
             chrono::{NaiveDate, NaiveTime},
         };
 
@@ -2052,6 +2068,7 @@ mod tests {
         let time = Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap());
         let interval = Interval(I::hours(5));
         let uuid = Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap());
+        let point = Point(Point::new(1.0, 2.0));
         let map = Value::parse_json_map(r#"{ "a": 10 }"#).unwrap();
         let list = Value::parse_json_list(r#"[ true ]"#).unwrap();
         let bytea = Bytea(hex::decode("9001").unwrap());
@@ -2078,6 +2095,7 @@ mod tests {
         assert_eq!(time.get_type(), Some(D::Time));
         assert_eq!(interval.get_type(), Some(D::Interval));
         assert_eq!(uuid.get_type(), Some(D::Uuid));
+        assert_eq!(point.get_type(), Some(D::Point));
         assert_eq!(map.get_type(), Some(D::Map));
         assert_eq!(list.get_type(), Some(D::List));
         assert_eq!(Null.get_type(), None);
