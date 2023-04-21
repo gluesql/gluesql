@@ -1,3 +1,5 @@
+use super::insert::fetch_insert_rows;
+
 use {
     super::{
         alter::{alter_table, create_index, create_table, drop_table},
@@ -139,9 +141,11 @@ async fn execute_inner<T: GStore + GStoreMut>(
             table_name,
             columns,
             source,
-        } => insert(storage, table_name, columns, source)
-            .await
-            .map(Payload::Insert),
+        } => {
+            let rows = fetch_insert_rows(storage, table_name, columns, source).await?;
+
+            insert(storage, table_name, rows).await.map(Payload::Insert)
+        }
         Statement::Update {
             table_name,
             selection,

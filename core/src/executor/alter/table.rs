@@ -1,4 +1,4 @@
-use crate::executor::insert::insert;
+use crate::executor::insert::{fetch_insert_rows, insert};
 
 use {
     super::{validate, validate_column_names, AlterError},
@@ -185,9 +185,9 @@ pub async fn create_table<T: GStore + GStoreMut>(
                 })
                 .unwrap_or_default();
 
-            insert(storage, target_table_name, &columns, query)
-                .await
-                .map(|_| ())
+            let rows = fetch_insert_rows(storage, target_table_name, &columns, query).await?;
+
+            insert(storage, target_table_name, rows).await.map(|_| ())
             // let rows = select(storage, query, None)
             //     .await?
             //     .map_ok(Into::into)

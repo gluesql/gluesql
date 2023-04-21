@@ -40,29 +40,35 @@ pub enum InsertError {
     MapTypeValueRequired(String),
 }
 
-enum RowsData {
+pub enum RowsData {
     Append(Vec<DataRow>),
     Insert(Vec<(Key, DataRow)>),
 }
 
-pub async fn insert<T: GStore + GStoreMut>(
+pub async fn fetch_insert_rows<T: GStore + GStoreMut>(
     storage: &mut T,
     table_name: &str,
     columns: &[String],
     source: &Query,
-) -> Result<usize> {
+) -> Result<RowsData> {
     let Schema { column_defs, .. } = storage
         .fetch_schema(table_name)
         .await?
         .ok_or_else(|| InsertError::TableNotFound(table_name.to_owned()))?;
 
-    let rows = match column_defs {
+    match column_defs {
         Some(column_defs) => {
             fetch_vec_rows(storage, table_name, column_defs, columns, source).await
         }
         None => fetch_map_rows(storage, source).await.map(RowsData::Append),
-    }?;
+    }
+}
 
+pub async fn insert<T: GStore + GStoreMut>(
+    storage: &mut T,
+    table_name: &str,
+    rows: RowsData,
+) -> Result<usize> {
     match rows {
         RowsData::Append(rows) => {
             let num_rows = rows.len();
