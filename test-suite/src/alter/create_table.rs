@@ -1,11 +1,16 @@
 use {
     crate::*,
     gluesql_core::{
-        data::value::Value::{Null, Str, I64},
+        data::{
+            value::Value::{Null, Str, I64},
+            Literal, ValueError,
+        },
         executor::{AlterError, EvaluateError, FetchError},
-        prelude::Payload,
+        prelude::{DataType::Int, Payload, Value},
         translate::TranslateError,
     },
+    serde_json::json,
+    std::borrow::Cow,
 };
 
 test_case!(create_table, async move {
@@ -132,6 +137,25 @@ test_case!(create_table, async move {
             )),
         ),
         (
+            "CREATE TABLE Schemaless",
+            Ok(Payload::Create),
+        ),
+        (
+            r#"INSERT INTO Schemaless VALUES ('{"id": 1, "name": "Glue"}'), ('{"id": 2, "name": "SQL"}')"#,
+            Ok(Payload::Insert(2)),
+        ),
+        (
+            "CREATE TABLE TargetTableFromSchemaless AS SELECT * FROM Schemaless",
+            Ok(Payload::Create),
+        ),
+        (
+            "SELECT * FROM TargetTableFromSchemaless",
+            Ok(select_map![
+                json!({"name": "Glue", "id": 1}),
+                json!({"name": "SQL", "id": 2})
+            ]),
+        ),
+        (
             // Target Table already exists
             "CREATE TABLE TargetTableWithData AS SELECT * FROM CreateTable2",
             Err(AlterError::TableAlreadyExists("TargetTableWithData".to_owned()).into()),
@@ -140,6 +164,27 @@ test_case!(create_table, async move {
             // Source table does not exists
             "CREATE TABLE TargetTableWithData2 AS SELECT * FROM NonExistentTable",
             Err(FetchError::TableNotFound("NonExistentTable".to_owned()).into()),
+        ),
+        (
+            "CREATE TABLE IncompatibleDataTypeCtasWithLiteral AS VALUES (1), ('b')",
+            Err(ValueError::IncompatibleLiteralForDataType{
+                data_type: Int,
+                literal: format!("{:?}", Literal::Text(Cow::Owned("b".to_owned()))),
+            }.into()),
+        ),
+        (
+            "CREATE TABLE IncompatibleDataTypeCtasWithValueButSchemaRemains AS SELECT CASE ID WHEN 1 THEN 1 ELSE 'b' END AS wrongColumn FROM (VALUES (1), (2)) AS SUB (ID)",
+            Err(ValueError::IncompatibleDataType{
+                data_type: Int,
+                value: Value::Str("b".to_owned())
+            }.into()),
+        ),
+        (
+            "SELECT COUNT(*) FROM IncompatibleDataTypeCtasWithValueButSchemaRemains",
+            Ok(Payload::Select {
+                labels: vec!["COUNT(*)".to_owned()],
+                rows: Vec::new(),
+            }),
         ),
         (
             // Cannot create table with duplicate column name

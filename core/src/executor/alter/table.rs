@@ -1,3 +1,5 @@
+use crate::executor::insert::insert;
+
 use {
     super::{validate, validate_column_names, AlterError},
     crate::{
@@ -162,7 +164,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
     if storage.fetch_schema(target_table_name).await?.is_none() {
         let schema = Schema {
             table_name: target_table_name.to_owned(),
-            column_defs: target_columns_defs,
+            column_defs: target_columns_defs.clone(),
             indexes: vec![],
             engine: engine.clone(),
         };
@@ -174,16 +176,28 @@ pub async fn create_table<T: GStore + GStoreMut>(
 
     match source {
         Some(query) => {
-            let rows = select(storage, query, None)
-                .await?
-                .map_ok(Into::into)
-                .try_collect()
-                .await?;
+            let columns = target_columns_defs
+                .map(|column_defs| {
+                    column_defs
+                        .into_iter()
+                        .map(|column_def| column_def.name)
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default();
 
-            storage
-                .append_data(target_table_name, rows)
+            insert(storage, target_table_name, &columns, query)
                 .await
                 .map(|_| ())
+            // let rows = select(storage, query, None)
+            //     .await?
+            //     .map_ok(Into::into)
+            //     .try_collect()
+            //     .await?;
+
+            // storage
+            //     .append_data(target_table_name, rows)
+            //     .await
+            //     .map(|_| ())
         }
         None => Ok(()),
     }
