@@ -9,7 +9,9 @@ use {
     std::str,
 };
 
-const SCHEMA_PREFIX: &str = "schema/";
+impl SledStorage {
+    const SCHEMA_PREFIX: &str = "schema/";
+}
 
 #[async_trait(?Send)]
 impl Store for SledStorage {
@@ -23,7 +25,7 @@ impl Store for SledStorage {
         let lock_txid = lock::fetch(&self.tree, txid, created_at, self.tx_timeout)?;
 
         self.tree
-            .scan_prefix(SCHEMA_PREFIX)
+            .scan_prefix(SledStorage::SCHEMA_PREFIX)
             .map(move |item| {
                 let (_, value) = item.map_err(err_into)?;
                 let snapshot: Snapshot<Schema> = bincode::deserialize(&value).map_err(err_into)?;
