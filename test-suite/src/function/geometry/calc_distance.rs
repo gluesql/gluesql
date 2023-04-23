@@ -1,8 +1,8 @@
-use gluesql_core::translate::TranslateError;
-
 use {
     crate::*,
-    gluesql_core::{executor::EvaluateError, executor::Payload, prelude::Value::*},
+    gluesql_core::{
+        executor::EvaluateError, executor::Payload, prelude::Value::*, translate::TranslateError,
+    },
 };
 
 test_case!(calc_distance, async move {
