@@ -3,7 +3,7 @@ title: "Introduction"
 sidebar_position: 1
 ---
 
-# Introduction to SQL Syntax
+# SQL Syntax
 
 Welcome to the Introduction page for the SQL Syntax category in GlueSQL! In this section, we'll provide a brief overview of the SQL syntax supported by GlueSQL. You can find more in-depth examples and details by browsing the other pages in this category.
 
