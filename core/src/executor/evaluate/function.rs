@@ -53,6 +53,20 @@ macro_rules! eval_to_float {
     };
 }
 
+macro_rules! eval_to_point {
+    ($name: expr, $evaluated: expr) => {
+        match $evaluated.try_into()? {
+            Value::Point(v) => v,
+            Value::Null => {
+                return Ok(Evaluated::from(Value::Null));
+            }
+            _ => {
+                return Err(EvaluateError::FunctionRequiresPointValue($name).into());
+            }
+        }
+    };
+}
+
 // --- text ---
 
 pub fn concat(exprs: Vec<Evaluated<'_>>) -> Result<Evaluated> {
@@ -629,4 +643,11 @@ pub fn get_y<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
         Value::Point(v) => Ok(Evaluated::from(Value::F64(v.y))),
         _ => Err(EvaluateError::FunctionRequiresPointValue(name).into()),
     }
+}
+
+pub fn calc_distance<'a>(x: Evaluated<'_>, y: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let x = eval_to_point!("calc_distance".to_owned(), x);
+    let y = eval_to_point!("calc_distance".to_owned(), y);
+
+    Ok(Evaluated::from(Value::F64(Point::calc_distance(&x, &y))))
 }

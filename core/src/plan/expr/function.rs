@@ -139,7 +139,11 @@ impl Function {
             }
             | Self::Append { expr, value: expr2 }
             | Self::Prepend { expr, value: expr2 }
-            | Self::Point { x: expr, y: expr2 } => Exprs::Double([expr, expr2].into_iter()),
+            | Self::Point { x: expr, y: expr2 }
+            | Self::CalcDistance {
+                geometry1: expr,
+                geometry2: expr2,
+            } => Exprs::Double([expr, expr2].into_iter()),
             Self::Lpad {
                 expr,
                 size: expr2,

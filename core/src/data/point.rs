@@ -32,6 +32,12 @@ impl Point {
             Err(Error::Value(ValueError::FailedToParsePoint(v.to_owned())))
         }
     }
+
+    pub fn calc_distance(&self, other: &Point) -> f64 {
+        let dx = self.x - other.x;
+        let dy = self.y - other.y;
+        f64::sqrt(dx * dx + dy * dy)
+    }
 }
 
 impl PartialEq for Point {
