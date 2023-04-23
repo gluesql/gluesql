@@ -59,7 +59,7 @@ const config = {
       items: [
         {
           type: 'doc',
-          docId: 'getting-started/rust/installation',
+          docId: 'getting-started/rust',
           position: 'left',
           label: 'Getting Started',
         },
@@ -96,7 +96,7 @@ const config = {
           items: [
             {
               label: 'Getting Started',
-              to: '/docs/getting-started/rust/installation',
+              to: '/docs/getting-started/rust',
             },
             {
               label: 'SQL Syntax',
@@ -143,7 +143,7 @@ const config = {
     prism: {
       theme: lightCodeTheme,
       darkTheme: darkCodeTheme,
-      additionalLanguages: ['rust'],
+      additionalLanguages: ['rust', 'toml'],
     },
   },
 };
