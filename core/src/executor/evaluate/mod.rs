@@ -594,5 +594,10 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let value = eval(value).await?;
             f::append(expr, value)
         }
+        Function::Prepend { expr, value } => {
+            let expr = eval(expr).await?;
+            let value = eval(value).await?;
+            f::prepend(expr, value)
+        }
     }
 }

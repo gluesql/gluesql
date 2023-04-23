@@ -496,6 +496,13 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::Append { expr, value })))
         }
+        "PREPEND" => {
+            check_len(name, args.len(), 2)?;
+            let expr = translate_expr(args[0])?;
+            let value = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Prepend { expr, value })))
+        }
         "POINT" => {
             check_len(name, args.len(), 2)?;
             let x = translate_expr(args[0])?;

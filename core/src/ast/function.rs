@@ -154,6 +154,10 @@ pub enum Function {
         expr: Expr,
         value: Expr,
     },
+    Prepend {
+        expr: Expr,
+        value: Expr,
+    },
     GetX(Expr),
     GetY(Expr),
     Point {
@@ -343,6 +347,13 @@ impl ToSql for Function {
                     items = expr.to_sql(),
                     value = value.to_sql()
                 )
+            }
+            Function::Prepend { expr, value } => {
+                format! {
+                    "PREPEND({items}, {value})",
+                    items = expr.to_sql(),
+                    value = value.to_sql()
+                }
             }
             Function::GetX(e) => format!("GET_X({})", e.to_sql()),
             Function::GetY(e) => format!("GET_Y({})", e.to_sql()),
@@ -1000,6 +1011,15 @@ mod tests {
         assert_eq!(
             r#"APPEND("list", "value")"#,
             &Expr::Function(Box::new(Function::Append {
+                expr: Expr::Identifier("list".to_owned()),
+                value: Expr::Identifier("value".to_owned())
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"PREPEND("list", "value")"#,
+            &Expr::Function(Box::new(Function::Prepend {
                 expr: Expr::Identifier("list".to_owned()),
                 value: Expr::Identifier("value".to_owned())
             }))
