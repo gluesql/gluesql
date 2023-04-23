@@ -165,8 +165,8 @@ pub enum Function {
         y: Expr,
     },
     CalcDistance {
-        x: Expr,
-        y: Expr,
+        geometry1: Expr,
+        geometry2: Expr,
     },
 }
 
@@ -362,8 +362,15 @@ impl ToSql for Function {
             Function::GetX(e) => format!("GET_X({})", e.to_sql()),
             Function::GetY(e) => format!("GET_Y({})", e.to_sql()),
             Function::Point { x, y } => format!("POINT({}, {})", x.to_sql(), y.to_sql()),
-            Function::CalcDistance { x, y } => {
-                format!("CALC_DISTANCE({}, {})", x.to_sql(), y.to_sql())
+            Function::CalcDistance {
+                geometry1,
+                geometry2,
+            } => {
+                format!(
+                    "CALC_DISTANCE({}, {})",
+                    geometry1.to_sql(),
+                    geometry2.to_sql()
+                )
             }
         }
     }
@@ -1061,11 +1068,11 @@ mod tests {
         assert_eq!(
             "CALC_DISTANCE(POINT(1.1, 2.3), POINT(1.4, 3.6))",
             &Expr::Function(Box::new(Function::CalcDistance {
-                x: Expr::Function(Box::new(Function::Point {
+                geometry1: Expr::Function(Box::new(Function::Point {
                     x: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1.1").unwrap())),
                     y: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2.3").unwrap()))
                 })),
-                y: Expr::Function(Box::new(Function::Point {
+                geometry2: Expr::Function(Box::new(Function::Point {
                     x: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1.4").unwrap())),
                     y: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("3.6").unwrap()))
                 }))

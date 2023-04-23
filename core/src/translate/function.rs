@@ -524,9 +524,12 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         "CALC_DISTANCE" => {
             check_len(name, args.len(), 2)?;
 
-            let x = translate_expr(args[0])?;
-            let y = translate_expr(args[1])?;
-            Ok(Expr::Function(Box::new(Function::CalcDistance { x, y })))
+            let geometry1 = translate_expr(args[0])?;
+            let geometry2 = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::CalcDistance {
+                geometry1,
+                geometry2,
+            })))
         }
         _ => {
             let exprs = args

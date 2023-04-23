@@ -527,11 +527,14 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         }
         Function::GetX(expr) => f::get_x(name, eval(expr).await?),
         Function::GetY(expr) => f::get_y(name, eval(expr).await?),
-        Function::CalcDistance { x, y } => {
-            let x = eval(x).await?;
-            let y = eval(y).await?;
+        Function::CalcDistance {
+            geometry1,
+            geometry2,
+        } => {
+            let geometry1 = eval(geometry1).await?;
+            let geometry2 = eval(geometry2).await?;
 
-            f::calc_distance(x, y)
+            f::calc_distance(geometry1, geometry2)
         }
 
         // --- etc ---
