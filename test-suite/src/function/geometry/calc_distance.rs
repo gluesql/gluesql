@@ -37,6 +37,10 @@ test_case!(calc_distance, async move {
             r#"SELECT CALC_DISTANCE(geo1, bar) AS georesult FROM Foo"#,
             Err(EvaluateError::FunctionRequiresPointValue("calc_distance".to_owned()).into()),
         ),
+        (
+            r#"SELECT CALC_DISTANCE(geo1, NULL) AS georesult FROM Foo"#,
+            Ok(select_with_null!(georesult; Null)),
+        ),
     ];
 
     for (sql, expected) in test_cases {
