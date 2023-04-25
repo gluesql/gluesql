@@ -1,9 +1,6 @@
 use {
     crate::*,
-    gluesql_core::{
-        executor::Payload,
-        prelude::Value::*,
-    },
+    gluesql_core::{executor::Payload, prelude::Value::*},
 };
 
 test_case!(float32, async move {
