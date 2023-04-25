@@ -21,6 +21,7 @@ GlueSQL is available in both Rust and JavaScript environments, with plans to exp
 * `AlterTable` - A trait for supporting schema changes.
 * `Transaction` - A trait for supporting transactions.
 * `CustomFunction` - A trait for supporting user-level custom functions.
+* `CustomFunctionMut` - A trait for creating or deleting user-level custom functions.
 * `Index` - A trait for supporting non-clustered indexes. This trait allows you to process pre-registered indexes.
 * `IndexMut` - A trait for creating or deleting non-clustered indexes.
 * `Metadata` - A trait for querying metadata.
