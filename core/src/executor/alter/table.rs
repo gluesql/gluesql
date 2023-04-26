@@ -1,5 +1,3 @@
-use crate::result::IntoControlFlow;
-
 use {
     super::{validate, validate_column_names, AlterError},
     crate::{
@@ -14,11 +12,7 @@ use {
         result::Result,
         store::{GStore, GStoreMut},
     },
-    futures::stream::{StreamExt, TryStreamExt},
-    std::{
-        iter,
-        ops::ControlFlow::{Break, Continue},
-    },
+    futures::stream::StreamExt,
 };
 
 pub async fn create_table<T: GStore + GStoreMut>(
@@ -44,41 +38,27 @@ pub async fn create_table<T: GStore + GStoreMut>(
                     offset: offset.clone(),
                 };
 
-                let (labels, rows) = select_with_labels(storage, &query, None).await?;
+                let (labels, mut rows) = select_with_labels(storage, &query, None).await?;
 
                 match labels {
                     Some(labels) => {
-                        let rows = rows
-                            .map(|row| row?.try_into_vec())
-                            .try_collect::<Vec<_>>()
-                            .await?;
-
                         let first_len = labels.len();
-                        let init_types = iter::repeat(None)
-                            .take(first_len)
-                            .collect::<Vec<Option<DataType>>>();
-                        let column_types =
-                            rows.iter().try_fold(init_types, |column_types, values| {
-                                let column_types = column_types
-                                    .iter()
-                                    .zip(values.iter())
-                                    .map(|(column_type, value)| match column_type {
-                                        Some(data_type) => Ok(Some(data_type.to_owned())),
-                                        None => Ok(value.get_type()),
-                                    })
-                                    .collect::<Result<Vec<Option<DataType>>>>()
-                                    .into_control_flow()?;
+                        let mut column_types = vec![None; first_len];
 
-                                match column_types.iter().any(Option::is_none) {
-                                    true => Continue(column_types),
-                                    false => Break(Ok(column_types)),
+                        while let Some(row) = rows.next().await {
+                            let row = row?;
+                            for (i, (_, value)) in row.iter().enumerate() {
+                                if column_types[i].is_some() {
+                                    continue;
                                 }
-                            });
 
-                        let column_types = match column_types {
-                            Continue(column_types) => column_types,
-                            Break(column_types) => column_types?,
-                        };
+                                column_types[i] = value.get_type();
+                            }
+
+                            if column_types.iter().all(Option::is_some) {
+                                break;
+                            }
+                        }
 
                         let column_defs = column_types
                             .iter()

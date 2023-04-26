@@ -1,5 +1,3 @@
-use std::ops::ControlFlow;
-
 use {
     crate::{
         ast_builder::AstBuilderError,
@@ -79,17 +77,3 @@ pub enum Error {
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
-
-/// temporary implements
-pub trait IntoControlFlow<T> {
-    fn into_control_flow(self) -> ControlFlow<Result<T>, T>;
-}
-
-impl<T> IntoControlFlow<T> for Result<T> {
-    fn into_control_flow(self) -> ControlFlow<Result<T>, T> {
-        match self {
-            Ok(v) => ControlFlow::Continue(v),
-            e => ControlFlow::Break(e),
-        }
-    }
-}
