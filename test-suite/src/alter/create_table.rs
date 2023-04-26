@@ -173,18 +173,15 @@ test_case!(create_table, async move {
             }.into()),
         ),
         (
-            "CREATE TABLE IncompatibleDataTypeCtasWithValueButSchemaRemains AS SELECT CASE ID WHEN 1 THEN 1 ELSE 'b' END AS wrongColumn FROM (VALUES (1), (2)) AS SUB (ID)",
+            "CREATE TABLE IncompatibleDataTypeCtasWithValue AS SELECT CASE ID WHEN 1 THEN 1 ELSE 'b' END AS wrongColumn FROM (VALUES (1), (2)) AS SUB (ID)",
             Err(ValueError::IncompatibleDataType{
                 data_type: Int,
                 value: Value::Str("b".to_owned())
             }.into()),
         ),
         (
-            "SELECT COUNT(*) FROM IncompatibleDataTypeCtasWithValueButSchemaRemains",
-            Ok(Payload::Select {
-                labels: vec!["COUNT(*)".to_owned()],
-                rows: Vec::new(),
-            }),
+            "SELECT COUNT(*) FROM IncompatibleDataTypeCtasWithValue",
+            Err(FetchError::TableNotFound("IncompatibleDataTypeCtasWithValue".to_owned()).into()),
         ),
         (
             // Cannot create table with duplicate column name

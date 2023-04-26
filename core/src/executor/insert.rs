@@ -5,7 +5,7 @@ use {
     },
     crate::{
         ast::{ColumnDef, ColumnUniqueOption, Expr, Query, SetExpr, Values},
-        data::{Key, Row, Schema, Value},
+        data::{Key, Row, Value},
         executor::{evaluate::evaluate_stateless, limit::Limit},
         result::Result,
         store::{DataRow, GStore, GStoreMut},
@@ -47,14 +47,15 @@ pub enum RowsData {
 
 pub async fn fetch_insert_rows<T: GStore + GStoreMut>(
     storage: &mut T,
-    table_name: &str,
+    table_name: Option<&str>,
     columns: &[String],
     source: &Query,
+    column_defs: Option<Vec<ColumnDef>>,
 ) -> Result<RowsData> {
-    let Schema { column_defs, .. } = storage
-        .fetch_schema(table_name)
-        .await?
-        .ok_or_else(|| InsertError::TableNotFound(table_name.to_owned()))?;
+    // let Schema { column_defs, .. } = storage
+    //     .fetch_schema(table_name)
+    //     .await?
+    //     .ok_or_else(|| InsertError::TableNotFound(table_name.to_owned()))?;
 
     match column_defs {
         Some(column_defs) => {
@@ -91,7 +92,7 @@ pub async fn insert<T: GStore + GStoreMut>(
 
 async fn fetch_vec_rows<T: GStore>(
     storage: &T,
-    table_name: &str,
+    table_name: Option<&str>,
     column_defs: Vec<ColumnDef>,
     columns: &[String],
     source: &Query,

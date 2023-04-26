@@ -1,5 +1,3 @@
-use crate::executor::insert::{fetch_insert_rows, insert};
-
 use {
     super::{validate, validate_column_names, AlterError},
     crate::{
@@ -7,7 +5,8 @@ use {
         data::Schema,
         executor::{
             evaluate_stateless,
-            select::{select, select_with_labels},
+            insert::{fetch_insert_rows, insert},
+            select::select_with_labels,
         },
         prelude::{DataType, Value},
         result::{IntoControlFlow, Result},
@@ -161,10 +160,36 @@ pub async fn create_table<T: GStore + GStoreMut>(
         }
     }
 
+    let rows = match source.as_deref() {
+        Some(_) => {
+            let columns = target_columns_defs
+                .clone()
+                .map(|column_defs| {
+                    column_defs
+                        .into_iter()
+                        .map(|column_def| column_def.name)
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default();
+
+            let rows = fetch_insert_rows(
+                storage,
+                None,
+                &columns,
+                source.as_deref().unwrap(),
+                target_columns_defs.clone(),
+            )
+            .await?;
+
+            Some(rows)
+        }
+        None => None,
+    };
+
     if storage.fetch_schema(target_table_name).await?.is_none() {
         let schema = Schema {
             table_name: target_table_name.to_owned(),
-            column_defs: target_columns_defs.clone(),
+            column_defs: target_columns_defs,
             indexes: vec![],
             engine: engine.clone(),
         };
@@ -174,19 +199,8 @@ pub async fn create_table<T: GStore + GStoreMut>(
         return Err(AlterError::TableAlreadyExists(target_table_name.to_owned()).into());
     }
 
-    match source {
-        Some(query) => {
-            let columns = target_columns_defs
-                .map(|column_defs| {
-                    column_defs
-                        .into_iter()
-                        .map(|column_def| column_def.name)
-                        .collect::<Vec<_>>()
-                })
-                .unwrap_or_default();
-
-            let rows = fetch_insert_rows(storage, target_table_name, &columns, query).await?;
-
+    match (source, rows) {
+        (Some(_), Some(rows)) => {
             insert(storage, target_table_name, rows).await.map(|_| ())
             // let rows = select(storage, query, None)
             //     .await?
@@ -199,7 +213,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
             //     .await
             //     .map(|_| ())
         }
-        None => Ok(()),
+        _ => Ok(()),
     }
 }
 
