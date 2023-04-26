@@ -10,6 +10,7 @@ use {
 pub enum Function {
     Abs(Expr),
     Lower(Expr),
+    Initcap(Expr),
     Upper(Expr),
     Left {
         expr: Expr,
@@ -40,6 +41,10 @@ pub enum Function {
     Concat(Vec<Expr>),
     ConcatWs {
         separator: Expr,
+        exprs: Vec<Expr>,
+    },
+    Custom {
+        name: String,
         exprs: Vec<Expr>,
     },
     IfNull {
@@ -149,12 +154,27 @@ pub enum Function {
         expr: Expr,
         value: Expr,
     },
+    Prepend {
+        expr: Expr,
+        value: Expr,
+    },
+    GetX(Expr),
+    GetY(Expr),
+    Point {
+        x: Expr,
+        y: Expr,
+    },
+    CalcDistance {
+        geometry1: Expr,
+        geometry2: Expr,
+    },
 }
 
 impl ToSql for Function {
     fn to_sql(&self) -> String {
         match self {
             Function::Abs(e) => format!("ABS({})", e.to_sql()),
+            Function::Initcap(e) => format!("INITCAP({})", e.to_sql()),
             Function::Lower(e) => format!("LOWER({})", e.to_sql()),
             Function::Upper(e) => format!("UPPER({})", e.to_sql()),
             Function::Left { expr, size } => format!("LEFT({}, {})", expr.to_sql(), size.to_sql()),
@@ -193,6 +213,14 @@ impl ToSql for Function {
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("CONCAT({items})")
+            }
+            Function::Custom { name, exprs } => {
+                let exprs = exprs
+                    .iter()
+                    .map(ToSql::to_sql)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("{name}({exprs})")
             }
             Function::ConcatWs { separator, exprs } => {
                 let exprs = exprs
@@ -324,6 +352,26 @@ impl ToSql for Function {
                     value = value.to_sql()
                 )
             }
+            Function::Prepend { expr, value } => {
+                format! {
+                    "PREPEND({items}, {value})",
+                    items = expr.to_sql(),
+                    value = value.to_sql()
+                }
+            }
+            Function::GetX(e) => format!("GET_X({})", e.to_sql()),
+            Function::GetY(e) => format!("GET_Y({})", e.to_sql()),
+            Function::Point { x, y } => format!("POINT({}, {})", x.to_sql(), y.to_sql()),
+            Function::CalcDistance {
+                geometry1,
+                geometry2,
+            } => {
+                format!(
+                    "CALC_DISTANCE({}, {})",
+                    geometry1.to_sql(),
+                    geometry2.to_sql()
+                )
+            }
         }
     }
 }
@@ -389,6 +437,14 @@ mod tests {
         assert_eq!(
             "LOWER('Bye')",
             &Expr::Function(Box::new(Function::Lower(Expr::Literal(
+                AstLiteral::QuotedString("Bye".to_owned())
+            ))))
+            .to_sql()
+        );
+
+        assert_eq!(
+            "INITCAP('Bye')",
+            &Expr::Function(Box::new(Function::Initcap(Expr::Literal(
                 AstLiteral::QuotedString("Bye".to_owned())
             ))))
             .to_sql()
@@ -499,7 +555,37 @@ mod tests {
         );
 
         assert_eq!(
-            r#"CONCAT("Tic", "tac", "toe")"#,
+            r#"CUSTOM_FUNC("Tic", 1, "num", 'abc')"#,
+            &Expr::Function(Box::new(Function::Custom {
+                name: "CUSTOM_FUNC".to_owned(),
+                exprs: vec![
+                    Expr::Identifier("Tic".to_owned()),
+                    Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
+                    Expr::Identifier("num".to_owned()),
+                    Expr::Literal(AstLiteral::QuotedString("abc".to_owned()))
+                ]
+            }))
+            .to_sql()
+        );
+        assert_eq!(
+            r#"CUSTOM_FUNC("num")"#,
+            &Expr::Function(Box::new(Function::Custom {
+                name: "CUSTOM_FUNC".to_owned(),
+                exprs: vec![Expr::Identifier("num".to_owned())]
+            }))
+            .to_sql()
+        );
+        assert_eq!(
+            "CUSTOM_FUNC()",
+            &Expr::Function(Box::new(Function::Custom {
+                name: "CUSTOM_FUNC".to_owned(),
+                exprs: vec![]
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            "CONCAT(\"Tic\", \"tac\", \"toe\")",
             &Expr::Function(Box::new(Function::Concat(vec![
                 Expr::Identifier("Tic".to_owned()),
                 Expr::Identifier("tac".to_owned()),
@@ -943,7 +1029,56 @@ mod tests {
                 value: Expr::Identifier("value".to_owned())
             }))
             .to_sql()
-        )
+        );
+
+        assert_eq!(
+            r#"PREPEND("list", "value")"#,
+            &Expr::Function(Box::new(Function::Prepend {
+                expr: Expr::Identifier("list".to_owned()),
+                value: Expr::Identifier("value".to_owned())
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            "GET_X(\"point\")",
+            &Expr::Function(Box::new(Function::GetX(Expr::Identifier(
+                "point".to_owned()
+            ))))
+            .to_sql()
+        );
+
+        assert_eq!(
+            "GET_Y(\"point\")",
+            &Expr::Function(Box::new(Function::GetY(Expr::Identifier(
+                "point".to_owned()
+            ))))
+            .to_sql()
+        );
+
+        assert_eq!(
+            "POINT(0.1, 0.2)",
+            &Expr::Function(Box::new(Function::Point {
+                x: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("0.1").unwrap())),
+                y: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("0.2").unwrap()))
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            "CALC_DISTANCE(POINT(1.1, 2.3), POINT(1.4, 3.6))",
+            &Expr::Function(Box::new(Function::CalcDistance {
+                geometry1: Expr::Function(Box::new(Function::Point {
+                    x: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1.1").unwrap())),
+                    y: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2.3").unwrap()))
+                })),
+                geometry2: Expr::Function(Box::new(Function::Point {
+                    x: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1.4").unwrap())),
+                    y: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("3.6").unwrap()))
+                }))
+            }))
+            .to_sql()
+        );
     }
 
     #[test]

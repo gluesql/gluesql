@@ -29,4 +29,5 @@ pub enum DataType {
     Map,
     List,
     Decimal,
+    Point,
 }

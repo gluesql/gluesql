@@ -1,6 +1,8 @@
 use {
     super::{
-        alter::{alter_table, create_index, create_table, drop_table},
+        alter::{
+            alter_table, create_index, create_table, delete_function, drop_table, insert_function,
+        },
         fetch::{fetch, fetch_columns},
         insert::{
             InsertError, {fetch_insert_rows, insert},
@@ -43,6 +45,7 @@ pub enum Payload {
     Delete(usize),
     Update(usize),
     DropTable,
+    DropFunction,
     AlterTable,
     CreateIndex,
     DropIndex,
@@ -55,6 +58,7 @@ pub enum Payload {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum PayloadVariable {
     Tables(Vec<String>),
+    Functions(Vec<String>),
     Version(String),
 }
 
@@ -342,6 +346,18 @@ async fn execute_inner<T: GStore + GStoreMut>(
 
                 Ok(Payload::ShowVariable(PayloadVariable::Tables(table_names)))
             }
+            Variable::Functions => {
+                let mut function_desc: Vec<_> = storage
+                    .fetch_all_functions()
+                    .await?
+                    .iter()
+                    .map(|f| f.to_str())
+                    .collect();
+                function_desc.sort();
+                Ok(Payload::ShowVariable(PayloadVariable::Functions(
+                    function_desc,
+                )))
+            }
             Variable::Version => {
                 let version = var("CARGO_PKG_VERSION")
                     .unwrap_or_else(|_| env!("CARGO_PKG_VERSION").to_owned());
@@ -350,5 +366,16 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 Ok(payload)
             }
         },
+        Statement::CreateFunction {
+            or_replace,
+            name,
+            args,
+            return_,
+        } => insert_function(storage, name, args, *or_replace, return_)
+            .await
+            .map(|_| Payload::Create),
+        Statement::DropFunction { if_exists, names } => delete_function(storage, names, *if_exists)
+            .await
+            .map(|_| Payload::DropFunction),
     }
 }

@@ -1,5 +1,5 @@
 use {
-    crate::ast::{Aggregate, Expr},
+    crate::ast::{Aggregate, Expr, ToSql},
     serde::{Serialize, Serializer},
     std::fmt::Debug,
     thiserror::Error,
@@ -35,6 +35,9 @@ pub enum EvaluateError {
     #[error("function requires map value: {0}")]
     FunctionRequiresMapValue(String),
 
+    #[error("function requires point value: {0}")]
+    FunctionRequiresPointValue(String),
+
     #[error("value not found: {0}")]
     ValueNotFound(String),
 
@@ -53,11 +56,11 @@ pub enum EvaluateError {
     #[error("text literal required for json map conversion: {0}")]
     TextLiteralRequired(String),
 
-    #[error("unsupported stateless expression: {0:#?}")]
+    #[error("unsupported stateless expression: {}", .0.to_sql())]
     UnsupportedStatelessExpr(Expr),
 
-    #[error("unreachable empty context")]
-    UnreachableEmptyContext,
+    #[error("context is required for identifier evaluation: {}", .0.to_sql())]
+    ContextRequiredForIdentEvaluation(Expr),
 
     #[error("unreachable empty aggregate value: {0:?}")]
     UnreachableEmptyAggregateValue(Aggregate),
@@ -100,6 +103,20 @@ pub enum EvaluateError {
 
     #[error("unsupported evaluate string unary factorial: {0}")]
     UnsupportedUnaryFactorial(String),
+
+    #[error("unsupported custom function in subqueries")]
+    UnsupportedCustomFunction,
+
+    #[error("function args.length not matching: {name}, expected: {expected_minimum} ~ {expected_maximum}, found: {found}")]
+    FunctionArgsLengthNotWithinRange {
+        name: String,
+        expected_minimum: usize,
+        expected_maximum: usize,
+        found: usize,
+    },
+
+    #[error("unsupported function: {0}")]
+    UnsupportedFunction(String),
 }
 
 fn error_serialize<S>(error: &chrono::format::ParseError, serializer: S) -> Result<S::Ok, S::Error>

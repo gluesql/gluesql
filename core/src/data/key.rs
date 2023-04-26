@@ -21,6 +21,9 @@ pub enum KeyError {
 
     #[error("LIST data type cannot be used as Key")]
     ListTypeKeyNotSupported,
+
+    #[error("POINT data type cannot be used as Key")]
+    PointTypeKeyNotSupported,
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug, Serialize, Deserialize)]
@@ -161,6 +164,7 @@ impl TryFrom<Value> for Key {
             Null => Ok(Key::None),
             Map(_) => Err(KeyError::MapTypeKeyNotSupported.into()),
             List(_) => Err(KeyError::ListTypeKeyNotSupported.into()),
+            Point(_) => Err(KeyError::PointTypeKeyNotSupported.into()),
         }
     }
 }
@@ -374,13 +378,14 @@ impl Key {
 mod tests {
     use {
         crate::{
-            data::{Interval, Key, KeyError, Value},
+            data::{Interval, Key, KeyError, Point, Value},
             executor::evaluate_stateless,
             parse_sql::parse_expr,
             result::Result,
             translate::translate_expr,
         },
         chrono::{NaiveDate, NaiveDateTime, NaiveTime},
+        futures::executor::block_on,
         rust_decimal::Decimal,
         std::{cmp::Ordering, collections::HashMap, net::IpAddr, str::FromStr},
     };
@@ -389,7 +394,9 @@ mod tests {
         let parsed = parse_expr(sql).expect(sql);
         let expr = translate_expr(&parsed).expect(sql);
 
-        evaluate_stateless(None, &expr).expect(sql).try_into()
+        block_on(evaluate_stateless(None, &expr))
+            .expect(sql)
+            .try_into()
     }
 
     #[test]
@@ -455,6 +462,10 @@ mod tests {
         assert_eq!(
             convert("EXTRACT(SECOND FROM INTERVAL '8' SECOND)"),
             Ok(Key::I64(8))
+        );
+        assert_eq!(
+            Key::try_from(Value::Point(Point::new(1.0, 2.0))),
+            Err(KeyError::PointTypeKeyNotSupported.into())
         );
     }
 

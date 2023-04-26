@@ -9,9 +9,6 @@ mod primary_key;
 mod schema;
 mod validate;
 
-#[cfg(test)]
-mod mock;
-
 use crate::{ast::Statement, result::Result, store::Store};
 
 pub use {

@@ -92,6 +92,7 @@ impl TryFrom<Value> for JsonValue {
                 .map(|value| value.try_into())
                 .collect::<Result<Vec<JsonValue>>>()
                 .map(|v| v.into()),
+            Value::Point(v) => Ok(v.to_string().into()),
             Value::Null => Ok(JsonValue::Null),
         }
     }
@@ -131,7 +132,7 @@ impl TryFrom<JsonValue> for Value {
 #[cfg(test)]
 mod tests {
     use {
-        crate::data::{value::uuid::parse_uuid, Interval, Value, ValueError},
+        crate::data::{value::uuid::parse_uuid, Interval, Point, Value, ValueError},
         chrono::{NaiveDate, NaiveTime},
         rust_decimal::Decimal,
         serde_json::{json, Number as JsonNumber, Value as JsonValue},
@@ -255,6 +256,10 @@ mod tests {
                 .unwrap()
                 .try_into(),
             Ok(json!([1, 2, { "a": 3 }]))
+        );
+        assert_eq!(
+            Value::Point(Point::new(0.34, 0.56)).try_into(),
+            Ok(JsonValue::String("POINT(0.34 0.56)".to_owned()))
         );
         assert_eq!(Value::Null.try_into(), Ok(JsonValue::Null));
     }

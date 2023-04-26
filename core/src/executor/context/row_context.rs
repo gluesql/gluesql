@@ -1,6 +1,6 @@
 use {
     crate::data::{Row, Value},
-    std::{borrow::Cow, fmt::Debug, rc::Rc},
+    std::{borrow::Cow, collections::HashMap, fmt::Debug, rc::Rc},
 };
 
 #[derive(Debug)]
@@ -10,6 +10,11 @@ pub enum RowContext<'a> {
         row: Cow<'a, Row>,
         next: Option<Rc<RowContext<'a>>>,
     },
+    RefVecData {
+        columns: &'a [String],
+        values: &'a [Value],
+    },
+    RefMapData(&'a HashMap<String, Value>),
     Bridge {
         left: Rc<RowContext<'a>>,
         right: Rc<RowContext<'a>>,
@@ -42,6 +47,11 @@ impl<'a> RowContext<'a> {
             Self::Bridge { left, right } => {
                 left.get_value(target).or_else(|| right.get_value(target))
             }
+            Self::RefVecData { columns, values } => columns
+                .iter()
+                .position(|column| column == target)
+                .and_then(|index| values.get(index)),
+            Self::RefMapData(values) => values.get(target),
         }
     }
 
@@ -68,6 +78,7 @@ impl<'a> RowContext<'a> {
             Self::Bridge { left, right } => left
                 .get_alias_value(target_table_alias, target)
                 .or_else(|| right.get_alias_value(target_table_alias, target)),
+            _ => None,
         }
     }
 
@@ -83,6 +94,7 @@ impl<'a> RowContext<'a> {
             Self::Bridge { left, right } => left
                 .get_alias_entries(alias)
                 .or_else(|| right.get_alias_entries(alias)),
+            _ => None,
         }
     }
 
@@ -103,6 +115,7 @@ impl<'a> RowContext<'a> {
             Self::Bridge { left, right } => {
                 [left.get_all_entries(), right.get_all_entries()].concat()
             }
+            _ => vec![],
         }
     }
 }

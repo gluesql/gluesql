@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use {
     crate::{
         ast_builder::AstBuilderError,
@@ -14,7 +16,7 @@ use {
         translate::TranslateError,
     },
     serde::Serialize,
-    std::{fmt::Debug, ops::ControlFlow},
+    std::fmt::Debug,
     thiserror::Error as ThisError,
 };
 
@@ -78,6 +80,7 @@ pub enum Error {
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
+/// temporary implements
 pub trait IntoControlFlow<T> {
     fn into_control_flow(self) -> ControlFlow<Result<T>, T>;
 }

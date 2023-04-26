@@ -1,5 +1,8 @@
 use {
-    crate::data::{Row, Value},
+    crate::{
+        data::{Row, Value},
+        executor::RowContext,
+    },
     serde::{Deserialize, Serialize},
     std::collections::HashMap,
 };
@@ -37,6 +40,16 @@ impl DataRow {
         match self {
             Self::Vec(values) => values.is_empty(),
             Self::Map(values) => values.is_empty(),
+        }
+    }
+
+    pub fn as_context<'a>(&'a self, columns: Option<&'a [String]>) -> RowContext<'a> {
+        match self {
+            Self::Vec(values) => RowContext::RefVecData {
+                columns: columns.unwrap_or(&[]),
+                values,
+            },
+            Self::Map(values) => RowContext::RefMapData(values),
         }
     }
 }

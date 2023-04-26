@@ -114,14 +114,18 @@ async fn fetch_vec_rows<T: GStore>(
 
     let rows = match &source.body {
         SetExpr::Values(Values(values_list)) => {
-            let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref())?;
-            let rows = values_list.iter().map(|values| {
-                Ok(Row::Vec {
-                    columns: Rc::clone(&labels),
-                    values: fill_values(&column_defs, columns, values)?,
-                })
+            let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref()).await?;
+            let rows = stream::iter(values_list).then(|values| {
+                let column_defs = Rc::clone(&column_defs);
+                let labels = Rc::clone(&labels);
+
+                async move {
+                    Ok(Row::Vec {
+                        columns: labels,
+                        values: fill_values(&column_defs, columns, values).await?,
+                    })
+                }
             });
-            let rows = stream::iter(rows);
             let rows = limit.apply(rows);
             let rows = rows.map(|row| row?.try_into_vec());
 
@@ -190,17 +194,17 @@ async fn fetch_map_rows<T: GStore>(storage: &T, source: &Query) -> Result<Vec<Da
 
     let rows = match &source.body {
         SetExpr::Values(Values(values_list)) => {
-            let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref())?;
-            let rows = values_list.iter().map(|values| {
+            let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref()).await?;
+            let rows = stream::iter(values_list).then(|values| async move {
                 if values.len() > 1 {
                     return Err(InsertError::OnlySingleValueAcceptedForSchemalessRow.into());
                 }
 
-                evaluate_stateless(None, &values[0])?
+                evaluate_stateless(None, &values[0])
+                    .await?
                     .try_into()
                     .map(Row::Map)
             });
-            let rows = stream::iter(rows);
             let rows = limit.apply(rows);
             let rows = rows.map_ok(Into::into);
 
@@ -230,7 +234,7 @@ async fn fetch_map_rows<T: GStore>(storage: &T, source: &Query) -> Result<Vec<Da
     Ok(rows)
 }
 
-fn fill_values(
+async fn fill_values(
     column_defs: &[ColumnDef],
     columns: &[String],
     values: &[Expr],
@@ -263,32 +267,36 @@ fn fill_values(
 
     let column_name_value_list = columns.zip(values.iter()).collect::<Vec<(_, _)>>();
 
-    let values = column_defs
-        .iter()
-        .map(|column_def| {
-            let ColumnDef {
-                name: def_name,
-                data_type,
-                nullable,
-                ..
-            } = column_def;
+    let values = stream::iter(column_defs)
+        .then(|column_def| {
+            let column_name_value_list = &column_name_value_list;
 
-            let value = column_name_value_list
-                .iter()
-                .find(|(name, _)| name == &def_name)
-                .map(|(_, value)| value);
+            async move {
+                let ColumnDef {
+                    name: def_name,
+                    data_type,
+                    nullable,
+                    ..
+                } = column_def;
 
-            match (value, &column_def.default, nullable) {
-                (Some(&expr), _, _) | (None, Some(expr), _) => {
-                    evaluate_stateless(None, expr)?.try_into_value(data_type, *nullable)
-                }
-                (None, None, true) => Ok(Value::Null),
-                (None, None, false) => {
-                    Err(InsertError::LackOfRequiredColumn(def_name.to_owned()).into())
+                let value = column_name_value_list
+                    .iter()
+                    .find(|(name, _)| name == &def_name)
+                    .map(|(_, value)| value);
+
+                match (value, &column_def.default, nullable) {
+                    (Some(&expr), _, _) | (None, Some(expr), _) => evaluate_stateless(None, expr)
+                        .await?
+                        .try_into_value(data_type, *nullable),
+                    (None, None, true) => Ok(Value::Null),
+                    (None, None, false) => {
+                        Err(InsertError::LackOfRequiredColumn(def_name.to_owned()).into())
+                    }
                 }
             }
         })
-        .collect::<Result<Vec<Value>>>()?;
+        .try_collect::<Vec<Value>>()
+        .await?;
 
     Ok(values)
 }

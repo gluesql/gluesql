@@ -6,7 +6,7 @@ use {
     },
     crate::{
         ast::DataType,
-        data::{value::uuid::parse_uuid, BigDecimalExt, Interval, Literal},
+        data::{value::uuid::parse_uuid, BigDecimalExt, Interval, Literal, Point},
         result::{Error, Result},
     },
     chrono::NaiveDate,
@@ -262,7 +262,10 @@ impl Value {
         }
     }
 
-    pub fn try_cast_from_literal(data_type: &DataType, literal: &Literal<'_>) -> Result<Value> {
+    pub async fn try_cast_from_literal(
+        data_type: &DataType,
+        literal: &Literal<'_>,
+    ) -> Result<Value> {
         match (data_type, literal) {
             (DataType::Boolean, Literal::Boolean(v)) => Ok(Value::Bool(*v)),
             (DataType::Boolean, Literal::Text(v)) => match v.to_uppercase().as_str() {
@@ -452,7 +455,7 @@ impl Value {
                 Ok(Value::Str(v.to_owned()))
             }
             (DataType::Interval, Literal::Text(v)) => {
-                Interval::try_from(v.as_ref()).map(Value::Interval)
+                Interval::parse(v.as_ref()).await.map(Value::Interval)
             }
             (DataType::Uuid, Literal::Text(v)) => parse_uuid(v).map(Value::Uuid),
             (DataType::Boolean, Literal::Null)
@@ -490,6 +493,9 @@ impl Value {
             (DataType::Inet, Literal::Text(v)) => IpAddr::from_str(v)
                 .map(Value::Inet)
                 .map_err(|_| ValueError::FailedToParseInetString(v.to_string()).into()),
+            (DataType::Point, Literal::Text(v)) => Point::from_wkt(v)
+                .map(Value::Point)
+                .map_err(|_| ValueError::FailedToParsePoint(v.to_string()).into()),
             (DataType::List, Literal::Text(v)) => Value::parse_json_list(v),
             _ => Err(ValueError::UnimplementedLiteralCast {
                 data_type: data_type.clone(),
@@ -819,6 +825,7 @@ mod tests {
         use {
             crate::{ast::DataType, data::Interval as I},
             chrono::NaiveDate,
+            futures::executor::block_on,
             std::{borrow::Cow, str::FromStr},
         };
 
@@ -836,14 +843,16 @@ mod tests {
 
         macro_rules! test {
             ($to: expr, $from: expr, $expected: expr) => {
-                assert_eq!(Value::try_cast_from_literal(&$to, &$from), Ok($expected))
+                let actual = block_on(Value::try_cast_from_literal(&$to, &$from));
+
+                assert_eq!(actual, Ok($expected))
             };
         }
 
         macro_rules! test_null {
             ($to: expr, $from: expr) => {
                 assert!(matches!(
-                    Value::try_cast_from_literal(&$to, &$from),
+                    block_on(Value::try_cast_from_literal(&$to, &$from)),
                     Ok(Value::Null)
                 ))
             };

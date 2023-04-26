@@ -2,7 +2,7 @@ use {
     super::{EvaluateError, Evaluated},
     crate::{
         ast::{DataType, DateTimeField},
-        data::{Value, ValueError},
+        data::{Point, Value, ValueError},
         result::Result,
     },
     rand::{rngs::StdRng, Rng, SeedableRng},
@@ -48,6 +48,20 @@ macro_rules! eval_to_float {
             }
             _ => {
                 return Err(EvaluateError::FunctionRequiresFloatValue($name).into());
+            }
+        }
+    };
+}
+
+macro_rules! eval_to_point {
+    ($name: expr, $evaluated: expr) => {
+        match $evaluated.try_into()? {
+            Value::Point(v) => v,
+            Value::Null => {
+                return Ok(Evaluated::from(Value::Null));
+            }
+            _ => {
+                return Err(EvaluateError::FunctionRequiresPointValue($name).into());
             }
         }
     };
@@ -101,6 +115,23 @@ pub fn lower(name: String, expr: Evaluated<'_>) -> Result<Evaluated> {
     Ok(Evaluated::from(Value::Str(
         eval_to_str!(name, expr).to_lowercase(),
     )))
+}
+
+pub fn initcap(name: String, expr: Evaluated<'_>) -> Result<Evaluated> {
+    let string = eval_to_str!(name, expr);
+    let string = string
+        .chars()
+        .scan(true, |state, c| {
+            let c = if *state {
+                c.to_ascii_uppercase()
+            } else {
+                c.to_ascii_lowercase()
+            };
+            *state = !c.is_alphanumeric();
+            Some(c)
+        })
+        .collect();
+    Ok(Evaluated::from(Value::Str(string)))
 }
 
 pub fn upper(name: String, expr: Evaluated<'_>) -> Result<Evaluated> {
@@ -424,6 +455,19 @@ pub fn append<'a>(expr: Evaluated<'_>, value: Evaluated<'_>) -> Result<Evaluated
     }
 }
 
+pub fn prepend<'a>(expr: Evaluated<'_>, value: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let expr: Value = expr.try_into()?;
+    let value: Value = value.try_into()?;
+
+    match (expr, value) {
+        (Value::List(mut l), v) => {
+            l.insert(0, v);
+            Ok(Evaluated::Value(Value::List(l)))
+        }
+        _ => Err(EvaluateError::ListTypeRequired.into()),
+    }
+}
+
 // --- etc ---
 
 pub fn unwrap<'a>(
@@ -572,10 +616,38 @@ pub fn find_idx<'a>(
     .map(Evaluated::from)
 }
 
-pub fn cast<'a>(expr: Evaluated<'a>, data_type: &DataType) -> Result<Evaluated<'a>> {
-    expr.cast(data_type)
+pub async fn cast<'a>(expr: Evaluated<'a>, data_type: &DataType) -> Result<Evaluated<'a>> {
+    expr.cast(data_type).await
 }
 
 pub fn extract<'a>(field: &DateTimeField, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
     Ok(Evaluated::from(Value::try_from(expr)?.extract(field)?))
+}
+
+pub fn point<'a>(x: Evaluated<'_>, y: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let x = eval_to_float!("point".to_owned(), x);
+    let y = eval_to_float!("point".to_owned(), y);
+
+    Ok(Evaluated::from(Value::Point(Point::new(x, y))))
+}
+
+pub fn get_x<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    match expr.try_into()? {
+        Value::Point(v) => Ok(Evaluated::from(Value::F64(v.x))),
+        _ => Err(EvaluateError::FunctionRequiresPointValue(name).into()),
+    }
+}
+
+pub fn get_y<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    match expr.try_into()? {
+        Value::Point(v) => Ok(Evaluated::from(Value::F64(v.y))),
+        _ => Err(EvaluateError::FunctionRequiresPointValue(name).into()),
+    }
+}
+
+pub fn calc_distance<'a>(x: Evaluated<'_>, y: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let x = eval_to_point!("calc_distance".to_owned(), x);
+    let y = eval_to_point!("calc_distance".to_owned(), y);
+
+    Ok(Evaluated::from(Value::F64(Point::calc_distance(&x, &y))))
 }

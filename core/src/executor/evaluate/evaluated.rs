@@ -242,15 +242,12 @@ impl<'a> Evaluated<'a> {
         .map(Evaluated::from)
     }
 
-    pub fn cast(self, data_type: &DataType) -> Result<Evaluated<'a>> {
-        let cast_literal = |literal: &Literal| Value::try_cast_from_literal(data_type, literal);
-        let cast_value = |value: &Value| value.cast(data_type);
-
+    pub async fn cast(self, data_type: &DataType) -> Result<Evaluated<'a>> {
         match self {
-            Evaluated::Literal(value) => cast_literal(&value),
-            Evaluated::Value(value) => cast_value(&value),
+            Evaluated::Literal(literal) => Value::try_cast_from_literal(data_type, &literal).await,
+            Evaluated::Value(value) => value.cast(data_type).await,
             Evaluated::StrSlice { source, range } => {
-                cast_value(&Value::Str(source[range].to_owned()))
+                Value::Str(source[range].to_owned()).cast(data_type).await
             }
         }
         .map(Evaluated::from)
