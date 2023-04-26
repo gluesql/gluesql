@@ -52,11 +52,6 @@ pub async fn fetch_insert_rows<T: GStore + GStoreMut>(
     source: &Query,
     column_defs: Option<Vec<ColumnDef>>,
 ) -> Result<RowsData> {
-    // let Schema { column_defs, .. } = storage
-    //     .fetch_schema(table_name)
-    //     .await?
-    //     .ok_or_else(|| InsertError::TableNotFound(table_name.to_owned()))?;
-
     match column_defs {
         Some(column_defs) => {
             fetch_vec_rows(storage, table_name, column_defs, columns, source).await
