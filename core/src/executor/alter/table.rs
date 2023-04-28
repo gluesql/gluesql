@@ -85,7 +85,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
                 .as_ref()
                 .map(|column_defs| {
                     column_defs
-                        .into_iter()
+                        .iter()
                         .map(|column_def| column_def.name.clone())
                         .collect::<Vec<_>>()
                 })
