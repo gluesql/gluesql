@@ -22,7 +22,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
     source: &Option<Box<Query>>,
     engine: &Option<String>,
 ) -> Result<()> {
-    let target_columns_defs = match source.as_deref() {
+    let target_column_defs = match source.as_deref() {
         Some(query) => {
             let (labels, mut rows) = select_with_labels(storage, query, None).await?;
 
@@ -71,7 +71,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
         None => None,
     };
 
-    if let Some(column_defs) = target_columns_defs.as_deref() {
+    if let Some(column_defs) = target_column_defs.as_deref() {
         validate_column_names(column_defs)?;
 
         for column_def in column_defs {
@@ -81,7 +81,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
 
     let rows = match source.as_deref() {
         Some(_) => {
-            let columns = target_columns_defs
+            let columns = target_column_defs
                 .clone()
                 .map(|column_defs| {
                     column_defs
@@ -96,7 +96,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
                 None,
                 &columns,
                 source.as_deref().unwrap(),
-                target_columns_defs.clone(),
+                target_column_defs.clone(),
             )
             .await?;
 
@@ -108,7 +108,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
     if storage.fetch_schema(target_table_name).await?.is_none() {
         let schema = Schema {
             table_name: target_table_name.to_owned(),
-            column_defs: target_columns_defs,
+            column_defs: target_column_defs,
             indexes: vec![],
             engine: engine.clone(),
         };
