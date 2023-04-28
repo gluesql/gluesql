@@ -49,14 +49,12 @@ pub async fn fetch_insert_rows<T: GStore + GStoreMut>(
     storage: &mut T,
     table_name: Option<&str>,
     columns: &[String],
-    source: &Query,
-    column_defs: Option<Vec<ColumnDef>>,
+    query: &Query,
+    column_defs: Option<&Vec<ColumnDef>>,
 ) -> Result<RowsData> {
     match column_defs {
-        Some(column_defs) => {
-            fetch_vec_rows(storage, table_name, column_defs, columns, source).await
-        }
-        None => fetch_map_rows(storage, source).await.map(RowsData::Append),
+        Some(column_defs) => fetch_vec_rows(storage, table_name, column_defs, columns, query).await,
+        None => fetch_map_rows(storage, query).await.map(RowsData::Append),
     }
 }
 
@@ -88,7 +86,7 @@ pub async fn insert<T: GStore + GStoreMut>(
 async fn fetch_vec_rows<T: GStore>(
     storage: &T,
     table_name: Option<&str>,
-    column_defs: Vec<ColumnDef>,
+    column_defs: &Vec<ColumnDef>,
     columns: &[String],
     source: &Query,
 ) -> Result<RowsData> {

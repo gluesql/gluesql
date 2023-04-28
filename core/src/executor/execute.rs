@@ -151,8 +151,14 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 .await?
                 .ok_or_else(|| InsertError::TableNotFound(table_name.to_owned()))?;
 
-            let rows =
-                fetch_insert_rows(storage, Some(table_name), columns, source, column_defs).await?;
+            let rows = fetch_insert_rows(
+                storage,
+                Some(table_name),
+                columns,
+                source,
+                column_defs.as_ref(),
+            )
+            .await?;
 
             insert(storage, table_name, rows).await.map(Payload::Insert)
         }

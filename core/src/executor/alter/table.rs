@@ -80,25 +80,20 @@ pub async fn create_table<T: GStore + GStoreMut>(
     }
 
     let rows = match source.as_deref() {
-        Some(_) => {
+        Some(query) => {
             let columns = target_column_defs
-                .clone()
+                .as_ref()
                 .map(|column_defs| {
                     column_defs
                         .into_iter()
-                        .map(|column_def| column_def.name)
+                        .map(|column_def| column_def.name.clone())
                         .collect::<Vec<_>>()
                 })
                 .unwrap_or_default();
 
-            let rows = fetch_insert_rows(
-                storage,
-                None,
-                &columns,
-                source.as_deref().unwrap(),
-                target_column_defs.clone(),
-            )
-            .await?;
+            let rows =
+                fetch_insert_rows(storage, None, &columns, query, target_column_defs.as_ref())
+                    .await?;
 
             Some(rows)
         }
