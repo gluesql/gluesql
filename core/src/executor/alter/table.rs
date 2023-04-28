@@ -24,7 +24,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
 ) -> Result<()> {
     let target_columns_defs = match source.as_deref() {
         Some(query) => {
-            let (labels, mut rows) = select_with_labels(storage, &query, None).await?;
+            let (labels, mut rows) = select_with_labels(storage, query, None).await?;
 
             match labels {
                 Some(labels) => {
