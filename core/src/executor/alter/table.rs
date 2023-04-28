@@ -1,14 +1,13 @@
 use {
     super::{validate, validate_column_names, AlterError},
     crate::{
-        ast::{ColumnDef, Query, SetExpr, Values},
+        ast::{ColumnDef, Query},
         data::Schema,
         executor::{
-            evaluate_stateless,
             insert::{fetch_insert_rows, insert},
             select::select_with_labels,
         },
-        prelude::{DataType, Value},
+        prelude::DataType,
         result::Result,
         store::{GStore, GStoreMut},
     },
@@ -24,103 +23,50 @@ pub async fn create_table<T: GStore + GStoreMut>(
     engine: &Option<String>,
 ) -> Result<()> {
     let target_columns_defs = match source.as_deref() {
-        Some(Query {
-            body,
-            order_by,
-            limit,
-            offset,
-        }) => match body {
-            SetExpr::Select(select_query) => {
-                let query = Query {
-                    body: SetExpr::Select(select_query.clone()),
-                    order_by: order_by.clone(),
-                    limit: limit.clone(),
-                    offset: offset.clone(),
-                };
+        Some(query) => {
+            let (labels, mut rows) = select_with_labels(storage, &query, None).await?;
 
-                let (labels, mut rows) = select_with_labels(storage, &query, None).await?;
+            match labels {
+                Some(labels) => {
+                    let first_len = labels.len();
+                    let mut column_types = vec![None; first_len];
 
-                match labels {
-                    Some(labels) => {
-                        let first_len = labels.len();
-                        let mut column_types = vec![None; first_len];
-
-                        while let Some(row) = rows.next().await {
-                            let row = row?;
-                            for (i, (_, value)) in row.iter().enumerate() {
-                                if column_types[i].is_some() {
-                                    continue;
-                                }
-
-                                column_types[i] = value.get_type();
+                    while let Some(row) = rows.next().await {
+                        let row = row?;
+                        for (i, (_, value)) in row.iter().enumerate() {
+                            if column_types[i].is_some() {
+                                continue;
                             }
 
-                            if column_types.iter().all(Option::is_some) {
-                                break;
-                            }
+                            column_types[i] = value.get_type();
                         }
 
-                        let column_defs = column_types
-                            .iter()
-                            .map(|column_type| match column_type {
-                                Some(column_type) => column_type.to_owned(),
-                                None => DataType::Text,
-                            })
-                            .zip(labels.into_iter())
-                            .map(|(data_type, name)| ColumnDef {
-                                name,
-                                data_type,
-                                nullable: true,
-                                default: None,
-                                unique: None,
-                            })
-                            .collect::<Vec<_>>();
-
-                        Some(column_defs)
-                    }
-                    None => None,
-                }
-            }
-            SetExpr::Values(Values(values_list)) => {
-                let first_len = values_list[0].len();
-                let mut column_types = vec![None; first_len];
-
-                for exprs in values_list {
-                    for (i, expr) in exprs.iter().enumerate() {
-                        if column_types[i].is_some() {
-                            continue;
+                        if column_types.iter().all(Option::is_some) {
+                            break;
                         }
-
-                        column_types[i] = evaluate_stateless(None, expr)
-                            .await
-                            .and_then(Value::try_from)
-                            .map(|value| value.get_type())?;
                     }
 
-                    if column_types.iter().all(Option::is_some) {
-                        break;
-                    }
+                    let column_defs = column_types
+                        .iter()
+                        .map(|column_type| match column_type {
+                            Some(column_type) => column_type.to_owned(),
+                            None => DataType::Text,
+                        })
+                        .zip(labels.into_iter())
+                        .map(|(data_type, name)| ColumnDef {
+                            name,
+                            data_type,
+                            nullable: true,
+                            default: None,
+                            unique: None,
+                        })
+                        .collect::<Vec<_>>();
+
+                    Some(column_defs)
                 }
-
-                let column_defs = column_types
-                    .iter()
-                    .map(|column_type| match column_type {
-                        Some(column_type) => column_type.to_owned(),
-                        None => DataType::Text,
-                    })
-                    .enumerate()
-                    .map(|(i, data_type)| ColumnDef {
-                        name: format!("column{}", i + 1),
-                        data_type,
-                        nullable: true,
-                        default: None,
-                        unique: None,
-                    })
-                    .collect::<Vec<_>>();
-
-                Some(column_defs)
+                None => None,
             }
-        },
+        }
         None if column_defs.is_some() => column_defs.map(<[ColumnDef]>::to_vec),
         None => None,
     };
