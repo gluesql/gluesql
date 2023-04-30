@@ -101,7 +101,7 @@ async fn sort_stateless(rows: Vec<Row>, order_by: &[OrderByExpr]) -> Result<Vec<
 
 #[async_recursion(?Send)]
 pub async fn select_with_labels<'a, T: GStore>(
-    storage: &'a T,
+    storage: Option<&'a T>,
     query: &'a Query,
     filter_context: Option<Rc<RowContext<'a>>>,
 ) -> Result<(Option<Vec<String>>, impl Stream<Item = Result<Row>> + 'a)> {
@@ -204,7 +204,7 @@ pub async fn select_with_labels<'a, T: GStore>(
 }
 
 pub async fn select<'a, T: GStore>(
-    storage: &'a T,
+    storage: Option<&'a T>,
     query: &'a Query,
     filter_context: Option<Rc<RowContext<'a>>>,
 ) -> Result<impl Stream<Item = Result<Row>> + 'a> {

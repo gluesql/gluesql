@@ -9,11 +9,13 @@ use {
 };
 
 pub async fn create_index<T: GStore + GStoreMut>(
-    storage: &mut T,
+    storage: Option<&mut T>,
     table_name: &str,
     index_name: &str,
     column: &OrderByExpr,
 ) -> Result<()> {
+    let storage = storage.ok_or(AlterError::StatelessOperation)?;
+
     let expr = &column.expr;
     let Schema { column_defs, .. } = storage
         .fetch_schema(table_name)

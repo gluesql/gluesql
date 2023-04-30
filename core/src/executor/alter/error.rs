@@ -47,4 +47,7 @@ pub enum AlterError {
 
     #[error("non-default argument should not follow the default argument")]
     NonDefaultArgumentFollowsDefaultArgument,
+
+    #[error("alter table unsupported in stateless operation")]
+    StatelessOperation
 }

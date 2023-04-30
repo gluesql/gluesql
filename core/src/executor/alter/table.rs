@@ -12,13 +12,15 @@ use {
 };
 
 pub async fn create_table<T: GStore + GStoreMut>(
-    storage: &mut T,
+    storage: Option<&mut T>,
     target_table_name: &str,
     column_defs: Option<&[ColumnDef]>,
     if_not_exists: bool,
     source: &Option<Box<Query>>,
     engine: &Option<String>,
 ) -> Result<()> {
+    let storage = storage.ok_or(AlterError::StatelessOperation)?;
+
     let target_columns_defs = match source.as_deref() {
         Some(Query { body, .. }) => match body {
             SetExpr::Select(select_query) => match &select_query.from.relation {
@@ -115,7 +117,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
 
     match source {
         Some(query) => {
-            let rows = select(storage, query, None)
+            let rows = select(Some(storage), query, None)
                 .await?
                 .map_ok(Into::into)
                 .try_collect()
@@ -131,10 +133,12 @@ pub async fn create_table<T: GStore + GStoreMut>(
 }
 
 pub async fn drop_table<T: GStore + GStoreMut>(
-    storage: &mut T,
+    storage: Option<&mut T>,
     table_names: &[String],
     if_exists: bool,
 ) -> Result<()> {
+    let storage = storage.ok_or(AlterError::StatelessOperation)?;
+
     for table_name in table_names {
         let schema = storage.fetch_schema(table_name).await?;
 

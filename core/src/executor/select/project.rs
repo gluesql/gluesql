@@ -12,14 +12,14 @@ use {
 };
 
 pub struct Project<'a, T: GStore> {
-    storage: &'a T,
+    storage: Option<&'a T>,
     context: Option<Rc<RowContext<'a>>>,
     fields: &'a [SelectItem],
 }
 
 impl<'a, T: GStore> Project<'a, T> {
     pub fn new(
-        storage: &'a T,
+        storage: Option<&'a T>,
         context: Option<Rc<RowContext<'a>>>,
         fields: &'a [SelectItem],
     ) -> Self {

@@ -158,7 +158,7 @@ impl AggrValue {
 }
 
 pub struct State<'a, T: GStore> {
-    storage: &'a T,
+    storage: Option<&'a T>,
     index: usize,
     group: Group,
     values: IndexMap<(Group, &'a Aggregate), (usize, AggrValue)>,
@@ -167,7 +167,7 @@ pub struct State<'a, T: GStore> {
 }
 
 impl<'a, T: GStore> State<'a, T> {
-    pub fn new(storage: &'a T) -> Self {
+    pub fn new(storage: Option<&'a T>) -> Self {
         State {
             storage,
             index: 0,

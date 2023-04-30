@@ -20,7 +20,7 @@ use {
 };
 
 pub struct Join<'a, T: GStore> {
-    storage: &'a T,
+    storage: Option<&'a T>,
     join_clauses: &'a [AstJoin],
     filter_context: Option<Rc<RowContext<'a>>>,
 }
@@ -30,7 +30,7 @@ type Joined<'a> = Pin<Box<dyn Stream<Item = Result<JoinItem<'a>>> + 'a>>;
 
 impl<'a, T: GStore> Join<'a, T> {
     pub fn new(
-        storage: &'a T,
+        storage: Option<&'a T>,
         join_clauses: &'a [AstJoin],
         filter_context: Option<Rc<RowContext<'a>>>,
     ) -> Self {
@@ -59,7 +59,7 @@ impl<'a, T: GStore> Join<'a, T> {
 }
 
 async fn join<'a, T: GStore>(
-    storage: &'a T,
+    storage: Option<&'a T>,
     filter_context: Option<Rc<RowContext<'a>>>,
     ast_join: &'a AstJoin,
     left_rows: impl Stream<Item = Result<JoinItem<'a>>> + 'a,
@@ -222,7 +222,7 @@ enum JoinExecutor<'a> {
 
 impl<'a> JoinExecutor<'a> {
     async fn new<T: GStore>(
-        storage: &'a T,
+        storage: Option<&'a T>,
         relation: &TableFactor,
         filter_context: Option<Rc<RowContext<'a>>>,
         ast_join_executor: &'a AstJoinExecutor,
@@ -281,7 +281,7 @@ impl<'a> JoinExecutor<'a> {
 }
 
 async fn check_where_clause<'a, 'b, T: GStore>(
-    storage: &'a T,
+    storage: Option<&'a T>,
     table_alias: &'a str,
     filter_context: Option<Rc<RowContext<'a>>>,
     project_context: Option<Rc<RowContext<'a>>>,

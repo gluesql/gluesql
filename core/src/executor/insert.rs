@@ -38,6 +38,9 @@ pub enum InsertError {
 
     #[error("map type required: {0}")]
     MapTypeValueRequired(String),
+
+    #[error("insert not supported in stateless operation")]
+    StatelessOperation
 }
 
 enum RowsData {
@@ -46,11 +49,13 @@ enum RowsData {
 }
 
 pub async fn insert<T: GStore + GStoreMut>(
-    storage: &mut T,
+    storage: Option<&mut T>,
     table_name: &str,
     columns: &[String],
     source: &Query,
 ) -> Result<usize> {
+    let storage = storage.ok_or(InsertError::StatelessOperation)?;
+
     let Schema { column_defs, .. } = storage
         .fetch_schema(table_name)
         .await?
@@ -58,9 +63,9 @@ pub async fn insert<T: GStore + GStoreMut>(
 
     let rows = match column_defs {
         Some(column_defs) => {
-            fetch_vec_rows(storage, table_name, column_defs, columns, source).await
+            fetch_vec_rows(Some(storage), table_name, column_defs, columns, source).await
         }
-        None => fetch_map_rows(storage, source).await.map(RowsData::Append),
+        None => fetch_map_rows(Some(storage), source).await.map(RowsData::Append),
     }?;
 
     match rows {
@@ -84,7 +89,7 @@ pub async fn insert<T: GStore + GStoreMut>(
 }
 
 async fn fetch_vec_rows<T: GStore>(
-    storage: &T,
+    storage: Option<&T>,
     table_name: &str,
     column_defs: Vec<ColumnDef>,
     columns: &[String],
@@ -178,7 +183,7 @@ async fn fetch_vec_rows<T: GStore>(
     }
 }
 
-async fn fetch_map_rows<T: GStore>(storage: &T, source: &Query) -> Result<Vec<DataRow>> {
+async fn fetch_map_rows<T: GStore>(storage: Option<&T>, source: &Query) -> Result<Vec<DataRow>> {
     #[derive(futures_enum::Stream)]
     enum Rows<I1, I2> {
         Values(I1),

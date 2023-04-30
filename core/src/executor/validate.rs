@@ -25,6 +25,9 @@ pub enum ValidateError {
 
     #[error("duplicate entry '{0:?}' for primary_key field")]
     DuplicateEntryOnPrimaryKeyField(Key),
+
+    #[error("unsupported in stateless operation")]
+    StatelessOperation
 }
 
 pub enum ColumnValidation<'column_def> {
@@ -82,7 +85,7 @@ impl UniqueConstraint {
 }
 
 pub async fn validate_unique<T: Store>(
-    storage: &T,
+    storage: Option<&T>,
     table_name: &str,
     column_validation: ColumnValidation<'_>,
     row_iter: impl Iterator<Item = &[Value]> + Clone,
@@ -127,7 +130,7 @@ pub async fn validate_unique<T: Store>(
             {
                 let key = primary_key?;
 
-                if storage.fetch_data(table_name, &key).await?.is_some() {
+                if storage.ok_or(ValidateError::StatelessOperation)?.fetch_data(table_name, &key).await?.is_some() {
                     return Err(ValidateError::DuplicateEntryOnPrimaryKeyField(key).into());
                 }
             }
@@ -141,7 +144,7 @@ pub async fn validate_unique<T: Store>(
             }
 
             let unique_constraints = &unique_constraints;
-            storage.scan_data(table_name).await?.try_for_each(|result| {
+            storage.ok_or(ValidateError::ValidationError)?.scan_data(table_name).await?.try_for_each(|result| {
                 let (_, data_row) = result?;
                 let values = match data_row {
                     DataRow::Vec(values) => values,

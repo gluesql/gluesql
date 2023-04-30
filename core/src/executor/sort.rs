@@ -24,14 +24,14 @@ pub enum SortError {
 }
 
 pub struct Sort<'a, T: GStore> {
-    storage: &'a T,
+    storage: Option<&'a T>,
     context: Option<Rc<RowContext<'a>>>,
     order_by: &'a [OrderByExpr],
 }
 
 impl<'a, T: GStore> Sort<'a, T> {
     pub fn new(
-        storage: &'a T,
+        storage: Option<&'a T>,
         context: Option<Rc<RowContext<'a>>>,
         order_by: &'a [OrderByExpr],
     ) -> Self {

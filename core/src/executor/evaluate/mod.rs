@@ -26,12 +26,12 @@ pub use {error::EvaluateError, evaluated::Evaluated};
 
 #[async_recursion(?Send)]
 pub async fn evaluate<'a, 'b: 'a, 'c: 'a, T: GStore>(
-    storage: &'a T,
+    storage: Option<&'a T>,
     context: Option<Rc<RowContext<'b>>>,
     aggregated: Option<Rc<HashMap<&'c Aggregate, Value>>>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>> {
-    evaluate_inner(Some(storage), context, aggregated, expr).await
+    evaluate_inner(storage, context, aggregated, expr).await
 }
 
 pub async fn evaluate_stateless<'a, 'b: 'a>(
@@ -90,7 +90,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let storage =
                 storage.ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(expr.clone()))?;
 
-            let evaluations = select(storage, query, context.as_ref().map(Rc::clone))
+            let evaluations = select(Some(storage), query, context.as_ref().map(Rc::clone))
                 .await?
                 .map(|row| {
                     let value = match row? {
@@ -170,7 +170,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 storage.ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(expr.clone()))?;
             let target = eval(target_expr).await?;
 
-            select(storage, subquery, context)
+            select(Some(storage), subquery, context)
                 .await?
                 .map(|row| {
                     let value = match row? {
@@ -240,7 +240,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let storage =
                 storage.ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(expr.clone()))?;
 
-            select(storage, subquery, context)
+            select(Some(storage), subquery, context)
                 .await?
                 .try_next()
                 .await

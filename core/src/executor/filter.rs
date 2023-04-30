@@ -11,7 +11,7 @@ use {
 };
 
 pub struct Filter<'a, T: GStore> {
-    storage: &'a T,
+    storage: Option<&'a T>,
     where_clause: Option<&'a Expr>,
     context: Option<Rc<RowContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
@@ -19,7 +19,7 @@ pub struct Filter<'a, T: GStore> {
 
 impl<'a, T: GStore> Filter<'a, T> {
     pub fn new(
-        storage: &'a T,
+        storage: Option<&'a T>,
         where_clause: Option<&'a Expr>,
         context: Option<Rc<RowContext<'a>>>,
         aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
@@ -52,7 +52,7 @@ impl<'a, T: GStore> Filter<'a, T> {
 }
 
 pub async fn check_expr<'a, T: GStore>(
-    storage: &'a T,
+    storage: Option<&'a T>,
     context: Option<Rc<RowContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
     expr: &'a Expr,

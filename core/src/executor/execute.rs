@@ -28,6 +28,8 @@ use {
 pub enum ExecuteError {
     #[error("table not found: {0}")]
     TableNotFound(String),
+    #[error("option")]
+    Optional,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -68,11 +70,11 @@ pub async fn execute<T: GStore + GStoreMut>(
         statement,
         Statement::StartTransaction | Statement::Rollback | Statement::Commit
     ) {
-        return execute_inner(storage, statement).await;
+        return execute_inner(Some(storage), statement).await;
     }
 
     let autocommit = storage.begin(true).await?;
-    let result = execute_inner(storage, statement).await;
+    let result = execute_inner(Some(storage), statement).await;
 
     if !autocommit {
         return result;
@@ -89,9 +91,11 @@ pub async fn execute<T: GStore + GStoreMut>(
 }
 
 async fn execute_inner<T: GStore + GStoreMut>(
-    storage: &mut T,
+    storage: Option<&mut T>,
     statement: &Statement,
 ) -> Result<Payload> {
+    let storage = storage.ok_or(ExecuteError::Optional)?;
+
     match statement {
         //- Modification
         //-- Tables
@@ -103,7 +107,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
             engine,
             ..
         } => create_table(
-            storage,
+            Some(storage),
             name,
             columns.as_ref().map(Vec::as_slice),
             *if_not_exists,
@@ -114,17 +118,17 @@ async fn execute_inner<T: GStore + GStoreMut>(
         .map(|_| Payload::Create),
         Statement::DropTable {
             names, if_exists, ..
-        } => drop_table(storage, names, *if_exists)
+        } => drop_table(Some(storage), names, *if_exists)
             .await
             .map(|_| Payload::DropTable),
-        Statement::AlterTable { name, operation } => alter_table(storage, name, operation)
+        Statement::AlterTable { name, operation } => alter_table(Some(storage), name, operation)
             .await
             .map(|_| Payload::AlterTable),
         Statement::CreateIndex {
             name,
             table_name,
             column,
-        } => create_index(storage, table_name, name, column)
+        } => create_index(Some(storage), table_name, name, column)
             .await
             .map(|_| Payload::CreateIndex),
         Statement::DropIndex { name, table_name } => storage
@@ -143,7 +147,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
             table_name,
             columns,
             source,
-        } => insert(storage, table_name, columns, source)
+        } => insert(Some(storage), table_name, columns, source)
             .await
             .map(Payload::Insert),
         Statement::Update {
@@ -167,9 +171,9 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 .map(|assignment| assignment.id.to_owned())
                 .collect();
 
-            let update = Update::new(storage, table_name, assignments, column_defs.as_deref())?;
+            let update = Update::new(Some(storage), table_name, assignments, column_defs.as_deref())?;
 
-            let rows = fetch(storage, table_name, all_columns, selection.as_ref())
+            let rows = fetch(Some(storage), table_name, all_columns, selection.as_ref())
                 .await?
                 .and_then(|item| {
                     let update = &update;
@@ -192,7 +196,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
                     Row::Map(_) => None,
                 });
 
-                validate_unique(storage, table_name, column_validation, rows).await?;
+                validate_unique(Some(storage), table_name, column_validation, rows).await?;
             }
 
             let num_rows = rows.len();
@@ -210,8 +214,8 @@ async fn execute_inner<T: GStore + GStoreMut>(
             table_name,
             selection,
         } => {
-            let columns = fetch_columns(storage, table_name).await?.map(Rc::from);
-            let keys = fetch(storage, table_name, columns, selection.as_ref())
+            let columns = fetch_columns(Some(storage), table_name).await?.map(Rc::from);
+            let keys = fetch(Some(storage), table_name, columns, selection.as_ref())
                 .await?
                 .map_ok(|(key, _)| key)
                 .try_collect::<Vec<_>>()
@@ -227,7 +231,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
 
         //- Selection
         Statement::Query(query) => {
-            let (labels, rows) = select_with_labels(storage, query, None).await?;
+            let (labels, rows) = select_with_labels(Some(storage), query, None).await?;
 
             match labels {
                 Some(labels) => rows
@@ -285,7 +289,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 offset: None,
             };
 
-            let (labels, rows) = select_with_labels(storage, &query, None).await?;
+            let (labels, rows) = select_with_labels(Some(storage), &query, None).await?;
             let labels = labels.unwrap_or_default();
             let rows = rows
                 .map(|row| row?.try_into_vec())
@@ -325,7 +329,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
                     offset: None,
                 };
 
-                let table_names = select(storage, &query, None)
+                let table_names = select(Some(storage), &query, None)
                     .await?
                     .map(|row| row?.try_into_vec())
                     .try_collect::<Vec<Vec<Value>>>()
@@ -361,10 +365,10 @@ async fn execute_inner<T: GStore + GStoreMut>(
             name,
             args,
             return_,
-        } => insert_function(storage, name, args, *or_replace, return_)
+        } => insert_function(Some(storage), name, args, *or_replace, return_)
             .await
             .map(|_| Payload::Create),
-        Statement::DropFunction { if_exists, names } => delete_function(storage, names, *if_exists)
+        Statement::DropFunction { if_exists, names } => delete_function(Some(storage), names, *if_exists)
             .await
             .map(|_| Payload::DropFunction),
     }

@@ -32,14 +32,19 @@ pub enum FetchError {
 
     #[error("table '{0}' has {1} columns available but {2} column aliases specified")]
     TooManyColumnAliases(String, usize, usize),
+
+    #[error("fetch unsupported in stateless operation")]
+    StatelessOperation
 }
 
 pub async fn fetch<'a, T: GStore>(
-    storage: &'a T,
+    storage: Option<&'a T>,
     table_name: &'a str,
     columns: Option<Rc<[String]>>,
     where_clause: Option<&'a Expr>,
 ) -> Result<impl Stream<Item = Result<(Key, Row)>> + 'a> {
+    let storage = storage.ok_or(FetchError::StatelessOperation)?;
+
     let columns = columns.unwrap_or_else(|| Rc::from([]));
     let rows = storage
         .scan_data(table_name)
@@ -64,7 +69,7 @@ pub async fn fetch<'a, T: GStore>(
 
                 let context = RowContext::new(table_name, Cow::Borrowed(&row), None);
 
-                check_expr(storage, Some(Rc::new(context)), None, expr)
+                check_expr(Some(storage), Some(Rc::new(context)), None, expr)
                     .await
                     .map(|pass| pass.then_some((key, row)))
             }
@@ -82,12 +87,14 @@ pub enum Rows<I1, I2, I3, I4> {
 }
 
 pub async fn fetch_relation_rows<'a, T: GStore>(
-    storage: &'a T,
+    storage: Option<&'a T>,
     table_factor: &'a TableFactor,
     filter_context: &Option<Rc<RowContext<'a>>>,
 ) -> Result<impl Stream<Item = Result<Row>> + 'a> {
+    let storage = storage.ok_or(FetchError::StatelessOperation)?;
+
     let columns = Rc::from(
-        fetch_relation_columns(storage, table_factor)
+        fetch_relation_columns(Some(storage), table_factor)
             .await?
             .unwrap_or_default(),
     );
@@ -96,7 +103,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
         TableFactor::Derived { subquery, .. } => {
             let filter_context = filter_context.as_ref().map(Rc::clone);
             let rows =
-                select(storage, subquery, filter_context)
+                select(Some(storage), subquery, filter_context)
                     .await?
                     .map_ok(move |row| match row {
                         Row::Vec { values, .. } => Row::Vec {
@@ -125,7 +132,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                     }) => {
                         let cmp_value = match cmp_expr {
                             Some((op, expr)) => {
-                                let evaluated = evaluate(storage, None, None, expr).await?;
+                                let evaluated = evaluate(Some(storage), None, None, expr).await?;
 
                                 Some((op, evaluated.try_into()?))
                             }
@@ -147,7 +154,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                     }
                     Some(IndexItem::PrimaryKey(expr)) => {
                         let filter_context = filter_context.as_ref().map(Rc::clone);
-                        let key = evaluate(storage, filter_context, None, expr)
+                        let key = evaluate(Some(storage), filter_context, None, expr)
                             .await
                             .and_then(Value::try_from)
                             .and_then(Key::try_from)?;
@@ -348,9 +355,11 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
 }
 
 pub async fn fetch_columns<T: GStore>(
-    storage: &T,
+    storage: Option<&T>,
     table_name: &str,
 ) -> Result<Option<Vec<String>>> {
+    let storage = storage.ok_or(FetchError::StatelessOperation)?;
+
     let columns = storage
         .fetch_schema(table_name)
         .await?
@@ -368,7 +377,7 @@ pub async fn fetch_columns<T: GStore>(
 
 #[async_recursion(?Send)]
 pub async fn fetch_relation_columns<T: GStore>(
-    storage: &T,
+    storage: Option<&'async_recursion T>,
     table_factor: &TableFactor,
 ) -> Result<Option<Vec<String>>> {
     match table_factor {
@@ -480,7 +489,7 @@ pub async fn fetch_relation_columns<T: GStore>(
 }
 
 async fn fetch_join_columns<'a, T: GStore>(
-    storage: &T,
+    storage: Option<&T>,
     joins: &'a [Join],
 ) -> Result<Option<Vec<(&'a String, Vec<String>)>>> {
     let columns = stream::iter(joins)
@@ -500,7 +509,7 @@ async fn fetch_join_columns<'a, T: GStore>(
 }
 
 pub async fn fetch_labels<T: GStore>(
-    storage: &T,
+    storage: Option<&T>,
     relation: &TableFactor,
     joins: &[Join],
     projection: &[SelectItem],

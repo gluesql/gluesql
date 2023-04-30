@@ -9,7 +9,7 @@ use {
 };
 
 pub async fn insert_function<T: GStore + GStoreMut>(
-    storage: &mut T,
+    storage: Option<&mut T>,
     func_name: &str,
     args: &Vec<OperateFunctionArg>,
     or_replace: bool,
@@ -17,6 +17,8 @@ pub async fn insert_function<T: GStore + GStoreMut>(
 ) -> Result<()> {
     validate_arg_names(args)?;
     validate_default_args(args).await?;
+
+    let storage = storage.ok_or(AlterError::AlterUnsupported)?;
 
     if storage.fetch_function(func_name).await?.is_none() || or_replace {
         storage.delete_function(func_name).await?;
@@ -34,10 +36,12 @@ pub async fn insert_function<T: GStore + GStoreMut>(
 }
 
 pub async fn delete_function<T: GStore + GStoreMut>(
-    storage: &mut T,
+    storage: Option<&mut T>,
     func_names: &[String],
     if_exists: bool,
 ) -> Result<()> {
+    let storage = storage.ok_or(AlterError::AlterUnsupported)?;
+
     for func_name in func_names {
         let function = storage.fetch_function(func_name).await?;
 

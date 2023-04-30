@@ -9,10 +9,12 @@ use {
 };
 
 pub async fn alter_table<T: GStore + GStoreMut>(
-    storage: &mut T,
+    storage: Option<&mut T>,
     table_name: &str,
     operation: &AlterTableOperation,
 ) -> Result<()> {
+    let storage = storage.ok_or(AlterError::StatelessOperation)?;
+
     match operation {
         AlterTableOperation::RenameTable {
             table_name: new_table_name,

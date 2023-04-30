@@ -29,7 +29,7 @@ pub enum UpdateError {
 }
 
 pub struct Update<'a, T: GStore> {
-    storage: &'a T,
+    storage: Option<&'a T>,
     table_name: &'a str,
     fields: &'a [Assignment],
     column_defs: Option<&'a [ColumnDef]>,
@@ -37,7 +37,7 @@ pub struct Update<'a, T: GStore> {
 
 impl<'a, T: GStore> Update<'a, T> {
     pub fn new(
-        storage: &'a T,
+        storage: Option<&'a T>,
         table_name: &'a str,
         fields: &'a [Assignment],
         column_defs: Option<&'a [ColumnDef]>,

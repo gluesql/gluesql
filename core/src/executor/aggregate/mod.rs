@@ -22,7 +22,7 @@ use {
 pub use error::AggregateError;
 
 pub struct Aggregator<'a, T: GStore> {
-    storage: &'a T,
+    storage: Option<&'a T>,
     fields: &'a [SelectItem],
     group_by: &'a [Expr],
     having: Option<&'a Expr>,
@@ -37,7 +37,7 @@ enum S<T1, T2> {
 
 impl<'a, T: GStore> Aggregator<'a, T> {
     pub fn new(
-        storage: &'a T,
+        storage: Option<&'a T>,
         fields: &'a [SelectItem],
         group_by: &'a [Expr],
         having: Option<&'a Expr>,
