@@ -160,7 +160,7 @@ impl Glue {
                     }
                 };
 
-                let result = execute(&mut storage, &statement)
+                let result = execute(Some(&mut storage), &statement)
                     .await
                     .map_err(|error| JsValue::from_str(&format!("{error}")));
 
