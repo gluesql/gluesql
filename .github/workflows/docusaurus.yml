@@ -4,6 +4,9 @@ on:
   push:
     branches: [main, docs-deployment-github-action]
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -29,7 +32,7 @@ jobs:
         run: |
           rm -rf gluesql.github.io/docs/dev
           mkdir docs/dev/
-          mv build gluesql.github.io 
+          mv docs/build gluesql.github.io/docs/dev
 
       - name: Prepare
         run: |
