@@ -150,7 +150,7 @@ pub async fn validate_unique<T: Store>(
 
             let unique_constraints = &unique_constraints;
             storage
-                .ok_or(ValidateError::ValidationError)?
+                .ok_or(ValidateError::StatelessOperation)?
                 .scan_data(table_name)
                 .await?
                 .try_for_each(|result| {

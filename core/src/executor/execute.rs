@@ -28,8 +28,8 @@ use {
 pub enum ExecuteError {
     #[error("table not found: {0}")]
     TableNotFound(String),
-    #[error("option")]
-    Optional,
+    #[error("stateless operation unsupported")]
+    StatelessOperation,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -63,15 +63,17 @@ pub enum PayloadVariable {
 }
 
 pub async fn execute<T: GStore + GStoreMut>(
-    storage: &mut T,
+    storage: Option<&mut T>,
     statement: &Statement,
 ) -> Result<Payload> {
     if matches!(
         statement,
         Statement::StartTransaction | Statement::Rollback | Statement::Commit
     ) {
-        return execute_inner(Some(storage), statement).await;
+        return execute_inner(storage, statement).await;
     }
+
+    let storage = storage.ok_or(ExecuteError::StatelessOperation)?;
 
     let autocommit = storage.begin(true).await?;
     let result = execute_inner(Some(storage), statement).await;
@@ -94,7 +96,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
     storage: Option<&mut T>,
     statement: &Statement,
 ) -> Result<Payload> {
-    let storage = storage.ok_or(ExecuteError::Optional)?;
+    let storage = storage.ok_or(ExecuteError::StatelessOperation)?;
 
     match statement {
         //- Modification

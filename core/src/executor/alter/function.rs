@@ -18,7 +18,7 @@ pub async fn insert_function<T: GStore + GStoreMut>(
     validate_arg_names(args)?;
     validate_default_args(args).await?;
 
-    let storage = storage.ok_or(AlterError::AlterUnsupported)?;
+    let storage = storage.ok_or(AlterError::StatelessOperation)?;
 
     if storage.fetch_function(func_name).await?.is_none() || or_replace {
         storage.delete_function(func_name).await?;
@@ -40,7 +40,7 @@ pub async fn delete_function<T: GStore + GStoreMut>(
     func_names: &[String],
     if_exists: bool,
 ) -> Result<()> {
-    let storage = storage.ok_or(AlterError::AlterUnsupported)?;
+    let storage = storage.ok_or(AlterError::StatelessOperation)?;
 
     for func_name in func_names {
         let function = storage.fetch_function(func_name).await?;

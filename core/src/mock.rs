@@ -24,7 +24,7 @@ pub fn run(sql: &str) -> MockStorage {
     for parsed in parse(sql).unwrap() {
         let statement = translate(&parsed).unwrap();
 
-        block_on(execute(&mut storage, &statement)).unwrap();
+        block_on(execute(Some(&mut storage), &statement)).unwrap();
     }
 
     storage
