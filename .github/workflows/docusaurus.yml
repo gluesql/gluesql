@@ -1,0 +1,46 @@
+name: github pages - https://gluesql.org/docs/dev
+
+on:
+  push:
+    branches: [main, docs-deployment-github-action]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Clone gluesql.org
+        run: git clone https://github.com/gluesql/gluesql.github.io.git &&
+          cd gluesql.github.io &&
+          git checkout gh-pages
+
+      - name: Build docs
+      - run: |
+          cd docs
+          yarn install
+          yarn build
+
+      - name: Update docs/dev/ to gluesql.org
+        run: |
+          rm -rf gluesql.github.io/docs/dev
+          mkdir docs/dev/
+          mv build gluesql.github.io 
+
+      - name: Prepare
+        run: |
+          git config --global user.email "taehoon.moon@outlook.com"
+          git config --global user.name "Taehoon Moon (Bot)"
+
+      - name: Commit and deploy
+        run: |
+          cd gluesql.github.io
+          git add docs/dev
+          git diff-index --quiet HEAD || (
+            git commit -m "Update docs/dev" &&
+            git push https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/gluesql.github.io.git
+          )
