@@ -20,7 +20,7 @@ jobs:
           git checkout gh-pages
 
       - name: Build docs
-      - run: |
+        run: |
           cd docs
           yarn install
           yarn build
