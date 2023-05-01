@@ -40,7 +40,7 @@ pub enum InsertError {
     MapTypeValueRequired(String),
 
     #[error("insert not supported in stateless operation")]
-    StatelessOperation
+    StatelessOperation,
 }
 
 enum RowsData {
@@ -65,7 +65,9 @@ pub async fn insert<T: GStore + GStoreMut>(
         Some(column_defs) => {
             fetch_vec_rows(Some(storage), table_name, column_defs, columns, source).await
         }
-        None => fetch_map_rows(Some(storage), source).await.map(RowsData::Append),
+        None => fetch_map_rows(Some(storage), source)
+            .await
+            .map(RowsData::Append),
     }?;
 
     match rows {

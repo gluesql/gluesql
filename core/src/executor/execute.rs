@@ -171,7 +171,12 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 .map(|assignment| assignment.id.to_owned())
                 .collect();
 
-            let update = Update::new(Some(storage), table_name, assignments, column_defs.as_deref())?;
+            let update = Update::new(
+                Some(storage),
+                table_name,
+                assignments,
+                column_defs.as_deref(),
+            )?;
 
             let rows = fetch(Some(storage), table_name, all_columns, selection.as_ref())
                 .await?
@@ -214,7 +219,9 @@ async fn execute_inner<T: GStore + GStoreMut>(
             table_name,
             selection,
         } => {
-            let columns = fetch_columns(Some(storage), table_name).await?.map(Rc::from);
+            let columns = fetch_columns(Some(storage), table_name)
+                .await?
+                .map(Rc::from);
             let keys = fetch(Some(storage), table_name, columns, selection.as_ref())
                 .await?
                 .map_ok(|(key, _)| key)
@@ -368,8 +375,10 @@ async fn execute_inner<T: GStore + GStoreMut>(
         } => insert_function(Some(storage), name, args, *or_replace, return_)
             .await
             .map(|_| Payload::Create),
-        Statement::DropFunction { if_exists, names } => delete_function(Some(storage), names, *if_exists)
-            .await
-            .map(|_| Payload::DropFunction),
+        Statement::DropFunction { if_exists, names } => {
+            delete_function(Some(storage), names, *if_exists)
+                .await
+                .map(|_| Payload::DropFunction)
+        }
     }
 }

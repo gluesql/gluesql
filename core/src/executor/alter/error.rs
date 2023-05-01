@@ -49,5 +49,5 @@ pub enum AlterError {
     NonDefaultArgumentFollowsDefaultArgument,
 
     #[error("alter table unsupported in stateless operation")]
-    StatelessOperation
+    StatelessOperation,
 }

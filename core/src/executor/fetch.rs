@@ -34,7 +34,7 @@ pub enum FetchError {
     TooManyColumnAliases(String, usize, usize),
 
     #[error("fetch unsupported in stateless operation")]
-    StatelessOperation
+    StatelessOperation,
 }
 
 pub async fn fetch<'a, T: GStore>(
@@ -102,16 +102,15 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
     match table_factor {
         TableFactor::Derived { subquery, .. } => {
             let filter_context = filter_context.as_ref().map(Rc::clone);
-            let rows =
-                select(Some(storage), subquery, filter_context)
-                    .await?
-                    .map_ok(move |row| match row {
-                        Row::Vec { values, .. } => Row::Vec {
-                            columns: Rc::clone(&columns),
-                            values,
-                        },
-                        Row::Map(values) => Row::Map(values),
-                    });
+            let rows = select(Some(storage), subquery, filter_context)
+                .await?
+                .map_ok(move |row| match row {
+                    Row::Vec { values, .. } => Row::Vec {
+                        columns: Rc::clone(&columns),
+                        values,
+                    },
+                    Row::Map(values) => Row::Map(values),
+                });
 
             Ok(Rows::Derived(rows))
         }
