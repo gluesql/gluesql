@@ -12,7 +12,7 @@ use {
     crate::{
         ast::{
             AstLiteral, BinaryOperator, DataType, Dictionary, Expr, Query, SelectItem, SetExpr,
-            Statement, TableAlias, TableFactor, TableWithJoins, Variable,
+            Statement, TableAlias, TableFactor, TableWithJoins, ToSql, Variable,
         },
         data::{Key, Row, Schema, Value},
         result::Result,
@@ -33,6 +33,7 @@ pub enum ExecuteError {
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum Payload {
     ShowColumns(Vec<(String, DataType)>),
+    ExplainTable(Vec<(String, DataType, bool, String, String)>),
     Create,
     Insert(usize),
     Select {
@@ -255,6 +256,28 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 .collect();
 
             Ok(Payload::ShowColumns(output))
+        }
+        Statement::ExplainTable { table_name } => {
+            let Schema { column_defs, .. } = storage
+                .fetch_schema(table_name)
+                .await?
+                .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
+
+            let output: Vec<(String, DataType, bool, String, String)> = column_defs
+                .unwrap_or_default()
+                .into_iter()
+                .map(|key| {
+                    (
+                        key.name,
+                        key.data_type,
+                        key.nullable,
+                        key.unique.map(|e| e.to_sql()).unwrap_or_default(),
+                        key.default.map(|e| e.to_sql()).unwrap_or_default(),
+                    )
+                })
+                .collect();
+
+            Ok(Payload::ExplainTable(output))
         }
         Statement::ShowIndexes(table_name) => {
             let query = Query {
