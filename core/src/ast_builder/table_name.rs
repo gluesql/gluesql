@@ -1,6 +1,6 @@
 use super::{
     table_factor::TableType, AlterTableNode, CreateIndexNode, CreateTableNode, DeleteNode,
-    DropIndexNode, DropTableNode, IndexItemNode, InsertNode, OrderByExprNode, SelectNode,
+    DropIndexNode, DropTableNode, ExplainTableNode, IndexItemNode, InsertNode, OrderByExprNode, SelectNode,
     ShowColumnsNode, TableFactorNode, UpdateNode,
 };
 #[derive(Clone, Debug)]
@@ -34,6 +34,10 @@ impl<'a> TableNameNode {
 
     pub fn show_columns(self) -> ShowColumnsNode {
         ShowColumnsNode::new(self.table_name)
+    }
+
+    pub fn explain(self) -> ExplainTableNode {
+        ExplainTableNode::new(self.table_name)
     }
 
     pub fn alias_as(self, table_alias: &str) -> TableFactorNode<'a> {

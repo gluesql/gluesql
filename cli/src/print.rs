@@ -140,6 +140,20 @@ impl<'a, W: Write> Print<W> {
                 let table = self.build_table(table);
                 self.writeln(table)?;
             }
+            Payload::ExplainTable(columns) => {
+                let mut table = self.get_table(vec!["Field", "Type", "Null", "Key", "Default"]);
+                for (field, field_type, null, key, default) in columns {
+                    table.add_record([
+                        field,
+                        &field_type.to_string(),
+                        &(null.to_string()),
+                        &key.to_string(),
+                        &default.to_string(),
+                    ]);
+                }
+                let table = self.build_table(table);
+                self.write(table)?;
+            }
             Payload::Select { labels, rows } => match &self.option.tabular {
                 true => {
                     let labels = labels.iter().map(AsRef::as_ref);
