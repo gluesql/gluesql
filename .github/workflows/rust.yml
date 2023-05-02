@@ -3,8 +3,12 @@ name: Rust
 on:
   push:
     branches: [main, release-*]
+    paths:
+      - '!docs/**'
   pull_request:
     branches: [main, release-*]
+    paths:
+      - '!docs/**'
 
 env:
   CARGO_TERM_COLOR: always
