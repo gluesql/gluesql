@@ -3,12 +3,12 @@ name: Coverage
 on:
   push:
     branches: [main, release-*]
-    paths:
-      - '!docs/**'
+    paths-ignore:
+      - 'docs/**'
   pull_request:
     branches: [main, release-*]
-    paths:
-      - '!docs/**'
+    paths-ignore:
+      - 'docs/**'
 
 env:
   CARGO_TERM_COLOR: always
