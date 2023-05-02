@@ -3,6 +3,8 @@ name: github pages - https://gluesql.org/docs/dev
 on:
   push:
     branches: [main]
+    paths:
+      - "docs/**"
 
 env:
   CARGO_TERM_COLOR: always
