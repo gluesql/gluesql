@@ -5,12 +5,10 @@ on:
     branches: [main, release-*]
     paths-ignore:
       - 'docs/**'
-      - '.github/**'
   pull_request:
     branches: [main, release-*]
     paths-ignore:
       - 'docs/**'
-      - '.github/**'
 
 env:
   CARGO_TERM_COLOR: always
