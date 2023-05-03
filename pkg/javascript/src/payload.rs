@@ -83,14 +83,14 @@ fn convert_payload(payload: Payload) -> Json {
         Payload::ExplainTable(columns) => {
             let columns = columns
                 .into_iter()
-                .map(|(field, data_type, null, key, default, extra)| {
+                .map(|(field, data_type, nullable, key, default, extra)| {
                     json!({
                         "field": field,
                         "type": data_type.to_string(),
-                        "null": null.to_string(),
+                        "nullable": nullable.to_string(),
                         "key": key.to_string(),
                         "default": default.to_string(),
-                        "extra": extra
+                        "extra": extra,
                     })
                 })
                 .collect();
