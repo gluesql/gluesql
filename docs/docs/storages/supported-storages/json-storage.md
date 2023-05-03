@@ -193,7 +193,7 @@ Account.sql
 Account.jsonl
 ```
 
-3. Verity Schema file
+2. Verity Schema file
 
 ```sql
 --! Account.sql
@@ -206,7 +206,7 @@ CREATE TABLE Account (
 );
 ```
 
-4. Insert data
+3. Insert data
 
 ```rust
 glue.execute("
@@ -219,7 +219,7 @@ INSERT INTO Account VALUES
 ");
 ```
 
-5. Select data
+4. Select data
 
 ```rust
 glue.execute("SELECT * FROM Account;");
@@ -233,7 +233,7 @@ glue.execute("SELECT * FROM Account;");
 | 10004     | Alice Kim      | Savings     | 7500    | TRUE     |
 | 10005     | Michael Chen   | Checking    | 10000   | TRUE     |
 
-6. Verify Data file
+5. Verify Data file
 
 ```json
 //! Account.jsonl
