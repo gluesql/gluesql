@@ -33,8 +33,8 @@ test_case!(explain_table, async move {
             (
                 "id8".to_owned(),
                 DataType::Int8,
-                true,
-                "PRIMAR KEY".to_owned(),
+                false,
+                "PRIMARY KEY".to_owned(),
                 "".to_owned()
             ),
             (
@@ -47,77 +47,77 @@ test_case!(explain_table, async move {
             (
                 "rate".to_owned(),
                 DataType::Float,
-                true,
+                false,
                 "".to_owned(),
                 "".to_owned()
             ),
             (
                 "dec".to_owned(),
                 DataType::Decimal,
-                true,
+                false,
                 "".to_owned(),
                 "".to_owned()
             ),
             (
                 "flag".to_owned(),
                 DataType::Boolean,
-                false,
+                true,
                 "".to_owned(),
-                "false".to_owned()
+                "0".to_owned()
             ),
             (
                 "text".to_owned(),
                 DataType::Text,
-                true,
+                false,
                 "".to_owned(),
                 "".to_owned()
             ),
             (
                 "DOB".to_owned(),
                 DataType::Date,
-                true,
+                false,
                 "".to_owned(),
                 "".to_owned()
             ),
             (
                 "Tm".to_owned(),
                 DataType::Time,
-                true,
+                false,
                 "".to_owned(),
                 "".to_owned()
             ),
             (
                 "ival".to_owned(),
                 DataType::Interval,
-                true,
+                false,
                 "".to_owned(),
                 "".to_owned()
             ),
             (
                 "tstamp".to_owned(),
                 DataType::Timestamp,
-                true,
+                false,
                 "".to_owned(),
                 "".to_owned()
             ),
             (
                 "uid".to_owned(),
                 DataType::Uuid,
-                true,
+                false,
                 "".to_owned(),
                 "".to_owned()
             ),
             (
                 "hash".to_owned(),
                 DataType::Map,
-                false,
+                true,
                 "".to_owned(),
                 "".to_owned()
             ),
             (
                 "glist".to_owned(),
                 DataType::List,
-                true,
+                false,
                 "".to_owned(),
                 "".to_owned()
             )
