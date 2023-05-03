@@ -141,14 +141,16 @@ impl<'a, W: Write> Print<W> {
                 self.writeln(table)?;
             }
             Payload::ExplainTable(columns) => {
-                let mut table = self.get_table(vec!["Field", "Type", "Null", "Key", "Default"]);
-                for (field, field_type, null, key, default) in columns {
+                let mut table =
+                    self.get_table(vec!["Field", "Type", "Null", "Key", "Default", "Extra"]);
+                for (field, field_type, null, key, default, extra) in columns {
                     table.add_record([
                         field,
                         &field_type.to_string(),
                         &(null.to_string()),
                         &key.to_string(),
                         &default.to_string(),
+                        extra,
                     ]);
                 }
                 let table = self.build_table(table);
@@ -589,6 +591,51 @@ mod tests {
 | uuid   | UUID      |
 | hash   | MAP       |
 | mylist | LIST      |"
+        );
+
+        test!(
+            Payload::ExplainTable(vec![
+                (
+                    "id".to_owned(),
+                    DataType::Int,
+                    false,
+                    "PRIMARY KEY".to_owned(),
+                    "".to_owned(),
+                    "".to_owned()
+                ),
+                (
+                    "name".to_owned(),
+                    DataType::Text,
+                    true,
+                    "".to_owned(),
+                    "".to_owned(),
+                    "".to_owned()
+                ),
+                (
+                    "age".to_owned(),
+                    DataType::Int,
+                    false,
+                    "".to_owned(),
+                    "".to_owned(),
+                    "".to_owned()
+                ),
+                (
+                    "alive".to_owned(),
+                    DataType::Boolean,
+                    true,
+                    "".to_owned(),
+                    "TRUE".to_owned(),
+                    "".to_owned()
+                )
+            ]),
+            "
+| Field | Type    | Null  | Key         | Default | Extra |
+|-------|---------|-------|-------------|---------|-------|
+| id    | INT     | false | PRIMARY KEY |         |       |
+| name  | TEXT    | true  |             |         |       |
+| age   | INT     | false |             |         |       |
+| alive | BOOLEAN | true  |             | TRUE    |       |
+"
         );
 
         // ".set tabular OFF" should print SELECTED payload without tabular option
