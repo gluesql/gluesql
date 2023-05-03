@@ -27,7 +27,7 @@ mod tests {
 
     #[test]
     fn explain_table() {
-        let actual = table("Foo").explain_table().build();
+        let actual = table("Foo").explain().build();
         let expected = "EXPLAIN Foo";
         test(actual, expected);
     }
