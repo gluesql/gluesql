@@ -13,7 +13,7 @@ use {
 
 #[derive(ThisError, Debug, PartialEq, Eq, Serialize)]
 pub enum KeyError {
-    #[error("FLOAT data type cannot be converted to Big-Endian bytes for comparision")]
+    #[error("FLOAT data type cannot be converted to Big-Endian bytes for comparison")]
     FloatToCmpBigEndianNotSupported,
 
     #[error("MAP data type cannot be used as Key")]
