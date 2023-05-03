@@ -80,6 +80,26 @@ fn convert_payload(payload: Payload) -> Json {
                 "columns": Json::Array(columns),
             })
         }
+        Payload::ExplainTable(columns) => {
+            let columns = columns
+                .into_iter()
+                .map(|(field, data_type, null, key, default, extra)| {
+                    json!({
+                        "field": name,
+                        "type": data_type.to_string(),
+                        "null": null.to_string(),
+                        "key": key.to_string(),
+                        "default": default.to_string(),
+                        "extra": extra
+                    })
+                })
+                .collect();
+
+            json!({
+                "type": "SHOW COLUMNS",
+                "columns": Json::Array(columns),
+            })
+        }
         Payload::Insert(num) => json!({
             "type": "INSERT",
             "affected": num

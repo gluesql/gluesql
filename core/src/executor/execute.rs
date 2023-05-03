@@ -35,7 +35,7 @@ pub enum ExecuteError {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub enum Payload {
     ShowColumns(Vec<(String, DataType)>),
-    ExplainTable(Vec<(String, DataType, bool, String, String)>),
+    ExplainTable(Vec<(String, DataType, bool, String, String, String)>),
     Create,
     Insert(usize),
     Select {
@@ -300,7 +300,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 .await?
                 .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
 
-            let output: Vec<(String, DataType, bool, String, String)> = column_defs
+            let output: Vec<(String, DataType, bool, String, String, String)> = column_defs
                 .unwrap_or_default()
                 .into_iter()
                 .map(|key| {
@@ -310,6 +310,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
                         key.nullable,
                         key.unique.map(|e| e.to_sql()).unwrap_or_default(),
                         key.default.map(|e| e.to_sql()).unwrap_or_default(),
+                        "".to_owned(),
                     )
                 })
                 .collect();
