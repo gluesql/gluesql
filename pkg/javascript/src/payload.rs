@@ -85,7 +85,7 @@ fn convert_payload(payload: Payload) -> Json {
                 .into_iter()
                 .map(|(field, data_type, null, key, default, extra)| {
                     json!({
-                        "field": name,
+                        "field": field,
                         "type": data_type.to_string(),
                         "null": null.to_string(),
                         "key": key.to_string(),
