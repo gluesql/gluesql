@@ -1,9 +1,6 @@
 use {
     crate::*,
-    gluesql_core::{
-        executor::EvaluateError,
-        prelude::Value::*,
-    },
+    gluesql_core::{executor::EvaluateError, prelude::Value::*},
 };
 
 test_case!(log2, async move {
@@ -103,10 +100,7 @@ test_case!(ln, async move {
             "SELECT LN('string') AS log10",
             Err(EvaluateError::FunctionRequiresFloatValue(String::from("LN")).into()),
         ),
-        (
-            "SELECT LN(NULL) AS ln",
-            Ok(select_with_null!(ln; Null)),
-        ),
+        ("SELECT LN(NULL) AS ln", Ok(select_with_null!(ln; Null))),
     ];
 
     for (sql, expected) in test_cases {
@@ -183,10 +177,7 @@ test_case!(exp, async move {
             "SELECT EXP('string') AS exp;",
             Err(EvaluateError::FunctionRequiresFloatValue(String::from("EXP")).into()),
         ),
-        (
-            "SELECT EXP(NULL) AS exp",
-            Ok(select_with_null!(exp; Null)),
-        ),
+        ("SELECT EXP(NULL) AS exp", Ok(select_with_null!(exp; Null))),
     ];
 
     for (sql, expected) in test_cases {

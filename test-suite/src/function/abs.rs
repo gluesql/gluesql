@@ -72,10 +72,7 @@ test_case!(abs, async move {
             "SELECT ABS('string') AS ABS FROM SingleItem",
             Err(EvaluateError::FunctionRequiresFloatValue(String::from("ABS")).into()),
         ),
-        (
-            "SELECT ABS(NULL) AS ABS;",
-            Ok(select_with_null!(ABS; Null)),
-        ),
+        ("SELECT ABS(NULL) AS ABS;", Ok(select_with_null!(ABS; Null))),
         (
             "SELECT ABS(TRUE) AS ABS;",
             Err(EvaluateError::FunctionRequiresFloatValue(String::from("ABS")).into()),
