@@ -2,7 +2,7 @@ use {
     crate::*,
     gluesql_core::{
         executor::EvaluateError,
-        prelude::{Payload, Value::*},
+        prelude::Value::*,
         translate::TranslateError,
     },
 };
@@ -10,26 +10,18 @@ use {
 test_case!(radians, async move {
     let test_cases = [
         (
-            "CREATE TABLE SingleItem (id FLOAT DEFAULT RADIANS(180))",
-            Ok(Payload::Create),
-        ),
-        (
-            r#"INSERT INTO SingleItem VALUES (0)"#,
-            Ok(Payload::Insert(1)),
-        ),
-        (
             "SELECT
-            RADIANS(180.0) as radians_1,
-            RADIANS(360.0) as radians_2
-            FROM SingleItem",
+                RADIANS(180.0) as radians_1,
+                RADIANS(360.0) as radians_2
+            ;",
             Ok(select!(
-                radians_1       | radians_2;
-                F64             | F64;
+                radians_1              | radians_2;
+                F64                    | F64;
                 180.0_f64.to_radians()   360.0_f64.to_radians()
             )),
         ),
         (
-            "SELECT RADIANS(90) as radians_with_int FROM SingleItem",
+            "SELECT RADIANS(90) as radians_with_int",
             Ok(select!(
                 radians_with_int
                 F64;
@@ -37,7 +29,7 @@ test_case!(radians, async move {
             )),
         ),
         (
-            "SELECT RADIANS(0) as radians_with_zero FROM SingleItem",
+            "SELECT RADIANS(0) as radians_with_zero",
             Ok(select!(
                 radians_with_zero
                 F64;
@@ -45,7 +37,7 @@ test_case!(radians, async move {
             )),
         ),
         (
-            "SELECT RADIANS(-900) as radians_with_zero FROM SingleItem",
+            "SELECT RADIANS(-900) as radians_with_zero",
             Ok(select!(
                 radians_with_zero
                 F64;
@@ -53,7 +45,7 @@ test_case!(radians, async move {
             )),
         ),
         (
-            "SELECT RADIANS(900) as radians_with_zero FROM SingleItem",
+            "SELECT RADIANS(900) as radians_with_zero",
             Ok(select!(
                 radians_with_zero
                 F64;
@@ -61,7 +53,7 @@ test_case!(radians, async move {
             )),
         ),
         (
-            "SELECT RADIANS(DEGREES(90)) as degrees_to_radians FROM SingleItem",
+            "SELECT RADIANS(DEGREES(90)) as degrees_to_radians",
             Ok(select!(
                 degrees_to_radians
                 F64;
@@ -69,7 +61,7 @@ test_case!(radians, async move {
             )),
         ),
         (
-            "SELECT RADIANS(0, 0) as radians_arg2 FROM SingleItem",
+            "SELECT RADIANS(0, 0) as radians_arg2",
             Err(TranslateError::FunctionArgsLengthNotMatching {
                 name: "RADIANS".to_owned(),
                 expected: 1,
@@ -78,7 +70,7 @@ test_case!(radians, async move {
             .into()),
         ),
         (
-            "SELECT RADIANS() as radians_arg0 FROM SingleItem",
+            "SELECT RADIANS() as radians_arg0",
             Err(TranslateError::FunctionArgsLengthNotMatching {
                 name: "RADIANS".to_owned(),
                 expected: 1,
@@ -87,11 +79,11 @@ test_case!(radians, async move {
             .into()),
         ),
         (
-            "SELECT RADIANS('string') AS radians FROM SingleItem",
+            "SELECT RADIANS('string') AS radians",
             Err(EvaluateError::FunctionRequiresFloatValue(String::from("RADIANS")).into()),
         ),
         (
-            "SELECT RADIANS(NULL) AS radians FROM SingleItem",
+            "SELECT RADIANS(NULL) AS radians",
             Ok(select_with_null!(radians; Null)),
         ),
     ];

@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        prelude::{Payload, Value::*},
+        prelude::Value::*,
         translate::TranslateError,
     },
 };
@@ -9,15 +9,7 @@ use {
 test_case!(pi, async move {
     let test_cases = [
         (
-            "CREATE TABLE SingleItem (id FLOAT DEFAULT PI())",
-            Ok(Payload::Create),
-        ),
-        (
-            r#"INSERT INTO SingleItem VALUES (0)"#,
-            Ok(Payload::Insert(1)),
-        ),
-        (
-            "SELECT PI() as pi FROM SingleItem",
+            "SELECT PI() AS pi",
             Ok(select!(
                 pi
                 F64;
@@ -25,7 +17,7 @@ test_case!(pi, async move {
             )),
         ),
         (
-            "SELECT PI(0) as pi FROM SingleItem",
+            "SELECT PI(0) AS pi",
             Err(TranslateError::FunctionArgsLengthNotMatching {
                 name: "PI".to_owned(),
                 expected: 0,
