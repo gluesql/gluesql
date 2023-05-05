@@ -7,21 +7,21 @@ test_case!(degrees, async move {
     let test_cases = [
         (
             "SELECT
-                DEGREES(1.5707963) as degrees_1,
-                DEGREES(3.1415926) as degrees_2
+                DEGREES(PI() / 2) as degrees_1,
+                DEGREES(PI()) as degrees_2
             ;",
             Ok(select!(
-                degrees_1                  | degrees_2;
-                F64                        | F64;
-                1.5707963_f64.to_degrees()   3.1415926_f64.to_degrees()
+                degrees_1 | degrees_2;
+                F64       | F64;
+                90.0        180.0
             )),
         ),
         (
-            "SELECT DEGREES(1.5707963) as degrees_with_int;",
+            "SELECT DEGREES(PI() / 2) as degrees_with_int;",
             Ok(select!(
                 degrees_with_int
                 F64;
-                1.5707963_f64.to_degrees()
+                90.0
             )),
         ),
         (
@@ -29,7 +29,7 @@ test_case!(degrees, async move {
             Ok(select!(
                 degrees_with_zero
                 F64;
-                0.0_f64.to_degrees()
+                0.0
             )),
         ),
         (
@@ -37,7 +37,7 @@ test_case!(degrees, async move {
             Ok(select!(
                 radians_to_degrees
                 F64;
-                f64::from(90).to_radians().to_degrees()
+                90.0
             )),
         ),
         (

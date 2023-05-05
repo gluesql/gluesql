@@ -1,6 +1,10 @@
 use {
     crate::*,
-    gluesql_core::{executor::EvaluateError, prelude::Value::*, translate::TranslateError},
+    gluesql_core::{
+        executor::EvaluateError,
+        prelude::Value::*,
+        translate::TranslateError,
+    },
 };
 
 test_case!(floor, async move {
@@ -14,9 +18,9 @@ test_case!(floor, async move {
                 FLOOR(6.87421) as floor4 
             ;"#,
             Ok(select!(
-                floor1 | floor2          | floor3 | floor4
-                F64    | F64             | F64    | F64;
-                0.0      f64::from(-1.0)   10.0     6.0
+                floor1 | floor2              | floor3 | floor4
+                F64    | F64                 | F64    | F64;
+                0.0      f64::from(-1)   10.0     6.0
             )),
         ),
         (

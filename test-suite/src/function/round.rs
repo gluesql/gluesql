@@ -15,7 +15,7 @@ test_case!(round, async move {
             Ok(select!(
                 round1 | round2          | round3 | round4
                 F64    | F64             | F64    | F64;
-                0.0      f64::from(-1.0)   10.0     7.0
+                0.0      f64::from(-1)   10.0     7.0
             )),
         ),
         (
