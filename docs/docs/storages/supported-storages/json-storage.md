@@ -6,8 +6,7 @@ sidebar_position: 4
 
 ## Introduction
 
-The JSON Storage system deals with two types of files: `Schema` and `Data` and supports two file formats: `*.json` and `*.jsonl`. The schema file defines the structure of the data saved in the data file, and the data file contains the actual data. A schemaless table is also supported, which can save any type of data. This document provides examples of how to read and create schema tables using GlueSQL JSON Storage.
-Also see the [Limitation](#limitation)
+The JSON Storage system is comprised of two types of files: [Schema file](#schema-file)(optional) and [Data file](#data-file). The Schema file is written in Standard SQL and is responsible for storing the structure of the table. The Data file contains the actual data and supports two file formats: `*.json` and `*.jsonl`. This document provides detailed [examples](#examples) of how to create schema and read/write data using the Json Storage system. While it supports all DML features, it is particularly specialized for `SELECT` and `APPEND INSERT`. For further information, please refer to the [Limitations](#limitation) section.
 
 ## Structure
 
@@ -95,7 +94,7 @@ The `*.json` file format supports two different formats:
 }
 ```
 
-## Example
+## Examples
 
 ### Read Existing JSON/JSONL Schemaless Files
 
