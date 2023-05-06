@@ -7,6 +7,7 @@ sidebar_position: 4
 ## Introduction
 
 The JSON Storage system deals with two types of files: `Schema` and `Data` and supports two file formats: `*.json` and `*.jsonl`. The schema file defines the structure of the data saved in the data file, and the data file contains the actual data. A schemaless table is also supported, which can save any type of data. This document provides examples of how to read and create schema tables using GlueSQL JSON Storage.
+Also see the [Limitation](#limitation)
 
 ## Structure
 
@@ -237,6 +238,8 @@ glue.execute("SELECT * FROM Account;");
 {"accountId":10005,"accountOwner":"Michael Chen","accountType":"Checking","balance":10000,"isActive":true}
 ```
 
-## Summary
+## Limitation
 
-The JSON Storage system deals with two types of files: Schema and Data, and supports two file formats: `*.json` and `*.jsonl`. The schema file defines the structure of the data saved in the data file, and the data file contains the actual data. A schemaless table is also supported, which can save any type of data. The schema definition is saved in TableName.sql with standard SQL. If there is no TableName.sql, the table is schemaless. JSON Storage saves data in two types of datafile: `*.jsonl` (default) and `*.json`. This document provides examples of how to read and create schema tables using GlueSQL JSON Storage, including how to read existing JSON/JSONL schemaless files, create schema tables, insert data into a table, and select data from a table.
+JSON Storage is capable of supporting a variety of operations, including `SELECT`, `INSERT`, `DELETE`, and `UPDATE`.  
+However, its design primarily emphasizes `SELECT` and `APPEND INSERT` functionality.  
+It's important to note that if you perform `DELETE`, `UPDATE`, or `INSERT in the middle of the rows`, it can cause the internal rewriting of all the rows, which can lead to a decrease in performance.
