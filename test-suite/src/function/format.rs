@@ -1,8 +1,9 @@
-use crate::*;
+use {
+    crate::*,
+    gluesql_core::{error::EvaluateError, prelude::Value::*},
+};
 
 test_case!(format, async move {
-    use gluesql_core::{executor::EvaluateError, prelude::Value::*};
-
     let test_cases = vec![
         (
             "VALUES(FORMAT(DATE '2017-06-15', '%Y-%m'))",

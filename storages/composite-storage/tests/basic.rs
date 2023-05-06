@@ -1,9 +1,8 @@
 use {
     gluesql_composite_storage::CompositeStorage,
     gluesql_core::{
-        executor::FetchError,
-        prelude::{Glue, Value::I64},
-        result::Error,
+        error::FetchError,
+        prelude::{Error, Glue, Value::I64},
     },
     gluesql_memory_storage::MemoryStorage,
     test_suite::*,

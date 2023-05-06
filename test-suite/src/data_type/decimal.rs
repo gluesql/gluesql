@@ -1,6 +1,6 @@
 use {
     crate::*,
-    gluesql_core::{executor::Payload, prelude::Value::*},
+    gluesql_core::prelude::{Payload, Value::*},
     rust_decimal::prelude::Decimal,
 };
 

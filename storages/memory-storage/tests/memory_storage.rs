@@ -46,8 +46,7 @@ fn memory_storage_index() {
     use {
         futures::executor::block_on,
         gluesql_core::{
-            prelude::Glue,
-            result::{Error, Result},
+            prelude::{Error, Glue, Result},
             store::{Index, Store},
         },
     };
@@ -85,10 +84,7 @@ fn memory_storage_index() {
 
 #[test]
 fn memory_storage_transaction() {
-    use gluesql_core::{
-        prelude::{Glue, Payload},
-        result::Error,
-    };
+    use gluesql_core::prelude::{Error, Glue, Payload};
 
     let storage = MemoryStorage::default();
     let mut glue = Glue::new(storage);

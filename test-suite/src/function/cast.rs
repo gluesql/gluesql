@@ -2,10 +2,10 @@ use {
     crate::*,
     chrono::{NaiveDate, NaiveTime},
     gluesql_core::{
-        data::{Interval as I, ValueError},
-        executor::Payload,
+        data::Interval as I,
+        error::ValueError,
         prelude::{
-            DataType,
+            DataType, Payload,
             Value::{self, *},
         },
     },

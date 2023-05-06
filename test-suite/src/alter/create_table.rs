@@ -2,9 +2,8 @@ use {
     crate::*,
     gluesql_core::{
         data::value::Value::{Null, Str, I64},
-        executor::{AlterError, EvaluateError},
+        error::{AlterError, EvaluateError, TranslateError},
         prelude::Payload,
-        translate::TranslateError,
     },
 };
 

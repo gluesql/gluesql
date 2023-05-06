@@ -4,7 +4,7 @@ use {
     gluesql_core::{
         ast::{IndexOperator, OrderByExpr},
         data::Value,
-        result::{Error, Result},
+        error::{Error, Result},
         store::{Index, IndexMut, RowIter},
     },
 };

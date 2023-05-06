@@ -7,7 +7,7 @@ use {
     gluesql_core::{
         ast::ColumnUniqueOption,
         data::{Key, Schema},
-        result::{Error, Result},
+        error::{Error, Result},
         store::{DataRow, Metadata, RowIter, Store, StoreMut},
     },
     serde::{Deserialize, Serialize},

@@ -1,6 +1,6 @@
 use {
     crate::*,
-    gluesql_core::{ast::DataType, prelude::Payload, translate::TranslateError},
+    gluesql_core::{ast::DataType, error::TranslateError, prelude::Payload},
 };
 
 test_case!(generate_uuid, async move {

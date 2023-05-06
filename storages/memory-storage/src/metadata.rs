@@ -2,7 +2,7 @@ use {
     crate::MemoryStorage,
     async_trait::async_trait,
     gluesql_core::{
-        result::Result,
+        error::Result,
         store::{MetaIter, Metadata},
     },
 };

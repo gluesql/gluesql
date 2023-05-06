@@ -3,9 +3,9 @@ use {
     bigdecimal::BigDecimal,
     gluesql_core::{
         ast::DataType,
-        data::{Literal, ValueError},
-        executor::Payload,
-        prelude::Value::*,
+        data::Literal,
+        error::ValueError,
+        prelude::{Payload, Value::*},
     },
     std::borrow::Cow,
     uuid::Uuid as UUID,

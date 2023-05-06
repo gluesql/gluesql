@@ -3,7 +3,7 @@ use {
     async_trait::async_trait,
     gluesql_core::{
         data::{Key, Schema},
-        result::{Error, Result},
+        error::{Error, Result},
         store::{DataRow, StoreMut},
     },
 };

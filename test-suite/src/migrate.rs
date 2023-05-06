@@ -2,10 +2,8 @@ use {
     crate::*,
     gluesql_core::{
         ast::Expr,
-        data::ValueError,
-        executor::{EvaluateError, FetchError},
+        error::{EvaluateError, FetchError, TranslateError, ValueError},
         prelude::Value::*,
-        translate::TranslateError,
     },
 };
 

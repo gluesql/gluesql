@@ -2,7 +2,7 @@ use {
     crate::*,
     gluesql_core::{
         ast::IndexOperator::*,
-        executor::AlterError,
+        error::AlterError,
         prelude::{Payload, Value::*},
     },
 };

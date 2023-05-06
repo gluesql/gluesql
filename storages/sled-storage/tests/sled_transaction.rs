@@ -8,7 +8,6 @@ use {
     gluesql_core::{
         executor::FetchError,
         prelude::{Value::*, *},
-        result::Error,
         store::StoreMut,
         *,
     },

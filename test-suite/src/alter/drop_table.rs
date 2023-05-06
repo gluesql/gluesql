@@ -1,9 +1,8 @@
 use {
     crate::*,
     gluesql_core::{
-        executor::{AlterError, FetchError, Payload},
-        prelude::Value::*,
-        translate::TranslateError,
+        error::{AlterError, FetchError, TranslateError},
+        prelude::{Payload, Value::*},
     },
 };
 

@@ -1,7 +1,7 @@
 use {
     super::SharedMemoryStorage,
     async_trait::async_trait,
-    gluesql_core::{ast::ColumnDef, result::Result, store::AlterTable},
+    gluesql_core::{ast::ColumnDef, error::Result, store::AlterTable},
     std::sync::Arc,
 };
 

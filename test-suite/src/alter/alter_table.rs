@@ -3,10 +3,8 @@ use {
     gluesql_core::{
         ast::*,
         data::Value::*,
-        executor::{AlterError, EvaluateError},
+        error::{AlterError, AlterTableError, EvaluateError, TranslateError},
         prelude::Payload,
-        store::AlterTableError,
-        translate::TranslateError,
     },
 };
 

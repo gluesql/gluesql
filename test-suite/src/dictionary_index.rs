@@ -1,6 +1,6 @@
 use {
     crate::*,
-    gluesql_core::{prelude::Value::*, translate::TranslateError},
+    gluesql_core::{error::TranslateError, prelude::Value::*},
 };
 
 test_case!(ditionary_index, async move {

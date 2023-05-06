@@ -4,8 +4,8 @@ use {
     gluesql_core::{
         ast::ColumnDef,
         data::Value,
-        result::{Error, Result},
-        store::{AlterTable, AlterTableError, DataRow},
+        error::{AlterTableError, Error, Result},
+        store::{AlterTable, DataRow},
     },
 };
 

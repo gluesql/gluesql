@@ -4,7 +4,6 @@ use {
         ast::*,
         parse_sql::parse_expr,
         prelude::*,
-        result::Result,
         store::{GStore, GStoreMut},
         translate::translate_expr,
     },

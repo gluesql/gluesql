@@ -11,7 +11,7 @@ use {
     gloo_utils::format::JsValueSerdeExt,
     gluesql_core::{
         data::{Key, Schema, Value},
-        result::{Error, Result},
+        error::{Error, Result},
         store::{DataRow, Metadata, RowIter, Store, StoreMut},
     },
     idb::{CursorDirection, Database, Factory, ObjectStoreParams, Query, TransactionMode},

@@ -7,7 +7,7 @@ mod transaction;
 use {
     gluesql_core::{
         data::Schema,
-        result::{Error, Result},
+        error::{Error, Result},
         store::{GStore, GStoreMut, Metadata, Store},
     },
     std::collections::HashMap,
