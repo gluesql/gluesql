@@ -2,10 +2,8 @@ use {
     crate::*,
     gluesql_core::{
         ast::IndexOperator::*,
-        executor::AlterError,
+        error::{AlterError, IndexError, TranslateError},
         prelude::{Payload, Value::*},
-        store::IndexError,
-        translate::TranslateError,
     },
 };
 

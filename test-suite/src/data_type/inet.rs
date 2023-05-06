@@ -1,6 +1,9 @@
 use {
     crate::*,
-    gluesql_core::{data::ValueError, executor::Payload, prelude::Value::Inet},
+    gluesql_core::{
+        error::ValueError,
+        prelude::{Payload, Value::Inet},
+    },
     std::{net::IpAddr, str::FromStr},
 };
 

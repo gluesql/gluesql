@@ -1,9 +1,6 @@
 use {
     crate::*,
-    gluesql_core::{
-        data::{Interval as I, IntervalError},
-        prelude::Value::*,
-    },
+    gluesql_core::{data::Interval as I, error::IntervalError, prelude::Value::*},
 };
 
 test_case!(interval, async move {

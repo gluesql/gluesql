@@ -13,8 +13,8 @@ use {
         ast::OrderByExpr,
         chrono::Utc,
         data::{Schema, SchemaIndex, SchemaIndexOrd},
-        result::{Error, Result},
-        store::{IndexError, IndexMut, Store},
+        error::{Error, IndexError, Result},
+        store::{IndexMut, Store},
     },
     sled::transaction::{
         ConflictableTransactionError, ConflictableTransactionResult, TransactionalTree,

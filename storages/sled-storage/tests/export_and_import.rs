@@ -1,8 +1,4 @@
-use {
-    gluesql_core::{prelude::*, result::Error},
-    gluesql_sled_storage::SledStorage,
-    sled::Config,
-};
+use {gluesql_core::prelude::*, gluesql_sled_storage::SledStorage, sled::Config};
 
 #[test]
 fn export_and_import() {

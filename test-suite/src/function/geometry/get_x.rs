@@ -1,6 +1,9 @@
 use {
     crate::*,
-    gluesql_core::{executor::EvaluateError, executor::Payload, prelude::Value::*},
+    gluesql_core::{
+        error::EvaluateError,
+        prelude::{Payload, Value::*},
+    },
 };
 
 test_case!(get_x, async move {

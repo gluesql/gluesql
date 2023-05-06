@@ -11,8 +11,8 @@ use {
     async_trait::async_trait,
     gluesql_core::{
         data::{Key, Schema},
-        result::{Error, Result},
-        store::{DataRow, IndexError, StoreMut},
+        error::{Error, IndexError, Result},
+        store::{DataRow, StoreMut},
     },
     sled::transaction::{ConflictableTransactionError, ConflictableTransactionResult},
 };

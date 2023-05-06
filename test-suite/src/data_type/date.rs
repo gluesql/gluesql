@@ -1,4 +1,7 @@
-use {crate::*, gluesql_core::prelude::Value::*};
+use {
+    crate::*,
+    gluesql_core::{error::ValueError, prelude::Value::*},
+};
 
 test_case!(date, async move {
     run!(
@@ -110,6 +113,6 @@ INSERT INTO DateLog VALUES
 
     test!(
         "INSERT INTO DateLog VALUES (1, '12345-678', '2021-05-01')",
-        Err(gluesql_core::data::ValueError::FailedToParseDate("12345-678".to_owned()).into())
+        Err(ValueError::FailedToParseDate("12345-678".to_owned()).into())
     );
 });

@@ -4,7 +4,7 @@ use {
     futures::stream::{self, StreamExt, TryStreamExt},
     gluesql_core::{
         data::{Key, Schema},
-        result::Result,
+        error::Result,
         store::{DataRow, RowIter, Store},
     },
 };

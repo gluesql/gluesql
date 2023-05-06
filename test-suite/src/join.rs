@@ -1,6 +1,9 @@
 use {
     crate::*,
-    gluesql_core::{plan::PlanError, prelude::*, translate::TranslateError},
+    gluesql_core::{
+        error::{PlanError, TranslateError},
+        prelude::*,
+    },
     Value::*,
 };
 

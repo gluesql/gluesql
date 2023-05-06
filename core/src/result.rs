@@ -1,21 +1,18 @@
-use {
-    crate::{
-        ast_builder::AstBuilderError,
-        data::{
-            IntervalError, KeyError, LiteralError, RowError, SchemaParseError, StringExtError,
-            TableError, ValueError,
-        },
-        executor::{
-            AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, InsertError,
-            SelectError, SortError, UpdateError, ValidateError,
-        },
-        plan::PlanError,
-        store::{AlterTableError, IndexError},
-        translate::TranslateError,
+use {serde::Serialize, std::fmt::Debug, thiserror::Error as ThisError};
+
+pub use crate::{
+    ast_builder::AstBuilderError,
+    data::{
+        IntervalError, KeyError, LiteralError, RowError, SchemaParseError, StringExtError,
+        TableError, ValueError,
     },
-    serde::Serialize,
-    std::fmt::Debug,
-    thiserror::Error as ThisError,
+    executor::{
+        AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, InsertError,
+        SelectError, SortError, UpdateError, ValidateError,
+    },
+    plan::PlanError,
+    store::{AlterTableError, IndexError},
+    translate::TranslateError,
 };
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]

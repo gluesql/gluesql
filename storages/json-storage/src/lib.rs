@@ -11,10 +11,8 @@ use {
     error::{JsonStorageError, OptionExt, ResultExt},
     gluesql_core::{
         ast::ColumnUniqueOption,
-        data::{value::HashMapJsonExt, Schema},
-        prelude::Key,
-        result::Error,
-        result::Result,
+        data::{value::HashMapJsonExt, Key, Schema},
+        error::{Error, Result},
         store::{DataRow, Metadata, RowIter},
     },
     iter_enum::Iterator,

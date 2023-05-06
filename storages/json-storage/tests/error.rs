@@ -1,8 +1,7 @@
 use {
     gluesql_core::{
-        data::{SchemaParseError, ValueError},
-        prelude::Glue,
-        result::Error,
+        error::{SchemaParseError, ValueError},
+        prelude::{Error, Glue},
     },
     gluesql_json_storage::{error::JsonStorageError, JsonStorage},
     test_suite::test,

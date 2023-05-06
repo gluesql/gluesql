@@ -8,7 +8,7 @@ use {
     async_trait::async_trait,
     gluesql_core::{
         data::{Key, Schema},
-        result::Result,
+        error::Result,
         store::{DataRow, Metadata, RowIter, Store, StoreMut},
     },
     memory_storage::MemoryStorage,

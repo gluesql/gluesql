@@ -3,10 +3,10 @@ use {
     gluesql_core::{
         ast::Expr,
         data::schema::{Schema, SchemaIndex},
+        error::{Error, IndexError, Result},
         executor::evaluate_stateless,
         prelude::Value,
-        result::{Error, Result},
-        store::{DataRow, IndexError},
+        store::DataRow,
     },
     sled::{
         transaction::{

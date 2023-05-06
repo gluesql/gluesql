@@ -1,8 +1,5 @@
 use {
-    gluesql_core::{
-        result::Error,
-        store::{AlterTableError, IndexError},
-    },
+    gluesql_core::error::{AlterTableError, Error, IndexError},
     sled::transaction::TransactionError as SledTransactionError,
     std::{str, time},
     thiserror::Error as ThisError,

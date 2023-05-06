@@ -1,4 +1,4 @@
-use {gluesql_core::result::Error, thiserror::Error};
+use {gluesql_core::error::Error, thiserror::Error};
 
 pub trait ResultExt<T, E: ToString> {
     fn map_storage_err(self) -> Result<T, Error>;
