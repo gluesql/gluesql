@@ -1,81 +1,76 @@
 use {
     crate::*,
-    gluesql_core::{
-        executor::{EvaluateError, Payload},
-        prelude::Value::*,
-        translate::TranslateError,
-    },
+    gluesql_core::{executor::EvaluateError, prelude::Value::*, translate::TranslateError},
 };
 
 test_case!(sign, async move {
     let test_cases = [
-        ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),
         (
-            r#"INSERT INTO SingleItem VALUES (0)"#,
-            Ok(Payload::Insert(1)),
-        ),
-        (
-            "SELECT SIGN(2) AS SIGN1, 
-                    SIGN(-2) AS SIGN2, 
-                    SIGN(+2) AS SIGN3 
-            FROM SingleItem",
+            "SELECT
+                SIGN(2) AS SIGN1, 
+                SIGN(-2) AS SIGN2, 
+                SIGN(+2) AS SIGN3 
+            ;",
             Ok(select!(
-                "SIGN1"        | "SIGN2"                   | "SIGN3";
-                I8             | I8                        | I8;
-                1_i8            f64::signum(-2.0) as i8                1_i8
+                "SIGN1" | "SIGN2"                 | "SIGN3";
+                I8      | I8                      | I8;
+                1_i8      f64::signum(-2.0) as i8    1_i8
             )),
         ),
         (
-            "SELECT SIGN(2.0) AS SIGN1, 
-                    SIGN(-2.0) AS SIGN2, 
-                    SIGN(+2.0) AS SIGN3 
-            FROM SingleItem",
+            "SELECT
+                SIGN(2.0) AS SIGN1, 
+                SIGN(-2.0) AS SIGN2, 
+                SIGN(+2.0) AS SIGN3 
+            ;",
             Ok(select!(
-                "SIGN1"        | "SIGN2"                   | "SIGN3";
-                I8             | I8                        | I8;
-                1_i8            f64::signum(-2.0) as i8                 1_i8
+                "SIGN1" | "SIGN2"                 | "SIGN3";
+                I8      | I8                      | I8;
+                1_i8      f64::signum(-2.0) as i8   1_i8
             )),
         ),
         (
-            "SELECT SIGN(0.0) AS SIGN1, 
-                    SIGN(-0.0) AS SIGN2, 
-                    SIGN(+0.0) AS SIGN3 
-            FROM SingleItem",
+            "SELECT
+                SIGN(0.0) AS SIGN1, 
+                SIGN(-0.0) AS SIGN2, 
+                SIGN(+0.0) AS SIGN3 
+            ;",
             Ok(select!(
-                "SIGN1"        | "SIGN2"                   | "SIGN3";
-                I8           | I8                      | I8;
-                0_i8             0_i8         0_i8
+                "SIGN1" | "SIGN2" | "SIGN3";
+                I8      | I8      | I8;
+                0_i8      0_i8      0_i8
             )),
         ),
         (
-            "SELECT SIGN(0) AS SIGN1, 
-                    SIGN(-0) AS SIGN2, 
-                    SIGN(+0) AS SIGN3 
-            FROM SingleItem",
+            "SELECT
+                SIGN(0) AS SIGN1, 
+                SIGN(-0) AS SIGN2, 
+                SIGN(+0) AS SIGN3 
+            ;",
             Ok(select!(
-                "SIGN1"        | "SIGN2"                   | "SIGN3";
-                I8           | I8                      | I8;
-                0_i8             0_i8         0_i8
+                "SIGN1" | "SIGN2" | "SIGN3";
+                I8      | I8      | I8;
+                0_i8      0_i8      0_i8
             )),
         ),
         (
-            "SELECT SIGN('string') AS SIGN FROM SingleItem",
+            "SELECT SIGN('string') AS SIGN",
             Err(EvaluateError::FunctionRequiresFloatValue(String::from("SIGN")).into()),
         ),
         (
-            "SELECT SIGN(NULL) AS sign FROM SingleItem",
+            "SELECT SIGN(NULL) AS sign",
             Ok(select_with_null!(sign; Null)),
         ),
         (
-            "SELECT SIGN(TRUE) AS sign FROM SingleItem",
+            "SELECT SIGN(TRUE) AS sign",
             Err(EvaluateError::FunctionRequiresFloatValue(String::from("SIGN")).into()),
         ),
         (
-            "SELECT SIGN(FALSE) AS sign FROM SingleItem",
+            "SELECT SIGN(FALSE) AS sign",
             Err(EvaluateError::FunctionRequiresFloatValue(String::from("SIGN")).into()),
         ),
         (
-            "SELECT SIGN('string', 'string2') AS SIGN FROM SingleItem",
+            "SELECT SIGN('string', 'string2') AS SIGN",
             Err(TranslateError::FunctionArgsLengthNotMatching {
                 name: "SIGN".to_owned(),
                 expected: 1,
