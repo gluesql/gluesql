@@ -1,6 +1,6 @@
 # CALC_DISTANCE
 
-The `CALC_DISTANCE` function calculates the Euclidean distance between two points in a two-dimensional plane. It takes two `POINT` data type arguments and returns a `FLOAT` value representing the distance between the two points.
+The `CALC_DISTANCE` function is used to calculate the Euclidean distance between two `Point` type geographical coordinates.
 
 ## Syntax
 
@@ -8,42 +8,43 @@ The `CALC_DISTANCE` function calculates the Euclidean distance between two point
 CALC_DISTANCE(point1, point2)
 ```
 
+**Parameters:**
+
+- `point1`: The first geographical coordinate of type `Point`.
+- `point2`: The second geographical coordinate of type `Point`.
+
 ## Examples
 
-Create a table with `POINT` data type columns:
+Consider the following table `Foo`:
 
 ```sql
-CREATE TABLE Foo (id FLOAT, geo1 POINT, geo2 POINT, bar FLOAT);
+CREATE TABLE Foo (
+    geo1 Point,
+    geo2 Point,
+    bar Float
+);
 ```
 
-Insert a record with point values:
+With the following data:
 
 ```sql
-INSERT INTO Foo VALUES (1, POINT(0.3134, 3.156), POINT(1.415, 3.231), 3);
+INSERT INTO Foo VALUES (POINT(0.3134, 3.156), POINT(1.415, 3.231), 3);
 ```
 
-Calculate the distance between two points:
+### Example 1: Calculate the distance between two points
 
 ```sql
 SELECT CALC_DISTANCE(geo1, geo2) AS georesult FROM Foo;
 ```
 
-Invalid use cases:
+**Result:**
 
-Trying to use `CALC_DISTANCE` with only one argument:
+| georesult       |
+|-----------------|
+| 1.104150152832485|
 
-```sql
-SELECT CALC_DISTANCE(geo1) AS georesult FROM Foo;
-```
+## Errors
 
-Using `CALC_DISTANCE` with non-`POINT` data type arguments:
-
-```sql
-SELECT CALC_DISTANCE(geo1, bar) AS georesult FROM Foo;
-```
-
-Using `CALC_DISTANCE` with a NULL value:
-
-```sql
-SELECT CALC_DISTANCE(geo1, NULL) AS georesult FROM Foo;
-```
+1. If the number of arguments is not 2, a `FunctionArgsLengthNotMatching` error will be thrown.
+2. If any of the arguments are not of type `Point`, a `FunctionRequiresPointValue` error will be thrown.
+3. If any of the arguments are `NULL`, the result will be `NULL`.

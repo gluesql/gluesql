@@ -8,46 +8,62 @@ The `GET_Y` function returns the y-coordinate of a given `POINT` data type. It t
 GET_Y(point)
 ```
 
+**Parameters:**
+
+- `point`: The geographical coordinate of type `Point` from which the Y-coordinate will be extracted.
+
 ## Examples
 
-Create a table with a default value for the `id` column using `GET_Y`:
+Consider the following table `PointGroup`:
 
 ```sql
-CREATE TABLE SingleItem (id FLOAT DEFAULT GET_Y(POINT(0.3134, 0.156)));
+CREATE TABLE PointGroup (
+    point_field POINT
+);
 ```
 
-Get the y-coordinate of a point value:
+With the following data:
+
+```sql
+INSERT INTO PointGroup VALUES (POINT(0.3134, 0.156));
+```
+
+### Example 1: Get the Y-coordinate from a point
+
+```sql
+SELECT GET_Y(point_field) AS point_field FROM PointGroup;
+```
+
+**Result:**
+
+| point_field |
+|-------------|
+| 0.156       |
+
+### Example 2: Get the Y-coordinate from a point using CAST
 
 ```sql
 SELECT GET_Y(CAST('POINT(0.1 -0.2)' AS POINT)) AS ptx;
 ```
 
+**Result:**
+
+| ptx    |
+|--------|
+| -0.2   |
+
+### Example 3: Get the Y-coordinate from a point using POINT function
+
 ```sql
 SELECT GET_Y(POINT(0.1, -0.2)) AS ptx;
 ```
 
-Create a table with a `POINT` data type column:
+**Result:**
 
-```sql
-CREATE TABLE POINT (point_field POINT);
-```
+| ptx    |
+|--------|
+| -0.2   |
 
-Insert a record with a point value:
+## Errors
 
-```sql
-INSERT INTO POINT VALUES (POINT(0.3134, 0.156));
-```
-
-Select the y-coordinate of the `point_field` column:
-
-```sql
-SELECT GET_Y(point_field) AS point_field FROM POINT;
-```
-
-## Invalid Use Case
-
-Trying to use `GET_Y` with a non-`POINT` data type argument:
-
-```sql
-SELECT GET_Y('cheese') AS ptx;
-```
+If the argument is not of type `Point`, a `FunctionRequiresPointValue` error will be thrown.
