@@ -20,21 +20,37 @@ FIND_IDX ( string, substring, [ start_position ] )
 
 Let's consider a few examples to understand how to use the `FIND_IDX` function.
 
-Find the position of 'rg' in each 'menu' value:
+Find the position of 'rg' in 'pork':
 
 ```sql
-SELECT FIND_IDX(menu, 'rg') AS test FROM Meal;
+SELECT FIND_IDX('pork', 'rg') AS test;
 ```
 
-This will return 0 for 'pork' and 3 for 'burger'.
+This will return 0, as 'rg' is not found in 'pork'.
 
-Find the position of 'r' in each 'menu' value, starting from position 4:
+Find the position of 'rg' in 'burger':
 
 ```sql
-SELECT FIND_IDX(menu, 'r', 4) AS test FROM Meal;
+SELECT FIND_IDX('burger', 'rg') AS test;
 ```
 
-This will return 0 for 'pork' and 6 for 'burger'.
+This will return 3, as the first occurrence of 'rg' in 'burger' is at position 3.
+
+Find the position of 'r' in 'pork', starting from position 4:
+
+```sql
+SELECT FIND_IDX('pork', 'r', 4) AS test;
+```
+
+This will return 0, as 'r' is not found in 'pork' after position 4.
+
+Find the position of 'r' in 'burger', starting from position 4:
+
+```sql
+SELECT FIND_IDX('burger', 'r', 4) AS test;
+```
+
+This will return 6, as the first occurrence of 'r' in 'burger' after position 4 is at position 6.
 
 Find the position of an empty string in 'cheese':
 
@@ -65,29 +81,3 @@ Using a NULL value as the substring will return NULL:
 ```sql
 SELECT FIND_IDX('cheese', NULL) AS test;
 ```
-
-This will return NULL.
-
-The `FIND_IDX` function expects a string value as the substring. If a non-string value is passed as the substring, it will throw an error:
-
-```sql
-SELECT FIND_IDX('cheese', 1) AS test;
-```
-
-This will throw an error because the `FIND_IDX` function expects a string value as the substring.
-
-The `FIND_IDX` function expects an integer value as the `start_position`. If a non-integer value is passed as the `start_position`, it will throw an error:
-
-```sql
-SELECT FIND_IDX('cheese', 's', '5') AS test;
-```
-
-This will throw an error because the `FIND_IDX` function expects an integer value as the `start_position`.
-
-The `start_position` must be a non-negative integer. If a negative integer is passed as the `start_position`, it will throw an error:
-
-```sql
-SELECT FIND_IDX('cheese', 's', -1) AS test;
-```
-
-This will throw an error because the `FIND_IDX` function expects a non-negative integer as the `start_position`.
