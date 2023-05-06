@@ -104,38 +104,39 @@ The `*.json` file format supports two different formats:
 ```
 $ ls -rlt ./data
 
-User.jsonl
-Dept.json
+User.json
+LoginHistory.jsonl
 ```
 
-```json
-//! User.jsonl
-{"id": 1, "name": "Alice", "deptId": 1}
-{"id": 2, "name": "Bob", "deptId": 2}
-{"id": 3, "name": "Carol", "deptId": 1}
-{"id": 4, "name": "Dave", "deptId": 2}
-{"id": 5, "name": "Eve", "deptId": 3}
-```
+Keep in mind that if there are no `*.sql` files, the data is considered schemaless, meaning that the number of columns in each row may vary.
 
 ```json
-//! Dept.json
+//! User.json
 [
   {
     "id": 1,
-    "name": "Sales",
+    "name": "Alice",
     "location": "New York"
   },
   {
     "id": 2,
-    "name": "Marketing",
-    "location": "Chicago"
+    "name": "Bob",
+    "language": "Rust"
   },
   {
     "id": 3,
-    "name": "Finance",
-    "location": "San Francisco"
+    "name": "Eve"
   }
 ]
+```
+
+```json
+//! LoginHistory.jsonl
+{"timestamp": "2023-05-01T14:36:22.000Z", "userId": 1, "action": "login"}
+{"timestamp": "2023-05-01T14:38:17.000Z", "userId": 2, "action": "logout"}
+{"timestamp": "2023-05-02T08:12:05.000Z", "userId": 2, "action": "logout"}
+{"timestamp": "2023-05-02T09:45:13.000Z", "userId": 3, "action": "login"}
+{"timestamp": "2023-05-03T16:21:44.000Z", "userId": 1, "action": "logout"}
 ```
 
 2. Read with GlueSQL JSON Storage
@@ -146,19 +147,19 @@ let json_storage = JsonStorage::new(path).unwrap();
 let mut glue = Glue::new(json_storage);
 
 glue.execute("
-SELECT U.id, U.name, D.name as deptName, D.location
+SELECT *
 FROM User U
-JOIN Dept D ON U.deptId = D.id;
+JOIN LoginHistory L ON U.id = L.userId;
 ");
 ```
 
-| id  | name  | deptName  | location      |
-| --- | ----- | --------- | ------------- |
-| 1   | Alice | Sales     | New York      |
-| 2   | Bob   | Marketing | Chicago       |
-| 3   | Carol | Sales     | New York      |
-| 4   | Dave  | Marketing | Chicago       |
-| 5   | Eve   | Finance   | San Francisco |
+| action | id  | language | location | name  | timestamp                | userId |
+| ------ | --- | -------- | -------- | ----- | ------------------------ | ------ |
+| login  | 1   |          | New York | Alice | 2023-05-01T14:36:22.000Z | 1      |
+| logout | 1   |          | New York | Alice | 2023-05-03T16:21:44.000Z | 1      |
+| logout | 2   | Rust     |          | Bob   | 2023-05-01T14:38:17.000Z | 2      |
+| logout | 2   | Rust     |          | Bob   | 2023-05-02T08:12:05.000Z | 2      |
+| login  | 3   |          |          | Eve   | 2023-05-02T09:45:13.000Z | 3      |
 
 ### Create Schema Table
 
