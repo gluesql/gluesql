@@ -8,11 +8,11 @@ use {
 test_case!(calc_distance, async move {
     let test_cases = [
         (
-            "CREATE TABLE Foo (id Float, geo1 Point, geo2 Point, bar Float)",
+            "CREATE TABLE Foo (geo1 Point, geo2 Point, bar Float)",
             Ok(Payload::Create),
         ),
         (
-            r#"INSERT INTO Foo VALUES (1, POINT(0.3134, 3.156), POINT(1.415, 3.231), 3)"#,
+            r#"INSERT INTO Foo VALUES (POINT(0.3134, 3.156), POINT(1.415, 3.231), 3)"#,
             Ok(Payload::Insert(1)),
         ),
         (
