@@ -20,59 +20,59 @@ use {
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum Error {
-    #[error("storage error: {0}")]
+    #[error("storage: {0}")]
     StorageMsg(String),
 
-    #[error("parsing failed: {0}")]
+    #[error("parser: {0}")]
     Parser(String),
 
-    #[error(transparent)]
+    #[error("translate: {0}")]
     Translate(#[from] TranslateError),
 
-    #[error(transparent)]
+    #[error("ast-builder: {0}")]
     AstBuilder(#[from] AstBuilderError),
 
-    #[error(transparent)]
+    #[error("alter-table: {0}")]
     AlterTable(#[from] AlterTableError),
-    #[error(transparent)]
+    #[error("index: {0}")]
     Index(#[from] IndexError),
-    #[error(transparent)]
+    #[error("execute: {0}")]
     Execute(#[from] ExecuteError),
-    #[error(transparent)]
+    #[error("alter: {0}")]
     Alter(#[from] AlterError),
-    #[error(transparent)]
+    #[error("fetch: {0}")]
     Fetch(#[from] FetchError),
-    #[error(transparent)]
+    #[error("select: {0}")]
     Select(#[from] SelectError),
-    #[error(transparent)]
+    #[error("evaluate: {0}")]
     Evaluate(#[from] EvaluateError),
-    #[error(transparent)]
+    #[error("aggregate: {0}")]
     Aggregate(#[from] AggregateError),
-    #[error(transparent)]
+    #[error("sort: {0}")]
     Sort(#[from] SortError),
-    #[error(transparent)]
+    #[error("insert: {0}")]
     Insert(#[from] InsertError),
-    #[error(transparent)]
+    #[error("update: {0}")]
     Update(#[from] UpdateError),
-    #[error(transparent)]
+    #[error("table: {0}")]
     Table(#[from] TableError),
-    #[error(transparent)]
+    #[error("validate: {0}")]
     Validate(#[from] ValidateError),
-    #[error(transparent)]
+    #[error("row: {0}")]
     Row(#[from] RowError),
-    #[error(transparent)]
+    #[error("key: {0}")]
     Key(#[from] KeyError),
-    #[error(transparent)]
+    #[error("value: {0}")]
     Value(#[from] ValueError),
-    #[error(transparent)]
+    #[error("literal: {0}")]
     Literal(#[from] LiteralError),
-    #[error(transparent)]
+    #[error("interval: {0}")]
     Interval(#[from] IntervalError),
-    #[error(transparent)]
+    #[error("string-ext: {0}")]
     StringExt(#[from] StringExtError),
-    #[error(transparent)]
+    #[error("plan: {0}")]
     Plan(#[from] PlanError),
-    #[error(transparent)]
+    #[error("schema-parse: {0}")]
     Schema(#[from] SchemaParseError),
 }
 
