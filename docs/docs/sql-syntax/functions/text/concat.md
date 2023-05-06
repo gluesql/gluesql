@@ -57,19 +57,3 @@ SELECT CONCAT() AS myconcat;
 ```
 
 This will throw an error because the CONCAT function expects at least one argument.
-
-Additionally, you can use the CONCAT function to concatenate lists:
-
-```sql
-CREATE TABLE ListTypeConcat (
-    id INTEGER,
-    items LIST,
-    items2 LIST
-);
-INSERT INTO ListTypeConcat VALUES
-    (1, '[1, 2, 3]', '["one", "two", "three"]');
-
-SELECT CONCAT(items, items2) AS myconcat FROM ListTypeConcat;
-```
-
-This will return `[1, 2, 3, "one", "two", "three"]`, which is the result of concatenating the 'items' and 'items2' lists.
