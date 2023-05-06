@@ -88,16 +88,9 @@ The `*.json` file format supports two different formats:
 
 ```json
 {
-  "data": [
-    {
-      "id": 1,
-      "name": "Glue"
-    },
-    {
-      "id": 2,
-      "name": "SQL"
-    }
-  ]
+  "name": "GlueSQL"
+  "keywords": ["Database, Rust"]
+  "stars": 999999
 }
 ```
 
