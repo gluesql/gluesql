@@ -142,15 +142,14 @@ impl<'a, W: Write> Print<W> {
             }
             Payload::ExplainTable(columns) => {
                 let mut table =
-                    self.get_table(vec!["Field", "Type", "Null", "Key", "Default", "Extra"]);
-                for (field, field_type, null, key, default, extra) in columns {
+                    self.get_table(vec!["Field", "Type", "Null", "Key", "Default"]);
+                for row in columns {
                     table.add_record([
-                        field,
-                        &field_type.to_string(),
-                        &(null.to_string()),
-                        &key.to_string(),
-                        &default.to_string(),
-                        extra,
+                        row.name.to_owned(),
+                        row.data_type.to_string(),
+                        row.nullable.to_string(),
+                        row.key.to_string(),
+                        row.default.to_string(),
                     ]);
                 }
                 let table = self.build_table(table);
@@ -375,7 +374,7 @@ mod tests {
     fn print_payload() {
         use gluesql_core::{
             ast::DataType,
-            prelude::{Payload, PayloadVariable, Value},
+            prelude::{Payload, PayloadVariable, Value, ExplainTableRow},
         };
 
         let mut print = Print::new(Vec::new(), None, Default::default());
@@ -595,46 +594,42 @@ mod tests {
 
         test!(
             Payload::ExplainTable(vec![
-                (
-                    "id".to_owned(),
-                    DataType::Int,
-                    false,
-                    "PRIMARY KEY".to_owned(),
-                    "".to_owned(),
-                    "".to_owned()
-                ),
-                (
-                    "name".to_owned(),
-                    DataType::Text,
-                    true,
-                    "".to_owned(),
-                    "".to_owned(),
-                    "".to_owned()
-                ),
-                (
-                    "age".to_owned(),
-                    DataType::Int,
-                    false,
-                    "".to_owned(),
-                    "".to_owned(),
-                    "".to_owned()
-                ),
-                (
-                    "alive".to_owned(),
-                    DataType::Boolean,
-                    true,
-                    "".to_owned(),
-                    "TRUE".to_owned(),
-                    "".to_owned()
-                )
+                ExplainTableRow {
+                    name: "id".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: false,
+                    key: "PRIMARY KEY".to_owned(),
+                    default: "".to_owned(),
+                },
+                ExplainTableRow {
+                    name: "name".to_owned(),
+                    data_type: DataType::Text,
+                    nullable: true,
+                    key: "".to_owned(),
+                    default: "".to_owned(),
+                },
+                ExplainTableRow {
+                    name: "age".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: false,
+                    key: "".to_owned(),
+                    default: "".to_owned(),
+                },
+                ExplainTableRow {
+                    name: "alive".to_owned(),
+                    data_type: DataType::Boolean,
+                    nullable: true,
+                    key: "".to_owned(),
+                    default: "TRUE".to_owned(),
+                }
             ]),
             "
-| Field | Type    | Null  | Key         | Default | Extra |
-|-------|---------|-------|-------------|---------|-------|
-| id    | INT     | false | PRIMARY KEY |         |       |
-| name  | TEXT    | true  |             |         |       |
-| age   | INT     | false |             |         |       |
-| alive | BOOLEAN | true  |             | TRUE    |       |
+| Field | Type    | Null  | Key         | Default |
+|-------|---------|-------|-------------|---------|
+| id    | INT     | false | PRIMARY KEY |         |
+| name  | TEXT    | true  |             |         |
+| age   | INT     | false |             |         |
+| alive | BOOLEAN | true  |             | TRUE    |
 "
         );
 
