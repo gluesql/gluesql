@@ -81,12 +81,7 @@ fn convert_payload(payload: Payload) -> Json {
             })
         }
         Payload::ExplainTable(columns) => {
-            let columns = columns
-                .into_iter()
-                .map(|row| {
-                    json!(row)
-                })
-                .collect();
+            let columns = columns.into_iter().map(|row| json!(row)).collect();
 
             json!({
                 "type": "SHOW COLUMNS",
