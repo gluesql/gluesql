@@ -141,8 +141,7 @@ impl<'a, W: Write> Print<W> {
                 self.writeln(table)?;
             }
             Payload::ExplainTable(columns) => {
-                let mut table =
-                    self.get_table(vec!["Field", "Type", "Null", "Key", "Default"]);
+                let mut table = self.get_table(vec!["Field", "Type", "Null", "Key", "Default"]);
                 for row in columns {
                     table.add_record([
                         row.name.to_owned(),
@@ -374,7 +373,7 @@ mod tests {
     fn print_payload() {
         use gluesql_core::{
             ast::DataType,
-            prelude::{Payload, PayloadVariable, Value, ExplainTableRow},
+            prelude::{ExplainTableRow, Payload, PayloadVariable, Value},
         };
 
         let mut print = Print::new(Vec::new(), None, Default::default());

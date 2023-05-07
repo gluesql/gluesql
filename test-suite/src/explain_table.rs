@@ -2,7 +2,7 @@ use {
     crate::*,
     gluesql_core::{
         ast::DataType,
-        executor::{ExecuteError, Payload, ExplainTableRow},
+        executor::{ExecuteError, ExplainTableRow, Payload},
     },
 };
 
@@ -31,7 +31,7 @@ test_case!(explain_table, async move {
             ExplainTableRow {
                 name: "name".to_owned(),
                 data_type: DataType::Text,
-               nullable:  true,
+                nullable: true,
                 key: "".to_owned(),
                 default: "".to_owned(),
             },
@@ -45,7 +45,7 @@ test_case!(explain_table, async move {
             ExplainTableRow {
                 name: "alive".to_owned(),
                 data_type: DataType::Boolean,
-               nullable:  true,
+                nullable: true,
                 key: "".to_owned(),
                 default: "TRUE".to_owned(),
             }

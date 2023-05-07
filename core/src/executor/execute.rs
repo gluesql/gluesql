@@ -312,14 +312,12 @@ async fn execute_inner<T: GStore + GStoreMut>(
             let output: Vec<ExplainTableRow> = column_defs
                 .unwrap_or_default()
                 .into_iter()
-                .map(|key| {
-                    ExplainTableRow {
-                        name: key.name,
-                        data_type: key.data_type,
-                        nullable: key.nullable,
-                        key: key.unique.map(|e| e.to_sql()).unwrap_or_default(),
-                        default: key.default.map(|e| e.to_sql()).unwrap_or_default(),
-                    }
+                .map(|key| ExplainTableRow {
+                    name: key.name,
+                    data_type: key.data_type,
+                    nullable: key.nullable,
+                    key: key.unique.map(|e| e.to_sql()).unwrap_or_default(),
+                    default: key.default.map(|e| e.to_sql()).unwrap_or_default(),
                 })
                 .collect();
 
