@@ -2,7 +2,7 @@ use {
     crate::*,
     gluesql_core::{
         ast::DataType,
-        executor::{ExecuteError, Payload},
+        executor::{ExecuteError, Payload, ExplainTableRow},
     },
 };
 
@@ -21,38 +21,34 @@ test_case!(explain_table, async move {
     test!(
         r#"EXPLAIN person"#,
         Ok(Payload::ExplainTable(vec![
-            (
-                "id".to_owned(),
-                DataType::Int,
-                false,
-                "PRIMARY KEY".to_owned(),
-                "".to_owned(),
-                "".to_owned()
-            ),
-            (
-                "name".to_owned(),
-                DataType::Text,
-                true,
-                "".to_owned(),
-                "".to_owned(),
-                "".to_owned()
-            ),
-            (
-                "age".to_owned(),
-                DataType::Int,
-                false,
-                "".to_owned(),
-                "".to_owned(),
-                "".to_owned()
-            ),
-            (
-                "alive".to_owned(),
-                DataType::Boolean,
-                true,
-                "".to_owned(),
-                "TRUE".to_owned(),
-                "".to_owned()
-            )
+            ExplainTableRow {
+                name: "id".to_owned(),
+                data_type: DataType::Int,
+                nullable: false,
+                key: "PRIMARY KEY".to_owned(),
+                default: "".to_owned(),
+            },
+            ExplainTableRow {
+                name: "name".to_owned(),
+                data_type: DataType::Text,
+               nullable:  true,
+                key: "".to_owned(),
+                default: "".to_owned(),
+            },
+            ExplainTableRow {
+                name: "age".to_owned(),
+                data_type: DataType::Int,
+                nullable: false,
+                key: "".to_owned(),
+                default: "".to_owned(),
+            },
+            ExplainTableRow {
+                name: "alive".to_owned(),
+                data_type: DataType::Boolean,
+               nullable:  true,
+                key: "".to_owned(),
+                default: "TRUE".to_owned(),
+            }
         ]))
     );
 

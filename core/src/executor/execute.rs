@@ -33,7 +33,7 @@ pub enum ExecuteError {
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum Payload {
     ShowColumns(Vec<(String, DataType)>),
-    ExplainTable(Vec<(String, DataType, bool, String, String, String)>),
+    ExplainTable(Vec<ExplainTableRow>),
     Create,
     Insert(usize),
     Select {
@@ -59,6 +59,15 @@ pub enum PayloadVariable {
     Tables(Vec<String>),
     Functions(Vec<String>),
     Version(String),
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct ExplainTableRow {
+    pub name: String,
+    pub data_type: DataType,
+    pub nullable: bool,
+    pub key: String,
+    pub default: String,
 }
 
 pub async fn execute<T: GStore + GStoreMut>(
@@ -263,18 +272,17 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 .await?
                 .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
 
-            let output: Vec<(String, DataType, bool, String, String, String)> = column_defs
+            let output: Vec<ExplainTableRow> = column_defs
                 .unwrap_or_default()
                 .into_iter()
                 .map(|key| {
-                    (
-                        key.name,
-                        key.data_type,
-                        key.nullable,
-                        key.unique.map(|e| e.to_sql()).unwrap_or_default(),
-                        key.default.map(|e| e.to_sql()).unwrap_or_default(),
-                        "".to_owned(),
-                    )
+                    ExplainTableRow {
+                        name: key.name,
+                        data_type: key.data_type,
+                        nullable: key.nullable,
+                        key: key.unique.map(|e| e.to_sql()).unwrap_or_default(),
+                        default: key.default.map(|e| e.to_sql()).unwrap_or_default(),
+                    }
                 })
                 .collect();
 
