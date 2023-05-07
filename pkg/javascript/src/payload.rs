@@ -84,7 +84,7 @@ fn convert_payload(payload: Payload) -> Json {
             let columns = columns.into_iter().map(|row| json!(row)).collect();
 
             json!({
-                "type": "SHOW COLUMNS",
+                "type": "EXPLAIN",
                 "columns": Json::Array(columns),
             })
         }
