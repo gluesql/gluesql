@@ -36,7 +36,7 @@ impl Tester<SledStorage> for SledTester {
 }
 
 #[tokio::test]
-async fn delete() {
+async fn sled_basic() {
     use gluesql_core::prelude::*;
 
     let mut tester = SledTester::new("delete").await;

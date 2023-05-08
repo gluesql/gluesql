@@ -11,6 +11,7 @@ pub mod concat;
 pub mod custom_function;
 pub mod data_type;
 pub mod default;
+pub mod delete;
 pub mod dictionary;
 pub mod dictionary_index;
 pub mod filter;
@@ -67,6 +68,7 @@ macro_rules! generate_store_tests {
         }
         glue!(update, update::update);
         glue!(insert, insert::insert);
+        glue!(delete, delete::delete);
         glue!(basic, basic::basic);
         glue!(aggregate_avg, aggregate::avg::avg);
         glue!(aggregate_count, aggregate::count::count);
