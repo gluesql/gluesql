@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "GlueSQL javascript rollup example",
   "main": "index.js",
+  "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/gluesql/gluesql.git"
@@ -17,8 +18,8 @@
     "build": "yarn upgrade gluesql && rollup -c"
   },
   "devDependencies": {
-    "@rollup/plugin-node-resolve": "^13.2.1",
+    "@rollup/plugin-node-resolve": "^15.0.2",
     "gluesql": "file:../../..",
-    "rollup": "^2.70.2"
+    "rollup": "^3.21.5"
   }
 }

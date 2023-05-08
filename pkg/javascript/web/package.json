@@ -2,6 +2,7 @@
   "name": "gluesql",
   "version": "0.13.0",
   "description": "GlueSQL is quite sticky, it attaches to anywhere",
+  "type": "module",
   "browser": "bundler.js",
   "main": "index.js",
   "scripts": {
@@ -33,7 +34,7 @@
   },
   "homepage": "https://github.com/gluesql/gluesql#readme",
   "devDependencies": {
-    "@wasm-tool/rollup-plugin-rust": "^1.0.7",
-    "rollup": "^2.70.2"
+    "@wasm-tool/rollup-plugin-rust": "^2.3.5",
+    "rollup": "^3.21.5"
   }
 }

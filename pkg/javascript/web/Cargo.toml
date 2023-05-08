@@ -17,8 +17,8 @@ default = ["console_error_panic_hook"]
 nodejs = ["console_error_panic_hook"]
 
 [dependencies]
-wasm-bindgen = { version = "0.2.79" }
-wasm-bindgen-futures = "0.4.29"
+wasm-bindgen = { version = "0.2.84" }
+wasm-bindgen-futures = "0.4.34"
 js-sys = "0.3"
 
 serde = "1"
