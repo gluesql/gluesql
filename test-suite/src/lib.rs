@@ -270,6 +270,7 @@ macro_rules! generate_transaction_tests {
             transaction_create_drop_table,
             transaction::create_drop_table
         );
+        glue!(transaction_dictionary, transaction::dictionary);
     };
 }
 
@@ -326,19 +327,6 @@ macro_rules! generate_transaction_index_tests {
 
         glue!(transaction_index_create, transaction::index_create);
         glue!(transaction_index_drop, transaction::index_drop);
-    };
-}
-
-#[macro_export]
-macro_rules! generate_transaction_dictionary_tests {
-    ($test: meta, $storage: ident) => {
-        macro_rules! glue {
-            ($title: ident, $func: path) => {
-                declare_test_fn!($test, $storage, $title, $func);
-            };
-        }
-
-        glue!(transaction_dictionary, transaction::dictionary);
     };
 }
 
