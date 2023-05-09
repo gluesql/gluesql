@@ -1,6 +1,9 @@
 use {
     crate::*,
-    gluesql_core::prelude::{Payload, Value::*},
+    gluesql_core::{
+        error::InsertError,
+        prelude::{Payload, Value::*},
+    },
 };
 
 test_case!(insert, async move {
@@ -9,7 +12,7 @@ test_case!(insert, async move {
 CREATE TABLE Test (
     id INTEGER DEFAULT 1,
     num INTEGER NULL,
-    name TEXT
+    name TEXT NOT NULL,
 )"
     );
 
@@ -37,12 +40,17 @@ CREATE TABLE Test (
 
     test! {
         sql: "INSERT INTO Test (num, name) VALUES (28, 'Wazowski');",
-        expected: Ok(Payload:: Insert(1))
+        expected: Ok(Payload::Insert(1))
     };
 
     test! {
         sql: "INSERT INTO Test (name) VALUES ('The end');",
-        expected: Ok(Payload:: Insert(1))
+        expected: Ok(Payload::Insert(1))
+    };
+
+    test! {
+        sql: "INSERT INTO Test (id, num) VALUES (1, 10)",
+        expected: Err(InsertError::LackOfRequiredColumn("name".to_owned()).into())
     };
 
     test! {
