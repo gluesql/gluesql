@@ -29,7 +29,9 @@ jobs:
       - run: |
           cd pkg/javascript/web
           yarn install
-          yarn build
+          yarn build:browser
+          yarn build:nodejs
+          yarn build:rollup
           yarn test:firefox
           cd ../../../
 
