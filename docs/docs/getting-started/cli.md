@@ -117,9 +117,9 @@ gluesql> VALUES (1, 'Glue'), (2, 'SQL');
 
 ### .edit
 
-This command open editor with last SQL or PATH
+This command open editor with last executed SQL or PATH
 
-#### With last SQL
+#### With last executed SQL
 
 if you execute `.edit`, it opens specified (set on `$EDITOR` env) or OS default editor.
 
@@ -134,7 +134,7 @@ gluesql> VALUES (1, 'Glue'), (2, 'SQL');
 gluesql> .edit
 ```
 
-Last SQL is opened with `vi`
+Last executed SQL is opened with `vi`
 
 ```sql
 --! /tmp/Glue_xxxxx.sql
