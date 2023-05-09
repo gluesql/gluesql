@@ -29,9 +29,9 @@ jobs:
       - run: |
           cd pkg/javascript/web
           yarn install
-          yarn build:browser
-          yarn build:nodejs
-          yarn build:rollup
+          wasm-pack build --target web --no-typescript --release --out-dir ../dist/web
+          wasm-pack build --target nodejs --no-typescript --release --out-dir ../dist/nodejs -- --no-default-features --features nodejs
+          yarn rollup -c && cp ../dist/bundler/gluesql.js ../gluesql.rollup.js
           yarn test:firefox
           cd ../../../
 
