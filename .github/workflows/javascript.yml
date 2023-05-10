@@ -22,16 +22,14 @@ jobs:
       - name: Set up node
         uses: actions/setup-node@v3
         with:
-          node-version: 16
+          node-version: 18
       - uses: browser-actions/setup-firefox@latest
       - name: Set up wasm pack
         uses: jetli/wasm-pack-action@v0.3.0
       - run: |
           cd pkg/javascript/web
           yarn install
-          wasm-pack build --target web --no-typescript --release --out-dir ../dist/web
-          wasm-pack build --target nodejs --no-typescript --release --out-dir ../dist/nodejs -- --no-default-features --features nodejs
-          yarn rollup -c && cp ../dist/bundler/gluesql.js ../gluesql.rollup.js
+          yarn build
           yarn test:firefox
           cd ../../../
 
@@ -43,7 +41,7 @@ jobs:
       - name: Set up node
         uses: actions/setup-node@v3
         with:
-          node-version: 16
+          node-version: 18
       - uses: browser-actions/setup-firefox@latest
       - name: Set up wasm pack
         uses: jetli/wasm-pack-action@v0.3.0
