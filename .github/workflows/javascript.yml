@@ -29,7 +29,9 @@ jobs:
       - run: |
           cd pkg/javascript/web
           yarn install
-          yarn build
+          yarn rollup -c
+          wasm-pack build --target web
+          wasm-pack build --target nodejs -- --no-default-features --features nodejs
           yarn test:firefox
           cd ../../../
 
