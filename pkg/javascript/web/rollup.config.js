@@ -1,9 +1,9 @@
 import rust from "@wasm-tool/rollup-plugin-rust";
+      // dir: "../dist/bundler",
 
 export default {
     input: "gluesql.js",
     output: {
-      dir: "../dist/bundler",
       format: "es",
       sourcemap: true,
       name: 'gluesql',
