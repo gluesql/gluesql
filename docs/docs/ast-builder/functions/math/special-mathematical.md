@@ -1,4 +1,4 @@
-# Special Mathematical Functions
+# Special Mathematical 
 ## Todo
     - PI: Returns the constant value of Pi.
     - RAND: Returns a random number.

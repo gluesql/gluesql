@@ -1,4 +1,4 @@
-# Trigonometric Functions
+# Trigonometric 
 ## Todo
     - ACOS: Returns the arc cosine of a number.
     - ASIN: Returns the arc sine of a number.

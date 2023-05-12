@@ -1,4 +1,4 @@
-# Position and Indexing Functions
+# Position and Indexing 
 ## Todo
     - POSITION: Returns the position of the first occurrence of a substring in a string.
     - FIND_IDX: Returns the position of the first occurrence of a substring in a string.

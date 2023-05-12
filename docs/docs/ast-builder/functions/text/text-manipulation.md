@@ -1,4 +1,4 @@
-# Text Manipulation Functions
+# Text Manipulation 
 ## Todo
     - CONCAT: Concatenates two or more strings into one.
     - CONCAT_WS: Concatenates two or more strings into one with a separator.

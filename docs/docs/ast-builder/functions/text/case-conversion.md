@@ -1,4 +1,4 @@
-# Case Conversion Functions
+# Case Conversion 
 ## Todo
     - LOWER: Converts a string to lower-case.
     - UPPER: Converts a string to upper-case.

@@ -1,4 +1,4 @@
-# Basic Arithmetic Functions
+# Basic Arithmetic 
 ## Todo
     - ABS: Returns the absolute value of a number.
     - DIV: Performs integer division.

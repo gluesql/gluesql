@@ -1,4 +1,4 @@
-# Logarithmic and Exponential Functions
+# Logarithmic and Exponential 
 ## Todo
     - EXP: Returns e raised to the power of a specified number.
     - LN: Returns the natural logarithm of a number.
