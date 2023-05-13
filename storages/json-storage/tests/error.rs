@@ -21,7 +21,10 @@ fn json_error() {
         (
             glue.execute("SELECT * FROM WrongFormatJson"),
             Err(Error::StorageMsg(
-                JsonStorageError::InvalidJsonString("WrongFormatJson".to_owned()).to_string(),
+                JsonStorageError::InvalidJsonContent(
+                    "./tests/samples/WrongFormatJson.json".to_owned(),
+                )
+                .to_string(),
             )),
         ),
         (
