@@ -19,7 +19,7 @@ test_case!(rounding, async move {
     // insert into Number
     let actual = table("Number")
         .insert()
-        .values(vec!["1, 0.3", "2, -0.8", "3, 10","4, 6.87421"])
+        .values(vec!["1, 0.3", "2, -0.8", "3, 10", "4, 6.87421"])
         .execute(glue)
         .await;
     let expected = Ok(Payload::Insert(4));
@@ -75,6 +75,4 @@ test_case!(rounding, async move {
         4     7.0
     ));
     test(actual, expected);
-    
-
 });
