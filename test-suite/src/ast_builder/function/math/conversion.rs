@@ -1,6 +1,7 @@
 use {
     crate::*,
     gluesql_core::{ast_builder::*, executor::Payload, prelude::Value::*},
+    std::f64::consts::* 
 };
 
 test_case!(conversion, async move {
@@ -55,9 +56,9 @@ test_case!(conversion, async move {
         input   | r#"RADIANS("number")"#    | r#"RADIANS("number")"#
         I64     | F64                       | F64;
         0         0.0                         0.0;
-        90        1.5707963267948966          1.5707963267948966;
-        180       3.141592653589793           3.141592653589793;
-        360       6.283185307179586           6.283185307179586
+        90        FRAC_PI_2                   FRAC_PI_2;
+        180       PI                          PI;
+        360       TAU                         TAU
     ));
     test(actual, expected);
 });
