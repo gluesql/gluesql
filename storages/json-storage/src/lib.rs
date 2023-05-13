@@ -109,14 +109,12 @@ impl JsonStorage {
             Jsonl(I2),
         }
         let json_path = self.json_path(table_name);
-        let jsons = match fs::read_to_string(json_path.clone()) {
+        let jsons = match fs::read_to_string(json_path) {
             Ok(json_file_str) => {
                 let value = serde_json::from_str(&json_file_str).map_err(|_| {
                     Error::StorageMsg(
-                        JsonStorageError::InvalidJsonContent(
-                            json_path.to_str().unwrap_or("wrong path").to_string(),
-                        )
-                        .to_string(),
+                        JsonStorageError::InvalidJsonContent(format!("{table_name}.json"))
+                            .to_string(),
                     )
                 })?;
 
