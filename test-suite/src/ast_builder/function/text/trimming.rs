@@ -112,5 +112,6 @@ test_case!(trimming, async move {
         3     "icken".to_owned();
         4     "chick".to_owned()
     ));
+
     test(actual, expected);
 });
