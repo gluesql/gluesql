@@ -201,7 +201,7 @@ macro_rules! generate_store_tests {
             ast_builder::function::math::rounding
         );
         glue!(
-            ast_builder_expr_pattern_matching, 
+            ast_builder_expr_pattern_matching,
             ast_builder::expr::pattern_matching::pattern_matching
         );
         glue!(ast_builder_select, ast_builder::select::select);

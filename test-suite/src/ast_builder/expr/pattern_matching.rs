@@ -16,7 +16,6 @@ test_case!(pattern_matching, async move {
     let expected = Ok(Payload::Create);
     test(actual, expected);
 
-
     // insert into Category
     let actual = table("Category")
         .insert()
@@ -28,10 +27,10 @@ test_case!(pattern_matching, async move {
 
     // like
     let actual = table("Category")
-                  .select()
-                  .filter(col("name").like(text("D%")))
-                  .execute(glue)
-                  .await;
+        .select()
+        .filter(col("name").like(text("D%")))
+        .execute(glue)
+        .await;
     let expected = Ok(select!(
         id  | name
         I64 | Str;
@@ -41,10 +40,10 @@ test_case!(pattern_matching, async move {
 
     // ilike
     let actual = table("Category")
-                  .select()
-                  .filter(col("name").ilike(text("D%")))
-                  .execute(glue)
-                  .await;
+        .select()
+        .filter(col("name").ilike(text("D%")))
+        .execute(glue)
+        .await;
     let expected = Ok(select!(
         id  | name
         I64 | Str;
@@ -55,10 +54,10 @@ test_case!(pattern_matching, async move {
 
     // not_like
     let actual = table("Category")
-                  .select()
-                  .filter(col("name").not_like(text("D%")))
-                  .execute(glue)
-                  .await;
+        .select()
+        .filter(col("name").not_like(text("D%")))
+        .execute(glue)
+        .await;
     let expected = Ok(select!(
         id  | name
         I64 | Str;
@@ -68,13 +67,12 @@ test_case!(pattern_matching, async move {
     ));
     test(actual, expected);
 
-
     // not_ilike
     let actual = table("Category")
-                  .select()
-                  .filter(col("name").not_ilike(text("D%")))
-                  .execute(glue)
-                  .await;
+        .select()
+        .filter(col("name").not_ilike(text("D%")))
+        .execute(glue)
+        .await;
     let expected = Ok(select!(
         id  | name
         I64 | Str;
