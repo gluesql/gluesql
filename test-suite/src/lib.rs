@@ -206,7 +206,10 @@ macro_rules! generate_store_tests {
         glue!(ast_builder_update, ast_builder::update::update);
         glue!(ast_builder_delete, ast_builder::delete::delete);
         glue!(ast_builder_alias_as, ast_builder::alias_as::alias_as);
-        glue!(ast_builder_function_text_trimming, ast_builder::function::text::trimming);
+        glue!(
+            ast_builder_function_text_trimming,
+            ast_builder::function::text::trimming
+        );
 
         // schemaless data support
         glue!(schemaless_basic, schemaless::basic);
