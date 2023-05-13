@@ -30,15 +30,16 @@ test_case!(rounding, async move {
         .select()
         .project("id")
         .project(ceil("number"))
+        .project(col("number").ceil())
         .execute(glue)
         .await;
     let expected = Ok(select!(
-        id  | "CEIL(\"number\")"
-        I64 | F64;
-        1     1.0;
-        2     0.0;
-        3     10.0;
-        4     7.0
+        id  | "CEIL(\"number\")" | "CEIL(\"number\")"
+        I64 | F64                | F64;
+        1     1.0                  1.0;
+        2     0.0                  0.0;
+        3     10.0                 10.0;
+        4     7.0                  7.0
     ));
     test(actual, expected);
 
@@ -47,15 +48,16 @@ test_case!(rounding, async move {
         .select()
         .project("id")
         .project(floor("number"))
+        .project(col("number").floor())
         .execute(glue)
         .await;
     let expected = Ok(select!(
-        id  | "FLOOR(\"number\")"
-        I64 | F64;
-        1     0.0;
-        2     f64::from(-1);
-        3     10.0;
-        4     6.0
+        id  | "FLOOR(\"number\")" | "FLOOR(\"number\")"
+        I64 | F64                 | F64;
+        1     0.0                   0.0;
+        2     f64::from(-1)         f64::from(-1);
+        3     10.0                  10.0;
+        4     6.0                   6.0
     ));
     test(actual, expected);
 
@@ -64,15 +66,17 @@ test_case!(rounding, async move {
         .select()
         .project("id")
         .project(round("number"))
+        .project(col("number").round())
         .execute(glue)
         .await;
     let expected = Ok(select!(
-        id  | "ROUND(\"number\")"
-        I64 | F64;
-        1     0.0;
-        2     f64::from(-1);
-        3     10.0;
-        4     7.0
+        id  | "ROUND(\"number\")" | "ROUND(\"number\")"
+        I64 | F64                 | F64;
+        1     0.0                   0.0;
+        2     f64::from(-1)         f64::from(-1);
+        3     10.0                  10.0;
+        4     7.0                   7.0
     ));
     test(actual, expected);
+
 });
