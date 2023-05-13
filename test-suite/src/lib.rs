@@ -210,6 +210,10 @@ macro_rules! generate_store_tests {
             ast_builder_function_datetime_conversion,
             ast_builder::function::datetime::conversion
         );
+        glue!(
+            ast_builder_function_math_conversion,
+            ast_builder::function::math::conversion
+        );
 
         // schemaless data support
         glue!(schemaless_basic, schemaless::basic);
