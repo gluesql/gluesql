@@ -206,25 +206,8 @@ macro_rules! generate_store_tests {
         glue!(ast_builder_update, ast_builder::update::update);
         glue!(ast_builder_delete, ast_builder::delete::delete);
         glue!(ast_builder_alias_as, ast_builder::alias_as::alias_as);
-<<<<<<< HEAD
-<<<<<<< HEAD
+        glue!(ast_builder_function_math_conversion, ast_builder::function::math::conversion);
         glue!(ast_builder_function_text_trimming, ast_builder::function::text::trimming);
-=======
-        glue!(
-            ast_builder_function_datetime_conversion,
-            ast_builder::function::datetime::conversion
-        );
-        glue!(
-            ast_builder_function_math_conversion,
-            ast_builder::function::math::conversion
-        );
->>>>>>> b984ab015d21f2339a1857a9ccde61b0f5fd5643
-=======
-        glue!(
-            ast_builder_function_text_trimming,
-            ast_builder::function::text::trimming
-        );
->>>>>>> test/v2/trimming
 
         // schemaless data support
         glue!(schemaless_basic, schemaless::basic);
