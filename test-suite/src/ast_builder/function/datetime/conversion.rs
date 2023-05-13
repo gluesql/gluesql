@@ -35,15 +35,16 @@ test_case!(conversion, async move {
     let actual = table("Visitor")
         .select()
         .project("id")
-        .project(col("visit_date"))
-        .project(date("2022-03-03"))
+        .project("name")
+        .project(col("visit_date").to_date("'%Y-%m-%d'"))
+        .project(to_date("visit_date", "'%Y-%m-%d'"))
         .execute(glue)
         .await;
     let expected = Ok(select!(
-        id  | name                | visit_date
-        I64 | Str                 | Date;
-        1    "Bryanna".to_owned()   NaiveDate::from_ymd_opt(2022, 12, 23).unwrap();
-        2    "Ash".to_owned()     NaiveDate::from_ymd_opt(2023, 4, 1).unwrap()
+        id  | name                | "TO_DATE(\"visit_date\", '%Y-%m-%d')"          | "TO_DATE(\"visit_date\", '%Y-%m-%d')"
+        I64 | Str                 | Date                                           | Date;
+        1    "Bryanna".to_owned()   NaiveDate::from_ymd_opt(2022, 12, 23).unwrap()   NaiveDate::from_ymd_opt(2022, 12, 23).unwrap();
+        2    "Ash".to_owned()       NaiveDate::from_ymd_opt(2023, 4, 1).unwrap()     NaiveDate::from_ymd_opt(2023, 4, 1).unwrap()
     ));
     test(actual, expected);
 
@@ -51,14 +52,16 @@ test_case!(conversion, async move {
     let actual = table("Visitor")
         .select()
         .project("id")
-        .project(col("visit_time"))
+        .project("name")
+        .project(col("visit_time").to_time("'%H:%M:%S'"))
+        .project(to_time("visit_time", "'%H:%M:%S'"))
         .execute(glue)
         .await;
     let expected = Ok(select!(
-        id  | name                | visit_time
-        I64 | Str                 | Time;
-        1    "Bryanna".to_owned()   NaiveTime::from_hms_opt(13, 5, 26).unwrap();
-        2    "Ash".to_owned()     NaiveTime::from_hms_opt(23, 24, 11).unwrap()
+        id  | name                | "TO_TIME(\"visit_time\", '%H:%M:%S')"       | "TO_TIME(\"visit_time\", '%H:%M:%S')"
+        I64 | Str                 | Time                                        | Time;
+        1    "Bryanna".to_owned()   NaiveTime::from_hms_opt(13, 5, 26).unwrap()   NaiveTime::from_hms_opt(13, 5, 26).unwrap();
+        2    "Ash".to_owned()       NaiveTime::from_hms_opt(23, 24, 11).unwrap()  NaiveTime::from_hms_opt(23, 24, 11).unwrap()
     ));
     test(actual, expected);
 
@@ -66,14 +69,16 @@ test_case!(conversion, async move {
     let actual = table("Visitor")
         .select()
         .project("id")
-        .project(col("visit_time_stamp"))
+        .project("name")
+        .project(col("visit_time_stamp").to_timestamp("'%Y-%m-%d %H:%M:%S'"))
+        .project(to_timestamp("visit_time_stamp", "'%Y-%m-%d %H:%M:%S'"))
         .execute(glue)
         .await;
     let expected = Ok(select!(
-        id  | name                 | visit_time_stamp
-        I64 | Str                  | Timestamp;
-        1    "Bryanna".to_owned()    NaiveDate::from_ymd_opt(2022, 12, 23).unwrap().and_hms_opt(13, 5, 26).unwrap();
-        2    "Ash".to_owned()      NaiveDate::from_ymd_opt(2023, 4, 1).unwrap().and_hms_opt(23, 24, 11).unwrap()
+        id  | name                 | "TO_TIMESTAMP(\"visit_time_stamp\", '%Y-%m-%d %H:%M:%S')"                      | "TO_TIMESTAMP(\"visit_time_stamp\", '%Y-%m-%d %H:%M:%S')"
+        I64 | Str                  | Timestamp                                                                      | Timestamp;
+        1    "Bryanna".to_owned()    NaiveDate::from_ymd_opt(2022, 12, 23).unwrap().and_hms_opt(13, 5, 26).unwrap()   NaiveDate::from_ymd_opt(2022, 12, 23).unwrap().and_hms_opt(13, 5, 26).unwrap();
+        2    "Ash".to_owned()        NaiveDate::from_ymd_opt(2023, 4, 1).unwrap().and_hms_opt(23, 24, 11).unwrap()    NaiveDate::from_ymd_opt(2023, 4, 1).unwrap().and_hms_opt(23, 24, 11).unwrap()
     ));
     test(actual, expected);
 });
