@@ -78,5 +78,4 @@ test_case!(rounding, async move {
         4     7.0                   7.0
     ));
     test(actual, expected);
-
 });
