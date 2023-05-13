@@ -1,3 +1,3 @@
+mod conversion;
 mod rounding;
-
-pub use rounding::rounding;
+pub use {conversion::conversion, rounding::rounding};
