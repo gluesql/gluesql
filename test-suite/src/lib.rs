@@ -207,6 +207,10 @@ macro_rules! generate_store_tests {
         glue!(ast_builder_delete, ast_builder::delete::delete);
         glue!(ast_builder_alias_as, ast_builder::alias_as::alias_as);
         glue!(
+            ast_builder_function_text_case_conversion,
+            ast_builder::function::text::case_conversion
+        );
+        glue!(
             ast_builder_function_datetime_conversion,
             ast_builder::function::datetime::conversion
         );
