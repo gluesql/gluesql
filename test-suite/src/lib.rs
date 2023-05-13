@@ -196,6 +196,10 @@ macro_rules! generate_store_tests {
 
         // ast-builder
         glue!(ast_builder_basic, ast_builder::basic::basic);
+        glue!(
+            ast_builder_function_math_rounding,
+            ast_builder::function::math::rounding
+        );
         glue!(ast_builder_select, ast_builder::select::select);
         glue!(ast_builder_values, ast_builder::values::values);
         glue!(ast_builder_insert, ast_builder::insert::insert);
