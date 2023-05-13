@@ -113,7 +113,7 @@ impl JsonStorage {
             Ok(json_file_str) => {
                 let value = serde_json::from_str(&json_file_str).map_err(|_| {
                     Error::StorageMsg(
-                        JsonStorageError::InvalidJsonString(json_file_str.to_owned()).to_string(),
+                        JsonStorageError::InvalidJsonString(table_name.to_owned()).to_string(),
                     )
                 })?;
 
