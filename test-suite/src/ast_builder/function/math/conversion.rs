@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{ast_builder::*, executor::Payload, prelude::Value::*},
-    std::f64::consts::* 
+    std::f64::consts::*,
 };
 
 test_case!(conversion, async move {
