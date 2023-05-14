@@ -1,6 +1,9 @@
 use {
     crate::*,
-    gluesql_core::{ast_builder::*, prelude::{Payload, Value::*}},
+    gluesql_core::{
+        ast_builder::*,
+        prelude::{Payload, Value::*},
+    },
 };
 
 test_case!(current_date_and_time, async move {
@@ -27,7 +30,7 @@ test_case!(current_date_and_time, async move {
             "1, '2022-12-23T05:30:11.164932863'",
             "2, NOW()",
             "3, '9999-12-31T23:59:40.364832862'",
-            ])
+        ])
         .execute(glue)
         .await;
     let expected = Ok(Payload::Insert(3));
