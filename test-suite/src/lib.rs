@@ -235,6 +235,10 @@ macro_rules! generate_store_tests {
             ast_builder::function::text::trimming
         );
         glue!(
+            ast_builder_function_datetime_current_date_and_time,
+            ast_builder::function::datetime::current_date_and_time
+        );
+        glue!(
             ast_builder_function_text_position_and_indexing,
             ast_builder::function::text::position_and_indexing
         );
