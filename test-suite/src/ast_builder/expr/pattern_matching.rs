@@ -19,7 +19,7 @@ test_case!(pattern_matching, async move {
     // insert into Category
     let actual = table("Category")
         .insert()
-        .values(vec!["1, 'Fruit'", "2, 'Meat'", "3, 'Drink'", "4, 'drink'"])
+        .values(vec!["1, 'Meat'", "2, 'meat'", "3, 'Drink'", "4, 'drink'"])
         .execute(glue)
         .await;
     let expected = Ok(Payload::Insert(4));
@@ -28,12 +28,17 @@ test_case!(pattern_matching, async move {
     // like
     let actual = table("Category")
         .select()
-        .filter(col("name").like(text("D%")))
+        .filter(
+            col("name")
+                .like(text("D%"))
+                .or(col("name").like(text("M___"))),
+        )
         .execute(glue)
         .await;
     let expected = Ok(select!(
         id  | name
         I64 | Str;
+        1     "Meat".to_owned();
         3     "Drink".to_owned()
     ));
     test(actual, expected);
@@ -41,12 +46,18 @@ test_case!(pattern_matching, async move {
     // ilike
     let actual = table("Category")
         .select()
-        .filter(col("name").ilike(text("D%")))
+        .filter(
+            col("name")
+                .ilike(text("D%"))
+                .or(col("name").ilike(text("M___"))),
+        )
         .execute(glue)
         .await;
     let expected = Ok(select!(
         id  | name
         I64 | Str;
+        1     "Meat".to_owned();
+        2     "meat".to_owned();
         3     "Drink".to_owned();
         4     "drink".to_owned()
     ));
@@ -55,14 +66,17 @@ test_case!(pattern_matching, async move {
     // not_like
     let actual = table("Category")
         .select()
-        .filter(col("name").not_like(text("D%")))
+        .filter(
+            col("name")
+                .not_like(text("D%"))
+                .and(col("name").not_like(text("M___"))),
+        )
         .execute(glue)
         .await;
     let expected = Ok(select!(
         id  | name
         I64 | Str;
-        1     "Fruit".to_owned();
-        2     "Meat".to_owned();
+        2     "meat".to_owned();
         4     "drink".to_owned()
     ));
     test(actual, expected);
@@ -70,14 +84,16 @@ test_case!(pattern_matching, async move {
     // not_ilike
     let actual = table("Category")
         .select()
-        .filter(col("name").not_ilike(text("D%")))
+        .filter(
+            col("name")
+                .not_ilike(text("D%"))
+                .and(col("name").not_ilike(text("M___"))),
+        )
         .execute(glue)
         .await;
-    let expected = Ok(select!(
-        id  | name
-        I64 | Str;
-        1     "Fruit".to_owned();
-        2     "Meat".to_owned()
-    ));
+    let expected = Ok(Payload::Select {
+        labels: vec!["id".to_owned(), "name".to_owned()],
+        rows: vec![],
+    });
     test(actual, expected);
 });
