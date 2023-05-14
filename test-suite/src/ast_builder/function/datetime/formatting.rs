@@ -1,6 +1,6 @@
-use chrono::{NaiveDate, NaiveTime};
 use {
     crate::*,
+    chrono::{NaiveDate, NaiveTime},
     gluesql_core::{ast_builder::*, executor::Payload, prelude::Value::*},
 };
 test_case!(formatting, async move {
@@ -55,8 +55,8 @@ test_case!(formatting, async move {
     let expected = Ok(select!(
         name                    | visit_date                                       | r#"FORMAT("visit_date", '%Y-%m')"#          | r#"FORMAT("visit_date", '%m')"#
         Str                     | Date                                             | Str                                        | Str;
-        "Bryanna".to_owned()    NaiveDate::from_ymd_opt(2017, 06, 15).unwrap()     "2017-06".to_owned()                        "06".to_owned();
-        "Ash".to_owned()        NaiveDate::from_ymd_opt(2023, 04, 01).unwrap()     "2023-04".to_owned()                        "04".to_owned()
+        "Bryanna".to_owned()    NaiveDate::from_ymd_opt(2017, 6, 15).unwrap()     "2017-06".to_owned()                        "06".to_owned();
+        "Ash".to_owned()        NaiveDate::from_ymd_opt(2023, 4, 1).unwrap()     "2023-04".to_owned()                        "04".to_owned()
     ));
     test(actual, expected);
 
@@ -89,8 +89,8 @@ test_case!(formatting, async move {
     let expected = Ok(select!(
         name                    | visit_timestamp                                                                   | r#"FORMAT("visit_timestamp", '%Y-%m-%d %H:%M:%S')"#           | r#"FORMAT("visit_timestamp", '%Y-%m-%d %H:%M:%S')"#
         Str                     | Timestamp                                                                         | Str                                                           | Str;
-        "Bryanna".to_owned()    NaiveDate::from_ymd_opt(2015, 09, 05).unwrap().and_hms_opt(23, 56, 04).unwrap()     "2015-09-05 23:56:04".to_owned()                                 "2015-09-05 23:56:04".to_owned();
-        "Ash".to_owned()        NaiveDate::from_ymd_opt(2023, 04, 01).unwrap().and_hms_opt(23, 24, 11).unwrap()     "2023-04-01 23:24:11".to_owned()                                 "2023-04-01 23:24:11".to_owned()
+        "Bryanna".to_owned()    NaiveDate::from_ymd_opt(2015, 9, 5).unwrap().and_hms_opt(23, 56, 4).unwrap()     "2015-09-05 23:56:04".to_owned()                                 "2015-09-05 23:56:04".to_owned();
+        "Ash".to_owned()        NaiveDate::from_ymd_opt(2023, 4, 1).unwrap().and_hms_opt(23, 24, 11).unwrap()     "2023-04-01 23:24:11".to_owned()                                 "2023-04-01 23:24:11".to_owned()
     ));
     test(actual, expected);
 });
