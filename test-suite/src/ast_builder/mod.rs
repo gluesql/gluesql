@@ -1,6 +1,7 @@
 pub mod alias_as;
 pub mod basic;
 pub mod delete;
+pub mod expr;
 pub mod function;
 pub mod insert;
 pub mod select;
