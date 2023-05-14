@@ -200,6 +200,10 @@ macro_rules! generate_store_tests {
             ast_builder_function_math_rounding,
             ast_builder::function::math::rounding
         );
+        glue!(
+            ast_builder_expr_pattern_matching,
+            ast_builder::expr::pattern_matching::pattern_matching
+        );
         glue!(ast_builder_select, ast_builder::select::select);
         glue!(ast_builder_values, ast_builder::values::values);
         glue!(ast_builder_insert, ast_builder::insert::insert);
@@ -215,8 +219,16 @@ macro_rules! generate_store_tests {
             ast_builder::function::datetime::conversion
         );
         glue!(
+            ast_builder_function_math_basic_arithmetic,
+            ast_builder::function::math::basic_arithmetic
+        );
+        glue!(
             ast_builder_function_math_conversion,
             ast_builder::function::math::conversion
+        );
+        glue!(
+            ast_builder_function_datetime_formatting,
+            ast_builder::function::datetime::formatting
         );
         glue!(
             ast_builder_function_text_trimming,
