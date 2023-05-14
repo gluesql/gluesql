@@ -218,6 +218,10 @@ macro_rules! generate_store_tests {
             ast_builder_function_math_conversion,
             ast_builder::function::math::conversion
         );
+        glue!(
+            ast_builder_function_text_trimming,
+            ast_builder::function::text::trimming
+        );
 
         // schemaless data support
         glue!(schemaless_basic, schemaless::basic);
