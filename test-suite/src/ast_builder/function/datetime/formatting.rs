@@ -1,6 +1,6 @@
-use chrono::{NaiveDate, NaiveTime};
 use {
     crate::*,
+    chrono::{NaiveDate, NaiveTime},
     gluesql_core::{ast_builder::*, executor::Payload, prelude::Value::*},
 };
 test_case!(formatting, async move {
