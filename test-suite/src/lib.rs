@@ -215,6 +215,10 @@ macro_rules! generate_store_tests {
             ast_builder::function::text::case_conversion
         );
         glue!(
+            ast_builder_function_other_ifnull,
+            ast_builder::function::other::ifnull::ifnull
+        );
+        glue!(
             ast_builder_function_datetime_conversion,
             ast_builder::function::datetime::conversion
         );
