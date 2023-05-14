@@ -220,7 +220,10 @@ macro_rules! generate_store_tests {
         );
         glue!(
             ast_builder_function_datetime_formatting,
-            ast_builder::function::datetime::formatting
+            ast_builder::function::datetime::formatting);
+        glue!(
+            ast_builder_function_text_trimming,
+            ast_builder::function::text::trimming
         );
 
         // schemaless data support
