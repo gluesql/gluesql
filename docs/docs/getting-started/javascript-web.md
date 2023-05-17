@@ -74,13 +74,43 @@ async function run() {
 
 ### Rollup
 
-For Rollup, you need to adjust your import statement as follows:
+For Rollup, you need to adjust your import statement and add some configurations to your `rollup.config.js` file.
+
+First, modify your import statement as follows:
 
 ```javascript
 import { gluesql } from 'gluesql/gluesql.rollup';
-
 // ...
 ```
+
+Second, add the following configurations to your `rollup.config.js` file:
+
+```javascript
+import resolve from '@rollup/plugin-node-resolve';
+import { wasm } from '@rollup/plugin-wasm';
+
+export default {
+  input: 'main.js',
+  output: {
+    file: 'dist/bundle.js',
+    format: 'iife',
+  },
+  plugins: [
+    resolve({ browser: true }),
+    wasm({ targetEnv: 'auto-inline' }),
+  ],
+};
+```
+
+These configurations allow Rollup to correctly handle WebAssembly modules and resolve dependencies for browsers.
+
+Don't forget to run the `rollup` command to bundle your JavaScript files:
+
+```bash
+rollup -c
+```
+
+Now, you can use GlueSQL in your Rollup project as you would in any other JavaScript module.
 
 ## Supported Storage Engines
 

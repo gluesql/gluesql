@@ -28,9 +28,10 @@ jobs:
         uses: jetli/wasm-pack-action@v0.3.0
       - run: |
           cd pkg/javascript/web
-          yarn install
-          yarn build
-          yarn test:firefox
+          npm install
+          wasm-pack build --target web
+          wasm-pack build --target nodejs -- --no-default-features --features nodejs
+          wasm-pack test --headless --firefox
           cd ../../../
 
   js_storage_tests:

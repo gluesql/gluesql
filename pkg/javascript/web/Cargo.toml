@@ -1,12 +1,12 @@
 [package]
 name = "gluesql-js"
 version = "0.13.1"
-edition = "2021"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
-description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
-license = "Apache-2.0"
-repository = "https://github.com/gluesql/gluesql"
-documentation = "https://docs.rs/gluesql/"
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [lib]
 crate-type = ["cdylib", "rlib"]
