@@ -91,9 +91,14 @@ pub async fn create_table<T: GStore + GStoreMut>(
                 })
                 .unwrap_or_default();
 
-            let rows =
-                fetch_insert_rows(storage, None, &columns, query, target_column_defs.as_ref())
-                    .await?;
+            let rows = fetch_insert_rows(
+                storage,
+                None,
+                &columns,
+                query,
+                target_column_defs.as_deref(),
+            )
+            .await?;
 
             Some(rows)
         }

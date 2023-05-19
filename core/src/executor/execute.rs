@@ -156,7 +156,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 Some(table_name),
                 columns,
                 source,
-                column_defs.as_ref(),
+                column_defs.as_deref(),
             )
             .await?;
 

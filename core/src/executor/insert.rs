@@ -50,7 +50,7 @@ pub async fn fetch_insert_rows<T: GStore + GStoreMut>(
     table_name: Option<&str>,
     columns: &[String],
     query: &Query,
-    column_defs: Option<&Vec<ColumnDef>>,
+    column_defs: Option<&[ColumnDef]>,
 ) -> Result<RowsData> {
     match column_defs {
         Some(column_defs) => fetch_vec_rows(storage, table_name, column_defs, columns, query).await,
@@ -86,7 +86,7 @@ pub async fn insert<T: GStore + GStoreMut>(
 async fn fetch_vec_rows<T: GStore>(
     storage: &T,
     table_name: Option<&str>,
-    column_defs: &Vec<ColumnDef>,
+    column_defs: &[ColumnDef],
     columns: &[String],
     source: &Query,
 ) -> Result<RowsData> {
