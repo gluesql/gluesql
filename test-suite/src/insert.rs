@@ -69,12 +69,13 @@ CREATE TABLE Test (
     run!("CREATE TABLE Target AS SELECT * FROM Test WHERE 1 = 0");
 
     test! {
-        name: "insert with source",
+        name: "insert into target from source",
         sql: "INSERT INTO Target SELECT * FROM Test;",
         expected: Ok(Payload::Insert(6))
     };
 
     test! {
+        name: "target rows are equivalent to source rows",
         sql: "SELECT * FROM Target",
         expected: Ok(select_with_null!(
             id     | num     | name;
