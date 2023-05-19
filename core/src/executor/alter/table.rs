@@ -1,14 +1,14 @@
 use {
     super::{validate, validate_column_names, AlterError},
     crate::{
-        ast::{ColumnDef, Query},
+        ast::{ColumnDef, Query, SelectItem, SetExpr, TableFactor},
         data::Schema,
         executor::{
             insert::{fetch_insert_rows, insert},
             select::select_with_labels,
         },
         prelude::DataType,
-        result::Result,
+        result::{Error, Result, TableError},
         store::{GStore, GStoreMut},
     },
     futures::stream::StreamExt,
@@ -23,6 +23,36 @@ pub async fn create_table<T: GStore + GStoreMut>(
     engine: &Option<String>,
 ) -> Result<()> {
     let target_column_defs = match source.as_deref() {
+        Some(Query {
+            body: SetExpr::Select(select),
+            ..
+        }) if select.projection == vec![SelectItem::Wildcard] => match &select.from.relation {
+            TableFactor::Table { name, .. } => {
+                let schema = storage.fetch_schema(name).await?;
+                let Schema {
+                    column_defs: source_column_defs,
+                    ..
+                } = schema.ok_or_else(|| -> Error {
+                    AlterError::CtasSourceTableNotFound(name.to_owned()).into()
+                })?;
+
+                source_column_defs
+            }
+            TableFactor::Series { .. } => {
+                let column_def = ColumnDef {
+                    name: "N".into(),
+                    data_type: DataType::Int,
+                    nullable: false,
+                    default: None,
+                    unique: None,
+                };
+
+                Some(vec![column_def])
+            }
+            _ => {
+                return Err(Error::Table(TableError::Unreachable));
+            }
+        },
         Some(query) => {
             let (labels, mut rows) = select_with_labels(storage, query, None).await?;
 

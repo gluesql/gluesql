@@ -21,6 +21,9 @@ pub enum AlterError {
     #[error("table does not exist: {0}")]
     TableNotFound(String),
 
+    #[error("CTAS source table does not exist: {0}")]
+    CtasSourceTableNotFound(String),
+
     // validate column def
     #[error("column '{0}' of data type '{1:?}' is unsupported for unique constraint")]
     UnsupportedDataTypeForUniqueColumn(String, DataType),

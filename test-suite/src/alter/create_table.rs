@@ -163,7 +163,7 @@ test_case!(create_table, async move {
         (
             // Source table does not exists
             "CREATE TABLE TargetTableWithData2 AS SELECT * FROM NonExistentTable",
-            Err(FetchError::TableNotFound("NonExistentTable".to_owned()).into()),
+            Err(AlterError::CtasSourceTableNotFound("NonExistentTable".to_owned()).into()),
         ),
         (
             "CREATE TABLE IncompatibleDataTypeCtasWithLiteral AS VALUES (1), ('b')",
