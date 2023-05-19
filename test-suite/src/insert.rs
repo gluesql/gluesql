@@ -65,4 +65,25 @@ CREATE TABLE Test (
             I64(1)   Null      Str("The end".to_owned())
         ))
     };
+
+    run!("CREATE TABLE Target AS SELECT * FROM Test WHERE 1 = 0");
+
+    test! {
+        name: "insert with source",
+        sql: "INSERT INTO Target SELECT * FROM Test;",
+        expected: Ok(Payload::Insert(6))
+    };
+
+    test! {
+        sql: "SELECT * FROM Target",
+        expected: Ok(select_with_null!(
+            id     | num     | name;
+            I64(1)   I64(2)    Str("Hi boo".to_owned());
+            I64(3)   I64(9)    Str("Kitty!".to_owned());
+            I64(2)   I64(7)    Str("Monsters".to_owned());
+            I64(17)  I64(30)   Str("Sullivan".to_owned());
+            I64(1)   I64(28)   Str("Wazowski".to_owned());
+            I64(1)   Null      Str("The end".to_owned())
+        ))
+    };
 });
