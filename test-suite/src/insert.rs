@@ -13,7 +13,7 @@ CREATE TABLE Test (
     id INTEGER DEFAULT 1,
     num INTEGER NULL,
     name TEXT NOT NULL,
-)"
+);"
     );
 
     test! {
@@ -49,12 +49,34 @@ CREATE TABLE Test (
     };
 
     test! {
-        sql: "INSERT INTO Test (id, num) VALUES (1, 10)",
+        sql: "INSERT INTO Test (id, num) VALUES (1, 10);",
         expected: Err(InsertError::LackOfRequiredColumn("name".to_owned()).into())
     };
 
     test! {
-        sql: "SELECT * FROM Test",
+        sql: "SELECT * FROM Test;",
+        expected: Ok(select_with_null!(
+            id     | num     | name;
+            I64(1)   I64(2)    Str("Hi boo".to_owned());
+            I64(3)   I64(9)    Str("Kitty!".to_owned());
+            I64(2)   I64(7)    Str("Monsters".to_owned());
+            I64(17)  I64(30)   Str("Sullivan".to_owned());
+            I64(1)   I64(28)   Str("Wazowski".to_owned());
+            I64(1)   Null      Str("The end".to_owned())
+        ))
+    };
+
+    run!("CREATE TABLE Target AS SELECT * FROM Test WHERE 1 = 0;");
+
+    test! {
+        name: "insert into target from source",
+        sql: "INSERT INTO Target SELECT * FROM Test;",
+        expected: Ok(Payload::Insert(6))
+    };
+
+    test! {
+        name: "target rows are equivalent to source rows",
+        sql: "SELECT * FROM Target;",
         expected: Ok(select_with_null!(
             id     | num     | name;
             I64(1)   I64(2)    Str("Hi boo".to_owned());
