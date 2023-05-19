@@ -8,11 +8,6 @@ sidebar_position: 4
 
 The Command-Line Interface (CLI) is a tool that allows interactive execution of SQL on GlueSQL. It supports Dot commands for more convenient use, and the .edit command allows immediate modification of query files, which can then be executed with .execute. In addition, it supports HTML table format output for SQL results, making it possible to use the results directly on the web.
 
-<video width="320" height="240" controls>
-  <source src="../../static/img/cli.mov" type="video/mp4" />
-  Your browser does not support the video tag.
-</video>
-
 ## Installation
 
 To install the GlueSQL Command-Line Interface (CLI), run the following command:
