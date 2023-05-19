@@ -1,17 +1,16 @@
-use crate::*;
+use {
+    crate::*,
+    chrono::{format::ParseErrorKind, NaiveDate, NaiveTime},
+    gluesql_core::{
+        error::EvaluateError,
+        prelude::{Error, Value::*},
+    },
+};
 
 test_case!(to_date, async move {
-    use {
-        chrono::{NaiveDate, NaiveTime},
-        gluesql_core::{executor::EvaluateError, prelude::Value::*},
-    };
-
-    fn assert_chrono_error_kind_eq(
-        error: gluesql_core::result::Error,
-        kind: chrono::format::ParseErrorKind,
-    ) {
+    fn assert_chrono_error_kind_eq(error: Error, kind: ParseErrorKind) {
         match error {
-            gluesql_core::result::Error::Evaluate(EvaluateError::FormatParseError(err)) => {
+            Error::Evaluate(EvaluateError::FormatParseError(err)) => {
                 assert_eq!(err.kind(), kind)
             }
             _ => panic!("invalid error: {error}"),

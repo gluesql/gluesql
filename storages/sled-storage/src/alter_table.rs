@@ -11,9 +11,9 @@ use {
     gluesql_core::{
         ast::ColumnDef,
         data::{schema::Schema, Value},
+        error::{AlterTableError, Error, Result},
         executor::evaluate_stateless,
-        result::{Error, Result},
-        store::{AlterTable, AlterTableError, DataRow},
+        store::{AlterTable, DataRow},
     },
     sled::transaction::ConflictableTransactionError,
     std::{iter::once, str},

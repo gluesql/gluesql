@@ -2,8 +2,7 @@ use {
     futures::executor::block_on,
     gluesql_composite_storage::CompositeStorage,
     gluesql_core::{
-        prelude::Glue,
-        result::Error,
+        prelude::{Error, Glue, Result},
         store::{Store, StoreMut},
     },
     gluesql_memory_storage::MemoryStorage,
@@ -71,10 +70,7 @@ macro_rules! test {
 
 #[test]
 fn composite_storage_index() {
-    use {
-        gluesql_core::{result::Result, store::Index},
-        gluesql_memory_storage::MemoryStorage,
-    };
+    use {gluesql_core::store::Index, gluesql_memory_storage::MemoryStorage};
 
     let mut storage = CompositeStorage::default();
     storage.push("mem", MemoryStorage::default());

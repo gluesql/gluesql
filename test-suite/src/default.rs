@@ -2,7 +2,7 @@ use {
     crate::*,
     chrono::NaiveDate,
     gluesql_core::{
-        executor::EvaluateError,
+        error::EvaluateError,
         prelude::{Payload, Value::*},
     },
 };

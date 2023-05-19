@@ -13,7 +13,7 @@ use {
 
 #[derive(ThisError, Debug, PartialEq, Eq, Serialize)]
 pub enum KeyError {
-    #[error("FLOAT data type cannot be converted to Big-Endian bytes for comparision")]
+    #[error("FLOAT data type cannot be converted to Big-Endian bytes for comparison")]
     FloatToCmpBigEndianNotSupported,
 
     #[error("MAP data type cannot be used as Key")]
@@ -38,6 +38,7 @@ pub enum Key {
     U32(u32),
     U64(u64),
     U128(u128),
+    F32(OrderedFloat<f32>),
     F64(OrderedFloat<f64>),
     Decimal(Decimal),
     Bool(bool),
@@ -65,6 +66,7 @@ impl Ord for Key {
             (Key::U32(l), Key::U32(r)) => l.cmp(r),
             (Key::U64(l), Key::U64(r)) => l.cmp(r),
             (Key::U128(l), Key::U128(r)) => l.cmp(r),
+            (Key::F32(l), Key::F32(r)) => l.total_cmp(&r.0),
             (Key::F64(l), Key::F64(r)) => l.total_cmp(&r.0),
             (Key::Decimal(l), Key::Decimal(r)) => l.cmp(r),
             (Key::Bool(l), Key::Bool(r)) => l.cmp(r),
@@ -90,6 +92,7 @@ impl Ord for Key {
             | (Key::U32(_), _)
             | (Key::U64(_), _)
             | (Key::U128(_), _)
+            | (Key::F32(_), _)
             | (Key::F64(_), _)
             | (Key::Decimal(_), _)
             | (Key::Bool(_), _)
@@ -151,6 +154,7 @@ impl TryFrom<Value> for Key {
             U32(v) => Ok(Key::U32(v)),
             U64(v) => Ok(Key::U64(v)),
             U128(v) => Ok(Key::U128(v)),
+            F32(v) => Ok(Key::F32(OrderedFloat(v))),
             F64(v) => Ok(Key::F64(OrderedFloat(v))),
             Decimal(v) => Ok(Key::Decimal(v)),
             Str(v) => Ok(Key::Str(v)),
@@ -191,6 +195,7 @@ impl From<Key> for Value {
             Key::U32(v) => Value::U32(v),
             Key::U64(v) => Value::U64(v),
             Key::U128(v) => Value::U128(v),
+            Key::F32(v) => Value::F32(v.0),
             Key::F64(v) => Value::F64(v.0),
             Key::Decimal(v) => Value::Decimal(v),
             Key::Str(v) => Value::Str(v),
@@ -290,7 +295,7 @@ impl Key {
                 .chain(v.to_be_bytes().iter())
                 .copied()
                 .collect::<Vec<_>>(),
-            Key::F64(_) => {
+            Key::F32(_) | Key::F64(_) => {
                 return Err(KeyError::FloatToCmpBigEndianNotSupported.into());
             }
             Key::Decimal(v) => {
@@ -413,6 +418,7 @@ mod tests {
         assert_eq!(convert("CAST(11 AS UINT32)"), Ok(Key::U32(11)));
         assert_eq!(convert("CAST(11 AS UINT64)"), Ok(Key::U64(11)));
         assert_eq!(convert("CAST(11 AS UINT128)"), Ok(Key::U128(11)));
+        assert!(matches!(convert("CAST(12.03 AS FLOAT32)"), Ok(Key::F32(_))));
         assert!(matches!(convert("12.03"), Ok(Key::F64(_))));
 
         assert_eq!(
@@ -512,6 +518,12 @@ mod tests {
 
         assert!(Key::U128(10) > Key::U128(3));
         assert!(Key::U128(1) > Key::Decimal(dec("1")));
+
+        assert!(Key::F32(10.0_f32.into()) > Key::F32(3.0_f32.into()));
+        assert!(Key::F32(1.0_f32.into()) > Key::F64(1.0.into()));
+
+        assert!(Key::F64(10.0.into()) > Key::F64(3.0.into()));
+        assert!(Key::F64(1.0.into()) > Key::Decimal(dec("1")));
 
         assert!(Key::Decimal(dec("123.45")) > Key::Decimal(dec("0.11")));
         assert!(Key::Decimal(dec("1")) > Key::Bool(true));
@@ -835,6 +847,7 @@ mod tests {
         assert_eq!(Value::from(Key::U32(128)), Value::U32(128));
         assert_eq!(Value::from(Key::U64(128)), Value::U64(128));
         assert_eq!(Value::from(Key::U128(128)), Value::U128(128));
+        assert_eq!(Value::from(Key::F32(1.0.into())), Value::F32(1.0_f32));
         assert_eq!(Value::from(Key::F64(1.0.into())), Value::F64(1.0));
         assert_eq!(
             Value::from(Key::Decimal(Decimal::from_str("123.45").unwrap())),

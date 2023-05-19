@@ -1,4 +1,4 @@
-use {gluesql_core::result::Error, thiserror::Error};
+use {gluesql_core::error::Error, thiserror::Error};
 
 pub trait ResultExt<T, E: ToString> {
     fn map_storage_err(self) -> Result<T, Error>;
@@ -41,8 +41,8 @@ pub enum JsonStorageError {
     #[error("both {0}.jsonl and {0}.json files exist. remove or rename one")]
     BothJsonlAndJsonExist(String),
 
-    #[error("invalid json string: {0}")]
-    InvalidJsonString(String),
+    #[error("invalid log file content: {0}")]
+    InvalidJsonContent(String),
 
     #[error("json object type is required")]
     JsonObjectTypeRequired,

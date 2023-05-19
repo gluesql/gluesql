@@ -2,7 +2,7 @@ use {
     super::CompositeStorage,
     async_trait::async_trait,
     gluesql_core::{
-        result::{Error, Result},
+        error::{Error, Result},
         store::Transaction,
     },
 };

@@ -5,9 +5,8 @@ use {
     },
     async_trait::async_trait,
     gluesql_core::{
-        data::Schema,
-        prelude::Key,
-        result::Result,
+        data::{Key, Schema},
+        error::Result,
         store::{DataRow, StoreMut},
     },
     serde_json::{to_string_pretty, Map, Value as JsonValue},

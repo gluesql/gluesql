@@ -1,27 +1,18 @@
 use {
     crate::*,
     gluesql_core::{
-        executor::EvaluateError,
+        error::{EvaluateError, TranslateError},
         prelude::{
             Payload,
             Value::{self, *},
         },
-        translate::TranslateError,
     },
 };
 
 test_case!(sin, async move {
     let test_cases = [
         (
-            "CREATE TABLE SingleItem (id INTEGER DEFAULT SIN(3.141592))",
-            Ok(Payload::Create),
-        ),
-        (
-            r#"INSERT INTO SingleItem VALUES (0)"#,
-            Ok(Payload::Insert(1)),
-        ),
-        (
-            "SELECT SIN(0.5) AS sin1, SIN(1) AS sin2 FROM SingleItem",
+            "SELECT SIN(0.5) AS sin1, SIN(1) AS sin2",
             Ok(select!(
                 "sin1"          | "sin2"
                 F64             | F64;
@@ -29,23 +20,23 @@ test_case!(sin, async move {
             )),
         ),
         (
-            "SELECT SIN(null) AS sin FROM SingleItem",
+            "SELECT SIN(null) AS sin",
             Ok(select_with_null!(sin; Value::Null)),
         ),
         (
-            "SELECT SIN(true) AS sin FROM SingleItem",
+            "SELECT SIN(true) AS sin",
             Err(EvaluateError::FunctionRequiresFloatValue("SIN".to_owned()).into()),
         ),
         (
-            "SELECT SIN(false) AS sin FROM SingleItem",
+            "SELECT SIN(false) AS sin",
             Err(EvaluateError::FunctionRequiresFloatValue("SIN".to_owned()).into()),
         ),
         (
-            "SELECT SIN('string') AS sin FROM SingleItem",
+            "SELECT SIN('string') AS sin",
             Err(EvaluateError::FunctionRequiresFloatValue("SIN".to_owned()).into()),
         ),
         (
-            "SELECT SIN() AS sin FROM SingleItem",
+            "SELECT SIN() AS sin",
             Err(TranslateError::FunctionArgsLengthNotMatching {
                 name: "SIN".to_owned(),
                 expected: 1,
@@ -54,7 +45,7 @@ test_case!(sin, async move {
             .into()),
         ),
         (
-            "SELECT SIN(1.0, 2.0) AS sin FROM SingleItem",
+            "SELECT SIN(1.0, 2.0) AS sin",
             Err(TranslateError::FunctionArgsLengthNotMatching {
                 name: "SIN".to_owned(),
                 expected: 1,
@@ -72,39 +63,31 @@ test_case!(sin, async move {
 test_case!(cos, async move {
     let test_cases = [
         (
-            "CREATE TABLE SingleItem (id INTEGER DEFAULT COS(3.141592))",
-            Ok(Payload::Create),
-        ),
-        (
-            r#"INSERT INTO SingleItem VALUES (0)"#,
-            Ok(Payload::Insert(1)),
-        ),
-        (
-            "SELECT COS(0.5) AS cos1, COS(1) AS cos2 FROM SingleItem",
+            "SELECT COS(0.5) AS cos1, COS(1) AS cos2",
             Ok(select!(
-                "cos1"          | "cos2"
-                F64             | F64;
+                "cos1"        | "cos2"
+                F64           | F64;
                 0.5_f64.cos()   1.0_f64.cos()
             )),
         ),
         (
-            "SELECT COS(null) AS cos FROM SingleItem",
+            "SELECT COS(null) AS cos",
             Ok(select_with_null!(cos; Value::Null)),
         ),
         (
-            "SELECT COS(true) AS cos FROM SingleItem",
+            "SELECT COS(true) AS cos",
             Err(EvaluateError::FunctionRequiresFloatValue("COS".to_owned()).into()),
         ),
         (
-            "SELECT COS(false) AS cos FROM SingleItem",
+            "SELECT COS(false) AS cos",
             Err(EvaluateError::FunctionRequiresFloatValue("COS".to_owned()).into()),
         ),
         (
-            "SELECT COS('string') AS cos FROM SingleItem",
+            "SELECT COS('string') AS cos",
             Err(EvaluateError::FunctionRequiresFloatValue("COS".to_owned()).into()),
         ),
         (
-            "SELECT COS() AS cos FROM SingleItem",
+            "SELECT COS() AS cos",
             Err(TranslateError::FunctionArgsLengthNotMatching {
                 name: "COS".to_owned(),
                 expected: 1,
@@ -113,7 +96,7 @@ test_case!(cos, async move {
             .into()),
         ),
         (
-            "SELECT COS(1.0, 2.0) AS cos FROM SingleItem",
+            "SELECT COS(1.0, 2.0) AS cos",
             Err(TranslateError::FunctionArgsLengthNotMatching {
                 name: "COS".to_owned(),
                 expected: 1,
@@ -131,39 +114,31 @@ test_case!(cos, async move {
 test_case!(tan, async move {
     let test_cases = [
         (
-            "CREATE TABLE SingleItem (id INTEGER DEFAULT TAN(3.141592))",
-            Ok(Payload::Create),
-        ),
-        (
-            r#"INSERT INTO SingleItem VALUES (0)"#,
-            Ok(Payload::Insert(1)),
-        ),
-        (
-            "SELECT TAN(0.5) AS tan1, TAN(1) AS tan2 FROM SingleItem",
+            "SELECT TAN(0.5) AS tan1, TAN(1) AS tan2",
             Ok(select!(
-                "tan1"          | "tan2"
-                F64             | F64;
+                "tan1"        | "tan2"
+                F64           | F64;
                 0.5_f64.tan()   1.0_f64.tan()
             )),
         ),
         (
-            "SELECT TAN(null) AS tan FROM SingleItem",
+            "SELECT TAN(null) AS tan",
             Ok(select_with_null!(tan; Value::Null)),
         ),
         (
-            "SELECT TAN(true) AS tan FROM SingleItem",
+            "SELECT TAN(true) AS tan",
             Err(EvaluateError::FunctionRequiresFloatValue("TAN".to_owned()).into()),
         ),
         (
-            "SELECT TAN(false) AS tan FROM SingleItem",
+            "SELECT TAN(false) AS tan",
             Err(EvaluateError::FunctionRequiresFloatValue("TAN".to_owned()).into()),
         ),
         (
-            "SELECT TAN('string') AS tan FROM SingleItem",
+            "SELECT TAN('string') AS tan",
             Err(EvaluateError::FunctionRequiresFloatValue("TAN".to_owned()).into()),
         ),
         (
-            "SELECT TAN() AS tan FROM SingleItem",
+            "SELECT TAN() AS tan",
             Err(TranslateError::FunctionArgsLengthNotMatching {
                 name: "TAN".to_owned(),
                 expected: 1,
@@ -172,7 +147,7 @@ test_case!(tan, async move {
             .into()),
         ),
         (
-            "SELECT TAN(1.0, 2.0) AS tan FROM SingleItem",
+            "SELECT TAN(1.0, 2.0) AS tan",
             Err(TranslateError::FunctionArgsLengthNotMatching {
                 name: "TAN".to_owned(),
                 expected: 1,
@@ -190,31 +165,23 @@ test_case!(tan, async move {
 test_case!(asin, async move {
     let test_cases = [
         (
-            "CREATE TABLE SingleItem (id INTEGER DEFAULT ASIN(3.1415926))",
-            Ok(Payload::Create),
-        ),
-        (
-            r#"INSERT INTO SingleItem VALUES (0)"#,
-            Ok(Payload::Insert(1)),
-        ),
-        (
-            "SELECT ASIN(0.5) AS asin1, ASIN(1) AS asin2 FROM SingleItem",
+            "SELECT ASIN(0.5) AS asin1, ASIN(1) AS asin2",
             Ok(select!(
-                "asin1" | "asin2" ;
-                F64 | F64 ;
-                0.5_f64.asin()  1.0_f64.asin()
+                "asin1"        | "asin2"
+                F64            | F64;
+                0.5_f64.asin()   1.0_f64.asin()
             )),
         ),
         (
-            "SELECT ASIN('string') AS asin FROM SingleItem",
+            "SELECT ASIN('string') AS asin",
             Err(EvaluateError::FunctionRequiresFloatValue("ASIN".to_owned()).into()),
         ),
         (
-            "SELECT ASIN(null) AS asin FROM SingleItem",
+            "SELECT ASIN(null) AS asin",
             Ok(select_with_null!(asin; Null)),
         ),
         (
-            "SELECT ASIN() AS asin FROM SingleItem",
+            "SELECT ASIN() AS asin",
             Err(TranslateError::FunctionArgsLengthNotMatching {
                 name: "ASIN".to_owned(),
                 expected: 1,
@@ -223,7 +190,7 @@ test_case!(asin, async move {
             .into()),
         ),
         (
-            "SELECT ASIN(1.0, 2.0) AS sin FROM SingleItem",
+            "SELECT ASIN(1.0, 2.0) AS sin",
             Err(TranslateError::FunctionArgsLengthNotMatching {
                 name: "ASIN".to_owned(),
                 expected: 1,
@@ -241,35 +208,27 @@ test_case!(asin, async move {
 test_case!(acos, async move {
     let test_cases = [
         (
-            "CREATE TABLE SingleItem (id INTEGER DEFAULT ACOS(3.1415926))",
-            Ok(Payload::Create),
-        ),
-        (
-            r#"INSERT INTO SingleItem VALUES (0)"#,
-            Ok(Payload::Insert(1)),
-        ),
-        (
-            "SELECT ACOS(0.5) AS acos1, ACOS(1) AS acos2 FROM SingleItem",
+            "SELECT ACOS(0.5) AS acos1, ACOS(1) AS acos2",
             Ok(select!(
-                "acos1" | "acos2";
-                F64 | F64 ;
-                0.5_f64.acos()  1.0_f64.acos()
+                "acos1"        | "acos2";
+                F64            | F64 ;
+                0.5_f64.acos()   1.0_f64.acos()
             )),
         ),
         (
-            "SELECT ACOS('string') AS acos FROM SingleItem",
+            "SELECT ACOS('string') AS acos",
             Err(EvaluateError::FunctionRequiresFloatValue("ACOS".to_owned()).into()),
         ),
         (
-            "SELECT ACOS(null) AS acos FROM SingleItem",
+            "SELECT ACOS(null) AS acos",
             Ok(select_with_null!(acos; Null)),
         ),
         (
-            "SELECT ACOS(true) AS acos FROM SingleItem",
+            "SELECT ACOS(true) AS acos",
             Err(EvaluateError::FunctionRequiresFloatValue("ACOS".to_owned()).into()),
         ),
         (
-            "SELECT ACOS() AS acos FROM SingleItem",
+            "SELECT ACOS() AS acos",
             Err(TranslateError::FunctionArgsLengthNotMatching {
                 name: "ACOS".to_owned(),
                 expected: 1,
@@ -278,7 +237,7 @@ test_case!(acos, async move {
             .into()),
         ),
         (
-            "SELECT ACOS(1.0, 2.0) AS acos FROM SingleItem",
+            "SELECT ACOS(1.0, 2.0) AS acos",
             Err(TranslateError::FunctionArgsLengthNotMatching {
                 name: "ACOS".to_owned(),
                 expected: 1,
@@ -304,27 +263,27 @@ test_case!(atan, async move {
             Ok(Payload::Insert(1)),
         ),
         (
-            "SELECT ATAN(0.5) AS atan1, ATAN(1) AS atan2 FROM SingleItem",
+            "SELECT ATAN(0.5) AS atan1, ATAN(1) AS atan2",
             Ok(select!(
-                "atan1" | "atan2";
-                F64 | F64 ;
-                0.5_f64.atan()  1.0_f64.atan()
+                "atan1"        | "atan2";
+                F64            | F64 ;
+                0.5_f64.atan()   1.0_f64.atan()
             )),
         ),
         (
-            "SELECT ATAN('string') AS atan FROM SingleItem",
+            "SELECT ATAN('string') AS atan",
             Err(EvaluateError::FunctionRequiresFloatValue("ATAN".to_owned()).into()),
         ),
         (
-            "SELECT ATAN(null) AS atan FROM SingleItem",
+            "SELECT ATAN(null) AS atan",
             Ok(select_with_null!(atan; Null)),
         ),
         (
-            "SELECT ATAN(true) AS atan FROM SingleItem",
+            "SELECT ATAN(true) AS atan",
             Err(EvaluateError::FunctionRequiresFloatValue("ATAN".to_owned()).into()),
         ),
         (
-            "SELECT ATAN() AS atan FROM SingleItem",
+            "SELECT ATAN() AS atan",
             Err(TranslateError::FunctionArgsLengthNotMatching {
                 name: "ATAN".to_owned(),
                 expected: 1,
@@ -333,7 +292,7 @@ test_case!(atan, async move {
             .into()),
         ),
         (
-            "SELECT ATAN(1.0, 2.0) AS atan FROM SingleItem",
+            "SELECT ATAN(1.0, 2.0) AS atan",
             Err(TranslateError::FunctionArgsLengthNotMatching {
                 name: "ATAN".to_owned(),
                 expected: 1,

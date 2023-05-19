@@ -1,6 +1,6 @@
 use {
     super::{err_into, State},
-    gluesql_core::result::{Error, Result},
+    gluesql_core::error::{Error, Result},
     serde::{Deserialize, Serialize},
     sled::{
         transaction::{

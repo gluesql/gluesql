@@ -42,8 +42,8 @@ fn shared_memory_storage_index() {
     use {
         futures::executor::block_on,
         gluesql_core::{
+            error::{Error, Result},
             prelude::Glue,
-            result::{Error, Result},
             store::{Index, Store},
         },
     };
@@ -81,7 +81,7 @@ fn shared_memory_storage_index() {
 
 #[test]
 fn shared_memory_storage_transaction() {
-    use gluesql_core::{prelude::Glue, result::Error};
+    use gluesql_core::{error::Error, prelude::Glue};
 
     let storage = SharedMemoryStorage::new();
     let mut glue = Glue::new(storage);
@@ -94,7 +94,7 @@ fn shared_memory_storage_transaction() {
 
 #[test]
 fn shared_memory_storage_function() {
-    use gluesql_core::result::Error;
+    use gluesql_core::error::Error;
 
     let storage = SharedMemoryStorage::new();
     let mut glue = Glue::new(storage);

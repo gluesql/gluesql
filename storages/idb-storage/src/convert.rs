@@ -5,7 +5,7 @@ use {
     gluesql_core::{
         ast::ColumnDef,
         data::Value,
-        result::{Error, Result},
+        error::{Error, Result},
         store::DataRow,
     },
     serde_json::Value as JsonValue,

@@ -1,6 +1,6 @@
 use {
     crate::*,
-    gluesql_core::{executor::FetchError, prelude::Value::*},
+    gluesql_core::{error::FetchError, prelude::Value::*},
 };
 
 test_case!(create_drop_table, async move {

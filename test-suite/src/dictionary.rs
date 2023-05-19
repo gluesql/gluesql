@@ -1,8 +1,8 @@
 use {
     crate::*,
     gluesql_core::{
+        error::TranslateError,
         prelude::{Payload::ShowVariable, PayloadVariable, Value::*},
-        translate::TranslateError,
     },
 };
 
@@ -23,8 +23,8 @@ test_case!(dictionary, async move {
     run!("CREATE TABLE Foo (id INTEGER, name TEXT NULL, type TEXT NULL);");
     test!("SHOW TABLES", tables(vec!["Foo"]));
 
-    run!("CREATE TABLE Zoo (id INTEGER);");
-    run!("CREATE TABLE Bar (id INTEGER, name TEXT NULL);");
+    run!("CREATE TABLE Zoo (id INTEGER PRIMARY KEY);");
+    run!("CREATE TABLE Bar (id INTEGER UNIQUE, name TEXT NOT NULL DEFAULT 'NONE');");
 
     test!("SHOW TABLES", tables(vec!["Bar", "Foo", "Zoo"]));
 
@@ -55,14 +55,14 @@ test_case!(dictionary, async move {
     test!(
         "SELECT * FROM GLUE_TABLE_COLUMNS",
         Ok(select!(
-            TABLE_NAME       | COLUMN_NAME      | COLUMN_ID;
-            Str              | Str              | I64;
-            "Bar".to_owned()   "id".to_owned()    1;
-            "Bar".to_owned()   "name".to_owned()  2;
-            "Foo".to_owned()   "id".to_owned()    1;
-            "Foo".to_owned()   "name".to_owned()  2;
-            "Foo".to_owned()   "type".to_owned()  3;
-            "Zoo".to_owned()   "id".to_owned()    1
+            TABLE_NAME       | COLUMN_NAME      | COLUMN_ID | NULLABLE | KEY                      | DEFAULT;
+            Str              | Str              | I64       | Bool     | Str                      | Str;
+            "Bar".to_owned()   "id".to_owned()    1           true       "UNIQUE".to_owned()        "".to_owned();
+            "Bar".to_owned()   "name".to_owned()  2           false      "".to_owned()              "'NONE'".to_owned();
+            "Foo".to_owned()   "id".to_owned()    1           true       "".to_owned()              "".to_owned();
+            "Foo".to_owned()   "name".to_owned()  2           true       "".to_owned()              "".to_owned();
+            "Foo".to_owned()   "type".to_owned()  3           true       "".to_owned()              "".to_owned();
+            "Zoo".to_owned()   "id".to_owned()    1           false      "PRIMARY KEY".to_owned()   "".to_owned()
         ))
     );
 });

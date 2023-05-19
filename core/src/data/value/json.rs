@@ -70,6 +70,7 @@ impl TryFrom<Value> for JsonValue {
             Value::U128(v) => JsonNumber::from_str(&v.to_string())
                 .map(JsonValue::Number)
                 .map_err(|_| ValueError::UnreachableJsonNumberParseFailure(v.to_string()).into()),
+            Value::F32(v) => Ok(v.into()),
             Value::F64(v) => Ok(v.into()),
             Value::Decimal(v) => JsonNumber::from_str(&v.to_string())
                 .map(JsonValue::Number)
@@ -190,6 +191,12 @@ mod tests {
         );
         assert!(JsonValue::try_from(Value::I128(i128::MAX)).is_ok());
 
+        assert_eq!(
+            Value::F32(1.23_f32).try_into(),
+            Ok(JsonValue::Number(
+                JsonNumber::from_f64(1.23_f32 as f64).unwrap()
+            ))
+        );
         assert_eq!(
             Value::F64(1.23).try_into(),
             Ok(JsonValue::Number(JsonNumber::from_f64(1.23).unwrap()))

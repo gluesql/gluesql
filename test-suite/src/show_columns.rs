@@ -1,9 +1,6 @@
 use {
     crate::*,
-    gluesql_core::{
-        ast::DataType,
-        executor::{ExecuteError, Payload},
-    },
+    gluesql_core::{ast::DataType, error::ExecuteError, executor::Payload},
 };
 
 test_case!(show_columns, async move {

@@ -1,9 +1,8 @@
 use {
     crate::*,
     gluesql_core::{
-        executor::EvaluateError,
+        error::{EvaluateError, TranslateError},
         prelude::{Payload, Value::*},
-        translate::TranslateError,
     },
 };
 
@@ -18,31 +17,31 @@ test_case!(rand, async move {
             Ok(Payload::Insert(1)),
         ),
         (
-            "SELECT RAND(123) AS rand1, RAND(789.0) AS rand2 FROM SingleItem",
+            "SELECT RAND(123) AS rand1, RAND(789.0) AS rand2",
             Ok(select!(
-                rand1                 | rand2
-                F64                   | F64;
-                0.17325464426155657     0.9635218234007941
+                rand1               | rand2
+                F64                 | F64;
+                0.17325464426155657   0.9635218234007941
             )),
         ),
         (
-            "SELECT RAND('string') AS rand FROM SingleItem",
+            "SELECT RAND('string') AS rand",
             Err(EvaluateError::FunctionRequiresFloatValue(String::from("RAND")).into()),
         ),
         (
-            "SELECT RAND(NULL) AS rand FROM SingleItem",
+            "SELECT RAND(NULL) AS rand",
             Ok(select_with_null!(rand; Null)),
         ),
         (
-            "SELECT RAND(TRUE) AS rand FROM SingleItem",
+            "SELECT RAND(TRUE) AS rand",
             Err(EvaluateError::FunctionRequiresFloatValue(String::from("RAND")).into()),
         ),
         (
-            "SELECT RAND(FALSE) AS rand FROM SingleItem",
+            "SELECT RAND(FALSE) AS rand",
             Err(EvaluateError::FunctionRequiresFloatValue(String::from("RAND")).into()),
         ),
         (
-            "SELECT RAND('string', 'string2') AS rand FROM SingleItem",
+            "SELECT RAND('string', 'string2') AS rand",
             Err(TranslateError::FunctionArgsLengthNotWithinRange {
                 name: "RAND".to_owned(),
                 expected_minimum: 0,

@@ -1,6 +1,6 @@
 use {
     core::fmt::Display,
-    gluesql_core::result::{Error, Result},
+    gluesql_core::error::{Error, Result},
 };
 
 pub trait ErrInto<T> {

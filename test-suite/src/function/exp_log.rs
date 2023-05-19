@@ -1,26 +1,15 @@
 use {
     crate::*,
-    gluesql_core::{
-        executor::EvaluateError,
-        prelude::{Payload, Value::*},
-    },
+    gluesql_core::{error::EvaluateError, prelude::Value::*},
 };
 
 test_case!(log2, async move {
     let test_cases = [
         (
-            "CREATE TABLE SingleItem (id INTEGER DEFAULT LOG2(1024))",
-            Ok(Payload::Create),
-        ),
-        (
-            r#"INSERT INTO SingleItem VALUES (0)"#,
-            Ok(Payload::Insert(1)),
-        ),
-        (
             "SELECT
-            LOG2(64.0) as log2_1,
-            LOG2(0.04) as log2_2
-            FROM SingleItem",
+                LOG2(64.0) as log2_1,
+                LOG2(0.04) as log2_2
+            ;",
             Ok(select!(
                 log2_1          | log2_2;
                 F64             | F64;
@@ -28,7 +17,7 @@ test_case!(log2, async move {
             )),
         ),
         (
-            "SELECT LOG2(32) as log2_with_int FROM SingleItem",
+            "SELECT LOG2(32) as log2_with_int;",
             Ok(select!(
                 log2_with_int
                 F64;
@@ -36,11 +25,11 @@ test_case!(log2, async move {
             )),
         ),
         (
-            "SELECT LOG2('string') AS log2 FROM SingleItem",
+            "SELECT LOG2('string') AS log2;",
             Err(EvaluateError::FunctionRequiresFloatValue(String::from("LOG2")).into()),
         ),
         (
-            "SELECT LOG2(NULL) AS log2 FROM SingleItem",
+            "SELECT LOG2(NULL) AS log2",
             Ok(select_with_null!(log2; Null)),
         ),
     ];
@@ -53,18 +42,10 @@ test_case!(log2, async move {
 test_case!(log10, async move {
     let test_cases = [
         (
-            "CREATE TABLE SingleItem (id INTEGER DEFAULT LOG10(100))",
-            Ok(Payload::Create),
-        ),
-        (
-            r#"INSERT INTO SingleItem VALUES (0)"#,
-            Ok(Payload::Insert(1)),
-        ),
-        (
             "SELECT
-            LOG10(64.0) as log10_1,
-            LOG10(0.04) as log10_2
-            FROM SingleItem",
+                LOG10(64.0) as log10_1,
+                LOG10(0.04) as log10_2
+            ;",
             Ok(select!(
                 log10_1           | log10_2;
                 F64               | F64;
@@ -72,7 +53,7 @@ test_case!(log10, async move {
             )),
         ),
         (
-            "SELECT LOG10(10) as log10_with_int FROM SingleItem",
+            "SELECT LOG10(10) as log10_with_int",
             Ok(select!(
                 log10_with_int
                 F64;
@@ -80,11 +61,11 @@ test_case!(log10, async move {
             )),
         ),
         (
-            "SELECT LOG10('string') AS log10 FROM SingleItem",
+            "SELECT LOG10('string') AS log10",
             Err(EvaluateError::FunctionRequiresFloatValue(String::from("LOG10")).into()),
         ),
         (
-            "SELECT LOG10(NULL) AS log10 FROM SingleItem",
+            "SELECT LOG10(NULL) AS log10",
             Ok(select_with_null!(log10; Null)),
         ),
     ];
@@ -97,18 +78,10 @@ test_case!(log10, async move {
 test_case!(ln, async move {
     let test_cases = [
         (
-            "CREATE TABLE SingleItem (id INTEGER DEFAULT LN(10))",
-            Ok(Payload::Create),
-        ),
-        (
-            r#"INSERT INTO SingleItem VALUES (0)"#,
-            Ok(Payload::Insert(1)),
-        ),
-        (
             "SELECT
-            LN(64.0) as ln1,
-            LN(0.04) as ln2
-            FROM SingleItem",
+                LN(64.0) as ln1,
+                LN(0.04) as ln2
+            ;",
             Ok(select!(
                 ln1             | ln2;
                 F64             | F64;
@@ -116,7 +89,7 @@ test_case!(ln, async move {
             )),
         ),
         (
-            "SELECT LN(10) as ln_with_int FROM SingleItem",
+            "SELECT LN(10) as ln_with_int",
             Ok(select!(
                 ln_with_int
                 F64;
@@ -124,13 +97,10 @@ test_case!(ln, async move {
             )),
         ),
         (
-            "SELECT LN('string') AS log10 FROM SingleItem",
+            "SELECT LN('string') AS log10",
             Err(EvaluateError::FunctionRequiresFloatValue(String::from("LN")).into()),
         ),
-        (
-            "SELECT LN(NULL) AS ln FROM SingleItem",
-            Ok(select_with_null!(ln; Null)),
-        ),
+        ("SELECT LN(NULL) AS ln", Ok(select_with_null!(ln; Null))),
     ];
 
     for (sql, expected) in test_cases {
@@ -141,18 +111,10 @@ test_case!(ln, async move {
 test_case!(log, async move {
     let test_cases = [
         (
-            "CREATE TABLE SingleItem (id INTEGER DEFAULT LOG(2, 64))",
-            Ok(Payload::Create),
-        ),
-        (
-            r#"INSERT INTO SingleItem VALUES (0)"#,
-            Ok(Payload::Insert(1)),
-        ),
-        (
             "SELECT
-            LOG(64.0, 2.0) as log_1,
-            LOG(0.04, 10.0) as log_2
-            FROM SingleItem",
+                LOG(64.0, 2.0) as log_1,
+                LOG(0.04, 10.0) as log_2
+            ;",
             Ok(select!(
                 log_1               | log_2;
                 F64                 | F64;
@@ -160,7 +122,7 @@ test_case!(log, async move {
             )),
         ),
         (
-            "SELECT LOG(10, 10) as log_with_int FROM SingleItem",
+            "SELECT LOG(10, 10) as log_with_int",
             Ok(select!(
                 log_with_int
                 F64;
@@ -168,19 +130,19 @@ test_case!(log, async move {
             )),
         ),
         (
-            "SELECT LOG('string', 10) AS log FROM SingleItem",
+            "SELECT LOG('string', 10) AS log",
             Err(EvaluateError::FunctionRequiresFloatValue(String::from("LOG")).into()),
         ),
         (
-            "SELECT LOG(10, 'string') AS log FROM SingleItem",
+            "SELECT LOG(10, 'string') AS log",
             Err(EvaluateError::FunctionRequiresFloatValue(String::from("LOG")).into()),
         ),
         (
-            "SELECT LOG(NULL, 10) AS log FROM SingleItem",
+            "SELECT LOG(NULL, 10) AS log",
             Ok(select_with_null!(log; Null)),
         ),
         (
-            "SELECT LOG(10, NULL) AS log FROM SingleItem",
+            "SELECT LOG(10, NULL) AS log",
             Ok(select_with_null!(log; Null)),
         ),
     ];
@@ -193,18 +155,10 @@ test_case!(log, async move {
 test_case!(exp, async move {
     let test_cases = [
         (
-            "CREATE TABLE SingleItem (id INTEGER DEFAULT EXP(3.3))",
-            Ok(Payload::Create),
-        ),
-        (
-            r#"INSERT INTO SingleItem VALUES (0)"#,
-            Ok(Payload::Insert(1)),
-        ),
-        (
             "SELECT
-            EXP(2.0) as exp1,
-            EXP(5.5) as exp2
-            FROM SingleItem",
+                EXP(2.0) as exp1,
+                EXP(5.5) as exp2
+            ;",
             Ok(select!(
                 exp1            | exp2;
                 F64             | F64;
@@ -212,7 +166,7 @@ test_case!(exp, async move {
             )),
         ),
         (
-            "SELECT EXP(3) as exp_with_int FROM SingleItem",
+            "SELECT EXP(3) as exp_with_int;",
             Ok(select!(
                 exp_with_int
                 F64;
@@ -220,13 +174,10 @@ test_case!(exp, async move {
             )),
         ),
         (
-            "SELECT EXP('string') AS exp FROM SingleItem",
+            "SELECT EXP('string') AS exp;",
             Err(EvaluateError::FunctionRequiresFloatValue(String::from("EXP")).into()),
         ),
-        (
-            "SELECT EXP(NULL) AS exp FROM SingleItem",
-            Ok(select_with_null!(exp; Null)),
-        ),
+        ("SELECT EXP(NULL) AS exp", Ok(select_with_null!(exp; Null))),
     ];
 
     for (sql, expected) in test_cases {
