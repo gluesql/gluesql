@@ -46,7 +46,7 @@ pub enum RowsData {
 }
 
 pub async fn fetch_insert_rows<T: GStore>(
-    storage: &mut T,
+    storage: &T,
     table_name: Option<&str>,
     columns: &[String],
     query: &Query,
