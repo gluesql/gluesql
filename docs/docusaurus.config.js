@@ -96,6 +96,11 @@ const config = {
             position: 'left',
             label: 'Storages',
           },
+          {
+            href: 'https://gluesql.org/blog',
+            label: 'Blog',
+            position: 'right',
+          },
         ] : [
           {
             to: '/',
