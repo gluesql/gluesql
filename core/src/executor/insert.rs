@@ -45,7 +45,7 @@ pub enum RowsData {
     Insert(Vec<(Key, DataRow)>),
 }
 
-pub async fn fetch_insert_rows<T: GStore + GStoreMut>(
+pub async fn fetch_insert_rows<T: GStore>(
     storage: &mut T,
     table_name: Option<&str>,
     columns: &[String],
