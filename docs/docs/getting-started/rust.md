@@ -2,7 +2,7 @@
 sidebar_position: 1
 ---
 
-# Rust
+# Rust aaaa
 
 To install and use GlueSQL in your Rust project, you'll first need to add it as a dependency from crates.io. You can do this by adding the following lines to your `Cargo.toml` file:
 
