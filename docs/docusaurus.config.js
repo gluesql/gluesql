@@ -71,7 +71,18 @@ const config = {
     navbar: {
       title: 'GlueSQL',
       items: [
-        ...(!isBlog ? [
+        ...(isBlog ? [
+          {
+            to: '/',
+            label: 'Blog',
+            position: 'left',
+          },
+          {
+            href: 'https://gluesql.org/docs',
+            label: 'Docs',
+            position: 'right',
+          },
+        ] : [
           {
             type: 'doc',
             docId: 'getting-started/rust',
@@ -99,17 +110,6 @@ const config = {
           {
             href: 'https://gluesql.org/blog',
             label: 'Blog',
-            position: 'right',
-          },
-        ] : [
-          {
-            to: '/',
-            label: 'Blog',
-            position: 'left',
-          },
-          {
-            href: 'https://gluesql.org/docs',
-            label: 'Docs',
             position: 'right',
           },
         ]),
