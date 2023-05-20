@@ -5,7 +5,9 @@
   "scripts": {
     "docusaurus": "docusaurus",
     "start": "docusaurus start",
+    "start:blog": "GLUESQL_DOC_TYPE=blog docusaurus start",
     "build": "docusaurus build",
+    "build:blog": "GLUESQL_DOC_TYPE=blog docusaurus build",
     "swizzle": "docusaurus swizzle",
     "deploy": "docusaurus deploy",
     "clear": "docusaurus clear",

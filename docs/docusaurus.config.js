@@ -4,6 +4,9 @@
 const lightCodeTheme = require('prism-react-renderer/themes/github');
 const darkCodeTheme = require('prism-react-renderer/themes/dracula');
 
+const { env } = require('node:process');
+const isBlog = env.GLUESQL_DOC_TYPE === 'blog';
+
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'GlueSQL',
@@ -14,12 +17,7 @@ const config = {
   url: 'https://gluesql.org',
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: '/docs/dev/',
-
-  // GitHub pages deployment config.
-  // If you aren't using GitHub pages, you don't need these.
-  organizationName: 'facebook', // Usually your GitHub org/user name.
-  projectName: 'docusaurus', // Usually your repo name.
+  baseUrl: isBlog ? '/blog/' : '/docs/dev/',
 
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
@@ -37,13 +35,29 @@ const config = {
       'classic',
       /** @type {import('@docusaurus/preset-classic').Options} */
       ({
-        docs: {
-          sidebarPath: require.resolve('./sidebars.js'),
-        },
-        blog: false,
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
         },
+        ...(
+          isBlog ? {
+            docs: false,
+            pages: false,
+            blog: {
+              routeBasePath: '/',
+              blogTitle: 'GlueSQL Blog',
+              blogDescription: 'GlueSQL Blog',
+              postsPerPage: 'ALL',
+              blogSidebarTitle: 'All posts',
+              blogSidebarCount: 'ALL',
+              showReadingTime: true,
+            },
+          } : {
+            docs: {
+              sidebarPath: require.resolve('./sidebars.js'),
+              routeBasePath: '/',
+            },
+          }
+        )
       }),
     ],
   ],
@@ -57,30 +71,48 @@ const config = {
     navbar: {
       title: 'GlueSQL',
       items: [
-        {
-          type: 'doc',
-          docId: 'getting-started/rust',
-          position: 'left',
-          label: 'Getting Started',
-        },
-        {
-          type: 'doc',
-          docId: 'sql-syntax/intro',
-          position: 'left',
-          label: 'SQL Syntax',
-        },
-        {
-          type: 'doc',
-          docId: 'ast-builder/intro',
-          position: 'left',
-          label: 'AST Builder',
-        },
-        {
-          type: 'doc',
-          docId: 'storages/intro',
-          position: 'left',
-          label: 'Storages',
-        },
+        ...(isBlog ? [
+          {
+            to: '/',
+            label: 'Blog',
+            position: 'left',
+          },
+          {
+            href: 'https://gluesql.org/docs',
+            label: 'Docs',
+            position: 'right',
+          },
+        ] : [
+          {
+            type: 'doc',
+            docId: 'getting-started/rust',
+            position: 'left',
+            label: 'Getting Started',
+          },
+          {
+            type: 'doc',
+            docId: 'sql-syntax/intro',
+            position: 'left',
+            label: 'SQL Syntax',
+          },
+          {
+            type: 'doc',
+            docId: 'ast-builder/intro',
+            position: 'left',
+            label: 'AST Builder',
+          },
+          {
+            type: 'doc',
+            docId: 'storages/intro',
+            position: 'left',
+            label: 'Storages',
+          },
+          {
+            href: 'https://gluesql.org/blog',
+            label: 'Blog',
+            position: 'right',
+          },
+        ]),
         {
           href: 'https://github.com/gluesql/gluesql',
           label: 'GitHub',
@@ -93,28 +125,37 @@ const config = {
       links: [
         {
           title: 'Docs',
-          items: [
+          items: isBlog ? [
+            {
+              label: 'Go to docs',
+              href: 'https://gluesql.org/docs',
+            },
+          ] : [
             {
               label: 'Getting Started',
-              to: '/docs/getting-started/rust',
+              to: '/getting-started/rust',
             },
             {
               label: 'SQL Syntax',
-              to: '/docs/sql-syntax/intro',
+              to: '/sql-syntax/intro',
             },
             {
               label: 'AST Builder',
-              to: '/docs/ast-builder/intro',
+              to: '/ast-builder/intro',
             },
             {
               label: 'Storages',
-              to: '/docs/storages/intro',
+              to: '/storages/intro',
             },
           ],
         },
         {
-          title: 'Community',
+          title: 'Resources',
           items: [
+            {
+              label: 'Blog',
+              href: 'https://gluesql.org/blog',
+            },
             {
               label: 'GitHub',
               href: 'https://github.com/gluesql/gluesql',
