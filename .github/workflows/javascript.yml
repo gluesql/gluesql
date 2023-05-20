@@ -27,12 +27,12 @@ jobs:
       - name: Set up wasm pack
         uses: jetli/wasm-pack-action@v0.3.0
       - run: |
-          cd pkg/javascript/web
+          cd pkg/javascript
           npm install
           wasm-pack build --target web
           wasm-pack build --target nodejs -- --no-default-features --features nodejs
           wasm-pack test --headless --firefox
-          cd ../../../
+          cd ../../
 
   js_storage_tests:
     name: Storage tests
