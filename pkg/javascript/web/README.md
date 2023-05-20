@@ -16,6 +16,7 @@ wasm-pack build --target web --no-typescript --release --out-dir ../dist/web
 
 # nodejs
 wasm-pack build --target nodejs --no-typescript --release --out-dir ../dist/nodejs -- --no-default-features --features nodejs
+```
 
 ### 🔬 Test in Headless Browsers with `wasm-pack test`
 ```
