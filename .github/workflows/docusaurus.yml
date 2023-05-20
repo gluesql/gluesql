@@ -5,12 +5,33 @@ on:
     branches: [main]
     paths:
       - "docs/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "docs/**"
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Build docs
+        run: |
+          cd docs
+          yarn install
+          yarn build
+          yarn build:blog
+
   deploy:
+    if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
