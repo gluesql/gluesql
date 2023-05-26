@@ -47,8 +47,17 @@ INSERT INTO Bar VALUES
     ('{ "name": "glue", "value": 30 }'),
     ('{ "name": "sql", "rate": 3.0, "list": [1, 2, 3] }');
 
-SELECT * FROM Foo JOIN Bar
-WHERE Bar.rate > 1.0 AND Foo.id = 2;
+SELECT * FROM Foo JOIN Bar WHERE Bar.rate > 1.0 AND Foo.id = 2;
+
+SELECT * FROM Foo JOIN Bar;
+/*
+| id | list      | name | rate | value |
+|----|-----------|------|------|-------|
+| 1  |           | glue |      | 30    |
+| 1  | [1, 2, 3] | sql  | 3    |       |
+| 2  |           | glue |      | 30    |
+| 2  | [1, 2, 3] | sql  | 3    |       |
+*/
 ```
 
 ## Supported Reference Storages
