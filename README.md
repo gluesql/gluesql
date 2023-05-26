@@ -52,11 +52,13 @@ INSERT INTO Bar VALUES
 
 SELECT * FROM Foo JOIN Bar
 WHERE Bar.rate > 1.0 AND Foo.id = 2;
-```
+/*
 | id | list      | name | rate | value |
 |----|-----------|------|------|-------|
 | 2  | [1, 2, 3] | glue | 3    |       |
 | 2  |           | sql  | 5    | 100   |
+*/
+```
 
 ## Supported Reference Storages
 GlueSQL provides a variety of reference storages out of the box, including simple in-memory storage, key-value databases, log file-based storage like JSON & JSONL, and even Web Storage and IndexedDB supported by web browsers. These reference storages are readily available for use and can be easily adapted to a variety of storage systems. Additionally, GlueSQL is constantly expanding its list of supported storages, making it a versatile tool for developers.
