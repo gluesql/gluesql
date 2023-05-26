@@ -65,6 +65,7 @@ const config = {
   themeConfig: {
     colorMode: {
       disableSwitch: false,
+      respectPrefersColorScheme: true,
     },
     navbar: {
       title: 'GlueSQL',
