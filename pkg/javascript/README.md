@@ -7,7 +7,15 @@
 [![Coverage Status](https://coveralls.io/repos/github/gluesql/gluesql/badge.svg?branch=main)](https://coveralls.io/github/gluesql/gluesql?branch=main)
 
 GlueSQL.js is a SQL database for web browsers and Node.js. It works as an embedded database and entirely runs in the browser.
-GlueSQL.js supports in-memory storage backend, but it will soon to have localStorage, sessionStorage and indexedDB backend supports.
+GlueSQL.js supports in-memory storage backend, localStorage, sessionStorage and indexedDB backend supports.
+
+
+Learn more at the **[https://gluesql.org/docs](https://gluesql.org/docs)**
+
+* [Getting Started - JavaScript](https://gluesql.org/docs/dev/getting-started/javascript-web)
+* [Getting Started - Node.js](https://gluesql.org/docs/dev/getting-started/nodejs)
+* [SQL Syntax](https://gluesql.org/docs/dev/sql-syntax/intro)
+
 ## Installation
 
 #### Yarn
@@ -42,13 +50,6 @@ const [{ rows }] = await db.query('SELECT * FROM User;');
 console.log(rows);
 ```
 
-## Examples
-* [JavaScript modules](https://github.com/gluesql/gluesql/tree/main/pkg/javascript/examples/web/module)
-* [Rollup](https://github.com/gluesql/gluesql/tree/main/pkg/javascript/examples/web/rollup)
-* [Webpack](https://github.com/gluesql/gluesql/tree/main/pkg/javascript/examples/web/webpack)
-* [Node.js](https://github.com/gluesql/gluesql/tree/main/pkg/javascript/examples/nodejs)
+## License
 
-## 🚧 Documentation- WIP
-* [General examples](https://github.com/gluesql/gluesql/tree/main/test-suite/src)
-* [Supported data types](https://github.com/gluesql/gluesql/tree/main/test-suite/src/data_type)
-* [Supported SQL functions](https://github.com/gluesql/gluesql/tree/main/test-suite/src/function)
+This project is licensed under the Apache License, Version 2.0 - see the [LICENSE](https://raw.githubusercontent.com/gluesql/gluesql/main/LICENSE) file for details.
