@@ -73,9 +73,9 @@ pub use expr::{
     function::{
         abs, acos, asin, atan, cast, ceil, concat, concat_ws, cos, degrees, divide, exp, extract,
         find_idx, floor, format, gcd, generate_uuid, ifnull, initcap, lcm, left, ln, log, log10,
-        log2, lower, lpad, ltrim, modulo, now, pi, position, power, radians, rand, repeat, reverse,
-        right, round, rpad, rtrim, sign, sin, sqrt, substr, tan, to_date, to_time, to_timestamp,
-        upper, FunctionNode,
+        log2, lower, lpad, ltrim, modulo, now, pi, point, position, power, radians, rand, repeat,
+        reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr, tan, to_date, to_time,
+        to_timestamp, upper, FunctionNode,
     },
 };
 

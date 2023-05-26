@@ -136,6 +136,10 @@ pub enum FunctionNode<'a> {
         field: DateTimeField,
         expr: ExprNode<'a>,
     },
+    Point {
+        x: ExprNode<'a>,
+        y: ExprNode<'a>,
+    },
 }
 
 impl<'a> TryFrom<FunctionNode<'a>> for Function {
@@ -308,6 +312,11 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
             FunctionNode::Extract { field, expr } => {
                 let expr = expr.try_into()?;
                 Ok(Function::Extract { field, expr })
+            }
+            FunctionNode::Point { x, y } => {
+                let x = x.try_into()?;
+                let y = y.try_into()?;
+                Ok(Function::Point { x, y })
             }
         }
     }
@@ -759,6 +768,13 @@ pub fn extract<'a, T: Into<ExprNode<'a>>>(field: DateTimeField, expr: T) -> Expr
     }))
 }
 
+pub fn point<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(x: T, y: U) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Point {
+        x: x.into(),
+        y: y.into(),
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
@@ -766,9 +782,9 @@ mod tests {
         ast_builder::{
             abs, acos, asin, atan, cast, ceil, col, concat, concat_ws, cos, date, degrees, divide,
             exp, expr, extract, find_idx, floor, format, gcd, generate_uuid, ifnull, initcap, lcm,
-            left, ln, log, log10, log2, lower, lpad, ltrim, modulo, now, num, pi, position, power,
-            radians, rand, repeat, reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr,
-            tan, test_expr, text, time, timestamp, to_date, to_time, to_timestamp, upper,
+            left, ln, log, log10, log2, lower, lpad, ltrim, modulo, now, num, pi, point, position,
+            power, radians, rand, repeat, reverse, right, round, rpad, rtrim, sign, sin, sqrt,
+            substr, tan, test_expr, text, time, timestamp, to_date, to_time, to_timestamp, upper,
         },
         prelude::DataType,
     };
@@ -1404,6 +1420,13 @@ mod tests {
 
         let actual = extract(DateTimeField::Year, expr("date"));
         let expected = "EXTRACT(YEAR FROM date)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_point() {
+        let actual = point(num(1), num(2));
+        let expected = "POINT(1, 2)";
         test_expr(actual, expected);
     }
 }
