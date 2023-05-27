@@ -43,22 +43,21 @@ GlueSQL supports both structured and unstructured (schemaless) data. While SQL d
 
 ### Schemaless SQL Example
 ```sql
-CREATE TABLE Foo (id INTEGER);
-INSERT INTO Foo VALUES (1), (2);
+CREATE TABLE Names (id INTEGER, name TEXT);
+INSERT INTO Names VALUES (1, 'glue'), (2, 'sql');
 
-CREATE TABLE Bar;
-INSERT INTO Bar VALUES
-    ('{ "name": "ast", "value": 30 }'),
-    ('{ "name": "glue", "rate": 3.0, "list": [1, 2, 3] }'),
-    ('{ "name": "sql", "rate": 5.0, "value": 100 }');
+CREATE TABLE Logs;
+INSERT INTO Logs VALUES
+    ('{ "id": 1, "value": 30 }'),
+    ('{ "id": 2, "rate": 3.0, "list": [1, 2, 3] }'),
+    ('{ "id": 3, "rate": 5.0, "value": 100 }');
 
-SELECT * FROM Foo JOIN Bar
-WHERE Bar.rate > 1.0 AND Foo.id = 2;
+SELECT * FROM Names JOIN Logs ON Names.id = Logs.id;
 /*
-| id | list      | name | rate | value |
-|----|-----------|------|------|-------|
-| 2  | [1, 2, 3] | glue | 3    |       |
-| 2  |           | sql  | 5    | 100   |
+| id | list    | name | rate | value |
+|----|---------|------|------|-------|
+| 1  |         | glue |      | 30    |
+| 2  |[1, 2, 3]| sql  | 3    |       |
 */
 ```
 
