@@ -9,7 +9,7 @@ repository.workspace = true
 documentation.workspace = true
 
 [dependencies]
-utils = { workspace = true }
+utils.workspace = true
 
 regex = "1"
 async-trait = "0.1"
