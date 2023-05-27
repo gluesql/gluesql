@@ -86,7 +86,7 @@ const config = {
             to: 'getting-started/rust',
             position: 'left',
             label: 'Getting Started',
-            activeBasePath2: 'getting-started',
+            activeBasePath: 'getting-started',
           },
           {
             to: 'sql-syntax/intro',
