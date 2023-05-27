@@ -1,12 +1,12 @@
 [package]
 name = "gluesql-js"
 version = "0.13.1"
-edition = "2021"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
-description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
-license = "Apache-2.0"
-repository = "https://github.com/gluesql/gluesql"
-documentation = "https://docs.rs/gluesql/"
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -31,11 +31,11 @@ gloo-utils = { version = "0.1.6", features = ["serde"] }
 # code size when deploying.
 console_error_panic_hook = { version = "0.1.6", optional = true }
 
-gluesql-core = { path = "../../../core", version = "0.13.1" }
-memory-storage = { package = "gluesql_memory_storage", path = "../../../storages/memory-storage", version = "0.13.0" }
-web-storage = { package = "gluesql-web-storage", path = "../../../storages/web-storage", version = "0.13.0" }
-idb-storage = { package = "gluesql-idb-storage", path = "../../../storages/idb-storage", version = "0.13.0" }
-composite-storage = { package = "gluesql-composite-storage", path = "../../../storages/composite-storage", version = "0.13.0" }
+gluesql-core = { path = "../../core", version = "0.13.1" }
+memory-storage = { package = "gluesql_memory_storage", path = "../../storages/memory-storage", version = "0.13.0" }
+web-storage = { package = "gluesql-web-storage", path = "../../storages/web-storage", version = "0.13.0" }
+idb-storage = { package = "gluesql-idb-storage", path = "../../storages/idb-storage", version = "0.13.0" }
+composite-storage = { package = "gluesql-composite-storage", path = "../../storages/composite-storage", version = "0.13.0" }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.13"
@@ -43,5 +43,5 @@ async-trait = "0.1"
 
 [dev-dependencies.test-suite]
 package = "gluesql-test-suite"
-path = "../../../test-suite"
+path = "../../test-suite"
 version = "0.13.1"
