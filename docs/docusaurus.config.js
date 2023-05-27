@@ -129,6 +129,7 @@ const config = {
 
 if (isBlog) {
   config.themeConfig = {
+    ...config.themeConfig,
     footer: {
       style: 'dark',
       links: [
