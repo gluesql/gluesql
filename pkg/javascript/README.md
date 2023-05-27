@@ -10,7 +10,7 @@ GlueSQL.js is a SQL database for web browsers and Node.js. It works as an embedd
 GlueSQL.js supports in-memory storage backend, localStorage, sessionStorage and indexedDB backend supports.
 
 
-Learn more at the **[https://gluesql.org/docs](https://gluesql.org/docs)**
+Learn more at the **<https://gluesql.org/docs>**
 
 * [Getting Started - JavaScript](https://gluesql.org/docs/dev/getting-started/javascript-web)
 * [Getting Started - Node.js](https://gluesql.org/docs/dev/getting-started/nodejs)
