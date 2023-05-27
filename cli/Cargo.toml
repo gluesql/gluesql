@@ -1,7 +1,7 @@
 [package]
 name = "gluesql-cli"
-version = "0.13.1"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
+version.workspace = true
 edition.workspace = true
 description.workspace = true
 license.workspace = true
@@ -9,10 +9,10 @@ repository.workspace = true
 documentation.workspace = true
 
 [dependencies]
-gluesql-core = { path = "../core", version = "0.13.1" }
-gluesql_sled_storage = { path = "../storages/sled-storage", version = "0.13.0" }
-gluesql_memory_storage = { path = "../storages/memory-storage", version = "0.13.0" }
-gluesql-json-storage = { path = "../storages/json-storage", version = "0.13.0" }
+gluesql-core.workspace = true
+sled-storage.workspace = true
+memory-storage.workspace = true
+json-storage.workspace = true
 
 clap = { version = "3.2.2", features = ["derive"] }
 rustyline = "9.1"

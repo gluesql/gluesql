@@ -1,7 +1,7 @@
 use {
     gluesql_cli::dump_database,
     gluesql_core::prelude::Glue,
-    gluesql_sled_storage::{sled, SledStorage},
+    sled_storage::{sled, SledStorage},
     std::{fs::File, io::Read, path::PathBuf},
 };
 

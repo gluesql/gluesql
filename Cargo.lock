@@ -858,20 +858,24 @@ dependencies = [
 
 [[package]]
 name = "gluesql"
-version = "0.13.1"
+version = "0.14.0"
 dependencies = [
  "futures",
  "gluesql-cli",
+ "gluesql-composite-storage",
  "gluesql-core",
+ "gluesql-idb-storage",
+ "gluesql-json-storage",
  "gluesql-shared-memory-storage",
  "gluesql-test-suite",
+ "gluesql-web-storage",
  "gluesql_memory_storage",
  "gluesql_sled_storage",
 ]
 
 [[package]]
 name = "gluesql-cli"
-version = "0.13.1"
+version = "0.14.0"
 dependencies = [
  "anyhow",
  "clap 3.2.23",
@@ -891,7 +895,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-composite-storage"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -905,7 +909,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-core"
-version = "0.13.1"
+version = "0.14.0"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -933,7 +937,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-idb-storage"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -951,7 +955,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-js"
-version = "0.13.1"
+version = "0.14.0"
 dependencies = [
  "async-trait",
  "console_error_panic_hook",
@@ -972,7 +976,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-json-storage"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "async-io",
  "async-trait",
@@ -991,7 +995,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-shared-memory-storage"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -1004,7 +1008,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-test-suite"
-version = "0.13.1"
+version = "0.14.0"
 dependencies = [
  "async-trait",
  "bigdecimal",
@@ -1018,7 +1022,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-utils"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "futures",
  "indexmap",
@@ -1027,7 +1031,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-web-storage"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "async-trait",
  "gloo-storage",
@@ -1041,7 +1045,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql_memory_storage"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -1053,7 +1057,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql_sled_storage"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "async-io",
  "async-trait",

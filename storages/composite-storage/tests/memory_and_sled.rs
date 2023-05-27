@@ -1,8 +1,8 @@
 use {
     gluesql_composite_storage::CompositeStorage,
     gluesql_core::prelude::{Error, Glue, Value::I64},
-    gluesql_memory_storage::MemoryStorage,
-    gluesql_sled_storage::SledStorage,
+    memory_storage::MemoryStorage,
+    sled_storage::SledStorage,
     std::fs,
     test_suite::*,
 };

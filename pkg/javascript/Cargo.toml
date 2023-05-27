@@ -1,7 +1,7 @@
 [package]
 name = "gluesql-js"
-version = "0.13.1"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
+version.workspace = true
 edition.workspace = true
 description.workspace = true
 license.workspace = true
@@ -17,6 +17,12 @@ default = ["console_error_panic_hook"]
 nodejs = ["console_error_panic_hook"]
 
 [dependencies]
+gluesql-core.workspace = true
+memory-storage .workspace = true
+web-storage.workspace = true
+idb-storage.workspace = true
+composite-storage.workspace = true
+
 wasm-bindgen = { version = "0.2.79" }
 wasm-bindgen-futures = "0.4.29"
 js-sys = "0.3"
@@ -31,17 +37,8 @@ gloo-utils = { version = "0.1.6", features = ["serde"] }
 # code size when deploying.
 console_error_panic_hook = { version = "0.1.6", optional = true }
 
-gluesql-core = { path = "../../core", version = "0.13.1" }
-memory-storage = { package = "gluesql_memory_storage", path = "../../storages/memory-storage", version = "0.13.0" }
-web-storage = { package = "gluesql-web-storage", path = "../../storages/web-storage", version = "0.13.0" }
-idb-storage = { package = "gluesql-idb-storage", path = "../../storages/idb-storage", version = "0.13.0" }
-composite-storage = { package = "gluesql-composite-storage", path = "../../storages/composite-storage", version = "0.13.0" }
-
 [dev-dependencies]
+test-suite.workspace = true
+
 wasm-bindgen-test = "0.3.13"
 async-trait = "0.1"
-
-[dev-dependencies.test-suite]
-package = "gluesql-test-suite"
-path = "../../test-suite"
-version = "0.13.1"
