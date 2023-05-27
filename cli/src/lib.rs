@@ -15,10 +15,10 @@ use {
         data::Value,
         store::{DataRow, GStore, GStoreMut, Store, Transaction},
     },
-    gluesql_json_storage::JsonStorage,
-    gluesql_memory_storage::MemoryStorage,
-    gluesql_sled_storage::SledStorage,
     itertools::Itertools,
+    json_storage::JsonStorage,
+    memory_storage::MemoryStorage,
+    sled_storage::SledStorage,
     std::{
         fmt::Debug,
         fs::File,

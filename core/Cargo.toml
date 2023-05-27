@@ -1,7 +1,7 @@
 [package]
 name = "gluesql-core"
-version = "0.13.1"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
+version.workspace = true
 edition.workspace = true
 description.workspace = true
 license.workspace = true
@@ -9,7 +9,7 @@ repository.workspace = true
 documentation.workspace = true
 
 [dependencies]
-utils = { package = "gluesql-utils", path = "../utils", version = "0.13.0" }
+utils.workspace = true
 
 regex = "1"
 async-trait = "0.1"
