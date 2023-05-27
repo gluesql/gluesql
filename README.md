@@ -25,14 +25,6 @@ SELECT id, name FROM Foo WHERE name = 'Lemon' AND price > 100
 
 ### AST Builder Example
 ```rust
-# use gluesql_core::ast_builder::{Execute, col, table};
-# use gluesql_core::prelude::Glue;
-# use memory_storage::MemoryStorage;
-#
-# async fn example() {
-# let storage = MemoryStorage::default();
-# let mut glue = Glue::new(storage);
-#
 table("Foo")
     .select()
     // Filter by name using a SQL string
@@ -42,7 +34,6 @@ table("Foo")
     .project("id, name")
     .execute(&mut glue)
     .await;
-# }
 ```
 
 ## Supporting Structured and Unstructured Data with Schema Flexibility

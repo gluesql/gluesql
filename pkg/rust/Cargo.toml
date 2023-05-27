@@ -16,6 +16,9 @@ keywords = [
 	"webassembly",
 ]
 
+[lib]
+doctest = false
+
 [package.metadata.docs.rs]
 all-features = true
 
