@@ -871,7 +871,7 @@ mod tests {
         let mut map = HashMap::new();
         map.insert("a".to_owned(), Value::I32(1));
         map.insert("b".to_owned(), Value::I32(2));
-        test!(Value::Map(map), "{\"a\":1,\"b\":2}");
+        test!(Value::Map(map), "{\"b\":2,\"a\":1}");
         test!(Value::List(vec![Value::I32(1), Value::I32(2)]), "[1,2]");
         test!(
             Value::Point(point::Point::new(1.0313, 2.0314)),
