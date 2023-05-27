@@ -20,7 +20,7 @@ We will use this table for the subsequent examples.
 
 To group records by a specific column and count the number of occurrences in each group, you can use the AST Builder's `group_by()` and `project()` methods.
 
-```sql
+```rust
 table("User")
     .select()
     .group_by("age")
@@ -42,7 +42,7 @@ age | count(*)
 
 You can further filter the groups based on specific conditions using the `having()` method. The `having()` method allows you to apply conditions to the grouped data.
 
-```sql
+```rust
 table("User")
     .select()
     .group_by("age")
