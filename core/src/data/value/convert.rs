@@ -37,8 +37,22 @@ impl From<&Value> for String {
             Value::Time(value) => value.to_string(),
             Value::Interval(value) => value.into(),
             Value::Uuid(value) => Uuid::from_u128(*value).to_string(),
-            Value::Map(_) => "[MAP]".to_owned(),
-            Value::List(_) => "[LIST]".to_owned(),
+            Value::Map(map) => {
+                let map_string = map
+                    .iter()
+                    .map(|(k, v)| format!("\"{}\":{}", k, String::from(v)))
+                    .collect::<Vec<String>>()
+                    .join(",");
+                format!("{{{}}}", map_string)
+            }
+            Value::List(list) => {
+                let list_string = list
+                    .iter()
+                    .map(String::from)
+                    .collect::<Vec<String>>()
+                    .join(",");
+                format!("[{}]", list_string)
+            }
             Value::Decimal(value) => value.to_string(),
             Value::Point(value) => value.to_string(),
             Value::Null => String::from("NULL"),
@@ -851,8 +865,14 @@ mod tests {
             Value::Uuid(195965723427462096757863453463987888808),
             "936da01f-9abd-4d9d-80c7-02af85c822a8"
         );
-        test!(Value::Map(HashMap::new()), "[MAP]");
-        test!(Value::List(Vec::new()), "[LIST]");
+        test!(Value::Map(HashMap::new()), "{}");
+        test!(Value::List(Vec::new()), "[]");
+
+        let mut map = HashMap::new();
+        map.insert("a".to_string(), Value::I32(1));
+        map.insert("b".to_string(), Value::I32(2));
+        test!(Value::Map(map), "{\"a\":1,\"b\":2}");
+        test!(Value::List(vec![Value::I32(1), Value::I32(2)]), "[1,2]");
         test!(
             Value::Point(point::Point::new(1.0313, 2.0314)),
             "POINT(1.0313 2.0314)"
