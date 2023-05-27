@@ -41,7 +41,7 @@ table("Foo")
 ## Supporting Structured and Unstructured Data with Schema Flexibility
 GlueSQL supports both structured and unstructured (schemaless) data. While SQL databases typically assume that schemas are defined and used, GlueSQL does not make this assumption. It supports completely unstructured data, similar to a NoSQL document database, as well as semi-structured types such as MAP and LIST. This makes GlueSQL suitable for a wide range of use cases, including those that require handling of unstructured data. Additionally, it is possible to join tables with schemas and schemaless tables together and execute queries.
 
-### SQL Example
+### Schemaless SQL Example
 ```sql
 CREATE TABLE Foo (id INTEGER);
 INSERT INTO Foo VALUES (1), (2);
