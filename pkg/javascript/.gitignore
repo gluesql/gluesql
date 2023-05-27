@@ -6,5 +6,4 @@ target/
 **/*.rs.bk
 wasm-pack.log
 Cargo.lock
-yarn.lock
 package-lock.json
