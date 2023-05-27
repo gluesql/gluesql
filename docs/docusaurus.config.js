@@ -38,10 +38,10 @@ const config = {
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
         },
+        pages: false,
         ...(
           isBlog ? {
             docs: false,
-            pages: false,
             blog: {
               routeBasePath: '/',
               blogTitle: 'GlueSQL Blog',
@@ -63,10 +63,9 @@ const config = {
   ],
 
   themeConfig: {
-    // Replace with your project's social card
-    image: 'img/docusaurus-social-card.jpg',
     colorMode: {
-      disableSwitch: true,
+      disableSwitch: false,
+      respectPrefersColorScheme: true,
     },
     navbar: {
       title: 'GlueSQL',
@@ -84,28 +83,28 @@ const config = {
           },
         ] : [
           {
-            type: 'doc',
-            docId: 'getting-started/rust',
+            to: 'getting-started/rust',
             position: 'left',
             label: 'Getting Started',
+            activeBasePath: 'getting-started',
           },
           {
-            type: 'doc',
-            docId: 'sql-syntax/intro',
+            to: 'sql-syntax/intro',
             position: 'left',
             label: 'SQL Syntax',
+            activeBasePath: 'sql-syntax',
           },
           {
-            type: 'doc',
-            docId: 'ast-builder/intro',
+            to: 'ast-builder/intro',
             position: 'left',
             label: 'AST Builder',
+            activeBasePath: 'ast-builder',
           },
           {
-            type: 'doc',
-            docId: 'storages/intro',
+            to: 'storages/intro',
             position: 'left',
             label: 'Storages',
+            activeBasePath: 'storages',
           },
           {
             href: 'https://gluesql.org/blog',
@@ -120,6 +119,16 @@ const config = {
         },
       ],
     },
+    prism: {
+      theme: lightCodeTheme,
+      darkTheme: darkCodeTheme,
+      additionalLanguages: ['rust', 'toml'],
+    },
+  },
+};
+
+if (isBlog) {
+  config.themeConfig = {
     footer: {
       style: 'dark',
       links: [
@@ -181,12 +190,7 @@ const config = {
         },
       ],
     },
-    prism: {
-      theme: lightCodeTheme,
-      darkTheme: darkCodeTheme,
-      additionalLanguages: ['rust', 'toml'],
-    },
-  },
-};
+  };
+}
 
 module.exports = config;
