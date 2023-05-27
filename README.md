@@ -25,6 +25,14 @@ SELECT id, name FROM Foo WHERE name = 'Lemon' AND price > 100
 
 ### AST Builder Example
 ```rust
+# use gluesql_core::ast_builder::{Execute, col, table};
+# use gluesql_core::prelude::Glue;
+# use memory_storage::MemoryStorage;
+#
+# async fn example() {
+# let storage = MemoryStorage::default();
+# let mut glue = Glue::new(storage);
+#
 table("Foo")
     .select()
     // Filter by name using a SQL string
@@ -32,8 +40,9 @@ table("Foo")
     // Filter by price using AST Builder methods
     .filter(col("price").gt(100))
     .project("id, name")
-    .execute(glue)
+    .execute(&mut glue)
     .await;
+# }
 ```
 
 ## Supporting Structured and Unstructured Data with Schema Flexibility
@@ -100,4 +109,4 @@ GlueSQL is a database project that is simpler than you might think. You only nee
 
 ## License
 
-This project is licensed under the Apache License, Version 2.0 - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache License, Version 2.0 - see the [LICENSE](https://github.com/gluesql/gluesql/blob/main/LICENSE) file for details.
