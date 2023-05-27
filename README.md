@@ -8,200 +8,96 @@
 [![Chat](https://img.shields.io/discord/780298017940176946?logo=discord&logoColor=white)](https://discord.gg/C6TDEgzDzY)
 [![Coverage Status](https://coveralls.io/repos/github/gluesql/gluesql/badge.svg?branch=main)](https://coveralls.io/github/gluesql/gluesql?branch=main)
 
-## SQL Database Engine as a Library
+## Multi-Model Database Engine as a Library
+GlueSQL is a Rust library for SQL databases that includes a parser ([sqlparser-rs](https://github.com/sqlparser-rs/sqlparser-rs)), an execution layer, and a variety of storage options, both persistent and non-persistent, all in one package. It is a versatile tool for developers, supporting both SQL and its own query builder (AST Builder). GlueSQL can handle structured and unstructured data, making it suitable for a wide range of use cases. It is portable and can be used with various storage types, including log files and read-write capable storage. GlueSQL is designed to be extensible and supports custom planners, making it a powerful tool for developers who need SQL support for their databases or services. GlueSQL is also flexible, as it can be used in Rust and JavaScript environments, and its language support is constantly expanding to include more programming languages.
 
-GlueSQL is a SQL database library written in Rust.  
-It provides a parser ([sqlparser-rs](https://github.com/sqlparser-rs/sqlparser-rs)), execution layer, and optional storages ([`sled`](https://github.com/spacejam/sled) or `memory`) packaged into a single library.  
-Developers can choose to use GlueSQL to build their own SQL database, or as an embedded SQL database using the default storage engine.
+For more information on how to use GlueSQL, please refer to the [**official documentation website**](https://gluesql.org/docs). The documentation provides detailed information on how to install and use GlueSQL, as well as examples and tutorials on how to create custom storage systems and perform SQL operations.
 
-## Standalone Mode
+"We offer a service where the GlueSQL team can implement and maintain your custom storage, especially beneficial for NoSQL databases with their own query planner and execution layer. We welcome any services wishing to support SQL and GlueSQL query interfaces. For more details, please refer to [here](#gluesql-custom-storage-let-us-handle-it-for-you)."
 
-You can use GlueSQL as an embedded SQL database.  
-GlueSQL provides three reference storage options.
+## Supporting SQL and AST Builder
+GlueSQL supports both SQL and its own query builder (AST Builder). Unlike other ORMs, GlueSQL's AST Builder allows developers to build queries directly with GlueSQL's AST, enabling the use of all of GlueSQL's features. This is why we named it AST Builder instead of Query Builder.
 
-- `SledStorage` - Persistent storage engine based on [`sled`](https://github.com/spacejam/sled "sled")
-- `MemoryStorage` - Non-persistent storage engine based on `BTreeMap`
-- `SharedMemoryStorage` - Non-persistent storage engine which works in multi-threaded environment
-
-### Installation
-
-- `Cargo.toml`
-
-```toml
-[dependencies]
-gluesql = "0.13"
-```
-
-- Install CLI
-
-```sh
-$ cargo install gluesql
-```
-
-- Run CLI
-
-```sh
-$ gluesql [--execute ~/sql_path] [--path ~/data_path --storage={sled | json}]
-```
-
-### Migration using CLI
-
-#### Dump whole schemas and data by generating SQL using `--dump {PATH}` option
-
-```sh
-$ gluesql --path ~/glue_data --dump ./dump.sql
-```
-
+### SQL Example
 ```sql
--- dump.sql
-CREATE TABLE User (id INT, name TEXT);
-CREATE INDEX User_id ON User (id);
-..
-INSERT INTO User VALUES (1, 'Foo'), (2, 'Bar') ..
-..
+SELECT id, name FROM Foo WHERE name = 'Lemon' AND price > 100
 ```
 
-#### Import database
-
-1. To File storage
-
-```sh
-$ gluesql --execute ./dump.sql --path ~/new_data --storage=sled
-```
-
-or
-
-```sh
-$ gluesql --execute ./dump.sql --path ~/new_data --storage=json
-```
-
-2. To Memory storage
-
-```sh
-$ gluesql --execute ./dump.sql
-```
-
-### Usage
-
+### AST Builder Example
 ```rust
-use gluesql::prelude::*;
-
-fn main() {
-    let storage = SledStorage::new("data/doc-db").unwrap();
-    let mut glue = Glue::new(storage);
-    let sqls = vec![
-        "DROP TABLE IF EXISTS Glue;",
-        "CREATE TABLE Glue (id INTEGER);",
-        "INSERT INTO Glue VALUES (100);",
-        "INSERT INTO Glue VALUES (200);",
-        "SELECT * FROM Glue WHERE id > 100;",
-    ];
-
-    for sql in sqls {
-        let output = glue.execute(sql).unwrap();
-        println!("{:?}", output)
-    }
-}
+table("Foo")
+    .select()
+    // Filter by name using a SQL string
+    .filter("name = 'Lemon'")
+    // Filter by price using AST Builder methods
+    .filter(col("price").gt(100))
+    .project("id, name")
+    .execute(glue)
+    .await;
 ```
 
-## SQL Library Mode (For Custom Storage)
+## Supporting Structured and Unstructured Data with Schema Flexibility
+GlueSQL supports both structured and unstructured (schemaless) data. While SQL databases typically assume that schemas are defined and used, GlueSQL does not make this assumption. It supports completely unstructured data, similar to a NoSQL document database, as well as semi-structured types such as MAP and LIST. This makes GlueSQL suitable for a wide range of use cases, including those that require handling of unstructured data. Additionally, it is possible to join tables with schemas and schemaless tables together and execute queries.
 
-### Installation
+### Schemaless SQL Example
+```sql
+CREATE TABLE Names (id INTEGER, name TEXT);
+INSERT INTO Names VALUES (1, 'glue'), (2, 'sql');
 
-`sled-storage` and `memory-storage` features are optional, so these are not required for custom storage makers.
+CREATE TABLE Logs;
+INSERT INTO Logs VALUES
+    ('{ "id": 1, "value": 30 }'),
+    ('{ "id": 2, "rate": 3.0, "list": [1, 2, 3] }'),
+    ('{ "id": 3, "rate": 5.0, "value": 100 }');
 
-```toml
-[dependencies.gluesql]
-version = "0.13"
-default-features = false
-features = ["alter-table", "index", "transaction"]
+SELECT * FROM Names JOIN Logs ON Names.id = Logs.id;
+/*
+| id | list    | name | rate | value |
+|----|---------|------|------|-------|
+| 1  |         | glue |      | 30    |
+| 2  |[1, 2, 3]| sql  | 3    |       |
+*/
 ```
 
-#### Four features below are also optional
+## Supported Reference Storages
+GlueSQL provides a variety of reference storages out of the box, including simple in-memory storage, key-value databases, log file-based storage like JSON & JSONL, and even Web Storage and IndexedDB supported by web browsers. These reference storages are readily available for use and can be easily adapted to a variety of storage systems. Additionally, GlueSQL is constantly expanding its list of supported storages, making it a versatile tool for developers.
 
-- `alter-table` - ALTER TABLE query support
-- `index` - CREATE INDEX and DROP INDEX, index support
-- `transaction` - BEGIN, ROLLBACK and COMMIT, transaction support
+### Memory Storage
+Memory Storage is a foundational storage option designed for in-memory, non-persistent data. It is a simple yet robust storage option that can be used in production environments.
 
-### Usage
+### Shared Memory Storage
+Shared Memory Storage is a storage option designed to provide more comfortable usage of Memory Storage in concurrent environments. It wraps the Memory Storage with a read-write lock and an atomic reference count, allowing you to clone the storage instance and use it effortlessly across multiple threads. All storage instances will refer to the same data, making it a convenient option for concurrent environments.
 
-#### Two mandatory store traits to implement
+### Sled Storage
+Sled Storage is a persistent data storage option for GlueSQL that is built on the Sled key-value embedded database in Rust. It is the only storage option currently supported by GlueSQL that implements all Store traits, from non-clustered indexes to transactions. Sled Storage is an excellent choice for handling and storing data in a Rust environment. To use Sled Storage, you can create a SledStorage instance using a path.
 
-- [`Store & StoreMut`](https://github.com/gluesql/gluesql/blob/main/core/src/store/mod.rs)
+### JSON Storage
+With GlueSQL, you can use JSONL or JSON files as a database that supports SQL and AST Builder, making it a powerful option for developers who need to work with JSON data. JSON Storage is a storage system that uses two types of files: a schema file (optional) and a data file. The schema file is written in Standard SQL and stores the structure of the table, while the data file contains the actual data and supports two file formats: `*.json` and `*.jsonl`. JSON Storage supports all DML features, but is particularly specialized for SELECT and INSERT.
 
-```rust
-pub trait Store {
-    async fn fetch_schema(..) -> ..;
-    async fn fetch_data(..) -> ..;
-    async fn scan_data(..) -> ..;
-}
+### Web Storage
+WebStorage, specifically localStorage and sessionStorage, can be used as a data storage system for GlueSQL. While WebStorage is a simple key-value database that uses string keys, GlueSQL makes it more powerful by adding support for SQL queries. This allows you to use SQL to interact with WebStorage, making it a convenient option for developers who are familiar with SQL. WebStorage can be used in JavaScript (Web) environments and Rust WebAssembly environments.
 
-pub trait StoreMut where Self: Sized {
-    async fn insert_schema(..) -> ..;
-    async fn delete_schema(..) -> ..;
-    async fn append_data(..) -> ..;
-    async fn insert_data(..) -> ..;
-    async fn delete_data(..) -> ..;
-}
-```
+### IndexedDB Storage
+IndexedDB Storage is a powerful storage system that allows you to interact with IndexedDB using SQL. While using IndexedDB directly can be challenging, GlueSQL makes it easy to use by handling version management internally and storing data in JSON format. With GlueSQL, you can use SQL to interact with IndexedDB, making it a convenient option for developers who are familiar with SQL. You can use IndexedDB Storage in both JavaScript (Web) and Rust WebAssembly environments.
 
-#### Optional store traits
+### Composite Storage
+Composite Storage is a powerful feature of GlueSQL that allows you to bundle together multiple existing storages, enabling you to perform JOIN operations across two distinct storages. This feature is utilized in various environments, including GlueSQL's JavaScript (Web) interface. Specifically, GlueSQL bundles together memory, localStorage, sessionStorage, and IndexedDB using Composite Storage in its JavaScript (Web) interface. This allows you to create tables using four different storages and perform operations like JOIN using SQL, all at once. Composite Storage is a versatile feature that can be used in many different scenarios, making it a valuable tool for developers who need to work with multiple storage systems, including those that require data migration between different storage systems.
 
-- [`AlterTable`](https://github.com/gluesql/gluesql/blob/main/core/src/store/alter_table.rs), [`Index & IndexMut`](https://github.com/gluesql/gluesql/blob/main/core/src/store/index.rs), [`Transaction`](https://github.com/gluesql/gluesql/blob/main/core/src/store/transaction.rs)
+## Adapting GlueSQL to Your Environment: Creating Custom Storage
+GlueSQL is designed to be adaptable to a wide variety of environments, including file systems, key-value databases, complex NoSQL databases, and remote APIs. To create a custom storage for GlueSQL, you only need to implement the Store and StoreMut traits provided by GlueSQL. These traits allow you to support SELECT queries and modify data, such as INSERT, UPDATE, and DELETE.
 
-```rust
-pub trait AlterTable where Self: Sized {
-    async fn rename_schema(..) -> ..;
-    async fn rename_column(..) -> ..;
-    async fn add_column(..) -> ..;
-    async fn drop_column(..) -> ..;
-}
+If you want to support additional features, such as schema changes, transactions, or custom functions, you can implement the corresponding traits. However, these traits are optional, and you can choose to implement only the ones that are relevant to your storage system.
 
-pub trait Index {
-    async fn scan_indexed_data(..) -> ..;
-}
+To make it even easier to develop custom storages, GlueSQL provides a Test Suite that allows you to test your storage implementation against a set of standard SQL queries. This ensures that your storage system is compatible with GlueSQL and can handle common SQL operations.
 
-pub trait IndexMut where Self: Sized {
-    async fn create_index(..) -> ..;
-    async fn drop_index(..) -> ..;
-}
+Overall, creating a custom storage for GlueSQL is a straightforward process that allows you to adapt SQL and the AST Builder to your environment with ease.
 
-pub trait Transaction where Self: Sized {
-    async fn begin(..) -> ..;
-    async fn rollback(..) -> ..;
-    async fn commit(..) -> ..;
-}
-```
+## GlueSQL Custom Storage: Let Us Handle It for You
+Although anyone can develop a custom storage for GlueSQL with ease, our GlueSQL team can also implement and maintain it for you. This is especially recommended for NoSQL databases with their own query planner and execution layer, as adapting GlueSQL to them requires a deep understanding of GlueSQL's planner and storage layer details. We welcome not only database companies but also any services that want to support SQL and GlueSQL query interfaces. As GlueSQL is rapidly adding and improving features, we can help you develop and manage your custom storage effectively if you entrust it to us. If you're interested, please contact us at <taehoon@gluesql.com>.
 
-## GlueSQL.js
+## Contribution
+GlueSQL is a database project that is simpler than you might think. You only need to know three common Rust project commands: `cargo fmt`, `cargo clippy`, and `cargo test`. Don't hesitate to make pull requests and change the code as you see fit. We have set up GitHub Actions to validate your changes, so you don't have to worry about making mistakes. The line coverage of GlueSQL's core code is almost 99%, which is the result of not only careful test writing, but also of making the test suite easy to understand and use for anyone, even those who are not familiar with Rust. If you're not sure where to start, we recommend exploring the test suite first. Take a look at the existing features and try to understand how they work. Even if you're not familiar with Rust, you should be able to navigate the test suite without any problems. If there's a feature you'd like to see but isn't there yet, implementing it yourself and contributing it to GlueSQL is a great way to get involved. You can also check out the issues on the GlueSQL GitHub repository for more ideas on how to contribute.
 
-GlueSQL.js is a SQL database for web browsers and Node.js. It works as an embedded database and entirely runs in the browser. GlueSQL.js supports in-memory storage backend, but it will soon to have localStorage, sessionStorage and indexedDB backend supports.
+## License
 
-#### More info
-
-- [GlueSQL for web browsers and Node.js](https://github.com/gluesql/gluesql/tree/main/pkg/javascript)
-
-## SQL Features
-
-GlueSQL currently supports a limited subset of queries. It's being actively developed.
-
-#### Data Types
-
-| Category | Type                                                                                                            |
-| -------- | --------------------------------------------------------------------------------------------------------------- |
-| Numeric  | `INT8`, `INT16`, `INT32`, `INTEGER`, `INT128`, `UINT8`, `UINT16`,`UINT32`,`UINT64`,`UINT128`,`FLOAT`, `DECIMAL` |
-| Date     | `DATE`, `TIME`, `TIMESTAMP`, `INTERVAL`                                                                         |
-| Others   | `BOOLEAN`, `TEXT`, `UUID`, `MAP`, `LIST`, `BYTEA`                                                               |
-
-#### Queries
-
-- `CREATE TABLE`, `DROP TABLE`
-- `ALTER TABLE` - `ADD COLUMN`, `DROP COLUMN`, `RENAME COLUMN` and `RENAME TO`.
-- `CREATE INDEX`, `DROP INDEX`
-- `INSERT`, `UPDATE`, `DELETE`, `SELECT`
-- `GROUP BY`, `HAVING`
-- `ORDER BY`
-- Transaction queries: `BEGIN`, `ROLLBACK` and `COMMIT`
-- Nested select, join, aggregations ...
-
-You can see tests for the currently supported queries in [test-suite/src/\*](https://github.com/gluesql/gluesql/tree/main/test-suite/src).
+This project is licensed under the Apache License, Version 2.0 - see the [LICENSE](LICENSE) file for details.
