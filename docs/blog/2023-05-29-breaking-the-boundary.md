@@ -117,7 +117,7 @@ INSERT INTO Logs VALUES
 It creates a table without column definitions! If you do this, GlueSQL recognizes the table as schemaless and processes it internally.
 
 ```sql
-SELECT name, rate, list[0] FROM Logs WHERE name = 'glue';
+SELECT id, rate, list[0] FROM Logs WHERE id = 2;
 ```
 
 Although the way to create the table was a bit special, using it isn't much different from the regular SQL SELECT statement. Not only can you differentiate between schema and schemaless when creating tables, but you can also use them interchangeably!
