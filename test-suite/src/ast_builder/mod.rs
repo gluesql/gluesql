@@ -5,5 +5,6 @@ pub mod expr;
 pub mod function;
 pub mod insert;
 pub mod select;
+pub mod statements;
 pub mod update;
 pub mod values;

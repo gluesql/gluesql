@@ -197,6 +197,10 @@ macro_rules! generate_store_tests {
         // ast-builder
         glue!(ast_builder_basic, ast_builder::basic::basic);
         glue!(
+            ast_builder_statements_queryinng_data_aggregation,
+            ast_builder::statements::querying::data_aggregation
+        );
+        glue!(
             ast_builder_function_math_rounding,
             ast_builder::function::math::rounding
         );
