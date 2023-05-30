@@ -24,7 +24,7 @@ This remarkable feat was only possible due to the solid foundation of test codes
 Along with sharing our journey so far, we will also reveal our plans for future test-based automation of documentation within GlueSQL.
 
 ## Test Codes and Documentation
-The GlueSQL project has placed a significant emphasis on writing test codes. This might be a given for a database project; however, the thoroughness of our approach is evident from our line coverage of nearly 99% for core codes. While we devoted considerable effort to creating these test codes, our primary focus has always been on a different aspect: ensuring that anyone can quickly grasp the content of the tests and easily add new ones.
+The GlueSQL project has placed a significant emphasis on writing test codes. This might be a given for a database project; however, the thoroughness of our approach is evident from our line coverage of nearly **99%** for core codes. While we devoted considerable effort to creating these test codes, our primary focus has always been on a different aspect: ensuring that anyone can quickly grasp the content of the tests and easily add new ones.
 
 The intent here is to empower newcomers to GlueSQL to understand the functionality of the software solely by examining integration tests, even in the absence of a user manual.
 
