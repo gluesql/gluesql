@@ -30,13 +30,8 @@ h1 {
 
 article h1 {
   padding: 25px 30px 0 5px;
-  width: max-content;
-  line-height: 0.15;
-
-  border-style: solid;
-  border-color: var(--docusaurus-highlighted-code-line-bg);
-
-  border-width: 0 0 20px 0;
+  width: 100%;
+  word-wrap: break-word;
 }
 
 h2 {
