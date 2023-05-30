@@ -45,7 +45,7 @@ Imagine using GlueSQL's SQL and AST Builder everywhere, with the simple method o
 Our vision is to reduce database development costs by 10 times, or even more than 20 times. We aim to gather diverse database creators under the GlueSQL banner, making it the go-to solution for cost-effective database development.
 
 
-## Benefits to users: the convenience of a unified query interface, ease in software development, and lower costs
+## Benefits to Database Users: Unifying Query Interfaces, Streamlining Software Development, and Reducing Costs
 From the perspective of the users who engage with databases, there has always been the burden of learning different interfaces to interact with each database. The approach required to work with Redis is different from that necessary for MongoDB. Likewise, handling SQL databases necessitates using SQL. Although SQL databases generally use a common SQL, the SQL they support can considerably vary when examined in detail.
 
 Naturally, there are legitimate reasons for such differences. Each database focuses on different areas, and to cater to specialized functionalities, they incorporate dedicated interface mechanisms. However, not all application development needs to utilize these database-specific core special functionalities.
@@ -60,7 +60,7 @@ Imagine you're implementing a data migration pipeline between various databases 
 In both of the above examples, GlueSQL can directly address and solve the issues. It offers the convenience of a uniform query interface to deal with these matters. In certain scenarios, even the construction of a data pipeline can potentially be solved with a single SQL query, thanks to GlueSQL.
 
 
-## Benefits to developers: a considerable reduction in development costs, making it easier and more cost-effective to create purpose-built databases
+## Benefits to Database Developers: Drastically Lowering Development Costs and Simplifying the Creation of Purpose-Built Databases
 If you want to support SQL in the desired environment, using GlueSQL essentially requires you to implement an interface for Storage. There's no need to support all functionalities from the beginning. You can start lightly, choosing and implementing storage features suitable for the environment you want to create. To facilitate this, GlueSQL also provides a library in the form of a test suite to easily validate the storage you've implemented.
 
 Lowering development costs in this way will enable a broader range of developers to support the GlueSQL query interface. As more developers join, a significant synergy can be generated. Designing a query interface from scratch involves a great deal of work, including planning and supporting the interface for different target programming languages.
