@@ -125,7 +125,5 @@ Since its inception in the fall of 2019, the GlueSQL team has continuously devel
 
 GlueSQL, distributed under the Apache-2.0 license, is free for anyone to use and adapt. While the GlueSQL team welcomes collaboration with other developers and companies, they also see significant potential for the project as a business venture. The team is working to expand the GlueSQL ecosystem through a variety of initiatives, including technical support and storage development.
 
-With GlueSQL now ready for production-level use, the team invites companies interested in storage development or those who share their vision to join them in their journey of revolutionizing database development.
-
-
+With GlueSQL now sufficiently prepared for practical applications, the team invites companies interested in storage development or those who share their vision to join them in their journey of revolutionizing database development.
 
