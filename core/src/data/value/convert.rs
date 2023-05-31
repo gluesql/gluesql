@@ -37,22 +37,12 @@ impl From<&Value> for String {
             Value::Time(value) => value.to_string(),
             Value::Interval(value) => value.into(),
             Value::Uuid(value) => Uuid::from_u128(*value).to_string(),
-            Value::Map(map) => {
-                let map_string = map
-                    .iter()
-                    .map(|(k, v)| format!("\"{}\":{}", k, String::from(v)))
-                    .collect::<Vec<String>>()
-                    .join(",");
-                format!("{{{}}}", map_string)
-            }
-            Value::List(list) => {
-                let list_string = list
-                    .iter()
-                    .map(String::from)
-                    .collect::<Vec<String>>()
-                    .join(",");
-                format!("[{}]", list_string)
-            }
+            Value::Map(_) => TryInto::<serde_json::Value>::try_into(v.clone())
+                .unwrap_or_default()
+                .to_string(),
+            Value::List(_) => TryInto::<serde_json::Value>::try_into(v.clone())
+                .unwrap_or_default()
+                .to_string(),
             Value::Decimal(value) => value.to_string(),
             Value::Point(value) => value.to_string(),
             Value::Null => String::from("NULL"),
