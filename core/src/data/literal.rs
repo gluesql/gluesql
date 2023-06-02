@@ -39,7 +39,7 @@ pub enum LiteralError {
     },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Literal<'a> {
     Boolean(bool),
     Number(Cow<'a, BigDecimal>),
@@ -96,31 +96,27 @@ impl<T: AsRef<str>> PartialOrd<T> for Literal<'_> {
     }
 }
 
-impl PartialEq<Literal<'_>> for Literal<'_> {
-    fn eq(&self, other: &Literal) -> bool {
-        match (self, other) {
-            (Boolean(l), Boolean(r)) => l == r,
-            (Number(l), Number(r)) => l == r,
-            (Text(l), Text(r)) => l == r,
-            (Bytea(l), Bytea(r)) => l == r,
-            _ => false,
-        }
-    }
-}
-
-impl PartialOrd<Literal<'_>> for Literal<'_> {
-    fn partial_cmp(&self, other: &Literal) -> Option<Ordering> {
+impl<'a> PartialOrd<Literal<'a>> for Literal<'a> {
+    fn partial_cmp(&self, other: &Literal<'a>) -> Option<Ordering> {
         match (self, other) {
             (Boolean(l), Boolean(r)) => Some(l.cmp(r)),
             (Number(l), Number(r)) => Some(l.cmp(r)),
             (Text(l), Text(r)) => Some(l.cmp(r)),
             (Bytea(l), Bytea(r)) => Some(l.cmp(r)),
+            (Null, Null) => Some(Ordering::Equal),
             _ => None,
         }
     }
 }
 
 impl<'a> Literal<'a> {
+    pub fn evaluate_eq(&self, other: &Literal<'_>) -> bool {
+        match (self, other) {
+            (Null, Null) => true,
+            _ => self == other,
+        }
+    }
+
     pub fn unary_plus(&self) -> Result<Self> {
         match self {
             Number(v) => Ok(Number(v.clone())),
@@ -499,6 +495,6 @@ mod tests {
             Some(Ordering::Greater)
         );
         assert_eq!(bytea!("345D").partial_cmp(&Null), None);
-        assert_eq!(Null.partial_cmp(&Null), None);
+        assert_eq!(Null.partial_cmp(&Null), Some(Ordering::Equal));
     }
 }

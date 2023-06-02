@@ -11,7 +11,7 @@ test_case!(ascii, async move {
         "VALUES(ASCII('A'))",
         Ok(select!(
             column1
-            I64;
+            U8;
             65
         ))
     );
@@ -32,7 +32,7 @@ test_case!(ascii, async move {
         r#"select ascii(text) as ascii from Ascii;"#,
         Ok(select!(
             ascii
-            I64;
+            U8;
             70
         ))
     );
@@ -41,7 +41,7 @@ test_case!(ascii, async move {
         "select ascii('a') as ascii from Ascii;",
         Ok(select!(
            ascii
-           I64;
+           U8;
            97
         ))
     );
@@ -50,7 +50,7 @@ test_case!(ascii, async move {
         "select ascii('A') as ascii from Ascii;",
         Ok(select!(
            ascii
-           I64;
+           U8;
            65
         ))
     );

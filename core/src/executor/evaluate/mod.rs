@@ -154,7 +154,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
 
             stream::iter(list)
                 .then(eval)
-                .try_filter(|evaluated| ready(evaluated == &target))
+                .try_filter(|evaluated| ready(evaluated.evaluate_eq(&target)))
                 .try_next()
                 .await
                 .map(|v| v.is_some() ^ negated)
@@ -185,7 +185,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
 
                     Ok(Evaluated::from(value))
                 })
-                .try_filter(|evaluated| ready(evaluated == &target))
+                .try_filter(|evaluated| ready(evaluated.evaluate_eq(&target)))
                 .try_next()
                 .await
                 .map(|v| v.is_some() ^ negated)
@@ -215,7 +215,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
 
             Ok(match negated {
                 true => Evaluated::from(Value::Bool(
-                    evaluated == Evaluated::Literal(Literal::Boolean(false)),
+                    evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false))),
                 )),
                 false => evaluated,
             })
@@ -231,7 +231,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
 
             Ok(match negated {
                 true => Evaluated::from(Value::Bool(
-                    evaluated == Evaluated::Literal(Literal::Boolean(false)),
+                    evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false))),
                 )),
                 false => evaluated,
             })
@@ -271,7 +271,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
             for (when, then) in when_then.iter() {
                 let when = eval(when).await?;
 
-                if when.eq(&operand) {
+                if when.evaluate_eq(&operand) {
                     return eval(then).await;
                 }
             }

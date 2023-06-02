@@ -837,7 +837,7 @@ mod tests {
 
         macro_rules! test {
             ($from: expr, $expected: expr) => {
-                assert_eq!(Value::try_from($from), Ok($expected));
+                assert!(Value::try_from($from).unwrap().evaluate_eq(&$expected));
             };
         }
 

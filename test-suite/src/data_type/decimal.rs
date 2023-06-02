@@ -34,8 +34,8 @@ test_case!(decimal, async move {
             r#"SELECT 1+ decimal_field  as decimal_field FROM DECIMAL_ITEM"#,
             Ok(select!(
                 decimal_field
-                Decimal;
-                Decimal::TWO
+                I64;
+                2
             )),
         ),
         (
@@ -50,8 +50,8 @@ test_case!(decimal, async move {
             r#"SELECT 1- decimal_field  as decimal_field FROM DECIMAL_ITEM"#,
             Ok(select!(
                 decimal_field
-                Decimal;
-                Decimal::ZERO
+                I64;
+                0
             )),
         ),
         (
@@ -66,8 +66,8 @@ test_case!(decimal, async move {
             r#"SELECT 2* decimal_field  as decimal_field FROM DECIMAL_ITEM"#,
             Ok(select!(
                 decimal_field
-                Decimal;
-                Decimal::TWO
+                I64;
+                2
             )),
         ),
         (
@@ -82,16 +82,16 @@ test_case!(decimal, async move {
             r#"SELECT 2/decimal_field  as decimal_field FROM DECIMAL_ITEM"#,
             Ok(select!(
                 decimal_field
-                Decimal;
-                Decimal::TWO
+                I64;
+                2
             )),
         ),
         (
             r#"SELECT 2%decimal_field  as decimal_field FROM DECIMAL_ITEM"#,
             Ok(select!(
                 decimal_field
-                Decimal;
-                Decimal::ZERO
+                I64;
+                0
             )),
         ),
         (

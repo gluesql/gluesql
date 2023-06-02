@@ -8,7 +8,7 @@ use {
     std::{borrow::Cow, cmp::Ordering, collections::HashMap, ops::Range},
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Evaluated<'a> {
     Literal(Literal<'a>),
     StrSlice {
@@ -96,32 +96,6 @@ impl TryFrom<Evaluated<'_>> for HashMap<String, Value> {
     }
 }
 
-impl<'a> PartialEq for Evaluated<'a> {
-    fn eq(&self, other: &Evaluated<'a>) -> bool {
-        match (self, other) {
-            (Evaluated::Literal(a), Evaluated::Literal(b)) => a == b,
-            (Evaluated::Literal(b), Evaluated::Value(a))
-            | (Evaluated::Value(a), Evaluated::Literal(b)) => a == b,
-            (Evaluated::Value(a), Evaluated::Value(b)) => a == b,
-            (Evaluated::Literal(a), Evaluated::StrSlice { source, range })
-            | (Evaluated::StrSlice { source, range }, Evaluated::Literal(a)) => {
-                a == &source[range.clone()]
-            }
-            (Evaluated::Value(a), Evaluated::StrSlice { source, range })
-            | (Evaluated::StrSlice { source, range }, Evaluated::Value(a)) => {
-                a == &source[range.clone()]
-            }
-            (
-                Evaluated::StrSlice { source, range },
-                Evaluated::StrSlice {
-                    source: source2,
-                    range: range2,
-                },
-            ) => source[range.clone()] == source2[range2.clone()],
-        }
-    }
-}
-
 impl<'a> PartialOrd for Evaluated<'a> {
     fn partial_cmp(&self, other: &Evaluated<'a>) -> Option<Ordering> {
         match (self, other) {
@@ -190,6 +164,30 @@ pub fn exceptional_int_val_to_eval<'a>(name: String, v: Value) -> Result<Evaluat
 }
 
 impl<'a> Evaluated<'a> {
+    pub fn evaluate_eq(&self, other: &Evaluated<'a>) -> bool {
+        match (self, other) {
+            (Evaluated::Literal(a), Evaluated::Literal(b)) => a.evaluate_eq(b),
+            (Evaluated::Literal(b), Evaluated::Value(a))
+            | (Evaluated::Value(a), Evaluated::Literal(b)) => a == b,
+            (Evaluated::Value(a), Evaluated::Value(b)) => a == b,
+            (Evaluated::Literal(a), Evaluated::StrSlice { source, range })
+            | (Evaluated::StrSlice { source, range }, Evaluated::Literal(a)) => {
+                a == &source[range.clone()]
+            }
+            (Evaluated::Value(a), Evaluated::StrSlice { source, range })
+            | (Evaluated::StrSlice { source, range }, Evaluated::Value(a)) => {
+                a == &source[range.clone()]
+            }
+            (
+                Evaluated::StrSlice { source, range },
+                Evaluated::StrSlice {
+                    source: source2,
+                    range: range2,
+                },
+            ) => source[range.clone()] == source2[range2.clone()],
+        }
+    }
+
     pub fn add<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
         binary_op(self, other, |l, r| l.add(r), |l, r| l.add(r))
     }

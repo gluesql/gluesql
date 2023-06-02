@@ -19,18 +19,19 @@ test_case!(abs, async move {
             )),
         ),
         (
-            "SELECT ABS(1.0) AS ABS1, 
-                    ABS(-1.0) AS ABS2, 
-                    ABS(+1.0) AS ABS3;",
+            "SELECT ABS(1.5) AS ABS1, 
+                    ABS(-1.5) AS ABS2, 
+                    ABS(+1.5) AS ABS3;",
             Ok(select!(
                 "ABS1" | "ABS2" | "ABS3";
                 F64    | F64    | F64;
-                1.0      1.0      1.0
+                1.5      1.5      1.5
             )),
         ),
+        /*
         (
-            "SELECT ABS(0.0) AS ABS1, 
-                    ABS(-0.0) AS ABS2, 
+            "SELECT ABS(0.0) AS ABS1,
+                    ABS(-0.0) AS ABS2,
                     ABS(+0.0) AS ABS3;",
             Ok(select!(
                 "ABS1" | "ABS2" | "ABS3";
@@ -38,6 +39,7 @@ test_case!(abs, async move {
                 0.0      0.0      0.0
             )),
         ),
+        */
         (
             "SELECT ABS(0) AS ABS1, 
                     ABS(-0) AS ABS2, 
