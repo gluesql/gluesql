@@ -379,8 +379,9 @@ mod tests {
         matches!(Null.modulo(&num_divisor("2")).unwrap(), Null);
         matches!(Null.modulo(&Null).unwrap(), Null);
     }
+
     #[test]
-    fn partial_eq() {
+    fn evaluate_eq() {
         macro_rules! text {
             ($text: expr) => {
                 Text(Cow::Owned($text.to_owned()))
@@ -398,26 +399,28 @@ mod tests {
         }
 
         //Boolean
-        assert_eq!(Boolean(true), Boolean(true));
-        assert_ne!(Boolean(true), Boolean(false));
+        assert!(Boolean(true).evaluate_eq(&Boolean(true)));
+        assert!(!Boolean(true).evaluate_eq(&Boolean(false)));
         //Number
-        assert_eq!(num!("123"), num!("123"));
-        assert_eq!(num!("12.0"), num!("12.0"));
-        assert!(num!("12.0") == num!("12"));
-        assert!(num!("12.0") != num!("12.123"));
-        assert!(num!("123") != num!("12.3"));
-        assert!(num!("123") != text!("Foo"));
-        assert!(num!("123") != Null);
+        assert!(num!("123").evaluate_eq(&num!("123")));
+        assert!(num!("12.0").evaluate_eq(&num!("12.0")));
+        assert!(num!("12.0").evaluate_eq(&num!("12")));
+        assert!(!num!("12.0").evaluate_eq(&num!("12.123")));
+        assert!(!num!("123").evaluate_eq(&num!("12.3")));
+        assert!(!num!("123").evaluate_eq(&text!("Foo")));
+        assert!(!num!("123").evaluate_eq(&Null));
         //Text
-        assert_eq!(text!("Foo"), text!("Foo"));
-        assert!(text!("Foo") != text!("Bar"));
-        assert!(text!("Foo") != Null);
+        assert!(text!("Foo").evaluate_eq(&text!("Foo")));
+        assert!(!text!("Foo").evaluate_eq(&text!("Bar")));
+        assert!(!text!("Foo").evaluate_eq(&Null));
         //Bytea
-        assert_eq!(bytea!("12A456"), bytea!("12A456"));
-        assert_ne!(bytea!("1324"), bytea!("1352"));
-        assert_ne!(bytea!("1230"), num!("1230"));
-        assert_ne!(bytea!("12"), Null);
+        assert!(bytea!("12A456").evaluate_eq(&bytea!("12A456")));
+        assert!(!bytea!("1230").evaluate_eq(&num!("1230")));
+        assert!(!bytea!("12").evaluate_eq(&Null));
+        // Null
+        assert!(Null.evaluate_eq(&Null));
     }
+
     #[test]
     fn partial_ord() {
         use std::cmp::Ordering;
