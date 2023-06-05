@@ -1,21 +1,21 @@
 [workspace]
 members = [
-	"cli",
-	"core",
-	"pkg/rust",
-	"pkg/javascript",
-	"storages/*",
-	"test-suite",
-	"utils",
+  "cli",
+  "core",
+  "pkg/rust",
+  "pkg/javascript",
+  "storages/*",
+  "test-suite",
+  "utils",
 ]
 default-members = [
-	"cli",
-	"core",
-	"pkg/rust",
-	"pkg/javascript",
-	"storages/*",
-	"test-suite",
-	"utils",
+  "cli",
+  "core",
+  "pkg/rust",
+  "pkg/javascript",
+  "storages/*",
+  "test-suite",
+  "utils",
 ]
 
 # ref. https://github.com/rustwasm/wasm-pack/issues/1111
@@ -40,6 +40,7 @@ memory-storage = { package = "gluesql_memory_storage", path = "./storages/memory
 shared-memory-storage = { package = "gluesql-shared-memory-storage", path = "./storages/shared-memory-storage", version = "0.14.0" }
 sled-storage = { package = "gluesql_sled_storage", path = "./storages/sled-storage", version = "0.14.0" }
 json-storage = { package = "gluesql-json-storage", path = "./storages/json-storage", version = "0.14.0" }
+mongo-storage = { package = "gluesql-mongo-storage", path = "./storages/mongo-storage", version = "0.14.0" }
 composite-storage = { package = "gluesql-composite-storage", path = "./storages/composite-storage", version = "0.14.0" }
 web-storage = { package = "gluesql-web-storage", path = "./storages/web-storage", version = "0.14.0" }
 idb-storage = { package = "gluesql-idb-storage", path = "./storages/idb-storage", version = "0.14.0" }
