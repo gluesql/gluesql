@@ -7,7 +7,6 @@ mod store_mut;
 mod transaction;
 
 use {
-    async_io::block_on,
     error::{JsonStorageError, OptionExt, ResultExt},
     gluesql_core::{
         ast::ColumnUniqueOption,
@@ -173,7 +172,7 @@ impl JsonStorage {
 
                 let value = match value.get_type() {
                     Some(data_type) if data_type != column_def.data_type => {
-                        block_on(value.cast(&column_def.data_type))?
+                        value.cast(&column_def.data_type)?
                     }
                     Some(_) | None => value.clone(),
                 };

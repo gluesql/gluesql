@@ -123,8 +123,8 @@ impl Interval {
     pub fn add_time(&self, time: &NaiveTime) -> Result<NaiveTime> {
         match self {
             Interval::Month(_) => Err(IntervalError::AddYearOrMonthToTime {
-                time: time.to_string(),
-                interval: String::from(self),
+                time: *time,
+                interval: *self,
             }
             .into()),
             Interval::Microsecond(n) => Ok(*time + Duration::microseconds(*n)),
@@ -134,8 +134,8 @@ impl Interval {
     pub fn subtract_from_time(&self, time: &NaiveTime) -> Result<NaiveTime> {
         match self {
             Interval::Month(_) => Err(IntervalError::SubtractYearOrMonthToTime {
-                time: time.to_string(),
-                interval: String::from(self),
+                time: *time,
+                interval: *self,
             }
             .into()),
             Interval::Microsecond(n) => Ok(*time - Duration::microseconds(*n)),
@@ -190,12 +190,14 @@ impl Interval {
         Interval::Microsecond(microseconds)
     }
 
-    pub fn try_from_literal(
+    pub fn try_from_str(
         value: &str,
         leading_field: Option<DateTimeField>,
         last_field: Option<DateTimeField>,
     ) -> Result<Self> {
         use DateTimeField::*;
+
+        let value = value.trim_matches('\'');
 
         let sign = if value.get(0..1) == Some("-") { -1 } else { 1 };
 
@@ -434,8 +436,8 @@ mod tests {
         assert_eq!(
             Interval::years(1).add_time(&time(23, 0, 1)),
             Err(IntervalError::AddYearOrMonthToTime {
-                time: time(23, 0, 1).to_string(),
-                interval: String::from(Interval::years(1)),
+                time: time(23, 0, 1),
+                interval: Interval::years(1),
             }
             .into())
         );
@@ -450,8 +452,8 @@ mod tests {
         assert_eq!(
             Interval::months(3).subtract_from_time(&time(23, 0, 1)),
             Err(IntervalError::SubtractYearOrMonthToTime {
-                time: time(23, 0, 1).to_string(),
-                interval: String::from(Interval::months(3)),
+                time: time(23, 0, 1),
+                interval: Interval::months(3),
             }
             .into())
         );
@@ -467,13 +469,12 @@ mod tests {
     fn try_from_literal() {
         macro_rules! test {
             ($value: expr, $datetime: ident => $expected_value: expr, $duration: ident) => {
-                let interval =
-                    Interval::try_from_literal($value, Some(DateTimeField::$datetime), None);
+                let interval = Interval::try_from_str($value, Some(DateTimeField::$datetime), None);
 
                 assert_eq!(interval, Ok(Interval::$duration($expected_value)));
             };
             ($value: expr, $from: ident to $to: ident => $expected_value: expr, $duration: ident) => {
-                let interval = Interval::try_from_literal(
+                let interval = Interval::try_from_str(
                     $value,
                     Some(DateTimeField::$from),
                     Some(DateTimeField::$to),

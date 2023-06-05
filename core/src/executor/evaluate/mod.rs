@@ -296,7 +296,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 .and_then(Value::try_from)
                 .map(String::from)?;
 
-            Interval::try_from_literal(&value, *leading_field, *last_field)
+            Interval::try_from_str(&value, *leading_field, *last_field)
                 .map(Value::Interval)
                 .map(Evaluated::from)
         }
@@ -590,7 +590,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         }
         Function::Cast { expr, data_type } => {
             let expr = eval(expr).await?;
-            f::cast(expr, data_type).await
+            f::cast(expr, data_type)
         }
         Function::Extract { field, expr } => {
             let expr = eval(expr).await?;

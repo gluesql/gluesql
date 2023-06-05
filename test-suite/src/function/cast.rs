@@ -410,7 +410,7 @@ test_case!(cast_value, async move {
             6     I::hours(12)          I::seconds(-(12 * 3600 + 30 * 60 + 12));
             7     I::months(-12_011)    I::seconds(-(30 * 60 + 11))
             )),
-        ),
+        )
     ];
 
     for (sql, expected) in test_cases {
