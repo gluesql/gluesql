@@ -978,7 +978,6 @@ dependencies = [
 name = "gluesql-json-storage"
 version = "0.14.0"
 dependencies = [
- "async-io",
  "async-trait",
  "futures",
  "gluesql-core",
