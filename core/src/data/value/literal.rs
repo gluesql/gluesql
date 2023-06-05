@@ -62,6 +62,7 @@ impl PartialEq<Literal<'_>> for Value {
                     false
                 }
             }
+            (Value::Null, Literal::Null) => true,
             _ => false,
         }
     }
@@ -174,6 +175,13 @@ impl TryFrom<Literal<'_>> for Value {
 }
 
 impl Value {
+    pub fn evaluate_eq_with_literal(&self, other: &Literal<'_>) -> bool {
+        match (self, other) {
+            (Value::Null, Literal::Null) => false,
+            _ => self == other,
+        }
+    }
+
     pub fn try_from_literal(data_type: &DataType, literal: &Literal<'_>) -> Result<Value> {
         match (data_type, literal) {
             (DataType::Boolean, Literal::Boolean(v)) => Ok(Value::Bool(*v)),

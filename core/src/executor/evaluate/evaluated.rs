@@ -168,7 +168,7 @@ impl<'a> Evaluated<'a> {
         match (self, other) {
             (Evaluated::Literal(a), Evaluated::Literal(b)) => a.evaluate_eq(b),
             (Evaluated::Literal(b), Evaluated::Value(a))
-            | (Evaluated::Value(a), Evaluated::Literal(b)) => a == b,
+            | (Evaluated::Value(a), Evaluated::Literal(b)) => a.evaluate_eq_with_literal(b),
             (Evaluated::Value(a), Evaluated::Value(b)) => a.evaluate_eq(b),
             (Evaluated::Literal(a), Evaluated::StrSlice { source, range })
             | (Evaluated::StrSlice { source, range }, Evaluated::Literal(a)) => {
