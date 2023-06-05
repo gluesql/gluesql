@@ -112,7 +112,7 @@ impl<'a> PartialOrd<Literal<'a>> for Literal<'a> {
 impl<'a> Literal<'a> {
     pub fn evaluate_eq(&self, other: &Literal<'_>) -> bool {
         match (self, other) {
-            (Null, Null) => true,
+            (Null, Null) => false,
             _ => self == other,
         }
     }
@@ -418,7 +418,7 @@ mod tests {
         assert!(!bytea!("1230").evaluate_eq(&num!("1230")));
         assert!(!bytea!("12").evaluate_eq(&Null));
         // Null
-        assert!(Null.evaluate_eq(&Null));
+        assert!(!Null.evaluate_eq(&Null));
     }
 
     #[test]
