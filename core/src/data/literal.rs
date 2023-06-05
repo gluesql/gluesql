@@ -66,38 +66,15 @@ impl<'a> TryFrom<&'a AstLiteral> for Literal<'a> {
     }
 }
 
-impl PartialEq<str> for Literal<'_> {
-    fn eq(&self, other: &str) -> bool {
+impl<'a> Literal<'a> {
+    pub fn evaluate_eq(&self, other: &Literal<'_>) -> bool {
         match (self, other) {
-            (Literal::Text(l), r) => l.as_ref() == r,
-            _ => false,
+            (Null, Null) => false,
+            _ => self == other,
         }
     }
-}
 
-impl PartialOrd<str> for Literal<'_> {
-    fn partial_cmp(&self, other: &str) -> Option<Ordering> {
-        match (self, other) {
-            (Literal::Text(l), r) => Some(l.as_ref().cmp(r)),
-            _ => None,
-        }
-    }
-}
-
-impl<T: AsRef<str>> PartialEq<T> for Literal<'_> {
-    fn eq(&self, other: &T) -> bool {
-        PartialEq::<str>::eq(self, other.as_ref())
-    }
-}
-
-impl<T: AsRef<str>> PartialOrd<T> for Literal<'_> {
-    fn partial_cmp(&self, other: &T) -> Option<Ordering> {
-        PartialOrd::<str>::partial_cmp(self, other.as_ref())
-    }
-}
-
-impl<'a> PartialOrd<Literal<'a>> for Literal<'a> {
-    fn partial_cmp(&self, other: &Literal<'a>) -> Option<Ordering> {
+    pub fn evaluate_cmp(&self, other: &Literal<'a>) -> Option<Ordering> {
         match (self, other) {
             (Boolean(l), Boolean(r)) => Some(l.cmp(r)),
             (Number(l), Number(r)) => Some(l.cmp(r)),
@@ -105,15 +82,6 @@ impl<'a> PartialOrd<Literal<'a>> for Literal<'a> {
             (Bytea(l), Bytea(r)) => Some(l.cmp(r)),
             (Null, Null) => Some(Ordering::Equal),
             _ => None,
-        }
-    }
-}
-
-impl<'a> Literal<'a> {
-    pub fn evaluate_eq(&self, other: &Literal<'_>) -> bool {
-        match (self, other) {
-            (Null, Null) => false,
-            _ => self == other,
         }
     }
 
@@ -419,7 +387,7 @@ mod tests {
     }
 
     #[test]
-    fn partial_ord() {
+    fn evaluate_cmp() {
         use std::cmp::Ordering;
         macro_rules! text {
             ($text: expr) => {
@@ -439,62 +407,69 @@ mod tests {
 
         //Boolean
         assert_eq!(
-            Boolean(false).partial_cmp(&Boolean(true)),
+            Boolean(false).evaluate_cmp(&Boolean(true)),
             Some(Ordering::Less)
         );
         assert_eq!(
-            Boolean(true).partial_cmp(&Boolean(true)),
+            Boolean(true).evaluate_cmp(&Boolean(true)),
             Some(Ordering::Equal)
         );
         assert_eq!(
-            Boolean(true).partial_cmp(&Boolean(false)),
+            Boolean(true).evaluate_cmp(&Boolean(false)),
             Some(Ordering::Greater)
         );
-        assert_eq!(Boolean(true).partial_cmp(&num!("1")), None);
-        assert_eq!(Boolean(true).partial_cmp(&text!("Foo")), None);
-        assert_eq!(Boolean(true).partial_cmp("true"), None);
-        assert_eq!(Boolean(true).partial_cmp(&"true".to_owned()), None);
-        assert_eq!(Boolean(true).partial_cmp(&Null), None);
+        assert_eq!(Boolean(true).evaluate_cmp(&num!("1")), None);
+        assert_eq!(Boolean(true).evaluate_cmp(&text!("Foo")), None);
+        assert_eq!(Boolean(true).evaluate_cmp(&Null), None);
         //Number - valid format -> (int, int), (float, int), (int, float), (float, float)
-        assert_eq!(num!("123").partial_cmp(&num!("1234")), Some(Ordering::Less));
-        assert_eq!(num!("12.0").partial_cmp(&num!("123")), Some(Ordering::Less));
         assert_eq!(
-            num!("123").partial_cmp(&num!("123.1")),
+            num!("123").evaluate_cmp(&num!("1234")),
             Some(Ordering::Less)
         );
         assert_eq!(
-            num!("12.0").partial_cmp(&num!("12.1")),
+            num!("12.0").evaluate_cmp(&num!("123")),
             Some(Ordering::Less)
         );
-        assert_eq!(num!("123").partial_cmp(&num!("123")), Some(Ordering::Equal));
         assert_eq!(
-            num!("1234").partial_cmp(&num!("123")),
+            num!("123").evaluate_cmp(&num!("123.1")),
+            Some(Ordering::Less)
+        );
+        assert_eq!(
+            num!("12.0").evaluate_cmp(&num!("12.1")),
+            Some(Ordering::Less)
+        );
+        assert_eq!(
+            num!("123").evaluate_cmp(&num!("123")),
+            Some(Ordering::Equal)
+        );
+        assert_eq!(
+            num!("1234").evaluate_cmp(&num!("123")),
             Some(Ordering::Greater)
         );
-        assert_eq!(num!("123").partial_cmp(&text!("123")), None);
-        assert_eq!(num!("123").partial_cmp(&Null), None);
+        assert_eq!(num!("123").evaluate_cmp(&text!("123")), None);
+        assert_eq!(num!("123").evaluate_cmp(&Null), None);
         //text
-        assert_eq!(text!("a").partial_cmp(&text!("b")), Some(Ordering::Less));
-        assert_eq!(text!("a").partial_cmp(&text!("a")), Some(Ordering::Equal));
-        assert_eq!(text!("b").partial_cmp(&text!("a")), Some(Ordering::Greater));
-        assert_eq!(text!("a").partial_cmp(&Null), None);
-        assert_eq!(text!("b").partial_cmp("b"), Some(Ordering::Equal));
-        assert_eq!(text!("a").partial_cmp("b"), Some(Ordering::Less));
-        assert_eq!(text!("c").partial_cmp("b"), Some(Ordering::Greater));
+        assert_eq!(text!("a").evaluate_cmp(&text!("b")), Some(Ordering::Less));
+        assert_eq!(text!("a").evaluate_cmp(&text!("a")), Some(Ordering::Equal));
+        assert_eq!(
+            text!("b").evaluate_cmp(&text!("a")),
+            Some(Ordering::Greater)
+        );
+        assert_eq!(text!("a").evaluate_cmp(&Null), None);
         //Bytea
         assert_eq!(
-            bytea!("12").partial_cmp(&bytea!("20")),
+            bytea!("12").evaluate_cmp(&bytea!("20")),
             Some(Ordering::Less)
         );
         assert_eq!(
-            bytea!("31").partial_cmp(&bytea!("31")),
+            bytea!("31").evaluate_cmp(&bytea!("31")),
             Some(Ordering::Equal)
         );
         assert_eq!(
-            bytea!("9A").partial_cmp(&bytea!("2A")),
+            bytea!("9A").evaluate_cmp(&bytea!("2A")),
             Some(Ordering::Greater)
         );
-        assert_eq!(bytea!("345D").partial_cmp(&Null), None);
-        assert_eq!(Null.partial_cmp(&Null), Some(Ordering::Equal));
+        assert_eq!(bytea!("345D").evaluate_cmp(&Null), None);
+        assert_eq!(Null.evaluate_cmp(&Null), Some(Ordering::Equal));
     }
 }

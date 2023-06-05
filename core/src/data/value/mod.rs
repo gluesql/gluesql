@@ -21,7 +21,6 @@ mod expr;
 mod json;
 mod literal;
 mod selector;
-mod string;
 mod uuid;
 
 pub use {
@@ -59,8 +58,35 @@ pub enum Value {
     Null,
 }
 
-impl PartialOrd<Value> for Value {
-    fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
+impl Value {
+    pub fn evaluate_eq(&self, other: &Value) -> bool {
+        match (self, other) {
+            (Value::I8(l), _) => l == other,
+            (Value::I16(l), _) => l == other,
+            (Value::I32(l), _) => l == other,
+            (Value::I64(l), _) => l == other,
+            (Value::I128(l), _) => l == other,
+            (Value::U8(l), _) => l == other,
+            (Value::U16(l), _) => l == other,
+            (Value::U32(l), _) => l == other,
+            (Value::U64(l), _) => l == other,
+            (Value::U128(l), _) => l == other,
+            (Value::F32(l), _) => l == other,
+            (Value::F64(l), _) => l == other,
+            (Value::Date(l), Value::Timestamp(r)) => l
+                .and_hms_opt(0, 0, 0)
+                .map(|date_time| &date_time == r)
+                .unwrap_or(false),
+            (Value::Timestamp(l), Value::Date(r)) => r
+                .and_hms_opt(0, 0, 0)
+                .map(|date_time| l == &date_time)
+                .unwrap_or(false),
+            (Value::Null, Value::Null) => false,
+            _ => self == other,
+        }
+    }
+
+    pub fn evaluate_cmp(&self, other: &Value) -> Option<Ordering> {
         match (self, other) {
             (Value::I8(l), _) => l.partial_cmp(other),
             (Value::I16(l), _) => l.partial_cmp(other),
@@ -91,35 +117,6 @@ impl PartialOrd<Value> for Value {
             (Value::Interval(l), Value::Interval(r)) => l.partial_cmp(r),
             (Value::Uuid(l), Value::Uuid(r)) => Some(l.cmp(r)),
             _ => None,
-        }
-    }
-}
-
-impl Value {
-    pub fn evaluate_eq(&self, other: &Value) -> bool {
-        match (self, other) {
-            (Value::I8(l), _) => l == other,
-            (Value::I16(l), _) => l == other,
-            (Value::I32(l), _) => l == other,
-            (Value::I64(l), _) => l == other,
-            (Value::I128(l), _) => l == other,
-            (Value::U8(l), _) => l == other,
-            (Value::U16(l), _) => l == other,
-            (Value::U32(l), _) => l == other,
-            (Value::U64(l), _) => l == other,
-            (Value::U128(l), _) => l == other,
-            (Value::F32(l), _) => l == other,
-            (Value::F64(l), _) => l == other,
-            (Value::Date(l), Value::Timestamp(r)) => l
-                .and_hms_opt(0, 0, 0)
-                .map(|date_time| &date_time == r)
-                .unwrap_or(false),
-            (Value::Timestamp(l), Value::Date(r)) => r
-                .and_hms_opt(0, 0, 0)
-                .map(|date_time| l == &date_time)
-                .unwrap_or(false),
-            (Value::Null, Value::Null) => false,
-            _ => self == other,
         }
     }
 
@@ -831,12 +828,15 @@ mod tests {
         };
 
         assert_eq!(
-            Bool(true).partial_cmp(&Bool(false)),
+            Bool(true).evaluate_cmp(&Bool(false)),
             Some(Ordering::Greater)
         );
-        assert_eq!(Bool(true).partial_cmp(&Bool(true)), Some(Ordering::Equal));
-        assert_eq!(Bool(false).partial_cmp(&Bool(false)), Some(Ordering::Equal));
-        assert_eq!(Bool(false).partial_cmp(&Bool(true)), Some(Ordering::Less));
+        assert_eq!(Bool(true).evaluate_cmp(&Bool(true)), Some(Ordering::Equal));
+        assert_eq!(
+            Bool(false).evaluate_cmp(&Bool(false)),
+            Some(Ordering::Equal)
+        );
+        assert_eq!(Bool(false).evaluate_cmp(&Bool(true)), Some(Ordering::Less));
 
         let date = Date(NaiveDate::from_ymd_opt(2020, 5, 1).unwrap());
         let timestamp = Timestamp(
@@ -846,116 +846,113 @@ mod tests {
                 .unwrap(),
         );
 
-        let one = rust_decimal::Decimal::ONE;
-        let two = rust_decimal::Decimal::TWO;
-
-        assert_eq!(date.partial_cmp(&timestamp), Some(Ordering::Greater));
-        assert_eq!(timestamp.partial_cmp(&date), Some(Ordering::Less));
+        assert_eq!(date.evaluate_cmp(&timestamp), Some(Ordering::Greater));
+        assert_eq!(timestamp.evaluate_cmp(&date), Some(Ordering::Less));
 
         assert_eq!(
             Time(NaiveTime::from_hms_opt(23, 0, 1).unwrap())
-                .partial_cmp(&Time(NaiveTime::from_hms_opt(10, 59, 59).unwrap())),
+                .evaluate_cmp(&Time(NaiveTime::from_hms_opt(10, 59, 59).unwrap())),
             Some(Ordering::Greater)
         );
         assert_eq!(
-            Interval::Month(1).partial_cmp(&Interval::Month(2)),
-            Some(Ordering::Less)
-        );
-        assert_eq!(
-            Interval::Microsecond(1).cmp(&Interval::Month(2)),
-            Ordering::Less
-        );
-
-        assert_eq!(one.partial_cmp(&two), Some(Ordering::Less));
-        assert_eq!(two.partial_cmp(&one), Some(Ordering::Greater));
-        assert_eq!(
-            Decimal(one).partial_cmp(&Decimal(two)),
+            Interval(Interval::Month(1)).evaluate_cmp(&Interval(Interval::Month(2))),
             Some(Ordering::Less)
         );
 
+        let one = Decimal(rust_decimal::Decimal::ONE);
+        let two = Decimal(rust_decimal::Decimal::TWO);
+        assert_eq!(one.evaluate_cmp(&two), Some(Ordering::Less));
+        assert_eq!(two.evaluate_cmp(&one), Some(Ordering::Greater));
+
         assert_eq!(
-            F32(1.0_f32).partial_cmp(&F32(1.0_f32)),
+            F32(1.0_f32).evaluate_cmp(&F32(1.0_f32)),
             Some(Ordering::Equal)
         );
-        assert_eq!(F64(1.0).partial_cmp(&F64(1.0)), Some(Ordering::Equal));
+        assert_eq!(F64(1.0).evaluate_cmp(&F64(1.0)), Some(Ordering::Equal));
 
         assert_eq!(
-            Interval::Month(1).partial_cmp(&Interval::Month(1)),
+            Interval(Interval::Month(1)).evaluate_cmp(&Interval(Interval::Month(1))),
             Some(Ordering::Equal)
         );
 
         assert_eq!(
-            Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()).partial_cmp(&Uuid(
+            Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()).evaluate_cmp(&Uuid(
                 parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()
             )),
             Some(Ordering::Equal)
         );
 
-        assert_eq!(Null.partial_cmp(&Null), None);
+        assert_eq!(Null.evaluate_cmp(&Null), None);
 
         let bytea = |v: &str| Bytea(hex::decode(v).unwrap());
-        assert_eq!(bytea("12").partial_cmp(&bytea("20")), Some(Ordering::Less));
+        assert_eq!(bytea("12").evaluate_cmp(&bytea("20")), Some(Ordering::Less));
         assert_eq!(
-            bytea("9123").partial_cmp(&bytea("9122")),
+            bytea("9123").evaluate_cmp(&bytea("9122")),
             Some(Ordering::Greater)
         );
-        assert_eq!(bytea("10").partial_cmp(&bytea("10")), Some(Ordering::Equal));
+        assert_eq!(
+            bytea("10").evaluate_cmp(&bytea("10")),
+            Some(Ordering::Equal)
+        );
 
         let inet = |v: &str| Inet(IpAddr::from_str(v).unwrap());
         assert_eq!(
-            inet("0.0.0.0").partial_cmp(&inet("127.0.0.1")),
+            inet("0.0.0.0").evaluate_cmp(&inet("127.0.0.1")),
             Some(Ordering::Less)
         );
         assert_eq!(
-            inet("192.168.0.1").partial_cmp(&inet("127.0.0.1")),
+            inet("192.168.0.1").evaluate_cmp(&inet("127.0.0.1")),
             Some(Ordering::Greater)
         );
-        assert_eq!(inet("::1").partial_cmp(&inet("::1")), Some(Ordering::Equal));
+        assert_eq!(
+            inet("::1").evaluate_cmp(&inet("::1")),
+            Some(Ordering::Equal)
+        );
     }
 
     #[test]
     fn cmp_ints() {
         use std::cmp::Ordering;
 
-        assert_eq!(I8(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
-        assert_eq!(I8(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
-        assert_eq!(I8(0).partial_cmp(&I8(1)), Some(Ordering::Less));
+        assert_eq!(I8(0).evaluate_cmp(&I8(-1)), Some(Ordering::Greater));
+        assert_eq!(I8(0).evaluate_cmp(&I8(0)), Some(Ordering::Equal));
+        assert_eq!(I8(0).evaluate_cmp(&I8(1)), Some(Ordering::Less));
 
-        assert_eq!(I16(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
-        assert_eq!(I16(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
-        assert_eq!(I16(0).partial_cmp(&I8(1)), Some(Ordering::Less));
+        assert_eq!(I16(0).evaluate_cmp(&I8(-1)), Some(Ordering::Greater));
+        assert_eq!(I16(0).evaluate_cmp(&I8(0)), Some(Ordering::Equal));
+        assert_eq!(I16(0).evaluate_cmp(&I8(1)), Some(Ordering::Less));
 
-        assert_eq!(I32(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
-        assert_eq!(I32(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
-        assert_eq!(I32(0).partial_cmp(&I8(1)), Some(Ordering::Less));
+        assert_eq!(I32(0).evaluate_cmp(&I8(-1)), Some(Ordering::Greater));
+        assert_eq!(I32(0).evaluate_cmp(&I8(0)), Some(Ordering::Equal));
+        assert_eq!(I32(0).evaluate_cmp(&I8(1)), Some(Ordering::Less));
 
-        assert_eq!(I64(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
-        assert_eq!(I64(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
-        assert_eq!(I64(0).partial_cmp(&I8(1)), Some(Ordering::Less));
+        assert_eq!(I64(0).evaluate_cmp(&I8(-1)), Some(Ordering::Greater));
+        assert_eq!(I64(0).evaluate_cmp(&I8(0)), Some(Ordering::Equal));
+        assert_eq!(I64(0).evaluate_cmp(&I8(1)), Some(Ordering::Less));
 
-        assert_eq!(I128(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
-        assert_eq!(I128(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
-        assert_eq!(I128(0).partial_cmp(&I8(1)), Some(Ordering::Less));
+        assert_eq!(I128(0).evaluate_cmp(&I8(-1)), Some(Ordering::Greater));
+        assert_eq!(I128(0).evaluate_cmp(&I8(0)), Some(Ordering::Equal));
+        assert_eq!(I128(0).evaluate_cmp(&I8(1)), Some(Ordering::Less));
 
-        assert_eq!(U8(1).partial_cmp(&U8(0)), Some(Ordering::Greater));
-        assert_eq!(U8(0).partial_cmp(&U8(0)), Some(Ordering::Equal));
-        assert_eq!(U8(0).partial_cmp(&U8(1)), Some(Ordering::Less));
+        assert_eq!(U8(1).evaluate_cmp(&U8(0)), Some(Ordering::Greater));
+        assert_eq!(U8(0).evaluate_cmp(&U8(0)), Some(Ordering::Equal));
+        assert_eq!(U8(0).evaluate_cmp(&U8(1)), Some(Ordering::Less));
 
-        assert_eq!(U16(1).partial_cmp(&U16(0)), Some(Ordering::Greater));
-        assert_eq!(U16(0).partial_cmp(&U16(0)), Some(Ordering::Equal));
-        assert_eq!(U16(0).partial_cmp(&U16(1)), Some(Ordering::Less));
+        assert_eq!(U16(1).evaluate_cmp(&U16(0)), Some(Ordering::Greater));
+        assert_eq!(U16(0).evaluate_cmp(&U16(0)), Some(Ordering::Equal));
+        assert_eq!(U16(0).evaluate_cmp(&U16(1)), Some(Ordering::Less));
 
-        assert_eq!(U32(1).partial_cmp(&U32(0)), Some(Ordering::Greater));
-        assert_eq!(U32(0).partial_cmp(&U32(0)), Some(Ordering::Equal));
-        assert_eq!(U32(0).partial_cmp(&U32(1)), Some(Ordering::Less));
+        assert_eq!(U32(1).evaluate_cmp(&U32(0)), Some(Ordering::Greater));
+        assert_eq!(U32(0).evaluate_cmp(&U32(0)), Some(Ordering::Equal));
+        assert_eq!(U32(0).evaluate_cmp(&U32(1)), Some(Ordering::Less));
 
-        assert_eq!(U64(1).partial_cmp(&U64(0)), Some(Ordering::Greater));
-        assert_eq!(U64(0).partial_cmp(&U64(0)), Some(Ordering::Equal));
-        assert_eq!(U64(0).partial_cmp(&U64(1)), Some(Ordering::Less));
+        assert_eq!(U64(1).evaluate_cmp(&U64(0)), Some(Ordering::Greater));
+        assert_eq!(U64(0).evaluate_cmp(&U64(0)), Some(Ordering::Equal));
+        assert_eq!(U64(0).evaluate_cmp(&U64(1)), Some(Ordering::Less));
 
-        assert_eq!(U128(1).partial_cmp(&U128(0)), Some(Ordering::Greater));
-        assert_eq!(U128(0).partial_cmp(&U128(0)), Some(Ordering::Equal));
-        assert_eq!(U128(0).partial_cmp(&U128(1)), Some(Ordering::Less));
+        assert_eq!(U128(1).evaluate_cmp(&U128(0)), Some(Ordering::Greater));
+        assert_eq!(U128(0).evaluate_cmp(&U128(0)), Some(Ordering::Equal));
+        assert_eq!(U128(0).evaluate_cmp(&U128(1)), Some(Ordering::Less));
     }
 
     #[test]
