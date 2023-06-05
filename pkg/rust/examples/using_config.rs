@@ -18,11 +18,11 @@ fn main() {
         let mut glue = Glue::new(storage);
 
         let sqls = "
-        CREATE TABLE Glue (id INTEGER);
-        INSERT INTO Glue VALUES (100);
-        INSERT INTO Glue VALUES (200);
-        DROP TABLE Glue;
-    ";
+            CREATE TABLE Glue (id INTEGER);
+            INSERT INTO Glue VALUES (100);
+            INSERT INTO Glue VALUES (200);
+            DROP TABLE Glue;
+        ";
 
         glue.execute(sqls).unwrap();
     }

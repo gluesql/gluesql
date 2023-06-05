@@ -12,15 +12,15 @@ mod sled_multi_threaded {
         let storage = SledStorage::new("/tmp/gluesql/hello_world").expect("Something went wrong!");
         let mut glue = Glue::new(storage.clone());
         let queries = "
-          CREATE TABLE IF NOT EXISTS greet (name TEXT);
-          DELETE FROM greet;
+            CREATE TABLE IF NOT EXISTS greet (name TEXT);
+            DELETE FROM greet;
         ";
 
         glue.execute(queries).unwrap();
 
         /*
             SledStorage supports cloning, using this we can create copies of the storage for new threads;
-              all we need to do is wrap it in glue again.
+            all we need to do is wrap it in glue again.
         */
         let insert_storage = storage.clone();
         let insert_thread = thread::spawn(move || {

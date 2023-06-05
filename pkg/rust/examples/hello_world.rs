@@ -29,8 +29,8 @@ mod hello_world {
             Write queries as a string
         */
         let queries = "
-          CREATE TABLE greet (name TEXT);
-          INSERT INTO greet VALUES ('World');
+            CREATE TABLE greet (name TEXT);
+            INSERT INTO greet VALUES ('World');
         ";
 
         glue.execute(queries).expect("Execution failed");
@@ -39,7 +39,7 @@ mod hello_world {
             Select inserted row
         */
         let queries = "
-          SELECT name FROM greet
+            SELECT name FROM greet
         ";
 
         let result = glue.execute(queries).expect("Failed to execute");
