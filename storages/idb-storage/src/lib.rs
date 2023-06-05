@@ -74,7 +74,6 @@ impl IdbStorage {
                     };
 
                     *error = Some(e);
-                    return;
                 }
             });
 
@@ -167,7 +166,7 @@ impl Store for IdbStorage {
         transaction.commit().await.err_into()?;
 
         match row {
-            Some(row) => convert(row, column_defs.as_deref()).await.map(Some),
+            Some(row) => convert(row, column_defs.as_deref()).map(Some),
             None => Ok(None),
         }
     }
@@ -203,7 +202,7 @@ impl Store for IdbStorage {
             let key: JsonValue = current_key.into_serde().err_into()?;
             let key: Key = Value::try_from(key)?.try_into()?;
 
-            let row = convert(current_row, column_defs.as_deref()).await?;
+            let row = convert(current_row, column_defs.as_deref())?;
 
             rows.push((key, row));
 

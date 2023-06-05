@@ -126,8 +126,8 @@ INSERT INTO TimeLog VALUES
     test!(
         "SELECT * FROM TimeLog WHERE time1 > time2 + INTERVAL '1' YEAR",
         Err(IntervalError::AddYearOrMonthToTime {
-            time: t(13, 31, 1, 123).to_string(),
-            interval: gluesql_core::data::Interval::years(1).into(),
+            time: t(13, 31, 1, 123),
+            interval: gluesql_core::data::Interval::years(1),
         }
         .into())
     );
@@ -135,8 +135,8 @@ INSERT INTO TimeLog VALUES
     test!(
         "SELECT * FROM TimeLog WHERE time1 > time2 - INTERVAL '1-2' YEAR TO MONTH",
         Err(IntervalError::SubtractYearOrMonthToTime {
-            time: t(13, 31, 1, 123).to_string(),
-            interval: gluesql_core::data::Interval::months(14).into(),
+            time: t(13, 31, 1, 123),
+            interval: gluesql_core::data::Interval::months(14),
         }
         .into())
     );

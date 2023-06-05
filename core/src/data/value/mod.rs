@@ -219,7 +219,7 @@ impl Value {
         Ok(())
     }
 
-    pub async fn cast(&self, data_type: &DataType) -> Result<Self> {
+    pub fn cast(&self, data_type: &DataType) -> Result<Self> {
         match (data_type, self) {
             (DataType::Int8, Value::I8(_))
             | (DataType::Int16, Value::I16(_))
@@ -244,6 +244,7 @@ impl Value {
             | (DataType::Time, Value::Time(_))
             | (DataType::Interval, Value::Interval(_))
             | (DataType::Uuid, Value::Uuid(_)) => Ok(self.clone()),
+
             (_, Value::Null) => Ok(Value::Null),
 
             (DataType::Boolean, value) => value.try_into().map(Value::Bool),
@@ -263,8 +264,8 @@ impl Value {
             (DataType::Text, value) => Ok(Value::Str(value.into())),
             (DataType::Date, value) => value.try_into().map(Value::Date),
             (DataType::Time, value) => value.try_into().map(Value::Time),
+            (DataType::Interval, Value::Str(value)) => Interval::parse(value).map(Value::Interval),
             (DataType::Timestamp, value) => value.try_into().map(Value::Timestamp),
-            (DataType::Interval, value) => value.try_into_interval().await.map(Value::Interval),
             (DataType::Uuid, Value::Str(value)) => uuid::parse_uuid(value).map(Value::Uuid),
             (DataType::Uuid, value) => value.try_into().map(Value::Uuid),
             (DataType::Inet, value) => value.try_into().map(Value::Inet),
@@ -749,7 +750,6 @@ mod tests {
         super::{Interval, Value::*},
         crate::data::{point::Point, value::uuid::parse_uuid, ValueError},
         chrono::{NaiveDate, NaiveTime},
-        futures::executor::block_on,
         rust_decimal::Decimal,
         std::{net::IpAddr, str::FromStr},
     };
@@ -1772,7 +1772,7 @@ mod tests {
 
         macro_rules! cast {
             ($input: expr => $data_type: expr, $expected: expr) => {
-                let found = block_on($input.cast(&$data_type)).unwrap();
+                let found = $input.cast(&$data_type).unwrap();
 
                 match ($expected, found) {
                     (Null, Null) => {}
@@ -1980,7 +1980,7 @@ mod tests {
         // Bytea
         cast!(Value::Str("0abc".to_owned()) => Bytea, Value::Bytea(hex::decode("0abc").unwrap()));
         assert_eq!(
-            block_on(Value::Str("!@#$5".to_owned()).cast(&Bytea)),
+            Value::Str("!@#$5".to_owned()).cast(&Bytea),
             Err(ValueError::CastFromHexToByteaFailed("!@#$5".to_owned()).into()),
         );
 
@@ -1995,7 +1995,7 @@ mod tests {
 
         // Casting error
         assert_eq!(
-            block_on(Value::Uuid(123).cast(&List)),
+            Value::Uuid(123).cast(&List),
             Err(ValueError::UnimplementedCast.into())
         );
     }
