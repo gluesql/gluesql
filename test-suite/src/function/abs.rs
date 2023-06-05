@@ -28,18 +28,6 @@ test_case!(abs, async move {
                 1.5      1.5      1.5
             )),
         ),
-        /*
-        (
-            "SELECT ABS(0.0) AS ABS1,
-                    ABS(-0.0) AS ABS2,
-                    ABS(+0.0) AS ABS3;",
-            Ok(select!(
-                "ABS1" | "ABS2" | "ABS3";
-                F64    | F64    | F64;
-                0.0      0.0      0.0
-            )),
-        ),
-        */
         (
             "SELECT ABS(0) AS ABS1, 
                     ABS(-0) AS ABS2, 
