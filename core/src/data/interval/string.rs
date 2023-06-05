@@ -18,7 +18,7 @@ impl Interval {
                 leading_field,
                 last_field,
             } => {
-                let literal = match &*expr {
+                let literal = match expr.as_ref() {
                     Expr::Literal(literal) => literal.to_sql(),
                     _ => {
                         return Err(IntervalError::ParseSupportedOnlyLiteral { expr: *expr }.into())
