@@ -5,7 +5,7 @@ use {
         data::{Literal, Value},
         result::Result,
     },
-    std::borrow::Cow,
+    std::{borrow::Cow, cmp::Ordering},
 };
 
 pub fn literal(ast_literal: &AstLiteral) -> Result<Evaluated<'_>> {
@@ -46,12 +46,12 @@ pub fn binary_op<'a>(
         BinaryOperator::Divide => l.divide(&r),
         BinaryOperator::Modulo => l.modulo(&r),
         BinaryOperator::StringConcat => l.concat(r),
-        BinaryOperator::Eq => cmp!(l == r),
-        BinaryOperator::NotEq => cmp!(l != r),
-        BinaryOperator::Lt => cmp!(l < r),
-        BinaryOperator::LtEq => cmp!(l <= r),
-        BinaryOperator::Gt => cmp!(l > r),
-        BinaryOperator::GtEq => cmp!(l >= r),
+        BinaryOperator::Eq => cmp!(l.evaluate_eq(&r)),
+        BinaryOperator::NotEq => cmp!(!l.evaluate_eq(&r)),
+        BinaryOperator::Lt => cmp!(l.evaluate_cmp(&r) == Some(Ordering::Less)),
+        BinaryOperator::LtEq => cmp!(l.evaluate_cmp(&r) != Some(Ordering::Greater)),
+        BinaryOperator::Gt => cmp!(l.evaluate_cmp(&r) == Some(Ordering::Greater)),
+        BinaryOperator::GtEq => cmp!(l.evaluate_cmp(&r) != Some(Ordering::Less)),
         BinaryOperator::And => cond!(l && r),
         BinaryOperator::Or => cond!(l || r),
         BinaryOperator::Xor => cond!(l ^ r),
@@ -73,7 +73,8 @@ pub fn between<'a>(
     low: Evaluated<'a>,
     high: Evaluated<'a>,
 ) -> Result<Evaluated<'a>> {
-    let v = low <= target && target <= high;
+    let v = low.evaluate_cmp(&target) != Some(Ordering::Greater)
+        && target.evaluate_cmp(&high) != Some(Ordering::Greater);
     let v = negated ^ v;
 
     Ok(Evaluated::from(Value::Bool(v)))

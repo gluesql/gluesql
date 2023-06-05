@@ -251,7 +251,7 @@ macro_rules! generate_binary_op_tests {
                 );
                 assert_eq!(
                     $primitive::MAX.try_add(&I16(1)),
-                    overflow_err($variant($primitive::MAX), I64(1), Add)
+                    overflow_err($variant($primitive::MAX), I16(1), Add)
                 );
                 assert_eq!(
                     $primitive::MAX.try_add(&I32(1)),

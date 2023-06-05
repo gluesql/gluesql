@@ -18,7 +18,7 @@ test_case!(position_and_indexing, async move {
     let actual = table("Item")
         .create_table()
         .add_column("id INTEGER PRIMARY KEY")
-        .add_column("index TEXT")
+        .add_column("index INTEGER")
         .execute(glue)
         .await;
 
@@ -42,8 +42,8 @@ test_case!(position_and_indexing, async move {
 
     let expected = Ok(select!(
         id  | index
-        I64 | Str;
-        1     6.to_string()
+        I64 | I64;
+        1     6
     ));
 
     test(actual, expected);
@@ -70,9 +70,9 @@ test_case!(position_and_indexing, async move {
 
     let expected = Ok(select!(
         id  | index
-        I64 | Str;
-        1     6.to_string();
-        2     25.to_string()
+        I64 | I64;
+        1     6;
+        2     25
     ));
 
     test(actual, expected);
@@ -95,10 +95,10 @@ test_case!(position_and_indexing, async move {
 
     let expected = Ok(select!(
         id  | index
-        I64 | Str;
-        1     6.to_string();
-        2     25.to_string();
-        3     25.to_string()
+        I64 | I64;
+        1     6;
+        2     25;
+        3     25
     ));
 
     test(actual, expected);
@@ -122,23 +122,30 @@ test_case!(position_and_indexing, async move {
 
     let expected = Ok(select!(
         id  | index
-        I64 | Str;
-        1     6.to_string();
-        2     25.to_string();
-        3     25.to_string();
-        4     3.to_string()
+        I64 | I64;
+        1     6;
+        2     25;
+        3     25;
+        4     3
     ));
 
     test(actual, expected);
 
     // test - left
+    let actual = table("LeftRight")
+        .create_table()
+        .add_column("value TEXT")
+        .execute(glue)
+        .await;
+    let expected = Ok(Payload::Create);
+    test(actual, expected);
+
     let test_str = left(text("Hello, World"), num(7));
 
     // insert table - Item
-    let actual = table("Item")
+    let actual = table("LeftRight")
         .insert()
-        .columns("id, index")
-        .values(vec![vec![num(5), test_str]])
+        .values(vec![vec![test_str]])
         .execute(glue)
         .await;
 
@@ -146,16 +153,12 @@ test_case!(position_and_indexing, async move {
     test(actual, expected);
 
     // select - table - Item
-    let actual = table("Item").select().execute(glue).await;
+    let actual = table("LeftRight").select().execute(glue).await;
 
     let expected = Ok(select!(
-        id  | index
-        I64 | Str;
-        1     6.to_string();
-        2     25.to_string();
-        3     25.to_string();
-        4     3.to_string();
-        5     "Hello, ".to_owned()
+        value
+        Str;
+        "Hello, ".to_owned()
     ));
 
     test(actual, expected);
@@ -164,10 +167,9 @@ test_case!(position_and_indexing, async move {
     let test_str = right(text("Hello, World"), num(7));
 
     // insert table - Item
-    let actual = table("Item")
+    let actual = table("LeftRight")
         .insert()
-        .columns("id, index")
-        .values(vec![vec![num(6), test_str]])
+        .values(vec![vec![test_str]])
         .execute(glue)
         .await;
 
@@ -175,17 +177,13 @@ test_case!(position_and_indexing, async move {
     test(actual, expected);
 
     // select - table - Item
-    let actual = table("Item").select().execute(glue).await;
+    let actual = table("LeftRight").select().execute(glue).await;
 
     let expected = Ok(select!(
-        id  | index
-        I64 | Str;
-        1     6.to_string();
-        2     25.to_string();
-        3     25.to_string();
-        4     3.to_string();
-        5     "Hello, ".to_owned();
-        6     ", World".to_owned()
+        value
+        Str;
+        "Hello, ".to_owned();
+        ", World".to_owned()
     ));
 
     test(actual, expected);
