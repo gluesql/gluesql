@@ -272,10 +272,7 @@ mod tests {
             AstLiteral::HexString("!*@Q".to_owned()),
             Err(LiteralError::FailedToDecodeHexString("!*@Q".to_owned()).into()),
         );
-        assert!(matches!(
-            Literal::try_from(&AstLiteral::Null).unwrap(),
-            Null
-        ));
+        assert_eq!(Literal::try_from(&AstLiteral::Null).unwrap(), Null);
     }
 
     #[test]
@@ -284,13 +281,13 @@ mod tests {
 
         let num = |n: i32| Number(Cow::Owned(BigDecimal::from(n)));
 
-        matches!(Null.add(&num(1)), Ok(Null));
-        matches!(num(1).add(&Null), Ok(Null));
+        assert_eq!(Null.add(&num(1)), Ok(Null));
+        assert_eq!(num(1).add(&Null), Ok(Null));
 
         // subtract test
-        matches!(Null.subtract(&num(2)), Ok(Null));
-        matches!(num(2).subtract(&Null), Ok(Null));
-        matches!(Null.subtract(&Null), Ok(Null));
+        assert_eq!(Null.subtract(&num(2)), Ok(Null));
+        assert_eq!(num(2).subtract(&Null), Ok(Null));
+        assert_eq!(Null.subtract(&Null), Ok(Null));
         assert_eq!(
             Boolean(true).subtract(&num(3)),
             Err(LiteralError::UnsupportedBinaryArithmetic(
@@ -301,9 +298,9 @@ mod tests {
         );
 
         // multiply test
-        matches!(Null.multiply(&num(2)), Ok(Null));
-        matches!(num(2).multiply(&Null), Ok(Null));
-        matches!(Null.multiply(&Null), Ok(Null));
+        assert_eq!(Null.multiply(&num(2)), Ok(Null));
+        assert_eq!(num(2).multiply(&Null), Ok(Null));
+        assert_eq!(Null.multiply(&Null), Ok(Null));
         assert_eq!(
             Boolean(true).multiply(&num(3)),
             Err(LiteralError::UnsupportedBinaryArithmetic(
@@ -314,9 +311,9 @@ mod tests {
         );
 
         assert_eq!(num(2).unary_plus(), Ok(num(2)));
-        matches!(Null.unary_plus(), Ok(Null));
+        assert_eq!(Null.unary_plus(), Ok(Null));
         assert_eq!(num(1).unary_minus(), Ok(num(-1)));
-        matches!(Null.unary_minus(), Ok(Null));
+        assert_eq!(Null.unary_minus(), Ok(Null));
     }
 
     #[test]
@@ -334,9 +331,9 @@ mod tests {
         assert_eq!(Boolean(false).concat(text()), text!("FALSEFoo"));
         assert_eq!(num().concat(num()), text!("123123"));
         assert_eq!(text().concat(num()), text!("Foo123"));
-        matches!(text().concat(Null), Null);
-        matches!(Null.concat(Boolean(true)), Null);
-        matches!(Null.concat(Null), Null);
+        assert_eq!(text().concat(Null), Null);
+        assert_eq!(Null.concat(Boolean(true)), Null);
+        assert_eq!(Null.concat(Null), Null);
     }
 
     #[test]
@@ -356,11 +353,11 @@ mod tests {
         assert_eq!(num!("12").divide(&num_divisor("2.0")).unwrap(), num!("6"));
         assert_eq!(num!("12.0").divide(&num_divisor("2")).unwrap(), num!("6"));
         assert_eq!(num!("12.0").divide(&num_divisor("2.0")).unwrap(), num!("6"));
-        matches!(num!("12").divide(&Null).unwrap(), Null);
-        matches!(num!("12.5").divide(&Null).unwrap(), Null);
-        matches!(Null.divide(&num_divisor("2")).unwrap(), Null);
-        matches!(Null.divide(&num_divisor("2.5")).unwrap(), Null);
-        matches!(Null.divide(&Null).unwrap(), Null);
+        assert_eq!(num!("12").divide(&Null).unwrap(), Null);
+        assert_eq!(num!("12.5").divide(&Null).unwrap(), Null);
+        assert_eq!(Null.divide(&num_divisor("2")).unwrap(), Null);
+        assert_eq!(Null.divide(&num_divisor("2.5")).unwrap(), Null);
+        assert_eq!(Null.divide(&Null).unwrap(), Null);
         assert_eq!(
             Boolean(true).divide(&num_divisor("3")),
             Err(LiteralError::UnsupportedBinaryArithmetic(
@@ -375,9 +372,9 @@ mod tests {
         assert_eq!(num!("12").modulo(&num_divisor("2.0")).unwrap(), num!("0"));
         assert_eq!(num!("12.0").modulo(&num_divisor("2")).unwrap(), num!("0"));
         assert_eq!(num!("12.0").modulo(&num_divisor("2.0")).unwrap(), num!("0"));
-        matches!(num!("12").modulo(&Null).unwrap(), Null);
-        matches!(Null.modulo(&num_divisor("2")).unwrap(), Null);
-        matches!(Null.modulo(&Null).unwrap(), Null);
+        assert_eq!(num!("12").modulo(&Null).unwrap(), Null);
+        assert_eq!(Null.modulo(&num_divisor("2")).unwrap(), Null);
+        assert_eq!(Null.modulo(&Null).unwrap(), Null);
     }
 
     #[test]
