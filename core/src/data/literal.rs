@@ -39,7 +39,7 @@ pub enum LiteralError {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Literal<'a> {
     Boolean(bool),
     Number(Cow<'a, BigDecimal>),
@@ -80,7 +80,6 @@ impl<'a> Literal<'a> {
             (Number(l), Number(r)) => Some(l.cmp(r)),
             (Text(l), Text(r)) => Some(l.cmp(r)),
             (Bytea(l), Bytea(r)) => Some(l.cmp(r)),
-            (Null, Null) => Some(Ordering::Equal),
             _ => None,
         }
     }
@@ -470,6 +469,6 @@ mod tests {
             Some(Ordering::Greater)
         );
         assert_eq!(bytea!("345D").evaluate_cmp(&Null), None);
-        assert_eq!(Null.evaluate_cmp(&Null), Some(Ordering::Equal));
+        assert_eq!(Null.evaluate_cmp(&Null), None);
     }
 }
