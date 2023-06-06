@@ -136,6 +136,16 @@ pub enum FunctionNode<'a> {
         field: DateTimeField,
         expr: ExprNode<'a>,
     },
+    Point {
+        x: ExprNode<'a>,
+        y: ExprNode<'a>,
+    },
+    GetX(ExprNode<'a>),
+    GetY(ExprNode<'a>),
+    CalcDistance {
+        geometry1: ExprNode<'a>,
+        geometry2: ExprNode<'a>,
+    },
 }
 
 impl<'a> TryFrom<FunctionNode<'a>> for Function {
@@ -308,6 +318,24 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
             FunctionNode::Extract { field, expr } => {
                 let expr = expr.try_into()?;
                 Ok(Function::Extract { field, expr })
+            }
+            FunctionNode::Point { x, y } => {
+                let x = x.try_into()?;
+                let y = y.try_into()?;
+                Ok(Function::Point { x, y })
+            }
+            FunctionNode::GetX(expr) => expr.try_into().map(Function::GetX),
+            FunctionNode::GetY(expr) => expr.try_into().map(Function::GetY),
+            FunctionNode::CalcDistance {
+                geometry1,
+                geometry2,
+            } => {
+                let geometry1 = geometry1.try_into()?;
+                let geometry2 = geometry2.try_into()?;
+                Ok(Function::CalcDistance {
+                    geometry1,
+                    geometry2,
+                })
             }
         }
     }
@@ -759,16 +787,42 @@ pub fn extract<'a, T: Into<ExprNode<'a>>>(field: DateTimeField, expr: T) -> Expr
     }))
 }
 
+pub fn point<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(x: T, y: U) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Point {
+        x: x.into(),
+        y: y.into(),
+    }))
+}
+
+pub fn get_x<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::GetX(expr.into())))
+}
+
+pub fn get_y<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::GetY(expr.into())))
+}
+
+pub fn calc_distance<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
+    geometry1: T,
+    geometry2: U,
+) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::CalcDistance {
+        geometry1: geometry1.into(),
+        geometry2: geometry2.into(),
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
         ast::DateTimeField,
         ast_builder::{
-            abs, acos, asin, atan, cast, ceil, col, concat, concat_ws, cos, date, degrees, divide,
-            exp, expr, extract, find_idx, floor, format, gcd, generate_uuid, ifnull, initcap, lcm,
-            left, ln, log, log10, log2, lower, lpad, ltrim, modulo, now, num, pi, position, power,
-            radians, rand, repeat, reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr,
-            tan, test_expr, text, time, timestamp, to_date, to_time, to_timestamp, upper,
+            abs, acos, asin, atan, calc_distance, cast, ceil, col, concat, concat_ws, cos, date,
+            degrees, divide, exp, expr, extract, find_idx, floor, format, gcd, generate_uuid,
+            get_x, get_y, ifnull, initcap, lcm, left, ln, log, log10, log2, lower, lpad, ltrim,
+            modulo, now, num, pi, point, position, power, radians, rand, repeat, reverse, right,
+            round, rpad, rtrim, sign, sin, sqrt, substr, tan, test_expr, text, time, timestamp,
+            to_date, to_time, to_timestamp, upper,
         },
         prelude::DataType,
     };
@@ -1404,6 +1458,34 @@ mod tests {
 
         let actual = extract(DateTimeField::Year, expr("date"));
         let expected = "EXTRACT(YEAR FROM date)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_point() {
+        let actual = point(num(1), num(2));
+        let expected = "POINT(1, 2)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_get_x() {
+        let actual = get_x(point(num(1), num(2)));
+        let expected = "GET_X(POINT(1, 2))";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_get_y() {
+        let actual = get_y(point(num(1), num(2)));
+        let expected = "GET_Y(POINT(1, 2))";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_calc_distance() {
+        let actual = calc_distance(point(num(1), num(2)), point(num(3), num(4)));
+        let expected = "CALC_DISTANCE(POINT(1, 2), POINT(3, 4))";
         test_expr(actual, expected);
     }
 }
