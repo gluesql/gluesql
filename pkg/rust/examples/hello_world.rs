@@ -29,8 +29,9 @@ mod hello_world {
             Write queries as a string
         */
         let queries = "
-            CREATE TABLE greet (name TEXT);
-            INSERT INTO greet VALUES ('World');
+            CREATE TABLE student (uuid_field UUID, name TEXT, dept_name TEXT, luggage LIST);
+            INSERT INTO student VALUES (generate_uuid(), \'이의제\', \'CSE\', \'[\"MacBook\", 10000]\');
+            INSERT INTO student VALUES (generate_uuid(), \'채승운\', \'CSE\', \'[\"MacBook\", \"iPad\"]\');
         ";
 
         glue.execute(queries).expect("Execution failed");
@@ -39,7 +40,7 @@ mod hello_world {
             Select inserted row
         */
         let queries = "
-            SELECT name FROM greet
+            SELECT * FROM student;
         ";
 
         let result = glue.execute(queries).expect("Failed to execute");
@@ -48,27 +49,32 @@ mod hello_world {
             Query results are wrapped into a payload enum, on the basis of the query type
         */
         assert_eq!(result.len(), 1);
+        // let _my_labels = vec!["*"];
         let rows = match &result[0] {
-            Payload::Select { labels: _, rows } => rows,
+            Payload::Select { rows, .. } => rows,
             _ => panic!("Unexpected result: {:?}", result),
         };
+        
+        for row in rows.iter() {
+            /*
+                Row values are wrapped into a value enum, on the basis of the result type
+            */
+            for val in row.iter() {
+                match val {
+                    Value::Str(val) => print!("{} ", val),
+                    Value::Uuid(val) => print!("{} ", val),
+                    Value::List(val) => print!("{:?} ", val),
+                    value => panic!("Unexpected type: {:?}", value),
+                };
+            }
 
-        let first_row = &rows[0];
-        let first_value = first_row.iter().next().unwrap();
-
-        /*
-            Row values are wrapped into a value enum, on the basis of the result type
-        */
-        let to_greet = match first_value {
-            Value::Str(to_greet) => to_greet,
-            value => panic!("Unexpected type: {:?}", value),
-        };
-
-        println!("Hello {}!", to_greet); // Will always output "Hello World!"
+            println!();
+        }
     }
 }
 
 fn main() {
+    /* cargo run -- --path /tmp/gluesql/hello_world --storage=sled */
     #[cfg(feature = "sled-storage")]
     hello_world::run();
-}
+}   
