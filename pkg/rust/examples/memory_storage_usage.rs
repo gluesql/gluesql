@@ -52,8 +52,7 @@ mod api_usage {
         let mut row1 = rows[1].iter();
         assert_eq!(row1.next(), Some(&Value::I64(2)));
         assert_eq!(row1.next(), Some(&Value::Str("test2".to_string())));
-        // PartialEq for Null is not implemented.
-        row1.next();
+        assert_eq!(row1.next(), Some(&Value::Null));
         assert_eq!(row1.next(), Some(&Value::Bool(false)));
         assert_eq!(row1.next(), None);
     }
