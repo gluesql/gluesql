@@ -95,6 +95,7 @@ impl PartialEq<Value> for Value {
             (Value::Map(l), Value::Map(r)) => l == r,
             (Value::List(l), Value::List(r)) => l == r,
             (Value::Point(l), Value::Point(r)) => l == r,
+            (&Value::Null, &Value::Null) => true,
             _ => false,
         }
     }
