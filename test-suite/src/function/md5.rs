@@ -9,7 +9,7 @@ test_case!(md5, async move {
         Ok(select!(
             column1
             Str;
-            "4274ECEC96F3EE59B51B168DC6137231".to_owned()
+            "4274ecec96f3ee59b51b168dc6137231".to_owned()
         ))
     );
 
@@ -24,16 +24,16 @@ test_case!(md5, async move {
     );
 
     test!(
-        "SELECT MD5(text) FROM MD5;",
+        "SELECT MD5(text) AS md5 FROM MD5;",
         Ok(select!(
             md5
             Str;
-            "EAB30259AC1A92B66794F301A6AC3FF3".to_owned()
+            "eab30259ac1a92b66794f301a6ac3ff3".to_owned()
         ))
     );
 
     test!(
-        r#"SELECT MD5(NULL) FROM MD5;"#,
+        r#"SELECT MD5(NULL) AS md5 FROM MD5;"#,
         Ok(select_with_null!(md5; Null))
     );
 
