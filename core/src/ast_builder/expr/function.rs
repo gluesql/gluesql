@@ -136,6 +136,8 @@ pub enum FunctionNode<'a> {
         field: DateTimeField,
         expr: ExprNode<'a>,
     },
+    Ascii(ExprNode<'a>),
+    Chr(ExprNode<'a>),
     Md5(ExprNode<'a>),
     Point {
         x: ExprNode<'a>,
@@ -320,6 +322,8 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
                 let expr = expr.try_into()?;
                 Ok(Function::Extract { field, expr })
             }
+            FunctionNode::Ascii(expr) => expr.try_into().map(Function::Ascii),
+            FunctionNode::Chr(expr) => expr.try_into().map(Function::Chr),
             FunctionNode::Md5(expr) => expr.try_into().map(Function::Md5),
             FunctionNode::Point { x, y } => {
                 let x = x.try_into()?;
@@ -789,6 +793,14 @@ pub fn extract<'a, T: Into<ExprNode<'a>>>(field: DateTimeField, expr: T) -> Expr
     }))
 }
 
+pub fn ascii<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Ascii(expr.into())))
+}
+
+pub fn chr<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Chr(expr.into())))
+}
+
 pub fn md5<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Md5(expr.into())))
 }
@@ -823,12 +835,12 @@ mod tests {
     use crate::{
         ast::DateTimeField,
         ast_builder::{
-            abs, acos, asin, atan, calc_distance, cast, ceil, col, concat, concat_ws, cos, date,
-            degrees, divide, exp, expr, extract, find_idx, floor, format, gcd, generate_uuid,
-            get_x, get_y, ifnull, initcap, lcm, left, ln, log, log10, log2, lower, lpad, ltrim,
-            md5, modulo, now, num, pi, point, position, power, radians, rand, repeat, reverse,
-            right, round, rpad, rtrim, sign, sin, sqrt, substr, tan, test_expr, text, time,
-            timestamp, to_date, to_time, to_timestamp, upper,
+            abs, acos, ascii, asin, atan, calc_distance, cast, ceil, chr, col, concat, concat_ws,
+            cos, date, degrees, divide, exp, expr, extract, find_idx, floor, format, gcd,
+            generate_uuid, get_x, get_y, ifnull, initcap, lcm, left, ln, log, log10, log2, lower,
+            lpad, ltrim, md5, modulo, now, num, pi, point, position, power, radians, rand, repeat,
+            reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr, tan, test_expr, text,
+            time, timestamp, to_date, to_time, to_timestamp, upper,
         },
         prelude::DataType,
     };
@@ -1464,6 +1476,20 @@ mod tests {
 
         let actual = extract(DateTimeField::Year, expr("date"));
         let expected = "EXTRACT(YEAR FROM date)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_ascii() {
+        let actual = ascii(text("A"));
+        let expected = "ASCII('A')";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_chr() {
+        let actual = chr(num(65));
+        let expected = "CHR(65)";
         test_expr(actual, expected);
     }
 
