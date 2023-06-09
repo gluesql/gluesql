@@ -7,22 +7,8 @@ mod store_mut;
 mod transaction;
 
 use {
-    async_io::block_on,
-    error::{JsonStorageError, OptionExt, ResultExt},
-    gluesql_core::{
-        ast::ColumnUniqueOption,
-        data::{value::HashMapJsonExt, Key, Schema},
-        error::{Error, Result},
-        store::{DataRow, Metadata, RowIter},
-    },
-    iter_enum::Iterator,
-    serde_json::Value as JsonValue,
-    std::{
-        collections::HashMap,
-        fs::{self, File},
-        io::{self, BufRead, Read},
-        path::{Path, PathBuf},
-    },
+    error::ResultExt,
+    gluesql_core::{error::Result, store::Metadata},
 };
 
 use mongodb::{options::ClientOptions, Client, Database};
@@ -38,7 +24,7 @@ impl MongoStorage {
             .map_storage_err()?;
 
         let client = Client::with_options(client_options).map_storage_err()?;
-        let db = client.database("gluedb");
+        let db = client.database("gluedb"); // should be by parameter
 
         Ok(Self { db })
     }

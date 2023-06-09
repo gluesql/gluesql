@@ -1,8 +1,5 @@
 use {
-    crate::{
-        error::{JsonStorageError, OptionExt, ResultExt},
-        MongoStorage,
-    },
+    crate::{error::ResultExt, MongoStorage},
     async_trait::async_trait,
     gluesql_core::{
         data::{Key, Schema},
@@ -11,7 +8,7 @@ use {
     },
     serde_json::{to_string_pretty, Map, Value as JsonValue},
     std::{
-        fs::{remove_file, File, OpenOptions},
+        fs::File,
         io::Write,
         {cmp::Ordering, iter::Peekable, vec::IntoIter},
     },
@@ -20,91 +17,23 @@ use {
 #[async_trait(?Send)]
 impl StoreMut for MongoStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
-        let data_path = self.jsonl_path(schema.table_name.as_str());
-        File::create(data_path).map_storage_err()?;
-
-        if schema.column_defs.is_some() {
-            let schema_path = self.schema_path(schema.table_name.as_str());
-            let ddl = schema.to_ddl();
-            let mut file = File::create(schema_path).map_storage_err()?;
-
-            file.write_all(ddl.as_bytes()).map_storage_err()?;
-        }
-
-        Ok(())
+        todo!();
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
-        let json_path = self.json_path(table_name);
-        let jsonl_path = self.jsonl_path(table_name);
-
-        match (json_path.exists(), jsonl_path.exists()) {
-            (true, false) => remove_file(json_path).map_storage_err()?,
-            (false, true) => remove_file(jsonl_path).map_storage_err()?,
-            _ => {}
-        }
-
-        let schema_path = self.schema_path(table_name);
-        if schema_path.exists() {
-            remove_file(schema_path).map_storage_err()?;
-        }
-
-        Ok(())
+        todo!();
     }
 
     async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
-        let json_path = self.json_path(table_name);
-        if json_path.exists() {
-            let (prev_rows, schema) = self.scan_data(table_name)?;
-
-            let rows = prev_rows
-                .map(|item| Ok(item?.1))
-                .chain(rows.into_iter().map(Ok))
-                .collect::<Result<Vec<_>>>()?;
-
-            let file = File::create(&json_path).map_storage_err()?;
-
-            self.write(schema, rows, file, true)
-        } else {
-            let schema = self
-                .fetch_schema(table_name)?
-                .map_storage_err(JsonStorageError::TableDoesNotExist)?;
-
-            let file = OpenOptions::new()
-                .write(true)
-                .append(true)
-                .open(self.jsonl_path(&schema.table_name))
-                .map_storage_err()?;
-
-            self.write(schema, rows, file, false)
-        }
+        todo!();
     }
 
     async fn insert_data(&mut self, table_name: &str, mut rows: Vec<(Key, DataRow)>) -> Result<()> {
-        let (prev_rows, schema) = self.scan_data(table_name)?;
-        rows.sort_by(|(key_a, _), (key_b, _)| key_a.cmp(key_b));
-
-        let sort_merge = SortMerge::new(prev_rows, rows.into_iter());
-        let merged = sort_merge.collect::<Result<Vec<_>>>()?;
-
-        self.rewrite(schema, merged)
+        todo!();
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
-        let (prev_rows, schema) = self.scan_data(table_name)?;
-        let rows = prev_rows
-            .filter_map(|result| {
-                result
-                    .map(|(key, data_row)| {
-                        let preservable = !keys.iter().any(|target_key| target_key == &key);
-
-                        preservable.then_some(data_row)
-                    })
-                    .transpose()
-            })
-            .collect::<Result<Vec<_>>>()?;
-
-        self.rewrite(schema, rows)
+        todo!();
     }
 }
 
@@ -156,18 +85,7 @@ where
 
 impl MongoStorage {
     fn rewrite(&mut self, schema: Schema, rows: Vec<DataRow>) -> Result<()> {
-        let json_path = self.json_path(&schema.table_name);
-        let (path, is_json) = match json_path.exists() {
-            true => (json_path, true),
-            false => {
-                let jsonl_path = self.jsonl_path(&schema.table_name);
-
-                (jsonl_path, false)
-            }
-        };
-        let file = File::create(path).map_storage_err()?;
-
-        self.write(schema, rows, file, is_json)
+        todo!();
     }
 
     fn write(
