@@ -43,6 +43,7 @@ impl Function {
             | Self::Sign(expr)
             | Self::Ascii(expr)
             | Self::Chr(expr)
+            | Self::Md5(expr)
             | Self::Ltrim { expr, chars: None }
             | Self::Rtrim { expr, chars: None }
             | Self::Trim {

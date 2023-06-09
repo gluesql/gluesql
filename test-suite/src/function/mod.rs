@@ -22,6 +22,7 @@ pub mod left_right;
 pub mod lpad_rpad;
 pub mod ltrim_rtrim;
 pub mod math_function;
+pub mod md5;
 pub mod now;
 pub mod pi;
 pub mod position;

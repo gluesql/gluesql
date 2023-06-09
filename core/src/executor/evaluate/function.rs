@@ -5,6 +5,7 @@ use {
         data::{Point, Value, ValueError},
         result::Result,
     },
+    md5::{Digest, Md5},
     rand::{rngs::StdRng, Rng, SeedableRng},
     std::ops::ControlFlow,
     uuid::Uuid,
@@ -257,6 +258,16 @@ pub fn chr<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
         }
         _ => Err(EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255.into()),
     }
+}
+
+pub fn md5<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let string = eval_to_str!(name, expr);
+    let mut hasher = Md5::new();
+    hasher.update(string.as_bytes());
+    let result = hasher.finalize();
+    let result = format!("{:x}", result);
+
+    Ok(Evaluated::from(Value::Str(result)))
 }
 
 // --- float ---
