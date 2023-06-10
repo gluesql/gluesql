@@ -33,17 +33,6 @@ impl<T: GStore + GStoreMut> Glue<T> {
             .await
     }
 
-    /*
-    pub fn execute_stmt(&mut self, statement: &Statement) -> Result<Payload> {
-        block_on(self.execute_stmt_async(statement))
-    }
-
-    pub fn execute<Sql: AsRef<str>>(&mut self, sql: Sql) -> Result<Vec<Payload>> {
-        let statements = block_on(self.plan(sql))?;
-        statements.iter().map(|s| self.execute_stmt(s)).collect()
-    }
-    */
-
     pub async fn execute_stmt(&mut self, statement: &Statement) -> Result<Payload> {
         execute(&mut self.storage, statement).await
     }
