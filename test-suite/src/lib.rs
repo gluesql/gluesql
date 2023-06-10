@@ -130,6 +130,7 @@ macro_rules! generate_store_tests {
         glue!(function_to_date, function::to_date::to_date);
         glue!(function_ascii, function::ascii::ascii);
         glue!(function_chr, function::chr::chr);
+        glue!(function_mod, function::md5::md5);
         glue!(function_position, function::position::position);
         glue!(function_find_idx, function::find_idx::find_idx);
         glue!(function_geometry_get_x, function::geometry::get_x);

@@ -150,6 +150,7 @@ pub enum Function {
     },
     Ascii(Expr),
     Chr(Expr),
+    Md5(Expr),
     Append {
         expr: Expr,
         value: Expr,
@@ -345,6 +346,7 @@ impl ToSql for Function {
             }
             Function::Ascii(e) => format!("ASCII({})", e.to_sql()),
             Function::Chr(e) => format!("CHR({})", e.to_sql()),
+            Function::Md5(e) => format!("MD5({})", e.to_sql()),
             Function::Append { expr, value } => {
                 format!(
                     "APPEND({items}, {value})",
@@ -1010,6 +1012,14 @@ mod tests {
             &Expr::Function(Box::new(Function::Chr(Expr::Literal(AstLiteral::Number(
                 BigDecimal::from_str("72").unwrap()
             )))))
+            .to_sql()
+        );
+
+        assert_eq!(
+            "MD5('GlueSQL')",
+            &Expr::Function(Box::new(Function::Md5(Expr::Literal(
+                AstLiteral::QuotedString("GlueSQL".to_owned())
+            ))))
             .to_sql()
         );
 
