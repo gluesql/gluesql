@@ -1,6 +1,7 @@
 #[cfg(feature = "sled-storage")]
 mod sled_multi_threaded {
     use {
+        futures::executor::block_on,
         gluesql::{
             prelude::{Glue, Payload, Value},
             sled_storage::SledStorage,
@@ -8,7 +9,7 @@ mod sled_multi_threaded {
         std::thread,
     };
 
-    pub fn run() {
+    pub async fn run() {
         let storage = SledStorage::new("/tmp/gluesql/hello_world").expect("Something went wrong!");
         let mut glue = Glue::new(storage.clone());
         let queries = "
@@ -16,7 +17,7 @@ mod sled_multi_threaded {
             DELETE FROM greet;
         ";
 
-        glue.execute(queries).unwrap();
+        glue.execute(queries).await.unwrap();
 
         /*
             SledStorage supports cloning, using this we can create copies of the storage for new threads;
@@ -27,7 +28,7 @@ mod sled_multi_threaded {
             let mut glue = Glue::new(insert_storage);
             let query = "INSERT INTO greet (name) VALUES ('Foo')";
 
-            glue.execute(query).unwrap();
+            block_on(glue.execute(query)).unwrap();
         });
 
         let select_storage = storage;
@@ -35,7 +36,7 @@ mod sled_multi_threaded {
             let mut glue = Glue::new(select_storage);
             let query = "SELECT * FROM greet;";
 
-            let payloads = glue.execute(query).unwrap();
+            let payloads = block_on(glue.execute(query)).unwrap();
             println!("{payloads:?}");
         });
 
@@ -48,7 +49,7 @@ mod sled_multi_threaded {
             .expect("Something went wrong in the foo thread");
 
         let query = "SELECT name FROM greet";
-        let payloads = glue.execute(query).unwrap();
+        let payloads = glue.execute(query).await.unwrap();
         assert_eq!(payloads.len(), 1);
 
         let rows = match &payloads[0] {
@@ -70,5 +71,5 @@ mod sled_multi_threaded {
 
 fn main() {
     #[cfg(feature = "sled-storage")]
-    sled_multi_threaded::run();
+    futures::executor::block_on(sled_multi_threaded::run());
 }

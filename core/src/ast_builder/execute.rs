@@ -18,7 +18,7 @@ where
     async fn execute(self, glue: &mut Glue<T>) -> Result<Payload> {
         let statement = self.build()?;
 
-        glue.execute_stmt_async(&statement).await
+        glue.execute_stmt(&statement).await
     }
 }
 

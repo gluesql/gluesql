@@ -1,20 +1,24 @@
 #![cfg(any(feature = "memory-storage", feature = "sled-storage"))]
-use gluesql_core::{
-    executor::Payload,
-    prelude::{Glue, Value},
-    store::{GStore, GStoreMut},
+use {
+    futures::executor::block_on,
+    gluesql_core::{
+        executor::Payload,
+        prelude::{Glue, Value},
+        store::{GStore, GStoreMut},
+    },
 };
 
-fn basic<T: GStore + GStoreMut>(mut glue: Glue<T>) {
+async fn basic<T: GStore + GStoreMut>(mut glue: Glue<T>) {
     assert_eq!(
-        glue.execute("DROP TABLE IF EXISTS api_test"),
+        glue.execute("DROP TABLE IF EXISTS api_test").await,
         Ok(vec![Payload::DropTable])
     );
 
     assert_eq!(
         glue.execute(
             "CREATE TABLE api_test (id INTEGER, name TEXT, nullable TEXT NULL, is BOOLEAN)"
-        ),
+        )
+        .await,
         Ok(vec![Payload::Create])
     );
 
@@ -26,12 +30,13 @@ fn basic<T: GStore + GStoreMut>(mut glue: Glue<T>) {
                 VALUES
                     (1, 'test1', 'not null', TRUE),
                     (2, 'test2', NULL, FALSE)"
-        ),
+        )
+        .await,
         Ok(vec![Payload::Insert(2)])
     );
 
     assert_eq!(
-        glue.execute("SELECT id, name, is FROM api_test"),
+        glue.execute("SELECT id, name, is FROM api_test").await,
         Ok(vec![Payload::Select {
             labels: vec![String::from("id"), String::from("name"), String::from("is")],
             rows: vec![
@@ -50,21 +55,6 @@ fn basic<T: GStore + GStoreMut>(mut glue: Glue<T>) {
     );
 }
 
-async fn basic_async<T: GStore + GStoreMut>(mut glue: Glue<T>) {
-    assert_eq!(
-        glue.execute_async("DROP TABLE IF EXISTS api_test").await,
-        Ok(vec![Payload::DropTable])
-    );
-
-    assert_eq!(
-        glue.execute_async(
-            "CREATE TABLE api_test (id INTEGER, name TEXT, nullable TEXT NULL, is BOOLEAN)"
-        )
-        .await,
-        Ok(vec![Payload::Create])
-    );
-}
-
 #[cfg(feature = "sled-storage")]
 #[test]
 fn sled_basic() {
@@ -77,7 +67,7 @@ fn sled_basic() {
     let storage = SledStorage::try_from(config).unwrap();
     let glue = Glue::new(storage);
 
-    basic(glue);
+    block_on(basic(glue));
 }
 
 #[cfg(feature = "memory-storage")]
@@ -88,16 +78,5 @@ fn memory_basic() {
     let storage = MemoryStorage::default();
     let glue = Glue::new(storage);
 
-    basic(glue);
-}
-
-#[cfg(feature = "memory-storage")]
-#[test]
-fn memory_basic_async() {
-    use {futures::executor::block_on, memory_storage::MemoryStorage};
-
-    let storage = MemoryStorage::default();
-    let glue = Glue::new(storage);
-
-    block_on(basic_async(glue));
+    block_on(basic(glue));
 }

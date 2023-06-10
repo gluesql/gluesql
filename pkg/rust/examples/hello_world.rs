@@ -8,7 +8,7 @@ mod hello_world {
         std::fs,
     };
 
-    pub fn run() {
+    pub async fn run() {
         /*
             Initiate a connection
         */
@@ -33,7 +33,7 @@ mod hello_world {
             INSERT INTO greet VALUES ('World');
         ";
 
-        glue.execute(queries).expect("Execution failed");
+        glue.execute(queries).await.expect("Execution failed");
 
         /*
             Select inserted row
@@ -42,7 +42,7 @@ mod hello_world {
             SELECT name FROM greet
         ";
 
-        let result = glue.execute(queries).expect("Failed to execute");
+        let result = glue.execute(queries).await.expect("Failed to execute");
 
         /*
             Query results are wrapped into a payload enum, on the basis of the query type
@@ -70,5 +70,5 @@ mod hello_world {
 
 fn main() {
     #[cfg(feature = "sled-storage")]
-    hello_world::run();
+    futures::executor::block_on(hello_world::run());
 }

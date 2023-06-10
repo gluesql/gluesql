@@ -1,5 +1,6 @@
 #[cfg(feature = "sled-storage")]
 use {
+    futures::executor::block_on,
     gluesql::{prelude::Glue, sled_storage::SledStorage},
     sled_storage::sled,
     std::convert::TryFrom,
@@ -24,6 +25,6 @@ fn main() {
             DROP TABLE Glue;
         ";
 
-        glue.execute(sqls).unwrap();
+        block_on(glue.execute(sqls)).unwrap();
     }
 }
