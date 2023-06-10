@@ -14,7 +14,7 @@ test_case!(data_aggregation, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Create);
-    test(actual, expected);
+    assert_eq!(actual, expected, "create table");
 
     let actual = table("User")
         .insert()
@@ -29,7 +29,7 @@ test_case!(data_aggregation, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Insert(5));
-    test(actual, expected);
+    assert_eq!(actual, expected, "insert");
 
     let actual = table("User")
         .select()
@@ -44,7 +44,7 @@ test_case!(data_aggregation, async move {
         30    2;
         50    2
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "group by");
 
     let actual = table("User")
         .select()
@@ -53,13 +53,11 @@ test_case!(data_aggregation, async move {
         .project("age, count(*)")
         .execute(glue)
         .await;
-
     let expected = Ok(select!(
         age | r#"count(*)"#;
         I64 | I64;
         30    2;
         50    2
     ));
-
-    assert_eq!(actual, expected);
+    assert_eq!(actual, expected, "having");
 });

@@ -14,7 +14,7 @@ test_case!(pattern_matching, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Create);
-    test(actual, expected);
+    assert_eq!(actual, expected, "create table - Category");
 
     // insert into Category
     let actual = table("Category")
@@ -23,7 +23,7 @@ test_case!(pattern_matching, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Insert(4));
-    test(actual, expected);
+    assert_eq!(actual, expected, "insert into - Category");
 
     // like
     let actual = table("Category")
@@ -41,7 +41,7 @@ test_case!(pattern_matching, async move {
         1     "Meat".to_owned();
         3     "Drink".to_owned()
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "like");
 
     // ilike
     let actual = table("Category")
@@ -61,7 +61,7 @@ test_case!(pattern_matching, async move {
         3     "Drink".to_owned();
         4     "drink".to_owned()
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "ilike");
 
     // not_like
     let actual = table("Category")
@@ -79,7 +79,7 @@ test_case!(pattern_matching, async move {
         2     "meat".to_owned();
         4     "drink".to_owned()
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "not_like");
 
     // not_ilike
     let actual = table("Category")
@@ -95,5 +95,5 @@ test_case!(pattern_matching, async move {
         labels: vec!["id".to_owned(), "name".to_owned()],
         rows: vec![],
     });
-    test(actual, expected);
+    assert_eq!(actual, expected, "not_ilike");
 });

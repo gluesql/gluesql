@@ -18,7 +18,7 @@ test_case!(values, async move {
         3         "Rust".to_owned()
 
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "values - row as string");
 
     let actual = values(vec![
         vec!["1", "'Glue'"],
@@ -35,7 +35,7 @@ test_case!(values, async move {
         3         "Rust".to_owned()
 
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "values - row as vec");
 
     let actual = values(vec!["1, 'Glue'", "2, 'SQL'", "3, 'Rust'"])
         .order_by("column2 desc")
@@ -48,7 +48,7 @@ test_case!(values, async move {
         3         "Rust".to_owned();
         1         "Glue".to_owned()
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "values - order by");
 
     let actual = values(vec!["1, 'Glue'", "2, 'SQL'", "3, 'Rust'"])
         .offset(1)
@@ -60,7 +60,7 @@ test_case!(values, async move {
         2         "SQL".to_owned();
         3         "Rust".to_owned()
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "values - offset");
 
     let actual = values(vec!["1, 'Glue'", "2, 'SQL'", "3, 'Rust'"])
         .limit(2)
@@ -72,7 +72,7 @@ test_case!(values, async move {
         1         "Glue".to_owned();
         2         "SQL".to_owned()
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "values - limit");
 
     let actual = values(vec!["1, 'Glue'", "2, 'SQL'", "3, 'Rust'"])
         .alias_as("Sub")
@@ -88,5 +88,5 @@ test_case!(values, async move {
         2     "SQL".to_owned();
         3     "Rust".to_owned()
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "values - alias as");
 });

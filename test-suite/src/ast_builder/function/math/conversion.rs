@@ -15,7 +15,7 @@ test_case!(conversion, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Create);
-    test(actual, expected);
+    assert_eq!(actual, expected, "create table - Number");
 
     // Insert a row into the Number
     let actual = table("Number")
@@ -24,7 +24,7 @@ test_case!(conversion, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Insert(4));
-    test(actual, expected);
+    assert_eq!(actual, expected, "insert into Number");
 
     // Example Using DEGREES
     let actual = table("Number")
@@ -42,7 +42,7 @@ test_case!(conversion, async move {
         180       10313.240312354817          10313.240312354817;
         360       20626.480624709635          20626.480624709635
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "Example Using DEGREES");
 
     // Example Using RADIANS
     let actual = table("Number")
@@ -60,5 +60,5 @@ test_case!(conversion, async move {
         180       PI                          PI;
         360       TAU                         TAU
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "Example Using RADIANS");
 });

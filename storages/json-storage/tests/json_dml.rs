@@ -6,7 +6,7 @@ use {
         fs::{remove_dir_all, File},
         io::Write,
     },
-    test_suite::{select_map, test},
+    test_suite::select_map,
 };
 
 #[test]
@@ -87,6 +87,6 @@ fn json_dml() {
     ];
 
     for (actual, expected) in cases {
-        test(actual.map(|mut payloads| payloads.remove(0)), expected);
+        assert_eq!(actual.map(|mut payloads| payloads.remove(0)), expected);
     }
 }

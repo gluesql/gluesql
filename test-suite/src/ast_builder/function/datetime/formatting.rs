@@ -6,7 +6,7 @@ use {
 test_case!(formatting, async move {
     let glue = get_glue!();
 
-    //create table -"Visitor"
+    // create table -"Visitor"
     let actual = table("Visitor")
         .create_table()
         .add_column("id INTEGER PRIMARY KEY")
@@ -17,9 +17,9 @@ test_case!(formatting, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Create);
-    test(actual, expected);
+    assert_eq!(actual, expected, "create table - Visitor");
 
-    //insert
+    // insert
     let actual = table("Visitor")
         .insert()
         .values(vec![
@@ -41,9 +41,9 @@ test_case!(formatting, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Insert(2));
-    test(actual, expected);
+    assert_eq!(actual, expected, "insert - Visitor");
 
-    //format date
+    // format date
     let actual = table("Visitor")
         .select()
         .project("name")
@@ -58,9 +58,9 @@ test_case!(formatting, async move {
         "Bryanna".to_owned()    NaiveDate::from_ymd_opt(2017, 6, 15).unwrap()     "2017-06".to_owned()                        "06".to_owned();
         "Ash".to_owned()        NaiveDate::from_ymd_opt(2023, 4, 1).unwrap()     "2023-04".to_owned()                        "04".to_owned()
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "format date - Visitor");
 
-    //format time
+    // format time
     let actual = table("Visitor")
         .select()
         .project("name")
@@ -75,9 +75,9 @@ test_case!(formatting, async move {
         "Bryanna".to_owned()    NaiveTime::from_hms_opt(13, 5, 26).unwrap()     "13:05:26".to_owned()                        "05:26".to_owned();
         "Ash".to_owned()        NaiveTime::from_hms_opt(23, 24, 11).unwrap()     "23:24:11".to_owned()                        "24:11".to_owned()
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "format time - Visitor");
 
-    //format timestamp
+    // format timestamp
     let actual = table("Visitor")
         .select()
         .project("name")
@@ -92,5 +92,5 @@ test_case!(formatting, async move {
         "Bryanna".to_owned()    NaiveDate::from_ymd_opt(2015, 9, 5).unwrap().and_hms_opt(23, 56, 4).unwrap()     "2015-09-05 23:56:04".to_owned()                                 "2015-09-05 23:56:04".to_owned();
         "Ash".to_owned()        NaiveDate::from_ymd_opt(2023, 4, 1).unwrap().and_hms_opt(23, 24, 11).unwrap()     "2023-04-01 23:24:11".to_owned()                                 "2023-04-01 23:24:11".to_owned()
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "format timestamp - Visitor");
 });
