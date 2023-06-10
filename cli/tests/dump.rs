@@ -65,7 +65,7 @@ async fn dump_and_import() {
     ];
 
     for sql in sqls {
-        source_glue.execute(sql).unwrap();
+        source_glue.execute(sql).await.unwrap();
     }
 
     dump_database(&mut source_glue.storage, dump_path.clone()).unwrap();
@@ -82,23 +82,23 @@ async fn dump_and_import() {
         .unwrap();
 
     for sql in sqls.split(';').filter(|sql| !sql.trim().is_empty()) {
-        target_glue.execute(sql).unwrap();
+        target_glue.execute(sql).await.unwrap();
     }
 
     // schemas should be identical
     let sql = "SELECT OBJECT_TYPE, OBJECT_NAME FROM GLUE_OBJECTS";
-    let source_data = source_glue.execute(sql).unwrap();
-    let target_data = target_glue.execute(sql).unwrap();
+    let source_data = source_glue.execute(sql).await.unwrap();
+    let target_data = target_glue.execute(sql).await.unwrap();
     assert_eq!(source_data, target_data);
 
     // data should be identical
     let sql = "SELECT * FROM Foo JOIN Bar;";
-    let source_data = source_glue.execute(sql).unwrap();
-    let target_data = target_glue.execute(sql).unwrap();
+    let source_data = source_glue.execute(sql).await.unwrap();
+    let target_data = target_glue.execute(sql).await.unwrap();
     assert_eq!(source_data, target_data);
 
     let sql = "SELECT * FROM Baz;";
-    let source_data = source_glue.execute(sql).unwrap();
-    let target_data = target_glue.execute(sql).unwrap();
+    let source_data = source_glue.execute(sql).await.unwrap();
+    let target_data = target_glue.execute(sql).await.unwrap();
     assert_eq!(source_data, target_data);
 }

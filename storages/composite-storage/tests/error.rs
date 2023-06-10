@@ -1,5 +1,4 @@
 use {
-    futures::executor::block_on,
     gluesql_composite_storage::CompositeStorage,
     gluesql_core::{
         prelude::{Error, Glue, Result},
@@ -8,12 +7,12 @@ use {
     memory_storage::MemoryStorage,
 };
 
-#[test]
-fn error() {
+#[tokio::test]
+async fn error() {
     let storage = CompositeStorage::new();
 
     assert_eq!(
-        block_on(storage.scan_data("Foo")).map(|_| ()),
+        storage.scan_data("Foo").await.map(|_| ()),
         Err(Error::StorageMsg(
             "engine not found for table: Foo".to_owned()
         ))
@@ -21,7 +20,7 @@ fn error() {
 
     let mut glue = Glue::new(storage);
     assert_eq!(
-        glue.execute("CREATE TABLE Foo ENGINE = NONAME;"),
+        glue.execute("CREATE TABLE Foo ENGINE = NONAME;").await,
         Err(Error::StorageMsg(
             "storage not found for table: Foo".to_owned()
         ))
@@ -31,6 +30,7 @@ fn error() {
         let storage = MemoryStorage::default();
         let mut glue = Glue::new(storage);
         glue.execute("CREATE TABLE WrongEngine (id INTEGER) ENGINE = SomethingElse")
+            .await
             .unwrap();
 
         glue.storage
@@ -39,17 +39,19 @@ fn error() {
     glue.storage.push("Test", storage);
     glue.storage.set_default("Test");
 
-    glue.execute("CREATE TABLE Foo (id INTEGER);").unwrap();
+    glue.execute("CREATE TABLE Foo (id INTEGER);")
+        .await
+        .unwrap();
 
     assert_eq!(
-        block_on(glue.storage.scan_data("WrongEngine")).map(|_| ()),
+        glue.storage.scan_data("WrongEngine").await.map(|_| ()),
         Err(Error::StorageMsg(
             "[fetch_storage] storage not found for table: WrongEngine".to_owned()
         ))
     );
 
     assert_eq!(
-        block_on(glue.storage.delete_schema("WrongEngine")).map(|_| ()),
+        glue.storage.delete_schema("WrongEngine").await.map(|_| ()),
         Err(Error::StorageMsg(
             "[fetch_storage_mut] storage not found for table: WrongEngine".to_owned()
         ))
@@ -58,18 +60,18 @@ fn error() {
 
 macro_rules! exec {
     ($glue: ident $sql: literal) => {
-        $glue.execute($sql).unwrap();
+        $glue.execute($sql).await.unwrap();
     };
 }
 
 macro_rules! test {
     ($glue: ident $sql: literal, $result: expr) => {
-        assert_eq!($glue.execute($sql), $result);
+        assert_eq!($glue.execute($sql).await, $result);
     };
 }
 
-#[test]
-fn composite_storage_index() {
+#[tokio::test]
+async fn composite_storage_index() {
     use {gluesql_core::store::Index, memory_storage::MemoryStorage};
 
     let mut storage = CompositeStorage::default();
@@ -81,7 +83,9 @@ fn composite_storage_index() {
     exec!(glue "CREATE TABLE Idx (id INTEGER);");
 
     assert_eq!(
-        block_on(glue.storage.scan_data("Idx"))
+        glue.storage
+            .scan_data("Idx")
+            .await
             .unwrap()
             .collect::<Result<Vec<_>>>()
             .as_ref()
@@ -90,7 +94,10 @@ fn composite_storage_index() {
     );
 
     assert_eq!(
-        block_on(glue.storage.scan_indexed_data("Idx", "hello", None, None)).map(|_| ()),
+        glue.storage
+            .scan_indexed_data("Idx", "hello", None, None)
+            .await
+            .map(|_| ()),
         Err(Error::StorageMsg(
             "[Storage] Index::scan_indexed_data is not supported".to_owned()
         ))
@@ -106,8 +113,8 @@ fn composite_storage_index() {
     );
 }
 
-#[test]
-fn composite_storage_function() {
+#[tokio::test]
+async fn composite_storage_function() {
     let storage = CompositeStorage::default();
     let mut glue = Glue::new(storage);
 

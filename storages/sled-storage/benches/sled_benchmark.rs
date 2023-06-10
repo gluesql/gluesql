@@ -1,5 +1,6 @@
 use {
     criterion::{criterion_group, criterion_main, Criterion},
+    futures::executor::block_on,
     gluesql_core::prelude::Glue,
     gluesql_sled_storage::SledStorage,
 };
@@ -31,7 +32,7 @@ pub fn bench_insert(c: &mut Criterion) {
         );
     ";
 
-    glue.execute(sqls).unwrap();
+    block_on(glue.execute(sqls)).unwrap();
 
     // Prepare query out of scope, and copy it at the beginning
     let mut id = 0;
@@ -45,7 +46,7 @@ pub fn bench_insert(c: &mut Criterion) {
             );
             id += 1;
 
-            glue.execute(&query_str).unwrap();
+            block_on(glue.execute(&query_str)).unwrap();
         })
     });
 }
@@ -83,7 +84,7 @@ pub fn bench_select(c: &mut Criterion) {
             );
         }
 
-        glue.execute(&sqls).unwrap();
+        block_on(glue.execute(&sqls)).unwrap();
     }
 
     // Prepare query out of scope, and copy it at the beginning
@@ -98,7 +99,7 @@ pub fn bench_select(c: &mut Criterion) {
                 id = 1;
             }
 
-            glue.execute(&query_str).unwrap();
+            block_on(glue.execute(&query_str)).unwrap();
         })
     });
 
@@ -115,7 +116,7 @@ pub fn bench_select(c: &mut Criterion) {
                 id = 1;
             }
 
-            glue.execute(&query_str).unwrap();
+            block_on(glue.execute(&query_str)).unwrap();
         })
     });
 }
@@ -162,7 +163,7 @@ pub fn bench_select_tainted(c: &mut Criterion) {
             );
         }
 
-        glue.execute(&sqls).unwrap();
+        block_on(glue.execute(&sqls)).unwrap();
     }
 
     // Prepare query out of scope, and copy it at the beginning
@@ -177,7 +178,7 @@ pub fn bench_select_tainted(c: &mut Criterion) {
                 id = 1;
             }
 
-            glue.execute(&query_str).unwrap();
+            block_on(glue.execute(&query_str)).unwrap();
         })
     });
     c.bench_function("select_many_tainted", |b| {
@@ -193,7 +194,7 @@ pub fn bench_select_tainted(c: &mut Criterion) {
                 id = 1;
             }
 
-            glue.execute(&query_str).unwrap();
+            block_on(glue.execute(&query_str)).unwrap();
         })
     });
 }

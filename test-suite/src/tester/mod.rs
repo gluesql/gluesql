@@ -29,7 +29,7 @@ pub async fn run<T: GStore + GStoreMut>(
 
     test_indexes(&statement, indexes);
 
-    glue.execute_stmt_async(&statement).await
+    glue.execute_stmt(&statement).await
 }
 
 pub fn test_indexes(statement: &Statement, indexes: Option<Vec<IndexItem>>) {

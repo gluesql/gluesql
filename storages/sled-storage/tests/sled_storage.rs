@@ -44,7 +44,7 @@ async fn sled_basic() {
 
     macro_rules! execute {
         ($sql:expr) => {{
-            let mut payloads = glue.execute_async($sql).await.unwrap();
+            let mut payloads = glue.execute($sql).await.unwrap();
             payloads.remove(0)
         }};
     }

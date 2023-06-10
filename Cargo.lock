@@ -1102,6 +1102,7 @@ dependencies = [
  "async-trait",
  "bincode",
  "criterion",
+ "futures",
  "gluesql-core",
  "gluesql-test-suite",
  "gluesql-utils",

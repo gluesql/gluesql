@@ -5,6 +5,7 @@ use {
         print::Print,
     },
     edit::{edit_file, edit_with_builder, Builder},
+    futures::executor::block_on,
     gluesql_core::{
         prelude::Glue,
         store::{GStore, GStoreMut},
@@ -161,7 +162,7 @@ where
     }
 
     fn execute(&mut self, sql: impl AsRef<str>) -> Result<()> {
-        match self.glue.execute(sql) {
+        match block_on(self.glue.execute(sql)) {
             Ok(payloads) => self.print.payloads(&payloads)?,
             Err(e) => {
                 println!("[error] {}\n", e);
@@ -175,7 +176,7 @@ where
         let mut sqls = String::new();
         File::open(filename)?.read_to_string(&mut sqls)?;
         for sql in sqls.split(';').filter(|sql| !sql.trim().is_empty()) {
-            match self.glue.execute(sql) {
+            match block_on(self.glue.execute(sql)) {
                 Ok(payloads) => self.print.payloads(&payloads)?,
                 Err(e) => {
                     println!("[error] {}\n", e);
