@@ -14,7 +14,7 @@ test_case!(delete, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Create);
-    test(actual, expected);
+    assert_eq!(actual, expected, "create table - Foo");
 
     let actual = table("Foo")
         .insert()
@@ -26,7 +26,7 @@ test_case!(delete, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Insert(3));
-    test(actual, expected);
+    assert_eq!(actual, expected, "insert into Foo");
 
     let actual = table("Foo").select().execute(glue).await;
     let expected = Ok(select!(
@@ -36,7 +36,7 @@ test_case!(delete, async move {
         2     300     false;
         3     700     true
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "select * from Foo");
 
     // delete using filter
     let actual = table("Foo")
@@ -45,7 +45,7 @@ test_case!(delete, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Delete(1));
-    test(actual, expected);
+    assert_eq!(actual, expected, "delete using filter");
 
     let actual = table("Foo").select().execute(glue).await;
     let expected = Ok(select!(
@@ -54,17 +54,17 @@ test_case!(delete, async move {
         1     100     true;
         3     700     true
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "select * from Foo");
 
     // delete all
     let actual = table("Foo").delete().execute(glue).await;
     let expected = Ok(Payload::Delete(2));
-    test(actual, expected);
+    assert_eq!(actual, expected, "delete all");
 
     let actual = table("Foo").select().execute(glue).await;
     let expected = Ok(Payload::Select {
         labels: vec!["id".to_owned(), "score".to_owned(), "flag".to_owned()],
         rows: vec![],
     });
-    test(actual, expected);
+    assert_eq!(actual, expected, "select * from Foo");
 });

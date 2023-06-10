@@ -2,7 +2,7 @@ use {
     gluesql_core::prelude::{Glue, Value},
     gluesql_json_storage::JsonStorage,
     serde_json::json,
-    test_suite::{select_map, test},
+    test_suite::select_map,
 };
 
 #[test]
@@ -47,6 +47,6 @@ fn json_schemaless() {
     ];
 
     for (actual, expected) in cases {
-        test(actual.map(|mut payloads| payloads.remove(0)), expected);
+        assert_eq!(actual.map(|mut payloads| payloads.remove(0)), expected);
     }
 }

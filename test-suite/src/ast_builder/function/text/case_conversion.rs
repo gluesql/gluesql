@@ -15,7 +15,7 @@ test_case!(case_conversion, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Create);
-    test(actual, expected);
+    assert_eq!(actual, expected, "create table - Item");
 
     let actual = table("Item")
         .insert()
@@ -27,7 +27,7 @@ test_case!(case_conversion, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Insert(3));
-    test(actual, expected);
+    assert_eq!(actual, expected, "insert - Item");
 
     //check upper,lower case
     let actual = table("Item")
@@ -44,7 +44,7 @@ test_case!(case_conversion, async move {
         "Abcd".to_owned()    "abcd".to_owned();
         "ABCD".to_owned()    "abcd".to_owned()
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "check lower case");
 
     let actual = table("Item")
         .select()
@@ -59,7 +59,7 @@ test_case!(case_conversion, async move {
         "abcd".to_owned()    "ABCD".to_owned();
         "abcd".to_owned()    "ABCD".to_owned()
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "check upper case");
 
     let actual = table("Item")
         .select()
@@ -73,7 +73,7 @@ test_case!(case_conversion, async move {
         Null                      Null;
         Str("efgi".to_owned())    Str("EFGI".to_owned())
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "check upper & lower null case");
 
     //check initcap case
     let actual = table("Item")
@@ -88,5 +88,5 @@ test_case!(case_conversion, async move {
         "h/i jk".to_owned();
         "H/I JK".to_owned()
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "check initcap case");
 });

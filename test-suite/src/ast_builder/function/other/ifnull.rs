@@ -19,7 +19,7 @@ test_case!(ifnull, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Create);
-    test(actual, expected);
+    assert_eq!(actual, expected, "create table - Foo");
 
     // insert into Foo
     let actual = table("Foo")
@@ -32,7 +32,7 @@ test_case!(ifnull, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Insert(2));
-    test(actual, expected);
+    assert_eq!(actual, expected, "insert into Foo");
 
     // Replace with text using ifnull
     let actual = table("Foo")
@@ -47,7 +47,7 @@ test_case!(ifnull, async move {
         100   "Pickle".to_owned();
         200   "isnull".to_owned()
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "replace with text using ifnull");
 
     // Replace with other column using ifnull
     let actual = table("Foo")
@@ -62,7 +62,7 @@ test_case!(ifnull, async move {
         100   "Pickle".to_owned();
         200   "Hello".to_owned()
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "replace with other column using ifnull");
 
     // ifnull without table
     let actual = values(vec![
@@ -77,5 +77,5 @@ test_case!(ifnull, async move {
         "HELLO".to_owned();
         "WORLD".to_owned()
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "ifnull without table");
 });

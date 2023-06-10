@@ -11,9 +11,7 @@ use {
         collections::HashMap,
         net::{IpAddr, Ipv4Addr},
     },
-    test_suite::{
-        concat_with, concat_with_null, row, select, select_with_null, stringify_label, test,
-    },
+    test_suite::{concat_with, concat_with_null, row, select, select_with_null, stringify_label},
     uuid::Uuid as UUID,
 };
 
@@ -176,6 +174,6 @@ fn json_schema() {
     ];
 
     for (actual, expected) in cases {
-        test(actual.map(|mut payloads| payloads.remove(0)), expected);
+        assert_eq!(actual.map(|mut payloads| payloads.remove(0)), expected);
     }
 }

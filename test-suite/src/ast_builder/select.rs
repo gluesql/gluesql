@@ -14,7 +14,7 @@ test_case!(select, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Create);
-    test(actual, expected);
+    assert_eq!(actual, expected, "create table - Category");
 
     // create table - Item
     let actual = table("Item")
@@ -26,7 +26,7 @@ test_case!(select, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Create);
-    test(actual, expected);
+    assert_eq!(actual, expected, "create table - Item");
 
     // insert into Category
     let actual = table("Category")
@@ -35,7 +35,7 @@ test_case!(select, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Insert(3));
-    test(actual, expected);
+    assert_eq!(actual, expected, "insert into Category");
 
     // insert into Item
     let actual = table("Item")
@@ -50,7 +50,7 @@ test_case!(select, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Insert(5));
-    test(actual, expected);
+    assert_eq!(actual, expected, "insert into Item");
 
     // basic select
     let actual = table("Category").select().execute(glue).await;
@@ -61,7 +61,7 @@ test_case!(select, async move {
         2     "Meat".to_owned();
         3     "Drink".to_owned()
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "basic select");
 
     // filter (WHERE name = "Meat")
     let actual = table("Category")
@@ -74,7 +74,7 @@ test_case!(select, async move {
         I64 | Str;
         2     "Meat".to_owned()
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "filter (WHERE name = 'Meat')");
 
     // inner join
     let actual = table("Item")
@@ -94,7 +94,7 @@ test_case!(select, async move {
         "Pork belly".to_owned()   "Meat".to_owned();
         "Strawberry".to_owned()   "Fruit".to_owned()
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "inner join");
 
     // left outer join
     let actual = table("Category")
@@ -116,7 +116,7 @@ test_case!(select, async move {
         Str("Meat".to_owned())    Str("Pork belly".to_owned())     I64(90);
         Str("Drink".to_owned())   Str("Orange juice".to_owned())   I64(60)
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "left outer join");
 
     // group by - having
     let actual = table("Item")
@@ -135,7 +135,7 @@ test_case!(select, async move {
         "Meat".to_owned()    90;
         "Drink".to_owned()   85
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "group by - having");
 
     // order by
     let actual = table("Item")
@@ -153,7 +153,7 @@ test_case!(select, async move {
         "Strawberry".to_owned()     30;
         "Coffee".to_owned()         25
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "order by");
 
     // offset, limit
     let actual = table("Item")
@@ -170,5 +170,5 @@ test_case!(select, async move {
         "Orange juice".to_owned()   60;
         "Pineapple".to_owned()      40
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "offset, limit");
 });

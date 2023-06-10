@@ -5,7 +5,7 @@ use {
     },
     gluesql_json_storage::JsonStorage,
     std::fs::remove_dir_all,
-    test_suite::{concat_with, row, select, stringify_label, test},
+    test_suite::{concat_with, row, select, stringify_label},
 };
 
 #[test]
@@ -47,6 +47,6 @@ fn json_primary_key() {
     ];
 
     for (actual, expected) in cases {
-        test(actual.map(|mut payloads| payloads.remove(0)), expected);
+        assert_eq!(actual.map(|mut payloads| payloads.remove(0)), expected);
     }
 }

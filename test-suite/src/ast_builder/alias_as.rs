@@ -14,7 +14,7 @@ test_case!(alias_as, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Create);
-    test(actual, expected);
+    assert_eq!(actual, expected, "create table - Category");
 
     // create table - Item
     let actual = table("Item")
@@ -26,7 +26,7 @@ test_case!(alias_as, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Create);
-    test(actual, expected);
+    assert_eq!(actual, expected, "create table - Item");
 
     // insert into Category
     let actual = table("Category")
@@ -35,7 +35,7 @@ test_case!(alias_as, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Insert(3));
-    test(actual, expected);
+    assert_eq!(actual, expected, "insert into Category");
 
     // insert into Item
     let actual = table("Item")
@@ -50,7 +50,7 @@ test_case!(alias_as, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Insert(5));
-    test(actual, expected);
+    assert_eq!(actual, expected, "insert into Item");
 
     // select -> derived subquery
     let actual = table("Item")
@@ -68,7 +68,7 @@ test_case!(alias_as, async move {
         400        3             "Coffee".to_owned()         25;
         500        3             "Orange juice".to_owned()   60
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "select -> derived subquery");
 
     // select -> filter -> derived subquery
     let actual = table("Item")
@@ -83,7 +83,7 @@ test_case!(alias_as, async move {
         I64      | I64         | Str                     | I64;
         300        1             "Strawberry".to_owned()   30
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "select -> filter -> derived subquery");
 
     // select -> project -> derived subquery
     let actual = table("Item")
@@ -102,7 +102,7 @@ test_case!(alias_as, async move {
         400;
         500
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "select -> project -> derived subquery");
 
     // select -> join(cartesian) -> derived subquery
     let actual = table("Item")
@@ -132,7 +132,10 @@ test_case!(alias_as, async move {
         500       3             "Orange juice".to_owned()   60      2             "Meat".to_owned();
         500       3             "Orange juice".to_owned()   60      3             "Drink".to_owned()
     ));
-    test(actual, expected);
+    assert_eq!(
+        actual, expected,
+        "select -> join(cartesian) -> derived subquery"
+    );
 
     // select -> join -> on -> derived subquery
     let actual = table("Item")
@@ -155,7 +158,7 @@ test_case!(alias_as, async move {
         "Coffee".to_owned()         "Drink".to_owned();
         "Orange juice".to_owned()   "Drink".to_owned()
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "select -> join -> on -> derived subquery");
 
     // select -> join -> hash -> derived subquery
     let actual = table("Item")
@@ -177,7 +180,10 @@ test_case!(alias_as, async move {
         "Coffee".to_owned()         "Drink".to_owned();
         "Orange juice".to_owned()   "Drink".to_owned()
     ));
-    test(actual, expected);
+    assert_eq!(
+        actual, expected,
+        "select -> join -> hash -> derived subquery"
+    );
 
     // select -> project -> derived subquery -> select -> group_by -> derived subquery
     let actual = table("Category")
@@ -197,7 +203,10 @@ test_case!(alias_as, async move {
         "Meat".to_owned();
         "Drink".to_owned()
     ));
-    test(actual, expected);
+    assert_eq!(
+        actual, expected,
+        "select -> project -> derived subquery -> select -> group_by -> derived subquery"
+    );
 
     // select -> project -> derived subquery -> select -> group_by -> having -> derived subquery
     let actual = table("Category")
@@ -216,7 +225,10 @@ test_case!(alias_as, async move {
         Str;
         "Meat".to_owned()
     ));
-    test(actual, expected);
+    assert_eq!(
+        actual, expected,
+        "select -> project -> derived subquery -> select -> group_by -> having -> derived subquery"
+    );
 
     // select -> order_by -> derived subquery
     let actual = table("Item")
@@ -235,7 +247,7 @@ test_case!(alias_as, async move {
         300        1             "Strawberry".to_owned()     30;
         400        3             "Coffee".to_owned()         25
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "select -> order_by -> derived subquery");
 
     // select -> offset -> derived subquery
     let actual = table("Item")
@@ -250,7 +262,7 @@ test_case!(alias_as, async move {
         I64      | I64         | Str                       | I64;
         500        3             "Orange juice".to_owned()   60
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "select -> offset -> derived subquery");
 
     // select -> limit -> derived subquery
     let actual = table("Item")
@@ -265,7 +277,7 @@ test_case!(alias_as, async move {
         I64      | I64         | Str                       | I64;
         100        1             "Pineapple".to_owned()      40
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "select -> limit -> derived subquery");
 
     // select -> offset -> limit -> derived subquery
     let actual = table("Item")
@@ -281,5 +293,8 @@ test_case!(alias_as, async move {
          I64      | I64         | Str                       | I64;
          400        3             "Coffee".to_owned()         25
     ));
-    test(actual, expected);
+    assert_eq!(
+        actual, expected,
+        "select -> offset -> limit -> derived subquery"
+    );
 });

@@ -4,7 +4,6 @@ use {
         prelude::{Error, Glue},
     },
     gluesql_json_storage::{error::JsonStorageError, JsonStorage},
-    test_suite::test,
 };
 
 #[test]
@@ -61,6 +60,6 @@ fn json_error() {
     ];
 
     for (actual, expected) in cases {
-        test(actual.map(|mut payloads| payloads.remove(0)), expected);
+        assert_eq!(actual.map(|mut payloads| payloads.remove(0)), expected);
     }
 }
