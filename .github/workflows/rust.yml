@@ -19,11 +19,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Read rust-toolchain file
+        id: rust-toolchain
+        run: echo "toolchain=$(cat rust-toolchain)" >> $GITHUB_OUTPUT
       - name: Add clippy
-        uses: actions-rs/toolchain@v1.0.6
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
-          default: true
+          toolchain: ${{ steps.rust-toolchain.outputs.toolchain }}
           components: clippy
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --all-targets -- -D warnings
@@ -33,11 +35,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Read rust-toolchain file
+        id: rust-toolchain
+        run: echo "toolchain=$(cat rust-toolchain)" >> $GITHUB_OUTPUT
       - name: Add rustfmt
-        uses: actions-rs/toolchain@v1.0.6
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
-          default: true
+          toolchain: ${{ steps.rust-toolchain.outputs.toolchain }}
           components: rustfmt
       - uses: Swatinem/rust-cache@v2
       - run: |
