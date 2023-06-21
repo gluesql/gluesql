@@ -1,8 +1,8 @@
 name: auto-author-assign
 
 on:
-  pull_request_target:
-    types: [ opened, reopened ]
+  pull_request:
+    types: [ opened, ready_for_review ]
 
 permissions:
   pull-requests: write
@@ -11,6 +11,6 @@ jobs:
   assign-author:
     runs-on: ubuntu-latest
     steps:
-      - uses: toshimaru/auto-author-assign@v1.6.2
+      - uses: kentaro-m/auto-assign-action@v1.2.5
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/auto-author-assign-config.yml

@@ -1,0 +1,10 @@
+addAssignees: author
+
+addReviewers: true
+reviewers:
+  - panarch
+  - ever0de
+  - devgony
+numberOfReviewers: 0
+
+runOnDraft: true
