@@ -30,9 +30,12 @@ json-storage = { workspace = true, optional = true }
 composite-storage = { workspace = true, optional = true }
 web-storage = { workspace = true, optional = true }
 idb-storage = { workspace = true, optional = true }
+rand = "0.7.0"
 
 [dev-dependencies]
 futures = "0.3"
+
+
 
 [features]
 # DB User
