@@ -24,6 +24,8 @@ use {
 extern "C" {
     #[wasm_bindgen(js_namespace = console)]
     fn log(s: &str);
+    #[wasm_bindgen(js_namespace = console)]
+    fn debug(s: &str);
 }
 
 #[wasm_bindgen]
@@ -65,7 +67,7 @@ impl Glue {
 
         let storage = Rc::new(RefCell::new(Some(storage)));
 
-        log("[GlueSQL] hello :)");
+        debug("[GlueSQL] hello :)");
 
         Self { storage }
     }
