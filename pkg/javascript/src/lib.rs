@@ -23,8 +23,6 @@ use {
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = console)]
-    fn log(s: &str);
-    #[wasm_bindgen(js_namespace = console)]
     fn debug(s: &str);
 }
 
@@ -57,8 +55,8 @@ impl Glue {
             storage.push("localStorage", WebStorage::new(WebStorageType::Local));
             storage.push("sessionStorage", WebStorage::new(WebStorageType::Session));
             storage.set_default("memory");
-            log("[GlueSQL] loaded: memory, localStorage, sessionStorage");
-            log("[GlueSQL] default engine: memory");
+            debug("[GlueSQL] loaded: memory, localStorage, sessionStorage");
+            debug("[GlueSQL] default engine: memory");
 
             storage
         };
@@ -96,7 +94,7 @@ impl Glue {
             };
 
             storage.push("indexedDB", idb_storage);
-            log("[GlueSQL] loaded: indexedDB");
+            debug("[GlueSQL] loaded: indexedDB");
 
             cell.replace(Some(storage));
 
