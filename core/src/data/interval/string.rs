@@ -1,13 +1,15 @@
 use {
     super::{Interval, IntervalError, DAY, HOUR, MINUTE, SECOND},
     crate::{
-        ast::Expr, data::Value, executor::evaluate_stateless, parse_sql::parse_interval,
-        result::Result, translate::translate_expr,
+        ast::{Expr, ToSql},
+        parse_sql::parse_interval,
+        result::Result,
+        translate::translate_expr,
     },
 };
 
 impl Interval {
-    pub async fn parse(s: &str) -> Result<Self> {
+    pub fn parse(s: &str) -> Result<Self> {
         let parsed = parse_interval(s)?;
 
         match translate_expr(&parsed)? {
@@ -16,21 +18,21 @@ impl Interval {
                 leading_field,
                 last_field,
             } => {
-                let value = evaluate_stateless(None, &expr)
-                    .await
-                    .and_then(Value::try_from)
-                    .map(String::from)?;
+                let literal = match expr.as_ref() {
+                    Expr::Literal(literal) => literal.to_sql(),
+                    _ => {
+                        return Err(IntervalError::ParseSupportedOnlyLiteral { expr: *expr }.into())
+                    }
+                };
 
-                Interval::try_from_literal(&value, leading_field, last_field)
+                Interval::try_from_str(&literal, leading_field, last_field)
             }
             _ => Err(IntervalError::Unreachable.into()),
         }
     }
-}
 
-impl From<&Interval> for String {
-    fn from(interval: &Interval) -> Self {
-        match interval {
+    pub fn to_sql_str(&self) -> String {
+        match self {
             Interval::Month(v) => {
                 let v = *v;
                 let (sign, v) = if v < 0 { ("-", -v) } else { ("", v) };
@@ -142,26 +144,20 @@ impl From<&Interval> for String {
     }
 }
 
-impl From<Interval> for String {
-    fn from(interval: Interval) -> Self {
-        (&interval).into()
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use {super::Interval, futures::executor::block_on};
+    use super::Interval;
 
     #[test]
-    fn into_owned() {
+    fn parse() {
         macro_rules! test {
             ($( $value: literal $duration: ident ),* => $result: literal $from_to: tt) => {
                 let interval = interval!($( $value $duration ),*);
                 let interval_str = format!("'{}' {}", $result, stringify!($from_to));
 
-                let expected = block_on(Interval::parse(interval_str.as_str()));
+                let expected = Interval::parse(interval_str.as_str());
                 assert_eq!(Ok(interval), expected);
-                assert_eq!(String::from(interval), interval_str);
+                assert_eq!(interval.to_sql_str(), interval_str);
             };
             ($( $value: literal $duration: ident ),* => $result: literal $from: tt TO $to: tt) => {
                 let interval = interval!($( $value $duration ),*);
@@ -172,9 +168,9 @@ mod tests {
                     stringify!($to),
                 );
 
-                let expected = block_on(Interval::parse(interval_str.as_str()));
+                let expected = Interval::parse(interval_str.as_str());
                 assert_eq!(Ok(interval), expected);
-                assert_eq!(String::from(interval), interval_str);
+                assert_eq!(interval.to_sql_str(), interval_str);
             };
         }
 

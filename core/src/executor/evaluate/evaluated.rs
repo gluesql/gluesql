@@ -8,7 +8,7 @@ use {
     std::{borrow::Cow, cmp::Ordering, collections::HashMap, ops::Range},
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Evaluated<'a> {
     Literal(Literal<'a>),
     StrSlice {
@@ -96,65 +96,6 @@ impl TryFrom<Evaluated<'_>> for HashMap<String, Value> {
     }
 }
 
-impl<'a> PartialEq for Evaluated<'a> {
-    fn eq(&self, other: &Evaluated<'a>) -> bool {
-        match (self, other) {
-            (Evaluated::Literal(a), Evaluated::Literal(b)) => a == b,
-            (Evaluated::Literal(b), Evaluated::Value(a))
-            | (Evaluated::Value(a), Evaluated::Literal(b)) => a == b,
-            (Evaluated::Value(a), Evaluated::Value(b)) => a == b,
-            (Evaluated::Literal(a), Evaluated::StrSlice { source, range })
-            | (Evaluated::StrSlice { source, range }, Evaluated::Literal(a)) => {
-                a == &source[range.clone()]
-            }
-            (Evaluated::Value(a), Evaluated::StrSlice { source, range })
-            | (Evaluated::StrSlice { source, range }, Evaluated::Value(a)) => {
-                a == &source[range.clone()]
-            }
-            (
-                Evaluated::StrSlice { source, range },
-                Evaluated::StrSlice {
-                    source: source2,
-                    range: range2,
-                },
-            ) => source[range.clone()] == source2[range2.clone()],
-        }
-    }
-}
-
-impl<'a> PartialOrd for Evaluated<'a> {
-    fn partial_cmp(&self, other: &Evaluated<'a>) -> Option<Ordering> {
-        match (self, other) {
-            (Evaluated::Literal(l), Evaluated::Literal(r)) => l.partial_cmp(r),
-            (Evaluated::Literal(l), Evaluated::Value(r)) => r.partial_cmp(l).map(|o| o.reverse()),
-            (Evaluated::Value(l), Evaluated::Literal(r)) => l.partial_cmp(r),
-            (Evaluated::Value(l), Evaluated::Value(r)) => l.partial_cmp(r),
-            (Evaluated::Literal(l), Evaluated::StrSlice { source, range }) => {
-                l.partial_cmp(&source[range.clone()])
-            }
-            (Evaluated::Value(l), Evaluated::StrSlice { source, range }) => {
-                l.partial_cmp(&source[range.clone()])
-            }
-            (Evaluated::StrSlice { source, range }, Evaluated::Literal(l)) => {
-                l.partial_cmp(&source[range.clone()]).map(|o| o.reverse())
-            }
-            (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => {
-                r.partial_cmp(&source[range.clone()]).map(|o| o.reverse())
-            }
-            (
-                Evaluated::StrSlice {
-                    source: a,
-                    range: ar,
-                },
-                Evaluated::StrSlice {
-                    source: b,
-                    range: br,
-                },
-            ) => a[ar.clone()].partial_cmp(&b[br.clone()]),
-        }
-    }
-}
-
 fn binary_op<'a, 'b, T, U>(
     l: &Evaluated<'a>,
     r: &Evaluated<'b>,
@@ -190,6 +131,75 @@ pub fn exceptional_int_val_to_eval<'a>(name: String, v: Value) -> Result<Evaluat
 }
 
 impl<'a> Evaluated<'a> {
+    pub fn evaluate_eq(&self, other: &Evaluated<'a>) -> bool {
+        match (self, other) {
+            (Evaluated::Literal(a), Evaluated::Literal(b)) => a.evaluate_eq(b),
+            (Evaluated::Literal(b), Evaluated::Value(a))
+            | (Evaluated::Value(a), Evaluated::Literal(b)) => a.evaluate_eq_with_literal(b),
+            (Evaluated::Value(a), Evaluated::Value(b)) => a.evaluate_eq(b),
+            (Evaluated::Literal(a), Evaluated::StrSlice { source, range })
+            | (Evaluated::StrSlice { source, range }, Evaluated::Literal(a)) => {
+                let b = &source[range.clone()];
+
+                a.evaluate_eq(&Literal::Text(Cow::Borrowed(b)))
+            }
+            (Evaluated::Value(a), Evaluated::StrSlice { source, range })
+            | (Evaluated::StrSlice { source, range }, Evaluated::Value(a)) => {
+                let b = &source[range.clone()];
+
+                a.evaluate_eq_with_literal(&Literal::Text(Cow::Borrowed(b)))
+            }
+            (
+                Evaluated::StrSlice { source, range },
+                Evaluated::StrSlice {
+                    source: source2,
+                    range: range2,
+                },
+            ) => source[range.clone()] == source2[range2.clone()],
+        }
+    }
+
+    pub fn evaluate_cmp(&self, other: &Evaluated<'a>) -> Option<Ordering> {
+        match (self, other) {
+            (Evaluated::Literal(l), Evaluated::Literal(r)) => l.evaluate_cmp(r),
+            (Evaluated::Literal(l), Evaluated::Value(r)) => {
+                r.evaluate_cmp_with_literal(l).map(|o| o.reverse())
+            }
+            (Evaluated::Value(l), Evaluated::Literal(r)) => l.evaluate_cmp_with_literal(r),
+            (Evaluated::Value(l), Evaluated::Value(r)) => l.evaluate_cmp(r),
+            (Evaluated::Literal(l), Evaluated::StrSlice { source, range }) => {
+                let r = Literal::Text(Cow::Borrowed(&source[range.clone()]));
+
+                l.evaluate_cmp(&r)
+            }
+            (Evaluated::Value(l), Evaluated::StrSlice { source, range }) => {
+                let r = Literal::Text(Cow::Borrowed(&source[range.clone()]));
+
+                l.evaluate_cmp_with_literal(&r)
+            }
+            (Evaluated::StrSlice { source, range }, Evaluated::Literal(l)) => {
+                let r = Literal::Text(Cow::Borrowed(&source[range.clone()]));
+
+                l.evaluate_cmp(&r).map(|o| o.reverse())
+            }
+            (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => {
+                let l = Literal::Text(Cow::Borrowed(&source[range.clone()]));
+
+                r.evaluate_cmp_with_literal(&l).map(|o| o.reverse())
+            }
+            (
+                Evaluated::StrSlice {
+                    source: a,
+                    range: ar,
+                },
+                Evaluated::StrSlice {
+                    source: b,
+                    range: br,
+                },
+            ) => a[ar.clone()].partial_cmp(&b[br.clone()]),
+        }
+    }
+
     pub fn add<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
         binary_op(self, other, |l, r| l.add(r), |l, r| l.add(r))
     }
@@ -242,12 +252,12 @@ impl<'a> Evaluated<'a> {
         .map(Evaluated::from)
     }
 
-    pub async fn cast(self, data_type: &DataType) -> Result<Evaluated<'a>> {
+    pub fn cast(self, data_type: &DataType) -> Result<Evaluated<'a>> {
         match self {
-            Evaluated::Literal(literal) => Value::try_cast_from_literal(data_type, &literal).await,
-            Evaluated::Value(value) => value.cast(data_type).await,
+            Evaluated::Literal(literal) => Value::try_cast_from_literal(data_type, &literal),
+            Evaluated::Value(value) => value.cast(data_type),
             Evaluated::StrSlice { source, range } => {
-                Value::Str(source[range].to_owned()).cast(data_type).await
+                Value::Str(source[range].to_owned()).cast(data_type)
             }
         }
         .map(Evaluated::from)

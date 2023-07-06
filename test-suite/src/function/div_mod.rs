@@ -22,7 +22,7 @@ test_case!(div_mod, async move {
             INSERT INTO 
                 FloatDiv (dividend, divisor) 
             VALUES 
-                (12.0, 3.0), (12.34, 56.78), (-12.3, 4.0)
+                (12.5, 2.5), (12.34, 56.78), (-12.3, 4.0)
             ",
             Ok(Payload::Insert(3)),
         ),
@@ -36,7 +36,7 @@ test_case!(div_mod, async move {
             Ok(select!(
                 "DIV(dividend, divisor)" | "MOD(dividend, divisor)"
                 I64                      | F64;
-                eval_div(12.0, 3.0)        eval_mod(12.0, 3.0);
+                eval_div(12.5, 2.5)        eval_mod(12.5, 2.5);
                 eval_div(12.34, 56.78)     eval_mod(12.34, 56.78);
                 eval_div(-12.3, 4.0)       eval_mod(-12.3, 4.0)
             )),
@@ -93,12 +93,12 @@ test_case!(div_mod, async move {
             ",
             Ok(select!(
                 "DIV(dividend, divisor)" | "MOD(dividend, divisor)"
-                I64                      | F64;
-                eval_div(12_f64, 3_f64)    eval_mod(12_f64, 3_f64);
-                eval_div(12_f64, 7_f64)    eval_mod(12_f64, 7_f64);
-                eval_div(12_f64, 34_f64)   eval_mod(12_f64, 34_f64);
-                eval_div(-12_f64, 7_f64)   eval_mod(-12_f64, 7_f64);
-                eval_div(12_f64, 2_f64)   eval_mod(12_f64, 2_f64)
+                I64                      | I64;
+                eval_div(12_f64, 3_f64)    0;
+                eval_div(12_f64, 7_f64)    5;
+                eval_div(12_f64, 34_f64)   12;
+                eval_div(-12_f64, 7_f64)   i64::from(-5);
+                eval_div(12_f64, 2_f64)    0
             )),
         ),
         (
@@ -128,8 +128,8 @@ test_case!(div_mod, async move {
             ",
             Ok(select_with_null!(
                 "DIV(dividend, divisor)"    | "MOD(dividend, divisor)";
-                I64(eval_div(12_f64, 3.0))    F64(eval_mod(12_f64, 3.0));
-                I64(eval_div(12_f64, 34.0))   F64(eval_mod(12_f64, 34.0));
+                I64(eval_div(12_f64, 3.0))    I64(0);
+                I64(eval_div(12_f64, 34.0))   I64(12);
                 Null                          Null;
                 Null                          Null;
                 Null                          Null

@@ -18,7 +18,7 @@ test_case!(conversion, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Create);
-    test(actual, expected);
+    assert_eq!(actual, expected, "create table - Visitor");
 
     let actual = table("Visitor")
         .insert()
@@ -29,7 +29,7 @@ test_case!(conversion, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Insert(2));
-    test(actual, expected);
+    assert_eq!(actual, expected, "insert - Visitor");
 
     // Date
     let actual = table("Visitor")
@@ -46,7 +46,7 @@ test_case!(conversion, async move {
         1    "Bryanna".to_owned()   NaiveDate::from_ymd_opt(2022, 12, 23).unwrap()   NaiveDate::from_ymd_opt(2022, 12, 23).unwrap();
         2    "Ash".to_owned()       NaiveDate::from_ymd_opt(2023, 4, 1).unwrap()     NaiveDate::from_ymd_opt(2023, 4, 1).unwrap()
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "to_date");
 
     // Time
     let actual = table("Visitor")
@@ -63,7 +63,7 @@ test_case!(conversion, async move {
         1    "Bryanna".to_owned()   NaiveTime::from_hms_opt(13, 5, 26).unwrap()   NaiveTime::from_hms_opt(13, 5, 26).unwrap();
         2    "Ash".to_owned()       NaiveTime::from_hms_opt(23, 24, 11).unwrap()  NaiveTime::from_hms_opt(23, 24, 11).unwrap()
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "to_time");
 
     // Timestamp
     let actual = table("Visitor")
@@ -80,5 +80,5 @@ test_case!(conversion, async move {
         1    "Bryanna".to_owned()    NaiveDate::from_ymd_opt(2022, 12, 23).unwrap().and_hms_opt(13, 5, 26).unwrap()   NaiveDate::from_ymd_opt(2022, 12, 23).unwrap().and_hms_opt(13, 5, 26).unwrap();
         2    "Ash".to_owned()        NaiveDate::from_ymd_opt(2023, 4, 1).unwrap().and_hms_opt(23, 24, 11).unwrap()    NaiveDate::from_ymd_opt(2023, 4, 1).unwrap().and_hms_opt(23, 24, 11).unwrap()
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "to_timestamp");
 });

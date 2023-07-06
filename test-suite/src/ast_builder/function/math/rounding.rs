@@ -14,7 +14,7 @@ test_case!(rounding, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Create);
-    test(actual, expected);
+    assert_eq!(actual, expected, "create table - Number");
 
     // insert into Number
     let actual = table("Number")
@@ -23,7 +23,7 @@ test_case!(rounding, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Insert(4));
-    test(actual, expected);
+    assert_eq!(actual, expected, "insert into Number");
 
     // ceil
     let actual = table("Number")
@@ -41,7 +41,7 @@ test_case!(rounding, async move {
         3     10.0                 10.0;
         4     7.0                  7.0
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "ceil");
 
     //floor
     let actual = table("Number")
@@ -59,7 +59,7 @@ test_case!(rounding, async move {
         3     10.0                  10.0;
         4     6.0                   6.0
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "floor");
 
     //round
     let actual = table("Number")
@@ -77,5 +77,5 @@ test_case!(rounding, async move {
         3     10.0                  10.0;
         4     7.0                   7.0
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "round");
 });

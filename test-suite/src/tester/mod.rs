@@ -17,75 +17,6 @@ pub fn expr(sql: &str) -> Expr {
     translate_expr(&parsed).unwrap()
 }
 
-pub fn test(found: Result<Payload>, expected: Result<Payload>) {
-    let (found, expected): (Payload, Payload) = match (found, expected) {
-        (Ok(a), Ok(b)) => (a, b),
-        (a, b) => {
-            assert_eq!(a, b);
-
-            return;
-        }
-    };
-
-    let (found, expected) = match (found, expected) {
-        (
-            Payload::Select {
-                labels: found_labels,
-                rows: a,
-            },
-            Payload::Select {
-                labels: expected_labels,
-                rows: b,
-            },
-        ) => {
-            assert_eq!(found_labels, expected_labels);
-
-            (a, b)
-        }
-        (a, b) => {
-            assert_eq!(a, b);
-
-            return;
-        }
-    };
-
-    assert_eq!(
-        found.len(),
-        expected.len(),
-        "\n[err: number of rows]\n   found: {:?}\nexpected: {:?}",
-        found,
-        expected
-    );
-
-    let rows = found.into_iter().zip(expected.into_iter()).enumerate();
-
-    for (i, (found, expected)) in rows {
-        assert_eq!(
-            found.len(),
-            expected.len(),
-            "\n[err: size of row] row index: {}\n   found: {:?}\nexpected: {:?}",
-            i,
-            found,
-            expected
-        );
-
-        found
-            .iter()
-            .zip(expected.iter())
-            .for_each(|(found_val, expected_val)| {
-                if matches!((found_val, expected_val), (&Value::Null, &Value::Null)) {
-                    return;
-                }
-
-                assert_eq!(
-                    found_val, expected_val,
-                    "\n[err: value] row index: {}\n   found: {:?}\nexpected: {:?}",
-                    i, found, expected
-                );
-            });
-    }
-}
-
 pub async fn run<T: GStore + GStoreMut>(
     sql: &str,
     glue: &mut Glue<T>,
@@ -98,7 +29,7 @@ pub async fn run<T: GStore + GStoreMut>(
 
     test_indexes(&statement, indexes);
 
-    glue.execute_stmt_async(&statement).await
+    glue.execute_stmt(&statement).await
 }
 
 pub fn test_indexes(statement: &Statement, indexes: Option<Vec<IndexItem>>) {
@@ -292,19 +223,19 @@ macro_rules! test_case {
                 (name: $test_name: literal, sql: $sql: expr, expected: $expected: expr) => {
                     let found = run($sql, glue, None).await;
 
-                    $crate::test(found, $expected);
+                    assert_eq!(found, $expected, $test_name);
                 };
 
                 (sql: $sql: expr, expected: $expected: expr) => {
                     let found = run($sql, glue, None).await;
 
-                    $crate::test(found, $expected);
+                    assert_eq!(found, $expected);
                 };
 
                 ($sql: expr, $expected: expr) => {
                     let found = run($sql, glue, None).await;
 
-                    $crate::test(found, $expected);
+                    assert_eq!(found, $expected);
                 };
             }
 
@@ -313,7 +244,7 @@ macro_rules! test_case {
                 ($expected: expr, $indexes: expr, $sql: expr) => {
                     let found = run($sql, glue, Some($indexes)).await;
 
-                    $crate::test($expected, found);
+                    assert_eq!(found, $expected);
                 };
             }
 

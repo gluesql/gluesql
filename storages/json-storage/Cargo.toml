@@ -23,7 +23,6 @@ tokio = { version = "1", features = ["rt", "macros"] }
 hex = "0.4"
 thiserror = "1.0"
 iter-enum = "1"
-async-io = "1"
 
 [dev-dependencies]
 test-suite.workspace = true

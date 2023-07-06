@@ -14,7 +14,7 @@ test_case!(update, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Create);
-    test(actual, expected);
+    assert_eq!(actual, expected, "create table - Foo");
 
     let actual = table("Foo")
         .insert()
@@ -26,7 +26,7 @@ test_case!(update, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Insert(3));
-    test(actual, expected);
+    assert_eq!(actual, expected, "insert into Foo");
 
     let actual = table("Foo").select().execute(glue).await;
     let expected = Ok(select!(
@@ -36,7 +36,7 @@ test_case!(update, async move {
         2     300     false;
         3     700     true
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "select * from Foo");
 
     // update all
     let actual = table("Foo")
@@ -45,7 +45,7 @@ test_case!(update, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Update(3));
-    test(actual, expected);
+    assert_eq!(actual, expected, "update all");
 
     let actual = table("Foo").select().execute(glue).await;
     let expected = Ok(select!(
@@ -55,7 +55,7 @@ test_case!(update, async move {
         2     30      false;
         3     70      true
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "select * from Foo");
 
     // update set multiple and use filter
     let actual = table("Foo")
@@ -66,7 +66,7 @@ test_case!(update, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Update(2));
-    test(actual, expected);
+    assert_eq!(actual, expected, "update set multiple and use filter");
 
     let actual = table("Foo").select().execute(glue).await;
     let expected = Ok(select!(
@@ -76,5 +76,5 @@ test_case!(update, async move {
         2     65      true;
         3     70      true
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "select * from Foo");
 });

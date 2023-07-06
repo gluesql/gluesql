@@ -22,7 +22,7 @@ test_case!(current_date_and_time, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Create);
-    test(actual, expected);
+    assert_eq!(actual, expected, "create table - Record");
 
     let actual = table("Record")
         .insert()
@@ -34,7 +34,7 @@ test_case!(current_date_and_time, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Insert(3));
-    test(actual, expected);
+    assert_eq!(actual, expected, "insert - Record");
 
     // Now
     let actual = table("Record")
@@ -48,5 +48,5 @@ test_case!(current_date_and_time, async move {
         I64 | Timestamp;
         3     t!("9999-12-31T23:59:40.364832862")
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "now");
 });

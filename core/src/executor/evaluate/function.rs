@@ -5,6 +5,7 @@ use {
         data::{Point, Value, ValueError},
         result::Result,
     },
+    md5::{Digest, Md5},
     rand::{rngs::StdRng, Rng, SeedableRng},
     std::ops::ControlFlow,
     uuid::Uuid,
@@ -259,12 +260,24 @@ pub fn chr<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
     }
 }
 
+pub fn md5<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let string = eval_to_str!(name, expr);
+    let mut hasher = Md5::new();
+    hasher.update(string.as_bytes());
+    let result = hasher.finalize();
+    let result = format!("{:x}", result);
+
+    Ok(Evaluated::from(Value::Str(result)))
+}
+
 // --- float ---
 
 pub fn abs<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
     match n.try_into()? {
         Value::I8(v) => Ok(Evaluated::from(Value::I8(v.abs()))),
+        Value::I32(v) => Ok(Evaluated::from(Value::I32(v.abs()))),
         Value::I64(v) => Ok(Evaluated::from(Value::I64(v.abs()))),
+        Value::I128(v) => Ok(Evaluated::from(Value::I128(v.abs()))),
         Value::Decimal(v) => Ok(Evaluated::from(Value::Decimal(v.abs()))),
         Value::F32(v) => Ok(Evaluated::from(Value::F32(v.abs()))),
         Value::F64(v) => Ok(Evaluated::from(Value::F64(v.abs()))),
@@ -623,8 +636,8 @@ pub fn find_idx<'a>(
     .map(Evaluated::from)
 }
 
-pub async fn cast<'a>(expr: Evaluated<'a>, data_type: &DataType) -> Result<Evaluated<'a>> {
-    expr.cast(data_type).await
+pub fn cast<'a>(expr: Evaluated<'a>, data_type: &DataType) -> Result<Evaluated<'a>> {
+    expr.cast(data_type)
 }
 
 pub fn extract<'a>(field: &DateTimeField, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {

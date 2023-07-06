@@ -4,7 +4,7 @@ use {
         Value, ValueError,
     },
     crate::{
-        data::{Interval, IntervalError, Point},
+        data::{IntervalError, Point},
         result::{Error, Result},
     },
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
@@ -35,7 +35,7 @@ impl From<&Value> for String {
             Value::Date(value) => value.to_string(),
             Value::Timestamp(value) => value.to_string(),
             Value::Time(value) => value.to_string(),
-            Value::Interval(value) => value.into(),
+            Value::Interval(value) => value.to_sql_str(),
             Value::Uuid(value) => Uuid::from_u128(*value).to_string(),
             Value::Map(_) => TryInto::<serde_json::Value>::try_into(v.clone())
                 .unwrap_or_default()
@@ -756,15 +756,6 @@ impl TryFrom<&Value> for NaiveDateTime {
     }
 }
 
-impl Value {
-    pub async fn try_into_interval(&self) -> Result<Interval> {
-        match self {
-            Value::Str(value) => Interval::parse(value.as_str()).await,
-            _ => Err(ValueError::ImpossibleCast.into()),
-        }
-    }
-}
-
 impl TryFrom<&Value> for IpAddr {
     type Error = Error;
 
@@ -796,7 +787,6 @@ mod tests {
         super::{Value, ValueError},
         crate::{data::point, data::Interval as I, data::Point, result::Result},
         chrono::{self, NaiveDate, NaiveDateTime, NaiveTime},
-        futures::executor::block_on,
         rust_decimal::Decimal,
         std::{
             collections::HashMap,
@@ -850,7 +840,7 @@ mod tests {
             "2021-11-20 10:00:00"
         );
         test!(Value::Time(time(10, 0, 0, 0)), "10:00:00");
-        test!(Value::Interval(I::Month(1)), String::from(I::Month(1)));
+        test!(Value::Interval(I::Month(1)), I::Month(1).to_sql_str());
         test!(
             Value::Uuid(195965723427462096757863453463987888808),
             "936da01f-9abd-4d9d-80c7-02af85c822a8"
@@ -1978,26 +1968,6 @@ mod tests {
         );
         test!(&Value::F32(1.0_f32), Err(ValueError::ImpossibleCast.into()));
         test!(&Value::F64(1.0), Err(ValueError::ImpossibleCast.into()));
-    }
-
-    #[test]
-    fn try_into_interval() {
-        assert_eq!(
-            block_on(Value::Str("'+22-10' YEAR TO MONTH".to_owned()).try_into_interval()),
-            Ok(I::Month(274))
-        );
-        assert_eq!(
-            block_on(Value::Str("'+22-10' YEAR TO MONTH".to_owned()).try_into_interval()),
-            Ok(I::Month(274))
-        );
-        assert_eq!(
-            block_on(Value::F32(1.0_f32).try_into_interval()),
-            Err(ValueError::ImpossibleCast.into())
-        );
-        assert_eq!(
-            block_on(Value::F64(1.0).try_into_interval()),
-            Err(ValueError::ImpossibleCast.into())
-        );
     }
 
     #[test]

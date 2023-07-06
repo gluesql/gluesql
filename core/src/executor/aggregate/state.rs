@@ -89,11 +89,11 @@ impl AggrValue {
                 }
             }
             Self::Sum(value) => Ok(Some(Self::Sum(value.add(new_value)?))),
-            Self::Min(value) => match &value.partial_cmp(new_value) {
+            Self::Min(value) => match &value.evaluate_cmp(new_value) {
                 Some(Ordering::Greater) => Ok(Some(Self::Min(new_value.clone()))),
                 _ => Ok(None),
             },
-            Self::Max(value) => match &value.partial_cmp(new_value) {
+            Self::Max(value) => match &value.evaluate_cmp(new_value) {
                 Some(Ordering::Less) => Ok(Some(Self::Max(new_value.clone()))),
                 _ => Ok(None),
             },
@@ -127,10 +127,7 @@ impl AggrValue {
             let count = Value::I64(count);
             let sum_expr1 = sum_square.multiply(&count)?;
             let sum_expr2 = sum.multiply(&sum)?;
-            let expr_sub = sum_expr1
-                .cast(&DataType::Float)
-                .await?
-                .subtract(&sum_expr2)?;
+            let expr_sub = sum_expr1.cast(&DataType::Float)?.subtract(&sum_expr2)?;
             let cnt_square = count.multiply(&count)?;
             expr_sub.divide(&cnt_square)
         };
@@ -139,7 +136,7 @@ impl AggrValue {
             Self::Count { count, .. } => Ok(Value::I64(count)),
             Self::Sum(value) | Self::Min(value) | Self::Max(value) => Ok(value),
             Self::Avg { sum, count } => {
-                let sum = sum.cast(&DataType::Float).await?;
+                let sum = sum.cast(&DataType::Float)?;
 
                 sum.divide(&Value::I64(count))
             }

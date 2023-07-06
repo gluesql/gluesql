@@ -23,6 +23,7 @@ async-io = "1"
 test-suite.workspace = true
 criterion = "0.3"
 tokio = { version = "1", features = ["rt", "macros"] }
+futures = "0.3"
 
 [[bench]]
 name = "sled_benchmark"

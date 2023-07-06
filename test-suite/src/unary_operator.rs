@@ -59,7 +59,7 @@ test_case!(unary_operator, async move {
             "SELECT v1! as v1 FROM Test",
             Ok(select!(
                 v1
-                I64;
+                I128;
                 3628800
             )),
         ),
@@ -67,7 +67,7 @@ test_case!(unary_operator, async move {
             "SELECT 4! as v1 FROM Test",
             Ok(select!(
                 v1
-                I64;
+                I128;
                 24
             )),
         ),

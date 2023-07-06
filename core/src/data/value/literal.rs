@@ -18,8 +18,37 @@ use {
     },
 };
 
-impl PartialEq<Literal<'_>> for Value {
-    fn eq(&self, other: &Literal<'_>) -> bool {
+impl TryFrom<&Literal<'_>> for Value {
+    type Error = Error;
+
+    fn try_from(literal: &Literal<'_>) -> Result<Self> {
+        match literal {
+            Literal::Number(v) => v
+                .to_i64()
+                .map(Value::I64)
+                .or_else(|| v.to_f64().map(Value::F64))
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+            Literal::Boolean(v) => Ok(Value::Bool(*v)),
+            Literal::Text(v) => Ok(Value::Str(v.as_ref().to_owned())),
+            Literal::Bytea(v) => Ok(Value::Bytea(v.to_vec())),
+            Literal::Null => Ok(Value::Null),
+        }
+    }
+}
+
+impl TryFrom<Literal<'_>> for Value {
+    type Error = Error;
+
+    fn try_from(literal: Literal<'_>) -> Result<Self> {
+        match literal {
+            Literal::Text(v) => Ok(Value::Str(v.into_owned())),
+            _ => Value::try_from(&literal),
+        }
+    }
+}
+
+impl Value {
+    pub fn evaluate_eq_with_literal(&self, other: &Literal<'_>) -> bool {
         match (self, other) {
             (Value::Bool(l), Literal::Boolean(r)) => l == r,
             (Value::I8(l), Literal::Number(r)) => r.to_i8().map(|r| *l == r).unwrap_or(false),
@@ -62,13 +91,12 @@ impl PartialEq<Literal<'_>> for Value {
                     false
                 }
             }
+            (Value::Null, Literal::Null) => false,
             _ => false,
         }
     }
-}
 
-impl PartialOrd<Literal<'_>> for Value {
-    fn partial_cmp(&self, other: &Literal<'_>) -> Option<Ordering> {
+    pub fn evaluate_cmp_with_literal(&self, other: &Literal<'_>) -> Option<Ordering> {
         match (self, other) {
             (Value::I8(l), Literal::Number(r)) => {
                 r.to_i8().map(|r| l.partial_cmp(&r)).unwrap_or(None)
@@ -142,38 +170,7 @@ impl PartialOrd<Literal<'_>> for Value {
             _ => None,
         }
     }
-}
 
-impl TryFrom<&Literal<'_>> for Value {
-    type Error = Error;
-
-    fn try_from(literal: &Literal<'_>) -> Result<Self> {
-        match literal {
-            Literal::Number(v) => v
-                .to_i64()
-                .map(Value::I64)
-                .or_else(|| v.to_f64().map(Value::F64))
-                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
-            Literal::Boolean(v) => Ok(Value::Bool(*v)),
-            Literal::Text(v) => Ok(Value::Str(v.as_ref().to_owned())),
-            Literal::Bytea(v) => Ok(Value::Bytea(v.to_vec())),
-            Literal::Null => Ok(Value::Null),
-        }
-    }
-}
-
-impl TryFrom<Literal<'_>> for Value {
-    type Error = Error;
-
-    fn try_from(literal: Literal<'_>) -> Result<Self> {
-        match literal {
-            Literal::Text(v) => Ok(Value::Str(v.into_owned())),
-            _ => Value::try_from(&literal),
-        }
-    }
-}
-
-impl Value {
     pub fn try_from_literal(data_type: &DataType, literal: &Literal<'_>) -> Result<Value> {
         match (data_type, literal) {
             (DataType::Boolean, Literal::Boolean(v)) => Ok(Value::Bool(*v)),
@@ -270,10 +267,7 @@ impl Value {
         }
     }
 
-    pub async fn try_cast_from_literal(
-        data_type: &DataType,
-        literal: &Literal<'_>,
-    ) -> Result<Value> {
+    pub fn try_cast_from_literal(data_type: &DataType, literal: &Literal<'_>) -> Result<Value> {
         match (data_type, literal) {
             (DataType::Boolean, Literal::Boolean(v)) => Ok(Value::Bool(*v)),
             (DataType::Boolean, Literal::Text(v)) => match v.to_uppercase().as_str() {
@@ -477,7 +471,7 @@ impl Value {
                 Ok(Value::Str(v.to_owned()))
             }
             (DataType::Interval, Literal::Text(v)) => {
-                Interval::parse(v.as_ref()).await.map(Value::Interval)
+                Interval::parse(v.as_ref()).map(Value::Interval)
             }
             (DataType::Uuid, Literal::Text(v)) => parse_uuid(v).map(Value::Uuid),
             (DataType::Boolean, Literal::Null)
@@ -554,7 +548,7 @@ mod tests {
     }
 
     #[test]
-    fn eq() {
+    fn evaluate_eq_with_literal() {
         use {
             super::parse_uuid,
             std::{borrow::Cow, str::FromStr},
@@ -562,13 +556,13 @@ mod tests {
 
         macro_rules! num {
             ($num: expr) => {
-                Literal::Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
+                &Literal::Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
             };
         }
 
         macro_rules! text {
             ($text: expr) => {
-                Literal::Text(Cow::Owned($text.to_owned()))
+                &Literal::Text(Cow::Owned($text.to_owned()))
             };
         }
 
@@ -578,42 +572,38 @@ mod tests {
         let bytea = || hex::decode("123456").unwrap();
         let inet = |v: &str| Value::Inet(IpAddr::from_str(v).unwrap());
 
-        assert_eq!(Value::Bool(true), Literal::Boolean(true));
-        assert_eq!(Value::I8(8), num!("8"));
-        assert_eq!(Value::I32(32), num!("32"));
-        assert_eq!(Value::I16(16), num!("16"));
-        assert_eq!(Value::I32(32), num!("32"));
-        assert_eq!(Value::I64(64), num!("64"));
-        assert_eq!(Value::I128(128), num!("128"));
-        assert_eq!(Value::U8(7), num!("7"));
-        assert_eq!(Value::U16(64), num!("64"));
-        assert_eq!(Value::U32(64), num!("64"));
-        assert_eq!(Value::U64(64), num!("64"));
-        assert_eq!(Value::U128(64), num!("64"));
-        assert_eq!(Value::F32(7.123), num!("7.123"));
-        assert_eq!(Value::F64(7.123), num!("7.123"));
-        assert_eq!(Value::Str("Hello".to_owned()), text!("Hello"));
-        assert_eq!(Value::Bytea(bytea()), Literal::Bytea(bytea()));
-        assert_eq!(inet("127.0.0.1"), text!("127.0.0.1"));
-        assert_eq!(inet("::1"), text!("::1"));
-        assert_eq!(inet("0.0.0.0"), num!("0"));
-        assert_ne!(inet("::1"), num!("0"));
-        assert_eq!(inet("::2:4cb0:16ea"), num!("9876543210"));
-        assert_ne!(inet("::1"), text!("-1"));
-        assert_ne!(inet("::1"), num!("-1"));
-        assert_eq!(Value::Date(date(2021, 11, 20)), text!("2021-11-20"));
-        assert_ne!(Value::Date(date(2021, 11, 20)), text!("202=abcdef"));
-        assert_eq!(
-            Value::Timestamp(date_time(2021, 11, 20, 10, 0, 0, 0)),
-            text!("2021-11-20T10:00:00Z")
-        );
-        assert_ne!(
-            Value::Timestamp(date_time(2021, 11, 20, 10, 0, 0, 0)),
-            text!("2021-11-Hello")
-        );
-        assert_eq!(Value::Time(time(10, 0, 0, 0)), text!("10:00:00"));
-        assert_ne!(Value::Time(time(10, 0, 0, 0)), text!("FALSE"));
-        assert_eq!(Value::Uuid(uuid), text!(uuid_text));
+        assert!(Value::Bool(true).evaluate_eq_with_literal(&Literal::Boolean(true)));
+        assert!(Value::I8(8).evaluate_eq_with_literal(num!("8")));
+        assert!(Value::I32(32).evaluate_eq_with_literal(num!("32")));
+        assert!(Value::I16(16).evaluate_eq_with_literal(num!("16")));
+        assert!(Value::I32(32).evaluate_eq_with_literal(num!("32")));
+        assert!(Value::I64(64).evaluate_eq_with_literal(num!("64")));
+        assert!(Value::I128(128).evaluate_eq_with_literal(num!("128")));
+        assert!(Value::U8(7).evaluate_eq_with_literal(num!("7")));
+        assert!(Value::U16(64).evaluate_eq_with_literal(num!("64")));
+        assert!(Value::U32(64).evaluate_eq_with_literal(num!("64")));
+        assert!(Value::U64(64).evaluate_eq_with_literal(num!("64")));
+        assert!(Value::U128(64).evaluate_eq_with_literal(num!("64")));
+        assert!(Value::F32(7.123).evaluate_eq_with_literal(num!("7.123")));
+        assert!(Value::F64(7.123).evaluate_eq_with_literal(num!("7.123")));
+        assert!(Value::Str("Hello".to_owned()).evaluate_eq_with_literal(text!("Hello")));
+        assert!(Value::Bytea(bytea()).evaluate_eq_with_literal(&Literal::Bytea(bytea())));
+        assert!(inet("127.0.0.1").evaluate_eq_with_literal(text!("127.0.0.1")));
+        assert!(inet("::1").evaluate_eq_with_literal(text!("::1")));
+        assert!(inet("0.0.0.0").evaluate_eq_with_literal(num!("0")));
+        assert!(!inet("::1").evaluate_eq_with_literal(num!("0")));
+        assert!(inet("::2:4cb0:16ea").evaluate_eq_with_literal(num!("9876543210")));
+        assert!(!inet("::1").evaluate_eq_with_literal(text!("-1")));
+        assert!(!inet("::1").evaluate_eq_with_literal(num!("-1")));
+        assert!(Value::Date(date(2021, 11, 20)).evaluate_eq_with_literal(text!("2021-11-20")));
+        assert!(!Value::Date(date(2021, 11, 20)).evaluate_eq_with_literal(text!("202=abcdef")));
+        assert!(Value::Timestamp(date_time(2021, 11, 20, 10, 0, 0, 0))
+            .evaluate_eq_with_literal(text!("2021-11-20T10:00:00Z")));
+        assert!(!Value::Timestamp(date_time(2021, 11, 20, 10, 0, 0, 0))
+            .evaluate_eq_with_literal(text!("2021-11-Hello")));
+        assert!(Value::Time(time(10, 0, 0, 0)).evaluate_eq_with_literal(text!("10:00:00")));
+        assert!(!Value::Time(time(10, 0, 0, 0)).evaluate_eq_with_literal(text!("FALSE")));
+        assert!(Value::Uuid(uuid).evaluate_eq_with_literal(text!(uuid_text)));
     }
 
     #[test]
@@ -837,7 +827,7 @@ mod tests {
 
         macro_rules! test {
             ($from: expr, $expected: expr) => {
-                assert_eq!(Value::try_from($from), Ok($expected));
+                assert!(Value::try_from($from).unwrap().evaluate_eq(&$expected));
             };
         }
 
@@ -857,7 +847,6 @@ mod tests {
         use {
             crate::{ast::DataType, data::Interval as I},
             chrono::NaiveDate,
-            futures::executor::block_on,
             std::{borrow::Cow, str::FromStr},
         };
 
@@ -875,7 +864,7 @@ mod tests {
 
         macro_rules! test {
             ($to: expr, $from: expr, $expected: expr) => {
-                let actual = block_on(Value::try_cast_from_literal(&$to, &$from));
+                let actual = Value::try_cast_from_literal(&$to, &$from);
 
                 assert_eq!(actual, Ok($expected))
             };
@@ -884,7 +873,7 @@ mod tests {
         macro_rules! test_null {
             ($to: expr, $from: expr) => {
                 assert!(matches!(
-                    block_on(Value::try_cast_from_literal(&$to, &$from)),
+                    Value::try_cast_from_literal(&$to, &$from),
                     Ok(Value::Null)
                 ))
             };

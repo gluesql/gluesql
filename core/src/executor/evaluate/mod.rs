@@ -154,7 +154,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
 
             stream::iter(list)
                 .then(eval)
-                .try_filter(|evaluated| ready(evaluated == &target))
+                .try_filter(|evaluated| ready(evaluated.evaluate_eq(&target)))
                 .try_next()
                 .await
                 .map(|v| v.is_some() ^ negated)
@@ -185,7 +185,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
 
                     Ok(Evaluated::from(value))
                 })
-                .try_filter(|evaluated| ready(evaluated == &target))
+                .try_filter(|evaluated| ready(evaluated.evaluate_eq(&target)))
                 .try_next()
                 .await
                 .map(|v| v.is_some() ^ negated)
@@ -215,7 +215,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
 
             Ok(match negated {
                 true => Evaluated::from(Value::Bool(
-                    evaluated == Evaluated::Literal(Literal::Boolean(false)),
+                    evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false))),
                 )),
                 false => evaluated,
             })
@@ -231,7 +231,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
 
             Ok(match negated {
                 true => Evaluated::from(Value::Bool(
-                    evaluated == Evaluated::Literal(Literal::Boolean(false)),
+                    evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false))),
                 )),
                 false => evaluated,
             })
@@ -271,7 +271,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
             for (when, then) in when_then.iter() {
                 let when = eval(when).await?;
 
-                if when.eq(&operand) {
+                if when.evaluate_eq(&operand) {
                     return eval(then).await;
                 }
             }
@@ -296,7 +296,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 .and_then(Value::try_from)
                 .map(String::from)?;
 
-            Interval::try_from_literal(&value, *leading_field, *last_field)
+            Interval::try_from_str(&value, *leading_field, *last_field)
                 .map(Value::Interval)
                 .map(Evaluated::from)
         }
@@ -451,6 +451,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         }
         Function::Ascii(expr) => f::ascii(name, eval(expr).await?),
         Function::Chr(expr) => f::chr(name, eval(expr).await?),
+        Function::Md5(expr) => f::md5(name, eval(expr).await?),
 
         // --- float ---
         Function::Abs(expr) => f::abs(name, eval(expr).await?),
@@ -590,7 +591,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         }
         Function::Cast { expr, data_type } => {
             let expr = eval(expr).await?;
-            f::cast(expr, data_type).await
+            f::cast(expr, data_type)
         }
         Function::Extract { field, expr } => {
             let expr = eval(expr).await?;
