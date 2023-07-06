@@ -1,4 +1,0 @@
-{
-  "id": 1,
-  "notice": "This file exists to throw error if both *.jsonl and *.json file exist with identical name"
-}
