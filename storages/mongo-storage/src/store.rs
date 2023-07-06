@@ -36,7 +36,26 @@ impl Store for MongoStorage {
     }
 
     async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<DataRow>> {
-        todo!();
+        let filter = match target {
+            Key::U8(key) => doc! { "_id": key.into() },
+            Key::Str(key) => doc! { "_id": key },
+            _ => todo!(),
+        };
+
+        let cursor = self
+            .db
+            .collection::<Document>(table_name)
+            .find(filter, None)
+            .await
+            .map_storage_err()?;
+
+        let a = cursor.next().await.map(|a| {
+            a.map(|doc| {
+                doc.into_iter()
+                    .map(|(_, bson)| bson.into_value())
+                    .collect::<Vec<_>>()
+            })
+        });
     }
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
