@@ -5,7 +5,7 @@ use gluesql_core::{
 };
 use mongodb::bson::{doc, Bson, Document};
 
-use crate::value::IntoValue;
+use crate::value::{IntoRow, IntoValue};
 
 use {
     crate::{
@@ -69,17 +69,7 @@ impl Store for MongoStorage {
         let row_iter = cursor.map(|doc| {
             let doc = doc.map_storage_err()?;
 
-            let key = doc.get_object_id("_id").map_storage_err()?;
-            let key_bytes = key.bytes();
-            let key_u8 = u8::from_be_bytes(key_bytes[..1].try_into().unwrap()); // TODO: should be string?
-            let key = Key::U8(key_u8);
-
-            let row = doc
-                .into_iter()
-                .map(|(_, bson)| bson.into_value())
-                .collect::<Vec<_>>();
-
-            Ok((key, DataRow::Vec(row)))
+            doc.into_row()
         });
 
         let row_iter = row_iter.collect::<Vec<_>>().await.into_iter();

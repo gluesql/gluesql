@@ -1,8 +1,11 @@
-use gluesql_core::store::DataRow;
+use gluesql_core::{prelude::Key, store::DataRow};
 use mongodb::bson::Document;
+
+use crate::error::ResultExt;
 
 use {
     gluesql_core::data::{Row, Value},
+    gluesql_core::prelude::Result,
     mongodb::bson::Bson,
 };
 
@@ -59,19 +62,19 @@ impl IntoValue for Bson {
 }
 
 pub trait IntoRow {
-    fn into_row(self) -> DataRow;
+    fn into_row(self) -> Result<(Key, DataRow)>;
 }
 
 impl IntoRow for Document {
-    fn into_row(self) -> DataRow {
-        let doc = doc.map_storage_err()?;
+    fn into_row(self) -> Result<(Key, DataRow)> {
+        // let doc = self.map_storage_err()?;
 
-        let key = doc.get_object_id("_id").map_storage_err()?;
+        let key = self.get_object_id("_id").map_storage_err()?;
         let key_bytes = key.bytes();
         let key_u8 = u8::from_be_bytes(key_bytes[..1].try_into().unwrap()); // TODO: should be string?
         let key = Key::U8(key_u8);
 
-        let row = doc
+        let row = self
             .into_iter()
             .map(|(_, bson)| bson.into_value())
             .collect::<Vec<_>>();
