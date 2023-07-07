@@ -1,13 +1,9 @@
 use gluesql_core::{prelude::Key, store::DataRow};
-use mongodb::bson::Document;
+use mongodb::bson::{Bson, Document};
 
 use crate::error::ResultExt;
 
-use {
-    gluesql_core::data::{Row, Value},
-    gluesql_core::prelude::Result,
-    mongodb::bson::Bson,
-};
+use {gluesql_core::data::Value, gluesql_core::prelude::Result};
 
 pub trait IntoValue {
     fn into_value(self) -> Value;
@@ -80,5 +76,43 @@ impl IntoRow for Document {
             .collect::<Vec<_>>();
 
         Ok((key, DataRow::Vec(row)))
+    }
+}
+
+pub trait IntoBson {
+    fn into_bson(self) -> Result<Bson>;
+}
+
+impl IntoBson for Key {
+    fn into_bson(self) -> Result<Bson> {
+        match self {
+            Key::I8(val) => Ok(Bson::Int32(val as i32)),
+            Key::I16(val) => Ok(Bson::Int32(val as i32)),
+            Key::I32(val) => Ok(Bson::Int32(val)),
+            Key::I64(val) => Ok(Bson::Int64(val)),
+            Key::I128(val) => Ok(Bson::Int64(val as i64)),
+            Key::U8(val) => Ok(Bson::Int32(val as i32)),
+            Key::U16(val) => Ok(Bson::Int32(val as i32)),
+            Key::U32(val) => Ok(Bson::Int64(val as i64)),
+            Key::U64(val) => Ok(Bson::Int64(val as i64)),
+            Key::U128(val) => Ok(Bson::Int64(val as i64)),
+            // Key::F32(val) => Ok(Bson::Double(val.into())),
+            Key::F64(val) => Ok(Bson::Double(val.into())),
+            Key::Decimal(val) => Ok(Bson::String(val.to_string())),
+            Key::Bool(val) => Ok(Bson::Boolean(val)),
+            Key::Str(val) => Ok(Bson::String(val)),
+            // Key::Bytea(val) => Ok(Bson::Binary(bson::spec::BinarySubtype::Generic, val)),
+            // Key::Date(val) => Ok(Bson::UtcDatetime(val.and_hms(0, 0, 0))),
+            // Key::Timestamp(val) => Ok(Bson::UtcDatetime(val)),
+            Key::Time(val) => Ok(Bson::String(val.format("%H:%M:%S%.f").to_string())),
+            // Key::Interval(val) => Ok(Bson::String(val.to_string())),
+            // Key::Uuid(val) => Ok(Bson::Binary(
+            //     bson::spec::BinarySubtype::Uuid,
+            //     val.to_be_bytes().to_vec(),
+            // )),
+            Key::Inet(val) => Ok(Bson::String(val.to_string())),
+            Key::None => Ok(Bson::Null),
+            _ => todo!(),
+        }
     }
 }
