@@ -20,9 +20,7 @@ pub struct MongoStorage {
 
 impl MongoStorage {
     pub async fn new(conn_str: &str) -> Result<Self> {
-        let client_options = ClientOptions::parse("mongodb://localhost:27017")
-            .await
-            .map_storage_err()?;
+        let client_options = ClientOptions::parse(conn_str).await.map_storage_err()?;
 
         let client = Client::with_options(client_options).map_storage_err()?;
         let db = client.database("gluedb"); // should be by parameter
