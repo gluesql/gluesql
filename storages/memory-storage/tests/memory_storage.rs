@@ -27,33 +27,33 @@ generate_alter_table_tests!(tokio::test, MemoryTester);
 
 generate_metadata_table_tests!(tokio::test, MemoryTester);
 
+generate_custom_function_tests!(tokio::test, MemoryTester);
+
 macro_rules! exec {
     ($glue: ident $sql: literal) => {
-        $glue.execute($sql).unwrap();
+        $glue.execute($sql).await.unwrap();
     };
 }
 
 macro_rules! test {
-    ($glue: ident $sql: literal, $result: expr) => {
-        assert_eq!($glue.execute($sql), $result);
+    ($glue: ident $sql: expr, $result: expr) => {
+        assert_eq!($glue.execute($sql).await, $result);
     };
 }
 
-#[test]
-fn memory_storage_index() {
-    use {
-        futures::executor::block_on,
-        gluesql_core::{
-            prelude::Glue,
-            result::{Error, Result},
-            store::{Index, Store},
-        },
+#[tokio::test]
+async fn memory_storage_index() {
+    use gluesql_core::{
+        prelude::{Error, Glue, Result},
+        store::{Index, Store},
     };
 
     let storage = MemoryStorage::default();
 
     assert_eq!(
-        block_on(storage.scan_data("Idx"))
+        storage
+            .scan_data("Idx")
+            .await
             .unwrap()
             .collect::<Result<Vec<_>>>()
             .as_ref()
@@ -62,7 +62,10 @@ fn memory_storage_index() {
     );
 
     assert_eq!(
-        block_on(storage.scan_indexed_data("Idx", "hello", None, None)).map(|_| ()),
+        storage
+            .scan_indexed_data("Idx", "hello", None, None)
+            .await
+            .map(|_| ()),
         Err(Error::StorageMsg(
             "[MemoryStorage] index is not supported".to_owned()
         ))
@@ -81,12 +84,9 @@ fn memory_storage_index() {
     );
 }
 
-#[test]
-fn memory_storage_transaction() {
-    use gluesql_core::{
-        prelude::{Glue, Payload},
-        result::Error,
-    };
+#[tokio::test]
+async fn memory_storage_transaction() {
+    use gluesql_core::prelude::{Error, Glue, Payload};
 
     let storage = MemoryStorage::default();
     let mut glue = Glue::new(storage);

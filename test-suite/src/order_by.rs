@@ -1,6 +1,9 @@
 use {
     crate::*,
-    gluesql_core::{executor::SortError, prelude::Value::*, translate::TranslateError},
+    gluesql_core::{
+        error::{SortError, TranslateError},
+        prelude::Value::*,
+    },
 };
 
 test_case!(order_by, async move {

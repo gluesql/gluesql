@@ -3,8 +3,12 @@ name: Coverage
 on:
   push:
     branches: [main, release-*]
+    paths-ignore:
+      - 'docs/**'
   pull_request:
     branches: [main, release-*]
+    paths-ignore:
+      - 'docs/**'
 
 env:
   CARGO_TERM_COLOR: always
@@ -14,9 +18,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
+      - name: Read rust-toolchain file
+        id: rust-toolchain
+        run: echo "toolchain=$(cat rust-toolchain)" >> $GITHUB_OUTPUT
+      - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: stable
+          toolchain: ${{ steps.rust-toolchain.outputs.toolchain }}
       - uses: Swatinem/rust-cache@v2
       - run: rustup component add llvm-tools-preview
       - name: Install grcov

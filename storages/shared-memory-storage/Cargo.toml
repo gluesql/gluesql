@@ -1,10 +1,10 @@
 [package]
 name = "gluesql-shared-memory-storage"
-version = "0.13.0"
 authors = [
 	"Jiseok CHOI <jiseok.dev@gmail.com>",
 	"Taehoon Moon <taehoon.moon@outlook.com>",
 ]
+version.workspace = true
 edition.workspace = true
 description.workspace = true
 license.workspace = true
@@ -12,13 +12,14 @@ repository.workspace = true
 documentation.workspace = true
 
 [dependencies]
-memory-storage = { package = "gluesql_memory_storage", version = "0.13.0", path = "../memory-storage" }
-gluesql-core = { path = "../../core", version = "0.13.0" }
+gluesql-core.workspace = true
+memory-storage.workspace = true
+
 async-trait = "0.1"
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["sync"] }
 
 [dev-dependencies]
-test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.13.0" }
+test-suite.workspace = true
 futures = "0.3"
 tokio = { version = "1", features = ["rt", "macros"] }

@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        executor::{EvaluateError, FetchError},
+        error::{EvaluateError, FetchError},
         prelude::Value::*,
     },
 };

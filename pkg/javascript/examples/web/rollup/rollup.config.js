@@ -1,4 +1,5 @@
 import resolve from '@rollup/plugin-node-resolve';
+import { wasm } from '@rollup/plugin-wasm';
 
 export default {
   input: 'main.js',
@@ -8,5 +9,6 @@ export default {
   },
   plugins: [
     resolve({ browser: true }),
+    wasm({ targetEnv: 'auto-inline' }),
   ],
 };

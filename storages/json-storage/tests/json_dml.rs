@@ -6,11 +6,11 @@ use {
         fs::{remove_dir_all, File},
         io::Write,
     },
-    test_suite::{select_map, test},
+    test_suite::select_map,
 };
 
-#[test]
-fn json_dml() {
+#[tokio::test]
+async fn json_dml() {
     let path = "tmp/json_dml";
     if let Err(e) = remove_dir_all(path) {
         println!("fs::remove_file {:?}", e);
@@ -31,11 +31,12 @@ fn json_dml() {
 
     let cases = vec![
         (
-            glue.execute(r#"INSERT INTO JsonDML VALUES ('{"id": 2, "notice": "appended json"}')"#),
+            glue.execute(r#"INSERT INTO JsonDML VALUES ('{"id": 2, "notice": "appended json"}')"#)
+                .await,
             Ok(Payload::Insert(1)),
         ),
         (
-            glue.execute("SELECT * FROM JsonDML"),
+            glue.execute("SELECT * FROM JsonDML").await,
             Ok(select_map![
                 json!({
                   "id": 1,
@@ -48,37 +49,43 @@ fn json_dml() {
             ]),
         ),
         (
-            glue.execute("UPDATE JsonDML SET notice = 'updated' WHERE id = 2"),
+            glue.execute("UPDATE JsonDML SET notice = 'updated' WHERE id = 2")
+                .await,
             Ok(Payload::Update(1)),
         ),
         (
-            glue.execute("SELECT * FROM JsonDML WHERE id = 2"),
+            glue.execute("SELECT * FROM JsonDML WHERE id = 2").await,
             Ok(select_map![json!({
               "id": 2,
               "notice": "updated"
             })]),
         ),
         (
-            glue.execute("DELETE FROM JsonDML WHERE id = 2"),
+            glue.execute("DELETE FROM JsonDML WHERE id = 2").await,
             Ok(Payload::Delete(1)),
         ),
         (
-            glue.execute("SELECT * FROM JsonDML"),
+            glue.execute("SELECT * FROM JsonDML").await,
             Ok(select_map![json!({
               "id": 1,
               "notice": "should keep this array of jsons format"
             })]),
         ),
         (
-            glue.execute("SELECT COUNT(*) FROM GLUE_TABLES WHERE TABLE_NAME = 'JsonDML'"),
+            glue.execute("SELECT COUNT(*) FROM GLUE_TABLES WHERE TABLE_NAME = 'JsonDML'")
+                .await,
             Ok(Payload::Select {
                 labels: vec!["COUNT(*)".to_owned()],
                 rows: vec![vec![Value::I64(1)]],
             }),
         ),
-        (glue.execute("DROP TABLE JsonDML"), Ok(Payload::DropTable)),
         (
-            glue.execute("SELECT COUNT(*) FROM GLUE_TABLES WHERE TABLE_NAME = 'JsonDML'"),
+            glue.execute("DROP TABLE JsonDML").await,
+            Ok(Payload::DropTable),
+        ),
+        (
+            glue.execute("SELECT COUNT(*) FROM GLUE_TABLES WHERE TABLE_NAME = 'JsonDML'")
+                .await,
             Ok(Payload::Select {
                 labels: vec!["COUNT(*)".to_owned()],
                 rows: Vec::new(),
@@ -87,6 +94,6 @@ fn json_dml() {
     ];
 
     for (actual, expected) in cases {
-        test(actual.map(|mut payloads| payloads.remove(0)), expected);
+        assert_eq!(actual.map(|mut payloads| payloads.remove(0)), expected);
     }
 }

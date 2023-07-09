@@ -1,48 +1,44 @@
 use {
     crate::*,
     gluesql_core::{
-        executor::EvaluateError,
-        prelude::{Payload, Value::*},
-        translate::TranslateError,
+        error::{EvaluateError, TranslateError},
+        prelude::Value::*,
     },
 };
 
 test_case!(round, async move {
     let test_cases = [
         (
-            "CREATE TABLE SingleItem (id INTEGER DEFAULT ROUND(3.5))",
-            Ok(Payload::Create),
-        ),
-        (
-            r#"INSERT INTO SingleItem VALUES (0)"#,
-            Ok(Payload::Insert(1)),
-        ),
-        (
-            "SELECT ROUND(0.3) AS round1, ROUND(-0.8) AS round2, ROUND(10) AS round3, ROUND(6.87421) AS round4 FROM SingleItem",
+            "SELECT
+                ROUND(0.3) AS round1,
+                ROUND(-0.8) AS round2,
+                ROUND(10) AS round3,
+                ROUND(6.87421) AS round4
+            ;",
             Ok(select!(
-                round1          | round2                       | round3               | round4
-                F64             | F64                          | F64                  | F64;
-                0.3_f64.round()   f64::round(-0.8_f64)           f64::from(10).round()  6.87421_f64.round()
+                round1 | round2          | round3 | round4
+                F64    | F64             | F64    | F64;
+                0.0      f64::from(-1)   10.0     7.0
             )),
         ),
         (
-            "SELECT ROUND('string') AS round FROM SingleItem",
+            "SELECT ROUND('string') AS round",
             Err(EvaluateError::FunctionRequiresFloatValue(String::from("ROUND")).into()),
         ),
         (
-            "SELECT ROUND(NULL) AS round FROM SingleItem",
+            "SELECT ROUND(NULL) AS round",
             Ok(select_with_null!(round; Null)),
         ),
         (
-            "SELECT ROUND(TRUE) AS round FROM SingleItem",
+            "SELECT ROUND(TRUE) AS round",
             Err(EvaluateError::FunctionRequiresFloatValue(String::from("ROUND")).into()),
         ),
         (
-            "SELECT ROUND(FALSE) AS round FROM SingleItem",
+            "SELECT ROUND(FALSE) AS round",
             Err(EvaluateError::FunctionRequiresFloatValue(String::from("ROUND")).into()),
         ),
         (
-            "SELECT ROUND('string', 'string2') AS round FROM SingleItem",
+            "SELECT ROUND('string', 'string2') AS round",
             Err(TranslateError::FunctionArgsLengthNotMatching {
                 name: "ROUND".to_owned(),
                 expected: 1,

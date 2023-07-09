@@ -1,0 +1,44 @@
+[package]
+name = "gluesql-js"
+authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
+version.workspace = true
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["console_error_panic_hook"]
+
+nodejs = ["console_error_panic_hook"]
+
+[dependencies]
+gluesql-core.workspace = true
+memory-storage .workspace = true
+web-storage.workspace = true
+idb-storage.workspace = true
+composite-storage.workspace = true
+
+wasm-bindgen = { version = "0.2.79" }
+wasm-bindgen-futures = "0.4.29"
+js-sys = "0.3"
+
+serde = "1"
+serde_json = "1"
+gloo-utils = { version = "0.1.6", features = ["serde"] }
+
+# The `console_error_panic_hook` crate provides better debugging of panics by
+# logging them with `console.error`. This is great for development, but requires
+# all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
+# code size when deploying.
+console_error_panic_hook = { version = "0.1.6", optional = true }
+
+[dev-dependencies]
+test-suite.workspace = true
+
+wasm-bindgen-test = "0.3.13"
+async-trait = "0.1"

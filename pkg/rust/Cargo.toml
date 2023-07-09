@@ -1,8 +1,8 @@
 [package]
 name = "gluesql"
-version = "0.13.1"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
 default-run = "gluesql"
+version.workspace = true
 edition.workspace = true
 description.workspace = true
 license.workspace = true
@@ -20,12 +20,16 @@ keywords = [
 all-features = true
 
 [dependencies]
-gluesql-core = { path = "../../core", version = "0.13.1" }
-cli = { package = "gluesql-cli", path = "../../cli", version = "0.13.1", optional = true }
-test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.13.1", optional = true }
-memory-storage = { package = "gluesql_memory_storage", path = "../../storages/memory-storage", version = "0.13.0", optional = true }
-shared-memory-storage = { package = "gluesql-shared-memory-storage", path = "../../storages/shared-memory-storage", version = "0.13.0", optional = true }
-sled-storage = { package = "gluesql_sled_storage", path = "../../storages/sled-storage", version = "0.13.0", optional = true }
+gluesql-core.workspace = true
+cli = { workspace = true, optional = true }
+test-suite = { workspace = true, optional = true }
+memory-storage = { workspace = true, optional = true }
+shared-memory-storage = { workspace = true, optional = true }
+sled-storage = { workspace = true, optional = true }
+json-storage = { workspace = true, optional = true }
+composite-storage = { workspace = true, optional = true }
+web-storage = { workspace = true, optional = true }
+idb-storage = { workspace = true, optional = true }
 
 [dev-dependencies]
 futures = "0.3"
@@ -38,4 +42,6 @@ default = [
 	"memory-storage",
 	"shared-memory-storage",
 	"sled-storage",
+	"json-storage",
+	"composite-storage",
 ]

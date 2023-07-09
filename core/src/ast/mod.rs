@@ -68,6 +68,14 @@ pub enum Statement {
         source: Option<Box<Query>>,
         engine: Option<String>,
     },
+    /// CREATE FUNCTION
+    CreateFunction {
+        or_replace: bool,
+        name: String,
+        /// Optional schema
+        args: Vec<OperateFunctionArg>,
+        return_: Expr,
+    },
     /// ALTER TABLE
     AlterTable {
         /// Table name
@@ -76,6 +84,13 @@ pub enum Statement {
     },
     /// DROP TABLE
     DropTable {
+        /// An optional `IF EXISTS` clause. (Non-standard.)
+        if_exists: bool,
+        /// One or more objects to drop. (ANSI SQL requires exactly one.)
+        names: Vec<String>,
+    },
+    /// DROP FUNCTION
+    DropFunction {
         /// An optional `IF EXISTS` clause. (Non-standard.)
         if_exists: bool,
         /// One or more objects to drop. (ANSI SQL requires exactly one.)
@@ -112,6 +127,7 @@ pub struct Assignment {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Variable {
     Tables,
+    Functions,
     Version,
 }
 
@@ -201,6 +217,22 @@ impl ToSql for Statement {
 
                 format!("{sql};")
             }
+            Statement::CreateFunction {
+                or_replace,
+                name,
+                args,
+                return_,
+                ..
+            } => {
+                let or_replace = or_replace.then_some(" OR REPLACE").unwrap_or("");
+                let args = args
+                    .iter()
+                    .map(ToSql::to_sql)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let return_ = format!(" RETURN {}", return_.to_sql());
+                format!("CREATE{or_replace} FUNCTION {name}({args}){return_};")
+            }
             Statement::AlterTable { name, operation } => {
                 format!(r#"ALTER TABLE "{name}" {};"#, operation.to_sql())
             }
@@ -213,6 +245,13 @@ impl ToSql for Statement {
                 match if_exists {
                     true => format!("DROP TABLE IF EXISTS {};", names),
                     false => format!("DROP TABLE {};", names),
+                }
+            }
+            Statement::DropFunction { if_exists, names } => {
+                let names = names.join(", ");
+                match if_exists {
+                    true => format!("DROP FUNCTION IF EXISTS {};", names),
+                    false => format!("DROP FUNCTION {};", names),
                 }
             }
             Statement::CreateIndex {
@@ -233,6 +272,7 @@ impl ToSql for Statement {
             Statement::Rollback => "ROLLBACK;".to_owned(),
             Statement::ShowVariable(variable) => match variable {
                 Variable::Tables => "SHOW TABLES;".to_owned(),
+                Variable::Functions => "SHOW FUNCTIONS;".to_owned(),
                 Variable::Version => "SHOW VERSIONS;".to_owned(),
             },
             Statement::ShowIndexes(object_name) => {
@@ -254,8 +294,8 @@ mod tests {
     use {
         crate::ast::{
             AlterTableOperation, Assignment, AstLiteral, BinaryOperator, ColumnDef, DataType, Expr,
-            OrderByExpr, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
-            TableWithJoins, ToSql, Values, Variable,
+            OperateFunctionArg, OrderByExpr, Query, Select, SelectItem, SetExpr, Statement,
+            TableFactor, TableWithJoins, ToSql, Values, Variable,
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,
@@ -534,6 +574,36 @@ mod tests {
     }
 
     #[test]
+    fn to_sql_insert_function() {
+        assert_eq!(
+            r#"CREATE FUNCTION add("num" INT DEFAULT 0) RETURN "num";"#,
+            Statement::CreateFunction {
+                or_replace: false,
+                name: "add".into(),
+                args: vec![OperateFunctionArg {
+                    name: "num".into(),
+                    data_type: DataType::Int,
+                    default: Some(Expr::Literal(AstLiteral::Number(
+                        BigDecimal::from_str("0").unwrap()
+                    ))),
+                }],
+                return_: Expr::Identifier("num".to_owned())
+            }
+            .to_sql()
+        );
+        assert_eq!(
+            "CREATE OR REPLACE FUNCTION add() RETURN 1;",
+            Statement::CreateFunction {
+                or_replace: true,
+                name: "add".into(),
+                args: vec![],
+                return_: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap()))
+            }
+            .to_sql()
+        );
+    }
+
+    #[test]
     fn to_sql_alter_table() {
         assert_eq!(
             r#"ALTER TABLE "Foo" ADD COLUMN "amount" INT NOT NULL DEFAULT 10;"#,
@@ -633,6 +703,36 @@ mod tests {
     }
 
     #[test]
+    fn to_sql_delete_function() {
+        assert_eq!(
+            "DROP FUNCTION Test;",
+            Statement::DropFunction {
+                if_exists: false,
+                names: vec!["Test".into()]
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            "DROP FUNCTION IF EXISTS Test;",
+            Statement::DropFunction {
+                if_exists: true,
+                names: vec!["Test".into()]
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            "DROP FUNCTION Foo, Bar;",
+            Statement::DropFunction {
+                if_exists: false,
+                names: vec!["Foo".into(), "Bar".into(),]
+            }
+            .to_sql()
+        );
+    }
+
+    #[test]
     fn to_sql_create_index() {
         assert_eq!(
             r#"CREATE INDEX "idx_name" ON "Test" ("LastName");"#,
@@ -672,6 +772,10 @@ mod tests {
         assert_eq!(
             "SHOW TABLES;",
             Statement::ShowVariable(Variable::Tables).to_sql()
+        );
+        assert_eq!(
+            "SHOW FUNCTIONS;",
+            Statement::ShowVariable(Variable::Functions).to_sql()
         );
         assert_eq!(
             "SHOW VERSIONS;",

@@ -9,10 +9,9 @@ use {
     async_trait::async_trait,
     gluesql_core::{
         chrono::Utc,
-        data::{Key, Schema},
-        prelude::Value,
-        result::Result,
-        store::{DataRow, RowIter, Store, StoreMut},
+        data::{CustomFunction as StructCustomFunction, Key, Schema, Value},
+        error::Result,
+        store::{CustomFunction, CustomFunctionMut, DataRow, RowIter, Store, StoreMut},
     },
     serde::{Deserialize, Serialize},
     std::{
@@ -32,6 +31,30 @@ pub struct MemoryStorage {
     pub id_counter: i64,
     pub items: HashMap<String, Item>,
     pub metadata: HashMap<String, HashMap<String, Value>>,
+    pub functions: HashMap<String, StructCustomFunction>,
+}
+
+#[async_trait(?Send)]
+impl CustomFunction for MemoryStorage {
+    async fn fetch_function(&self, func_name: &str) -> Result<Option<&StructCustomFunction>> {
+        Ok(self.functions.get(&func_name.to_uppercase()))
+    }
+    async fn fetch_all_functions(&self) -> Result<Vec<&StructCustomFunction>> {
+        Ok(self.functions.values().collect())
+    }
+}
+
+#[async_trait(?Send)]
+impl CustomFunctionMut for MemoryStorage {
+    async fn insert_function(&mut self, func: StructCustomFunction) -> Result<()> {
+        self.functions.insert(func.func_name.to_uppercase(), func);
+        Ok(())
+    }
+
+    async fn delete_function(&mut self, func_name: &str) -> Result<()> {
+        self.functions.remove(&func_name.to_uppercase());
+        Ok(())
+    }
 }
 
 #[async_trait(?Send)]

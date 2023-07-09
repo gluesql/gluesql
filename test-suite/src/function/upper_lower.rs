@@ -1,9 +1,8 @@
 use {
     crate::*,
     gluesql_core::{
-        executor::EvaluateError,
+        error::{EvaluateError, TranslateError},
         prelude::{Payload, Value::*},
-        translate::TranslateError,
     },
 };
 
@@ -73,10 +72,6 @@ test_case!(upper_lower, async move {
         (
             "SELECT LOWER(1) FROM Item",
             Err(EvaluateError::FunctionRequiresStringValue("LOWER".to_owned()).into()),
-        ),
-        (
-            "SELECT WHATEVER(1) FROM Item",
-            Err(TranslateError::UnsupportedFunction("WHATEVER".to_owned()).into()),
         ),
         (
             "SELECT LOWER(a => 2) FROM Item",

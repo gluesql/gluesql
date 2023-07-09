@@ -7,13 +7,14 @@ use {
         transaction::TxPayload,
         SledStorage, Snapshot,
     },
+    async_io::block_on,
     async_trait::async_trait,
     gluesql_core::{
         ast::OrderByExpr,
         chrono::Utc,
         data::{Schema, SchemaIndex, SchemaIndexOrd},
-        result::{Error, Result},
-        store::{IndexError, IndexMut, Store},
+        error::{Error, IndexError, Result},
+        store::{IndexMut, Store},
     },
     sled::transaction::{
         ConflictableTransactionError, ConflictableTransactionResult, TransactionalTree,
@@ -107,14 +108,18 @@ impl IndexMut for SledStorage {
                 .map_err(err_into)
                 .map_err(ConflictableTransactionError::Abort)?;
 
-            for (data_key, row) in rows.iter() {
-                let data_key = data_key
-                    .to_cmp_be_bytes()
-                    .map_err(ConflictableTransactionError::Abort)
-                    .map(|key| key::data(table_name, key))?;
+            block_on(async {
+                for (data_key, row) in rows.iter() {
+                    let data_key = data_key
+                        .to_cmp_be_bytes()
+                        .map_err(ConflictableTransactionError::Abort)
+                        .map(|key| key::data(table_name, key))?;
 
-                index_sync.insert_index(&index, &data_key, row)?;
-            }
+                    index_sync.insert_index(&index, &data_key, row).await?;
+                }
+
+                Ok(()) as ConflictableTransactionResult<(), Error>
+            })?;
 
             tree.insert(schema_key.as_bytes(), schema_snapshot)?;
 
@@ -188,14 +193,18 @@ impl IndexMut for SledStorage {
                 .map_err(err_into)
                 .map_err(ConflictableTransactionError::Abort)?;
 
-            for (data_key, row) in rows.iter() {
-                let data_key = data_key
-                    .to_cmp_be_bytes()
-                    .map_err(ConflictableTransactionError::Abort)
-                    .map(|key| key::data(table_name, key))?;
+            block_on(async {
+                for (data_key, row) in rows.iter() {
+                    let data_key = data_key
+                        .to_cmp_be_bytes()
+                        .map_err(ConflictableTransactionError::Abort)
+                        .map(|key| key::data(table_name, key))?;
 
-                index_sync.delete_index(&index, &data_key, row)?;
-            }
+                    index_sync.delete_index(&index, &data_key, row).await?;
+                }
+
+                Ok(()) as ConflictableTransactionResult<(), Error>
+            })?;
 
             tree.insert(schema_key.as_bytes(), schema_snapshot)?;
 

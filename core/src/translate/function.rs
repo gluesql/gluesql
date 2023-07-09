@@ -489,6 +489,12 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             let expr = translate_expr(args[0])?;
             Ok(Expr::Function(Box::new(Function::Chr(expr))))
         }
+        "MD5" => {
+            check_len(name, args.len(), 1)?;
+
+            let expr = translate_expr(args[0])?;
+            Ok(Expr::Function(Box::new(Function::Md5(expr))))
+        }
         "APPEND" => {
             check_len(name, args.len(), 2)?;
             let expr = translate_expr(args[0])?;
@@ -496,6 +502,47 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::Append { expr, value })))
         }
-        _ => Err(TranslateError::UnsupportedFunction(name).into()),
+        "PREPEND" => {
+            check_len(name, args.len(), 2)?;
+            let expr = translate_expr(args[0])?;
+            let value = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Prepend { expr, value })))
+        }
+        "POINT" => {
+            check_len(name, args.len(), 2)?;
+            let x = translate_expr(args[0])?;
+            let y = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::Point { x, y })))
+        }
+        "GET_X" => {
+            check_len(name, args.len(), 1)?;
+
+            let expr = translate_expr(args[0])?;
+            Ok(Expr::Function(Box::new(Function::GetX(expr))))
+        }
+        "GET_Y" => {
+            check_len(name, args.len(), 1)?;
+
+            let expr = translate_expr(args[0])?;
+            Ok(Expr::Function(Box::new(Function::GetY(expr))))
+        }
+        "CALC_DISTANCE" => {
+            check_len(name, args.len(), 2)?;
+
+            let geometry1 = translate_expr(args[0])?;
+            let geometry2 = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::CalcDistance {
+                geometry1,
+                geometry2,
+            })))
+        }
+        _ => {
+            let exprs = args
+                .into_iter()
+                .map(translate_expr)
+                .collect::<Result<Vec<_>>>()?;
+            Ok(Expr::Function(Box::new(Function::Custom { name, exprs })))
+        }
     }
 }

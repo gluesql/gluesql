@@ -7,7 +7,7 @@ use {
     gluesql_core::{
         ast::ColumnUniqueOption,
         data::{Key, Schema},
-        result::{Error, Result},
+        error::{Error, Result},
         store::{DataRow, Metadata, RowIter, Store, StoreMut},
     },
     serde::{Deserialize, Serialize},
@@ -207,3 +207,5 @@ impl gluesql_core::store::Index for WebStorage {}
 impl gluesql_core::store::IndexMut for WebStorage {}
 impl gluesql_core::store::Transaction for WebStorage {}
 impl Metadata for WebStorage {}
+impl gluesql_core::store::CustomFunction for WebStorage {}
+impl gluesql_core::store::CustomFunctionMut for WebStorage {}

@@ -16,7 +16,7 @@ use {
 wasm_bindgen_test_configure!(run_in_browser);
 
 #[wasm_bindgen_test]
-fn convert_schema() {
+async fn convert_schema() {
     let actual_data = json!([100, "hello", true]);
     let actual_data = JsValue::from_serde(&actual_data).unwrap();
     let actual_defs = vec![
@@ -54,7 +54,7 @@ fn convert_schema() {
 }
 
 #[wasm_bindgen_test]
-fn convert_schemaless() {
+async fn convert_schemaless() {
     let actual = json!({
         "id": 100,
         "name": "hello",

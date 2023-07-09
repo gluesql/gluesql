@@ -2,9 +2,10 @@ use {
     super::{EvaluateError, Evaluated},
     crate::{
         ast::{DataType, DateTimeField},
-        data::{Value, ValueError},
+        data::{Point, Value, ValueError},
         result::Result,
     },
+    md5::{Digest, Md5},
     rand::{rngs::StdRng, Rng, SeedableRng},
     std::ops::ControlFlow,
     uuid::Uuid,
@@ -42,12 +43,27 @@ macro_rules! eval_to_float {
     ($name: expr, $evaluated: expr) => {
         match $evaluated.try_into()? {
             Value::I64(v) => v as f64,
+            Value::F32(v) => v.into(),
             Value::F64(v) => v,
             Value::Null => {
                 return Ok(Evaluated::from(Value::Null));
             }
             _ => {
                 return Err(EvaluateError::FunctionRequiresFloatValue($name).into());
+            }
+        }
+    };
+}
+
+macro_rules! eval_to_point {
+    ($name: expr, $evaluated: expr) => {
+        match $evaluated.try_into()? {
+            Value::Point(v) => v,
+            Value::Null => {
+                return Ok(Evaluated::from(Value::Null));
+            }
+            _ => {
+                return Err(EvaluateError::FunctionRequiresPointValue($name).into());
             }
         }
     };
@@ -244,13 +260,26 @@ pub fn chr<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
     }
 }
 
+pub fn md5<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let string = eval_to_str!(name, expr);
+    let mut hasher = Md5::new();
+    hasher.update(string.as_bytes());
+    let result = hasher.finalize();
+    let result = format!("{:x}", result);
+
+    Ok(Evaluated::from(Value::Str(result)))
+}
+
 // --- float ---
 
 pub fn abs<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
     match n.try_into()? {
         Value::I8(v) => Ok(Evaluated::from(Value::I8(v.abs()))),
+        Value::I32(v) => Ok(Evaluated::from(Value::I32(v.abs()))),
         Value::I64(v) => Ok(Evaluated::from(Value::I64(v.abs()))),
+        Value::I128(v) => Ok(Evaluated::from(Value::I128(v.abs()))),
         Value::Decimal(v) => Ok(Evaluated::from(Value::Decimal(v.abs()))),
+        Value::F32(v) => Ok(Evaluated::from(Value::F32(v.abs()))),
         Value::F64(v) => Ok(Evaluated::from(Value::F64(v.abs()))),
         Value::Null => Ok(Evaluated::from(Value::Null)),
         _ => Err(EvaluateError::FunctionRequiresFloatValue(name).into()),
@@ -371,6 +400,7 @@ pub fn div<'a>(
     divisor: Evaluated<'_>,
 ) -> Result<Evaluated<'a>> {
     let dividend = match dividend.try_into()? {
+        Value::F32(number) => number as f64,
         Value::F64(number) => number,
         Value::I64(number) => number as f64,
         Value::Null => {
@@ -382,6 +412,10 @@ pub fn div<'a>(
     };
 
     let divisor = match divisor.try_into()? {
+        Value::F32(number) => match number {
+            x if x == 0.0 => return Err(EvaluateError::DivisorShouldNotBeZero.into()),
+            _ => number as f64,
+        },
         Value::F64(number) => match number {
             x if x == 0.0 => return Err(EvaluateError::DivisorShouldNotBeZero.into()),
             _ => number,
@@ -435,6 +469,19 @@ pub fn append<'a>(expr: Evaluated<'_>, value: Evaluated<'_>) -> Result<Evaluated
     match (expr, value) {
         (Value::List(mut l), v) => {
             l.push(v);
+            Ok(Evaluated::Value(Value::List(l)))
+        }
+        _ => Err(EvaluateError::ListTypeRequired.into()),
+    }
+}
+
+pub fn prepend<'a>(expr: Evaluated<'_>, value: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let expr: Value = expr.try_into()?;
+    let value: Value = value.try_into()?;
+
+    match (expr, value) {
+        (Value::List(mut l), v) => {
+            l.insert(0, v);
             Ok(Evaluated::Value(Value::List(l)))
         }
         _ => Err(EvaluateError::ListTypeRequired.into()),
@@ -595,4 +642,32 @@ pub fn cast<'a>(expr: Evaluated<'a>, data_type: &DataType) -> Result<Evaluated<'
 
 pub fn extract<'a>(field: &DateTimeField, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
     Ok(Evaluated::from(Value::try_from(expr)?.extract(field)?))
+}
+
+pub fn point<'a>(x: Evaluated<'_>, y: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let x = eval_to_float!("point".to_owned(), x);
+    let y = eval_to_float!("point".to_owned(), y);
+
+    Ok(Evaluated::from(Value::Point(Point::new(x, y))))
+}
+
+pub fn get_x<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    match expr.try_into()? {
+        Value::Point(v) => Ok(Evaluated::from(Value::F64(v.x))),
+        _ => Err(EvaluateError::FunctionRequiresPointValue(name).into()),
+    }
+}
+
+pub fn get_y<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    match expr.try_into()? {
+        Value::Point(v) => Ok(Evaluated::from(Value::F64(v.y))),
+        _ => Err(EvaluateError::FunctionRequiresPointValue(name).into()),
+    }
+}
+
+pub fn calc_distance<'a>(x: Evaluated<'_>, y: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let x = eval_to_point!("calc_distance".to_owned(), x);
+    let y = eval_to_point!("calc_distance".to_owned(), y);
+
+    Ok(Evaluated::from(Value::F64(Point::calc_distance(&x, &y))))
 }

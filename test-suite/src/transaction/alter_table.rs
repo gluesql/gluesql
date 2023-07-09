@@ -1,6 +1,6 @@
 use {
     crate::*,
-    gluesql_core::{executor::FetchError, prelude::Value::*},
+    gluesql_core::{error::FetchError, prelude::Value::*},
 };
 
 test_case!(alter_table_rename_table, async move {

@@ -8,7 +8,6 @@ use {
     gluesql_core::{
         executor::FetchError,
         prelude::{Value::*, *},
-        result::Error,
         store::StoreMut,
         *,
     },
@@ -24,13 +23,13 @@ const PATH_PREFIX: &str = "tmp/gluesql";
 
 macro_rules! exec {
     ($glue: ident $sql: literal) => {
-        $glue.execute($sql).unwrap();
+        $glue.execute($sql).await.unwrap();
     };
 }
 
 macro_rules! test {
     ($glue: ident $sql: literal, $result: expr) => {
-        let actual = $glue.execute($sql);
+        let actual = $glue.execute($sql).await;
         assert_eq!(actual, $result.map(|payload| vec![payload]));
     };
 }
@@ -41,12 +40,12 @@ macro_rules! test_idx {
         assert_eq!(statements.len(), 1);
         let first = &statements[0];
         test_indexes(first, Some($idx));
-        assert_eq!($glue.execute_stmt(first), $result);
+        assert_eq!($glue.execute_stmt(first).await, $result);
     };
 }
 
-#[test]
-fn sled_transaction_basic() {
+#[tokio::test]
+async fn sled_transaction_basic() {
     let path = &format!("{}/basic", PATH_PREFIX);
     fs::remove_dir_all(path).unwrap_or(());
 
@@ -77,8 +76,8 @@ fn sled_transaction_basic() {
     );
 }
 
-#[test]
-fn sled_transaction_read_uncommitted() {
+#[tokio::test]
+async fn sled_transaction_read_uncommitted() {
     let path = &format!("{}/read_uncommitted", PATH_PREFIX);
     fs::remove_dir_all(path).unwrap_or(());
 
@@ -104,8 +103,8 @@ fn sled_transaction_read_uncommitted() {
     exec!(glue1 "COMMIT;");
 }
 
-#[test]
-fn sled_transaction_read_committed() {
+#[tokio::test]
+async fn sled_transaction_read_committed() {
     let path = &format!("{}/read_committed", PATH_PREFIX);
     fs::remove_dir_all(path).unwrap_or(());
 
@@ -133,8 +132,8 @@ fn sled_transaction_read_committed() {
     );
 }
 
-#[test]
-fn sled_transaction_schema_mut() {
+#[tokio::test]
+async fn sled_transaction_schema_mut() {
     let path = &format!("{}/transaction_schema_mut", PATH_PREFIX);
     fs::remove_dir_all(path).unwrap_or(());
 
@@ -176,8 +175,8 @@ fn sled_transaction_schema_mut() {
     );
 }
 
-#[test]
-fn sled_transaction_data_mut() {
+#[tokio::test]
+async fn sled_transaction_data_mut() {
     let path = &format!("{}/transaction_data_mut", PATH_PREFIX);
     fs::remove_dir_all(path).unwrap_or(());
 
@@ -715,15 +714,15 @@ mod timeout_tests {
     }
 }
 
-#[test]
-fn sled_transaction_dictionary() {
+#[tokio::test]
+async fn sled_transaction_dictionary() {
     macro_rules! test_tables {
         ($glue: ident $( $table_name: literal )*) => {
             let expected = Payload::ShowVariable(PayloadVariable::Tables(
                 vec![$( $table_name.to_owned() ),*]
             ));
 
-            assert_eq!($glue.execute("SHOW TABLES"), Ok(vec![expected]));
+            assert_eq!($glue.execute("SHOW TABLES").await, Ok(vec![expected]));
         };
     }
 

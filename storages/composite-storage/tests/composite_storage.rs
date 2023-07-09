@@ -1,6 +1,6 @@
 use {
     async_trait::async_trait, gluesql_composite_storage::CompositeStorage,
-    gluesql_core::prelude::Glue, gluesql_memory_storage::MemoryStorage, test_suite::*,
+    gluesql_core::prelude::Glue, memory_storage::MemoryStorage, test_suite::*,
 };
 
 struct CompositeTester {

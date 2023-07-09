@@ -3,7 +3,7 @@ members = [
 	"cli",
 	"core",
 	"pkg/rust",
-	"pkg/javascript/web",
+	"pkg/javascript",
 	"storages/*",
 	"test-suite",
 	"utils",
@@ -12,7 +12,7 @@ default-members = [
 	"cli",
 	"core",
 	"pkg/rust",
-	"pkg/javascript/web",
+	"pkg/javascript",
 	"storages/*",
 	"test-suite",
 	"utils",
@@ -24,8 +24,23 @@ default-members = [
 # opt-level = "s"
 
 [workspace.package]
+version = "0.14.0"
 edition = "2021"
 description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
 license = "Apache-2.0"
 repository = "https://github.com/gluesql/gluesql"
 documentation = "https://docs.rs/gluesql/"
+
+[workspace.dependencies]
+gluesql-core = { path = "./core", version = "0.14.0" }
+
+cli = { package = "gluesql-cli", path = "./cli", version = "0.14.0" }
+test-suite = { package = "gluesql-test-suite", path = "./test-suite", version = "0.14.0" }
+memory-storage = { package = "gluesql_memory_storage", path = "./storages/memory-storage", version = "0.14.0" }
+shared-memory-storage = { package = "gluesql-shared-memory-storage", path = "./storages/shared-memory-storage", version = "0.14.0" }
+sled-storage = { package = "gluesql_sled_storage", path = "./storages/sled-storage", version = "0.14.0" }
+json-storage = { package = "gluesql-json-storage", path = "./storages/json-storage", version = "0.14.0" }
+composite-storage = { package = "gluesql-composite-storage", path = "./storages/composite-storage", version = "0.14.0" }
+web-storage = { package = "gluesql-web-storage", path = "./storages/web-storage", version = "0.14.0" }
+idb-storage = { package = "gluesql-idb-storage", path = "./storages/idb-storage", version = "0.14.0" }
+utils = { package = "gluesql-utils", path = "./utils", version = "0.14.0" }

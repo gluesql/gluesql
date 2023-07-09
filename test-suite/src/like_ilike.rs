@@ -2,7 +2,8 @@ use {
     crate::*,
     bigdecimal::BigDecimal,
     gluesql_core::{
-        data::{Literal, LiteralError, ValueError},
+        data::Literal,
+        error::{LiteralError, ValueError},
         prelude::Value::{self, Bool},
     },
     std::{borrow::Cow, str::FromStr},

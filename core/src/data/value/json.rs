@@ -70,6 +70,7 @@ impl TryFrom<Value> for JsonValue {
             Value::U128(v) => JsonNumber::from_str(&v.to_string())
                 .map(JsonValue::Number)
                 .map_err(|_| ValueError::UnreachableJsonNumberParseFailure(v.to_string()).into()),
+            Value::F32(v) => Ok(v.into()),
             Value::F64(v) => Ok(v.into()),
             Value::Decimal(v) => JsonNumber::from_str(&v.to_string())
                 .map(JsonValue::Number)
@@ -80,7 +81,7 @@ impl TryFrom<Value> for JsonValue {
             Value::Date(v) => Ok(v.to_string().into()),
             Value::Timestamp(v) => Ok(DateTime::<Utc>::from_utc(v, Utc).to_string().into()),
             Value::Time(v) => Ok(v.to_string().into()),
-            Value::Interval(v) => Ok(String::from(&v).into()),
+            Value::Interval(v) => Ok(v.to_sql_str().into()),
             Value::Uuid(v) => Ok(Uuid::from_u128(v).hyphenated().to_string().into()),
             Value::Map(v) => v
                 .into_iter()
@@ -92,6 +93,7 @@ impl TryFrom<Value> for JsonValue {
                 .map(|value| value.try_into())
                 .collect::<Result<Vec<JsonValue>>>()
                 .map(|v| v.into()),
+            Value::Point(v) => Ok(v.to_string().into()),
             Value::Null => Ok(JsonValue::Null),
         }
     }
@@ -131,7 +133,7 @@ impl TryFrom<JsonValue> for Value {
 #[cfg(test)]
 mod tests {
     use {
-        crate::data::{value::uuid::parse_uuid, Interval, Value, ValueError},
+        crate::data::{value::uuid::parse_uuid, Interval, Point, Value, ValueError},
         chrono::{NaiveDate, NaiveTime},
         rust_decimal::Decimal,
         serde_json::{json, Number as JsonNumber, Value as JsonValue},
@@ -189,6 +191,12 @@ mod tests {
         );
         assert!(JsonValue::try_from(Value::I128(i128::MAX)).is_ok());
 
+        assert_eq!(
+            Value::F32(1.23_f32).try_into(),
+            Ok(JsonValue::Number(
+                JsonNumber::from_f64(1.23_f32 as f64).unwrap()
+            ))
+        );
         assert_eq!(
             Value::F64(1.23).try_into(),
             Ok(JsonValue::Number(JsonNumber::from_f64(1.23).unwrap()))
@@ -256,42 +264,45 @@ mod tests {
                 .try_into(),
             Ok(json!([1, 2, { "a": 3 }]))
         );
+        assert_eq!(
+            Value::Point(Point::new(0.34, 0.56)).try_into(),
+            Ok(JsonValue::String("POINT(0.34 0.56)".to_owned()))
+        );
         assert_eq!(Value::Null.try_into(), Ok(JsonValue::Null));
     }
 
     #[test]
     fn json_to_value() {
         assert!(Value::try_from(JsonValue::Null).unwrap().is_null());
-        assert_eq!(JsonValue::Bool(false).try_into(), Ok(Value::Bool(false)));
-        assert_eq!(
-            JsonValue::Number(54321.into()).try_into(),
-            Ok(Value::I32(54321))
+        assert!(Value::try_from(JsonValue::Bool(false))
+            .unwrap()
+            .evaluate_eq(&Value::Bool(false)));
+        assert!(Value::try_from(JsonValue::Number(54321.into()))
+            .unwrap()
+            .evaluate_eq(&Value::I32(54321)));
+        assert!(Value::try_from(JsonValue::Number(54321.into()))
+            .unwrap()
+            .evaluate_eq(&Value::I64(54321)));
+        assert!(Value::try_from(JsonValue::Number(54321.into()))
+            .unwrap()
+            .evaluate_eq(&Value::I128(54321)));
+        assert!(
+            Value::try_from(JsonValue::Number(JsonNumber::from_f64(3.21).unwrap()))
+                .unwrap()
+                .evaluate_eq(&Value::F64(3.21))
         );
-        assert_eq!(
-            JsonValue::Number(54321.into()).try_into(),
-            Ok(Value::I64(54321))
+        assert!(Value::try_from(JsonValue::String("world".to_owned()))
+            .unwrap()
+            .evaluate_eq(&Value::Str("world".to_owned())));
+        assert!(
+            Value::try_from(JsonValue::Array(vec![JsonValue::Bool(true)]))
+                .unwrap()
+                .evaluate_eq(&Value::List(vec![Value::Bool(true)]))
         );
-        assert_eq!(
-            JsonValue::Number(54321.into()).try_into(),
-            Ok(Value::I128(54321))
-        );
-        assert_eq!(
-            JsonValue::Number(JsonNumber::from_f64(3.21).unwrap()).try_into(),
-            Ok(Value::F64(3.21))
-        );
-        assert_eq!(
-            JsonValue::String("world".to_owned()).try_into(),
-            Ok(Value::Str("world".to_owned()))
-        );
-        assert_eq!(
-            JsonValue::Array(vec![JsonValue::Bool(true)]).try_into(),
-            Ok(Value::List(vec![Value::Bool(true)]))
-        );
-        assert_eq!(
-            json!({ "a": true }).try_into(),
-            Ok(Value::Map(
+        assert!(Value::try_from(json!({ "a": true }))
+            .unwrap()
+            .evaluate_eq(&Value::Map(
                 [("a".to_owned(), Value::Bool(true))].into_iter().collect()
-            ))
-        );
+            )));
     }
 }

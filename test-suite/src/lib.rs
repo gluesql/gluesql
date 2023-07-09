@@ -8,8 +8,10 @@ pub mod basic;
 pub mod case;
 pub mod column_alias;
 pub mod concat;
+pub mod custom_function;
 pub mod data_type;
 pub mod default;
+pub mod delete;
 pub mod dictionary;
 pub mod dictionary_index;
 pub mod filter;
@@ -66,6 +68,7 @@ macro_rules! generate_store_tests {
         }
         glue!(update, update::update);
         glue!(insert, insert::insert);
+        glue!(delete, delete::delete);
         glue!(basic, basic::basic);
         glue!(aggregate_avg, aggregate::avg::avg);
         glue!(aggregate_count, aggregate::count::count);
@@ -127,8 +130,15 @@ macro_rules! generate_store_tests {
         glue!(function_to_date, function::to_date::to_date);
         glue!(function_ascii, function::ascii::ascii);
         glue!(function_chr, function::chr::chr);
+        glue!(function_mod, function::md5::md5);
         glue!(function_position, function::position::position);
         glue!(function_find_idx, function::find_idx::find_idx);
+        glue!(function_geometry_get_x, function::geometry::get_x);
+        glue!(function_geometry_get_y, function::geometry::get_y);
+        glue!(
+            function_geometry_calc_distance,
+            function::geometry::calc_distance
+        );
         glue!(join, join::join);
         glue!(join_project, join::project);
         glue!(migrate, migrate::migrate);
@@ -147,6 +157,7 @@ macro_rules! generate_store_tests {
         glue!(int32, data_type::int32::int32);
         glue!(int64, data_type::int64::int64);
         glue!(int128, data_type::int128::int128);
+        glue!(float32, data_type::float32::float32);
         glue!(uint16, data_type::uint16::uint16);
         glue!(uint8, data_type::uint8::uint8);
         glue!(uint64, data_type::uint64::uint64);
@@ -160,6 +171,7 @@ macro_rules! generate_store_tests {
         glue!(map, data_type::map::map);
         glue!(bytea, data_type::bytea::bytea);
         glue!(inet, data_type::inet::inet);
+        glue!(point, data_type::point::point);
         glue!(synthesize, synthesize::synthesize);
         glue!(validate_unique, validate::unique::unique);
         glue!(validate_types, validate::types::types);
@@ -180,16 +192,65 @@ macro_rules! generate_store_tests {
         glue!(type_match, type_match::type_match);
         glue!(dictionary, dictionary::dictionary);
         glue!(function_append, function::append::append);
+        glue!(function_prepend, function::prepend::prepend);
         glue!(column_alias, column_alias::column_alias);
 
         // ast-builder
         glue!(ast_builder_basic, ast_builder::basic::basic);
+        glue!(
+            ast_builder_statements_queryinng_data_aggregation,
+            ast_builder::statements::querying::data_aggregation
+        );
+        glue!(
+            ast_builder_function_math_rounding,
+            ast_builder::function::math::rounding
+        );
+        glue!(
+            ast_builder_expr_pattern_matching,
+            ast_builder::expr::pattern_matching::pattern_matching
+        );
         glue!(ast_builder_select, ast_builder::select::select);
         glue!(ast_builder_values, ast_builder::values::values);
         glue!(ast_builder_insert, ast_builder::insert::insert);
         glue!(ast_builder_update, ast_builder::update::update);
         glue!(ast_builder_delete, ast_builder::delete::delete);
         glue!(ast_builder_alias_as, ast_builder::alias_as::alias_as);
+        glue!(
+            ast_builder_function_text_case_conversion,
+            ast_builder::function::text::case_conversion
+        );
+        glue!(
+            ast_builder_function_other_ifnull,
+            ast_builder::function::other::ifnull::ifnull
+        );
+        glue!(
+            ast_builder_function_datetime_conversion,
+            ast_builder::function::datetime::conversion
+        );
+        glue!(
+            ast_builder_function_math_basic_arithmetic,
+            ast_builder::function::math::basic_arithmetic
+        );
+        glue!(
+            ast_builder_function_math_conversion,
+            ast_builder::function::math::conversion
+        );
+        glue!(
+            ast_builder_function_datetime_formatting,
+            ast_builder::function::datetime::formatting
+        );
+        glue!(
+            ast_builder_function_text_trimming,
+            ast_builder::function::text::trimming
+        );
+        glue!(
+            ast_builder_function_datetime_current_date_and_time,
+            ast_builder::function::datetime::current_date_and_time
+        );
+        glue!(
+            ast_builder_function_text_position_and_indexing,
+            ast_builder::function::text::position_and_indexing
+        );
 
         // schemaless data support
         glue!(schemaless_basic, schemaless::basic);
@@ -208,6 +269,19 @@ macro_rules! generate_alter_table_tests {
 
         glue!(alter_table_rename, alter::alter_table_rename);
         glue!(alter_table_add_drop, alter::alter_table_add_drop);
+    };
+}
+
+#[macro_export]
+macro_rules! generate_custom_function_tests {
+    ($test: meta, $storage: ident) => {
+        macro_rules! glue {
+            ($title: ident, $func: path) => {
+                declare_test_fn!($test, $storage, $title, $func);
+            };
+        }
+
+        glue!(function_custom, custom_function::custom);
     };
 }
 
@@ -247,6 +321,7 @@ macro_rules! generate_transaction_tests {
             transaction_create_drop_table,
             transaction::create_drop_table
         );
+        glue!(transaction_dictionary, transaction::dictionary);
     };
 }
 
@@ -303,19 +378,6 @@ macro_rules! generate_transaction_index_tests {
 
         glue!(transaction_index_create, transaction::index_create);
         glue!(transaction_index_drop, transaction::index_drop);
-    };
-}
-
-#[macro_export]
-macro_rules! generate_transaction_dictionary_tests {
-    ($test: meta, $storage: ident) => {
-        macro_rules! glue {
-            ($title: ident, $func: path) => {
-                declare_test_fn!($test, $storage, $title, $func);
-            };
-        }
-
-        glue!(transaction_dictionary, transaction::dictionary);
     };
 }
 

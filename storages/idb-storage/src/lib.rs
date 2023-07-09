@@ -11,7 +11,7 @@ use {
     gloo_utils::format::JsValueSerdeExt,
     gluesql_core::{
         data::{Key, Schema, Value},
-        result::{Error, Result},
+        error::{Error, Result},
         store::{DataRow, Metadata, RowIter, Store, StoreMut},
     },
     idb::{CursorDirection, Database, Factory, ObjectStoreParams, Query, TransactionMode},
@@ -74,7 +74,6 @@ impl IdbStorage {
                     };
 
                     *error = Some(e);
-                    return;
                 }
             });
 
@@ -166,8 +165,10 @@ impl Store for IdbStorage {
 
         transaction.commit().await.err_into()?;
 
-        row.map(|row| convert(row, column_defs.as_deref()))
-            .transpose()
+        match row {
+            Some(row) => convert(row, column_defs.as_deref()).map(Some),
+            None => Ok(None),
+        }
     }
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
@@ -440,3 +441,5 @@ impl gluesql_core::store::Index for IdbStorage {}
 impl gluesql_core::store::IndexMut for IdbStorage {}
 impl gluesql_core::store::Transaction for IdbStorage {}
 impl Metadata for IdbStorage {}
+impl gluesql_core::store::CustomFunction for IdbStorage {}
+impl gluesql_core::store::CustomFunctionMut for IdbStorage {}

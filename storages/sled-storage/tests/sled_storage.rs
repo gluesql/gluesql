@@ -36,7 +36,7 @@ impl Tester<SledStorage> for SledTester {
 }
 
 #[tokio::test]
-async fn delete() {
+async fn sled_basic() {
     use gluesql_core::prelude::*;
 
     let mut tester = SledTester::new("delete").await;
@@ -44,7 +44,7 @@ async fn delete() {
 
     macro_rules! execute {
         ($sql:expr) => {{
-            let mut payloads = glue.execute_async($sql).await.unwrap();
+            let mut payloads = glue.execute($sql).await.unwrap();
             payloads.remove(0)
         }};
     }
@@ -93,5 +93,4 @@ generate_alter_table_tests!(tokio::test, SledTester);
 generate_alter_table_index_tests!(tokio::test, SledTester);
 generate_transaction_alter_table_tests!(tokio::test, SledTester);
 generate_transaction_index_tests!(tokio::test, SledTester);
-generate_transaction_dictionary_tests!(tokio::test, SledTester);
 generate_metadata_index_tests!(tokio::test, SledTester);

@@ -7,13 +7,14 @@ use {
         transaction::TxPayload,
         tx_err_into, SledStorage, Snapshot,
     },
+    async_io::block_on,
     async_trait::async_trait,
     gluesql_core::{
         data::{Key, Schema},
-        result::Result,
-        store::{DataRow, IndexError, StoreMut},
+        error::{Error, IndexError, Result},
+        store::{DataRow, StoreMut},
     },
-    sled::transaction::ConflictableTransactionError,
+    sled::transaction::{ConflictableTransactionError, ConflictableTransactionResult},
 };
 
 #[async_trait(?Send)]
@@ -112,30 +113,34 @@ impl StoreMut for SledStorage {
             let index_sync = IndexSync::from_schema(tree, txid, &schema);
 
             // delete data
-            for (row_key, row_snapshot) in items.iter() {
-                let row_snapshot: Snapshot<DataRow> = bincode::deserialize(row_snapshot)
-                    .map_err(err_into)
-                    .map_err(ConflictableTransactionError::Abort)?;
+            block_on(async {
+                for (row_key, row_snapshot) in items.iter() {
+                    let row_snapshot: Snapshot<DataRow> = bincode::deserialize(row_snapshot)
+                        .map_err(err_into)
+                        .map_err(ConflictableTransactionError::Abort)?;
 
-                let (row_snapshot, deleted_row) = row_snapshot.delete(txid);
-                let deleted_row = match deleted_row {
-                    Some(row) => row,
-                    None => {
-                        continue;
-                    }
-                };
+                    let (row_snapshot, deleted_row) = row_snapshot.delete(txid);
+                    let deleted_row = match deleted_row {
+                        Some(row) => row,
+                        None => {
+                            continue;
+                        }
+                    };
 
-                let row_snapshot = bincode::serialize(&row_snapshot)
-                    .map_err(err_into)
-                    .map_err(ConflictableTransactionError::Abort)?;
+                    let row_snapshot = bincode::serialize(&row_snapshot)
+                        .map_err(err_into)
+                        .map_err(ConflictableTransactionError::Abort)?;
 
-                let temp_row_key = key::temp_data(txid, row_key);
+                    let temp_row_key = key::temp_data(txid, row_key);
 
-                tree.insert(row_key, row_snapshot)?;
-                tree.insert(temp_row_key, row_key)?;
+                    tree.insert(row_key, row_snapshot)?;
+                    tree.insert(temp_row_key, row_key)?;
 
-                index_sync.delete(row_key, &deleted_row)?;
-            }
+                    index_sync.delete(row_key, &deleted_row).await?;
+                }
+
+                Ok(()) as ConflictableTransactionResult<(), Error>
+            })?;
 
             Ok(TxPayload::Success)
         });
@@ -168,26 +173,30 @@ impl StoreMut for SledStorage {
 
             let index_sync = IndexSync::new(tree, txid, table_name)?;
 
-            for row in tx_rows.iter() {
-                let id = id_offset + tree.generate_id()?;
-                let id = id.to_be_bytes();
-                let key = key::data(table_name, id.to_vec());
+            block_on(async {
+                for row in tx_rows.iter() {
+                    let id = id_offset + tree.generate_id()?;
+                    let id = id.to_be_bytes();
+                    let key = key::data(table_name, id.to_vec());
 
-                index_sync.insert(&key, row)?;
+                    index_sync.insert(&key, row).await?;
 
-                let snapshot = Snapshot::new(txid, row.clone());
-                let snapshot = bincode::serialize(&snapshot)
-                    .map_err(err_into)
-                    .map_err(ConflictableTransactionError::Abort)?;
+                    let snapshot = Snapshot::new(txid, row.clone());
+                    let snapshot = bincode::serialize(&snapshot)
+                        .map_err(err_into)
+                        .map_err(ConflictableTransactionError::Abort)?;
 
-                tree.insert(&key, snapshot)?;
+                    tree.insert(&key, snapshot)?;
 
-                if !autocommit {
-                    let temp_key = key::temp_data(txid, &key);
+                    if !autocommit {
+                        let temp_key = key::temp_data(txid, &key);
 
-                    tree.insert(temp_key, key)?;
+                        tree.insert(temp_key, key)?;
+                    }
                 }
-            }
+
+                Ok(()) as ConflictableTransactionResult<(), Error>
+            })?;
 
             Ok(TxPayload::Success)
         });
@@ -219,49 +228,52 @@ impl StoreMut for SledStorage {
 
             let index_sync = IndexSync::new(tree, txid, table_name)?;
 
-            for (key, new_row) in tx_rows.iter() {
-                let key = key
-                    .to_cmp_be_bytes()
-                    .map_err(ConflictableTransactionError::Abort)
-                    .map(|key| key::data(table_name, key))?;
+            block_on(async {
+                for (key, new_row) in tx_rows.iter() {
+                    let key = key
+                        .to_cmp_be_bytes()
+                        .map_err(ConflictableTransactionError::Abort)
+                        .map(|key| key::data(table_name, key))?;
 
-                let snapshot = match tree.get(&key)? {
-                    Some(snapshot) => {
-                        let snapshot: Snapshot<DataRow> = bincode::deserialize(&snapshot)
-                            .map_err(err_into)
-                            .map_err(ConflictableTransactionError::Abort)?;
+                    let snapshot = match tree.get(&key)? {
+                        Some(snapshot) => {
+                            let snapshot: Snapshot<DataRow> = bincode::deserialize(&snapshot)
+                                .map_err(err_into)
+                                .map_err(ConflictableTransactionError::Abort)?;
 
-                        let (snapshot, old_row) = snapshot.update(txid, new_row.clone());
-                        let old_row = match old_row {
-                            Some(row) => row,
-                            None => {
-                                continue;
-                            }
-                        };
+                            let (snapshot, old_row) = snapshot.update(txid, new_row.clone());
+                            let old_row = match old_row {
+                                Some(row) => row,
+                                None => {
+                                    continue;
+                                }
+                            };
 
-                        index_sync.update(&key, &old_row, new_row)?;
+                            index_sync.update(&key, &old_row, new_row).await?;
 
-                        snapshot
+                            snapshot
+                        }
+                        None => {
+                            index_sync.insert(&key, new_row).await?;
+
+                            Snapshot::new(txid, new_row.clone())
+                        }
+                    };
+
+                    let snapshot = bincode::serialize(&snapshot)
+                        .map_err(err_into)
+                        .map_err(ConflictableTransactionError::Abort)?;
+
+                    tree.insert(&key, snapshot)?;
+
+                    if !autocommit {
+                        let temp_key = key::temp_data(txid, &key);
+
+                        tree.insert(temp_key, key)?;
                     }
-                    None => {
-                        index_sync.insert(&key, new_row)?;
-
-                        Snapshot::new(txid, new_row.clone())
-                    }
-                };
-
-                let snapshot = bincode::serialize(&snapshot)
-                    .map_err(err_into)
-                    .map_err(ConflictableTransactionError::Abort)?;
-
-                tree.insert(&key, snapshot)?;
-
-                if !autocommit {
-                    let temp_key = key::temp_data(txid, &key);
-
-                    tree.insert(temp_key, key)?;
                 }
-            }
+                Ok(()) as ConflictableTransactionResult<(), Error>
+            })?;
 
             Ok(TxPayload::Success)
         });
@@ -293,41 +305,45 @@ impl StoreMut for SledStorage {
 
             let index_sync = IndexSync::new(tree, txid, table_name)?;
 
-            for key in tx_keys.iter() {
-                let key = key
-                    .to_cmp_be_bytes()
-                    .map_err(ConflictableTransactionError::Abort)
-                    .map(|key| key::data(table_name, key))?;
+            block_on(async {
+                for key in tx_keys.iter() {
+                    let key = key
+                        .to_cmp_be_bytes()
+                        .map_err(ConflictableTransactionError::Abort)
+                        .map(|key| key::data(table_name, key))?;
 
-                let snapshot = tree
-                    .get(&key)?
-                    .ok_or_else(|| IndexError::ConflictOnEmptyIndexValueDelete.into())
-                    .map_err(ConflictableTransactionError::Abort)?;
-                let snapshot: Snapshot<DataRow> = bincode::deserialize(&snapshot)
-                    .map_err(err_into)
-                    .map_err(ConflictableTransactionError::Abort)?;
+                    let snapshot = tree
+                        .get(&key)?
+                        .ok_or_else(|| IndexError::ConflictOnEmptyIndexValueDelete.into())
+                        .map_err(ConflictableTransactionError::Abort)?;
+                    let snapshot: Snapshot<DataRow> = bincode::deserialize(&snapshot)
+                        .map_err(err_into)
+                        .map_err(ConflictableTransactionError::Abort)?;
 
-                let (snapshot, row) = snapshot.delete(txid);
-                let row = match row {
-                    Some(row) => row,
-                    None => {
-                        continue;
+                    let (snapshot, row) = snapshot.delete(txid);
+                    let row = match row {
+                        Some(row) => row,
+                        None => {
+                            continue;
+                        }
+                    };
+
+                    bincode::serialize(&snapshot)
+                        .map_err(err_into)
+                        .map_err(ConflictableTransactionError::Abort)
+                        .map(|snapshot| tree.insert(&key, snapshot))??;
+
+                    index_sync.delete(&key, &row).await?;
+
+                    if !autocommit {
+                        let temp_key = key::temp_data(txid, &key);
+
+                        tree.insert(temp_key, key)?;
                     }
-                };
-
-                bincode::serialize(&snapshot)
-                    .map_err(err_into)
-                    .map_err(ConflictableTransactionError::Abort)
-                    .map(|snapshot| tree.insert(&key, snapshot))??;
-
-                index_sync.delete(&key, &row)?;
-
-                if !autocommit {
-                    let temp_key = key::temp_data(txid, &key);
-
-                    tree.insert(temp_key, key)?;
                 }
-            }
+
+                Ok(()) as ConflictableTransactionResult<(), Error>
+            })?;
 
             Ok(TxPayload::Success)
         });

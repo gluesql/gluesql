@@ -3,10 +3,10 @@ use {
     gluesql_core::{
         ast::Expr,
         data::schema::{Schema, SchemaIndex},
+        error::{Error, IndexError, Result},
         executor::evaluate_stateless,
         prelude::Value,
-        result::{Error, Result},
-        store::{DataRow, IndexError},
+        store::DataRow,
     },
     sled::{
         transaction::{
@@ -85,19 +85,19 @@ impl<'a> IndexSync<'a> {
         })
     }
 
-    pub fn insert(
+    pub async fn insert(
         &self,
         data_key: &IVec,
         row: &DataRow,
     ) -> ConflictableTransactionResult<(), Error> {
         for index in self.indexes.iter() {
-            self.insert_index(index, data_key, row)?;
+            self.insert_index(index, data_key, row).await?;
         }
 
         Ok(())
     }
 
-    pub fn insert_index(
+    pub async fn insert_index(
         &self,
         index: &SchemaIndex,
         data_key: &IVec,
@@ -115,14 +115,15 @@ impl<'a> IndexSync<'a> {
             index_expr,
             self.columns.as_deref(),
             row,
-        )?;
+        )
+        .await?;
 
         self.insert_index_data(index_key, data_key)?;
 
         Ok(())
     }
 
-    pub fn update(
+    pub async fn update(
         &self,
         data_key: &IVec,
         old_row: &DataRow,
@@ -141,7 +142,8 @@ impl<'a> IndexSync<'a> {
                 index_expr,
                 self.columns.as_deref(),
                 old_row,
-            )?;
+            )
+            .await?;
 
             let new_index_key = &evaluate_index_key(
                 self.table_name,
@@ -149,7 +151,8 @@ impl<'a> IndexSync<'a> {
                 index_expr,
                 self.columns.as_deref(),
                 new_row,
-            )?;
+            )
+            .await?;
 
             self.delete_index_data(old_index_key, data_key)?;
             self.insert_index_data(new_index_key, data_key)?;
@@ -158,19 +161,19 @@ impl<'a> IndexSync<'a> {
         Ok(())
     }
 
-    pub fn delete(
+    pub async fn delete(
         &self,
         data_key: &IVec,
         row: &DataRow,
     ) -> ConflictableTransactionResult<(), Error> {
         for index in self.indexes.iter() {
-            self.delete_index(index, data_key, row)?;
+            self.delete_index(index, data_key, row).await?;
         }
 
         Ok(())
     }
 
-    pub fn delete_index(
+    pub async fn delete_index(
         &self,
         index: &SchemaIndex,
         data_key: &IVec,
@@ -188,7 +191,8 @@ impl<'a> IndexSync<'a> {
             index_expr,
             self.columns.as_deref(),
             row,
-        )?;
+        )
+        .await?;
 
         self.delete_index_data(index_key, data_key)?;
 
@@ -263,15 +267,16 @@ impl<'a> IndexSync<'a> {
     }
 }
 
-fn evaluate_index_key(
+async fn evaluate_index_key(
     table_name: &str,
     index_name: &str,
     index_expr: &Expr,
     columns: Option<&[String]>,
     row: &DataRow,
 ) -> ConflictableTransactionResult<Vec<u8>, Error> {
-    let columns = columns.unwrap_or(&[]);
-    let evaluated = evaluate_stateless((columns, row), index_expr)
+    let context = Some(row.as_context(columns));
+    let evaluated = evaluate_stateless(context, index_expr)
+        .await
         .map_err(ConflictableTransactionError::Abort)?;
     let value: Value = evaluated
         .try_into()

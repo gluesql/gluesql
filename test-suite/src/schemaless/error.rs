@@ -1,9 +1,6 @@
 use {
     crate::*,
-    gluesql_core::{
-        data::ValueError,
-        executor::{EvaluateError, InsertError},
-    },
+    gluesql_core::error::{EvaluateError, InsertError, ValueError},
     serde_json::json,
 };
 

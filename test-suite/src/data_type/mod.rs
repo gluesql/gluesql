@@ -1,6 +1,7 @@
 pub mod bytea;
 pub mod date;
 pub mod decimal;
+pub mod float32;
 pub mod inet;
 pub mod int128;
 pub mod int16;
@@ -10,6 +11,7 @@ pub mod int8;
 pub mod interval;
 pub mod list;
 pub mod map;
+pub mod point;
 pub mod sql_types;
 pub mod time;
 pub mod timestamp;

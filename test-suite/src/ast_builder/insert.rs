@@ -15,7 +15,7 @@ test_case!(insert, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Create);
-    test(actual, expected);
+    assert_eq!(actual, expected, "create table - Foo");
 
     // create table - Bar
     let actual = table("Bar")
@@ -25,7 +25,7 @@ test_case!(insert, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Create);
-    test(actual, expected);
+    assert_eq!(actual, expected, "create table - Bar");
 
     // insert - basic
     let actual = table("Foo")
@@ -34,7 +34,7 @@ test_case!(insert, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Insert(2));
-    test(actual, expected);
+    assert_eq!(actual, expected, "insert - basic");
 
     // insert - specifying columns
     let actual = table("Foo")
@@ -44,7 +44,7 @@ test_case!(insert, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Insert(1));
-    test(actual, expected);
+    assert_eq!(actual, expected, "insert - specifying columns");
 
     // insert - from source
     let actual = table("Bar")
@@ -53,7 +53,7 @@ test_case!(insert, async move {
         .execute(glue)
         .await;
     let expected = Ok(Payload::Insert(3));
-    test(actual, expected);
+    assert_eq!(actual, expected, "insert - from source");
 
     // select from Foo
     let actual = table("Foo").select().execute(glue).await;
@@ -64,7 +64,7 @@ test_case!(insert, async move {
         2     "Meat".to_owned()    0.8;
         3     "Drink".to_owned()   0.0
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "select from Foo");
 
     // select from Bar
     let actual = table("Bar").select().execute(glue).await;
@@ -75,5 +75,5 @@ test_case!(insert, async move {
         2     "Meat".to_owned();
         3     "Drink".to_owned()
     ));
-    test(actual, expected);
+    assert_eq!(actual, expected, "select from Bar");
 });

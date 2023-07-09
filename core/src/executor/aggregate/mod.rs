@@ -114,10 +114,10 @@ impl<'a, T: GStore> Aggregator<'a, T> {
             )
             .await?;
 
-        self.group_by_having(state).map(S::Aggregate)
+        self.group_by_having(state).await.map(S::Aggregate)
     }
 
-    pub fn group_by_having(
+    pub async fn group_by_having(
         &self,
         state: State<'a, T>,
     ) -> Result<impl Stream<Item = Result<AggregateContext<'a>>>> {
@@ -125,7 +125,8 @@ impl<'a, T: GStore> Aggregator<'a, T> {
         let filter_context = self.filter_context.as_ref().map(Rc::clone);
         let having = self.having;
         let rows = state
-            .export()?
+            .export()
+            .await?
             .into_iter()
             .filter_map(|(aggregated, next)| next.map(|next| (aggregated, next)));
         let rows = stream::iter(rows)

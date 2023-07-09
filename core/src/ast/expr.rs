@@ -92,35 +92,35 @@ impl ToSqlUnquoted for Expr {
 }
 
 impl Expr {
-    fn to_sql_with(&self, qouted: bool) -> String {
+    fn to_sql_with(&self, quoted: bool) -> String {
         match self {
-            Expr::Identifier(s) => match qouted {
+            Expr::Identifier(s) => match quoted {
                 true => format! {r#""{s}""#},
                 false => s.to_owned(),
             },
             Expr::BinaryOp { left, op, right } => {
                 format!(
                     "{} {} {}",
-                    left.to_sql_with(qouted),
+                    left.to_sql_with(quoted),
                     op.to_sql(),
-                    right.to_sql_with(qouted),
+                    right.to_sql_with(quoted),
                 )
             }
-            Expr::CompoundIdentifier { alias, ident } => match qouted {
+            Expr::CompoundIdentifier { alias, ident } => match quoted {
                 true => format!(r#""{alias}"."{ident}""#),
                 false => format!("{alias}.{ident}"),
             },
-            Expr::IsNull(s) => format!("{} IS NULL", s.to_sql_with(qouted)),
-            Expr::IsNotNull(s) => format!("{} IS NOT NULL", s.to_sql_with(qouted)),
+            Expr::IsNull(s) => format!("{} IS NULL", s.to_sql_with(quoted)),
+            Expr::IsNotNull(s) => format!("{} IS NOT NULL", s.to_sql_with(quoted)),
             Expr::InList {
                 expr,
                 list,
                 negated,
             } => {
-                let expr = expr.to_sql_with(qouted);
+                let expr = expr.to_sql_with(quoted);
                 let list = list
                     .iter()
-                    .map(|expr| expr.to_sql_with(qouted))
+                    .map(|expr| expr.to_sql_with(quoted))
                     .collect::<Vec<_>>()
                     .join(", ");
 
@@ -135,9 +135,9 @@ impl Expr {
                 low,
                 high,
             } => {
-                let expr = expr.to_sql_with(qouted);
-                let low = low.to_sql_with(qouted);
-                let high = high.to_sql_with(qouted);
+                let expr = expr.to_sql_with(quoted);
+                let low = low.to_sql_with(quoted);
+                let high = high.to_sql_with(quoted);
 
                 match negated {
                     true => format!("{expr} NOT BETWEEN {low} AND {high}"),
@@ -149,8 +149,8 @@ impl Expr {
                 negated,
                 pattern,
             } => {
-                let expr = expr.to_sql_with(qouted);
-                let pattern = pattern.to_sql_with(qouted);
+                let expr = expr.to_sql_with(quoted);
+                let pattern = pattern.to_sql_with(quoted);
 
                 match negated {
                     true => format!("{expr} NOT LIKE {pattern}"),
@@ -162,8 +162,8 @@ impl Expr {
                 negated,
                 pattern,
             } => {
-                let expr = expr.to_sql_with(qouted);
-                let pattern = pattern.to_sql_with(qouted);
+                let expr = expr.to_sql_with(quoted);
+                let pattern = pattern.to_sql_with(quoted);
 
                 match negated {
                     true => format!("{expr} NOT ILIKE {pattern}"),
@@ -172,11 +172,11 @@ impl Expr {
             }
             Expr::UnaryOp { op, expr } => match op {
                 UnaryOperator::Factorial => {
-                    format!("{}{}", expr.to_sql_with(qouted), op.to_sql())
+                    format!("{}{}", expr.to_sql_with(quoted), op.to_sql())
                 }
-                _ => format!("{}{}", op.to_sql(), expr.to_sql_with(qouted)),
+                _ => format!("{}{}", op.to_sql(), expr.to_sql_with(quoted)),
             },
-            Expr::Nested(expr) => format!("({})", expr.to_sql_with(qouted)),
+            Expr::Nested(expr) => format!("({})", expr.to_sql_with(quoted)),
             Expr::Literal(s) => s.to_sql(),
             Expr::TypedString { data_type, value } => format!("{data_type} '{value}'"),
             Expr::Case {
@@ -185,7 +185,7 @@ impl Expr {
                 else_result,
             } => {
                 let operand = match operand {
-                    Some(operand) => format!("CASE {}", operand.to_sql_with(qouted)),
+                    Some(operand) => format!("CASE {}", operand.to_sql_with(quoted)),
                     None => "CASE".to_owned(),
                 };
 
@@ -194,8 +194,8 @@ impl Expr {
                     .map(|(when, then)| {
                         format!(
                             "WHEN {} THEN {}",
-                            when.to_sql_with(qouted),
-                            then.to_sql_with(qouted)
+                            when.to_sql_with(quoted),
+                            then.to_sql_with(quoted)
                         )
                     })
                     .collect::<Vec<_>>()
@@ -203,7 +203,7 @@ impl Expr {
 
                 let else_result = else_result
                     .as_ref()
-                    .map(|else_result| format!("ELSE {}", else_result.to_sql_with(qouted)));
+                    .map(|else_result| format!("ELSE {}", else_result.to_sql_with(quoted)));
 
                 match else_result {
                     Some(else_result) => {
@@ -221,20 +221,20 @@ impl Expr {
             } => match negated {
                 true => format!(
                     "{} NOT IN ({})",
-                    expr.to_sql_with(qouted),
+                    expr.to_sql_with(quoted),
                     subquery.to_sql()
                 ),
-                false => format!("{} IN ({})", expr.to_sql_with(qouted), subquery.to_sql()),
+                false => format!("{} IN ({})", expr.to_sql_with(quoted), subquery.to_sql()),
             },
             Expr::Exists { subquery, negated } => match negated {
                 true => format!("NOT EXISTS({})", subquery.to_sql()),
                 false => format!("EXISTS({})", subquery.to_sql()),
             },
             Expr::ArrayIndex { obj, indexes } => {
-                let obj = obj.to_sql_with(qouted);
+                let obj = obj.to_sql_with(quoted);
                 let indexes = indexes
                     .iter()
-                    .map(|index| format!("[{}]", index.to_sql_with(qouted)))
+                    .map(|index| format!("[{}]", index.to_sql_with(quoted)))
                     .collect::<Vec<_>>()
                     .join("");
                 format!("{obj}{indexes}")
@@ -245,7 +245,7 @@ impl Expr {
                 leading_field,
                 last_field,
             } => {
-                let expr = expr.to_sql_with(qouted);
+                let expr = expr.to_sql_with(quoted);
                 let leading_field = leading_field
                     .as_ref()
                     .map(|field| field.to_string())

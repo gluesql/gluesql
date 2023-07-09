@@ -6,6 +6,7 @@ use {
         result::Result,
         store::GStore,
     },
+    futures::stream::{self, StreamExt, TryStreamExt},
     im_rc::{HashMap, HashSet},
     itertools::Itertools,
     std::{cmp::Ordering, rc::Rc},
@@ -88,11 +89,11 @@ impl AggrValue {
                 }
             }
             Self::Sum(value) => Ok(Some(Self::Sum(value.add(new_value)?))),
-            Self::Min(value) => match &value.partial_cmp(new_value) {
+            Self::Min(value) => match &value.evaluate_cmp(new_value) {
                 Some(Ordering::Greater) => Ok(Some(Self::Min(new_value.clone()))),
                 _ => Ok(None),
             },
-            Self::Max(value) => match &value.partial_cmp(new_value) {
+            Self::Max(value) => match &value.evaluate_cmp(new_value) {
                 Some(Ordering::Less) => Ok(Some(Self::Max(new_value.clone()))),
                 _ => Ok(None),
             },
@@ -121,8 +122,8 @@ impl AggrValue {
         }
     }
 
-    fn export(self) -> Result<Value> {
-        let variance = |sum_square: Value, sum: Value, count: i64| {
+    async fn export(self) -> Result<Value> {
+        let variance = |sum_square: Value, sum: Value, count: i64| async move {
             let count = Value::I64(count);
             let sum_expr1 = sum_square.multiply(&count)?;
             let sum_expr2 = sum.multiply(&sum)?;
@@ -134,17 +135,21 @@ impl AggrValue {
         match self {
             Self::Count { count, .. } => Ok(Value::I64(count)),
             Self::Sum(value) | Self::Min(value) | Self::Max(value) => Ok(value),
-            Self::Avg { sum, count } => (sum.cast(&DataType::Float)?).divide(&Value::I64(count)),
+            Self::Avg { sum, count } => {
+                let sum = sum.cast(&DataType::Float)?;
+
+                sum.divide(&Value::I64(count))
+            }
             Self::Variance {
                 sum_square,
                 sum,
                 count,
-            } => variance(sum_square, sum, count),
+            } => variance(sum_square, sum, count).await,
             Self::Stdev {
                 sum_square,
                 sum,
                 count,
-            } => variance(sum_square, sum, count)?.sqrt(),
+            } => variance(sum_square, sum, count).await?.sqrt(),
         }
     }
 }
@@ -202,7 +207,7 @@ impl<'a, T: GStore> State<'a, T> {
         self.values.get(&(group, aggr))
     }
 
-    pub fn export(self) -> Result<Vec<(Option<ValuesMap<'a>>, Option<Context<'a>>)>> {
+    pub async fn export(self) -> Result<Vec<(Option<ValuesMap<'a>>, Option<Context<'a>>)>> {
         let size = match self.values.keys().next() {
             Some((target, _)) => match self.values.keys().position(|(group, _)| group != target) {
                 Some(size) => size,
@@ -217,23 +222,30 @@ impl<'a, T: GStore> State<'a, T> {
             values, contexts, ..
         } = self;
 
-        values
-            .into_iter()
-            .map(|(k, v)| (k, v))
-            .chunks(size)
-            .into_iter()
-            .enumerate()
-            .map(|(i, entries)| {
-                let aggregated = entries
-                    .map(|((_, aggr), (_, aggr_value))| {
-                        aggr_value.export().map(|value| (aggr, value))
+        stream::iter(
+            values
+                .into_iter()
+                .map(|(k, v)| (k, v))
+                .chunks(size)
+                .into_iter()
+                .enumerate(),
+        )
+        .then(|(i, entries)| {
+            let next = contexts.get(i).map(Rc::clone);
+
+            async move {
+                let aggregated = stream::iter(entries)
+                    .then(|((_, aggr), (_, aggr_value))| async move {
+                        aggr_value.export().await.map(|value| (aggr, value))
                     })
-                    .collect::<Result<HashMap<&'a Aggregate, Value>>>()?;
-                let next = contexts.get(i).map(Rc::clone);
+                    .try_collect::<HashMap<&'a Aggregate, Value>>()
+                    .await?;
 
                 Ok((Some(aggregated), next))
-            })
-            .collect::<Result<Vec<(Option<ValuesMap<'a>>, Option<Rc<RowContext<'a>>>)>>>()
+            }
+        })
+        .try_collect::<Vec<(Option<ValuesMap<'a>>, Option<Rc<RowContext<'a>>>)>>()
+        .await
     }
 
     pub async fn accumulate(

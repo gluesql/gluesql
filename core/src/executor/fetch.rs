@@ -1,9 +1,13 @@
 use {
-    super::{context::RowContext, evaluate_stateless, filter::check_expr},
+    super::{context::RowContext, evaluate::evaluate_stateless, filter::check_expr},
     crate::{
         ast::{
-            ColumnDef, ColumnUniqueOption, Dictionary, Expr, IndexItem, Join, Query, Select,
-            SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, ToSqlUnquoted, Values,
+            ToSql,
+            {
+                ColumnDef, ColumnUniqueOption, Dictionary, Expr, IndexItem, Join, Query, Select,
+                SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, ToSqlUnquoted,
+                Values,
+            },
         },
         data::{get_alias, get_index, Key, Row, Value},
         executor::{evaluate::evaluate, select::select},
@@ -186,7 +190,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
             Ok(Rows::Table(stream::iter(rows)))
         }
         TableFactor::Series { size, .. } => {
-            let value: Value = evaluate_stateless(None, size)?.try_into()?;
+            let value: Value = evaluate_stateless(None, size).await?.try_into()?;
             let size: i64 = value.try_into()?;
             let size = match size {
                 n if n >= 0 => size,
@@ -276,6 +280,19 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                         Value::Str(table_name.clone()),
                                         Value::Str(column_def.name),
                                         Value::I64(index as i64 + 1),
+                                        Value::Bool(column_def.nullable),
+                                        Value::Str(
+                                            column_def
+                                                .unique
+                                                .map(|unique| unique.to_sql())
+                                                .unwrap_or_default(),
+                                        ),
+                                        Value::Str(
+                                            column_def
+                                                .default
+                                                .map(|expr| expr.to_sql())
+                                                .unwrap_or_default(),
+                                        ),
                                     ];
 
                                     Ok(Row::Vec {
@@ -407,6 +424,9 @@ pub async fn fetch_relation_columns<T: GStore>(
                 "TABLE_NAME".to_owned(),
                 "COLUMN_NAME".to_owned(),
                 "COLUMN_ID".to_owned(),
+                "NULLABLE".to_owned(),
+                "KEY".to_owned(),
+                "DEFAULT".to_owned(),
             ],
             Dictionary::GlueIndexes => vec![
                 "TABLE_NAME".to_owned(),

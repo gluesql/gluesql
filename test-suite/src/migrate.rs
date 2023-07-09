@@ -1,10 +1,9 @@
 use {
     crate::*,
     gluesql_core::{
-        data::ValueError,
-        executor::{EvaluateError, FetchError},
+        ast::Expr,
+        error::{EvaluateError, FetchError, TranslateError, ValueError},
         prelude::Value::*,
-        translate::TranslateError,
     },
 };
 
@@ -34,7 +33,11 @@ test_case!(migrate, async move {
         ),
         (
             "INSERT INTO Test (id, num, name) VALUES (1, 1, a.b);",
-            EvaluateError::UnsupportedStatelessExpr(expr!("a.b")).into(),
+            EvaluateError::ContextRequiredForIdentEvaluation(Expr::CompoundIdentifier {
+                alias: "a".to_owned(),
+                ident: "b".to_owned(),
+            })
+            .into(),
         ),
         (
             "SELECT * FROM Test WHERE Here.User.id = 1",

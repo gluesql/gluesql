@@ -1,55 +1,46 @@
 use {
     crate::*,
     gluesql_core::{
-        data::ValueError,
-        executor::EvaluateError,
-        prelude::{Payload, Value::*},
+        error::{EvaluateError, ValueError},
+        prelude::Value::*,
     },
 };
 
 test_case!(sqrt, async move {
     let test_cases = [
         (
-            "CREATE TABLE SingleItem (id FLOAT DEFAULT SQRT(4))",
-            Ok(Payload::Create),
-        ),
-        (
-            r#"INSERT INTO SingleItem VALUES (0)"#,
-            Ok(Payload::Insert(1)),
-        ),
-        (
             "SELECT
-            SQRT(2.0) as sqrt_1,
-            SQRT(0.07) as sqrt_2
-            FROM SingleItem",
+                SQRT(4.0) as sqrt_1,
+                SQRT(0.07) as sqrt_2
+            ;",
             Ok(select!(
-                sqrt_1          | sqrt_2;
-                F64             | F64;
-                2.0_f64.sqrt()   0.07_f64.sqrt()
+                sqrt_1 | sqrt_2;
+                F64    | F64;
+                2.0      0.07_f64.sqrt()
             )),
         ),
         (
-            "SELECT SQRT(32) as sqrt_with_int FROM SingleItem",
+            "SELECT SQRT(64) as sqrt_with_int",
             Ok(select!(
                 sqrt_with_int
                 F64;
-                f64::from(32).sqrt()
+                8.0
             )),
         ),
         (
-            "SELECT SQRT(0) as sqrt_with_zero FROM SingleItem",
+            "SELECT SQRT(0) as sqrt_with_zero",
             Ok(select!(
                 sqrt_with_zero
                 F64;
-                f64::from(0).sqrt()
+                0.0
             )),
         ),
         (
-            "SELECT SQRT('string') AS sqrt FROM SingleItem",
+            "SELECT SQRT('string') AS sqrt",
             Err(ValueError::SqrtOnNonNumeric(Str("string".to_owned())).into()),
         ),
         (
-            "SELECT SQRT(NULL) AS sqrt FROM SingleItem",
+            "SELECT SQRT(NULL) AS sqrt",
             Ok(select_with_null!(sqrt; Null)),
         ),
     ];
@@ -62,37 +53,29 @@ test_case!(sqrt, async move {
 test_case!(power, async move {
     let test_cases = [
         (
-            "CREATE TABLE SingleItem (id FLOAT DEFAULT POWER(3, 4))",
-            Ok(Payload::Create),
-        ),
-        (
-            r#"INSERT INTO SingleItem VALUES (0)"#,
-            Ok(Payload::Insert(1)),
-        ),
-        (
             "SELECT
-            POWER(2.0,4) as power_1,
-            POWER(0.07,3) as power_2
-            FROM SingleItem",
+                POWER(2.0,4) as power_1,
+                POWER(0.07,3) as power_2
+            ;",
             Ok(select!(
-                power_1         | power_2;
-                F64             | F64;
-                2.0_f64.powf(4.0)   0.07_f64.powf(3.0)
+                power_1 | power_2;
+                F64     | F64;
+                16.0      0.07_f64.powf(3.0)
             )),
         ),
         (
             "SELECT
-            POWER(0,4) as power_with_zero,
-            POWER(3,0) as power_to_zero
-            FROM SingleItem",
+                POWER(0,4) as power_with_zero,
+                POWER(3,0) as power_to_zero
+            ;",
             Ok(select!(
-                power_with_zero        | power_to_zero;
+                power_with_zero | power_to_zero;
                 F64             | F64;
-                f64::from(0).powf(4.0)   f64::from(3).powf(0.0)
+                0.0               1.0
             )),
         ),
         (
-            "SELECT POWER(32,3.0) as power_with_float FROM SingleItem",
+            "SELECT POWER(32,3.0) as power_with_float",
             Ok(select!(
                 power_with_float
                 F64;
@@ -100,27 +83,27 @@ test_case!(power, async move {
             )),
         ),
         (
-            "SELECT POWER('string','string') AS power FROM SingleItem",
+            "SELECT POWER('string','string') AS power",
             Err(EvaluateError::FunctionRequiresFloatValue(String::from("POWER")).into()),
         ),
         (
-            "SELECT POWER(2.0,'string') AS power FROM SingleItem",
+            "SELECT POWER(2.0,'string') AS power",
             Err(EvaluateError::FunctionRequiresFloatValue(String::from("POWER")).into()),
         ),
         (
-            "SELECT POWER('string',2.0) AS power FROM SingleItem",
+            "SELECT POWER('string',2.0) AS power",
             Err(EvaluateError::FunctionRequiresFloatValue(String::from("POWER")).into()),
         ),
         (
-            "SELECT POWER(NULL,NULL) AS power FROM SingleItem",
+            "SELECT POWER(NULL,NULL) AS power",
             Ok(select_with_null!(power; Null)),
         ),
         (
-            "SELECT POWER(2.0,NULL) AS power FROM SingleItem",
+            "SELECT POWER(2.0,NULL) AS power",
             Ok(select_with_null!(power; Null)),
         ),
         (
-            "SELECT POWER(NULL,2.0) AS power FROM SingleItem",
+            "SELECT POWER(NULL,2.0) AS power",
             Ok(select_with_null!(power; Null)),
         ),
     ];

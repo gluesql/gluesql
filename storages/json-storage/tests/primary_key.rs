@@ -5,11 +5,11 @@ use {
     },
     gluesql_json_storage::JsonStorage,
     std::fs::remove_dir_all,
-    test_suite::{concat_with, row, select, stringify_label, test},
+    test_suite::{concat_with, row, select, stringify_label},
 };
 
-#[test]
-fn json_primary_key() {
+#[tokio::test]
+async fn json_primary_key() {
     let path = "tmp/json_primary_key/";
     if let Err(e) = remove_dir_all(path) {
         println!("fs::remove_file {:?}", e);
@@ -24,19 +24,22 @@ fn json_primary_key() {
                    id INT NOT NULL PRIMARY KEY,
                    name TEXT NULL
                  );",
-            ),
+            )
+            .await,
             Ok(Payload::Create),
         ),
         (
-            glue.execute("INSERT INTO SchemaWithPK VALUES(2, 'second')"),
+            glue.execute("INSERT INTO SchemaWithPK VALUES(2, 'second')")
+                .await,
             Ok(Payload::Insert(1)),
         ),
         (
-            glue.execute("INSERT INTO SchemaWithPK VALUES(1, 'first')"),
+            glue.execute("INSERT INTO SchemaWithPK VALUES(1, 'first')")
+                .await,
             Ok(Payload::Insert(1)),
         ),
         (
-            glue.execute("SELECT * FROM SchemaWithPK"),
+            glue.execute("SELECT * FROM SchemaWithPK").await,
             Ok(select!(
                 id  | name
                 I64 | Str;
@@ -47,6 +50,6 @@ fn json_primary_key() {
     ];
 
     for (actual, expected) in cases {
-        test(actual.map(|mut payloads| payloads.remove(0)), expected);
+        assert_eq!(actual.map(|mut payloads| payloads.remove(0)), expected);
     }
 }

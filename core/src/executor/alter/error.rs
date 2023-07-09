@@ -11,6 +11,12 @@ pub enum AlterError {
     #[error("table already exists: {0}")]
     TableAlreadyExists(String),
 
+    #[error("function already exists: {0}")]
+    FunctionAlreadyExists(String),
+
+    #[error("function does not exist: {0}")]
+    FunctionNotFound(String),
+
     // CREATE INDEX, DROP TABLE
     #[error("table does not exist: {0}")]
     TableNotFound(String),
@@ -26,9 +32,19 @@ pub enum AlterError {
     #[error("unsupported index expr: {0:#?}")]
     UnsupportedIndexExpr(Expr),
 
+    // validate index expr
+    #[error("unsupported unnamed argument")]
+    UnsupportedUnnamedArg,
+
     #[error("identifier not found: {0:#?}")]
     IdentifierNotFound(Expr),
 
     #[error("duplicate column name: {0}")]
     DuplicateColumnName(String),
+
+    #[error("duplicate arg name: {0}")]
+    DuplicateArgName(String),
+
+    #[error("non-default argument should not follow the default argument")]
+    NonDefaultArgumentFollowsDefaultArgument,
 }

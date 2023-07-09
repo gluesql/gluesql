@@ -1,7 +1,7 @@
 use {
     crate::*,
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
-    gluesql_core::{executor::Payload, prelude::Value::*},
+    gluesql_core::prelude::{Payload, Value::*},
     rust_decimal::Decimal,
 };
 

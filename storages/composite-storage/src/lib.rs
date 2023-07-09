@@ -7,7 +7,7 @@ mod transaction;
 use {
     gluesql_core::{
         data::Schema,
-        result::{Error, Result},
+        error::{Error, Result},
         store::{GStore, GStoreMut, Metadata, Store},
     },
     std::collections::HashMap,
@@ -90,3 +90,5 @@ impl gluesql_core::store::AlterTable for CompositeStorage {}
 impl gluesql_core::store::Index for CompositeStorage {}
 impl gluesql_core::store::IndexMut for CompositeStorage {}
 impl Metadata for CompositeStorage {}
+impl gluesql_core::store::CustomFunction for CompositeStorage {}
+impl gluesql_core::store::CustomFunctionMut for CompositeStorage {}

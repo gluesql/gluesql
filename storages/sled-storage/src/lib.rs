@@ -21,7 +21,7 @@ use {
     error::{err_into, tx_err_into},
     gluesql_core::{
         data::Schema,
-        result::{Error, Result},
+        error::{Error, Result},
         store::Metadata,
     },
     sled::{
@@ -146,3 +146,5 @@ fn fetch_schema(
 }
 
 impl Metadata for SledStorage {}
+impl gluesql_core::store::CustomFunction for SledStorage {}
+impl gluesql_core::store::CustomFunctionMut for SledStorage {}

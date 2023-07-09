@@ -43,6 +43,7 @@ impl Function {
             | Self::Sign(expr)
             | Self::Ascii(expr)
             | Self::Chr(expr)
+            | Self::Md5(expr)
             | Self::Ltrim { expr, chars: None }
             | Self::Rtrim { expr, chars: None }
             | Self::Trim {
@@ -52,7 +53,9 @@ impl Function {
             }
             | Self::Reverse(expr)
             | Self::Cast { expr, .. }
-            | Self::Extract { expr, .. } => Exprs::Single([expr].into_iter()),
+            | Self::Extract { expr, .. }
+            | Self::GetX(expr)
+            | Self::GetY(expr) => Exprs::Single([expr].into_iter()),
             Self::Left { expr, size: expr2 }
             | Self::Right { expr, size: expr2 }
             | Self::Lpad {
@@ -135,7 +138,13 @@ impl Function {
                 sub_expr: expr2,
                 start: None,
             }
-            | Self::Append { expr, value: expr2 } => Exprs::Double([expr, expr2].into_iter()),
+            | Self::Append { expr, value: expr2 }
+            | Self::Prepend { expr, value: expr2 }
+            | Self::Point { x: expr, y: expr2 }
+            | Self::CalcDistance {
+                geometry1: expr,
+                geometry2: expr2,
+            } => Exprs::Double([expr, expr2].into_iter()),
             Self::Lpad {
                 expr,
                 size: expr2,
@@ -156,6 +165,7 @@ impl Function {
                 sub_expr: expr2,
                 start: Some(expr3),
             } => Exprs::Triple([expr, expr2, expr3].into_iter()),
+            Self::Custom { name: _, exprs } => Exprs::VariableArgs(exprs.iter()),
             Self::Concat(exprs) => Exprs::VariableArgs(exprs.iter()),
             Self::ConcatWs { separator, exprs } => {
                 Exprs::VariableArgsWithSingle(once(separator).chain(exprs.iter()))
@@ -196,6 +206,7 @@ mod tests {
         test("PI()", &[]);
         test("GENERATE_UUID()", &[]);
         test("RAND()", &[]);
+        test("CUSTOM_FUNC()", &[]);
 
         // Single
         test("LOWER(id)", &["id"]);
@@ -280,6 +291,11 @@ mod tests {
         test(r#"CONCAT("abc", "123")"#, &[r#""abc""#, r#""123""#]);
 
         test(r#"CONCAT("a", "b", "c")"#, &[r#""a""#, r#""b""#, r#""c""#]);
+
+        test(
+            r#"CUSTOM_FUNC("a", "b", "c")"#,
+            &[r#""a""#, r#""b""#, r#""c""#],
+        );
 
         test(
             r#"CONCAT("gluesql", " ", "is", " ", "cool")"#,

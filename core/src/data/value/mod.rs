@@ -2,6 +2,7 @@ use {
     super::{Interval, Key, StringExt},
     crate::{
         ast::{DataType, DateTimeField},
+        data::point::Point,
         result::Result,
     },
     binary_op::TryBinaryOperator,
@@ -20,7 +21,6 @@ mod expr;
 mod json;
 mod literal;
 mod selector;
-mod string;
 mod uuid;
 
 pub use {
@@ -28,7 +28,7 @@ pub use {
     json::HashMapJsonExt,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum Value {
     Bool(bool),
     I8(i8),
@@ -41,6 +41,7 @@ pub enum Value {
     U32(u32),
     U64(u64),
     U128(u128),
+    F32(f32),
     F64(f64),
     Decimal(Decimal),
     Str(String),
@@ -53,11 +54,12 @@ pub enum Value {
     Uuid(u128),
     Map(HashMap<String, Value>),
     List(Vec<Value>),
+    Point(Point),
     Null,
 }
 
-impl PartialEq<Value> for Value {
-    fn eq(&self, other: &Value) -> bool {
+impl Value {
+    pub fn evaluate_eq(&self, other: &Value) -> bool {
         match (self, other) {
             (Value::I8(l), _) => l == other,
             (Value::I16(l), _) => l == other,
@@ -69,13 +71,8 @@ impl PartialEq<Value> for Value {
             (Value::U32(l), _) => l == other,
             (Value::U64(l), _) => l == other,
             (Value::U128(l), _) => l == other,
+            (Value::F32(l), _) => l == other,
             (Value::F64(l), _) => l == other,
-            (Value::Decimal(l), Value::Decimal(r)) => l == r,
-            (Value::Bool(l), Value::Bool(r)) => l == r,
-            (Value::Str(l), Value::Str(r)) => l == r,
-            (Value::Bytea(l), Value::Bytea(r)) => l == r,
-            (Value::Inet(l), Value::Inet(r)) => l == r,
-            (Value::Date(l), Value::Date(r)) => l == r,
             (Value::Date(l), Value::Timestamp(r)) => l
                 .and_hms_opt(0, 0, 0)
                 .map(|date_time| &date_time == r)
@@ -84,19 +81,12 @@ impl PartialEq<Value> for Value {
                 .and_hms_opt(0, 0, 0)
                 .map(|date_time| l == &date_time)
                 .unwrap_or(false),
-            (Value::Timestamp(l), Value::Timestamp(r)) => l == r,
-            (Value::Time(l), Value::Time(r)) => l == r,
-            (Value::Interval(l), Value::Interval(r)) => l == r,
-            (Value::Uuid(l), Value::Uuid(r)) => l == r,
-            (Value::Map(l), Value::Map(r)) => l == r,
-            (Value::List(l), Value::List(r)) => l == r,
-            _ => false,
+            (Value::Null, Value::Null) => false,
+            _ => self == other,
         }
     }
-}
 
-impl PartialOrd<Value> for Value {
-    fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
+    pub fn evaluate_cmp(&self, other: &Value) -> Option<Ordering> {
         match (self, other) {
             (Value::I8(l), _) => l.partial_cmp(other),
             (Value::I16(l), _) => l.partial_cmp(other),
@@ -108,6 +98,7 @@ impl PartialOrd<Value> for Value {
             (Value::U32(l), _) => l.partial_cmp(other),
             (Value::U64(l), _) => l.partial_cmp(other),
             (Value::U128(l), _) => l.partial_cmp(other),
+            (Value::F32(l), _) => l.partial_cmp(other),
             (Value::F64(l), _) => l.partial_cmp(other),
             (Value::Decimal(l), Value::Decimal(r)) => Some(l.cmp(r)),
             (Value::Bool(l), Value::Bool(r)) => Some(l.cmp(r)),
@@ -128,9 +119,7 @@ impl PartialOrd<Value> for Value {
             _ => None,
         }
     }
-}
 
-impl Value {
     pub fn is_zero(&self) -> bool {
         match self {
             Value::I8(v) => *v == 0,
@@ -143,6 +132,7 @@ impl Value {
             Value::U32(v) => *v == 0,
             Value::U64(v) => *v == 0,
             Value::U128(v) => *v == 0,
+            Value::F32(v) => *v == 0.0,
             Value::F64(v) => *v == 0.0,
             Value::Decimal(v) => *v == Decimal::ZERO,
             _ => false,
@@ -161,6 +151,7 @@ impl Value {
             Value::U32(_) => Some(DataType::Uint32),
             Value::U64(_) => Some(DataType::Uint64),
             Value::U128(_) => Some(DataType::Uint128),
+            Value::F32(_) => Some(DataType::Float32),
             Value::F64(_) => Some(DataType::Float),
             Value::Decimal(_) => Some(DataType::Decimal),
             Value::Bool(_) => Some(DataType::Boolean),
@@ -174,6 +165,7 @@ impl Value {
             Value::Uuid(_) => Some(DataType::Uuid),
             Value::Map(_) => Some(DataType::Map),
             Value::List(_) => Some(DataType::List),
+            Value::Point(_) => Some(DataType::Point),
             Value::Null => None,
         }
     }
@@ -190,6 +182,7 @@ impl Value {
             Value::U32(_) => matches!(data_type, DataType::Uint32),
             Value::U64(_) => matches!(data_type, DataType::Uint64),
             Value::U128(_) => matches!(data_type, DataType::Uint128),
+            Value::F32(_) => matches!(data_type, DataType::Float32),
             Value::F64(_) => matches!(data_type, DataType::Float),
             Value::Decimal(_) => matches!(data_type, DataType::Decimal),
             Value::Bool(_) => matches!(data_type, DataType::Boolean),
@@ -203,6 +196,7 @@ impl Value {
             Value::Uuid(_) => matches!(data_type, DataType::Uuid),
             Value::Map(_) => matches!(data_type, DataType::Map),
             Value::List(_) => matches!(data_type, DataType::List),
+            Value::Point(_) => matches!(data_type, DataType::Point),
             Value::Null => true,
         };
 
@@ -237,17 +231,20 @@ impl Value {
             | (DataType::Uint32, Value::U32(_))
             | (DataType::Uint64, Value::U64(_))
             | (DataType::Uint128, Value::U128(_))
+            | (DataType::Float32, Value::F32(_))
             | (DataType::Float, Value::F64(_))
             | (DataType::Decimal, Value::Decimal(_))
             | (DataType::Boolean, Value::Bool(_))
             | (DataType::Text, Value::Str(_))
             | (DataType::Bytea, Value::Bytea(_))
             | (DataType::Inet, Value::Inet(_))
+            | (DataType::Point, Value::Point(_))
             | (DataType::Date, Value::Date(_))
             | (DataType::Timestamp, Value::Timestamp(_))
             | (DataType::Time, Value::Time(_))
             | (DataType::Interval, Value::Interval(_))
             | (DataType::Uuid, Value::Uuid(_)) => Ok(self.clone()),
+
             (_, Value::Null) => Ok(Value::Null),
 
             (DataType::Boolean, value) => value.try_into().map(Value::Bool),
@@ -261,16 +258,18 @@ impl Value {
             (DataType::Uint32, value) => value.try_into().map(Value::U32),
             (DataType::Uint64, value) => value.try_into().map(Value::U64),
             (DataType::Uint128, value) => value.try_into().map(Value::U128),
+            (DataType::Float32, value) => value.try_into().map(Value::F32),
             (DataType::Float, value) => value.try_into().map(Value::F64),
             (DataType::Decimal, value) => value.try_into().map(Value::Decimal),
             (DataType::Text, value) => Ok(Value::Str(value.into())),
             (DataType::Date, value) => value.try_into().map(Value::Date),
             (DataType::Time, value) => value.try_into().map(Value::Time),
+            (DataType::Interval, Value::Str(value)) => Interval::parse(value).map(Value::Interval),
             (DataType::Timestamp, value) => value.try_into().map(Value::Timestamp),
-            (DataType::Interval, value) => value.try_into().map(Value::Interval),
             (DataType::Uuid, Value::Str(value)) => uuid::parse_uuid(value).map(Value::Uuid),
             (DataType::Uuid, value) => value.try_into().map(Value::Uuid),
             (DataType::Inet, value) => value.try_into().map(Value::Inet),
+            (DataType::Point, value) => value.try_into().map(Value::Point),
             (DataType::Bytea, Value::Str(value)) => hex::decode(value)
                 .map_err(|_| ValueError::CastFromHexToByteaFailed(value.clone()).into())
                 .map(Value::Bytea),
@@ -301,6 +300,7 @@ impl Value {
             (U32(a), b) => a.try_add(b),
             (U64(a), b) => a.try_add(b),
             (U128(a), b) => a.try_add(b),
+            (F32(a), b) => a.try_add(b),
             (F64(a), b) => a.try_add(b),
             (Decimal(a), b) => a.try_add(b),
             (Date(a), Time(b)) => Ok(Timestamp(NaiveDateTime::new(*a, *b))),
@@ -318,6 +318,7 @@ impl Value {
             | (Null, U32(_))
             | (Null, U64(_))
             | (Null, U128(_))
+            | (Null, F32(_))
             | (Null, F64(_))
             | (Null, Decimal(_))
             | (Null, Date(_))
@@ -351,6 +352,7 @@ impl Value {
             (U32(a), _) => a.try_subtract(other),
             (U64(a), _) => a.try_subtract(other),
             (U128(a), _) => a.try_subtract(other),
+            (F32(a), _) => a.try_subtract(other),
             (F64(a), _) => a.try_subtract(other),
             (Decimal(a), _) => a.try_subtract(other),
             (Date(a), Date(b)) => Ok(Interval(I::days((*a - *b).num_days() as i32))),
@@ -382,6 +384,7 @@ impl Value {
             | (Null, U32(_))
             | (Null, U64(_))
             | (Null, U128(_))
+            | (Null, F32(_))
             | (Null, F64(_))
             | (Null, Decimal(_))
             | (Null, Date(_))
@@ -416,6 +419,7 @@ impl Value {
             (U32(a), _) => a.try_multiply(other),
             (U64(a), _) => a.try_multiply(other),
             (U128(a), _) => a.try_multiply(other),
+            (F32(a), _) => a.try_multiply(other),
             (F64(a), _) => a.try_multiply(other),
             (Decimal(a), _) => a.try_multiply(other),
             (Interval(a), I8(b)) => Ok(Interval(*a * *b)),
@@ -423,6 +427,7 @@ impl Value {
             (Interval(a), I32(b)) => Ok(Interval(*a * *b)),
             (Interval(a), I64(b)) => Ok(Interval(*a * *b)),
             (Interval(a), I128(b)) => Ok(Interval(*a * *b)),
+            (Interval(a), F32(b)) => Ok(Interval(*a * *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a * *b)),
             (Null, I8(_))
             | (Null, I16(_))
@@ -434,6 +439,7 @@ impl Value {
             | (Null, U32(_))
             | (Null, U64(_))
             | (Null, U128(_))
+            | (Null, F32(_))
             | (Null, F64(_))
             | (Null, Decimal(_))
             | (Null, Interval(_))
@@ -466,6 +472,7 @@ impl Value {
             (U32(a), _) => a.try_divide(other),
             (U64(a), _) => a.try_divide(other),
             (U128(a), _) => a.try_divide(other),
+            (F32(a), _) => a.try_divide(other),
             (F64(a), _) => a.try_divide(other),
             (Decimal(a), _) => a.try_divide(other),
             (Interval(a), I8(b)) => Ok(Interval(*a / *b)),
@@ -478,6 +485,7 @@ impl Value {
             (Interval(a), U32(b)) => Ok(Interval(*a / *b)),
             (Interval(a), U64(b)) => Ok(Interval(*a / *b)),
             (Interval(a), U128(b)) => Ok(Interval(*a / *b)),
+            (Interval(a), F32(b)) => Ok(Interval(*a / *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a / *b)),
             (Null, I8(_))
             | (Null, I16(_))
@@ -489,6 +497,7 @@ impl Value {
             | (Null, U32(_))
             | (Null, U64(_))
             | (Null, U128(_))
+            | (Null, F32(_))
             | (Null, F64(_))
             | (Null, Decimal(_))
             | (Interval(_), Null)
@@ -520,6 +529,7 @@ impl Value {
             (U32(a), _) => a.try_modulo(other),
             (U64(a), _) => a.try_modulo(other),
             (U128(a), _) => a.try_modulo(other),
+            (F32(a), _) => a.try_modulo(other),
             (F64(a), _) => a.try_modulo(other),
             (Decimal(a), _) => a.try_modulo(other),
             (Null, I8(_))
@@ -532,6 +542,7 @@ impl Value {
             | (Null, U32(_))
             | (Null, U64(_))
             | (Null, U128(_))
+            | (Null, F32(_))
             | (Null, F64(_))
             | (Null, Decimal(_))
             | (Null, Null) => Ok(Null),
@@ -553,7 +564,7 @@ impl Value {
 
         match self {
             I8(_) | I16(_) | I32(_) | I64(_) | I128(_) | U8(_) | U16(_) | U32(_) | U64(_)
-            | U128(_) | F64(_) | Interval(_) | Decimal(_) => Ok(self.clone()),
+            | U128(_) | F32(_) | F64(_) | Interval(_) | Decimal(_) => Ok(self.clone()),
             Null => Ok(Null),
             _ => Err(ValueError::UnaryPlusOnNonNumeric.into()),
         }
@@ -568,6 +579,7 @@ impl Value {
             I32(a) => Ok(I32(-a)),
             I64(a) => Ok(I64(-a)),
             I128(a) => Ok(I128(-a)),
+            F32(a) => Ok(F32(-a)),
             F64(a) => Ok(F64(-a)),
             Decimal(a) => Ok(Decimal(-a)),
             Interval(a) => Ok(Interval(a.unary_minus())),
@@ -600,6 +612,7 @@ impl Value {
             U32(a) => factorial_function(*a as i128).map(I128),
             U64(a) => factorial_function(*a as i128).map(I128),
             U128(a) => factorial_function(*a as i128).map(I128),
+            F32(_) => Err(ValueError::FactorialOnNonInteger.into()),
             F64(_) => Err(ValueError::FactorialOnNonInteger.into()),
             Null => Ok(Null),
             _ => Err(ValueError::FactorialOnNonNumeric.into()),
@@ -653,7 +666,7 @@ impl Value {
         use Value::*;
         match self {
             I8(_) | I16(_) | I64(_) | I128(_) | U8(_) | U16(_) | U32(_) | U64(_) | U128(_)
-            | F64(_) => {
+            | F32(_) | F64(_) => {
                 let a: f64 = self.try_into()?;
                 Ok(Value::F64(a.sqrt()))
             }
@@ -735,7 +748,7 @@ fn str_position(from_str: &String, sub_str: &String) -> usize {
 mod tests {
     use {
         super::{Interval, Value::*},
-        crate::data::{value::uuid::parse_uuid, ValueError},
+        crate::data::{point::Point, value::uuid::parse_uuid, ValueError},
         chrono::{NaiveDate, NaiveTime},
         rust_decimal::Decimal,
         std::{net::IpAddr, str::FromStr},
@@ -751,7 +764,7 @@ mod tests {
 
     #[allow(clippy::eq_op)]
     #[test]
-    fn eq() {
+    fn evaluate_eq() {
         use {
             super::Interval,
             chrono::{NaiveDateTime, NaiveTime},
@@ -760,41 +773,51 @@ mod tests {
         let bytea = |v: &str| Bytea(hex::decode(v).unwrap());
         let inet = |v: &str| Inet(IpAddr::from_str(v).unwrap());
 
-        assert_ne!(Null, Null);
-        assert_eq!(Bool(true), Bool(true));
-        assert_eq!(I8(1), I8(1));
-        assert_eq!(I16(1), I16(1));
-        assert_eq!(I32(1), I32(1));
-        assert_eq!(I64(1), I64(1));
-        assert_eq!(I128(1), I128(1));
-        assert_eq!(U8(1), U8(1));
-        assert_eq!(U16(1), U16(1));
-        assert_eq!(U32(1), U32(1));
-        assert_eq!(U64(1), U64(1));
-        assert_eq!(U128(1), U128(1));
-        assert_eq!(I64(1), F64(1.0));
-        assert_eq!(F64(1.0), I64(1));
-        assert_eq!(F64(6.11), F64(6.11));
-        assert_eq!(Str("Glue".to_owned()), Str("Glue".to_owned()));
-        assert_eq!(bytea("1004"), bytea("1004"));
-        assert_eq!(inet("::1"), inet("::1"));
-        assert_eq!(Interval::Month(1), Interval::Month(1));
-        assert_eq!(
-            Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap()),
-            Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap())
+        assert_eq!(Null, Null);
+        assert!(!Null.evaluate_eq(&Null));
+        assert!(Bool(true).evaluate_eq(&Bool(true)));
+        assert!(I8(1).evaluate_eq(&I8(1)));
+        assert!(I16(1).evaluate_eq(&I16(1)));
+        assert!(I32(1).evaluate_eq(&I32(1)));
+        assert!(I64(1).evaluate_eq(&I64(1)));
+        assert!(I128(1).evaluate_eq(&I128(1)));
+        assert!(U8(1).evaluate_eq(&U8(1)));
+        assert!(U16(1).evaluate_eq(&U16(1)));
+        assert!(U32(1).evaluate_eq(&U32(1)));
+        assert!(U64(1).evaluate_eq(&U64(1)));
+        assert!(U128(1).evaluate_eq(&U128(1)));
+        assert!(I64(1).evaluate_eq(&F64(1.0)));
+        assert!(F32(1.0_f32).evaluate_eq(&I64(1)));
+        assert!(F32(6.11_f32).evaluate_eq(&F64(6.11)));
+        assert!(F64(1.0).evaluate_eq(&I64(1)));
+        assert!(F64(6.11).evaluate_eq(&F64(6.11)));
+        assert!(Str("Glue".to_owned()).evaluate_eq(&Str("Glue".to_owned())));
+        assert!(bytea("1004").evaluate_eq(&bytea("1004")));
+        assert!(inet("::1").evaluate_eq(&inet("::1")));
+        assert!(Interval(Interval::Month(1)).evaluate_eq(&Interval(Interval::Month(1))));
+        assert!(Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap())
+            .evaluate_eq(&Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap())));
+        assert!(decimal(1).evaluate_eq(&decimal(1)));
+        assert!(
+            Date("2020-05-01".parse().unwrap()).evaluate_eq(&Date("2020-05-01".parse().unwrap()))
         );
-        assert_eq!(decimal(1), decimal(1));
+        assert!(
+            Timestamp("2020-05-01T00:00:00".parse::<NaiveDateTime>().unwrap()).evaluate_eq(
+                &Timestamp("2020-05-01T00:00:00".parse::<NaiveDateTime>().unwrap())
+            )
+        );
+        assert!(
+            Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()).evaluate_eq(&Uuid(
+                parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()
+            ))
+        );
+        assert!(Point(Point::new(1.0, 2.0)).evaluate_eq(&Point(Point::new(1.0, 2.0))));
 
         let date = Date("2020-05-01".parse().unwrap());
         let timestamp = Timestamp("2020-05-01T00:00:00".parse::<NaiveDateTime>().unwrap());
 
-        assert_eq!(date, timestamp);
-        assert_eq!(timestamp, date);
-
-        assert_eq!(
-            Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()),
-            Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap())
-        );
+        assert!(date.evaluate_eq(&timestamp));
+        assert!(timestamp.evaluate_eq(&date));
     }
 
     #[test]
@@ -805,12 +828,15 @@ mod tests {
         };
 
         assert_eq!(
-            Bool(true).partial_cmp(&Bool(false)),
+            Bool(true).evaluate_cmp(&Bool(false)),
             Some(Ordering::Greater)
         );
-        assert_eq!(Bool(true).partial_cmp(&Bool(true)), Some(Ordering::Equal));
-        assert_eq!(Bool(false).partial_cmp(&Bool(false)), Some(Ordering::Equal));
-        assert_eq!(Bool(false).partial_cmp(&Bool(true)), Some(Ordering::Less));
+        assert_eq!(Bool(true).evaluate_cmp(&Bool(true)), Some(Ordering::Equal));
+        assert_eq!(
+            Bool(false).evaluate_cmp(&Bool(false)),
+            Some(Ordering::Equal)
+        );
+        assert_eq!(Bool(false).evaluate_cmp(&Bool(true)), Some(Ordering::Less));
 
         let date = Date(NaiveDate::from_ymd_opt(2020, 5, 1).unwrap());
         let timestamp = Timestamp(
@@ -820,96 +846,113 @@ mod tests {
                 .unwrap(),
         );
 
-        let one = rust_decimal::Decimal::ONE;
-        let two = rust_decimal::Decimal::TWO;
-
-        assert_eq!(date.partial_cmp(&timestamp), Some(Ordering::Greater));
-        assert_eq!(timestamp.partial_cmp(&date), Some(Ordering::Less));
+        assert_eq!(date.evaluate_cmp(&timestamp), Some(Ordering::Greater));
+        assert_eq!(timestamp.evaluate_cmp(&date), Some(Ordering::Less));
 
         assert_eq!(
             Time(NaiveTime::from_hms_opt(23, 0, 1).unwrap())
-                .partial_cmp(&Time(NaiveTime::from_hms_opt(10, 59, 59).unwrap())),
+                .evaluate_cmp(&Time(NaiveTime::from_hms_opt(10, 59, 59).unwrap())),
             Some(Ordering::Greater)
         );
         assert_eq!(
-            Interval::Month(1).partial_cmp(&Interval::Month(2)),
+            Interval(Interval::Month(1)).evaluate_cmp(&Interval(Interval::Month(2))),
             Some(Ordering::Less)
-        );
-        assert_eq!(
-            Interval::Microsecond(1).cmp(&Interval::Month(2)),
-            Ordering::Less
         );
 
-        assert_eq!(one.partial_cmp(&two), Some(Ordering::Less));
-        assert_eq!(two.partial_cmp(&one), Some(Ordering::Greater));
+        let one = Decimal(rust_decimal::Decimal::ONE);
+        let two = Decimal(rust_decimal::Decimal::TWO);
+        assert_eq!(one.evaluate_cmp(&two), Some(Ordering::Less));
+        assert_eq!(two.evaluate_cmp(&one), Some(Ordering::Greater));
+
         assert_eq!(
-            Decimal(one).partial_cmp(&Decimal(two)),
-            Some(Ordering::Less)
+            F32(1.0_f32).evaluate_cmp(&F32(1.0_f32)),
+            Some(Ordering::Equal)
         );
+        assert_eq!(F64(1.0).evaluate_cmp(&F64(1.0)), Some(Ordering::Equal));
+
+        assert_eq!(
+            Interval(Interval::Month(1)).evaluate_cmp(&Interval(Interval::Month(1))),
+            Some(Ordering::Equal)
+        );
+
+        assert_eq!(
+            Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()).evaluate_cmp(&Uuid(
+                parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()
+            )),
+            Some(Ordering::Equal)
+        );
+
+        assert_eq!(Null.evaluate_cmp(&Null), None);
 
         let bytea = |v: &str| Bytea(hex::decode(v).unwrap());
-        assert_eq!(bytea("12").partial_cmp(&bytea("20")), Some(Ordering::Less));
+        assert_eq!(bytea("12").evaluate_cmp(&bytea("20")), Some(Ordering::Less));
         assert_eq!(
-            bytea("9123").partial_cmp(&bytea("9122")),
+            bytea("9123").evaluate_cmp(&bytea("9122")),
             Some(Ordering::Greater)
         );
-        assert_eq!(bytea("10").partial_cmp(&bytea("10")), Some(Ordering::Equal));
+        assert_eq!(
+            bytea("10").evaluate_cmp(&bytea("10")),
+            Some(Ordering::Equal)
+        );
 
         let inet = |v: &str| Inet(IpAddr::from_str(v).unwrap());
         assert_eq!(
-            inet("0.0.0.0").partial_cmp(&inet("127.0.0.1")),
+            inet("0.0.0.0").evaluate_cmp(&inet("127.0.0.1")),
             Some(Ordering::Less)
         );
         assert_eq!(
-            inet("192.168.0.1").partial_cmp(&inet("127.0.0.1")),
+            inet("192.168.0.1").evaluate_cmp(&inet("127.0.0.1")),
             Some(Ordering::Greater)
         );
-        assert_eq!(inet("::1").partial_cmp(&inet("::1")), Some(Ordering::Equal));
+        assert_eq!(
+            inet("::1").evaluate_cmp(&inet("::1")),
+            Some(Ordering::Equal)
+        );
     }
 
     #[test]
     fn cmp_ints() {
         use std::cmp::Ordering;
 
-        assert_eq!(I8(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
-        assert_eq!(I8(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
-        assert_eq!(I8(0).partial_cmp(&I8(1)), Some(Ordering::Less));
+        assert_eq!(I8(0).evaluate_cmp(&I8(-1)), Some(Ordering::Greater));
+        assert_eq!(I8(0).evaluate_cmp(&I8(0)), Some(Ordering::Equal));
+        assert_eq!(I8(0).evaluate_cmp(&I8(1)), Some(Ordering::Less));
 
-        assert_eq!(I16(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
-        assert_eq!(I16(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
-        assert_eq!(I16(0).partial_cmp(&I8(1)), Some(Ordering::Less));
+        assert_eq!(I16(0).evaluate_cmp(&I8(-1)), Some(Ordering::Greater));
+        assert_eq!(I16(0).evaluate_cmp(&I8(0)), Some(Ordering::Equal));
+        assert_eq!(I16(0).evaluate_cmp(&I8(1)), Some(Ordering::Less));
 
-        assert_eq!(I32(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
-        assert_eq!(I32(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
-        assert_eq!(I32(0).partial_cmp(&I8(1)), Some(Ordering::Less));
+        assert_eq!(I32(0).evaluate_cmp(&I8(-1)), Some(Ordering::Greater));
+        assert_eq!(I32(0).evaluate_cmp(&I8(0)), Some(Ordering::Equal));
+        assert_eq!(I32(0).evaluate_cmp(&I8(1)), Some(Ordering::Less));
 
-        assert_eq!(I64(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
-        assert_eq!(I64(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
-        assert_eq!(I64(0).partial_cmp(&I8(1)), Some(Ordering::Less));
+        assert_eq!(I64(0).evaluate_cmp(&I8(-1)), Some(Ordering::Greater));
+        assert_eq!(I64(0).evaluate_cmp(&I8(0)), Some(Ordering::Equal));
+        assert_eq!(I64(0).evaluate_cmp(&I8(1)), Some(Ordering::Less));
 
-        assert_eq!(I128(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
-        assert_eq!(I128(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
-        assert_eq!(I128(0).partial_cmp(&I8(1)), Some(Ordering::Less));
+        assert_eq!(I128(0).evaluate_cmp(&I8(-1)), Some(Ordering::Greater));
+        assert_eq!(I128(0).evaluate_cmp(&I8(0)), Some(Ordering::Equal));
+        assert_eq!(I128(0).evaluate_cmp(&I8(1)), Some(Ordering::Less));
 
-        assert_eq!(U8(1).partial_cmp(&U8(0)), Some(Ordering::Greater));
-        assert_eq!(U8(0).partial_cmp(&U8(0)), Some(Ordering::Equal));
-        assert_eq!(U8(0).partial_cmp(&U8(1)), Some(Ordering::Less));
+        assert_eq!(U8(1).evaluate_cmp(&U8(0)), Some(Ordering::Greater));
+        assert_eq!(U8(0).evaluate_cmp(&U8(0)), Some(Ordering::Equal));
+        assert_eq!(U8(0).evaluate_cmp(&U8(1)), Some(Ordering::Less));
 
-        assert_eq!(U16(1).partial_cmp(&U16(0)), Some(Ordering::Greater));
-        assert_eq!(U16(0).partial_cmp(&U16(0)), Some(Ordering::Equal));
-        assert_eq!(U16(0).partial_cmp(&U16(1)), Some(Ordering::Less));
+        assert_eq!(U16(1).evaluate_cmp(&U16(0)), Some(Ordering::Greater));
+        assert_eq!(U16(0).evaluate_cmp(&U16(0)), Some(Ordering::Equal));
+        assert_eq!(U16(0).evaluate_cmp(&U16(1)), Some(Ordering::Less));
 
-        assert_eq!(U32(1).partial_cmp(&U32(0)), Some(Ordering::Greater));
-        assert_eq!(U32(0).partial_cmp(&U32(0)), Some(Ordering::Equal));
-        assert_eq!(U32(0).partial_cmp(&U32(1)), Some(Ordering::Less));
+        assert_eq!(U32(1).evaluate_cmp(&U32(0)), Some(Ordering::Greater));
+        assert_eq!(U32(0).evaluate_cmp(&U32(0)), Some(Ordering::Equal));
+        assert_eq!(U32(0).evaluate_cmp(&U32(1)), Some(Ordering::Less));
 
-        assert_eq!(U64(1).partial_cmp(&U64(0)), Some(Ordering::Greater));
-        assert_eq!(U64(0).partial_cmp(&U64(0)), Some(Ordering::Equal));
-        assert_eq!(U64(0).partial_cmp(&U64(1)), Some(Ordering::Less));
+        assert_eq!(U64(1).evaluate_cmp(&U64(0)), Some(Ordering::Greater));
+        assert_eq!(U64(0).evaluate_cmp(&U64(0)), Some(Ordering::Equal));
+        assert_eq!(U64(0).evaluate_cmp(&U64(1)), Some(Ordering::Less));
 
-        assert_eq!(U128(1).partial_cmp(&U128(0)), Some(Ordering::Greater));
-        assert_eq!(U128(0).partial_cmp(&U128(0)), Some(Ordering::Equal));
-        assert_eq!(U128(0).partial_cmp(&U128(1)), Some(Ordering::Less));
+        assert_eq!(U128(1).evaluate_cmp(&U128(0)), Some(Ordering::Greater));
+        assert_eq!(U128(0).evaluate_cmp(&U128(0)), Some(Ordering::Equal));
+        assert_eq!(U128(0).evaluate_cmp(&U128(1)), Some(Ordering::Less));
     }
 
     #[test]
@@ -920,6 +963,7 @@ mod tests {
             assert_eq!(I32(i.into()).is_zero(), i == 0);
             assert_eq!(I64(i.into()).is_zero(), i == 0);
             assert_eq!(I128(i.into()).is_zero(), i == 0);
+            assert_eq!(F32(i.into()).is_zero(), i == 0);
             assert_eq!(F64(i.into()).is_zero(), i == 0);
             assert_eq!(Decimal(i.into()).is_zero(), i == 0);
         }
@@ -941,7 +985,7 @@ mod tests {
 
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
-                assert_eq!($a.$op(&$b), Ok($c));
+                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c));
             };
         }
 
@@ -994,18 +1038,21 @@ mod tests {
         test!(add I32(1),   I16(2)    => I32(3));
         test!(add I32(1),   I32(2)   => I32(3));
         test!(add I32(1),   I64(2)   => I64(3));
+        test!(add I32(1),   F32(2.0_f32) => F32(3.0_f32));
         test!(add I32(1),   F64(2.0) => F64(3.0));
 
         test!(add I64(1),   I8(2)    => I64(3));
         test!(add I64(1),   I16(2)    => I64(3));
         test!(add I64(1),   I32(2)   => I64(3));
         test!(add I64(1),   I64(2)   => I64(3));
+        test!(add I64(1),   F32(2.0_f32) => F32(3.0_f32));
         test!(add I64(1),   F64(2.0) => F64(3.0));
 
         test!(add I128(1),   I8(2)    => I128(3));
         test!(add I128(1),   I16(2)    => I128(3));
         test!(add I128(1),   I32(2)   => I128(3));
         test!(add I128(1),   I64(2)   => I128(3));
+        test!(add I128(1),   F32(2.0_f32) => F32(3.0_f32));
         test!(add I128(1),   F64(2.0) => F64(3.0));
 
         test!(add U8(1),   I8(2)     => I64(3));
@@ -1014,6 +1061,7 @@ mod tests {
         test!(add U8(1),   I64(2)    => I64(3));
         test!(add U8(1),   I128(2)   => I128(3));
         test!(add U8(1),   U8(2)     => U8(3));
+        test!(add U8(1),   F32(2.0_f32)  => F32(3.0_f32));
         test!(add U8(1),   F64(2.0)  => F64(3.0));
 
         test!(add U16(1),   I8(2)     => U16(3));
@@ -1022,6 +1070,7 @@ mod tests {
         test!(add U16(1),   I64(2)    => U16(3));
         test!(add U16(1),   I128(2)   => U16(3));
         test!(add U16(1),   U8(2)     => U16(3));
+        test!(add U16(1),   F32(2.0_f32)  => F32(3.0_f32));
         test!(add U16(1),   F64(2.0)  => F64(3.0));
 
         test!(add U32(1),   I8(2)     => U32(3));
@@ -1032,6 +1081,7 @@ mod tests {
         test!(add U32(1),   U8(2)     => U32(3));
         test!(add U32(1),   U16(2)     => U32(3));
         test!(add U32(1),   U32(2)     => U32(3));
+        test!(add U32(1),   F32(2.0_f32)  => F32(3.0_f32));
         test!(add U32(1),   F64(2.0)  => F64(3.0));
 
         test!(add U64(1),   I8(2)     => U64(3));
@@ -1042,6 +1092,7 @@ mod tests {
         test!(add U64(1),   U8(2)     => U64(3));
         test!(add U64(1),   U16(2)     => U64(3));
         test!(add U64(1),   U32(2)     => U64(3));
+        test!(add U64(1),   F32(2.0_f32)  => F32(3.0_f32));
         test!(add U64(1),   F64(2.0)  => F64(3.0));
 
         test!(add U128(1),   I8(2)     => U128(3));
@@ -1052,9 +1103,22 @@ mod tests {
         test!(add U128(1),   U8(2)     => U128(3));
         test!(add U128(1),   U16(2)     => U128(3));
         test!(add U128(1),   U32(2)     => U128(3));
+        test!(add U128(1),   F32(2.0_f32)  => F32(3.0_f32));
         test!(add U128(1),   F64(2.0)  => F64(3.0));
 
+        test!(add F32(1.0_f32), F32(2.0_f32) => F32(3.0_f32));
+        test!(add F32(1.0_f32), F64(2.0) => F64(3.0));
+        test!(add F32(1.0_f32), I8(2)    => F32(3.0_f32));
+        test!(add F32(1.0_f32), I32(2)   => F32(3.0_f32));
+        test!(add F32(1.0_f32), I64(2)   => F32(3.0_f32));
+        test!(add F32(1.0_f32), U8(2)   => F32(3.0_f32));
+        test!(add F32(1.0_f32), U16(2)   => F32(3.0_f32));
+        test!(add F32(1.0_f32), U32(2)   => F32(3.0_f32));
+        test!(add F32(1.0_f32), U64(2)   => F32(3.0_f32));
+        test!(add F32(1.0_f32), U128(2)   => F32(3.0_f32));
+
         test!(add F64(1.0), F64(2.0) => F64(3.0));
+        test!(add F64(1.0), F32(2.0_f32) => F32(3.0_f32));
         test!(add F64(1.0), I8(2)    => F64(3.0));
         test!(add F64(1.0), I32(2)   => F64(3.0));
         test!(add F64(1.0), I64(2)   => F64(3.0));
@@ -1128,6 +1192,7 @@ mod tests {
         test!(subtract U8(3),   I64(2)    => I64(1));
         test!(subtract U8(3),   I128(2)   => I128(1));
         test!(subtract U8(3),   U8(2)     => U8(1));
+        test!(subtract U8(3),   F32(2.0_f32)  => F32(1.0_f32));
         test!(subtract U8(3),   F64(2.0)  => F64(1.0));
 
         test!(subtract U16(3),   I8(2)     => U16(1));
@@ -1136,6 +1201,7 @@ mod tests {
         test!(subtract U16(3),   I64(2)    => U16(1));
         test!(subtract U16(3),   I128(2)   => U16(1));
         test!(subtract U16(3),   U8(2)     => U16(1));
+        test!(subtract U16(3),   F32(2.0_f32)  => F32(1.0_f32));
         test!(subtract U16(3),   F64(2.0)  => F64(1.0));
 
         test!(subtract U32(3),   I8(2)     => U32(1));
@@ -1144,6 +1210,7 @@ mod tests {
         test!(subtract U32(3),   I64(2)    => U32(1));
         test!(subtract U32(3),   I128(2)   => U32(1));
         test!(subtract U32(3),   U8(2)     => U32(1));
+        test!(subtract U32(3),   F32(2.0_f32)  => F32(1.0_f32));
         test!(subtract U32(3),   F64(2.0)  => F64(1.0));
 
         test!(subtract U64(3),   I8(2)     => U64(1));
@@ -1152,6 +1219,7 @@ mod tests {
         test!(subtract U64(3),   I64(2)    => U64(1));
         test!(subtract U64(3),   I128(2)   => U64(1));
         test!(subtract U64(3),   U8(2)     => U64(1));
+        test!(subtract U64(3),   F32(2.0_f32)  => F32(1.0_f32));
         test!(subtract U64(3),   F64(2.0)  => F64(1.0));
 
         test!(subtract U128(3),   I8(2)     => U128(1));
@@ -1160,7 +1228,17 @@ mod tests {
         test!(subtract U128(3),   I64(2)    => U128(1));
         test!(subtract U128(3),   I128(2)   => U128(1));
         test!(subtract U128(3),   U8(2)     => U128(1));
+        test!(subtract U128(3),   F32(2.0_f32)  => F32(1.0_f32));
         test!(subtract U128(3),   F64(2.0)  => F64(1.0));
+
+        test!(subtract I8(3),    F32(2.0_f32) => F32(1.0_f32));
+        test!(subtract I32(3),   F32(2.0_f32) => F32(1.0_f32));
+        test!(subtract I64(3),   F32(2.0_f32) => F32(1.0_f32));
+        test!(subtract I128(3),  F32(2.0_f32) => F32(1.0_f32));
+        test!(subtract U8(3),    F32(2.0_f32) => F32(1.0_f32));
+        test!(subtract U32(3),   F32(2.0_f32) => F32(1.0_f32));
+        test!(subtract U64(3),   F32(2.0_f32) => F32(1.0_f32));
+        test!(subtract U128(3),  F32(2.0_f32) => F32(1.0_f32));
 
         test!(subtract I8(3),    F64(2.0) => F64(1.0));
         test!(subtract I32(3),   F64(2.0) => F64(1.0));
@@ -1173,6 +1251,7 @@ mod tests {
         test!(subtract I32(3),   I64(2)   => I64(1));
         test!(subtract I32(3),   I128(2)  => I128(1));
 
+        test!(subtract I32(3),   F32(2.0_f32) => F32(1.0_f32));
         test!(subtract I32(3),   F64(2.0) => F64(1.0));
 
         test!(subtract I64(3),   I8(2)    => I64(1));
@@ -1180,8 +1259,15 @@ mod tests {
         test!(subtract I64(3),   I32(2)   => I64(1));
         test!(subtract I64(3),   I64(2)   => I64(1));
         test!(subtract I64(3),   I128(2)   => I64(1));
+        test!(subtract I64(3),   F32(2.0_f32) => F32(1.0_f32));
         test!(subtract I64(3),   F64(2.0) => F64(1.0));
 
+        test!(subtract F32(3.0_f32), F32(2.0_f32) => F32(1.0_f32));
+        test!(subtract F32(3.0_f32), F64(2.0) => F64(1.0));
+        test!(subtract F32(3.0_f32), I8(2)    => F32(1.0_f32));
+        test!(subtract F32(3.0_f32), I64(2)   => F32(1.0_f32));
+
+        test!(subtract F64(3.0), F32(2.0_f32) => F32(1.0_f32));
         test!(subtract F64(3.0), F64(2.0) => F64(1.0));
         test!(subtract F64(3.0), I8(2)    => F64(1.0));
         test!(subtract F64(3.0), I64(2)   => F64(1.0));
@@ -1248,6 +1334,13 @@ mod tests {
         test!(multiply I128(3),    I128(2)  => I128(6));
         test!(multiply I128(3),    U8(2)  => I128(6));
 
+        test!(multiply I8(3),    F32(2.0_f32) => F32(6.0_f32));
+        test!(multiply I16(3),    F32(2.0_f32) => F32(6.0_f32));
+        test!(multiply I32(3),    F32(2.0_f32) => F32(6.0_f32));
+        test!(multiply I64(3),   F32(2.0_f32) => F32(6.0_f32));
+        test!(multiply I128(3),    F32(2.0_f32) => F32(6.0_f32));
+        test!(multiply I128(3),    U8(2) => I128(6));
+
         test!(multiply I8(3),    F64(2.0) => F64(6.0));
         test!(multiply I16(3),    F64(2.0) => F64(6.0));
         test!(multiply I32(3),    F64(2.0) => F64(6.0));
@@ -1261,6 +1354,7 @@ mod tests {
         test!(multiply U8(3),   I64(2)    => I64(6));
         test!(multiply U8(3),   I128(2)   => I128(6));
         test!(multiply U8(3),   U8(2)     => U8(6));
+        test!(multiply U8(3),   F32(2.0_f32)  => F32(6.0_f32));
         test!(multiply U8(3),   F64(2.0)  => F64(6.0));
 
         test!(multiply U16(3),   I8(2)     => U16(6));
@@ -1269,6 +1363,7 @@ mod tests {
         test!(multiply U16(3),   I64(2)    => U16(6));
         test!(multiply U16(3),   I128(2)   => U16(6));
         test!(multiply U16(3),   U8(2)     => U16(6));
+        test!(multiply U16(3),   F32(2.0_f32)  => F64(6.0));
         test!(multiply U16(3),   F64(2.0)  => F64(6.0));
 
         test!(multiply U32(3),   I8(2)     => U32(6));
@@ -1277,6 +1372,7 @@ mod tests {
         test!(multiply U32(3),   I64(2)    => U32(6));
         test!(multiply U32(3),   I128(2)   => U32(6));
         test!(multiply U32(3),   U8(2)     => U32(6));
+        test!(multiply U32(3),   F32(2.0_f32)  => F64(6.0));
         test!(multiply U32(3),   F64(2.0)  => F64(6.0));
 
         test!(multiply U64(3),   I8(2)     => U64(6));
@@ -1285,6 +1381,7 @@ mod tests {
         test!(multiply U64(3),   I64(2)    => U64(6));
         test!(multiply U64(3),   I128(2)   => U64(6));
         test!(multiply U64(3),   U8(2)     => U64(6));
+        test!(multiply U64(3),   F32(2.0_f32)  => F64(6.0));
         test!(multiply U64(3),   F64(2.0)  => F64(6.0));
 
         test!(multiply U128(3),   I8(2)     => U128(6));
@@ -1293,9 +1390,19 @@ mod tests {
         test!(multiply U128(3),   I64(2)    => U128(6));
         test!(multiply U128(3),   I128(2)   => U128(6));
         test!(multiply U128(3),   U8(2)     => U128(6));
+        test!(multiply U128(3),   F32(2.0_f32)  => F32(6.0_f32));
         test!(multiply U128(3),   F64(2.0)  => F64(6.0));
 
+        test!(multiply F32(3.0_f32), F32(2.0_f32) => F32(6.0_f32));
+        test!(multiply F32(3.0_f32), F64(2.0) => F64(6.0));
+        test!(multiply F32(3.0_f32), I8(2)    => F32(6.0_f32));
+        test!(multiply F32(3.0_f32), I32(2)   => F32(6.0_f32));
+        test!(multiply F32(3.0_f32), I64(2)   => F32(6.0_f32));
+        test!(multiply F32(3.0_f32), I128(2)  => F32(6.0_f32));
+        test!(multiply F32(3.0_f32), U8(2)    => F32(6.0_f32));
+
         test!(multiply F64(3.0), F64(2.0) => F64(6.0));
+        test!(multiply F64(3.0), F32(2.0_f32) => F32(6.0_f32));
         test!(multiply F64(3.0), I8(2)    => F64(6.0));
         test!(multiply F64(3.0), I32(2)   => F64(6.0));
         test!(multiply F64(3.0), I64(2)   => F64(6.0));
@@ -1309,11 +1416,15 @@ mod tests {
         test!(multiply I32(3),   mon!(3)  => mon!(9));
         test!(multiply I64(3),   mon!(3)  => mon!(9));
         test!(multiply I128(3),  mon!(3)  => mon!(9));
+        test!(multiply F32(3.0_f32), mon!(3)  => mon!(9));
         test!(multiply F64(3.0), mon!(3)  => mon!(9));
         test!(multiply mon!(3),  I8(2)    => mon!(6));
+        test!(multiply mon!(3),  I16(2)   => mon!(6));
         test!(multiply mon!(3),  I32(2)   => mon!(6));
         test!(multiply mon!(3),  I64(2)   => mon!(6));
         test!(multiply mon!(3),  I128(2)  => mon!(6));
+        test!(multiply mon!(3),  F32(2.0_f32) => mon!(6));
+        test!(multiply mon!(3),  F32(2.0_f32) => mon!(6));
         test!(multiply mon!(3),  F64(2.0) => mon!(6));
 
         test!(divide I8(0),     I8(5)   => I8(0));
@@ -1360,6 +1471,7 @@ mod tests {
         test!(divide U8(6),   I64(2)    => I64(3));
         test!(divide U8(6),   I128(2)   => I128(3));
         test!(divide U8(6),   U8(2)     => U8(3));
+        test!(divide U8(6),   F32(2.0_f32)  => F64(3.0));
         test!(divide U8(6),   F64(2.0)  => F64(3.0));
 
         test!(divide U16(6),   I8(2)     => U16(3));
@@ -1368,6 +1480,7 @@ mod tests {
         test!(divide U16(6),   I64(2)    => U16(3));
         test!(divide U16(6),   I128(2)   => U16(3));
         test!(divide U16(6),   U8(2)     => U16(3));
+        test!(divide U16(6),   F32(2.0_f32)  => F64(3.0));
         test!(divide U16(6),   F64(2.0)  => F64(3.0));
 
         test!(divide U32(6),   I8(2)     => U32(3));
@@ -1376,6 +1489,7 @@ mod tests {
         test!(divide U32(6),   I64(2)    => U32(3));
         test!(divide U32(6),   I128(2)   => U32(3));
         test!(divide U32(6),   U8(2)     => U32(3));
+        test!(divide U32(6),   F32(2.0_f32)  => F64(3.0));
         test!(divide U32(6),   F64(2.0)  => F64(3.0));
 
         test!(divide U64(6),   I8(2)     => U64(3));
@@ -1384,6 +1498,7 @@ mod tests {
         test!(divide U64(6),   I64(2)    => U64(3));
         test!(divide U64(6),   I128(2)   => U64(3));
         test!(divide U64(6),   U8(2)     => U64(3));
+        test!(divide U64(6),   F32(2.0_f32)  => F64(3.0));
         test!(divide U64(6),   F64(2.0)  => F64(3.0));
 
         test!(divide U128(6),   I8(2)     => U128(3));
@@ -1398,6 +1513,20 @@ mod tests {
         test!(divide I32(6),    F64(2.0) => F64(3.0));
         test!(divide I64(6),   F64(2.0) => F64(3.0));
         test!(divide I128(6),    F64(2.0) => F64(3.0));
+        test!(divide F32(6.0_f32),    F64(2.0) => F64(3.0));
+
+        test!(divide I8(6),    F32(2.0_f32) => F32(3.0_f32));
+        test!(divide I32(6),    F32(2.0_f32) => F32(3.0_f32));
+        test!(divide I64(6),   F32(2.0_f32) => F32(3.0_f32));
+        test!(divide I128(6),    F32(2.0_f32) => F32(3.0_f32));
+        test!(divide F64(6.0), F32(2.0_f32) => F32(3.0_f32));
+
+        test!(divide F32(6.0_f32), I8(2)    => F32(3.0_f32));
+        test!(divide F32(6.0_f32), I16(2)    => F32(3.0_f32));
+        test!(divide F32(6.0_f32), I32(2)    => F32(3.0_f32));
+        test!(divide F32(6.0_f32), I64(2)   => F32(3.0_f32));
+        test!(divide F32(6.0_f32), I128(2)    => F32(3.0_f32));
+        test!(divide F64(6.0), F32(2.0_f32) => F32(3.0_f32));
 
         test!(divide F64(6.0), I8(2)    => F64(3.0));
         test!(divide F64(6.0), I16(2)    => F64(3.0));
@@ -1405,7 +1534,7 @@ mod tests {
         test!(divide F64(6.0), I64(2)   => F64(3.0));
         test!(divide F64(6.0), I128(2)    => F64(3.0));
         test!(divide F64(6.0), U8(2)    => F64(3.0));
-        test!(divide F64(6.0), F64(2.0) => F64(3.0));
+        test!(divide F64(6.0), F32(2.0_f32) => F32(3.0_f32));
 
         test!(divide mon!(6),  I8(2)    => mon!(3));
         test!(divide mon!(6),  I16(2)    => mon!(3));
@@ -1417,6 +1546,7 @@ mod tests {
         test!(divide mon!(6),  U32(2)    => mon!(3));
         test!(divide mon!(6),  U64(2)    => mon!(3));
         test!(divide mon!(6),  U128(2)    => mon!(3));
+        test!(divide mon!(6),  F32(2.0_f32) => mon!(3));
         test!(divide mon!(6),  F64(2.0) => mon!(3));
 
         test!(modulo I8(6),    I8(4)    => I8(2));
@@ -1443,11 +1573,14 @@ mod tests {
         test!(modulo I128(6),    I128(4)  => I128(2));
 
         test!(modulo I8(6),   I8(2)   => I8(0));
+        test!(modulo I8(6),   F32(2.0_f32) => F32(0.0_f32));
         test!(modulo I8(6),   F64(2.0) => F64(0.0));
         test!(modulo I32(6),   I32(2)   => I32(0));
         test!(modulo I32(6),   F64(2.0) => F64(0.0));
         test!(modulo I64(6),   I32(2)   => I32(0));
         test!(modulo I64(6),   F64(2.0) => F64(0.0));
+        test!(modulo F32(6.0_f32), I64(2)   => F32(0.0_f32));
+        test!(modulo F32(6.0_f32), F32(2.0_f32) => F32(0.0_f32));
         test!(modulo F64(6.0), I64(2)   => F64(0.0));
         test!(modulo F64(6.0), F64(2.0) => F64(0.0));
         test!(modulo I128(6),   I8(2)   => I128(0));
@@ -1456,6 +1589,7 @@ mod tests {
         test!(modulo I128(6),   I64(2)   => I128(0));
         test!(modulo I128(6),   I128(2)   => I128(0));
         test!(modulo I128(6),   F64(2.0) => F64(0.0));
+        test!(modulo I128(6),   F32(2.0_f32) => F32(0.0_f32));
 
         macro_rules! null_test {
             ($op: ident $a: expr, $b: expr) => {
@@ -1484,6 +1618,7 @@ mod tests {
         null_test!(add      U32(1),   Null);
         null_test!(add      U64(1),   Null);
         null_test!(add      U128(1),   Null);
+        null_test!(add      F32(1.0_f32), Null);
         null_test!(add      F64(1.0), Null);
         null_test!(add      decimal(1), Null);
         null_test!(add      date(),   Null);
@@ -1500,6 +1635,7 @@ mod tests {
         null_test!(subtract U32(1),   Null);
         null_test!(subtract U64(1),   Null);
         null_test!(subtract U128(1),   Null);
+        null_test!(subtract F32(1.0_f32), Null);
         null_test!(subtract F64(1.0), Null);
         null_test!(subtract decimal(1), Null);
         null_test!(subtract date(),   Null);
@@ -1516,6 +1652,7 @@ mod tests {
         null_test!(multiply U32(1),   Null);
         null_test!(multiply U64(1),   Null);
         null_test!(multiply U128(1),   Null);
+        null_test!(multiply F32(1.0_f32), Null);
         null_test!(multiply F64(1.0), Null);
         null_test!(multiply decimal(1), Null);
         null_test!(multiply mon!(1),  Null);
@@ -1529,6 +1666,7 @@ mod tests {
         null_test!(divide   U32(1),   Null);
         null_test!(divide   U64(1),   Null);
         null_test!(divide   U128(1),   Null);
+        null_test!(divide   F32(1.0_f32), Null);
         null_test!(divide   F64(1.0), Null);
         null_test!(divide   decimal(1), Null);
         null_test!(divide   mon!(1),  Null);
@@ -1542,6 +1680,7 @@ mod tests {
         null_test!(modulo   U32(1),   Null);
         null_test!(modulo   U64(1),   Null);
         null_test!(modulo   U128(1),   Null);
+        null_test!(modulo   F32(1.0_f32), Null);
         null_test!(modulo   F64(1.0), Null);
         null_test!(modulo   decimal(1), Null);
 
@@ -1555,6 +1694,7 @@ mod tests {
         null_test!(add      Null, U32(1));
         null_test!(add      Null, U64(1));
         null_test!(add      Null, U128(1));
+        null_test!(add      Null, F32(1.0_f32));
         null_test!(add      Null, F64(1.0));
         null_test!(add      Null, decimal(1));
         null_test!(add      Null, mon!(1));
@@ -1570,6 +1710,7 @@ mod tests {
         null_test!(subtract Null, U32(1));
         null_test!(subtract Null, U64(1));
         null_test!(subtract Null, U128(1));
+        null_test!(subtract Null, F32(1.0_f32));
         null_test!(subtract Null, F64(1.0));
         null_test!(subtract Null, decimal(1));
         null_test!(subtract Null, date());
@@ -1586,6 +1727,7 @@ mod tests {
         null_test!(multiply Null, U32(1));
         null_test!(multiply Null, U64(1));
         null_test!(multiply Null, U128(1));
+        null_test!(multiply Null, F32(1.0_f32));
         null_test!(multiply Null, F64(1.0));
         null_test!(multiply Null, decimal(1));
         null_test!(divide   Null, I8(1));
@@ -1598,6 +1740,7 @@ mod tests {
         null_test!(divide   Null, U32(1));
         null_test!(divide   Null, U64(1));
         null_test!(divide   Null, U128(1));
+        null_test!(divide   Null, F32(1.0_f32));
         null_test!(divide   Null, F64(1.0));
         null_test!(divide   Null, decimal(1));
         null_test!(modulo   Null, I8(1));
@@ -1609,6 +1752,7 @@ mod tests {
         null_test!(modulo   Null, U32(1));
         null_test!(modulo   Null, U64(1));
         null_test!(modulo   Null, U128(1));
+        null_test!(modulo   Null, F32(1.0_f32));
         null_test!(modulo   Null, F64(1.0));
         null_test!(modulo   Null, decimal(1));
 
@@ -1622,7 +1766,7 @@ mod tests {
     #[test]
     fn cast() {
         use {
-            crate::{ast::DataType::*, prelude::Value},
+            crate::{ast::DataType::*, data::Point, prelude::Value},
             chrono::{NaiveDate, NaiveTime},
         };
 
@@ -1641,6 +1785,7 @@ mod tests {
 
         let bytea = Value::Bytea(hex::decode("0abc").unwrap());
         let inet = |v| Value::Inet(IpAddr::from_str(v).unwrap());
+        let point = |x, y| Value::Point(Point::new(x, y));
 
         // Same as
         cast!(Bool(true)            => Boolean      , Bool(true));
@@ -1657,6 +1802,7 @@ mod tests {
         cast!(U32(1)                 => Uint32        , U32(1));
         cast!(U64(1)                 => Uint64        , U64(1));
         cast!(U128(1)                 => Uint128        , U128(1));
+        cast!(F32(1.0_f32)              => Float32        , F32(1.0_f32));
         cast!(F64(1.0)              => Float        , F64(1.0));
         cast!(Value::Uuid(123)      => Uuid         , Value::Uuid(123));
 
@@ -1682,6 +1828,8 @@ mod tests {
         cast!(U64(0)                   => Boolean, Bool(false));
         cast!(U128(0)                   => Boolean, Bool(false));
         cast!(U128(0)                   => Boolean, Bool(false));
+        cast!(F32(1.0_f32)                  => Boolean, Bool(true));
+        cast!(F32(0.0_f32)                  => Boolean, Bool(false));
         cast!(F64(1.0)                  => Boolean, Bool(true));
         cast!(F64(0.0)                  => Boolean, Bool(false));
         cast!(Null                      => Boolean, Null);
@@ -1689,57 +1837,76 @@ mod tests {
         // Integer
         cast!(Bool(true)            => Int8, I8(1));
         cast!(Bool(false)           => Int8, I8(0));
+        cast!(F32(1.1_f32)              => Int8, I8(1));
         cast!(F64(1.1)              => Int8, I8(1));
         cast!(Str("11".to_owned())  => Int8, I8(11));
         cast!(Null                  => Int8, Null);
 
         cast!(Bool(true)            => Int32, I32(1));
         cast!(Bool(false)           => Int32, I32(0));
+        cast!(F32(1.1_f32)              => Int32, I32(1));
         cast!(F64(1.1)              => Int32, I32(1));
         cast!(Str("11".to_owned())  => Int32, I32(11));
         cast!(Null                  => Int32, Null);
 
         cast!(Bool(true)            => Int, I64(1));
         cast!(Bool(false)           => Int, I64(0));
+        cast!(F32(1.1_f32)              => Int, I64(1));
         cast!(F64(1.1)              => Int, I64(1));
         cast!(Str("11".to_owned())  => Int, I64(11));
         cast!(Null                  => Int, Null);
 
         cast!(Bool(true)            => Int128, I128(1));
         cast!(Bool(false)           => Int128, I128(0));
+        cast!(F32(1.1_f32)          => Int128, I128(1));
         cast!(F64(1.1)              => Int128, I128(1));
         cast!(Str("11".to_owned())  => Int128, I128(11));
         cast!(Null                  => Int128, Null);
 
         cast!(Bool(true)            => Uint8, U8(1));
         cast!(Bool(false)           => Uint8, U8(0));
+        cast!(F32(1.1_f32)              => Uint8, U8(1));
         cast!(F64(1.1)              => Uint8, U8(1));
         cast!(Str("11".to_owned())  => Uint8, U8(11));
         cast!(Null                  => Uint8, Null);
 
         cast!(Bool(true)            => Uint16, U16(1));
         cast!(Bool(false)           => Uint16, U16(0));
+        cast!(F32(1.1_f32)              => Uint16, U16(1));
         cast!(F64(1.1)              => Uint16, U16(1));
         cast!(Str("11".to_owned())  => Uint16, U16(11));
         cast!(Null                  => Uint16, Null);
 
         cast!(Bool(true)            => Uint32, U32(1));
         cast!(Bool(false)           => Uint32, U32(0));
+        cast!(F32(1.1_f32)              => Uint32, U32(1));
         cast!(F64(1.1)              => Uint32, U32(1));
         cast!(Str("11".to_owned())  => Uint32, U32(11));
         cast!(Null                  => Uint32, Null);
 
         cast!(Bool(true)            => Uint64, U64(1));
         cast!(Bool(false)           => Uint64, U64(0));
+        cast!(F32(1.1_f32)              => Uint64, U64(1));
         cast!(F64(1.1)              => Uint64, U64(1));
         cast!(Str("11".to_owned())  => Uint64, U64(11));
         cast!(Null                  => Uint64, Null);
 
         cast!(Bool(true)            => Uint128, U128(1));
         cast!(Bool(false)           => Uint128, U128(0));
+        cast!(F32(1.1_f32)              => Uint128, U128(1));
         cast!(F64(1.1)              => Uint128, U128(1));
         cast!(Str("11".to_owned())  => Uint128, U128(11));
         cast!(Null                  => Uint128, Null);
+
+        // Float32
+        cast!(Bool(true)            => Float32, F32(1.0_f32));
+        cast!(Bool(false)           => Float32, F32(0.0_f32));
+        cast!(I8(1)                 => Float32, F32(1.0_f32));
+        cast!(I16(1)                 => Float32, F32(1.0_f32));
+        cast!(I32(1)                => Float32, F32(1.0_f32));
+        cast!(I64(1)                => Float32, F32(1.0_f32));
+        cast!(I128(1)               => Float32, F32(1.0_f32));
+        cast!(F64(1.0)               => Float32, F32(1.0_f32));
 
         // Float
         cast!(Bool(true)            => Float, F64(1.0));
@@ -1749,6 +1916,8 @@ mod tests {
         cast!(I32(1)                => Float, F64(1.0));
         cast!(I64(1)                => Float, F64(1.0));
         cast!(I128(1)               => Float, F64(1.0));
+        cast!(F32(1_f32)               => Float, F64(1.0));
+
         cast!(U8(1)                 => Float, F64(1.0));
         cast!(U16(1)                 => Float, F64(1.0));
         cast!(U32(1)                 => Float, F64(1.0));
@@ -1770,6 +1939,7 @@ mod tests {
         cast!(U32(11)        => Text, Str("11".to_owned()));
         cast!(U64(11)        => Text, Str("11".to_owned()));
         cast!(U128(11)        => Text, Str("11".to_owned()));
+        cast!(F32(1.0_f32)      => Text, Str("1".to_owned()));
         cast!(F64(1.0)      => Text, Str("1".to_owned()));
         cast!(inet("::1")    => Text, Str("::1".to_owned()));
 
@@ -1819,6 +1989,10 @@ mod tests {
         cast!(Str("::1".to_owned()) => Inet, inet("::1"));
         cast!(Str("0.0.0.0".to_owned()) => Inet, inet("0.0.0.0"));
 
+        // Point
+        cast!(point(0.32, 0.52) => Point, point(0.32, 0.52));
+        cast!(Str("POINT(0.32 0.52)".to_owned()) => Point, point(0.32, 0.52));
+
         // Casting error
         assert_eq!(
             Value::Uuid(123).cast(&List),
@@ -1846,6 +2020,10 @@ mod tests {
         assert_eq!(Str("A".to_owned()).concat(U32(1)), Str("A1".to_owned()));
         assert_eq!(Str("A".to_owned()).concat(U64(1)), Str("A1".to_owned()));
         assert_eq!(Str("A".to_owned()).concat(U128(1)), Str("A1".to_owned()));
+        assert_eq!(
+            Str("A".to_owned()).concat(F32(1.0_f32)),
+            Str("A1".to_owned())
+        );
         assert_eq!(Str("A".to_owned()).concat(F64(1.0)), Str("A1".to_owned()));
         assert_eq!(
             List(vec![I64(1)]).concat(List(vec![I64(2)])),
@@ -1859,7 +2037,7 @@ mod tests {
     fn validate_type() {
         use {
             super::{Value, ValueError},
-            crate::{ast::DataType as D, data::Interval as I},
+            crate::{ast::DataType as D, data::Interval as I, data::Point},
             chrono::{NaiveDate, NaiveTime},
         };
 
@@ -1873,6 +2051,7 @@ mod tests {
         let time = Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap());
         let interval = Interval(I::hours(5));
         let uuid = Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap());
+        let point = Point(Point::new(1.0, 2.0));
         let map = Value::parse_json_map(r#"{ "a": 10 }"#).unwrap();
         let list = Value::parse_json_list(r#"[ true ]"#).unwrap();
         let bytea = Bytea(hex::decode("9001").unwrap());
@@ -1899,6 +2078,8 @@ mod tests {
         assert!(U64(1).validate_type(&D::Text).is_err());
         assert!(U128(1).validate_type(&D::Uint128).is_ok());
         assert!(U128(1).validate_type(&D::Text).is_err());
+        assert!(F32(1.0_f32).validate_type(&D::Float32).is_ok());
+        assert!(F32(1.0_f32).validate_type(&D::Int).is_err());
         assert!(F64(1.0).validate_type(&D::Float).is_ok());
         assert!(F64(1.0).validate_type(&D::Int).is_err());
         assert!(Decimal(rust_decimal::Decimal::ONE)
@@ -1925,6 +2106,8 @@ mod tests {
         assert!(interval.validate_type(&D::Date).is_err());
         assert!(uuid.validate_type(&D::Uuid).is_ok());
         assert!(uuid.validate_type(&D::Boolean).is_err());
+        assert!(point.validate_type(&D::Point).is_ok());
+        assert!(point.validate_type(&D::Boolean).is_err());
         assert!(map.validate_type(&D::Map).is_ok());
         assert!(map.validate_type(&D::Int).is_err());
         assert!(list.validate_type(&D::List).is_ok());
@@ -1944,13 +2127,20 @@ mod tests {
 
     #[test]
     fn unary_minus() {
+        use crate::data::Interval as I;
         assert_eq!(I8(1).unary_minus(), Ok(I8(-1)));
         assert_eq!(I16(1).unary_minus(), Ok(I16(-1)));
         assert_eq!(I32(1).unary_minus(), Ok(I32(-1)));
         assert_eq!(I64(1).unary_minus(), Ok(I64(-1)));
         assert_eq!(I128(1).unary_minus(), Ok(I128(-1)));
 
+        assert_eq!(F32(1.0_f32).unary_minus(), Ok(F32(-1.0)));
         assert_eq!(F64(1.0).unary_minus(), Ok(F64(-1.0)));
+        assert_eq!(
+            Interval(I::hours(5)).unary_minus(),
+            Ok(Interval(I::hours(-5)))
+        );
+        assert_eq!(Null.unary_minus(), Ok(Null));
         assert_eq!(
             Decimal(Decimal::ONE).unary_minus(),
             Ok(Decimal(-Decimal::ONE))
@@ -1981,6 +2171,10 @@ mod tests {
         assert_eq!(U64(5).unary_factorial(), Ok(I128(120)));
         assert_eq!(U128(5).unary_factorial(), Ok(I128(120)));
         assert_eq!(
+            F32(5.0_f32).unary_factorial(),
+            Err(ValueError::FactorialOnNonInteger.into())
+        );
+        assert_eq!(
             F64(5.0).unary_factorial(),
             Err(ValueError::FactorialOnNonInteger.into())
         );
@@ -2002,6 +2196,7 @@ mod tests {
         assert_eq!(U32(9).sqrt(), Ok(F64(3.0)));
         assert_eq!(U64(9).sqrt(), Ok(F64(3.0)));
         assert_eq!(U128(9).sqrt(), Ok(F64(3.0)));
+        assert_eq!(F32(9.0_f32).sqrt(), Ok(F64(3.0)));
         assert_eq!(F64(9.0).sqrt(), Ok(F64(3.0)));
         assert!(Null.sqrt().unwrap().is_null());
         assert_eq!(
@@ -2036,7 +2231,7 @@ mod tests {
     fn get_type() {
         use {
             super::Value,
-            crate::{ast::DataType as D, data::Interval as I},
+            crate::{ast::DataType as D, data::Interval as I, data::Point},
             chrono::{NaiveDate, NaiveTime},
         };
 
@@ -2051,6 +2246,7 @@ mod tests {
         let time = Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap());
         let interval = Interval(I::hours(5));
         let uuid = Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap());
+        let point = Point(Point::new(1.0, 2.0));
         let map = Value::parse_json_map(r#"{ "a": 10 }"#).unwrap();
         let list = Value::parse_json_list(r#"[ true ]"#).unwrap();
         let bytea = Bytea(hex::decode("9001").unwrap());
@@ -2066,6 +2262,7 @@ mod tests {
         assert_eq!(U32(1).get_type(), Some(D::Uint32));
         assert_eq!(U64(1).get_type(), Some(D::Uint64));
         assert_eq!(U128(1).get_type(), Some(D::Uint128));
+        assert_eq!(F32(1.1_f32).get_type(), Some(D::Float32));
         assert_eq!(F64(1.1).get_type(), Some(D::Float));
         assert_eq!(decimal.get_type(), Some(D::Decimal));
         assert_eq!(Bool(true).get_type(), Some(D::Boolean));
@@ -2077,6 +2274,7 @@ mod tests {
         assert_eq!(time.get_type(), Some(D::Time));
         assert_eq!(interval.get_type(), Some(D::Interval));
         assert_eq!(uuid.get_type(), Some(D::Uuid));
+        assert_eq!(point.get_type(), Some(D::Point));
         assert_eq!(map.get_type(), Some(D::Map));
         assert_eq!(list.get_type(), Some(D::List));
         assert_eq!(Null.get_type(), None);

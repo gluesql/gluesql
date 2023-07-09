@@ -6,13 +6,14 @@ use {
         transaction::TxPayload,
         SledStorage, Snapshot,
     },
+    async_io::block_on,
     async_trait::async_trait,
     gluesql_core::{
         ast::ColumnDef,
         data::{schema::Schema, Value},
+        error::{AlterTableError, Error, Result},
         executor::evaluate_stateless,
-        result::{Error, Result},
-        store::{AlterTable, AlterTableError, DataRow},
+        store::{AlterTable, DataRow},
     },
     sled::transaction::ConflictableTransactionError,
     std::{iter::once, str},
@@ -287,7 +288,7 @@ impl AlterTable for SledStorage {
 
             let value = match (default, nullable) {
                 (Some(expr), _) => {
-                    let evaluated = evaluate_stateless(None, expr)
+                    let evaluated = block_on(evaluate_stateless(None, expr))
                         .map_err(ConflictableTransactionError::Abort)?;
 
                     evaluated

@@ -2,8 +2,8 @@ use {
     crate::*,
     bigdecimal::BigDecimal,
     gluesql_core::{
-        data::{Literal, LiteralError, NumericBinaryOperator, ValueError},
-        executor::{EvaluateError, UpdateError},
+        data::{Literal, NumericBinaryOperator},
+        error::{EvaluateError, LiteralError, UpdateError, ValueError},
         prelude::Value,
     },
     std::borrow::Cow,

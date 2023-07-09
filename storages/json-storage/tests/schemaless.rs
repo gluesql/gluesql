@@ -2,18 +2,18 @@ use {
     gluesql_core::prelude::{Glue, Value},
     gluesql_json_storage::JsonStorage,
     serde_json::json,
-    test_suite::{select_map, test},
+    test_suite::select_map,
 };
 
-#[test]
-fn json_schemaless() {
+#[tokio::test]
+async fn json_schemaless() {
     let path = "./tests/samples/";
     let json_storage = JsonStorage::new(path).unwrap();
     let mut glue = Glue::new(json_storage);
 
     let cases = vec![
         (
-            glue.execute("SELECT * FROM Schemaless"),
+            glue.execute("SELECT * FROM Schemaless").await,
             Ok(select_map![
                 json!({"id": 1}),
                 json!({"name": "Glue"}),
@@ -21,14 +21,14 @@ fn json_schemaless() {
             ]),
         ),
         (
-            glue.execute("SELECT * FROM ArrayOfJsonsSchemaless"),
+            glue.execute("SELECT * FROM ArrayOfJsonsSchemaless").await,
             Ok(select_map![
                 json!({ "id": 1, "name": "Glue" }),
                 json!({ "id": 2, "name": "SQL" })
             ]),
         ),
         (
-            glue.execute("SELECT * FROM SingleJsonSchemaless"),
+            glue.execute("SELECT * FROM SingleJsonSchemaless").await,
             Ok(select_map![json!(
                 {
                   "data": [
@@ -47,6 +47,6 @@ fn json_schemaless() {
     ];
 
     for (actual, expected) in cases {
-        test(actual.map(|mut payloads| payloads.remove(0)), expected);
+        assert_eq!(actual.map(|mut payloads| payloads.remove(0)), expected);
     }
 }

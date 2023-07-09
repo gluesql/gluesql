@@ -1,5 +1,6 @@
 mod alter_table;
 pub mod error;
+mod function;
 mod index;
 mod store;
 mod store_mut;
@@ -9,10 +10,8 @@ use {
     error::{JsonStorageError, OptionExt, ResultExt},
     gluesql_core::{
         ast::ColumnUniqueOption,
-        data::{value::HashMapJsonExt, Schema},
-        prelude::Key,
-        result::Error,
-        result::Result,
+        data::{value::HashMapJsonExt, Key, Schema},
+        error::{Error, Result},
         store::{DataRow, Metadata, RowIter},
     },
     iter_enum::Iterator,
@@ -113,7 +112,8 @@ impl JsonStorage {
             Ok(json_file_str) => {
                 let value = serde_json::from_str(&json_file_str).map_err(|_| {
                     Error::StorageMsg(
-                        JsonStorageError::InvalidJsonString(json_file_str.to_owned()).to_string(),
+                        JsonStorageError::InvalidJsonContent(format!("{table_name}.json"))
+                            .to_string(),
                     )
                 })?;
 

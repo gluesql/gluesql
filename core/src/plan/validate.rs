@@ -145,7 +145,8 @@ fn contextualize_table_factor<'a>(
 mod tests {
     use {
         crate::{
-            plan::{fetch_schema_map, mock::run, validate},
+            mock::run,
+            plan::{fetch_schema_map, validate},
             prelude::{parse, translate},
         },
         futures::executor::block_on,

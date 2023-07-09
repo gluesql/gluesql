@@ -9,7 +9,7 @@ mod query;
 
 pub use self::{
     data_type::translate_data_type,
-    ddl::translate_column_def,
+    ddl::{translate_column_def, translate_operate_function_arg},
     error::TranslateError,
     expr::{translate_expr, translate_order_by_expr},
     query::{alias_or_name, translate_query, translate_select_item},
@@ -107,6 +107,17 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 .map(translate_object_name)
                 .collect::<Result<Vec<_>>>()?,
         }),
+        SqlStatement::DropFunction {
+            if_exists,
+            func_desc,
+            ..
+        } => Ok(Statement::DropFunction {
+            if_exists: *if_exists,
+            names: func_desc
+                .iter()
+                .map(|v| translate_object_name(&v.name))
+                .collect::<Result<Vec<_>>>()?,
+        }),
         SqlStatement::CreateIndex {
             name,
             table_name,
@@ -160,6 +171,9 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             db_name: None,
             ..
         } => Ok(Statement::ShowVariable(Variable::Tables)),
+        SqlStatement::ShowFunctions { filter: None } => {
+            Ok(Statement::ShowVariable(Variable::Functions))
+        }
         SqlStatement::ShowVariable { variable } => match (variable.len(), variable.get(0)) {
             (1, Some(keyword)) => match keyword.value.to_uppercase().as_str() {
                 "VERSION" => Ok(Statement::ShowVariable(Variable::Version)),
@@ -185,6 +199,33 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
         SqlStatement::ShowColumns { table_name, .. } => Ok(Statement::ShowColumns {
             table_name: translate_object_name(table_name)?,
         }),
+        SqlStatement::CreateFunction {
+            or_replace,
+            name,
+            args,
+            params,
+            ..
+        } => {
+            let args = args
+                .as_ref()
+                .map(|args| {
+                    args.iter()
+                        .map(translate_operate_function_arg)
+                        .collect::<Result<Vec<_>>>()
+                })
+                .transpose()?;
+            Ok(Statement::CreateFunction {
+                or_replace: *or_replace,
+                name: translate_object_name(name)?,
+                args: args.unwrap_or_default(),
+                return_: params
+                    .return_
+                    .as_ref()
+                    .map(translate_expr)
+                    .transpose()?
+                    .ok_or(TranslateError::UnsupportedEmptyFunctionBody)?,
+            })
+        }
         _ => Err(TranslateError::UnsupportedStatement(sql_statement.to_string()).into()),
     }
 }

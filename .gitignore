@@ -5,6 +5,7 @@
 /storages/**/data/
 /storages/**/tmp/
 /reports/
+/docs/gluesql.github.io
 
 # Vim
 *.swp

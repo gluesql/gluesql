@@ -4,7 +4,7 @@ use {
     gluesql_core::{
         ast::ColumnDef,
         data::Value,
-        result::{Error, Result},
+        error::{Error, Result},
         store::DataRow,
     },
     serde_json::Value as JsonValue,
@@ -31,7 +31,7 @@ pub fn convert(value: JsValue, column_defs: Option<&[ColumnDef]>) -> Result<Data
                         _ => Ok(value),
                     }
                 })
-                .collect::<Result<Vec<Value>>>()
+                .collect::<Result<Vec<_>>>()
                 .map(DataRow::Vec)
         }
         (JsonValue::Object(json_map), None) => json_map

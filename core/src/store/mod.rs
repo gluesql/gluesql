@@ -1,18 +1,26 @@
 mod alter_table;
 mod data_row;
+mod function;
 mod index;
 mod metadata;
 mod transaction;
 
-pub trait GStore: Store + Index + Metadata {}
-impl<S: Store + Index + Metadata> GStore for S {}
+pub trait GStore: Store + Index + Metadata + CustomFunction {}
+impl<S: Store + Index + Metadata + CustomFunction> GStore for S {}
 
-pub trait GStoreMut: StoreMut + IndexMut + AlterTable + Transaction {}
-impl<S: StoreMut + IndexMut + AlterTable + Transaction> GStoreMut for S {}
+pub trait GStoreMut:
+    StoreMut + IndexMut + AlterTable + Transaction + CustomFunction + CustomFunctionMut
+{
+}
+impl<S: StoreMut + IndexMut + AlterTable + Transaction + CustomFunction + CustomFunctionMut>
+    GStoreMut for S
+{
+}
 
 pub use {
     alter_table::{AlterTable, AlterTableError},
     data_row::DataRow,
+    function::{CustomFunction, CustomFunctionMut},
     index::{Index, IndexError, IndexMut},
     metadata::{MetaIter, Metadata},
     transaction::Transaction,
