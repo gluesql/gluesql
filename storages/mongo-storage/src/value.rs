@@ -1,5 +1,5 @@
 use gluesql_core::{prelude::Key, store::DataRow};
-use mongodb::bson::{Bson, Document};
+use mongodb::bson::{bson, doc, Bson, Document};
 
 use crate::error::ResultExt;
 
@@ -114,5 +114,76 @@ impl IntoBson for Key {
             Key::None => Ok(Bson::Null),
             _ => todo!(),
         }
+    }
+}
+
+impl IntoBson for Value {
+    fn into_bson(self) -> Result<Bson> {
+        match self {
+            Value::Null => Ok(Bson::Null),
+            Value::I32(val) => Ok(Bson::Int32(val)),
+            Value::I64(val) => Ok(Bson::Int64(val)),
+            Value::F64(val) => Ok(Bson::Double(val)),
+            Value::Bool(val) => Ok(Bson::Boolean(val)),
+            Value::Str(val) => Ok(Bson::String(val)),
+            Value::List(val) => {
+                let bson = val
+                    .into_iter()
+                    .map(|val| val.into_bson())
+                    .collect::<Result<Vec<_>>>()?;
+
+                Ok(Bson::Array(bson))
+            }
+            // Value::Map(val) => {
+            // let bson = val
+            //     .into_iter()
+            //     .map(|(key, val)| Ok((key, val.into_bson()?)))
+            //     .collect::<Result<Vec<_>>>()?;
+
+            // let doc = doc! { bson };
+            // Ok(Bson::Document(doc))
+            // }
+            _ => todo!(),
+        }
+    }
+}
+
+impl IntoBson for DataRow {
+    fn into_bson(self) -> Result<Bson> {
+        match self {
+            DataRow::Vec(row) => {
+                let bson = row
+                    .into_iter()
+                    .map(|val| val.into_bson())
+                    .collect::<Result<Vec<_>>>()?;
+
+                Ok(Bson::Array(bson))
+            }
+            _ => todo!(), // DataRow::Map(row) => {
+                          //     let bson = row
+                          //         .into_iter()
+                          //         .map(|(key, val)| Ok((key, val.into_bson()?)))
+                          //         .collect::<Result<Vec<_>>>()?;
+
+                          //     let doc = doc! { bson };
+                          //     Ok(Bson::Document(doc))
+                          // }
+        }
+    }
+}
+
+pub fn into_bson_key(row: DataRow, key: Key) -> Result<Bson> {
+    match row {
+        DataRow::Vec(row) => {
+            let bson = row.into_iter().map(|val| val.into_bson());
+
+            let bson = vec![Ok(bson!({"_id": key.into_bson()?}))]
+                .into_iter()
+                .chain(bson)
+                .collect::<Result<Vec<_>>>()?;
+
+            Ok(Bson::Array(bson))
+        }
+        _ => todo!(),
     }
 }

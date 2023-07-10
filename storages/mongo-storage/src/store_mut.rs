@@ -1,7 +1,10 @@
 use mongodb::{
-    bson::{self, bson, doc},
+    bson::{self, bson, doc, Bson, Document},
     options::CreateCollectionOptions,
+    Collection,
 };
+
+use crate::value::{into_bson_key, IntoBson};
 
 use {
     crate::{error::ResultExt, MongoStorage},
@@ -75,19 +78,53 @@ impl StoreMut for MongoStorage {
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
-        todo!();
+        self.db
+            .collection::<Document>(table_name)
+            .drop(None)
+            .await
+            .map_storage_err()
     }
 
     async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
-        todo!();
+        self.db
+            .collection::<Bson>(table_name)
+            .insert_many(
+                rows.into_iter()
+                    .map(|row| row.into_bson())
+                    .collect::<Result<Vec<_>, _>>()?,
+                None,
+            )
+            .await
+            .map(|_| ())
+            .map_storage_err()
     }
 
     async fn insert_data(&mut self, table_name: &str, mut rows: Vec<(Key, DataRow)>) -> Result<()> {
-        todo!();
+        self.db
+            .collection::<Bson>(table_name)
+            .insert_many(
+                rows.into_iter()
+                    .map(|(key, row)| into_bson_key(row, key))
+                    .collect::<Result<Vec<_>, _>>()?,
+                None,
+            )
+            .await
+            .map(|_| ())
+            .map_storage_err()
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
-        todo!();
+        self.db
+            .collection::<Bson>(table_name)
+            .delete_many(
+                doc! { "_id": {
+                    "$in": keys.into_iter().map(|key| key.into_bson()).collect::<Result<Vec<_>, _>>()?
+                }},
+                None,
+            )
+            .await
+            .map(|_| ())
+            .map_storage_err()
     }
 }
 
