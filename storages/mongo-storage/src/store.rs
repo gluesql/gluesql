@@ -144,7 +144,7 @@ impl MongoStorage {
                                 data_type,
                                 nullable: true, // should parse from validator
                                 default: None,  // does not support default value
-                                unique: None,   // bby unique index?
+                                unique: None,   // by unique index?
                             };
 
                             Ok(column_def)

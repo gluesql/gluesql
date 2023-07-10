@@ -12,7 +12,7 @@ impl Tester<MongoStorage> for MongoTester {
     async fn new(namespace: &str) -> Self {
         let conn_str = "mongodb://localhost:27017";
 
-        let storage = MongoStorage::new(conn_str)
+        let storage = MongoStorage::new(conn_str, namespace)
             .await
             .expect("MongoStorage::new");
         let glue = Glue::new(storage);
