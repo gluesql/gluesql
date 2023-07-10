@@ -623,10 +623,10 @@ mod tests {
 
         assert_eq!(
             "REPLACE('Mticky GlueMQL','M','S')",
-            &Expr::Function(Box::new(Function::Replace{
-                expr:Expr::Literal(AstLiteral::QuotedString("Mticky GlueMQL".to_owned())),
-                old: Expr::Literal::(AstLiteral::QuotedString("M".to_owned())),
-                new: Expr::Literal::(AstLiteral::QuotedString("S".to_owned()))
+            &Expr::Function(Box::new(Function::Replace {
+                expr: Expr::Literal(AstLiteral::QuotedString("Mticky GlueMQL".to_owned())),
+                old: Expr::Literal(AstLiteral::QuotedString("M".to_owned())),
+                new: Expr::Literal(AstLiteral::QuotedString("S".to_owned()))
             })).to_sql()
         );
         assert_eq!(
