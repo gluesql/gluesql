@@ -440,6 +440,12 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
 
             f::repeat(name, expr, num)
         }
+        Function::Replace {expr,old,new}=>{
+            let expr = eval(expr).await?;
+            let old = eval(old).await?;
+            let new = eval(new).await?;
+        f::replace(name,expr,old,new)
+        }
         Function::Substr { expr, start, count } => {
             let expr = eval(expr).await?;
             let start = eval(start).await?;

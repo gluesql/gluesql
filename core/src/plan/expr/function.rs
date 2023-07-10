@@ -43,7 +43,7 @@ impl Function {
             | Self::Sign(expr)
             | Self::Ascii(expr)
             | Self::Chr(expr)
-            | Self::Md5(expr)
+            | Self::Md5(expr)   
             | Self::Ltrim { expr, chars: None }
             | Self::Rtrim { expr, chars: None }
             | Self::Trim {
@@ -124,6 +124,7 @@ impl Function {
                 start: expr2,
                 count: None,
             }
+            | Self::Replace { expr, old:expr2, new:expr3, }    
             | Self::IfNull { expr, then: expr2 }
             | Self::Unwrap {
                 expr,

@@ -112,6 +112,11 @@ pub enum Function {
         expr: Expr,
         num: Expr,
     },
+    Replace {
+        expr: Expr,
+        old: Expr,
+        new: Expr,
+    },
     Sign(Expr),
     Substr {
         expr: Expr,
@@ -347,6 +352,7 @@ impl ToSql for Function {
             Function::Ascii(e) => format!("ASCII({})", e.to_sql()),
             Function::Chr(e) => format!("CHR({})", e.to_sql()),
             Function::Md5(e) => format!("MD5({})", e.to_sql()),
+            Function::Replace{expr,old,new} => format!("REPLACE({},{},{})",expr.to_sql(),old.to_sql(),new.to_sql()),
             Function::Append { expr, value } => {
                 format!(
                     "APPEND({items}, {value})",
@@ -1022,6 +1028,15 @@ mod tests {
             ))))
             .to_sql()
         );
+
+        assert_eq!(
+        "REPLACE('Mticky GlueMQL','M','S')",
+            &Expr::Function(Box::new(Function::Replace{
+                expr:Expr::Literal(AstLiteral::QuotedString("Mticky GlueMQL".to_owned())),
+                old: Expr::Literal::(AstLiteral::QuotedString("M".to_owned())),
+                new: Expr::Literal::(AstLiteral::QuotedString("S".to_owned()))
+            })).to_sql()
+    );
 
         assert_eq!(
             r#"EXTRACT(MINUTE FROM '2022-05-05 01:02:03')"#,

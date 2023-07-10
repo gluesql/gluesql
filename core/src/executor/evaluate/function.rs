@@ -1,3 +1,5 @@
+use super::expr;
+
 use {
     super::{EvaluateError, Evaluated},
     crate::{
@@ -229,6 +231,14 @@ pub fn repeat<'a>(name: String, expr: Evaluated<'_>, num: Evaluated<'_>) -> Resu
     let num = eval_to_int!(name, num) as usize;
     let value = expr.repeat(num);
 
+    Ok(Evaluated::from(Value::Str(value)))
+}
+
+pub fn replace<'a>(name: String, expr:Evaluated<'_>,old:Evaluated<'_>,new: Evaluated<'_>)-> Result<Evaluated<'a>>{
+    let expr = eval_to_str!(name,expr);
+    let old = eval_to_str!(name,old);
+    let new = eval_to_str!(name,new);
+    let value = expr.replace(&old,&new);
     Ok(Evaluated::from(Value::Str(value)))
 }
 

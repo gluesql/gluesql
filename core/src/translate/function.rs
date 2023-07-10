@@ -412,6 +412,14 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::Repeat { expr, num })))
         }
+        "REPLACE" => {
+            check_len(name,args.len(),3)?;
+            let expr = translate_expr(args[0])?;
+            let old = translate_expr(args[1])?;
+            let new = translate_expr(args[2])?;
+
+            Ok(Expr::Function(Box::new(Function::Replace {expr,old,new})))
+        }
         "SUBSTR" => {
             check_len_range(name, args.len(), 2, 3)?;
 
