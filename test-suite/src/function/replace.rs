@@ -23,7 +23,8 @@ test_case!(replace, async move {
                 Value::Str;
                 "Sticky GlueSQL".to_owned()
             )),
-        )(
+        ),
+        (
             "SELECT REPLACE('GlueSQL') AS test FROM Item",
             Err(TranslateError::FunctionArgsLengthNotMatching {
                 name: "REPLACE".to_owned(),
