@@ -34,7 +34,7 @@ test_case!(replace, async move {
             .into()),
         ),
         (
-            "SELECT REPLACE('GlueSQL','G) AS test FROM Item",
+            "SELECT REPLACE('GlueSQL','G') AS test FROM Item",
             Err(TranslateError::FunctionArgsLengthNotMatching {
                 name: "REPLACE".to_owned(),
                 expected: 3,
