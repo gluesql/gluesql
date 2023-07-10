@@ -627,7 +627,8 @@ mod tests {
                 expr: Expr::Literal(AstLiteral::QuotedString("Mticky GlueMQL".to_owned())),
                 old: Expr::Literal(AstLiteral::QuotedString("M".to_owned())),
                 new: Expr::Literal(AstLiteral::QuotedString("S".to_owned()))
-            })).to_sql()
+            }))
+            .to_sql()
         );
         assert_eq!(
             r#"IFNULL("updated_at", "created_at")"#,
