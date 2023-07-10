@@ -33,6 +33,11 @@ pub enum Function {
         size: Expr,
         fill: Option<Expr>,
     },
+    Replace {
+        expr: Expr,
+        old: Expr,
+        new: Expr,
+    },
     Cast {
         expr: Expr,
         data_type: DataType,
@@ -298,6 +303,13 @@ impl ToSql for Function {
             Function::Repeat { expr, num } => {
                 format!("REPEAT({}, {})", expr.to_sql(), num.to_sql())
             }
+            Function::Replace { expr, old, new } => format!(
+                "REPLACE({},{},{})",
+                expr.to_sql(),
+                old.to_sql(),
+                new.to_sql()
+            ),
+
             Function::Sign(e) => format!("SIGN({})", e.to_sql()),
             Function::Substr { expr, start, count } => match count {
                 None => format!("SUBSTR({}, {})", expr.to_sql(), start.to_sql()),
@@ -609,6 +621,14 @@ mod tests {
             .to_sql()
         );
 
+        assert_eq!(
+            "REPLACE('Mticky GlueMQL','M','S')",
+            &Expr::Function(Box::new(Function::Replace{
+                expr:Expr::Literal(AstLiteral::QuotedString("Mticky GlueMQL".to_owned())),
+                old: Expr::Literal::(AstLiteral::QuotedString("M".to_owned())),
+                new: Expr::Literal::(AstLiteral::QuotedString("S".to_owned()))
+            })).to_sql()
+        );
         assert_eq!(
             r#"IFNULL("updated_at", "created_at")"#,
             &Expr::Function(Box::new(Function::IfNull {

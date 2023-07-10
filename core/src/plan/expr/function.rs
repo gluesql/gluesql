@@ -160,6 +160,11 @@ impl Function {
                 start: expr2,
                 count: Some(expr3),
             }
+            | Self::Replace {
+                expr,
+                old: expr2,
+                new: expr3,
+            }
             | Self::FindIdx {
                 from_expr: expr,
                 sub_expr: expr2,
