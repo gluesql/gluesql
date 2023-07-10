@@ -1,3 +1,8 @@
+use mongodb::{
+    bson::{self, bson, doc},
+    options::CreateCollectionOptions,
+};
+
 use {
     crate::{error::ResultExt, MongoStorage},
     async_trait::async_trait,
@@ -17,7 +22,56 @@ use {
 #[async_trait(?Send)]
 impl StoreMut for MongoStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
-        todo!();
+        let (names, column_types) = schema
+            .column_defs
+            .as_ref()
+            .map(|column_defs| {
+                column_defs.iter().fold(
+                    (vec![], doc! {}),
+                    |(mut names, mut column_types), column_def| {
+                        let column_name = column_def.name.clone();
+                        names.push(column_name.clone());
+                        let nullable = match column_def.clone().nullable {
+                            true => Some("null"),
+                            false => None,
+                        };
+                        let column_type = doc! {
+                            column_name: {
+                                "type": [column_def.data_type.to_string(), nullable],
+                            },
+                        };
+                        column_types.extend(column_type);
+
+                        (names, column_types)
+                    },
+                )
+                // [(name1, type1), (name2, type2), ..]
+                // [name1, name2, ..], [type1, type2, ..]
+            })
+            .unwrap_or_default();
+        // let required = bson!["_id", names];
+        let mut properties = doc! {
+            "_id": { "bsonType": "objectId" }
+        };
+        properties.extend(column_types);
+        let mut required = vec!["_id".to_string()];
+        required.extend(names);
+
+        let option = CreateCollectionOptions::builder()
+            .validator(Some(doc! {
+                "$jsonSchema": {
+                    // "type": "object",
+                    // "required": required,
+                    // "properties": properties,
+                    // "additionalProperties": false
+                  }
+            }))
+            .build();
+
+        self.db
+            .create_collection(&schema.table_name, option)
+            .await
+            .map_storage_err()
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
