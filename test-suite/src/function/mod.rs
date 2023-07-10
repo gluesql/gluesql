@@ -38,3 +38,4 @@ pub mod substr;
 pub mod to_date;
 pub mod trim;
 pub mod upper_lower;
+pub mod replace;
