@@ -513,6 +513,7 @@ impl Value {
             (DataType::Point, Literal::Text(v)) => Point::from_wkt(v)
                 .map(Value::Point)
                 .map_err(|_| ValueError::FailedToParsePoint(v.to_string()).into()),
+            (DataType::Map, Literal::Text(v)) => Value::parse_json_map(v),
             (DataType::List, Literal::Text(v)) => Value::parse_json_list(v),
             _ => Err(ValueError::UnimplementedLiteralCast {
                 data_type: data_type.clone(),
@@ -1036,6 +1037,16 @@ mod tests {
             DataType::Inet,
             text!("::1"),
             Value::Inet(IpAddr::from_str("::1").unwrap())
+        );
+        test!(
+            DataType::Map,
+            text!(r#"{ "a": 1 }"#),
+            Value::parse_json_map(r#"{ "a": 1 }"#).unwrap()
+        );
+        test!(
+            DataType::List,
+            text!(r#"[ 1, 2, 3 ]"#),
+            Value::parse_json_list(r#"[ 1, 2, 3 ]"#).unwrap()
         );
     }
 }
