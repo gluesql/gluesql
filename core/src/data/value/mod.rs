@@ -273,6 +273,8 @@ impl Value {
             (DataType::Bytea, Value::Str(value)) => hex::decode(value)
                 .map_err(|_| ValueError::CastFromHexToByteaFailed(value.clone()).into())
                 .map(Value::Bytea),
+            (DataType::List, Value::Str(value)) => Self::parse_json_list(value),
+            (DataType::Map, Value::Str(value)) => Self::parse_json_map(value),
 
             _ => Err(ValueError::UnimplementedCast.into()),
         }
@@ -1992,6 +1994,18 @@ mod tests {
         // Point
         cast!(point(0.32, 0.52) => Point, point(0.32, 0.52));
         cast!(Str("POINT(0.32 0.52)".to_owned()) => Point, point(0.32, 0.52));
+
+        // Map
+        cast!(
+            Str(r#"{"a": 1}"#.to_owned()) => Map,
+            Value::parse_json_map(r#"{"a": 1}"#).unwrap()
+        );
+
+        // List
+        cast!(
+            Str(r#"[1, 2, 3]"#.to_owned()) => List,
+            Value::parse_json_list(r#"[1, 2, 3]"#).unwrap()
+        );
 
         // Casting error
         assert_eq!(

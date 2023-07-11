@@ -114,6 +114,15 @@ INSERT INTO MapType2 VALUES
         ))
     }
 
+    test! {
+        name: "cast literal to MAP",
+        sql: r#"SELECT CAST('{"a": 1}' AS MAP) AS map"#,
+        expected: Ok(select_with_null!(
+            map;
+            m(r#"{"a": 1}"#)
+        ))
+    }
+
     test!(
         "SELECT UNWRAP('abc', 'a.b.c') FROM MapType",
         Err(EvaluateError::FunctionRequiresMapValue("UNWRAP".to_owned()).into())

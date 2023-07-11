@@ -106,6 +106,15 @@ INSERT INTO ListType2 VALUES
         ))
     );
 
+    test! {
+        name: "cast literal to LIST",
+        sql: r#"SELECT CAST('[1, 2, 3]' AS LIST) AS list"#,
+        expected: Ok(select_with_null!(
+            list;
+            l("[1,2,3]")
+        ))
+    }
+
     test!(
         r#"SELECT id, items['not']['list'] AS foo FROM ListType2"#,
         Err(ValueError::SelectorRequiresMapOrListTypes.into())
