@@ -388,6 +388,12 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
 
             f::left_or_right(name, expr, size)
         }
+        Function::Replace { expr, old, new } => {
+            let expr = eval(expr).await?;
+            let old = eval(old).await?;
+            let new = eval(new).await?;
+            f::replace(name, expr, old, new)
+        }
         Function::Lpad { expr, size, fill } | Function::Rpad { expr, size, fill } => {
             let expr = eval(expr).await?;
             let size = eval(size).await?;

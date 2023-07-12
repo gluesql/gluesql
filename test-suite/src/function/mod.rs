@@ -30,6 +30,7 @@ pub mod prepend;
 pub mod radians;
 pub mod rand;
 pub mod repeat;
+pub mod replace;
 pub mod reverse;
 pub mod round;
 pub mod sign;

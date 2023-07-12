@@ -232,6 +232,19 @@ pub fn repeat<'a>(name: String, expr: Evaluated<'_>, num: Evaluated<'_>) -> Resu
     Ok(Evaluated::from(Value::Str(value)))
 }
 
+pub fn replace<'a>(
+    name: String,
+    expr: Evaluated<'_>,
+    old: Evaluated<'_>,
+    new: Evaluated<'_>,
+) -> Result<Evaluated<'a>> {
+    let expr = eval_to_str!(name, expr);
+    let old = eval_to_str!(name, old);
+    let new = eval_to_str!(name, new);
+    let value = expr.replace(&old, &new);
+    Ok(Evaluated::from(Value::Str(value)))
+}
+
 pub fn ascii<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
     let string = eval_to_str!(name, expr);
     let mut iter = string.chars();
