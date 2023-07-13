@@ -501,6 +501,25 @@ pub fn prepend<'a>(expr: Evaluated<'_>, value: Evaluated<'_>) -> Result<Evaluate
     }
 }
 
+pub fn take<'a>(expr: Evaluated<'_>, size: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let expr: Value = expr.try_into()?;
+    let size = match size.try_into()? {
+        Value::I64(number) => usize::try_from(number)
+            .map_err(|_| EvaluateError::FunctionRequiresUSizeValue("take".to_owned()))?,
+        _ => {
+            return Err(EvaluateError::FunctionRequiresIntegerValue("take".to_owned()).into());
+        }
+    };
+
+    match (expr, size) {
+        (Value::List(mut l), _) => {
+            l = l.into_iter().take(size).collect();
+            Ok(Evaluated::Value(Value::List(l)))
+        }
+        _ => Err(EvaluateError::ListTypeRequired.into()),
+    }
+}
+
 // --- etc ---
 
 pub fn unwrap<'a>(
