@@ -1,3 +1,7 @@
+use bigdecimal::num_bigint::ToBigInt;
+
+use super::BigDecimalExt;
+
 use {
     super::StringExt,
     crate::{
@@ -163,6 +167,28 @@ impl<'a> Literal<'a> {
                     Ok(Number(Cow::Owned(l.as_ref() / r.as_ref())))
                 }
             }
+            (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
+            _ => Err(LiteralError::UnsupportedBinaryArithmetic(
+                format!("{:?}", self),
+                format!("{:?}", other),
+            )
+            .into()),
+        }
+    }
+
+    pub fn bitwise_and(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
+        match (self, other) {
+            (Number(l), Number(r)) => match (l.to_i64(), r.to_i64()) {
+                (Some(l), Some(r)) => match (l & r).to_bigint() {
+                    Some(v) => Ok(Number(Cow::Owned(BigDecimal::new(v, 0)))),
+                    None => Err(LiteralError::UnreachableBinaryArithmetic.into()),
+                },
+                _ => Err(LiteralError::UnsupportedBinaryArithmetic(
+                    format!("{:?}", self),
+                    format!("{:?}", other),
+                )
+                .into()),
+            },
             (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
             _ => Err(LiteralError::UnsupportedBinaryArithmetic(
                 format!("{:?}", self),

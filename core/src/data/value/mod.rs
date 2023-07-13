@@ -513,6 +513,40 @@ impl Value {
         }
     }
 
+    pub fn bitwise_and(&self, other: &Value) -> Result<Value> {
+        use Value::*;
+
+        match (self, other) {
+            (I8(a), I8(b)) => Ok(I8(a & b)),
+            (I16(a), I16(b)) => Ok(I16(a & b)),
+            (I32(a), I32(b)) => Ok(I32(a & b)),
+            (I64(a), I64(b)) => Ok(I64(a & b)),
+            (I128(a), I128(b)) => Ok(I128(a & b)),
+            (U8(a), U8(b)) => Ok(U8(a & b)),
+            (U16(a), U16(b)) => Ok(U16(a & b)),
+            (U32(a), U32(b)) => Ok(U32(a & b)),
+            (U64(a), U64(b)) => Ok(U64(a & b)),
+            (U128(a), U128(b)) => Ok(U128(a & b)),
+            (Null, I8(_))
+            | (Null, I16(_))
+            | (Null, I32(_))
+            | (Null, I64(_))
+            | (Null, I128(_))
+            | (Null, U8(_))
+            | (Null, U16(_))
+            | (Null, U32(_))
+            | (Null, U64(_))
+            | (Null, U128(_))
+            | (Null, Null) => Ok(Null),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: self.clone(),
+                rhs: other.clone(),
+                operator: NumericBinaryOperator::BitwiseAnd,
+            }
+            .into()),
+        }
+    }
+
     pub fn modulo(&self, other: &Value) -> Result<Value> {
         use Value::*;
 

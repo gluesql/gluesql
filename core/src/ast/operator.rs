@@ -39,6 +39,7 @@ pub enum BinaryOperator {
     And,
     Or,
     Xor,
+    BitwiseAnd,
 }
 
 impl ToSql for BinaryOperator {
@@ -59,6 +60,7 @@ impl ToSql for BinaryOperator {
             BinaryOperator::And => "AND".to_owned(),
             BinaryOperator::Or => "OR".to_owned(),
             BinaryOperator::Xor => "XOR".to_owned(),
+            BinaryOperator::BitwiseAnd => "&".to_owned(),
         }
     }
 }

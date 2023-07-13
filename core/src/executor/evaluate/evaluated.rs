@@ -216,6 +216,15 @@ impl<'a> Evaluated<'a> {
         binary_op(self, other, |l, r| l.divide(r), |l, r| l.divide(r))
     }
 
+    pub fn bitwise_and<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
+        binary_op(
+            self,
+            other,
+            |l, r| l.bitwise_and(r),
+            |l, r| l.bitwise_and(r),
+        )
+    }
+
     pub fn modulo<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
         binary_op(self, other, |l, r| l.modulo(r), |l, r| l.modulo(r))
     }
