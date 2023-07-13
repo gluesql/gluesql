@@ -32,9 +32,6 @@ pub enum JsonStorageError {
     #[error("column does not exist: {0}")]
     ColumnDoesNotExist(String),
 
-    #[error("primary key is not supported")]
-    PrimaryKeyNotSupported,
-
     #[error("table name does not match with file")]
     TableNameDoesNotMatchWithFile,
 
