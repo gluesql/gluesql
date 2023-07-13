@@ -378,7 +378,7 @@ impl ToSql for Function {
                 }
             }
             Function::Take { expr, size } => {
-                format!("TAKE({},{})", expr.to_sql(), size.to_sql())
+                format!("TAKE({}, {})", expr.to_sql(), size.to_sql())
             }
             Function::GetX(e) => format!("GET_X({})", e.to_sql()),
             Function::GetY(e) => format!("GET_Y({})", e.to_sql()),
