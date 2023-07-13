@@ -549,6 +549,12 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 geometry2,
             })))
         }
+        "IS_EMPTY" => {
+            check_len(name, args.len(), 1)?;
+
+            let expr = translate_expr(args[0])?;
+            Ok(Expr::Function(Box::new(Function::IsEmpty(expr))))
+        }
         _ => {
             let exprs = args
                 .into_iter()
