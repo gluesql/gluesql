@@ -240,6 +240,10 @@ mod tests {
         test(r#"TRIM("  rust  ")"#, &[r#""  rust  ""#]);
         test(r#"REVERSE("abcde")"#, &[r#""abcde""#]);
         test(r#"CAST(1 AS BOOLEAN)"#, &["1"]);
+        test(r#"IS_EMPTY([])"#, &[true]);
+        test(r#"IS_EMPTY([1,2])"#, &[false]);
+        test(r#"IS_EMPTY({})"#, &[true]);
+        test(r#"IS_EMPTY({"key": "val"})"#, &[false]);
 
         test(r#"ABS(1)"#, &["1"]);
         test(r#"ABS(-1)"#, &["-1"]);
