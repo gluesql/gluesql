@@ -194,6 +194,7 @@ macro_rules! generate_store_tests {
         glue!(dictionary, dictionary::dictionary);
         glue!(function_append, function::append::append);
         glue!(function_prepend, function::prepend::prepend);
+        glue!(function_take, function::take::take);
         glue!(column_alias, column_alias::column_alias);
 
         // ast-builder
