@@ -47,6 +47,7 @@ impl<'a> RowContext<'a> {
             Self::Bridge { left, right } => {
                 left.get_value(target).or_else(|| right.get_value(target))
             }
+            // Smth needs to be done here(?)
             Self::RefVecData { columns, values } => columns
                 .iter()
                 .position(|column| column == target)
