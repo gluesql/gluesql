@@ -501,6 +501,19 @@ pub fn prepend<'a>(expr: Evaluated<'_>, value: Evaluated<'_>) -> Result<Evaluate
     }
 }
 
+pub fn is_empty<'a>(expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let expr: Value = expr.try_into()?;
+    let length = match expr {
+        Value::List(l) => l.len(),
+        Value::Map(m) => m.len(),
+        _ => {
+            return Err(EvaluateError::MapOrListTypeRequired.into());
+        }
+    };
+
+    Ok(Evaluated::from(Value::Bool(length == 0)))
+}
+
 // --- etc ---
 
 pub fn unwrap<'a>(

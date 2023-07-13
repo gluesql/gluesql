@@ -174,6 +174,7 @@ pub enum Function {
         geometry1: Expr,
         geometry2: Expr,
     },
+    IsEmpty(Expr),
 }
 
 impl ToSql for Function {
@@ -386,6 +387,7 @@ impl ToSql for Function {
                     geometry2.to_sql()
                 )
             }
+            Function::IsEmpty(e) => format!("IS_EMPTY({})", e.to_sql()),
         }
     }
 }
@@ -1108,6 +1110,14 @@ mod tests {
                     y: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("3.6").unwrap()))
                 }))
             }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"IS_EMPTY("list")"#,
+            &Expr::Function(Box::new(Function::IsEmpty(Expr::Identifier(
+                "list".to_owned()
+            ))))
             .to_sql()
         );
     }

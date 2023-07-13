@@ -55,7 +55,8 @@ impl Function {
             | Self::Cast { expr, .. }
             | Self::Extract { expr, .. }
             | Self::GetX(expr)
-            | Self::GetY(expr) => Exprs::Single([expr].into_iter()),
+            | Self::GetY(expr)
+            | Self::IsEmpty(expr) => Exprs::Single([expr].into_iter()),
             Self::Left { expr, size: expr2 }
             | Self::Right { expr, size: expr2 }
             | Self::Lpad {
@@ -239,6 +240,7 @@ mod tests {
         test(r#"TRIM("  rust  ")"#, &[r#""  rust  ""#]);
         test(r#"REVERSE("abcde")"#, &[r#""abcde""#]);
         test(r#"CAST(1 AS BOOLEAN)"#, &["1"]);
+        test(r#"IS_EMPTY(col)"#, &["col"]);
 
         test(r#"ABS(1)"#, &["1"]);
         test(r#"ABS(-1)"#, &["-1"]);

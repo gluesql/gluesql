@@ -18,6 +18,7 @@ pub mod generate_uuid;
 pub mod geometry;
 pub mod ifnull;
 pub mod initcap;
+pub mod is_empty;
 pub mod left_right;
 pub mod lpad_rpad;
 pub mod ltrim_rtrim;
