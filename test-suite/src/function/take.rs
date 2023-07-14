@@ -47,6 +47,15 @@ test_case!(take, async move {
         ))
     );
     test!(
+        r#"select take(NULL, 3) as mynulltake from Take;"#,
+        Ok(select_with_null!(mynulltake; Null))
+    );
+    test!(
+        r#"select take(items, NULL) as mynulltake from Take;"#,
+        Ok(select_with_null!(mynulltake; Null))
+    );
+
+    test!(
         r#"select take(items, -5) as mymistake from Take;"#,
         Err(EvaluateError::FunctionRequiresUSizeValue("TAKE".to_owned()).into())
     );
