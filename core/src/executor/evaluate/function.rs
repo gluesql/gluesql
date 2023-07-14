@@ -501,13 +501,14 @@ pub fn prepend<'a>(expr: Evaluated<'_>, value: Evaluated<'_>) -> Result<Evaluate
     }
 }
 
-pub fn take<'a>(expr: Evaluated<'_>, size: Evaluated<'_>) -> Result<Evaluated<'a>> {
+pub fn take<'a>(name: String, expr: Evaluated<'_>, size: Evaluated<'_>) -> Result<Evaluated<'a>> {
     let expr: Value = expr.try_into()?;
     let size = match size.try_into()? {
-        Value::I64(number) => usize::try_from(number)
-            .map_err(|_| EvaluateError::FunctionRequiresUSizeValue("take".to_owned()))?,
+        Value::I64(number) => {
+            usize::try_from(number).map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name))?
+        }
         _ => {
-            return Err(EvaluateError::FunctionRequiresIntegerValue("take".to_owned()).into());
+            return Err(EvaluateError::FunctionRequiresIntegerValue(name).into());
         }
     };
 

@@ -48,11 +48,11 @@ test_case!(take, async move {
     );
     test!(
         r#"select take(items, -5) as mymistake from Take;"#,
-        Err(EvaluateError::FunctionRequiresUSizeValue("take".to_owned()).into())
+        Err(EvaluateError::FunctionRequiresUSizeValue("TAKE".to_owned()).into())
     );
     test!(
         r#"select take(items, 'TEST') as mymistake from Take;"#,
-        Err(EvaluateError::FunctionRequiresIntegerValue("take".to_owned()).into())
+        Err(EvaluateError::FunctionRequiresIntegerValue("TAKE".to_owned()).into())
     );
     test!(
         r#"select take(0, 3) as mymistake from Take;"#,
