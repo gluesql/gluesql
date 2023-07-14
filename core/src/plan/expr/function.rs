@@ -58,7 +58,8 @@ impl Function {
             | Self::GetX(expr)
             | Self::GetY(expr)
             | Self::IsEmpty(expr)
-            | Self::Sort { expr, order: None } => Exprs::Single([expr].into_iter()),
+            | Self::Sort { expr, order: None }
+            | Self::Values(expr) => Exprs::Single([expr].into_iter()),
             Self::Left { expr, size: expr2 }
             | Self::Right { expr, size: expr2 }
             | Self::Lpad {
@@ -248,6 +249,7 @@ mod tests {
         test(r#"REVERSE("abcde")"#, &[r#""abcde""#]);
         test(r#"CAST(1 AS BOOLEAN)"#, &["1"]);
         test(r#"IS_EMPTY(col)"#, &["col"]);
+        test(r#"VALUES(col)"#, &["col"]);
 
         test(r#"ABS(1)"#, &["1"]);
         test(r#"ABS(-1)"#, &["-1"]);

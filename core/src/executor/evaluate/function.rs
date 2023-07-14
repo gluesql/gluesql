@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 use {
     super::{EvaluateError, Evaluated},
     crate::{
@@ -569,6 +571,21 @@ pub fn is_empty<'a>(expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
     };
 
     Ok(Evaluated::from(Value::Bool(length == 0)))
+}
+
+pub fn values<'a>(expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let expr: Value = expr.try_into()?;
+    match expr {
+        Value::Map(m) => {
+            let mut values = Vec::new();
+            // list will be sorted by key value that is String type.
+            for key in m.keys().sorted() {
+                values.push(m[key].clone());
+            }
+            Ok(Evaluated::from(Value::List(values)))
+        }
+        _ => Err(EvaluateError::MapTypeRequired.into()),
+    }
 }
 
 // --- etc ---
