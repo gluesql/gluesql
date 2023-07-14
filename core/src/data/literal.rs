@@ -16,6 +16,9 @@ pub enum LiteralError {
     #[error("unsupported literal binary arithmetic between {0} and {1}")]
     UnsupportedBinaryArithmetic(String, String),
 
+    #[error("uncompatible literal bit operation between {0} and {1}")]
+    UncompatibleBitOperation(String, String),
+
     #[error("the divisor should not be zero")]
     DivisorShouldNotBeZero,
 
@@ -183,6 +186,18 @@ impl<'a> Literal<'a> {
             }
             (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
             _ => Err(LiteralError::UnsupportedBinaryArithmetic(
+                format!("{:?}", self),
+                format!("{:?}", other),
+            )
+            .into()),
+        }
+    }
+
+    pub fn shift_left(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
+        match (self, other) {
+            (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() + r.as_ref()))),
+            (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
+            _ => Err(LiteralError::UncompatibleBitOperation(
                 format!("{:?}", self),
                 format!("{:?}", other),
             )
