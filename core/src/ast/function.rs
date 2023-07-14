@@ -164,6 +164,10 @@ pub enum Function {
         expr: Expr,
         value: Expr,
     },
+    Take {
+        expr: Expr,
+        size: Expr,
+    },
     GetX(Expr),
     GetY(Expr),
     Point {
@@ -373,6 +377,9 @@ impl ToSql for Function {
                     items = expr.to_sql(),
                     value = value.to_sql()
                 }
+            }
+            Function::Take { expr, size } => {
+                format!("TAKE({}, {})", expr.to_sql(), size.to_sql())
             }
             Function::GetX(e) => format!("GET_X({})", e.to_sql()),
             Function::GetY(e) => format!("GET_Y({})", e.to_sql()),
@@ -1069,6 +1076,15 @@ mod tests {
             &Expr::Function(Box::new(Function::Prepend {
                 expr: Expr::Identifier("list".to_owned()),
                 value: Expr::Identifier("value".to_owned())
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"TAKE("list", 3)"#,
+            &Expr::Function(Box::new(Function::Take {
+                expr: Expr::Identifier("list".to_owned()),
+                size: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("3").unwrap()))
             }))
             .to_sql()
         );
