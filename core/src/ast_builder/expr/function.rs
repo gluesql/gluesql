@@ -62,6 +62,11 @@ pub enum FunctionNode<'a> {
         expr: ExprNode<'a>,
         num: ExprNode<'a>,
     },
+    Replace {
+        expr: ExprNode<'a>,
+        old: ExprNode<'a>,
+        new: ExprNode<'a>,
+    },
     Exp(ExprNode<'a>),
     Lpad {
         expr: ExprNode<'a>,
@@ -220,6 +225,12 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
                 let expr = expr.try_into()?;
                 let num = num.try_into()?;
                 Ok(Function::Repeat { expr, num })
+            }
+            FunctionNode::Replace { expr, old, new } => {
+                let expr = expr.try_into()?;
+                let old = old.try_into()?;
+                let new = new.try_into()?;
+                Ok(Function::Replace { expr, old, new })
             }
             FunctionNode::Lpad { expr, size, fill } => {
                 let fill = fill.map(TryInto::try_into).transpose()?;
@@ -436,6 +447,13 @@ impl<'a> ExprNode<'a> {
     pub fn repeat<T: Into<ExprNode<'a>>>(self, num: T) -> ExprNode<'a> {
         repeat(self, num)
     }
+    pub fn replace<T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
+        self,
+        old: T,
+        new: U,
+    ) -> ExprNode<'a> {
+        replace(self, old, new)
+    }
     pub fn degrees(self) -> ExprNode<'a> {
         degrees(self)
     }
@@ -630,6 +648,18 @@ pub fn repeat<'a, T: Into<ExprNode<'a>>, V: Into<ExprNode<'a>>>(expr: T, num: V)
     ExprNode::Function(Box::new(FunctionNode::Repeat {
         expr: expr.into(),
         num: num.into(),
+    }))
+}
+
+pub fn replace<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>, V: Into<ExprNode<'a>>>(
+    expr: T,
+    old: U,
+    new: V,
+) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Replace {
+        expr: expr.into(),
+        old: old.into(),
+        new: new.into(),
     }))
 }
 
@@ -839,8 +869,8 @@ mod tests {
             cos, date, degrees, divide, exp, expr, extract, find_idx, floor, format, gcd,
             generate_uuid, get_x, get_y, ifnull, initcap, lcm, left, ln, log, log10, log2, lower,
             lpad, ltrim, md5, modulo, now, num, pi, point, position, power, radians, rand, repeat,
-            reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr, tan, test_expr, text,
-            time, timestamp, to_date, to_time, to_timestamp, upper,
+            replace, reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr, tan, test_expr,
+            text, time, timestamp, to_date, to_time, to_timestamp, upper,
         },
         prelude::DataType,
     };
@@ -1525,6 +1555,17 @@ mod tests {
     fn function_calc_distance() {
         let actual = calc_distance(point(num(1), num(2)), point(num(3), num(4)));
         let expected = "CALC_DISTANCE(POINT(1, 2), POINT(3, 4))";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_replace() {
+        let actual = replace(text("Mticky GlueMQL"), text("M"), text("S"));
+        let expected = "REPLACE('Mticky GlueMQL','M','S')";
+        test_expr(actual, expected);
+
+        let actual = text("Mticky GlueMQL").replace(text("M"), text("S"));
+        let expected = "REPLACE('Mticky GlueMQL','M','S')";
         test_expr(actual, expected);
     }
 }
