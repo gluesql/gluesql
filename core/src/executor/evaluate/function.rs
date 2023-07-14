@@ -511,9 +511,9 @@ pub fn take<'a>(expr: Evaluated<'_>, size: Evaluated<'_>) -> Result<Evaluated<'a
         }
     };
 
-    match (expr, size) {
-        (Value::List(mut l), _) => {
-            l = l.into_iter().take(size).collect();
+    match expr {
+        Value::List(l) => {
+            let l = l.into_iter().take(size).collect();
             Ok(Evaluated::Value(Value::List(l)))
         }
         _ => Err(EvaluateError::ListTypeRequired.into()),
