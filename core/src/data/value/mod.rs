@@ -58,6 +58,68 @@ pub enum Value {
     Null,
 }
 
+// impl From<Value> for Expr {
+//     fn from(value: Value) -> Self {
+//         match value {
+//             Value::Bool(b) => Expr::Literal(AstLiteral::Boolean(b)),
+//             Value::I8(v) => Expr::Literal(AstLiteral::Number(BigDecimal::from(v))),
+//             Value::I16(v) => Expr::Literal(AstLiteral::Number(BigDecimal::from(v))),
+//             Value::I32(v) => Expr::Literal(AstLiteral::Number(BigDecimal::from(v))),
+//             Value::I64(v) => Expr::Literal(AstLiteral::Number(BigDecimal::from(v))),
+//             Value::I128(v) => Expr::Literal(AstLiteral::Number(BigDecimal::from_i128(v).unwrap())),
+//             Value::U8(v) => Expr::Literal(AstLiteral::Number(BigDecimal::from(v))),
+//             Value::U16(v) => Expr::Literal(AstLiteral::Number(BigDecimal::from(v))),
+//             Value::U32(v) => Expr::Literal(AstLiteral::Number(BigDecimal::from(v))),
+//             Value::U64(v) => Expr::Literal(AstLiteral::Number(BigDecimal::from(v))),
+//             Value::U128(v) => Expr::Literal(AstLiteral::Number(BigDecimal::from_u128(v).unwrap())),
+//             Value::F32(v) => Expr::Literal(AstLiteral::Number(BigDecimal::from_f32(v).unwrap())),
+//             Value::F64(v) => Expr::Literal(AstLiteral::Number(BigDecimal::from_f64(v).unwrap())),
+//             Value::Decimal(decimal) => Expr::Literal(AstLiteral::Number(
+//                 BigDecimal::from_str(decimal.to_string().as_str()).unwrap(),
+//             )),
+//             Value::Str(s) => Expr::Literal(AstLiteral::QuotedString(s)),
+//             Value::Bytea(bytea) => Expr::Literal(AstLiteral::HexString(hex::encode(bytea))),
+//             Value::Inet(inet) => Expr::TypedString {
+//                 data_type: DataType::Inet,
+//                 value: inet.to_string(),
+//             },
+//             Value::Date(date) => Expr::TypedString {
+//                 data_type: DataType::Date,
+//                 value: date.format("%Y-%m-%d").to_string(),
+//             },
+//             Value::Timestamp(t) => Expr::TypedString {
+//                 data_type: DataType::Timestamp,
+//                 value: t.to_string(),
+//             },
+//             Value::Time(t) => Expr::TypedString {
+//                 data_type: DataType::Time,
+//                 value: t.to_string(),
+//             },
+//             Value::Interval(interval) => Expr::TypedString {
+//                 data_type: DataType::Interval,
+//                 value: interval.to_sql_str(),
+//             },
+//             Value::Uuid(uuid) => Expr::TypedString {
+//                 data_type: DataType::Uuid,
+//                 value: uuid,
+//             },
+//             Value::Map(map) => Expr::TypedString {
+//                 data_type: DataType::Map,
+//                 value: map.to_string(),
+//             },
+//             Value::List(list) => Expr::TypedString {
+//                 data_type: DataType::List,
+//                 value: format!("({})", list.iter().map(|v| Expr::from(v)).join(", ")),
+//             },
+//             Value::Point(p) => Expr::TypedString {
+//                 data_type: DataType::Point,
+//                 value: p.to_string(),
+//             },
+//             Value::Null => Expr::Literal(AstLiteral::Null),
+//         }
+//     }
+// }
+
 impl Value {
     pub fn evaluate_eq(&self, other: &Value) -> bool {
         match (self, other) {
@@ -537,7 +599,17 @@ impl Value {
             | (Null, U32(_))
             | (Null, U64(_))
             | (Null, U128(_))
-            | (Null, Null) => Ok(Null),
+            | (Null, Null)
+            | (I8(_), Null)
+            | (I16(_), Null)
+            | (I32(_), Null)
+            | (I64(_), Null)
+            | (I128(_), Null)
+            | (U8(_), Null)
+            | (U16(_), Null)
+            | (U32(_), Null)
+            | (U64(_), Null)
+            | (U128(_), Null) => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: self.clone(),
                 rhs: other.clone(),
@@ -1627,6 +1699,33 @@ mod tests {
         test!(modulo I128(6),   F64(2.0) => F64(0.0));
         test!(modulo I128(6),   F32(2.0_f32) => F32(0.0_f32));
 
+        macro_rules! test_bitwise_and {
+            ($($vt: ident $pt: ident);*;) => {
+                $(
+                    test!(bitwise_and $vt($pt::MIN), $vt($pt::MIN) => $vt($pt::MIN & $pt::MIN));
+                    test!(bitwise_and $vt($pt::MIN), $vt($pt::MAX) => $vt($pt::MIN & $pt::MAX));
+                    test!(bitwise_and $vt($pt::MAX), $vt($pt::MAX) => $vt($pt::MAX & $pt::MAX));
+                    test!(bitwise_and $vt(0), $vt(0) => $vt(0 & 0));
+                    test!(bitwise_and $vt(0), $vt(1) => $vt(0 & 1));
+                    test!(bitwise_and $vt(1), $vt(0) => $vt(1 & 0));
+                    test!(bitwise_and $vt(1), $vt(1) => $vt(1 & 1));
+                )*
+            };
+        }
+
+        test_bitwise_and!(
+            I8      i8;
+            I16     i16;
+            I32     i32;
+            I64     i64;
+            I128    i128;
+            U8      u8;
+            U16     u16;
+            U32     u32;
+            U64     u64;
+            U128    u128;
+        );
+
         macro_rules! null_test {
             ($op: ident $a: expr, $b: expr) => {
                 assert!($a.$op(&$b).unwrap().is_null());
@@ -1797,6 +1896,20 @@ mod tests {
         null_test!(multiply Null, Null);
         null_test!(divide   Null, Null);
         null_test!(modulo   Null, Null);
+
+        macro_rules! null_test_bitwise_and {
+            ($($vt: ident)*) => {
+                $(
+                    null_test!(bitwise_and $vt(1), Null);
+                    null_test!(bitwise_and Null, $vt(1));
+                    null_test!(bitwise_and Null, Null);
+                )*
+            };
+        }
+
+        null_test_bitwise_and!(
+            I8 I16 I32 I64 I128 U8 U16 U32 U64 U128
+        );
     }
 
     #[test]

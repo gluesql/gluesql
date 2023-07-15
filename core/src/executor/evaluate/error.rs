@@ -104,8 +104,8 @@ pub enum EvaluateError {
     #[error("function requires integer value in range")]
     ChrFunctionRequiresIntegerValueInRange0To255,
 
-    #[error("unsupported evaluate binary arithmetic between {0} and {1}")]
-    UnsupportedBinaryArithmetic(String, String),
+    #[error("unsupported evaluate binary operation {}", .0.to_sql())]
+    UnsupportedBinaryOperation(Expr),
 
     #[error("unsupported evaluate string unary plus: {0}")]
     UnsupportedUnaryPlus(String),

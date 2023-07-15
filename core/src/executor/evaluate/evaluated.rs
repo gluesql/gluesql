@@ -1,7 +1,7 @@
 use {
     super::error::EvaluateError,
     crate::{
-        ast::{DataType, TrimWhereField},
+        ast::{AstLiteral, BinaryOperator, DataType, Expr, TrimWhereField},
         data::{value::HashMapJsonExt, Key, Literal, Value},
         result::{Error, Result},
     },
@@ -16,6 +16,18 @@ pub enum Evaluated<'a> {
         range: Range<usize>,
     },
     Value(Value),
+}
+
+impl From<Evaluated<'_>> for Expr {
+    fn from(value: Evaluated<'_>) -> Self {
+        match value {
+            Evaluated::Value(v) => Expr::try_from(v).unwrap(),
+            Evaluated::Literal(v) => Expr::try_from(v).unwrap(),
+            Evaluated::StrSlice { source, range } => {
+                Expr::Literal(AstLiteral::QuotedString(source.as_ref()[range].to_owned()))
+            }
+        }
+    }
 }
 
 impl<'a> From<Value> for Evaluated<'a> {
@@ -99,6 +111,7 @@ impl TryFrom<Evaluated<'_>> for HashMap<String, Value> {
 fn binary_op<'a, 'b, T, U>(
     l: &Evaluated<'a>,
     r: &Evaluated<'b>,
+    op: BinaryOperator,
     value_op: T,
     literal_op: U,
 ) -> Result<Evaluated<'b>>
@@ -115,10 +128,11 @@ where
             value_op(l, &Value::try_from(r)?).map(Evaluated::from)
         }
         (Evaluated::Value(l), Evaluated::Value(r)) => value_op(l, r).map(Evaluated::from),
-        (l, r) => Err(EvaluateError::UnsupportedBinaryArithmetic(
-            format!("{:?}", l),
-            format!("{:?}", r),
-        )
+        (l, r) => Err(EvaluateError::UnsupportedBinaryOperation(Expr::BinaryOp {
+            left: Box::new(Expr::from(l.to_owned())),
+            op,
+            right: Box::new(Expr::from(r.to_owned())),
+        })
         .into()),
     }
 }
@@ -201,32 +215,63 @@ impl<'a> Evaluated<'a> {
     }
 
     pub fn add<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
-        binary_op(self, other, |l, r| l.add(r), |l, r| l.add(r))
+        binary_op(
+            self,
+            other,
+            BinaryOperator::Plus,
+            |l, r| l.add(r),
+            |l, r| l.add(r),
+        )
     }
 
     pub fn subtract<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
-        binary_op(self, other, |l, r| l.subtract(r), |l, r| l.subtract(r))
+        binary_op(
+            self,
+            other,
+            BinaryOperator::Minus,
+            |l, r| l.subtract(r),
+            |l, r| l.subtract(r),
+        )
     }
 
     pub fn multiply<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
-        binary_op(self, other, |l, r| l.multiply(r), |l, r| l.multiply(r))
+        binary_op(
+            self,
+            other,
+            BinaryOperator::Multiply,
+            |l, r| l.multiply(r),
+            |l, r| l.multiply(r),
+        )
     }
 
     pub fn divide<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
-        binary_op(self, other, |l, r| l.divide(r), |l, r| l.divide(r))
+        binary_op(
+            self,
+            other,
+            BinaryOperator::Divide,
+            |l, r| l.divide(r),
+            |l, r| l.divide(r),
+        )
     }
 
     pub fn bitwise_and<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
         binary_op(
             self,
             other,
+            BinaryOperator::BitwiseAnd,
             |l, r| l.bitwise_and(r),
             |l, r| l.bitwise_and(r),
         )
     }
 
     pub fn modulo<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
-        binary_op(self, other, |l, r| l.modulo(r), |l, r| l.modulo(r))
+        binary_op(
+            self,
+            other,
+            BinaryOperator::Modulo,
+            |l, r| l.modulo(r),
+            |l, r| l.modulo(r),
+        )
     }
 
     pub fn unary_plus(&self) -> Result<Evaluated<'a>> {

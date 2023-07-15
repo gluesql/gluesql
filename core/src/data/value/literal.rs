@@ -5,7 +5,7 @@ use {
         Value,
     },
     crate::{
-        ast::DataType,
+        ast::{DataType, Expr},
         data::{value::uuid::parse_uuid, BigDecimalExt, Interval, Literal, Point},
         result::{Error, Result},
     },
@@ -17,6 +17,22 @@ use {
         str::FromStr,
     },
 };
+
+impl TryFrom<Literal<'_>> for Expr {
+    type Error = Error;
+
+    fn try_from(value: Literal<'_>) -> Result<Self> {
+        Expr::try_from(Value::try_from(value)?)
+    }
+}
+
+impl TryFrom<&Literal<'_>> for Expr {
+    type Error = Error;
+
+    fn try_from(value: &Literal<'_>) -> Result<Self> {
+        Expr::try_from(Value::try_from(value)?)
+    }
+}
 
 impl TryFrom<&Literal<'_>> for Value {
     type Error = Error;

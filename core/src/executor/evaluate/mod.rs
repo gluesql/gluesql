@@ -57,7 +57,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
 
         evaluate_inner(storage, context, aggregated, expr)
     };
-
+    
     match expr {
         Expr::Literal(ast_literal) => expr::literal(ast_literal),
         Expr::TypedString { data_type, value } => {

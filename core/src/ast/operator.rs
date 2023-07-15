@@ -283,6 +283,16 @@ mod tests {
                 expr: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(5)))),
             }
             .to_sql(),
-        )
+        );
+
+        assert_eq!(
+            "29 & 15",
+            &Expr::BinaryOp {
+                left: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(29)))),
+                op: BinaryOperator::BitwiseAnd,
+                right: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(15))))
+            }
+            .to_sql()
+        );
     }
 }
