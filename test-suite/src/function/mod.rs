@@ -1,6 +1,7 @@
 pub mod abs;
 pub mod append;
 pub mod ascii;
+pub mod bit_not;
 pub mod cast;
 pub mod ceil;
 pub mod chr;
