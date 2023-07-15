@@ -96,7 +96,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
                     let value = match row? {
                         Row::Vec { columns, values } => {
                             if columns.len() > 1 {
-                                return Err(EvaluateError::MoreThanOneColumnReceived.into());
+                                return Err(EvaluateError::MoreThanOneColumnReturned.into());
                             }
                             values
                         }
