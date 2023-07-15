@@ -54,15 +54,19 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             selection: selection.as_ref().map(translate_expr).transpose()?,
         }),
         SqlStatement::Delete {
-            table_name: TableFactor::Table {
-                name: table_name, ..
-            },
-            selection,
-            ..
-        } => Ok(Statement::Delete {
-            table_name: translate_object_name(table_name)?,
-            selection: selection.as_ref().map(translate_expr).transpose()?,
-        }),
+            from, selection, ..
+        } => {
+            let table_name = from
+                .iter()
+                .map(translate_table_with_join)
+                .next()
+                .ok_or(TranslateError::UnreachableEmptyTable)??;
+
+            Ok(Statement::Delete {
+                table_name,
+                selection: selection.as_ref().map(translate_expr).transpose()?,
+            })
+        }
         SqlStatement::CreateTable {
             if_not_exists,
             name,
