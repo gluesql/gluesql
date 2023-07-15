@@ -5,6 +5,7 @@ pub mod alter;
 pub mod arithmetic;
 pub mod ast_builder;
 pub mod basic;
+pub mod bit_shift;
 pub mod case;
 pub mod column_alias;
 pub mod concat;
@@ -84,6 +85,7 @@ macro_rules! generate_store_tests {
         glue!(arithmetic_on_where, arithmetic::on_where::on_where);
         glue!(concat, concat::concat);
         glue!(project, project::project);
+        glue!(bit_shift, bit_shift::bit_shift_left);
         glue!(create_table, alter::create_table);
         glue!(drop_table, alter::drop_table);
         glue!(default, default::default);
