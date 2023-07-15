@@ -782,6 +782,7 @@ impl TryFrom<&Value> for Point {
 
 #[cfg(test)]
 mod tests {
+    use indexmap::IndexMap;
 
     use {
         super::{Value, ValueError},
@@ -845,10 +846,10 @@ mod tests {
             Value::Uuid(195965723427462096757863453463987888808),
             "936da01f-9abd-4d9d-80c7-02af85c822a8"
         );
-        test!(Value::Map(HashMap::new()), "{}");
+        test!(Value::Map(IndexMap::new()), "{}");
         test!(Value::List(Vec::new()), "[]");
 
-        let mut map = HashMap::new();
+        let mut map = IndexMap::new();
         map.insert("abc".to_owned(), Value::I32(123));
         test!(Value::Map(map), "{\"abc\":123}");
         test!(Value::List(vec![Value::I32(1), Value::I32(2)]), "[1,2]");
@@ -928,7 +929,7 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
-            Value::Map(HashMap::new()),
+            Value::Map(IndexMap::new()),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
@@ -1004,7 +1005,7 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
-            Value::Map(HashMap::new()),
+            Value::Map(IndexMap::new()),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
@@ -1086,7 +1087,7 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
-            Value::Map(HashMap::new()),
+            Value::Map(IndexMap::new()),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
@@ -1153,7 +1154,7 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
-            Value::Map(HashMap::new()),
+            Value::Map(IndexMap::new()),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
@@ -1220,7 +1221,7 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
-            Value::Map(HashMap::new()),
+            Value::Map(IndexMap::new()),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
@@ -1287,7 +1288,7 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
-            Value::Map(HashMap::new()),
+            Value::Map(IndexMap::new()),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
@@ -1358,7 +1359,7 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
-            Value::Map(HashMap::new()),
+            Value::Map(IndexMap::new()),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
@@ -1435,7 +1436,7 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
-            Value::Map(HashMap::new()),
+            Value::Map(IndexMap::new()),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
@@ -1493,7 +1494,7 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
-            Value::Map(HashMap::new()),
+            Value::Map(IndexMap::new()),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
@@ -1559,7 +1560,7 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
-            Value::Map(HashMap::new()),
+            Value::Map(IndexMap::new()),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
@@ -1621,7 +1622,7 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
-            Value::Map(HashMap::new()),
+            Value::Map(IndexMap::new()),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
@@ -1695,7 +1696,7 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
-            Value::Map(HashMap::new()),
+            Value::Map(IndexMap::new()),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
@@ -1759,7 +1760,7 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
-            Value::Map(HashMap::new()),
+            Value::Map(IndexMap::new()),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
@@ -1826,7 +1827,7 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
-            Value::Map(HashMap::new()),
+            Value::Map(IndexMap::new()),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
@@ -1896,7 +1897,7 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(
-            Value::Map(HashMap::new()),
+            Value::Map(IndexMap::new()),
             Err(ValueError::ImpossibleCast.into())
         );
         test!(

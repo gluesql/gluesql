@@ -924,6 +924,7 @@ dependencies = [
  "gluesql-json-storage",
  "gluesql_memory_storage",
  "gluesql_sled_storage",
+ "indexmap",
  "itertools",
  "rustyline",
  "rustyline-derive",
@@ -960,6 +961,7 @@ dependencies = [
  "gluesql-utils",
  "hex",
  "im-rc",
+ "indexmap",
  "iter-enum",
  "itertools",
  "md-5",
@@ -1024,6 +1026,7 @@ dependencies = [
  "gluesql-test-suite",
  "gluesql-utils",
  "hex",
+ "indexmap",
  "iter-enum",
  "serde",
  "serde_json",
@@ -1241,6 +1244,7 @@ checksum = "1885e79c1fc4b10f0e172c475f458b7f7b93061064d98c3293e98c5ba0c8b399"
 dependencies = [
  "autocfg",
  "hashbrown 0.12.3",
+ "serde",
 ]
 
 [[package]]

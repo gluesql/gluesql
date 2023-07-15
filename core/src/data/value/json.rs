@@ -1,3 +1,5 @@
+use indexmap::IndexMap;
+
 use {
     super::{Value, ValueError},
     crate::result::{Error, Result},
@@ -33,9 +35,34 @@ impl HashMapJsonExt for HashMap<String, Value> {
     }
 }
 
+pub trait IndexMapJsonExt {
+    fn parse_json_object(value: &str) -> Result<IndexMap<String, Value>>;
+
+    fn try_from_json_map(json_map: JsonMap<String, JsonValue>) -> Result<IndexMap<String, Value>>;
+}
+
+impl IndexMapJsonExt for IndexMap<String, Value> {
+    fn parse_json_object(value: &str) -> Result<IndexMap<String, Value>> {
+        let value = serde_json::from_str(value)
+            .map_err(|_| ValueError::InvalidJsonString(value.to_owned()))?;
+
+        match value {
+            JsonValue::Object(json_map) => IndexMap::try_from_json_map(json_map),
+            _ => Err(ValueError::JsonObjectTypeRequired.into()),
+        }
+    }
+
+    fn try_from_json_map(json_map: JsonMap<String, JsonValue>) -> Result<IndexMap<String, Value>> {
+        json_map
+            .into_iter()
+            .map(|(key, value)| value.try_into().map(|value| (key, value)))
+            .collect::<Result<IndexMap<String, Value>>>()
+    }
+}
+
 impl Value {
     pub fn parse_json_map(value: &str) -> Result<Value> {
-        HashMap::parse_json_object(value).map(Value::Map)
+        IndexMap::parse_json_object(value).map(Value::Map)
     }
 
     pub fn parse_json_list(value: &str) -> Result<Value> {
@@ -124,7 +151,7 @@ impl TryFrom<JsonValue> for Value {
             JsonValue::Object(json_map) => json_map
                 .into_iter()
                 .map(|(key, value)| value.try_into().map(|value| (key, value)))
-                .collect::<Result<HashMap<String, Value>>>()
+                .collect::<Result<IndexMap<String, Value>>>()
                 .map(Value::Map),
         }
     }

@@ -1,3 +1,5 @@
+use indexmap::IndexMap;
+
 use {
     super::{Interval, Key, StringExt},
     crate::{
@@ -25,7 +27,7 @@ mod uuid;
 
 pub use {
     error::{NumericBinaryOperator, ValueError},
-    json::HashMapJsonExt,
+    json::{HashMapJsonExt, IndexMapJsonExt},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -52,7 +54,7 @@ pub enum Value {
     Time(NaiveTime),
     Interval(Interval),
     Uuid(u128),
-    Map(HashMap<String, Value>),
+    Map(IndexMap<String, Value>),
     List(Vec<Value>),
     Point(Point),
     Null,

@@ -1,3 +1,6 @@
+use gluesql_core::data::value::IndexMapJsonExt;
+use indexmap::IndexMap;
+
 use {
     gluesql_core::{
         data::{value::HashMapJsonExt, Interval},
@@ -29,7 +32,7 @@ async fn json_schema() {
     let parse_uuid = |v| UUID::parse_str(v).unwrap().as_u128();
     let bytea = |v| hex::decode(v).unwrap();
     let ip = |a, b, c, d| IpAddr::V4(Ipv4Addr::new(a, b, c, d));
-    let m = |s: &str| HashMap::parse_json_object(s).unwrap();
+    let m = |s: &str| IndexMap::parse_json_object(s).unwrap();
     let l = |s: &str| Value::parse_json_list(s).unwrap();
 
     let cases = vec![

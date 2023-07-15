@@ -1,5 +1,7 @@
 #![deny(clippy::str_to_string)]
 
+use indexmap::IndexMap;
+
 mod cli;
 mod command;
 mod helper;
@@ -132,7 +134,9 @@ pub fn dump_database(storage: &mut SledStorage, dump_path: PathBuf) -> Result<()
                         result.map(|data_row| {
                             let values = match data_row {
                                 DataRow::Vec(values) => values,
-                                DataRow::Map(values) => vec![Value::Map(values)],
+                                DataRow::Map(values) => {
+                                    vec![Value::Map(IndexMap::from_iter(values))]
+                                }
                             };
 
                             values

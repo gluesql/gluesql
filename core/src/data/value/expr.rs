@@ -124,6 +124,8 @@ impl TryFrom<Value> for Expr {
 
 #[cfg(test)]
 mod tests {
+    use indexmap::IndexMap;
+
     use {
         crate::{
             ast::{AstLiteral, DateTimeField, Expr},
@@ -274,7 +276,7 @@ mod tests {
             )))
         );
         assert_eq!(
-            Value::Map(HashMap::from([("a".to_owned(), Value::Bool(true))])).try_into(),
+            Value::Map(IndexMap::from([("a".to_owned(), Value::Bool(true))])).try_into(),
             Ok(Expr::Literal(AstLiteral::QuotedString(
                 "{\"a\":true}".to_owned()
             )))

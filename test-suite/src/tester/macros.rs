@@ -134,7 +134,7 @@ macro_rules! select_map {
         gluesql_core::executor::Payload::SelectMap(vec![
             $(
                 match gluesql_core::data::Value::try_from($row).unwrap() {
-                    Value::Map(v) => v,
+                    Value::Map(v) => std::collections::HashMap::from_iter(v.into_iter()),
                     _ => panic!("select_map! - Value::Map type required"),
                 }
             ),*

@@ -1,3 +1,5 @@
+use indexmap::IndexMap;
+
 use {
     super::{Value, ValueError},
     crate::result::Result,
@@ -8,7 +10,7 @@ use {
 };
 
 enum Selectable<'a> {
-    Map(&'a HashMap<String, Value>),
+    Map(&'a IndexMap<String, Value>),
     List(&'a Vec<Value>),
     Other(&'a Value),
 }

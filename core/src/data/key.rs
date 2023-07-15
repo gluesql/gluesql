@@ -381,6 +381,8 @@ impl Key {
 
 #[cfg(test)]
 mod tests {
+    use indexmap::IndexMap;
+
     use {
         crate::{
             data::{Interval, Key, KeyError, Point, Value},
@@ -452,7 +454,7 @@ mod tests {
 
         // Error
         assert_eq!(
-            Key::try_from(Value::Map(HashMap::default())),
+            Key::try_from(Value::Map(IndexMap::default())),
             Err(KeyError::MapTypeKeyNotSupported.into())
         );
         assert_eq!(

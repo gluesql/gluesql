@@ -1,3 +1,7 @@
+use indexmap::IndexMap;
+
+use crate::data::value::IndexMapJsonExt;
+
 use {
     super::error::EvaluateError,
     crate::{
@@ -89,7 +93,7 @@ impl TryFrom<Evaluated<'_>> for HashMap<String, Value> {
                 Err(EvaluateError::TextLiteralRequired(format!("{v:?}")).into())
             }
             Evaluated::Value(Value::Str(v)) => HashMap::parse_json_object(v.as_str()),
-            Evaluated::Value(Value::Map(v)) => Ok(v),
+            Evaluated::Value(Value::Map(v)) => Ok(HashMap::from_iter(v.into_iter())),
             Evaluated::Value(v) => Err(EvaluateError::MapOrStringValueRequired(v.into()).into()),
             Evaluated::StrSlice { source, range } => HashMap::parse_json_object(&source[range]),
         }

@@ -23,6 +23,7 @@ edit = "0.1.4"
 futures = "0.3"
 anyhow = "1.0"
 itertools = "0.10"
+indexmap = { version = "1.9.1", features = ["serde"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }

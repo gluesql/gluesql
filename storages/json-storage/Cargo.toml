@@ -23,6 +23,7 @@ tokio = { version = "1", features = ["rt", "macros"] }
 hex = "0.4"
 thiserror = "1.0"
 iter-enum = "1"
+indexmap = { version = "1.9.1", features = ["serde"] }
 
 [dev-dependencies]
 test-suite.workspace = true
