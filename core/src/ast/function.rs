@@ -179,6 +179,7 @@ pub enum Function {
         geometry2: Expr,
     },
     IsEmpty(Expr),
+    Length(Expr),
 }
 
 impl ToSql for Function {
@@ -395,6 +396,7 @@ impl ToSql for Function {
                 )
             }
             Function::IsEmpty(e) => format!("IS_EMPTY({})", e.to_sql()),
+            Function::Length(e) => format!("LENGTH({})", e.to_sql()),
         }
     }
 }
@@ -1133,6 +1135,14 @@ mod tests {
             r#"IS_EMPTY("list")"#,
             &Expr::Function(Box::new(Function::IsEmpty(Expr::Identifier(
                 "list".to_owned()
+            ))))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"LENGTH("GlueSQL")"#,
+            &Expr::Function(Box::new(Function::Length(Expr::Identifier(
+                "GlueSQL".to_owned()
             ))))
             .to_sql()
         );

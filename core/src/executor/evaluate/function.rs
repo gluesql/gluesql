@@ -721,3 +721,12 @@ pub fn calc_distance<'a>(x: Evaluated<'_>, y: Evaluated<'_>) -> Result<Evaluated
 
     Ok(Evaluated::from(Value::F64(Point::calc_distance(&x, &y))))
 }
+
+pub fn length<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    match expr.try_into()? {
+        Value::Str(expr) => Ok(Evaluated::from(Value::U64(expr.chars().count() as u64))),
+        Value::List(expr) => Ok(Evaluated::from(Value::U64(expr.len() as u64))),
+        Value::Map(expr) => Ok(Evaluated::from(Value::U64(expr.len() as u64))),
+        _ => Err(EvaluateError::FunctionRequiresStrOrListOrMapValue(name).into()),
+    }
+}
