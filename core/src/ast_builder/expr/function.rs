@@ -1574,4 +1574,11 @@ mod tests {
         let expected = "REPLACE('Mticky GlueMQL','M','S')";
         test_expr(actual, expected);
     }
+
+    #[test]
+    fn function_length() {
+        let actual = length(text("GlueSQL"));
+        let expected = "LENGTH('GlueSQL')";
+        test_expr(actual, expected);
+    }
 }
