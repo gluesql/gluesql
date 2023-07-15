@@ -94,12 +94,12 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 .await?
                 .map(|row| {
                     let value = match row? {
-                        Row::Vec { columns,values} =>{
-                            if columns.len() > 1{
+                        Row::Vec { columns, values } => {
+                            if columns.len() > 1 {
                                 return Err(EvaluateError::MoreThanOneColumnReceived.into());
                             }
                             values
-                        },
+                        }
                         Row::Map(_) => {
                             return Err(EvaluateError::SchemalessProjectionForSubQuery.into());
                         }
