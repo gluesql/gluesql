@@ -160,7 +160,7 @@ test_case!(project, async move {
             EvaluateError::MoreThanOneRowReturned.into(),
         ),
         (
-            "SELECT (SELECT (1,2))",
+            "SELECT (SELECT 1,2)",
             EvaluateError::MoreThanOneColumnReceived.into(),
         ),
     ];
