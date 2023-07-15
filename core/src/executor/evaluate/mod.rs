@@ -615,5 +615,14 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let value = eval(value).await?;
             f::prepend(expr, value)
         }
+        Function::Take { expr, size } => {
+            let expr = eval(expr).await?;
+            let size = eval(size).await?;
+            f::take(name, expr, size)
+        }
+        Function::IsEmpty(expr) => {
+            let expr = eval(expr).await?;
+            f::is_empty(expr)
+        }
     }
 }

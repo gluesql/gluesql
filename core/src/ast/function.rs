@@ -164,6 +164,10 @@ pub enum Function {
         expr: Expr,
         value: Expr,
     },
+    Take {
+        expr: Expr,
+        size: Expr,
+    },
     GetX(Expr),
     GetY(Expr),
     Point {
@@ -174,6 +178,7 @@ pub enum Function {
         geometry1: Expr,
         geometry2: Expr,
     },
+    IsEmpty(Expr),
 }
 
 impl ToSql for Function {
@@ -373,6 +378,9 @@ impl ToSql for Function {
                     value = value.to_sql()
                 }
             }
+            Function::Take { expr, size } => {
+                format!("TAKE({}, {})", expr.to_sql(), size.to_sql())
+            }
             Function::GetX(e) => format!("GET_X({})", e.to_sql()),
             Function::GetY(e) => format!("GET_Y({})", e.to_sql()),
             Function::Point { x, y } => format!("POINT({}, {})", x.to_sql(), y.to_sql()),
@@ -386,6 +394,7 @@ impl ToSql for Function {
                     geometry2.to_sql()
                 )
             }
+            Function::IsEmpty(e) => format!("IS_EMPTY({})", e.to_sql()),
         }
     }
 }
@@ -1072,6 +1081,15 @@ mod tests {
         );
 
         assert_eq!(
+            r#"TAKE("list", 3)"#,
+            &Expr::Function(Box::new(Function::Take {
+                expr: Expr::Identifier("list".to_owned()),
+                size: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("3").unwrap()))
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
             "GET_X(\"point\")",
             &Expr::Function(Box::new(Function::GetX(Expr::Identifier(
                 "point".to_owned()
@@ -1108,6 +1126,14 @@ mod tests {
                     y: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("3.6").unwrap()))
                 }))
             }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"IS_EMPTY("list")"#,
+            &Expr::Function(Box::new(Function::IsEmpty(Expr::Identifier(
+                "list".to_owned()
+            ))))
             .to_sql()
         );
     }

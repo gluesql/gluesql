@@ -55,7 +55,8 @@ impl Function {
             | Self::Cast { expr, .. }
             | Self::Extract { expr, .. }
             | Self::GetX(expr)
-            | Self::GetY(expr) => Exprs::Single([expr].into_iter()),
+            | Self::GetY(expr)
+            | Self::IsEmpty(expr) => Exprs::Single([expr].into_iter()),
             Self::Left { expr, size: expr2 }
             | Self::Right { expr, size: expr2 }
             | Self::Lpad {
@@ -140,6 +141,7 @@ impl Function {
             }
             | Self::Append { expr, value: expr2 }
             | Self::Prepend { expr, value: expr2 }
+            | Self::Take { expr, size: expr2 }
             | Self::Point { x: expr, y: expr2 }
             | Self::CalcDistance {
                 geometry1: expr,
@@ -239,6 +241,7 @@ mod tests {
         test(r#"TRIM("  rust  ")"#, &[r#""  rust  ""#]);
         test(r#"REVERSE("abcde")"#, &[r#""abcde""#]);
         test(r#"CAST(1 AS BOOLEAN)"#, &["1"]);
+        test(r#"IS_EMPTY(col)"#, &["col"]);
 
         test(r#"ABS(1)"#, &["1"]);
         test(r#"ABS(-1)"#, &["-1"]);
@@ -258,6 +261,7 @@ mod tests {
         test(r#"LEFT("hello", 2)"#, &[r#""hello""#, "2"]);
         test(r#"RIGHT("hello", 2)"#, &[r#""hello""#, "2"]);
         test(r#"FIND_IDX("Calzone", "zone")"#, &[r#"Calzone"#, r#"zone"#]);
+        test(r#"TAKE(list, 3)"#, &[r#"list"#, r#"3"#]);
         test(r#"LPAD(value, 5)"#, &["value", "5"]);
         test(r#"RPAD(value, 5)"#, &["value", "5"]);
         test(

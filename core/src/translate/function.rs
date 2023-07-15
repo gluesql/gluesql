@@ -521,6 +521,13 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::Prepend { expr, value })))
         }
+        "TAKE" => {
+            check_len(name, args.len(), 2)?;
+            let expr = translate_expr(args[0])?;
+            let size = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Take { expr, size })))
+        }
         "POINT" => {
             check_len(name, args.len(), 2)?;
             let x = translate_expr(args[0])?;
@@ -548,6 +555,12 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 geometry1,
                 geometry2,
             })))
+        }
+        "IS_EMPTY" => {
+            check_len(name, args.len(), 1)?;
+
+            let expr = translate_expr(args[0])?;
+            Ok(Expr::Function(Box::new(Function::IsEmpty(expr))))
         }
         _ => {
             let exprs = args
