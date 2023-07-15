@@ -529,6 +529,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
 
             f::lcm(name, left, right)
         }
+        Function::BitNot(expr) => f::bit_not(name, eval(expr).await?),
 
         // --- spatial ---
         Function::Point { x, y } => {

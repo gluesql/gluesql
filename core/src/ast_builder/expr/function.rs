@@ -879,12 +879,12 @@ mod tests {
     use crate::{
         ast::DateTimeField,
         ast_builder::{
-            abs, acos, ascii, asin, atan, calc_distance, cast, ceil, chr, col, concat, concat_ws,
-            cos, date, degrees, divide, exp, expr, extract, find_idx, floor, format, gcd,
-            generate_uuid, get_x, get_y, ifnull, initcap, lcm, left, length, ln, log, log10, log2,
-            lower, lpad, ltrim, md5, modulo, now, num, pi, point, position, power, radians, rand,
-            repeat, replace, reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr, tan,
-            test_expr, text, time, timestamp, to_date, to_time, to_timestamp, upper,
+            abs, acos, ascii, asin, atan, bit_not, calc_distance, cast, ceil, chr, col, concat,
+            concat_ws, cos, date, degrees, divide, exp, expr, extract, find_idx, floor, format,
+            gcd, generate_uuid, get_x, get_y, ifnull, initcap, lcm, left, length, ln, log, log10,
+            log2, lower, lpad, ltrim, md5, modulo, now, num, pi, point, position, power, radians,
+            rand, repeat, replace, reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr,
+            tan, test_expr, text, time, timestamp, to_date, to_time, to_timestamp, upper,
         },
         prelude::DataType,
     };

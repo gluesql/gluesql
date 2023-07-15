@@ -299,6 +299,30 @@ pub fn abs<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
     }
 }
 
+pub fn bit_not<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    println!("core/src/executor/evaluate/function.rs::bit_not");
+    match n.try_into()? {
+        Value::I8(v) => Ok(Evaluated::from(Value::I8(!v))),
+        Value::I16(v) => Ok(Evaluated::from(Value::I16(!v))),
+        Value::I32(v) => Ok(Evaluated::from(Value::I32(!v))),
+        Value::I64(v) => Ok(Evaluated::from(Value::I64(!v))),
+        Value::I128(v) => Ok(Evaluated::from(Value::I128(!v))),
+        Value::U8(v) => Ok(Evaluated::from(Value::U8(!v))),
+        Value::U16(v) => Ok(Evaluated::from(Value::U16(!v))),
+        Value::U32(v) => Ok(Evaluated::from(Value::U32(!v))),
+        Value::U64(v) => Ok(Evaluated::from(Value::U64(!v))),
+        Value::U128(v) => Ok(Evaluated::from(Value::U128(!v))),
+        // Decimal type is a complex structure with multiple u32 values.
+        // Should bit_not support Decimal type?
+        // If so, it should implement a bit_not method for Decimal struct.
+        // e.g.) Value::Decimal(v) => Ok(Evaluated::from(Value::Decimal(v.bit_not()))),
+        /* add Bytea??? */
+        // add Null??? Value::Null => Ok(Evaluated::from(Value::Null)),
+        // add new error type in EvaluateError?? "unsupported bit_not operation"?
+        _ => Err(EvaluateError::FunctionRequiresUSizeValue(name).into()),
+    }
+}
+
 pub fn ifnull<'a>(expr: Evaluated<'a>, then: Evaluated<'a>) -> Result<Evaluated<'a>> {
     Ok(match expr.is_null() {
         true => then,

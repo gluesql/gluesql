@@ -57,6 +57,7 @@ impl Function {
             | Self::Extract { expr, .. }
             | Self::GetX(expr)
             | Self::GetY(expr)
+            | Self::BitNot(expr)
             | Self::IsEmpty(expr) => Exprs::Single([expr].into_iter()),
             Self::Left { expr, size: expr2 }
             | Self::Right { expr, size: expr2 }

@@ -71,11 +71,11 @@ pub use {index::CreateIndexNode, index::DropIndexNode};
 pub use expr::{
     aggregate::{avg, count, max, min, stdev, sum, variance, AggregateNode},
     function::{
-        abs, acos, ascii, asin, atan, calc_distance, cast, ceil, chr, concat, concat_ws, cos,
-        degrees, divide, exp, extract, find_idx, floor, format, gcd, generate_uuid, get_x, get_y,
-        ifnull, initcap, lcm, left, length, ln, log, log10, log2, lower, lpad, ltrim, md5, modulo,
-        now, pi, point, position, power, radians, rand, repeat, replace, reverse, right, round,
-        rpad, rtrim, sign, sin, sqrt, substr, tan, to_date, to_time, to_timestamp, upper,
+        abs, acos, ascii, asin, atan, bit_not, calc_distance, cast, ceil, chr, concat, concat_ws,
+        cos, degrees, divide, exp, extract, find_idx, floor, format, gcd, generate_uuid, get_x,
+        get_y, ifnull, initcap, lcm, left, length, ln, log, log10, log2, lower, lpad, ltrim, md5,
+        modulo, now, pi, point, position, power, radians, rand, repeat, replace, reverse, right,
+        round, rpad, rtrim, sign, sin, sqrt, substr, tan, to_date, to_time, to_timestamp, upper,
         FunctionNode,
     },
 };

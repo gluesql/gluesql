@@ -451,6 +451,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             })))
         }
         "ABS" => translate_function_one_arg(Function::Abs, args, name),
+        "BIT_NOT" => translate_function_one_arg(Function::BitNot, args, name),
         "SIGN" => translate_function_one_arg(Function::Sign, args, name),
         "GENERATE_UUID" => translate_function_zero_arg(Function::GenerateUuid(), args, name),
         "FORMAT" => {
