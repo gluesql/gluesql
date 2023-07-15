@@ -76,7 +76,7 @@ fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
         return Err(TranslateError::TooManyTables.into());
     }
 
-    if *distinct {
+    if distinct.is_some() {
         return Err(TranslateError::SelectDistinctNotSupported.into());
     }
 
