@@ -9,6 +9,7 @@ use {
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 pub enum Function {
     Abs(Expr),
+    BitNot(Expr),
     Lower(Expr),
     Initcap(Expr),
     Upper(Expr),
@@ -186,6 +187,7 @@ impl ToSql for Function {
     fn to_sql(&self) -> String {
         match self {
             Function::Abs(e) => format!("ABS({})", e.to_sql()),
+            Function::BitNot(e) => format!("BIT_NOT({})", e.to_sql()),
             Function::Initcap(e) => format!("INITCAP({})", e.to_sql()),
             Function::Lower(e) => format!("LOWER({})", e.to_sql()),
             Function::Upper(e) => format!("UPPER({})", e.to_sql()),
@@ -457,6 +459,14 @@ mod tests {
         assert_eq!(
             r#"ABS("num")"#,
             &Expr::Function(Box::new(Function::Abs(Expr::Identifier("num".to_owned())))).to_sql()
+        );
+
+        assert_eq!(
+            r#"BIT_NOT("num")"#,
+            &Expr::Function(Box::new(Function::BitNot(Expr::Identifier(
+                "num".to_owned()
+            ))))
+            .to_sql()
         );
 
         assert_eq!(
