@@ -5,7 +5,6 @@ pub mod alter;
 pub mod arithmetic;
 pub mod ast_builder;
 pub mod basic;
-pub mod bit_shift;
 pub mod case;
 pub mod column_alias;
 pub mod concat;
@@ -35,13 +34,14 @@ pub mod schemaless;
 pub mod series;
 pub mod show_columns;
 pub mod synthesize;
-pub mod tester;
 pub mod transaction;
 pub mod type_match;
 pub mod unary_operator;
 pub mod update;
 pub mod validate;
 pub mod values;
+
+pub mod tester;
 
 pub use tester::*;
 
