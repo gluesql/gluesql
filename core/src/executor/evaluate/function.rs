@@ -512,18 +512,16 @@ pub fn sort<'a>(expr: Evaluated<'_>, order: Evaluated<'_>) -> Result<Evaluated<'
                 let mut err: Option<EvaluateError> = None;
                 match order.to_uppercase().as_str() {
                     "ASC" | "DESC" => {
-                        l.sort_by(|a, b| {
-                            match a.evaluate_cmp(b) {
-                                None => {
-                                    err = Some(EvaluateError::InvalidSortType);
-                                    Ordering::Equal
-                                }
-                                Some(o) => {
-                                    if order == "ASC" {
-                                        o
-                                    } else {
-                                        o.reverse()
-                                    }
+                        l.sort_by(|a, b| match a.evaluate_cmp(b) {
+                            None => {
+                                err = Some(EvaluateError::InvalidSortType);
+                                Ordering::Equal
+                            }
+                            Some(o) => {
+                                if order == "ASC" {
+                                    o
+                                } else {
+                                    o.reverse()
                                 }
                             }
                         });
