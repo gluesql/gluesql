@@ -1096,6 +1096,16 @@ mod tests {
                 expr: Expr::Identifier("list".to_owned()),
                 order: None
             }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"SORT("list", "ASC")"#,
+            &Expr::Function(Box::new(Function::Sort {
+                expr: Expr::Identifier("list".to_owned()),
+                order: Some(Expr::Literal(AstLiteral::QuotedString("ASC".to_owned())))
+            }))
+            .to_sql()
         );
 
         assert_eq!(

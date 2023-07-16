@@ -513,7 +513,7 @@ pub fn sort<'a>(expr: Evaluated<'_>, order: Evaluated<'_>) -> Result<Evaluated<'
                 match order.to_uppercase().as_str() {
                     "ASC" | "DESC" => {
                         l.sort_by(|a, b| {
-                            let cmp = match a.evaluate_cmp(b) {
+                            match a.evaluate_cmp(b) {
                                 None => {
                                     err = Some(EvaluateError::InvalidSortType);
                                     Ordering::Equal
@@ -525,9 +525,7 @@ pub fn sort<'a>(expr: Evaluated<'_>, order: Evaluated<'_>) -> Result<Evaluated<'
                                         o.reverse()
                                     }
                                 }
-                            };
-
-                            cmp
+                            }
                         });
 
                         if let Some(e) = err {

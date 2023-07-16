@@ -619,7 +619,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let expr = eval(expr).await?;
             let order = match order {
                 Some(o) => eval(o).await?,
-                None => Evaluated::from(Value::Str("ASC".to_string())),
+                None => Evaluated::from(Value::Str("ASC".to_owned())),
             };
             f::sort(expr, order)
         }
