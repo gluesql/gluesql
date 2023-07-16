@@ -385,13 +385,9 @@ impl ToSql for Function {
             Function::Sort { expr, order } => match order {
                 None => format!("SORT({})", expr.to_sql()),
                 Some(order) => {
-                    format!(
-                        "SORT({}, {})",
-                        expr.to_sql(),
-                        order.to_sql()
-                    )
+                    format!("SORT({}, {})", expr.to_sql(), order.to_sql())
                 }
-            }
+            },
             Function::Take { expr, size } => {
                 format!("TAKE({}, {})", expr.to_sql(), size.to_sql())
             }

@@ -142,7 +142,10 @@ impl Function {
             }
             | Self::Append { expr, value: expr2 }
             | Self::Prepend { expr, value: expr2 }
-            | Self::Sort { expr, order: Some(expr2) }
+            | Self::Sort {
+                expr,
+                order: Some(expr2),
+            }
             | Self::Take { expr, size: expr2 }
             | Self::Point { x: expr, y: expr2 }
             | Self::CalcDistance {

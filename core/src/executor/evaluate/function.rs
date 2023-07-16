@@ -7,9 +7,9 @@ use {
     },
     md5::{Digest, Md5},
     rand::{rngs::StdRng, Rng, SeedableRng},
+    std::cmp::Ordering,
     std::ops::ControlFlow,
     uuid::Uuid,
-    std::cmp::Ordering,
 };
 
 macro_rules! eval_to_str {
@@ -507,36 +507,40 @@ pub fn sort<'a>(expr: Evaluated<'_>, order: Evaluated<'_>) -> Result<Evaluated<'
     let order: Value = order.try_into()?;
 
     match expr {
-        Value::List(mut l) => {
-            match order {
-                Value::Str(order) => {
-                    let mut err: Option<EvaluateError> = None;
-                    match order.to_uppercase().as_str() {
-                        "ASC" | "DESC" => {
-                            l.sort_by(|a, b| {
-                                let cmp = match a.evaluate_cmp(b) {
-                                    None => {
-                                        err = Some(EvaluateError::InvalidSortType);
-                                        Ordering::Equal
-                                    },
-                                    Some(o) => if order == "ASC" { o } else { o.reverse() },
-                                };
+        Value::List(mut l) => match order {
+            Value::Str(order) => {
+                let mut err: Option<EvaluateError> = None;
+                match order.to_uppercase().as_str() {
+                    "ASC" | "DESC" => {
+                        l.sort_by(|a, b| {
+                            let cmp = match a.evaluate_cmp(b) {
+                                None => {
+                                    err = Some(EvaluateError::InvalidSortType);
+                                    Ordering::Equal
+                                }
+                                Some(o) => {
+                                    if order == "ASC" {
+                                        o
+                                    } else {
+                                        o.reverse()
+                                    }
+                                }
+                            };
 
-                                cmp
-                            });
+                            cmp
+                        });
 
-                            if let Some(e) = err {
-                                return Err(e.into());
-                            }
+                        if let Some(e) = err {
+                            return Err(e.into());
+                        }
 
-                            Ok(Evaluated::Value(Value::List(l)))
-                        },
-                        _ => Err(EvaluateError::InvalidSortOrder.into()),
+                        Ok(Evaluated::Value(Value::List(l)))
                     }
+                    _ => Err(EvaluateError::InvalidSortOrder.into()),
                 }
-                _ => Err(EvaluateError::InvalidSortOrder.into()),
             }
-        }
+            _ => Err(EvaluateError::InvalidSortOrder.into()),
+        },
         _ => Err(EvaluateError::ListTypeRequired.into()),
     }
 }
