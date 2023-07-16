@@ -1100,7 +1100,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"SORT("list", "ASC")"#,
+            r#"SORT("list", 'ASC')"#,
             &Expr::Function(Box::new(Function::Sort {
                 expr: Expr::Identifier("list".to_owned()),
                 order: Some(Expr::Literal(AstLiteral::QuotedString("ASC".to_owned())))
