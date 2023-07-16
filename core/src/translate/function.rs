@@ -521,6 +521,15 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::Prepend { expr, value })))
         }
+        "SORT" => {
+            check_len_range(name, args.len(), 1, 2)?;
+            let expr = translate_expr(args[0])?;
+            let order = (args.len() > 1)
+                .then(|| translate_expr(args[1]))
+                .transpose()?;
+
+            Ok(Expr::Function(Box::new(Function::Sort { expr, order })))
+        }
         "TAKE" => {
             check_len(name, args.len(), 2)?;
             let expr = translate_expr(args[0])?;

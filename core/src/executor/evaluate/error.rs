@@ -50,6 +50,12 @@ pub enum EvaluateError {
     #[error("expr requires list value")]
     ListTypeRequired,
 
+    #[error("all elements in the list must be comparable to each other")]
+    InvalidSortType,
+
+    #[error("sort order must be either ASC or DESC")]
+    InvalidSortOrder,
+
     #[error("map or string value required for json map conversion: {0}")]
     MapOrStringValueRequired(String),
 

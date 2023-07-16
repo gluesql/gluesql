@@ -160,6 +160,10 @@ pub enum Function {
         expr: Expr,
         value: Expr,
     },
+    Sort {
+        expr: Expr,
+        order: Option<Expr>,
+    },
     Prepend {
         expr: Expr,
         value: Expr,
@@ -376,6 +380,16 @@ impl ToSql for Function {
                     "PREPEND({items}, {value})",
                     items = expr.to_sql(),
                     value = value.to_sql()
+                }
+            }
+            Function::Sort { expr, order } => match order {
+                None => format!("SORT({})", expr.to_sql()),
+                Some(order) => {
+                    format!(
+                        "SORT({}, {})",
+                        expr.to_sql(),
+                        order.to_sql()
+                    )
                 }
             }
             Function::Take { expr, size } => {
@@ -1078,6 +1092,14 @@ mod tests {
                 value: Expr::Identifier("value".to_owned())
             }))
             .to_sql()
+        );
+
+        assert_eq!(
+            r#"SORT("list")"#,
+            &Expr::Function(Box::new(Function::Sort {
+                expr: Expr::Identifier("list".to_owned()),
+                order: None
+            }))
         );
 
         assert_eq!(
