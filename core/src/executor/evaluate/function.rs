@@ -1,9 +1,8 @@
-use crate::data::Key;
 use {
     super::{EvaluateError, Evaluated},
     crate::{
         ast::{DataType, DateTimeField},
-        data::{Point, Value, ValueError},
+        data::{Key, Point, Value, ValueError},
         result::Result,
     },
     md5::{Digest, Md5},
