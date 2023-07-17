@@ -1,0 +1,27 @@
+[package]
+name = "gluesql-parquet-storage"
+version = "0.14.0"
+edition = "2021"
+authors = ["MeenSeek Kim <meenseek5929@naver.com>"]
+description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
+license = "Apache-2.0"
+repository = "https://github.com/gluesql/gluesql"
+documentation = "https://docs.rs/gluesql/"
+rust-version="1.70.0"
+
+[dependencies]
+gluesql-core = { path = "../../core", version = "0.14.0" }
+async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
+futures = "0.3"
+tokio = { version = "1", features = ["rt", "macros"] }
+utils = { package = "gluesql-utils", path = "../../utils", version = "0.14.0" }
+gluesql_memory_storage = { path = "../memory-storage", version = "0.14.0" }
+hex = "0.4"
+thiserror = "1.0"
+parquet = "43.0.0"
+serde_json ="1"
+
+[dev-dependencies]
+test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.14.0" }
+uuid = "1"
