@@ -1,3 +1,4 @@
+use crate::data::Key;
 use {
     super::{EvaluateError, Evaluated},
     crate::{
@@ -7,7 +8,6 @@ use {
     },
     md5::{Digest, Md5},
     rand::{rngs::StdRng, Rng, SeedableRng},
-    std::cmp::Ordering,
     std::ops::ControlFlow,
     uuid::Uuid,
 };
@@ -507,36 +507,30 @@ pub fn sort<'a>(expr: Evaluated<'_>, order: Evaluated<'_>) -> Result<Evaluated<'
     let order: Value = order.try_into()?;
 
     match expr {
-        Value::List(mut l) => match order {
-            Value::Str(order) => {
-                let mut err: Option<EvaluateError> = None;
-                match order.to_uppercase().as_str() {
-                    "ASC" | "DESC" => {
-                        l.sort_by(|a, b| match a.evaluate_cmp(b) {
-                            None => {
-                                err = Some(EvaluateError::InvalidSortType);
-                                Ordering::Equal
-                            }
-                            Some(o) => {
-                                if order == "ASC" {
-                                    o
-                                } else {
-                                    o.reverse()
-                                }
-                            }
-                        });
+        Value::List(l) => {
+            let mut l: Vec<(Key, Value)> = l
+                .into_iter()
+                .map(|v| match Key::try_from(&v) {
+                    Ok(key) => Ok((key, v)),
+                    Err(_) => Err(EvaluateError::InvalidSortType),
+                })
+                .collect::<Result<Vec<(Key, Value)>, EvaluateError>>()?;
 
-                        if let Some(e) = err {
-                            return Err(e.into());
-                        }
+            let asc = match order {
+                Value::Str(s) => match s.to_uppercase().as_str() {
+                    "ASC" => true,
+                    "DESC" => false,
+                    _ => return Err(EvaluateError::InvalidSortOrder.into()),
+                },
+                _ => return Err(EvaluateError::InvalidSortOrder.into()),
+            };
 
-                        Ok(Evaluated::Value(Value::List(l)))
-                    }
-                    _ => Err(EvaluateError::InvalidSortOrder.into()),
-                }
-            }
-            _ => Err(EvaluateError::InvalidSortOrder.into()),
-        },
+            l.sort_by(|a, b| if asc { a.0.cmp(&b.0) } else { b.0.cmp(&a.0) });
+
+            Ok(Evaluated::Value(Value::List(
+                l.into_iter().map(|(_, v)| v).collect(),
+            )))
+        }
         _ => Err(EvaluateError::ListTypeRequired.into()),
     }
 }
