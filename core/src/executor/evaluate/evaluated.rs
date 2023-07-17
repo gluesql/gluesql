@@ -20,6 +20,7 @@ pub enum Evaluated<'a> {
 
 impl TryFrom<Evaluated<'_>> for Expr {
     type Error = Error;
+
     fn try_from(value: Evaluated<'_>) -> Result<Self> {
         match value {
             Evaluated::Value(v) => Expr::try_from(v),
@@ -130,9 +131,9 @@ where
         }
         (Evaluated::Value(l), Evaluated::Value(r)) => value_op(l, r).map(Evaluated::from),
         (l, r) => Err(EvaluateError::UnsupportedBinaryOperation(Expr::BinaryOp {
-            left: Box::new(Expr::try_from(l.to_owned())?),
+            left: Box::new(l.to_owned().try_into()?),
             op,
-            right: Box::new(Expr::try_from(r.to_owned())?),
+            right: Box::new(r.to_owned().try_into()?),
         })
         .into()),
     }
@@ -812,5 +813,49 @@ impl<'a> Evaluated<'a> {
         value.validate_null(nullable)?;
 
         Ok(value)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::borrow::Cow;
+
+    use {
+        super::Evaluated,
+        crate::{
+            ast::{AstLiteral, Expr},
+            data::Literal,
+            prelude::Value,
+        },
+        bigdecimal::BigDecimal,
+    };
+
+    #[test]
+    fn evaluated_to_expr() {
+        assert_eq!(
+            Evaluated::Value(Value::I64(i64::MAX)).try_into(),
+            Ok(Expr::Literal(AstLiteral::Number(BigDecimal::from(
+                i64::MAX
+            ))))
+        );
+
+        let text = "abcd1234";
+        assert_eq!(
+            Evaluated::Literal(Literal::Text(Cow::Owned(text.to_owned()))).try_into(),
+            Ok(Expr::Literal(AstLiteral::QuotedString(text.to_owned())))
+        );
+
+        let text = "test text";
+        let range = 1..(text.len() - 1);
+        assert_eq!(
+            Evaluated::StrSlice {
+                source: Cow::Owned(text.to_owned()),
+                range: range.clone()
+            }
+            .try_into(),
+            Ok(Expr::Literal(AstLiteral::QuotedString(
+                text[range].to_owned()
+            )))
+        );
     }
 }
