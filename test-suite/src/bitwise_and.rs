@@ -1,10 +1,8 @@
-use bigdecimal::{BigDecimal, FromPrimitive};
-use gluesql_core::ast::BinaryOperator;
-
 use {
+    bigdecimal::{BigDecimal, FromPrimitive},
     crate::*,
     gluesql_core::{
-        ast::{AstLiteral, Expr},
+        ast::{AstLiteral, Expr, BinaryOperator},
         error::LiteralError,
         prelude::Value::*,
     },

@@ -18,14 +18,15 @@ pub enum Evaluated<'a> {
     Value(Value),
 }
 
-impl From<Evaluated<'_>> for Expr {
-    fn from(value: Evaluated<'_>) -> Self {
+impl TryFrom<Evaluated<'_>> for Expr {
+    type Error = Error;
+    fn try_from(value: Evaluated<'_>) -> Result<Self> {
         match value {
-            Evaluated::Value(v) => Expr::try_from(v).unwrap(),
-            Evaluated::Literal(v) => Expr::try_from(v).unwrap(),
-            Evaluated::StrSlice { source, range } => {
-                Expr::Literal(AstLiteral::QuotedString(source.as_ref()[range].to_owned()))
-            }
+            Evaluated::Value(v) => Expr::try_from(v),
+            Evaluated::Literal(v) => Expr::try_from(v),
+            Evaluated::StrSlice { source, range } => Ok(Expr::Literal(AstLiteral::QuotedString(
+                source.as_ref()[range].to_owned(),
+            ))),
         }
     }
 }
@@ -129,9 +130,9 @@ where
         }
         (Evaluated::Value(l), Evaluated::Value(r)) => value_op(l, r).map(Evaluated::from),
         (l, r) => Err(EvaluateError::UnsupportedBinaryOperation(Expr::BinaryOp {
-            left: Box::new(Expr::from(l.to_owned())),
+            left: Box::new(Expr::try_from(l.to_owned())?),
             op,
-            right: Box::new(Expr::from(r.to_owned())),
+            right: Box::new(Expr::try_from(r.to_owned())?),
         })
         .into()),
     }
