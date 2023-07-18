@@ -501,6 +501,43 @@ pub fn prepend<'a>(expr: Evaluated<'_>, value: Evaluated<'_>) -> Result<Evaluate
     }
 }
 
+pub fn take<'a>(name: String, expr: Evaluated<'_>, size: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    if expr.is_null() || size.is_null() {
+        return Ok(Evaluated::Value(Value::Null));
+    }
+
+    let expr: Value = expr.try_into()?;
+    let size = match size.try_into()? {
+        Value::I64(number) => {
+            usize::try_from(number).map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name))?
+        }
+        _ => {
+            return Err(EvaluateError::FunctionRequiresIntegerValue(name).into());
+        }
+    };
+
+    match expr {
+        Value::List(l) => {
+            let l = l.into_iter().take(size).collect();
+            Ok(Evaluated::Value(Value::List(l)))
+        }
+        _ => Err(EvaluateError::ListTypeRequired.into()),
+    }
+}
+
+pub fn is_empty<'a>(expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let expr: Value = expr.try_into()?;
+    let length = match expr {
+        Value::List(l) => l.len(),
+        Value::Map(m) => m.len(),
+        _ => {
+            return Err(EvaluateError::MapOrListTypeRequired.into());
+        }
+    };
+
+    Ok(Evaluated::from(Value::Bool(length == 0)))
+}
+
 // --- etc ---
 
 pub fn unwrap<'a>(
@@ -683,4 +720,13 @@ pub fn calc_distance<'a>(x: Evaluated<'_>, y: Evaluated<'_>) -> Result<Evaluated
     let y = eval_to_point!("calc_distance".to_owned(), y);
 
     Ok(Evaluated::from(Value::F64(Point::calc_distance(&x, &y))))
+}
+
+pub fn length<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    match expr.try_into()? {
+        Value::Str(expr) => Ok(Evaluated::from(Value::U64(expr.chars().count() as u64))),
+        Value::List(expr) => Ok(Evaluated::from(Value::U64(expr.len() as u64))),
+        Value::Map(expr) => Ok(Evaluated::from(Value::U64(expr.len() as u64))),
+        _ => Err(EvaluateError::FunctionRequiresStrOrListOrMapValue(name).into()),
+    }
 }

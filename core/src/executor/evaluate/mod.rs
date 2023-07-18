@@ -94,7 +94,12 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 .await?
                 .map(|row| {
                     let value = match row? {
-                        Row::Vec { values, .. } => values,
+                        Row::Vec { columns, values } => {
+                            if columns.len() > 1 {
+                                return Err(EvaluateError::MoreThanOneColumnReturned.into());
+                            }
+                            values
+                        }
                         Row::Map(_) => {
                             return Err(EvaluateError::SchemalessProjectionForSubQuery.into());
                         }
@@ -615,5 +620,15 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let value = eval(value).await?;
             f::prepend(expr, value)
         }
+        Function::Take { expr, size } => {
+            let expr = eval(expr).await?;
+            let size = eval(size).await?;
+            f::take(name, expr, size)
+        }
+        Function::IsEmpty(expr) => {
+            let expr = eval(expr).await?;
+            f::is_empty(expr)
+        }
+        Function::Length(expr) => f::length(name, eval(expr).await?),
     }
 }

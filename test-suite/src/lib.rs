@@ -108,6 +108,7 @@ macro_rules! generate_store_tests {
         glue!(function_concat, function::concat::concat);
         glue!(function_concat_ws, function::concat_ws::concat_ws);
         glue!(function_ifnull, function::ifnull::ifnull);
+        glue!(function_is_empty, function::is_empty::is_empty);
         glue!(function_math_function_asin, function::math_function::asin);
         glue!(function_math_function_acos, function::math_function::acos);
         glue!(function_math_function_atan, function::math_function::atan);
@@ -132,6 +133,7 @@ macro_rules! generate_store_tests {
         glue!(function_chr, function::chr::chr);
         glue!(function_mod, function::md5::md5);
         glue!(function_replace, function::replace::replace);
+        glue!(function_length, function::length::length);
         glue!(function_position, function::position::position);
         glue!(function_find_idx, function::find_idx::find_idx);
         glue!(function_geometry_get_x, function::geometry::get_x);
@@ -194,6 +196,7 @@ macro_rules! generate_store_tests {
         glue!(dictionary, dictionary::dictionary);
         glue!(function_append, function::append::append);
         glue!(function_prepend, function::prepend::prepend);
+        glue!(function_take, function::take::take);
         glue!(column_alias, column_alias::column_alias);
 
         // ast-builder
