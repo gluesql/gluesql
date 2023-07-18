@@ -2323,10 +2323,10 @@ mod tests {
         let lhs = I8(3);
         let rhs = I16(12);
         assert_eq!(
-            lhs.clone().bitwise_and(&rhs),
+            lhs.bitwise_and(&rhs),
             Err(ValueError::NonNumericMathOperation {
-                lhs: lhs.clone(),
-                rhs: rhs.clone(),
+                lhs,
+                rhs,
                 operator: NumericBinaryOperator::BitwiseAnd
             }
             .into())
