@@ -123,6 +123,9 @@ pub enum TranslateError {
     #[error("unreachable empty object")]
     UnreachableEmptyObject,
 
+    #[error("unreachable empty table")]
+    UnreachableEmptyTable,
+
     #[error("unimplemented - compound object is supported: {0}")]
     CompoundObjectNotSupported(String),
 

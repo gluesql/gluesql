@@ -20,6 +20,7 @@ impl Function {
                 Exprs::Empty(empty())
             }
             Self::Lower(expr)
+            | Self::Length(expr)
             | Self::Initcap(expr)
             | Self::Upper(expr)
             | Self::Sin(expr)
