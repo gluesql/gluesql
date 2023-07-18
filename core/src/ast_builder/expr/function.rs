@@ -10,6 +10,7 @@ use {
 #[derive(Clone, Debug)]
 pub enum FunctionNode<'a> {
     Abs(ExprNode<'a>),
+    BitNot(ExprNode<'a>),
     Upper(ExprNode<'a>),
     IfNull {
         expr: ExprNode<'a>,
@@ -163,6 +164,7 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
     fn try_from(func_node: FunctionNode<'a>) -> Result<Self> {
         match func_node {
             FunctionNode::Abs(expr_node) => expr_node.try_into().map(Function::Abs),
+            FunctionNode::BitNot(expr_node) => expr_node.try_into().map(Function::BitNot),
             FunctionNode::Upper(expr_node) => expr_node.try_into().map(Function::Upper),
             FunctionNode::Lower(expr_node) => expr_node.try_into().map(Function::Lower),
             FunctionNode::Initcap(expr_node) => expr_node.try_into().map(Function::Initcap),
@@ -364,6 +366,9 @@ impl<'a> ExprNode<'a> {
     pub fn abs(self) -> ExprNode<'a> {
         abs(self)
     }
+    pub fn bit_not(self) -> ExprNode<'a> {
+        bit_not(self)
+    }
     pub fn upper(self) -> ExprNode<'a> {
         upper(self)
     }
@@ -516,6 +521,9 @@ impl<'a> ExprNode<'a> {
 
 pub fn abs<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Abs(expr.into())))
+}
+pub fn bit_not<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::BitNot(expr.into())))
 }
 pub fn upper<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Upper(expr.into())))
@@ -889,6 +897,17 @@ mod tests {
 
         let actual = expr("base - 10").abs();
         let expected = "ABS(base - 10)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_bit_not() {
+        let actual = bit_not(col("num"));
+        let expected = "BIT_NOT(num)";
+        test_expr(actual, expected);
+
+        let actual = expr("1").bit_not();
+        let expected = "BIT_NOT(1)";
         test_expr(actual, expected);
     }
 
