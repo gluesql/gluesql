@@ -136,6 +136,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
 
             expr::unary_op(op, v)
         }
+        Expr::Array(array)=>{}
         Expr::Aggregate(aggr) => match aggregated
             .as_ref()
             .and_then(|aggregated| aggregated.get(aggr.as_ref()))
