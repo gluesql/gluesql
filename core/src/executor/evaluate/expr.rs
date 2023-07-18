@@ -3,6 +3,7 @@ use {
     crate::{
         ast::{AstLiteral, BinaryOperator, DataType, UnaryOperator},
         data::{Literal, Value},
+        executor::evaluate::function,
         result::Result,
     },
     std::{borrow::Cow, cmp::Ordering},
@@ -64,6 +65,7 @@ pub fn unary_op<'a>(op: &UnaryOperator, v: Evaluated<'a>) -> Result<Evaluated<'a
         UnaryOperator::Minus => v.unary_minus(),
         UnaryOperator::Not => v.try_into().map(|v: bool| Evaluated::from(Value::Bool(!v))),
         UnaryOperator::Factorial => v.unary_factorial(),
+        &UnaryOperator::BitNot => function::bit_not("BIT_NOT".to_string(), v),
     }
 }
 
