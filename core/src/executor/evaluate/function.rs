@@ -2,7 +2,7 @@ use {
     super::{EvaluateError, Evaluated},
     crate::{
         ast::{DataType, DateTimeField},
-        data::{Point, Value, ValueError},
+        data::{Key, Point, Value, ValueError},
         result::Result,
     },
     md5::{Digest, Md5},
@@ -496,6 +496,39 @@ pub fn prepend<'a>(expr: Evaluated<'_>, value: Evaluated<'_>) -> Result<Evaluate
         (Value::List(mut l), v) => {
             l.insert(0, v);
             Ok(Evaluated::Value(Value::List(l)))
+        }
+        _ => Err(EvaluateError::ListTypeRequired.into()),
+    }
+}
+
+pub fn sort<'a>(expr: Evaluated<'_>, order: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let expr: Value = expr.try_into()?;
+    let order: Value = order.try_into()?;
+
+    match expr {
+        Value::List(l) => {
+            let mut l: Vec<(Key, Value)> = l
+                .into_iter()
+                .map(|v| match Key::try_from(&v) {
+                    Ok(key) => Ok((key, v)),
+                    Err(_) => Err(EvaluateError::InvalidSortType),
+                })
+                .collect::<Result<Vec<(Key, Value)>, EvaluateError>>()?;
+
+            let asc = match order {
+                Value::Str(s) => match s.to_uppercase().as_str() {
+                    "ASC" => true,
+                    "DESC" => false,
+                    _ => return Err(EvaluateError::InvalidSortOrder.into()),
+                },
+                _ => return Err(EvaluateError::InvalidSortOrder.into()),
+            };
+
+            l.sort_by(|a, b| if asc { a.0.cmp(&b.0) } else { b.0.cmp(&a.0) });
+
+            Ok(Evaluated::Value(Value::List(
+                l.into_iter().map(|(_, v)| v).collect(),
+            )))
         }
         _ => Err(EvaluateError::ListTypeRequired.into()),
     }

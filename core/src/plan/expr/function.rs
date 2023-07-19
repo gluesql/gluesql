@@ -57,7 +57,8 @@ impl Function {
             | Self::Extract { expr, .. }
             | Self::GetX(expr)
             | Self::GetY(expr)
-            | Self::IsEmpty(expr) => Exprs::Single([expr].into_iter()),
+            | Self::IsEmpty(expr)
+            | Self::Sort { expr, order: None } => Exprs::Single([expr].into_iter()),
             Self::Left { expr, size: expr2 }
             | Self::Right { expr, size: expr2 }
             | Self::Lpad {
@@ -142,6 +143,10 @@ impl Function {
             }
             | Self::Append { expr, value: expr2 }
             | Self::Prepend { expr, value: expr2 }
+            | Self::Sort {
+                expr,
+                order: Some(expr2),
+            }
             | Self::Take { expr, size: expr2 }
             | Self::Point { x: expr, y: expr2 }
             | Self::CalcDistance {
