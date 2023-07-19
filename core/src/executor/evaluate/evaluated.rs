@@ -220,8 +220,13 @@ impl<'a> Evaluated<'a> {
         binary_op(self, other, |l, r| l.modulo(r), |l, r| l.modulo(r))
     }
 
-    pub fn shift_left<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
-        binary_op(self, other, |l, r| l.shift_left(r), |l, r| l.shift_left(r))
+    pub fn bitwise_shift_left<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
+        binary_op(
+            self,
+            other,
+            |l, r| l.bitwise_shift_left(r),
+            |l, r| l.bitwise_shift_left(r),
+        )
     }
 
     pub fn unary_plus(&self) -> Result<Evaluated<'a>> {

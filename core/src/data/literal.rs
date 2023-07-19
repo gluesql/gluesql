@@ -193,7 +193,7 @@ impl<'a> Literal<'a> {
         }
     }
 
-    pub fn shift_left(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
+    pub fn bitwise_shift_left(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
         match (self, other) {
             (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() + r.as_ref()))),
             (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
@@ -290,6 +290,17 @@ mod tests {
                 format!("{:?}", num(3)),
             )
             .into()),
+        );
+
+        // bitwise shl test
+        assert_eq!(Null.bitwise_shift_left(&num(2)), Ok(Null));
+        assert_eq!(
+            Boolean(true).bitwise_shift_left(&num(2)),
+            Err(LiteralError::IncompatibleBitOperation(
+                format!("{:?}", Boolean(true)),
+                format!("{:?}", num(3))
+            )
+            .into())
         );
 
         assert_eq!(num(2).unary_plus(), Ok(num(2)));

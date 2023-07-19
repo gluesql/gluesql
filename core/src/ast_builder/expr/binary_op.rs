@@ -70,7 +70,7 @@ impl<'a> ExprNode<'a> {
     }
 
     pub fn shift_left<T: Into<Self>>(self, other: T) -> Self {
-        self.binary_op(BinaryOperator::ShiftLeft, other)
+        self.binary_op(BinaryOperator::BitwiseShiftLeft, other)
     }
 }
 

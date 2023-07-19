@@ -39,7 +39,7 @@ pub enum BinaryOperator {
     And,
     Or,
     Xor,
-    ShiftLeft,
+    BitwiseShiftLeft,
 }
 
 impl ToSql for BinaryOperator {
@@ -60,7 +60,7 @@ impl ToSql for BinaryOperator {
             BinaryOperator::And => "AND".to_owned(),
             BinaryOperator::Or => "OR".to_owned(),
             BinaryOperator::Xor => "XOR".to_owned(),
-            BinaryOperator::ShiftLeft => "<<".to_owned(),
+            BinaryOperator::BitwiseShiftLeft => "<<".to_owned(),
         }
     }
 }
@@ -225,7 +225,7 @@ mod tests {
             "1 << 2",
             &Expr::BinaryOp {
                 left: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(1)))),
-                op: BinaryOperator::ShiftLeft,
+                op: BinaryOperator::BitwiseShiftLeft,
                 right: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(2))))
             }
             .to_sql()
