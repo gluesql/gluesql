@@ -1,5 +1,3 @@
-use itertools::Itertools;
-
 use {
     super::{EvaluateError, Evaluated},
     crate::{
@@ -7,6 +5,7 @@ use {
         data::{Key, Point, Value, ValueError},
         result::Result,
     },
+    itertools::Itertools,
     md5::{Digest, Md5},
     rand::{rngs::StdRng, Rng, SeedableRng},
     std::ops::ControlFlow,
@@ -576,14 +575,12 @@ pub fn is_empty<'a>(expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
 pub fn values<'a>(expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
     let expr: Value = expr.try_into()?;
     match expr {
-        Value::Map(m) => {
-            let mut values = Vec::new();
-            // list will be sorted by key value that is String type.
-            for key in m.keys().sorted() {
-                values.push(m[key].clone());
-            }
-            Ok(Evaluated::from(Value::List(values)))
-        }
+        Value::Map(m) => Ok(Evaluated::from(Value::List(
+            m.into_iter()
+                .sorted_by(|(k1, _), (k2, _)| k1.cmp(k2))
+                .map(|(_, v)| v)
+                .collect(),
+        ))),
         _ => Err(EvaluateError::MapTypeRequired.into()),
     }
 }
