@@ -1,3 +1,7 @@
+use bigdecimal::num_bigint::ToBigInt;
+
+use super::BigDecimalExt;
+
 use {
     super::StringExt,
     crate::{
@@ -16,7 +20,7 @@ pub enum LiteralError {
     #[error("unsupported literal binary arithmetic between {0} and {1}")]
     UnsupportedBinaryArithmetic(String, String),
 
-    #[error("uncompatible literal bit operation between {0} and {1}")]
+    #[error("incompatible literal bit operation between {0} and {1}")]
     IncompatibleBitOperation(String, String),
 
     #[error("the divisor should not be zero")]
@@ -195,7 +199,17 @@ impl<'a> Literal<'a> {
 
     pub fn bitwise_shift_left(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
         match (self, other) {
-            (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() + r.as_ref()))),
+            (Number(l), Number(r)) => match (l.to_i64(), r.to_i64()) {
+                (Some(l), Some(r)) => match (l << r).to_bigint() {
+                    Some(res) => Ok(Number(Cow::Owned(BigDecimal::new(res, 0)))),
+                    None => Err(LiteralError::IncompatibleBitOperation(
+                        l.to_string(),
+                        r.to_string(),
+                    )
+                    .into()),
+                },
+                _ => Err(LiteralError::UnreachableBinaryArithmetic.into()),
+            },
             (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
             _ => Err(LiteralError::IncompatibleBitOperation(
                 format!("{:?}", self),
@@ -293,6 +307,10 @@ mod tests {
         );
 
         // bitwise shl test
+        assert_eq!(
+            num(1).bitwise_shift_left(&num(2)),
+            Ok(Number(Cow::Borrowed(&BigDecimal::from(4))))
+        );
         assert_eq!(Null.bitwise_shift_left(&num(2)), Ok(Null));
         assert_eq!(
             Boolean(true).bitwise_shift_left(&num(2)),
