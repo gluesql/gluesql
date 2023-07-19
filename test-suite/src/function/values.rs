@@ -17,7 +17,7 @@ test_case!(values, async move {
     test!(
         name: "return all values from map",
         sql: r#"SELECT VALUES(data) as result FROM USER WHERE id=1"#,
-        expected: { // result list is sorted by key of map
+        expected: {
             Ok(select!(result; Value::List; [Value::I64(1), Value::Str("alice".to_owned())].to_vec()))
         }
     );
@@ -31,8 +31,6 @@ test_case!(values, async move {
         sql: r#"SELECT VALUES(data) as result FROM USER WHERE id=3"#,
         expected: Ok(select!(result; Value::List; [].to_vec()))
     );
-
-    // Error
     test!(
         name: "return arguemnt type error",
         sql: r#"SELECT VALUES(id) FROM USER WHERE id=1"#,
