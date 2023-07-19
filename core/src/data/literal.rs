@@ -298,7 +298,7 @@ mod tests {
             Boolean(true).bitwise_shift_left(&num(2)),
             Err(LiteralError::IncompatibleBitOperation(
                 format!("{:?}", Boolean(true)),
-                format!("{:?}", num(3))
+                format!("{:?}", num(2))
             )
             .into())
         );
