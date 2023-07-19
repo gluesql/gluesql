@@ -65,6 +65,9 @@ pub enum EvaluateError {
     #[error("unreachable empty aggregate value: {0:?}")]
     UnreachableEmptyAggregateValue(Aggregate),
 
+    #[error("incompatible bit operation between {0} and {1}")]
+    IncompatibleBitOperation(String, String),
+
     #[error("the divisor should not be zero")]
     DivisorShouldNotBeZero,
 
