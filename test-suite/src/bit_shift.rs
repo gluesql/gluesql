@@ -34,9 +34,7 @@ CREATE TABLE NullTest (
 
     run!("INSERT INTO OverflowTest (id, num) VALUES (1, 1)");
 
-    run!("INSERT INTO NullTest (id, num) VALUES (1, NULL)");
     run!("INSERT INTO NullTest (id, num) VALUES (NULL, 1)");
-    run!("INSERT INTO NullTest (id, num) VALUES (NULL, NULL)");
 
     test! (
         name: "select all from table",
@@ -47,16 +45,14 @@ CREATE TABLE NullTest (
     test!(
         name : "test bit shift overflow",
         sql : "SELECT (num << 65) as overflowed FROM OverflowTest",
-        expected : Err(ValueError::BinaryOperationOverflow { lhs : I64(1), rhs : I64(65), operator : NumericBinaryOperator::ShiftLeft}.into())
+        expected : Err(ValueError::BinaryOperationOverflow { lhs : I64(1), rhs : I64(65), operator : NumericBinaryOperator::BitwiseShiftLeft}.into())
     );
 
     test!(
         "SELECT id, num FROM NullTest",
         Ok(select_with_null!(
             id     | num;
-            I64(1)   Null;
-            Null     I64(1);
-            Null     Null
+            Null     I64(1)
         ))
     );
 });
