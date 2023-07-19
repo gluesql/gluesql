@@ -555,215 +555,153 @@ impl Value {
         }
     }
 
-    pub fn validate_shift_rhs(rhs: i64) -> Result<u32> {
-        match rhs.try_into() {
-            Ok(u) => Ok(u),
-            Err(_) => Err(ValueError::ImpossibleCast.into()),
+    pub fn validate_bitwise_shift_rhs(rhs: &Value) -> Result<u32> {
+        use Value::*;
+
+        match rhs {
+            I64(rhs_i64) => match rhs_i64.to_owned().try_into() {
+                Ok(u) => Ok(u),
+                Err(_) => Err(ValueError::ImpossibleCast.into()),
+            },
+            _ => Err(ValueError::ImpossibleCast.into()),
         }
     }
 
-    pub fn shift_left(&self, rhs: &Value) -> Result<Value> {
+    pub fn bitwise_shift_left(&self, rhs: &Value) -> Result<Value> {
         use Value::*;
 
-        match (self, rhs) {
-            (I8(a), I64(b)) => {
-                let conversion_result = Self::validate_shift_rhs(*b);
-
-                if let Ok(b_u32) = conversion_result {
-                    if let Some(res) = a.checked_shl(b_u32) {
+        let try_rhs_u32 = Self::validate_bitwise_shift_rhs(rhs);
+        match try_rhs_u32 {
+            Ok(rhs_u32) => match self {
+                I8(lhs) => {
+                    if let Some(res) = lhs.checked_shl(rhs_u32) {
                         Ok(I8(res))
                     } else {
                         Err(ValueError::BinaryOperationOverflow {
                             lhs: self.clone(),
                             rhs: rhs.clone(),
-                            operator: NumericBinaryOperator::ShiftLeft,
+                            operator: NumericBinaryOperator::BitwiseShiftLeft,
                         }
                         .into())
                     }
-                } else {
-                    Err(ValueError::ImpossibleCast.into())
                 }
-            }
-            (I16(a), I64(b)) => {
-                let conversion_result = Self::validate_shift_rhs(*b);
-
-                if let Ok(b_u32) = conversion_result {
-                    if let Some(res) = a.checked_shl(b_u32) {
+                I16(lhs) => {
+                    if let Some(res) = lhs.checked_shl(rhs_u32) {
                         Ok(I16(res))
                     } else {
                         Err(ValueError::BinaryOperationOverflow {
                             lhs: self.clone(),
                             rhs: rhs.clone(),
-                            operator: NumericBinaryOperator::ShiftLeft,
+                            operator: NumericBinaryOperator::BitwiseShiftLeft,
                         }
                         .into())
                     }
-                } else {
-                    Err(ValueError::ImpossibleCast.into())
                 }
-            }
-            (I32(a), I64(b)) => {
-                let conversion_result = Self::validate_shift_rhs(*b);
-
-                if let Ok(b_u32) = conversion_result {
-                    if let Some(res) = a.checked_shl(b_u32) {
+                I32(lhs) => {
+                    if let Some(res) = lhs.checked_shl(rhs_u32) {
                         Ok(I32(res))
                     } else {
                         Err(ValueError::BinaryOperationOverflow {
                             lhs: self.clone(),
                             rhs: rhs.clone(),
-                            operator: NumericBinaryOperator::ShiftLeft,
+                            operator: NumericBinaryOperator::BitwiseShiftLeft,
                         }
                         .into())
                     }
-                } else {
-                    Err(ValueError::ImpossibleCast.into())
                 }
-            }
-            (I64(a), I64(b)) => {
-                let conversion_result = Self::validate_shift_rhs(*b);
-
-                if let Ok(b_u32) = conversion_result {
-                    if let Some(res) = a.checked_shl(b_u32) {
+                I64(lhs) => {
+                    if let Some(res) = lhs.checked_shl(rhs_u32) {
                         Ok(I64(res))
                     } else {
                         Err(ValueError::BinaryOperationOverflow {
                             lhs: self.clone(),
                             rhs: rhs.clone(),
-                            operator: NumericBinaryOperator::ShiftLeft,
+                            operator: NumericBinaryOperator::BitwiseShiftLeft,
                         }
                         .into())
                     }
-                } else {
-                    Err(ValueError::ImpossibleCast.into())
                 }
-            }
-            (I128(a), I64(b)) => {
-                let conversion_result = Self::validate_shift_rhs(*b);
-
-                if let Ok(b_u32) = conversion_result {
-                    if let Some(res) = a.checked_shl(b_u32) {
+                I128(lhs) => {
+                    if let Some(res) = lhs.checked_shl(rhs_u32) {
                         Ok(I128(res))
                     } else {
                         Err(ValueError::BinaryOperationOverflow {
                             lhs: self.clone(),
                             rhs: rhs.clone(),
-                            operator: NumericBinaryOperator::ShiftLeft,
+                            operator: NumericBinaryOperator::BitwiseShiftLeft,
                         }
                         .into())
                     }
-                } else {
-                    Err(ValueError::ImpossibleCast.into())
                 }
-            }
-            (U8(a), I64(b)) => {
-                let conversion_result = Self::validate_shift_rhs(*b);
-
-                if let Ok(b_u32) = conversion_result {
-                    if let Some(res) = a.checked_shl(b_u32) {
+                U8(lhs) => {
+                    if let Some(res) = lhs.checked_shl(rhs_u32) {
                         Ok(U8(res))
                     } else {
                         Err(ValueError::BinaryOperationOverflow {
                             lhs: self.clone(),
                             rhs: rhs.clone(),
-                            operator: NumericBinaryOperator::ShiftLeft,
+                            operator: NumericBinaryOperator::BitwiseShiftLeft,
                         }
                         .into())
                     }
-                } else {
-                    Err(ValueError::ImpossibleCast.into())
                 }
-            }
-            (U16(a), I64(b)) => {
-                let conversion_result = Self::validate_shift_rhs(*b);
-
-                if let Ok(b_u32) = conversion_result {
-                    if let Some(res) = a.checked_shl(b_u32) {
+                U16(lhs) => {
+                    if let Some(res) = lhs.checked_shl(rhs_u32) {
                         Ok(U16(res))
                     } else {
                         Err(ValueError::BinaryOperationOverflow {
                             lhs: self.clone(),
                             rhs: rhs.clone(),
-                            operator: NumericBinaryOperator::ShiftLeft,
+                            operator: NumericBinaryOperator::BitwiseShiftLeft,
                         }
                         .into())
                     }
-                } else {
-                    Err(ValueError::ImpossibleCast.into())
                 }
-            }
-            (U32(a), I64(b)) => {
-                let conversion_result = Self::validate_shift_rhs(*b);
-
-                if let Ok(b_u32) = conversion_result {
-                    if let Some(res) = a.checked_shl(b_u32) {
+                U32(lhs) => {
+                    if let Some(res) = lhs.checked_shl(rhs_u32) {
                         Ok(U32(res))
                     } else {
                         Err(ValueError::BinaryOperationOverflow {
                             lhs: self.clone(),
                             rhs: rhs.clone(),
-                            operator: NumericBinaryOperator::ShiftLeft,
+                            operator: NumericBinaryOperator::BitwiseShiftLeft,
                         }
                         .into())
                     }
-                } else {
-                    Err(ValueError::ImpossibleCast.into())
                 }
-            }
-            (U64(a), I64(b)) => {
-                let conversion_result = Self::validate_shift_rhs(*b);
-
-                if let Ok(b_u32) = conversion_result {
-                    if let Some(res) = a.checked_shl(b_u32) {
+                U64(lhs) => {
+                    if let Some(res) = lhs.checked_shl(rhs_u32) {
                         Ok(U64(res))
                     } else {
                         Err(ValueError::BinaryOperationOverflow {
                             lhs: self.clone(),
                             rhs: rhs.clone(),
-                            operator: NumericBinaryOperator::ShiftLeft,
+                            operator: NumericBinaryOperator::BitwiseShiftLeft,
                         }
                         .into())
                     }
-                } else {
-                    Err(ValueError::ImpossibleCast.into())
                 }
-            }
-            (U128(a), I64(b)) => {
-                let conversion_result = Self::validate_shift_rhs(*b);
-
-                if let Ok(b_u32) = conversion_result {
-                    if let Some(res) = a.checked_shl(b_u32) {
+                U128(lhs) => {
+                    if let Some(res) = lhs.checked_shl(rhs_u32) {
                         Ok(U128(res))
                     } else {
                         Err(ValueError::BinaryOperationOverflow {
                             lhs: self.clone(),
                             rhs: rhs.clone(),
-                            operator: NumericBinaryOperator::ShiftLeft,
+                            operator: NumericBinaryOperator::BitwiseShiftLeft,
                         }
                         .into())
                     }
-                } else {
-                    Err(ValueError::ImpossibleCast.into())
                 }
-            }
-            (Null, I64(_))
-            | (I8(_), Null)
-            | (I16(_), Null)
-            | (I32(_), Null)
-            | (I64(_), Null)
-            | (I128(_), Null)
-            | (U8(_), Null)
-            | (U16(_), Null)
-            | (U32(_), Null)
-            | (U64(_), Null)
-            | (U128(_), Null)
-            | (Null, Null) => Ok(Null),
-            _ => Err(ValueError::NonNumericMathOperation {
-                lhs: self.clone(),
-                operator: NumericBinaryOperator::ShiftLeft,
-                rhs: rhs.clone(),
-            }
-            .into()),
+                Null => Ok(Null),
+                _ => Err(ValueError::NonNumericMathOperation {
+                    lhs: self.clone(),
+                    operator: NumericBinaryOperator::BitwiseShiftLeft,
+                    rhs: rhs.clone(),
+                }
+                .into()),
+            },
+            Err(e) => Err(e),
         }
     }
 
@@ -958,6 +896,8 @@ fn str_position(from_str: &String, sub_str: &String) -> usize {
 
 #[cfg(test)]
 mod tests {
+    use crate::data::NumericBinaryOperator;
+
     use {
         super::{Interval, Value::*},
         crate::data::{point::Point, value::uuid::parse_uuid, ValueError},
@@ -1803,6 +1743,37 @@ mod tests {
         test!(modulo I128(6),   F64(2.0) => F64(0.0));
         test!(modulo I128(6),   F32(2.0_f32) => F32(0.0_f32));
 
+        test!(bitwise_shift_left I8(1),   I64(2)   => I8(4));
+        test!(bitwise_shift_left I16(1),   I64(2)   => I16(4));
+        test!(bitwise_shift_left I32(1),   I64(2) => I32(4));
+        test!(bitwise_shift_left I64(1),   I64(2) => I64(4));
+        test!(bitwise_shift_left I128(1),   I64(2) => I128(4));
+        test!(bitwise_shift_left U8(1),   I64(2) => U8(4));
+        test!(bitwise_shift_left U16(1),   I64(2) => U16(4));
+        test!(bitwise_shift_left U32(1),   I64(2) => U32(4));
+        test!(bitwise_shift_left U64(1),   I64(2) => U64(4));
+        test!(bitwise_shift_left U128(1),   I64(2) => U128(4));
+
+        assert_eq!(
+            I64(1).bitwise_shift_left(&I64(-2)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+
+        assert_eq! {
+            I64(1).bitwise_shift_left(&Null),
+            Err(ValueError::ImpossibleCast.into())
+        }
+
+        assert_eq!(
+            mon!(3).bitwise_shift_left(&I64(2)),
+            Err(ValueError::NonNumericMathOperation {
+                lhs: mon!(3),
+                operator: NumericBinaryOperator::BitwiseShiftLeft,
+                rhs: I64(2)
+            }
+            .into())
+        );
+
         macro_rules! null_test {
             ($op: ident $a: expr, $b: expr) => {
                 assert!($a.$op(&$b).unwrap().is_null());
@@ -1967,6 +1938,7 @@ mod tests {
         null_test!(modulo   Null, F32(1.0_f32));
         null_test!(modulo   Null, F64(1.0));
         null_test!(modulo   Null, decimal(1));
+        null_test!(bitwise_shift_left   Null, I64(1));
 
         null_test!(add      Null, Null);
         null_test!(subtract Null, Null);
