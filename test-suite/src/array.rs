@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        error::TranslateError,
+        error::InsertError,
         prelude::{Payload, Value::*},
     },
 };
@@ -55,12 +55,12 @@ CREATE TABLE Test (
         sql: "SELECT * FROM Test;",
         expected: Ok(select_with_null!(
             id     | surname                  | name;
-            I64(1)   Str("CHO".to_owned())      Array(["Seongbin","Bernie"].to_owned());
-            I64(3)   Str("CHO".to_owned())      Array(["Seongbin","Bernie","Chobobdev"].to_owned());
-            I64(2)   Str("CHO".to_owned())      Array(["devgony","Henry"].to_owned());
-            I64(5)   Str("DOE".to_owned())      Array(["Jhon"].to_owned());
-            I64(1)   Str("DOE".to_owned())      Array(["Jane"].to_owned());
-            I64(1)   Null                       Array(["GlueSQL"].to_owned())
+            I64(1)   Str("CHO".to_owned())      List(["Seongbin","Bernie"].to_owned());
+            I64(3)   Str("CHO".to_owned())      List(["Seongbin","Bernie","Chobobdev"].to_owned());
+            I64(2)   Str("CHO".to_owned())      List(["devgony","Henry"].to_owned());
+            I64(5)   Str("DOE".to_owned())      List(["Jhon"].to_owned());
+            I64(1)   Str("DOE".to_owned())      List(["Jane"].to_owned());
+            I64(1)   Null                       List(["GlueSQL"].to_owned())
         ))
     };
 
@@ -77,12 +77,12 @@ CREATE TABLE Test (
         sql: "SELECT * FROM Target;",
         expected: Ok(select_with_null!(
             id     | surname                  | name;
-            I64(1)   Str("CHO".to_owned())      Array(["Seongbin","Bernie"].to_owned());
-            I64(3)   Str("CHO".to_owned())      Array(["Seongbin","Bernie","Chobobdev"].to_owned());
-            I64(2)   Str("CHO".to_owned())      Array(["devgony","Henry"].to_owned());
-            I64(5)   Str("DOE".to_owned())      Array(["Jhon"].to_owned());
-            I64(1)   Str("DOE".to_owned())      Array(["Jane"].to_owned());
-            I64(1)   Null                       Array(["GlueSQL"].to_owned())
+            I64(1)   Str("CHO".to_owned())      List(["Seongbin","Bernie"].to_owned());
+            I64(3)   Str("CHO".to_owned())      List(["Seongbin","Bernie","Chobobdev"].to_owned());
+            I64(2)   Str("CHO".to_owned())      List(["devgony","Henry"].to_owned());
+            I64(5)   Str("DOE".to_owned())      List(["Jhon"].to_owned());
+            I64(1)   Str("DOE".to_owned())      List(["Jane"].to_owned());
+            I64(1)   Null                       List(["GlueSQL"].to_owned())
         ))
     };
 

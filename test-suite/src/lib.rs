@@ -40,6 +40,7 @@ pub mod unary_operator;
 pub mod update;
 pub mod validate;
 pub mod values;
+pub mod array;
 
 pub mod tester;
 
