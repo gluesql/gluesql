@@ -45,7 +45,7 @@ CREATE TABLE NullTest (
     test!(
         name : "test bit shift overflow",
         sql : "SELECT (num << 65) as overflowed FROM OverflowTest",
-        expected : Err(ValueError::BinaryOperationOverflow { lhs : I64(1), rhs : I64(65), operator : NumericBinaryOperator::BitwiseShiftLeft}.into())
+        expected : Err(ValueError::BinaryOperationOverflow { lhs : I64(1), rhs : U32(65), operator : NumericBinaryOperator::BitwiseShiftLeft}.into())
     );
 
     test!(
