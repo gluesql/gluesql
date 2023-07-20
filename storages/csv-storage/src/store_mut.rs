@@ -2,7 +2,7 @@ use {
     crate::{error::ResultExt, CsvStorage},
     async_trait::async_trait,
     gluesql_core::{
-        data::{Key, Schema, Value},
+        data::{Key, Schema},
         error::{Error, Result},
         store::{DataRow, StoreMut},
     },
@@ -45,6 +45,11 @@ impl StoreMut for CsvStorage {
         let data_path = self.data_path(table_name);
         if data_path.exists() {
             remove_file(data_path).map_storage_err()?;
+        }
+
+        let types_path = self.types_path(table_name);
+        if types_path.exists() {
+            remove_file(types_path).map_storage_err()?;
         }
 
         let schema_path = self.schema_path(table_name);
@@ -132,9 +137,8 @@ impl StoreMut for CsvStorage {
         let sort_merge = SortMerge::new(prev_rows, rows.into_iter());
         let merged = sort_merge.collect::<Result<Vec<_>>>()?;
 
-        let file = File::create(self.data_path(table_name)).map_storage_err()?;
-        let wtr = csv::Writer::from_writer(file);
-        write(wtr, columns, merged)
+        // write(data_wtr, types_wtr, columns, merged)
+        self.write(table_name, columns, merged)
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
@@ -151,77 +155,109 @@ impl StoreMut for CsvStorage {
             })
             .collect::<Result<Vec<_>>>()?;
 
+        /*
         let file = File::create(self.data_path(table_name)).map_storage_err()?;
         let wtr = csv::Writer::from_writer(file);
+        */
 
-        write(wtr, columns, rows)
+        // write(wtr, columns, rows)
+        self.write(table_name, columns, rows)
     }
 }
 
-fn write(
-    mut wtr: csv::Writer<File>,
-    columns: Option<Vec<String>>,
-    rows: Vec<DataRow>,
-) -> Result<()> {
-    if let Some(columns) = columns {
-        wtr.write_record(&columns).map_storage_err()?;
+impl CsvStorage {
+    fn write(
+        &self,
+        table_name: &str,
+        // mut wtr: csv::Writer<File>,
+        columns: Option<Vec<String>>,
+        rows: Vec<DataRow>,
+    ) -> Result<()> {
+        let schemaless = columns.is_none();
 
-        for row in rows {
-            let row = convert(row);
+        let data_file = File::create(self.data_path(table_name)).map_storage_err()?;
+        let mut data_wtr = csv::Writer::from_writer(data_file);
+        let types_file = if schemaless {
+            File::create(self.types_path(table_name)).map_storage_err()?
+        } else {
+            File::open(self.data_path(table_name)).map_storage_err()?
+        };
+        let mut types_wtr = csv::Writer::from_writer(types_file);
 
-            wtr.write_record(&row).map_storage_err()?;
+        if let Some(columns) = columns {
+            data_wtr.write_record(&columns).map_storage_err()?;
+
+            for row in rows {
+                let row = convert(row);
+
+                data_wtr.write_record(&row).map_storage_err()?;
+            }
+
+            return Ok(());
         }
 
-        return Ok(());
-    }
-
-    // schemaless
-    let mut columns = BTreeSet::new();
-    let rows = rows
-        .into_iter()
-        .map(|row| match row {
-            DataRow::Vec(_) => Err(Error::StorageMsg("something error".to_owned())),
-            DataRow::Map(values) => Ok(values),
-        })
-        .collect::<Result<Vec<_>>>()?;
-
-    for row in &rows {
-        columns.extend(row.keys());
-    }
-
-    wtr.write_record(&columns).map_storage_err()?;
-
-    for row in &rows {
-        let row = columns
-            .iter()
-            .map(|key| {
-                let value = row.get(key.as_str()).unwrap_or(&Value::Null);
-
-                String::from(value)
+        // schemaless
+        let mut columns = BTreeSet::new();
+        let rows = rows
+            .into_iter()
+            .map(|row| match row {
+                DataRow::Vec(_) => Err(Error::StorageMsg("something error".to_owned())),
+                DataRow::Map(values) => Ok(values),
             })
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>>>()?;
 
-        wtr.write_record(&row).map_storage_err()?;
+        for row in &rows {
+            columns.extend(row.keys());
+        }
+
+        data_wtr.write_record(&columns).map_storage_err()?;
+        if schemaless {
+            types_wtr.write_record(&columns).map_storage_err()?;
+        }
+
+        for row in &rows {
+            let (row, data_types): (Vec<_>, Vec<_>) = columns
+                .iter()
+                .map(|key| {
+                    row.get(key.as_str())
+                        .map(|value| {
+                            let data_type = value
+                                .get_type()
+                                .map(|t| t.to_string())
+                                .unwrap_or("NULL".to_owned());
+
+                            (String::from(value), data_type)
+                        })
+                        .unwrap_or((String::from("NULL"), "".to_owned()))
+                })
+                .unzip();
+
+            data_wtr.write_record(&row).map_storage_err()?;
+
+            if schemaless {
+                types_wtr.write_record(&data_types).map_storage_err()?;
+            }
+        }
+
+        /*
+        let mut rows = rows.into_iter().map(|row| match row {
+            DataRow::Vec(values) => {
+                columns.extend(values.into_iter().map(String::from));
+
+                Ok(values)
+            }
+            DataRow::Map(values) => {
+                columns.extend(values.keys().map(String::from));
+
+                Ok(values.into_iter().map(|(_, value)| value).collect())
+            }
+        });
+
+        let columns = columns.unwrap_or_default();
+        */
+
+        Ok(())
     }
-
-    /*
-    let mut rows = rows.into_iter().map(|row| match row {
-        DataRow::Vec(values) => {
-            columns.extend(values.into_iter().map(String::from));
-
-            Ok(values)
-        }
-        DataRow::Map(values) => {
-            columns.extend(values.keys().map(String::from));
-
-            Ok(values.into_iter().map(|(_, value)| value).collect())
-        }
-    });
-
-    let columns = columns.unwrap_or_default();
-    */
-
-    Ok(())
 }
 
 fn convert(data_row: DataRow) -> Vec<String> {
