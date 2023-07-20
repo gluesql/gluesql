@@ -77,138 +77,85 @@ impl CsvStorage {
 
     fn scan_data(&self, table_name: &str) -> Result<(Option<Vec<String>>, RowIter)> {
         let schema = self.fetch_schema(table_name)?;
-        let schema2 = schema.clone();
-
         let data_path = self.data_path(table_name);
+        if !data_path.exists() {
+            return Ok((None, Box::new(std::iter::empty())));
+        }
 
-        let mut column_exists = false;
-        let columns = match schema {
-            Some(Schema {
-                column_defs: Some(column_defs),
-                ..
-            }) => {
-                column_exists = true;
-                column_defs
-                    .into_iter()
-                    .map(|column_def| column_def.name)
-                    .collect::<Vec<_>>()
-            }
-            _ if data_path.exists() => {
-                let mut rdr = csv::Reader::from_path(data_path).map_storage_err()?;
+        let mut data_rdr = csv::Reader::from_path(data_path).map_storage_err()?;
 
-                rdr.headers()
-                    .map_storage_err()?
-                    .into_iter()
-                    .map(|header| header.to_string())
-                    .collect()
-            }
-            _ => {
-                return Ok((None, Box::new(std::iter::empty())));
-            }
-        };
+        /*
+          1. schema file exists
+            yes -> then
+                1-1. schema
+                1-2. schemaless
+            no -> fetch column based on data file
+                all column types are string
+          2. data file exists
+            yes -> fetch
+            no -> error
+          3. types file exists
+            yes -> use it
+            no -> .. ok
 
-        let data_path = self.data_path(table_name);
-        let data_rdr = csv::Reader::from_path(data_path).map_storage_err()?;
+        let's flatten this
 
-        let types_path = self.types_path(table_name);
-        // types if optional
-        if !column_exists && types_path.exists() {
-            let types_rdr = csv::Reader::from_path(types_path)
-                .map_storage_err()?
-                .into_records();
+          1. data file does not exist
+            -> error
+            -> now data file exists
 
-            let cc = columns.clone();
-            let rows = data_rdr.into_records().zip(types_rdr).enumerate().map(
-                move |(index, (record, types))| {
-                    let key = Key::U64(index as u64);
-                    println!("KEY {key:?}");
+          2. schema file exists
 
-                    let record = record.map_storage_err()?;
-                    let types = types.map_storage_err()?;
+          2-1. column_def exists
+            don't use types file
+            use column_def
 
-                    let row = record
-                        .into_iter()
-                        .zip(cc.clone().into_iter())
-                        .zip(types.into_iter())
-                        .filter_map(|((value, column), data_type)| {
-                            if data_type.len() == 0 {
-                                return None;
-                            }
+          2-2. column_def does not exist
 
-                            let item = if data_type == "NULL" {
-                                Ok((column, Value::Null))
-                            } else {
-                                parse_data_type(data_type)
-                                    .and_then(|data_type| translate_data_type(&data_type))
-                                    .map(|data_type| {
-                                        let value = match data_type {
-                                            DataType::Text => Value::Str(value.to_owned()),
-                                            data_type => Value::Str(value.to_owned())
-                                                .cast(&data_type)
-                                                .unwrap(),
-                                        };
+          2-2-1. types file exists
+            use types file
 
-                                        (column, value)
-                                    })
-                            };
+          2-2-2. types file does not exist
+            fetch columns from data file
+            all the types are string
 
-                            println!("{item:?}");
+          3. schema file does not exist
 
-                            Some(item)
-                        })
-                        .collect::<Result<HashMap<String, Value>>>()
-                        .map(DataRow::Map)?;
+            3-1. types file exists
+                use types file
 
-                    Ok((key, row))
-                },
-            );
+            3-2. types file does not exist
+                fetch columns from data file
+                all the types are string
 
-            // Box::new(rows)
-            Ok((None, Box::new(rows)))
-        } else {
-            let cc = columns.clone();
+        ## finalization
+
+        1. column_defs field exists
+        2. types file exists
+        3. neither column_defs nor types file exists
+        */
+
+        if let Some(Schema {
+            column_defs: Some(column_defs),
+            ..
+        }) = schema
+        {
+            let columns = column_defs
+                .iter()
+                .map(|column_def| column_def.name.to_owned())
+                .collect::<Vec<_>>();
+
             let rows = data_rdr
                 .into_records()
                 .enumerate()
                 .map(move |(index, record)| {
-                    let column_defs = schema2
-                        .as_ref()
-                        .and_then(|schema| schema.column_defs.as_ref());
-
                     let record = record.map_storage_err()?;
                     let get_index_key = || index.try_into().map(Key::I64).map_storage_err();
-
-                    let column_defs = match column_defs {
-                        Some(column_defs) => column_defs,
-                        None => {
-                            let key = get_index_key()?;
-
-                            let row = record
-                                .into_iter()
-                                .zip(cc.clone().into_iter())
-                                .map(|(value, column)| {
-                                    let value = match value {
-                                        "NULL" => Value::Null,
-                                        _ => Value::Str(value.to_owned()),
-                                    };
-
-                                    Ok((column, value))
-                                })
-                                /*
-                                .map(String::from)
-                                .map(Value::Str)
-                                */
-                                .collect::<Result<HashMap<String, Value>>>()?;
-                            let row = DataRow::Map(row);
-
-                            return Ok((key, row));
-                        }
-                    };
 
                     let mut key: Option<Key> = None;
                     let values = record
                         .into_iter()
-                        .zip(column_defs)
+                        .zip(column_defs.iter())
                         .map(|(value, column_def)| {
                             let value = match value {
                                 "NULL" => Value::Null,
@@ -234,11 +181,83 @@ impl CsvStorage {
                     Ok((key, row))
                 });
 
-            // Box::new(rows)
+            Ok((Some(columns), Box::new(rows)))
+        } else if self.types_path(table_name).exists() {
+            let types_path = self.types_path(table_name);
+            let types_rdr = csv::Reader::from_path(types_path)
+                .map_storage_err()?
+                .into_records();
+
+            let columns: Vec<_> = data_rdr
+                .headers()
+                .map_storage_err()?
+                .into_iter()
+                .map(|header| header.to_string())
+                .collect();
+
+            let rows = data_rdr.into_records().zip(types_rdr).enumerate().map(
+                move |(index, (record, types))| {
+                    let key = Key::U64(index as u64);
+                    let record = record.map_storage_err()?;
+                    let types = types.map_storage_err()?;
+
+                    record
+                        .into_iter()
+                        .zip(columns.clone().into_iter())
+                        .zip(types.into_iter())
+                        .filter_map(|((value, column), data_type)| {
+                            if data_type.is_empty() {
+                                return None;
+                            }
+
+                            let value = if data_type == "NULL" {
+                                Ok(Value::Null)
+                            } else {
+                                parse_data_type(data_type).and_then(|data_type| {
+                                    let data_type = translate_data_type(&data_type)?;
+                                    let value = Value::Str(value.to_owned());
+
+                                    match data_type {
+                                        DataType::Text => Ok(value),
+                                        data_type => value.cast(&data_type),
+                                    }
+                                })
+                            };
+
+                            Some(value.map(|value| (column, value)))
+                        })
+                        .collect::<Result<HashMap<String, Value>>>()
+                        .map(DataRow::Map)
+                        .map(|row| (key, row))
+                },
+            );
+
+            Ok((None, Box::new(rows)))
+        } else {
+            let columns = data_rdr
+                .headers()
+                .map_storage_err()?
+                .into_iter()
+                .map(|header| header.to_string())
+                .collect::<Vec<_>>();
+
+            let rows = data_rdr
+                .into_records()
+                .enumerate()
+                .map(move |(index, record)| {
+                    let key = Key::U64(index as u64);
+                    let record = record.map_storage_err()?;
+
+                    let row = record
+                        .into_iter()
+                        .map(|value| Value::Str(value.to_owned()))
+                        .collect::<Vec<Value>>();
+
+                    Ok((key, DataRow::Vec(row)))
+                });
+
             Ok((Some(columns), Box::new(rows)))
         }
-
-        // Ok((Some(columns), rows))
     }
 }
 
