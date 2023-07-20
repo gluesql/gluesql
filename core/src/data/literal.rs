@@ -1,9 +1,5 @@
-use bigdecimal::num_bigint::ToBigInt;
-
-use super::BigDecimalExt;
-
 use {
-    super::StringExt,
+    super::{BigDecimalExt, StringExt},
     crate::{
         ast::AstLiteral,
         result::{Error, Result},
@@ -20,8 +16,14 @@ pub enum LiteralError {
     #[error("unsupported literal binary arithmetic between {0} and {1}")]
     UnsupportedBinaryArithmetic(String, String),
 
-    #[error("incompatible literal bit operation between {0} and {1}")]
-    IncompatibleBitOperation(String, String),
+    #[error("given operand is not integer literal")]
+    NonIntegerOperand,
+
+    #[error("overflow occured while running bitwise operation")]
+    BitwiseOperationOverflow,
+
+    #[error("impossible conversion from {0} to {1} type")]
+    ImpossibleConversion(String, String),
 
     #[error("the divisor should not be zero")]
     DivisorShouldNotBeZero,
@@ -199,23 +201,22 @@ impl<'a> Literal<'a> {
 
     pub fn bitwise_shift_left(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
         match (self, other) {
-            (Number(l), Number(r)) => match (l.to_i64(), r.to_i64()) {
-                (Some(l), Some(r)) => match (l << r).to_bigint() {
-                    Some(res) => Ok(Number(Cow::Owned(BigDecimal::new(res, 0)))),
-                    None => Err(LiteralError::IncompatibleBitOperation(
-                        l.to_string(),
-                        r.to_string(),
-                    )
-                    .into()),
-                },
-                _ => Err(LiteralError::UnreachableBinaryArithmetic.into()),
-            },
+            (Number(l), Number(r)) => {
+                let l = l.to_i64().ok_or(LiteralError::NonIntegerOperand)?;
+                if !r.is_integer() {
+                    return Err(LiteralError::NonIntegerOperand.into());
+                }
+                let r = r.to_u32().ok_or(LiteralError::ImpossibleConversion(
+                    format!("{}", r),
+                    "u32".to_owned(),
+                ))?;
+                let res = l
+                    .checked_shl(r)
+                    .ok_or(LiteralError::BitwiseOperationOverflow)?;
+                Ok(Number(Cow::Owned(BigDecimal::from(res))))
+            }
             (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
-            _ => Err(LiteralError::IncompatibleBitOperation(
-                format!("{:?}", self),
-                format!("{:?}", other),
-            )
-            .into()),
+            _ => Err(LiteralError::NonIntegerOperand.into()),
         }
     }
 
@@ -306,25 +307,53 @@ mod tests {
             .into()),
         );
 
-        // bitwise shl test
-        assert_eq!(
-            num(1).bitwise_shift_left(&num(2)),
-            Ok(Number(Cow::Borrowed(&BigDecimal::from(4))))
-        );
-        assert_eq!(Null.bitwise_shift_left(&num(2)), Ok(Null));
-        assert_eq!(
-            Boolean(true).bitwise_shift_left(&num(2)),
-            Err(LiteralError::IncompatibleBitOperation(
-                format!("{:?}", Boolean(true)),
-                format!("{:?}", num(2))
-            )
-            .into())
-        );
-
         assert_eq!(num(2).unary_plus(), Ok(num(2)));
         assert_eq!(Null.unary_plus(), Ok(Null));
         assert_eq!(num(1).unary_minus(), Ok(num(-1)));
         assert_eq!(Null.unary_minus(), Ok(Null));
+    }
+
+    #[test]
+    fn bitwise_shift_left() {
+        use crate::data::LiteralError;
+
+        let num = |n: i32| Number(Cow::Owned(BigDecimal::from(n)));
+        macro_rules! num {
+            ($num: expr) => {
+                Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
+            };
+        }
+
+        assert_eq!(
+            num(1).bitwise_shift_left(&num(2)),
+            Ok(Number(Cow::Borrowed(&BigDecimal::from(4))))
+        );
+
+        assert_eq!(
+            num(1).bitwise_shift_left(&num(65)),
+            Err(LiteralError::BitwiseOperationOverflow.into())
+        );
+
+        assert_eq!(num(2).bitwise_shift_left(&Null), Ok(Null));
+        assert_eq!(Null.bitwise_shift_left(&num(2)), Ok(Null));
+        assert_eq!(Null.bitwise_shift_left(&Null), Ok(Null));
+
+        assert_eq!(
+            Boolean(true).bitwise_shift_left(&num(2)),
+            Err(LiteralError::NonIntegerOperand.into())
+        );
+        assert_eq!(
+            num(1).bitwise_shift_left(&num(-1)),
+            Err(LiteralError::ImpossibleConversion("-1".to_owned(), "u32".to_owned()).into())
+        );
+        assert_eq!(
+            num!("1.1").bitwise_shift_left(&num(2)),
+            Err(LiteralError::NonIntegerOperand.into())
+        );
+        assert_eq!(
+            num(1).bitwise_shift_left(&num!("2.1")),
+            Err(LiteralError::NonIntegerOperand.into())
+        );
     }
 
     #[test]
