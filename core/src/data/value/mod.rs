@@ -555,155 +555,39 @@ impl Value {
         }
     }
 
-    pub fn validate_bitwise_shift_rhs(rhs: &Value) -> Result<u32> {
-        use Value::*;
-
-        match rhs {
-            U32(rhs_u32) => Ok(rhs_u32.to_owned()),
-            I64(rhs_i64) => match rhs_i64.to_owned().try_into() {
-                Ok(u) => Ok(u),
-                Err(_) => Err(ValueError::ImpossibleCast.into()),
-            },
-            _ => Err(ValueError::ImpossibleCast.into()),
-        }
-    }
-
     pub fn bitwise_shift_left(&self, rhs: &Value) -> Result<Value> {
         use Value::*;
 
-        let try_rhs_u32 = Self::validate_bitwise_shift_rhs(rhs);
-        match try_rhs_u32 {
-            Ok(rhs_u32) => match self {
-                I8(lhs) => {
-                    if let Some(res) = lhs.checked_shl(rhs_u32) {
-                        Ok(I8(res))
-                    } else {
-                        Err(ValueError::BinaryOperationOverflow {
-                            lhs: self.clone(),
-                            rhs: rhs.clone(),
-                            operator: NumericBinaryOperator::BitwiseShiftLeft,
-                        }
-                        .into())
-                    }
-                }
-                I16(lhs) => {
-                    if let Some(res) = lhs.checked_shl(rhs_u32) {
-                        Ok(I16(res))
-                    } else {
-                        Err(ValueError::BinaryOperationOverflow {
-                            lhs: self.clone(),
-                            rhs: rhs.clone(),
-                            operator: NumericBinaryOperator::BitwiseShiftLeft,
-                        }
-                        .into())
-                    }
-                }
-                I32(lhs) => {
-                    if let Some(res) = lhs.checked_shl(rhs_u32) {
-                        Ok(I32(res))
-                    } else {
-                        Err(ValueError::BinaryOperationOverflow {
-                            lhs: self.clone(),
-                            rhs: rhs.clone(),
-                            operator: NumericBinaryOperator::BitwiseShiftLeft,
-                        }
-                        .into())
-                    }
-                }
-                I64(lhs) => {
-                    if let Some(res) = lhs.checked_shl(rhs_u32) {
-                        Ok(I64(res))
-                    } else {
-                        Err(ValueError::BinaryOperationOverflow {
-                            lhs: self.clone(),
-                            rhs: rhs.clone(),
-                            operator: NumericBinaryOperator::BitwiseShiftLeft,
-                        }
-                        .into())
-                    }
-                }
-                I128(lhs) => {
-                    if let Some(res) = lhs.checked_shl(rhs_u32) {
-                        Ok(I128(res))
-                    } else {
-                        Err(ValueError::BinaryOperationOverflow {
-                            lhs: self.clone(),
-                            rhs: rhs.clone(),
-                            operator: NumericBinaryOperator::BitwiseShiftLeft,
-                        }
-                        .into())
-                    }
-                }
-                U8(lhs) => {
-                    if let Some(res) = lhs.checked_shl(rhs_u32) {
-                        Ok(U8(res))
-                    } else {
-                        Err(ValueError::BinaryOperationOverflow {
-                            lhs: self.clone(),
-                            rhs: rhs.clone(),
-                            operator: NumericBinaryOperator::BitwiseShiftLeft,
-                        }
-                        .into())
-                    }
-                }
-                U16(lhs) => {
-                    if let Some(res) = lhs.checked_shl(rhs_u32) {
-                        Ok(U16(res))
-                    } else {
-                        Err(ValueError::BinaryOperationOverflow {
-                            lhs: self.clone(),
-                            rhs: rhs.clone(),
-                            operator: NumericBinaryOperator::BitwiseShiftLeft,
-                        }
-                        .into())
-                    }
-                }
-                U32(lhs) => {
-                    if let Some(res) = lhs.checked_shl(rhs_u32) {
-                        Ok(U32(res))
-                    } else {
-                        Err(ValueError::BinaryOperationOverflow {
-                            lhs: self.clone(),
-                            rhs: rhs.clone(),
-                            operator: NumericBinaryOperator::BitwiseShiftLeft,
-                        }
-                        .into())
-                    }
-                }
-                U64(lhs) => {
-                    if let Some(res) = lhs.checked_shl(rhs_u32) {
-                        Ok(U64(res))
-                    } else {
-                        Err(ValueError::BinaryOperationOverflow {
-                            lhs: self.clone(),
-                            rhs: rhs.clone(),
-                            operator: NumericBinaryOperator::BitwiseShiftLeft,
-                        }
-                        .into())
-                    }
-                }
-                U128(lhs) => {
-                    if let Some(res) = lhs.checked_shl(rhs_u32) {
-                        Ok(U128(res))
-                    } else {
-                        Err(ValueError::BinaryOperationOverflow {
-                            lhs: self.clone(),
-                            rhs: rhs.clone(),
-                            operator: NumericBinaryOperator::BitwiseShiftLeft,
-                        }
-                        .into())
-                    }
-                }
-                Null => Ok(Null),
-                _ => Err(ValueError::NonNumericMathOperation {
+        let rhs = u32::try_from(rhs)?;
+        match self {
+            I8(lhs) => lhs.checked_shl(rhs).map(I8),
+            I16(lhs) => lhs.checked_shl(rhs).map(I16),
+            I32(lhs) => lhs.checked_shl(rhs).map(I32),
+            I64(lhs) => lhs.checked_shl(rhs).map(I64),
+            I128(lhs) => lhs.checked_shl(rhs).map(I128),
+            U8(lhs) => lhs.checked_shl(rhs).map(U8),
+            U16(lhs) => lhs.checked_shl(rhs).map(U16),
+            U32(lhs) => lhs.checked_shl(rhs).map(U32),
+            U64(lhs) => lhs.checked_shl(rhs).map(U64),
+            U128(lhs) => lhs.checked_shl(rhs).map(U128),
+            Null => Some(Null),
+            _ => {
+                return Err(ValueError::NonNumericMathOperation {
                     lhs: self.clone(),
+                    rhs: U32(rhs),
                     operator: NumericBinaryOperator::BitwiseShiftLeft,
-                    rhs: rhs.clone(),
                 }
-                .into()),
-            },
-            Err(e) => Err(e),
+                .into());
+            }
         }
+        .ok_or_else(|| {
+            ValueError::BinaryOperationOverflow {
+                lhs: self.clone(),
+                rhs: U32(rhs),
+                operator: NumericBinaryOperator::BitwiseShiftLeft,
+            }
+            .into()
+        })
     }
 
     pub fn is_null(&self) -> bool {
@@ -1769,7 +1653,7 @@ mod tests {
             I8(1).bitwise_shift_left(&I64(100)),
             Err(ValueError::BinaryOperationOverflow {
                 lhs: I8(1),
-                rhs: I64(100),
+                rhs: U32(100),
                 operator: NumericBinaryOperator::BitwiseShiftLeft
             }
             .into())
@@ -1779,7 +1663,7 @@ mod tests {
             I16(1).bitwise_shift_left(&I64(100)),
             Err(ValueError::BinaryOperationOverflow {
                 lhs: I16(1),
-                rhs: I64(100),
+                rhs: U32(100),
                 operator: NumericBinaryOperator::BitwiseShiftLeft
             }
             .into())
@@ -1789,7 +1673,7 @@ mod tests {
             I32(1).bitwise_shift_left(&I64(100)),
             Err(ValueError::BinaryOperationOverflow {
                 lhs: I32(1),
-                rhs: I64(100),
+                rhs: U32(100),
                 operator: NumericBinaryOperator::BitwiseShiftLeft
             }
             .into())
@@ -1799,7 +1683,7 @@ mod tests {
             I64(1).bitwise_shift_left(&I64(100)),
             Err(ValueError::BinaryOperationOverflow {
                 lhs: I64(1),
-                rhs: I64(100),
+                rhs: U32(100),
                 operator: NumericBinaryOperator::BitwiseShiftLeft
             }
             .into())
@@ -1809,7 +1693,7 @@ mod tests {
             I128(1).bitwise_shift_left(&I64(150)),
             Err(ValueError::BinaryOperationOverflow {
                 lhs: I128(1),
-                rhs: I64(150),
+                rhs: U32(150),
                 operator: NumericBinaryOperator::BitwiseShiftLeft
             }
             .into())
@@ -1818,7 +1702,7 @@ mod tests {
             U8(1).bitwise_shift_left(&I64(100)),
             Err(ValueError::BinaryOperationOverflow {
                 lhs: U8(1),
-                rhs: I64(100),
+                rhs: U32(100),
                 operator: NumericBinaryOperator::BitwiseShiftLeft
             }
             .into())
@@ -1827,7 +1711,7 @@ mod tests {
             U16(1).bitwise_shift_left(&I64(100)),
             Err(ValueError::BinaryOperationOverflow {
                 lhs: U16(1),
-                rhs: I64(100),
+                rhs: U32(100),
                 operator: NumericBinaryOperator::BitwiseShiftLeft
             }
             .into())
@@ -1836,7 +1720,7 @@ mod tests {
             U32(1).bitwise_shift_left(&I64(100)),
             Err(ValueError::BinaryOperationOverflow {
                 lhs: U32(1),
-                rhs: I64(100),
+                rhs: U32(100),
                 operator: NumericBinaryOperator::BitwiseShiftLeft
             }
             .into())
@@ -1845,7 +1729,7 @@ mod tests {
             U64(1).bitwise_shift_left(&I64(100)),
             Err(ValueError::BinaryOperationOverflow {
                 lhs: U64(1),
-                rhs: I64(100),
+                rhs: U32(100),
                 operator: NumericBinaryOperator::BitwiseShiftLeft
             }
             .into())
@@ -1854,7 +1738,7 @@ mod tests {
             U128(1).bitwise_shift_left(&I64(150)),
             Err(ValueError::BinaryOperationOverflow {
                 lhs: U128(1),
-                rhs: I64(150),
+                rhs: U32(150),
                 operator: NumericBinaryOperator::BitwiseShiftLeft
             }
             .into())
@@ -1874,7 +1758,7 @@ mod tests {
             mon!(3).bitwise_shift_left(&I64(2)),
             Err(ValueError::NonNumericMathOperation {
                 lhs: mon!(3),
-                rhs: I64(2),
+                rhs: U32(2),
                 operator: NumericBinaryOperator::BitwiseShiftLeft,
             }
             .into())
