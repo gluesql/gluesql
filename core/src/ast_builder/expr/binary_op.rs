@@ -69,7 +69,7 @@ impl<'a> ExprNode<'a> {
         self.binary_op(BinaryOperator::Or, other)
     }
 
-    pub fn shift_left<T: Into<Self>>(self, other: T) -> Self {
+    pub fn bitwise_shift_left<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::BitwiseShiftLeft, other)
     }
 }
@@ -136,7 +136,7 @@ mod tests {
         let expected = "id > 10 OR id < 20";
         test_expr(actual, expected);
 
-        let actual = col("id").shift_left(num(1));
+        let actual = col("id").bitwise_shift_left(num(1));
         let expected = "id << 1";
         test_expr(actual, expected);
     }
