@@ -3,7 +3,7 @@ use {
     gluesql_core::{data::NumericBinaryOperator, error::ValueError, prelude::Value::*},
 };
 
-test_case!(bit_shift_left, async move {
+test_case!(bitwise_shift_left, async move {
     run!(
         r#"
 CREATE TABLE Test (
