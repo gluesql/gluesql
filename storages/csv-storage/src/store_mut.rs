@@ -1,13 +1,14 @@
 use {
     crate::{error::ResultExt, CsvStorage},
     async_trait::async_trait,
+    csv::Writer,
     gluesql_core::{
         data::{Key, Schema},
         error::{Error, Result},
         store::{DataRow, StoreMut},
     },
     std::{
-        collections::{BTreeMap, BTreeSet},
+        collections::BTreeSet,
         fs::{remove_file, File, OpenOptions},
         io::Write,
         {cmp::Ordering, iter::Peekable, vec::IntoIter},
@@ -35,7 +36,7 @@ impl StoreMut for CsvStorage {
             .collect::<Vec<&str>>();
         let data_path = self.data_path(schema.table_name.as_str());
         let file = File::create(data_path).map_storage_err()?;
-        let mut wtr = csv::Writer::from_writer(file);
+        let mut wtr = Writer::from_writer(file);
         wtr.write_record(&columns).map_storage_err()?;
 
         Ok(())
@@ -61,75 +62,33 @@ impl StoreMut for CsvStorage {
     }
 
     async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
-        // let schema_path = self.schema_path(table_name);
-        let data_path = self.data_path(table_name);
+        if self.has_columns(table_name)? {
+            let data_path = self.data_path(table_name);
+            let mut wtr = OpenOptions::new()
+                .append(true)
+                .open(data_path)
+                .map_storage_err()
+                .map(Writer::from_writer)?;
 
-        // if schema_path does not exist -> insert_data without key? -> key to enumerate
+            for row in rows {
+                let row = convert(row)?;
 
-        let schema = self.fetch_schema(table_name)?;
-        match schema {
-            Some(Schema {
-                column_defs: Some(_),
-                ..
-            }) if data_path.exists() => {
-                println!("path exists: {table_name}");
-
-                let file = OpenOptions::new()
-                    .append(true)
-                    .open(data_path)
-                    .map_storage_err()?;
-
-                let mut wtr = csv::Writer::from_writer(file);
-
-                for row in rows {
-                    let row = convert(row);
-
-                    wtr.write_record(&row).map_storage_err()?;
-                }
-
-                Ok(())
+                wtr.write_record(&row).map_storage_err()?;
             }
-            _ => {
-                let rows = rows
-                    .into_iter()
-                    .enumerate()
-                    .map(|(i, row)| (Key::U64(i as u64), row))
-                    .collect();
 
-                self.insert_data(table_name, rows).await
-            }
+            Ok(())
+        } else {
+            let rows = rows
+                .into_iter()
+                .enumerate()
+                .map(|(i, row)| (Key::U64(i as u64), row))
+                .collect();
+
+            self.insert_data(table_name, rows).await
         }
-
-        /*
-        match data_path.exists() {
-            true => {
-            }
-            false => {
-                self.insert_data(table_name, rows).await
-                /*
-                // this means schemaless?
-                panic!("append_data append_data");
-                println!("path does not exist: {table_name}");
-
-                let file = OpenOptions::new()
-                    .write(true)
-                    .create_new(true)
-                    .open(data_path)
-                    .map_storage_err()?;
-
-                let (columns, _) = self.scan_data(table_name)?;
-
-                let wtr = csv::Writer::from_writer(file);
-                write(wtr, columns, rows)
-                */
-            }
-        }
-        */
     }
 
     async fn insert_data(&mut self, table_name: &str, mut rows: Vec<(Key, DataRow)>) -> Result<()> {
-        println!("insert_data called for {table_name}");
-
         let (columns, prev_rows) = self.scan_data(table_name)?;
 
         rows.sort_by(|(key_a, _), (key_b, _)| key_a.cmp(key_b));
@@ -137,7 +96,6 @@ impl StoreMut for CsvStorage {
         let sort_merge = SortMerge::new(prev_rows, rows.into_iter());
         let merged = sort_merge.collect::<Result<Vec<_>>>()?;
 
-        // write(data_wtr, types_wtr, columns, merged)
         self.write(table_name, columns, merged)
     }
 
@@ -155,12 +113,6 @@ impl StoreMut for CsvStorage {
             })
             .collect::<Result<Vec<_>>>()?;
 
-        /*
-        let file = File::create(self.data_path(table_name)).map_storage_err()?;
-        let wtr = csv::Writer::from_writer(file);
-        */
-
-        // write(wtr, columns, rows)
         self.write(table_name, columns, rows)
     }
 }
@@ -169,26 +121,18 @@ impl CsvStorage {
     fn write(
         &self,
         table_name: &str,
-        // mut wtr: csv::Writer<File>,
         columns: Option<Vec<String>>,
         rows: Vec<DataRow>,
     ) -> Result<()> {
-        let schemaless = columns.is_none();
-
-        let data_file = File::create(self.data_path(table_name)).map_storage_err()?;
-        let mut data_wtr = csv::Writer::from_writer(data_file);
-        let types_file = if schemaless {
-            File::create(self.types_path(table_name)).map_storage_err()?
-        } else {
-            File::open(self.data_path(table_name)).map_storage_err()?
-        };
-        let mut types_wtr = csv::Writer::from_writer(types_file);
+        let mut data_wtr = File::create(self.data_path(table_name))
+            .map_storage_err()
+            .map(Writer::from_writer)?;
 
         if let Some(columns) = columns {
             data_wtr.write_record(&columns).map_storage_err()?;
 
             for row in rows {
-                let row = convert(row);
+                let row = convert(row)?;
 
                 data_wtr.write_record(&row).map_storage_err()?;
             }
@@ -196,12 +140,23 @@ impl CsvStorage {
             return Ok(());
         }
 
+        let mut types_wtr = columns
+            .is_none()
+            .then(|| {
+                File::create(self.types_path(table_name))
+                    .map_storage_err()
+                    .map(Writer::from_writer)
+            })
+            .transpose()?;
+
         // schemaless
         let mut columns = BTreeSet::new();
         let rows = rows
             .into_iter()
             .map(|row| match row {
-                DataRow::Vec(_) => Err(Error::StorageMsg("something error".to_owned())),
+                DataRow::Vec(_) => Err(Error::StorageMsg(
+                    "unreachable data row type found (Vec)".to_owned(),
+                )),
                 DataRow::Map(values) => Ok(values),
             })
             .collect::<Result<Vec<_>>>()?;
@@ -211,62 +166,54 @@ impl CsvStorage {
         }
 
         data_wtr.write_record(&columns).map_storage_err()?;
-        if schemaless {
+        if let Some(types_wtr) = &mut types_wtr {
             types_wtr.write_record(&columns).map_storage_err()?;
         }
 
         for row in &rows {
-            let (row, data_types): (Vec<_>, Vec<_>) = columns
-                .iter()
-                .map(|key| {
-                    row.get(key.as_str())
-                        .map(|value| {
-                            let data_type = value
-                                .get_type()
-                                .map(|t| t.to_string())
-                                .unwrap_or("NULL".to_owned());
+            if let Some(types_wtr) = &mut types_wtr {
+                let (row, data_types): (Vec<_>, Vec<_>) = columns
+                    .iter()
+                    .map(|key| {
+                        row.get(key.as_str())
+                            .map(|value| {
+                                let data_type = value
+                                    .get_type()
+                                    .map(|t| t.to_string())
+                                    .unwrap_or("NULL".to_owned());
 
-                            (String::from(value), data_type)
-                        })
-                        .unwrap_or((String::from("NULL"), "".to_owned()))
-                })
-                .unzip();
+                                (String::from(value), data_type)
+                            })
+                            .unwrap_or(("NULL".to_owned(), "".to_owned()))
+                    })
+                    .unzip();
 
-            data_wtr.write_record(&row).map_storage_err()?;
-
-            if schemaless {
+                data_wtr.write_record(&row).map_storage_err()?;
                 types_wtr.write_record(&data_types).map_storage_err()?;
+            } else {
+                let row = columns
+                    .iter()
+                    .map(|key| {
+                        row.get(key.as_str())
+                            .map(String::from)
+                            .unwrap_or("NULL".to_owned())
+                    })
+                    .collect::<Vec<_>>();
+
+                data_wtr.write_record(&row).map_storage_err()?;
             }
         }
-
-        /*
-        let mut rows = rows.into_iter().map(|row| match row {
-            DataRow::Vec(values) => {
-                columns.extend(values.into_iter().map(String::from));
-
-                Ok(values)
-            }
-            DataRow::Map(values) => {
-                columns.extend(values.keys().map(String::from));
-
-                Ok(values.into_iter().map(|(_, value)| value).collect())
-            }
-        });
-
-        let columns = columns.unwrap_or_default();
-        */
 
         Ok(())
     }
 }
 
-fn convert(data_row: DataRow) -> Vec<String> {
+fn convert(data_row: DataRow) -> Result<Vec<String>> {
     match data_row {
-        DataRow::Vec(values) => values.into_iter().map(String::from).collect(),
-        DataRow::Map(values) => BTreeMap::from_iter(values.into_iter())
-            .into_values()
-            .map(String::from)
-            .collect(),
+        DataRow::Vec(values) => Ok(values.into_iter().map(String::from).collect()),
+        DataRow::Map(_) => Err(Error::StorageMsg(
+            "unreachable data row type found (Map)".to_owned(),
+        )),
     }
 }
 

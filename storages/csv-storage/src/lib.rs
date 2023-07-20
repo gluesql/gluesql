@@ -75,6 +75,25 @@ impl CsvStorage {
         self.path_by(table_name, "types.csv")
     }
 
+    fn has_columns(&self, table_name: &str) -> Result<bool> {
+        let data_path = self.data_path(table_name);
+        if !data_path.exists() {
+            return Ok(false);
+        }
+
+        if let Some(Schema {
+            column_defs: Some(_),
+            ..
+        }) = self.fetch_schema(table_name)?
+        {
+            Ok(true)
+        } else if self.types_path(table_name).exists() {
+            Ok(false)
+        } else {
+            Ok(true)
+        }
+    }
+
     fn scan_data(&self, table_name: &str) -> Result<(Option<Vec<String>>, RowIter)> {
         let schema = self.fetch_schema(table_name)?;
         let data_path = self.data_path(table_name);
@@ -83,57 +102,6 @@ impl CsvStorage {
         }
 
         let mut data_rdr = csv::Reader::from_path(data_path).map_storage_err()?;
-
-        /*
-          1. schema file exists
-            yes -> then
-                1-1. schema
-                1-2. schemaless
-            no -> fetch column based on data file
-                all column types are string
-          2. data file exists
-            yes -> fetch
-            no -> error
-          3. types file exists
-            yes -> use it
-            no -> .. ok
-
-        let's flatten this
-
-          1. data file does not exist
-            -> error
-            -> now data file exists
-
-          2. schema file exists
-
-          2-1. column_def exists
-            don't use types file
-            use column_def
-
-          2-2. column_def does not exist
-
-          2-2-1. types file exists
-            use types file
-
-          2-2-2. types file does not exist
-            fetch columns from data file
-            all the types are string
-
-          3. schema file does not exist
-
-            3-1. types file exists
-                use types file
-
-            3-2. types file does not exist
-                fetch columns from data file
-                all the types are string
-
-        ## finalization
-
-        1. column_defs field exists
-        2. types file exists
-        3. neither column_defs nor types file exists
-        */
 
         if let Some(Schema {
             column_defs: Some(column_defs),
