@@ -16,6 +16,7 @@ pub mod format;
 pub mod gcd_lcm;
 pub mod generate_uuid;
 pub mod geometry;
+pub mod greatest;
 pub mod ifnull;
 pub mod initcap;
 pub mod is_empty;

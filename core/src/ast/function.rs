@@ -128,6 +128,7 @@ pub enum Function {
         selector: Expr,
     },
     GenerateUuid(),
+    Greatest(Vec<Expr>),
     Format {
         expr: Expr,
         format: Expr,
@@ -334,6 +335,19 @@ impl ToSql for Function {
                 format!("UNWRAP({}, {})", expr.to_sql(), selector.to_sql())
             }
             Function::GenerateUuid() => "GENERATE_UUID()".to_owned(),
+            Function::Greatest(items) => {
+                let items = items
+                    .iter()
+                    .filter(|&item| !matches!(item, Expr::IsNull(_)))
+                    .map(ToSql::to_sql)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                if items.is_empty() {
+                    "NULL".to_owned()
+                } else {
+                    format!("GREATEST({})", items)
+                }
+            }
             Function::Format { expr, format } => {
                 format!("FORMAT({}, {})", expr.to_sql(), format.to_sql())
             }

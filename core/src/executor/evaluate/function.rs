@@ -597,6 +597,46 @@ pub fn generate_uuid<'a>() -> Evaluated<'a> {
     Evaluated::from(Value::Uuid(Uuid::new_v4().as_u128()))
 }
 
+pub fn greatest<'a>(name: String, exprs: Vec<Evaluated<'a>>) -> Result<Evaluated<'a>> {
+    if exprs.is_empty() {
+        return Err(EvaluateError::FunctionArgsLengthNotWithinRange {
+            name: name.clone(),
+            expected_minimum: 1,
+            expected_maximum: usize::MAX,
+            found: 0,
+        }
+        .into());
+    }
+    let mut exprs: Vec<Value> = exprs
+        .into_iter()
+        .filter_map(|value| match value.try_into().unwrap() {
+            Value::Null => None,
+            value => Some(value),
+        })
+        .collect();
+    if exprs.is_empty() {
+        return Ok(Evaluated::from(Value::Null));
+    }
+    exprs.sort_unstable_by(|a, b| match (a, b) {
+        (Value::I64(a), Value::I64(b)) => a.cmp(b),
+        (Value::F64(a), Value::F64(b)) => a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal),
+        (Value::Str(a), Value::Str(b)) => a.cmp(b),
+        (Value::Date(a), Value::Date(b)) => a.cmp(b),
+        _ => panic!("Unsupported type in comparison"),
+    });
+    let first_type = &exprs[0].get_type();
+    if !exprs
+        .iter()
+        .all(|value| value.get_type() == first_type.clone())
+    {
+        return Err(EvaluateError::CannotCompareDifferentTypes.into());
+    }
+    match exprs.last() {
+        Some(value) => Ok(Evaluated::from(value.clone())),
+        None => Err(EvaluateError::CannotGetGreatestValue(name).into()),
+    }
+}
+
 pub fn format<'a>(
     name: String,
     expr: Evaluated<'_>,
