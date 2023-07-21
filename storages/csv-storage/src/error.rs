@@ -29,9 +29,6 @@ pub enum CsvStorageError {
     #[error("table does not exist")]
     TableDoesNotExist,
 
-    #[error("column does not exist: {0}")]
-    ColumnDoesNotExist(String),
-
     #[error("table name does not match with file")]
     TableNameDoesNotMatchWithFile,
 }
