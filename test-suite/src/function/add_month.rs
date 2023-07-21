@@ -13,7 +13,7 @@ test_case!(add_month, async move {
         };
     }
     test! {
-        name: "[DATE TYPE]check add_month function works as plus",
+        name: "[DATE TYPE]plus test on general case",
         sql: "SELECT ADD_MONTH(DATE '2017-06-15',1) AS test;",
         expected: Ok(select!(
             "test"
@@ -22,7 +22,7 @@ test_case!(add_month, async move {
         ))
     };
     test! {
-        name: "[TO_DATE FUNCTION]check add_month function works as plus",
+        name: "[TO_DATE FUNCTION]plus test on general case",
         sql: "ADD_MONTH(TO_DATE('2017-06-15','%Y-%m-%d'),1) ;",
         expected: Ok(select!(
             "test"
@@ -31,7 +31,7 @@ test_case!(add_month, async move {
         ))
     };
     test! {
-        name: "[DATE TYPE]check add_month function works as minus",
+        name: "[DATE TYPE]minus test on general case",
         sql: "SELECT ADD_MONTH(DATE '2017-06-15',-1) AS test;",
         expected: Ok(select!(
             "test"
@@ -40,12 +40,49 @@ test_case!(add_month, async move {
         ))
     };
     test! {
-        name: "[TO_DATE FUNCTION]check add_month function works as minus",
+        name: "[TO_DATE FUNCTION]minus test on general case",
         sql: "ADD_MONTH(TO_DATE('2017-06-15','%Y-%m-%d'),-1) ;",
         expected: Ok(select!(
             "test"
             Value::Date;
             date!("2017-05-15")
+        ))
+    };
+
+    test! {
+        name: "[DATE TYPE]plus test on the last day of February",
+        sql: "SELECT ADD_MONTH(DATE '2017-01-31',1) AS test;",
+        expected: Ok(select!(
+            "test"
+            Value::Date;
+            date!("2017-02-28")
+        ))
+    };
+    test! {
+        name: "[TO_DATE FUNCTION]plus test on the last day of February",
+        sql: "ADD_MONTH(TO_DATE('2017-01-31','%Y-%m-%d'),1) ;",
+        expected: Ok(select!(
+            "test"
+            Value::Date;
+            date!("2017-07-28")
+        ))
+    };
+    test! {
+        name: "[DATE TYPE]minus test on the last day of February",
+        sql: "SELECT ADD_MONTH(DATE '2017-06-30',-4) AS test;",
+        expected: Ok(select!(
+            "test"
+            Value::Date;
+            date!("2017-02-28")
+        ))
+    };
+    test! {
+        name: "[TO_DATE FUNCTION]minus test on the last day of February",
+        sql: "ADD_MONTH(TO_DATE('2017-06-30','%Y-%m-%d'),-4) ;",
+        expected: Ok(select!(
+            "test"
+            Value::Date;
+            date!("2017-07-28")
         ))
     };
 });
