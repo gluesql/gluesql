@@ -1,10 +1,13 @@
 use {
-    crate::{error::ResultExt, CsvStorage},
+    crate::{
+        error::{CsvStorageError, ResultExt},
+        CsvStorage,
+    },
     async_trait::async_trait,
     csv::Writer,
     gluesql_core::{
         data::{Key, Schema},
-        error::{Error, Result},
+        error::Result,
         store::{DataRow, StoreMut},
     },
     std::{
@@ -35,11 +38,12 @@ impl StoreMut for CsvStorage {
             .map(|column_def| column_def.name.as_str())
             .collect::<Vec<&str>>();
         let data_path = self.data_path(schema.table_name.as_str());
-        let file = File::create(data_path).map_storage_err()?;
-        let mut wtr = Writer::from_writer(file);
-        wtr.write_record(&columns).map_storage_err()?;
 
-        Ok(())
+        File::create(data_path)
+            .map_storage_err()
+            .map(Writer::from_writer)?
+            .write_record(&columns)
+            .map_storage_err()
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
@@ -154,9 +158,7 @@ impl CsvStorage {
         let rows = rows
             .into_iter()
             .map(|row| match row {
-                DataRow::Vec(_) => Err(Error::StorageMsg(
-                    "unreachable data row type found (Vec)".to_owned(),
-                )),
+                DataRow::Vec(_) => Err(CsvStorageError::UnreachableVecTypeDataRowTypeFound.into()),
                 DataRow::Map(values) => Ok(values),
             })
             .collect::<Result<Vec<_>>>()?;
@@ -211,9 +213,7 @@ impl CsvStorage {
 fn convert(data_row: DataRow) -> Result<Vec<String>> {
     match data_row {
         DataRow::Vec(values) => Ok(values.into_iter().map(String::from).collect()),
-        DataRow::Map(_) => Err(Error::StorageMsg(
-            "unreachable data row type found (Map)".to_owned(),
-        )),
+        DataRow::Map(_) => Err(CsvStorageError::UnreachableMapTypeDataRowFound.into()),
     }
 }
 

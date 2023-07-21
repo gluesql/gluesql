@@ -76,8 +76,7 @@ impl CsvStorage {
     }
 
     fn has_columns(&self, table_name: &str) -> Result<bool> {
-        let data_path = self.data_path(table_name);
-        if !data_path.exists() {
+        if !self.data_path(table_name).exists() {
             return Ok(false);
         }
 
@@ -102,6 +101,14 @@ impl CsvStorage {
         }
 
         let mut data_rdr = csv::Reader::from_path(data_path).map_storage_err()?;
+        let mut fetch_data_header_columns = || -> Result<Vec<String>> {
+            Ok(data_rdr
+                .headers()
+                .map_storage_err()?
+                .into_iter()
+                .map(|header| header.to_string())
+                .collect::<Vec<_>>())
+        };
 
         if let Some(Schema {
             column_defs: Some(column_defs),
@@ -117,11 +124,10 @@ impl CsvStorage {
                 .into_records()
                 .enumerate()
                 .map(move |(index, record)| {
-                    let record = record.map_storage_err()?;
-                    let get_index_key = || index.try_into().map(Key::I64).map_storage_err();
-
                     let mut key: Option<Key> = None;
+
                     let values = record
+                        .map_storage_err()?
                         .into_iter()
                         .zip(column_defs.iter())
                         .map(|(value, column_def)| {
@@ -143,7 +149,7 @@ impl CsvStorage {
                         })
                         .collect::<Result<Vec<Value>>>()?;
 
-                    let key = key.map(Ok).unwrap_or_else(get_index_key)?;
+                    let key = key.unwrap_or(Key::U64(index as u64));
                     let row = DataRow::Vec(values);
 
                     Ok((key, row))
@@ -156,13 +162,7 @@ impl CsvStorage {
                 .map_storage_err()?
                 .into_records();
 
-            let columns: Vec<_> = data_rdr
-                .headers()
-                .map_storage_err()?
-                .into_iter()
-                .map(|header| header.to_string())
-                .collect();
-
+            let columns = fetch_data_header_columns()?;
             let rows = data_rdr.into_records().zip(types_rdr).enumerate().map(
                 move |(index, (record, types))| {
                     let key = Key::U64(index as u64);
@@ -171,7 +171,7 @@ impl CsvStorage {
 
                     record
                         .into_iter()
-                        .zip(columns.clone().into_iter())
+                        .zip(columns.iter())
                         .zip(types.into_iter())
                         .filter_map(|((value, column), data_type)| {
                             if data_type.is_empty() {
@@ -192,7 +192,7 @@ impl CsvStorage {
                                 })
                             };
 
-                            Some(value.map(|value| (column, value)))
+                            Some(value.map(|value| (column.clone(), value)))
                         })
                         .collect::<Result<HashMap<String, Value>>>()
                         .map(DataRow::Map)
@@ -202,21 +202,14 @@ impl CsvStorage {
 
             Ok((None, Box::new(rows)))
         } else {
-            let columns = data_rdr
-                .headers()
-                .map_storage_err()?
-                .into_iter()
-                .map(|header| header.to_string())
-                .collect::<Vec<_>>();
-
+            let columns = fetch_data_header_columns()?;
             let rows = data_rdr
                 .into_records()
                 .enumerate()
                 .map(move |(index, record)| {
                     let key = Key::U64(index as u64);
-                    let record = record.map_storage_err()?;
-
                     let row = record
+                        .map_storage_err()?
                         .into_iter()
                         .map(|value| Value::Str(value.to_owned()))
                         .collect::<Vec<Value>>();
