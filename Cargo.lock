@@ -979,20 +979,15 @@ dependencies = [
 name = "gluesql-csv-storage"
 version = "0.14.0"
 dependencies = [
- "async-io",
  "async-trait",
  "csv",
- "futures",
  "gluesql-core",
  "gluesql-test-suite",
  "gluesql-utils",
- "hex",
- "iter-enum",
  "serde",
  "serde_json",
  "thiserror",
  "tokio",
- "uuid",
 ]
 
 [[package]]

@@ -17,14 +17,10 @@ utils.workspace = true
 async-trait = "0.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-futures = "0.3"
-tokio = { version = "1", features = ["rt", "macros"] }
-hex = "0.4"
 thiserror = "1.0"
-iter-enum = "1"
-async-io = "1"
 csv = "1.2.2"
 
 [dev-dependencies]
 test-suite.workspace = true
-uuid = "1"
+
+tokio = { version = "1", features = ["rt", "macros"] }
