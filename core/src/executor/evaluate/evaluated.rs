@@ -304,6 +304,17 @@ impl<'a> Evaluated<'a> {
         .map(Evaluated::from)
     }
 
+    pub fn unary_bit_not(&self) -> Result<Evaluated<'a>> {
+        match self {
+            Evaluated::Literal(v) => Value::try_from(v).and_then(|v| v.unary_bit_not()),
+            Evaluated::Value(v) => v.unary_bit_not(),
+            Evaluated::StrSlice { source, range } => {
+                Err(EvaluateError::UnsupportedUnaryBitNot(source[range.clone()].to_owned()).into())
+            }
+        }
+        .map(Evaluated::from)
+    }
+
     pub fn cast(self, data_type: &DataType) -> Result<Evaluated<'a>> {
         match self {
             Evaluated::Literal(literal) => Value::try_cast_from_literal(data_type, &literal),

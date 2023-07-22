@@ -66,6 +66,7 @@ pub fn unary_op<'a>(op: &UnaryOperator, v: Evaluated<'a>) -> Result<Evaluated<'a
         UnaryOperator::Minus => v.unary_minus(),
         UnaryOperator::Not => v.try_into().map(|v: bool| Evaluated::from(Value::Bool(!v))),
         UnaryOperator::Factorial => v.unary_factorial(),
+        &UnaryOperator::BitNot => v.unary_bit_not(),
     }
 }
 
