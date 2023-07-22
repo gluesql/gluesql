@@ -513,6 +513,50 @@ impl Value {
         }
     }
 
+    pub fn bitwise_and(&self, other: &Value) -> Result<Value> {
+        use Value::*;
+
+        match (self, other) {
+            (I8(a), I8(b)) => Ok(I8(a & b)),
+            (I16(a), I16(b)) => Ok(I16(a & b)),
+            (I32(a), I32(b)) => Ok(I32(a & b)),
+            (I64(a), I64(b)) => Ok(I64(a & b)),
+            (I128(a), I128(b)) => Ok(I128(a & b)),
+            (U8(a), U8(b)) => Ok(U8(a & b)),
+            (U16(a), U16(b)) => Ok(U16(a & b)),
+            (U32(a), U32(b)) => Ok(U32(a & b)),
+            (U64(a), U64(b)) => Ok(U64(a & b)),
+            (U128(a), U128(b)) => Ok(U128(a & b)),
+            (Null, I8(_))
+            | (Null, I16(_))
+            | (Null, I32(_))
+            | (Null, I64(_))
+            | (Null, I128(_))
+            | (Null, U8(_))
+            | (Null, U16(_))
+            | (Null, U32(_))
+            | (Null, U64(_))
+            | (Null, U128(_))
+            | (Null, Null)
+            | (I8(_), Null)
+            | (I16(_), Null)
+            | (I32(_), Null)
+            | (I64(_), Null)
+            | (I128(_), Null)
+            | (U8(_), Null)
+            | (U16(_), Null)
+            | (U32(_), Null)
+            | (U64(_), Null)
+            | (U128(_), Null) => Ok(Null),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: self.clone(),
+                rhs: other.clone(),
+                operator: NumericBinaryOperator::BitwiseAnd,
+            }
+            .into()),
+        }
+    }
+
     pub fn modulo(&self, other: &Value) -> Result<Value> {
         use Value::*;
 
@@ -2411,6 +2455,74 @@ mod tests {
             Str("9".to_owned()).sqrt(),
             Err(ValueError::SqrtOnNonNumeric(Str("9".to_owned())).into())
         );
+    }
+
+    #[test]
+    fn bitwise_and() {
+        macro_rules! test {
+            ($op: ident $a: expr, $b: expr => $c: expr) => {
+                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c));
+            };
+        }
+
+        macro_rules! test_bitwise_and {
+            ($($vt: ident $pt: ident);*;) => {
+                $(
+                    test!(bitwise_and $vt($pt::MIN), $vt($pt::MIN) => $vt($pt::MIN & $pt::MIN));
+                    test!(bitwise_and $vt($pt::MIN), $vt($pt::MAX) => $vt($pt::MIN & $pt::MAX));
+                    test!(bitwise_and $vt($pt::MAX), $vt($pt::MAX) => $vt($pt::MAX & $pt::MAX));
+                    test!(bitwise_and $vt(0), $vt(0) => $vt(0 & 0));
+                    test!(bitwise_and $vt(0), $vt(1) => $vt(0 & 1));
+                    test!(bitwise_and $vt(1), $vt(0) => $vt(1 & 0));
+                    test!(bitwise_and $vt(1), $vt(1) => $vt(1 & 1));
+                )*
+            };
+        }
+
+        test_bitwise_and!(
+            I8      i8;
+            I16     i16;
+            I32     i32;
+            I64     i64;
+            I128    i128;
+            U8      u8;
+            U16     u16;
+            U32     u32;
+            U64     u64;
+            U128    u128;
+        );
+
+        macro_rules! null_test {
+            ($op: ident $a: expr, $b: expr) => {
+                assert!($a.$op(&$b).unwrap().is_null());
+            };
+        }
+
+        macro_rules! null_test_bitwise_and {
+            ($($vt: ident)*) => {
+                $(
+                    null_test!(bitwise_and $vt(1), Null);
+                    null_test!(bitwise_and Null, $vt(1));
+                    null_test!(bitwise_and Null, Null);
+                )*
+            };
+        }
+
+        null_test_bitwise_and!(
+            I8 I16 I32 I64 I128 U8 U16 U32 U64 U128
+        );
+
+        let lhs = I8(3);
+        let rhs = I16(12);
+        assert_eq!(
+            lhs.bitwise_and(&rhs),
+            Err(ValueError::NonNumericMathOperation {
+                lhs,
+                rhs,
+                operator: NumericBinaryOperator::BitwiseAnd
+            }
+            .into())
+        )
     }
 
     #[test]

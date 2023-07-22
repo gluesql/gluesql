@@ -5,6 +5,7 @@ pub mod alter;
 pub mod arithmetic;
 pub mod ast_builder;
 pub mod basic;
+pub mod bitwise_and;
 pub mod bitwise_shift;
 pub mod case;
 pub mod column_alias;
@@ -71,6 +72,7 @@ macro_rules! generate_store_tests {
         glue!(insert, insert::insert);
         glue!(delete, delete::delete);
         glue!(basic, basic::basic);
+        glue!(bitwise_and, bitwise_and::bitwise_and);
         glue!(aggregate_avg, aggregate::avg::avg);
         glue!(aggregate_count, aggregate::count::count);
         glue!(aggregate_group_by, aggregate::group_by::group_by);

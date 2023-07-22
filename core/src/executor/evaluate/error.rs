@@ -1,5 +1,5 @@
 use {
-    crate::ast::{Aggregate, Expr, ToSql},
+    crate::ast::{Aggregate, BinaryOperator, Expr, ToSql},
     serde::{Serialize, Serializer},
     std::fmt::Debug,
     thiserror::Error,
@@ -107,8 +107,12 @@ pub enum EvaluateError {
     #[error("function requires integer value in range")]
     ChrFunctionRequiresIntegerValueInRange0To255,
 
-    #[error("unsupported evaluate binary arithmetic between {0} and {1}")]
-    UnsupportedBinaryArithmetic(String, String),
+    #[error("unsupported evaluate binary operation {} {} {}", .left, .op.to_sql(), .right)]
+    UnsupportedBinaryOperation {
+        left: String,
+        op: BinaryOperator,
+        right: String,
+    },
 
     #[error("unsupported evaluate string unary plus: {0}")]
     UnsupportedUnaryPlus(String),
