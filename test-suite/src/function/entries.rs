@@ -4,7 +4,6 @@ use {
 };
 
 test_case!(entries, async move {
-
     test! {
         name: "test entries function works while creating a table simultaneously",
         sql: "CREATE TABLE Item (map MAP)",
