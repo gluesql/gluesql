@@ -168,6 +168,10 @@ pub enum Function {
         expr: Expr,
         value: Expr,
     },
+    Skip{
+        expr: Expr,
+        size: Expr
+    },
     Take {
         expr: Expr,
         size: Expr,
@@ -382,6 +386,9 @@ impl ToSql for Function {
                     items = expr.to_sql(),
                     value = value.to_sql()
                 }
+            }
+            Function::Skip { expr, size } => {
+                format!("SKIP({}, {}", expr.to_sql(), size.to_sql())
             }
             Function::Sort { expr, order } => match order {
                 None => format!("SORT({})", expr.to_sql()),
@@ -1088,6 +1095,15 @@ mod tests {
             &Expr::Function(Box::new(Function::Prepend {
                 expr: Expr::Identifier("list".to_owned()),
                 value: Expr::Identifier("value".to_owned())
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"SKIP("list", 2)"#,
+            &Expr::Function(Box::new(Function::Skip {
+                expr: Expr::Identifier("list".to_owned()),
+                size: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap()))
             }))
             .to_sql()
         );

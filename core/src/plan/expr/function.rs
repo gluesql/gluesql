@@ -143,6 +143,10 @@ impl Function {
             }
             | Self::Append { expr, value: expr2 }
             | Self::Prepend { expr, value: expr2 }
+            | Self::Skip {
+                expr,
+                size: expr2,
+            }
             | Self::Sort {
                 expr,
                 order: Some(expr2),
@@ -285,6 +289,7 @@ mod tests {
         test("REPEAT(col || col2, 3)", &["col || col2", "3"]);
         test("REPEAT(column, 2)", &["column", "2"]);
         test(r#"UNWRAP(field, "foo.1")"#, &["field", r#""foo.1""#]);
+        test(r#"SKIP(list, 2)"#, &[r#""list""#, r#""2""#]);
 
         // Triple
         test(
