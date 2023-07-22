@@ -38,6 +38,9 @@ pub enum EvaluateError {
     #[error("function requires point value: {0}")]
     FunctionRequiresPointValue(String),
 
+    #[error("function requires date or datetime value: {0}")]
+    FunctionRequiresDateOrDateTimeValue(String),
+
     #[error("value not found: {0}")]
     ValueNotFound(String),
 

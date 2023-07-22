@@ -9,7 +9,7 @@ use {
     rand::{rngs::StdRng, Rng, SeedableRng},
     std::ops::ControlFlow,
     uuid::Uuid,
-    chrono::Datelike,
+    chrono::{Datelike, Duration, Months},
 };
 
 macro_rules! eval_to_str {
@@ -599,18 +599,20 @@ pub fn last_day<'a>(
     expr: Evaluated<'_>,
 ) -> Result<Evaluated<'a>> {
     match expr.try_into()? {
-        Value::Str(expr) => {
-            let date = chrono::NaiveDate::parse_from_str(&expr, "%Y-%m-%d").unwrap();
-            let last_day = if date.month() == 12 {
-                chrono::NaiveDate::from_ymd_opt(date.year() + 1, 1, 1).unwrap() - chrono::Duration::days(1)
-            } else {
-                chrono::NaiveDate::from_ymd_opt(date.year(), date.month() + 1, 1).unwrap() - chrono::Duration::days(1)
-            };
-            
+        Value::Date(date) => {
+            let last_day = calculate_last_day(date);
             Ok(Evaluated::from(Value::Date(last_day)))
-        }
-        _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+        },
+        Value::Timestamp(timestamp) => {
+            let last_day = calculate_last_day(timestamp.date());
+            Ok(Evaluated::from(Value::Date(last_day)))
+        },
+        _ => Err(EvaluateError::FunctionRequiresDateOrDateTimeValue(name).into()),
     }
+}
+
+fn calculate_last_day(date: chrono::NaiveDate) -> chrono::NaiveDate {
+    date + Months::new(1) - Duration::days(date.day() as i64)
 }
 
 pub fn to_date<'a>(
