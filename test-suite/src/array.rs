@@ -12,7 +12,7 @@ test_case!(array, async move {
 CREATE TABLE Test (
     id INTEGER DEFAULT 1,
     surname TEXT NULL,
-    name ARRAY NOT NULL,
+    name LIST NOT NULL,
 );"
     );
 
