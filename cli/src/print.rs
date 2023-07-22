@@ -154,7 +154,7 @@ impl<'a, W: Write> Print<W> {
                 }
                 false => {
                     self.write_header(labels.iter().map(|s| s.as_str()))?;
-                    let rows = rows.iter().map(|row| row.iter().map(|v| v.into()));
+                    let rows = rows.iter().map(|row| row.iter().map(String::from));
                     self.write_rows(rows)?;
                 }
             },
@@ -192,7 +192,7 @@ impl<'a, W: Write> Print<W> {
                         let rows = rows.iter().map(|row| {
                             labels.iter().map(|label| {
                                 row.get(*label)
-                                    .map(Into::into)
+                                    .map(String::from)
                                     .unwrap_or_else(|| "".to_owned())
                             })
                         });
@@ -211,7 +211,6 @@ impl<'a, W: Write> Print<W> {
     ) -> IOResult<()> {
         for row in rows {
             let row = row
-                .map(String::from)
                 .map(|v| format!("{c}{v}{c}", c = self.option.colwrap))
                 .collect::<Vec<_>>()
                 .join(self.option.colsep.as_str());
