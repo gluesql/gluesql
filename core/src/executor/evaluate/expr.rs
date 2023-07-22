@@ -56,6 +56,7 @@ pub fn binary_op<'a>(
         BinaryOperator::Or => cond!(l || r),
         BinaryOperator::Xor => cond!(l ^ r),
         BinaryOperator::BitwiseAnd => l.bitwise_and(&r),
+        BinaryOperator::BitwiseShiftLeft => l.bitwise_shift_left(&r),
     }
 }
 

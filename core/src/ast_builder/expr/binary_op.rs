@@ -72,6 +72,10 @@ impl<'a> ExprNode<'a> {
     pub fn bitwise_and<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::BitwiseAnd, other)
     }
+
+    pub fn bitwise_shift_left<T: Into<Self>>(self, other: T) -> Self {
+        self.binary_op(BinaryOperator::BitwiseShiftLeft, other)
+    }
 }
 
 #[cfg(test)]
@@ -138,6 +142,10 @@ mod tests {
 
         let actual = col("id").bitwise_and(col("value"));
         let expected = "id & value";
+        test_expr(actual, expected);
+
+        let actual = col("id").bitwise_shift_left(num(1));
+        let expected = "id << 1";
         test_expr(actual, expected);
     }
 }

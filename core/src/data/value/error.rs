@@ -235,4 +235,6 @@ pub enum NumericBinaryOperator {
     Modulo,
     #[strum(to_string = "&")]
     BitwiseAnd,
+    #[strum(to_string = "<<")]
+    BitwiseShiftLeft,
 }

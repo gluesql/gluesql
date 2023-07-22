@@ -262,6 +262,16 @@ impl<'a> Evaluated<'a> {
         )
     }
 
+    pub fn bitwise_shift_left<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
+        binary_op(
+            self,
+            other,
+            BinaryOperator::BitwiseShiftLeft,
+            |l, r| l.bitwise_shift_left(r),
+            |l, r| l.bitwise_shift_left(r),
+        )
+    }
+
     pub fn unary_plus(&self) -> Result<Evaluated<'a>> {
         match self {
             Evaluated::Literal(v) => v.unary_plus().map(Evaluated::Literal),
