@@ -404,6 +404,10 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
 
             f::lpad_or_rpad(name, expr, size, fill)
         }
+        Function::LastDay(expr) => {
+            let expr = eval(expr).await?;
+            f::last_day(name, expr)
+        }
         Function::Trim {
             expr,
             filter_chars,

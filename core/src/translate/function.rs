@@ -367,6 +367,13 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::Gcd { left, right })))
         }
+        "LAST_DAY" => {
+            check_len(name, args.len(), 1)?;
+
+            let expr = translate_expr(args[0])?;
+
+            Ok(Expr::Function(Box::new(Function::LastDay(expr))))
+        }
         "LCM" => {
             check_len(name, args.len(), 2)?;
 

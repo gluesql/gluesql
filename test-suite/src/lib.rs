@@ -121,6 +121,7 @@ macro_rules! generate_store_tests {
         glue!(function_rand, function::rand::rand);
         glue!(function_floor, function::floor::floor);
         glue!(function_format, function::format::format);
+        glue!(function_last_day, function::last_day::last_day);
         glue!(function_ln, function::exp_log::ln);
         glue!(function_log, function::exp_log::log);
         glue!(function_log2, function::exp_log::log2);
