@@ -130,11 +130,11 @@ where
             value_op(l, &Value::try_from(r)?).map(Evaluated::from)
         }
         (Evaluated::Value(l), Evaluated::Value(r)) => value_op(l, r).map(Evaluated::from),
-        (l, r) => Err(EvaluateError::UnsupportedBinaryOperation(Expr::BinaryOp {
-            left: Box::new(l.to_owned().try_into()?),
+        (l, r) => Err(EvaluateError::UnsupportedBinaryOperation {
+            left: format!("{:?}", l),
             op,
-            right: Box::new(r.to_owned().try_into()?),
-        })
+            right: format!("{:?}", r),
+        }
         .into()),
     }
 }

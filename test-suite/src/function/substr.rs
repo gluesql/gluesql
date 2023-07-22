@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        ast::{AstLiteral, BinaryOperator, Expr},
+        ast::BinaryOperator,
         error::EvaluateError,
         prelude::{Payload, Value::*},
     },
@@ -249,11 +249,11 @@ test_case!(substr, async move {
         ),
         (
             r#"SELECT SUBSTR('123', 2, 3) - '3' AS test FROM SingleItem"#,
-            Err(EvaluateError::UnsupportedBinaryOperation(Expr::BinaryOp {
-                left: Box::new(Expr::Literal(AstLiteral::QuotedString("23".to_owned()))),
+            Err(EvaluateError::UnsupportedBinaryOperation {
+                left: "StrSlice { source: \"123\", range: 1..3 }".to_owned(),
                 op: BinaryOperator::Minus,
-                right: Box::new(Expr::Literal(AstLiteral::QuotedString("3".to_owned()))),
-            })
+                right: "Literal(Text(\"3\"))".to_owned(),
+            }
             .into()),
         ),
         (

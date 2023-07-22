@@ -1,11 +1,8 @@
 use {
     crate::*,
-    bigdecimal::{BigDecimal, FromPrimitive},
-    gluesql_core::{
-        ast::{AstLiteral, BinaryOperator, Expr},
-        error::LiteralError,
-        prelude::Value::*,
-    },
+    bigdecimal::BigDecimal,
+    gluesql_core::{ast::BinaryOperator, data::Literal, error::LiteralError, prelude::Value::*},
+    std::{borrow::Cow, str::FromStr},
 };
 
 test_case!(bitwise_and, async move {
@@ -55,11 +52,12 @@ test_case!(bitwise_and, async move {
         name: "bitwise_and between wrong type values shoud occurs error",
         sql: "SELECT 1.1 & 12 AS and_result FROM Test",
         expected: Err(
-            LiteralError::UnsupportedBinaryOperation( Expr::BinaryOp {
-                left: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from_f64(1.1).unwrap()))),
+            LiteralError::UnsupportedBinaryOperation {
+                left: format!("{:?}", Literal::Number(Cow::Owned(BigDecimal::from_str("1.1").unwrap()))),
                 op: BinaryOperator::BitwiseAnd,
-                right: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from_i32(12).unwrap())))
-            }).into()
+                right: format!("{:?}", Literal::Number(Cow::Owned(BigDecimal::from(12))))
+            }
+            .into()
         )
     );
 
@@ -89,11 +87,12 @@ test_case!(bitwise_and, async move {
         name: "bitwise_and for unsupported value",
         sql: "SELECT 'ss' & 'sp' AS and_result from Test",
         expected: Err(
-            LiteralError::UnsupportedBinaryOperation( Expr::BinaryOp {
-                left: Box::new(Expr::Literal(AstLiteral::QuotedString("ss".to_owned()))),
+            LiteralError::UnsupportedBinaryOperation {
+                left: format!("{:?}", Literal::Text(Cow::Owned("ss".to_owned()))),
                 op: BinaryOperator::BitwiseAnd,
-                right: Box::new(Expr::Literal(AstLiteral::QuotedString("sp".to_owned()))),
-            }).into()
+                right: format!("{:?}", Literal::Text(Cow::Owned("sp".to_owned())))
+            }
+            .into()
         )
     );
 });

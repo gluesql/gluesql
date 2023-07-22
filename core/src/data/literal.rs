@@ -1,7 +1,7 @@
 use {
     super::{BigDecimalExt, StringExt},
     crate::{
-        ast::{AstLiteral, BinaryOperator, Expr, ToSql},
+        ast::{AstLiteral, BinaryOperator, ToSql},
         result::{Error, Result},
     },
     bigdecimal::BigDecimal,
@@ -13,8 +13,12 @@ use {
 
 #[derive(Error, Serialize, Debug, PartialEq, Eq)]
 pub enum LiteralError {
-    #[error("unsupported literal binary operation {}", .0.to_sql())]
-    UnsupportedBinaryOperation(Expr),
+    #[error("unsupported literal binary operation {} {} {}", .left, .op.to_sql(), .right)]
+    UnsupportedBinaryOperation {
+        left: String,
+        op: BinaryOperator,
+        right: String,
+    },
 
     #[error("the divisor should not be zero")]
     DivisorShouldNotBeZero,
@@ -123,11 +127,11 @@ impl<'a> Literal<'a> {
         op: BinaryOperator,
         right: &Literal<'a>,
     ) -> Result<LiteralError> {
-        Ok(LiteralError::UnsupportedBinaryOperation(Expr::BinaryOp {
-            left: Box::new(Expr::try_from(left)?),
+        Ok(LiteralError::UnsupportedBinaryOperation {
+            left: format!("{:?}", left),
             op,
-            right: Box::new(Expr::try_from(right)?),
-        }))
+            right: format!("{:?}", right),
+        })
     }
 
     pub fn add(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
@@ -172,11 +176,11 @@ impl<'a> Literal<'a> {
         match (self, other) {
             (Number(l), Number(r)) => match (l.to_i64(), r.to_i64()) {
                 (Some(l), Some(r)) => Ok(Number(Cow::Owned(BigDecimal::from(l & r)))),
-                _ => Err(LiteralError::UnsupportedBinaryOperation(Expr::BinaryOp {
-                    left: Box::new(Expr::try_from(self).unwrap()),
+                _ => Err(LiteralError::UnsupportedBinaryOperation {
+                    left: format!("{:?}", self),
                     op: BinaryOperator::BitwiseAnd,
-                    right: Box::new(Expr::try_from(other).unwrap()),
-                })
+                    right: format!("{:?}", other),
+                }
                 .into()),
             },
             (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
@@ -213,11 +217,9 @@ impl<'a> Literal<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::BinaryOperator;
-
     use {
         super::Literal::*,
-        crate::ast::{AstLiteral, Expr},
+        crate::ast::BinaryOperator,
         bigdecimal::BigDecimal,
         std::{borrow::Cow, str::FromStr},
     };
@@ -268,11 +270,11 @@ mod tests {
         assert_eq!(Null.subtract(&Null), Ok(Null));
         assert_eq!(
             Boolean(true).subtract(&num(3)),
-            Err(LiteralError::UnsupportedBinaryOperation(Expr::BinaryOp {
-                left: Box::new(Expr::Literal(AstLiteral::Boolean(true))),
+            Err(LiteralError::UnsupportedBinaryOperation {
+                left: format!("{:?}", Boolean(true)),
                 op: BinaryOperator::Minus,
-                right: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(3))))
-            })
+                right: format!("{:?}", num(3)),
+            }
             .into()),
         );
 
@@ -282,11 +284,11 @@ mod tests {
         assert_eq!(Null.multiply(&Null), Ok(Null));
         assert_eq!(
             Boolean(true).multiply(&num(3)),
-            Err(LiteralError::UnsupportedBinaryOperation(Expr::BinaryOp {
-                left: Box::new(Expr::Literal(AstLiteral::Boolean(true))),
+            Err(LiteralError::UnsupportedBinaryOperation {
+                left: format!("{:?}", Boolean(true)),
                 op: BinaryOperator::Multiply,
-                right: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(3))))
-            })
+                right: format!("{:?}", num(3))
+            }
             .into()),
         );
 
@@ -340,11 +342,11 @@ mod tests {
         assert_eq!(Null.divide(&Null).unwrap(), Null);
         assert_eq!(
             Boolean(true).divide(&num!("3")),
-            Err(LiteralError::UnsupportedBinaryOperation(Expr::BinaryOp {
-                left: Box::new(Expr::Literal(AstLiteral::Boolean(true))),
+            Err(LiteralError::UnsupportedBinaryOperation {
+                left: format!("{:?}", Boolean(true)),
                 op: BinaryOperator::Divide,
-                right: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(3))))
-            })
+                right: format!("{:?}", num!("3"))
+            }
             .into()),
         );
 
@@ -503,11 +505,11 @@ mod tests {
             ($left: expr, $right: expr) => {
                 assert_eq!(
                     ($left).bitwise_and(&$right),
-                    Err(LiteralError::UnsupportedBinaryOperation(Expr::BinaryOp {
-                        left: Box::new(Expr::try_from($left).unwrap()),
+                    Err(LiteralError::UnsupportedBinaryOperation {
+                        left: format!("{:?}", $left),
                         op: BinaryOperator::BitwiseAnd,
-                        right: Box::new(Expr::try_from($right).unwrap())
-                    })
+                        right: format!("{:?}", $right)
+                    }
                     .into())
                 )
             };

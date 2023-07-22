@@ -794,7 +794,7 @@ fn str_position(from_str: &String, sub_str: &String) -> usize {
 mod tests {
     use {
         super::{Interval, Value::*},
-        crate::data::{NumericBinaryOperator, point::Point, value::uuid::parse_uuid, ValueError},
+        crate::data::{point::Point, value::uuid::parse_uuid, NumericBinaryOperator, ValueError},
         chrono::{NaiveDate, NaiveTime},
         rust_decimal::Decimal,
         std::{net::IpAddr, str::FromStr},
