@@ -16,7 +16,7 @@ test_case!(entries, async move {
     };
     test! {
         name: "check id the entries function works with the previously inserted string",
-        sql: "SELECT ENTRIES(map) AS test FROM Item;",
+        sql: "SELECT ENTRIES(map) AS test FROM Item",
         expected: Ok(select!(
             "test";
             List;
