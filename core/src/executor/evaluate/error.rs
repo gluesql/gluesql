@@ -132,7 +132,7 @@ pub enum EvaluateError {
 
     #[error("cannot compare values of different types")]
     CannotCompareDifferentTypes,
-    
+
     #[error("cannot get greatest value: {0}")]
     CannotGetGreatestValue(String),
 }
