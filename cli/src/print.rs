@@ -174,11 +174,7 @@ impl<'a, W: Write> Print<W> {
                         for row in rows {
                             let row = labels
                                 .iter()
-                                .map(|label| {
-                                    row.get(*label)
-                                        .map(Into::into)
-                                        .unwrap_or_else(|| "".to_owned())
-                                })
+                                .map(|label| row.get(*label).map(Into::into).unwrap_or_default())
                                 .collect::<Vec<String>>();
 
                             table.add_record(row);
@@ -190,11 +186,9 @@ impl<'a, W: Write> Print<W> {
                         self.write_header(labels.iter().map(AsRef::as_ref))?;
 
                         let rows = rows.iter().map(|row| {
-                            labels.iter().map(|label| {
-                                row.get(*label)
-                                    .map(String::from)
-                                    .unwrap_or_else(|| "".to_owned())
-                            })
+                            labels
+                                .iter()
+                                .map(|label| row.get(*label).map(String::from).unwrap_or_default())
                         });
                         self.write_rows(rows)?;
                     }
