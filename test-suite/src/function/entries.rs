@@ -2,7 +2,7 @@ use {
     crate::*,
     gluesql_core::{
         error::EvaluateError,
-        prelude::{Payload,Value::*}
+        prelude::{Payload, Value::*},
     },
 };
 
