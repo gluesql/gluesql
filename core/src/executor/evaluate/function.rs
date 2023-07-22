@@ -771,7 +771,7 @@ pub fn entries<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
                 .into_iter()
                 .map(|(k, v)| Value::List(vec![Value::Str(k), v]))
                 .collect::<Vec<_>>();
-            Ok(Evaluated::Value(Value::List(entries)))
+            Ok(Evaluated::from(Value::List(entries)))
         }
         _ => Err(EvaluateError::FunctionRequiresMapValue(name).into()),
     }
