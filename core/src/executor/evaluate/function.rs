@@ -5,7 +5,6 @@ use {
         data::{Key, Point, Value, ValueError},
         result::Result,
     },
-    itertools::Itertools,
     md5::{Digest, Md5},
     rand::{rngs::StdRng, Rng, SeedableRng},
     std::ops::ControlFlow,
@@ -575,12 +574,7 @@ pub fn is_empty<'a>(expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
 pub fn values<'a>(expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
     let expr: Value = expr.try_into()?;
     match expr {
-        Value::Map(m) => Ok(Evaluated::from(Value::List(
-            m.into_iter()
-                .sorted_by(|(k1, _), (k2, _)| k1.cmp(k2))
-                .map(|(_, v)| v)
-                .collect(),
-        ))),
+        Value::Map(m) => Ok(Evaluated::from(Value::List(m.into_values().collect()))),
         _ => Err(EvaluateError::MapTypeRequired.into()),
     }
 }
