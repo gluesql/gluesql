@@ -112,6 +112,70 @@ test_case!(unary_operator, async move {
             Err(ValueError::FactorialOverflow.into()),
         ),
         (
+            "SELECT ~(CAST(1 AS UINT8)) as v1 FROM Test",
+            Ok(select!(
+                v1
+                U8;
+                254
+            )),
+        ),
+        (
+            "SELECT ~(CAST(1 AS UINT16)) as v1 FROM Test",
+            Ok(select!(
+                v1
+                U16;
+                65534
+            )),
+        ),
+        (
+            "SELECT ~(CAST(1 AS UINT32)) as v1 FROM Test",
+            Ok(select!(
+                v1
+                U32;
+                4294967294
+            )),
+        ),
+        (
+            "SELECT ~(CAST(1 AS UINT64)) as v1 FROM Test",
+            Ok(select!(
+                v1
+                U64;
+                18446744073709551614
+            )),
+        ),
+        (
+            "SELECT ~(CAST(1 AS UINT128)) as v1 FROM Test",
+            Ok(select!(
+                v1
+                U128;
+                340282366920938463463374607431768211454
+            )),
+        ),
+        (
+            "SELECT ~(CAST(1 AS INT8)) as v1 FROM Test",
+            Ok(select!(
+                v1
+                I8;
+                -2
+            )),
+        ),
+        (
+            "SELECT ~(CAST(1 AS INT16)) as v1 FROM Test",
+            Ok(select!(
+                v1
+                I16;
+                -2
+            )),
+        ),
+        (
+            "SELECT ~(CAST(1 AS INT32)) as v1 FROM Test",
+            Ok(select!(
+                v1
+                I32;
+                -2
+            )),
+        ),
+        (
             "SELECT ~1 as v1 FROM Test",
             Ok(select!(
                 v1
@@ -120,15 +184,26 @@ test_case!(unary_operator, async move {
             )),
         ),
         (
-            "SELECT ~(CAST(11936128518282651045 AS UINT64)) as v1 FROM Test",
+            "SELECT ~(CAST(1 AS INT128)) as v1 FROM Test",
             Ok(select!(
                 v1
-                U64;
-                6510615555426900570
+                I128;
+                -2
+            )),
+        ),
+        (
+            "SELECT Null as v1 FROM Test",
+            Ok(select_with_null!(
+                v1;
+                Null
             )),
         ),
         (
             "SELECT ~(5.5) as v4 FROM Test",
+            Err(ValueError::UnaryBitNotOnNonInteger.into()),
+        ),
+        (
+            "SELECT ~(CAST(5.5 AS FLOAT32)) as v4 FROM Test",
             Err(ValueError::UnaryBitNotOnNonInteger.into()),
         ),
         (
