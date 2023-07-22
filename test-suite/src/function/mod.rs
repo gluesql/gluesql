@@ -8,6 +8,7 @@ pub mod concat;
 pub mod concat_ws;
 pub mod degrees;
 pub mod div_mod;
+pub mod entries;
 pub mod exp_log;
 pub mod extract;
 pub mod find_idx;
