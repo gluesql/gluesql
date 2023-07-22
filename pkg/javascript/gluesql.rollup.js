@@ -1,5 +1,5 @@
-import init, { Glue } from './dist/web/gluesql_js.js';
-import loadDB from './dist/web/gluesql_js_bg.wasm';
+import init, { Glue } from './dist_web/gluesql_js.js';
+import loadDB from './dist_web/gluesql_js_bg.wasm';
 
 let loaded = false;
 
