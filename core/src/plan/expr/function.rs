@@ -183,6 +183,7 @@ impl Function {
             Self::ConcatWs { separator, exprs } => {
                 Exprs::VariableArgsWithSingle(once(separator).chain(exprs.iter()))
             }
+            Self::Entries(expr) => Exprs::Single([expr].into_iter()),
         }
     }
 }
