@@ -70,6 +70,14 @@ impl<'a> TryFrom<&'a AstLiteral> for Literal<'a> {
     }
 }
 
+fn unsupported_binary_op(left: &Literal, op: BinaryOperator, right: &Literal) -> LiteralError {
+    LiteralError::UnsupportedBinaryOperation {
+        left: format!("{:?}", left),
+        op,
+        right: format!("{:?}", right),
+    }
+}
+
 impl<'a> Literal<'a> {
     pub fn evaluate_eq(&self, other: &Literal<'_>) -> bool {
         match (self, other) {
@@ -122,23 +130,11 @@ impl<'a> Literal<'a> {
         }
     }
 
-    fn unsupported_binary_op(
-        left: &Literal<'a>,
-        op: BinaryOperator,
-        right: &Literal<'a>,
-    ) -> Result<LiteralError> {
-        Ok(LiteralError::UnsupportedBinaryOperation {
-            left: format!("{:?}", left),
-            op,
-            right: format!("{:?}", right),
-        })
-    }
-
     pub fn add(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
         match (self, other) {
             (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() + r.as_ref()))),
             (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
-            _ => Err(Self::unsupported_binary_op(self, BinaryOperator::Plus, other)?.into()),
+            _ => Err(unsupported_binary_op(self, BinaryOperator::Plus, other).into()),
         }
     }
 
@@ -146,7 +142,7 @@ impl<'a> Literal<'a> {
         match (self, other) {
             (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() - r.as_ref()))),
             (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
-            _ => Err(Self::unsupported_binary_op(self, BinaryOperator::Minus, other)?.into()),
+            _ => Err(unsupported_binary_op(self, BinaryOperator::Minus, other).into()),
         }
     }
 
@@ -154,7 +150,7 @@ impl<'a> Literal<'a> {
         match (self, other) {
             (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() * r.as_ref()))),
             (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
-            _ => Err(Self::unsupported_binary_op(self, BinaryOperator::Multiply, other)?.into()),
+            _ => Err(unsupported_binary_op(self, BinaryOperator::Multiply, other).into()),
         }
     }
 
@@ -168,7 +164,7 @@ impl<'a> Literal<'a> {
                 }
             }
             (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
-            _ => Err(Self::unsupported_binary_op(self, BinaryOperator::Divide, other)?.into()),
+            _ => Err(unsupported_binary_op(self, BinaryOperator::Divide, other).into()),
         }
     }
 
@@ -184,7 +180,7 @@ impl<'a> Literal<'a> {
                 .into()),
             },
             (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
-            _ => Err(Self::unsupported_binary_op(self, BinaryOperator::BitwiseAnd, other)?.into()),
+            _ => Err(unsupported_binary_op(self, BinaryOperator::BitwiseAnd, other).into()),
         }
     }
 
@@ -198,7 +194,7 @@ impl<'a> Literal<'a> {
                 }
             }
             (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
-            _ => Err(Self::unsupported_binary_op(self, BinaryOperator::Modulo, other)?.into()),
+            _ => Err(unsupported_binary_op(self, BinaryOperator::Modulo, other).into()),
         }
     }
 
