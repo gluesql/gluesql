@@ -154,10 +154,7 @@ impl<'a, W: Write> Print<W> {
                 }
                 false => {
                     self.write_header(labels.iter().map(|s| s.as_str()))?;
-                    let rows = rows
-                        .iter()
-                        .map(|row| row.iter().map(|v| v.into()).collect::<Vec<String>>());
-
+                    let rows = rows.iter().map(|row| row.iter().map(|v| v.into()));
                     self.write_rows(rows)?;
                 }
             },
@@ -193,16 +190,12 @@ impl<'a, W: Write> Print<W> {
                         self.write_header(labels.iter().map(AsRef::as_ref))?;
 
                         let rows = rows.iter().map(|row| {
-                            labels
-                                .iter()
-                                .map(|label| {
-                                    row.get(*label)
-                                        .map(Into::into)
-                                        .unwrap_or_else(|| "".to_owned())
-                                })
-                                .collect::<Vec<String>>()
+                            labels.iter().map(|label| {
+                                row.get(*label)
+                                    .map(Into::into)
+                                    .unwrap_or_else(|| "".to_owned())
+                            })
                         });
-
                         self.write_rows(rows)?;
                     }
                 }
@@ -212,12 +205,14 @@ impl<'a, W: Write> Print<W> {
         Ok(())
     }
 
-    fn write_rows<'b>(&mut self, rows: impl Iterator<Item = Vec<String>>) -> IOResult<()> {
+    fn write_rows<'b>(
+        &mut self,
+        rows: impl Iterator<Item = impl Iterator<Item = String>>,
+    ) -> IOResult<()> {
         for row in rows {
             let row = row
-                .iter()
-                .map(Into::into)
-                .map(|v: String| format!("{c}{v}{c}", c = self.option.colwrap))
+                .map(String::from)
+                .map(|v| format!("{c}{v}{c}", c = self.option.colwrap))
                 .collect::<Vec<_>>()
                 .join(self.option.colsep.as_str());
 
