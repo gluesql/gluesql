@@ -64,6 +64,7 @@ pub enum Function {
         filter_chars: Option<Expr>,
         trim_where_field: Option<TrimWhereField>,
     },
+    Entries(Expr),
     Exp(Expr),
     Extract {
         field: DateTimeField,
