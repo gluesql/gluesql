@@ -408,6 +408,7 @@ impl ToSql for Function {
             }
             Function::IsEmpty(e) => format!("IS_EMPTY({})", e.to_sql()),
             Function::Length(e) => format!("LENGTH({})", e.to_sql()),
+            Function::Entries(e) => format!("ENTRIES({})", e.to_sql()),
         }
     }
 }
