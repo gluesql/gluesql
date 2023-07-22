@@ -205,7 +205,7 @@ impl<'a, W: Write> Print<W> {
         Ok(())
     }
 
-    fn write_rows<'b>(
+    fn write_rows(
         &mut self,
         rows: impl Iterator<Item = impl Iterator<Item = String>>,
     ) -> IOResult<()> {
