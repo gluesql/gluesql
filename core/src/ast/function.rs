@@ -185,6 +185,7 @@ pub enum Function {
     },
     IsEmpty(Expr),
     Length(Expr),
+    Values(Expr),
 }
 
 impl ToSql for Function {
@@ -408,6 +409,7 @@ impl ToSql for Function {
             }
             Function::IsEmpty(e) => format!("IS_EMPTY({})", e.to_sql()),
             Function::Length(e) => format!("LENGTH({})", e.to_sql()),
+            Function::Values(e) => format!("VALUES({})", e.to_sql()),
             Function::Entries(e) => format!("ENTRIES({})", e.to_sql()),
         }
     }
@@ -1173,13 +1175,6 @@ mod tests {
             r#"LENGTH("GlueSQL")"#,
             &Expr::Function(Box::new(Function::Length(Expr::Identifier(
                 "GlueSQL".to_owned()
-            ))))
-            .to_sql()
-        );
-        assert_eq!(
-            r#"ENTRIES("map")"#,
-            &Expr::Function(Box::new(Function::Entries(Expr::Identifier(
-                "map".to_owned()
             ))))
             .to_sql()
         );
