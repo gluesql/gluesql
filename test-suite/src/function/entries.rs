@@ -11,7 +11,7 @@ test_case!(entries, async move {
     };
     test! {
         name: "test if the sample string gets inserted to table",
-        sql: "INSERT INTO Item VALUES ('{\"name\":\"GlueSQL\"}')",
+        sql: r#"INSERT INTO Item VALUES ('{"name":"GlueSQL"}')"#,
         expected: Ok(Payload::Insert(1))
     };
     test! {
