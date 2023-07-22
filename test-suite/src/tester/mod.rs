@@ -220,6 +220,12 @@ macro_rules! test_case {
 
             #[allow(unused_macros)]
             macro_rules! test {
+                ($test_name: literal, sql: $sql: expr, expected: $expected: expr) => {
+                    let found = run($sql, glue, None).await;
+
+                    assert_eq!(found, $expected, $test_name);
+                };
+
                 (name: $test_name: literal, sql: $sql: expr, expected: $expected: expr) => {
                     let found = run($sql, glue, None).await;
 

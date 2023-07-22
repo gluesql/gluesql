@@ -34,14 +34,15 @@ CREATE TABLE TestA (
     run!("INSERT INTO TestB (id) SELECT id FROM Test");
 
     test! (
-        name: "select all from table",
+        "select all from table",
         sql : "SELECT * FROM TestB",
         expected : Ok(select!(id I64; 1; 1; 3; 4))
     );
 
-    test!(
-        "SELECT id, num, name FROM TestA",
-        Ok(select!(
+    test! {
+        "this is for testing coveralls coverage. .aefawef",
+        sql: "SELECT id, num, name FROM TestA",
+        expected: Ok(select!(
             id  | num | name
             I64 | I64 | Str;
             1     2     "Hello".to_owned();
@@ -49,7 +50,7 @@ CREATE TABLE TestA (
             3     4     "Great".to_owned();
             4     7     "Job".to_owned()
         ))
-    );
+    };
 
     test!("SELECT * FROM EmptyTest", Ok(Payload::SelectMap(vec![])));
     test!(
