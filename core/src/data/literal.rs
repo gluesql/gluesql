@@ -354,6 +354,17 @@ mod tests {
         assert_eq!(num!("12").modulo(&Null).unwrap(), Null);
         assert_eq!(Null.modulo(&num_divisor("2")).unwrap(), Null);
         assert_eq!(Null.modulo(&Null).unwrap(), Null);
+
+        let text = Text(Cow::Owned("some".to_owned()));
+        assert_eq!(
+            num!("12").modulo(&text),
+            Err(LiteralError::UnsupportedBinaryOperation {
+                left: format!("{:?}", num!("12")),
+                op: BinaryOperator::Modulo,
+                right: format!("{:?}", text)
+            }
+            .into())
+        )
     }
 
     #[test]
