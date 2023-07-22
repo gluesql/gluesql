@@ -143,10 +143,7 @@ impl Function {
             }
             | Self::Append { expr, value: expr2 }
             | Self::Prepend { expr, value: expr2 }
-            | Self::Skip {
-                expr,
-                size: expr2,
-            }
+            | Self::Skip { expr, size: expr2 }
             | Self::Sort {
                 expr,
                 order: Some(expr2),

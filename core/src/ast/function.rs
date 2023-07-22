@@ -168,9 +168,9 @@ pub enum Function {
         expr: Expr,
         value: Expr,
     },
-    Skip{
+    Skip {
         expr: Expr,
-        size: Expr
+        size: Expr,
     },
     Take {
         expr: Expr,
