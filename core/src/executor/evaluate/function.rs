@@ -597,10 +597,10 @@ pub fn generate_uuid<'a>() -> Evaluated<'a> {
     Evaluated::from(Value::Uuid(Uuid::new_v4().as_u128()))
 }
 
-pub fn greatest<'a>(name: String, exprs: Vec<Evaluated<'a>>) -> Result<Evaluated<'a>> {
+pub fn greatest(name: String, exprs: Vec<Evaluated<'_>>) -> Result<Evaluated<'_>> {
     if exprs.is_empty() {
         return Err(EvaluateError::FunctionArgsLengthNotWithinRange {
-            name: name.clone(),
+            name,
             expected_minimum: 1,
             expected_maximum: usize::MAX,
             found: 0,
