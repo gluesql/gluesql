@@ -16,8 +16,11 @@ pub enum LiteralError {
     #[error("unsupported literal binary arithmetic between {0} and {1}")]
     UnsupportedBinaryArithmetic(String, String),
 
-    #[error("given operand is not integer literal")]
-    NonIntegerOperand,
+    #[error("a operand '{0}' is not integer type")]
+    BitwiseNonIntegerOperand(String),
+
+    #[error("given operands is not Number literal type")]
+    BitwiseNonNumberLiteral,
 
     #[error("overflow occured while running bitwise operation")]
     BitwiseOperationOverflow,
@@ -202,12 +205,14 @@ impl<'a> Literal<'a> {
     pub fn bitwise_shift_left(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
         match (self, other) {
             (Number(l), Number(r)) => {
-                let l = l.to_i64().ok_or(LiteralError::NonIntegerOperand)?;
+                let l = l
+                    .to_i64()
+                    .ok_or(LiteralError::BitwiseNonIntegerOperand(l.to_string()))?;
                 if !r.is_integer() {
-                    return Err(LiteralError::NonIntegerOperand.into());
+                    return Err(LiteralError::BitwiseNonIntegerOperand(r.to_string()).into());
                 }
                 let r = r.to_u32().ok_or(LiteralError::ImpossibleConversion(
-                    format!("{}", r),
+                    r.to_string(),
                     "u32".to_owned(),
                 ))?;
                 let res = l
@@ -216,7 +221,7 @@ impl<'a> Literal<'a> {
                 Ok(Number(Cow::Owned(BigDecimal::from(res))))
             }
             (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
-            _ => Err(LiteralError::NonIntegerOperand.into()),
+            _ => Err(LiteralError::BitwiseNonNumberLiteral.into()),
         }
     }
 
@@ -340,7 +345,7 @@ mod tests {
 
         assert_eq!(
             Boolean(true).bitwise_shift_left(&num(2)),
-            Err(LiteralError::NonIntegerOperand.into())
+            Err(LiteralError::BitwiseNonNumberLiteral.into())
         );
         assert_eq!(
             num(1).bitwise_shift_left(&num(-1)),
@@ -348,11 +353,11 @@ mod tests {
         );
         assert_eq!(
             num!("1.1").bitwise_shift_left(&num(2)),
-            Err(LiteralError::NonIntegerOperand.into())
+            Err(LiteralError::BitwiseNonIntegerOperand("1.1".to_owned()).into())
         );
         assert_eq!(
             num(1).bitwise_shift_left(&num!("2.1")),
-            Err(LiteralError::NonIntegerOperand.into())
+            Err(LiteralError::BitwiseNonIntegerOperand("2.1".to_owned()).into())
         );
     }
 
