@@ -4,7 +4,7 @@ use {
         ast::{AstLiteral, BinaryOperator, Expr, ToSql},
         result::{Error, Result},
     },
-    bigdecimal::{num_bigint::ToBigInt, BigDecimal},
+    bigdecimal::BigDecimal,
     serde::Serialize,
     std::{borrow::Cow, cmp::Ordering, convert::TryFrom, fmt::Debug},
     thiserror::Error,
@@ -171,10 +171,7 @@ impl<'a> Literal<'a> {
     pub fn bitwise_and(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
         match (self, other) {
             (Number(l), Number(r)) => match (l.to_i64(), r.to_i64()) {
-                (Some(l), Some(r)) => match (l & r).to_bigint() {
-                    Some(v) => Ok(Number(Cow::Owned(BigDecimal::new(v, 0)))),
-                    None => Err(LiteralError::UnreachableBinaryArithmetic.into()),
-                },
+                (Some(l), Some(r)) => Ok(Number(Cow::Owned(BigDecimal::from(l & r)))),
                 _ => Err(LiteralError::UnsupportedBinaryOperation(Expr::BinaryOp {
                     left: Box::new(Expr::try_from(self).unwrap()),
                     op: BinaryOperator::BitwiseAnd,

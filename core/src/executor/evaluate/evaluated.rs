@@ -818,8 +818,6 @@ impl<'a> Evaluated<'a> {
 
 #[cfg(test)]
 mod test {
-    use std::borrow::Cow;
-
     use {
         super::Evaluated,
         crate::{
@@ -828,6 +826,7 @@ mod test {
             prelude::Value,
         },
         bigdecimal::BigDecimal,
+        std::borrow::Cow,
     };
 
     #[test]
