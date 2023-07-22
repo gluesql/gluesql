@@ -111,6 +111,30 @@ test_case!(unary_operator, async move {
             "SELECT 1000! as v4 FROM Test",
             Err(ValueError::FactorialOverflow.into()),
         ),
+        (
+            "SELECT ~1 as v1 FROM Test",
+            Ok(select!(
+                v1
+                I64;
+                -2
+            )),
+        ),
+        (
+            "SELECT ~(CAST(11936128518282651045 AS UINT64)) as v1 FROM Test",
+            Ok(select!(
+                v1
+                U64;
+                6510615555426900570
+            )),
+        ),
+        (
+            "SELECT ~(5.5) as v4 FROM Test",
+            Err(ValueError::UnaryBitNotOnNonInteger.into()),
+        ),
+        (
+            "SELECT ~'error' as v1 FROM Test",
+            Err(ValueError::UnaryBitNotOnNonNumeric.into()),
+        ),
     ];
 
     for (sql, expected) in test_cases {
