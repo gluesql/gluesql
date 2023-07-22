@@ -1,7 +1,7 @@
 use {
     super::error::EvaluateError,
     crate::{
-        ast::{AstLiteral, BinaryOperator, DataType, Expr, TrimWhereField},
+        ast::{BinaryOperator, DataType, TrimWhereField},
         data::{value::HashMapJsonExt, Key, Literal, Value},
         result::{Error, Result},
     },
@@ -16,20 +16,6 @@ pub enum Evaluated<'a> {
         range: Range<usize>,
     },
     Value(Value),
-}
-
-impl TryFrom<Evaluated<'_>> for Expr {
-    type Error = Error;
-
-    fn try_from(value: Evaluated<'_>) -> Result<Self> {
-        match value {
-            Evaluated::Value(v) => Expr::try_from(v),
-            Evaluated::Literal(v) => Expr::try_from(v),
-            Evaluated::StrSlice { source, range } => Ok(Expr::Literal(AstLiteral::QuotedString(
-                source.as_ref()[range].to_owned(),
-            ))),
-        }
-    }
 }
 
 impl<'a> From<Value> for Evaluated<'a> {
@@ -813,48 +799,5 @@ impl<'a> Evaluated<'a> {
         value.validate_null(nullable)?;
 
         Ok(value)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use {
-        super::Evaluated,
-        crate::{
-            ast::{AstLiteral, Expr},
-            data::Literal,
-            prelude::Value,
-        },
-        bigdecimal::BigDecimal,
-        std::borrow::Cow,
-    };
-
-    #[test]
-    fn evaluated_to_expr() {
-        assert_eq!(
-            Evaluated::Value(Value::I64(i64::MAX)).try_into(),
-            Ok(Expr::Literal(AstLiteral::Number(BigDecimal::from(
-                i64::MAX
-            ))))
-        );
-
-        let text = "abcd1234";
-        assert_eq!(
-            Evaluated::Literal(Literal::Text(Cow::Owned(text.to_owned()))).try_into(),
-            Ok(Expr::Literal(AstLiteral::QuotedString(text.to_owned())))
-        );
-
-        let text = "test text";
-        let range = 1..(text.len() - 1);
-        assert_eq!(
-            Evaluated::StrSlice {
-                source: Cow::Owned(text.to_owned()),
-                range: range.clone()
-            }
-            .try_into(),
-            Ok(Expr::Literal(AstLiteral::QuotedString(
-                text[range].to_owned()
-            )))
-        );
     }
 }
