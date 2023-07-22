@@ -29,7 +29,12 @@ test_case!(greatest, async move {
     }
 
     test!(
-        "SELECT GREATEST('2023-07-17', '2022-07-17', '2023-06-17', '2023-07-20', '2024-07-17','2024-07-17','2024-07-16','2024-07-18') AS goat;",
+        "SELECT GREATEST(
+            DATE '2023-07-17', 
+            DATE '2022-07-17', 
+            DATE '2023-06-17', 
+            DATE '2024-07-17',
+            DATE '2024-07-18') AS goat;",
         Ok(select!(
             "goat"
             Date;
