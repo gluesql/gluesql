@@ -28,4 +28,9 @@ test_case!(entries, async move {
             ]
         ))
     };
+    test!(
+        name: "test UNWRAP function requires map value",
+        sql: "SELECT UNWRAP('abc', 'a.b.c') FROM Item",
+        expected: Err(EvaluateError::FunctionRequiresMapValue("UNWRAP".to_owned()).into())
+    );
 });
