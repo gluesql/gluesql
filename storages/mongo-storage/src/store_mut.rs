@@ -124,6 +124,10 @@ impl StoreMut for MongoStorage {
             })
             .collect::<Vec<_>>();
 
+        if data.is_empty() {
+            return Ok(());
+        }
+
         self.db
             .collection::<Document>(table_name)
             .insert_many(data, None)
