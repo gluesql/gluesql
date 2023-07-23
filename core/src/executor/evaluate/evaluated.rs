@@ -20,7 +20,7 @@ pub enum Evaluated<'a> {
 
 impl<'a> From<Value> for Evaluated<'a> {
     fn from(value: Value) -> Self {
-        Evaluated::Value(value)
+        Evaluate::from(value)
     }
 }
 
