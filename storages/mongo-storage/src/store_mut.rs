@@ -1,10 +1,13 @@
+use gluesql_core::store::Store;
 use mongodb::{
     bson::{self, bson, doc, Bson, Document},
-    options::CreateCollectionOptions,
+    options::{CreateCollectionOptions, UpdateOptions},
     Collection,
 };
 
-use crate::value::{into_bson_key, IntoBson};
+use crate::value::{
+    get_element_type_string, into_bson_key, into_object_id, IntoBson, IntoBsonType,
+};
 
 use {
     crate::{error::ResultExt, MongoStorage},
@@ -40,7 +43,7 @@ impl StoreMut for MongoStorage {
                         };
                         let column_type = doc! {
                             column_name: {
-                                "type": [column_def.data_type.to_string(), nullable],
+                                "bsonType": [get_element_type_string(column_def.data_type.into_bson_type()), nullable],
                             },
                         };
                         column_types.extend(column_type);
@@ -52,6 +55,7 @@ impl StoreMut for MongoStorage {
                 // [name1, name2, ..], [type1, type2, ..]
             })
             .unwrap_or_default();
+
         // let required = bson!["_id", names];
         let mut properties = doc! {
             "_id": { "bsonType": "objectId" }
@@ -63,10 +67,10 @@ impl StoreMut for MongoStorage {
         let option = CreateCollectionOptions::builder()
             .validator(Some(doc! {
                 "$jsonSchema": {
-                    // "type": "object",
-                    // "required": required,
-                    // "properties": properties,
-                    // "additionalProperties": false
+                    "type": "object",
+                    "required": required,
+                    "properties": properties,
+                    "additionalProperties": false
                   }
             }))
             .build();
@@ -86,31 +90,98 @@ impl StoreMut for MongoStorage {
     }
 
     async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
+        println!("append_data");
+
+        let column_defs = self
+            .fetch_schema(table_name)
+            .await
+            .unwrap()
+            .unwrap()
+            .column_defs
+            .unwrap();
+
+        let data = rows
+            .into_iter()
+            .map(|row| match row {
+                DataRow::Vec(values) => column_defs
+                    .clone()
+                    .into_iter()
+                    .zip(values.into_iter())
+                    .fold(Document::new(), |mut acc, (column_def, value)| {
+                        acc.extend(doc! {column_def.name: value.into_bson().unwrap()});
+
+                        acc
+                    }),
+                DataRow::Map(hash_map) => {
+                    hash_map
+                        .into_iter()
+                        .fold(Document::new(), |mut acc, (key, value)| {
+                            acc.extend(doc! {key: value.into_bson().unwrap()});
+
+                            acc
+                        })
+                }
+            })
+            .collect::<Vec<_>>();
+
         self.db
-            .collection::<Bson>(table_name)
-            .insert_many(
-                rows.into_iter()
-                    .map(|row| row.into_bson())
-                    .collect::<Result<Vec<_>, _>>()?,
-                None,
-            )
+            .collection::<Document>(table_name)
+            .insert_many(data, None)
             .await
             .map(|_| ())
             .map_storage_err()
     }
 
     async fn insert_data(&mut self, table_name: &str, mut rows: Vec<(Key, DataRow)>) -> Result<()> {
-        self.db
-            .collection::<Bson>(table_name)
-            .insert_many(
-                rows.into_iter()
-                    .map(|(key, row)| into_bson_key(row, key))
-                    .collect::<Result<Vec<_>, _>>()?,
-                None,
-            )
+        println!("insert_data");
+
+        let column_defs = self
+            .fetch_schema(table_name)
             .await
-            .map(|_| ())
-            .map_storage_err()
+            .unwrap()
+            .unwrap()
+            .column_defs
+            .unwrap();
+
+        for (key, row) in rows {
+            let doc = match row {
+                DataRow::Vec(values) => column_defs
+                    .clone()
+                    .into_iter()
+                    .zip(values.into_iter())
+                    .fold(
+                        doc! {"_id": into_object_id(key.clone())},
+                        |mut acc, (column_def, value)| {
+                            acc.extend(doc! {column_def.name: value.into_bson().unwrap()});
+
+                            acc
+                        },
+                    ),
+                DataRow::Map(hash_map) => hash_map.into_iter().fold(
+                    doc! {"_id": into_object_id(key.clone())},
+                    |mut acc, (key, value)| {
+                        acc.extend(doc! {key: value.into_bson().unwrap()});
+
+                        acc
+                    },
+                ),
+            };
+
+            // TODO: for update, delete the _id before. what about pk insert? should we delete the _id?
+            self.db
+                .collection::<Document>(table_name)
+                .delete_one(doc! {"_id": into_object_id(key)}, None)
+                .await
+                .map_storage_err()?;
+
+            self.db
+                .collection::<Document>(table_name)
+                .insert_one(doc, None)
+                .await
+                .map_storage_err()?;
+        }
+
+        Ok(())
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {

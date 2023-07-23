@@ -23,6 +23,7 @@ use {
 #[async_trait(?Send)]
 impl Store for MongoStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
+        println!("fetch_schema: {}", table_name);
         self.fetch_schemas_iter(Some(table_name))
             .await?
             .next()
@@ -36,7 +37,9 @@ impl Store for MongoStorage {
     }
 
     async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<DataRow>> {
+        println!("fetch_data: {}", table_name);
         let filter = doc! { "_id": target.clone().into_bson()?};
+        println!("err1");
         let mut cursor = self
             .db
             .collection::<Document>(table_name)
@@ -44,6 +47,7 @@ impl Store for MongoStorage {
             .await
             .map_storage_err()?;
 
+        println!("err2");
         cursor
             .next()
             .await
@@ -63,6 +67,8 @@ impl Store for MongoStorage {
     }
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
+        println!("scan_data: {}", table_name);
+        println!("err3");
         let cursor = self
             .db
             .collection::<Document>(table_name)
@@ -71,6 +77,7 @@ impl Store for MongoStorage {
             .map_storage_err()?;
 
         let row_iter = cursor.map(|doc| {
+            println!("err4");
             let doc = doc.map_storage_err()?;
 
             doc.into_row()
@@ -92,6 +99,7 @@ impl MongoStorage {
             None => doc! { "listCollections": 1 },
         };
 
+        println!("err5,6");
         let validators_list = self
             .db
             .run_command(command, None)
@@ -108,10 +116,10 @@ impl MongoStorage {
                 .map(|doc| {
                     let validator = doc
                         .get_document("options")
-                        .and_then(|doc| doc.get_document("options"))
                         .and_then(|doc| doc.get_document("validator"))
                         .ok();
 
+                    println!("err7-9");
                     let collection_name = doc.get_str("name").map_storage_err()?;
 
                     Ok::<_, Error>((collection_name, validator))
@@ -120,38 +128,54 @@ impl MongoStorage {
                 .map_storage_err()?
                 .map_storage_err(MongoStorageError::TableDoesNotExist)?;
 
+            println!("validators: {}", validators.unwrap());
             let column_defs = validators
-                .map(|validators| {
-                    validators
-                        .into_iter()
-                        .map(|(key, value)| {
-                            let data_type = value
-                                .as_document()
-                                .unwrap()
-                                .get_str("$type")
-                                .map_storage_err()?;
+                .unwrap()
+                .get_document("$jsonSchema")
+                .unwrap()
+                .get_document("properties")
+                .unwrap()
+                .into_iter()
+                .skip(1)
+                .map(|(name, value)| {
+                    let data_type = value
+                        .as_document()
+                        .unwrap()
+                        .get_array("bsonType")
+                        .unwrap()
+                        .get(0)
+                        .unwrap()
+                        .as_str()
+                        .unwrap();
 
-                            let data_type = match data_type {
-                                "string" => DataType::Text,
-                                "number" => DataType::Int,
-                                "object" => DataType::Map,
-                                "array" => DataType::List,
-                                _ => todo!(),
-                            };
+                    let data_type = match data_type {
+                        "string" => DataType::Text,
+                        "int" => DataType::Int,
+                        "object" => DataType::Map,
+                        "array" => DataType::List,
+                        "long" => DataType::Int,
+                        v => {
+                            println!("v: {}", v);
+                            todo!();
+                        }
+                    };
 
-                            let column_def = ColumnDef {
-                                name: key.to_string(),
-                                data_type,
-                                nullable: true, // should parse from validator
-                                default: None,  // does not support default value
-                                unique: None,   // by unique index?
-                            };
+                    let column_def = ColumnDef {
+                        name: name.to_owned(),
+                        data_type,
+                        nullable: true, // should parse from validator
+                        default: None,  // does not support default value
+                        unique: None,   // by unique index?
+                    };
 
-                            Ok(column_def)
-                        })
-                        .collect::<Result<Vec<ColumnDef>>>()
+                    Ok(column_def)
                 })
-                .transpose()?;
+                .collect::<Result<Vec<ColumnDef>>>()?;
+
+            let column_defs = match column_defs.len() {
+                0 => None,
+                _ => Some(column_defs),
+            };
 
             let schema = Schema {
                 table_name: collection_name.to_owned(),
@@ -163,6 +187,7 @@ impl MongoStorage {
             Ok(schema)
         });
 
+        println!("fetch_schemas_iter done: {:?}", schemas);
         Ok(schemas)
     }
 }

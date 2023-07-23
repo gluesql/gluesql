@@ -1,5 +1,15 @@
-use gluesql_core::{prelude::Key, store::DataRow};
-use mongodb::bson::{bson, doc, Bson, Document};
+use std::{
+    collections::HashMap,
+    fmt,
+    io::{Bytes, Read},
+    str::FromStr,
+};
+
+use gluesql_core::{
+    prelude::{DataType, Key},
+    store::DataRow,
+};
+use mongodb::bson::{self, bson, doc, spec::ElementType, Bson, Document};
 
 use crate::error::ResultExt;
 
@@ -57,6 +67,42 @@ impl IntoValue for Bson {
     }
 }
 
+pub trait IntoBsonType {
+    fn into_bson_type(&self) -> ElementType;
+}
+
+impl IntoBsonType for DataType {
+    fn into_bson_type(&self) -> ElementType {
+        match &self {
+            DataType::Boolean => ElementType::Boolean,
+            DataType::Int8 => ElementType::Int32,
+            DataType::Int16 => ElementType::Int32,
+            DataType::Int32 => ElementType::Int32,
+            DataType::Int => ElementType::Int64,
+            DataType::Int128 => ElementType::Int64,
+            DataType::Uint8 => ElementType::Int32,
+            DataType::Uint16 => ElementType::Int32,
+            DataType::Uint32 => ElementType::Int64,
+            DataType::Uint64 => ElementType::Int64,
+            DataType::Uint128 => ElementType::Int64,
+            DataType::Float32 => ElementType::Double,
+            DataType::Float => ElementType::Double,
+            DataType::Text => ElementType::String,
+            DataType::Bytea => ElementType::Binary,
+            DataType::Inet => ElementType::String,
+            DataType::Date => ElementType::Timestamp,
+            DataType::Timestamp => ElementType::Timestamp,
+            DataType::Time => ElementType::String,
+            DataType::Interval => ElementType::String,
+            DataType::Uuid => ElementType::Binary,
+            DataType::Map => ElementType::EmbeddedDocument,
+            DataType::List => ElementType::Array,
+            DataType::Decimal => ElementType::String,
+            DataType::Point => ElementType::String,
+        }
+    }
+}
+
 pub trait IntoRow {
     fn into_row(self) -> Result<(Key, DataRow)>;
 }
@@ -65,13 +111,15 @@ impl IntoRow for Document {
     fn into_row(self) -> Result<(Key, DataRow)> {
         // let doc = self.map_storage_err()?;
 
+        println!("err11");
         let key = self.get_object_id("_id").map_storage_err()?;
-        let key_bytes = key.bytes();
-        let key_u8 = u8::from_be_bytes(key_bytes[..1].try_into().unwrap()); // TODO: should be string?
-        let key = Key::U8(key_u8);
+        let key_bytes = key.bytes().to_vec();
+        // let key_u8 = u8::from_be_bytes(key_bytes[..1].try_into().unwrap()); // TODO: should be string?
+        let key = Key::Bytea(key_bytes);
 
         let row = self
             .into_iter()
+            .skip(1)
             .map(|(_, bson)| bson.into_value())
             .collect::<Vec<_>>();
 
@@ -81,6 +129,30 @@ impl IntoRow for Document {
 
 pub trait IntoBson {
     fn into_bson(self) -> Result<Bson>;
+}
+
+pub fn into_object_id(key: Key) -> Bson {
+    println!("key: {:?}", key);
+
+    match key {
+        Key::Str(str) => Bson::ObjectId(bson::oid::ObjectId::from_str(&str).unwrap()),
+        Key::Bytea(bytes) => {
+            if bytes.len() != 12 {
+                todo!();
+                // Err(Error::InvalidHexStringLength {
+                //     length: s.len(),
+                //     hex: s.to_string(),
+                // })
+            } else {
+                let mut byte_array: [u8; 12] = [0; 12];
+                byte_array[..].copy_from_slice(&bytes[..]);
+
+                Bson::ObjectId(bson::oid::ObjectId::from_bytes(byte_array))
+            }
+        }
+        Key::U8(val) => Bson::ObjectId(bson::oid::ObjectId::from([val; 12])),
+        _ => todo!(),
+    }
 }
 
 impl IntoBson for Key {
@@ -185,5 +257,30 @@ pub fn into_bson_key(row: DataRow, key: Key) -> Result<Bson> {
             Ok(Bson::Array(bson))
         }
         _ => todo!(),
+    }
+}
+pub fn get_element_type_string(element_type: ElementType) -> &'static str {
+    match element_type {
+        ElementType::Double => "double",
+        ElementType::String => "string",
+        ElementType::Array => "array",
+        ElementType::Binary => "binary",
+        ElementType::Undefined => "undefined",
+        ElementType::ObjectId => "objectId",
+        ElementType::Boolean => "boolean",
+        ElementType::DateTime => "datetime",
+        ElementType::Null => "null",
+        ElementType::RegularExpression => "regularexpression",
+        ElementType::JavaScriptCode => "javascriptcode",
+        ElementType::Symbol => "symbol",
+        ElementType::JavaScriptCodeWithScope => "javascriptcodewithscope",
+        ElementType::Int32 => "int",
+        ElementType::Timestamp => "timestamp",
+        ElementType::Int64 => "long",
+        ElementType::Decimal128 => "decimal128",
+        ElementType::MinKey => "minkey",
+        ElementType::MaxKey => "maxkey",
+        ElementType::DbPointer => "dbpointer",
+        ElementType::EmbeddedDocument => "embeddeddocument",
     }
 }
