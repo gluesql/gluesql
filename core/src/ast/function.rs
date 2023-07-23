@@ -388,7 +388,7 @@ impl ToSql for Function {
                 }
             }
             Function::Skip { expr, size } => {
-                format!("SKIP({}, {}", expr.to_sql(), size.to_sql())
+                format!("SKIP({}, {})", expr.to_sql(), size.to_sql())
             }
             Function::Sort { expr, order } => match order {
                 None => format!("SORT({})", expr.to_sql()),
