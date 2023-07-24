@@ -31,3 +31,4 @@ NULL
 ## Errors
 1. If either of the arguments is not of INTEGER type, a `FunctionRequiresIntegerValue` error will be raised.
 2. If the number of arguments provided to the function is not equal to 2, a `FunctionArgsLengthNotMatching` error will be raised.
+3. If either of the arguments is the minimum i64 value (`-9223372036854775808`), an overflow occurs when attempting to take the absolute value. In this case, a `GcdOverflowError` is raised.
