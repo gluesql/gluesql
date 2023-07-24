@@ -19,7 +19,7 @@ impl ToSql for UnaryOperator {
             UnaryOperator::Minus => "-".to_owned(),
             UnaryOperator::Not => "NOT ".to_owned(),
             UnaryOperator::Factorial => "!".to_owned(),
-            &UnaryOperator::BitwiseNot => "~".to_owned(),
+            UnaryOperator::BitwiseNot => "~".to_owned(),
         }
     }
 }
