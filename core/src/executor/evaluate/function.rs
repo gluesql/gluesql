@@ -617,7 +617,7 @@ pub fn greatest(_name: String, exprs: Vec<Evaluated<'_>>) -> Result<Evaluated<'_
         return Ok(Evaluated::from(Value::Null));
     }
     let first_type = &exprs[0].get_type();
-    
+
     if !exprs.iter().all(|value| value.get_type() == *first_type) {
         return Err(EvaluateError::CannotCompareDifferentTypes.into());
     }
