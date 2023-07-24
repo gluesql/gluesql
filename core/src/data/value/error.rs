@@ -82,10 +82,10 @@ pub enum ValueError {
     FactorialOverflow,
 
     #[error("unary bit_not operation for non numeric value")]
-    UnaryBitNotOnNonNumeric,
+    UnaryBitwiseNotOnNonNumeric,
 
     #[error("unary bit_not operation for non integer value")]
-    UnaryBitNotOnNonInteger,
+    UnaryBitwiseNotOnNonInteger,
 
     #[error("unreachable failure on parsing number")]
     UnreachableNumberParsing,

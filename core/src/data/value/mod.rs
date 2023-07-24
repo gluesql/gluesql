@@ -703,7 +703,7 @@ impl Value {
         }
     }
 
-    pub fn unary_bit_not(&self) -> Result<Value> {
+    pub fn unary_bitwise_not(&self) -> Result<Value> {
         use Value::*;
 
         match self {
@@ -717,10 +717,10 @@ impl Value {
             U32(v) => Ok(Value::U32(!v)),
             U64(v) => Ok(Value::U64(!v)),
             U128(v) => Ok(Value::U128(!v)),
-            F32(_) => Err(ValueError::UnaryBitNotOnNonInteger.into()),
-            F64(_) => Err(ValueError::UnaryBitNotOnNonInteger.into()),
+            F32(_) => Err(ValueError::UnaryBitwiseNotOnNonInteger.into()),
+            F64(_) => Err(ValueError::UnaryBitwiseNotOnNonInteger.into()),
             Null => Ok(Null),
-            _ => Err(ValueError::UnaryBitNotOnNonNumeric.into()),
+            _ => Err(ValueError::UnaryBitwiseNotOnNonNumeric.into()),
         }
     }
 

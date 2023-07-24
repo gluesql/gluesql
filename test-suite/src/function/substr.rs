@@ -270,7 +270,7 @@ test_case!(substr, async move {
         ),
         (
             r#"SELECT ~SUBSTR('123', 2, 3) AS test FROM SingleItem"#,
-            Err(EvaluateError::UnsupportedUnaryBitNot("23".to_owned()).into()),
+            Err(EvaluateError::IncompatibleUnaryBitwiseNotOperation("23".to_owned()).into()),
         ),
     ];
     for (sql, expected) in test_cases {

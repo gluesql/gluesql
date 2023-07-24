@@ -200,15 +200,15 @@ test_case!(unary_operator, async move {
         ),
         (
             "SELECT ~(5.5) as v4 FROM Test",
-            Err(ValueError::UnaryBitNotOnNonInteger.into()),
+            Err(ValueError::UnaryBitwiseNotOnNonInteger.into()),
         ),
         (
             "SELECT ~(CAST(5.5 AS FLOAT32)) as v4 FROM Test",
-            Err(ValueError::UnaryBitNotOnNonInteger.into()),
+            Err(ValueError::UnaryBitwiseNotOnNonInteger.into()),
         ),
         (
             "SELECT ~'error' as v1 FROM Test",
-            Err(ValueError::UnaryBitNotOnNonNumeric.into()),
+            Err(ValueError::UnaryBitwiseNotOnNonNumeric.into()),
         ),
     ];
 
