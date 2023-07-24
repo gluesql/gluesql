@@ -192,7 +192,7 @@ test_case!(unary_operator, async move {
             )),
         ),
         (
-            "SELECT Null as v1 FROM Test",
+            "SELECT ~Null as v1 FROM Test",
             Ok(select_with_null!(
                 v1;
                 Null
