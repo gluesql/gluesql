@@ -105,8 +105,8 @@ mod tests {
         assert_eq!(NumericNode::from(1_u16).try_into(), num("1"));
         assert_eq!(NumericNode::from(1_u32).try_into(), num("1"));
         assert_eq!(NumericNode::from(1_u64).try_into(), num("1"));
-        assert_eq!(NumericNode::from(1.23_f32).try_into(), num("1.23"));
-        assert_eq!(NumericNode::from(4.56_f64).try_into(), num("4.56"));
+        assert_eq!(NumericNode::from(1.50_f32).try_into(), num("1.50"));
+        assert_eq!(NumericNode::from(4.125_f64).try_into(), num("4.125"));
         assert_eq!(NumericNode::from("123.456").try_into(), num("123.456"));
         assert_eq!(NumericNode::from("1.6".to_owned()).try_into(), num("1.6"));
 

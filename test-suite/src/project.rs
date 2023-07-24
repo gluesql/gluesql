@@ -159,6 +159,10 @@ test_case!(project, async move {
             "SELECT (SELECT id FROM ProjectItem) as id FROM ProjectItem",
             EvaluateError::MoreThanOneRowReturned.into(),
         ),
+        (
+            "SELECT (SELECT 1,2)",
+            EvaluateError::MoreThanOneColumnReturned.into(),
+        ),
     ];
 
     for (sql, error) in error_cases {

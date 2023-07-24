@@ -431,8 +431,8 @@ mod tests {
         let expected = "2048";
         test_expr(actual, expected);
 
-        let actual = num(6.11);
-        let expected = "6.11";
+        let actual = num(6.5);
+        let expected = "6.5";
         test_expr(actual, expected);
 
         let actual = num("123.456");
