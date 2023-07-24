@@ -3,7 +3,7 @@ use {
     crate::{
         ast::{DataType, DateTimeField},
         data::{Key, Point, Value, ValueError},
-        result::Result,
+        result::{Error, Result},
     },
     md5::{Digest, Md5},
     rand::{rngs::StdRng, Rng, SeedableRng},
@@ -452,26 +452,48 @@ pub fn gcd<'a>(name: String, left: Evaluated<'_>, right: Evaluated<'_>) -> Resul
     let left = eval_to_int!(name, left);
     let right = eval_to_int!(name, right);
 
-    Ok(Evaluated::from(Value::I64(gcd_i64(left, right))))
+    Ok(Evaluated::from(Value::I64(gcd_i64(left, right)?)))
 }
 
 pub fn lcm<'a>(name: String, left: Evaluated<'_>, right: Evaluated<'_>) -> Result<Evaluated<'a>> {
     let left = eval_to_int!(name, left);
     let right = eval_to_int!(name, right);
 
-    fn lcm(a: i64, b: i64) -> i64 {
-        a * b / gcd_i64(a, b)
+    fn lcm(a: i64, b: i64) -> Result<i64> {
+        let gcd_val = gcd_i64(a, b).map_err(|err| {
+            if let Error::Value(ValueError::GcdOverflowError(x)) = err {
+                ValueError::LcmOverflowError(x).into()
+            } else {
+                err
+            }
+        })?;
+
+        let a: i128 = a.into();
+        let b: i128 = b.into();
+
+        // lcm(a, b) = abs(a * b) / gcd(a, b)   if gcd(a, b) != 0
+        // lcm(a, b) = 0                        if gcd(a, b) == 0
+        let result = (a * b).abs().checked_div(gcd_val.into()).unwrap_or(0);
+
+        TryInto::<i64>::try_into(result).map_err(|_| Error::Value(ValueError::LcmResultOutOfRange))
     }
 
-    Ok(Evaluated::from(Value::I64(lcm(left, right))))
+    Ok(Evaluated::from(Value::I64(lcm(left, right)?)))
 }
 
-fn gcd_i64(a: i64, b: i64) -> i64 {
-    if b == 0 {
-        a
-    } else {
-        gcd_i64(b, a % b)
+fn gcd_i64(a: i64, b: i64) -> Result<i64> {
+    let mut a = a
+        .checked_abs()
+        .ok_or(Error::Value(ValueError::GcdOverflowError(a)))?;
+    let mut b = b
+        .checked_abs()
+        .ok_or(Error::Value(ValueError::GcdOverflowError(b)))?;
+
+    while b > 0 {
+        (a, b) = (b, a % b);
     }
+
+    Ok(a)
 }
 
 // --- list ---

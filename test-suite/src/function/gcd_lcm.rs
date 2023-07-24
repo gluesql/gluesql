@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        error::EvaluateError,
+        error::{EvaluateError, ValueError},
         prelude::{Payload, Value::*},
     },
 };
@@ -95,6 +95,55 @@ test_case!(gcd_lcm, async move {
         (
             "SELECT LCM(right, left) AS test FROM LcmStr",
             Err(EvaluateError::FunctionRequiresIntegerValue("LCM".to_owned()).into()),
+        ),
+        // Check edge cases
+        (
+            "SELECT GCD(0, 0) as test",
+            Ok(select_with_null!(test; I64(0))),
+        ),
+        (
+            "VALUES(
+                GCD(-1, -1),
+                GCD(-2, 0),
+                GCD(-14, 7)
+            )",
+            Ok(select_with_null!(
+                column1 | column2 | column3;
+                I64(1)    I64(2)    I64(7)
+            )),
+        ),
+        (
+            // check i64::MIN overflow error
+            "SELECT GCD(-9223372036854775808, -9223372036854775808)",
+            Err(ValueError::GcdOverflowError(i64::MIN).into()),
+        ),
+        (
+            "SELECT LCM(0, 0) as test",
+            Ok(select_with_null!(test; I64(0))),
+        ),
+        (
+            "VALUES(
+                LCM(-3, -5),
+                LCM(-13, 0),
+                LCM(-12, 2)
+            )
+            ",
+            Ok(select_with_null!(
+                column1 | column2 | column3;
+                I64(15)   I64(0)    I64(12)
+            )),
+        ),
+        (
+            // check i64::MIN overflow error
+            "SELECT LCM(-9223372036854775808, -9223372036854775808)",
+            Err(ValueError::LcmOverflowError(i64::MIN).into()),
+        ),
+        (
+            // 10^10 + 19 and 10^10 + 33 are prime numbers
+            // LCM(10^10+19, 10^10+33) = (10^10+19)*(10^10+33)
+            // this result is out of i64 range.
+            "SELECT LCM(10000000019, 10000000033)",
+            Err(ValueError::LcmResultOutOfRange.into()),
         ),
     ];
     for (sql, expected) in test_cases {
