@@ -171,16 +171,13 @@ impl StoreMut for MongoStorage {
                 ),
             };
 
-            // TODO: for update, delete the _id before. what about pk insert? should we delete the _id?
-            self.db
-                .collection::<Document>(table_name)
-                .delete_one(doc! {"_id": into_object_id(key)}, None)
-                .await
-                .map_storage_err()?;
+            let query = doc! {"_id": into_object_id(key.clone())};
+            let update = doc! {"$set": doc};
+            let options = UpdateOptions::builder().upsert(Some(true)).build();
 
             self.db
                 .collection::<Document>(table_name)
-                .insert_one(doc, None)
+                .update_one(query, update, options)
                 .await
                 .map_storage_err()?;
         }
