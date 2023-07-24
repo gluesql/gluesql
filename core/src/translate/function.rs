@@ -585,6 +585,12 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 .collect::<Result<Vec<_>>>()?;
             Ok(Expr::Function(Box::new(Function::Greatest(exprs))))
         }
+        "VALUES" => {
+            check_len(name, args.len(), 1)?;
+
+            let expr = translate_expr(args[0])?;
+            Ok(Expr::Function(Box::new(Function::Values(expr))))
+        }
         _ => {
             let exprs = args
                 .into_iter()

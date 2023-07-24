@@ -233,4 +233,8 @@ pub enum NumericBinaryOperator {
     Divide,
     #[strum(to_string = "%")]
     Modulo,
+    #[strum(to_string = "&")]
+    BitwiseAnd,
+    #[strum(to_string = "<<")]
+    BitwiseShiftLeft,
 }

@@ -72,7 +72,7 @@ impl Glue {
 
     #[cfg(not(feature = "nodejs"))]
     #[wasm_bindgen(js_name = loadIndexedDB)]
-    pub fn load_indexeddb(&mut self) -> Promise {
+    pub fn load_indexeddb(&mut self, namespace: Option<String>) -> Promise {
         let cell = Rc::clone(&self.storage);
 
         future_to_promise(async move {
@@ -84,7 +84,7 @@ impl Glue {
                 return Err(JsValue::from_str("indexedDB storage is already loaded"));
             }
 
-            let idb_storage = match IdbStorage::new(None).await {
+            let idb_storage = match IdbStorage::new(namespace).await {
                 Ok(storage) => storage,
                 Err(error) => {
                     cell.replace(Some(storage));

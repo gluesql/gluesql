@@ -154,17 +154,8 @@ impl<'a, W: Write> Print<W> {
                 }
                 false => {
                     self.write_header(labels.iter().map(|s| s.as_str()))?;
-
-                    for row in rows {
-                        let row = row
-                            .iter()
-                            .map(Into::into)
-                            .map(|v: String| format!("{c}{v}{c}", c = self.option.colwrap))
-                            .collect::<Vec<_>>()
-                            .join(self.option.colsep.as_str());
-
-                        self.write(row)?;
-                    }
+                    let rows = rows.iter().map(|row| row.iter().map(String::from));
+                    self.write_rows(rows)?;
                 }
             },
             Payload::SelectMap(rows) => {
@@ -183,11 +174,7 @@ impl<'a, W: Write> Print<W> {
                         for row in rows {
                             let row = labels
                                 .iter()
-                                .map(|label| {
-                                    row.get(*label)
-                                        .map(Into::into)
-                                        .unwrap_or_else(|| "".to_owned())
-                                })
+                                .map(|label| row.get(*label).map(Into::into).unwrap_or_default())
                                 .collect::<Vec<String>>();
 
                             table.add_record(row);
@@ -198,26 +185,32 @@ impl<'a, W: Write> Print<W> {
                     false => {
                         self.write_header(labels.iter().map(AsRef::as_ref))?;
 
-                        for row in rows {
-                            let row = labels
+                        let rows = rows.iter().map(|row| {
+                            labels
                                 .iter()
-                                .map(|label| {
-                                    let v = row
-                                        .get(*label)
-                                        .map(Into::into)
-                                        .unwrap_or_else(|| "".to_owned());
-
-                                    format!("{c}{v}{c}", c = self.option.colwrap)
-                                })
-                                .collect::<Vec<_>>()
-                                .join(self.option.colsep.as_str());
-
-                            self.write(row)?;
-                        }
+                                .map(|label| row.get(*label).map(String::from).unwrap_or_default())
+                        });
+                        self.write_rows(rows)?;
                     }
                 }
             }
         };
+
+        Ok(())
+    }
+
+    fn write_rows(
+        &mut self,
+        rows: impl Iterator<Item = impl Iterator<Item = String>>,
+    ) -> IOResult<()> {
+        for row in rows {
+            let row = row
+                .map(|v| format!("{c}{v}{c}", c = self.option.colwrap))
+                .collect::<Vec<_>>()
+                .join(self.option.colsep.as_str());
+
+            self.write(row)?;
+        }
 
         Ok(())
     }
