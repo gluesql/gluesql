@@ -131,10 +131,7 @@ pub enum EvaluateError {
     UnsupportedFunction(String),
 
     #[error("cannot compare values of different types")]
-    CannotCompareDifferentTypes,
-
-    #[error("cannot get greatest value: {0}")]
-    CannotGetGreatestValue(String),
+    CannotCompareDifferentTypes
 }
 
 fn error_serialize<S>(error: &chrono::format::ParseError, serializer: S) -> Result<S::Ok, S::Error>

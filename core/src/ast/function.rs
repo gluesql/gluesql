@@ -986,6 +986,16 @@ mod tests {
         );
 
         assert_eq!(
+            "GREATEST(16, 9, 7)",
+            &Expr::Function(Box::new(Function::Greatest(vec![
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("42").unwrap())),
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("999").unwrap()))
+            ])))
+            .to_sql()
+        );
+
+        assert_eq!(
             "FORMAT(DATE '2022-10-12', '%Y-%m')",
             &Expr::Function(Box::new(Function::Format {
                 expr: Expr::TypedString {
