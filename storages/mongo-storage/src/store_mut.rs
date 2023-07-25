@@ -5,7 +5,7 @@ use mongodb::{
     Collection,
 };
 
-use crate::value::{into_object_id, IntoBson, IntoBsonType};
+use crate::value::{into_object_id, BsonType, IntoBson};
 
 use {
     crate::{error::ResultExt, MongoStorage},
@@ -36,9 +36,9 @@ impl StoreMut for MongoStorage {
                         let column_name = column_def.name.clone();
                         names.push(column_name.clone());
                         let bson_type = match column_def.clone().nullable {
-                            true => vec![column_def.data_type.into_bson_type().into(), "null"],
+                            true => vec![BsonType::from(&column_def.data_type).into(), "null"],
                             false => {
-                                vec![column_def.data_type.into_bson_type().into()]
+                                vec![BsonType::from(&column_def.data_type).into()]
                             }
                         };
                         let column_type = doc! {

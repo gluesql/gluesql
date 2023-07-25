@@ -1,11 +1,13 @@
+use std::str::FromStr;
+
 use futures::StreamExt;
 use gluesql_core::{
     ast::ColumnDef,
     prelude::{DataType, Error},
 };
-use mongodb::bson::{doc, Document};
+use mongodb::bson::{doc, Bson, Document};
 
-use crate::value::{IntoBson, IntoRow, IntoValue};
+use crate::value::{BsonType, IntoBson, IntoRow, IntoValue};
 
 use {
     crate::{
@@ -148,22 +150,24 @@ impl MongoStorage {
                         .as_str()
                         .unwrap();
 
-                    let data_type = match data_type {
-                        "string" => DataType::Text,
-                        "int" => DataType::Int,
-                        "object" => DataType::Map,
-                        "array" => DataType::List,
-                        "long" => DataType::Int,
-                        "double" => DataType::Float,
-                        "bool" => DataType::Boolean,
-                        "binData" => DataType::Bytea,
-                        "decimal" => DataType::Decimal,
-                        v => {
-                            println!("v: {}", v);
+                    let data_type = BsonType::from_str(data_type).unwrap().into();
 
-                            todo!();
-                        }
-                    };
+                    // let data_type = match data_type {
+                    //     "string" => DataType::Text,
+                    //     "int" => DataType::Int,
+                    //     "object" => DataType::Map,
+                    //     "array" => DataType::List,
+                    //     "long" => DataType::Int,
+                    //     "double" => DataType::Float,
+                    //     "bool" => DataType::Boolean,
+                    //     "binData" => DataType::Bytea,
+                    //     "decimal" => DataType::Decimal,
+                    //     v => {
+                    //         println!("v: {}", v);
+
+                    //         todo!();
+                    //     }
+                    // };
 
                     let column_def = ColumnDef {
                         name: name.to_owned(),

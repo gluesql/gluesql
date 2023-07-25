@@ -9,8 +9,11 @@ use gluesql_core::{
     prelude::{DataType, Key},
     store::DataRow,
 };
-use mongodb::bson::{self, bson, doc, spec::ElementType, Binary, Bson, Document};
-use strum_macros::{Display, IntoStaticStr};
+use mongodb::bson::{
+    self, bson, de, doc, spec::ElementType, to_bson, Binary, Bson, Decimal128, Document,
+};
+use rust_decimal::Decimal;
+use strum_macros::{Display, EnumString, IntoStaticStr};
 
 use crate::error::ResultExt;
 
@@ -63,18 +66,23 @@ impl IntoValue for Bson {
             Bson::MaxKey => Value::Null,
             Bson::MinKey => Value::Null,
             Bson::DbPointer(_) => todo!("Handle DbPointer type"),
+            Bson::Decimal128(decimal128) => {
+                let decimal = Decimal::deserialize(decimal128.bytes());
+
+                Value::Decimal(decimal)
+            }
             _ => todo!(),
         }
     }
 }
 
-pub trait IntoBsonType {
-    fn into_bson_type(&self) -> BsonType;
-}
+// pub trait IntoBsonType {
+//     fn into_bson_type(&self) -> BsonType;
+// }
 
-impl IntoBsonType for DataType {
-    fn into_bson_type(&self) -> BsonType {
-        match &self {
+impl From<&DataType> for BsonType {
+    fn from(data_type: &DataType) -> BsonType {
+        match data_type {
             DataType::Boolean => BsonType::Boolean,
             DataType::Int8 => BsonType::Int32,
             DataType::Int16 => BsonType::Int32,
@@ -100,6 +108,34 @@ impl IntoBsonType for DataType {
             DataType::List => BsonType::Array,
             DataType::Decimal => BsonType::Decimal128,
             DataType::Point => BsonType::String,
+        }
+    }
+}
+
+impl From<BsonType> for DataType {
+    fn from(bson_type: BsonType) -> DataType {
+        match bson_type {
+            BsonType::Boolean => DataType::Boolean,
+            BsonType::Int32 => DataType::Int32,
+            BsonType::Int64 => DataType::Int,
+            BsonType::Double => DataType::Float,
+            BsonType::String => DataType::Text,
+            BsonType::Binary => DataType::Bytea,
+            BsonType::Timestamp => DataType::Timestamp,
+            BsonType::Object => DataType::Map,
+            BsonType::Array => DataType::List,
+            BsonType::Decimal128 => DataType::Decimal,
+            BsonType::Undefined => todo!(),
+            BsonType::ObjectId => todo!(),
+            BsonType::Date => todo!(),
+            BsonType::Null => todo!(),
+            BsonType::RegularExpression => todo!(),
+            BsonType::DbPointer => todo!(),
+            BsonType::JavaScript => todo!(),
+            BsonType::Symbol => todo!(),
+            BsonType::JavaScriptCodeWithScope => todo!(),
+            BsonType::MinKey => todo!(),
+            BsonType::MaxKey => todo!(),
         }
     }
 }
@@ -214,6 +250,13 @@ impl IntoBson for Value {
                 subtype: bson::spec::BinarySubtype::Generic,
                 bytes,
             })),
+            Value::Decimal(decimal) => {
+                // to_bson(&decimal.serialize()).map_storage_err()
+
+                Ok(Bson::Decimal128(Decimal128::from_bytes(
+                    decimal.serialize(),
+                )))
+            }
             // Value::Map(val) => {
             // let bson = val
             //     .into_iter()
@@ -268,7 +311,7 @@ impl IntoBson for DataRow {
 //     }
 // }
 
-#[derive(IntoStaticStr)]
+#[derive(IntoStaticStr, EnumString)]
 pub enum BsonType {
     #[strum(to_string = "double")]
     Double,
