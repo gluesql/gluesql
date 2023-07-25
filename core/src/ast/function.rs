@@ -990,9 +990,9 @@ mod tests {
         assert_eq!(
             "GREATEST(16, 9, 7)",
             &Expr::Function(Box::new(Function::Greatest(vec![
-                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("42").unwrap())),
-                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
-                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("999").unwrap()))
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("16").unwrap())),
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("9").unwrap())),
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("7").unwrap()))
             ])))
             .to_sql()
         );
