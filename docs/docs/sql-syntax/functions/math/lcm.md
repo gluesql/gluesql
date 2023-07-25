@@ -31,5 +31,5 @@ NULL
 ## Errors
 1. If either of the arguments is not of INTEGER type, a `FunctionRequiresIntegerValue` error will be raised.
 2. If the number of arguments provided to the function is not equal to 2, a `FunctionArgsLengthNotMatching` error will be raised.
-3. If either of the arguments is the minimum i64 value (`-9223372036854775808`), an overflow occurs when attempting to calculate the gcd, which is then used in the lcm calculation. In this case, an `LcmOverflowError` is raised.
+3. If either of the arguments is the minimum i64 value (`-9223372036854775808`), an overflow occurs when attempting to calculate the gcd, which is then used in the lcm calculation. In this case, an `GcdLcmOverflowError` is raised.
 4. If the calculated result of lcm is outside the valid range of i64 (`-9223372036854775808` to `9223372036854775807`), a `LcmResultOutOfRange` error is raised. This may occur with large prime numbers.

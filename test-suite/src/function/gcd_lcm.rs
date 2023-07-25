@@ -115,7 +115,7 @@ test_case!(gcd_lcm, async move {
         (
             // check i64::MIN overflow error
             "SELECT GCD(-9223372036854775808, -9223372036854775808)",
-            Err(ValueError::GcdOverflowError(i64::MIN).into()),
+            Err(ValueError::GcdLcmOverflow(i64::MIN).into()),
         ),
         (
             "SELECT LCM(0, 0) as test",
@@ -136,7 +136,7 @@ test_case!(gcd_lcm, async move {
         (
             // check i64::MIN overflow error
             "SELECT LCM(-9223372036854775808, -9223372036854775808)",
-            Err(ValueError::LcmOverflowError(i64::MIN).into()),
+            Err(ValueError::GcdLcmOverflow(i64::MIN).into()),
         ),
         (
             // 10^10 + 19 and 10^10 + 33 are prime numbers
