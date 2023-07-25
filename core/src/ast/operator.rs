@@ -9,6 +9,7 @@ pub enum UnaryOperator {
     Minus,
     Not,
     Factorial,
+    BitwiseNot,
 }
 
 impl ToSql for UnaryOperator {
@@ -18,6 +19,7 @@ impl ToSql for UnaryOperator {
             UnaryOperator::Minus => "-".to_owned(),
             UnaryOperator::Not => "NOT ".to_owned(),
             UnaryOperator::Factorial => "!".to_owned(),
+            UnaryOperator::BitwiseNot => "~".to_owned(),
         }
     }
 }
@@ -304,5 +306,14 @@ mod tests {
             }
             .to_sql()
         );
+
+        assert_eq!(
+            "~1",
+            Expr::UnaryOp {
+                op: UnaryOperator::BitwiseNot,
+                expr: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(1)))),
+            }
+            .to_sql(),
+        )
     }
 }
