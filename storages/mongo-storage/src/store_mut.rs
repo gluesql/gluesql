@@ -5,9 +5,7 @@ use mongodb::{
     Collection,
 };
 
-use crate::value::{
-    get_element_type_string, into_bson_key, into_object_id, IntoBson, IntoBsonType,
-};
+use crate::value::{into_object_id, IntoBson, IntoBsonType};
 
 use {
     crate::{error::ResultExt, MongoStorage},
@@ -37,13 +35,15 @@ impl StoreMut for MongoStorage {
                     |(mut names, mut column_types), column_def| {
                         let column_name = column_def.name.clone();
                         names.push(column_name.clone());
-                        let nullable = match column_def.clone().nullable {
-                            true => Some("null"),
-                            false => None,
+                        let bson_type = match column_def.clone().nullable {
+                            true => vec![column_def.data_type.into_bson_type().into(), "null"],
+                            false => {
+                                vec![column_def.data_type.into_bson_type().into()]
+                            }
                         };
                         let column_type = doc! {
                             column_name: {
-                                "bsonType": [get_element_type_string(column_def.data_type.into_bson_type()), nullable],
+                                "bsonType": bson_type,
                             },
                         };
                         column_types.extend(column_type);
@@ -74,6 +74,8 @@ impl StoreMut for MongoStorage {
                   }
             }))
             .build();
+
+        println!("option: {}", to_string_pretty(&option).unwrap());
 
         self.db
             .create_collection(&schema.table_name, option)
@@ -179,13 +181,15 @@ impl StoreMut for MongoStorage {
                 .collection::<Document>(table_name)
                 .update_one(query, update, options)
                 .await
-                .map_storage_err()?;
+                .unwrap();
         }
 
         Ok(())
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
+        println!("keys: {keys:?}");
+
         self.db
             .collection::<Bson>(table_name)
             .delete_many(

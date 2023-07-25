@@ -1200,6 +1200,7 @@ dependencies = [
  "mongodb",
  "serde",
  "serde_json",
+ "strum_macros",
  "thiserror",
  "tokio",
  "uuid",

@@ -25,6 +25,7 @@ thiserror = "1.0"
 iter-enum = "1"
 async-io = "1"
 mongodb = "2.5.0"
+strum_macros = "0.24"
 
 
 [dev-dependencies]

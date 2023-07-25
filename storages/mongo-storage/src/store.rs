@@ -104,10 +104,10 @@ impl MongoStorage {
             .db
             .run_command(command, None)
             .await
-            .map_storage_err()?
+            .unwrap()
             .get_document("cursor")
             .and_then(|doc| doc.get_array("firstBatch"))
-            .map_storage_err()?
+            .unwrap()
             .to_owned();
 
         let schemas = validators_list.into_iter().map(|bson| {
@@ -120,12 +120,12 @@ impl MongoStorage {
                         .ok();
 
                     println!("err7-9");
-                    let collection_name = doc.get_str("name").map_storage_err()?;
+                    let collection_name = doc.get_str("name").unwrap();
 
                     Ok::<_, Error>((collection_name, validator))
                 })
                 .transpose()
-                .map_storage_err()?
+                .unwrap()
                 .map_storage_err(MongoStorageError::TableDoesNotExist)?;
 
             println!("validators: {}", validators.unwrap());
@@ -154,8 +154,13 @@ impl MongoStorage {
                         "object" => DataType::Map,
                         "array" => DataType::List,
                         "long" => DataType::Int,
+                        "double" => DataType::Float,
+                        "bool" => DataType::Boolean,
+                        "binData" => DataType::Bytea,
+                        "decimal" => DataType::Decimal,
                         v => {
                             println!("v: {}", v);
+
                             todo!();
                         }
                     };

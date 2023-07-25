@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    fmt,
+    fmt::{self, Display},
     io::{Bytes, Read},
     str::FromStr,
 };
@@ -9,7 +9,8 @@ use gluesql_core::{
     prelude::{DataType, Key},
     store::DataRow,
 };
-use mongodb::bson::{self, bson, doc, spec::ElementType, Bson, Document};
+use mongodb::bson::{self, bson, doc, spec::ElementType, Binary, Bson, Document};
+use strum_macros::{Display, IntoStaticStr};
 
 use crate::error::ResultExt;
 
@@ -53,7 +54,7 @@ impl IntoValue for Bson {
             Bson::Int32(i) => Value::I32(i),
             Bson::Int64(i) => Value::I64(i),
             // Bson::Timestamp(ts) => Value::Timestamp(ts.to_string().into()),
-            // Bson::Binary(bin) => Value::Binary(bin.bytes().to_vec()),
+            Bson::Binary(Binary { bytes, .. }) => Value::Bytea(bytes),
             Bson::ObjectId(oid) => Value::Str(oid.to_hex()),
             // Bson::DateTime(dt) => Value::Date(dt),
             Bson::Symbol(sym) => Value::Str(sym),
@@ -68,37 +69,37 @@ impl IntoValue for Bson {
 }
 
 pub trait IntoBsonType {
-    fn into_bson_type(&self) -> ElementType;
+    fn into_bson_type(&self) -> BsonType;
 }
 
 impl IntoBsonType for DataType {
-    fn into_bson_type(&self) -> ElementType {
+    fn into_bson_type(&self) -> BsonType {
         match &self {
-            DataType::Boolean => ElementType::Boolean,
-            DataType::Int8 => ElementType::Int32,
-            DataType::Int16 => ElementType::Int32,
-            DataType::Int32 => ElementType::Int32,
-            DataType::Int => ElementType::Int64,
-            DataType::Int128 => ElementType::Int64,
-            DataType::Uint8 => ElementType::Int32,
-            DataType::Uint16 => ElementType::Int32,
-            DataType::Uint32 => ElementType::Int64,
-            DataType::Uint64 => ElementType::Int64,
-            DataType::Uint128 => ElementType::Int64,
-            DataType::Float32 => ElementType::Double,
-            DataType::Float => ElementType::Double,
-            DataType::Text => ElementType::String,
-            DataType::Bytea => ElementType::Binary,
-            DataType::Inet => ElementType::String,
-            DataType::Date => ElementType::Timestamp,
-            DataType::Timestamp => ElementType::Timestamp,
-            DataType::Time => ElementType::String,
-            DataType::Interval => ElementType::String,
-            DataType::Uuid => ElementType::Binary,
-            DataType::Map => ElementType::EmbeddedDocument,
-            DataType::List => ElementType::Array,
-            DataType::Decimal => ElementType::String,
-            DataType::Point => ElementType::String,
+            DataType::Boolean => BsonType::Boolean,
+            DataType::Int8 => BsonType::Int32,
+            DataType::Int16 => BsonType::Int32,
+            DataType::Int32 => BsonType::Int32,
+            DataType::Int => BsonType::Int64,
+            DataType::Int128 => BsonType::Int64,
+            DataType::Uint8 => BsonType::Int32,
+            DataType::Uint16 => BsonType::Int32,
+            DataType::Uint32 => BsonType::Int64,
+            DataType::Uint64 => BsonType::Int64,
+            DataType::Uint128 => BsonType::Int64,
+            DataType::Float32 => BsonType::Double,
+            DataType::Float => BsonType::Double,
+            DataType::Text => BsonType::String,
+            DataType::Bytea => BsonType::Binary,
+            DataType::Inet => BsonType::String,
+            DataType::Date => BsonType::Timestamp,
+            DataType::Timestamp => BsonType::Timestamp,
+            DataType::Time => BsonType::String,
+            DataType::Interval => BsonType::String,
+            DataType::Uuid => BsonType::Binary,
+            DataType::Map => BsonType::Object,
+            DataType::List => BsonType::Array,
+            DataType::Decimal => BsonType::Decimal128,
+            DataType::Point => BsonType::String,
         }
     }
 }
@@ -173,7 +174,7 @@ impl IntoBson for Key {
             Key::Decimal(val) => Ok(Bson::String(val.to_string())),
             Key::Bool(val) => Ok(Bson::Boolean(val)),
             Key::Str(val) => Ok(Bson::String(val)),
-            // Key::Bytea(val) => Ok(Bson::Binary(bson::spec::BinarySubtype::Generic, val)),
+            Key::Bytea(bytes) => Ok(into_object_id(Key::Bytea(bytes))),
             // Key::Date(val) => Ok(Bson::UtcDatetime(val.and_hms(0, 0, 0))),
             // Key::Timestamp(val) => Ok(Bson::UtcDatetime(val)),
             Key::Time(val) => Ok(Bson::String(val.format("%H:%M:%S%.f").to_string())),
@@ -184,7 +185,10 @@ impl IntoBson for Key {
             // )),
             Key::Inet(val) => Ok(Bson::String(val.to_string())),
             Key::None => Ok(Bson::Null),
-            _ => todo!(),
+            k => {
+                println!("key: {:?}", k);
+                todo!()
+            }
         }
     }
 }
@@ -206,6 +210,10 @@ impl IntoBson for Value {
 
                 Ok(Bson::Array(bson))
             }
+            Value::Bytea(bytes) => Ok(Bson::Binary(bson::Binary {
+                subtype: bson::spec::BinarySubtype::Generic,
+                bytes,
+            })),
             // Value::Map(val) => {
             // let bson = val
             //     .into_iter()
@@ -244,43 +252,64 @@ impl IntoBson for DataRow {
     }
 }
 
-pub fn into_bson_key(row: DataRow, key: Key) -> Result<Bson> {
-    match row {
-        DataRow::Vec(row) => {
-            let bson = row.into_iter().map(|val| val.into_bson());
+// pub fn into_bson_key(row: DataRow, key: Key) -> Result<Bson> {
+//     match row {
+//         DataRow::Vec(row) => {
+//             let bson = row.into_iter().map(|val| val.into_bson());
 
-            let bson = vec![Ok(bson!({"_id": key.into_bson()?}))]
-                .into_iter()
-                .chain(bson)
-                .collect::<Result<Vec<_>>>()?;
+//             let bson = vec![Ok(bson!({"_id": key.into_bson()?}))]
+//                 .into_iter()
+//                 .chain(bson)
+//                 .collect::<Result<Vec<_>>>()?;
 
-            Ok(Bson::Array(bson))
-        }
-        _ => todo!(),
-    }
-}
-pub fn get_element_type_string(element_type: ElementType) -> &'static str {
-    match element_type {
-        ElementType::Double => "double",
-        ElementType::String => "string",
-        ElementType::Array => "array",
-        ElementType::Binary => "binary",
-        ElementType::Undefined => "undefined",
-        ElementType::ObjectId => "objectId",
-        ElementType::Boolean => "boolean",
-        ElementType::DateTime => "datetime",
-        ElementType::Null => "null",
-        ElementType::RegularExpression => "regularexpression",
-        ElementType::JavaScriptCode => "javascriptcode",
-        ElementType::Symbol => "symbol",
-        ElementType::JavaScriptCodeWithScope => "javascriptcodewithscope",
-        ElementType::Int32 => "int",
-        ElementType::Timestamp => "timestamp",
-        ElementType::Int64 => "long",
-        ElementType::Decimal128 => "decimal128",
-        ElementType::MinKey => "minkey",
-        ElementType::MaxKey => "maxkey",
-        ElementType::DbPointer => "dbpointer",
-        ElementType::EmbeddedDocument => "embeddeddocument",
-    }
+//             Ok(Bson::Array(bson))
+//         }
+//         _ => todo!(),
+//     }
+// }
+
+#[derive(IntoStaticStr)]
+pub enum BsonType {
+    #[strum(to_string = "double")]
+    Double,
+    #[strum(to_string = "string")]
+    String,
+    #[strum(to_string = "object")]
+    Object,
+    #[strum(to_string = "array")]
+    Array,
+    #[strum(to_string = "binData")]
+    Binary,
+    #[strum(to_string = "undefined")]
+    Undefined,
+    #[strum(to_string = "objectId")]
+    ObjectId,
+    #[strum(to_string = "bool")]
+    Boolean,
+    #[strum(to_string = "date")]
+    Date,
+    #[strum(to_string = "null")]
+    Null,
+    #[strum(to_string = "regex")]
+    RegularExpression,
+    #[strum(to_string = "dbPointer")]
+    DbPointer,
+    #[strum(to_string = "javascript")]
+    JavaScript,
+    #[strum(to_string = "symbol")]
+    Symbol,
+    #[strum(to_string = "javascriptWithScope")]
+    JavaScriptCodeWithScope,
+    #[strum(to_string = "int")]
+    Int32,
+    #[strum(to_string = "timestamp")]
+    Timestamp,
+    #[strum(to_string = "long")]
+    Int64,
+    #[strum(to_string = "decimal")]
+    Decimal128,
+    #[strum(to_string = "minKey")]
+    MinKey,
+    #[strum(to_string = "maxKey")]
+    MaxKey,
 }
