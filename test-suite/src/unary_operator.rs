@@ -111,108 +111,123 @@ test_case!(unary_operator, async move {
             "SELECT 1000! as v4 FROM Test",
             Err(ValueError::FactorialOverflow.into()),
         ),
-        (
-            "SELECT ~(CAST(1 AS UINT8)) as v1 FROM Test",
-            Ok(select!(
-                v1
-                U8;
-                254
-            )),
-        ),
-        (
-            "SELECT ~(CAST(1 AS UINT16)) as v1 FROM Test",
-            Ok(select!(
-                v1
-                U16;
-                65534
-            )),
-        ),
-        (
-            "SELECT ~(CAST(1 AS UINT32)) as v1 FROM Test",
-            Ok(select!(
-                v1
-                U32;
-                4294967294
-            )),
-        ),
-        (
-            "SELECT ~(CAST(1 AS UINT64)) as v1 FROM Test",
-            Ok(select!(
-                v1
-                U64;
-                18446744073709551614
-            )),
-        ),
-        (
-            "SELECT ~(CAST(1 AS UINT128)) as v1 FROM Test",
-            Ok(select!(
-                v1
-                U128;
-                340282366920938463463374607431768211454
-            )),
-        ),
-        (
-            "SELECT ~(CAST(1 AS INT8)) as v1 FROM Test",
-            Ok(select!(
-                v1
-                I8;
-                -2
-            )),
-        ),
-        (
-            "SELECT ~(CAST(1 AS INT16)) as v1 FROM Test",
-            Ok(select!(
-                v1
-                I16;
-                -2
-            )),
-        ),
-        (
-            "SELECT ~(CAST(1 AS INT32)) as v1 FROM Test",
-            Ok(select!(
-                v1
-                I32;
-                -2
-            )),
-        ),
-        (
-            "SELECT ~1 as v1 FROM Test",
-            Ok(select!(
-                v1
-                I64;
-                -2
-            )),
-        ),
-        (
-            "SELECT ~(CAST(1 AS INT128)) as v1 FROM Test",
-            Ok(select!(
-                v1
-                I128;
-                -2
-            )),
-        ),
-        (
-            "SELECT ~Null as v1 FROM Test",
-            Ok(select_with_null!(
-                v1;
-                Null
-            )),
-        ),
-        (
-            "SELECT ~(5.5) as v4 FROM Test",
-            Err(ValueError::UnaryBitwiseNotOnNonInteger.into()),
-        ),
-        (
-            "SELECT ~(CAST(5.5 AS FLOAT32)) as v4 FROM Test",
-            Err(ValueError::UnaryBitwiseNotOnNonInteger.into()),
-        ),
-        (
-            "SELECT ~'error' as v1 FROM Test",
-            Err(ValueError::UnaryBitwiseNotOnNonNumeric.into()),
-        ),
     ];
 
     for (sql, expected) in test_cases {
         test!(sql, expected);
     }
+
+    test! {
+        name: "test bitwise-not operator with UINT8 type",
+        sql: "SELECT ~(CAST(1 AS UINT8)) as v1 FROM Test",
+        expected: Ok(select!(
+            v1
+            U8;
+            254
+        ))
+    };
+    test! {
+        name: "test bitwise-not operator with UINT16 type",
+        sql: "SELECT ~(CAST(1 AS UINT16)) as v1 FROM Test",
+        expected: Ok(select!(
+            v1
+            U16;
+            65534
+        ))
+    };
+    test! {
+        name: "test bitwise-not operator with UINT32 type",
+        sql: "SELECT ~(CAST(1 AS UINT32)) as v1 FROM Test",
+        expected: Ok(select!(
+            v1
+            U32;
+            4294967294
+        ))
+    };
+    test! {
+        name: "test bitwise-not operator with UINT64 type",
+        sql: "SELECT ~(CAST(1 AS UINT64)) as v1 FROM Test",
+        expected: Ok(select!(
+            v1
+            U64;
+            18446744073709551614
+        ))
+    };
+    test! {
+        name: "test bitwise-not operator with UINT128 type",
+        sql: "SELECT ~(CAST(1 AS UINT128)) as v1 FROM Test",
+        expected: Ok(select!(
+            v1
+            U128;
+            340282366920938463463374607431768211454
+        ))
+    };
+    test! {
+        name: "test bitwise-not operator with INT8 type",
+        sql: "SELECT ~(CAST(1 AS INT8)) as v1 FROM Test",
+        expected: Ok(select!(
+            v1
+            I8;
+            -2
+        ))
+    };
+    test! {
+        name: "test bitwise-not operator with INT16 type",
+        sql: "SELECT ~(CAST(1 AS INT16)) as v1 FROM Test",
+        expected: Ok(select!(
+            v1
+            I16;
+            -2
+        ))
+    };
+    test! {
+        name: "test bitwise-not operator with INT32 type",
+        sql: "SELECT ~(CAST(1 AS INT32)) as v1 FROM Test",
+        expected: Ok(select!(
+            v1
+            I32;
+            -2
+        ))
+    };
+    test! {
+        name: "test bitwise-not operator with INT64 type",
+        sql: "SELECT ~1 as v1 FROM Test",
+        expected: Ok(select!(
+            v1
+            I64;
+            -2
+        ))
+    };
+    test! {
+        name: "test bitwise-not operator with INT128 type",
+        sql: "SELECT ~(CAST(1 AS INT128)) as v1 FROM Test",
+        expected: Ok(select!(
+            v1
+            I128;
+            -2
+        ))
+    };
+    test! {
+        name: "test bitwise-not operator with Null",
+        sql: "SELECT ~Null as v1 FROM Test",
+        expected: Ok(select_with_null!(
+            v1;
+            Null
+        ))
+    };
+    test! {
+        name: "test bitwise-not operator with FLOAT64 type",
+        sql: "SELECT ~(5.5) as v4 FROM Test",
+        expected: Err(ValueError::UnaryBitwiseNotOnNonInteger.into())
+    };
+    test! {
+        name: "test bitwise-not operator with FLOAT32 type",
+        sql: "SELECT ~(CAST(5.5 AS FLOAT32)) as v4 FROM Test",
+        expected: Err(ValueError::UnaryBitwiseNotOnNonInteger.into())
+    };
+    test! {
+        name: "test bitwise-not operator with string type",
+        sql: "SELECT ~'error' as v1 FROM Test",
+        expected: Err(ValueError::UnaryBitwiseNotOnNonNumeric.into())
+    };
 });
