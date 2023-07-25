@@ -2,7 +2,7 @@ use {
     super::{EvaluateError, Evaluated},
     crate::{
         ast::{DataType, DateTimeField},
-        data::{Point, Value, ValueError},
+        data::{Key, Point, Value, ValueError},
         result::Result,
     },
     md5::{Digest, Md5},
@@ -501,6 +501,39 @@ pub fn prepend<'a>(expr: Evaluated<'_>, value: Evaluated<'_>) -> Result<Evaluate
     }
 }
 
+pub fn sort<'a>(expr: Evaluated<'_>, order: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let expr: Value = expr.try_into()?;
+    let order: Value = order.try_into()?;
+
+    match expr {
+        Value::List(l) => {
+            let mut l: Vec<(Key, Value)> = l
+                .into_iter()
+                .map(|v| match Key::try_from(&v) {
+                    Ok(key) => Ok((key, v)),
+                    Err(_) => Err(EvaluateError::InvalidSortType),
+                })
+                .collect::<Result<Vec<(Key, Value)>, EvaluateError>>()?;
+
+            let asc = match order {
+                Value::Str(s) => match s.to_uppercase().as_str() {
+                    "ASC" => true,
+                    "DESC" => false,
+                    _ => return Err(EvaluateError::InvalidSortOrder.into()),
+                },
+                _ => return Err(EvaluateError::InvalidSortOrder.into()),
+            };
+
+            l.sort_by(|a, b| if asc { a.0.cmp(&b.0) } else { b.0.cmp(&a.0) });
+
+            Ok(Evaluated::Value(Value::List(
+                l.into_iter().map(|(_, v)| v).collect(),
+            )))
+        }
+        _ => Err(EvaluateError::ListTypeRequired.into()),
+    }
+}
+
 pub fn take<'a>(name: String, expr: Evaluated<'_>, size: Evaluated<'_>) -> Result<Evaluated<'a>> {
     if expr.is_null() || size.is_null() {
         return Ok(Evaluated::Value(Value::Null));
@@ -536,6 +569,14 @@ pub fn is_empty<'a>(expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
     };
 
     Ok(Evaluated::from(Value::Bool(length == 0)))
+}
+
+pub fn values<'a>(expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let expr: Value = expr.try_into()?;
+    match expr {
+        Value::Map(m) => Ok(Evaluated::from(Value::List(m.into_values().collect()))),
+        _ => Err(EvaluateError::MapTypeRequired.into()),
+    }
 }
 
 // --- etc ---

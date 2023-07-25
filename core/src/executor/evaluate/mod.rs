@@ -621,6 +621,14 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let value = eval(value).await?;
             f::prepend(expr, value)
         }
+        Function::Sort { expr, order } => {
+            let expr = eval(expr).await?;
+            let order = match order {
+                Some(o) => eval(o).await?,
+                None => Evaluated::from(Value::Str("ASC".to_owned())),
+            };
+            f::sort(expr, order)
+        }
         Function::Take { expr, size } => {
             let expr = eval(expr).await?;
             let size = eval(size).await?;
@@ -631,5 +639,9 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             f::is_empty(expr)
         }
         Function::Length(expr) => f::length(name, eval(expr).await?),
+        Function::Values(expr) => {
+            let expr = eval(expr).await?;
+            f::values(expr)
+        }
     }
 }

@@ -160,6 +160,10 @@ pub enum Function {
         expr: Expr,
         value: Expr,
     },
+    Sort {
+        expr: Expr,
+        order: Option<Expr>,
+    },
     Prepend {
         expr: Expr,
         value: Expr,
@@ -180,6 +184,7 @@ pub enum Function {
     },
     IsEmpty(Expr),
     Length(Expr),
+    Values(Expr),
 }
 
 impl ToSql for Function {
@@ -379,6 +384,12 @@ impl ToSql for Function {
                     value = value.to_sql()
                 }
             }
+            Function::Sort { expr, order } => match order {
+                None => format!("SORT({})", expr.to_sql()),
+                Some(order) => {
+                    format!("SORT({}, {})", expr.to_sql(), order.to_sql())
+                }
+            },
             Function::Take { expr, size } => {
                 format!("TAKE({}, {})", expr.to_sql(), size.to_sql())
             }
@@ -397,6 +408,7 @@ impl ToSql for Function {
             }
             Function::IsEmpty(e) => format!("IS_EMPTY({})", e.to_sql()),
             Function::Length(e) => format!("LENGTH({})", e.to_sql()),
+            Function::Values(e) => format!("VALUES({})", e.to_sql()),
         }
     }
 }
@@ -1083,6 +1095,24 @@ mod tests {
         );
 
         assert_eq!(
+            r#"SORT("list")"#,
+            &Expr::Function(Box::new(Function::Sort {
+                expr: Expr::Identifier("list".to_owned()),
+                order: None
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"SORT("list", 'ASC')"#,
+            &Expr::Function(Box::new(Function::Sort {
+                expr: Expr::Identifier("list".to_owned()),
+                order: Some(Expr::Literal(AstLiteral::QuotedString("ASC".to_owned())))
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
             r#"TAKE("list", 3)"#,
             &Expr::Function(Box::new(Function::Take {
                 expr: Expr::Identifier("list".to_owned()),
@@ -1146,6 +1176,14 @@ mod tests {
             ))))
             .to_sql()
         );
+
+        assert_eq!(
+            r#"VALUES("map")"#,
+            &Expr::Function(Box::new(Function::Values(Expr::Identifier(
+                "map".to_owned()
+            ))))
+            .to_sql()
+        )
     }
 
     #[test]

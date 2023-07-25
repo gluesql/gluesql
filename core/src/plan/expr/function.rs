@@ -57,7 +57,9 @@ impl Function {
             | Self::Extract { expr, .. }
             | Self::GetX(expr)
             | Self::GetY(expr)
-            | Self::IsEmpty(expr) => Exprs::Single([expr].into_iter()),
+            | Self::IsEmpty(expr)
+            | Self::Sort { expr, order: None }
+            | Self::Values(expr) => Exprs::Single([expr].into_iter()),
             Self::Left { expr, size: expr2 }
             | Self::Right { expr, size: expr2 }
             | Self::Lpad {
@@ -142,6 +144,10 @@ impl Function {
             }
             | Self::Append { expr, value: expr2 }
             | Self::Prepend { expr, value: expr2 }
+            | Self::Sort {
+                expr,
+                order: Some(expr2),
+            }
             | Self::Take { expr, size: expr2 }
             | Self::Point { x: expr, y: expr2 }
             | Self::CalcDistance {
@@ -243,6 +249,7 @@ mod tests {
         test(r#"REVERSE("abcde")"#, &[r#""abcde""#]);
         test(r#"CAST(1 AS BOOLEAN)"#, &["1"]);
         test(r#"IS_EMPTY(col)"#, &["col"]);
+        test(r#"VALUES(col)"#, &["col"]);
 
         test(r#"ABS(1)"#, &["1"]);
         test(r#"ABS(-1)"#, &["-1"]);
