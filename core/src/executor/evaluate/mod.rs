@@ -620,6 +620,11 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let value = eval(value).await?;
             f::prepend(expr, value)
         }
+        Function::Skip { expr, size } => {
+            let expr = eval(expr).await?;
+            let size = eval(size).await?;
+            f::skip(name, expr, size)
+        }
         Function::Sort { expr, order } => {
             let expr = eval(expr).await?;
             let order = match order {
