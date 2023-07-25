@@ -104,7 +104,7 @@ pub enum Function {
     Degrees(Expr),
     Now(),
     Pi(),
-    LastDay (Expr),
+    LastDay(Expr),
     Ltrim {
         expr: Expr,
         chars: Option<Expr>,
@@ -303,10 +303,7 @@ impl ToSql for Function {
             Function::Degrees(e) => format!("DEGREES({})", e.to_sql()),
             Function::Now() => "NOW()".to_owned(),
             Function::Pi() => "PI()".to_owned(),
-            Function::LastDay(expr) => format!(
-                "LAST_DAY({})", 
-                expr.to_sql()
-            ),
+            Function::LastDay(expr) => format!("LAST_DAY({})", expr.to_sql()),
             Function::Ltrim { expr, chars } => match chars {
                 None => format!("LTRIM({})", expr.to_sql()),
                 Some(chars) => format!("LTRIM({}, {})", expr.to_sql(), chars.to_sql()),

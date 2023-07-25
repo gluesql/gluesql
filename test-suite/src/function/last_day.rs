@@ -1,8 +1,4 @@
-use {
-    crate::*,
-    chrono::NaiveDate,
-    gluesql_core::prelude::Value::*,
-};
+use {crate::*, chrono::NaiveDate, gluesql_core::prelude::Value::*};
 
 test_case!(last_day, async move {
     test! {

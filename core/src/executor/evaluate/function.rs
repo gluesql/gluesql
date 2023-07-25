@@ -5,11 +5,11 @@ use {
         data::{Key, Point, Value, ValueError},
         result::Result,
     },
+    chrono::{Datelike, Duration, Months},
     md5::{Digest, Md5},
     rand::{rngs::StdRng, Rng, SeedableRng},
     std::ops::ControlFlow,
     uuid::Uuid,
-    chrono::{Datelike, Duration, Months},
 };
 
 macro_rules! eval_to_str {
@@ -635,19 +635,16 @@ pub fn format<'a>(
     }
 }
 
-pub fn last_day<'a>(
-    name: String,
-    expr: Evaluated<'_>,
-) -> Result<Evaluated<'a>> {
+pub fn last_day<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
     match expr.try_into()? {
         Value::Date(date) => {
             let last_day = calculate_last_day(date);
             Ok(Evaluated::from(Value::Date(last_day)))
-        },
+        }
         Value::Timestamp(timestamp) => {
             let last_day = calculate_last_day(timestamp.date());
             Ok(Evaluated::from(Value::Date(last_day)))
-        },
+        }
         _ => Err(EvaluateError::FunctionRequiresDateOrDateTimeValue(name).into()),
     }
 }
