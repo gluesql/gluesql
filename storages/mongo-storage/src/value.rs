@@ -79,6 +79,7 @@ impl IntoValue for Bson {
     fn into_value2(self, data_type: &DataType) -> Value {
         match (self, data_type) {
             (Bson::Null, _) => Value::Null,
+            (Bson::Double(num), DataType::Float32) => Value::F32(num as f32),
             (Bson::Double(num), _) => Value::F64(num),
             (Bson::String(string), _) => Value::Str(string),
             (Bson::Array(array), _) => {
@@ -329,7 +330,8 @@ impl IntoBson for Value {
                     decimal.serialize(),
                 )))
             }
-            Value::I8(val) => Ok(Bson::Int32(val as i32)),
+            Value::I8(val) => Ok(Bson::Int32(val.into())),
+            Value::F32(val) => Ok(Bson::Double(val.into())),
             // Value::Map(val) => {
             // let bson = val
             //     .into_iter()

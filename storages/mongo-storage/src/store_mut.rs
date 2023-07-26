@@ -5,7 +5,10 @@ use mongodb::{
     Collection,
 };
 
-use crate::value::{into_object_id, BsonType, IntoBson};
+use crate::{
+    store::{B16, B32, B8},
+    value::{into_object_id, BsonType, IntoBson},
+};
 
 use {
     crate::{error::ResultExt, MongoStorage},
@@ -37,9 +40,10 @@ impl StoreMut for MongoStorage {
                         names.push(column_name.clone());
                         let data_type = BsonType::from(&column_def.data_type).into();
                         let maximum = match column_def.data_type {
-                            DataType::Int8 => Some(2_i32.pow(8)),
-                            DataType::Int16 => Some(2_i32.pow(16)),
-                            DataType::Int32 => Some(2_i32.pow(32)),
+                            DataType::Int8 => Some(B8),
+                            DataType::Int16 => Some(B16),
+                            DataType::Int32 => Some(B32),
+                            DataType::Float32 => Some(B32),
                             _ => None,
                         };
                         let bson_type = match column_def.clone().nullable {

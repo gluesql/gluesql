@@ -99,7 +99,7 @@ impl Store for MongoStorage {
                     Some(column_types) => {
                         doc.into_row2(column_types.into_iter().map(|data_type| *data_type))
                     }
-                    None => doc.into_row(),
+                    None => doc.into_row(), // TODO: is nested i8, i16 ok?
                 }
             })
             .collect::<Vec<_>>()
@@ -171,16 +171,14 @@ impl MongoStorage {
                         .as_str()
                         .unwrap();
 
-                    let maximum = value.as_document().unwrap().get_i32("maximum").ok();
+                    let maximum = value.as_document().unwrap().get_i64("maximum").ok();
 
                     let data_type = BsonType::from_str(data_type).unwrap().into();
 
-                    const I16: i32 = 2_i32.pow(16);
-                    const I8: i32 = 2_i32.pow(8);
-
                     let data_type = match (data_type, maximum) {
-                        (DataType::Int32, Some(I16)) => DataType::Int16,
-                        (DataType::Int32, Some(I8)) => DataType::Int8,
+                        (DataType::Int32, Some(B16)) => DataType::Int16,
+                        (DataType::Int32, Some(B8)) => DataType::Int8,
+                        (DataType::Float, Some(B32)) => DataType::Float32,
                         (data_type, _) => data_type,
                     };
 
@@ -232,3 +230,7 @@ impl MongoStorage {
         Ok(schemas)
     }
 }
+
+pub const B16: i64 = 2_i64.pow(16);
+pub const B8: i64 = 2_i64.pow(8);
+pub const B32: i64 = 2_i64.pow(32);
