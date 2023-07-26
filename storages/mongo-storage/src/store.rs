@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use futures::{stream, StreamExt};
+use futures::{stream, Stream, StreamExt, TryStreamExt};
 use gluesql_core::{
     ast::ColumnDef,
     prelude::{DataType, Error},
@@ -29,6 +29,7 @@ impl Store for MongoStorage {
         self.fetch_schemas_iter(Some(table_name))
             .await?
             .next()
+            .await
             .transpose()
     }
 
@@ -36,7 +37,8 @@ impl Store for MongoStorage {
         let mut schemas = self
             .fetch_schemas_iter(None)
             .await?
-            .collect::<Result<Vec<_>>>()?;
+            .try_collect::<Vec<_>>()
+            .await?;
 
         schemas.sort_by(|a, b| a.table_name.cmp(&b.table_name));
 
@@ -118,10 +120,10 @@ impl Store for MongoStorage {
 }
 
 impl MongoStorage {
-    async fn fetch_schemas_iter(
-        &self,
-        table_name: Option<&str>,
-    ) -> Result<impl Iterator<Item = Result<Schema>>> {
+    async fn fetch_schemas_iter<'a>(
+        &'a self,
+        table_name: Option<&'a str>,
+    ) -> Result<impl Stream<Item = Result<Schema>> + 'a> {
         let command = match table_name {
             Some(table_name) => doc! { "listCollections": 1, "filter": { "name": table_name } },
             None => doc! { "listCollections": 1 },
@@ -138,107 +140,107 @@ impl MongoStorage {
             .unwrap()
             .to_owned();
 
-        let schemas = validators_list.into_iter().map(|bson| {
-            let (collection_name, validators) = bson
-                .as_document()
-                .map(|doc| {
-                    let validator = doc
-                        .get_document("options")
-                        .and_then(|doc| doc.get_document("validator"))
-                        .ok();
+        let schemas = stream::iter(validators_list)
+            // .into_iter()
+            .then(move |bson| async move {
+                let (collection_name, validators) = bson
+                    .as_document()
+                    .map(|doc| {
+                        let validator = doc
+                            .get_document("options")
+                            .and_then(|doc| doc.get_document("validator"))
+                            .ok();
 
-                    println!("err7-9");
-                    let collection_name = doc.get_str("name").unwrap();
+                        println!("err7-9");
+                        let collection_name = doc.get_str("name").unwrap();
 
-                    Ok::<_, Error>((collection_name, validator))
-                })
-                .transpose()
-                .unwrap()
-                .map_storage_err(MongoStorageError::TableDoesNotExist)?;
+                        Ok::<_, Error>((collection_name, validator))
+                    })
+                    .transpose()
+                    .unwrap()
+                    .map_storage_err(MongoStorageError::TableDoesNotExist)?;
 
-            println!("validators: {}", validators.unwrap());
+                println!("validators: {}", validators.unwrap());
 
-            // let indexes = self
-            //     .db
-            //     .collection::<Document>(collection_name)
-            //     .list_indexes(None);
+                let collection = self.db.collection::<Document>(collection_name);
 
-            let column_defs = validators
-                .unwrap()
-                .get_document("$jsonSchema")
-                .unwrap()
-                .get_document("properties")
-                .unwrap()
-                .into_iter()
-                .skip(1)
-                .map(|(name, value)| {
-                    let data_type = value
-                        .as_document()
-                        .unwrap()
-                        .get_array("bsonType")
-                        .unwrap()
-                        .get(0)
-                        .unwrap()
-                        .as_str()
-                        .unwrap();
+                let indexes = collection.list_indexes(None).await;
 
-                    let maximum = value.as_document().unwrap().get_i64("maximum").ok();
+                let column_defs = validators
+                    .unwrap()
+                    .get_document("$jsonSchema")
+                    .unwrap()
+                    .get_document("properties")
+                    .unwrap()
+                    .into_iter()
+                    .skip(1)
+                    .map(|(name, value)| {
+                        let data_type = value
+                            .as_document()
+                            .unwrap()
+                            .get_array("bsonType")
+                            .unwrap()
+                            .get(0)
+                            .unwrap()
+                            .as_str()
+                            .unwrap();
 
-                    let data_type = BsonType::from_str(data_type).unwrap().into();
+                        let maximum = value.as_document().unwrap().get_i64("maximum").ok();
 
-                    let data_type = match (data_type, maximum) {
-                        (DataType::Int32, Some(B16)) => DataType::Int16,
-                        (DataType::Int32, Some(B8)) => DataType::Int8,
-                        (DataType::Float, Some(B32)) => DataType::Float32,
-                        (data_type, _) => data_type,
-                    };
+                        let data_type = BsonType::from_str(data_type).unwrap().into();
 
-                    // let data_type = match data_type {
-                    //     "string" => DataType::Text,
-                    //     "int" => DataType::Int,
-                    //     "object" => DataType::Map,
-                    //     "array" => DataType::List,
-                    //     "long" => DataType::Int,
-                    //     "double" => DataType::Float,
-                    //     "bool" => DataType::Boolean,
-                    //     "binData" => DataType::Bytea,
-                    //     "decimal" => DataType::Decimal,
-                    //     v => {
-                    //         println!("v: {}", v);
+                        let data_type = match (data_type, maximum) {
+                            (DataType::Int32, Some(B16)) => DataType::Int16,
+                            (DataType::Int32, Some(B8)) => DataType::Int8,
+                            (DataType::Float, Some(B32)) => DataType::Float32,
+                            (data_type, _) => data_type,
+                        };
 
-                    //         todo!();
-                    //     }
-                    // };
+                        // let data_type = match data_type {
+                        //     "string" => DataType::Text,
+                        //     "int" => DataType::Int,
+                        //     "object" => DataType::Map,
+                        //     "array" => DataType::List,
+                        //     "long" => DataType::Int,
+                        //     "double" => DataType::Float,
+                        //     "bool" => DataType::Boolean,
+                        //     "binData" => DataType::Bytea,
+                        //     "decimal" => DataType::Decimal,
+                        //     v => {
+                        //         println!("v: {}", v);
 
-                    let column_def = ColumnDef {
-                        name: name.to_owned(),
-                        data_type,
-                        nullable: true, // should parse from validator
-                        default: None,  // does not support default value
-                        unique: None,   // by unique index?
-                    };
+                        //         todo!();
+                        //     }
+                        // };
 
-                    Ok(column_def)
-                })
-                .collect::<Result<Vec<ColumnDef>>>()?;
+                        let column_def = ColumnDef {
+                            name: name.to_owned(),
+                            data_type,
+                            nullable: true, // should parse from validator
+                            default: None,  // does not support default value
+                            unique: None,   // by unique index?
+                        };
 
-            let column_defs = match column_defs.len() {
-                0 => None,
-                _ => Some(column_defs),
-            };
+                        Ok(column_def)
+                    })
+                    .collect::<Result<Vec<ColumnDef>>>()?;
+                let column_defs = match column_defs.len() {
+                    0 => None,
+                    _ => Some(column_defs),
+                };
 
-            let schema = Schema {
-                table_name: collection_name.to_owned(),
-                column_defs,
-                indexes: vec![],
-                engine: None,
-            };
+                let schema = Schema {
+                    table_name: collection_name.to_owned(),
+                    column_defs,
+                    indexes: vec![],
+                    engine: None,
+                };
 
-            Ok(schema)
-        });
+                Ok::<_, Error>(schema)
+            });
 
-        println!("fetch_schemas_iter done: {:?}", schemas);
-        Ok(schemas)
+        // println!("fetch_schemas_iter done: {:?}", schemas);
+        Ok(Box::pin(schemas))
     }
 }
 
