@@ -1194,6 +1194,14 @@ mod tests {
             ))))
             .to_sql()
         );
+
+        assert_eq!(
+            r#"VALUES("map")"#,
+            &Expr::Function(Box::new(Function::Values(Expr::Identifier(
+                "map".to_owned()
+            ))))
+            .to_sql()
+        );
     }
 
     #[test]
