@@ -21,6 +21,7 @@ use {gluesql_core::data::Value, gluesql_core::prelude::Result};
 
 pub trait IntoValue {
     fn into_value(self) -> Value;
+    fn into_value2(self, data_type: &DataType) -> Value;
 }
 
 impl IntoValue for Bson {
@@ -67,6 +68,59 @@ impl IntoValue for Bson {
             Bson::MinKey => Value::Null,
             Bson::DbPointer(_) => todo!("Handle DbPointer type"),
             Bson::Decimal128(decimal128) => {
+                let decimal = Decimal::deserialize(decimal128.bytes());
+
+                Value::Decimal(decimal)
+            }
+            _ => todo!(),
+        }
+    }
+
+    fn into_value2(self, data_type: &DataType) -> Value {
+        match (self, data_type) {
+            (Bson::Null, _) => Value::Null,
+            (Bson::Double(num), _) => Value::F64(num),
+            (Bson::String(string), _) => Value::Str(string),
+            (Bson::Array(array), _) => {
+                let values = array.into_iter().map(|bson| bson.into_value()).collect();
+
+                Value::List(values)
+            }
+            (Bson::Document(d), _) => Value::Map(
+                d.into_iter()
+                    .map(|(k, v)| (k.to_string(), v.into_value()))
+                    .collect(),
+            ),
+            (Bson::Boolean(b), _) => Value::Bool(b),
+            (Bson::RegularExpression(regex), _) => {
+                let pattern = regex.pattern.clone();
+                let options = regex.options.clone();
+                Value::Str(format!("/{}/{}", pattern, options))
+            }
+            (Bson::JavaScriptCode(code), _) => Value::Str(code),
+            (Bson::JavaScriptCodeWithScope(code), _) => {
+                // let mut map = Map::new();
+                // for (key, bson) in code.scope {
+                //     map.insert(key, Value::try_from(bson).unwrap());
+                // }
+                // Value::Object(map)
+                todo!();
+            }
+            (Bson::Int32(i), DataType::Int8) => Value::I8(i as i8),
+            (Bson::Int32(i), DataType::Int16) => Value::I16(i as i16),
+            (Bson::Int32(i), _) => Value::I32(i),
+            (Bson::Int64(i), _) => Value::I64(i),
+            // (Bson::Timestamp(ts), _)  => Value::Timestamp(ts.to_string().into()),
+            (Bson::Binary(Binary { bytes, .. }), _) => Value::Bytea(bytes),
+            (Bson::ObjectId(oid), _) => Value::Str(oid.to_hex()),
+            // (Bson::DateTime(dt), _)  => Value::Date(dt),
+            (Bson::Symbol(sym), _) => Value::Str(sym),
+            // (Bson::Decimal128(dec), _)  => Value::Decimal(dec),
+            (Bson::Undefined, _) => Value::Null,
+            (Bson::MaxKey, _) => Value::Null,
+            (Bson::MinKey, _) => Value::Null,
+            (Bson::DbPointer(_), _) => todo!("Handle DbPointer type"),
+            (Bson::Decimal128(decimal128), _) => {
                 let decimal = Decimal::deserialize(decimal128.bytes());
 
                 Value::Decimal(decimal)
@@ -142,22 +196,40 @@ impl From<BsonType> for DataType {
 
 pub trait IntoRow {
     fn into_row(self) -> Result<(Key, DataRow)>;
+    fn into_row2<'a>(
+        self,
+        data_types: impl Iterator<Item = &'a DataType>,
+    ) -> Result<(Key, DataRow)>;
 }
 
 impl IntoRow for Document {
     fn into_row(self) -> Result<(Key, DataRow)> {
-        // let doc = self.map_storage_err()?;
-
-        println!("err11");
         let key = self.get_object_id("_id").map_storage_err()?;
         let key_bytes = key.bytes().to_vec();
-        // let key_u8 = u8::from_be_bytes(key_bytes[..1].try_into().unwrap()); // TODO: should be string?
         let key = Key::Bytea(key_bytes);
 
         let row = self
             .into_iter()
             .skip(1)
             .map(|(_, bson)| bson.into_value())
+            .collect::<Vec<_>>();
+
+        Ok((key, DataRow::Vec(row)))
+    }
+
+    fn into_row2<'a>(
+        self,
+        data_types: impl Iterator<Item = &'a DataType>,
+    ) -> Result<(Key, DataRow)> {
+        let key = self.get_object_id("_id").map_storage_err()?;
+        let key_bytes = key.bytes().to_vec();
+        let key = Key::Bytea(key_bytes);
+
+        let row = self
+            .into_iter()
+            .skip(1)
+            .zip(data_types)
+            .map(|((_, bson), data_type)| bson.into_value2(data_type))
             .collect::<Vec<_>>();
 
         Ok((key, DataRow::Vec(row)))
@@ -257,6 +329,7 @@ impl IntoBson for Value {
                     decimal.serialize(),
                 )))
             }
+            Value::I8(val) => Ok(Bson::Int32(val as i32)),
             // Value::Map(val) => {
             // let bson = val
             //     .into_iter()
@@ -266,7 +339,10 @@ impl IntoBson for Value {
             // let doc = doc! { bson };
             // Ok(Bson::Document(doc))
             // }
-            _ => todo!(),
+            _ => {
+                println!("value: {:?}", self);
+                todo!()
+            }
         }
     }
 }

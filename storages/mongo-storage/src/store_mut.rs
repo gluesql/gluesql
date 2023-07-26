@@ -1,4 +1,4 @@
-use gluesql_core::store::Store;
+use gluesql_core::{prelude::DataType, store::Store};
 use mongodb::{
     bson::{self, bson, doc, Bson, Document},
     options::{CreateCollectionOptions, UpdateOptions},
@@ -35,17 +35,32 @@ impl StoreMut for MongoStorage {
                     |(mut names, mut column_types), column_def| {
                         let column_name = column_def.name.clone();
                         names.push(column_name.clone());
+                        let data_type = BsonType::from(&column_def.data_type).into();
+                        let maximum = match column_def.data_type {
+                            DataType::Int8 => Some(2_i32.pow(8)),
+                            DataType::Int16 => Some(2_i32.pow(16)),
+                            DataType::Int32 => Some(2_i32.pow(32)),
+                            _ => None,
+                        };
                         let bson_type = match column_def.clone().nullable {
-                            true => vec![BsonType::from(&column_def.data_type).into(), "null"],
-                            false => {
-                                vec![BsonType::from(&column_def.data_type).into()]
-                            }
+                            true => vec![data_type, "null"],
+                            false => vec![data_type],
                         };
+
+                        let mut property = doc! {
+                            "bsonType": bson_type,
+                        };
+
+                        if let Some(maximum) = maximum {
+                            property.extend(doc! {
+                                "maximum": maximum,
+                            });
+                        }
+
                         let column_type = doc! {
-                            column_name: {
-                                "bsonType": bson_type,
-                            },
+                            column_name: property,
                         };
+
                         column_types.extend(column_type);
 
                         (names, column_types)

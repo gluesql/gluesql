@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use futures::StreamExt;
+use futures::{stream, StreamExt};
 use gluesql_core::{
     ast::ColumnDef,
     prelude::{DataType, Error},
@@ -50,6 +50,9 @@ impl Store for MongoStorage {
             .map_storage_err()?;
 
         println!("err2");
+
+        // if column_defs.is_some() => zip values with column_defs
+
         cursor
             .next()
             .await
@@ -78,14 +81,32 @@ impl Store for MongoStorage {
             .await
             .map_storage_err()?;
 
-        let row_iter = cursor.map(|doc| {
-            println!("err4");
-            let doc = doc.map_storage_err()?;
-
-            doc.into_row()
+        let schema = self.fetch_schema(table_name).await?;
+        let column_types = schema.as_ref().and_then(|schema| {
+            schema.column_defs.as_ref().map(|column_defs| {
+                column_defs
+                    .iter()
+                    .map(|column_def| &column_def.data_type)
+                    .collect::<Vec<_>>()
+            })
         });
 
-        let row_iter = row_iter.collect::<Vec<_>>().await.into_iter();
+        let row_iter = cursor
+            .map(|doc| {
+                let doc = doc.map_storage_err()?;
+
+                match &column_types {
+                    Some(column_types) => {
+                        doc.into_row2(column_types.into_iter().map(|data_type| *data_type))
+                    }
+                    None => doc.into_row(),
+                }
+            })
+            .collect::<Vec<_>>()
+            .await
+            .into_iter();
+
+        // let row_iter = row_iter.collect::<Vec<_>>().await.into_iter(); // TODO: should return Stream
 
         Ok(Box::new(row_iter))
     }
@@ -150,7 +171,18 @@ impl MongoStorage {
                         .as_str()
                         .unwrap();
 
+                    let maximum = value.as_document().unwrap().get_i32("maximum").ok();
+
                     let data_type = BsonType::from_str(data_type).unwrap().into();
+
+                    const I16: i32 = 2_i32.pow(16);
+                    const I8: i32 = 2_i32.pow(8);
+
+                    let data_type = match (data_type, maximum) {
+                        (DataType::Int32, Some(I16)) => DataType::Int16,
+                        (DataType::Int32, Some(I8)) => DataType::Int8,
+                        (data_type, _) => data_type,
+                    };
 
                     // let data_type = match data_type {
                     //     "string" => DataType::Text,
