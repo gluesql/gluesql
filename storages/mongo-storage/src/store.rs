@@ -33,9 +33,14 @@ impl Store for MongoStorage {
     }
 
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
-        self.fetch_schemas_iter(None)
+        let mut schemas = self
+            .fetch_schemas_iter(None)
             .await?
-            .collect::<Result<Vec<_>>>()
+            .collect::<Result<Vec<_>>>()?;
+
+        schemas.sort_by(|a, b| a.table_name.cmp(&b.table_name));
+
+        Ok(schemas)
     }
 
     async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<DataRow>> {
@@ -152,6 +157,12 @@ impl MongoStorage {
                 .map_storage_err(MongoStorageError::TableDoesNotExist)?;
 
             println!("validators: {}", validators.unwrap());
+
+            // let indexes = self
+            //     .db
+            //     .collection::<Document>(collection_name)
+            //     .list_indexes(None);
+
             let column_defs = validators
                 .unwrap()
                 .get_document("$jsonSchema")

@@ -1,7 +1,7 @@
-use gluesql_core::{prelude::DataType, store::Store};
+use gluesql_core::{ast::ColumnUniqueOption, prelude::DataType, store::Store};
 use mongodb::{
     bson::{self, bson, doc, Bson, Document},
-    options::{CreateCollectionOptions, UpdateOptions},
+    options::{CreateCollectionOptions, IndexOptions, UpdateOptions},
     Collection,
 };
 
@@ -29,13 +29,13 @@ use {
 #[async_trait(?Send)]
 impl StoreMut for MongoStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
-        let (names, column_types) = schema
+        let (names, column_types, indexes) = schema
             .column_defs
             .as_ref()
             .map(|column_defs| {
                 column_defs.iter().fold(
-                    (vec![], doc! {}),
-                    |(mut names, mut column_types), column_def| {
+                    (vec![], doc! {}, doc! {}),
+                    |(mut names, mut column_types, mut indexes), column_def| {
                         let column_name = column_def.name.clone();
                         names.push(column_name.clone());
                         let data_type = BsonType::from(&column_def.data_type).into();
@@ -46,10 +46,24 @@ impl StoreMut for MongoStorage {
                             DataType::Float32 => Some(B32),
                             _ => None,
                         };
-                        let bson_type = match column_def.clone().nullable {
+
+                        let mut bson_type = match column_def.clone().nullable {
                             true => vec![data_type, "null"],
                             false => vec![data_type],
                         };
+
+                        match &column_def.unique {
+                            Some(ColumnUniqueOption { is_primary }) => {
+                                indexes.extend(doc! {
+                                    column_name.clone(): 1,
+                                });
+
+                                if *is_primary {
+                                    bson_type = vec![data_type, "null"]
+                                }
+                            }
+                            None => {}
+                        }
 
                         let mut property = doc! {
                             "bsonType": bson_type,
@@ -67,7 +81,7 @@ impl StoreMut for MongoStorage {
 
                         column_types.extend(column_type);
 
-                        (names, column_types)
+                        (names, column_types, indexes)
                     },
                 )
                 // [(name1, type1), (name2, type2), ..]
@@ -99,6 +113,23 @@ impl StoreMut for MongoStorage {
         self.db
             .create_collection(&schema.table_name, option)
             .await
+            .map_storage_err()?;
+
+        if indexes.is_empty() {
+            return Ok(());
+        }
+
+        let index_options = IndexOptions::builder().unique(true).build();
+        let indexes = mongodb::IndexModel::builder()
+            .keys(indexes)
+            .options(index_options)
+            .build();
+
+        self.db
+            .collection::<Document>(&schema.table_name)
+            .create_indexes(vec![indexes], None)
+            .await
+            .map(|_| ())
             .map_storage_err()
     }
 
