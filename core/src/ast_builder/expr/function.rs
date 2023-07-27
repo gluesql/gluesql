@@ -1626,6 +1626,10 @@ mod tests {
 
     #[test]
     fn function_is_empty() {
+        let actual = col("list").is_empty();
+        let expected = "IS_EMPTY(list)";
+        test_expr(actual, expected);
+
         let actual = is_empty(col("list"));
         let expected = "IS_EMPTY(list)";
         test_expr(actual, expected);
