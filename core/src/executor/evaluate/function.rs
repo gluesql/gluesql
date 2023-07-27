@@ -794,3 +794,16 @@ pub fn length<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
         _ => Err(EvaluateError::FunctionRequiresStrOrListOrMapValue(name).into()),
     }
 }
+
+pub fn entries<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    match expr.try_into()? {
+        Value::Map(expr) => {
+            let entries = expr
+                .into_iter()
+                .map(|(k, v)| Value::List(vec![Value::Str(k), v]))
+                .collect::<Vec<_>>();
+            Ok(Evaluated::from(Value::List(entries)))
+        }
+        _ => Err(EvaluateError::FunctionRequiresMapValue(name).into()),
+    }
+}

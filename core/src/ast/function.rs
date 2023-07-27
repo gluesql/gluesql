@@ -64,6 +64,7 @@ pub enum Function {
         filter_chars: Option<Expr>,
         trim_where_field: Option<TrimWhereField>,
     },
+    Entries(Expr),
     Exp(Expr),
     Extract {
         field: DateTimeField,
@@ -416,6 +417,7 @@ impl ToSql for Function {
             Function::IsEmpty(e) => format!("IS_EMPTY({})", e.to_sql()),
             Function::Length(e) => format!("LENGTH({})", e.to_sql()),
             Function::Values(e) => format!("VALUES({})", e.to_sql()),
+            Function::Entries(e) => format!("ENTRIES({})", e.to_sql()),
         }
     }
 }
@@ -1199,7 +1201,15 @@ mod tests {
                 "map".to_owned()
             ))))
             .to_sql()
-        )
+        );
+
+        assert_eq!(
+            r#"ENTRIES("map")"#,
+            &Expr::Function(Box::new(Function::Entries(Expr::Identifier(
+                "map".to_owned()
+            ))))
+            .to_sql()
+        );
     }
 
     #[test]
