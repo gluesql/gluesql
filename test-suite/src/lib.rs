@@ -3,6 +3,7 @@
 pub mod aggregate;
 pub mod alter;
 pub mod arithmetic;
+pub mod array;
 pub mod ast_builder;
 pub mod basic;
 pub mod bitwise_and;
@@ -42,7 +43,6 @@ pub mod unary_operator;
 pub mod update;
 pub mod validate;
 pub mod values;
-pub mod array;
 
 pub mod tester;
 

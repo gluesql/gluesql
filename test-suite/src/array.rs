@@ -35,7 +35,7 @@ CREATE TABLE Test (
         sql: "INSERT INTO Test VALUES(5,'DOE', ['Jhon']);",
         expected: Ok(Payload::Insert(1))
     };
-    
+
     test! {
         sql: "INSERT INTO Test (surname, name) VALUES ('DOE', ['Jane']);",
         expected: Ok(Payload::Insert(1))
@@ -85,7 +85,6 @@ CREATE TABLE Test (
             I64(1)   Null                       List(vec![Str("GlueSQL".to_owned())].to_owned())
         ))
     };
-
 
     run!("DELETE FROM Item");
     run!("DELETE FROM Target");
