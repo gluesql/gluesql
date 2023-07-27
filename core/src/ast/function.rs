@@ -988,6 +988,14 @@ mod tests {
         );
 
         assert_eq!(
+            "LAST_DAY('2022-10-12')",
+            &Expr::Function(Box::new(Function::LastDay(Expr::Literal(
+                AstLiteral::QuotedString("2022-10-12".to_owned())
+            ))))
+            .to_sql()
+        );
+
+        assert_eq!(
             "TO_DATE('2022-10-12', '%Y-%m-%d')",
             &Expr::Function(Box::new(Function::ToDate {
                 expr: Expr::Literal(AstLiteral::QuotedString("2022-10-12".to_owned())),
@@ -1185,7 +1193,7 @@ mod tests {
                 "map".to_owned()
             ))))
             .to_sql()
-        )
+        );
     }
 
     #[test]
