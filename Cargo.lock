@@ -1221,6 +1221,7 @@ name = "gluesql-parquet-storage"
 version = "0.14.0"
 dependencies = [
  "async-trait",
+ "byteorder",
  "futures",
  "gluesql-core",
  "gluesql-test-suite",
@@ -1229,7 +1230,6 @@ dependencies = [
  "hex",
  "parquet",
  "serde",
- "serde_json",
  "thiserror",
  "tokio",
  "uuid",
