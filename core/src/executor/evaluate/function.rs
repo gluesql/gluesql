@@ -636,21 +636,15 @@ pub fn format<'a>(
 }
 
 pub fn last_day<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    match expr.try_into()? {
-        Value::Date(date) => {
-            let last_day = calculate_last_day(date);
-            Ok(Evaluated::from(Value::Date(last_day)))
-        }
-        Value::Timestamp(timestamp) => {
-            let last_day = calculate_last_day(timestamp.date());
-            Ok(Evaluated::from(Value::Date(last_day)))
-        }
-        _ => Err(EvaluateError::FunctionRequiresDateOrDateTimeValue(name).into()),
-    }
-}
+    let date = match expr.try_into()? {
+        Value::Date(date) => date,
+        Value::Timestamp(timestamp) => timestamp.date(),
+        _ => return Err(EvaluateError::FunctionRequiresDateOrDateTimeValue(name).into()),
+    };
 
-fn calculate_last_day(date: chrono::NaiveDate) -> chrono::NaiveDate {
-    date + Months::new(1) - Duration::days(date.day() as i64)
+    Ok(Evaluated::from(Value::Date(
+        date + Months::new(1) - Duration::days(date.day() as i64),
+    )))
 }
 
 pub fn to_date<'a>(
