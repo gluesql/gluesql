@@ -134,6 +134,7 @@ macro_rules! generate_store_tests {
         glue!(function_exp, function::exp_log::exp);
         glue!(function_now, function::now::now);
         glue!(function_sign, function::sign::sign);
+        glue!(function_skip, function::skip::skip);
         glue!(function_to_date, function::to_date::to_date);
         glue!(function_ascii, function::ascii::ascii);
         glue!(function_chr, function::chr::chr);
@@ -148,6 +149,7 @@ macro_rules! generate_store_tests {
             function_geometry_calc_distance,
             function::geometry::calc_distance
         );
+        glue!(function_entries, function::entries::entries);
         glue!(join, join::join);
         glue!(join_project, join::project);
         glue!(migrate, migrate::migrate);

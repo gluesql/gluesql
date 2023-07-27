@@ -129,6 +129,9 @@ pub enum EvaluateError {
     #[error("unsupported evaluate string unary factorial: {0}")]
     UnsupportedUnaryFactorial(String),
 
+    #[error("incompatible bit operation ~{0}")]
+    IncompatibleUnaryBitwiseNotOperation(String),
+
     #[error("unsupported custom function in subqueries")]
     UnsupportedCustomFunction,
 
