@@ -3,7 +3,7 @@ use {
     crate::{
         ast::{DataType, DateTimeField},
         data::{Key, Point, Value, ValueError},
-        result::Result,
+        result::{Error, Result},
     },
     md5::{Digest, Md5},
     rand::{rngs::StdRng, Rng, SeedableRng},
@@ -452,26 +452,42 @@ pub fn gcd<'a>(name: String, left: Evaluated<'_>, right: Evaluated<'_>) -> Resul
     let left = eval_to_int!(name, left);
     let right = eval_to_int!(name, right);
 
-    Ok(Evaluated::from(Value::I64(gcd_i64(left, right))))
+    Ok(Evaluated::from(Value::I64(gcd_i64(left, right)?)))
 }
 
 pub fn lcm<'a>(name: String, left: Evaluated<'_>, right: Evaluated<'_>) -> Result<Evaluated<'a>> {
     let left = eval_to_int!(name, left);
     let right = eval_to_int!(name, right);
 
-    fn lcm(a: i64, b: i64) -> i64 {
-        a * b / gcd_i64(a, b)
+    fn lcm(a: i64, b: i64) -> Result<i64> {
+        let gcd_val: i128 = gcd_i64(a, b)?.into();
+
+        let a: i128 = a.into();
+        let b: i128 = b.into();
+
+        // lcm(a, b) = abs(a * b) / gcd(a, b)   if gcd(a, b) != 0
+        // lcm(a, b) = 0                        if gcd(a, b) == 0
+        let result = (a * b).abs().checked_div(gcd_val).unwrap_or(0);
+
+        i64::try_from(result).map_err(|_| Error::Value(ValueError::LcmResultOutOfRange))
     }
 
-    Ok(Evaluated::from(Value::I64(lcm(left, right))))
+    Ok(Evaluated::from(Value::I64(lcm(left, right)?)))
 }
 
-fn gcd_i64(a: i64, b: i64) -> i64 {
-    if b == 0 {
-        a
-    } else {
-        gcd_i64(b, a % b)
+fn gcd_i64(a: i64, b: i64) -> Result<i64> {
+    let mut a = a
+        .checked_abs()
+        .ok_or(Error::Value(ValueError::GcdLcmOverflow(a)))?;
+    let mut b = b
+        .checked_abs()
+        .ok_or(Error::Value(ValueError::GcdLcmOverflow(b)))?;
+
+    while b > 0 {
+        (a, b) = (b, a % b);
     }
+
+    Ok(a)
 }
 
 // --- list ---
