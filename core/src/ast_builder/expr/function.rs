@@ -158,8 +158,8 @@ pub enum FunctionNode<'a> {
         geometry1: ExprNode<'a>,
         geometry2: ExprNode<'a>,
     },
-    IsEmpty(ExprNode<'a>),
     Length(ExprNode<'a>),
+    IsEmpty(ExprNode<'a>),
 }
 
 impl<'a> TryFrom<FunctionNode<'a>> for Function {
@@ -365,8 +365,8 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
                     geometry2,
                 })
             }
-            FunctionNode::IsEmpty(expr) => expr.try_into().map(Function::IsEmpty),
             FunctionNode::Length(expr) => expr.try_into().map(Function::Length),
+            FunctionNode::IsEmpty(expr) => expr.try_into().map(Function::IsEmpty),
         }
     }
 }
@@ -526,6 +526,9 @@ impl<'a> ExprNode<'a> {
     }
     pub fn extract(self, field: DateTimeField) -> ExprNode<'a> {
         extract(field, self)
+    }
+    pub fn is_empty(self) -> ExprNode<'a> {
+        is_empty(self)
     }
 }
 
@@ -884,12 +887,12 @@ pub fn calc_distance<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
     }))
 }
 
-pub fn is_empty<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
-    ExprNode::Function(Box::new(FunctionNode::IsEmpty(expr.into())))
-}
-
 pub fn length<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Length(expr.into())))
+}
+
+pub fn is_empty<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::IsEmpty(expr.into())))
 }
 
 #[cfg(test)]
