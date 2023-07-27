@@ -49,6 +49,10 @@ pub enum FunctionNode<'a> {
         power: ExprNode<'a>,
     },
     Sqrt(ExprNode<'a>),
+    Skip {
+        expr: ExprNode<'a>,
+        size: ExprNode<'a>,
+    },
     Gcd {
         left: ExprNode<'a>,
         right: ExprNode<'a>,
@@ -211,6 +215,11 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
                 Ok(Function::Power { expr, power })
             }
             FunctionNode::Sqrt(expr_node) => expr_node.try_into().map(Function::Sqrt),
+            FunctionNode::Skip { expr, size } => {
+                let expr = expr.try_into()?;
+                let size = size.try_into()?;
+                Ok(Function::Skip { expr, size })
+            }
             FunctionNode::Gcd { left, right } => {
                 let left = left.try_into()?;
                 let right = right.try_into()?;
@@ -433,6 +442,10 @@ impl<'a> ExprNode<'a> {
         sign(self)
     }
 
+    pub fn skip<T: Into<ExprNode<'a>>>(self, size: T) -> ExprNode<'a> {
+        skip(self, size)
+    }
+
     pub fn power<T: Into<ExprNode<'a>>>(self, pwr: T) -> ExprNode<'a> {
         power(self, pwr)
     }
@@ -619,6 +632,13 @@ pub fn reverse<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
 
 pub fn sign<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Sign(expr.into())))
+}
+
+pub fn skip<'a, T: Into<ExprNode<'a>>, V: Into<ExprNode<'a>>>(expr: T, size: V) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Skip {
+        expr: expr.into(),
+        size: size.into(),
+    }))
 }
 
 pub fn power<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(expr: T, power: U) -> ExprNode<'a> {
@@ -875,8 +895,8 @@ mod tests {
             cos, date, degrees, divide, exp, expr, extract, find_idx, floor, format, gcd,
             generate_uuid, get_x, get_y, ifnull, initcap, lcm, left, length, ln, log, log10, log2,
             lower, lpad, ltrim, md5, modulo, now, num, pi, point, position, power, radians, rand,
-            repeat, replace, reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr, tan,
-            test_expr, text, time, timestamp, to_date, to_time, to_timestamp, upper,
+            repeat, replace, reverse, right, round, rpad, rtrim, sign, sin, skip, sqrt, substr,
+            tan, test_expr, text, time, timestamp, to_date, to_time, to_timestamp, upper,
         },
         prelude::DataType,
     };
@@ -1124,6 +1144,18 @@ mod tests {
         let expected = "SIGN(id)";
         test_expr(actual, expected);
     }
+
+    #[test]
+    fn function_skip() {
+        let actual = skip(col("list"), num(2));
+        let expected = "SKIP(list,2)";
+        test_expr(actual, expected);
+
+        let actual = expr("list").skip(num(2));
+        let expected = "SKIP(list,2)";
+        test_expr(actual, expected);
+    }
+
     #[test]
     fn function_power() {
         let actual = power(num(2), num(4));
