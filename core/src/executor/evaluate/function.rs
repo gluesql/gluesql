@@ -469,7 +469,7 @@ pub fn lcm<'a>(name: String, left: Evaluated<'_>, right: Evaluated<'_>) -> Resul
         // lcm(a, b) = 0                        if gcd(a, b) == 0
         let result = (a * b).abs().checked_div(gcd_val).unwrap_or(0);
 
-        TryInto::<i64>::try_into(result).map_err(|_| Error::Value(ValueError::LcmResultOutOfRange))
+        i64::try_from(result).map_err(|_| Error::Value(ValueError::LcmResultOutOfRange))
     }
 
     Ok(Evaluated::from(Value::I64(lcm(left, right)?)))
