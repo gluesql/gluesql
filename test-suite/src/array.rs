@@ -55,12 +55,12 @@ CREATE TABLE Test (
         sql: "SELECT * FROM Test;",
         expected: Ok(select_with_null!(
             id     | surname                  | name;
-            I64(1)   Str("CHO".to_owned())      List(vec![Str("Seongbin".to_owned()),Str("Bernie".to_owned())].to_owned());
-            I64(3)   Str("CHO".to_owned())      List(vec![Str("Seongbin".to_owned()),Str("Bernie".to_owned()),Str("Chobobdev".to_owned())].to_owned());
-            I64(2)   Str("CHO".to_owned())      List(vec![Str("devgony".to_owned()),Str("Henry".to_owned())].to_owned());
-            I64(5)   Str("DOE".to_owned())      List(vec![Str("Jhon".to_owned())].to_owned());
-            I64(1)   Str("DOE".to_owned())      List(vec![Str("Jane".to_owned())].to_owned());
-            I64(1)   Null                       List(vec![Str("GlueSQL".to_owned())].to_owned())
+            I64(1)   Str("CHO".to_owned())      List(vec![Str("Seongbin".to_owned()),Str("Bernie".to_owned())]);
+            I64(3)   Str("CHO".to_owned())      List(vec![Str("Seongbin".to_owned()),Str("Bernie".to_owned()),Str("Chobobdev".to_owned())]);
+            I64(2)   Str("CHO".to_owned())      List(vec![Str("devgony".to_owned()),Str("Henry".to_owned())]);
+            I64(5)   Str("DOE".to_owned())      List(vec![Str("Jhon".to_owned())]);
+            I64(1)   Str("DOE".to_owned())      List(vec![Str("Jane".to_owned())]);
+            I64(1)   Null                       List(vec![Str("GlueSQL".to_owned())])
         ))
     };
 
@@ -77,12 +77,12 @@ CREATE TABLE Test (
         sql: "SELECT * FROM Target;",
         expected: Ok(select_with_null!(
             id     | surname                  | name;
-            I64(1)   Str("CHO".to_owned())      List(vec![Str("Seongbin".to_owned()),Str("Bernie".to_owned())].to_owned());
-            I64(3)   Str("CHO".to_owned())      List(vec![Str("Seongbin".to_owned()),Str("Bernie".to_owned()),Str("Chobobdev".to_owned())].to_owned());
-            I64(2)   Str("CHO".to_owned())      List(vec![Str("devgony".to_owned()),Str("Henry".to_owned())].to_owned());
-            I64(5)   Str("DOE".to_owned())      List(vec![Str("Jhon".to_owned())].to_owned());
-            I64(1)   Str("DOE".to_owned())      List(vec![Str("Jane".to_owned())].to_owned());
-            I64(1)   Null                       List(vec![Str("GlueSQL".to_owned())].to_owned())
+            I64(1)   Str("CHO".to_owned())      List(vec![Str("Seongbin".to_owned()),Str("Bernie".to_owned())]);
+            I64(3)   Str("CHO".to_owned())      List(vec![Str("Seongbin".to_owned()),Str("Bernie".to_owned()),Str("Chobobdev".to_owned())]);
+            I64(2)   Str("CHO".to_owned())      List(vec![Str("devgony".to_owned()),Str("Henry".to_owned())]);
+            I64(5)   Str("DOE".to_owned())      List(vec![Str("Jhon".to_owned())]);
+            I64(1)   Str("DOE".to_owned())      List(vec![Str("Jane".to_owned())]);
+            I64(1)   Null                       List(vec![Str("GlueSQL".to_owned())])
         ))
     };
 
