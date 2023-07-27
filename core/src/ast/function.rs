@@ -998,12 +998,10 @@ mod tests {
 
         assert_eq!(
             "LAST_DAY(DATE '2022-10-12')",
-            &Expr::Function(Box::new(Function::LastDay(
-                Expr::TypedString {
-                    data_type: DataType::Date,
-                    value: "2022-10-12".to_owned()
-                }
-            )))
+            &Expr::Function(Box::new(Function::LastDay(Expr::TypedString {
+                data_type: DataType::Date,
+                value: "2022-10-12".to_owned()
+            })))
             .to_sql()
         );
 

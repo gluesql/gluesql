@@ -12,7 +12,7 @@ test_case!(last_day, async move {
         );"
     );
 
-    run!("INSERT INTO LastDay (id, date) VALUES (1, LAST_DAY(date '2017-12-15'));");
+    run!("INSERT INTO LastDay (id, date) VALUES (1, LAST_DAY(DATE '2017-12-15'));");
     test! {
         name: "Should insert the last day of the month that a given date belongs to",
         sql: "SELECT date FROM LastDay WHERE id = 1;",
@@ -23,7 +23,7 @@ test_case!(last_day, async move {
         ))
     };
 
-    run!("INSERT INTO LastDay (id, date) VALUES (2, date '2017-01-01');");
+    run!("INSERT INTO LastDay (id, date) VALUES (2, DATE '2017-01-01');");
     test! {
         name: "Should return the last day of the month that a retrieved date belongs to",
         sql: "SELECT LAST_DAY(date) as date FROM LastDay WHERE id = 2;",
@@ -34,7 +34,7 @@ test_case!(last_day, async move {
         ))
     };
 
-    run!("INSERT INTO LastDay (id, date) VALUES (3, LAST_DAY(timestamp '2017-12-15 12:12:20'));");
+    run!("INSERT INTO LastDay (id, date) VALUES (3, LAST_DAY(TIMESTAMP '2017-12-15 12:12:20'));");
     test! {
         name: "Should insert the last day of the month that a given timestamp belongs to",
         sql: "SELECT date FROM LastDay WHERE id = 3;",
@@ -45,7 +45,7 @@ test_case!(last_day, async move {
         ))
     };
 
-    run!("INSERT INTO LastDay (id, timestamp) VALUES (4, timestamp '2017-01-01 12:12:20');");
+    run!("INSERT INTO LastDay (id, timestamp) VALUES (4, TIMESTAMP '2017-01-01 12:12:20');");
     test! {
         name: "Should return the last day of the month that a retrieved timestamp belongs to",
         sql: "SELECT LAST_DAY(timestamp) as date FROM LastDay WHERE id = 4;",
