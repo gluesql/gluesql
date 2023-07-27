@@ -159,6 +159,7 @@ pub enum FunctionNode<'a> {
         geometry2: ExprNode<'a>,
     },
     Length(ExprNode<'a>),
+    IsEmpty(ExprNode<'a>),
 }
 
 impl<'a> TryFrom<FunctionNode<'a>> for Function {
@@ -365,6 +366,7 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
                 })
             }
             FunctionNode::Length(expr) => expr.try_into().map(Function::Length),
+            FunctionNode::IsEmpty(expr) => expr.try_into().map(Function::IsEmpty),
         }
     }
 }
@@ -524,6 +526,9 @@ impl<'a> ExprNode<'a> {
     }
     pub fn extract(self, field: DateTimeField) -> ExprNode<'a> {
         extract(field, self)
+    }
+    pub fn is_empty(self) -> ExprNode<'a> {
+        is_empty(self)
     }
 }
 
@@ -886,6 +891,10 @@ pub fn length<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Length(expr.into())))
 }
 
+pub fn is_empty<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::IsEmpty(expr.into())))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
@@ -893,10 +902,11 @@ mod tests {
         ast_builder::{
             abs, acos, ascii, asin, atan, calc_distance, cast, ceil, chr, col, concat, concat_ws,
             cos, date, degrees, divide, exp, expr, extract, find_idx, floor, format, gcd,
-            generate_uuid, get_x, get_y, ifnull, initcap, lcm, left, length, ln, log, log10, log2,
-            lower, lpad, ltrim, md5, modulo, now, num, pi, point, position, power, radians, rand,
-            repeat, replace, reverse, right, round, rpad, rtrim, sign, sin, skip, sqrt, substr,
-            tan, test_expr, text, time, timestamp, to_date, to_time, to_timestamp, upper,
+            generate_uuid, get_x, get_y, ifnull, initcap, is_empty, lcm, left, length, ln, log,
+            log10, log2, lower, lpad, ltrim, md5, modulo, now, num, pi, point, position, power,
+            radians, rand, repeat, replace, reverse, right, round, rpad, rtrim, sign, sin, skip,
+            sqrt, substr, tan, test_expr, text, time, timestamp, to_date, to_time, to_timestamp,
+            upper,
         },
         prelude::DataType,
     };
@@ -1611,6 +1621,17 @@ mod tests {
     fn function_length() {
         let actual = length(text("GlueSQL"));
         let expected = "LENGTH('GlueSQL')";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_is_empty() {
+        let actual = col("list").is_empty();
+        let expected = "IS_EMPTY(list)";
+        test_expr(actual, expected);
+
+        let actual = is_empty(col("list"));
+        let expected = "IS_EMPTY(list)";
         test_expr(actual, expected);
     }
 }
