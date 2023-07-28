@@ -1,6 +1,8 @@
+use std::fs::remove_dir_all;
+
 use {
     async_trait::async_trait, gluesql_core::prelude::Glue, gluesql_parquet_storage::ParquetStorage,
-    std::fs::remove_dir_all, test_suite::*,
+    test_suite::*,
 };
 
 struct ParquetTester {
@@ -10,7 +12,12 @@ struct ParquetTester {
 #[async_trait(?Send)]
 impl Tester<ParquetStorage> for ParquetTester {
     async fn new(namespace: &str) -> Self {
-        let storage = ParquetStorage::new(Some(namespace.to_owned())).await.unwrap();
+        let path: String = format!("tmp/{namespace}");
+
+        if let Err(e) = remove_dir_all(&path) {
+            println!("fs::remove_file {:?}", e);
+        }
+        let storage = ParquetStorage::new(&path).expect("ParquetStorage::new");
         let glue = Glue::new(storage);
 
         ParquetTester { glue }
