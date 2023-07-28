@@ -164,6 +164,11 @@ pub enum Function {
         expr: Expr,
         order: Option<Expr>,
     },
+    Slice {
+        expr : Expr,
+        start : Expr,
+        length : Expr,
+    },
     Prepend {
         expr: Expr,
         value: Expr,
@@ -389,6 +394,9 @@ impl ToSql for Function {
                     format!("SORT({}, {})", expr.to_sql(), order.to_sql())
                 }
             },
+            Function::Slice { expr, start, length } => {
+                format!("SLICE({}, {}, {})", expr.to_sql(), start.to_sql(), length.to_sql())
+            }
             Function::Take { expr, size } => {
                 format!("TAKE({}, {})", expr.to_sql(), size.to_sql())
             }

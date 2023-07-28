@@ -173,6 +173,7 @@ impl Function {
                 old: expr2,
                 new: expr3,
             }
+            | Self::Slice { expr, start: expr2, length: expr3 }
             | Self::FindIdx {
                 from_expr: expr,
                 sub_expr: expr2,

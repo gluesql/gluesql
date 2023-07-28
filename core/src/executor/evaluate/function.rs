@@ -534,6 +534,38 @@ pub fn sort<'a>(expr: Evaluated<'_>, order: Evaluated<'_>) -> Result<Evaluated<'
     }
 }
 
+pub fn slice<'a>(name : String, expr : Evaluated<'_>, start : Evaluated<'_>, length : Evaluated<'_>,) -> Result<Evaluated<'a>> {
+    let expr: Value = expr.try_into()?;
+    let start = match start.try_into()? {
+        Value::I64(number) => {
+            usize::try_from(number).map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.clone()))?
+        }
+        _ => {
+            return Err(EvaluateError::FunctionRequiresIntegerValue(name).into());
+        }
+    };
+    let length = match length.try_into()? {
+        Value::I64(number) => {
+            usize::try_from(number).map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name))?
+        }
+        _ => {
+            return Err(EvaluateError::FunctionRequiresIntegerValue(name).into());
+        }
+    };
+
+    
+    match expr {
+        Value::List(l) => {
+            if start + length >= l.len() {
+                // IndexOutOfBounds
+            }
+            let l = l.into_iter().skip(start).take(length).collect();
+            Ok(Evaluated::Value(Value::List(l)))
+        }
+        _ => Err(EvaluateError::ListTypeRequired.into()),
+    }
+}
+
 pub fn take<'a>(name: String, expr: Evaluated<'_>, size: Evaluated<'_>) -> Result<Evaluated<'a>> {
     if expr.is_null() || size.is_null() {
         return Ok(Evaluated::Value(Value::Null));
