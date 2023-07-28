@@ -5,6 +5,8 @@ pub mod alter;
 pub mod arithmetic;
 pub mod ast_builder;
 pub mod basic;
+pub mod bitwise_and;
+pub mod bitwise_shift;
 pub mod case;
 pub mod column_alias;
 pub mod concat;
@@ -70,6 +72,7 @@ macro_rules! generate_store_tests {
         glue!(insert, insert::insert);
         glue!(delete, delete::delete);
         glue!(basic, basic::basic);
+        glue!(bitwise_and, bitwise_and::bitwise_and);
         glue!(aggregate_avg, aggregate::avg::avg);
         glue!(aggregate_count, aggregate::count::count);
         glue!(aggregate_group_by, aggregate::group_by::group_by);
@@ -84,6 +87,7 @@ macro_rules! generate_store_tests {
         glue!(arithmetic_on_where, arithmetic::on_where::on_where);
         glue!(concat, concat::concat);
         glue!(project, project::project);
+        glue!(bitwise_shift, bitwise_shift::bitwise_shift_left);
         glue!(create_table, alter::create_table);
         glue!(drop_table, alter::drop_table);
         glue!(default, default::default);
@@ -93,6 +97,7 @@ macro_rules! generate_store_tests {
         glue!(inline_view, inline_view::inline_view);
         glue!(values, values::values);
         glue!(unary_operator, unary_operator::unary_operator);
+        glue!(function_values, function::values::values);
         glue!(function_upper_lower, function::upper_lower::upper_lower);
         glue!(function_initcap, function::initcap::initcap);
         glue!(function_gcd_lcm, function::gcd_lcm::gcd_lcm);
@@ -121,6 +126,7 @@ macro_rules! generate_store_tests {
         glue!(function_rand, function::rand::rand);
         glue!(function_floor, function::floor::floor);
         glue!(function_format, function::format::format);
+        glue!(function_last_day, function::last_day::last_day);
         glue!(function_ln, function::exp_log::ln);
         glue!(function_log, function::exp_log::log);
         glue!(function_log2, function::exp_log::log2);
@@ -128,6 +134,7 @@ macro_rules! generate_store_tests {
         glue!(function_exp, function::exp_log::exp);
         glue!(function_now, function::now::now);
         glue!(function_sign, function::sign::sign);
+        glue!(function_skip, function::skip::skip);
         glue!(function_to_date, function::to_date::to_date);
         glue!(function_ascii, function::ascii::ascii);
         glue!(function_chr, function::chr::chr);
@@ -142,9 +149,13 @@ macro_rules! generate_store_tests {
             function_geometry_calc_distance,
             function::geometry::calc_distance
         );
+<<<<<<< HEAD
         glue!(
             function_slice, function::slice::slice
         );
+=======
+        glue!(function_entries, function::entries::entries);
+>>>>>>> upstream/main
         glue!(join, join::join);
         glue!(join_project, join::project);
         glue!(migrate, migrate::migrate);
