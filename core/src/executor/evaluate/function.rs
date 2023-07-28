@@ -1,3 +1,5 @@
+use chrono::Datelike;
+
 use {
     super::{EvaluateError, Evaluated},
     crate::{
@@ -775,6 +777,26 @@ pub fn to_timestamp<'a>(
                     let err: EvaluateError = err.into();
                     err.into()
                 })
+        }
+        _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+    }
+}
+
+pub fn add_month(name: String, expr: Evaluated<'_>, size: Evaluated<'_>) -> Result<Evaluated<'_>> {
+    match expr.try_into()? {
+        Value::Str(expr) => {
+            let format = eval_to_str!(name, format);
+            let data = chrono::NaiveTime::parse_from_str(&expr, &format)
+                .map(Value::Time)
+                .map(Evaluated::from)
+                .map_err(|err| {
+                    let err: EvaluateError = err.into();
+                    err.into()
+                });
+            return data;
+
+            
+            //return date;
         }
         _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
     }
