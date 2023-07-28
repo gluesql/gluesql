@@ -604,7 +604,11 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             let start = translate_expr(args[1])?;
             let length = translate_expr(args[2])?;
 
-            Ok(Expr::Function(Box::new(Function::Slice{expr, start, length})))
+            Ok(Expr::Function(Box::new(Function::Slice {
+                expr,
+                start,
+                length,
+            })))
         }
         "VALUES" => {
             check_len(name, args.len(), 1)?;

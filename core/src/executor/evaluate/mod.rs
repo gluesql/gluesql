@@ -642,7 +642,11 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let size = eval(size).await?;
             f::take(name, expr, size)
         }
-        Function::Slice { expr, start, length } => {
+        Function::Slice {
+            expr,
+            start,
+            length,
+        } => {
             let expr = eval(expr).await?;
             let start = eval(start).await?;
             let length = eval(length).await?;
