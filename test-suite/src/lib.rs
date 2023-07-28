@@ -149,13 +149,10 @@ macro_rules! generate_store_tests {
             function_geometry_calc_distance,
             function::geometry::calc_distance
         );
-<<<<<<< HEAD
         glue!(
             function_slice, function::slice::slice
         );
-=======
         glue!(function_entries, function::entries::entries);
->>>>>>> upstream/main
         glue!(join, join::join);
         glue!(join_project, join::project);
         glue!(migrate, migrate::migrate);
