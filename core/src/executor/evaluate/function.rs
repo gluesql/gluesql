@@ -2,9 +2,10 @@ use {
     super::{EvaluateError, Evaluated},
     crate::{
         ast::{DataType, DateTimeField},
-        data::{Point, Value, ValueError},
-        result::Result,
+        data::{Key, Point, Value, ValueError},
+        result::{Error, Result},
     },
+    chrono::{Datelike, Duration, Months},
     md5::{Digest, Md5},
     rand::{rngs::StdRng, Rng, SeedableRng},
     std::ops::ControlFlow,
@@ -232,6 +233,19 @@ pub fn repeat<'a>(name: String, expr: Evaluated<'_>, num: Evaluated<'_>) -> Resu
     Ok(Evaluated::from(Value::Str(value)))
 }
 
+pub fn replace<'a>(
+    name: String,
+    expr: Evaluated<'_>,
+    old: Evaluated<'_>,
+    new: Evaluated<'_>,
+) -> Result<Evaluated<'a>> {
+    let expr = eval_to_str!(name, expr);
+    let old = eval_to_str!(name, old);
+    let new = eval_to_str!(name, new);
+    let value = expr.replace(&old, &new);
+    Ok(Evaluated::from(Value::Str(value)))
+}
+
 pub fn ascii<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
     let string = eval_to_str!(name, expr);
     let mut iter = string.chars();
@@ -439,26 +453,42 @@ pub fn gcd<'a>(name: String, left: Evaluated<'_>, right: Evaluated<'_>) -> Resul
     let left = eval_to_int!(name, left);
     let right = eval_to_int!(name, right);
 
-    Ok(Evaluated::from(Value::I64(gcd_i64(left, right))))
+    Ok(Evaluated::from(Value::I64(gcd_i64(left, right)?)))
 }
 
 pub fn lcm<'a>(name: String, left: Evaluated<'_>, right: Evaluated<'_>) -> Result<Evaluated<'a>> {
     let left = eval_to_int!(name, left);
     let right = eval_to_int!(name, right);
 
-    fn lcm(a: i64, b: i64) -> i64 {
-        a * b / gcd_i64(a, b)
+    fn lcm(a: i64, b: i64) -> Result<i64> {
+        let gcd_val: i128 = gcd_i64(a, b)?.into();
+
+        let a: i128 = a.into();
+        let b: i128 = b.into();
+
+        // lcm(a, b) = abs(a * b) / gcd(a, b)   if gcd(a, b) != 0
+        // lcm(a, b) = 0                        if gcd(a, b) == 0
+        let result = (a * b).abs().checked_div(gcd_val).unwrap_or(0);
+
+        i64::try_from(result).map_err(|_| Error::Value(ValueError::LcmResultOutOfRange))
     }
 
-    Ok(Evaluated::from(Value::I64(lcm(left, right))))
+    Ok(Evaluated::from(Value::I64(lcm(left, right)?)))
 }
 
-fn gcd_i64(a: i64, b: i64) -> i64 {
-    if b == 0 {
-        a
-    } else {
-        gcd_i64(b, a % b)
+fn gcd_i64(a: i64, b: i64) -> Result<i64> {
+    let mut a = a
+        .checked_abs()
+        .ok_or(Error::Value(ValueError::GcdLcmOverflow(a)))?;
+    let mut b = b
+        .checked_abs()
+        .ok_or(Error::Value(ValueError::GcdLcmOverflow(b)))?;
+
+    while b > 0 {
+        (a, b) = (b, a % b);
     }
+
+    Ok(a)
 }
 
 // --- list ---
@@ -485,6 +515,107 @@ pub fn prepend<'a>(expr: Evaluated<'_>, value: Evaluated<'_>) -> Result<Evaluate
             Ok(Evaluated::Value(Value::List(l)))
         }
         _ => Err(EvaluateError::ListTypeRequired.into()),
+    }
+}
+
+pub fn skip<'a>(name: String, expr: Evaluated<'_>, size: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    if expr.is_null() || size.is_null() {
+        return Ok(Evaluated::Value(Value::Null));
+    }
+    let expr: Value = expr.try_into()?;
+    let size: usize = match size.try_into()? {
+        Value::I64(number) => {
+            usize::try_from(number).map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name))?
+        }
+        _ => {
+            return Err(EvaluateError::FunctionRequiresIntegerValue(name).into());
+        }
+    };
+
+    match expr {
+        Value::List(l) => {
+            let l = l.into_iter().skip(size).collect();
+            Ok(Evaluated::Value(Value::List(l)))
+        }
+        _ => Err(EvaluateError::ListTypeRequired.into()),
+    }
+}
+
+pub fn sort<'a>(expr: Evaluated<'_>, order: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let expr: Value = expr.try_into()?;
+    let order: Value = order.try_into()?;
+
+    match expr {
+        Value::List(l) => {
+            let mut l: Vec<(Key, Value)> = l
+                .into_iter()
+                .map(|v| match Key::try_from(&v) {
+                    Ok(key) => Ok((key, v)),
+                    Err(_) => Err(EvaluateError::InvalidSortType),
+                })
+                .collect::<Result<Vec<(Key, Value)>, EvaluateError>>()?;
+
+            let asc = match order {
+                Value::Str(s) => match s.to_uppercase().as_str() {
+                    "ASC" => true,
+                    "DESC" => false,
+                    _ => return Err(EvaluateError::InvalidSortOrder.into()),
+                },
+                _ => return Err(EvaluateError::InvalidSortOrder.into()),
+            };
+
+            l.sort_by(|a, b| if asc { a.0.cmp(&b.0) } else { b.0.cmp(&a.0) });
+
+            Ok(Evaluated::Value(Value::List(
+                l.into_iter().map(|(_, v)| v).collect(),
+            )))
+        }
+        _ => Err(EvaluateError::ListTypeRequired.into()),
+    }
+}
+
+pub fn take<'a>(name: String, expr: Evaluated<'_>, size: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    if expr.is_null() || size.is_null() {
+        return Ok(Evaluated::Value(Value::Null));
+    }
+
+    let expr: Value = expr.try_into()?;
+    let size = match size.try_into()? {
+        Value::I64(number) => {
+            usize::try_from(number).map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name))?
+        }
+        _ => {
+            return Err(EvaluateError::FunctionRequiresIntegerValue(name).into());
+        }
+    };
+
+    match expr {
+        Value::List(l) => {
+            let l = l.into_iter().take(size).collect();
+            Ok(Evaluated::Value(Value::List(l)))
+        }
+        _ => Err(EvaluateError::ListTypeRequired.into()),
+    }
+}
+
+pub fn is_empty<'a>(expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let expr: Value = expr.try_into()?;
+    let length = match expr {
+        Value::List(l) => l.len(),
+        Value::Map(m) => m.len(),
+        _ => {
+            return Err(EvaluateError::MapOrListTypeRequired.into());
+        }
+    };
+
+    Ok(Evaluated::from(Value::Bool(length == 0)))
+}
+
+pub fn values<'a>(expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let expr: Value = expr.try_into()?;
+    match expr {
+        Value::Map(m) => Ok(Evaluated::from(Value::List(m.into_values().collect()))),
+        _ => Err(EvaluateError::MapTypeRequired.into()),
     }
 }
 
@@ -541,6 +672,18 @@ pub fn format<'a>(
         }
         value => Err(EvaluateError::UnsupportedExprForFormatFunction(value.into()).into()),
     }
+}
+
+pub fn last_day<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let date = match expr.try_into()? {
+        Value::Date(date) => date,
+        Value::Timestamp(timestamp) => timestamp.date(),
+        _ => return Err(EvaluateError::FunctionRequiresDateOrDateTimeValue(name).into()),
+    };
+
+    Ok(Evaluated::from(Value::Date(
+        date + Months::new(1) - Duration::days(date.day() as i64),
+    )))
 }
 
 pub fn to_date<'a>(
@@ -670,4 +813,26 @@ pub fn calc_distance<'a>(x: Evaluated<'_>, y: Evaluated<'_>) -> Result<Evaluated
     let y = eval_to_point!("calc_distance".to_owned(), y);
 
     Ok(Evaluated::from(Value::F64(Point::calc_distance(&x, &y))))
+}
+
+pub fn length<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    match expr.try_into()? {
+        Value::Str(expr) => Ok(Evaluated::from(Value::U64(expr.chars().count() as u64))),
+        Value::List(expr) => Ok(Evaluated::from(Value::U64(expr.len() as u64))),
+        Value::Map(expr) => Ok(Evaluated::from(Value::U64(expr.len() as u64))),
+        _ => Err(EvaluateError::FunctionRequiresStrOrListOrMapValue(name).into()),
+    }
+}
+
+pub fn entries<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    match expr.try_into()? {
+        Value::Map(expr) => {
+            let entries = expr
+                .into_iter()
+                .map(|(k, v)| Value::List(vec![Value::Str(k), v]))
+                .collect::<Vec<_>>();
+            Ok(Evaluated::from(Value::List(entries)))
+        }
+        _ => Err(EvaluateError::FunctionRequiresMapValue(name).into()),
+    }
 }

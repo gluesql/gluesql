@@ -13,6 +13,7 @@ pub fn translate_unary_operator(sql_unary_operator: &SqlUnaryOperator) -> Result
         SqlUnaryOperator::Minus => Ok(UnaryOperator::Minus),
         SqlUnaryOperator::Not => Ok(UnaryOperator::Not),
         SqlUnaryOperator::PGPostfixFactorial => Ok(UnaryOperator::Factorial),
+        SqlUnaryOperator::PGBitwiseNot => Ok(UnaryOperator::BitwiseNot),
         _ => Err(TranslateError::UnreachableUnaryOperator(sql_unary_operator.to_string()).into()),
     }
 }
@@ -36,6 +37,8 @@ pub fn translate_binary_operator(
         SqlBinaryOperator::And => Ok(BinaryOperator::And),
         SqlBinaryOperator::Or => Ok(BinaryOperator::Or),
         SqlBinaryOperator::Xor => Ok(BinaryOperator::Xor),
+        SqlBinaryOperator::BitwiseAnd => Ok(BinaryOperator::BitwiseAnd),
+        SqlBinaryOperator::PGBitwiseShiftLeft => Ok(BinaryOperator::BitwiseShiftLeft),
         _ => Err(TranslateError::UnsupportedBinaryOperator(sql_binary_operator.to_string()).into()),
     }
 }

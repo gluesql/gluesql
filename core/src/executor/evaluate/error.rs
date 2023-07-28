@@ -1,5 +1,5 @@
 use {
-    crate::ast::{Aggregate, Expr, ToSql},
+    crate::ast::{Aggregate, BinaryOperator, Expr, ToSql},
     serde::{Serialize, Serializer},
     std::fmt::Debug,
     thiserror::Error,
@@ -38,6 +38,12 @@ pub enum EvaluateError {
     #[error("function requires point value: {0}")]
     FunctionRequiresPointValue(String),
 
+    #[error("function requires date or datetime value: {0}")]
+    FunctionRequiresDateOrDateTimeValue(String),
+
+    #[error("function requires one of string, list, map types: {0}")]
+    FunctionRequiresStrOrListOrMapValue(String),
+
     #[error("value not found: {0}")]
     ValueNotFound(String),
 
@@ -47,8 +53,17 @@ pub enum EvaluateError {
     #[error("expr requires map or list value")]
     MapOrListTypeRequired,
 
+    #[error("expr requires map value")]
+    MapTypeRequired,
+
     #[error("expr requires list value")]
     ListTypeRequired,
+
+    #[error("all elements in the list must be comparable to each other")]
+    InvalidSortType,
+
+    #[error("sort order must be either ASC or DESC")]
+    InvalidSortOrder,
 
     #[error("map or string value required for json map conversion: {0}")]
     MapOrStringValueRequired(String),
@@ -65,6 +80,9 @@ pub enum EvaluateError {
     #[error("unreachable empty aggregate value: {0:?}")]
     UnreachableEmptyAggregateValue(Aggregate),
 
+    #[error("incompatible bit operation between {0} and {1}")]
+    IncompatibleBitOperation(String, String),
+
     #[error("the divisor should not be zero")]
     DivisorShouldNotBeZero,
 
@@ -73,6 +91,9 @@ pub enum EvaluateError {
 
     #[error("subquery returns more than one row")]
     MoreThanOneRowReturned,
+
+    #[error("subquery returns more than one column")]
+    MoreThanOneColumnReturned,
 
     #[error("schemaless projection is not allowed for IN (subquery)")]
     SchemalessProjectionForInSubQuery,
@@ -92,8 +113,12 @@ pub enum EvaluateError {
     #[error("function requires integer value in range")]
     ChrFunctionRequiresIntegerValueInRange0To255,
 
-    #[error("unsupported evaluate binary arithmetic between {0} and {1}")]
-    UnsupportedBinaryArithmetic(String, String),
+    #[error("unsupported evaluate binary operation {} {} {}", .left, .op.to_sql(), .right)]
+    UnsupportedBinaryOperation {
+        left: String,
+        op: BinaryOperator,
+        right: String,
+    },
 
     #[error("unsupported evaluate string unary plus: {0}")]
     UnsupportedUnaryPlus(String),
@@ -103,6 +128,9 @@ pub enum EvaluateError {
 
     #[error("unsupported evaluate string unary factorial: {0}")]
     UnsupportedUnaryFactorial(String),
+
+    #[error("incompatible bit operation ~{0}")]
+    IncompatibleUnaryBitwiseNotOperation(String),
 
     #[error("unsupported custom function in subqueries")]
     UnsupportedCustomFunction,
