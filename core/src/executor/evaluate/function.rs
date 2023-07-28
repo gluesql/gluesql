@@ -5,6 +5,7 @@ use {
         data::{Key, Point, Value, ValueError},
         result::{Error, Result},
     },
+    chrono::{Datelike, Duration, Months},
     md5::{Digest, Md5},
     rand::{rngs::StdRng, Rng, SeedableRng},
     std::ops::ControlFlow,
@@ -671,6 +672,18 @@ pub fn format<'a>(
         }
         value => Err(EvaluateError::UnsupportedExprForFormatFunction(value.into()).into()),
     }
+}
+
+pub fn last_day<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let date = match expr.try_into()? {
+        Value::Date(date) => date,
+        Value::Timestamp(timestamp) => timestamp.date(),
+        _ => return Err(EvaluateError::FunctionRequiresDateOrDateTimeValue(name).into()),
+    };
+
+    Ok(Evaluated::from(Value::Date(
+        date + Months::new(1) - Duration::days(date.day() as i64),
+    )))
 }
 
 pub fn to_date<'a>(
