@@ -1,4 +1,4 @@
-use gluesql_core::{ast::ColumnUniqueOption, prelude::DataType, store::Store};
+use gluesql_core::{ast::ColumnUniqueOption, chrono::format, prelude::DataType, store::Store};
 use mongodb::{
     bson::{self, bson, doc, Bson, Document},
     options::{CreateCollectionOptions, IndexOptions, UpdateOptions},
@@ -25,6 +25,11 @@ use {
         {cmp::Ordering, iter::Peekable, vec::IntoIter},
     },
 };
+
+struct IndexInfo {
+    name: String, // TODO: convert to enum with primary and unique
+    key: String,
+}
 
 #[async_trait(?Send)]
 impl StoreMut for MongoStorage {
@@ -53,13 +58,21 @@ impl StoreMut for MongoStorage {
                         };
 
                         match &column_def.unique {
-                            Some(ColumnUniqueOption { is_primary }) => {
-                                indexes.push(column_name.clone());
-
-                                if *is_primary {
-                                    bson_type = vec![data_type, "null"]
+                            Some(ColumnUniqueOption { is_primary }) => match *is_primary {
+                                true => {
+                                    bson_type = vec![data_type, "null"];
+                                    indexes.push(IndexInfo {
+                                        name: format!("{column_name}_PK"),
+                                        key: column_name.clone(),
+                                    });
                                 }
-                            }
+                                false => {
+                                    indexes.push(IndexInfo {
+                                        name: format!("{column_name}_UNIQUE"),
+                                        key: column_name.clone(),
+                                    });
+                                }
+                            },
                             None => {}
                         }
 
@@ -117,13 +130,13 @@ impl StoreMut for MongoStorage {
             return Ok(());
         }
 
-        let index_options = IndexOptions::builder().unique(true).build();
+        let index_options = IndexOptions::builder().unique(true);
         let index_models = indexes
             .into_iter()
-            .map(|index| {
+            .map(|IndexInfo { name, key }| {
                 mongodb::IndexModel::builder()
-                    .keys(doc! {index: 1})
-                    .options(index_options.clone())
+                    .keys(doc! {key: 1})
+                    .options(index_options.clone().name(name).build())
                     .build()
             })
             .collect::<Vec<_>>();

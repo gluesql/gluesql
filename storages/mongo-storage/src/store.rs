@@ -1,9 +1,14 @@
-use std::{collections::HashMap, future, str::FromStr};
+use std::{
+    collections::{HashMap, HashSet},
+    future,
+    str::FromStr,
+};
 
 use futures::{stream, FutureExt, Stream, StreamExt, TryStreamExt};
 use gluesql_core::{
-    ast::ColumnDef,
+    ast::{ColumnDef, ColumnUniqueOption},
     prelude::{DataType, Error},
+    store::Index,
 };
 use mongodb::{
     bson::{doc, Bson, Document},
@@ -176,7 +181,6 @@ impl MongoStorage {
                 let indexes = cursor
                     .into_stream()
                     .try_filter_map(|index_model| {
-                        // TODO: what about compound index?
                         let index_key = index_model
                             .clone()
                             .keys
@@ -185,11 +189,10 @@ impl MongoStorage {
                             .next();
 
                         let IndexOptions { name, unique, .. } = index_model.options.unwrap();
-                        println!("index_name: {:#?}", name);
 
-                        future::ready(Ok(index_key.zip(unique)))
+                        future::ready(Ok(index_key.zip(name)))
                     })
-                    .try_collect::<HashMap<String, bool>>()
+                    .try_collect::<HashMap<String, String>>()
                     .await
                     .unwrap();
 
@@ -212,7 +215,7 @@ impl MongoStorage {
                     .unwrap()
                     .into_iter()
                     .skip(1)
-                    .map(|(name, value)| {
+                    .map(|(column_name, value)| {
                         let data_type = value
                             .as_document()
                             .unwrap()
@@ -234,14 +237,21 @@ impl MongoStorage {
                             (data_type, _) => data_type,
                         };
 
-                        let unique = indexes.get(name).unwrap_or(&false);
+                        let index_name = indexes.get(column_name);
+                        let a = index_name.and_then(|i| i.split_once("_"));
+
+                        let unique = match a {
+                            Some((_, "PK")) => Some(ColumnUniqueOption { is_primary: true }),
+                            Some((_, "UNIQUE")) => Some(ColumnUniqueOption { is_primary: false }),
+                            _ => None,
+                        };
 
                         let column_def = ColumnDef {
-                            name: name.to_owned(),
+                            name: column_name.to_owned(),
                             data_type,
                             nullable: true, // should parse from validator
                             default: None,  // does not support default value
-                            unique: None,   // by unique index?
+                            unique,
                         };
 
                         Ok(column_def)
