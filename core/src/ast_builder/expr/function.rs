@@ -532,6 +532,9 @@ impl<'a> ExprNode<'a> {
     pub fn is_empty(self) -> ExprNode<'a> {
         is_empty(self)
     }
+    pub fn last_day(self) -> ExprNode<'a> {
+        last_day(self)
+    }
 }
 
 pub fn abs<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
@@ -1646,11 +1649,19 @@ mod tests {
         let actual = last_day(date("2023-07-29"));
         let expected = "LAST_DAY(DATE'2023-07-29')";
         test_expr(actual, expected);
+
+        let actual = date("2023-07-29").last_day();
+        let expected = "LAST_DAY(DATE'2023-07-29')";
+        test_expr(actual, expected);
     }
 
     #[test]
     fn function_last_day_timestamp() {
         let actual = last_day(timestamp("2023-07-29 11:00:00"));
+        let expected = "LAST_DAY(TIMESTAMP '2023-07-29 11:00:00')";
+        test_expr(actual, expected);
+
+        let actual = timestamp("2023-07-29 11:00:00").last_day();
         let expected = "LAST_DAY(TIMESTAMP '2023-07-29 11:00:00')";
         test_expr(actual, expected);
     }
