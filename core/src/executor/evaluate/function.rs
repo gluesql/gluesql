@@ -589,7 +589,7 @@ pub fn slice<'a>(
         _ => {
             return Err(EvaluateError::FunctionRequiresIntegerValue(name).into());
         }
-    }; 
+    };
     match expr {
         Value::List(l) => {
             if start < 0 {
@@ -600,7 +600,7 @@ pub fn slice<'a>(
             }
 
             let start_usize = start as usize;
-            
+
             let l = l.into_iter().skip(start_usize).take(length).collect();
             Ok(Evaluated::Value(Value::List(l)))
         }
