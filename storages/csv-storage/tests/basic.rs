@@ -1,58 +1,58 @@
-use {gluesql_core::prelude::Glue, gluesql_csv_storage::CsvStorage};
+use {
+    gluesql_core::prelude::{
+        Glue,
+        Value::{Str, I64},
+    },
+    gluesql_csv_storage::CsvStorage,
+    test_suite::*,
+};
 
 #[tokio::test]
-async fn run_test() {
+async fn basic() {
     let path = "./tests/samples/";
     let storage = CsvStorage::new(path).unwrap();
     let mut glue = Glue::new(storage);
 
-    glue.execute("DROP TABLE IF EXISTS Foo, Test, Free;")
+    let actual = glue
+        .execute("SELECT * FROM Basic")
         .await
+        .unwrap()
+        .into_iter()
+        .next()
         .unwrap();
-    glue.execute("CREATE TABLE Foo (id INTEGER)").await.unwrap();
-    glue.execute("INSERT INTO Foo VALUES (1), (2), (3);")
-        .await
-        .unwrap();
+    let expected = select! {
+        Name                | Age            | Gender             | Occupation
+        Str                 | Str            | Str                | Str;
+        "John".to_owned()     "25".to_owned()  "Male".to_owned()    "Engineer".to_owned();
+        "Sarah".to_owned()    "30".to_owned()  "Female".to_owned()  "Doctor".to_owned();
+        "Michael".to_owned()  "40".to_owned()  "Male".to_owned()    "Lawyer".to_owned();
+        "Emily".to_owned()    "28".to_owned()  "Female".to_owned()  "Teacher".to_owned();
+        "David".to_owned()    "35".to_owned()  "Male".to_owned()    "Programmer".to_owned()
+    };
+    assert_eq!(actual, expected);
 
-    glue.execute("SELECT * FROM Foo").await.unwrap();
-
-    // panic!("{a:#?}");
-
-    glue.execute(
-        "CREATE TABLE Test (
-            id INTEGER DEFAULT 1,
-            num INTEGER,
-            flag BOOLEAN NULL DEFAULT false
-        )",
-    )
-    .await
-    .unwrap();
-    glue.execute("INSERT INTO Test VALUES (8, 80, true);")
+    let actual = glue
+        .execute(
+            "
+            SELECT
+                Name,
+                CAST(Age AS INTEGER) AS Age
+            FROM Basic
+         ",
+        )
         .await
+        .unwrap()
+        .into_iter()
+        .next()
         .unwrap();
-    glue.execute("INSERT INTO Test (num) VALUES (10);")
-        .await
-        .unwrap();
-    glue.execute("INSERT INTO Test (num, id) VALUES (20, 2);")
-        .await
-        .unwrap();
-    glue.execute("INSERT INTO Test (num, flag) VALUES (30, NULL), (40, true);")
-        .await
-        .unwrap();
-
-    glue.execute("SELECT * FROM Test;").await.unwrap();
-    // panic!("{a:#?}");
-
-    glue.execute("CREATE TABLE Free;").await.unwrap();
-    glue.execute(
-        r#"
-        INSERT INTO Free
-        VALUES
-            ('{ "a": 3 }'),
-            ('{ "b": 100 }'),
-            ('{ "name": "reduuuce", "a": null }');
-    "#,
-    )
-    .await
-    .unwrap();
+    let expected = select! {
+        Name                | Age
+        Str                 | I64;
+        "John".to_owned()     25;
+        "Sarah".to_owned()    30;
+        "Michael".to_owned()  40;
+        "Emily".to_owned()    28;
+        "David".to_owned()    35
+    };
+    assert_eq!(actual, expected);
 }

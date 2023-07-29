@@ -5,7 +5,7 @@ mod store_mut;
 use {
     error::{CsvStorageError, ResultExt},
     gluesql_core::{
-        ast::{ColumnUniqueOption, DataType},
+        ast::{ColumnDef, ColumnUniqueOption, DataType},
         data::{Key, Schema, Value},
         error::{Error, Result},
         parse_sql::parse_data_type,
@@ -38,7 +38,33 @@ impl CsvStorage {
     fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         let schema_path = self.schema_path(table_name);
         if !schema_path.exists() {
-            return Ok(None);
+            let data_path = self.data_path(table_name);
+            if !data_path.exists() {
+                return Ok(None);
+            }
+
+            let column_defs = csv::Reader::from_path(data_path)
+                .map_storage_err()?
+                .headers()
+                .map_storage_err()?
+                .into_iter()
+                .map(|header| ColumnDef {
+                    name: header.to_string(),
+                    data_type: DataType::Text,
+                    unique: None,
+                    default: None,
+                    nullable: true,
+                })
+                .collect::<Vec<_>>();
+
+            let schema = Schema {
+                table_name: table_name.to_owned(),
+                column_defs: Some(column_defs),
+                indexes: Vec::new(),
+                engine: None,
+            };
+
+            return Ok(Some(schema));
         }
 
         let mut file = File::open(&schema_path).map_storage_err()?;
@@ -94,11 +120,11 @@ impl CsvStorage {
     }
 
     fn scan_data(&self, table_name: &str) -> Result<(Option<Vec<String>>, RowIter)> {
-        let schema = self.fetch_schema(table_name)?;
         let data_path = self.data_path(table_name);
-        if !data_path.exists() {
-            return Ok((None, Box::new(std::iter::empty())));
-        }
+        let schema = match (self.fetch_schema(table_name)?, data_path.exists()) {
+            (None, _) | (_, false) => return Ok((None, Box::new(std::iter::empty()))),
+            (Some(schema), true) => schema,
+        };
 
         let mut data_rdr = csv::Reader::from_path(data_path).map_storage_err()?;
         let mut fetch_data_header_columns = || -> Result<Vec<String>> {
@@ -110,10 +136,10 @@ impl CsvStorage {
                 .collect::<Vec<_>>())
         };
 
-        if let Some(Schema {
+        if let Schema {
             column_defs: Some(column_defs),
             ..
-        }) = schema
+        } = schema
         {
             let columns = column_defs
                 .iter()
