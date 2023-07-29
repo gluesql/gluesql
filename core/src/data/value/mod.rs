@@ -513,6 +513,50 @@ impl Value {
         }
     }
 
+    pub fn bitwise_and(&self, other: &Value) -> Result<Value> {
+        use Value::*;
+
+        match (self, other) {
+            (I8(a), I8(b)) => Ok(I8(a & b)),
+            (I16(a), I16(b)) => Ok(I16(a & b)),
+            (I32(a), I32(b)) => Ok(I32(a & b)),
+            (I64(a), I64(b)) => Ok(I64(a & b)),
+            (I128(a), I128(b)) => Ok(I128(a & b)),
+            (U8(a), U8(b)) => Ok(U8(a & b)),
+            (U16(a), U16(b)) => Ok(U16(a & b)),
+            (U32(a), U32(b)) => Ok(U32(a & b)),
+            (U64(a), U64(b)) => Ok(U64(a & b)),
+            (U128(a), U128(b)) => Ok(U128(a & b)),
+            (Null, I8(_))
+            | (Null, I16(_))
+            | (Null, I32(_))
+            | (Null, I64(_))
+            | (Null, I128(_))
+            | (Null, U8(_))
+            | (Null, U16(_))
+            | (Null, U32(_))
+            | (Null, U64(_))
+            | (Null, U128(_))
+            | (Null, Null)
+            | (I8(_), Null)
+            | (I16(_), Null)
+            | (I32(_), Null)
+            | (I64(_), Null)
+            | (I128(_), Null)
+            | (U8(_), Null)
+            | (U16(_), Null)
+            | (U32(_), Null)
+            | (U64(_), Null)
+            | (U128(_), Null) => Ok(Null),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: self.clone(),
+                rhs: other.clone(),
+                operator: NumericBinaryOperator::BitwiseAnd,
+            }
+            .into()),
+        }
+    }
+
     pub fn modulo(&self, other: &Value) -> Result<Value> {
         use Value::*;
 
@@ -555,6 +599,44 @@ impl Value {
             }
             .into()),
         }
+    }
+
+    pub fn bitwise_shift_left(&self, rhs: &Value) -> Result<Value> {
+        use Value::*;
+
+        if *rhs == Null {
+            return Ok(Null);
+        }
+        let rhs = u32::try_from(rhs)?;
+        match self {
+            I8(lhs) => lhs.checked_shl(rhs).map(I8),
+            I16(lhs) => lhs.checked_shl(rhs).map(I16),
+            I32(lhs) => lhs.checked_shl(rhs).map(I32),
+            I64(lhs) => lhs.checked_shl(rhs).map(I64),
+            I128(lhs) => lhs.checked_shl(rhs).map(I128),
+            U8(lhs) => lhs.checked_shl(rhs).map(U8),
+            U16(lhs) => lhs.checked_shl(rhs).map(U16),
+            U32(lhs) => lhs.checked_shl(rhs).map(U32),
+            U64(lhs) => lhs.checked_shl(rhs).map(U64),
+            U128(lhs) => lhs.checked_shl(rhs).map(U128),
+            Null => Some(Null),
+            _ => {
+                return Err(ValueError::NonNumericMathOperation {
+                    lhs: self.clone(),
+                    rhs: U32(rhs),
+                    operator: NumericBinaryOperator::BitwiseShiftLeft,
+                }
+                .into());
+            }
+        }
+        .ok_or_else(|| {
+            ValueError::BinaryOperationOverflow {
+                lhs: self.clone(),
+                rhs: U32(rhs),
+                operator: NumericBinaryOperator::BitwiseShiftLeft,
+            }
+            .into()
+        })
     }
 
     pub fn is_null(&self) -> bool {
@@ -618,6 +700,27 @@ impl Value {
             F64(_) => Err(ValueError::FactorialOnNonInteger.into()),
             Null => Ok(Null),
             _ => Err(ValueError::FactorialOnNonNumeric.into()),
+        }
+    }
+
+    pub fn unary_bitwise_not(&self) -> Result<Value> {
+        use Value::*;
+
+        match self {
+            I8(v) => Ok(Value::I8(!v)),
+            I16(v) => Ok(Value::I16(!v)),
+            I32(v) => Ok(Value::I32(!v)),
+            I64(v) => Ok(Value::I64(!v)),
+            I128(v) => Ok(Value::I128(!v)),
+            U8(v) => Ok(Value::U8(!v)),
+            U16(v) => Ok(Value::U16(!v)),
+            U32(v) => Ok(Value::U32(!v)),
+            U64(v) => Ok(Value::U64(!v)),
+            U128(v) => Ok(Value::U128(!v)),
+            F32(_) => Err(ValueError::UnaryBitwiseNotOnNonInteger.into()),
+            F64(_) => Err(ValueError::UnaryBitwiseNotOnNonInteger.into()),
+            Null => Ok(Null),
+            _ => Err(ValueError::UnaryBitwiseNotOnNonNumeric.into()),
         }
     }
 
@@ -750,7 +853,7 @@ fn str_position(from_str: &String, sub_str: &String) -> usize {
 mod tests {
     use {
         super::{Interval, Value::*},
-        crate::data::{point::Point, value::uuid::parse_uuid, ValueError},
+        crate::data::{point::Point, value::uuid::parse_uuid, NumericBinaryOperator, ValueError},
         chrono::{NaiveDate, NaiveTime},
         rust_decimal::Decimal,
         std::{net::IpAddr, str::FromStr},
@@ -1766,6 +1869,162 @@ mod tests {
     }
 
     #[test]
+    fn bitwise_shift_left() {
+        macro_rules! test {
+            ($op: ident $a: expr, $b: expr => $c: expr) => {
+                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c));
+            };
+        }
+
+        macro_rules! mon {
+            ($n: expr) => {
+                Interval(Interval::Month($n))
+            };
+        }
+
+        // operation result test
+        test!(bitwise_shift_left I8(1),     I64(2) => I8(4));
+        test!(bitwise_shift_left I16(1),    I64(2) => I16(4));
+        test!(bitwise_shift_left I32(1),    I64(2) => I32(4));
+        test!(bitwise_shift_left I64(1),    I64(2) => I64(4));
+        test!(bitwise_shift_left I128(1),   I64(2) => I128(4));
+        test!(bitwise_shift_left U8(1),     I64(2) => U8(4));
+        test!(bitwise_shift_left U16(1),    I64(2) => U16(4));
+        test!(bitwise_shift_left U32(1),    I64(2) => U32(4));
+        test!(bitwise_shift_left U64(1),    I64(2) => U64(4));
+        test!(bitwise_shift_left U128(1),   I64(2) => U128(4));
+        test!(bitwise_shift_left I8(1),     U32(2) => I8(4));
+        test!(bitwise_shift_left I16(1),    U32(2) => I16(4));
+        test!(bitwise_shift_left I32(1),    U32(2) => I32(4));
+        test!(bitwise_shift_left I64(1),    U32(2) => I64(4));
+        test!(bitwise_shift_left I128(1),   U32(2) => I128(4));
+        test!(bitwise_shift_left U8(1),     U32(2) => U8(4));
+        test!(bitwise_shift_left U16(1),    U32(2) => U16(4));
+        test!(bitwise_shift_left U32(1),    U32(2) => U32(4));
+        test!(bitwise_shift_left U64(1),    U32(2) => U64(4));
+        test!(bitwise_shift_left U128(1),   U32(2) => U128(4));
+
+        //overflow test
+        assert_eq!(
+            I8(1).bitwise_shift_left(&I64(100)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I8(1),
+                rhs: U32(100),
+                operator: NumericBinaryOperator::BitwiseShiftLeft
+            }
+            .into())
+        );
+        assert_eq!(
+            I16(1).bitwise_shift_left(&I64(100)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I16(1),
+                rhs: U32(100),
+                operator: NumericBinaryOperator::BitwiseShiftLeft
+            }
+            .into())
+        );
+        assert_eq!(
+            I32(1).bitwise_shift_left(&I64(100)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I32(1),
+                rhs: U32(100),
+                operator: NumericBinaryOperator::BitwiseShiftLeft
+            }
+            .into())
+        );
+        assert_eq!(
+            I64(1).bitwise_shift_left(&I64(100)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I64(1),
+                rhs: U32(100),
+                operator: NumericBinaryOperator::BitwiseShiftLeft
+            }
+            .into())
+        );
+        assert_eq!(
+            I128(1).bitwise_shift_left(&I64(150)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I128(1),
+                rhs: U32(150),
+                operator: NumericBinaryOperator::BitwiseShiftLeft
+            }
+            .into())
+        );
+        assert_eq!(
+            U8(1).bitwise_shift_left(&I64(100)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: U8(1),
+                rhs: U32(100),
+                operator: NumericBinaryOperator::BitwiseShiftLeft
+            }
+            .into())
+        );
+        assert_eq!(
+            U16(1).bitwise_shift_left(&I64(100)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: U16(1),
+                rhs: U32(100),
+                operator: NumericBinaryOperator::BitwiseShiftLeft
+            }
+            .into())
+        );
+        assert_eq!(
+            U32(1).bitwise_shift_left(&I64(100)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: U32(1),
+                rhs: U32(100),
+                operator: NumericBinaryOperator::BitwiseShiftLeft
+            }
+            .into())
+        );
+        assert_eq!(
+            U64(1).bitwise_shift_left(&I64(100)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: U64(1),
+                rhs: U32(100),
+                operator: NumericBinaryOperator::BitwiseShiftLeft
+            }
+            .into())
+        );
+        assert_eq!(
+            U128(1).bitwise_shift_left(&I64(150)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: U128(1),
+                rhs: U32(150),
+                operator: NumericBinaryOperator::BitwiseShiftLeft
+            }
+            .into())
+        );
+
+        // cast error test
+        assert_eq!(
+            I64(1).bitwise_shift_left(&I64(-2)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+
+        // non numeric test
+        assert_eq!(
+            mon!(3).bitwise_shift_left(&I64(2)),
+            Err(ValueError::NonNumericMathOperation {
+                lhs: mon!(3),
+                rhs: U32(2),
+                operator: NumericBinaryOperator::BitwiseShiftLeft,
+            }
+            .into())
+        );
+
+        // null test
+        macro_rules! null_test {
+            ($op: ident $a: expr, $b: expr) => {
+                assert!($a.$op(&$b).unwrap().is_null());
+            };
+        }
+
+        null_test!(bitwise_shift_left   I64(1), Null);
+        null_test!(bitwise_shift_left   Null, I64(1));
+    }
+
+    #[test]
     fn cast() {
         use {
             crate::{ast::DataType::*, data::Point, prelude::Value},
@@ -2217,6 +2476,74 @@ mod tests {
             Str("9".to_owned()).sqrt(),
             Err(ValueError::SqrtOnNonNumeric(Str("9".to_owned())).into())
         );
+    }
+
+    #[test]
+    fn bitwise_and() {
+        macro_rules! test {
+            ($op: ident $a: expr, $b: expr => $c: expr) => {
+                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c));
+            };
+        }
+
+        macro_rules! test_bitwise_and {
+            ($($vt: ident $pt: ident);*;) => {
+                $(
+                    test!(bitwise_and $vt($pt::MIN), $vt($pt::MIN) => $vt($pt::MIN & $pt::MIN));
+                    test!(bitwise_and $vt($pt::MIN), $vt($pt::MAX) => $vt($pt::MIN & $pt::MAX));
+                    test!(bitwise_and $vt($pt::MAX), $vt($pt::MAX) => $vt($pt::MAX & $pt::MAX));
+                    test!(bitwise_and $vt(0), $vt(0) => $vt(0 & 0));
+                    test!(bitwise_and $vt(0), $vt(1) => $vt(0 & 1));
+                    test!(bitwise_and $vt(1), $vt(0) => $vt(1 & 0));
+                    test!(bitwise_and $vt(1), $vt(1) => $vt(1 & 1));
+                )*
+            };
+        }
+
+        test_bitwise_and!(
+            I8      i8;
+            I16     i16;
+            I32     i32;
+            I64     i64;
+            I128    i128;
+            U8      u8;
+            U16     u16;
+            U32     u32;
+            U64     u64;
+            U128    u128;
+        );
+
+        macro_rules! null_test {
+            ($op: ident $a: expr, $b: expr) => {
+                assert!($a.$op(&$b).unwrap().is_null());
+            };
+        }
+
+        macro_rules! null_test_bitwise_and {
+            ($($vt: ident)*) => {
+                $(
+                    null_test!(bitwise_and $vt(1), Null);
+                    null_test!(bitwise_and Null, $vt(1));
+                    null_test!(bitwise_and Null, Null);
+                )*
+            };
+        }
+
+        null_test_bitwise_and!(
+            I8 I16 I32 I64 I128 U8 U16 U32 U64 U128
+        );
+
+        let lhs = I8(3);
+        let rhs = I16(12);
+        assert_eq!(
+            lhs.bitwise_and(&rhs),
+            Err(ValueError::NonNumericMathOperation {
+                lhs,
+                rhs,
+                operator: NumericBinaryOperator::BitwiseAnd
+            }
+            .into())
+        )
     }
 
     #[test]

@@ -1,3 +1,5 @@
+dist_web/
+dist_nodejs/
 dist/
 node_modules/
 bin/

@@ -367,6 +367,13 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::Gcd { left, right })))
         }
+        "LAST_DAY" => {
+            check_len(name, args.len(), 1)?;
+
+            let expr = translate_expr(args[0])?;
+
+            Ok(Expr::Function(Box::new(Function::LastDay(expr))))
+        }
         "LCM" => {
             check_len(name, args.len(), 2)?;
 
@@ -391,6 +398,13 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 dividend,
                 divisor,
             })))
+        }
+        "ENTRIES" => {
+            check_len(name, args.len(), 1)?;
+
+            let expr = translate_expr(args[0])?;
+
+            Ok(Expr::Function(Box::new(Function::Entries(expr))))
         }
         "MOD" => {
             check_len(name, args.len(), 2)?;
@@ -527,6 +541,22 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::Prepend { expr, value })))
         }
+        "SKIP" => {
+            check_len(name, args.len(), 2)?;
+            let expr = translate_expr(args[0])?;
+            let size = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Skip { expr, size })))
+        }
+        "SORT" => {
+            check_len_range(name, args.len(), 1, 2)?;
+            let expr = translate_expr(args[0])?;
+            let order = (args.len() > 1)
+                .then(|| translate_expr(args[1]))
+                .transpose()?;
+
+            Ok(Expr::Function(Box::new(Function::Sort { expr, order })))
+        }
         "TAKE" => {
             check_len(name, args.len(), 2)?;
             let expr = translate_expr(args[0])?;
@@ -567,6 +597,12 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             let expr = translate_expr(args[0])?;
             Ok(Expr::Function(Box::new(Function::IsEmpty(expr))))
+        }
+        "VALUES" => {
+            check_len(name, args.len(), 1)?;
+
+            let expr = translate_expr(args[0])?;
+            Ok(Expr::Function(Box::new(Function::Values(expr))))
         }
         _ => {
             let exprs = args
