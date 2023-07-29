@@ -160,6 +160,7 @@ pub enum FunctionNode<'a> {
     },
     Length(ExprNode<'a>),
     IsEmpty(ExprNode<'a>),
+    LastDay(ExprNode<'a>),
 }
 
 impl<'a> TryFrom<FunctionNode<'a>> for Function {
@@ -367,6 +368,7 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
             }
             FunctionNode::Length(expr) => expr.try_into().map(Function::Length),
             FunctionNode::IsEmpty(expr) => expr.try_into().map(Function::IsEmpty),
+            FunctionNode::LastDay(expr) => expr.try_into().map(Function::LastDay),
         }
     }
 }
@@ -529,6 +531,9 @@ impl<'a> ExprNode<'a> {
     }
     pub fn is_empty(self) -> ExprNode<'a> {
         is_empty(self)
+    }
+    pub fn last_day(self) -> ExprNode<'a> {
+        last_day(self)
     }
 }
 
@@ -895,6 +900,10 @@ pub fn is_empty<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::IsEmpty(expr.into())))
 }
 
+pub fn last_day<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::LastDay(expr.into())))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
@@ -902,11 +911,11 @@ mod tests {
         ast_builder::{
             abs, acos, ascii, asin, atan, calc_distance, cast, ceil, chr, col, concat, concat_ws,
             cos, date, degrees, divide, exp, expr, extract, find_idx, floor, format, gcd,
-            generate_uuid, get_x, get_y, ifnull, initcap, is_empty, lcm, left, length, ln, log,
-            log10, log2, lower, lpad, ltrim, md5, modulo, now, num, pi, point, position, power,
-            radians, rand, repeat, replace, reverse, right, round, rpad, rtrim, sign, sin, skip,
-            sqrt, substr, tan, test_expr, text, time, timestamp, to_date, to_time, to_timestamp,
-            upper,
+            generate_uuid, get_x, get_y, ifnull, initcap, is_empty, last_day, lcm, left, length,
+            ln, log, log10, log2, lower, lpad, ltrim, md5, modulo, now, num, pi, point, position,
+            power, radians, rand, repeat, replace, reverse, right, round, rpad, rtrim, sign, sin,
+            skip, sqrt, substr, tan, test_expr, text, time, timestamp, to_date, to_time,
+            to_timestamp, upper,
         },
         prelude::DataType,
     };
@@ -1632,6 +1641,28 @@ mod tests {
 
         let actual = is_empty(col("list"));
         let expected = "IS_EMPTY(list)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_last_day_date() {
+        let actual = last_day(date("2023-07-29"));
+        let expected = "LAST_DAY(DATE'2023-07-29')";
+        test_expr(actual, expected);
+
+        let actual = date("2023-07-29").last_day();
+        let expected = "LAST_DAY(DATE'2023-07-29')";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_last_day_timestamp() {
+        let actual = last_day(timestamp("2023-07-29 11:00:00"));
+        let expected = "LAST_DAY(TIMESTAMP '2023-07-29 11:00:00')";
+        test_expr(actual, expected);
+
+        let actual = timestamp("2023-07-29 11:00:00").last_day();
+        let expected = "LAST_DAY(TIMESTAMP '2023-07-29 11:00:00')";
         test_expr(actual, expected);
     }
 }
