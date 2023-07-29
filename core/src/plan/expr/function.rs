@@ -45,6 +45,7 @@ impl Function {
             | Self::Ascii(expr)
             | Self::Chr(expr)
             | Self::Md5(expr)
+            | Self::LastDay(expr)
             | Self::Ltrim { expr, chars: None }
             | Self::Rtrim { expr, chars: None }
             | Self::Trim {
@@ -144,6 +145,7 @@ impl Function {
             }
             | Self::Append { expr, value: expr2 }
             | Self::Prepend { expr, value: expr2 }
+            | Self::Skip { expr, size: expr2 }
             | Self::Sort {
                 expr,
                 order: Some(expr2),
@@ -184,6 +186,7 @@ impl Function {
             Self::ConcatWs { separator, exprs } => {
                 Exprs::VariableArgsWithSingle(once(separator).chain(exprs.iter()))
             }
+            Self::Entries(expr) => Exprs::Single([expr].into_iter()),
         }
     }
 }
@@ -243,6 +246,7 @@ mod tests {
         test("LOG2(16)", &["16"]);
         test("LOG10(150 - 50)", &["150 - 50"]);
         test("SQRT(144)", &["144"]);
+        test("LASTDAY(DATE '2020-01-01')", &[r#"DATE '2020-01-01'"#]);
         test(r#"LTRIM("  hello")"#, &[r#""  hello""#]);
         test(r#"RTRIM("world  ")"#, &[r#""world  ""#]);
         test(r#"TRIM("  rust  ")"#, &[r#""  rust  ""#]);
@@ -287,6 +291,7 @@ mod tests {
         test("REPEAT(col || col2, 3)", &["col || col2", "3"]);
         test("REPEAT(column, 2)", &["column", "2"]);
         test(r#"UNWRAP(field, "foo.1")"#, &["field", r#""foo.1""#]);
+        test(r#"SKIP(list, 2)"#, &[r#""list""#, r#"2"#]);
 
         // Triple
         test(

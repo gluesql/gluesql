@@ -64,6 +64,7 @@ pub enum Function {
         filter_chars: Option<Expr>,
         trim_where_field: Option<TrimWhereField>,
     },
+    Entries(Expr),
     Exp(Expr),
     Extract {
         field: DateTimeField,
@@ -104,6 +105,7 @@ pub enum Function {
     Degrees(Expr),
     Now(),
     Pi(),
+    LastDay(Expr),
     Ltrim {
         expr: Expr,
         chars: Option<Expr>,
@@ -167,6 +169,10 @@ pub enum Function {
     Prepend {
         expr: Expr,
         value: Expr,
+    },
+    Skip {
+        expr: Expr,
+        size: Expr,
     },
     Take {
         expr: Expr,
@@ -302,6 +308,7 @@ impl ToSql for Function {
             Function::Degrees(e) => format!("DEGREES({})", e.to_sql()),
             Function::Now() => "NOW()".to_owned(),
             Function::Pi() => "PI()".to_owned(),
+            Function::LastDay(expr) => format!("LAST_DAY({})", expr.to_sql()),
             Function::Ltrim { expr, chars } => match chars {
                 None => format!("LTRIM({})", expr.to_sql()),
                 Some(chars) => format!("LTRIM({}, {})", expr.to_sql(), chars.to_sql()),
@@ -384,6 +391,9 @@ impl ToSql for Function {
                     value = value.to_sql()
                 }
             }
+            Function::Skip { expr, size } => {
+                format!("SKIP({}, {})", expr.to_sql(), size.to_sql())
+            }
             Function::Sort { expr, order } => match order {
                 None => format!("SORT({})", expr.to_sql()),
                 Some(order) => {
@@ -409,6 +419,7 @@ impl ToSql for Function {
             Function::IsEmpty(e) => format!("IS_EMPTY({})", e.to_sql()),
             Function::Length(e) => format!("LENGTH({})", e.to_sql()),
             Function::Values(e) => format!("VALUES({})", e.to_sql()),
+            Function::Entries(e) => format!("ENTRIES({})", e.to_sql()),
         }
     }
 }
@@ -986,6 +997,15 @@ mod tests {
         );
 
         assert_eq!(
+            "LAST_DAY(DATE '2022-10-12')",
+            &Expr::Function(Box::new(Function::LastDay(Expr::TypedString {
+                data_type: DataType::Date,
+                value: "2022-10-12".to_owned()
+            })))
+            .to_sql()
+        );
+
+        assert_eq!(
             "TO_DATE('2022-10-12', '%Y-%m-%d')",
             &Expr::Function(Box::new(Function::ToDate {
                 expr: Expr::Literal(AstLiteral::QuotedString("2022-10-12".to_owned())),
@@ -1095,6 +1115,15 @@ mod tests {
         );
 
         assert_eq!(
+            r#"SKIP("list", 2)"#,
+            &Expr::Function(Box::new(Function::Skip {
+                expr: Expr::Identifier("list".to_owned()),
+                size: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap()))
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
             r#"SORT("list")"#,
             &Expr::Function(Box::new(Function::Sort {
                 expr: Expr::Identifier("list".to_owned()),
@@ -1183,7 +1212,15 @@ mod tests {
                 "map".to_owned()
             ))))
             .to_sql()
-        )
+        );
+
+        assert_eq!(
+            r#"ENTRIES("map")"#,
+            &Expr::Function(Box::new(Function::Entries(Expr::Identifier(
+                "map".to_owned()
+            ))))
+            .to_sql()
+        );
     }
 
     #[test]

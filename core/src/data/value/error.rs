@@ -81,6 +81,18 @@ pub enum ValueError {
     #[error("unary factorial operation overflow")]
     FactorialOverflow,
 
+    #[error("GCD or LCM calculation overflowed on trying to get the absolute value of {0}")]
+    GcdLcmOverflow(i64),
+
+    #[error("LCM calculation resulted in a value out of the i64 range")]
+    LcmResultOutOfRange,
+
+    #[error("unary bit_not operation for non numeric value")]
+    UnaryBitwiseNotOnNonNumeric,
+
+    #[error("unary bit_not operation for non integer value")]
+    UnaryBitwiseNotOnNonInteger,
+
     #[error("unreachable failure on parsing number")]
     UnreachableNumberParsing,
 
