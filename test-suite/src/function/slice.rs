@@ -1,9 +1,4 @@
-use {
-    crate::*,
-    gluesql_core::{
-        prelude::{Value::*},
-    },
-};
+use {crate::*, gluesql_core::prelude::Value::*};
 
 test_case!(slice, async move {
     run!("CREATE TABLE Test (list LIST)");
