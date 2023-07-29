@@ -1,13 +1,20 @@
-use std::str::FromStr;
+use std::{collections::HashMap, future, str::FromStr};
 
-use futures::{stream, Stream, StreamExt, TryStreamExt};
+use futures::{stream, FutureExt, Stream, StreamExt, TryStreamExt};
 use gluesql_core::{
     ast::ColumnDef,
     prelude::{DataType, Error},
 };
-use mongodb::bson::{doc, Bson, Document};
+use mongodb::{
+    bson::{doc, Bson, Document},
+    options::{IndexOptions, ListIndexesOptions},
+    IndexModel,
+};
 
-use crate::value::{BsonType, IntoBson, IntoRow, IntoValue};
+use crate::{
+    index,
+    value::{BsonType, IntoBson, IntoRow, IntoValue},
+};
 
 use {
     crate::{
@@ -162,9 +169,40 @@ impl MongoStorage {
 
                 println!("validators: {}", validators.unwrap());
 
+                println!("collection_name: {}", collection_name);
                 let collection = self.db.collection::<Document>(collection_name);
+                let options = ListIndexesOptions::builder().batch_size(10).build();
+                let cursor = collection.list_indexes(options).await.unwrap();
+                let indexes = cursor
+                    .into_stream()
+                    .try_filter_map(|index_model| {
+                        // TODO: what about compound index?
+                        let index_key = index_model
+                            .clone()
+                            .keys
+                            .into_iter()
+                            .map(|(index_key, _)| index_key)
+                            .next();
 
-                let indexes = collection.list_indexes(None).await;
+                        let IndexOptions { name, unique, .. } = index_model.options.unwrap();
+                        println!("index_name: {:#?}", name);
+
+                        future::ready(Ok(index_key.zip(unique)))
+                    })
+                    .try_collect::<HashMap<String, bool>>()
+                    .await
+                    .unwrap();
+
+                // let indexes = cursor.next().await.unwrap().unwrap();
+                // let indexes = cursor.next().await.unwrap().unwrap();
+                // .map(|result| {
+                //     let index_model = result.unwrap();
+
+                //     index_model.keys
+                // })
+                // .collect::<Vec<_>>();
+
+                println!("indexes: {:#?}", indexes);
 
                 let column_defs = validators
                     .unwrap()
@@ -196,22 +234,7 @@ impl MongoStorage {
                             (data_type, _) => data_type,
                         };
 
-                        // let data_type = match data_type {
-                        //     "string" => DataType::Text,
-                        //     "int" => DataType::Int,
-                        //     "object" => DataType::Map,
-                        //     "array" => DataType::List,
-                        //     "long" => DataType::Int,
-                        //     "double" => DataType::Float,
-                        //     "bool" => DataType::Boolean,
-                        //     "binData" => DataType::Bytea,
-                        //     "decimal" => DataType::Decimal,
-                        //     v => {
-                        //         println!("v: {}", v);
-
-                        //         todo!();
-                        //     }
-                        // };
+                        let unique = indexes.get(name).unwrap_or(&false);
 
                         let column_def = ColumnDef {
                             name: name.to_owned(),

@@ -34,7 +34,7 @@ impl StoreMut for MongoStorage {
             .as_ref()
             .map(|column_defs| {
                 column_defs.iter().fold(
-                    (vec![], doc! {}, doc! {}),
+                    (vec![], doc! {}, vec![]),
                     |(mut names, mut column_types, mut indexes), column_def| {
                         let column_name = column_def.name.clone();
                         names.push(column_name.clone());
@@ -54,9 +54,7 @@ impl StoreMut for MongoStorage {
 
                         match &column_def.unique {
                             Some(ColumnUniqueOption { is_primary }) => {
-                                indexes.extend(doc! {
-                                    column_name.clone(): 1,
-                                });
+                                indexes.push(column_name.clone());
 
                                 if *is_primary {
                                     bson_type = vec![data_type, "null"]
@@ -120,14 +118,19 @@ impl StoreMut for MongoStorage {
         }
 
         let index_options = IndexOptions::builder().unique(true).build();
-        let indexes = mongodb::IndexModel::builder()
-            .keys(indexes)
-            .options(index_options)
-            .build();
+        let index_models = indexes
+            .into_iter()
+            .map(|index| {
+                mongodb::IndexModel::builder()
+                    .keys(doc! {index: 1})
+                    .options(index_options.clone())
+                    .build()
+            })
+            .collect::<Vec<_>>();
 
         self.db
             .collection::<Document>(&schema.table_name)
-            .create_indexes(vec![indexes], None)
+            .create_indexes(index_models, None)
             .await
             .map(|_| ())
             .map_storage_err()
