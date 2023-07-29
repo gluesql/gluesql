@@ -581,13 +581,7 @@ pub fn slice<'a>(
     length: Evaluated<'_>,
 ) -> Result<Evaluated<'a>> {
     let expr: Value = expr.try_into()?;
-    let start = match start.try_into()? {
-        Value::I64(number) => usize::try_from(number)
-            .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.clone()))?,
-        _ => {
-            return Err(EvaluateError::FunctionRequiresIntegerValue(name).into());
-        }
-    };
+    let mut start = eval_to_int!(name, start);
     let length = match length.try_into()? {
         Value::I64(number) => {
             usize::try_from(number).map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name))?
@@ -595,14 +589,19 @@ pub fn slice<'a>(
         _ => {
             return Err(EvaluateError::FunctionRequiresIntegerValue(name).into());
         }
-    };
-
+    }; 
     match expr {
         Value::List(l) => {
-            if start + length >= l.len() {
-                // IndexOutOfBounds
+            if start < 0 {
+                start += l.len() as i64;
             }
-            let l = l.into_iter().skip(start).take(length).collect();
+            if start < 0 {
+                start = 0;
+            }
+
+            let start_usize = start as usize;
+            
+            let l = l.into_iter().skip(start_usize).take(length).collect();
             Ok(Evaluated::Value(Value::List(l)))
         }
         _ => Err(EvaluateError::ListTypeRequired.into()),
