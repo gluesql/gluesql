@@ -1159,6 +1159,14 @@ mod tests {
         );
 
         assert_eq!(
+            r#"SLICE("list, 1, 2)"#,
+            &Expr::Function(Box::new(Function::Slice { 
+                expr: (Expr::Identifier("list".to_owned())), 
+                start: (Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap()))), 
+                length: (Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap()))) })).to_sql()
+        );
+
+        assert_eq!(
             r#"TAKE("list", 3)"#,
             &Expr::Function(Box::new(Function::Take {
                 expr: Expr::Identifier("list".to_owned()),
