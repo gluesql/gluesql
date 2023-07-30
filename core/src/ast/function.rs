@@ -988,6 +988,11 @@ mod tests {
         );
 
         assert_eq!(
+            "NULL",
+            &Expr::Function(Box::new(Function::Greatest(vec![]))).to_sql()
+        );
+
+        assert_eq!(
             "GREATEST(16, 9, 7)",
             &Expr::Function(Box::new(Function::Greatest(vec![
                 Expr::Literal(AstLiteral::Number(BigDecimal::from_str("16").unwrap())),

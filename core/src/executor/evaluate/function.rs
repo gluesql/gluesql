@@ -627,13 +627,10 @@ pub fn greatest(_name: String, exprs: Vec<Evaluated<'_>>) -> Result<Evaluated<'_
         (Value::F64(a), Value::F64(b)) => a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal),
         (Value::Str(a), Value::Str(b)) => a.cmp(b),
         (Value::Date(a), Value::Date(b)) => a.cmp(b),
-        _ => panic!("Unsupported type in comparison"),
+        _ => std::cmp::Ordering::Equal,
     });
 
-    match greatest_value {
-        Some(value) => Ok(Evaluated::from(value)),
-        None => Ok(Evaluated::from(Value::Null)),
-    }
+    Ok(Evaluated::from(greatest_value.unwrap()))
 }
 
 pub fn format<'a>(
