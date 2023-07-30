@@ -1159,7 +1159,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"SLICE("list, 1, 2)"#,
+            r#"SLICE("list", 1, 2)"#,
             &Expr::Function(Box::new(Function::Slice {
                 expr: (Expr::Identifier("list".to_owned())),
                 start: (Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap()))),
