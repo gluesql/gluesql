@@ -703,6 +703,27 @@ impl Value {
         }
     }
 
+    pub fn unary_bitwise_not(&self) -> Result<Value> {
+        use Value::*;
+
+        match self {
+            I8(v) => Ok(Value::I8(!v)),
+            I16(v) => Ok(Value::I16(!v)),
+            I32(v) => Ok(Value::I32(!v)),
+            I64(v) => Ok(Value::I64(!v)),
+            I128(v) => Ok(Value::I128(!v)),
+            U8(v) => Ok(Value::U8(!v)),
+            U16(v) => Ok(Value::U16(!v)),
+            U32(v) => Ok(Value::U32(!v)),
+            U64(v) => Ok(Value::U64(!v)),
+            U128(v) => Ok(Value::U128(!v)),
+            F32(_) => Err(ValueError::UnaryBitwiseNotOnNonInteger.into()),
+            F64(_) => Err(ValueError::UnaryBitwiseNotOnNonInteger.into()),
+            Null => Ok(Null),
+            _ => Err(ValueError::UnaryBitwiseNotOnNonNumeric.into()),
+        }
+    }
+
     pub fn like(&self, other: &Value, case_sensitive: bool) -> Result<Value> {
         use Value::*;
 

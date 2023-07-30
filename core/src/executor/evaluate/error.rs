@@ -38,6 +38,9 @@ pub enum EvaluateError {
     #[error("function requires point value: {0}")]
     FunctionRequiresPointValue(String),
 
+    #[error("function requires date or datetime value: {0}")]
+    FunctionRequiresDateOrDateTimeValue(String),
+
     #[error("function requires one of string, list, map types: {0}")]
     FunctionRequiresStrOrListOrMapValue(String),
 
@@ -125,6 +128,9 @@ pub enum EvaluateError {
 
     #[error("unsupported evaluate string unary factorial: {0}")]
     UnsupportedUnaryFactorial(String),
+
+    #[error("incompatible bit operation ~{0}")]
+    IncompatibleUnaryBitwiseNotOperation(String),
 
     #[error("unsupported custom function in subqueries")]
     UnsupportedCustomFunction,
