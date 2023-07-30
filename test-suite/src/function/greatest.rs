@@ -88,4 +88,9 @@ test_case!(greatest, async move {
             "goat"; I64; 1
         ))
     );
+
+    test!(
+        "SELECT GREATEST(true, false) AS goat;",
+        Err(EvaluateError::UnsupportedTypeForComparison.into())
+    );
 });

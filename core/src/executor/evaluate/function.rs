@@ -662,12 +662,19 @@ pub fn greatest(_name: String, exprs: Vec<Evaluated<'_>>) -> Result<Evaluated<'_
         return Err(EvaluateError::CannotCompareDifferentTypes.into());
     }
 
+    for value in &exprs {
+        match value {
+            Value::I64(_) | Value::F64(_) | Value::Str(_) | Value::Date(_) => (),
+            _ => return Err(EvaluateError::UnsupportedTypeForComparison.into()),
+        }
+    }
+
     let greatest_value = exprs.into_iter().max_by(|a, b| match (a, b) {
         (Value::I64(a), Value::I64(b)) => a.cmp(b),
         (Value::F64(a), Value::F64(b)) => a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal),
         (Value::Str(a), Value::Str(b)) => a.cmp(b),
         (Value::Date(a), Value::Date(b)) => a.cmp(b),
-        _ => std::cmp::Ordering::Equal,
+        _ => unreachable!(),
     });
 
     Ok(Evaluated::from(greatest_value.unwrap()))

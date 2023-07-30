@@ -148,6 +148,9 @@ pub enum EvaluateError {
 
     #[error("cannot compare values of different types")]
     CannotCompareDifferentTypes,
+
+    #[error("unsupported value type for comparison")]
+    UnsupportedTypeForComparison,
 }
 
 fn error_serialize<S>(error: &chrono::format::ParseError, serializer: S) -> Result<S::Ok, S::Error>
