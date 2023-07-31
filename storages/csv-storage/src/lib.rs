@@ -7,7 +7,7 @@ use {
     gluesql_core::{
         ast::{ColumnDef, ColumnUniqueOption, DataType},
         data::{Key, Schema, Value},
-        error::{Error, Result},
+        error::Result,
         parse_sql::parse_data_type,
         store::{
             AlterTable, CustomFunction, CustomFunctionMut, DataRow, Index, IndexMut, Metadata,
@@ -77,9 +77,7 @@ impl CsvStorage {
 
         let schema = Schema::from_ddl(&ddl)?;
         if schema.table_name != table_name {
-            return Err(Error::StorageMsg(
-                CsvStorageError::TableNameDoesNotMatchWithFile.to_string(),
-            ));
+            return Err(CsvStorageError::TableNameDoesNotMatchWithFile.into());
         }
 
         Ok(Some(schema))
