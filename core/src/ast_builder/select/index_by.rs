@@ -140,7 +140,10 @@ fn to_expr(sql: &str) -> Expr {
 
 #[cfg(test)]
 mod tests {
-    use crate::mock::run_statement;
+    use crate::{
+        ast::{Join, JoinConstraint, JoinExecutor, JoinOperator, OrderByExpr, TableAlias},
+        mock::run_statement,
+    };
 
     use {
         super::{IndexItem, Select},
@@ -167,6 +170,7 @@ mod tests {
                 .unwrap(),
         );
 
+        // index_by - filter
         let query_result = table("Player")
             .select()
             .index_by(use_idx().primary_key(expr("1")))
@@ -186,6 +190,351 @@ mod tests {
                             index: Some(IndexItem::PrimaryKey(to_expr("1"))),
                         },
                         joins: Vec::new(),
+                    },
+                    selection: None,
+                    group_by: Vec::new(),
+                    having: None,
+                })),
+                limit: None,
+                offset: None,
+                order_by: Vec::new(),
+            };
+
+            Statement::Query(subquery)
+        };
+        assert_eq!(actual, expected);
+
+        // index_by - group_by
+        let query_result = table("Player")
+            .select()
+            .index_by(use_idx().primary_key(expr("1")))
+            .group_by("name")
+            .build();
+        let actual = plan_query_builder(&storage, query_result.unwrap());
+
+        let expected = {
+            let subquery = Query {
+                body: SetExpr::Select(Box::new(Select {
+                    projection: vec![SelectItem::Wildcard],
+                    from: TableWithJoins {
+                        relation: TableFactor::Table {
+                            name: "Player".to_owned(),
+                            alias: None,
+                            index: Some(IndexItem::PrimaryKey(to_expr("1"))),
+                        },
+                        joins: Vec::new(),
+                    },
+                    selection: None,
+                    group_by: vec![to_expr("name")],
+                    having: None,
+                })),
+                limit: None,
+                offset: None,
+                order_by: Vec::new(),
+            };
+
+            Statement::Query(subquery)
+        };
+        assert_eq!(actual, expected);
+
+        // index_by - offset
+        let query_result = table("Player")
+            .select()
+            .index_by(use_idx().primary_key(expr("1")))
+            .offset(1)
+            .build();
+        let actual = plan_query_builder(&storage, query_result.unwrap());
+        let expected = {
+            let subquery = Query {
+                body: SetExpr::Select(Box::new(Select {
+                    projection: vec![SelectItem::Wildcard],
+                    from: TableWithJoins {
+                        relation: TableFactor::Table {
+                            name: "Player".to_owned(),
+                            alias: None,
+                            index: Some(IndexItem::PrimaryKey(to_expr("1"))),
+                        },
+                        joins: Vec::new(),
+                    },
+                    selection: None,
+                    group_by: Vec::new(),
+                    having: None,
+                })),
+                limit: None,
+                offset: Some(to_expr("1")),
+                order_by: Vec::new(),
+            };
+
+            Statement::Query(subquery)
+        };
+        assert_eq!(actual, expected);
+
+        // index_by - limit
+        let query_result = table("Player")
+            .select()
+            .index_by(use_idx().primary_key(expr("1")))
+            .limit(1)
+            .build();
+        let actual = plan_query_builder(&storage, query_result.unwrap());
+        let expected = {
+            let subquery = Query {
+                body: SetExpr::Select(Box::new(Select {
+                    projection: vec![SelectItem::Wildcard],
+                    from: TableWithJoins {
+                        relation: TableFactor::Table {
+                            name: "Player".to_owned(),
+                            alias: None,
+                            index: Some(IndexItem::PrimaryKey(to_expr("1"))),
+                        },
+                        joins: Vec::new(),
+                    },
+                    selection: None,
+                    group_by: Vec::new(),
+                    having: None,
+                })),
+                limit: Some(to_expr("1")),
+                offset: None,
+                order_by: Vec::new(),
+            };
+
+            Statement::Query(subquery)
+        };
+        assert_eq!(actual, expected);
+
+        // index_by - projection
+        let query_result = table("Player")
+            .select()
+            .index_by(use_idx().primary_key(expr("1")))
+            .project(vec![expr("name")])
+            .build();
+        let actual = plan_query_builder(&storage, query_result.unwrap());
+        let expected = {
+            let subquery = Query {
+                body: SetExpr::Select(Box::new(Select {
+                    projection: vec![SelectItem::Expr {
+                        expr: to_expr("name"),
+                        label: "name".to_owned(),
+                    }],
+                    from: TableWithJoins {
+                        relation: TableFactor::Table {
+                            name: "Player".to_owned(),
+                            alias: None,
+                            index: Some(IndexItem::PrimaryKey(to_expr("1"))),
+                        },
+                        joins: Vec::new(),
+                    },
+                    selection: None,
+                    group_by: Vec::new(),
+                    having: None,
+                })),
+                limit: None,
+                offset: None,
+                order_by: Vec::new(),
+            };
+
+            Statement::Query(subquery)
+        };
+        assert_eq!(actual, expected);
+
+        // index_by - order_by
+        let query_result = table("Player")
+            .select()
+            .index_by(use_idx().primary_key(expr("1")))
+            .order_by("name")
+            .build();
+        let actual = plan_query_builder(&storage, query_result.unwrap());
+        let expected = {
+            let subquery = Query {
+                body: SetExpr::Select(Box::new(Select {
+                    projection: vec![SelectItem::Wildcard],
+                    from: TableWithJoins {
+                        relation: TableFactor::Table {
+                            name: "Player".to_owned(),
+                            alias: None,
+                            index: Some(IndexItem::PrimaryKey(to_expr("1"))),
+                        },
+                        joins: Vec::new(),
+                    },
+                    selection: None,
+                    group_by: Vec::new(),
+                    having: None,
+                })),
+                limit: None,
+                offset: None,
+                order_by: vec![OrderByExpr {
+                    expr: to_expr("name"),
+                    asc: None,
+                }],
+            };
+
+            Statement::Query(subquery)
+        };
+        assert_eq!(actual, expected);
+
+        // index_by - join
+        let query_result = table("Player")
+            .select()
+            .index_by(use_idx().primary_key(expr("1")))
+            .join("attendance")
+            .on("marks.id = attendance.id")
+            .build();
+        let actual = plan_query_builder(&storage, query_result.unwrap());
+        let expected = {
+            let subquery = Query {
+                body: SetExpr::Select(Box::new(Select {
+                    projection: vec![SelectItem::Wildcard],
+                    from: TableWithJoins {
+                        relation: TableFactor::Table {
+                            name: "Player".to_owned(),
+                            alias: None,
+                            index: Some(IndexItem::PrimaryKey(to_expr("1"))),
+                        },
+                        joins: vec![Join {
+                            relation: TableFactor::Table {
+                                name: "attendance".to_owned(),
+                                alias: None,
+                                index: None,
+                            },
+                            join_operator: JoinOperator::Inner(JoinConstraint::On(to_expr(
+                                "marks.id = attendance.id",
+                            ))),
+                            join_executor: JoinExecutor::NestedLoop,
+                        }],
+                    },
+                    selection: None,
+                    group_by: Vec::new(),
+                    having: None,
+                })),
+                limit: None,
+                offset: None,
+                order_by: Vec::new(),
+            };
+
+            Statement::Query(subquery)
+        };
+        assert_eq!(actual, expected);
+
+        // index_by - join_as
+        let query_result = table("Player")
+            .select()
+            .index_by(use_idx().primary_key(expr("1")))
+            .join_as("attendance", "a")
+            .on("marks.id = a.id")
+            .build();
+        let actual = plan_query_builder(&storage, query_result.unwrap());
+        let expected = {
+            let subquery = Query {
+                body: SetExpr::Select(Box::new(Select {
+                    projection: vec![SelectItem::Wildcard],
+                    from: TableWithJoins {
+                        relation: TableFactor::Table {
+                            name: "Player".to_owned(),
+                            alias: None,
+                            index: Some(IndexItem::PrimaryKey(to_expr("1"))),
+                        },
+                        joins: vec![Join {
+                            relation: TableFactor::Table {
+                                name: "attendance".to_owned(),
+                                alias: Some(TableAlias {
+                                    name: "a".to_owned(),
+                                    columns: vec![],
+                                }),
+                                index: None,
+                            },
+                            join_operator: JoinOperator::Inner(JoinConstraint::On(to_expr(
+                                "marks.id = a.id",
+                            ))),
+                            join_executor: JoinExecutor::NestedLoop,
+                        }],
+                    },
+                    selection: None,
+                    group_by: Vec::new(),
+                    having: None,
+                })),
+                limit: None,
+                offset: None,
+                order_by: Vec::new(),
+            };
+
+            Statement::Query(subquery)
+        };
+        assert_eq!(actual, expected);
+
+        // index_by - left_join
+        let query_result = table("Player")
+            .select()
+            .index_by(use_idx().primary_key(expr("1")))
+            .left_join("attendance")
+            .on("marks.id = attendance.id")
+            .build();
+        let actual = plan_query_builder(&storage, query_result.unwrap());
+        let expected = {
+            let subquery = Query {
+                body: SetExpr::Select(Box::new(Select {
+                    projection: vec![SelectItem::Wildcard],
+                    from: TableWithJoins {
+                        relation: TableFactor::Table {
+                            name: "Player".to_owned(),
+                            alias: None,
+                            index: Some(IndexItem::PrimaryKey(to_expr("1"))),
+                        },
+                        joins: vec![Join {
+                            relation: TableFactor::Table {
+                                name: "attendance".to_owned(),
+                                alias: None,
+                                index: None,
+                            },
+                            join_operator: JoinOperator::LeftOuter(JoinConstraint::On(to_expr(
+                                "marks.id = attendance.id",
+                            ))),
+                            join_executor: JoinExecutor::NestedLoop,
+                        }],
+                    },
+                    selection: None,
+                    group_by: Vec::new(),
+                    having: None,
+                })),
+                limit: None,
+                offset: None,
+                order_by: Vec::new(),
+            };
+
+            Statement::Query(subquery)
+        };
+        assert_eq!(actual, expected);
+
+        // index_by - left_join_as
+        let query_result = table("Player")
+            .select()
+            .index_by(use_idx().primary_key(expr("1")))
+            .left_join_as("attendance", "a")
+            .on("marks.id = a.id")
+            .build();
+        let actual = plan_query_builder(&storage, query_result.unwrap());
+        let expected = {
+            let subquery = Query {
+                body: SetExpr::Select(Box::new(Select {
+                    projection: vec![SelectItem::Wildcard],
+                    from: TableWithJoins {
+                        relation: TableFactor::Table {
+                            name: "Player".to_owned(),
+                            alias: None,
+                            index: Some(IndexItem::PrimaryKey(to_expr("1"))),
+                        },
+                        joins: vec![Join {
+                            relation: TableFactor::Table {
+                                name: "attendance".to_owned(),
+                                alias: Some(TableAlias {
+                                    name: "a".to_owned(),
+                                    columns: vec![],
+                                }),
+                                index: None,
+                            },
+                            join_operator: JoinOperator::LeftOuter(JoinConstraint::On(to_expr(
+                                "marks.id = a.id",
+                            ))),
+                            join_executor: JoinExecutor::NestedLoop,
+                        }],
                     },
                     selection: None,
                     group_by: Vec::new(),
