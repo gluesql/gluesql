@@ -233,19 +233,24 @@ impl CsvStorage {
             Ok((None, Box::new(rows)))
         } else {
             let columns = fetch_data_header_columns()?;
-            let rows = data_rdr
-                .into_records()
-                .enumerate()
-                .map(move |(index, record)| {
-                    let key = Key::U64(index as u64);
-                    let row = record
-                        .map_storage_err()?
-                        .into_iter()
-                        .map(|value| Value::Str(value.to_owned()))
-                        .collect::<Vec<Value>>();
+            let rows = {
+                let columns = columns.clone();
 
-                    Ok((key, DataRow::Vec(row)))
-                });
+                data_rdr
+                    .into_records()
+                    .enumerate()
+                    .map(move |(index, record)| {
+                        let key = Key::U64(index as u64);
+                        let row = record
+                            .map_storage_err()?
+                            .into_iter()
+                            .zip(columns.iter())
+                            .map(|(value, column)| (column.clone(), Value::Str(value.to_owned())))
+                            .collect::<HashMap<String, Value>>();
+
+                        Ok((key, DataRow::Map(row)))
+                    })
+            };
 
             Ok((Some(columns), Box::new(rows)))
         }
