@@ -11,7 +11,7 @@ use mongodb::{
 };
 
 use crate::{
-    store::{B16, B32, B8},
+    store::{B16, B32, B8, TIME},
     value::{into_object_id, BsonType, IntoBson},
 };
 
@@ -54,6 +54,7 @@ impl StoreMut for MongoStorage {
                             DataType::Int16 => Some(B16),
                             DataType::Int32 => Some(B32),
                             DataType::Float32 => Some(B32),
+                            DataType::Time => Some(TIME),
                             _ => None,
                         };
 

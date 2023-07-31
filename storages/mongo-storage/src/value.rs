@@ -5,7 +5,8 @@ use std::{
     str::FromStr,
 };
 
-use chrono::TimeZone;
+use bson::Timestamp;
+use chrono::{NaiveDateTime, TimeZone};
 use gluesql_core::{
     chrono::{NaiveDate, Utc},
     prelude::{DataType, Key},
@@ -129,7 +130,11 @@ impl IntoValue for Bson {
 
                 Value::Decimal(decimal)
             }
+            (Bson::DateTime(dt), DataType::Time) => Value::Time(dt.to_chrono().time()),
             (Bson::DateTime(dt), _) => Value::Date(dt.to_chrono().date_naive()),
+            (Bson::Timestamp(dt), _) => {
+                Value::Timestamp(NaiveDateTime::from_timestamp_opt(dt.time as i64, 0).unwrap())
+            }
             _ => todo!(),
         }
     }
@@ -157,16 +162,15 @@ impl From<&DataType> for BsonType {
             DataType::Float => BsonType::Double,
             DataType::Text => BsonType::String,
             DataType::Bytea => BsonType::Binary,
-            DataType::Inet => BsonType::String,
+            // DataType::Inet => BsonType::String,
             DataType::Date => BsonType::Date,
             DataType::Timestamp => BsonType::Timestamp,
-            DataType::Time => BsonType::String,
-            DataType::Interval => BsonType::String,
+            DataType::Time => BsonType::Date,
             DataType::Uuid => BsonType::Binary,
             DataType::Map => BsonType::Object,
             DataType::List => BsonType::Array,
             DataType::Decimal => BsonType::Decimal128,
-            DataType::Point => BsonType::String,
+            _ => todo!(),
         }
     }
 }
@@ -343,6 +347,30 @@ impl IntoBson for Value {
             })),
             Value::Date(val) => {
                 let utc = Utc.from_utc_datetime(&val.and_hms_opt(0, 0, 0).unwrap());
+                let datetime = DateTime::from_chrono(utc);
+
+                Ok(Bson::DateTime(datetime))
+            }
+            Value::Timestamp(val) => {
+                let utc = Utc
+                    .timestamp_opt(val.timestamp(), val.timestamp_subsec_nanos())
+                    .unwrap();
+                // utc.timestamp_subsec_micros();
+
+                let ts = utc.timestamp().to_le();
+
+                let timestamp = Timestamp {
+                    time: ((ts as u64) >> 32) as u32,
+                    increment: (ts & 0xFFFF_FFFF) as u32,
+                };
+
+                println!(":+:+:timestamp: {:?}", timestamp);
+
+                Ok(Bson::Timestamp(timestamp))
+            }
+            Value::Time(val) => {
+                let date = NaiveDate::from_ymd(1970, 1, 1);
+                let utc = Utc.from_utc_datetime(&NaiveDateTime::new(date, val));
                 let datetime = DateTime::from_chrono(utc);
 
                 Ok(Bson::DateTime(datetime))

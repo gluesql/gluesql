@@ -240,18 +240,30 @@ impl MongoStorage {
                         let nullable = iter
                             .next()
                             .transpose()?
-                            .map(|x| {
-                                println!("table_name: {}", collection_name);
-                                println!(":+:+:+:x: {}", x);
-
-                                x == "null"
-                            })
+                            .map(|x| x == "null")
                             .unwrap_or(false);
 
+                        // TODO: remove indent
                         let data_type = match (data_type, maximum) {
-                            (DataType::Int32, Some(B16)) => DataType::Int16,
                             (DataType::Int32, Some(B8)) => DataType::Int8,
+                            (DataType::Int32, Some(B16)) => DataType::Int16,
                             (DataType::Float, Some(B32)) => DataType::Float32,
+                            (DataType::Date, Some(TIME)) => DataType::Time,
+                            // (DataType::Int32, Some(bson))
+                            //     if bson.as_i64().filter(|x| x == &B16).is_some() =>
+                            // {
+                            //     DataType::Int16
+                            // }
+                            // (DataType::Int32, Some(bson))
+                            //     if bson.as_i64().filter(|x| x == &B8).is_some() =>
+                            // {
+                            //     DataType::Int8
+                            // }
+                            // (DataType::Float, Some(bson))
+                            //     if bson.as_i64().filter(|x| x == &B32).is_some() =>
+                            // {
+                            //     DataType::Float32
+                            // }
                             (data_type, _) => data_type,
                         };
 
@@ -311,3 +323,4 @@ impl MongoStorage {
 pub const B16: i64 = 2_i64.pow(16);
 pub const B8: i64 = 2_i64.pow(8);
 pub const B32: i64 = 2_i64.pow(32);
+pub const TIME: i64 = 86400000 - 1;
