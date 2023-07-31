@@ -245,6 +245,7 @@ dependencies = [
  "ahash 0.7.6",
  "base64 0.13.1",
  "bitvec",
+ "chrono",
  "hex",
  "indexmap",
  "js-sys",
@@ -1191,6 +1192,8 @@ version = "0.14.0"
 dependencies = [
  "async-io",
  "async-trait",
+ "bson",
+ "chrono",
  "futures",
  "gluesql-core",
  "gluesql-test-suite",

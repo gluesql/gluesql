@@ -25,6 +25,8 @@ thiserror = "1.0"
 iter-enum = "1"
 async-io = "1"
 mongodb = "2.5.0"
+bson = { version = "2.6.1", features = ["chrono-0_4"] }
+chrono = { version = "=0.4.23", features = ["serde", "wasmbind"] }
 strum_macros = "0.24"
 strum = "0.24"
 rust_decimal = { version = "1", features = ["serde-str"] }

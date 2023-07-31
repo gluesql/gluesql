@@ -5,12 +5,15 @@ use std::{
     str::FromStr,
 };
 
+use chrono::TimeZone;
 use gluesql_core::{
+    chrono::{NaiveDate, Utc},
     prelude::{DataType, Key},
     store::DataRow,
 };
 use mongodb::bson::{
-    self, bson, de, doc, spec::ElementType, to_bson, Binary, Bson, Decimal128, Document,
+    self, bson, de, doc, spec::ElementType, to_bson, Binary, Bson, DateTime, Decimal128, Document,
+    Uuid,
 };
 use rust_decimal::Decimal;
 use strum_macros::{Display, EnumString, IntoStaticStr};
@@ -126,6 +129,7 @@ impl IntoValue for Bson {
 
                 Value::Decimal(decimal)
             }
+            (Bson::DateTime(dt), _) => Value::Date(dt.to_chrono().date_naive()),
             _ => todo!(),
         }
     }
@@ -154,7 +158,7 @@ impl From<&DataType> for BsonType {
             DataType::Text => BsonType::String,
             DataType::Bytea => BsonType::Binary,
             DataType::Inet => BsonType::String,
-            DataType::Date => BsonType::Timestamp,
+            DataType::Date => BsonType::Date,
             DataType::Timestamp => BsonType::Timestamp,
             DataType::Time => BsonType::String,
             DataType::Interval => BsonType::String,
@@ -182,7 +186,7 @@ impl From<BsonType> for DataType {
             BsonType::Decimal128 => DataType::Decimal,
             BsonType::Undefined => todo!(),
             BsonType::ObjectId => todo!(),
-            BsonType::Date => todo!(),
+            BsonType::Date => DataType::Date,
             BsonType::Null => todo!(),
             BsonType::RegularExpression => todo!(),
             BsonType::DbPointer => todo!(),
@@ -332,6 +336,17 @@ impl IntoBson for Value {
             }
             Value::I8(val) => Ok(Bson::Int32(val.into())),
             Value::F32(val) => Ok(Bson::Double(val.into())),
+            Value::Uuid(val) => Ok(Bson::Binary(Binary {
+                subtype: bson::spec::BinarySubtype::Uuid,
+
+                bytes: val.to_be_bytes().to_vec(),
+            })),
+            Value::Date(val) => {
+                let utc = Utc.from_utc_datetime(&val.and_hms_opt(0, 0, 0).unwrap());
+                let datetime = DateTime::from_chrono(utc);
+
+                Ok(Bson::DateTime(datetime))
+            }
             // Value::Map(val) => {
             // let bson = val
             //     .into_iter()
