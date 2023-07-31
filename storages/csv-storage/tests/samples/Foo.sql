@@ -1,1 +1,0 @@
-CREATE TABLE "Foo" ("id" INT NULL);
