@@ -6,7 +6,7 @@ use gluesql_core::{
 };
 use mongodb::{
     bson::{self, bson, doc, Bson, Document},
-    options::{CreateCollectionOptions, IndexOptions, UpdateOptions},
+    options::{CreateCollectionOptions, IndexOptions, ReplaceOptions, UpdateOptions},
     Collection,
 };
 
@@ -262,18 +262,19 @@ impl StoreMut for MongoStorage {
                     },
                 ),
             };
+            println!("doc: {:#?}", doc);
 
             let query = match primary_key {
                 Some(column_def) => doc! {column_def.name.clone(): key.into_bson().unwrap()},
                 _ => doc! {"_id": into_object_id(key.clone())},
             };
 
-            let update = doc! {"$set": doc};
-            let options = UpdateOptions::builder().upsert(Some(true)).build();
+            // let update = doc! {"$set": doc};
+            let options = ReplaceOptions::builder().upsert(Some(true)).build();
 
             self.db
                 .collection::<Document>(table_name)
-                .update_one(query, update, options)
+                .replace_one(query, doc, options)
                 .await
                 .unwrap();
         }
