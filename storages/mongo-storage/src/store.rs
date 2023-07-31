@@ -6,9 +6,11 @@ use std::{
 
 use futures::{stream, FutureExt, Stream, StreamExt, TryStreamExt};
 use gluesql_core::{
-    ast::{ColumnDef, ColumnUniqueOption},
+    ast::{ColumnDef, ColumnUniqueOption, Expr},
+    parse_sql::parse_expr,
     prelude::{DataType, Error},
     store::Index,
+    translate::translate_expr,
 };
 use mongodb::{
     bson::{doc, Bson, Document},
@@ -246,17 +248,30 @@ impl MongoStorage {
                             _ => None,
                         };
 
+                        let default = value
+                            .as_document()
+                            .unwrap()
+                            .get_str("description")
+                            .ok()
+                            .map(|str| {
+                                let expr = parse_expr(str).unwrap();
+
+                                translate_expr(&expr)
+                            })
+                            .transpose()?;
+
                         let column_def = ColumnDef {
                             name: column_name.to_owned(),
                             data_type,
                             nullable: true, // should parse from validator
-                            default: None,  // does not support default value
+                            default,
                             unique,
                         };
 
                         Ok(column_def)
                     })
                     .collect::<Result<Vec<ColumnDef>>>()?;
+
                 let column_defs = match column_defs.len() {
                     0 => None,
                     _ => Some(column_defs),

@@ -1,4 +1,9 @@
-use gluesql_core::{ast::ColumnUniqueOption, chrono::format, prelude::DataType, store::Store};
+use gluesql_core::{
+    ast::{ColumnUniqueOption, ToSql},
+    chrono::format,
+    prelude::DataType,
+    store::Store,
+};
 use mongodb::{
     bson::{self, bson, doc, Bson, Document},
     options::{CreateCollectionOptions, IndexOptions, UpdateOptions},
@@ -83,6 +88,12 @@ impl StoreMut for MongoStorage {
                         if let Some(maximum) = maximum {
                             property.extend(doc! {
                                 "maximum": maximum,
+                            });
+                        }
+
+                        if let Some(default) = &column_def.default {
+                            property.extend(doc! {
+                                "description": default.to_sql()
                             });
                         }
 
