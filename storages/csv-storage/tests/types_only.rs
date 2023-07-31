@@ -15,7 +15,7 @@ macro_rules! date {
 }
 
 #[tokio::test]
-async fn types_without_schema() {
+async fn types_only() {
     let path = "./tests/samples/";
     let storage = CsvStorage::new(path).unwrap();
     let mut glue = Glue::new(storage);
