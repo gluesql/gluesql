@@ -57,6 +57,8 @@ impl StoreMut for MongoStorage {
                             _ => None,
                         };
 
+                        // println!(":+:+:+:+:nullable: {:?}", column_def.nullable);
+
                         let mut bson_type = match column_def.clone().nullable {
                             true => vec![data_type, "null"],
                             false => vec![data_type],
@@ -65,13 +67,13 @@ impl StoreMut for MongoStorage {
                         match &column_def.unique {
                             Some(ColumnUniqueOption { is_primary }) => match *is_primary {
                                 true => {
-                                    bson_type = vec![data_type, "null"];
                                     indexes.push(IndexInfo {
                                         name: format!("{column_name}_PK"),
                                         key: column_name.clone(),
                                     });
                                 }
                                 false => {
+                                    bson_type = vec![data_type, "null"];
                                     indexes.push(IndexInfo {
                                         name: format!("{column_name}_UNIQUE"),
                                         key: column_name.clone(),

@@ -218,19 +218,35 @@ impl MongoStorage {
                     .into_iter()
                     .skip(1)
                     .map(|(column_name, value)| {
-                        let data_type = value
+                        let mut iter = value
                             .as_document()
-                            .unwrap()
+                            .map_storage_err(MongoStorageError::InvalidDocument)?
                             .get_array("bsonType")
-                            .unwrap()
-                            .get(0)
-                            .unwrap()
-                            .as_str()
-                            .unwrap();
+                            .map_storage_err()?
+                            // .get(0..1)
+                            // .map_storage_err(MongoStorageError::InvalidDocument)?
+                            .iter()
+                            .map(|x| {
+                                x.as_str()
+                                    .map_storage_err(MongoStorageError::InvalidDocument)
+                            });
 
                         let maximum = value.as_document().unwrap().get_i64("maximum").ok();
 
-                        let data_type = BsonType::from_str(data_type).unwrap().into();
+                        let data_type = BsonType::from_str(iter.next().unwrap().unwrap())
+                            .unwrap()
+                            .into();
+
+                        let nullable = iter
+                            .next()
+                            .transpose()?
+                            .map(|x| {
+                                println!("table_name: {}", collection_name);
+                                println!(":+:+:+:x: {}", x);
+
+                                x == "null"
+                            })
+                            .unwrap_or(false);
 
                         let data_type = match (data_type, maximum) {
                             (DataType::Int32, Some(B16)) => DataType::Int16,
@@ -263,7 +279,7 @@ impl MongoStorage {
                         let column_def = ColumnDef {
                             name: column_name.to_owned(),
                             data_type,
-                            nullable: true, // should parse from validator
+                            nullable,
                             default,
                             unique,
                         };

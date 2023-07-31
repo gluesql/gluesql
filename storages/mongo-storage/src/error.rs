@@ -41,8 +41,8 @@ pub enum MongoStorageError {
     #[error("both {0}.jsonl and {0}.json files exist. remove or rename one")]
     BothJsonlAndJsonExist(String),
 
-    #[error("invalid log file content: {0}")]
-    InvalidJsonContent(String),
+    #[error("invalid document")]
+    InvalidDocument,
 
     #[error("json object type is required")]
     JsonObjectTypeRequired,
