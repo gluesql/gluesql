@@ -1,7 +1,14 @@
-use crate::{
-    ast::{IndexItem, Select, TableFactor},
-    ast_builder::{select::Prebuild, ExprNode, FilterNode, SelectNode},
-    result::Result,
+use {
+    super::join::JoinOperatorType,
+    crate::{
+        ast::{IndexItem, Select, TableFactor},
+        ast_builder::{
+            select::Prebuild, ExprList, ExprNode, FilterNode, GroupByNode, JoinNode, LimitNode,
+            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode, SelectItemList,
+            SelectNode, TableFactorNode,
+        },
+        result::Result,
+    },
 };
 
 #[derive(Clone, Debug)]
@@ -41,7 +48,55 @@ impl<'a> IndexNode<'a> {
         FilterNode::new(self, expr)
     }
 
-    // todo( add Next Possible Node )
+    pub fn group_by<T: Into<ExprList<'a>>>(self, expr_list: T) -> GroupByNode<'a> {
+        GroupByNode::new(self, expr_list)
+    }
+
+    pub fn offset<T: Into<ExprNode<'a>>>(self, expr: T) -> OffsetNode<'a> {
+        OffsetNode::new(self, expr)
+    }
+
+    pub fn limit<T: Into<ExprNode<'a>>>(self, expr: T) -> LimitNode<'a> {
+        LimitNode::new(self, expr)
+    }
+
+    pub fn project<T: Into<SelectItemList<'a>>>(self, select_items: T) -> ProjectNode<'a> {
+        ProjectNode::new(self, select_items)
+    }
+
+    pub fn order_by<T: Into<OrderByExprList<'a>>>(self, order_by_exprs: T) -> OrderByNode<'a> {
+        OrderByNode::new(self, order_by_exprs)
+    }
+
+    pub fn join(self, table_name: &str) -> JoinNode<'a> {
+        JoinNode::new(self, table_name.to_owned(), None, JoinOperatorType::Inner)
+    }
+
+    pub fn join_as(self, table_name: &str, alias: &str) -> JoinNode<'a> {
+        JoinNode::new(
+            self,
+            table_name.to_owned(),
+            Some(alias.to_owned()),
+            JoinOperatorType::Inner,
+        )
+    }
+
+    pub fn left_join(self, table_name: &str) -> JoinNode<'a> {
+        JoinNode::new(self, table_name.to_owned(), None, JoinOperatorType::Left)
+    }
+
+    pub fn left_join_as(self, table_name: &str, alias: &str) -> JoinNode<'a> {
+        JoinNode::new(
+            self,
+            table_name.to_owned(),
+            Some(alias.to_owned()),
+            JoinOperatorType::Left,
+        )
+    }
+
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
+        QueryNode::IndexNode(self).alias_as(table_alias)
+    }
 }
 
 impl<'a> Prebuild<Select> for IndexNode<'a> {

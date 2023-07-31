@@ -3,7 +3,7 @@ use {
     crate::{
         ast::{Join, JoinExecutor, JoinOperator, Select, TableAlias, TableFactor},
         ast_builder::{
-            select::Prebuild, ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode,
+            select::Prebuild, ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, IndexNode,
             JoinConstraintNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode,
             QueryNode, SelectItemList, SelectNode, TableFactorNode,
         },
@@ -17,6 +17,7 @@ pub enum PrevNode<'a> {
     Join(Box<JoinNode<'a>>),
     JoinConstraint(Box<JoinConstraintNode<'a>>),
     HashJoin(Box<HashJoinNode<'a>>),
+    Index(IndexNode<'a>),
 }
 
 impl<'a> Prebuild<Select> for PrevNode<'a> {
@@ -26,6 +27,7 @@ impl<'a> Prebuild<Select> for PrevNode<'a> {
             Self::Join(node) => node.prebuild(),
             Self::JoinConstraint(node) => node.prebuild(),
             Self::HashJoin(node) => node.prebuild(),
+            Self::Index(node) => node.prebuild(),
         }
     }
 }
@@ -51,6 +53,12 @@ impl<'a> From<JoinConstraintNode<'a>> for PrevNode<'a> {
 impl<'a> From<HashJoinNode<'a>> for PrevNode<'a> {
     fn from(node: HashJoinNode<'a>) -> Self {
         PrevNode::HashJoin(Box::new(node))
+    }
+}
+
+impl<'a> From<IndexNode<'a>> for PrevNode<'a> {
+    fn from(node: IndexNode<'a>) -> Self {
+        PrevNode::Index(node)
     }
 }
 

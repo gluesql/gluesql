@@ -3,8 +3,9 @@ use {
     crate::{
         ast::Query,
         ast_builder::{
-            ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
-            JoinNode, OrderByNode, ProjectNode, QueryNode, SelectNode, TableFactorNode,
+            ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, IndexNode,
+            JoinConstraintNode, JoinNode, OrderByNode, ProjectNode, QueryNode, SelectNode,
+            TableFactorNode,
         },
         result::Result,
     },
@@ -22,6 +23,7 @@ pub enum PrevNode<'a> {
     Filter(FilterNode<'a>),
     OrderBy(OrderByNode<'a>),
     ProjectNode(Box<ProjectNode<'a>>),
+    Index(IndexNode<'a>),
 }
 
 impl<'a> Prebuild<Query> for PrevNode<'a> {
@@ -37,6 +39,7 @@ impl<'a> Prebuild<Query> for PrevNode<'a> {
             Self::Filter(node) => node.prebuild(),
             Self::OrderBy(node) => node.prebuild(),
             Self::ProjectNode(node) => node.prebuild(),
+            Self::Index(node) => node.prebuild(),
         }
     }
 }
@@ -98,6 +101,12 @@ impl<'a> From<OrderByNode<'a>> for PrevNode<'a> {
 impl<'a> From<ProjectNode<'a>> for PrevNode<'a> {
     fn from(node: ProjectNode<'a>) -> Self {
         PrevNode::ProjectNode(Box::new(node))
+    }
+}
+
+impl<'a> From<IndexNode<'a>> for PrevNode<'a> {
+    fn from(node: IndexNode<'a>) -> Self {
+        PrevNode::Index(node)
     }
 }
 
