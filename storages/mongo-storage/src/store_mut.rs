@@ -217,7 +217,7 @@ impl StoreMut for MongoStorage {
             .map_storage_err()
     }
 
-    async fn insert_data(&mut self, table_name: &str, mut rows: Vec<(Key, DataRow)>) -> Result<()> {
+    async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
         println!("insert_data");
 
         let column_defs = self
@@ -228,6 +228,10 @@ impl StoreMut for MongoStorage {
             .column_defs
             .unwrap();
 
+        let primary_key = column_defs
+            .iter()
+            .find(|column_def| column_def.unique.map(|x| x.is_primary).unwrap_or(false));
+
         for (key, row) in rows {
             let doc = match row {
                 DataRow::Vec(values) => column_defs
@@ -235,7 +239,11 @@ impl StoreMut for MongoStorage {
                     .into_iter()
                     .zip(values.into_iter())
                     .fold(
-                        doc! {"_id": into_object_id(key.clone())},
+                        // usualy key is _id, but if there is PK, key is PK column
+                        match primary_key {
+                            Some(_) => doc! {},
+                            None => doc! {"_id": into_object_id(key.clone())},
+                        },
                         |mut acc, (column_def, value)| {
                             acc.extend(doc! {column_def.name: value.into_bson().unwrap()});
 
@@ -243,7 +251,10 @@ impl StoreMut for MongoStorage {
                         },
                     ),
                 DataRow::Map(hash_map) => hash_map.into_iter().fold(
-                    doc! {"_id": into_object_id(key.clone())},
+                    match primary_key {
+                        Some(_) => doc! {},
+                        None => doc! {"_id": into_object_id(key.clone())},
+                    },
                     |mut acc, (key, value)| {
                         acc.extend(doc! {key: value.into_bson().unwrap()});
 
@@ -252,7 +263,11 @@ impl StoreMut for MongoStorage {
                 ),
             };
 
-            let query = doc! {"_id": into_object_id(key.clone())};
+            let query = match primary_key {
+                Some(column_def) => doc! {column_def.name.clone(): key.into_bson().unwrap()},
+                _ => doc! {"_id": into_object_id(key.clone())},
+            };
+
             let update = doc! {"$set": doc};
             let options = UpdateOptions::builder().upsert(Some(true)).build();
 
