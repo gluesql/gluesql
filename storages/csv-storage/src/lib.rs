@@ -39,27 +39,31 @@ impl CsvStorage {
         let schema_path = self.schema_path(table_name);
         if !schema_path.exists() {
             let data_path = self.data_path(table_name);
-            if !data_path.exists() {
-                return Ok(None);
-            }
+            let types_path = self.types_path(table_name);
 
-            let column_defs = csv::Reader::from_path(data_path)
-                .map_storage_err()?
-                .headers()
-                .map_storage_err()?
-                .into_iter()
-                .map(|header| ColumnDef {
-                    name: header.to_string(),
-                    data_type: DataType::Text,
-                    unique: None,
-                    default: None,
-                    nullable: true,
-                })
-                .collect::<Vec<_>>();
+            let column_defs = match (types_path.exists(), data_path.exists()) {
+                (false, false) => return Ok(None),
+                (false, true) => Some(
+                    csv::Reader::from_path(data_path)
+                        .map_storage_err()?
+                        .headers()
+                        .map_storage_err()?
+                        .into_iter()
+                        .map(|header| ColumnDef {
+                            name: header.to_string(),
+                            data_type: DataType::Text,
+                            unique: None,
+                            default: None,
+                            nullable: true,
+                        })
+                        .collect::<Vec<_>>(),
+                ),
+                (true, _) => None,
+            };
 
             let schema = Schema {
                 table_name: table_name.to_owned(),
-                column_defs: Some(column_defs),
+                column_defs,
                 indexes: Vec::new(),
                 engine: None,
             };
