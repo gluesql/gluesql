@@ -1,3 +1,7 @@
+use crate::ast::IndexItem;
+
+use super::IndexNode;
+
 use {
     super::{join::JoinOperatorType, Prebuild},
     crate::{
@@ -74,6 +78,10 @@ impl<'a> SelectNode<'a> {
 
     pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
         QueryNode::SelectNode(self).alias_as(table_alias)
+    }
+
+    pub fn index_by<T: Into<IndexItem>>(self, index: T) -> IndexNode<'a> {
+        IndexNode::new(self, index.into())
     }
 }
 

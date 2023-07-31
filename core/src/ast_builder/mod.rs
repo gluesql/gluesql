@@ -42,8 +42,9 @@ pub use {
     order_by_expr_list::OrderByExprList,
     query::QueryNode,
     select::{
-        values, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
-        LimitNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode,
+        use_idx, values, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
+        JoinNode, LimitNode, OffsetLimitNode, OffsetNode, OrderByNode, PrimaryKeyNode, ProjectNode,
+        SelectNode, UseIndexNode,
     },
     select_item::SelectItemNode,
     select_item_list::SelectItemList,

@@ -1,3 +1,5 @@
+use super::IndexNode;
+
 use {
     super::Prebuild,
     crate::{
@@ -17,6 +19,7 @@ pub enum PrevNode<'a> {
     Join(Box<JoinNode<'a>>),
     JoinConstraint(Box<JoinConstraintNode<'a>>),
     HashJoin(Box<HashJoinNode<'a>>),
+    IndexNode(Box<IndexNode<'a>>),
 }
 
 impl<'a> Prebuild<Select> for PrevNode<'a> {
@@ -26,6 +29,7 @@ impl<'a> Prebuild<Select> for PrevNode<'a> {
             Self::Join(node) => node.prebuild(),
             Self::JoinConstraint(node) => node.prebuild(),
             Self::HashJoin(node) => node.prebuild(),
+            Self::IndexNode(node) => node.prebuild(),
         }
     }
 }
@@ -51,6 +55,12 @@ impl<'a> From<HashJoinNode<'a>> for PrevNode<'a> {
 impl<'a> From<SelectNode<'a>> for PrevNode<'a> {
     fn from(node: SelectNode<'a>) -> Self {
         PrevNode::Select(node)
+    }
+}
+
+impl<'a> From<IndexNode<'a>> for PrevNode<'a> {
+    fn from(node: IndexNode<'a>) -> Self {
+        PrevNode::IndexNode(Box::new(node))
     }
 }
 #[derive(Clone, Debug)]
