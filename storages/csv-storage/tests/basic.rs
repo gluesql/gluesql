@@ -14,7 +14,7 @@ async fn basic() {
     let mut glue = Glue::new(storage);
 
     let actual = glue
-        .execute("SELECT * FROM Basic")
+        .execute("SELECT * FROM Employee")
         .await
         .unwrap()
         .into_iter()
@@ -37,7 +37,7 @@ async fn basic() {
             SELECT
                 Name,
                 CAST(Age AS INTEGER) AS Age
-            FROM Basic
+            FROM Employee
          ",
         )
         .await
