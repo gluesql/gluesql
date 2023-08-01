@@ -54,15 +54,15 @@ test_case!(ifnull, async move {
             select!("mybool" | "myfloat"; Str | Str; "YES".to_owned() "NO".to_owned()),
         ),
         (
-            "SELECT IFNULL(mytime, 'YES') AS mybool, IFNULL(mytimestamp, 'NO') AS myfloat
+            "SELECT IFNULL(mytime, 'YES') AS mytime, IFNULL(mytimestamp, 'NO') AS mytimestamp
             FROM SingleItem WHERE id IS NOT NULL",
-            select!("mybool" | "myfloat"; Time | Timestamp; 
+            select!("mytime" | "mytimestamp"; Time | Timestamp; 
                     NaiveTime::from_hms_opt(1, 2, 3).unwrap() NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
         ),
         (
-            "SELECT IFNULL(mytime, 'YES') AS mybool, IFNULL(mytimestamp, 'NO') AS myfloat
+            "SELECT IFNULL(mytime, 'YES') AS mytime, IFNULL(mytimestamp, 'NO') AS mytimestamp
             FROM SingleItem WHERE id IS NULL",
-            select!("mybool" | "myfloat"; Str | Str; "YES".to_owned() "NO".to_owned()),
+            select!("mytime" | "mytimestamp"; Str | Str; "YES".to_owned() "NO".to_owned()),
         ),
     ];
 
