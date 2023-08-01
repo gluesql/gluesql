@@ -176,6 +176,7 @@ impl StoreMut for MongoStorage {
 
     async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
         println!("append_data");
+        println!("rows: {:?}", rows);
 
         let column_defs = self
             .fetch_schema(table_name)
