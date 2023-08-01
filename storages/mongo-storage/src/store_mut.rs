@@ -124,7 +124,12 @@ impl StoreMut for MongoStorage {
         };
         properties.extend(column_types);
         let mut required = vec!["_id".to_string()];
-        required.extend(names);
+        required.extend(names.clone());
+
+        let additional_properties = match names.len() {
+            0 => true,
+            _ => false,
+        };
 
         let option = CreateCollectionOptions::builder()
             .validator(Some(doc! {
@@ -132,7 +137,7 @@ impl StoreMut for MongoStorage {
                     "type": "object",
                     "required": required,
                     "properties": properties,
-                    "additionalProperties": false
+                    "additionalProperties": additional_properties
                   }
             }))
             .build();
@@ -184,14 +189,14 @@ impl StoreMut for MongoStorage {
             .await
             .unwrap()
             .unwrap()
-            .column_defs
-            .unwrap();
+            .column_defs;
 
         let data = rows
             .into_iter()
             .map(|row| match row {
                 DataRow::Vec(values) => column_defs
                     .clone()
+                    .unwrap()
                     .into_iter()
                     .zip(values.into_iter())
                     .fold(Document::new(), |mut acc, (column_def, value)| {
@@ -231,34 +236,34 @@ impl StoreMut for MongoStorage {
             .await
             .unwrap()
             .unwrap()
-            .column_defs
-            .unwrap();
+            .column_defs;
 
-        let primary_key = &get_primary_key(column_defs.clone());
+        let primary_key = column_defs.clone().map(get_primary_key).flatten();
+        // &get_primary_key(column_defs.clone().unwrap());
 
         for (key, row) in rows {
             let doc = match row {
-                DataRow::Vec(values) => column_defs
-                    .clone()
-                    .into_iter()
-                    .zip(values.into_iter())
-                    .fold(
-                        // usualy key is _id, but if there is PK, key is PK column
-                        match primary_key {
-                            Some(_) => doc! {},
-                            None => doc! {"_id": into_object_id(key.clone())},
-                        },
-                        |mut acc, (column_def, value)| {
-                            acc.extend(doc! {column_def.name: value.into_bson().unwrap()});
+                DataRow::Vec(values) => {
+                    column_defs
+                        .clone()
+                        .unwrap()
+                        .into_iter()
+                        .zip(values.into_iter())
+                        .fold(
+                            // usualy key is _id, but if there is PK, key is PK column
+                            match primary_key {
+                                Some(_) => doc! {},
+                                None => doc! {"_id": into_object_id(key.clone())},
+                            },
+                            |mut acc, (column_def, value)| {
+                                acc.extend(doc! {column_def.name: value.into_bson().unwrap()});
 
-                            acc
-                        },
-                    ),
+                                acc
+                            },
+                        )
+                }
                 DataRow::Map(hash_map) => hash_map.into_iter().fold(
-                    match primary_key {
-                        Some(_) => doc! {},
-                        None => doc! {"_id": into_object_id(key.clone())},
-                    },
+                    doc! {"_id": into_object_id(key.clone())},
                     |mut acc, (key, value)| {
                         acc.extend(doc! {key: value.into_bson().unwrap()});
 
@@ -268,7 +273,7 @@ impl StoreMut for MongoStorage {
             };
             println!("doc: {:#?}", doc);
 
-            let query = match primary_key {
+            let query = match &primary_key {
                 Some(column_def) => doc! {column_def.name.clone(): key.into_bson().unwrap()},
                 _ => doc! {"_id": into_object_id(key.clone())},
             };

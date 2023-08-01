@@ -8,7 +8,7 @@ use futures::{stream, FutureExt, Stream, StreamExt, TryStreamExt};
 use gluesql_core::{
     ast::{ColumnDef, ColumnUniqueOption, Expr},
     parse_sql::{parse_data_type, parse_expr},
-    prelude::{DataType, Error},
+    prelude::{DataType, Error, Value},
     store::Index,
     translate::{translate_data_type, translate_expr},
 };
@@ -133,7 +133,7 @@ impl Store for MongoStorage {
             .and_then(|schema| schema.column_defs);
 
         let primary_key = column_defs.clone().map(get_primary_key).flatten();
-        // let projection = doc! {"_id": 0};
+        // let projection = doc! {"_id": 0}; // TODO: optional
 
         let options = FindOptions::builder(); //.projection(projection);
         let options = match primary_key.clone() {
@@ -166,7 +166,18 @@ impl Store for MongoStorage {
                     Some(column_types) => {
                         doc.into_row2(column_types.into_iter().map(|data_type| *data_type))
                     }
-                    None => doc.into_row(), // TODO: is nested i8, i16 ok?
+                    None => {
+                        // let key = doc.get_object_id("_id").unwrap();
+                        let mut iter = doc.into_iter();
+                        let (_, value) = iter.next().unwrap();
+                        let key_bytes = value.as_object_id().unwrap().bytes().to_vec();
+                        let key = Key::Bytea(key_bytes);
+                        let row = iter
+                            .map(|(key, bson)| (key, bson.into_value()))
+                            .collect::<HashMap<String, Value>>();
+
+                        Ok((key, DataRow::Map(row)))
+                    }
                 }
             })
             .collect::<Vec<_>>()
