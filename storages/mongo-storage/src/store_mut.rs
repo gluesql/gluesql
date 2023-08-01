@@ -98,6 +98,11 @@ impl StoreMut for MongoStorage {
                             });
                         }
 
+                        let type_str = column_def.data_type.to_string();
+                        property.extend(doc! {
+                            "title": type_str
+                        });
+
                         let column_type = doc! {
                             column_name: property,
                         };

@@ -9,6 +9,7 @@ use bson::Timestamp;
 use chrono::{NaiveDateTime, TimeZone};
 use gluesql_core::{
     chrono::{NaiveDate, Utc},
+    data::Point,
     prelude::{DataType, Key},
     store::DataRow,
 };
@@ -31,54 +32,55 @@ pub trait IntoValue {
 
 impl IntoValue for Bson {
     fn into_value(self) -> Value {
-        match self {
-            Bson::Null => Value::Null,
-            Bson::Double(num) => Value::F64(num),
-            Bson::String(string) => Value::Str(string),
-            Bson::Array(array) => {
-                let values = array.into_iter().map(|bson| bson.into_value()).collect();
+        todo!()
+        // match self {
+        //     Bson::Null => Value::Null,
+        //     Bson::Double(num) => Value::F64(num),
+        //     Bson::String(string) => Value::Str(string),
+        //     Bson::Array(array) => {
+        //         let values = array.into_iter().map(|bson| bson.into_value()).collect();
 
-                Value::List(values)
-            }
-            Bson::Document(d) => Value::Map(
-                d.into_iter()
-                    .map(|(k, v)| (k.to_string(), v.into_value()))
-                    .collect(),
-            ),
-            Bson::Boolean(b) => Value::Bool(b),
-            Bson::RegularExpression(regex) => {
-                let pattern = regex.pattern.clone();
-                let options = regex.options.clone();
-                Value::Str(format!("/{}/{}", pattern, options))
-            }
-            Bson::JavaScriptCode(code) => Value::Str(code),
-            Bson::JavaScriptCodeWithScope(code) => {
-                // let mut map = Map::new();
-                // for (key, bson) in code.scope {
-                //     map.insert(key, Value::try_from(bson).unwrap());
-                // }
-                // Value::Object(map)
-                todo!();
-            }
-            Bson::Int32(i) => Value::I32(i),
-            Bson::Int64(i) => Value::I64(i),
-            // Bson::Timestamp(ts) => Value::Timestamp(ts.to_string().into()),
-            Bson::Binary(Binary { bytes, .. }) => Value::Bytea(bytes),
-            Bson::ObjectId(oid) => Value::Str(oid.to_hex()),
-            // Bson::DateTime(dt) => Value::Date(dt),
-            Bson::Symbol(sym) => Value::Str(sym),
-            // Bson::Decimal128(dec) => Value::Decimal(dec),
-            Bson::Undefined => Value::Null,
-            Bson::MaxKey => Value::Null,
-            Bson::MinKey => Value::Null,
-            Bson::DbPointer(_) => todo!("Handle DbPointer type"),
-            Bson::Decimal128(decimal128) => {
-                let decimal = Decimal::deserialize(decimal128.bytes());
+        //         Value::List(values)
+        //     }
+        //     Bson::Document(d) => Value::Map(
+        //         d.into_iter()
+        //             .map(|(k, v)| (k.to_string(), v.into_value()))
+        //             .collect(),
+        //     ),
+        //     Bson::Boolean(b) => Value::Bool(b),
+        //     Bson::RegularExpression(regex) => {
+        //         let pattern = regex.pattern.clone();
+        //         let options = regex.options.clone();
+        //         Value::Str(format!("/{}/{}", pattern, options))
+        //     }
+        //     Bson::JavaScriptCode(code) => Value::Str(code),
+        //     Bson::JavaScriptCodeWithScope(code) => {
+        //         // let mut map = Map::new();
+        //         // for (key, bson) in code.scope {
+        //         //     map.insert(key, Value::try_from(bson).unwrap());
+        //         // }
+        //         // Value::Object(map)
+        //         todo!();
+        //     }
+        //     Bson::Int32(i) => Value::I32(i),
+        //     Bson::Int64(i) => Value::I64(i),
+        //     // Bson::Timestamp(ts) => Value::Timestamp(ts.to_string().into()),
+        //     Bson::Binary(Binary { bytes, .. }) => Value::Bytea(bytes),
+        //     Bson::ObjectId(oid) => Value::Str(oid.to_hex()),
+        //     // Bson::DateTime(dt) => Value::Date(dt),
+        //     Bson::Symbol(sym) => Value::Str(sym),
+        //     // Bson::Decimal128(dec) => Value::Decimal(dec),
+        //     Bson::Undefined => Value::Null,
+        //     Bson::MaxKey => Value::Null,
+        //     Bson::MinKey => Value::Null,
+        //     Bson::DbPointer(_) => todo!("Handle DbPointer type"),
+        //     Bson::Decimal128(decimal128) => {
+        //         let decimal = Decimal::deserialize(decimal128.bytes());
 
-                Value::Decimal(decimal)
-            }
-            _ => todo!(),
-        }
+        //         Value::Decimal(decimal)
+        //     }
+        //     _ => todo!(),
+        // }
     }
 
     fn into_value2(self, data_type: &DataType) -> Value {
@@ -86,11 +88,22 @@ impl IntoValue for Bson {
             (Bson::Null, _) => Value::Null,
             (Bson::Double(num), DataType::Float32) => Value::F32(num as f32),
             (Bson::Double(num), _) => Value::F64(num),
+            (Bson::String(string), DataType::Inet) => {
+                let ip = string.parse().unwrap();
+
+                Value::Inet(ip)
+            }
             (Bson::String(string), _) => Value::Str(string),
             (Bson::Array(array), _) => {
                 let values = array.into_iter().map(|bson| bson.into_value()).collect();
 
                 Value::List(values)
+            }
+            (Bson::Document(d), DataType::Point) => {
+                let x = d.get("x").unwrap().as_f64().unwrap();
+                let y = d.get("y").unwrap().as_f64().unwrap();
+
+                Value::Point(Point::new(x, y))
             }
             (Bson::Document(d), _) => Value::Map(
                 d.into_iter()
@@ -171,38 +184,40 @@ impl From<&DataType> for BsonType {
             DataType::Map => BsonType::Object,
             DataType::List => BsonType::Array,
             DataType::Decimal => BsonType::Decimal128,
+            DataType::Point => BsonType::Object,
+            DataType::Inet => BsonType::String,
             _ => todo!(),
         }
     }
 }
 
-impl From<BsonType> for DataType {
-    fn from(bson_type: BsonType) -> DataType {
-        match bson_type {
-            BsonType::Boolean => DataType::Boolean,
-            BsonType::Int32 => DataType::Int32,
-            BsonType::Int64 => DataType::Int,
-            BsonType::Double => DataType::Float,
-            BsonType::String => DataType::Text,
-            BsonType::Binary => DataType::Bytea,
-            BsonType::Timestamp => DataType::Timestamp,
-            BsonType::Object => DataType::Map,
-            BsonType::Array => DataType::List,
-            BsonType::Decimal128 => DataType::Decimal,
-            BsonType::Undefined => todo!(),
-            BsonType::ObjectId => todo!(),
-            BsonType::Date => DataType::Date,
-            BsonType::Null => todo!(),
-            BsonType::RegularExpression => todo!(),
-            BsonType::DbPointer => todo!(),
-            BsonType::JavaScript => todo!(),
-            BsonType::Symbol => todo!(),
-            BsonType::JavaScriptCodeWithScope => todo!(),
-            BsonType::MinKey => todo!(),
-            BsonType::MaxKey => todo!(),
-        }
-    }
-}
+// impl From<BsonType> for DataType {
+//     fn from(bson_type: BsonType) -> DataType {
+//         match bson_type {
+//             BsonType::Boolean => DataType::Boolean,
+//             BsonType::Int32 => DataType::Int32,
+//             BsonType::Int64 => DataType::Int,
+//             BsonType::Double => DataType::Float,
+//             BsonType::String => DataType::Text,
+//             BsonType::Binary => DataType::Bytea,
+//             BsonType::Timestamp => DataType::Timestamp,
+//             BsonType::Object => DataType::Map,
+//             BsonType::Array => DataType::List,
+//             BsonType::Decimal128 => DataType::Decimal,
+//             BsonType::Undefined => todo!(),
+//             BsonType::ObjectId => todo!(),
+//             BsonType::Date => DataType::Date,
+//             BsonType::Null => todo!(),
+//             BsonType::RegularExpression => todo!(),
+//             BsonType::DbPointer => todo!(),
+//             BsonType::JavaScript => todo!(),
+//             BsonType::Symbol => todo!(),
+//             BsonType::JavaScriptCodeWithScope => todo!(),
+//             BsonType::MinKey => todo!(),
+//             BsonType::MaxKey => todo!(),
+//         }
+//     }
+// }
 
 pub trait IntoRow {
     fn into_row(self) -> Result<(Key, DataRow)>;
@@ -374,6 +389,8 @@ impl IntoBson for Value {
 
                 Ok(Bson::DateTime(datetime))
             }
+            Value::Point(Point { x, y }) => Ok(Bson::Document(doc! {  "x": x, "y": y })),
+            Value::Inet(val) => Ok(Bson::String(val.to_string())),
             // Value::Map(val) => {
             // let bson = val
             //     .into_iter()

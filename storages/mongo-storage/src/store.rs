@@ -7,10 +7,10 @@ use std::{
 use futures::{stream, FutureExt, Stream, StreamExt, TryStreamExt};
 use gluesql_core::{
     ast::{ColumnDef, ColumnUniqueOption, Expr},
-    parse_sql::parse_expr,
+    parse_sql::{parse_data_type, parse_expr},
     prelude::{DataType, Error},
     store::Index,
-    translate::translate_expr,
+    translate::{translate_data_type, translate_expr},
 };
 use mongodb::{
     bson::{doc, Bson, Document},
@@ -231,41 +231,45 @@ impl MongoStorage {
                                     .map_storage_err(MongoStorageError::InvalidDocument)
                             });
 
-                        let maximum = value.as_document().unwrap().get_i64("maximum").ok();
+                        // let maximum = value.as_document().unwrap().get_i64("maximum").ok();
+                        let type_str = value.as_document().unwrap().get_str("title").unwrap();
+                        let a = parse_data_type(type_str).unwrap();
+                        let data_type = translate_data_type(&a).unwrap();
 
-                        let data_type = BsonType::from_str(iter.next().unwrap().unwrap())
-                            .unwrap()
-                            .into();
+                        // let data_type = BsonType::from_str(iter.next().unwrap().unwrap())
+                        //     .unwrap()
+                        //     .into();
 
                         let nullable = iter
+                            .skip(1)
                             .next()
                             .transpose()?
                             .map(|x| x == "null")
                             .unwrap_or(false);
 
                         // TODO: remove indent
-                        let data_type = match (data_type, maximum) {
-                            (DataType::Int32, Some(B8)) => DataType::Int8,
-                            (DataType::Int32, Some(B16)) => DataType::Int16,
-                            (DataType::Float, Some(B32)) => DataType::Float32,
-                            (DataType::Date, Some(TIME)) => DataType::Time,
-                            // (DataType::Int32, Some(bson))
-                            //     if bson.as_i64().filter(|x| x == &B16).is_some() =>
-                            // {
-                            //     DataType::Int16
-                            // }
-                            // (DataType::Int32, Some(bson))
-                            //     if bson.as_i64().filter(|x| x == &B8).is_some() =>
-                            // {
-                            //     DataType::Int8
-                            // }
-                            // (DataType::Float, Some(bson))
-                            //     if bson.as_i64().filter(|x| x == &B32).is_some() =>
-                            // {
-                            //     DataType::Float32
-                            // }
-                            (data_type, _) => data_type,
-                        };
+                        // let data_type = match (data_type, maximum) {
+                        //     (DataType::Int32, Some(B8)) => DataType::Int8,
+                        //     (DataType::Int32, Some(B16)) => DataType::Int16,
+                        //     (DataType::Float, Some(B32)) => DataType::Float32,
+                        //     (DataType::Date, Some(TIME)) => DataType::Time,
+                        //     // (DataType::Int32, Some(bson))
+                        //     //     if bson.as_i64().filter(|x| x == &B16).is_some() =>
+                        //     // {
+                        //     //     DataType::Int16
+                        //     // }
+                        //     // (DataType::Int32, Some(bson))
+                        //     //     if bson.as_i64().filter(|x| x == &B8).is_some() =>
+                        //     // {
+                        //     //     DataType::Int8
+                        //     // }
+                        //     // (DataType::Float, Some(bson))
+                        //     //     if bson.as_i64().filter(|x| x == &B32).is_some() =>
+                        //     // {
+                        //     //     DataType::Float32
+                        //     // }
+                        //     (data_type, _) => data_type,
+                        // };
 
                         let index_name = indexes.get(column_name);
                         let a = index_name.and_then(|i| i.split_once("_"));
