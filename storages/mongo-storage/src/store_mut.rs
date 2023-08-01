@@ -58,8 +58,6 @@ impl StoreMut for MongoStorage {
                             _ => None,
                         };
 
-                        // println!(":+:+:+:+:nullable: {:?}", column_def.nullable);
-
                         let mut bson_type = match column_def.clone().nullable {
                             true => vec![data_type, "null"],
                             false => vec![data_type],

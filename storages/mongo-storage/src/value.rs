@@ -17,6 +17,7 @@ use mongodb::bson::{
     Uuid,
 };
 use rust_decimal::Decimal;
+use serde::Deserialize;
 use strum_macros::{Display, EnumString, IntoStaticStr};
 
 use crate::error::ResultExt;
@@ -352,19 +353,17 @@ impl IntoBson for Value {
                 Ok(Bson::DateTime(datetime))
             }
             Value::Timestamp(val) => {
-                let utc = Utc
-                    .timestamp_opt(val.timestamp(), val.timestamp_subsec_nanos())
-                    .unwrap();
-                // utc.timestamp_subsec_micros();
+                let ts = val.timestamp().to_le();
 
-                let ts = utc.timestamp().to_le();
-
-                let timestamp = Timestamp {
-                    time: ((ts as u64) >> 32) as u32,
-                    increment: (ts & 0xFFFF_FFFF) as u32,
+                let increment = match ts {
+                    0 => 1, // if time and increment is 0, it sets now()
+                    _ => (ts & 0xFFFF_FFFF) as u32,
                 };
 
-                println!(":+:+:timestamp: {:?}", timestamp);
+                let timestamp = Timestamp {
+                    time: ((u64::try_from(val.timestamp()).unwrap()) >> 32) as u32,
+                    increment,
+                };
 
                 Ok(Bson::Timestamp(timestamp))
             }
