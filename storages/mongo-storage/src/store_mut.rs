@@ -1,5 +1,5 @@
 use gluesql_core::{
-    ast::{ColumnUniqueOption, ToSql},
+    ast::{ColumnDef, ColumnUniqueOption, ToSql},
     chrono::format,
     prelude::DataType,
     store::Store,
@@ -12,6 +12,7 @@ use mongodb::{
 
 use crate::{
     store::{B16, B32, B8, TIME},
+    utils::get_primary_key,
     value::{into_object_id, BsonType, IntoBson},
 };
 
@@ -233,9 +234,7 @@ impl StoreMut for MongoStorage {
             .column_defs
             .unwrap();
 
-        let primary_key = column_defs
-            .iter()
-            .find(|column_def| column_def.unique.map(|x| x.is_primary).unwrap_or(false));
+        let primary_key = &get_primary_key(column_defs.clone());
 
         for (key, row) in rows {
             let doc = match row {

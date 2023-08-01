@@ -14,12 +14,13 @@ use gluesql_core::{
 };
 use mongodb::{
     bson::{doc, Bson, Document},
-    options::{IndexOptions, ListIndexesOptions},
+    options::{FindOptions, IndexOptions, ListIndexesOptions},
     IndexModel,
 };
 
 use crate::{
     index,
+    utils::get_primary_key,
     value::{BsonType, IntoBson, IntoRow, IntoValue},
 };
 
@@ -61,48 +62,93 @@ impl Store for MongoStorage {
 
     async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<DataRow>> {
         println!("fetch_data: {}", table_name);
-        let filter = doc! { "_id": target.clone().into_bson()?};
+
+        let column_defs = self
+            .fetch_schema(table_name)
+            .await?
+            .and_then(|schema| schema.column_defs);
+
+        let primary_key = column_defs.clone().map(get_primary_key).flatten();
+
+        let filter = match primary_key.clone() {
+            Some(primary_key) => {
+                doc! { primary_key.name: target.clone().into_bson()?}
+            }
+            None => doc! { "_id": target.clone().into_bson()? },
+        };
+
+        // let filter = doc! { "_id": target.clone().into_bson()?};
         println!("err1");
+
+        // let projection = column_defs.map(|x| {
+        //     x.into_iter().fold(doc! {"_id": 0}, |mut acc, cur| {
+        //         acc.extend(doc! {cur.name: 1});
+
+        //         acc
+        //     })
+        // });
+        let projection = doc! {"_id": 0};
+
+        let options = FindOptions::builder().projection(projection);
+        let options = match primary_key.clone() {
+            Some(primary_key) => options.sort(doc! { primary_key.name: 1}).build(),
+            None => options.build(),
+        };
+
         let mut cursor = self
             .db
             .collection::<Document>(table_name)
-            .find(filter, None)
+            .find(filter, options)
             .await
-            .map_storage_err()?;
-
-        println!("err2");
+            .unwrap();
+        // .map_storage_err()?;
 
         // if column_defs.is_some() => zip values with column_defs
 
-        cursor
+        Ok(cursor
             .next()
             .await
             .map(|result| {
-                result
-                    .map(|doc| {
-                        let row = doc
-                            .into_iter()
-                            .map(|(_, bson)| bson.into_value())
-                            .collect::<Vec<_>>();
+                result.map(|doc| {
+                    let row = doc
+                        .into_iter()
+                        .map(|(_, bson)| bson.into_value())
+                        .collect::<Vec<_>>();
 
-                        DataRow::Vec(row)
-                    })
-                    .map_storage_err()
+                    DataRow::Vec(row)
+                })
+                // .map_storage_err()
             })
             .transpose()
+            .unwrap())
     }
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
         println!("scan_data: {}", table_name);
         println!("err3");
+        let schema = self.fetch_schema(table_name).await?;
+        let column_defs = self
+            .fetch_schema(table_name)
+            .await?
+            .and_then(|schema| schema.column_defs);
+
+        let primary_key = column_defs.clone().map(get_primary_key).flatten();
+        // let projection = doc! {"_id": 0};
+
+        let options = FindOptions::builder(); //.projection(projection);
+        let options = match primary_key.clone() {
+            Some(primary_key) => options.sort(doc! { primary_key.name: 1}).build(),
+            None => options.build(),
+        };
+
         let cursor = self
             .db
             .collection::<Document>(table_name)
-            .find(None, None)
+            .find(doc! {}, options)
             .await
-            .map_storage_err()?;
+            .unwrap();
+        // .map_storage_err()?;
 
-        let schema = self.fetch_schema(table_name).await?;
         let column_types = schema.as_ref().and_then(|schema| {
             schema.column_defs.as_ref().map(|column_defs| {
                 column_defs
@@ -114,7 +160,7 @@ impl Store for MongoStorage {
 
         let row_iter = cursor
             .map(|doc| {
-                let doc = doc.map_storage_err()?;
+                let doc = doc.unwrap();
 
                 match &column_types {
                     Some(column_types) => {
@@ -172,7 +218,8 @@ impl MongoStorage {
                     })
                     .transpose()
                     .unwrap()
-                    .map_storage_err(MongoStorageError::TableDoesNotExist)?;
+                    .unwrap();
+                // .map_storage_err(MongoStorageError::TableDoesNotExist)?;
 
                 println!("validators: {}", validators.unwrap());
 
@@ -220,15 +267,17 @@ impl MongoStorage {
                     .map(|(column_name, value)| {
                         let mut iter = value
                             .as_document()
-                            .map_storage_err(MongoStorageError::InvalidDocument)?
+                            .unwrap()
+                            // .map_storage_err(MongoStorageError::InvalidDocument)?
                             .get_array("bsonType")
-                            .map_storage_err()?
+                            .unwrap()
+                            // .map_storage_err()?
                             // .get(0..1)
                             // .map_storage_err(MongoStorageError::InvalidDocument)?
                             .iter()
                             .map(|x| {
-                                x.as_str()
-                                    .map_storage_err(MongoStorageError::InvalidDocument)
+                                x.as_str()// .unwrap()
+                                .map_storage_err(MongoStorageError::InvalidDocument)
                             });
 
                         // let maximum = value.as_document().unwrap().get_i64("maximum").ok();
@@ -319,7 +368,7 @@ impl MongoStorage {
                 Ok::<_, Error>(schema)
             });
 
-        // println!("fetch_schemas_iter done: {:?}", schemas);
+        println!("fetch_schemas_iter done: {:#?}", stringify!(schemas));
         Ok(Box::pin(schemas))
     }
 }

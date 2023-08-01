@@ -129,9 +129,16 @@ impl IntoValue for Bson {
             }
             (Bson::Int32(i), DataType::Int8) => Value::I8(i as i8),
             (Bson::Int32(i), DataType::Int16) => Value::I16(i as i16),
+            (Bson::Int32(i), DataType::Uint16) => Value::U16(i.try_into().unwrap()),
             (Bson::Int32(i), _) => Value::I32(i),
+            (Bson::Int64(i), DataType::Uint32) => Value::U32(i.try_into().unwrap()),
             (Bson::Int64(i), _) => Value::I64(i),
             // (Bson::Timestamp(ts), _)  => Value::Timestamp(ts.to_string().into()),
+            (Bson::Binary(Binary { bytes, .. }), DataType::Uuid) => {
+                let u128 = u128::from_be_bytes(bytes.try_into().unwrap());
+
+                Value::Uuid(u128)
+            }
             (Bson::Binary(Binary { bytes, .. }), _) => Value::Bytea(bytes),
             (Bson::ObjectId(oid), _) => Value::Str(oid.to_hex()),
             // (Bson::DateTime(dt), _)  => Value::Date(dt),
@@ -141,6 +148,18 @@ impl IntoValue for Bson {
             (Bson::MaxKey, _) => Value::Null,
             (Bson::MinKey, _) => Value::Null,
             (Bson::DbPointer(_), _) => todo!("Handle DbPointer type"),
+            (Bson::Decimal128(decimal128), DataType::Uint128) => {
+                let bytes = decimal128.bytes();
+                let u128 = u128::from_be_bytes(bytes);
+
+                Value::U128(u128)
+            }
+            (Bson::Decimal128(decimal128), DataType::Int128) => {
+                let bytes = decimal128.bytes();
+                let i128 = i128::from_be_bytes(bytes);
+
+                Value::I128(i128)
+            }
             (Bson::Decimal128(decimal128), _) => {
                 let decimal = Decimal::deserialize(decimal128.bytes());
 
@@ -151,7 +170,6 @@ impl IntoValue for Bson {
             (Bson::Timestamp(dt), _) => {
                 Value::Timestamp(NaiveDateTime::from_timestamp_opt(dt.time as i64, 0).unwrap())
             }
-            _ => todo!(),
         }
     }
 }
@@ -168,12 +186,12 @@ impl From<&DataType> for BsonType {
             DataType::Int16 => BsonType::Int32,
             DataType::Int32 => BsonType::Int32,
             DataType::Int => BsonType::Int64,
-            DataType::Int128 => BsonType::Int64,
+            DataType::Int128 => BsonType::Decimal128,
             DataType::Uint8 => BsonType::Int32,
             DataType::Uint16 => BsonType::Int32,
             DataType::Uint32 => BsonType::Int64,
             DataType::Uint64 => BsonType::Int64,
-            DataType::Uint128 => BsonType::Int64,
+            DataType::Uint128 => BsonType::Decimal128,
             DataType::Float32 => BsonType::Double,
             DataType::Float => BsonType::Double,
             DataType::Text => BsonType::String,
@@ -188,7 +206,7 @@ impl From<&DataType> for BsonType {
             DataType::Decimal => BsonType::Decimal128,
             DataType::Point => BsonType::Object,
             DataType::Inet => BsonType::String,
-            _ => todo!(),
+            DataType::Interval => BsonType::Date,
         }
     }
 }
@@ -231,13 +249,13 @@ pub trait IntoRow {
 
 impl IntoRow for Document {
     fn into_row(self) -> Result<(Key, DataRow)> {
-        let key = self.get_object_id("_id").map_storage_err()?;
+        let key = self.get_object_id("_id").unwrap();
         let key_bytes = key.bytes().to_vec();
         let key = Key::Bytea(key_bytes);
 
         let row = self
             .into_iter()
-            .skip(1)
+            .filter(|(key, _)| key != "_id")
             .map(|(_, bson)| bson.into_value())
             .collect::<Vec<_>>();
 
@@ -248,7 +266,7 @@ impl IntoRow for Document {
         self,
         data_types: impl Iterator<Item = &'a DataType>,
     ) -> Result<(Key, DataRow)> {
-        let key = self.get_object_id("_id").map_storage_err()?;
+        let key = self.get_object_id("_id").unwrap();
         let key_bytes = key.bytes().to_vec();
         let key = Key::Bytea(key_bytes);
 
@@ -298,7 +316,6 @@ impl IntoBson for Key {
             Key::I16(val) => Ok(Bson::Int32(val as i32)),
             Key::I32(val) => Ok(Bson::Int32(val)),
             Key::I64(val) => Ok(Bson::Int64(val)),
-            Key::I128(val) => Ok(Bson::Int64(val as i64)),
             Key::U8(val) => Ok(Bson::Int32(val as i32)),
             Key::U16(val) => Ok(Bson::Int32(val as i32)),
             Key::U32(val) => Ok(Bson::Int64(val as i64)),
@@ -393,15 +410,22 @@ impl IntoBson for Value {
             }
             Value::Point(Point { x, y }) => Ok(Bson::Document(doc! {  "x": x, "y": y })),
             Value::Inet(val) => Ok(Bson::String(val.to_string())),
-            // Value::Map(val) => {
-            // let bson = val
-            //     .into_iter()
-            //     .map(|(key, val)| Ok((key, val.into_bson()?)))
-            //     .collect::<Result<Vec<_>>>()?;
+            Value::I16(val) => Ok(Bson::Int32(val.into())),
+            Value::I128(val) => Ok(Bson::Decimal128(Decimal128::from_bytes(val.to_be_bytes()))),
+            Value::Map(hash_map) => {
+                let doc = hash_map
+                    .into_iter()
+                    .fold(Document::new(), |mut acc, (key, value)| {
+                        acc.extend(doc! {key: value.into_bson().unwrap()});
 
-            // let doc = doc! { bson };
-            // Ok(Bson::Document(doc))
-            // }
+                        acc
+                    });
+
+                Ok(Bson::Document(doc))
+            }
+            Value::U32(val) => Ok(Bson::Int64(val.into())),
+            Value::U16(val) => Ok(Bson::Int32(val.into())),
+            Value::U128(val) => Ok(Bson::Decimal128(Decimal128::from_bytes(val.to_be_bytes()))),
             _ => {
                 println!("value: {:?}", self);
                 todo!()

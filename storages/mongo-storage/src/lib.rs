@@ -5,6 +5,7 @@ mod index;
 mod store;
 mod store_mut;
 mod transaction;
+mod utils;
 mod value;
 
 use {

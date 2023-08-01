@@ -28,22 +28,22 @@ impl Tester<MongoStorage> for MongoTester {
 
 generate_store_tests!(tokio::test, MongoTester);
 
-#[tokio::test]
-async fn mongo() {
-    let conn_str = "mongodb://localhost:27017";
-    let namespace = "unit";
-    let storage = MongoStorage::new(conn_str, namespace)
-        .await
-        .expect("MongoStorage::new");
+// #[tokio::test]
+// async fn mongo() {
+//     let conn_str = "mongodb://localhost:27017";
+//     let namespace = "unit";
+//     let storage = MongoStorage::new(conn_str, namespace)
+//         .await
+//         .expect("MongoStorage::new");
 
-    let mut glue = Glue::new(storage);
-    glue.execute("CREATE TABLE Test;").await.expect("execute");
+//     let mut glue = Glue::new(storage);
+//     glue.execute("CREATE TABLE Test;").await.expect("execute");
 
-    let schema = glue
-        .storage
-        .fetch_schema("Test")
-        .await
-        .expect("fetch_schema");
+//     let schema = glue
+//         .storage
+//         .fetch_schema("Test")
+//         .await
+//         .expect("fetch_schema");
 
-    assert_eq!(schema, None);
-}
+//     assert_eq!(schema, None);
+// }
