@@ -264,7 +264,9 @@ impl StoreMut for MongoStorage {
                             // usualy key is _id, but if there is PK, key is PK column
                             match primary_key {
                                 Some(_) => doc! {},
-                                None => doc! {"_id": into_object_id(key.clone())},
+                                None => {
+                                    doc! {"_id": into_object_id(key.clone())}
+                                }
                             },
                             |mut acc, (column_def, value)| {
                                 acc.extend(doc! {column_def.name: value.into_bson().unwrap()});
@@ -284,7 +286,8 @@ impl StoreMut for MongoStorage {
             };
             println!("doc: {:#?}", doc);
 
-            // 1. pk insert
+            println!("key in insert data: {:?}", key);
+            // 1. pk insert: pk
             // 2. update
             // 3. pk update?
             let query = match &primary_key {
