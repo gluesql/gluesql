@@ -127,6 +127,7 @@ impl IntoValue for Bson {
                 // Value::Object(map)
                 todo!();
             }
+            (Bson::Int32(i), DataType::Uint8) => Value::U8(i.try_into().unwrap()),
             (Bson::Int32(i), DataType::Int8) => Value::I8(i as i8),
             (Bson::Int32(i), DataType::Int16) => Value::I16(i as i16),
             (Bson::Int32(i), DataType::Uint16) => Value::U16(i.try_into().unwrap()),
@@ -148,6 +149,12 @@ impl IntoValue for Bson {
             (Bson::MaxKey, _) => Value::Null,
             (Bson::MinKey, _) => Value::Null,
             (Bson::DbPointer(_), _) => todo!("Handle DbPointer type"),
+            (Bson::Decimal128(decimal128), DataType::Uint64) => {
+                let bytes = decimal128.bytes();
+                let u64 = u64::from_be_bytes(bytes[..8].try_into().unwrap());
+
+                Value::U64(u64)
+            }
             (Bson::Decimal128(decimal128), DataType::Uint128) => {
                 let bytes = decimal128.bytes();
                 let u128 = u128::from_be_bytes(bytes);
@@ -190,7 +197,7 @@ impl From<&DataType> for BsonType {
             DataType::Uint8 => BsonType::Int32,
             DataType::Uint16 => BsonType::Int32,
             DataType::Uint32 => BsonType::Int64,
-            DataType::Uint64 => BsonType::Int64,
+            DataType::Uint64 => BsonType::Decimal128,
             DataType::Uint128 => BsonType::Decimal128,
             DataType::Float32 => BsonType::Double,
             DataType::Float => BsonType::Double,
@@ -426,6 +433,14 @@ impl IntoBson for Value {
             Value::U32(val) => Ok(Bson::Int64(val.into())),
             Value::U16(val) => Ok(Bson::Int32(val.into())),
             Value::U128(val) => Ok(Bson::Decimal128(Decimal128::from_bytes(val.to_be_bytes()))),
+            Value::U8(val) => Ok(Bson::Int32(val.into())),
+            Value::U64(val) => {
+                // TODO: this is a hack, but it works for now
+                let mut my_new_bytes: [u8; 16] = [0; 16];
+                my_new_bytes[..8].copy_from_slice(&val.to_be_bytes());
+
+                Ok(Bson::Decimal128(Decimal128::from_bytes(my_new_bytes)))
+            }
             _ => {
                 println!("value: {:?}", self);
                 todo!()
