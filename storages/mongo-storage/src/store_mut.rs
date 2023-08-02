@@ -284,13 +284,21 @@ impl StoreMut for MongoStorage {
             };
             println!("doc: {:#?}", doc);
 
+            // 1. pk insert
+            // 2. update
+            // 3. pk update?
             let query = match &primary_key {
                 Some(column_def) => doc! {column_def.name.clone(): key.into_bson().unwrap()},
                 _ => doc! {"_id": into_object_id(key.clone())},
             };
 
-            // let update = doc! {"$set": doc};
+            // let doc = doc! {"$set": doc};
+            // let options = UpdateOptions::builder().upsert(Some(true)).build();
             let options = ReplaceOptions::builder().upsert(Some(true)).build();
+
+            println!("query: {:#?}", query);
+            println!("doc: {:#?}", doc);
+            println!("options: {:#?}", options);
 
             self.db
                 .collection::<Document>(table_name)

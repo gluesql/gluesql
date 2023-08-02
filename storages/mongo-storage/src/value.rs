@@ -8,10 +8,13 @@ use std::{
 use bson::Timestamp;
 use chrono::{NaiveDateTime, TimeZone};
 use gluesql_core::{
+    ast::{Expr, ToSql},
     chrono::{NaiveDate, Utc},
-    data::Point,
+    data::{Interval, Point},
+    parse_sql::parse_interval,
     prelude::{DataType, Key},
     store::DataRow,
+    translate::translate_expr,
 };
 use mongodb::bson::{
     self, bson, de, doc, spec::ElementType, to_bson, Binary, Bson, DateTime, Decimal128, Document,
@@ -91,6 +94,30 @@ impl IntoValue for Bson {
                 let ip = string.parse().unwrap();
 
                 Value::Inet(ip)
+            }
+            (Bson::String(string), DataType::Timestamp) => {
+                //2021-10-13 06:42:40.364832862
+                Value::Timestamp(
+                    NaiveDateTime::parse_from_str(&string, "%Y-%m-%d %H:%M:%S%.f").unwrap(),
+                )
+            }
+            (Bson::String(string), DataType::Interval) => {
+                let interval = parse_interval(&string).unwrap();
+                let interval = translate_expr(&interval).unwrap();
+                let interval = match interval {
+                    Expr::Interval {
+                        expr,
+                        leading_field,
+                        last_field,
+                    } => Value::Interval(
+                        Interval::try_from_str(&expr.to_sql(), leading_field, last_field).unwrap(),
+                    ),
+                    _ => unreachable!(),
+                };
+                // let interval = Interval::try_from_str(&string, None, None).unwrap();
+
+                interval
+                // Value::Interval(interval)
             }
             (Bson::String(string), _) => Value::Str(string),
             (Bson::Array(array), _) => {
@@ -175,21 +202,16 @@ impl IntoValue for Bson {
             (Bson::DateTime(dt), DataType::Time) => Value::Time(dt.to_chrono().time()),
             (Bson::DateTime(dt), _) => Value::Date(dt.to_chrono().date_naive()),
             (Bson::Timestamp(dt), _) => {
-                println!("dt: {:?}", dt);
-                let increment = match dt.time {
-                    0 => 0,
-                    _ => dt.increment,
-                };
-
-                // let secs = match dt.time < 0 {
-                //     _ => dt.time as i64 + B32,
-                //     // _ => dt.time as i64,
+                unimplemented!()
+                // println!("dt: {:?}", dt);
+                // let increment = match dt.time {
+                //     0 => 0,
+                //     _ => dt.increment,
                 // };
-                //Timestamp(2106-01-29T08:40:12.364832862)
 
-                Value::Timestamp(
-                    NaiveDateTime::from_timestamp_opt(dt.time as i64, increment).unwrap(),
-                )
+                // Value::Timestamp(
+                //     NaiveDateTime::from_timestamp_opt(dt.time as i64, increment).unwrap(),
+                // )
             }
         }
     }
@@ -219,7 +241,7 @@ impl From<&DataType> for BsonType {
             DataType::Bytea => BsonType::Binary,
             // DataType::Inet => BsonType::String,
             DataType::Date => BsonType::Date,
-            DataType::Timestamp => BsonType::Timestamp,
+            DataType::Timestamp => BsonType::String,
             DataType::Time => BsonType::Date,
             DataType::Uuid => BsonType::Binary,
             DataType::Map => BsonType::Object,
@@ -227,7 +249,7 @@ impl From<&DataType> for BsonType {
             DataType::Decimal => BsonType::Decimal128,
             DataType::Point => BsonType::Object,
             DataType::Inet => BsonType::String,
-            DataType::Interval => BsonType::Date,
+            DataType::Interval => BsonType::String,
         }
     }
 }
@@ -408,18 +430,19 @@ impl IntoBson for Value {
                 Ok(Bson::DateTime(datetime))
             }
             Value::Timestamp(val) => {
-                let increment = match val.timestamp() {
-                    0 => 1, // if time and increment is 0, it sets now()
-                    _ => (val.timestamp_subsec_nanos()) as u32,
-                };
+                Ok(Bson::String(val.to_string()))
+                // let increment = match val.timestamp() {
+                //     0 => 1, // if time and increment is 0, it sets now()
+                //     _ => (val.timestamp_subsec_nanos()) as u32,
+                // };
 
-                let timestamp = Timestamp {
-                    time: val.timestamp() as u32,
-                    increment,
-                };
+                // let timestamp = Timestamp {
+                //     time: val.timestamp() as u32,
+                //     increment,
+                // };
 
-                println!("timestamp: {:?}", timestamp);
-                Ok(Bson::Timestamp(timestamp))
+                // println!("timestamp: {:?}", timestamp);
+                // Ok(Bson::Timestamp(timestamp))
             }
             Value::Time(val) => {
                 let date = NaiveDate::from_ymd(1970, 1, 1);
@@ -454,10 +477,7 @@ impl IntoBson for Value {
 
                 Ok(Bson::Decimal128(Decimal128::from_bytes(my_new_bytes)))
             }
-            _ => {
-                println!("value: {:?}", self);
-                todo!()
-            }
+            Value::Interval(val) => Ok(Bson::String(val.to_sql_str())),
         }
     }
 }
