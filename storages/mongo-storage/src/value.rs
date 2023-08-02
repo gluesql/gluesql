@@ -174,9 +174,9 @@ impl IntoValue for Bson {
             }
             (Bson::DateTime(dt), DataType::Time) => Value::Time(dt.to_chrono().time()),
             (Bson::DateTime(dt), _) => Value::Date(dt.to_chrono().date_naive()),
-            (Bson::Timestamp(dt), _) => {
-                Value::Timestamp(NaiveDateTime::from_timestamp_opt(dt.time as i64, 0).unwrap())
-            }
+            (Bson::Timestamp(dt), _) => Value::Timestamp(
+                NaiveDateTime::from_timestamp_opt(dt.time as i64, dt.increment).unwrap(),
+            ),
         }
     }
 }
@@ -394,16 +394,20 @@ impl IntoBson for Value {
                 Ok(Bson::DateTime(datetime))
             }
             Value::Timestamp(val) => {
-                let ts = val.timestamp().to_le();
+                // let ts = val.timestamp().to_le();
 
-                let increment = match ts {
-                    0 => 1, // if time and increment is 0, it sets now()
-                    _ => (ts & 0xFFFF_FFFF) as u32,
-                };
+                // let increment = match ts {
+                //     0 => 1, // if time and increment is 0, it sets now()
+                //     _ => (ts & 0xFFFF_FFFF) as u32,
+                // };
 
+                // let timestamp = Timestamp {
+                //     time: ((u64::try_from(val.timestamp()).unwrap()) >> 32) as u32,
+                //     increment,
+                // };
                 let timestamp = Timestamp {
-                    time: ((u64::try_from(val.timestamp()).unwrap()) >> 32) as u32,
-                    increment,
+                    time: val.timestamp() as u32,
+                    increment: val.timestamp_subsec_micros() * 1000,
                 };
 
                 Ok(Bson::Timestamp(timestamp))
