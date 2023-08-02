@@ -153,13 +153,24 @@ impl StoreMut for MongoStorage {
             return Ok(());
         }
 
-        let index_options = IndexOptions::builder().unique(true);
         let index_models = indexes
             .into_iter()
             .map(|IndexInfo { name, key }| {
+                let index_options = IndexOptions::builder().unique(true);
+                let index_options = match name.split_once("_") {
+                    Some((_, "UNIQUE")) => index_options
+                        .partial_filter_expression(
+                            doc! { "partialFilterExpression": { name.clone(): { "$en": null } } },
+                        )
+                        // .sparse(true)
+                        .name(name)
+                        .build(),
+                    _ => index_options.name(name).build(),
+                };
+
                 mongodb::IndexModel::builder()
                     .keys(doc! {key: 1})
-                    .options(index_options.clone().name(name).build())
+                    .options(index_options)
                     .build()
             })
             .collect::<Vec<_>>();
