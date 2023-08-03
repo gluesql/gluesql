@@ -57,12 +57,9 @@ impl<'a> TryFrom<SelectItemNode<'a>> for SelectItem {
                 Ok(SelectItem::Expr { expr, label })
             }
             SelectItemNode::ExprWithAliasNode(alias_node) => {
-                let (expr, alias) = alias_node.try_into()?;
+                let (expr, label) = alias_node.try_into()?;
 
-                Ok(SelectItem::Expr {
-                    expr: expr,
-                    label: alias,
-                })
+                Ok(SelectItem::Expr { expr, label })
             }
         }
     }
