@@ -2,8 +2,8 @@ use {
     super::{
         select::{Prebuild, ValuesNode},
         table_factor::TableType,
-        ExprList, FilterNode, GroupByNode, HashJoinNode, HavingNode, IndexNode, JoinConstraintNode,
-        JoinNode, LimitNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode,
+        ExprList, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
+        LimitNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode,
         TableFactorNode,
     },
     crate::{
@@ -31,7 +31,6 @@ pub enum QueryNode<'a> {
     FilterNode(FilterNode<'a>),
     ProjectNode(ProjectNode<'a>),
     OrderByNode(OrderByNode<'a>),
-    IndexNode(IndexNode<'a>),
 }
 
 impl<'a> QueryNode<'a> {
@@ -43,6 +42,7 @@ impl<'a> QueryNode<'a> {
                 alias: table_alias.to_owned(),
             },
             table_alias: None,
+            index: None,
         }
     }
 }
@@ -115,7 +115,6 @@ impl<'a> TryFrom<QueryNode<'a>> for Query {
             QueryNode::OffsetLimitNode(node) => node.prebuild(),
             QueryNode::ProjectNode(node) => node.prebuild(),
             QueryNode::OrderByNode(node) => node.prebuild(),
-            QueryNode::IndexNode(node) => node.prebuild(),
         }
     }
 }

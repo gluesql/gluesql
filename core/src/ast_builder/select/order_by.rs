@@ -3,9 +3,9 @@ use {
     crate::{
         ast::Query,
         ast_builder::{
-            ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, IndexNode,
-            JoinConstraintNode, JoinNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode,
-            QueryNode, SelectNode, TableFactorNode,
+            ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
+            JoinNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryNode, SelectNode,
+            TableFactorNode,
         },
         result::Result,
     },
@@ -22,7 +22,6 @@ pub enum PrevNode<'a> {
     HashJoin(Box<HashJoinNode<'a>>),
     ProjectNode(Box<ProjectNode<'a>>),
     Values(ValuesNode<'a>),
-    Index(IndexNode<'a>),
 }
 
 impl<'a> Prebuild<Query> for PrevNode<'a> {
@@ -37,7 +36,6 @@ impl<'a> Prebuild<Query> for PrevNode<'a> {
             Self::HashJoin(node) => node.prebuild(),
             Self::ProjectNode(node) => node.prebuild(),
             Self::Values(node) => node.prebuild(),
-            Self::Index(node) => node.prebuild(),
         }
     }
 }
@@ -93,12 +91,6 @@ impl<'a> From<ProjectNode<'a>> for PrevNode<'a> {
 impl<'a> From<ValuesNode<'a>> for PrevNode<'a> {
     fn from(node: ValuesNode<'a>) -> Self {
         PrevNode::Values(node)
-    }
-}
-
-impl<'a> From<IndexNode<'a>> for PrevNode<'a> {
-    fn from(node: IndexNode<'a>) -> Self {
-        PrevNode::Index(node)
     }
 }
 

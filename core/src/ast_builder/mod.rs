@@ -12,6 +12,8 @@ mod execute;
 mod expr;
 mod expr_list;
 mod index;
+mod index_by;
+mod index_item;
 mod insert;
 mod order_by_expr;
 mod order_by_expr_list;
@@ -37,14 +39,15 @@ pub use {
     error::AstBuilderError,
     execute::Execute,
     expr_list::ExprList,
+    index_by::IndexNode,
+    index_item::{primary_key, PrimaryKeyNode},
     insert::InsertNode,
     order_by_expr::OrderByExprNode,
     order_by_expr_list::OrderByExprList,
     query::QueryNode,
     select::{
-        use_idx, values, FilterNode, GroupByNode, HashJoinNode, HavingNode, IndexNode,
-        JoinConstraintNode, JoinNode, LimitNode, OffsetLimitNode, OffsetNode, OrderByNode,
-        PrimaryKeyNode, ProjectNode, SelectNode, UseIndexNode,
+        values, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
+        LimitNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode,
     },
     select_item::SelectItemNode,
     select_item_list::SelectItemList,

@@ -13,7 +13,7 @@ use {
 
 #[cfg(test)]
 use {
-    crate::{ast::Statement, executor::execute, parse_sql::parse, translate::translate},
+    crate::{executor::execute, parse_sql::parse, translate::translate},
     futures::executor::block_on,
 };
 
@@ -26,15 +26,6 @@ pub fn run(sql: &str) -> MockStorage {
 
         block_on(execute(&mut storage, &statement)).unwrap();
     }
-
-    storage
-}
-
-#[cfg(test)]
-pub fn run_statement(statement: Statement) -> MockStorage {
-    let mut storage = MockStorage::default();
-
-    block_on(execute(&mut storage, &statement)).unwrap();
 
     storage
 }

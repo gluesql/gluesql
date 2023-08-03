@@ -1,8 +1,6 @@
 mod filter;
 mod group_by;
 mod having;
-mod index_by;
-mod index_item;
 mod join;
 mod limit;
 mod offset;
@@ -16,8 +14,6 @@ pub use {
     filter::FilterNode,
     group_by::GroupByNode,
     having::HavingNode,
-    index_by::IndexNode,
-    index_item::{use_idx, PrimaryKeyNode, UseIndexNode},
     join::{HashJoinNode, JoinConstraintNode, JoinNode},
     limit::LimitNode,
     offset::OffsetNode,
