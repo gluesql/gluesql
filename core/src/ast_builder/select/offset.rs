@@ -101,6 +101,7 @@ impl<'a> From<ProjectNode<'a>> for PrevNode<'a> {
         PrevNode::ProjectNode(Box::new(node))
     }
 }
+
 #[derive(Clone, Debug)]
 pub struct OffsetNode<'a> {
     prev_node: PrevNode<'a>,

@@ -53,7 +53,6 @@ impl<'a> From<SelectNode<'a>> for PrevNode<'a> {
         PrevNode::Select(node)
     }
 }
-
 #[derive(Clone, Debug)]
 pub struct FilterNode<'a> {
     prev_node: PrevNode<'a>,
