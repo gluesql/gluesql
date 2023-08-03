@@ -1,11 +1,15 @@
 #![deny(clippy::str_to_string)]
 
 mod alter_table;
+mod error;
 mod index;
 mod metadata;
+mod snapshot;
+mod stage;
 mod transaction;
 
 use {
+    crate::snapshot::Snapshot,
     async_trait::async_trait,
     gluesql_core::{
         chrono::Utc,
@@ -21,17 +25,45 @@ use {
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum StorageState {
+    Idle,
+    Transaction { autocommit: bool },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Item {
     pub schema: Schema,
     pub rows: BTreeMap<Key, DataRow>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryStorage {
     pub id_counter: i64,
     pub items: HashMap<String, Item>,
     pub metadata: HashMap<String, HashMap<String, Value>>,
     pub functions: HashMap<String, StructCustomFunction>,
+    pub state: StorageState,
+    pub snapshot: Option<Box<Snapshot<MemoryStorage>>>,
+}
+// TODO: Default implementation on MemoryStorage
+impl Default for MemoryStorage {
+    fn default() -> MemoryStorage {
+        Self {
+            id_counter: 0,
+            items: HashMap::new(),
+            metadata: HashMap::new(),
+            functions: HashMap::new(),
+            state: StorageState::Idle,
+            snapshot: None,
+        }
+    }
+}
+
+impl MemoryStorage {
+    fn set_snapshot(&mut self) {
+        let snapshot = Snapshot::new(self.clone());
+        self.snapshot = Some(Box::new(snapshot));
+    }
 }
 
 #[async_trait(?Send)]
