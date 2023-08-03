@@ -2,6 +2,7 @@ use {
     super::{ExprNode, SelectItemNode},
     crate::{
         ast::SelectItem,
+        ast_builder::expr::alias_as::ExprWithAliasNode,
         parse_sql::parse_select_items,
         result::{Error, Result},
         translate::translate_select_item,
@@ -34,6 +35,18 @@ impl<'a> From<ExprNode<'a>> for SelectItemList<'a> {
 
 impl<'a> From<Vec<ExprNode<'a>>> for SelectItemList<'a> {
     fn from(expr_nodes: Vec<ExprNode<'a>>) -> Self {
+        SelectItemList::SelectItems(expr_nodes.into_iter().map(Into::into).collect())
+    }
+}
+
+impl<'a> From<ExprWithAliasNode<'a>> for SelectItemList<'a> {
+    fn from(expr_node: ExprWithAliasNode<'a>) -> Self {
+        SelectItemList::SelectItems(vec![expr_node.into()])
+    }
+}
+
+impl<'a> From<Vec<ExprWithAliasNode<'a>>> for SelectItemList<'a> {
+    fn from(expr_nodes: Vec<ExprWithAliasNode<'a>>) -> Self {
         SelectItemList::SelectItems(expr_nodes.into_iter().map(Into::into).collect())
     }
 }
@@ -91,6 +104,14 @@ mod tests {
 
         let actual = vec![col("id"), "name".into()].into();
         let expected = "id, name";
+        test(actual, expected);
+
+        let actual = col("id").sub(1).alias_as("new_id").into();
+        let expected = "id - 1 AS new_id";
+        test(actual, expected);
+
+        let actual = vec![col("age").avg().alias_as("avg_age"), "name".into()].into();
+        let expected = "AVG(age) AS avg_age, name";
         test(actual, expected);
     }
 }

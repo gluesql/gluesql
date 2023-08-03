@@ -2,6 +2,7 @@ use {
     super::ExprNode,
     crate::{
         ast::{Expr, SelectItem, ToSqlUnquoted},
+        ast_builder::expr::alias_as::ExprWithAliasNode,
         parse_sql::parse_select_item,
         result::{Error, Result},
         translate::translate_select_item,
@@ -13,6 +14,7 @@ pub enum SelectItemNode<'a> {
     SelectItem(SelectItem),
     Expr(ExprNode<'a>),
     Text(String),
+    ExprWithAliasNode(ExprWithAliasNode<'a>),
 }
 
 impl<'a> From<SelectItem> for SelectItemNode<'a> {
@@ -33,6 +35,12 @@ impl<'a> From<&str> for SelectItemNode<'a> {
     }
 }
 
+impl<'a> From<ExprWithAliasNode<'a>> for SelectItemNode<'a> {
+    fn from(expr_node: ExprWithAliasNode<'a>) -> Self {
+        Self::ExprWithAliasNode(expr_node)
+    }
+}
+
 impl<'a> TryFrom<SelectItemNode<'a>> for SelectItem {
     type Error = Error;
 
@@ -45,6 +53,12 @@ impl<'a> TryFrom<SelectItemNode<'a>> for SelectItem {
             SelectItemNode::Expr(expr_node) => {
                 let expr = Expr::try_from(expr_node)?;
                 let label = expr.to_sql_unquoted();
+
+                Ok(SelectItem::Expr { expr, label })
+            }
+            SelectItemNode::ExprWithAliasNode(expr_node) => {
+                let expr = Expr::try_from(expr_node.expr)?;
+                let label = expr_node.alias.to_owned();
 
                 Ok(SelectItem::Expr { expr, label })
             }
@@ -83,6 +97,10 @@ mod tests {
 
         let actual = col("id").into();
         let expected = "id";
+        test(actual, expected);
+
+        let actual = col("id").add(10).alias_as("col").into();
+        let expected = "id + 10 AS col";
         test(actual, expected);
     }
 }
