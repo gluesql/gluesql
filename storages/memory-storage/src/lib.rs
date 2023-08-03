@@ -1,11 +1,9 @@
 #![deny(clippy::str_to_string)]
 
 mod alter_table;
-mod error;
 mod index;
 mod metadata;
 mod snapshot;
-mod stage;
 mod transaction;
 
 use {
