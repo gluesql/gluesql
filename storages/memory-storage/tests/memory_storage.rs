@@ -29,6 +29,10 @@ generate_metadata_table_tests!(tokio::test, MemoryTester);
 
 generate_custom_function_tests!(tokio::test, MemoryTester);
 
+generate_transaction_tests!(tokio::test, MemoryTester);
+
+generate_transaction_alter_table_tests!(tokio::test, MemoryTester);
+
 macro_rules! exec {
     ($glue: ident $sql: literal) => {
         $glue.execute($sql).await.unwrap();
@@ -82,17 +86,4 @@ async fn memory_storage_index() {
         glue "DROP INDEX Idx.idx_id;",
         Err(Error::StorageMsg("[MemoryStorage] index is not supported".to_owned()))
     );
-}
-
-#[tokio::test]
-async fn memory_storage_transaction() {
-    use gluesql_core::prelude::{Error, Glue, Payload};
-
-    let storage = MemoryStorage::default();
-    let mut glue = Glue::new(storage);
-
-    exec!(glue "CREATE TABLE TxTest (id INTEGER);");
-    test!(glue "BEGIN", Err(Error::StorageMsg("[MemoryStorage] transaction is not supported".to_owned())));
-    test!(glue "COMMIT", Ok(vec![Payload::Commit]));
-    test!(glue "ROLLBACK", Ok(vec![Payload::Rollback]));
 }
