@@ -4,7 +4,7 @@ impl<'a> ExprNode<'a> {
     pub fn alias_as(self, alias: &str) -> ExprWithAliasNode<'a> {
         ExprWithAliasNode {
             expr: self,
-            alias: alias.to_owned().into(),
+            alias: alias.to_owned(),
         }
     }
 }
@@ -19,7 +19,7 @@ impl<'a> From<&'a str> for ExprWithAliasNode<'a> {
     fn from(expr: &'a str) -> Self {
         ExprWithAliasNode {
             expr: ExprNode::SqlExpr(Cow::Borrowed(expr)),
-            alias: expr.to_string(),
+            alias: expr.to_owned(),
         }
     }
 }
