@@ -11,6 +11,7 @@ mod error;
 mod execute;
 mod expr;
 mod expr_list;
+mod expr_with_alias;
 mod index;
 mod insert;
 mod order_by_expr;
@@ -37,6 +38,7 @@ pub use {
     error::AstBuilderError,
     execute::Execute,
     expr_list::ExprList,
+    expr_with_alias::ExprWithAliasNode,
     insert::InsertNode,
     order_by_expr::OrderByExprNode,
     order_by_expr_list::OrderByExprList,
