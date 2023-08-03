@@ -2,7 +2,7 @@ use {
     super::{ExprNode, SelectItemNode},
     crate::{
         ast::SelectItem,
-        ast_builder::expr::alias_as::ExprWithAliasNode,
+        ast_builder::ExprWithAliasNode,
         parse_sql::parse_select_items,
         result::{Error, Result},
         translate::translate_select_item,
@@ -72,7 +72,7 @@ impl<'a> TryFrom<SelectItemList<'a>> for Vec<SelectItem> {
 mod tests {
     use crate::{
         ast::SelectItem,
-        ast_builder::{col, SelectItemList},
+        ast_builder::{col, expr, SelectItemList},
         parse_sql::parse_select_items,
         result::Result,
         translate::translate_select_item,
@@ -110,8 +110,12 @@ mod tests {
         let expected = "id - 1 AS new_id";
         test(actual, expected);
 
-        let actual = vec![col("age").avg().alias_as("avg_age"), "name".into()].into();
-        let expected = "AVG(age) AS avg_age, name";
+        let actual = vec![
+            col("age").avg().alias_as("avg_age"),
+            expr("name || ':foo'").alias_as("res"),
+        ]
+        .into();
+        let expected = "AVG(age) AS avg_age, name || ':foo' AS res";
         test(actual, expected);
     }
 }

@@ -2,7 +2,7 @@ use {
     super::ExprNode,
     crate::{
         ast::{Expr, SelectItem, ToSqlUnquoted},
-        ast_builder::expr::alias_as::ExprWithAliasNode,
+        ast_builder::ExprWithAliasNode,
         parse_sql::parse_select_item,
         result::{Error, Result},
         translate::translate_select_item,
@@ -56,11 +56,13 @@ impl<'a> TryFrom<SelectItemNode<'a>> for SelectItem {
 
                 Ok(SelectItem::Expr { expr, label })
             }
-            SelectItemNode::ExprWithAliasNode(expr_node) => {
-                let expr = Expr::try_from(expr_node.expr)?;
-                let label = expr_node.alias;
+            SelectItemNode::ExprWithAliasNode(alias_node) => {
+                let (expr, alias) = alias_node.try_into()?;
 
-                Ok(SelectItem::Expr { expr, label })
+                Ok(SelectItem::Expr {
+                    expr: expr,
+                    label: alias,
+                })
             }
         }
     }
@@ -97,10 +99,6 @@ mod tests {
 
         let actual = col("id").into();
         let expected = "id";
-        test(actual, expected);
-
-        let actual = col("id").add(10).alias_as("col").into();
-        let expected = "id + 10 AS col";
         test(actual, expected);
     }
 }
