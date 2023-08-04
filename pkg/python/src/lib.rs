@@ -6,14 +6,21 @@ use gluesql_core::{
     prelude::{execute, parse, plan, Payload},
     translate::translate,
 };
-use memory_storage::MemoryStorage;
 use pyo3::{prelude::*, types::PyString};
+use storages::{PyJsonStorage, PyMemoryStorage};
 mod error;
 mod payload;
+mod storages;
 
-#[pyclass]
-pub struct Glue {
-    pub storage: MemoryStorage,
+#[derive(FromPyObject)]
+pub enum PyStorageEngine {
+    MemoryStorage(PyMemoryStorage),
+    JsonStorage(PyJsonStorage),
+}
+
+#[pyclass(name = "Glue")]
+pub struct PyGlue {
+    pub storage: Option<PyStorageEngine>,
 }
 
 #[pyclass]
@@ -21,28 +28,53 @@ pub struct PyPayload {
     pub payload: Payload,
 }
 
-impl Glue {
+impl PyGlue {
     #[tokio::main]
     pub async fn plan(&self, statement: Statement) -> Result<Statement, PyErr> {
-        plan(&self.storage, statement)
-            .await
-            .map_err(|e| PlanError::new_err(e.to_string()))
+        let storage = self.storage.as_ref().unwrap();
+
+        match storage {
+            PyStorageEngine::MemoryStorage(storage) => {
+                let memory_storage = storage.0.clone();
+                plan(&memory_storage, statement)
+                    .await
+                    .map_err(|e| PlanError::new_err(e.to_string()))
+            }
+            PyStorageEngine::JsonStorage(storage) => {
+                let memory_storage = storage.0.clone();
+                plan(&memory_storage, statement)
+                    .await
+                    .map_err(|e| PlanError::new_err(e.to_string()))
+            }
+        }
     }
 
     #[tokio::main]
     pub async fn execute(&mut self, statement: Statement) -> Result<Payload, PyErr> {
-        execute(&mut self.storage, &statement)
-            .await
-            .map_err(|e| ExecuteError::new_err(e.to_string()))
+        let storage = self.storage.as_mut().unwrap();
+
+        match storage {
+            PyStorageEngine::MemoryStorage(memory_storage) => {
+                execute(&mut memory_storage.0, &statement)
+                    .await
+                    .map_err(|e| ExecuteError::new_err(e.to_string()))
+            }
+            PyStorageEngine::JsonStorage(json_storage) => execute(&mut json_storage.0, &statement)
+                .await
+                .map_err(|e| ExecuteError::new_err(e.to_string())),
+        }
     }
 }
 
 #[pymethods]
-impl Glue {
+impl PyGlue {
     #[new]
     pub fn new() -> Self {
-        let storage = MemoryStorage::default();
-        Glue { storage }
+        PyGlue { storage: None }
+    }
+
+    pub fn set_default_engine(&mut self, default_engine: PyStorageEngine) {
+        self.storage = Some(default_engine);
     }
 
     pub fn query(&mut self, py: Python, sql: &PyString) -> PyResult<PyObject> {
@@ -65,6 +97,8 @@ impl Glue {
 
 #[pymodule]
 fn gluesql(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_class::<Glue>()?;
+    m.add_class::<PyGlue>()?;
+    m.add_class::<PyMemoryStorage>()?;
+    m.add_class::<PyJsonStorage>()?;
     Ok(())
 }

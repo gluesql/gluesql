@@ -1,7 +1,8 @@
-from gluesql import Glue
+from gluesql import Glue, MemoryStorage
 from tabulate import tabulate
 
 db = Glue()
+db.set_default_engine(MemoryStorage())
 
 
 def run():

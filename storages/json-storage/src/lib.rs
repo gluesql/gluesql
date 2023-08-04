@@ -24,6 +24,7 @@ use {
     },
 };
 
+#[derive(Clone)]
 pub struct JsonStorage {
     pub path: PathBuf,
 }
