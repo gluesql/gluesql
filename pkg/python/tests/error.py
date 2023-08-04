@@ -1,4 +1,5 @@
-from gluesql import Glue, MemoryStorage
+from gluesql import Glue, MemoryStorage, EngineNotLoadedError
+import pytest
 
 
 def test_memstore_create_table():
@@ -20,3 +21,11 @@ def test_memstore_create_table():
     ]
 
     assert db.query(sql) == expected
+
+
+def test_engine_not_loaded():
+    db = Glue()
+    sql = ""
+    with pytest.raises(EngineNotLoadedError):
+        db.query(sql)
+
