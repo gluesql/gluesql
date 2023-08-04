@@ -38,9 +38,7 @@ macro_rules! execute {
 impl PyGlue {
     #[tokio::main]
     pub async fn plan(&self, statement: Statement) -> PyResult<Statement> {
-        let storage = self.storage.as_ref().ok_or(EngineNotLoadedError::new_err(
-            "Storage engine not loaded, please call `set_default_engine` first",
-        ))?;
+        let storage = self.storage.as_ref().unwrap();
 
         match storage {
             PyStorageEngine::MemoryStorage(storage) => plan!(storage, statement),
@@ -52,9 +50,7 @@ impl PyGlue {
 
     #[tokio::main]
     pub async fn execute(&mut self, statement: Statement) -> PyResult<Payload> {
-        let storage = self.storage.as_mut().ok_or(EngineNotLoadedError::new_err(
-            "Storage engine not loaded, please call `set_default_engine` first",
-        ))?;
+        let storage = self.storage.as_mut().unwrap();
 
         match storage {
             PyStorageEngine::MemoryStorage(storage) => execute!(storage, &statement),
@@ -77,6 +73,12 @@ impl PyGlue {
     }
 
     pub fn query(&mut self, py: Python, sql: &PyString) -> PyResult<PyObject> {
+        if self.storage.is_none() {
+            return Err(EngineNotLoadedError::new_err(
+                "Storage engine not loaded, please call `set_default_engine` first",
+            ));
+        }
+
         let sql = sql.to_string();
         let queries = parse(&sql).map_err(|e| ParsingError::new_err(e.to_string()))?;
 
