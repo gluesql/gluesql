@@ -49,7 +49,7 @@ macro_rules! execute {
 
 impl PyGlue {
     #[tokio::main]
-    pub async fn plan(&self, statement: Statement) -> Result<Statement, PyErr> {
+    pub async fn plan(&self, statement: Statement) -> PyResult<Statement> {
         let storage = self.storage.as_ref().unwrap();
 
         match storage {
@@ -61,7 +61,7 @@ impl PyGlue {
     }
 
     #[tokio::main]
-    pub async fn execute(&mut self, statement: Statement) -> Result<Payload, PyErr> {
+    pub async fn execute(&mut self, statement: Statement) -> PyResult<Payload> {
         let storage = self.storage.as_mut().unwrap();
 
         match storage {
