@@ -20,7 +20,7 @@ use {
         stream::{self, StreamExt, TryStreamExt},
     },
     im_rc::HashMap,
-    std::{borrow::Cow, rc::Rc, ops::ControlFlow},
+    std::{borrow::Cow, ops::ControlFlow, rc::Rc},
 };
 
 pub use {error::EvaluateError, evaluated::Evaluated};
@@ -384,9 +384,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let exprs = stream::iter(exprs).then(eval).try_collect().await?;
             f::concat_ws(name, separator, exprs)
         }
-        Function::IfNull { expr, then } => {
-            f::ifnull(eval(expr).await?, eval(then).await?)
-        }
+        Function::IfNull { expr, then } => f::ifnull(eval(expr).await?, eval(then).await?),
         Function::Lower(expr) => f::lower(name, eval(expr).await?),
         Function::Initcap(expr) => f::initcap(name, eval(expr).await?),
         Function::Upper(expr) => f::upper(name, eval(expr).await?),

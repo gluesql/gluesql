@@ -367,10 +367,7 @@ pub fn abs<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     Continue(Evaluated::Value(value))
 }
 
-pub fn ifnull<'a>(
-    expr: Evaluated<'a>,
-    then: Evaluated<'a>,
-) -> ControlFlow<Evaluated<'a>> {
+pub fn ifnull<'a>(expr: Evaluated<'a>, then: Evaluated<'a>) -> ControlFlow<Evaluated<'a>> {
     Continue(match expr.is_null() {
         true => then,
         false => expr,
@@ -408,10 +405,7 @@ pub fn ceil<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     eval_to_float(&name, n).map(|n| Evaluated::Value(Value::F64(n.ceil())))
 }
 
-pub fn rand<'a>(
-    name: String,
-    seed: Option<Evaluated<'_>>,
-) -> ControlFlow<Evaluated<'a>> {
+pub fn rand<'a>(name: String, seed: Option<Evaluated<'_>>) -> ControlFlow<Evaluated<'a>> {
     let seed = if let Some(v) = seed {
         StdRng::seed_from_u64(eval_to_float(&name, v)? as u64).gen()
     } else {
@@ -560,10 +554,7 @@ fn gcd_i64(a: i64, b: i64) -> ControlFlow<i64> {
 }
 
 // --- list ---
-pub fn append<'a>(
-    expr: Evaluated<'_>,
-    value: Evaluated<'_>,
-) -> ControlFlow<Evaluated<'a>> {
+pub fn append<'a>(expr: Evaluated<'_>, value: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     let expr: Value = expr.try_into().break_if_null()?;
     let value: Value = value.try_into().break_if_null()?;
 
@@ -576,10 +567,7 @@ pub fn append<'a>(
     }
 }
 
-pub fn prepend<'a>(
-    expr: Evaluated<'_>,
-    value: Evaluated<'_>,
-) -> ControlFlow<Evaluated<'a>> {
+pub fn prepend<'a>(expr: Evaluated<'_>, value: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     let expr: Value = expr.try_into().break_if_null()?;
     let value: Value = value.try_into().break_if_null()?;
 
@@ -614,10 +602,7 @@ pub fn skip<'a>(
     }
 }
 
-pub fn sort<'a>(
-    expr: Evaluated<'_>,
-    order: Evaluated<'_>,
-) -> ControlFlow<Evaluated<'a>> {
+pub fn sort<'a>(expr: Evaluated<'_>, order: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     let expr: Value = expr.try_into().break_if_null()?;
     let order: Value = order.try_into().break_if_null()?;
 
@@ -855,21 +840,14 @@ pub fn find_idx<'a>(
     .into_control_flow()
 }
 
-pub fn extract<'a>(
-    field: &DateTimeField,
-    expr: Evaluated<'_>,
-) -> ControlFlow<Evaluated<'a>> {
+pub fn extract<'a>(field: &DateTimeField, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     Value::try_from(expr)
         .and_then(|v| v.extract(field))
         .map(Evaluated::Value)
         .into_control_flow()
 }
 
-pub fn point<'a>(
-    name: String,
-    x: Evaluated<'_>,
-    y: Evaluated<'_>,
-) -> ControlFlow<Evaluated<'a>> {
+pub fn point<'a>(name: String, x: Evaluated<'_>, y: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     let x = eval_to_float(&name, x)?;
     let y = eval_to_float(&name, y)?;
 
