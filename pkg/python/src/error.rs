@@ -1,15 +1,16 @@
 use gluesql_core::prelude::Error;
-use pyo3::{create_exception, exceptions::PyException, prelude::*, pyclass::CompareOp};
+use pyo3::{create_exception, prelude::*, pyclass::CompareOp, exceptions::PyException};
 
 #[pyclass(name = "GlueSQLError")]
 pub struct PyGlueSQLError(pub Error);
 
-create_exception!(gluesql, EngineNotLoadedError, PyException);
+create_exception!(gluesql, GlueSQLError, PyException);
 
-create_exception!(gluesql, ParsingError, PyException);
-create_exception!(gluesql, TranslateError, PyException);
-create_exception!(gluesql, ExecuteError, PyException);
-create_exception!(gluesql, PlanError, PyException);
+create_exception!(gluesql, EngineNotLoadedError, GlueSQLError);
+create_exception!(gluesql, ParsingError, GlueSQLError);
+create_exception!(gluesql, TranslateError, GlueSQLError);
+create_exception!(gluesql, ExecuteError, GlueSQLError);
+create_exception!(gluesql, PlanError, GlueSQLError);
 
 #[pymethods]
 impl PyGlueSQLError {
@@ -21,7 +22,7 @@ impl PyGlueSQLError {
         }
     }
 
-    pub fn __str__(&self) -> String {
+    pub fn __repr__(&self) -> String {
         format!("{}", self.0)
     }
 }

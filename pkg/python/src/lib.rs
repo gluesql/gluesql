@@ -106,11 +106,22 @@ impl PyGlue {
 }
 
 #[pymodule]
-fn gluesql(_py: Python, m: &PyModule) -> PyResult<()> {
+fn gluesql(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyGlue>()?;
     m.add_class::<PyMemoryStorage>()?;
     m.add_class::<PyJsonStorage>()?;
     m.add_class::<PySharedMemoryStorage>()?;
     m.add_class::<PySledStorage>()?;
+
+    m.add(
+        "EngineNotLoadedError",
+        py.get_type::<EngineNotLoadedError>(),
+    )?;
+    m.add("PlanError", py.get_type::<PlanError>())?;
+
+    m.add("ExecuteError", py.get_type::<ExecuteError>())?;
+    m.add("TranslateError", py.get_type::<TranslateError>())?;
+    m.add("ParsingError", py.get_type::<ParsingError>())?;
+
     Ok(())
 }
