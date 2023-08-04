@@ -824,4 +824,11 @@ impl<'a> Evaluated<'a> {
 
         Ok(value)
     }
+
+    pub fn is_bool(&self) -> bool {
+        matches!(
+            self,
+            Evaluated::Literal(Literal::Boolean(_)) | Evaluated::Value(Value::Bool(_))
+        )
+    }
 }

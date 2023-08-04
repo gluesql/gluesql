@@ -58,7 +58,7 @@ test_case!(greatest, async move {
 
     test!(
         "SELECT GREATEST(1, 2, 'bibibik') AS goat;",
-        Err(EvaluateError::CannotCompareDifferentTypes.into())
+        Err(EvaluateError::ComparisonOperationError.into())
     );
 
     test!(
@@ -70,9 +70,7 @@ test_case!(greatest, async move {
 
     test!(
         "SELECT GREATEST(NULL, NULL, NULL) AS goat;",
-        Ok(select_with_null!(
-            "goat"; Null
-        ))
+        Err(EvaluateError::EmptyExpression.into())
     );
 
     test!(
@@ -91,6 +89,13 @@ test_case!(greatest, async move {
 
     test!(
         "SELECT GREATEST(true, false) AS goat;",
-        Err(EvaluateError::UnsupportedTypeForComparison.into())
+        Err(EvaluateError::EmptyExpression.into())
+    );
+
+    test!(
+        "SELECT GREATEST(true, false, 1) AS goat;",
+        Ok(select!(
+            "goat"; I64; 1
+        ))
     );
 });

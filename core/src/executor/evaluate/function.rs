@@ -645,39 +645,20 @@ pub fn generate_uuid<'a>() -> Evaluated<'a> {
     Evaluated::from(Value::Uuid(Uuid::new_v4().as_u128()))
 }
 
-pub fn greatest(_name: String, exprs: Vec<Evaluated<'_>>) -> Result<Evaluated<'_>> {
-    let exprs: Vec<Value> = exprs
-        .into_iter()
-        .filter_map(|value| match value.try_into().unwrap() {
-            Value::Null => None,
-            value => Some(value),
-        })
-        .collect();
-    if exprs.is_empty() {
-        return Ok(Evaluated::from(Value::Null));
-    }
-    let first_type = &exprs[0].get_type();
+pub fn greatest(_name: String, mut exprs: Vec<Evaluated<'_>>) -> Result<Evaluated<'_>> {
+    exprs.retain(|expr| !expr.is_null() && !expr.is_bool());
+    let mut iter = exprs.into_iter();
+    let mut greatest = iter.next().ok_or(EvaluateError::EmptyExpression)?;
 
-    if !exprs.iter().all(|value| value.get_type() == *first_type) {
-        return Err(EvaluateError::CannotCompareDifferentTypes.into());
-    }
-
-    for value in &exprs {
-        match value {
-            Value::I64(_) | Value::F64(_) | Value::Str(_) | Value::Date(_) => (),
-            _ => return Err(EvaluateError::UnsupportedTypeForComparison.into()),
+    for expr in iter {
+        match greatest.evaluate_cmp(&expr) {
+            Some(std::cmp::Ordering::Less) => greatest = expr,
+            Some(_) => (),
+            None => return Err(EvaluateError::ComparisonOperationError.into()),
         }
     }
 
-    let greatest_value = exprs.into_iter().max_by(|a, b| match (a, b) {
-        (Value::I64(a), Value::I64(b)) => a.cmp(b),
-        (Value::F64(a), Value::F64(b)) => a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal),
-        (Value::Str(a), Value::Str(b)) => a.cmp(b),
-        (Value::Date(a), Value::Date(b)) => a.cmp(b),
-        _ => unreachable!(),
-    });
-
-    Ok(Evaluated::from(greatest_value.unwrap()))
+    Ok(greatest)
 }
 
 pub fn format<'a>(
