@@ -26,17 +26,25 @@ class SharedMemoryStorage(Storage):
     def __init__(path: str): ...
 
 
-class ParsingError(Exception):
+class GlueSQLError(Exception):
+    pass
+
+
+class EngineNotLoadedError(GlueSQLError):
+    pass
+
+
+class ParsingError(GlueSQLError):
     """ """
 
 
-class TranslateError(Exception):
+class TranslateError(GlueSQLError):
     """ """
 
 
-class ExecuteError(Exception):
+class ExecuteError(GlueSQLError):
     """ """
 
 
-class PlanError(Exception):
+class PlanError(GlueSQLError):
     """ """
