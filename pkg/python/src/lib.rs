@@ -1,4 +1,6 @@
-use error::{EngineNotLoadedError, ExecuteError, ParsingError, PlanError, TranslateError, GlueSQLError};
+use error::{
+    EngineNotLoadedError, ExecuteError, GlueSQLError, ParsingError, PlanError, TranslateError,
+};
 use payload::{convert, PyPayload};
 
 use gluesql_core::{
@@ -104,10 +106,7 @@ fn gluesql(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PySharedMemoryStorage>()?;
     m.add_class::<PySledStorage>()?;
 
-    m.add(
-        "GlueSQLError",
-        py.get_type::<GlueSQLError>(),
-    )?;
+    m.add("GlueSQLError", py.get_type::<GlueSQLError>())?;
     m.add(
         "EngineNotLoadedError",
         py.get_type::<EngineNotLoadedError>(),
