@@ -30,36 +30,33 @@ pub struct PyPayload {
     pub payload: Payload,
 }
 
+macro_rules! plan {
+    ($storage:expr, $statement:expr) => {{
+        let memory_storage = $storage.0.clone();
+        plan(&memory_storage, $statement)
+            .await
+            .map_err(|e| PlanError::new_err(e.to_string()))
+    }};
+}
+
+macro_rules! execute {
+    ($storage:expr, $statement:expr) => {{
+        execute(&mut $storage.0, $statement)
+            .await
+            .map_err(|e| ExecuteError::new_err(e.to_string()))
+    }};
+}
+
 impl PyGlue {
     #[tokio::main]
     pub async fn plan(&self, statement: Statement) -> Result<Statement, PyErr> {
         let storage = self.storage.as_ref().unwrap();
 
         match storage {
-            PyStorageEngine::MemoryStorage(storage) => {
-                let memory_storage = storage.0.clone();
-                plan(&memory_storage, statement)
-                    .await
-                    .map_err(|e| PlanError::new_err(e.to_string()))
-            }
-            PyStorageEngine::JsonStorage(storage) => {
-                let memory_storage = storage.0.clone();
-                plan(&memory_storage, statement)
-                    .await
-                    .map_err(|e| PlanError::new_err(e.to_string()))
-            }
-            PyStorageEngine::SharedMemoryStorage(storage) => {
-                let memory_storage = storage.0.clone();
-                plan(&memory_storage, statement)
-                    .await
-                    .map_err(|e| PlanError::new_err(e.to_string()))
-            }
-            PyStorageEngine::SledStorage(storage) => {
-                let memory_storage = storage.0.clone();
-                plan(&memory_storage, statement)
-                    .await
-                    .map_err(|e| PlanError::new_err(e.to_string()))
-            }
+            PyStorageEngine::MemoryStorage(storage) => plan!(storage, statement),
+            PyStorageEngine::JsonStorage(storage) => plan!(storage, statement),
+            PyStorageEngine::SharedMemoryStorage(storage) => plan!(storage, statement),
+            PyStorageEngine::SledStorage(storage) => plan!(storage, statement),
         }
     }
 
@@ -68,24 +65,10 @@ impl PyGlue {
         let storage = self.storage.as_mut().unwrap();
 
         match storage {
-            PyStorageEngine::MemoryStorage(memory_storage) => {
-                execute(&mut memory_storage.0, &statement)
-                    .await
-                    .map_err(|e| ExecuteError::new_err(e.to_string()))
-            }
-            PyStorageEngine::JsonStorage(json_storage) => execute(&mut json_storage.0, &statement)
-                .await
-                .map_err(|e| ExecuteError::new_err(e.to_string())),
-            PyStorageEngine::SharedMemoryStorage(shared_memory_storage) => {
-                execute(&mut shared_memory_storage.0, &statement)
-                    .await
-                    .map_err(|e| ExecuteError::new_err(e.to_string()))
-            }
-            PyStorageEngine::SledStorage(sled_storage) => {
-                execute(&mut sled_storage.0, &statement)
-                    .await
-                    .map_err(|e| ExecuteError::new_err(e.to_string()))
-            }
+            PyStorageEngine::MemoryStorage(storage) => execute!(storage, &statement),
+            PyStorageEngine::JsonStorage(storage) => execute!(storage, &statement),
+            PyStorageEngine::SharedMemoryStorage(storage) => execute!(storage, &statement),
+            PyStorageEngine::SledStorage(storage) => execute!(storage, &statement),
         }
     }
 }
@@ -125,5 +108,6 @@ fn gluesql(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyMemoryStorage>()?;
     m.add_class::<PyJsonStorage>()?;
     m.add_class::<PySharedMemoryStorage>()?;
+    m.add_class::<PySledStorage>()?;
     Ok(())
 }
