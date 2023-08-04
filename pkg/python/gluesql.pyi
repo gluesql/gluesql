@@ -22,6 +22,10 @@ class JsonStorage(Storage):
     def __init__(path: str): ...
 
 
+class SharedMemoryStorage(Storage):
+    def __init__(path: str): ...
+
+
 class ParsingError(Exception):
     """ """
 

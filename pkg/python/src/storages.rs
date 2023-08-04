@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use json_storage::JsonStorage;
 use memory_storage::MemoryStorage;
 use pyo3::{prelude::*, types::PyString};
+use shared_memory_storage::SharedMemoryStorage;
 
 #[pyclass(name = "MemoryStorage")]
 #[derive(Clone)]
@@ -27,5 +28,17 @@ impl PyJsonStorage {
         let mut path = PathBuf::new();
         path.push(path_arg.to_string());
         PyJsonStorage(JsonStorage { path })
+    }
+}
+
+#[pyclass(name = "SharedMemoryStorage")]
+#[derive(Clone)]
+pub struct PySharedMemoryStorage(pub SharedMemoryStorage);
+
+#[pymethods]
+impl PySharedMemoryStorage {
+    #[new]
+    pub fn new() -> Self {
+        PySharedMemoryStorage(SharedMemoryStorage::default())
     }
 }

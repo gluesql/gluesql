@@ -20,6 +20,7 @@ idb-storage.workspace = true
 composite-storage.workspace = true
 sled-storage.workspace = true
 json-storage.workspace = true
+shared-memory-storage.workspace = true
 
 pyo3 = { version = "0.19.1", features = ["extension-module"] }
 pythonize = "0.19.0"
