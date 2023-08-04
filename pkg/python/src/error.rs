@@ -4,6 +4,8 @@ use pyo3::{create_exception, exceptions::PyException, prelude::*, pyclass::Compa
 #[pyclass(name = "GlueSQLError")]
 pub struct PyGlueSQLError(pub Error);
 
+create_exception!(gluesql, EngineNotLoadedError, PyException);
+
 create_exception!(gluesql, ParsingError, PyException);
 create_exception!(gluesql, TranslateError, PyException);
 create_exception!(gluesql, ExecuteError, PyException);

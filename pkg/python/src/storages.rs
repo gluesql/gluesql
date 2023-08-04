@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 use pyo3::{prelude::*, types::PyString};
+use std::path::PathBuf;
 
 use json_storage::JsonStorage;
 use memory_storage::MemoryStorage;
@@ -57,4 +57,3 @@ impl PySledStorage {
         Ok(PySledStorage(storage))
     }
 }
-

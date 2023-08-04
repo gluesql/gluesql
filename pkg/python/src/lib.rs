@@ -1,4 +1,4 @@
-use error::{ExecuteError, ParsingError, PlanError, TranslateError};
+use error::{EngineNotLoadedError, ExecuteError, ParsingError, PlanError, TranslateError};
 use payload::convert;
 
 use gluesql_core::{
@@ -32,8 +32,7 @@ pub struct PyPayload {
 
 macro_rules! plan {
     ($storage:expr, $statement:expr) => {{
-        let memory_storage = $storage.0.clone();
-        plan(&memory_storage, $statement)
+        plan(&$storage.0, $statement)
             .await
             .map_err(|e| PlanError::new_err(e.to_string()))
     }};
@@ -50,7 +49,9 @@ macro_rules! execute {
 impl PyGlue {
     #[tokio::main]
     pub async fn plan(&self, statement: Statement) -> PyResult<Statement> {
-        let storage = self.storage.as_ref().unwrap();
+        let storage = self.storage.as_ref().ok_or(EngineNotLoadedError::new_err(
+            "Storage engine not loaded, please call `set_default_engine` first",
+        ))?;
 
         match storage {
             PyStorageEngine::MemoryStorage(storage) => plan!(storage, statement),
@@ -62,7 +63,9 @@ impl PyGlue {
 
     #[tokio::main]
     pub async fn execute(&mut self, statement: Statement) -> PyResult<Payload> {
-        let storage = self.storage.as_mut().unwrap();
+        let storage = self.storage.as_mut().ok_or(EngineNotLoadedError::new_err(
+            "Storage engine not loaded, please call `set_default_engine` first",
+        ))?;
 
         match storage {
             PyStorageEngine::MemoryStorage(storage) => execute!(storage, &statement),
