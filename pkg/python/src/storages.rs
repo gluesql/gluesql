@@ -4,6 +4,7 @@ use json_storage::JsonStorage;
 use memory_storage::MemoryStorage;
 use pyo3::{prelude::*, types::PyString};
 use shared_memory_storage::SharedMemoryStorage;
+use sled_storage::SledStorage;
 
 #[pyclass(name = "MemoryStorage")]
 #[derive(Clone)]
@@ -40,5 +41,19 @@ impl PySharedMemoryStorage {
     #[new]
     pub fn new() -> Self {
         PySharedMemoryStorage(SharedMemoryStorage::default())
+    }
+}
+
+#[pyclass(name = "SledStorage")]
+#[derive(Clone)]
+pub struct PySledStorage(pub SledStorage);
+
+#[pymethods]
+impl PySledStorage {
+    #[new]
+    pub fn new(path_arg: &PyString) -> PyResult<Self> {
+        let path_str = path_arg.to_str()?;
+        let storage = SledStorage::new(path_str).unwrap();
+        Ok(PySledStorage(storage))
     }
 }

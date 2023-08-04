@@ -7,7 +7,7 @@ use gluesql_core::{
     translate::translate,
 };
 use pyo3::{prelude::*, types::PyString};
-use storages::{PyJsonStorage, PyMemoryStorage, PySharedMemoryStorage};
+use storages::{PyJsonStorage, PyMemoryStorage, PySharedMemoryStorage, PySledStorage};
 mod error;
 mod payload;
 mod storages;
@@ -17,6 +17,7 @@ pub enum PyStorageEngine {
     MemoryStorage(PyMemoryStorage),
     JsonStorage(PyJsonStorage),
     SharedMemoryStorage(PySharedMemoryStorage),
+    SledStorage(PySledStorage),
 }
 
 #[pyclass(name = "Glue")]
@@ -53,6 +54,12 @@ impl PyGlue {
                     .await
                     .map_err(|e| PlanError::new_err(e.to_string()))
             }
+            PyStorageEngine::SledStorage(storage) => {
+                let memory_storage = storage.0.clone();
+                plan(&memory_storage, statement)
+                    .await
+                    .map_err(|e| PlanError::new_err(e.to_string()))
+            }
         }
     }
 
@@ -71,6 +78,11 @@ impl PyGlue {
                 .map_err(|e| ExecuteError::new_err(e.to_string())),
             PyStorageEngine::SharedMemoryStorage(shared_memory_storage) => {
                 execute(&mut shared_memory_storage.0, &statement)
+                    .await
+                    .map_err(|e| ExecuteError::new_err(e.to_string()))
+            }
+            PyStorageEngine::SledStorage(sled_storage) => {
+                execute(&mut sled_storage.0, &statement)
                     .await
                     .map_err(|e| ExecuteError::new_err(e.to_string()))
             }
