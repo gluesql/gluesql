@@ -6,6 +6,14 @@ use memory_storage::MemoryStorage;
 use shared_memory_storage::SharedMemoryStorage;
 use sled_storage::SledStorage;
 
+#[derive(FromPyObject)]
+pub enum PyStorageEngine {
+    MemoryStorage(PyMemoryStorage),
+    JsonStorage(PyJsonStorage),
+    SharedMemoryStorage(PySharedMemoryStorage),
+    SledStorage(PySledStorage),
+}
+
 #[pyclass(name = "MemoryStorage")]
 #[derive(Clone)]
 pub struct PyMemoryStorage(pub MemoryStorage);

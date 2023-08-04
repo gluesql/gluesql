@@ -4,10 +4,13 @@ use {
 };
 
 use gluesql_core::prelude::PayloadVariable;
-use pyo3::{PyObject, Python};
+use pyo3::{pyclass, PyObject, Python};
 use pythonize::pythonize;
 
-use crate::PyPayload;
+#[pyclass]
+pub struct PyPayload {
+    pub payload: Payload,
+}
 
 pub fn convert(py: Python, payloads: Vec<PyPayload>) -> PyObject {
     let payloads = payloads

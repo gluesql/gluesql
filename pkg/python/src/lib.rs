@@ -1,5 +1,5 @@
 use error::{EngineNotLoadedError, ExecuteError, ParsingError, PlanError, TranslateError};
-use payload::convert;
+use payload::{convert, PyPayload};
 
 use gluesql_core::{
     ast::Statement,
@@ -7,27 +7,16 @@ use gluesql_core::{
     translate::translate,
 };
 use pyo3::{prelude::*, types::PyString};
-use storages::{PyJsonStorage, PyMemoryStorage, PySharedMemoryStorage, PySledStorage};
+use storages::{
+    PyJsonStorage, PyMemoryStorage, PySharedMemoryStorage, PySledStorage, PyStorageEngine,
+};
 mod error;
 mod payload;
 mod storages;
 
-#[derive(FromPyObject)]
-pub enum PyStorageEngine {
-    MemoryStorage(PyMemoryStorage),
-    JsonStorage(PyJsonStorage),
-    SharedMemoryStorage(PySharedMemoryStorage),
-    SledStorage(PySledStorage),
-}
-
 #[pyclass(name = "Glue")]
 pub struct PyGlue {
     pub storage: Option<PyStorageEngine>,
-}
-
-#[pyclass]
-pub struct PyPayload {
-    pub payload: Payload,
 }
 
 macro_rules! plan {

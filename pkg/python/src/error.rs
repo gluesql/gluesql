@@ -1,5 +1,5 @@
 use gluesql_core::prelude::Error;
-use pyo3::{create_exception, prelude::*, pyclass::CompareOp, exceptions::PyException};
+use pyo3::{create_exception, exceptions::PyException, prelude::*, pyclass::CompareOp};
 
 #[pyclass(name = "GlueSQLError")]
 pub struct PyGlueSQLError(pub Error);
