@@ -20,7 +20,7 @@ pub use {
     offset_limit::OffsetLimitNode,
     order_by::OrderByNode,
     project::ProjectNode,
-    root::SelectNode,
+    root::{select, SelectNode},
     values::{values, ValuesNode},
 };
 
