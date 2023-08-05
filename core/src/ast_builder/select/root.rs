@@ -1,7 +1,9 @@
 use {
     super::{join::JoinOperatorType, Prebuild},
     crate::{
-        ast::{Query, Select, SelectItem, TableAlias, TableFactor, TableWithJoins},
+        ast::{
+            AstLiteral, Expr, Query, Select, SelectItem, TableAlias, TableFactor, TableWithJoins,
+        },
         ast_builder::{
             table_factor::TableType, ExprList, ExprNode, FilterNode, GroupByNode, JoinNode,
             LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
@@ -122,9 +124,19 @@ impl<'a> Prebuild<Select> for SelectNode<'a> {
     }
 }
 
+pub fn select<'a>() -> SelectNode<'a> {
+    SelectNode {
+        table_node: TableFactorNode {
+            table_name: "SERIES".to_owned(),
+            table_type: TableType::Series(Expr::Literal(AstLiteral::Number(1.into())).into()),
+            table_alias: None,
+        },
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{table, test, Build};
+    use crate::ast_builder::{select as select_without_table, table, test, Build};
 
     #[test]
     fn select() {
@@ -140,6 +152,11 @@ mod tests {
         // select -> derived subquery
         let actual = table("App").select().alias_as("Sub").select().build();
         let expected = "SELECT * FROM (SELECT * FROM App) Sub";
+        test(actual, expected);
+
+        // select without table
+        let actual = select_without_table().build();
+        let expected = "SELECT *";
         test(actual, expected);
     }
 }
