@@ -58,44 +58,23 @@ test_case!(greatest, async move {
 
     test!(
         "SELECT GREATEST(1, 2, 'bibibik') AS goat;",
-        Err(EvaluateError::ComparisonOperationError.into())
+        Err(EvaluateError::NonComparableArgumentError("GREATEST".to_owned()).into())
     );
 
     test!(
         "SELECT GREATEST(NULL, 'bibibik', 'babamba', 'melona') AS goat;",
-        Ok(select!(
-            "goat"; Str; "melona".to_owned()
-        ))
+        Err(EvaluateError::NonComparableArgumentError("GREATEST".to_owned()).into())
     );
 
     test!(
         "SELECT GREATEST(NULL, NULL, NULL) AS goat;",
-        Err(EvaluateError::EmptyExpression.into())
-    );
-
-    test!(
-        "SELECT GREATEST(1, NULL, NULL) AS goat;",
-        Ok(select!(
-            "goat"; I64; 1
-        ))
-    );
-
-    test!(
-        "SELECT GREATEST(NULL, NULL, 1) AS goat;",
-        Ok(select!(
-            "goat"; I64; 1
-        ))
+        Err(EvaluateError::NonComparableArgumentError("GREATEST".to_owned()).into())
     );
 
     test!(
         "SELECT GREATEST(true, false) AS goat;",
-        Err(EvaluateError::EmptyExpression.into())
-    );
-
-    test!(
-        "SELECT GREATEST(true, false, 1) AS goat;",
         Ok(select!(
-            "goat"; I64; 1
+            "goat"; Bool; true
         ))
     );
 });

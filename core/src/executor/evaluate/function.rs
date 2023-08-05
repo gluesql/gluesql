@@ -645,20 +645,22 @@ pub fn generate_uuid<'a>() -> Evaluated<'a> {
     Evaluated::from(Value::Uuid(Uuid::new_v4().as_u128()))
 }
 
-pub fn greatest(_name: String, mut exprs: Vec<Evaluated<'_>>) -> Result<Evaluated<'_>> {
-    exprs.retain(|expr| !expr.is_null() && !expr.is_bool());
-    let mut iter = exprs.into_iter();
-    let mut greatest = iter.next().ok_or(EvaluateError::EmptyExpression)?;
+pub fn greatest(name: String, exprs: Vec<Evaluated<'_>>) -> Result<Evaluated<'_>> {
+    exprs
+    .into_iter()
+    .try_fold(None, |greatest, expr| -> Result<_> {
+        let greatest = match greatest {
+            Some(greatest) => greatest,
+            None => return Ok(Some(expr)),
+        };
 
-    for expr in iter {
         match greatest.evaluate_cmp(&expr) {
-            Some(std::cmp::Ordering::Less) => greatest = expr,
-            Some(_) => (),
-            None => return Err(EvaluateError::ComparisonOperationError.into()),
+            Some(std::cmp::Ordering::Less) => Ok(Some(expr)),
+            Some(_) => Ok(Some(greatest)),
+            None => Err(EvaluateError::NonComparableArgumentError(name.to_owned()).into()),
         }
-    }
-
-    Ok(greatest)
+    })?
+    .ok_or(EvaluateError::FunctionRequiresAtLeastOneArgument(name.to_owned()).into())
 }
 
 pub fn format<'a>(
