@@ -105,6 +105,7 @@ pub enum Function {
     Degrees(Expr),
     Now(),
     Pi(),
+    LastDay(Expr),
     Ltrim {
         expr: Expr,
         chars: Option<Expr>,
@@ -307,6 +308,7 @@ impl ToSql for Function {
             Function::Degrees(e) => format!("DEGREES({})", e.to_sql()),
             Function::Now() => "NOW()".to_owned(),
             Function::Pi() => "PI()".to_owned(),
+            Function::LastDay(expr) => format!("LAST_DAY({})", expr.to_sql()),
             Function::Ltrim { expr, chars } => match chars {
                 None => format!("LTRIM({})", expr.to_sql()),
                 Some(chars) => format!("LTRIM({}, {})", expr.to_sql(), chars.to_sql()),
@@ -991,6 +993,15 @@ mod tests {
                 },
                 format: Expr::Literal(AstLiteral::QuotedString("%Y-%m".to_owned()))
             }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            "LAST_DAY(DATE '2022-10-12')",
+            &Expr::Function(Box::new(Function::LastDay(Expr::TypedString {
+                data_type: DataType::Date,
+                value: "2022-10-12".to_owned()
+            })))
             .to_sql()
         );
 
