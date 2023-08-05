@@ -99,69 +99,27 @@ impl Value {
 
     pub fn evaluate_cmp_with_literal(&self, other: &Literal<'_>) -> Option<Ordering> {
         match (self, other) {
-            (Value::I8(l), Literal::Number(r)) => {
-                r.to_i8().map(|r| l.partial_cmp(&r)).unwrap_or(None)
-            }
-            (Value::I16(l), Literal::Number(r)) => {
-                r.to_i16().map(|r| l.partial_cmp(&r)).unwrap_or(None)
-            }
-            (Value::I32(l), Literal::Number(r)) => {
-                r.to_i32().map(|r| l.partial_cmp(&r)).unwrap_or(None)
-            }
-            (Value::I64(l), Literal::Number(r)) => {
-                r.to_i64().map(|r| l.partial_cmp(&r)).unwrap_or(None)
-            }
-            (Value::I128(l), Literal::Number(r)) => {
-                r.to_i128().map(|r| l.partial_cmp(&r)).unwrap_or(None)
-            }
-            (Value::U8(l), Literal::Number(r)) => {
-                r.to_u8().map(|r| l.partial_cmp(&r)).unwrap_or(None)
-            }
-            (Value::U16(l), Literal::Number(r)) => {
-                r.to_u16().map(|r| l.partial_cmp(&r)).unwrap_or(None)
-            }
-            (Value::U32(l), Literal::Number(r)) => {
-                r.to_u32().map(|r| l.partial_cmp(&r)).unwrap_or(None)
-            }
-            (Value::U64(l), Literal::Number(r)) => {
-                r.to_u64().map(|r| l.partial_cmp(&r)).unwrap_or(None)
-            }
-            (Value::U128(l), Literal::Number(r)) => {
-                r.to_u128().map(|r| l.partial_cmp(&r)).unwrap_or(None)
-            }
-
-            (Value::F32(l), Literal::Number(r)) => {
-                r.to_f32().map(|r| l.partial_cmp(&r)).unwrap_or(None)
-            }
-            (Value::F64(l), Literal::Number(r)) => {
-                r.to_f64().map(|r| l.partial_cmp(&r)).unwrap_or(None)
-            }
+            (Value::I8(l), Literal::Number(r)) => l.partial_cmp(&r.to_i8()?),
+            (Value::I16(l), Literal::Number(r)) => l.partial_cmp(&r.to_i16()?),
+            (Value::I32(l), Literal::Number(r)) => l.partial_cmp(&r.to_i32()?),
+            (Value::I64(l), Literal::Number(r)) => l.partial_cmp(&r.to_i64()?),
+            (Value::I128(l), Literal::Number(r)) => l.partial_cmp(&r.to_i128()?),
+            (Value::U8(l), Literal::Number(r)) => l.partial_cmp(&r.to_u8()?),
+            (Value::U16(l), Literal::Number(r)) => l.partial_cmp(&r.to_u16()?),
+            (Value::U32(l), Literal::Number(r)) => l.partial_cmp(&r.to_u32()?),
+            (Value::U64(l), Literal::Number(r)) => l.partial_cmp(&r.to_u64()?),
+            (Value::U128(l), Literal::Number(r)) => l.partial_cmp(&r.to_u128()?),
+            (Value::F32(l), Literal::Number(r)) => l.partial_cmp(&r.to_f32()?),
+            (Value::F64(l), Literal::Number(r)) => l.partial_cmp(&r.to_f64()?),
             (Value::Decimal(l), Literal::Number(r)) => {
                 BigDecimal::new(l.mantissa().into(), l.scale() as i64).partial_cmp(r)
             }
-            (Value::Str(l), Literal::Text(r)) => {
-                let l: &str = l.as_ref();
-                Some(l.cmp(r))
-            }
-            (Value::Date(l), Literal::Text(r)) => match r.parse::<NaiveDate>() {
-                Ok(r) => l.partial_cmp(&r),
-                Err(_) => None,
-            },
-            (Value::Timestamp(l), Literal::Text(r)) => match parse_timestamp(r) {
-                Some(r) => l.partial_cmp(&r),
-                None => None,
-            },
-            (Value::Time(l), Literal::Text(r)) => match parse_time(r) {
-                Some(r) => l.partial_cmp(&r),
-                None => None,
-            },
-            (Value::Uuid(l), Literal::Text(r)) => {
-                parse_uuid(r).map(|r| l.partial_cmp(&r)).unwrap_or(None)
-            }
-            (Value::Inet(l), Literal::Text(r)) => match IpAddr::from_str(r) {
-                Ok(x) => l.partial_cmp(&x),
-                Err(_) => None,
-            },
+            (Value::Str(l), Literal::Text(r)) => Some(l.as_str().cmp(r)),
+            (Value::Date(l), Literal::Text(r)) => l.partial_cmp(&r.parse::<NaiveDate>().ok()?),
+            (Value::Timestamp(l), Literal::Text(r)) => l.partial_cmp(&parse_timestamp(r)?),
+            (Value::Time(l), Literal::Text(r)) => l.partial_cmp(&parse_time(r)?),
+            (Value::Uuid(l), Literal::Text(r)) => l.partial_cmp(&parse_uuid(r).ok()?),
+            (Value::Inet(l), Literal::Text(r)) => l.partial_cmp(&IpAddr::from_str(r).ok()?),
             (Value::Inet(l), Literal::Number(r)) => {
                 if let Some(x) = r.to_u32() {
                     l.partial_cmp(&Ipv4Addr::from(x))
@@ -531,10 +489,17 @@ impl Value {
 #[cfg(test)]
 mod tests {
     use {
-        crate::{data::Literal, prelude::Value},
+        super::parse_uuid,
+        crate::data::{Literal, Value},
         bigdecimal::BigDecimal,
         chrono::{NaiveDate, NaiveDateTime, NaiveTime},
-        std::net::{IpAddr, Ipv4Addr, Ipv6Addr},
+        rust_decimal::Decimal,
+        std::{
+            borrow::Cow,
+            cmp::Ordering,
+            net::{IpAddr, Ipv4Addr, Ipv6Addr},
+            str::FromStr,
+        },
     };
 
     fn date(year: i32, month: u32, day: u32) -> NaiveDate {
@@ -554,11 +519,6 @@ mod tests {
 
     #[test]
     fn evaluate_eq_with_literal() {
-        use {
-            super::parse_uuid,
-            std::{borrow::Cow, str::FromStr},
-        };
-
         macro_rules! num {
             ($num: expr) => {
                 &Literal::Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
@@ -609,6 +569,80 @@ mod tests {
         assert!(Value::Time(time(10, 0, 0, 0)).evaluate_eq_with_literal(text!("10:00:00")));
         assert!(!Value::Time(time(10, 0, 0, 0)).evaluate_eq_with_literal(text!("FALSE")));
         assert!(Value::Uuid(uuid).evaluate_eq_with_literal(text!(uuid_text)));
+    }
+
+    #[test]
+    fn evaluate_cmp_with_literal() {
+        let num = |n| Literal::Number(Cow::Owned(BigDecimal::try_from(n).unwrap()));
+        let text = |v: &str| Literal::Text(Cow::Owned(v.to_owned()));
+
+        let test = |value: Value, literal, expected| {
+            assert_eq!(value.evaluate_cmp_with_literal(&literal), expected);
+        };
+
+        test(Value::I8(1), num(1), Some(Ordering::Equal));
+        test(Value::I16(1), num(2), Some(Ordering::Less));
+        test(Value::I32(10), num(3), Some(Ordering::Greater));
+        test(Value::I64(10), num(10), Some(Ordering::Equal));
+        test(Value::I128(10), num(10), Some(Ordering::Equal));
+        test(Value::U8(1), num(1), Some(Ordering::Equal));
+        test(Value::U16(1), num(2), Some(Ordering::Less));
+        test(Value::U32(10), num(3), Some(Ordering::Greater));
+        test(Value::U64(10), num(10), Some(Ordering::Equal));
+        test(Value::U128(10), num(10), Some(Ordering::Equal));
+        test(Value::F32(10.0), num(10), Some(Ordering::Equal));
+        test(Value::F64(10.0), num(10), Some(Ordering::Equal));
+        test(
+            Value::Decimal(Decimal::new(215, 2)),
+            num(3),
+            Some(Ordering::Less),
+        );
+        test(
+            Value::Str("Hello".to_owned()),
+            text("Hello"),
+            Some(Ordering::Equal),
+        );
+        test(
+            Value::Date(date(2021, 11, 21)),
+            text("2021-11-21"),
+            Some(Ordering::Equal),
+        );
+        test(
+            Value::Timestamp(date_time(2021, 11, 21, 10, 0, 0, 0)),
+            text("2021-11-21T10:00:00Z"),
+            Some(Ordering::Equal),
+        );
+        test(
+            Value::Time(time(10, 0, 0, 0)),
+            text("10:00:00"),
+            Some(Ordering::Equal),
+        );
+        test(
+            Value::Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()),
+            text("936DA01F9ABD4d9d80C702AF85C822A8"),
+            Some(Ordering::Equal),
+        );
+        test(
+            Value::Inet(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
+            text("215.87.1.1"),
+            Some(Ordering::Less),
+        );
+        test(
+            Value::Inet(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
+            text("215.87.1.1"),
+            Some(Ordering::Less),
+        );
+        test(
+            Value::Inet(IpAddr::V4(Ipv4Addr::new(255, 255, 255, 255))),
+            Literal::Number(Cow::Owned(BigDecimal::new(4294967295u32.into(), 0))),
+            Some(Ordering::Equal),
+        );
+        test(
+            Value::Inet(IpAddr::from_str("::2:4cb0:16ea").unwrap()),
+            Literal::Number(Cow::Owned(BigDecimal::new(9876543210u128.into(), 0))),
+            Some(Ordering::Equal),
+        );
+        test(Value::Null, num(1), None);
     }
 
     #[test]
