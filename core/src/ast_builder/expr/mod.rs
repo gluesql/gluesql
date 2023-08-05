@@ -17,7 +17,7 @@ pub use {
     case::case,
     exists::{exists, not_exists},
     nested::nested,
-    unary_op::{factorial, minus, not, plus},
+    unary_op::{bitwise_not, factorial, minus, not, plus},
 };
 
 use {
