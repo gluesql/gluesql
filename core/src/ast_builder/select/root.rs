@@ -136,10 +136,10 @@ pub fn select<'a>() -> SelectNode<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{select as select_without_table, table, test, Build};
+    use crate::ast_builder::{select, table, test, Build};
 
     #[test]
-    fn select() {
+    fn select_root() {
         // select node -> build
         let actual = table("App").select().build();
         let expected = "SELECT * FROM App";
@@ -155,8 +155,8 @@ mod tests {
         test(actual, expected);
 
         // select without table
-        let actual = select_without_table().build();
-        let expected = "SELECT *";
+        let actual = select().project("1 + 1").build();
+        let expected = "SELECT 1 + 1";
         test(actual, expected);
     }
 }
