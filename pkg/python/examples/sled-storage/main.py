@@ -2,7 +2,6 @@ from gluesql import Glue, SledStorage
 from tabulate import tabulate
 
 db = Glue()
-storage = SledStorage("./fixtures")
 db.set_default_engine(SledStorage("./fixtures"))
 
 
