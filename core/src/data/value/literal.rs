@@ -9,6 +9,7 @@ use {
         data::{value::uuid::parse_uuid, BigDecimalExt, Interval, Literal, Point},
         result::{Error, Result},
     },
+    bigdecimal::BigDecimal,
     chrono::NaiveDate,
     rust_decimal::Decimal,
     std::{
@@ -134,6 +135,9 @@ impl Value {
             }
             (Value::F64(l), Literal::Number(r)) => {
                 r.to_f64().map(|r| l.partial_cmp(&r)).unwrap_or(None)
+            }
+            (Value::Decimal(l), Literal::Number(r)) => {
+                BigDecimal::new(l.mantissa().into(), l.scale() as i64).partial_cmp(r)
             }
             (Value::Str(l), Literal::Text(r)) => {
                 let l: &str = l.as_ref();

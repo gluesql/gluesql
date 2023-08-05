@@ -89,6 +89,10 @@ pub enum FunctionNode<'a> {
         separator: ExprNode<'a>,
         exprs: ExprList<'a>,
     },
+    Take {
+        expr: ExprNode<'a>,
+        size: ExprNode<'a>,
+    },
     Substr {
         expr: ExprNode<'a>,
         start: ExprNode<'a>,
@@ -159,6 +163,8 @@ pub enum FunctionNode<'a> {
         geometry2: ExprNode<'a>,
     },
     Length(ExprNode<'a>),
+    IsEmpty(ExprNode<'a>),
+    LastDay(ExprNode<'a>),
 }
 
 impl<'a> TryFrom<FunctionNode<'a>> for Function {
@@ -259,6 +265,11 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
                 let separator = separator.try_into()?;
                 let exprs = exprs.try_into()?;
                 Ok(Function::ConcatWs { separator, exprs })
+            }
+            FunctionNode::Take { expr, size } => {
+                let expr = expr.try_into()?;
+                let size = size.try_into()?;
+                Ok(Function::Take { expr, size })
             }
             FunctionNode::Degrees(expr) => expr.try_into().map(Function::Degrees),
             FunctionNode::Radians(expr) => expr.try_into().map(Function::Radians),
@@ -365,6 +376,8 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
                 })
             }
             FunctionNode::Length(expr) => expr.try_into().map(Function::Length),
+            FunctionNode::IsEmpty(expr) => expr.try_into().map(Function::IsEmpty),
+            FunctionNode::LastDay(expr) => expr.try_into().map(Function::LastDay),
         }
     }
 }
@@ -481,6 +494,9 @@ impl<'a> ExprNode<'a> {
     pub fn rpad<T: Into<ExprNode<'a>>>(self, size: T, fill: Option<ExprNode<'a>>) -> ExprNode<'a> {
         rpad(self, size, fill)
     }
+    pub fn take<T: Into<ExprNode<'a>>>(self, size: T) -> ExprNode<'a> {
+        take(self, size)
+    }
     pub fn exp(self) -> ExprNode<'a> {
         exp(self)
     }
@@ -524,6 +540,12 @@ impl<'a> ExprNode<'a> {
     }
     pub fn extract(self, field: DateTimeField) -> ExprNode<'a> {
         extract(field, self)
+    }
+    pub fn is_empty(self) -> ExprNode<'a> {
+        is_empty(self)
+    }
+    pub fn last_day(self) -> ExprNode<'a> {
+        last_day(self)
     }
 }
 
@@ -717,6 +739,13 @@ pub fn radians<'a, V: Into<ExprNode<'a>>>(expr: V) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Radians(expr.into())))
 }
 
+pub fn take<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(expr: T, size: U) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Take {
+        expr: expr.into(),
+        size: size.into(),
+    }))
+}
+
 pub fn exp<'a, V: Into<ExprNode<'a>>>(expr: V) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Exp(expr.into())))
 }
@@ -886,6 +915,14 @@ pub fn length<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Length(expr.into())))
 }
 
+pub fn is_empty<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::IsEmpty(expr.into())))
+}
+
+pub fn last_day<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::LastDay(expr.into())))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
@@ -893,10 +930,11 @@ mod tests {
         ast_builder::{
             abs, acos, ascii, asin, atan, calc_distance, cast, ceil, chr, col, concat, concat_ws,
             cos, date, degrees, divide, exp, expr, extract, find_idx, floor, format, gcd,
-            generate_uuid, get_x, get_y, ifnull, initcap, lcm, left, length, ln, log, log10, log2,
-            lower, lpad, ltrim, md5, modulo, now, num, pi, point, position, power, radians, rand,
-            repeat, replace, reverse, right, round, rpad, rtrim, sign, sin, skip, sqrt, substr,
-            tan, test_expr, text, time, timestamp, to_date, to_time, to_timestamp, upper,
+            generate_uuid, get_x, get_y, ifnull, initcap, is_empty, last_day, lcm, left, length,
+            ln, log, log10, log2, lower, lpad, ltrim, md5, modulo, now, num, pi, point, position,
+            power, radians, rand, repeat, replace, reverse, right, round, rpad, rtrim, sign, sin,
+            skip, sqrt, substr, take, tan, test_expr, text, time, timestamp, to_date, to_time,
+            to_timestamp, upper,
         },
         prelude::DataType,
     };
@@ -1294,6 +1332,17 @@ mod tests {
     }
 
     #[test]
+    fn function_take() {
+        let actual = take(col("list"), num(3));
+        let expected = "TAKE(list,3)";
+        test_expr(actual, expected);
+
+        let actual = expr("list").take(num(3));
+        let expected = "TAKE(list,3)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
     fn function_exp() {
         let actual = exp(num(2));
         let expected = "EXP(2)";
@@ -1611,6 +1660,39 @@ mod tests {
     fn function_length() {
         let actual = length(text("GlueSQL"));
         let expected = "LENGTH('GlueSQL')";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_is_empty() {
+        let actual = col("list").is_empty();
+        let expected = "IS_EMPTY(list)";
+        test_expr(actual, expected);
+
+        let actual = is_empty(col("list"));
+        let expected = "IS_EMPTY(list)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_last_day_date() {
+        let actual = last_day(date("2023-07-29"));
+        let expected = "LAST_DAY(DATE'2023-07-29')";
+        test_expr(actual, expected);
+
+        let actual = date("2023-07-29").last_day();
+        let expected = "LAST_DAY(DATE'2023-07-29')";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_last_day_timestamp() {
+        let actual = last_day(timestamp("2023-07-29 11:00:00"));
+        let expected = "LAST_DAY(TIMESTAMP '2023-07-29 11:00:00')";
+        test_expr(actual, expected);
+
+        let actual = timestamp("2023-07-29 11:00:00").last_day();
+        let expected = "LAST_DAY(TIMESTAMP '2023-07-29 11:00:00')";
         test_expr(actual, expected);
     }
 }

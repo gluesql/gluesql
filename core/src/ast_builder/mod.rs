@@ -11,6 +11,7 @@ mod error;
 mod execute;
 mod expr;
 mod expr_list;
+mod expr_with_alias;
 mod index;
 mod index_by;
 mod index_item;
@@ -39,6 +40,7 @@ pub use {
     error::AstBuilderError,
     execute::Execute,
     expr_list::ExprList,
+    expr_with_alias::ExprWithAliasNode,
     index_by::IndexNode,
     index_item::{
         non_clustered, primary_key, CmpExprNode, NonClusteredNode, OrderNode, PrimaryKeyNode,
@@ -79,10 +81,10 @@ pub use expr::{
     function::{
         abs, acos, ascii, asin, atan, calc_distance, cast, ceil, chr, concat, concat_ws, cos,
         degrees, divide, exp, extract, find_idx, floor, format, gcd, generate_uuid, get_x, get_y,
-        ifnull, initcap, lcm, left, length, ln, log, log10, log2, lower, lpad, ltrim, md5, modulo,
-        now, pi, point, position, power, radians, rand, repeat, replace, reverse, right, round,
-        rpad, rtrim, sign, sin, skip, sqrt, substr, tan, to_date, to_time, to_timestamp, upper,
-        FunctionNode,
+        ifnull, initcap, is_empty, last_day, lcm, left, length, ln, log, log10, log2, lower, lpad,
+        ltrim, md5, modulo, now, pi, point, position, power, radians, rand, repeat, replace,
+        reverse, right, round, rpad, rtrim, sign, sin, skip, sqrt, substr, take, tan, to_date,
+        to_time, to_timestamp, upper, FunctionNode,
     },
 };
 
