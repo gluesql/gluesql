@@ -152,6 +152,12 @@ pub enum EvaluateError {
 
     #[error("unsupported function: {0}")]
     UnsupportedFunction(String),
+
+    #[error("The provided arguments are non-comparable: {0}")]
+    NonComparableArgumentError(String),
+
+    #[error("function requires at least one argument: {0}")]
+    FunctionRequiresAtLeastOneArgument(String),
 }
 
 fn error_serialize<S>(error: &chrono::format::ParseError, serializer: S) -> Result<S::Ok, S::Error>

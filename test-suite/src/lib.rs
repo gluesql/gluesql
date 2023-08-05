@@ -201,6 +201,7 @@ macro_rules! generate_store_tests {
             function_generate_uuid,
             function::generate_uuid::generate_uuid
         );
+        glue!(function_greatest, function::greatest::greatest);
         glue!(type_match, type_match::type_match);
         glue!(dictionary, dictionary::dictionary);
         glue!(function_append, function::append::append);

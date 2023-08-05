@@ -561,6 +561,10 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             f::unwrap(name, expr, selector)
         }
         Function::GenerateUuid() => Ok(f::generate_uuid()),
+        Function::Greatest(exprs) => {
+            let exprs = stream::iter(exprs).then(eval).try_collect().await?;
+            f::greatest(name, exprs)
+        }
         Function::Now() => Ok(Evaluated::from(Value::Timestamp(Utc::now().naive_utc()))),
         Function::Format { expr, format } => {
             let expr = eval(expr).await?;

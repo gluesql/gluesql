@@ -131,6 +131,7 @@ pub enum Function {
         selector: Expr,
     },
     GenerateUuid(),
+    Greatest(Vec<Expr>),
     Format {
         expr: Expr,
         format: Expr,
@@ -351,6 +352,14 @@ impl ToSql for Function {
                 format!("UNWRAP({}, {})", expr.to_sql(), selector.to_sql())
             }
             Function::GenerateUuid() => "GENERATE_UUID()".to_owned(),
+            Function::Greatest(items) => {
+                let items = items
+                    .iter()
+                    .map(ToSql::to_sql)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("GREATEST({})", items)
+            }
             Function::Format { expr, format } => {
                 format!("FORMAT({}, {})", expr.to_sql(), format.to_sql())
             }
@@ -1001,6 +1010,16 @@ mod tests {
         assert_eq!(
             "GENERATE_UUID()",
             &Expr::Function(Box::new(Function::GenerateUuid())).to_sql()
+        );
+
+        assert_eq!(
+            "GREATEST(16, 9, 7)",
+            &Expr::Function(Box::new(Function::Greatest(vec![
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("16").unwrap())),
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("9").unwrap())),
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("7").unwrap()))
+            ])))
+            .to_sql()
         );
 
         assert_eq!(
