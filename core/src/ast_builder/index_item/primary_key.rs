@@ -1,11 +1,11 @@
-use crate::{ast::IndexItem, ast_builder::ExprNode};
+use {super::PrimaryKeyCmpExprNode, crate::ast_builder::ExprNode};
 
 #[derive(Clone, Debug)]
 pub struct PrimaryKeyNode;
 
 impl<'a> PrimaryKeyNode {
-    pub fn eq<T: Into<ExprNode<'a>>>(self, expr: T) -> Option<IndexItem> {
-        Some(IndexItem::PrimaryKey(expr.into().try_into().ok()?))
+    pub fn eq<T: Into<ExprNode<'a>>>(self, expr: T) -> PrimaryKeyCmpExprNode {
+        PrimaryKeyCmpExprNode::new(expr.into())
     }
 }
 

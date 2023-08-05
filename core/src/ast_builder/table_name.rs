@@ -80,14 +80,14 @@ impl<'a> TableNameNode {
         AlterTableNode::new(self.table_name)
     }
 
-    pub fn index_by<T: Into<Option<IndexItem>>>(self, index: T) -> IndexNode<'a> {
+    pub fn index_by(self, index: IndexItem) -> IndexNode<'a> {
         let table_factor = TableFactorNode {
             table_name: self.table_name,
             table_type: TableType::Table,
             table_alias: None,
             index: None,
         };
-        IndexNode::new(table_factor, index.into())
+        IndexNode::new(table_factor, index)
     }
 }
 

@@ -6,11 +6,11 @@ use crate::{
 #[derive(Clone, Debug)]
 pub struct IndexNode<'a> {
     pub table_node: TableFactorNode<'a>,
-    pub index: Option<IndexItem>,
+    pub index: IndexItem,
 }
 
 impl<'a> IndexNode<'a> {
-    pub fn new(table_node: TableFactorNode<'a>, index: Option<IndexItem>) -> Self {
+    pub fn new(table_node: TableFactorNode<'a>, index: IndexItem) -> Self {
         Self { table_node, index }
     }
 
@@ -32,7 +32,7 @@ impl<'a> IndexNode<'a> {
             table_name: self.table_node.table_name,
             table_type: self.table_node.table_type,
             table_alias: self.table_node.table_alias,
-            index: self.index,
+            index: Some(self.index),
         };
 
         SelectNode::new(table_factor)
@@ -40,27 +40,12 @@ impl<'a> IndexNode<'a> {
 }
 
 #[cfg(test)]
-use crate::{ast_builder::insert::Expr, parse_sql::parse_expr, translate::translate_expr};
-
-#[cfg(test)]
-fn to_expr(sql: &str) -> Expr {
-    let parsed = parse_expr(sql).expect(sql);
-
-    translate_expr(&parsed).expect(sql)
-}
-
-#[cfg(test)]
 mod tests {
-    use crate::{
-        ast::{Select, TableAlias},
-        ast_builder::{index_by::to_expr, primary_key},
-    };
-
     use {
         super::IndexItem,
         crate::{
-            ast::{Query, SelectItem, SetExpr, TableFactor, TableWithJoins},
-            ast_builder::{insert::Statement, table, Build},
+            ast::{Query, Select, SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins},
+            ast_builder::{insert::Statement, primary_key, table, to_expr, Build},
         },
     };
 
@@ -69,7 +54,7 @@ mod tests {
         // index_by - select
         // select * from player where id = 1
         let actual = table("Player")
-            .index_by(primary_key().eq("1"))
+            .index_by(primary_key().eq("1").build())
             .select()
             .build();
 
@@ -100,7 +85,7 @@ mod tests {
 
         // index_by - alias_as
         let actual = table("Player")
-            .index_by(primary_key().eq("1"))
+            .index_by(primary_key().eq("1").build())
             .alias_as("p")
             .select()
             .build();
