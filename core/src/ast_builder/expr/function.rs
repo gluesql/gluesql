@@ -1739,5 +1739,9 @@ mod tests {
         let actual = entries(col("map"));
         let expected = "ENTRIES(map)";
         test_expr(actual, expected);
+
+        let actual = col("map").entries();
+        let expected = "ENTRIES(map)";
+        test_expr(actual, expected);
     }
 }
