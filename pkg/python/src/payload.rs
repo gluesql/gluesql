@@ -23,6 +23,7 @@ pub fn convert(py: Python, payloads: Vec<PyPayload>) -> PyObject {
 }
 
 fn convert_payload(payload: Payload) -> Json {
+    // TODO: Improve below logic.
     match payload {
         Payload::Create => json!({ "type": "CREATE TABLE" }),
         Payload::DropTable => json!({ "type": "DROP TABLE" }),

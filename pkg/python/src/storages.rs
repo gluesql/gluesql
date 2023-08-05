@@ -24,6 +24,10 @@ impl PyMemoryStorage {
     pub fn new() -> Self {
         PyMemoryStorage(MemoryStorage::default())
     }
+
+    pub fn __repr__(&self) -> PyResult<String> {
+        Ok(format!("{:?}", self.0))
+    }
 }
 
 #[pyclass(name = "JsonStorage")]
@@ -38,6 +42,10 @@ impl PyJsonStorage {
         path.push(path_arg.to_string());
         PyJsonStorage(JsonStorage { path })
     }
+
+    pub fn __repr__(&self) -> PyResult<String> {
+        Ok(format!("{:?}", self.0))
+    }
 }
 
 #[pyclass(name = "SharedMemoryStorage")]
@@ -50,15 +58,25 @@ impl PySharedMemoryStorage {
     pub fn new() -> Self {
         PySharedMemoryStorage(SharedMemoryStorage::default())
     }
+
+    pub fn __repr__(&self) -> PyResult<String> {
+        Ok(format!("{:?}", self.0))
+    }
 }
 
 #[pyclass(name = "SledStorageConfigMode")]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PySledStorageModeConfig(pub sled::Mode);
 
 #[pymethods]
+// TODO: Implement this enum.
 impl PySledStorageModeConfig {
-    // TODO: Implement this enum.
+    pub fn __repr__(&self) -> PyResult<String> {
+        match self.0 {
+            sled::Mode::LowSpace => Ok("LowSpace".to_string()),
+            sled::Mode::HighThroughput => Ok("HighThroughput".to_string()),
+        }
+    }
 }
 
 impl Default for PySledStorageModeConfig {
@@ -68,7 +86,7 @@ impl Default for PySledStorageModeConfig {
 }
 
 #[pyclass(name = "SledStorageConfig")]
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct PySledStorageConfig {
     #[pyo3(get, set)]
     pub cache_capacity: u64,
@@ -101,6 +119,10 @@ impl PySledStorageConfig {
     pub fn new() -> Self {
         PySledStorageConfig::default()
     }
+
+    pub fn __repr__(&self) -> PyResult<String> {
+        Ok(format!("{:?}", self))
+    }
 }
 
 #[pyclass(name = "SledStorage")]
@@ -130,5 +152,9 @@ impl PySledStorage {
 
         let storage = SledStorage::try_from(sled_cfg).unwrap();
         Ok(PySledStorage(storage))
+    }
+
+    pub fn __repr__(&self) -> PyResult<String> {
+        Ok(format!("{:?}", self.0))
     }
 }
