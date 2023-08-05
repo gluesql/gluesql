@@ -165,6 +165,7 @@ pub enum FunctionNode<'a> {
     Length(ExprNode<'a>),
     IsEmpty(ExprNode<'a>),
     LastDay(ExprNode<'a>),
+    Entries(ExprNode<'a>),
 }
 
 impl<'a> TryFrom<FunctionNode<'a>> for Function {
@@ -378,6 +379,7 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
             FunctionNode::Length(expr) => expr.try_into().map(Function::Length),
             FunctionNode::IsEmpty(expr) => expr.try_into().map(Function::IsEmpty),
             FunctionNode::LastDay(expr) => expr.try_into().map(Function::LastDay),
+            FunctionNode::Entries(expr) => expr.try_into().map(Function::Entries),
         }
     }
 }
@@ -546,6 +548,9 @@ impl<'a> ExprNode<'a> {
     }
     pub fn last_day(self) -> ExprNode<'a> {
         last_day(self)
+    }
+    pub fn entries(self) -> ExprNode<'a> {
+        entries(self)
     }
 }
 
@@ -923,6 +928,10 @@ pub fn last_day<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::LastDay(expr.into())))
 }
 
+pub fn entries<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Entries(expr.into())))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
@@ -934,7 +943,7 @@ mod tests {
             ln, log, log10, log2, lower, lpad, ltrim, md5, modulo, now, num, pi, point, position,
             power, radians, rand, repeat, replace, reverse, right, round, rpad, rtrim, sign, sin,
             skip, sqrt, substr, take, tan, test_expr, text, time, timestamp, to_date, to_time,
-            to_timestamp, upper,
+            to_timestamp, upper, entries,
         },
         prelude::DataType,
     };
