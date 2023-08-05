@@ -4,6 +4,7 @@ pub mod ascii;
 pub mod cast;
 pub mod ceil;
 pub mod chr;
+pub mod coalesce;
 pub mod concat;
 pub mod concat_ws;
 pub mod degrees;

@@ -612,6 +612,10 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let expr = eval(expr).await?;
             f::extract(field, expr)
         }
+        Function::Coalesce(exprs) => {
+            let exprs = stream::iter(exprs).then(eval).try_collect().await?;
+            f::coalesce(exprs)
+        }
 
         // --- list ---
         Function::Append { expr, value } => {

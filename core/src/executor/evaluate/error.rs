@@ -135,6 +135,13 @@ pub enum EvaluateError {
     #[error("unsupported custom function in subqueries")]
     UnsupportedCustomFunction,
 
+    #[error(r#"The function "{function_name}" requires at least {required_minimum} argument(s), but {found} were provided."#)]
+    FunctionRequiresMoreArguments {
+        function_name: String,
+        required_minimum: usize,
+        found: usize,
+    },
+
     #[error("function args.length not matching: {name}, expected: {expected_minimum} ~ {expected_maximum}, found: {found}")]
     FunctionArgsLengthNotWithinRange {
         name: String,
