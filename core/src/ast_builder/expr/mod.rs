@@ -7,6 +7,7 @@ mod nested;
 mod unary_op;
 
 pub mod aggregate;
+pub mod alias_as;
 pub mod between;
 pub mod function;
 pub mod in_list;
