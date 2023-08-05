@@ -110,6 +110,7 @@ macro_rules! generate_store_tests {
         glue!(function_ltrim_rtrim, function::ltrim_rtrim::ltrim_rtrim);
         glue!(function_cast_literal, function::cast::cast_literal);
         glue!(function_cast_value, function::cast::cast_value);
+        glue!(function_coalesce, function::coalesce::coalesce);
         glue!(function_concat, function::concat::concat);
         glue!(function_concat_ws, function::concat_ws::concat_ws);
         glue!(function_ifnull, function::ifnull::ifnull);
@@ -200,6 +201,7 @@ macro_rules! generate_store_tests {
             function_generate_uuid,
             function::generate_uuid::generate_uuid
         );
+        glue!(function_greatest, function::greatest::greatest);
         glue!(type_match, type_match::type_match);
         glue!(dictionary, dictionary::dictionary);
         glue!(function_append, function::append::append);
@@ -231,6 +233,10 @@ macro_rules! generate_store_tests {
         glue!(
             ast_builder_function_text_case_conversion,
             ast_builder::function::text::case_conversion
+        );
+        glue!(
+            ast_builder_function_other_coalesce,
+            ast_builder::function::other::coalesce::coalesce
         );
         glue!(
             ast_builder_function_other_ifnull,

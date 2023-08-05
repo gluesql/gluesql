@@ -8,7 +8,7 @@ test_case!(values, async move {
     run!(
         r#"
             INSERT INTO USER VALUES 
-            (1, '{"id": "1", "name": "alice"}'),
+            (1, '{"id": 1, "name": "alice", "is_male": false}'),
             (2, '{"name": "bob"}'),
             (3, '{}');
         "#
@@ -16,16 +16,16 @@ test_case!(values, async move {
 
     test!(
         name: "return all values from map by ascending order",
-        sql: r#"SELECT SORT(VALUES(data), 'ASC') as result FROM USER WHERE id=1"#,
+        sql: r#"SELECT SORT(VALUES(data), 'DESC') as result FROM USER WHERE id=1"#,
         expected: {
-            Ok(select!(result; Value::List; vec![Value::Str("1".to_owned()), Value::Str("alice".to_owned())]))
+            Ok(select!(result; Value::List; vec![Value::I64(1), Value::Bool(false), Value::Str("alice".to_owned())]))
         }
     );
     test!(
         name: "return all values from map by descending order",
-        sql: r#"SELECT SORT(VALUES(data), 'DESC') as result FROM USER WHERE id=1"#,
+        sql: r#"SELECT SORT(VALUES(data), 'ASC') as result FROM USER WHERE id=1"#,
         expected: {
-            Ok(select!(result; Value::List; vec![Value::Str("alice".to_owned()), Value::Str("1".to_owned())]))
+            Ok(select!(result; Value::List; vec![Value::Str("alice".to_owned()), Value::Bool(false), Value::I64(1)]))
         }
     );
     test!(

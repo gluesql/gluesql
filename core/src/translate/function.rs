@@ -217,6 +217,13 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         "AVG" => translate_aggregate_one_arg(Aggregate::Avg, args, name),
         "VARIANCE" => translate_aggregate_one_arg(Aggregate::Variance, args, name),
         "STDEV" => translate_aggregate_one_arg(Aggregate::Stdev, args, name),
+        "COALESCE" => {
+            let exprs = args
+                .into_iter()
+                .map(translate_expr)
+                .collect::<Result<Vec<_>>>()?;
+            Ok(Expr::Function(Box::new(Function::Coalesce(exprs))))
+        }
         "CONCAT" => {
             let exprs = args
                 .into_iter()
@@ -597,6 +604,14 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             let expr = translate_expr(args[0])?;
             Ok(Expr::Function(Box::new(Function::IsEmpty(expr))))
+        }
+        "GREATEST" => {
+            check_len_min(name, args.len(), 2)?;
+            let exprs = args
+                .into_iter()
+                .map(translate_expr)
+                .collect::<Result<Vec<_>>>()?;
+            Ok(Expr::Function(Box::new(Function::Greatest(exprs))))
         }
         "VALUES" => {
             check_len(name, args.len(), 1)?;
