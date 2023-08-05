@@ -10,7 +10,8 @@ use gluesql_core::{
 };
 use pyo3::{prelude::*, types::PyString};
 use storages::{
-    PyJsonStorage, PyMemoryStorage, PySharedMemoryStorage, PySledStorage, PyStorageEngine,
+    PyJsonStorage, PyMemoryStorage, PySharedMemoryStorage, PySledStorage, PySledStorageConfig,
+    PySledStorageModeConfig, PyStorageEngine,
 };
 mod error;
 mod payload;
@@ -105,6 +106,8 @@ fn gluesql(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyJsonStorage>()?;
     m.add_class::<PySharedMemoryStorage>()?;
     m.add_class::<PySledStorage>()?;
+    m.add_class::<PySledStorageConfig>()?;
+    m.add_class::<PySledStorageModeConfig>()?;
 
     m.add("GlueSQLError", py.get_type::<GlueSQLError>())?;
     m.add(

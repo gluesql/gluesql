@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use json_storage::JsonStorage;
 use memory_storage::MemoryStorage;
 use shared_memory_storage::SharedMemoryStorage;
-use sled_storage::{SledStorage, sled};
+use sled_storage::{sled, SledStorage};
 
 #[derive(FromPyObject)]
 pub enum PyStorageEngine {
@@ -61,52 +61,45 @@ impl PySledStorageModeConfig {
     // TODO: Implement this enum.
 }
 
+impl Default for PySledStorageModeConfig {
+    fn default() -> Self {
+        PySledStorageModeConfig(sled::Mode::LowSpace)
+    }
+}
+
 #[pyclass(name = "SledStorageConfig")]
-#[derive(Clone)]
-pub struct PySledStorageConfig(pub sled::Config);
+#[derive(Clone, Default)]
+pub struct PySledStorageConfig {
+    #[pyo3(get, set)]
+    pub cache_capacity: u64,
+
+    #[pyo3(get, set)]
+    pub path: String,
+
+    #[pyo3(get, set)]
+    pub create_new: bool,
+
+    #[pyo3(get, set)]
+    pub mode: PySledStorageModeConfig,
+
+    #[pyo3(get, set)]
+    pub temporary: bool,
+
+    #[pyo3(get, set)]
+    pub use_compression: bool,
+
+    #[pyo3(get, set)]
+    pub compression_factor: i32,
+
+    #[pyo3(get, set)]
+    pub print_profile_on_drop: bool,
+}
 
 #[pymethods]
 impl PySledStorageConfig {
     #[new]
-    pub fn new() -> PyResult<Self> {
-        Ok(PySledStorageConfig(sled::Config::default()))
-    }
-
-    pub fn path(&mut self, py: Python, path_arg: &PyString) -> PyResult<PyObject> {
-        let path_str = path_arg.to_str()?;
-        Ok(PySledStorageConfig(self.0.clone().path(path_str)).into_py(py))
-    }
-
-    pub fn temporary(&mut self, py: Python, v: bool) -> PyResult<PyObject> {
-        Ok(PySledStorageConfig(self.0.clone().temporary(v)).into_py(py))
-    }
-
-    pub fn use_compression(&mut self, py: Python, v: bool) -> PyResult<PyObject> {
-        Ok(PySledStorageConfig(self.0.clone().use_compression(v)).into_py(py))
-    }
-
-    pub fn print_profile_on_drop(&mut self, py: Python, v: bool) -> PyResult<PyObject> {
-        Ok(PySledStorageConfig(self.0.clone().print_profile_on_drop(v)).into_py(py))
-    }
-
-    pub fn compression_factor(&mut self, py: Python, v: i32) -> PyResult<PyObject> {
-        Ok(PySledStorageConfig(self.0.clone().compression_factor(v)).into_py(py))
-    }
-
-    pub fn create_new(&mut self, py: Python, v: bool) -> PyResult<PyObject> {
-        Ok(PySledStorageConfig(self.0.clone().create_new(v)).into_py(py))
-    }
-
-    pub fn cache_capacity(&mut self, py: Python, v: u64) -> PyResult<PyObject> {
-        Ok(PySledStorageConfig(self.0.clone().cache_capacity(v)).into_py(py))
-    }
-
-    pub fn mode(&mut self, py: Python, mode: &PySledStorageModeConfig) -> PyResult<PyObject> {
-        Ok(PySledStorageConfig(self.0.clone().mode(mode.0)).into_py(py))
-    }
-
-    pub fn flush_every_ms(&mut self, py: Python, every_ms: Option<u64>) -> PyResult<PyObject> {
-        Ok(PySledStorageConfig(self.0.clone().flush_every_ms(every_ms)).into_py(py))
+    pub fn new() -> Self {
+        PySledStorageConfig::default()
     }
 }
 
@@ -125,7 +118,17 @@ impl PySledStorage {
 
     #[staticmethod]
     pub fn try_from(cfg: &PySledStorageConfig) -> PyResult<Self> {
-        let storage = SledStorage::try_from(cfg.0.clone()).unwrap();
+        let sled_cfg = sled::Config::default()
+            .cache_capacity(cfg.cache_capacity)
+            .compression_factor(cfg.compression_factor)
+            .create_new(cfg.create_new)
+            .mode(cfg.mode.0)
+            .path(cfg.path.to_owned())
+            .print_profile_on_drop(cfg.print_profile_on_drop)
+            .temporary(cfg.temporary)
+            .use_compression(cfg.use_compression);
+
+        let storage = SledStorage::try_from(sled_cfg).unwrap();
         Ok(PySledStorage(storage))
     }
 }
