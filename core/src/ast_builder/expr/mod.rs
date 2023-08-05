@@ -7,6 +7,7 @@ mod nested;
 mod unary_op;
 
 pub mod aggregate;
+pub mod alias_as;
 pub mod between;
 pub mod function;
 pub mod in_list;
@@ -16,7 +17,7 @@ pub use {
     case::case,
     exists::{exists, not_exists},
     nested::nested,
-    unary_op::{factorial, minus, not, plus},
+    unary_op::{bitwise_not, factorial, minus, not, plus},
 };
 
 use {
