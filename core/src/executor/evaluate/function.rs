@@ -647,20 +647,20 @@ pub fn generate_uuid<'a>() -> Evaluated<'a> {
 
 pub fn greatest(name: String, exprs: Vec<Evaluated<'_>>) -> Result<Evaluated<'_>> {
     exprs
-    .into_iter()
-    .try_fold(None, |greatest, expr| -> Result<_> {
-        let greatest = match greatest {
-            Some(greatest) => greatest,
-            None => return Ok(Some(expr)),
-        };
+        .into_iter()
+        .try_fold(None, |greatest, expr| -> Result<_> {
+            let greatest = match greatest {
+                Some(greatest) => greatest,
+                None => return Ok(Some(expr)),
+            };
 
-        match greatest.evaluate_cmp(&expr) {
-            Some(std::cmp::Ordering::Less) => Ok(Some(expr)),
-            Some(_) => Ok(Some(greatest)),
-            None => Err(EvaluateError::NonComparableArgumentError(name.to_owned()).into()),
-        }
-    })?
-    .ok_or(EvaluateError::FunctionRequiresAtLeastOneArgument(name.to_owned()).into())
+            match greatest.evaluate_cmp(&expr) {
+                Some(std::cmp::Ordering::Less) => Ok(Some(expr)),
+                Some(_) => Ok(Some(greatest)),
+                None => Err(EvaluateError::NonComparableArgumentError(name.to_owned()).into()),
+            }
+        })?
+        .ok_or(EvaluateError::FunctionRequiresAtLeastOneArgument(name.to_owned()).into())
 }
 
 pub fn format<'a>(

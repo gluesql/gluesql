@@ -355,7 +355,6 @@ impl ToSql for Function {
             Function::Greatest(items) => {
                 let items = items
                     .iter()
-                    .filter(|&item| !matches!(item, Expr::IsNull(_)))
                     .map(ToSql::to_sql)
                     .collect::<Vec<_>>()
                     .join(", ");
