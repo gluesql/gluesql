@@ -1695,4 +1695,11 @@ mod tests {
         let expected = "LAST_DAY(TIMESTAMP '2023-07-29 11:00:00')";
         test_expr(actual, expected);
     }
+
+    #[test]
+    fn function_entries() {
+        let actual = entries(col("map"));
+        let expected = "ENTRIES(map)";
+        test_expr(actual, expected);
+    }
 }
