@@ -127,7 +127,7 @@ impl<'a> Prebuild<Select> for SelectNode<'a> {
 pub fn select<'a>() -> SelectNode<'a> {
     SelectNode {
         table_node: TableFactorNode {
-            table_name: "SERIES".to_owned(),
+            table_name: "Series".to_owned(),
             table_type: TableType::Series(Expr::Literal(AstLiteral::Number(1.into())).into()),
             table_alias: None,
         },
