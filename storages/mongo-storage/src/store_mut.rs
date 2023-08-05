@@ -13,7 +13,7 @@ use mongodb::{
 use crate::{
     store::{B16, B32, B8, TIME},
     utils::get_primary_key,
-    value::{into_object_id, BsonType, IntoBson},
+    value::{into_object_id, BsonType, IntoBson, IntoBson2},
 };
 
 use {
@@ -120,7 +120,7 @@ impl StoreMut for MongoStorage {
 
         // let required = bson!["_id", names];
         let mut properties = doc! {
-            "_id": { "bsonType": "objectId" }
+            "_id": { "bsonType": ["objectId", "binData"] }
         };
         properties.extend(column_types);
         let mut required = vec!["_id".to_string()];
@@ -262,12 +262,14 @@ impl StoreMut for MongoStorage {
                         .zip(values.into_iter())
                         .fold(
                             // usualy key is _id, but if there is PK, key is PK column
-                            match primary_key {
-                                Some(_) => doc! {},
-                                None => {
-                                    doc! {"_id": into_object_id(key.clone())}
-                                }
-                            },
+                            // match primary_key {
+                            //     Some(_) => doc! {},
+                            //     None => {
+                            //         doc! {"_id": into_object_id(key.clone())}
+                            //     }
+                            // },
+                            //     }
+                            doc! {"_id": key.clone().into_bson2(primary_key.is_some()).unwrap()},
                             |mut acc, (column_def, value)| {
                                 acc.extend(doc! {column_def.name: value.into_bson().unwrap()});
 
@@ -286,14 +288,14 @@ impl StoreMut for MongoStorage {
             };
             println!("doc: {:#?}", doc);
 
-            println!("key in insert data: {:?}", key);
             // 1. pk insert: pk
             // 2. update
             // 3. pk update?
-            let query = match &primary_key {
-                Some(column_def) => doc! {column_def.name.clone(): key.into_bson().unwrap()},
-                _ => doc! {"_id": into_object_id(key.clone())},
-            };
+            // let query = match &primary_key {
+            //     Some(column_def) => doc! {column_def.name.clone(): key.into_bson().unwrap()},
+            //     _ => doc! {"_id": into_object_id(key.clone())},
+            // };
+            let query = doc! {"_id": key.into_bson2(primary_key.is_some()).unwrap()};
 
             // let doc = doc! {"$set": doc};
             // let options = UpdateOptions::builder().upsert(Some(true)).build();
@@ -315,12 +317,14 @@ impl StoreMut for MongoStorage {
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         println!("keys: {keys:?}");
+        let schema = self.fetch_schema(table_name).await?.unwrap();
+        let primary_key = schema.column_defs.clone().map(get_primary_key).flatten();
 
         self.db
             .collection::<Bson>(table_name)
             .delete_many(
                 doc! { "_id": {
-                    "$in": keys.into_iter().map(|key| key.into_bson()).collect::<Result<Vec<_>, _>>()?
+                    "$in": keys.into_iter().map(|key| key.into_bson2(primary_key.is_some())).collect::<Result<Vec<_>, _>>()?
                 }},
                 None,
             )

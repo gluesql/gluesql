@@ -21,7 +21,7 @@ use mongodb::{
 use crate::{
     index,
     utils::get_primary_key,
-    value::{BsonType, IntoBson, IntoRow, IntoValue},
+    value::{BsonType, IntoBson, IntoBson2, IntoRow, IntoValue},
 };
 
 use {
@@ -70,12 +70,13 @@ impl Store for MongoStorage {
 
         let primary_key = column_defs.clone().map(get_primary_key).flatten();
 
-        let filter = match primary_key.clone() {
-            Some(primary_key) => {
-                doc! { primary_key.name: target.clone().into_bson()?}
-            }
-            None => doc! { "_id": target.clone().into_bson()? },
-        };
+        // let filter = match primary_key.clone() {
+        //     Some(primary_key) => {
+        //         doc! { primary_key.name: target.clone().into_bson()?}
+        //     }
+        //     None => doc! { "_id": target.clone().into_bson()? },
+        // };
+        let filter = doc! { "_id": target.clone().into_bson2(primary_key.is_some())?};
 
         // let filter = doc! { "_id": target.clone().into_bson()?};
         println!("err1");
@@ -163,9 +164,10 @@ impl Store for MongoStorage {
                 let doc = doc.unwrap();
 
                 match &column_types {
-                    Some(column_types) => {
-                        doc.into_row2(column_types.into_iter().map(|data_type| *data_type))
-                    }
+                    Some(column_types) => doc.into_row2(
+                        column_types.into_iter().map(|data_type| *data_type),
+                        primary_key.is_some(),
+                    ),
                     None => {
                         // let key = doc.get_object_id("_id").unwrap();
                         let mut iter = doc.into_iter();

@@ -287,6 +287,7 @@ pub trait IntoRow {
     fn into_row2<'a>(
         self,
         data_types: impl Iterator<Item = &'a DataType>,
+        is_primary: bool,
     ) -> Result<(Key, DataRow)>;
 }
 
@@ -308,10 +309,14 @@ impl IntoRow for Document {
     fn into_row2<'a>(
         self,
         data_types: impl Iterator<Item = &'a DataType>,
+        has_primary: bool,
     ) -> Result<(Key, DataRow)> {
-        let key = self.get_object_id("_id").unwrap();
-        let key_bytes = key.bytes().to_vec();
-        let key = Key::Bytea(key_bytes);
+        let key = match has_primary {
+            true => self.get_binary_generic("_id").unwrap().to_owned(),
+            false => self.get_object_id("_id").unwrap().bytes().to_vec(),
+        };
+        // let key_bytes = key.bytes().to_vec();
+        let key = Key::Bytea(key);
 
         let row = self
             .into_iter()
@@ -326,6 +331,10 @@ impl IntoRow for Document {
 
 pub trait IntoBson {
     fn into_bson(self) -> Result<Bson>;
+}
+
+pub trait IntoBson2 {
+    fn into_bson2(self, has_primary: bool) -> Result<Bson>;
 }
 
 pub fn into_object_id(key: Key) -> Bson {
@@ -352,39 +361,47 @@ pub fn into_object_id(key: Key) -> Bson {
     }
 }
 
-impl IntoBson for Key {
-    fn into_bson(self) -> Result<Bson> {
-        match self {
-            Key::I8(val) => Ok(Bson::Int32(val as i32)),
-            Key::I16(val) => Ok(Bson::Int32(val as i32)),
-            Key::I32(val) => Ok(Bson::Int32(val)),
-            Key::I64(val) => Ok(Bson::Int64(val)),
-            Key::U8(val) => Ok(Bson::Int32(val as i32)),
-            Key::U16(val) => Ok(Bson::Int32(val as i32)),
-            Key::U32(val) => Ok(Bson::Int64(val as i64)),
-            Key::U64(val) => Ok(Bson::Int64(val as i64)),
-            Key::U128(val) => Ok(Bson::Int64(val as i64)),
-            // Key::F32(val) => Ok(Bson::Double(val.into())),
-            Key::F64(val) => Ok(Bson::Double(val.into())),
-            Key::Decimal(val) => Ok(Bson::String(val.to_string())),
-            Key::Bool(val) => Ok(Bson::Boolean(val)),
-            Key::Str(val) => Ok(Bson::String(val)),
-            Key::Bytea(bytes) => Ok(into_object_id(Key::Bytea(bytes))),
-            // Key::Date(val) => Ok(Bson::UtcDatetime(val.and_hms(0, 0, 0))),
-            // Key::Timestamp(val) => Ok(Bson::UtcDatetime(val)),
-            Key::Time(val) => Ok(Bson::String(val.format("%H:%M:%S%.f").to_string())),
-            // Key::Interval(val) => Ok(Bson::String(val.to_string())),
-            // Key::Uuid(val) => Ok(Bson::Binary(
-            //     bson::spec::BinarySubtype::Uuid,
-            //     val.to_be_bytes().to_vec(),
-            // )),
-            Key::Inet(val) => Ok(Bson::String(val.to_string())),
-            Key::None => Ok(Bson::Null),
-            k => {
-                println!("key: {:?}", k);
-                todo!()
-            }
+impl IntoBson2 for Key {
+    fn into_bson2(self, has_primary: bool) -> Result<Bson> {
+        match has_primary {
+            true => Ok(Bson::Binary(Binary {
+                subtype: bson::spec::BinarySubtype::Generic,
+                bytes: self.to_cmp_be_bytes()?,
+            })),
+            false => Ok(into_object_id(self)),
         }
+
+        // match self {
+        //     Key::I8(val) => Ok(Bson::Int32(val as i32)),
+        //     Key::I16(val) => Ok(Bson::Int32(val as i32)),
+        //     Key::I32(val) => Ok(Bson::Int32(val)),
+        //     Key::I64(val) => Ok(Bson::Int64(val)),
+        //     Key::U8(val) => Ok(Bson::Int32(val as i32)),
+        //     Key::U16(val) => Ok(Bson::Int32(val as i32)),
+        //     Key::U32(val) => Ok(Bson::Int64(val as i64)),
+        //     Key::U64(val) => Ok(Bson::Int64(val as i64)),
+        //     Key::U128(val) => Ok(Bson::Int64(val as i64)),
+        //     // Key::F32(val) => Ok(Bson::Double(val.into())),
+        //     Key::F64(val) => Ok(Bson::Double(val.into())),
+        //     Key::Decimal(val) => Ok(Bson::String(val.to_string())),
+        //     Key::Bool(val) => Ok(Bson::Boolean(val)),
+        //     Key::Str(val) => Ok(Bson::String(val)),
+        //     Key::Bytea(bytes) => Ok(into_object_id(Key::Bytea(bytes))),
+        //     // Key::Date(val) => Ok(Bson::UtcDatetime(val.and_hms(0, 0, 0))),
+        //     // Key::Timestamp(val) => Ok(Bson::UtcDatetime(val)),
+        //     Key::Time(val) => Ok(Bson::String(val.format("%H:%M:%S%.f").to_string())),
+        //     // Key::Interval(val) => Ok(Bson::String(val.to_string())),
+        //     // Key::Uuid(val) => Ok(Bson::Binary(
+        //     //     bson::spec::BinarySubtype::Uuid,
+        //     //     val.to_be_bytes().to_vec(),
+        //     // )),
+        //     Key::Inet(val) => Ok(Bson::String(val.to_string())),
+        //     Key::None => Ok(Bson::Null),
+        //     k => {
+        //         println!("key: {:?}", k);
+        //         todo!()
+        //     }
+        // }
     }
 }
 
