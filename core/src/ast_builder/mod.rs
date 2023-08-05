@@ -78,7 +78,7 @@ pub use expr::{
         ifnull, initcap, is_empty, last_day, lcm, left, length, ln, log, log10, log2, lower, lpad,
         ltrim, md5, modulo, now, pi, point, position, power, radians, rand, repeat, replace,
         reverse, right, round, rpad, rtrim, sign, sin, skip, sqrt, substr, take, tan, to_date,
-        to_time, to_timestamp, upper, FunctionNode,
+        to_time, to_timestamp, upper, entries, FunctionNode,
     },
 };
 
