@@ -43,6 +43,7 @@ pub enum Function {
         data_type: DataType,
     },
     Ceil(Expr),
+    Coalesce(Vec<Expr>),
     Concat(Vec<Expr>),
     ConcatWs {
         separator: Expr,
@@ -230,6 +231,14 @@ impl ToSql for Function {
                 format!("CAST({} AS {data_type})", expr.to_sql())
             }
             Function::Ceil(e) => format!("CEIL({})", e.to_sql()),
+            Function::Coalesce(items) => {
+                let items = items
+                    .iter()
+                    .map(ToSql::to_sql)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("COALESCE({items})")
+            }
             Function::Concat(items) => {
                 let items = items
                     .iter()
@@ -639,6 +648,16 @@ mod tests {
                 name: "CUSTOM_FUNC".to_owned(),
                 exprs: vec![]
             }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"COALESCE("First", NULL, "Last")"#,
+            &Expr::Function(Box::new(Function::Coalesce(vec![
+                Expr::Identifier("First".to_owned()),
+                Expr::Literal(AstLiteral::Null),
+                Expr::Identifier("Last".to_owned()),
+            ])))
             .to_sql()
         );
 

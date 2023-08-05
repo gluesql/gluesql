@@ -11,6 +11,7 @@ mod error;
 mod execute;
 mod expr;
 mod expr_list;
+mod expr_with_alias;
 mod index;
 mod insert;
 mod order_by_expr;
@@ -37,13 +38,14 @@ pub use {
     error::AstBuilderError,
     execute::Execute,
     expr_list::ExprList,
+    expr_with_alias::ExprWithAliasNode,
     insert::InsertNode,
     order_by_expr::OrderByExprNode,
     order_by_expr_list::OrderByExprList,
     query::QueryNode,
     select::{
-        values, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
-        LimitNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode,
+        select, values, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
+        JoinNode, LimitNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode,
     },
     select_item::SelectItemNode,
     select_item_list::SelectItemList,
@@ -71,12 +73,12 @@ pub use {index::CreateIndexNode, index::DropIndexNode};
 pub use expr::{
     aggregate::{avg, count, max, min, stdev, sum, variance, AggregateNode},
     function::{
-        abs, acos, ascii, asin, atan, calc_distance, cast, ceil, chr, concat, concat_ws, cos,
-        degrees, divide, exp, extract, find_idx, floor, format, gcd, generate_uuid, get_x, get_y,
-        greatest, ifnull, initcap, is_empty, last_day, lcm, left, length, ln, log, log10, log2,
-        lower, lpad, ltrim, md5, modulo, now, pi, point, position, power, radians, rand, repeat,
-        replace, reverse, right, round, rpad, rtrim, sign, sin, skip, sqrt, substr, take, tan,
-        to_date, to_time, to_timestamp, upper, FunctionNode,
+        abs, acos, ascii, asin, atan, calc_distance, cast, ceil, chr, coalesce, concat, concat_ws,
+        cos, degrees, divide, exp, extract, find_idx, floor, format, gcd, generate_uuid, get_x,
+        get_y, greatest, ifnull, initcap, is_empty, last_day, lcm, left, length, ln, log, log10, log2, lower,
+        lpad, ltrim, md5, modulo, now, pi, point, position, power, radians, rand, repeat, replace,
+        reverse, right, round, rpad, rtrim, sign, sin, skip, sqrt, substr, take, tan, to_date,
+        to_time, to_timestamp, upper, FunctionNode,
     },
 };
 
