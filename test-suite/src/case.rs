@@ -67,7 +67,7 @@ test_case!(case, async move {
                 case
                 I64;
                 1;
-                4;
+                2;
                 3
             )),
         ),
