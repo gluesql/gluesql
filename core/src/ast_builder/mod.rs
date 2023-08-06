@@ -74,11 +74,11 @@ pub use expr::{
     aggregate::{avg, count, max, min, stdev, sum, variance, AggregateNode},
     function::{
         abs, acos, ascii, asin, atan, calc_distance, cast, ceil, chr, coalesce, concat, concat_ws,
-        cos, degrees, divide, exp, extract, find_idx, floor, format, gcd, generate_uuid, get_x,
-        get_y, greatest, ifnull, initcap, is_empty, last_day, lcm, left, length, ln, log, log10,
-        log2, lower, lpad, ltrim, md5, modulo, now, pi, point, position, power, radians, rand,
-        repeat, replace, reverse, right, round, rpad, rtrim, sign, sin, skip, sqrt, substr, take,
-        tan, to_date, to_time, to_timestamp, upper, FunctionNode,
+        cos, degrees, divide, entries, exp, extract, find_idx, floor, format, gcd, generate_uuid,
+        get_x, get_y, greatest, ifnull, initcap, is_empty, last_day, lcm, left, length, ln, log,
+        log10, log2, lower, lpad, ltrim, md5, modulo, now, pi, point, position, power, radians,
+        rand, repeat, replace, reverse, right, round, rpad, rtrim, sign, sin, skip, sqrt, substr,
+        take, tan, to_date, to_time, to_timestamp, upper, FunctionNode,
     },
 };
 
@@ -91,7 +91,7 @@ fn test(actual: crate::result::Result<crate::ast::Statement>, expected: &str) {
 
     let parsed = &parse(expected).expect(expected)[0];
     let expected = translate(parsed);
-    assert_eq!(actual, expected);
+    pretty_assertions::assert_eq!(actual, expected);
 }
 
 #[cfg(test)]
@@ -100,7 +100,7 @@ fn test_expr(actual: crate::ast_builder::ExprNode, expected: &str) {
 
     let parsed = &parse_expr(expected).expect(expected);
     let expected = translate_expr(parsed);
-    assert_eq!(actual.try_into(), expected);
+    pretty_assertions::assert_eq!(actual.try_into(), expected);
 }
 
 #[cfg(test)]
@@ -109,5 +109,5 @@ fn test_query(actual: crate::ast_builder::QueryNode, expected: &str) {
 
     let parsed = &parse_query(expected).expect(expected);
     let expected = translate_query(parsed);
-    assert_eq!(actual.try_into(), expected);
+    pretty_assertions::assert_eq!(actual.try_into(), expected);
 }
