@@ -8,7 +8,7 @@ use parquet::{
     schema::types::Type as SchemaType,
 };
 
-use crate::{data_type::ParquetBasicPhysicalType, error::OptionExt};
+use crate::data_type::ParquetBasicPhysicalType;
 
 use {
     crate::{error::ResultExt, ParquetStorage},
