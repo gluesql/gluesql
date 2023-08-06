@@ -1,65 +1,244 @@
-use test_suite::data_type::bytea;
-
+use gluesql_core::chrono::NaiveDateTime;
 use {
-    gluesql_core::{
-        data::{value::HashMapJsonExt, Interval},
-        prelude::{
-            Glue,
-            Value::{self, *},
-        },
+    gluesql_core::prelude::{
+        Glue,
+        Value::{self, *},
     },
     gluesql_parquet_storage::ParquetStorage,
-    std::{
-        collections::HashMap,
-        net::{IpAddr, Ipv4Addr},
-    },
-    test_suite::{concat_with, row, select, stringify_label, test},
-    uuid::Uuid as UUID,
+    test_suite::{concat_with, row, select, stringify_label},
 };
 
-#[test]
-async fn parquet_schema() {
-    let path = "./tests/samples/";
+#[tokio::test]
+async fn test_alltypes_select() {
+    let path = "./tests/samples/parquet_data";
     let parquet_storage = ParquetStorage::new(path).unwrap();
     let mut glue = Glue::new(parquet_storage);
 
-    macro_rules! date {
-        ($date: expr) => {
-            $date.parse().unwrap()
-        };
-    }
+    let bytea = |input: &str| input.as_bytes().to_vec();
 
-    let parse_uuid = |v| UUID::parse_str(v).unwrap().as_u128();
-    //    let bytea = |v| hex::decode(v).unwrap();
-    let ip = |a, b, c, d| IpAddr::V4(Ipv4Addr::new(a, b, c, d));
-    let m = |s: &str| HashMap::parse_json_object(s).unwrap();
-    let l = |values: [&str; 3]| {
-        values
-            .iter()
-            .map(|str| Value::Str(str.to_string()))
-            .collect::<Vec<_>>()
+    let ts = |datetime_str| -> NaiveDateTime {
+        let naive_datetime = NaiveDateTime::parse_from_str(datetime_str, "%Y-%m-%dT%H:%M:%S")
+            .expect("Failed to parse date time");
+        naive_datetime
     };
 
-    let cases = vec![(
-        glue.execute("SELECT boolean, int8, int16, int32, int64, uint8 FROM Schema")
-            .await,
-        Ok(select!(
-          boolean | int8 | int16 | int32      | int64               | uint8
-          Bool    | I8   | I16   | I32        | I64                 | U8;
-          false     44     12500   1398486491   6843542416722343000   179;
-          false     120    25269   40556486     2332015357713582000   92;
-          true      49     4821    2007327410   487898043248887500    92;
-          false     80     7235    1604644769   2854360423787302000   147;
-          false     26     32740   766408542    5159015894945299000   174;
-          true      94     32547   1645422225   4690433930230266000   21;
-          false     19     32632   1636850638   3150782249474742300   183;
-          false     24     26963   642584730    205655629028309660    241;
-          false     19     13123   1225214579   7027423886567483000   53;
-          false     21     17753   526033318    4966342914812151000   88
-        )),
-    )];
+    let cases = vec![
+        (
+            glue.execute("SELECT * FROM alltypes_dictionary").await,
+            Ok(select!(
+                id  | bool_col | tinyint_col | smallint_col | int_col | bigint_col | float_col | double_col | date_string_col  | string_col   | timestamp_col;
+                I32 | Bool     | I32         | I32          | I32     | I64        | F32       | F64        | Value::Bytea     | Value::Bytea | Value::Timestamp;
+                0    true        0             0              0         0            0.0         0.0          bytea("01/01/09")  bytea("0")     ts("2009-01-01T00:00:00");
+                1    false       1             1              1         10           1.1         10.1         bytea("01/01/09")  bytea("1")     ts("2009-01-01T00:01:00")
+            )),
+        ),
+        (
+            glue.execute("SELECT * FROM alltypes_plain_snappy").await,
+            Ok(select!(
+                id  | bool_col | tinyint_col | smallint_col | int_col | bigint_col | float_col | double_col | date_string_col  | string_col   | timestamp_col;
+                I32 | Bool     | I32         | I32          | I32     | I64        | F32       | F64        | Value::Bytea     | Value::Bytea | Value::Timestamp;
+                6     true       0             0              0         0            0.0         0.0          bytea("04/01/09")  bytea("0")     ts("2009-04-01T00:00:00");
+                7     false      1             1              1         10           1.1         10.1         bytea("04/01/09")  bytea("1")     ts("2009-04-01T00:01:00")
+            )),
+        ),
+        (
+            glue.execute("SELECT * FROM alltypes_plain").await,
+            Ok(select!(
+                id  | bool_col | tinyint_col | smallint_col | int_col | bigint_col | float_col | double_col | date_string_col  | string_col   | timestamp_col;
+                I32 | Bool     | I32         | I32          | I32     | I64        | F32       | F64        | Value::Bytea     | Value::Bytea | Value::Timestamp;
+                4     true       0             0              0         0            0.0         0.0          bytea("03/01/09")  bytea("0")     ts("2009-03-01T00:00:00");
+                5     false      1             1              1         10           1.1         10.1         bytea("03/01/09")  bytea("1")     ts("2009-03-01T00:01:00");
+                6     true       0             0              0         0            0.0         0.0          bytea("04/01/09")  bytea("0")     ts("2009-04-01T00:00:00");
+                7     false      1             1              1         10           1.1         10.1         bytea("04/01/09")  bytea("1")     ts("2009-04-01T00:01:00");
+                2     true       0             0              0         0            0.0         0.0          bytea("02/01/09")  bytea("0")     ts("2009-02-01T00:00:00");
+                3     false      1             1              1         10           1.1         10.1         bytea("02/01/09")  bytea("1")     ts("2009-02-01T00:01:00");
+                0     true       0             0              0         0            0.0         0.0          bytea("01/01/09")  bytea("0")     ts("2009-01-01T00:00:00");
+                1     false      1             1              1         10           1.1         10.1         bytea("01/01/09")  bytea("1")     ts("2009-01-01T00:01:00")
+            )),
+        ),
+        (
+            glue.execute("SELECT * FROM binary").await,
+            Ok(select!(
+                id  | bool_col | tinyint_col | smallint_col | int_col | bigint_col | float_col | double_col | date_string_col  | string_col   | timestamp_col;
+                I32 | Bool     | I32         | I32          | I32     | I64        | F32       | F64        | Value::Bytea     | Value::Bytea | Value::Timestamp;
+                4     true       0             0              0         0            0.0         0.0          bytea("03/01/09")  bytea("0")     ts("2009-03-01T00:00:00");
+                5     false      1             1              1         10           1.1         10.1         bytea("03/01/09")  bytea("1")     ts("2009-03-01T00:01:00");
+                6     true       0             0              0         0            0.0         0.0          bytea("04/01/09")  bytea("0")     ts("2009-04-01T00:00:00");
+                7     false      1             1              1         10           1.1         10.1         bytea("04/01/09")  bytea("1")     ts("2009-04-01T00:01:00");
+                2     true       0             0              0         0            0.0         0.0          bytea("02/01/09")  bytea("0")     ts("2009-02-01T00:00:00");
+                3     false      1             1              1         10           1.1         10.1         bytea("02/01/09")  bytea("1")     ts("2009-02-01T00:01:00");
+                0     true       0             0              0         0            0.0         0.0          bytea("01/01/09")  bytea("0")     ts("2009-01-01T00:00:00");
+                1     false      1             1              1         10           1.1         10.1         bytea("01/01/09")  bytea("1")     ts("2009-01-01T00:01:00")
+            )),
+        ),
+    ];
+
+    //let actual = Payload::SelectMap(actual);
 
     for (actual, expected) in cases {
         assert_eq!(actual.map(|mut payloads| payloads.remove(0)), expected);
     }
 }
+
+#[tokio::test]
+async fn test_schemaless() {
+    // let actual = glue
+    //     .execute("SELECT * FROM alltypes_dictionary")
+    //     .await
+    //     .unwrap()
+    //     .into_iter()
+    //     .next()
+    //     .unwrap();
+
+    // let expected = [
+    //     vec![
+    //         ("id", I32(0)),
+    //         ("bool_col", Bool(true)),
+    //         ("tinyint_col", I32(0)),
+    //         ("smallint_col", I32(0)),
+    //         ("int_col", I32(0)),
+    //         ("bigint_col", I64(0)),
+    //         ("float_col", F32(0.0)),
+    //         ("double_col", F64(0.0)),
+    //         (
+    //             "date_string_col",
+    //             Value::Bytea(vec![48, 49, 47, 48, 49, 47, 48, 57]),
+    //         ),
+    //         ("string_col", Value::Bytea(vec![48])),
+    //         ("timestamp_col", I64(0)),
+    //     ],
+    //     vec![
+    //         ("id", I32(1)),
+    //         ("bool_col", Bool(false)),
+    //         ("tinyint_col", I32(1)),
+    //         ("smallint_col", I32(1)),
+    //         ("int_col", I32(1)),
+    //         ("bigint_col", I64(10)),
+    //         ("float_col", F32(1.100000023841858)),
+    //         ("double_col", F64(10.1)),
+    //         (
+    //             "date_string_col",
+    //             Value::Bytea(vec![48, 49, 47, 48, 49, 47, 48, 57]),
+    //         ),
+    //         ("string_col", Value::Bytea(vec![49])),
+    //         ("timestamp_col", I64(0)),
+    //     ],
+    // ]
+    // .into_iter()
+    // .map(|row| {
+    //     row.into_iter()
+    //         .map(|(k, v)| (k.to_owned(), v))
+    //         .collect::<HashMap<_, _>>()
+    // })
+    // .collect::<Vec<_>>();
+    // let expected = Payload::SelectMap(expected);
+    // assert_eq!(actual, expected);
+    // let convertu8_to_string =
+    //     |input: Vec<u8>| -> Result<String, std::string::FromUtf8Error> { String::from_utf8(input) };
+    // let convert_to_bytea = |input: String| -> Vec<u8> { input.into_bytes() };
+}
+
+// #[tokio::test]
+// async fn test_alltypes_dictionary_fetch_schema() {
+//     let path = "./tests/samples/data";
+//     let parquet_storage = ParquetStorage::new(path).unwrap();
+//     let mut glue = Glue::new(parquet_storage.clone());
+//     macro_rules! run {
+//         ($sql:expr) => {
+//             run($sql, &mut glue, None).await.unwrap()
+//         };
+//     }
+//     run!("SELECT * FROM alltypes_dictionary");
+//     let schemas = parquet_storage
+//         .fetch_all_schemas()
+//         .await
+//         .expect("Failed to fetch schemas");
+
+//     let expected_schema = Schema {
+//         table_name: "alltypes_dictionary".to_string(),
+//         column_defs: Some(vec![
+//             ColumnDef {
+//                 name: "id".to_string(),
+//                 data_type: Int32,
+//                 nullable: false,
+//                 default: None,
+//                 unique: None,
+//             },
+//             ColumnDef {
+//                 name: "bool_col".to_string(),
+//                 data_type: Boolean,
+//                 nullable: false,
+//                 default: None,
+//                 unique: None,
+//             },
+//             ColumnDef {
+//                 name: "tinyint_col".to_string(),
+//                 data_type: Int32,
+//                 nullable: false,
+//                 default: None,
+//                 unique: None,
+//             },
+//             ColumnDef {
+//                 name: "smallint_col".to_string(),
+//                 data_type: Int32,
+//                 nullable: false,
+//                 default: None,
+//                 unique: None,
+//             },
+//             ColumnDef {
+//                 name: "int_col".to_string(),
+//                 data_type: Int32,
+//                 nullable: false,
+//                 default: None,
+//                 unique: None,
+//             },
+//             ColumnDef {
+//                 name: "bigint_col".to_string(),
+//                 data_type: Int,
+//                 nullable: false,
+//                 default: None,
+//                 unique: None,
+//             },
+//             ColumnDef {
+//                 name: "float_col".to_string(),
+//                 data_type: Float32,
+//                 nullable: false,
+//                 default: None,
+//                 unique: None,
+//             },
+//             ColumnDef {
+//                 name: "double_col".to_string(),
+//                 data_type: Float,
+//                 nullable: false,
+//                 default: None,
+//                 unique: None,
+//             },
+//             ColumnDef {
+//                 name: "date_string_col".to_string(),
+//                 data_type: DataType::Bytea,
+//                 nullable: false,
+//                 default: None,
+//                 unique: None,
+//             },
+//             ColumnDef {
+//                 name: "string_col".to_string(),
+//                 data_type: DataType::Bytea,
+//                 nullable: false,
+//                 default: None,
+//                 unique: None,
+//             },
+//             ColumnDef {
+//                 name: "timestamp_col".to_string(),
+//                 data_type: Int128,
+//                 nullable: false,
+//                 default: None,
+//                 unique: None,
+//             },
+//         ]),
+//         indexes: vec![],
+//         engine: None,
+//     };
+
+//     // 이 부분은 스키마가 어떻게 저장되고 가져와지는지에 따라 조정해야 할 수 있습니다.
+//     assert_eq!(schemas.get(0), Some(&expected_schema));
+// }
