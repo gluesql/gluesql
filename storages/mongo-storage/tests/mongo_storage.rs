@@ -1,9 +1,7 @@
-use gluesql_core::store::Store;
+use composite_storage::CompositeStorage;
+use gluesql_core::prelude::{Error, Glue, Value::I64};
 
-use {
-    async_trait::async_trait, gluesql_core::prelude::Glue, gluesql_mongo_storage::MongoStorage,
-    test_suite::*,
-};
+use {async_trait::async_trait, gluesql_mongo_storage::MongoStorage, test_suite::*};
 
 struct MongoTester {
     glue: Glue<MongoStorage>,
@@ -29,21 +27,38 @@ impl Tester<MongoStorage> for MongoTester {
 generate_store_tests!(tokio::test, MongoTester);
 
 // #[tokio::test]
-// async fn mongo() {
-//     let conn_str = "mongodb://localhost:27017";
-//     let namespace = "unit";
-//     let storage = MongoStorage::new(conn_str, namespace)
+// async fn mongo_migrate() {
+//     let source = MongoStorage::new("mongodb://localhost:27017", "src")
 //         .await
-//         .expect("MongoStorage::new");
+//         .expect("MongoStorage::source");
+//     let target = MongoStorage::new("mongodb://localhost:27018", "target")
+//         .await
+//         .expect("MongoStorage::target");
+
+//     let mut storage = CompositeStorage::new();
+//     storage.push("source", source);
+//     storage.push("target", target);
 
 //     let mut glue = Glue::new(storage);
-//     glue.execute("CREATE TABLE Test;").await.expect("execute");
-
-//     let schema = glue
-//         .storage
-//         .fetch_schema("Test")
+//     glue.storage.set_default("source");
+//     assert_eq!(
+//         glue.execute(
+//             "SELECT *
+//             FROM GLUE_TABLES;
+//         "
+//         )
 //         .await
-//         .expect("fetch_schema");
-
-//     assert_eq!(schema, None);
+//         .unwrap()
+//         .into_iter()
+//         .next()
+//         .unwrap(),
+//         select!(
+//             fid | bid;
+//             I64 | I64;
+//             1     5;
+//             1     7;
+//             2     5;
+//             2     7
+//         )
+//     );
 // }

@@ -23,11 +23,17 @@ impl<T, E: ToString> OptionExt<T, E> for std::option::Option<T> {
 
 #[derive(Error, Debug)]
 pub enum MongoStorageError {
-    #[error("file not found")]
-    FileNotFound,
-
     #[error("table does not exist")]
     TableDoesNotExist,
+
+    #[error("index does not have option")]
+    MissingIndexOption,
+
+    #[error("invalid document")]
+    InvalidDocument,
+
+    #[error("file not found")]
+    FileNotFound,
 
     #[error("column does not exist: {0}")]
     ColumnDoesNotExist(String),
@@ -40,9 +46,6 @@ pub enum MongoStorageError {
 
     #[error("both {0}.jsonl and {0}.json files exist. remove or rename one")]
     BothJsonlAndJsonExist(String),
-
-    #[error("invalid document")]
-    InvalidDocument,
 
     #[error("json object type is required")]
     JsonObjectTypeRequired,

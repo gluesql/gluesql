@@ -179,173 +179,135 @@ impl MongoStorage {
             .db
             .run_command(command, None)
             .await
-            .unwrap()
+            .map_storage_err()?
             .get_document("cursor")
             .and_then(|doc| doc.get_array("firstBatch"))
-            .unwrap()
+            .map_storage_err()?
             .to_owned();
 
-        let schemas = stream::iter(validators_list)
-            // .into_iter()
-            .then(move |bson| async move {
-                let (collection_name, validators) = bson
-                    .as_document()
-                    .map(|doc| {
-                        let validator = doc
-                            .get_document("options")
-                            .and_then(|doc| doc.get_document("validator"))
-                            .ok();
+        // {
+        //     cursor: { id: Long("0"), ns: 'newenw.$cmd.listCollections', firstBatch: [] },
+        //     ok: 1
+        //   }
+        let schemas = stream::iter(validators_list).then(move |validators| async move {
+            let doc = validators
+                .as_document()
+                .map_storage_err(MongoStorageError::InvalidDocument)?;
 
-                        let collection_name = doc.get_str("name").unwrap();
+            let collection_name = doc.get_str("name").map_storage_err()?;
+            let validators = doc
+                .get_document("options")
+                .and_then(|doc| doc.get_document("validator"))
+                .map_storage_err()?;
 
-                        Ok::<_, Error>((collection_name, validator))
-                    })
-                    .transpose()
-                    .unwrap()
-                    .unwrap();
-                // .map_storage_err(MongoStorageError::TableDoesNotExist)?;
+            let collection = self.db.collection::<Document>(collection_name);
+            let options = ListIndexesOptions::builder().build();
+            let cursor = collection.list_indexes(options).await.unwrap();
+            let indexes = cursor
+                .into_stream()
+                .try_filter_map(|index_model| {
+                    let IndexModel { keys, options, .. } = index_model;
+                    let index_key = keys.into_iter().map(|(index_key, _)| index_key).next(); // TODO: should throw error if there are multiple keys?
+                    let name = options.and_then(|options| options.name);
 
-                let collection = self.db.collection::<Document>(collection_name);
-                let options = ListIndexesOptions::builder().batch_size(10).build();
-                let cursor = collection.list_indexes(options).await.unwrap();
-                let indexes = cursor
-                    .into_stream()
-                    .try_filter_map(|index_model| {
-                        let index_key = index_model
-                            .clone()
-                            .keys
-                            .into_iter()
-                            .map(|(index_key, _)| index_key)
-                            .next();
+                    future::ready(Ok(index_key.zip(name)))
+                })
+                .try_collect::<HashMap<String, String>>()
+                .await
+                .map_storage_err()?;
 
-                        let IndexOptions { name, unique, .. } = index_model.options.unwrap();
+            let column_defs = validators
+                .get_document("$jsonSchema")
+                .and_then(|doc| doc.get_document("properties"))
+                .map_storage_err()?
+                .into_iter()
+                .skip(1)
+                .map(|(column_name, value)| {
+                    let nullable = value
+                        .as_document()
+                        .map_storage_err(MongoStorageError::InvalidDocument)?
+                        .get_array("bsonType")
+                        .map_storage_err()?
+                        .get(1)
+                        .and_then(|x| x.as_str())
+                        .map(|x| x == "null")
+                        .unwrap_or(false);
 
-                        future::ready(Ok(index_key.zip(name)))
-                    })
-                    .try_collect::<HashMap<String, String>>()
-                    .await
-                    .unwrap();
+                    let type_str = value.as_document().unwrap().get_str("title").unwrap();
+                    let a = parse_data_type(type_str).unwrap();
+                    let data_type = translate_data_type(&a).unwrap();
 
-                // let indexes = cursor.next().await.unwrap().unwrap();
-                // let indexes = cursor.next().await.unwrap().unwrap();
-                // .map(|result| {
-                //     let index_model = result.unwrap();
+                    // TODO: remove indent
+                    // let data_type = match (data_type, maximum) {
+                    //     (DataType::Int32, Some(B8)) => DataType::Int8,
+                    //     (DataType::Int32, Some(B16)) => DataType::Int16,
+                    //     (DataType::Float, Some(B32)) => DataType::Float32,
+                    //     (DataType::Date, Some(TIME)) => DataType::Time,
+                    //     // (DataType::Int32, Some(bson))
+                    //     //     if bson.as_i64().filter(|x| x == &B16).is_some() =>
+                    //     // {
+                    //     //     DataType::Int16
+                    //     // }
+                    //     // (DataType::Int32, Some(bson))
+                    //     //     if bson.as_i64().filter(|x| x == &B8).is_some() =>
+                    //     // {
+                    //     //     DataType::Int8
+                    //     // }
+                    //     // (DataType::Float, Some(bson))
+                    //     //     if bson.as_i64().filter(|x| x == &B32).is_some() =>
+                    //     // {
+                    //     //     DataType::Float32
+                    //     // }
+                    //     (data_type, _) => data_type,
+                    // };
 
-                //     index_model.keys
-                // })
-                // .collect::<Vec<_>>();
+                    let index_name = indexes.get(column_name);
+                    let a = index_name.and_then(|i| i.split_once("_"));
 
-                let column_defs = validators
-                    .unwrap()
-                    .get_document("$jsonSchema")
-                    .unwrap()
-                    .get_document("properties")
-                    .unwrap()
-                    .into_iter()
-                    .skip(1)
-                    .map(|(column_name, value)| {
-                        let mut iter = value
-                            .as_document()
-                            .unwrap()
-                            // .map_storage_err(MongoStorageError::InvalidDocument)?
-                            .get_array("bsonType")
-                            .unwrap()
-                            // .map_storage_err()?
-                            // .get(0..1)
-                            // .map_storage_err(MongoStorageError::InvalidDocument)?
-                            .iter()
-                            .map(|x| {
-                                x.as_str()// .unwrap()
-                                .map_storage_err(MongoStorageError::InvalidDocument)
-                            });
+                    let unique = match a {
+                        Some((_, "PK")) => Some(ColumnUniqueOption { is_primary: true }),
+                        Some((_, "UNIQUE")) => Some(ColumnUniqueOption { is_primary: false }),
+                        _ => None,
+                    };
 
-                        // let maximum = value.as_document().unwrap().get_i64("maximum").ok();
-                        let type_str = value.as_document().unwrap().get_str("title").unwrap();
-                        let a = parse_data_type(type_str).unwrap();
-                        let data_type = translate_data_type(&a).unwrap();
+                    let default = value
+                        .as_document()
+                        .unwrap()
+                        .get_str("description")
+                        .ok()
+                        .map(|str| {
+                            let expr = parse_expr(str).unwrap();
 
-                        // let data_type = BsonType::from_str(iter.next().unwrap().unwrap())
-                        //     .unwrap()
-                        //     .into();
+                            translate_expr(&expr)
+                        })
+                        .transpose()?;
 
-                        let nullable = iter
-                            .skip(1)
-                            .next()
-                            .transpose()?
-                            .map(|x| x == "null")
-                            .unwrap_or(false);
+                    let column_def = ColumnDef {
+                        name: column_name.to_owned(),
+                        data_type,
+                        nullable,
+                        default,
+                        unique,
+                    };
 
-                        // TODO: remove indent
-                        // let data_type = match (data_type, maximum) {
-                        //     (DataType::Int32, Some(B8)) => DataType::Int8,
-                        //     (DataType::Int32, Some(B16)) => DataType::Int16,
-                        //     (DataType::Float, Some(B32)) => DataType::Float32,
-                        //     (DataType::Date, Some(TIME)) => DataType::Time,
-                        //     // (DataType::Int32, Some(bson))
-                        //     //     if bson.as_i64().filter(|x| x == &B16).is_some() =>
-                        //     // {
-                        //     //     DataType::Int16
-                        //     // }
-                        //     // (DataType::Int32, Some(bson))
-                        //     //     if bson.as_i64().filter(|x| x == &B8).is_some() =>
-                        //     // {
-                        //     //     DataType::Int8
-                        //     // }
-                        //     // (DataType::Float, Some(bson))
-                        //     //     if bson.as_i64().filter(|x| x == &B32).is_some() =>
-                        //     // {
-                        //     //     DataType::Float32
-                        //     // }
-                        //     (data_type, _) => data_type,
-                        // };
+                    Ok(column_def)
+                })
+                .collect::<Result<Vec<ColumnDef>>>()?;
 
-                        let index_name = indexes.get(column_name);
-                        let a = index_name.and_then(|i| i.split_once("_"));
+            let column_defs = match column_defs.len() {
+                0 => None,
+                _ => Some(column_defs),
+            };
 
-                        let unique = match a {
-                            Some((_, "PK")) => Some(ColumnUniqueOption { is_primary: true }),
-                            Some((_, "UNIQUE")) => Some(ColumnUniqueOption { is_primary: false }),
-                            _ => None,
-                        };
+            let schema = Schema {
+                table_name: collection_name.to_owned(),
+                column_defs,
+                indexes: vec![],
+                engine: None,
+            };
 
-                        let default = value
-                            .as_document()
-                            .unwrap()
-                            .get_str("description")
-                            .ok()
-                            .map(|str| {
-                                let expr = parse_expr(str).unwrap();
-
-                                translate_expr(&expr)
-                            })
-                            .transpose()?;
-
-                        let column_def = ColumnDef {
-                            name: column_name.to_owned(),
-                            data_type,
-                            nullable,
-                            default,
-                            unique,
-                        };
-
-                        Ok(column_def)
-                    })
-                    .collect::<Result<Vec<ColumnDef>>>()?;
-
-                let column_defs = match column_defs.len() {
-                    0 => None,
-                    _ => Some(column_defs),
-                };
-
-                let schema = Schema {
-                    table_name: collection_name.to_owned(),
-                    column_defs,
-                    indexes: vec![],
-                    engine: None,
-                };
-
-                Ok::<_, Error>(schema)
-            });
+            Ok::<_, Error>(schema)
+        });
 
         Ok(Box::pin(schemas))
     }

@@ -1195,6 +1195,7 @@ dependencies = [
  "bson",
  "chrono",
  "futures",
+ "gluesql-composite-storage",
  "gluesql-core",
  "gluesql-test-suite",
  "gluesql-utils",
