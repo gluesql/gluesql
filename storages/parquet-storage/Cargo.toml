@@ -20,6 +20,7 @@ hex = "0.4"
 thiserror = "1.0"
 parquet = "43.0.0"
 byteorder = "1.4.3"
+num-traits = "0.2.5"
 
 [dev-dependencies]
 test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.14.0" }
