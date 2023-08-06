@@ -34,14 +34,16 @@ impl Store for ParquetStorage {
                     .map_storage_err(ParquetStorageError::FileNotFound)?;
 
                 self.fetch_schema(table_name)?
-                    .map_storage_err(ParquetStorageError::TableDoesNotExist)
+                    .map_storage_err(ParquetStorageError::TableDoesNotExist(
+                        table_name.to_owned(),
+                    ))
                     .map(Some)
             })
             .filter_map(Result::transpose)
             .collect::<Result<Vec<Schema>>>()?;
 
         schemas.sort_by(|a, b| a.table_name.cmp(&b.table_name));
-
+        println!("fetch all schemas! {:?}", schemas);
         Ok(schemas)
     }
 
