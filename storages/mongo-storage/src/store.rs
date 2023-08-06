@@ -20,8 +20,8 @@ use mongodb::{
 
 use crate::{
     index,
+    row::{key::KeyIntoBson, value::IntoValue, IntoRow},
     utils::get_primary_key,
-    value::{BsonType, IntoBson, IntoBson2, IntoRow, IntoValue},
 };
 
 use {
@@ -40,7 +40,6 @@ use {
 #[async_trait(?Send)]
 impl Store for MongoStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
-        println!("fetch_schema: {}", table_name);
         self.fetch_schemas_iter(Some(table_name))
             .await?
             .next()
@@ -61,8 +60,6 @@ impl Store for MongoStorage {
     }
 
     async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<DataRow>> {
-        println!("fetch_data: {}", table_name);
-
         let column_defs = self
             .fetch_schema(table_name)
             .await?
@@ -70,24 +67,8 @@ impl Store for MongoStorage {
 
         let primary_key = column_defs.clone().map(get_primary_key).flatten();
 
-        // let filter = match primary_key.clone() {
-        //     Some(primary_key) => {
-        //         doc! { primary_key.name: target.clone().into_bson()?}
-        //     }
-        //     None => doc! { "_id": target.clone().into_bson()? },
-        // };
-        let filter = doc! { "_id": target.clone().into_bson2(primary_key.is_some())?};
+        let filter = doc! { "_id": target.clone().into_bson(primary_key.is_some())?};
 
-        // let filter = doc! { "_id": target.clone().into_bson()?};
-        println!("err1");
-
-        // let projection = column_defs.map(|x| {
-        //     x.into_iter().fold(doc! {"_id": 0}, |mut acc, cur| {
-        //         acc.extend(doc! {cur.name: 1});
-
-        //         acc
-        //     })
-        // });
         let projection = doc! {"_id": 0};
 
         let options = FindOptions::builder().projection(projection);
@@ -113,20 +94,17 @@ impl Store for MongoStorage {
                 result.map(|doc| {
                     let row = doc
                         .into_iter()
-                        .map(|(_, bson)| bson.into_value())
+                        .map(|(_, bson)| bson.into_value_schemaless())
                         .collect::<Vec<_>>();
 
                     DataRow::Vec(row)
                 })
-                // .map_storage_err()
             })
             .transpose()
             .unwrap())
     }
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
-        println!("scan_data: {}", table_name);
-        println!("err3");
         let schema = self.fetch_schema(table_name).await?;
         let column_defs = self
             .fetch_schema(table_name)
@@ -134,9 +112,8 @@ impl Store for MongoStorage {
             .and_then(|schema| schema.column_defs);
 
         let primary_key = column_defs.clone().map(get_primary_key).flatten();
-        // let projection = doc! {"_id": 0}; // TODO: optional
 
-        let options = FindOptions::builder(); //.projection(projection);
+        let options = FindOptions::builder();
         let options = match primary_key.clone() {
             Some(primary_key) => options.sort(doc! { primary_key.name: 1}).build(),
             None => options.build(),
@@ -148,7 +125,6 @@ impl Store for MongoStorage {
             .find(doc! {}, options)
             .await
             .unwrap();
-        // .map_storage_err()?;
 
         let column_types = schema.as_ref().and_then(|schema| {
             schema.column_defs.as_ref().map(|column_defs| {
@@ -164,18 +140,17 @@ impl Store for MongoStorage {
                 let doc = doc.unwrap();
 
                 match &column_types {
-                    Some(column_types) => doc.into_row2(
+                    Some(column_types) => doc.into_row(
                         column_types.into_iter().map(|data_type| *data_type),
                         primary_key.is_some(),
                     ),
                     None => {
-                        // let key = doc.get_object_id("_id").unwrap();
                         let mut iter = doc.into_iter();
                         let (_, value) = iter.next().unwrap();
                         let key_bytes = value.as_object_id().unwrap().bytes().to_vec();
                         let key = Key::Bytea(key_bytes);
                         let row = iter
-                            .map(|(key, bson)| (key, bson.into_value()))
+                            .map(|(key, bson)| (key, bson.into_value_schemaless()))
                             .collect::<HashMap<String, Value>>();
 
                         Ok((key, DataRow::Map(row)))
@@ -185,8 +160,6 @@ impl Store for MongoStorage {
             .collect::<Vec<_>>()
             .await
             .into_iter();
-
-        // let row_iter = row_iter.collect::<Vec<_>>().await.into_iter(); // TODO: should return Stream
 
         Ok(Box::new(row_iter))
     }
@@ -202,7 +175,6 @@ impl MongoStorage {
             None => doc! { "listCollections": 1 },
         };
 
-        println!("err5,6");
         let validators_list = self
             .db
             .run_command(command, None)
@@ -224,7 +196,6 @@ impl MongoStorage {
                             .and_then(|doc| doc.get_document("validator"))
                             .ok();
 
-                        println!("err7-9");
                         let collection_name = doc.get_str("name").unwrap();
 
                         Ok::<_, Error>((collection_name, validator))
@@ -234,9 +205,6 @@ impl MongoStorage {
                     .unwrap();
                 // .map_storage_err(MongoStorageError::TableDoesNotExist)?;
 
-                println!("validators: {}", validators.unwrap());
-
-                println!("collection_name: {}", collection_name);
                 let collection = self.db.collection::<Document>(collection_name);
                 let options = ListIndexesOptions::builder().batch_size(10).build();
                 let cursor = collection.list_indexes(options).await.unwrap();
@@ -266,8 +234,6 @@ impl MongoStorage {
                 //     index_model.keys
                 // })
                 // .collect::<Vec<_>>();
-
-                println!("indexes: {:#?}", indexes);
 
                 let column_defs = validators
                     .unwrap()
@@ -381,12 +347,6 @@ impl MongoStorage {
                 Ok::<_, Error>(schema)
             });
 
-        println!("fetch_schemas_iter done: {:#?}", stringify!(schemas));
         Ok(Box::pin(schemas))
     }
 }
-
-pub const B16: i64 = 2_i64.pow(16);
-pub const B8: i64 = 2_i64.pow(8);
-pub const B32: i64 = 2_i64.pow(32);
-pub const TIME: i64 = 86400000 - 1;

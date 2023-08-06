@@ -2,11 +2,11 @@ mod alter_table;
 pub mod error;
 mod function;
 mod index;
+pub mod row;
 mod store;
 mod store_mut;
 mod transaction;
 mod utils;
-mod value;
 
 use {
     error::ResultExt,
