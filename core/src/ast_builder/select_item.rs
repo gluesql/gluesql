@@ -67,11 +67,14 @@ impl<'a> TryFrom<SelectItemNode<'a>> for SelectItem {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        ast::SelectItem,
-        ast_builder::{col, SelectItemNode},
-        parse_sql::parse_select_item,
-        translate::translate_select_item,
+    use {
+        crate::{
+            ast::SelectItem,
+            ast_builder::{col, SelectItemNode},
+            parse_sql::parse_select_item,
+            translate::translate_select_item,
+        },
+        pretty_assertions::assert_eq,
     };
 
     fn test(actual: SelectItemNode, expected: &str) {

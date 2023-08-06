@@ -70,12 +70,15 @@ impl<'a> TryFrom<SelectItemList<'a>> for Vec<SelectItem> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        ast::SelectItem,
-        ast_builder::{col, expr, SelectItemList},
-        parse_sql::parse_select_items,
-        result::Result,
-        translate::translate_select_item,
+    use {
+        crate::{
+            ast::SelectItem,
+            ast_builder::{col, expr, SelectItemList},
+            parse_sql::parse_select_items,
+            result::Result,
+            translate::translate_select_item,
+        },
+        pretty_assertions::assert_eq,
     };
 
     fn test(actual: SelectItemList, expected: &str) {
