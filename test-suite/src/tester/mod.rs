@@ -7,6 +7,7 @@ use {
         store::{GStore, GStoreMut},
         translate::translate_expr,
     },
+    pretty_assertions::assert_eq,
 };
 
 pub mod macros;
@@ -145,6 +146,39 @@ pub trait Tester<T: GStore + GStoreMut> {
     async fn new(namespace: &str) -> Self;
 
     fn get_glue(&mut self) -> &mut Glue<T>;
+
+    async fn run(&mut self, sql: &str) -> Result<Payload> {
+        let glue = self.get_glue();
+
+        println!("[RUN] {}", sql);
+        let parsed = parse(sql)?;
+        let statement = translate(&parsed[0])?;
+        let statement = plan(&glue.storage, statement).await?;
+
+        glue.execute_stmt(&statement).await
+    }
+
+    async fn count(&mut self, sql: &str, expected: usize) {
+        let actual = match self.run(sql).await.unwrap() {
+            Payload::Select { rows, .. } => rows.len(),
+            Payload::Delete(num) | Payload::Update(num) => num,
+            _ => panic!("compare is only for Select, Delete and Update"),
+        };
+
+        assert_eq!(actual, expected, "[COUNT] {sql}");
+    }
+
+    async fn test(&mut self, sql: &str, expected: Result<Payload>) {
+        let actual = self.run(sql).await;
+
+        assert_eq!(actual, expected, "[TEST] {sql}");
+    }
+
+    async fn named_test(&mut self, name: &str, sql: &str, expected: Result<Payload>) {
+        let actual = self.run(sql).await;
+
+        assert_eq!(actual, expected, "[TEST] {name}");
+    }
 }
 
 #[macro_export]
@@ -154,12 +188,20 @@ macro_rules! test_case {
         where
             T: gluesql_core::store::GStore + gluesql_core::store::GStoreMut,
         {
+            #[allow(unused_variables)]
             let glue = tester.get_glue();
 
             #[allow(unused_macros)]
             macro_rules! get_glue {
                 () => {
                     glue
+                };
+            }
+
+            #[allow(unused_macros)]
+            macro_rules! get_tester {
+                () => {
+                    &mut tester
                 };
             }
 

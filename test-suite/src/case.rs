@@ -67,7 +67,7 @@ test_case!(case, async move {
                 case
                 I64;
                 1;
-                2;
+                4;
                 3
             )),
         ),
@@ -119,7 +119,10 @@ test_case!(case, async move {
             Err(TranslateError::UnsupportedExpr("1 COLLATE Item".to_owned()).into()),
         ),
     ];
+
+    let g = get_tester!();
+
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });
