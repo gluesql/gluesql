@@ -16,10 +16,9 @@ async fn test_alltypes_select() {
 
     let bytea = |input: &str| input.as_bytes().to_vec();
 
-    let ts = |datetime_str| -> NaiveDateTime {
-        let naive_datetime = NaiveDateTime::parse_from_str(datetime_str, "%Y-%m-%dT%H:%M:%S")
-            .expect("Failed to parse date time");
-        naive_datetime
+    let ts = |datetime_str| {
+        NaiveDateTime::parse_from_str(datetime_str, "%Y-%m-%dT%H:%M:%S")
+            .expect("Failed to parse date time")
     };
 
     let cases = vec![
