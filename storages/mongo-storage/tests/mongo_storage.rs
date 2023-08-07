@@ -11,11 +11,12 @@ struct MongoTester {
 impl Tester<MongoStorage> for MongoTester {
     async fn new(namespace: &str) -> Self {
         let conn_str = "mongodb://localhost:27017";
-
         let storage = MongoStorage::new(conn_str, namespace)
             .await
             .expect("MongoStorage::new");
+        storage.drop_database().await.expect("database dropped");
         let glue = Glue::new(storage);
+
         MongoTester { glue }
     }
 

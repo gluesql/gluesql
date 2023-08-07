@@ -23,20 +23,13 @@ impl MongoStorage {
     pub async fn new(conn_str: &str, db_name: &str) -> Result<Self> {
         let client_options = ClientOptions::parse(conn_str).await.map_storage_err()?;
         let client = Client::with_options(client_options).map_storage_err()?;
-
-        client
-            .database(&db_name)
-            .drop(None)
-            .await
-            .map_storage_err()?;
-        // clien
-        //     .database(&db_name).crea
-        //     .create(None)
-        //     .await
-        //     .map_storage_err()?;
-        let db = client.database(db_name); // should be by parameter
+        let db = client.database(db_name);
 
         Ok(Self { db })
+    }
+
+    pub async fn drop_database(&self) -> Result<()> {
+        self.db.drop(None).await.map_storage_err()
     }
 }
 
