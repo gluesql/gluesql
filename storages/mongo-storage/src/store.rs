@@ -222,10 +222,12 @@ impl MongoStorage {
                 .map_storage_err()?
                 .into_iter()
                 .skip(1)
-                .map(|(column_name, value)| {
-                    let nullable = value
+                .map(|(column_name, doc)| {
+                    let doc = doc
                         .as_document()
-                        .map_storage_err(MongoStorageError::InvalidDocument)?
+                        .map_storage_err(MongoStorageError::InvalidDocument)?;
+
+                    let nullable = doc
                         .get_array("bsonType")
                         .map_storage_err()?
                         .get(1)
@@ -233,54 +235,27 @@ impl MongoStorage {
                         .map(|x| x == "null")
                         .unwrap_or(false);
 
-                    let type_str = value.as_document().unwrap().get_str("title").unwrap();
-                    let a = parse_data_type(type_str).unwrap();
-                    let data_type = translate_data_type(&a).unwrap();
+                    let data_type = doc
+                        .get_str("title")
+                        .map_storage_err()
+                        .and_then(parse_data_type)
+                        .and_then(|s| translate_data_type(&s))?;
 
-                    // TODO: remove indent
-                    // let data_type = match (data_type, maximum) {
-                    //     (DataType::Int32, Some(B8)) => DataType::Int8,
-                    //     (DataType::Int32, Some(B16)) => DataType::Int16,
-                    //     (DataType::Float, Some(B32)) => DataType::Float32,
-                    //     (DataType::Date, Some(TIME)) => DataType::Time,
-                    //     // (DataType::Int32, Some(bson))
-                    //     //     if bson.as_i64().filter(|x| x == &B16).is_some() =>
-                    //     // {
-                    //     //     DataType::Int16
-                    //     // }
-                    //     // (DataType::Int32, Some(bson))
-                    //     //     if bson.as_i64().filter(|x| x == &B8).is_some() =>
-                    //     // {
-                    //     //     DataType::Int8
-                    //     // }
-                    //     // (DataType::Float, Some(bson))
-                    //     //     if bson.as_i64().filter(|x| x == &B32).is_some() =>
-                    //     // {
-                    //     //     DataType::Float32
-                    //     // }
-                    //     (data_type, _) => data_type,
-                    // };
+                    let index_name = indexes.get(column_name).and_then(|i| i.split_once("_"));
 
-                    let index_name = indexes.get(column_name);
-                    let a = index_name.and_then(|i| i.split_once("_"));
-
-                    let unique = match a {
-                        Some((_, "PK")) => Some(ColumnUniqueOption { is_primary: true }),
-                        Some((_, "UNIQUE")) => Some(ColumnUniqueOption { is_primary: false }),
+                    let unique = match index_name {
+                        Some((_, "PK")) => Some(true),
+                        Some((_, "UNIQUE")) => Some(false),
                         _ => None,
-                    };
+                    }
+                    .map(|is_primary| ColumnUniqueOption { is_primary });
 
-                    let default = value
-                        .as_document()
-                        .unwrap()
+                    let default = doc
                         .get_str("description")
-                        .ok()
-                        .map(|str| {
-                            let expr = parse_expr(str).unwrap();
-
-                            translate_expr(&expr)
-                        })
-                        .transpose()?;
+                        .map_storage_err()
+                        .map(parse_expr)
+                        .and_then(|expr| translate_expr(&expr?))
+                        .ok();
 
                     let column_def = ColumnDef {
                         name: column_name.to_owned(),
