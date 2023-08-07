@@ -9,6 +9,7 @@ pub enum UnaryOperator {
     Minus,
     Not,
     Factorial,
+    BitwiseNot,
 }
 
 impl ToSql for UnaryOperator {
@@ -18,6 +19,7 @@ impl ToSql for UnaryOperator {
             UnaryOperator::Minus => "-".to_owned(),
             UnaryOperator::Not => "NOT ".to_owned(),
             UnaryOperator::Factorial => "!".to_owned(),
+            UnaryOperator::BitwiseNot => "~".to_owned(),
         }
     }
 }
@@ -39,6 +41,8 @@ pub enum BinaryOperator {
     And,
     Or,
     Xor,
+    BitwiseAnd,
+    BitwiseShiftLeft,
 }
 
 impl ToSql for BinaryOperator {
@@ -59,6 +63,8 @@ impl ToSql for BinaryOperator {
             BinaryOperator::And => "AND".to_owned(),
             BinaryOperator::Or => "OR".to_owned(),
             BinaryOperator::Xor => "XOR".to_owned(),
+            BinaryOperator::BitwiseAnd => "&".to_owned(),
+            BinaryOperator::BitwiseShiftLeft => "<<".to_owned(),
         }
     }
 }
@@ -220,6 +226,15 @@ mod tests {
             .to_sql()
         );
         assert_eq!(
+            "1 << 2",
+            &Expr::BinaryOp {
+                left: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(1)))),
+                op: BinaryOperator::BitwiseShiftLeft,
+                right: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(2))))
+            }
+            .to_sql()
+        );
+        assert_eq!(
             r#""condition_0" AND "condition_1""#,
             &Expr::BinaryOp {
                 left: Box::new(Expr::Identifier("condition_0".to_owned())),
@@ -246,7 +261,6 @@ mod tests {
             }
             .to_sql()
         );
-
         assert_eq!(
             "+8",
             Expr::UnaryOp {
@@ -279,6 +293,25 @@ mod tests {
             Expr::UnaryOp {
                 op: UnaryOperator::Factorial,
                 expr: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(5)))),
+            }
+            .to_sql(),
+        );
+
+        assert_eq!(
+            "29 & 15",
+            &Expr::BinaryOp {
+                left: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(29)))),
+                op: BinaryOperator::BitwiseAnd,
+                right: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(15))))
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            "~1",
+            Expr::UnaryOp {
+                op: UnaryOperator::BitwiseNot,
+                expr: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(1)))),
             }
             .to_sql(),
         )

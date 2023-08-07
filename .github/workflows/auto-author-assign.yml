@@ -1,8 +1,8 @@
 name: auto-author-assign
 
 on:
-  pull_request:
-    types: [ opened, ready_for_review ]
+  pull_request_target:
+    types: [opened]
 
 permissions:
   pull-requests: write

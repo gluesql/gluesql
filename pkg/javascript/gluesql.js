@@ -1,4 +1,4 @@
-import init, { Glue } from './dist/web/gluesql_js.js';
+import init, { Glue } from './dist_web/gluesql_js.js';
 
 let loaded = false;
 
