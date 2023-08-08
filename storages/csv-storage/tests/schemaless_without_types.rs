@@ -5,6 +5,7 @@ use {
     },
     gluesql_csv_storage::CsvStorage,
     serde_json::json,
+    std::fs,
     test_suite::*,
 };
 
@@ -89,4 +90,20 @@ async fn schemaless_without_types() {
         "1984".to_owned()
     );
     assert_eq!(actual, expected);
+
+    glue.execute(
+        r#"
+        INSERT INTO Book
+        VALUES (
+            '{ "Title": "New Book Temporary", "Price": "100" }'
+        )
+        "#,
+    )
+    .await
+    .unwrap();
+    glue.execute("DELETE FROM Book WHERE Title = 'New Book Temporary'")
+        .await
+        .unwrap();
+
+    fs::remove_file(format!("{path}Book.types.csv")).unwrap_or(());
 }

@@ -16,6 +16,7 @@ use {
 impl Store for CsvStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         self.fetch_schema(table_name)
+            .map(|schema| schema.map(|(schema, _)| schema))
     }
 
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
@@ -34,6 +35,7 @@ impl Store for CsvStorage {
                     .map_storage_err(CsvStorageError::FileNotFound)?;
 
                 self.fetch_schema(table_name)?
+                    .map(|(schema, _)| schema)
                     .map_storage_err(CsvStorageError::TableDoesNotExist)
                     .map(Some)
             })

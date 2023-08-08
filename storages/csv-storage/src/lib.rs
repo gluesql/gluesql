@@ -35,7 +35,7 @@ impl CsvStorage {
         Ok(Self { path })
     }
 
-    fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
+    fn fetch_schema(&self, table_name: &str) -> Result<Option<(Schema, bool)>> {
         let schema_path = self.schema_path(table_name);
         if !schema_path.exists() {
             let data_path = self.data_path(table_name);
@@ -68,7 +68,7 @@ impl CsvStorage {
                 engine: None,
             };
 
-            return Ok(Some(schema));
+            return Ok(Some((schema, true)));
         }
 
         let mut file = File::open(&schema_path).map_storage_err()?;
@@ -80,7 +80,7 @@ impl CsvStorage {
             return Err(CsvStorageError::TableNameDoesNotMatchWithFile.into());
         }
 
-        Ok(Some(schema))
+        Ok(Some((schema, false)))
     }
 
     fn path_by(&self, table_name: &str, extension: &str) -> PathBuf {
@@ -103,29 +103,11 @@ impl CsvStorage {
         self.path_by(table_name, "types.csv")
     }
 
-    fn has_columns(&self, table_name: &str) -> Result<bool> {
-        if !self.data_path(table_name).exists() {
-            return Ok(false);
-        }
-
-        if let Some(Schema {
-            column_defs: Some(_),
-            ..
-        }) = self.fetch_schema(table_name)?
-        {
-            Ok(true)
-        } else if self.types_path(table_name).exists() {
-            Ok(false)
-        } else {
-            Ok(true)
-        }
-    }
-
     fn scan_data(&self, table_name: &str) -> Result<(Option<Vec<String>>, RowIter)> {
         let data_path = self.data_path(table_name);
-        let schema = match (self.fetch_schema(table_name)?, data_path.exists()) {
+        let (schema, generated) = match (self.fetch_schema(table_name)?, data_path.exists()) {
             (None, _) | (_, false) => return Ok((None, Box::new(std::iter::empty()))),
-            (Some(schema), true) => schema,
+            (Some(v), true) => v,
         };
 
         let mut data_rdr = csv::Reader::from_path(data_path).map_storage_err()?;
@@ -250,7 +232,7 @@ impl CsvStorage {
                     })
             };
 
-            Ok((Some(columns), Box::new(rows)))
+            Ok((generated.then_some(columns), Box::new(rows)))
         }
     }
 }

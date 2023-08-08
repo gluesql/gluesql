@@ -66,7 +66,9 @@ impl StoreMut for CsvStorage {
     }
 
     async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
-        if self.has_columns(table_name)? {
+        let (columns, prev_rows) = self.scan_data(table_name)?;
+
+        if columns.is_some() {
             let data_path = self.data_path(table_name);
             let mut wtr = OpenOptions::new()
                 .append(true)
@@ -82,13 +84,14 @@ impl StoreMut for CsvStorage {
 
             Ok(())
         } else {
-            let rows = rows
+            let rows = prev_rows
+                .collect::<Result<Vec<_>>>()?
                 .into_iter()
-                .enumerate()
-                .map(|(i, row)| (Key::U64(i as u64), row))
+                .map(|(_, row)| row)
+                .chain(rows)
                 .collect();
 
-            self.insert_data(table_name, rows).await
+            self.write(table_name, columns, rows)
         }
     }
 
