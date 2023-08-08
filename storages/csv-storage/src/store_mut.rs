@@ -147,14 +147,9 @@ impl CsvStorage {
             return Ok(());
         }
 
-        let mut types_wtr = columns
-            .is_none()
-            .then(|| {
-                File::create(self.types_path(table_name))
-                    .map_storage_err()
-                    .map(Writer::from_writer)
-            })
-            .transpose()?;
+        let mut types_wtr = File::create(self.types_path(table_name))
+            .map(Writer::from_writer)
+            .map_storage_err()?;
 
         // schemaless
         let mut columns = BTreeSet::new();
@@ -171,42 +166,27 @@ impl CsvStorage {
         }
 
         data_wtr.write_record(&columns).map_storage_err()?;
-        if let Some(types_wtr) = &mut types_wtr {
-            types_wtr.write_record(&columns).map_storage_err()?;
-        }
+        types_wtr.write_record(&columns).map_storage_err()?;
 
         for row in &rows {
-            if let Some(types_wtr) = &mut types_wtr {
-                let (row, data_types): (Vec<_>, Vec<_>) = columns
-                    .iter()
-                    .map(|key| {
-                        row.get(key.as_str())
-                            .map(|value| {
-                                let data_type = value
-                                    .get_type()
-                                    .map(|t| t.to_string())
-                                    .unwrap_or("NULL".to_owned());
+            let (row, data_types): (Vec<_>, Vec<_>) = columns
+                .iter()
+                .map(|key| {
+                    row.get(key.as_str())
+                        .map(|value| {
+                            let data_type = value
+                                .get_type()
+                                .map(|t| t.to_string())
+                                .unwrap_or("NULL".to_owned());
 
-                                (String::from(value), data_type)
-                            })
-                            .unwrap_or(("NULL".to_owned(), "".to_owned()))
-                    })
-                    .unzip();
+                            (String::from(value), data_type)
+                        })
+                        .unwrap_or(("NULL".to_owned(), "".to_owned()))
+                })
+                .unzip();
 
-                data_wtr.write_record(&row).map_storage_err()?;
-                types_wtr.write_record(&data_types).map_storage_err()?;
-            } else {
-                let row = columns
-                    .iter()
-                    .map(|key| {
-                        row.get(key.as_str())
-                            .map(String::from)
-                            .unwrap_or("NULL".to_owned())
-                    })
-                    .collect::<Vec<_>>();
-
-                data_wtr.write_record(&row).map_storage_err()?;
-            }
+            data_wtr.write_record(&row).map_storage_err()?;
+            types_wtr.write_record(&data_types).map_storage_err()?;
         }
 
         Ok(())
