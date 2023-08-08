@@ -23,7 +23,7 @@ async fn schemaless_without_types() {
         .next()
         .unwrap();
     let expected = select_map![
-        json!( {
+        json!({
             "Title": "To Kill a Mockingbird",
             "Author": "Harper Lee",
             "Genre": "",
@@ -31,7 +31,7 @@ async fn schemaless_without_types() {
             "Publisher": "J. B. Lippincott & Co.",
             "Price": ""
         }),
-        json!( {
+        json!({
             "Title": "The Great Gatsby",
             "Author": "F. Scott Fitzgerald",
             "Genre": "Classic",
@@ -39,7 +39,7 @@ async fn schemaless_without_types() {
             "Publisher": "",
             "Price": "9.99"
         }),
-        json!( {
+        json!({
             "Title": "1984",
             "Author": "George Orwell",
             "Genre": "Dystopian",
@@ -47,7 +47,7 @@ async fn schemaless_without_types() {
             "Publisher": "Secker & Warburg",
             "Price": "7.99"
         }),
-        json!( {
+        json!({
             "Title": "The Catcher in the Rye",
             "Author": "J. D. Salinger",
             "Genre": "Coming-of-age",
@@ -55,7 +55,7 @@ async fn schemaless_without_types() {
             "Publisher": "Little, Brown and Company",
             "Price": "6.99"
         }),
-        json!( {
+        json!({
             "Title": "Pride and Prejudice",
             "Author": "Jane Austen",
             "Genre": "Romance",
@@ -101,6 +101,52 @@ async fn schemaless_without_types() {
     )
     .await
     .unwrap();
+
+    let actual = glue
+        .execute("SELECT * FROM Book WHERE Price = '100'")
+        .await
+        .unwrap()
+        .into_iter()
+        .next()
+        .unwrap();
+    let expected = select_map![json!({
+        "Title": "New Book Temporary",
+        "Price": "100"
+    })];
+    assert_eq!(actual, expected);
+
+    glue.execute(
+        r#"
+        UPDATE Book SET Year = '1925' WHERE Title = 'New Book Temporary'
+        "#,
+    )
+    .await
+    .unwrap();
+
+    let actual = glue
+        .execute("SELECT * FROM Book WHERE Year = '1925'")
+        .await
+        .unwrap()
+        .into_iter()
+        .next()
+        .unwrap();
+    let expected = select_map![
+        json!({
+            "Title": "The Great Gatsby",
+            "Author": "F. Scott Fitzgerald",
+            "Genre": "Classic",
+            "Year": "1925",
+            "Publisher": "",
+            "Price": "9.99"
+        }),
+        json!({
+            "Title": "New Book Temporary",
+            "Year": "1925",
+            "Price": "100"
+        })
+    ];
+    assert_eq!(actual, expected);
+
     glue.execute("DELETE FROM Book WHERE Title = 'New Book Temporary'")
         .await
         .unwrap();
