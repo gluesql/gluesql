@@ -1,7 +1,10 @@
 use {
-    gluesql_core::prelude::{
-        Glue,
-        Value::{self, Null, Str, I64},
+    gluesql_core::{
+        error::FetchError,
+        prelude::{
+            Glue,
+            Value::{self, Null, Str, I64},
+        },
     },
     gluesql_csv_storage::CsvStorage,
     serde_json::json,
@@ -82,5 +85,33 @@ async fn schemaless() {
         .next()
         .unwrap();
     let expected = select!(Name Str; "Jane".to_owned());
+    assert_eq!(actual, expected);
+}
+
+#[tokio::test]
+async fn schemaless_create_and_drop_table() {
+    let path = "./tests/samples/";
+    let storage = CsvStorage::new(path).unwrap();
+    let mut glue = Glue::new(storage);
+
+    glue.execute("CREATE TABLE Foo").await.unwrap();
+    glue.execute(r#"INSERT INTO Foo VALUES ('{ "a": 1 }')"#)
+        .await
+        .unwrap();
+
+    let actual = glue
+        .execute("SELECT * FROM Foo")
+        .await
+        .unwrap()
+        .into_iter()
+        .next()
+        .unwrap();
+    let expected = select_map![json!({ "a": 1 })];
+    assert_eq!(actual, expected);
+
+    glue.execute("DROP TABLE Foo").await.unwrap();
+
+    let actual = glue.execute("SELECT * FROM Foo").await;
+    let expected = Err(FetchError::TableNotFound("Foo".to_owned()).into());
     assert_eq!(actual, expected);
 }
