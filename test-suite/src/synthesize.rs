@@ -1,6 +1,8 @@
 use {crate::*, gluesql_core::prelude::*, Value::*};
 
 test_case!(synthesize, async move {
+    let g = get_tester!();
+
     let create_sql = "
         CREATE TABLE TableA (
             id INTEGER,
@@ -9,7 +11,7 @@ test_case!(synthesize, async move {
         );
     ";
 
-    run!(create_sql);
+    g.run(create_sql).await.unwrap();
 
     let insert_sqls = [
         "
@@ -24,7 +26,7 @@ test_case!(synthesize, async move {
     ];
 
     for insert_sql in insert_sqls {
-        run!(insert_sql);
+        g.run(insert_sql).await.unwrap();
     }
 
     let test_cases = [
@@ -61,11 +63,11 @@ test_case!(synthesize, async move {
     ];
 
     for (num, sql) in test_cases {
-        count!(num, sql);
+        g.count(sql, num).await;
     }
 
     for insert_sql in insert_sqls {
-        run!(insert_sql);
+        g.run(insert_sql).await.unwrap();
     }
 
     let test_cases = [
@@ -81,6 +83,6 @@ test_case!(synthesize, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, Ok(expected));
+        g.test(sql, Ok(expected)).await;
     }
 });

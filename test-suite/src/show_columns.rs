@@ -4,7 +4,9 @@ use {
 };
 
 test_case!(show_columns, async move {
-    run!(
+    let g = get_tester!();
+
+    g.run(
         "
         CREATE TABLE mytable (
             id8 INT8,
@@ -21,10 +23,12 @@ test_case!(show_columns, async move {
             hash   Map,
             glist  List,
         );
-    "
-    );
+    ",
+    )
+    .await
+    .unwrap();
 
-    test!(
+    g.test(
         r#"Show columns from mytable"#,
         Ok(Payload::ShowColumns(vec![
             ("id8".to_owned(), DataType::Int8),
@@ -39,12 +43,14 @@ test_case!(show_columns, async move {
             ("tstamp".to_owned(), DataType::Timestamp),
             ("uid".to_owned(), DataType::Uuid),
             ("hash".to_owned(), DataType::Map),
-            ("glist".to_owned(), DataType::List)
-        ]))
-    );
+            ("glist".to_owned(), DataType::List),
+        ])),
+    )
+    .await;
 
-    test!(
+    g.test(
         r#"Show columns from mytable1"#,
-        Err(ExecuteError::TableNotFound("mytable1".to_owned()).into())
-    );
+        Err(ExecuteError::TableNotFound("mytable1".to_owned()).into()),
+    )
+    .await;
 });

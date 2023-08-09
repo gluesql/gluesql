@@ -4,6 +4,8 @@ use {
 };
 
 test_case!(nested_select, async move {
+    let g = get_tester!();
+
     let create_sqls: [&str; 2] = [
         "
         CREATE TABLE Player (
@@ -21,7 +23,7 @@ test_case!(nested_select, async move {
     ];
 
     for sql in create_sqls {
-        run!(sql);
+        g.run(sql).await.unwrap();
     }
 
     let insert_sqls = [
@@ -54,7 +56,7 @@ test_case!(nested_select, async move {
     ];
 
     for insert_sql in insert_sqls {
-        run!(insert_sql);
+        g.run(insert_sql).await.unwrap();
     }
 
     let select_sqls = [
@@ -77,7 +79,7 @@ test_case!(nested_select, async move {
         (9, "SELECT * FROM Request WHERE user_id IN (SELECT id FROM Player WHERE name IN ('Taehoon', 'Hwan'));"),
     ];
     for (num, sql) in select_sqls {
-        count!(num, sql);
+        g.count(sql, num).await;
     }
 
     let test_cases = [
@@ -98,6 +100,6 @@ test_case!(nested_select, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

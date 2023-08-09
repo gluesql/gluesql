@@ -7,6 +7,8 @@ use {
 };
 
 test_case!(custom, async move {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "CREATE FUNCTION add_none()",
@@ -119,6 +121,6 @@ test_case!(custom, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

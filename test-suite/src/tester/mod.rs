@@ -168,6 +168,12 @@ pub trait Tester<T: GStore + GStoreMut> {
         assert_eq!(actual, expected, "[COUNT] {sql}");
     }
 
+    async fn type_match(&mut self, sql: &str, expected: &[DataType]) {
+        let actual = self.run(sql).await.unwrap();
+
+        type_match(expected, Ok(actual));
+    }
+
     async fn test(&mut self, sql: &str, expected: Result<Payload>) {
         let actual = self.run(sql).await;
 

@@ -7,6 +7,8 @@ use {
 };
 
 test_case!(column_alias, async move {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "CREATE TABLE InnerTable (
@@ -145,7 +147,8 @@ test_case!(column_alias, async move {
             Err(FetchError::TooManyColumnAliases("Derived".into(), 2, 3).into()),
         ),
     ];
+
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

@@ -1,16 +1,20 @@
 use crate::*;
 
 test_case!(ordering, async move {
-    run!(
+    let g = get_tester!();
+
+    g.run(
         "
         CREATE TABLE Operator (
             id INTEGER,
             name TEXT,
         );
-    "
-    );
-    run!("DELETE FROM Operator");
-    run!(
+    ",
+    )
+    .await
+    .unwrap();
+    g.run("DELETE FROM Operator").await.unwrap();
+    g.run(
         "
         INSERT INTO Operator (id, name) VALUES
             (1, 'Abstract'),
@@ -18,8 +22,10 @@ test_case!(ordering, async move {
             (3,     'July'),
             (4,    'Romeo'),
             (5,    'Trade');
-    "
-    );
+    ",
+    )
+    .await
+    .unwrap();
 
     let test_cases = [
         (1, "SELECT * FROM Operator WHERE id < 2;"),
@@ -62,6 +68,6 @@ test_case!(ordering, async move {
     ];
 
     for (num, sql) in test_cases {
-        count!(num, sql);
+        g.count(sql, num).await;
     }
 });

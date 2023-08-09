@@ -8,6 +8,8 @@ use {
 };
 
 test_case!(default, async move {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "CREATE TABLE Test (
@@ -41,7 +43,7 @@ test_case!(default, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, Ok(expected));
+        g.test(sql, Ok(expected)).await;
     }
 
     let stateless_function_test_cases = [
@@ -63,10 +65,10 @@ test_case!(default, async move {
     ];
 
     for (sql, expected) in stateless_function_test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 
-    test!(
+    g.test(
         "
         CREATE TABLE TestExpr (
             id INTEGER,
@@ -77,19 +79,23 @@ test_case!(default, async move {
             flag3 BOOLEAN DEFAULT 10 BETWEEN 1 AND 2,
             flag4 BOOLEAN DEFAULT (1 IS NULL OR NULL IS NOT NULL)
         )",
-        Ok(Payload::Create)
-    );
+        Ok(Payload::Create),
+    )
+    .await;
 
-    run!("INSERT INTO TestExpr (id) VALUES (1);");
+    g.run("INSERT INTO TestExpr (id) VALUES (1);")
+        .await
+        .unwrap();
 
     let d = |year: i32, month: u32, day: u32| NaiveDate::from_ymd_opt(year, month, day).unwrap();
 
-    test!(
+    g.test(
         "SELECT * FROM TestExpr",
         Ok(select!(
             id  | date          | num | flag | flag2 | flag3 | flag4;
             I64 | Date          | I64 | Bool | Bool  | Bool  | Bool;
             1     d(2020, 1, 1)   2     true   true    false   false
-        ))
-    );
+        )),
+    )
+    .await;
 });
