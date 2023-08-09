@@ -1,29 +1,34 @@
 use {crate::*, gluesql_core::prelude::*};
 
 test_case!(dictionary, async move {
+    let g = get_tester!();
+
     let tables = |v: Vec<&str>| {
         Ok(Payload::ShowVariable(PayloadVariable::Tables(
             v.into_iter().map(ToOwned::to_owned).collect(),
         )))
     };
 
-    run!("CREATE TABLE Garlic (id INTEGER);");
-    test!("SHOW TABLES;", tables(vec!["Garlic"]));
+    g.run("CREATE TABLE Garlic (id INTEGER);").await.unwrap();
+    g.test("SHOW TABLES;", tables(vec!["Garlic"])).await;
 
-    run!("BEGIN;");
-    test!("SHOW TABLES;", tables(vec!["Garlic"]));
+    g.run("BEGIN;").await.unwrap();
+    g.test("SHOW TABLES;", tables(vec!["Garlic"])).await;
 
-    run!("CREATE TABLE Noodle (id INTEGER);");
-    test!("SHOW TABLES;", tables(vec!["Garlic", "Noodle"]));
+    g.run("CREATE TABLE Noodle (id INTEGER);").await.unwrap();
+    g.test("SHOW TABLES;", tables(vec!["Garlic", "Noodle"]))
+        .await;
 
-    run!("ROLLBACK;");
-    test!("SHOW TABLES;", tables(vec!["Garlic"]));
+    g.run("ROLLBACK;").await.unwrap();
+    g.test("SHOW TABLES;", tables(vec!["Garlic"])).await;
 
-    run!("BEGIN;");
-    run!("CREATE TABLE Apple (id INTEGER);");
-    run!("CREATE TABLE Rice (id INTEGER);");
-    test!("SHOW TABLES;", tables(vec!["Apple", "Garlic", "Rice"]));
+    g.run("BEGIN;").await.unwrap();
+    g.run("CREATE TABLE Apple (id INTEGER);").await.unwrap();
+    g.run("CREATE TABLE Rice (id INTEGER);").await.unwrap();
+    g.test("SHOW TABLES;", tables(vec!["Apple", "Garlic", "Rice"]))
+        .await;
 
-    run!("COMMIT;");
-    test!("SHOW TABLES;", tables(vec!["Apple", "Garlic", "Rice"]));
+    g.run("COMMIT;").await.unwrap();
+    g.test("SHOW TABLES;", tables(vec!["Apple", "Garlic", "Rice"]))
+        .await;
 });

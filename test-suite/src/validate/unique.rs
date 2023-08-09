@@ -4,40 +4,40 @@ use {
 };
 
 test_case!(unique, async move {
-    run!(
+    let g = get_tester!();
+
+    let queries = [
         r#"
-CREATE TABLE TestA (
-    id INTEGER UNIQUE,
-    num INT
-)"#
-    );
-
-    run!(
+        CREATE TABLE TestA (
+            id INTEGER UNIQUE,
+            num INT
+        )
+        "#,
         r#"
-CREATE TABLE TestB (
-    id INTEGER UNIQUE,
-    num INT UNIQUE
-)"#
-    );
-
-    run!(
+        CREATE TABLE TestB (
+            id INTEGER UNIQUE,
+            num INT UNIQUE
+        )
+        "#,
         r#"
-CREATE TABLE TestC (
-    id INTEGER NULL UNIQUE,
-    num INT
-)"#
-    );
+        CREATE TABLE TestC (
+            id INTEGER NULL UNIQUE,
+            num INT
+        )
+        "#,
+        "INSERT INTO TestA VALUES (1, 1)",
+        "INSERT INTO TestA VALUES (2, 1), (3, 1)",
+        "INSERT INTO TestB VALUES (1, 1)",
+        "INSERT INTO TestB VALUES (2, 2), (3, 3)",
+        "INSERT INTO TestC VALUES (NULL, 1)",
+        "INSERT INTO TestC VALUES (2, 2), (NULL, 3)",
+        "UPDATE TestC SET id = 1 WHERE num = 1",
+        "UPDATE TestC SET id = NULL WHERE num = 1",
+    ];
 
-    run!("INSERT INTO TestA VALUES (1, 1)");
-    run!("INSERT INTO TestA VALUES (2, 1), (3, 1)");
-
-    run!("INSERT INTO TestB VALUES (1, 1)");
-    run!("INSERT INTO TestB VALUES (2, 2), (3, 3)");
-
-    run!("INSERT INTO TestC VALUES (NULL, 1)");
-    run!("INSERT INTO TestC VALUES (2, 2), (NULL, 3)");
-    run!("UPDATE TestC SET id = 1 WHERE num = 1");
-    run!("UPDATE TestC SET id = NULL WHERE num = 1");
+    for query in queries {
+        g.run(query).await.unwrap();
+    }
 
     let error_cases = [
         (
@@ -83,6 +83,6 @@ CREATE TABLE TestC (
     ];
 
     for (sql, error) in error_cases {
-        test!(sql, Err(error));
+        g.test(sql, Err(error)).await;
     }
 });

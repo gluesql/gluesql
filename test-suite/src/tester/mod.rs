@@ -185,6 +185,20 @@ pub trait Tester<T: GStore + GStoreMut> {
 
         assert_eq!(actual, expected, "[TEST] {name}");
     }
+
+    async fn test_idx(&mut self, sql: &str, expected: Result<Payload>, indexes: Vec<IndexItem>) {
+        let glue = self.get_glue();
+
+        let parsed = parse(sql).unwrap();
+        let statement = translate(&parsed[0]).unwrap();
+        let statement = plan(&glue.storage, statement).await.unwrap();
+
+        test_indexes(&statement, Some(indexes));
+
+        let actual = glue.execute_stmt(&statement).await;
+
+        assert_eq!(actual, expected, "[TEST IDX] {sql}");
+    }
 }
 
 #[macro_export]
