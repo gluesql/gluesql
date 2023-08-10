@@ -333,7 +333,7 @@ test_case!(basic, async move {
 
     g.test(
         "CREATE INDEX idx_wow On Test (a.b)",
-        Err(AlterError::UnsupportedIndexExpr(expr!("a.b")).into()),
+        Err(AlterError::UnsupportedIndexExpr(expr("a.b")).into()),
     )
     .await;
 

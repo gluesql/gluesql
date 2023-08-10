@@ -97,7 +97,7 @@ CREATE TABLE Test (
     // check indexes working
     g.test(
         "CREATE INDEX idx_literal ON Test (100)",
-        Err(AlterError::IdentifierNotFound(expr!("100")).into()),
+        Err(AlterError::IdentifierNotFound(expr("100")).into()),
     )
     .await;
 

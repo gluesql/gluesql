@@ -42,6 +42,8 @@ test_case!(log2, async move {
 });
 
 test_case!(log10, async move {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "SELECT
@@ -73,11 +75,13 @@ test_case!(log10, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });
 
 test_case!(ln, async move {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "SELECT
@@ -106,11 +110,13 @@ test_case!(ln, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });
 
 test_case!(log, async move {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "SELECT
@@ -150,11 +156,13 @@ test_case!(log, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });
 
 test_case!(exp, async move {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "SELECT
@@ -183,6 +191,6 @@ test_case!(exp, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

@@ -60,7 +60,7 @@ test_case!(default, async move {
         ),
         (
             "INSERT INTO FunctionTest VALUES (GENERATE_UUID(), (SELECT id FROM Foo))",
-            Err(EvaluateError::UnsupportedStatelessExpr(expr!("(SELECT id FROM Foo)")).into()),
+            Err(EvaluateError::UnsupportedStatelessExpr(expr("(SELECT id FROM Foo)")).into()),
         ),
     ];
 

@@ -79,7 +79,7 @@ test_case!(create_table, async move {
         ),
         (
             "CREATE TABLE Gluery (id INTEGER DEFAULT (SELECT id FROM Wow))",
-            Err(EvaluateError::UnsupportedStatelessExpr(expr!("(SELECT id FROM Wow)")).into()),
+            Err(EvaluateError::UnsupportedStatelessExpr(expr("(SELECT id FROM Wow)")).into()),
         ),
         (
             // Create schema only

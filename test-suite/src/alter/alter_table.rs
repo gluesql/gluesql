@@ -105,7 +105,7 @@ test_case!(alter_table_add_drop, async move {
         (
             "ALTER TABLE Foo ADD COLUMN something INTEGER DEFAULT (SELECT id FROM Bar LIMIT 1)",
             Err(
-                EvaluateError::UnsupportedStatelessExpr(expr!("(SELECT id FROM Bar LIMIT 1)"))
+                EvaluateError::UnsupportedStatelessExpr(expr("(SELECT id FROM Bar LIMIT 1)"))
                     .into(),
             ),
         ),
