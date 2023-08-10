@@ -4,16 +4,20 @@ use {
 };
 
 test_case!(interval, async move {
-    run!(
+    let g = get_tester!();
+
+    g.run(
         "
 CREATE TABLE IntervalLog (
     id INTEGER,
     interval1 INTERVAL,
     interval2 INTERVAL,
-)"
-    );
+)",
+    )
+    .await
+    .unwrap();
 
-    run!(
+    g.run(
         "
 INSERT INTO IntervalLog VALUES
     (1, INTERVAL '1-2' YEAR TO MONTH,         INTERVAL 30 MONTH),
@@ -23,10 +27,12 @@ INSERT INTO IntervalLog VALUES
     (5, INTERVAL '3 14:00:00' DAY TO SECOND,  INTERVAL '3 12:30:12.1324' DAY TO SECOND),
     (6, INTERVAL '12:00' HOUR TO MINUTE,      INTERVAL '-12:30:12' HOUR TO SECOND),
     (7, INTERVAL '-1000-11' YEAR TO MONTH,    INTERVAL '-30:11' MINUTE TO SECOND);
-"
-    );
+",
+    )
+    .await
+    .unwrap();
 
-    test!(
+    g.test(
         "SELECT * FROM IntervalLog;",
         Ok(select!(
             id  | interval1           | interval2
@@ -39,9 +45,9 @@ INSERT INTO IntervalLog VALUES
             6     I::hours(12)          I::seconds(-(12 * 3600 + 30 * 60 + 12));
             7     I::months(-12_011)    I::seconds(-(30 * 60 + 11))
         ))
-    );
+    ).await;
 
-    test!(
+    g.test(
         "SELECT
             id,
             interval1 * 2 AS i1,
@@ -51,10 +57,11 @@ INSERT INTO IntervalLog VALUES
             id  | i1            | i2
             I64 | Interval      | Interval;
             1     I::months(28)   I::months(66)
-        ))
-    );
+        )),
+    )
+    .await;
 
-    test!(
+    g.test(
         "SELECT
             id,
             interval1 / 3 AS i1,
@@ -65,61 +72,72 @@ INSERT INTO IntervalLog VALUES
             id  | i1         | i2           | i3
             I64 | Interval   | Interval     | Interval;
             2     I::days(4)   I::hours(34)   I::minutes(1)
-        ))
-    );
+        )),
+    )
+    .await;
 
-    test!(
+    g.test(
         "INSERT INTO IntervalLog VALUES (1, INTERVAL '20:00' MINUTE TO HOUR, INTERVAL '1-2' YEAR TO MONTH)",
         Err(IntervalError::UnsupportedRange("Minute".to_owned(), "Hour".to_owned()).into())
-    );
+    ).await;
 
-    test!(
+    g.test(
         "SELECT INTERVAL '1' YEAR + INTERVAL '1' HOUR FROM IntervalLog;",
-        Err(IntervalError::AddBetweenYearToMonthAndHourToSecond.into())
-    );
+        Err(IntervalError::AddBetweenYearToMonthAndHourToSecond.into()),
+    )
+    .await;
 
-    test!(
+    g.test(
         "SELECT INTERVAL '1' YEAR - INTERVAL '1' HOUR FROM IntervalLog;",
-        Err(IntervalError::SubtractBetweenYearToMonthAndHourToSecond.into())
-    );
+        Err(IntervalError::SubtractBetweenYearToMonthAndHourToSecond.into()),
+    )
+    .await;
 
-    test!(
+    g.test(
         "SELECT INTERVAL '1.4' YEAR FROM IntervalLog;",
-        Err(IntervalError::FailedToParseInteger("1.4".to_owned()).into())
-    );
+        Err(IntervalError::FailedToParseInteger("1.4".to_owned()).into()),
+    )
+    .await;
 
-    test!(
+    g.test(
         "SELECT INTERVAL '1.4ab' HOUR FROM IntervalLog;",
-        Err(IntervalError::FailedToParseDecimal("1.4ab".to_owned()).into())
-    );
+        Err(IntervalError::FailedToParseDecimal("1.4ab".to_owned()).into()),
+    )
+    .await;
 
-    test!(
+    g.test(
         "SELECT INTERVAL '111:34' HOUR TO MINUTE FROM IntervalLog;",
-        Err(IntervalError::FailedToParseTime("111:34".to_owned()).into())
-    );
+        Err(IntervalError::FailedToParseTime("111:34".to_owned()).into()),
+    )
+    .await;
 
-    test!(
+    g.test(
         "SELECT INTERVAL '111' YEAR TO MONTH FROM IntervalLog;",
-        Err(IntervalError::FailedToParseYearToMonth("111".to_owned()).into())
-    );
+        Err(IntervalError::FailedToParseYearToMonth("111".to_owned()).into()),
+    )
+    .await;
 
-    test!(
+    g.test(
         "SELECT INTERVAL '111' DAY TO HOUR FROM IntervalLog;",
-        Err(IntervalError::FailedToParseDayToHour("111".to_owned()).into())
-    );
+        Err(IntervalError::FailedToParseDayToHour("111".to_owned()).into()),
+    )
+    .await;
 
-    test!(
+    g.test(
         "SELECT INTERVAL '111' DAY TO HOUR FROM IntervalLog;",
-        Err(IntervalError::FailedToParseDayToHour("111".to_owned()).into())
-    );
+        Err(IntervalError::FailedToParseDayToHour("111".to_owned()).into()),
+    )
+    .await;
 
-    test!(
+    g.test(
         "SELECT INTERVAL '111' DAY TO MINUTE FROM IntervalLog;",
-        Err(IntervalError::FailedToParseDayToMinute("111".to_owned()).into())
-    );
+        Err(IntervalError::FailedToParseDayToMinute("111".to_owned()).into()),
+    )
+    .await;
 
-    test!(
+    g.test(
         "SELECT INTERVAL '111' DAY TO Second FROM IntervalLog;",
-        Err(IntervalError::FailedToParseDayToSecond("111".to_owned()).into())
-    );
+        Err(IntervalError::FailedToParseDayToSecond("111".to_owned()).into()),
+    )
+    .await;
 });

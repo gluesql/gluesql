@@ -11,6 +11,8 @@ use {
 };
 
 test_case!(bytea, async move {
+    let g = get_tester!();
+
     let bytea = |v| hex::decode(v).unwrap();
 
     let test_cases = [
@@ -48,6 +50,6 @@ test_case!(bytea, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

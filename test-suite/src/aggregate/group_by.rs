@@ -1,7 +1,9 @@
 use {crate::*, gluesql_core::prelude::Value::*};
 
 test_case!(group_by, async move {
-    run!(
+    let g = get_tester!();
+
+    g.run(
         "
         CREATE TABLE Item (
             id INTEGER,
@@ -9,9 +11,11 @@ test_case!(group_by, async move {
             city TEXT,
             ratio FLOAT,
         );
-    "
-    );
-    run!(
+    ",
+    )
+    .await
+    .unwrap();
+    g.run(
         "
         INSERT INTO Item (id, quantity, city, ratio) VALUES
             (1,   10,   'Seoul',  0.2),
@@ -20,8 +24,10 @@ test_case!(group_by, async move {
             (3,   30, 'Daejeon',  0.2),
             (4,   11,   'Seoul',  1.1),
             (5,   24, 'Seattle', 6.11);
-    "
-    );
+    ",
+    )
+    .await
+    .unwrap();
     let test_cases = [
         (
             "SELECT id, COUNT(*) FROM Item GROUP BY id",
@@ -91,14 +97,16 @@ test_case!(group_by, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, Ok(expected));
+        g.test(sql, Ok(expected)).await;
     }
 
-    run!("CREATE TABLE Sub (id INTEGER);");
-    run!("INSERT INTO Sub VALUES (101), (102), (103), (104), (105);");
-    test! {
-        name: "HAVING - nested select context handling edge case",
-        sql: "
+    g.run("CREATE TABLE Sub (id INTEGER);").await.unwrap();
+    g.run("INSERT INTO Sub VALUES (101), (102), (103), (104), (105);")
+        .await
+        .unwrap();
+    g.named_test(
+        "HAVING - nested select context handling edge case",
+        "
             SELECT id
             FROM Sub
             WHERE (id - 100) IN (
@@ -107,6 +115,7 @@ test_case!(group_by, async move {
                 GROUP BY id
                 HAVING id <= 3
             )",
-        expected: Ok(select!(id I64; 101; 102; 103))
-    };
+        Ok(select!(id I64; 101; 102; 103)),
+    )
+    .await;
 });
