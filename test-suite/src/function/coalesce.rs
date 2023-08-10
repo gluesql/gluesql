@@ -1,9 +1,12 @@
-use gluesql_core::executor::EvaluateError;
-
-use {crate::*, gluesql_core::prelude::Value::*};
+use {
+    crate::*,
+    gluesql_core::{error::EvaluateError, prelude::Value::*},
+};
 
 test_case!(coalesce, async move {
-    test!(
+    let g = get_tester!();
+
+    g.test(
         // COALESCE does not allow no arguments
         "SELECT COALESCE() AS coalesce",
         Err(EvaluateError::FunctionRequiresMoreArguments {
@@ -11,37 +14,41 @@ test_case!(coalesce, async move {
             required_minimum: 1,
             found: 0,
         }
-        .into())
-    );
+        .into()),
+    )
+    .await;
 
-    test!(
+    g.test(
         "SELECT COALESCE(NULL) AS coalesce",
         Ok(select_with_null!(
             coalesce;
             Null
-        ))
-    );
+        )),
+    )
+    .await;
 
-    test!(
+    g.test(
         "SELECT COALESCE(NULL, 42) AS coalesce",
         Ok(select!(
             coalesce
             I64;
             42
-        ))
-    );
+        )),
+    )
+    .await;
 
-    test!(
+    g.test(
         // Test subqueries in COALESCE
         "SELECT COALESCE((SELECT NULL), (SELECT 42)) as coalesce",
         Ok(select!(
             coalesce
             I64;
             42
-        ))
-    );
+        )),
+    )
+    .await;
 
-    test!(
+    g.test(
         // Test nested COALESCE
         "SELECT COALESCE(
             COALESCE(NULL),
@@ -51,59 +58,65 @@ test_case!(coalesce, async move {
             coalesce
             Str;
             "Answer to the Ultimate Question of Life".to_owned()
-        ))
-    );
+        )),
+    )
+    .await;
 
-    test!(
+    g.test(
         // Test COALESCE with non-NULL value as first argument
         "SELECT COALESCE('Hitchhiker', NULL) AS coalesce",
         Ok(select!(
             coalesce
             Str;
             "Hitchhiker".to_owned()
-        ))
-    );
+        )),
+    )
+    .await;
 
-    test!(
+    g.test(
         // Test COALESCE with all NULL arguments
         "SELECT COALESCE(NULL, NULL, NULL) AS coalesce",
         Ok(select_with_null!(
             coalesce;
             Null
-        ))
-    );
+        )),
+    )
+    .await;
 
-    test!(
+    g.test(
         // Test COALESCE with integer arguments
         "SELECT COALESCE(NULL, 42, 84) AS coalesce",
         Ok(select!(
             coalesce
             I64;
             42
-        ))
-    );
+        )),
+    )
+    .await;
 
-    test!(
+    g.test(
         // Test COALESCE with float arguments
         "SELECT COALESCE(NULL, 1.23, 4.56) AS coalesce",
         Ok(select!(
             coalesce
             F64;
             1.23
-        ))
-    );
+        )),
+    )
+    .await;
 
-    test!(
+    g.test(
         // Test COALESCE with boolean arguments
         "SELECT COALESCE(NULL, TRUE, FALSE) AS coalesce",
         Ok(select!(
             coalesce
             Bool;
             true
-        ))
-    );
+        )),
+    )
+    .await;
 
-    test!(
+    g.test(
         // Test invalid expression in COALESCE
         "SELECT COALESCE(NULL, COALESCE());",
         Err(EvaluateError::FunctionRequiresMoreArguments {
@@ -111,10 +124,11 @@ test_case!(coalesce, async move {
             required_minimum: 1,
             found: 0,
         }
-        .into())
-    );
+        .into()),
+    )
+    .await;
 
-    run!(
+    g.run(
         "
         CREATE TABLE TestCoalesce (
             id INTEGER,
@@ -122,9 +136,11 @@ test_case!(coalesce, async move {
             integer_value INTEGER NULL,
             float_value FLOAT NULL,
             boolean_value BOOLEAN NULL
-        );"
-    );
-    run!(
+        );",
+    )
+    .await
+    .unwrap();
+    g.run(
         "
         INSERT INTO TestCoalesce (id, text_value, integer_value, float_value, boolean_value) VALUES 
             (1, 'Hitchhiker', NULL, NULL, NULL),
@@ -132,10 +148,12 @@ test_case!(coalesce, async move {
             (3, NULL, NULL, 1.11, NULL),
             (4, NULL, NULL, NULL, TRUE),
             (5, 'Universe', 84, 2.22, FALSE);
-        "
-    );
+        ",
+    )
+    .await
+    .unwrap();
 
-    test!(
+    g.test(
         // Test COALESCE with table column values and different types of default values
         "SELECT
             id,
@@ -154,9 +172,9 @@ test_case!(coalesce, async move {
             4     "Default".to_owned()           0                  0.1              true;
             5     "Universe".to_owned()          84                 2.22             false
         ))
-    );
+    ).await;
 
-    test!(
+    g.test(
         // Test COALESCE with table column values - multiple columns
         "SELECT id, COALESCE(text_value, integer_value, float_value, boolean_value) AS coalesce FROM TestCoalesce ORDER BY id ASC",
         Ok(select_with_null!(
@@ -167,5 +185,5 @@ test_case!(coalesce, async move {
             I64(4)   Bool(true);
             I64(5)   Str("Universe".to_owned())
         ))
-    );
+    ).await;
 });

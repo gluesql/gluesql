@@ -13,6 +13,8 @@ use {
 };
 
 test_case!(cast_literal, async move {
+    let g = get_tester!();
+
     let test_cases = [
         ("CREATE TABLE Item (number TEXT)", Ok(Payload::Create)),
         ("INSERT INTO Item VALUES ('1')", Ok(Payload::Insert(1))),
@@ -333,11 +335,13 @@ test_case!(cast_literal, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });
 
 test_case!(cast_value, async move {
+    let g = get_tester!();
+
     // More test cases are in `gluesql::Value` unit tests.
 
     let test_cases = [
@@ -414,6 +418,6 @@ test_case!(cast_value, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

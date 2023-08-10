@@ -7,6 +7,8 @@ use {
 };
 
 test_case!(left_right, async move {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "CREATE TABLE Item (name TEXT DEFAULT LEFT('abc', 1))",
@@ -146,6 +148,6 @@ test_case!(left_right, async move {
         ),
     ];
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

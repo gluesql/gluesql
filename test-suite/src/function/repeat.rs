@@ -7,6 +7,8 @@ use {
 };
 
 test_case!(repeat, async move {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "CREATE TABLE Item (name TEXT DEFAULT REPEAT('hello', 2))",
@@ -59,6 +61,6 @@ test_case!(repeat, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

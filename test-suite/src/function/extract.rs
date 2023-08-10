@@ -9,6 +9,8 @@ use {
 };
 
 test_case!(extract, async move {
+    let g = get_tester!();
+
     let test_cases = [
         (
             r#"SELECT EXTRACT(HOUR FROM TIMESTAMP '2016-12-31 13:30:15') as extract"#,
@@ -95,6 +97,6 @@ test_case!(extract, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

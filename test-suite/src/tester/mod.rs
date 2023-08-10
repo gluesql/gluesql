@@ -158,6 +158,10 @@ pub trait Tester<T: GStore + GStoreMut> {
         glue.execute_stmt(&statement).await
     }
 
+    async fn run_err(&mut self, sql: &str) -> Error {
+        self.run(sql).await.unwrap_err()
+    }
+
     async fn count(&mut self, sql: &str, expected: usize) {
         let actual = match self.run(sql).await.unwrap() {
             Payload::Select { rows, .. } => rows.len(),

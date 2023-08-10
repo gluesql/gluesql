@@ -7,6 +7,8 @@ use {
 };
 
 test_case!(lpad_rpad, async move {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "CREATE TABLE Item (name TEXT DEFAULT LPAD('a', 5) || LPAD('b', 3))",
@@ -149,6 +151,6 @@ test_case!(lpad_rpad, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

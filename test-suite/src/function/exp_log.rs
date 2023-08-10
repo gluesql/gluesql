@@ -4,6 +4,8 @@ use {
 };
 
 test_case!(log2, async move {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "SELECT
@@ -35,7 +37,7 @@ test_case!(log2, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });
 

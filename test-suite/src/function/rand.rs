@@ -7,6 +7,8 @@ use {
 };
 
 test_case!(rand, async move {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "CREATE TABLE SingleItem (qty INTEGER DEFAULT ROUND(RAND()*100))",
@@ -53,6 +55,6 @@ test_case!(rand, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });
