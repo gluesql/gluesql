@@ -53,7 +53,7 @@ jobs:
             --ignore "/*" \
             --ignore "pkg/rust/examples/*.rs" \
             --ignore "cli/src/{cli,helper,lib,main}.rs" \
-            --excl-line "#\\[derive\\(" \
+            --excl-line "(#\\[derive\\()|(^\s*.await[;,]?$)" \
             -o ./coverage/lcov.info
       - name: Coveralls
         uses: coverallsapp/github-action@master
