@@ -7,16 +7,20 @@ use {
 };
 
 test_case!(showindexes, async move {
-    run!(
+    let g = get_tester!();
+
+    g.run(
         "
 CREATE TABLE Test (
     id INTEGER,
     num INTEGER,
     name TEXT
-)"
-    );
+)",
+    )
+    .await
+    .unwrap();
 
-    run!(
+    g.run(
         "
         INSERT INTO Test
             (id, num, name)
@@ -25,19 +29,24 @@ CREATE TABLE Test (
             (1, 17, 'World'),
             (11, 7, 'Great'),
             (4, 7, 'Job');
-    "
-    );
+    ",
+    )
+    .await
+    .unwrap();
 
-    test!("CREATE INDEX idx_id ON Test (id)", Ok(Payload::CreateIndex));
-    test!(
+    g.test("CREATE INDEX idx_id ON Test (id)", Ok(Payload::CreateIndex))
+        .await;
+    g.test(
         "CREATE INDEX idx_name ON Test (name)",
-        Ok(Payload::CreateIndex)
-    );
-    test!(
+        Ok(Payload::CreateIndex),
+    )
+    .await;
+    g.test(
         "CREATE INDEX idx_id2 ON Test (id + num)",
-        Ok(Payload::CreateIndex)
-    );
-    test!(
+        Ok(Payload::CreateIndex),
+    )
+    .await;
+    g.test(
         "show indexes from Test",
         Ok(select!(
             TABLE_NAME        | INDEX_NAME            | ORDER             | EXPRESSION            | UNIQUENESS;
@@ -46,9 +55,10 @@ CREATE TABLE Test (
             "Test".to_owned()   "idx_name".to_owned()   "BOTH".to_owned()   "name".to_owned()       false;
             "Test".to_owned()   "idx_id2".to_owned()    "BOTH".to_owned()   "id + num".to_owned()   false
         ))
-    );
-    test!(
+    ).await;
+    g.test(
         "show indexes from NoTable",
-        Err(ExecuteError::TableNotFound("NoTable".to_owned()).into())
-    );
+        Err(ExecuteError::TableNotFound("NoTable".to_owned()).into()),
+    )
+    .await;
 });
