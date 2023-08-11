@@ -91,7 +91,7 @@ fn test(actual: crate::result::Result<crate::ast::Statement>, expected: &str) {
 
     let parsed = &parse(expected).expect(expected)[0];
     let expected = translate(parsed);
-    assert_eq!(actual, expected);
+    pretty_assertions::assert_eq!(actual, expected);
 }
 
 #[cfg(test)]
@@ -100,7 +100,7 @@ fn test_expr(actual: crate::ast_builder::ExprNode, expected: &str) {
 
     let parsed = &parse_expr(expected).expect(expected);
     let expected = translate_expr(parsed);
-    assert_eq!(actual.try_into(), expected);
+    pretty_assertions::assert_eq!(actual.try_into(), expected);
 }
 
 #[cfg(test)]
@@ -109,5 +109,5 @@ fn test_query(actual: crate::ast_builder::QueryNode, expected: &str) {
 
     let parsed = &parse_query(expected).expect(expected);
     let expected = translate_query(parsed);
-    assert_eq!(actual.try_into(), expected);
+    pretty_assertions::assert_eq!(actual.try_into(), expected);
 }

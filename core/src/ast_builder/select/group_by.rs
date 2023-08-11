@@ -112,12 +112,15 @@ impl<'a> Prebuild<Select> for GroupByNode<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        ast::{
-            Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SetExpr, Statement,
-            TableFactor, TableWithJoins,
+    use {
+        crate::{
+            ast::{
+                Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SetExpr,
+                Statement, TableFactor, TableWithJoins,
+            },
+            ast_builder::{col, table, test, Build, SelectItemList},
         },
-        ast_builder::{col, table, test, Build, SelectItemList},
+        pretty_assertions::assert_eq,
     };
 
     #[test]

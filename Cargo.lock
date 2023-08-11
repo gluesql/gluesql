@@ -972,6 +972,7 @@ dependencies = [
  "itertools",
  "md-5",
  "ordered-float",
+ "pretty_assertions",
  "rand",
  "regex",
  "rust_decimal",
