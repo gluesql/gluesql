@@ -98,8 +98,8 @@ impl Store for MongoStorage {
     }
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
-        let schema = self.fetch_schema(table_name).await?;
-        let column_defs = self.get_column_defs(table_name).await?;
+        // let schema = self.fetch_schema(table_name).await?;
+        let column_defs = self.get_column_defs(table_name).await?; // TODO: should be from schema
 
         let primary_key = column_defs.as_ref().and_then(get_primary_key);
 
@@ -116,13 +116,11 @@ impl Store for MongoStorage {
             .await
             .map_storage_err()?;
 
-        let column_types = schema.as_ref().and_then(|schema| {
-            schema.column_defs.as_ref().map(|column_defs| {
-                column_defs
-                    .iter()
-                    .map(|column_def| &column_def.data_type)
-                    .collect::<Vec<_>>()
-            })
+        let column_types = column_defs.as_ref().map(|column_defs| {
+            column_defs
+                .iter()
+                .map(|column_def| &column_def.data_type)
+                .collect::<Vec<_>>()
         });
 
         let row_iter = cursor
@@ -135,8 +133,14 @@ impl Store for MongoStorage {
                     }
                     None => {
                         let mut iter = doc.into_iter();
-                        let (_, value) = iter.next().unwrap();
-                        let key_bytes = value.as_object_id().unwrap().bytes().to_vec();
+                        let (_, first_value) = iter
+                            .next()
+                            .map_storage_err(MongoStorageError::InvalidDocument)?;
+                        let key_bytes = first_value
+                            .as_object_id()
+                            .map_storage_err(MongoStorageError::InvalidDocument)?
+                            .bytes()
+                            .to_vec();
                         let key = Key::Bytea(key_bytes);
                         let row = iter
                             .map(|(key, bson)| (key, bson.into_value_schemaless()))
@@ -187,7 +191,7 @@ impl MongoStorage {
 
             let collection = self.db.collection::<Document>(collection_name);
             let options = ListIndexesOptions::builder().build();
-            let cursor = collection.list_indexes(options).await.unwrap();
+            let cursor = collection.list_indexes(options).await.map_storage_err()?;
             let indexes = cursor
                 .into_stream()
                 .try_filter_map(|index_model| {
