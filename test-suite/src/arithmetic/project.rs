@@ -4,16 +4,20 @@ use {
 };
 
 test_case!(project, async move {
-    run!(
+    let g = get_tester!();
+
+    g.run(
         "
         CREATE TABLE Arith (
             id INTEGER,
             num INTEGER,
         );
-    "
-    );
-    run!("DELETE FROM Arith");
-    run!(
+    ",
+    )
+    .await
+    .unwrap();
+    g.run("DELETE FROM Arith").await.unwrap();
+    g.run(
         "
         INSERT INTO Arith (id, num) VALUES
             (1, 6),
@@ -21,8 +25,10 @@ test_case!(project, async move {
             (3, 4),
             (4, 2),
             (5, 3);
-    "
-    );
+    ",
+    )
+    .await
+    .unwrap();
 
     let test_cases = [
         (
@@ -56,6 +62,6 @@ test_case!(project, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, Ok(expected));
+        g.test(sql, Ok(expected)).await;
     }
 });

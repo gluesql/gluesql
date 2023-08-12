@@ -55,6 +55,8 @@ pub fn binary_op<'a>(
         BinaryOperator::And => cond!(l && r),
         BinaryOperator::Or => cond!(l || r),
         BinaryOperator::Xor => cond!(l ^ r),
+        BinaryOperator::BitwiseAnd => l.bitwise_and(&r),
+        BinaryOperator::BitwiseShiftLeft => l.bitwise_shift_left(&r),
     }
 }
 
@@ -64,6 +66,7 @@ pub fn unary_op<'a>(op: &UnaryOperator, v: Evaluated<'a>) -> Result<Evaluated<'a
         UnaryOperator::Minus => v.unary_minus(),
         UnaryOperator::Not => v.try_into().map(|v: bool| Evaluated::from(Value::Bool(!v))),
         UnaryOperator::Factorial => v.unary_factorial(),
+        UnaryOperator::BitwiseNot => v.unary_bitwise_not(),
     }
 }
 

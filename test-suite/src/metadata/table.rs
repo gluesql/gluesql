@@ -1,9 +1,11 @@
 use {
-    crate::{row, run, select, stringify_label, test_case},
+    crate::{row, select, stringify_label, test_case},
     gluesql_core::prelude::{Payload, Value::Str},
 };
 
 test_case!(table, async move {
+    let g = get_tester!();
+
     let cases = vec![
         ("CREATE TABLE Meta (id INT, name TEXT)", Ok(Payload::Create)),
         (
@@ -29,6 +31,6 @@ test_case!(table, async move {
     ];
 
     for (actual, expected) in cases {
-        test!(actual, expected);
+        g.test(actual, expected).await;
     }
 });

@@ -10,9 +10,11 @@ use {
 };
 
 test_case!(like_ilike, async move {
-    test! {
-        name: "basic usage - LIKE and ILIKE",
-        sql: "
+    let g = get_tester!();
+
+    g.named_test(
+        "basic usage - LIKE and ILIKE",
+        "
             VALUES
                 ('abc' LIKE '%c'),
                 ('abc' NOT LIKE '_c'),
@@ -20,18 +22,21 @@ test_case!(like_ilike, async move {
                 ('HELLO' ILIKE '%el%'),
                 ('HELLO' NOT ILIKE '_ELLE');
         ",
-        expected: Ok(select!(column1 Bool; true; true; true; true; true))
-    };
+        Ok(select!(column1 Bool; true; true; true; true; true)),
+    )
+    .await;
 
-    run!(
+    g.run(
         "
         CREATE TABLE Item (
             id INTEGER,
             name TEXT
         );
-    "
-    );
-    run!(
+    ",
+    )
+    .await
+    .unwrap();
+    g.run(
         "
         INSERT INTO Item (id, name) VALUES
             (1,    'Amelia'),
@@ -39,8 +44,10 @@ test_case!(like_ilike, async move {
             (3, 'Gascoigne'),
             (4,   'Gehrman'),
             (5,     'Maria');
-    "
-    );
+    ",
+    )
+    .await
+    .unwrap();
 
     let test_cases = [
         (2, "SELECT name FROM Item WHERE name LIKE '_a%'"),
@@ -76,7 +83,7 @@ test_case!(like_ilike, async move {
     ];
 
     for (num, sql) in test_cases {
-        count!(num, sql);
+        g.count(sql, num).await;
     }
 
     let error_sqls = [
@@ -122,6 +129,6 @@ test_case!(like_ilike, async move {
     ];
 
     for (sql, error) in error_sqls {
-        test!(sql, Err(error));
+        g.test(sql, Err(error)).await;
     }
 });

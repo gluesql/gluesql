@@ -1,110 +1,62 @@
-use {
-    crate::*,
-    gluesql_core::prelude::{Payload, Value::*},
-    rust_decimal::prelude::Decimal,
-};
+use {crate::*, gluesql_core::prelude::Value::*, rust_decimal::prelude::Decimal as D};
 
 test_case!(decimal, async move {
-    let test_cases = [
-        (
-            "CREATE TABLE DECIMAL_ITEM (decimal_field DECIMAL)",
-            Ok(Payload::Create),
-        ),
-        (
-            r#"INSERT INTO DECIMAL_ITEM VALUES (1)"#,
-            Ok(Payload::Insert(1)),
-        ),
-        (
-            r#"SELECT decimal_field AS decimal_field FROM DECIMAL_ITEM"#,
-            Ok(select!(
-                decimal_field
-                Decimal;
-                Decimal::ONE
-            )),
-        ),
-        (
-            r#"SELECT decimal_field +1 as decimal_field FROM DECIMAL_ITEM"#,
-            Ok(select!(
-                decimal_field
-                Decimal;
-                Decimal::TWO
-            )),
-        ),
-        (
-            r#"SELECT 1+ decimal_field  as decimal_field FROM DECIMAL_ITEM"#,
-            Ok(select!(
-                decimal_field
-                I64;
-                2
-            )),
-        ),
-        (
-            r#"SELECT decimal_field -1 as decimal_field FROM DECIMAL_ITEM"#,
-            Ok(select!(
-                decimal_field
-                Decimal;
-                Decimal::ZERO
-            )),
-        ),
-        (
-            r#"SELECT 1- decimal_field  as decimal_field FROM DECIMAL_ITEM"#,
-            Ok(select!(
-                decimal_field
-                I64;
-                0
-            )),
-        ),
-        (
-            r#"SELECT decimal_field * 2 as decimal_field FROM DECIMAL_ITEM"#,
-            Ok(select!(
-                decimal_field
-                Decimal;
-                Decimal::TWO
-            )),
-        ),
-        (
-            r#"SELECT 2* decimal_field  as decimal_field FROM DECIMAL_ITEM"#,
-            Ok(select!(
-                decimal_field
-                I64;
-                2
-            )),
-        ),
-        (
-            r#"SELECT decimal_field/2 as decimal_field FROM DECIMAL_ITEM"#,
-            Ok(select!(
-                decimal_field
-                Decimal;
-                Decimal::from_f64_retain(0.5f64).unwrap()
-            )),
-        ),
-        (
-            r#"SELECT 2/decimal_field  as decimal_field FROM DECIMAL_ITEM"#,
-            Ok(select!(
-                decimal_field
-                I64;
-                2
-            )),
-        ),
-        (
-            r#"SELECT 2%decimal_field  as decimal_field FROM DECIMAL_ITEM"#,
-            Ok(select!(
-                decimal_field
-                I64;
-                0
-            )),
-        ),
-        (
-            r#"SELECT decimal_field % 2  as decimal_field FROM DECIMAL_ITEM"#,
-            Ok(select!(
-                decimal_field
-                Decimal;
-                Decimal::ONE
-            )),
-        ),
-    ];
+    let g = get_tester!();
 
-    for (sql, expected) in test_cases {
-        test!(sql, expected);
-    }
+    g.run("CREATE TABLE DECIMAL_ITEM (v DECIMAL)")
+        .await
+        .unwrap();
+    g.run("INSERT INTO DECIMAL_ITEM VALUES (1)").await.unwrap();
+
+    g.test(
+        "
+            SELECT
+                v AS a,
+                v + 1 AS b,
+                1 + v AS c,
+                v - 1 AS d,
+                1 - v AS e,
+                v * 2 AS f,
+                2 * v AS g
+            FROM DECIMAL_ITEM
+                ",
+        Ok(select!(
+            a       | b       | c   | d       | e   | f       | g;
+            Decimal | Decimal | I64 | Decimal | I64 | Decimal | I64;
+            D::ONE    D::TWO    2     D::ZERO   0     D::TWO    2
+        )),
+    )
+    .await;
+
+    g.test(
+        "
+            SELECT
+                v / 2 AS h,
+                2 / v AS i,
+                2 % v AS j,
+                v % 2 AS k
+            FROM DECIMAL_ITEM
+                ",
+        Ok(select!(
+            h            | i   | j   | k;
+            Decimal      | I64 | I64 | Decimal;
+            D::new(5, 1)   2     0     D::ONE
+        )),
+    )
+    .await;
+
+    g.run("INSERT INTO DECIMAL_ITEM VALUES (1.5), (2.0), (25.12)")
+        .await
+        .unwrap();
+
+    g.test(
+        "SELECT v FROM DECIMAL_ITEM WHERE v > 1.5 AND v <= 25.12",
+        Ok(select!(
+            v;
+            Decimal;
+            D::new(2, 0);
+            D::new(2512, 2)
+        )),
+    )
+    .await;
 });

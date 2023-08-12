@@ -4,6 +4,8 @@ use {
 };
 
 test_case!(now, async move {
+    let g = get_tester!();
+
     macro_rules! t {
         ($timestamp: expr) => {
             $timestamp.parse().unwrap()
@@ -28,6 +30,6 @@ test_case!(now, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

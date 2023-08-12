@@ -7,6 +7,8 @@ use {
 };
 
 test_case!(project, async move {
+    let g = get_tester!();
+
     let create_sqls: [&str; 2] = [
         "
         CREATE TABLE ProjectUser (
@@ -24,13 +26,13 @@ test_case!(project, async move {
     ];
 
     for sql in create_sqls {
-        run!(sql);
+        g.run(sql).await.unwrap();
     }
 
     let delete_sqls = ["DELETE FROM ProjectUser", "DELETE FROM ProjectItem"];
 
     for sql in delete_sqls {
-        run!(sql);
+        g.run(sql).await.unwrap();
     }
 
     let insert_sqls = [
@@ -51,7 +53,7 @@ test_case!(project, async move {
     ];
 
     for insert_sql in insert_sqls {
-        run!(insert_sql);
+        g.run(insert_sql).await.unwrap();
     }
 
     let test_cases = [
@@ -143,7 +145,7 @@ test_case!(project, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, Ok(expected));
+        g.test(sql, Ok(expected)).await;
     }
 
     let error_cases = [
@@ -159,9 +161,13 @@ test_case!(project, async move {
             "SELECT (SELECT id FROM ProjectItem) as id FROM ProjectItem",
             EvaluateError::MoreThanOneRowReturned.into(),
         ),
+        (
+            "SELECT (SELECT 1,2)",
+            EvaluateError::MoreThanOneColumnReturned.into(),
+        ),
     ];
 
     for (sql, error) in error_cases {
-        test!(sql, Err(error));
+        g.test(sql, Err(error)).await;
     }
 });

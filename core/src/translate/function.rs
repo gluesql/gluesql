@@ -217,6 +217,13 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         "AVG" => translate_aggregate_one_arg(Aggregate::Avg, args, name),
         "VARIANCE" => translate_aggregate_one_arg(Aggregate::Variance, args, name),
         "STDEV" => translate_aggregate_one_arg(Aggregate::Stdev, args, name),
+        "COALESCE" => {
+            let exprs = args
+                .into_iter()
+                .map(translate_expr)
+                .collect::<Result<Vec<_>>>()?;
+            Ok(Expr::Function(Box::new(Function::Coalesce(exprs))))
+        }
         "CONCAT" => {
             let exprs = args
                 .into_iter()
@@ -367,6 +374,13 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::Gcd { left, right })))
         }
+        "LAST_DAY" => {
+            check_len(name, args.len(), 1)?;
+
+            let expr = translate_expr(args[0])?;
+
+            Ok(Expr::Function(Box::new(Function::LastDay(expr))))
+        }
         "LCM" => {
             check_len(name, args.len(), 2)?;
 
@@ -392,6 +406,13 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 divisor,
             })))
         }
+        "ENTRIES" => {
+            check_len(name, args.len(), 1)?;
+
+            let expr = translate_expr(args[0])?;
+
+            Ok(Expr::Function(Box::new(Function::Entries(expr))))
+        }
         "MOD" => {
             check_len(name, args.len(), 2)?;
 
@@ -404,6 +425,18 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             })))
         }
         "REVERSE" => translate_function_one_arg(Function::Reverse, args, name),
+        "REPLACE" => {
+            check_len(name, args.len(), 3)?;
+            let expr = translate_expr(args[0])?;
+            let old = translate_expr(args[1])?;
+            let new = translate_expr(args[2])?;
+
+            Ok(Expr::Function(Box::new(Function::Replace {
+                expr,
+                old,
+                new,
+            })))
+        }
         "REPEAT" => {
             check_len(name, args.len(), 2)?;
 
@@ -495,6 +528,12 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             let expr = translate_expr(args[0])?;
             Ok(Expr::Function(Box::new(Function::Md5(expr))))
         }
+        "LENGTH" => {
+            check_len(name, args.len(), 1)?;
+
+            let expr = translate_expr(args[0])?;
+            Ok(Expr::Function(Box::new(Function::Length(expr))))
+        }
         "APPEND" => {
             check_len(name, args.len(), 2)?;
             let expr = translate_expr(args[0])?;
@@ -508,6 +547,29 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             let value = translate_expr(args[1])?;
 
             Ok(Expr::Function(Box::new(Function::Prepend { expr, value })))
+        }
+        "SKIP" => {
+            check_len(name, args.len(), 2)?;
+            let expr = translate_expr(args[0])?;
+            let size = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Skip { expr, size })))
+        }
+        "SORT" => {
+            check_len_range(name, args.len(), 1, 2)?;
+            let expr = translate_expr(args[0])?;
+            let order = (args.len() > 1)
+                .then(|| translate_expr(args[1]))
+                .transpose()?;
+
+            Ok(Expr::Function(Box::new(Function::Sort { expr, order })))
+        }
+        "TAKE" => {
+            check_len(name, args.len(), 2)?;
+            let expr = translate_expr(args[0])?;
+            let size = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Take { expr, size })))
         }
         "POINT" => {
             check_len(name, args.len(), 2)?;
@@ -536,6 +598,26 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 geometry1,
                 geometry2,
             })))
+        }
+        "IS_EMPTY" => {
+            check_len(name, args.len(), 1)?;
+
+            let expr = translate_expr(args[0])?;
+            Ok(Expr::Function(Box::new(Function::IsEmpty(expr))))
+        }
+        "GREATEST" => {
+            check_len_min(name, args.len(), 2)?;
+            let exprs = args
+                .into_iter()
+                .map(translate_expr)
+                .collect::<Result<Vec<_>>>()?;
+            Ok(Expr::Function(Box::new(Function::Greatest(exprs))))
+        }
+        "VALUES" => {
+            check_len(name, args.len(), 1)?;
+
+            let expr = translate_expr(args[0])?;
+            Ok(Expr::Function(Box::new(Function::Values(expr))))
         }
         _ => {
             let exprs = args

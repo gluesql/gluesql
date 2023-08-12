@@ -5,10 +5,14 @@ use {
 };
 
 test_case!(types, async move {
-    run!("CREATE TABLE TableB (id BOOLEAN);");
-    run!("CREATE TABLE TableC (uid INTEGER NOT NULL, null_val INTEGER NULL);");
-    run!("INSERT INTO TableB VALUES (FALSE);");
-    run!("INSERT INTO TableC VALUES (1, NULL);");
+    let g = get_tester!();
+
+    g.run("CREATE TABLE TableB (id BOOLEAN);").await.unwrap();
+    g.run("CREATE TABLE TableC (uid INTEGER NOT NULL, null_val INTEGER NULL);")
+        .await
+        .unwrap();
+    g.run("INSERT INTO TableB VALUES (FALSE);").await.unwrap();
+    g.run("INSERT INTO TableC VALUES (1, NULL);").await.unwrap();
 
     let test_cases = [
         (
@@ -62,6 +66,6 @@ test_case!(types, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

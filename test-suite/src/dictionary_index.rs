@@ -4,10 +4,16 @@ use {
 };
 
 test_case!(ditionary_index, async move {
-    run!("CREATE TABLE Foo (id INT, name TEXT);");
-    run!("CREATE INDEX Foo_id ON Foo (id)");
-    run!("CREATE INDEX Foo_id_2 ON Foo (id + 2)");
-    test!(
+    let g = get_tester!();
+
+    g.run("CREATE TABLE Foo (id INT, name TEXT);")
+        .await
+        .unwrap();
+    g.run("CREATE INDEX Foo_id ON Foo (id)").await.unwrap();
+    g.run("CREATE INDEX Foo_id_2 ON Foo (id + 2)")
+        .await
+        .unwrap();
+    g.test(
         "SELECT * FROM GLUE_INDEXES",
         Ok(select!(
             TABLE_NAME       | INDEX_NAME            | ORDER             | EXPRESSION         | UNIQUENESS;
@@ -15,11 +21,15 @@ test_case!(ditionary_index, async move {
             "Foo".to_owned()   "Foo_id".to_owned()     "BOTH".to_owned()   "id".to_owned()      false;
             "Foo".to_owned()   "Foo_id_2".to_owned()   "BOTH".to_owned()   "id + 2".to_owned()  false
         ))
-    );
+    ).await;
 
-    run!("CREATE TABLE Bar (id INT PRIMARY KEY, name TEXT);");
-    run!("CREATE INDEX Bar_name_concat ON Bar (name + '_')");
-    test!(
+    g.run("CREATE TABLE Bar (id INT PRIMARY KEY, name TEXT);")
+        .await
+        .unwrap();
+    g.run("CREATE INDEX Bar_name_concat ON Bar (name + '_')")
+        .await
+        .unwrap();
+    g.test(
         "SELECT * FROM GLUE_INDEXES",
         Ok(select!(
             TABLE_NAME       | INDEX_NAME                  | ORDER             | EXPRESSION               | UNIQUENESS;
@@ -29,7 +39,7 @@ test_case!(ditionary_index, async move {
             "Foo".to_owned()   "Foo_id".to_owned()           "BOTH".to_owned()   "id".to_owned()            false;
             "Foo".to_owned()   "Foo_id_2".to_owned()         "BOTH".to_owned()   "id + 2".to_owned()        false
         ))
-    );
+    ).await;
 
     let test_cases = [
         (
@@ -42,6 +52,6 @@ test_case!(ditionary_index, async move {
         ),
     ];
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

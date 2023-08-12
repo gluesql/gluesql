@@ -8,17 +8,21 @@ use {
 };
 
 test_case!(update, async move {
-    run!(
+    let g = get_tester!();
+
+    g.run(
         "
         CREATE TABLE TableA (
             id INTEGER,
             num INTEGER,
             num2 INTEGER,
             name TEXT,
-        )"
-    );
+        )",
+    )
+    .await
+    .unwrap();
 
-    run!(
+    g.run(
         "
         INSERT INTO TableA (id, num, num2, name)
         VALUES
@@ -26,19 +30,23 @@ test_case!(update, async move {
             (1, 9, 5, 'World'),
             (3, 4, 7, 'Great'),
             (4, 7, 10, 'Job');
-        "
-    );
+        ",
+    )
+    .await
+    .unwrap();
 
-    run!(
+    g.run(
         "
         CREATE TABLE TableB (
             id INTEGER,
             num INTEGER,
             rank INTEGER,
-        )"
-    );
+        )",
+    )
+    .await
+    .unwrap();
 
-    run!(
+    g.run(
         "
         INSERT INTO TableB (id, num, rank)
         VALUES
@@ -46,8 +54,10 @@ test_case!(update, async move {
             (1, 9, 2),
             (3, 4, 3),
             (4, 7, 4);
-        "
-    );
+        ",
+    )
+    .await
+    .unwrap();
 
     let test_cases = [
         ("UPDATE TableA SET id = 2", Ok(Payload::Update(4))),
@@ -95,12 +105,16 @@ test_case!(update, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 
     // Test Error cases for UPDATE
-    run!("CREATE TABLE ErrTestTable (id INTEGER);");
-    run!("INSERT INTO ErrTestTable (id) VALUES (1),(9);");
+    g.run("CREATE TABLE ErrTestTable (id INTEGER);")
+        .await
+        .unwrap();
+    g.run("INSERT INTO ErrTestTable (id) VALUES (1),(9);")
+        .await
+        .unwrap();
 
     let error_cases = [
         (
@@ -131,6 +145,6 @@ test_case!(update, async move {
         ),
     ];
     for (sql, expected) in error_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

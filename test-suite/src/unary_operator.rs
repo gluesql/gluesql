@@ -7,6 +7,8 @@ use {
 };
 
 test_case!(unary_operator, async move {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "CREATE TABLE Test (v1 INT, v2 FLOAT, v3 TEXT, v4 INT, v5 INT, v6 INT8)",
@@ -114,6 +116,134 @@ test_case!(unary_operator, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
+
+    g.named_test(
+        "test bitwise-not operator with UINT8 type",
+        "SELECT ~(CAST(1 AS UINT8)) as v1 FROM Test",
+        Ok(select!(
+            v1
+            U8;
+            254
+        )),
+    )
+    .await;
+    g.named_test(
+        "test bitwise-not operator with UINT16 type",
+        "SELECT ~(CAST(1 AS UINT16)) as v1 FROM Test",
+        Ok(select!(
+            v1
+            U16;
+            65534
+        )),
+    )
+    .await;
+    g.named_test(
+        "test bitwise-not operator with UINT32 type",
+        "SELECT ~(CAST(1 AS UINT32)) as v1 FROM Test",
+        Ok(select!(
+            v1
+            U32;
+            4294967294
+        )),
+    )
+    .await;
+    g.named_test(
+        "test bitwise-not operator with UINT64 type",
+        "SELECT ~(CAST(1 AS UINT64)) as v1 FROM Test",
+        Ok(select!(
+            v1
+            U64;
+            18446744073709551614
+        )),
+    )
+    .await;
+    g.named_test(
+        "test bitwise-not operator with UINT128 type",
+        "SELECT ~(CAST(1 AS UINT128)) as v1 FROM Test",
+        Ok(select!(
+            v1
+            U128;
+            340282366920938463463374607431768211454
+        )),
+    )
+    .await;
+    g.named_test(
+        "test bitwise-not operator with INT8 type",
+        "SELECT ~(CAST(1 AS INT8)) as v1 FROM Test",
+        Ok(select!(
+            v1
+            I8;
+            -2
+        )),
+    )
+    .await;
+    g.named_test(
+        "test bitwise-not operator with INT16 type",
+        "SELECT ~(CAST(1 AS INT16)) as v1 FROM Test",
+        Ok(select!(
+            v1
+            I16;
+            -2
+        )),
+    )
+    .await;
+    g.named_test(
+        "test bitwise-not operator with INT32 type",
+        "SELECT ~(CAST(1 AS INT32)) as v1 FROM Test",
+        Ok(select!(
+            v1
+            I32;
+            -2
+        )),
+    )
+    .await;
+    g.named_test(
+        "test bitwise-not operator with INT64 type",
+        "SELECT ~1 as v1 FROM Test",
+        Ok(select!(
+            v1
+            I64;
+            -2
+        )),
+    )
+    .await;
+    g.named_test(
+        "test bitwise-not operator with INT128 type",
+        "SELECT ~(CAST(1 AS INT128)) as v1 FROM Test",
+        Ok(select!(
+            v1
+            I128;
+            -2
+        )),
+    )
+    .await;
+    g.named_test(
+        "test bitwise-not operator with Null",
+        "SELECT ~Null as v1 FROM Test",
+        Ok(select_with_null!(
+            v1;
+            Null
+        )),
+    )
+    .await;
+    g.named_test(
+        "test bitwise-not operator with FLOAT64 type",
+        "SELECT ~(5.5) as v4 FROM Test",
+        Err(ValueError::UnaryBitwiseNotOnNonInteger.into()),
+    )
+    .await;
+    g.named_test(
+        "test bitwise-not operator with FLOAT32 type",
+        "SELECT ~(CAST(5.5 AS FLOAT32)) as v4 FROM Test",
+        Err(ValueError::UnaryBitwiseNotOnNonInteger.into()),
+    )
+    .await;
+    g.named_test(
+        "test bitwise-not operator with string type",
+        "SELECT ~'error' as v1 FROM Test",
+        Err(ValueError::UnaryBitwiseNotOnNonNumeric.into()),
+    )
+    .await;
 });
