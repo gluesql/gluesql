@@ -20,26 +20,26 @@ test_case!(splice, async move {
     );
 
     test! (
-        name: "SPLICE('[1, 2, 3, 4, 5]', 1, 3) should return '[1, 4, 5]'",
-        sql: "SELECT SPLICE('[1, 2, 3, 4, 5]', 1, 3) AS actual",
+        name: "SPLICE(CAST('[1, 2, 3, 4, 5]' AS List), 1, 3) should return '[1, 4, 5]'",
+        sql: "SELECT SPLICE(CAST('[1, 2, 3, 4, 5]' AS List), 1, 3) AS actual",
         expected: Ok(select!(actual List; vec![I64(1), I64(4), I64(5)]))
     );
 
     test!(
-        name: "SPLICE('[1, 2, 3, 4, 5]', 1, 3, '[100, 99]') should return '[1, 100, 99, 4, 5]'",
-        sql: "SPLICE('[1, 2, 3, 4, 5]', 1, 3, '[100, 99]') AS actual",
+        name: "SPLICE(CAST('[1, 2, 3, 4, 5]' AS List), 1, 3, CAST('[100, 99]' AS List)) should return '[1, 100, 99, 4, 5]'",
+        sql: "SELECT SPLICE(CAST('[1, 2, 3, 4, 5]' AS List), 1, 3, CAST('[100, 99]' AS List)) AS actual",
         expected: Ok(select!(actual List; vec![I64(1), I64(100), I64(99), I64(4), I64(5)]))
     );
 
     test!(
-        name: "SPLICE('[1, 2, 3]', -1, 2, '[100, 99]') should return '[100, 99, 3]'",
-        sql: "SPLICE('[1, 2, 3]', -1, 2, '[100, 99]') AS actual",
+        name: "SPLICE(CAST('[1, 2, 3]' AS List), -1, 2, CAST('[100, 99]' AS List)) should return '[100, 99, 3]'",
+        sql: "SELECT SPLICE(CAST('[1, 2, 3]' AS List), -1, 2, CAST('[100, 99]' AS List)) AS actual",
         expected: Ok(select!(actual List; vec![I64(100), I64(99), I64(3)]))
     );
 
     test!(
-        name: "SPLICE('[1, 2, 3]', 1, 100, '[100, 99]') should return '[1, 100, 99]')",
-        sql: "SPLICE('[1, 2, 3]', 1, 100, '[100, 99]') AS actual",
+        name: "SPLICE(CAST('[1, 2, 3]' AS List), 1, 100, CAST('[100, 99]' AS List)) should return '[1, 100, 99]')",
+        sql: "SELECT SPLICE(CAST('[1, 2, 3]' AS List), 1, 100, CAST('[100, 99]' AS List)) AS actual",
         expected: Ok(select!(actual List; vec!(I64(1), I64(100), I64(99))))
     );
 });

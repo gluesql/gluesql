@@ -43,6 +43,7 @@ pub enum Function {
         data_type: DataType,
     },
     Ceil(Expr),
+    Coalesce(Vec<Expr>),
     Concat(Vec<Expr>),
     ConcatWs {
         separator: Expr,
@@ -130,6 +131,7 @@ pub enum Function {
         selector: Expr,
     },
     GenerateUuid(),
+    Greatest(Vec<Expr>),
     Format {
         expr: Expr,
         format: Expr,
@@ -191,6 +193,12 @@ pub enum Function {
     IsEmpty(Expr),
     Length(Expr),
     Values(Expr),
+    Splice {
+        list_data: Expr,
+        begin_index: Expr,
+        end_index: Expr,
+        values: Option<Expr>,
+    },
 }
 
 impl ToSql for Function {
@@ -229,6 +237,14 @@ impl ToSql for Function {
                 format!("CAST({} AS {data_type})", expr.to_sql())
             }
             Function::Ceil(e) => format!("CEIL({})", e.to_sql()),
+            Function::Coalesce(items) => {
+                let items = items
+                    .iter()
+                    .map(ToSql::to_sql)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("COALESCE({items})")
+            }
             Function::Concat(items) => {
                 let items = items
                     .iter()
@@ -342,6 +358,14 @@ impl ToSql for Function {
                 format!("UNWRAP({}, {})", expr.to_sql(), selector.to_sql())
             }
             Function::GenerateUuid() => "GENERATE_UUID()".to_owned(),
+            Function::Greatest(items) => {
+                let items = items
+                    .iter()
+                    .map(ToSql::to_sql)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("GREATEST({})", items)
+            }
             Function::Format { expr, format } => {
                 format!("FORMAT({}, {})", expr.to_sql(), format.to_sql())
             }
@@ -420,6 +444,26 @@ impl ToSql for Function {
             Function::Length(e) => format!("LENGTH({})", e.to_sql()),
             Function::Values(e) => format!("VALUES({})", e.to_sql()),
             Function::Entries(e) => format!("ENTRIES({})", e.to_sql()),
+            Function::Splice {
+                list_data,
+                begin_index,
+                end_index,
+                values,
+            } => match values {
+                Some(v) => format!(
+                    "SPLICE({}, {}, {}, {})",
+                    list_data.to_sql(),
+                    begin_index.to_sql(),
+                    end_index.to_sql(),
+                    v.to_sql()
+                ),
+                None => format!(
+                    "SPLICE({}, {}, {})",
+                    list_data.to_sql(),
+                    begin_index.to_sql(),
+                    end_index.to_sql(),
+                ),
+            },
         }
     }
 }
@@ -629,6 +673,16 @@ mod tests {
                 name: "CUSTOM_FUNC".to_owned(),
                 exprs: vec![]
             }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"COALESCE("First", NULL, "Last")"#,
+            &Expr::Function(Box::new(Function::Coalesce(vec![
+                Expr::Identifier("First".to_owned()),
+                Expr::Literal(AstLiteral::Null),
+                Expr::Identifier("Last".to_owned()),
+            ])))
             .to_sql()
         );
 
@@ -982,6 +1036,16 @@ mod tests {
         assert_eq!(
             "GENERATE_UUID()",
             &Expr::Function(Box::new(Function::GenerateUuid())).to_sql()
+        );
+
+        assert_eq!(
+            "GREATEST(16, 9, 7)",
+            &Expr::Function(Box::new(Function::Greatest(vec![
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("16").unwrap())),
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("9").unwrap())),
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("7").unwrap()))
+            ])))
+            .to_sql()
         );
 
         assert_eq!(

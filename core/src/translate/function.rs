@@ -217,6 +217,13 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         "AVG" => translate_aggregate_one_arg(Aggregate::Avg, args, name),
         "VARIANCE" => translate_aggregate_one_arg(Aggregate::Variance, args, name),
         "STDEV" => translate_aggregate_one_arg(Aggregate::Stdev, args, name),
+        "COALESCE" => {
+            let exprs = args
+                .into_iter()
+                .map(translate_expr)
+                .collect::<Result<Vec<_>>>()?;
+            Ok(Expr::Function(Box::new(Function::Coalesce(exprs))))
+        }
         "CONCAT" => {
             let exprs = args
                 .into_iter()
@@ -598,6 +605,14 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             let expr = translate_expr(args[0])?;
             Ok(Expr::Function(Box::new(Function::IsEmpty(expr))))
         }
+        "GREATEST" => {
+            check_len_min(name, args.len(), 2)?;
+            let exprs = args
+                .into_iter()
+                .map(translate_expr)
+                .collect::<Result<Vec<_>>>()?;
+            Ok(Expr::Function(Box::new(Function::Greatest(exprs))))
+        }
         "VALUES" => {
             check_len(name, args.len(), 1)?;
 
@@ -606,16 +621,20 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         }
         "SPLICE" => {
             check_len_range(name, args.len(), 3, 4)?;
-
-            let expr1 = translate_expr(args[0])?;
-            let expr2 = translate_expr(args[1])?;
-            let expr3 = translate_expr(args[2])?;
-            let expr4 = if args.len() == 4 {
-                Some(translate_expr(args[3]))
+            let list_data = translate_expr(args[0])?;
+            let begin_index = translate_expr(args[1])?;
+            let end_index = translate_expr(args[2])?;
+            let values = if args.len() == 4 {
+                Some(translate_expr(args[3])?)
             } else {
                 None
             };
-            Ok(Expr::Function(Box::new(Function::Values(expr1))))
+            Ok(Expr::Function(Box::new(Function::Splice {
+                list_data,
+                begin_index,
+                end_index,
+                values,
+            })))
         }
         _ => {
             let exprs = args

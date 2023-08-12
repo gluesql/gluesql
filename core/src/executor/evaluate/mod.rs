@@ -561,6 +561,10 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             f::unwrap(name, expr, selector)
         }
         Function::GenerateUuid() => Ok(f::generate_uuid()),
+        Function::Greatest(exprs) => {
+            let exprs = stream::iter(exprs).then(eval).try_collect().await?;
+            f::greatest(name, exprs)
+        }
         Function::Now() => Ok(Evaluated::from(Value::Timestamp(Utc::now().naive_utc()))),
         Function::Format { expr, format } => {
             let expr = eval(expr).await?;
@@ -612,6 +616,10 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let expr = eval(expr).await?;
             f::extract(field, expr)
         }
+        Function::Coalesce(exprs) => {
+            let exprs = stream::iter(exprs).then(eval).try_collect().await?;
+            f::coalesce(exprs)
+        }
 
         // --- list ---
         Function::Append { expr, value } => {
@@ -651,6 +659,21 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         Function::Values(expr) => {
             let expr = eval(expr).await?;
             f::values(expr)
+        }
+        Function::Splice {
+            list_data,
+            begin_index,
+            end_index,
+            values,
+        } => {
+            let list_data = eval(list_data).await?;
+            let begin_index = eval(begin_index).await?;
+            let end_index = eval(end_index).await?;
+            let values = match values {
+                Some(v) => Some(eval(v).await?),
+                None => None,
+            };
+            f::splice(name, list_data, begin_index, end_index, values)
         }
     }
 }

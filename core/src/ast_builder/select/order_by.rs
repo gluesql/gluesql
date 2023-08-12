@@ -135,12 +135,15 @@ impl<'a> Prebuild<Query> for OrderByNode<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        ast::{
-            Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SetExpr, Statement,
-            TableFactor, TableWithJoins,
+    use {
+        crate::{
+            ast::{
+                Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SetExpr,
+                Statement, TableFactor, TableWithJoins,
+            },
+            ast_builder::{col, table, test, Build, ExprNode, OrderByExprList, SelectItemList},
         },
-        ast_builder::{col, table, test, Build, ExprNode, OrderByExprList, SelectItemList},
+        pretty_assertions::assert_eq,
     };
 
     #[test]
