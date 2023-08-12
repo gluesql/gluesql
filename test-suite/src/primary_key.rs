@@ -7,7 +7,7 @@ use {
     },
 };
 
-test_case!(primary_key, async move {
+test_case!(primary_key, {
     let g = get_tester!();
 
     g.run(
@@ -18,8 +18,7 @@ test_case!(primary_key, async move {
         );
     ",
     )
-    .await
-    .unwrap();
+    .await?;
     g.test(
         "INSERT INTO Allegro VALUES (1, 'hello'), (3, 'world');",
         Ok(Payload::Insert(2)),
@@ -75,8 +74,7 @@ test_case!(primary_key, async move {
     .await;
 
     g.run("INSERT INTO Allegro VALUES (5, 'neon'), (2, 'foo'), (4, 'bar');")
-        .await
-        .unwrap();
+        .await?;
 
     g.test(
         "SELECT id, name FROM Allegro",
@@ -111,7 +109,7 @@ test_case!(primary_key, async move {
     )
     .await;
 
-    g.run("DELETE FROM Allegro WHERE id > 3").await.unwrap();
+    g.run("DELETE FROM Allegro WHERE id > 3").await?;
     g.test(
         "SELECT id, name FROM Allegro",
         Ok(select!(
@@ -130,11 +128,9 @@ test_case!(primary_key, async move {
         );
         ",
     )
-    .await
-    .unwrap();
+    .await?;
     g.run("INSERT INTO Strslice VALUES (SUBSTR(SUBSTR('foo', 1), 1));")
-        .await
-        .unwrap();
+        .await?;
 
     g.named_test(
         "PRIMARY KEY includes UNIQUE constraint",

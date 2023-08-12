@@ -3,7 +3,7 @@ use {
     gluesql_core::{error::ValueError, prelude::Value::*},
 };
 
-test_case!(concat, async move {
+test_case!(concat, {
     let g = get_tester!();
 
     g.run(
@@ -17,11 +17,9 @@ test_case!(concat, async move {
         );
     ",
     )
-    .await
-    .unwrap();
+    .await?;
     g.run("INSERT INTO Concat VALUES (1, 2.3, TRUE, 'Foo', NULL);")
-        .await
-        .unwrap();
+        .await?;
 
     g.test(
         "select concat('ab', 'cd') as myc from Concat;",
@@ -80,8 +78,7 @@ test_case!(concat, async move {
             items2 LIST
         )"#,
     )
-    .await
-    .unwrap();
+    .await?;
 
     g.run(
         r#"
@@ -89,8 +86,7 @@ test_case!(concat, async move {
             (1, '[1, 2, 3]', '["one", "two", "three"]');
         "#,
     )
-    .await
-    .unwrap();
+    .await?;
 
     g.test(
         r#"select concat(items, items2) as myconcat from ListTypeConcat;"#,

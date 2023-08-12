@@ -6,7 +6,7 @@ use {
     },
 };
 
-test_case!(div_mod, async move {
+test_case!(div_mod, {
     let g = get_tester!();
 
     let eval_div = |dividend, divisor| (dividend / divisor) as i64;

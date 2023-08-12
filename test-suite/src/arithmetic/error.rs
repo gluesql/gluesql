@@ -9,7 +9,7 @@ use {
     },
     std::borrow::Cow,
 };
-test_case!(error, async move {
+test_case!(error, {
     let g = get_tester!();
 
     g.run(
@@ -21,9 +21,8 @@ test_case!(error, async move {
         );
     ",
     )
-    .await
-    .unwrap();
-    g.run("DELETE FROM Arith").await.unwrap();
+    .await?;
+    g.run("DELETE FROM Arith").await?;
     g.run(
         "
         INSERT INTO Arith (id, num, name) VALUES
@@ -34,8 +33,7 @@ test_case!(error, async move {
             (5, 3, 'E');
     ",
     )
-    .await
-    .unwrap();
+    .await?;
 
     let test_cases = [
         (

@@ -3,7 +3,7 @@ use {
     gluesql_core::{error::EvaluateError, prelude::Value::*},
 };
 
-test_case!(format, async move {
+test_case!(format, {
     let g = get_tester!();
 
     let test_cases = vec![

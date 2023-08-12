@@ -3,7 +3,7 @@ use {
     gluesql_core::{error::TranslateError, prelude::Value::*},
 };
 
-test_case!(concat_ws, async move {
+test_case!(concat_ws, {
     let g = get_tester!();
 
     g.test(
@@ -26,11 +26,9 @@ test_case!(concat_ws, async move {
         );
     ",
     )
-    .await
-    .unwrap();
+    .await?;
     g.run("INSERT INTO Concat VALUES (1, TRUE, 'Foo', NULL);")
-        .await
-        .unwrap();
+        .await?;
 
     g.test(
         "select concat_ws('/', id, flag, null_value, text) as myc from Concat;",

@@ -6,7 +6,7 @@ use {
     },
 };
 
-test_case!(lpad_rpad, async move {
+test_case!(lpad_rpad, {
     let g = get_tester!();
 
     let test_cases = [

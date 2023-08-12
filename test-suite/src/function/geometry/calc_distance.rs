@@ -6,7 +6,7 @@ use {
     },
 };
 
-test_case!(calc_distance, async move {
+test_case!(calc_distance, {
     let g = get_tester!();
 
     let test_cases = [

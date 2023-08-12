@@ -6,7 +6,7 @@ use {
     },
 };
 
-test_case!(nested, async move {
+test_case!(nested, {
     let g = get_tester!();
 
     g.run(
@@ -17,8 +17,7 @@ CREATE TABLE User (
     name TEXT
 )",
     )
-    .await
-    .unwrap();
+    .await?;
 
     g.run(
         "
@@ -32,8 +31,7 @@ CREATE TABLE User (
             (5, 2, 'Builder');
     ",
     )
-    .await
-    .unwrap();
+    .await?;
 
     g.test("CREATE INDEX idx_id ON User (id)", Ok(Payload::CreateIndex))
         .await;

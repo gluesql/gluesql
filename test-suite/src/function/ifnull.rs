@@ -5,7 +5,7 @@ use {
     rust_decimal::Decimal,
 };
 
-test_case!(ifnull, async move {
+test_case!(ifnull, {
     let g = get_tester!();
 
     let test_cases = [

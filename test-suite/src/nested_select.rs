@@ -3,7 +3,7 @@ use {
     gluesql_core::{executor::Payload, prelude::Value},
 };
 
-test_case!(nested_select, async move {
+test_case!(nested_select, {
     let g = get_tester!();
 
     let create_sqls: [&str; 2] = [
@@ -23,7 +23,7 @@ test_case!(nested_select, async move {
     ];
 
     for sql in create_sqls {
-        g.run(sql).await.unwrap();
+        g.run(sql).await?;
     }
 
     let insert_sqls = [
@@ -56,7 +56,7 @@ test_case!(nested_select, async move {
     ];
 
     for insert_sql in insert_sqls {
-        g.run(insert_sql).await.unwrap();
+        g.run(insert_sql).await?;
     }
 
     let select_sqls = [

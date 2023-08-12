@@ -3,7 +3,7 @@ use {
     gluesql_core::prelude::{Payload, Value::*},
 };
 
-test_case!(delete, async move {
+test_case!(delete, {
     let g = get_tester!();
 
     g.run(
@@ -15,8 +15,7 @@ test_case!(delete, async move {
         );
     ",
     )
-    .await
-    .unwrap();
+    .await?;
 
     g.run(
         "
@@ -26,8 +25,7 @@ test_case!(delete, async move {
             (3, 700, TRUE);
     ",
     )
-    .await
-    .unwrap();
+    .await?;
 
     g.test(
         "SELECT * FROM Foo",

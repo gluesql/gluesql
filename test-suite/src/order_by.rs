@@ -6,7 +6,7 @@ use {
     },
 };
 
-test_case!(order_by, async move {
+test_case!(order_by, {
     let g = get_tester!();
 
     g.run(
@@ -18,8 +18,7 @@ CREATE TABLE Test (
     rate FLOAT NULL
 )",
     )
-    .await
-    .unwrap();
+    .await?;
     g.run(
         "
         INSERT INTO Test (id, num, name, rate)
@@ -30,8 +29,7 @@ CREATE TABLE Test (
             (4, 7, 'Thursday', NULL);
     ",
     )
-    .await
-    .unwrap();
+    .await?;
 
     g.test(
         "SELECT id, num FROM Test",

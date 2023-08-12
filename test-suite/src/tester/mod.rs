@@ -229,7 +229,13 @@ macro_rules! test_case {
                 };
             }
 
-            $content.await
+            async {
+                $content;
+
+                gluesql_core::prelude::Result::<()>::Ok(())
+            }
+            .await
+            .unwrap()
         }
     };
 }

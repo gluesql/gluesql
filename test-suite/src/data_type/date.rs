@@ -3,7 +3,7 @@ use {
     gluesql_core::{error::ValueError, prelude::Value::*},
 };
 
-test_case!(date, async move {
+test_case!(date, {
     let g = get_tester!();
 
     g.run(
@@ -14,8 +14,7 @@ CREATE TABLE DateLog (
     date2 DATE,
 )",
     )
-    .await
-    .unwrap();
+    .await?;
 
     g.run(
         "
@@ -25,8 +24,7 @@ INSERT INTO DateLog VALUES
     (3, '2021-05-01', '2021-05-01');
 ",
     )
-    .await
-    .unwrap();
+    .await?;
 
     macro_rules! date {
         ($date: expr) => {

@@ -5,7 +5,7 @@ use {
     std::{borrow::Cow, str::FromStr},
 };
 
-test_case!(bitwise_and, async move {
+test_case!(bitwise_and, {
     let g = get_tester!();
 
     g.run(
@@ -17,8 +17,7 @@ test_case!(bitwise_and, async move {
         );
         ",
     )
-    .await
-    .unwrap();
+    .await?;
 
     g.run(
         "
@@ -27,8 +26,7 @@ test_case!(bitwise_and, async move {
             (1, 29, 15);
         ",
     )
-    .await
-    .unwrap();
+    .await?;
 
     g.named_test(
         "bitwise-and for values",

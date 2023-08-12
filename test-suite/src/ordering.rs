@@ -1,6 +1,6 @@
 use crate::*;
 
-test_case!(ordering, async move {
+test_case!(ordering, {
     let g = get_tester!();
 
     g.run(
@@ -11,9 +11,8 @@ test_case!(ordering, async move {
         );
     ",
     )
-    .await
-    .unwrap();
-    g.run("DELETE FROM Operator").await.unwrap();
+    .await?;
+    g.run("DELETE FROM Operator").await?;
     g.run(
         "
         INSERT INTO Operator (id, name) VALUES
@@ -24,8 +23,7 @@ test_case!(ordering, async move {
             (5,    'Trade');
     ",
     )
-    .await
-    .unwrap();
+    .await?;
 
     let test_cases = [
         (1, "SELECT * FROM Operator WHERE id < 2;"),

@@ -3,7 +3,7 @@ use {
     gluesql_core::prelude::{Payload, Value::*},
 };
 
-test_case!(now, async move {
+test_case!(now, {
     let g = get_tester!();
 
     macro_rules! t {

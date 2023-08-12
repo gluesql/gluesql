@@ -4,10 +4,10 @@ use {
     serde_json::json,
 };
 
-test_case!(basic, async move {
+test_case!(basic, {
     let g = get_tester!();
 
-    g.run("CREATE TABLE Player").await.unwrap();
+    g.run("CREATE TABLE Player").await?;
     g.run(
         format!(
             "INSERT INTO Player VALUES ('{}'), ('{}');",
@@ -16,10 +16,9 @@ test_case!(basic, async move {
         )
         .as_str(),
     )
-    .await
-    .unwrap();
+    .await?;
 
-    g.run("CREATE TABLE Item").await.unwrap();
+    g.run("CREATE TABLE Item").await?;
     g.run(
         format!(
             "INSERT INTO Item VALUES ('{}'), ('{}');",
@@ -38,8 +37,7 @@ test_case!(basic, async move {
         )
         .as_str(),
     )
-    .await
-    .unwrap();
+    .await?;
 
     g.test(
         "SELECT name, dex, rare FROM Item WHERE id = 100",
@@ -80,7 +78,7 @@ test_case!(basic, async move {
     )
     .await;
 
-    g.run("DELETE FROM Item WHERE id > 100").await.unwrap();
+    g.run("DELETE FROM Item WHERE id > 100").await?;
     g.run(
         "
         UPDATE Item
@@ -89,8 +87,7 @@ test_case!(basic, async move {
             rare = NOT rare
     ",
     )
-    .await
-    .unwrap();
+    .await?;
     g.test(
         "SELECT id, name, dex, rare FROM Item",
         Ok(select!(
@@ -102,7 +99,7 @@ test_case!(basic, async move {
     .await;
 
     // add new field to existing row
-    g.run("UPDATE Item SET new_field = 'Hello'").await.unwrap();
+    g.run("UPDATE Item SET new_field = 'Hello'").await?;
     g.test(
         r#"SELECT new_field, obj['cost'] AS cost FROM Item"#,
         Ok(select!(

@@ -3,7 +3,7 @@ use {
     gluesql_core::{error::EvaluateError, prelude::Value::*},
 };
 
-test_case!(chr, async move {
+test_case!(chr, {
     let g = get_tester!();
 
     g.test(
@@ -28,9 +28,8 @@ test_case!(chr, async move {
         );
     ",
     )
-    .await
-    .unwrap();
-    g.run("INSERT INTO Chr VALUES (1, 70);").await.unwrap();
+    .await?;
+    g.run("INSERT INTO Chr VALUES (1, 70);").await?;
 
     g.test(
         "select chr(num) as chr from Chr;",
@@ -63,7 +62,7 @@ test_case!(chr, async move {
     )
     .await;
 
-    g.run("INSERT INTO Chr VALUES (1, 4345);").await.unwrap();
+    g.run("INSERT INTO Chr VALUES (1, 4345);").await?;
 
     g.test(
         "select chr(num) as chr from Chr;",

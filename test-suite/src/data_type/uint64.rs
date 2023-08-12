@@ -3,7 +3,7 @@ use {
     gluesql_core::{error::ValueError, prelude::Value::*},
 };
 
-test_case!(uint64, async move {
+test_case!(uint64, {
     let g = get_tester!();
 
     g.run(
@@ -12,11 +12,9 @@ test_case!(uint64, async move {
             field_two UINT64,
         );",
     )
-    .await
-    .unwrap();
+    .await?;
     g.run(r#"INSERT INTO Item VALUES (1, 1), (2, 2), (3, 3), (4, 4);"#)
-        .await
-        .unwrap();
+        .await?;
 
     g.test(
         "INSERT INTO Item VALUES (18446744073709551616,18446744073709551616);",

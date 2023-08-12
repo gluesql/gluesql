@@ -1,6 +1,6 @@
 use {crate::*, gluesql_core::data::*};
 
-test_case!(filter, async move {
+test_case!(filter, {
     let g = get_tester!();
 
     let create_sqls = [
@@ -18,7 +18,7 @@ test_case!(filter, async move {
     ];
 
     for sql in create_sqls {
-        g.run(sql).await.unwrap();
+        g.run(sql).await?;
     }
 
     let insert_sqls = [
@@ -39,7 +39,7 @@ test_case!(filter, async move {
     ];
 
     for sql in insert_sqls {
-        g.run(sql).await.unwrap();
+        g.run(sql).await?;
     }
 
     let select_sqls = [

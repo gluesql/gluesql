@@ -3,7 +3,7 @@ use {
     gluesql_core::prelude::{Payload, Value::Str},
 };
 
-test_case!(table, async move {
+test_case!(table, {
     let g = get_tester!();
 
     let cases = vec![

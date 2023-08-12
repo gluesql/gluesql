@@ -6,7 +6,7 @@ use {
     },
 };
 
-test_case!(gcd_lcm, async move {
+test_case!(gcd_lcm, {
     let g = get_tester!();
 
     let test_cases = [

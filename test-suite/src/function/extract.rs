@@ -8,7 +8,7 @@ use {
     },
 };
 
-test_case!(extract, async move {
+test_case!(extract, {
     let g = get_tester!();
 
     let test_cases = [

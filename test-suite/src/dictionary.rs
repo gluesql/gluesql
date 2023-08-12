@@ -6,7 +6,7 @@ use {
     },
 };
 
-test_case!(dictionary, async move {
+test_case!(dictionary, {
     let g = get_tester!();
 
     let tables = |v: Vec<&str>| {
@@ -23,16 +23,12 @@ test_case!(dictionary, async move {
     g.test("SHOW TABLES", tables(Vec::new())).await;
 
     g.run("CREATE TABLE Foo (id INTEGER, name TEXT NULL, type TEXT NULL);")
-        .await
-        .unwrap();
+        .await?;
     g.test("SHOW TABLES", tables(vec!["Foo"])).await;
 
-    g.run("CREATE TABLE Zoo (id INTEGER PRIMARY KEY);")
-        .await
-        .unwrap();
+    g.run("CREATE TABLE Zoo (id INTEGER PRIMARY KEY);").await?;
     g.run("CREATE TABLE Bar (id INTEGER UNIQUE, name TEXT NOT NULL DEFAULT 'NONE');")
-        .await
-        .unwrap();
+        .await?;
 
     g.test("SHOW TABLES", tables(vec!["Bar", "Foo", "Zoo"]))
         .await;
