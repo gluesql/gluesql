@@ -12,13 +12,11 @@ impl Transaction for MemoryStorage {
     async fn begin(&mut self, autocommit: bool) -> Result<bool> {
         let current_state = self.state.clone();
         match (current_state, autocommit) {
-            //TODO : implement nested transaction later
             (StorageState::Transaction { .. }, false) => Err(Error::StorageMsg(
                 "nested transaction is not supported".to_owned(),
             )),
             (StorageState::Transaction { autocommit }, true) => Ok(autocommit),
             (StorageState::Idle, _) => {
-                self.set_snapshot();
                 self.state = StorageState::Transaction { autocommit: false };
 
                 Ok(autocommit)
@@ -27,23 +25,24 @@ impl Transaction for MemoryStorage {
     }
 
     async fn rollback(&mut self) -> Result<()> {
-        match &self.snapshot {
-            Some(snapshot) => {
-                let data = snapshot.to_owned().data;
-                self.functions = data.functions;
-                self.id_counter = data.id_counter;
-                self.items = data.items;
-                self.metadata = data.metadata;
-                self.state = StorageState::Idle;
-                self.snapshot = None;
+        while let Some(log) = self.pop_log() {
+            let task = log.clone();
+            if self.undo(log).await.is_err() {
+                return Err(Error::StorageMsg(format!(
+                    "failed to rollback transaction while undoing {:?}",
+                    task
+                )));
             }
-            None => println!("TODO: non snapshot error handling"),
         }
+
+        self.clear_buffer();
+        self.state = StorageState::Idle;
+
         Ok(())
     }
 
     async fn commit(&mut self) -> Result<()> {
-        self.snapshot = None;
+        self.clear_buffer();
         self.state = StorageState::Idle;
         Ok(())
     }
