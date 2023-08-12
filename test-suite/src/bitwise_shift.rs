@@ -4,55 +4,81 @@ use {
 };
 
 test_case!(bitwise_shift_left, async move {
-    run!(
+    let g = get_tester!();
+
+    g.run(
         r#"
 CREATE TABLE Test (
     id INTEGER,
     num INTEGER,
-)"#
-    );
+)"#,
+    )
+    .await
+    .unwrap();
 
-    run!(
+    g.run(
         r#"
 CREATE TABLE OverflowTest (
     id INTEGER,
     num INTEGER,
-)"#
-    );
+)"#,
+    )
+    .await
+    .unwrap();
 
-    run!(
+    g.run(
         r#"
 CREATE TABLE NullTest (
     id INTEGER,
     num INTEGER,
-)"#
-    );
+)"#,
+    )
+    .await
+    .unwrap();
 
-    run!("INSERT INTO Test (id, num) VALUES (1, 1)");
-    run!("INSERT INTO Test (id, num) VALUES (1, 2)");
-    run!("INSERT INTO Test (id, num) VALUES (3, 4), (4, 8)");
+    g.run("INSERT INTO Test (id, num) VALUES (1, 1)")
+        .await
+        .unwrap();
+    g.run("INSERT INTO Test (id, num) VALUES (1, 2)")
+        .await
+        .unwrap();
+    g.run("INSERT INTO Test (id, num) VALUES (3, 4), (4, 8)")
+        .await
+        .unwrap();
 
-    run!("INSERT INTO OverflowTest (id, num) VALUES (1, 1)");
+    g.run("INSERT INTO OverflowTest (id, num) VALUES (1, 1)")
+        .await
+        .unwrap();
 
-    run!("INSERT INTO NullTest (id, num) VALUES (NULL, 1)");
+    g.run("INSERT INTO NullTest (id, num) VALUES (NULL, 1)")
+        .await
+        .unwrap();
 
-    test! (
-        name: "select all from table",
-        sql : "SELECT (num << 1) as num FROM Test",
-        expected : Ok(select!(num I64; 2; 4; 8; 16))
-    );
+    g.named_test(
+        "select all from table",
+        "SELECT (num << 1) as num FROM Test",
+        Ok(select!(num I64; 2; 4; 8; 16)),
+    )
+    .await;
 
-    test!(
-        name : "test bit shift overflow",
-        sql : "SELECT (num << 65) as overflowed FROM OverflowTest",
-        expected : Err(ValueError::BinaryOperationOverflow { lhs : I64(1), rhs : U32(65), operator : NumericBinaryOperator::BitwiseShiftLeft}.into())
-    );
+    g.named_test(
+        "test bit shift overflow",
+        "SELECT (num << 65) as overflowed FROM OverflowTest",
+        Err(ValueError::BinaryOperationOverflow {
+            lhs: I64(1),
+            rhs: U32(65),
+            operator: NumericBinaryOperator::BitwiseShiftLeft,
+        }
+        .into()),
+    )
+    .await;
 
-    test!(
+    g.test(
         "SELECT id, num FROM NullTest",
         Ok(select_with_null!(
             id     | num;
             Null     I64(1)
-        ))
-    );
+        )),
+    )
+    .await;
 });

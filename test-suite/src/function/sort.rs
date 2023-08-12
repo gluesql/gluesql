@@ -4,51 +4,66 @@ use {
 };
 
 test_case!(sort, async move {
-    run!("CREATE TABLE Test1 (list LIST)");
-    run!("INSERT INTO Test1 (list) VALUES ('[2, 1, 4, 3]')");
+    let g = get_tester!();
 
-    test! (
-        name: "sort the list by default order",
-        sql : "SELECT SORT(list) AS list FROM Test1",
-        expected : Ok(select!(list List; vec![I64(1), I64(2), I64(3), I64(4)]))
-    );
+    g.run("CREATE TABLE Test1 (list LIST)").await.unwrap();
+    g.run("INSERT INTO Test1 (list) VALUES ('[2, 1, 4, 3]')")
+        .await
+        .unwrap();
 
-    test! (
-        name: "sort the list by ascending order",
-        sql : "SELECT SORT(list, 'ASC') AS list FROM Test1",
-        expected : Ok(select!(list List; vec![I64(1), I64(2), I64(3), I64(4)]))
-    );
+    g.named_test(
+        "sort the list by default order",
+        "SELECT SORT(list) AS list FROM Test1",
+        Ok(select!(list List; vec![I64(1), I64(2), I64(3), I64(4)])),
+    )
+    .await;
 
-    test! (
-        name: "sort the list by descending order",
-        sql : "SELECT SORT(list, 'DESC') AS list FROM Test1",
-        expected : Ok(select!(list List; vec![I64(4), I64(3), I64(2), I64(1)]))
-    );
+    g.named_test(
+        "sort the list by ascending order",
+        "SELECT SORT(list, 'ASC') AS list FROM Test1",
+        Ok(select!(list List; vec![I64(1), I64(2), I64(3), I64(4)])),
+    )
+    .await;
 
-    test! (
-        name: "sort the list by wrong order",
-        sql : "SELECT SORT(list, 'WRONG') AS list FROM Test1",
-        expected : Err(EvaluateError::InvalidSortOrder.into())
-    );
+    g.named_test(
+        "sort the list by descending order",
+        "SELECT SORT(list, 'DESC') AS list FROM Test1",
+        Ok(select!(list List; vec![I64(4), I64(3), I64(2), I64(1)])),
+    )
+    .await;
 
-    test! (
-        name: "sort the list with not String typed order",
-        sql : "SELECT SORT(list, 1) AS list FROM Test1",
-        expected : Err(EvaluateError::InvalidSortOrder.into())
-    );
+    g.named_test(
+        "sort the list by wrong order",
+        "SELECT SORT(list, 'WRONG') AS list FROM Test1",
+        Err(EvaluateError::InvalidSortOrder.into()),
+    )
+    .await;
 
-    run!("CREATE TABLE Test2 (id INTEGER, list LIST)");
-    run!("INSERT INTO Test2 (id, list) VALUES (1, '[2, \"1\", [\"a\", \"b\"], 3]')");
+    g.named_test(
+        "sort the list with not String typed order",
+        "SELECT SORT(list, 1) AS list FROM Test1",
+        Err(EvaluateError::InvalidSortOrder.into()),
+    )
+    .await;
 
-    test! (
-        name: "sort non-LIST items",
-        sql : "SELECT SORT(id) AS list FROM Test2",
-        expected : Err(EvaluateError::ListTypeRequired.into())
-    );
+    g.run("CREATE TABLE Test2 (id INTEGER, list LIST)")
+        .await
+        .unwrap();
+    g.run("INSERT INTO Test2 (id, list) VALUES (1, '[2, \"1\", [\"a\", \"b\"], 3]')")
+        .await
+        .unwrap();
 
-    test! (
-        name: "sort the list with not comparable types",
-        sql : "SELECT SORT(list) AS list FROM Test2",
-        expected : Err(EvaluateError::InvalidSortType.into())
-    );
+    g.named_test(
+        "sort non-LIST items",
+        "SELECT SORT(id) AS list FROM Test2",
+        Err(EvaluateError::ListTypeRequired.into()),
+    )
+    .await;
+
+    g.named_test(
+        "sort the list with not comparable types",
+        "SELECT SORT(list) AS list FROM Test2",
+        Err(EvaluateError::InvalidSortType.into()),
+    )
+    .await;
 });

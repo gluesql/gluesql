@@ -8,6 +8,8 @@ use {
 };
 
 test_case!(substr, async move {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "CREATE TABLE Item (name TEXT DEFAULT SUBSTR('abc', 0, 2))",
@@ -274,6 +276,6 @@ test_case!(substr, async move {
         ),
     ];
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

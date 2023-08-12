@@ -8,167 +8,201 @@ use {
 };
 
 test_case!(drop_indexed_table, async move {
-    run!("DROP TABLE IF EXISTS Test;");
-    run!("CREATE TABLE Test (id INTEGER);");
-    run!("INSERT INTO Test VALUES (1), (2);");
-    run!("CREATE INDEX idx_id ON Test (id)");
-    test_idx!(
+    let g = get_tester!();
+
+    g.run("DROP TABLE IF EXISTS Test;").await.unwrap();
+    g.run("CREATE TABLE Test (id INTEGER);").await.unwrap();
+    g.run("INSERT INTO Test VALUES (1), (2);").await.unwrap();
+    g.run("CREATE INDEX idx_id ON Test (id)").await.unwrap();
+    g.test_idx(
+        "SELECT * FROM Test WHERE id = 1",
         Ok(select!(id I64; 1)),
         idx!(idx_id, Eq, "1"),
-        "SELECT * FROM Test WHERE id = 1"
-    );
+    )
+    .await;
 
-    run!("DROP TABLE Test;");
-    test!(
+    g.run("DROP TABLE Test;").await.unwrap();
+    g.test(
         "SELECT * FROM Test;",
-        Err(FetchError::TableNotFound("Test".to_owned()).into())
-    );
+        Err(FetchError::TableNotFound("Test".to_owned()).into()),
+    )
+    .await;
 
-    run!("CREATE TABLE Test (id INTEGER);");
-    run!("INSERT INTO Test VALUES (3), (4);");
-    test_idx!(
+    g.run("CREATE TABLE Test (id INTEGER);").await.unwrap();
+    g.run("INSERT INTO Test VALUES (3), (4);").await.unwrap();
+    g.test_idx(
+        "SELECT * FROM Test WHERE id = 3",
         Ok(select!(id I64; 3)),
         idx!(),
-        "SELECT * FROM Test WHERE id = 3"
-    );
+    )
+    .await;
 
-    run!("CREATE INDEX idx_id ON Test (id)");
-    test_idx!(
+    g.run("CREATE INDEX idx_id ON Test (id)").await.unwrap();
+    g.test_idx(
+        "SELECT * FROM Test WHERE id < 10",
         Ok(select!(id I64; 3; 4)),
         idx!(idx_id, Lt, "10"),
-        "SELECT * FROM Test WHERE id < 10"
-    );
+    )
+    .await;
 
-    test!(
+    g.test(
         "DROP INDEX Test",
-        Err(TranslateError::InvalidParamsInDropIndex.into())
-    );
-    test!(
+        Err(TranslateError::InvalidParamsInDropIndex.into()),
+    )
+    .await;
+    g.test(
         "DROP INDEX Test.idx_id.IndexC",
-        Err(TranslateError::InvalidParamsInDropIndex.into())
-    );
+        Err(TranslateError::InvalidParamsInDropIndex.into()),
+    )
+    .await;
 });
 
 test_case!(drop_indexed_column, async move {
-    run!(
+    let g = get_tester!();
+
+    g.run(
         "
 CREATE TABLE Test (
     id INTEGER,
     num INTEGER,
     name TEXT
-)"
-    );
+)",
+    )
+    .await
+    .unwrap();
 
-    run!(
+    g.run(
         "
         INSERT INTO Test
             (id, num, name)
         VALUES
             (1, 2, 'Hello');
-    "
-    );
+    ",
+    )
+    .await
+    .unwrap();
 
     // create indexes
-    run!("CREATE INDEX idx_name ON Test (num + 1)");
-    run!("CREATE INDEX idx_id ON Test (id)");
-    run!("CREATE INDEX idx_typed_string ON Test ((id))");
-    run!("CREATE INDEX idx_binary_op ON Test (id || name);");
-    run!("CREATE INDEX idx_unary_op ON Test (-id);");
-    run!("CREATE INDEX idx_cast ON Test (CAST(id AS TEXT));");
+    for query in [
+        "CREATE INDEX idx_name ON Test (num + 1)",
+        "CREATE INDEX idx_id ON Test (id)",
+        "CREATE INDEX idx_typed_string ON Test ((id))",
+        "CREATE INDEX idx_binary_op ON Test (id || name);",
+        "CREATE INDEX idx_unary_op ON Test (-id);",
+        "CREATE INDEX idx_cast ON Test (CAST(id AS TEXT));",
+    ] {
+        g.run(query).await.unwrap();
+    }
 
     // check indexes working
-    test!(
+    g.test(
         "CREATE INDEX idx_literal ON Test (100)",
-        Err(AlterError::IdentifierNotFound(expr!("100")).into())
-    );
+        Err(AlterError::IdentifierNotFound(expr("100")).into()),
+    )
+    .await;
 
-    test_idx!(
+    g.test_idx(
+        "SELECT id, num, name FROM Test",
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
             1     2     "Hello".to_owned()
         )),
         idx!(),
-        "SELECT id, num, name FROM Test"
-    );
+    )
+    .await;
 
-    test_idx!(
+    g.test_idx(
+        "SELECT id, num, name FROM Test WHERE id <= 1",
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
             1     2     "Hello".to_owned()
         )),
         idx!(idx_id, LtEq, "1"),
-        "SELECT id, num, name FROM Test WHERE id <= 1"
-    );
+    )
+    .await;
 
-    test_idx!(
+    g.test_idx(
+        "SELECT id, num, name FROM Test WHERE id <= (1)",
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
             1     2     "Hello".to_owned()
         )),
         idx!(idx_id, LtEq, "(1)"),
-        "SELECT id, num, name FROM Test WHERE id <= (1)"
-    );
+    )
+    .await;
 
-    test_idx!(
+    g.test_idx(
+        "SELECT id, num, name FROM Test WHERE id || name = '1Hello'",
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
             1     2     "Hello".to_owned()
         )),
         idx!(idx_binary_op, Eq, "'1Hello'"),
-        "SELECT id, num, name FROM Test WHERE id || name = '1Hello'"
-    );
+    )
+    .await;
 
-    test_idx!(
+    g.test_idx(
+        "SELECT id, num, name FROM Test WHERE -id >= -7",
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
             1     2     "Hello".to_owned()
         )),
         idx!(idx_unary_op, GtEq, "-7"),
-        "SELECT id, num, name FROM Test WHERE -id >= -7"
-    );
+    )
+    .await;
 
-    test_idx!(
+    g.test_idx(
+        "SELECT id, num, name FROM Test WHERE -id > -7",
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
             1     2     "Hello".to_owned()
         )),
         idx!(idx_unary_op, Gt, "-7"),
-        "SELECT id, num, name FROM Test WHERE -id > -7"
-    );
+    )
+    .await;
 
-    test_idx!(
+    g.test_idx(
+        "SELECT id, num, name FROM Test WHERE CAST(id AS TEXT) = '1'",
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
             1     2     "Hello".to_owned()
         )),
         idx!(idx_cast, Eq, "'1'"),
-        "SELECT id, num, name FROM Test WHERE CAST(id AS TEXT) = '1'"
-    );
+    )
+    .await;
 
-    test!(
+    g.test(
         "ALTER TABLE Noname DROP COLUMN id",
-        Err(AlterError::TableNotFound("Noname".to_owned()).into())
-    );
+        Err(AlterError::TableNotFound("Noname".to_owned()).into()),
+    )
+    .await;
 
-    run!("ALTER TABLE Test DROP COLUMN id");
+    g.run("ALTER TABLE Test DROP COLUMN id").await.unwrap();
 
-    test_idx!(
+    g.test_idx(
+        "SELECT * FROM Test",
         Ok(select!(
             num | name
             I64 | Str;
             2     "Hello".to_owned()
         )),
         idx!(),
-        "SELECT * FROM Test"
-    );
+    )
+    .await;
 
-    // Only idx_name remains.
-    assert_eq!(1, schema!("Test").indexes.len());
+    let schema = g
+        .get_glue()
+        .storage
+        .fetch_schema("Test")
+        .await
+        .expect("error fetching schema")
+        .expect("table not found");
+    assert_eq!(schema.indexes.len(), 1, "Only idx_name remains.");
 });

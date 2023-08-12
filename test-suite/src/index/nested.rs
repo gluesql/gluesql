@@ -7,16 +7,20 @@ use {
 };
 
 test_case!(nested, async move {
-    run!(
+    let g = get_tester!();
+
+    g.run(
         "
 CREATE TABLE User (
     id INTEGER,
     num INTEGER,
     name TEXT
-)"
-    );
+)",
+    )
+    .await
+    .unwrap();
 
-    run!(
+    g.run(
         "
         INSERT INTO User
             (id, num, name)
@@ -26,53 +30,59 @@ CREATE TABLE User (
             (3, 9, 'Office'),
             (4, 1, 'Origin'),
             (5, 2, 'Builder');
-    "
-    );
+    ",
+    )
+    .await
+    .unwrap();
 
-    test!("CREATE INDEX idx_id ON User (id)", Ok(Payload::CreateIndex));
+    g.test("CREATE INDEX idx_id ON User (id)", Ok(Payload::CreateIndex))
+        .await;
 
-    test_idx!(
-        Ok(select!(
-            id  | num | name
-            I64 | I64 | Str;
-            1     2     "Hello".to_owned()
-        )),
-        idx!(idx_id, Eq, "1"),
+    g.test_idx(
         "
         SELECT * FROM User u1
         WHERE (
             SELECT u1.id = id FROM User
             WHERE id = 1
             LIMIT 1
-        )"
-    );
-
-    test_idx!(
+        )",
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
             1     2     "Hello".to_owned()
         )),
         idx!(idx_id, Eq, "1"),
+    )
+    .await;
+
+    g.test_idx(
         "
         SELECT * FROM User u1
         WHERE EXISTS(
             SELECT * FROM User
             WHERE id = 1 AND u1.id = id
-        )"
-    );
-
-    test_idx!(
+        )",
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
             1     2     "Hello".to_owned()
         )),
         idx!(idx_id, Eq, "1"),
+    )
+    .await;
+
+    g.test_idx(
         "
         SELECT * FROM User u1
         WHERE id IN (
             SELECT * FROM User WHERE id = 1
-        )"
-    );
+        )",
+        Ok(select!(
+            id  | num | name
+            I64 | I64 | Str;
+            1     2     "Hello".to_owned()
+        )),
+        idx!(idx_id, Eq, "1"),
+    )
+    .await;
 });

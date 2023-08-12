@@ -4,6 +4,8 @@ use {
 };
 
 test_case!(format, async move {
+    let g = get_tester!();
+
     let test_cases = vec![
         (
             "VALUES(FORMAT(DATE '2017-06-15', '%Y-%m'))",
@@ -58,6 +60,6 @@ test_case!(format, async move {
         ),
     ];
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

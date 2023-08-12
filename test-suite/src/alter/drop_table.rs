@@ -7,6 +7,8 @@ use {
 };
 
 test_case!(drop_table, async move {
+    let g = get_tester!();
+
     let create_sql = "
 CREATE TABLE DropTable (
     id INT,
@@ -14,12 +16,12 @@ CREATE TABLE DropTable (
     name TEXT
 )";
 
-    run!(create_sql);
+    g.run(create_sql).await.unwrap();
 
     let sqls = ["INSERT INTO DropTable (id, num, name) VALUES (1, 2, 'Hello')"];
 
     for sql in sqls {
-        run!(sql);
+        g.run(sql).await.unwrap();
     }
 
     let sqls = [
@@ -141,6 +143,6 @@ CREATE TABLE DropTable (
     ];
 
     for (sql, expected) in sqls {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

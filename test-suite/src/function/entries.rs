@@ -7,30 +7,36 @@ use {
 };
 
 test_case!(entries, async move {
-    test! {
-        name: "test entries function works while creating a table simultaneously",
-        sql: "CREATE TABLE Item (map MAP)",
-        expected: Ok(Payload::Create)
-    };
-    test! {
-        name: "test if the sample string gets inserted to table",
-        sql: r#"INSERT INTO Item VALUES ('{"name":"GlueSQL"}')"#,
-        expected: Ok(Payload::Insert(1))
-    };
-    test! {
-        name: "check id the entries function works with the previously inserted string",
-        sql: "SELECT ENTRIES(map) AS test FROM Item",
-        expected: Ok(select!(
+    let g = get_tester!();
+
+    g.named_test(
+        "test entries function works while creating a table simultaneously",
+        "CREATE TABLE Item (map MAP)",
+        Ok(Payload::Create),
+    )
+    .await;
+    g.named_test(
+        "test if the sample string gets inserted to table",
+        r#"INSERT INTO Item VALUES ('{"name":"GlueSQL"}')"#,
+        Ok(Payload::Insert(1)),
+    )
+    .await;
+    g.named_test(
+        "check id the entries function works with the previously inserted string",
+        "SELECT ENTRIES(map) AS test FROM Item",
+        Ok(select!(
             "test";
             List;
             vec![
                 List(vec![Str("name".to_owned()), Str("GlueSQL".to_owned())])
             ]
-        ))
-    };
-    test!(
-        name: "test ENTRIES function requires map value",
-        sql: "SELECT ENTRIES(1) FROM Item",
-        expected: Err(EvaluateError::FunctionRequiresMapValue("ENTRIES".to_owned()).into())
-    );
+        )),
+    )
+    .await;
+    g.named_test(
+        "test ENTRIES function requires map value",
+        "SELECT ENTRIES(1) FROM Item",
+        Err(EvaluateError::FunctionRequiresMapValue("ENTRIES".to_owned()).into()),
+    )
+    .await;
 });

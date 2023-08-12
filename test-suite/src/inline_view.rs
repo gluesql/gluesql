@@ -7,6 +7,8 @@ use {
 };
 
 test_case!(inline_view, async move {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "CREATE TABLE InnerTable (
@@ -266,6 +268,6 @@ test_case!(inline_view, async move {
         ),
     ];
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

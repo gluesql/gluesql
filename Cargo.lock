@@ -1063,6 +1063,7 @@ dependencies = [
  "chrono",
  "gluesql-core",
  "hex",
+ "pretty_assertions",
  "rust_decimal",
  "serde_json",
  "uuid",

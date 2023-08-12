@@ -8,6 +8,8 @@ use {
 };
 
 test_case!(create_table, async move {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "
@@ -77,7 +79,7 @@ test_case!(create_table, async move {
         ),
         (
             "CREATE TABLE Gluery (id INTEGER DEFAULT (SELECT id FROM Wow))",
-            Err(EvaluateError::UnsupportedStatelessExpr(expr!("(SELECT id FROM Wow)")).into()),
+            Err(EvaluateError::UnsupportedStatelessExpr(expr("(SELECT id FROM Wow)")).into()),
         ),
         (
             // Create schema only
@@ -136,6 +138,6 @@ test_case!(create_table, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });
