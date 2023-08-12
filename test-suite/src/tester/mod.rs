@@ -147,7 +147,7 @@ pub trait Tester<T: GStore + GStoreMut> {
 
     fn get_glue(&mut self) -> &mut Glue<T>;
 
-    async fn run(&mut self, sql: &str) -> Result<Payload> {
+    async fn run_inner(&mut self, sql: &str) -> Result<Payload> {
         let glue = self.get_glue();
 
         println!("[RUN] {}", sql);
@@ -158,12 +158,16 @@ pub trait Tester<T: GStore + GStoreMut> {
         glue.execute_stmt(&statement).await
     }
 
+    async fn run(&mut self, sql: &str) -> Payload {
+        self.run_inner(sql).await.unwrap()
+    }
+
     async fn run_err(&mut self, sql: &str) -> Error {
-        self.run(sql).await.unwrap_err()
+        self.run_inner(sql).await.unwrap_err()
     }
 
     async fn count(&mut self, sql: &str, expected: usize) {
-        let actual = match self.run(sql).await.unwrap() {
+        let actual = match self.run_inner(sql).await.unwrap() {
             Payload::Select { rows, .. } => rows.len(),
             Payload::Delete(num) | Payload::Update(num) => num,
             _ => panic!("compare is only for Select, Delete and Update"),
@@ -173,19 +177,19 @@ pub trait Tester<T: GStore + GStoreMut> {
     }
 
     async fn type_match(&mut self, sql: &str, expected: &[DataType]) {
-        let actual = self.run(sql).await.unwrap();
+        let actual = self.run_inner(sql).await.unwrap();
 
         type_match(expected, Ok(actual));
     }
 
     async fn test(&mut self, sql: &str, expected: Result<Payload>) {
-        let actual = self.run(sql).await;
+        let actual = self.run_inner(sql).await;
 
         assert_eq!(actual, expected, "[TEST] {sql}");
     }
 
     async fn named_test(&mut self, name: &str, sql: &str, expected: Result<Payload>) {
-        let actual = self.run(sql).await;
+        let actual = self.run_inner(sql).await;
 
         assert_eq!(actual, expected, "[TEST] {name}");
     }

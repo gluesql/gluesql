@@ -23,7 +23,7 @@ test_case!(nested_select, {
     ];
 
     for sql in create_sqls {
-        g.run(sql).await?;
+        g.run(sql).await;
     }
 
     let insert_sqls = [
@@ -56,7 +56,7 @@ test_case!(nested_select, {
     ];
 
     for insert_sql in insert_sqls {
-        g.run(insert_sql).await?;
+        g.run(insert_sql).await;
     }
 
     let select_sqls = [

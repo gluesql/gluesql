@@ -36,7 +36,7 @@ test_case!(unique, {
     ];
 
     for query in queries {
-        g.run(query).await?;
+        g.run(query).await;
     }
 
     let error_cases = [

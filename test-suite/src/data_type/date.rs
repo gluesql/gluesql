@@ -14,7 +14,7 @@ CREATE TABLE DateLog (
     date2 DATE,
 )",
     )
-    .await?;
+    .await;
 
     g.run(
         "
@@ -24,7 +24,7 @@ INSERT INTO DateLog VALUES
     (3, '2021-05-01', '2021-05-01');
 ",
     )
-    .await?;
+    .await;
 
     macro_rules! date {
         ($date: expr) => {

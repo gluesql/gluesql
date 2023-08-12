@@ -27,13 +27,13 @@ test_case!(join, {
     ];
 
     for sql in create_sqls {
-        g.run(sql).await?;
+        g.run(sql).await;
     }
 
     let delete_sqls = ["DELETE FROM Player", "DELETE FROM Item"];
 
     for sql in delete_sqls {
-        g.run(sql).await?;
+        g.run(sql).await;
     }
 
     let insert_sqls = [
@@ -66,7 +66,7 @@ test_case!(join, {
     ];
 
     for insert_sql in insert_sqls {
-        g.run(insert_sql).await?;
+        g.run(insert_sql).await;
     }
 
     let select_sqls = [
@@ -146,7 +146,7 @@ test_case!(join, {
     }
 
     for sql in delete_sqls {
-        g.run(sql).await?;
+        g.run(sql).await;
     }
 });
 
@@ -170,7 +170,7 @@ test_case!(project, {
     ];
 
     for sql in create_sqls {
-        g.run(sql).await?;
+        g.run(sql).await;
     }
 
     let insert_sqls = [
@@ -191,7 +191,7 @@ test_case!(project, {
     ];
 
     for insert_sql in insert_sqls {
-        g.run(insert_sql).await?;
+        g.run(insert_sql).await;
     }
 
     let sql = "
@@ -259,13 +259,13 @@ test_case!(project, {
     g.test(sql, Ok(expected)).await;
 
     // To test `PlanError` while using `JOIN`
-    g.run("CREATE TABLE Users (id INTEGER, name TEXT);").await?;
+    g.run("CREATE TABLE Users (id INTEGER, name TEXT);").await;
     g.run("INSERT INTO Users (id, name) VALUES (1, 'Harry');")
-        .await?;
+        .await;
     g.run("CREATE TABLE Testers (id INTEGER, nickname TEXT);")
-        .await?;
+        .await;
     g.run("INSERT INTO Testers (id, nickname) VALUES (1, 'Ron');")
-        .await?;
+        .await;
 
     let error_cases = [
         (

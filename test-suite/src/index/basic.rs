@@ -19,7 +19,7 @@ test_case!(basic, {
         )
     ",
     )
-    .await?;
+    .await;
 
     g.run(
         "
@@ -32,7 +32,7 @@ test_case!(basic, {
             (4, 7, 'Job');
     ",
     )
-    .await?;
+    .await;
 
     g.test("CREATE INDEX idx_id ON Test (id)", Ok(Payload::CreateIndex))
         .await;

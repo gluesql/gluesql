@@ -17,9 +17,9 @@ test_case!(concat, {
         );
     ",
     )
-    .await?;
+    .await;
     g.run("INSERT INTO Concat VALUES (1, 2.3, TRUE, 'Foo', NULL);")
-        .await?;
+        .await;
 
     g.test(
         "select concat('ab', 'cd') as myc from Concat;",
@@ -78,7 +78,7 @@ test_case!(concat, {
             items2 LIST
         )"#,
     )
-    .await?;
+    .await;
 
     g.run(
         r#"
@@ -86,7 +86,7 @@ test_case!(concat, {
             (1, '[1, 2, 3]', '["one", "two", "three"]');
         "#,
     )
-    .await?;
+    .await;
 
     g.test(
         r#"select concat(items, items2) as myconcat from ListTypeConcat;"#,

@@ -14,7 +14,7 @@ CREATE TABLE TimestampLog (
     t2 TIMESTAMP,
 )",
     )
-    .await?;
+    .await;
 
     g.run(
         "
@@ -24,7 +24,7 @@ INSERT INTO TimestampLog VALUES
     (3, '2021-04-30T07:00:00.1234-17:00', '2021-05-01T09:00:00.1234+09:00');
 ",
     )
-    .await?;
+    .await;
 
     macro_rules! t {
         ($timestamp: expr) => {

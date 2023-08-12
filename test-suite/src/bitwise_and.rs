@@ -17,7 +17,7 @@ test_case!(bitwise_and, {
         );
         ",
     )
-    .await?;
+    .await;
 
     g.run(
         "
@@ -26,7 +26,7 @@ test_case!(bitwise_and, {
             (1, 29, 15);
         ",
     )
-    .await?;
+    .await;
 
     g.named_test(
         "bitwise-and for values",

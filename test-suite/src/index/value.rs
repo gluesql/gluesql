@@ -16,7 +16,7 @@ CREATE TABLE IdxValue (
     flag BOOLEAN
 )",
     )
-    .await?;
+    .await;
 
     g.run(
         "
@@ -27,7 +27,7 @@ CREATE TABLE IdxValue (
             (2,    NULL,       True);
     ",
     )
-    .await?;
+    .await;
 
     g.test(
         "CREATE INDEX idx_id ON IdxValue (id)",

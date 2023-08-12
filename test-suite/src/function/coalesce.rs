@@ -138,7 +138,7 @@ test_case!(coalesce, {
             boolean_value BOOLEAN NULL
         );",
     )
-    .await?;
+    .await;
     g.run(
         "
         INSERT INTO TestCoalesce (id, text_value, integer_value, float_value, boolean_value) VALUES 
@@ -149,7 +149,7 @@ test_case!(coalesce, {
             (5, 'Universe', 84, 2.22, FALSE);
         ",
     )
-    .await?;
+    .await;
 
     g.test(
         // Test COALESCE with table column values and different types of default values

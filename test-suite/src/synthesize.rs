@@ -11,7 +11,7 @@ test_case!(synthesize, {
         );
     ";
 
-    g.run(create_sql).await?;
+    g.run(create_sql).await;
 
     let insert_sqls = [
         "
@@ -26,7 +26,7 @@ test_case!(synthesize, {
     ];
 
     for insert_sql in insert_sqls {
-        g.run(insert_sql).await?;
+        g.run(insert_sql).await;
     }
 
     let test_cases = [
@@ -67,7 +67,7 @@ test_case!(synthesize, {
     }
 
     for insert_sql in insert_sqls {
-        g.run(insert_sql).await?;
+        g.run(insert_sql).await;
     }
 
     let test_cases = [

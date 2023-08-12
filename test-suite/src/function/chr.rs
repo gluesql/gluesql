@@ -28,8 +28,8 @@ test_case!(chr, {
         );
     ",
     )
-    .await?;
-    g.run("INSERT INTO Chr VALUES (1, 70);").await?;
+    .await;
+    g.run("INSERT INTO Chr VALUES (1, 70);").await;
 
     g.test(
         "select chr(num) as chr from Chr;",
@@ -62,7 +62,7 @@ test_case!(chr, {
     )
     .await;
 
-    g.run("INSERT INTO Chr VALUES (1, 4345);").await?;
+    g.run("INSERT INTO Chr VALUES (1, 4345);").await;
 
     g.test(
         "select chr(num) as chr from Chr;",

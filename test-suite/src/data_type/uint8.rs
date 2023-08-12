@@ -12,9 +12,9 @@ test_case!(uint8, {
             field_two UINT8,
         );",
     )
-    .await?;
+    .await;
     g.run(r#"INSERT INTO Item VALUES (1, 1), (2, 2), (3, 3), (4, 4);"#)
-        .await?;
+        .await;
 
     g.test(
         "INSERT INTO Item VALUES (256, 256);",

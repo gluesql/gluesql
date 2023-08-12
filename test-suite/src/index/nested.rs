@@ -17,7 +17,7 @@ CREATE TABLE User (
     name TEXT
 )",
     )
-    .await?;
+    .await;
 
     g.run(
         "
@@ -31,7 +31,7 @@ CREATE TABLE User (
             (5, 2, 'Builder');
     ",
     )
-    .await?;
+    .await;
 
     g.test("CREATE INDEX idx_id ON User (id)", Ok(Payload::CreateIndex))
         .await;

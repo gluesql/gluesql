@@ -13,10 +13,10 @@ test_case!(last_day, {
             timestamp TIMESTAMP,
         );",
     )
-    .await?;
+    .await;
 
     g.run("INSERT INTO LastDay (id, date) VALUES (1, LAST_DAY(DATE '2017-12-15'));")
-        .await?;
+        .await;
     g.named_test(
         "Should insert the last day of the month that a given date belongs to",
         "SELECT date FROM LastDay WHERE id = 1;",
@@ -29,7 +29,7 @@ test_case!(last_day, {
     .await;
 
     g.run("INSERT INTO LastDay (id, date) VALUES (2, DATE '2017-01-01');")
-        .await?;
+        .await;
     g.named_test(
         "Should return the last day of the month that a retrieved date belongs to",
         "SELECT LAST_DAY(date) as date FROM LastDay WHERE id = 2;",
@@ -42,7 +42,7 @@ test_case!(last_day, {
     .await;
 
     g.run("INSERT INTO LastDay (id, date) VALUES (3, LAST_DAY(TIMESTAMP '2017-12-15 12:12:20'));")
-        .await?;
+        .await;
     g.named_test(
         "Should insert the last day of the month that a given timestamp belongs to",
         "SELECT date FROM LastDay WHERE id = 3;",
@@ -55,7 +55,7 @@ test_case!(last_day, {
     .await;
 
     g.run("INSERT INTO LastDay (id, timestamp) VALUES (4, TIMESTAMP '2017-01-01 12:12:20');")
-        .await?;
+        .await;
     g.named_test(
         "Should return the last day of the month that a retrieved timestamp belongs to",
         "SELECT LAST_DAY(timestamp) as date FROM LastDay WHERE id = 4;",

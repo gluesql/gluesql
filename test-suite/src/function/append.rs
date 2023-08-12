@@ -18,14 +18,14 @@ test_case!(append, {
         );
     ",
     )
-    .await?;
+    .await;
     g.run(
         r#"
             INSERT INTO Append VALUES
             (1, '[1, 2, 3]', 4, 'Foo');
         "#,
     )
-    .await?;
+    .await;
     g.test(
         r#"select append(items, element) as myappend from Append;"#,
         Ok(select!(
@@ -64,7 +64,7 @@ test_case!(append, {
             INSERT INTO Foo VALUES (APPEND(CAST('[1, 2, 3]' AS LIST), 4));
         "#,
     )
-    .await?;
+    .await;
     g.test(
         r#"select elements as myappend from Foo;"#,
         Ok(select!(

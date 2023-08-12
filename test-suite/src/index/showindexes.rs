@@ -17,7 +17,7 @@ CREATE TABLE Test (
     name TEXT
 )",
     )
-    .await?;
+    .await;
 
     g.run(
         "
@@ -30,7 +30,7 @@ CREATE TABLE Test (
             (4, 7, 'Job');
     ",
     )
-    .await?;
+    .await;
 
     g.test("CREATE INDEX idx_id ON Test (id)", Ok(Payload::CreateIndex))
         .await;

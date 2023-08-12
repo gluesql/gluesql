@@ -18,7 +18,7 @@ CREATE TABLE TimeLog (
     time2 TIME,
 )"#,
     )
-    .await?;
+    .await;
 
     g.run(
         "
@@ -28,7 +28,7 @@ INSERT INTO TimeLog VALUES
     (3, 'PM 2:59', '9:00:00 AM');
 ",
     )
-    .await?;
+    .await;
 
     let t = |hour: u32, min: u32, sec: u32, milli: u32| {
         NaiveTime::from_hms_milli_opt(hour, min, sec, milli).unwrap()

@@ -12,7 +12,7 @@ test_case!(is_empty, {
             map_items MAP
         );",
     )
-    .await?;
+    .await;
     g.run(
         r#"
             INSERT INTO IsEmpty VALUES
@@ -22,7 +22,7 @@ test_case!(is_empty, {
             (4, '[10]', '{}');
         "#,
     )
-    .await?;
+    .await;
 
     g.named_test(
         "is_empty for list, return true",

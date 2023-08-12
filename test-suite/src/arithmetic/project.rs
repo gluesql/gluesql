@@ -14,8 +14,8 @@ test_case!(project, {
         );
     ",
     )
-    .await?;
-    g.run("DELETE FROM Arith").await?;
+    .await;
+    g.run("DELETE FROM Arith").await;
     g.run(
         "
         INSERT INTO Arith (id, num) VALUES
@@ -26,7 +26,7 @@ test_case!(project, {
             (5, 3);
     ",
     )
-    .await?;
+    .await;
 
     let test_cases = [
         (

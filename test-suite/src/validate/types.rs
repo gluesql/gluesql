@@ -7,11 +7,11 @@ use {
 test_case!(types, {
     let g = get_tester!();
 
-    g.run("CREATE TABLE TableB (id BOOLEAN);").await?;
+    g.run("CREATE TABLE TableB (id BOOLEAN);").await;
     g.run("CREATE TABLE TableC (uid INTEGER NOT NULL, null_val INTEGER NULL);")
-        .await?;
-    g.run("INSERT INTO TableB VALUES (FALSE);").await?;
-    g.run("INSERT INTO TableC VALUES (1, NULL);").await?;
+        .await;
+    g.run("INSERT INTO TableB VALUES (FALSE);").await;
+    g.run("INSERT INTO TableC VALUES (1, NULL);").await;
 
     let test_cases = [
         (

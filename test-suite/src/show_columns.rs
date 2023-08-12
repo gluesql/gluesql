@@ -25,7 +25,7 @@ test_case!(show_columns, {
         );
     ",
     )
-    .await?;
+    .await;
 
     g.test(
         r#"Show columns from mytable"#,

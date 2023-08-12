@@ -16,7 +16,7 @@ CREATE TABLE MapType (
     nested MAP
 )",
     )
-    .await?;
+    .await;
 
     g.run(
         r#"
@@ -26,7 +26,7 @@ INSERT INTO MapType VALUES
     (3, '{"a": {"b": {"c": {"d": 10}}}}');
 "#,
     )
-    .await?;
+    .await;
 
     let m = |s: &str| Value::parse_json_map(s).unwrap();
     let s = |v: &str| Str(v.to_owned());
@@ -74,7 +74,7 @@ CREATE TABLE MapType2 (
     nested MAP
 )",
     )
-    .await?;
+    .await;
 
     g.run(
         r#"
@@ -84,7 +84,7 @@ INSERT INTO MapType2 VALUES
     (3, '{"a": {"red": "berry", "blue": 3}, "b": 30, "c": true}');
 "#,
     )
-    .await?;
+    .await;
 
     g.test(
         "SELECT id, nested['b'] as b FROM MapType2",

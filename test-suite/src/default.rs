@@ -83,7 +83,7 @@ test_case!(default, {
     )
     .await;
 
-    g.run("INSERT INTO TestExpr (id) VALUES (1);").await?;
+    g.run("INSERT INTO TestExpr (id) VALUES (1);").await;
 
     let d = |year: i32, month: u32, day: u32| NaiveDate::from_ymd_opt(year, month, day).unwrap();
 

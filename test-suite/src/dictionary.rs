@@ -16,19 +16,19 @@ test_case!(dictionary, {
     };
 
     assert!(matches!(
-        g.run("SHOW VERSION;").await?,
+        g.run("SHOW VERSION;").await,
         ShowVariable(PayloadVariable::Version(_))
     ));
 
     g.test("SHOW TABLES", tables(Vec::new())).await;
 
     g.run("CREATE TABLE Foo (id INTEGER, name TEXT NULL, type TEXT NULL);")
-        .await?;
+        .await;
     g.test("SHOW TABLES", tables(vec!["Foo"])).await;
 
-    g.run("CREATE TABLE Zoo (id INTEGER PRIMARY KEY);").await?;
+    g.run("CREATE TABLE Zoo (id INTEGER PRIMARY KEY);").await;
     g.run("CREATE TABLE Bar (id INTEGER UNIQUE, name TEXT NOT NULL DEFAULT 'NONE');")
-        .await?;
+        .await;
 
     g.test("SHOW TABLES", tables(vec!["Bar", "Foo", "Zoo"]))
         .await;

@@ -3,8 +3,8 @@ use {crate::*, gluesql_core::prelude::Value::*, rust_decimal::prelude::Decimal a
 test_case!(decimal, {
     let g = get_tester!();
 
-    g.run("CREATE TABLE DECIMAL_ITEM (v DECIMAL)").await?;
-    g.run("INSERT INTO DECIMAL_ITEM VALUES (1)").await?;
+    g.run("CREATE TABLE DECIMAL_ITEM (v DECIMAL)").await;
+    g.run("INSERT INTO DECIMAL_ITEM VALUES (1)").await;
 
     g.test(
         "
@@ -44,7 +44,7 @@ test_case!(decimal, {
     .await;
 
     g.run("INSERT INTO DECIMAL_ITEM VALUES (1.5), (2.0), (25.12)")
-        .await?;
+        .await;
 
     g.test(
         "SELECT v FROM DECIMAL_ITEM WHERE v > 1.5 AND v <= 25.12",

@@ -10,14 +10,14 @@ test_case!(take, {
         );
         ",
     )
-    .await?;
+    .await;
     g.run(
         r#"
             INSERT INTO Take VALUES
             (TAKE(CAST('[1, 2, 3, 4, 5]' AS LIST), 5));
         "#,
     )
-    .await?;
+    .await;
     g.test(
         r#"select take(items, 0) as mygoodtake from Take;"#,
         Ok(select!(

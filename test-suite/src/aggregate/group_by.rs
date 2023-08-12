@@ -13,7 +13,7 @@ test_case!(group_by, {
         );
     ",
     )
-    .await?;
+    .await;
     g.run(
         "
         INSERT INTO Item (id, quantity, city, ratio) VALUES
@@ -25,7 +25,7 @@ test_case!(group_by, {
             (5,   24, 'Seattle', 6.11);
     ",
     )
-    .await?;
+    .await;
     let test_cases = [
         (
             "SELECT id, COUNT(*) FROM Item GROUP BY id",
@@ -98,9 +98,9 @@ test_case!(group_by, {
         g.test(sql, Ok(expected)).await;
     }
 
-    g.run("CREATE TABLE Sub (id INTEGER);").await?;
+    g.run("CREATE TABLE Sub (id INTEGER);").await;
     g.run("INSERT INTO Sub VALUES (101), (102), (103), (104), (105);")
-        .await?;
+        .await;
     g.named_test(
         "HAVING - nested select context handling edge case",
         "

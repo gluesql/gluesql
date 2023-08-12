@@ -15,7 +15,7 @@ test_case!(delete, {
         );
     ",
     )
-    .await?;
+    .await;
 
     g.run(
         "
@@ -25,7 +25,7 @@ test_case!(delete, {
             (3, 700, TRUE);
     ",
     )
-    .await?;
+    .await;
 
     g.test(
         "SELECT * FROM Foo",
