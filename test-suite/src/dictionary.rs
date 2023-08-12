@@ -16,7 +16,7 @@ test_case!(dictionary, {
     };
 
     assert!(matches!(
-        g.run("SHOW VERSION;").await.unwrap(),
+        g.run("SHOW VERSION;").await?,
         ShowVariable(PayloadVariable::Version(_))
     ));
 
