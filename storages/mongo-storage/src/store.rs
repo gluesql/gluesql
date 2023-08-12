@@ -105,20 +105,20 @@ impl Store for MongoStorage {
             .await?
             .and_then(|schema| schema.column_defs);
 
-        let primary_key = column_defs.as_ref().map(get_primary_key).flatten();
+        let primary_key = column_defs.as_ref().and_then(get_primary_key);
 
         let options = FindOptions::builder();
-        let options = match primary_key.clone() {
-            Some(primary_key) => options.sort(doc! { primary_key.name.clone(): 1}).build(),
+        let options = match primary_key {
+            Some(primary_key) => options.sort(doc! { primary_key.name.to_owned(): 1}).build(),
             None => options.build(),
         };
 
         let cursor = self
             .db
             .collection::<Document>(table_name)
-            .find(doc! {}, options)
+            .find(Document::new(), options)
             .await
-            .unwrap();
+            .map_storage_err()?;
 
         let column_types = schema.as_ref().and_then(|schema| {
             schema.column_defs.as_ref().map(|column_defs| {
@@ -131,7 +131,7 @@ impl Store for MongoStorage {
 
         let row_iter = cursor
             .map(|doc| {
-                let doc = doc.unwrap();
+                let doc = doc.map_storage_err()?;
 
                 match &column_types {
                     Some(column_types) => doc.into_row(
