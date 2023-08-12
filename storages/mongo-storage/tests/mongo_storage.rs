@@ -1,4 +1,3 @@
-use composite_storage::CompositeStorage;
 use gluesql_core::prelude::{Error, Glue, Value::I64};
 
 use {async_trait::async_trait, gluesql_mongo_storage::MongoStorage, test_suite::*};

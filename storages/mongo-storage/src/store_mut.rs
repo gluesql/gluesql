@@ -1,6 +1,5 @@
 use gluesql_core::{
-    ast::{ColumnDef, ColumnUniqueOption, ToSql},
-    chrono::format,
+    ast::{ColumnUniqueOption, ToSql},
     prelude::DataType,
     store::Store,
 };
@@ -242,7 +241,7 @@ impl StoreMut for MongoStorage {
             .unwrap()
             .column_defs;
 
-        let primary_key = column_defs.clone().map(get_primary_key).flatten();
+        let primary_key = column_defs.as_ref().map(get_primary_key).flatten();
         // &get_primary_key(column_defs.clone().unwrap());
 
         for (key, row) in rows {
@@ -305,7 +304,7 @@ impl StoreMut for MongoStorage {
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let schema = self.fetch_schema(table_name).await?.unwrap();
-        let primary_key = schema.column_defs.clone().map(get_primary_key).flatten();
+        let primary_key = schema.column_defs.as_ref().map(get_primary_key).flatten();
 
         self.db
             .collection::<Bson>(table_name)

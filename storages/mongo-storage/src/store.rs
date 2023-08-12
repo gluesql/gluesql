@@ -63,17 +63,15 @@ impl Store for MongoStorage {
         let column_defs = self
             .fetch_schema(table_name)
             .await?
-            .and_then(|schema| schema.column_defs);
+            .and_then(|schema| schema.column_defs)
+            .map_storage_err(MongoStorageError::Unreachable)?;
 
-        let primary_key = column_defs.clone().map(get_primary_key).flatten();
-
-        let filter = doc! { "_id": target.clone().into_bson(primary_key.is_some())?};
-
+        let primary_key = get_primary_key(&column_defs);
+        let filter = doc! { "_id": target.to_owned().into_bson(primary_key.is_some())?};
         let projection = doc! {"_id": 0};
-
         let options = FindOptions::builder().projection(projection);
-        let options = match primary_key.clone() {
-            Some(primary_key) => options.sort(doc! { primary_key.name: 1}).build(),
+        let options = match primary_key {
+            Some(primary_key) => options.sort(doc! { primary_key.name.clone(): 1 }).build(),
             None => options.build(),
         };
 
@@ -82,26 +80,22 @@ impl Store for MongoStorage {
             .collection::<Document>(table_name)
             .find(filter, options)
             .await
-            .unwrap();
-        // .map_storage_err()?;
-
-        // if column_defs.is_some() => zip values with column_defs
+            .map_storage_err()?;
 
         Ok(cursor
             .next()
             .await
-            .map(|result| {
-                result.map(|doc| {
-                    let row = doc
-                        .into_iter()
-                        .map(|(_, bson)| bson.into_value_schemaless())
-                        .collect::<Vec<_>>();
-
-                    DataRow::Vec(row)
-                })
-            })
             .transpose()
-            .unwrap())
+            .map_storage_err()?
+            .map(|doc| {
+                let row = doc
+                    .into_iter()
+                    .zip(column_defs.iter())
+                    .map(|((_, bson), column_def)| bson.into_value(&column_def.data_type))
+                    .collect::<Vec<_>>();
+
+                DataRow::Vec(row)
+            }))
     }
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
@@ -111,11 +105,11 @@ impl Store for MongoStorage {
             .await?
             .and_then(|schema| schema.column_defs);
 
-        let primary_key = column_defs.clone().map(get_primary_key).flatten();
+        let primary_key = column_defs.as_ref().map(get_primary_key).flatten();
 
         let options = FindOptions::builder();
         let options = match primary_key.clone() {
-            Some(primary_key) => options.sort(doc! { primary_key.name: 1}).build(),
+            Some(primary_key) => options.sort(doc! { primary_key.name.clone(): 1}).build(),
             None => options.build(),
         };
 
@@ -185,10 +179,6 @@ impl MongoStorage {
             .map_storage_err()?
             .to_owned();
 
-        // {
-        //     cursor: { id: Long("0"), ns: 'newenw.$cmd.listCollections', firstBatch: [] },
-        //     ok: 1
-        //   }
         let schemas = stream::iter(validators_list).then(move |validators| async move {
             let doc = validators
                 .as_document()
@@ -252,10 +242,10 @@ impl MongoStorage {
 
                     let default = doc
                         .get_str("description")
-                        .map_storage_err()
+                        .ok()
                         .map(parse_expr)
-                        .and_then(|expr| translate_expr(&expr?))
-                        .ok();
+                        .map(|expr| expr.and_then(|expr| translate_expr(&expr)))
+                        .transpose()?;
 
                     let column_def = ColumnDef {
                         name: column_name.to_owned(),
@@ -277,7 +267,7 @@ impl MongoStorage {
             let schema = Schema {
                 table_name: collection_name.to_owned(),
                 column_defs,
-                indexes: vec![],
+                indexes: Vec::new(),
                 engine: None,
             };
 
