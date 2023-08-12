@@ -1285,6 +1285,28 @@ mod tests {
             ))))
             .to_sql()
         );
+
+        assert_eq!(
+            r#"SPLICE("list", 2, 4)"#,
+            &Expr::Function(Box::new(Function::Splice {
+                list_data: Expr::Identifier("list".to_owned()),
+                begin_index: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())),
+                end_index: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("4").unwrap())),
+                values: None
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"SPLICE("list", 2, 4, "values")"#,
+            &Expr::Function(Box::new(Function::Splice {
+                list_data: Expr::Identifier("list".to_owned()),
+                begin_index: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())),
+                end_index: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("4").unwrap())),
+                values: Some(Expr::Identifier("values".to_owned()))
+            }))
+            .to_sql()
+        );
     }
 
     #[test]
