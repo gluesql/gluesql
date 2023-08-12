@@ -130,10 +130,9 @@ impl Store for MongoStorage {
                 let doc = doc.map_storage_err()?;
 
                 match &column_types {
-                    Some(column_types) => doc.into_row(
-                        column_types.into_iter().map(|data_type| *data_type),
-                        primary_key.is_some(),
-                    ),
+                    Some(column_types) => {
+                        doc.into_row(column_types.iter().copied(), primary_key.is_some())
+                    }
                     None => {
                         let mut iter = doc.into_iter();
                         let (_, value) = iter.next().unwrap();
@@ -227,7 +226,7 @@ impl MongoStorage {
                         .and_then(parse_data_type)
                         .and_then(|s| translate_data_type(&s))?;
 
-                    let index_name = indexes.get(column_name).and_then(|i| i.split_once("_"));
+                    let index_name = indexes.get(column_name).and_then(|i| i.split_once('_'));
 
                     let unique = match index_name {
                         Some((_, "PK")) => Some(true),

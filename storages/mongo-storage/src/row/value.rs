@@ -77,7 +77,7 @@ impl IntoValue for Bson {
                 )
             }
             (Bson::String(string), DataType::Interval) => {
-                let interval = parse_interval(&string).unwrap();
+                let interval = parse_interval(string).unwrap();
                 let interval = translate_expr(&interval).unwrap();
                 let interval = match interval {
                     Expr::Interval {
@@ -111,7 +111,7 @@ impl IntoValue for Bson {
             }
             (Bson::Document(d), _) => Value::Map(
                 d.into_iter()
-                    .map(|(k, v)| (k.to_string(), v.into_value(data_type)))
+                    .map(|(k, v)| (k, v.into_value(data_type)))
                     .collect(),
             ),
             (Bson::Boolean(b), _) => Value::Bool(b),

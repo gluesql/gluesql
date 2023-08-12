@@ -123,10 +123,7 @@ impl StoreMut for MongoStorage {
         let mut required = vec!["_id".to_string()];
         required.extend(names.clone());
 
-        let additional_properties = match names.len() {
-            0 => true,
-            _ => false,
-        };
+        let additional_properties = matches!(names.len(), 0);
 
         let option = CreateCollectionOptions::builder()
             .validator(Some(doc! {
@@ -152,7 +149,7 @@ impl StoreMut for MongoStorage {
             .into_iter()
             .map(|IndexInfo { name, key }| {
                 let index_options = IndexOptions::builder().unique(true);
-                let index_options = match name.split_once("_") {
+                let index_options = match name.split_once('_') {
                     Some((_, "UNIQUE")) => index_options
                         .partial_filter_expression(
                             doc! { "partialFilterExpression": { name.clone(): { "$en": null } } },
