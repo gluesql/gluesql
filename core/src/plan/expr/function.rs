@@ -197,11 +197,11 @@ impl Function {
             Self::Greatest(exprs) => Exprs::VariableArgs(exprs.iter()),
             Self::Entries(expr) => Exprs::Single([expr].into_iter()),
             Self::Splice {
-                list_data,
-                begin_index,
-                end_index,
-                values: Some(values),
-            } => Exprs::Quadruple([list_data, begin_index, end_index, values].into_iter()),
+                list_data: expr,
+                begin_index: expr2,
+                end_index: expr3,
+                values: Some(expr4),
+            } => Exprs::Quadruple([expr, expr2, expr3, expr4].into_iter()),
         }
     }
 }
