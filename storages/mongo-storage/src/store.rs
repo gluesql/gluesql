@@ -61,9 +61,8 @@ impl Store for MongoStorage {
 
     async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<DataRow>> {
         let column_defs = self
-            .fetch_schema(table_name)
+            .get_column_defs(table_name)
             .await?
-            .and_then(|schema| schema.column_defs)
             .map_storage_err(MongoStorageError::Unreachable)?;
 
         let primary_key = get_primary_key(&column_defs);
@@ -100,10 +99,7 @@ impl Store for MongoStorage {
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
         let schema = self.fetch_schema(table_name).await?;
-        let column_defs = self
-            .fetch_schema(table_name)
-            .await?
-            .and_then(|schema| schema.column_defs);
+        let column_defs = self.get_column_defs(table_name).await?;
 
         let primary_key = column_defs.as_ref().and_then(get_primary_key);
 
@@ -275,5 +271,12 @@ impl MongoStorage {
         });
 
         Ok(Box::pin(schemas))
+    }
+
+    pub async fn get_column_defs(&self, table_name: &str) -> Result<Option<Vec<ColumnDef>>> {
+        Ok(self
+            .fetch_schema(table_name)
+            .await?
+            .and_then(|schema| schema.column_defs))
     }
 }

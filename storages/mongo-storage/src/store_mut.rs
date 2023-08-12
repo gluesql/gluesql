@@ -1,6 +1,6 @@
 use gluesql_core::{
     ast::{ColumnUniqueOption, ToSql},
-    prelude::DataType,
+    prelude::{DataType, Error},
     store::Store,
 };
 use mongodb::{
@@ -10,6 +10,7 @@ use mongodb::{
 };
 
 use crate::{
+    error::{MongoStorageError, OptionExt},
     row::data_type::BsonType,
     row::{data_type::IntoRange, key::into_object_id, key::KeyIntoBson, value::IntoBson},
     utils::get_primary_key,
@@ -189,37 +190,36 @@ impl StoreMut for MongoStorage {
     }
 
     async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
-        let column_defs = self
-            .fetch_schema(table_name)
-            .await
-            .unwrap()
-            .unwrap()
-            .column_defs;
+        let column_defs = self.get_column_defs(table_name).await?;
 
         let data = rows
             .into_iter()
             .map(|row| match row {
-                DataRow::Vec(values) => column_defs
-                    .clone()
-                    .unwrap()
-                    .into_iter()
-                    .zip(values.into_iter())
-                    .fold(Document::new(), |mut acc, (column_def, value)| {
-                        acc.extend(doc! {column_def.name: value.into_bson().unwrap()});
+                DataRow::Vec(values) => {
+                    column_defs
+                        .clone() // TODO: remove clone
+                        .map_storage_err(MongoStorageError::Unreachable)?
+                        .into_iter()
+                        .zip(values.into_iter())
+                        .fold(Ok(Document::new()), |acc, (column_def, value)| {
+                            let mut acc = acc?;
+                            acc.extend(doc! {column_def.name: value.into_bson().unwrap()});
 
-                        acc
-                    }),
+                            Ok(acc)
+                        })
+                }
                 DataRow::Map(hash_map) => {
                     hash_map
                         .into_iter()
-                        .fold(Document::new(), |mut acc, (key, value)| {
-                            acc.extend(doc! {key: value.into_bson().unwrap()});
+                        .fold(Ok(Document::new()), |acc, (key, value)| {
+                            let mut acc = acc?;
+                            acc.extend(doc! {key: value.into_bson()?});
 
-                            acc
+                            Ok(acc)
                         })
                 }
             })
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>>>()?;
 
         if data.is_empty() {
             return Ok(());
@@ -234,69 +234,45 @@ impl StoreMut for MongoStorage {
     }
 
     async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
-        let column_defs = self
-            .fetch_schema(table_name)
-            .await
-            .unwrap()
-            .unwrap()
-            .column_defs;
+        let column_defs = self.get_column_defs(table_name).await?;
 
-        let primary_key = column_defs.as_ref().map(get_primary_key).flatten();
-        // &get_primary_key(column_defs.clone().unwrap());
+        let primary_key = column_defs.as_ref().and_then(get_primary_key);
 
         for (key, row) in rows {
             let doc = match row {
-                DataRow::Vec(values) => {
-                    column_defs
-                        .clone()
-                        .unwrap()
-                        .into_iter()
-                        .zip(values.into_iter())
-                        .fold(
-                            // usualy key is _id, but if there is PK, key is PK column
-                            // match primary_key {
-                            //     Some(_) => doc! {},
-                            //     None => {
-                            //         doc! {"_id": into_object_id(key.clone())}
-                            //     }
-                            // },
-                            //     }
-                            doc! {"_id": key.clone().into_bson(primary_key.is_some()).unwrap()},
-                            |mut acc, (column_def, value)| {
-                                acc.extend(doc! {column_def.name: value.into_bson().unwrap()});
+                DataRow::Vec(values) => column_defs
+                    .clone()
+                    .map_storage_err(MongoStorageError::Unreachable)?
+                    .into_iter()
+                    .zip(values.into_iter())
+                    .fold(
+                        Ok::<_, Error>(doc! {"_id": key.clone().into_bson(primary_key.is_some())?}),
+                        |acc, (column_def, value)| {
+                            let mut acc = acc.map_storage_err()?;
+                            acc.extend(doc! {column_def.name: value.into_bson()?});
 
-                                acc
-                            },
-                        )
-                }
+                            Ok(acc)
+                        },
+                    ),
                 DataRow::Map(hash_map) => hash_map.into_iter().fold(
-                    doc! {"_id": into_object_id(key.clone())},
-                    |mut acc, (key, value)| {
-                        acc.extend(doc! {key: value.into_bson().unwrap()});
+                    Ok(doc! {"_id": into_object_id(key.clone())}),
+                    |acc, (key, value)| {
+                        let mut acc = acc?;
+                        acc.extend(doc! {key: value.into_bson()?});
 
-                        acc
+                        Ok(acc)
                     },
                 ),
-            };
+            }?;
 
-            // 1. pk insert: pk
-            // 2. update
-            // 3. pk update?
-            // let query = match &primary_key {
-            //     Some(column_def) => doc! {column_def.name.clone(): key.into_bson().unwrap()},
-            //     _ => doc! {"_id": into_object_id(key.clone())},
-            // };
-            let query = doc! {"_id": key.into_bson(primary_key.is_some()).unwrap()};
-
-            // let doc = doc! {"$set": doc};
-            // let options = UpdateOptions::builder().upsert(Some(true)).build();
+            let query = doc! {"_id": key.into_bson(primary_key.is_some())?};
             let options = ReplaceOptions::builder().upsert(Some(true)).build();
 
             self.db
                 .collection::<Document>(table_name)
                 .replace_one(query, doc, options)
                 .await
-                .unwrap();
+                .map_storage_err()?;
         }
 
         Ok(())
