@@ -16,7 +16,7 @@ CREATE TABLE ListType (
     items LIST
 )",
     )
-    .await?;
+    .await;
 
     g.run(
         r#"
@@ -26,7 +26,7 @@ INSERT INTO ListType VALUES
     (3, '[{ "foo": 100, "bar": [true, 0, [10.5, false] ] }, 10, 20]');
 "#,
     )
-    .await?;
+    .await;
 
     let l = |s: &str| Value::parse_json_list(s).unwrap();
     let s = |v: &str| Str(v.to_owned());
@@ -89,7 +89,7 @@ CREATE TABLE ListType2 (
     items LIST
 )",
     )
-    .await?;
+    .await;
 
     g.run(
         r#"
@@ -99,7 +99,7 @@ INSERT INTO ListType2 VALUES
     (3, '["first", "second", "third", { "foo": true, "bar": false }]');
 "#,
     )
-    .await?;
+    .await;
 
     g.test(
         "SELECT

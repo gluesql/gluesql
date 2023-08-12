@@ -6,9 +6,9 @@ use {
 test_case!(ditionary_index, {
     let g = get_tester!();
 
-    g.run("CREATE TABLE Foo (id INT, name TEXT);").await?;
-    g.run("CREATE INDEX Foo_id ON Foo (id)").await?;
-    g.run("CREATE INDEX Foo_id_2 ON Foo (id + 2)").await?;
+    g.run("CREATE TABLE Foo (id INT, name TEXT);").await;
+    g.run("CREATE INDEX Foo_id ON Foo (id)").await;
+    g.run("CREATE INDEX Foo_id_2 ON Foo (id + 2)").await;
     g.test(
         "SELECT * FROM GLUE_INDEXES",
         Ok(select!(
@@ -20,9 +20,9 @@ test_case!(ditionary_index, {
     ).await;
 
     g.run("CREATE TABLE Bar (id INT PRIMARY KEY, name TEXT);")
-        .await?;
+        .await;
     g.run("CREATE INDEX Bar_name_concat ON Bar (name + '_')")
-        .await?;
+        .await;
     g.test(
         "SELECT * FROM GLUE_INDEXES",
         Ok(select!(

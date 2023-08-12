@@ -14,7 +14,7 @@ CREATE TABLE IntervalLog (
     interval2 INTERVAL,
 )",
     )
-    .await?;
+    .await;
 
     g.run(
         "
@@ -28,7 +28,7 @@ INSERT INTO IntervalLog VALUES
     (7, INTERVAL '-1000-11' YEAR TO MONTH,    INTERVAL '-30:11' MINUTE TO SECOND);
 ",
     )
-    .await?;
+    .await;
 
     g.test(
         "SELECT * FROM IntervalLog;",

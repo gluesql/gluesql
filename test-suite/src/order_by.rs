@@ -18,7 +18,7 @@ CREATE TABLE Test (
     rate FLOAT NULL
 )",
     )
-    .await?;
+    .await;
     g.run(
         "
         INSERT INTO Test (id, num, name, rate)
@@ -29,7 +29,7 @@ CREATE TABLE Test (
             (4, 7, 'Thursday', NULL);
     ",
     )
-    .await?;
+    .await;
 
     g.test(
         "SELECT id, num FROM Test",

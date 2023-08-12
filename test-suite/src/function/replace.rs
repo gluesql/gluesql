@@ -83,5 +83,5 @@ test_case!(replace, {
         Ok(select_with_null!(test; Value::Null)),
     )
     .await;
-    g.run("DELETE FROM Item").await?;
+    g.run("DELETE FROM Item").await;
 });

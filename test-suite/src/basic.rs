@@ -34,7 +34,7 @@ test_case!(basic, {
     ];
 
     for query in queries {
-        g.run(query).await?;
+        g.run(query).await;
     }
 
     g.named_test(
@@ -71,7 +71,7 @@ test_case!(basic, {
 
     g.count("SELECT * FROM Test", 4).await;
 
-    g.run("UPDATE Test SET id = 2").await?;
+    g.run("UPDATE Test SET id = 2").await;
 
     g.test(
         "SELECT id FROM Test",

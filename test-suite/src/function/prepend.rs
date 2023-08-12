@@ -19,14 +19,14 @@ test_case!(prepend, {
         );
     ",
     )
-    .await?;
+    .await;
     g.run(
         r#"
             INSERT INTO Prepend VALUES
             (1, '[1, 2, 3]',0, 'Foo');
         "#,
     )
-    .await?;
+    .await;
     g.test(
         r#"select prepend(items, element) as myprepend from Prepend;"#,
         Ok(select!(
@@ -65,7 +65,7 @@ test_case!(prepend, {
             INSERT INTO Foo VALUES (PREPEND(CAST('[1, 2, 3]' AS LIST), 0));
         "#,
     )
-    .await?;
+    .await;
     g.test(
         r#"select elements as myprepend from Foo;"#,
         Ok(select!(

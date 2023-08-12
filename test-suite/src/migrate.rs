@@ -19,7 +19,7 @@ test_case!(migrate, {
         );
     ",
     )
-    .await?;
+    .await;
     g.run(
         "
         INSERT INTO Test (id, num, name) VALUES
@@ -28,7 +28,7 @@ test_case!(migrate, {
             (+3,    2 * 2, 'Great');
         ",
     )
-    .await?;
+    .await;
 
     let error_cases = [
         (
@@ -99,7 +99,7 @@ test_case!(migrate, {
     );
     g.test(found, Ok(expected)).await;
 
-    g.run("UPDATE Test SET id = 2").await?;
+    g.run("UPDATE Test SET id = 2").await;
 
     let found = "SELECT id, num, name FROM Test";
     let expected = select!(

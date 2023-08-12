@@ -21,8 +21,8 @@ test_case!(error, {
         );
     ",
     )
-    .await?;
-    g.run("DELETE FROM Arith").await?;
+    .await;
+    g.run("DELETE FROM Arith").await;
     g.run(
         "
         INSERT INTO Arith (id, num, name) VALUES
@@ -33,7 +33,7 @@ test_case!(error, {
             (5, 3, 'E');
     ",
     )
-    .await?;
+    .await;
 
     let test_cases = [
         (

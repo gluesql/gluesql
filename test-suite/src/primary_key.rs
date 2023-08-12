@@ -18,7 +18,7 @@ test_case!(primary_key, {
         );
     ",
     )
-    .await?;
+    .await;
     g.test(
         "INSERT INTO Allegro VALUES (1, 'hello'), (3, 'world');",
         Ok(Payload::Insert(2)),
@@ -74,7 +74,7 @@ test_case!(primary_key, {
     .await;
 
     g.run("INSERT INTO Allegro VALUES (5, 'neon'), (2, 'foo'), (4, 'bar');")
-        .await?;
+        .await;
 
     g.test(
         "SELECT id, name FROM Allegro",
@@ -109,7 +109,7 @@ test_case!(primary_key, {
     )
     .await;
 
-    g.run("DELETE FROM Allegro WHERE id > 3").await?;
+    g.run("DELETE FROM Allegro WHERE id > 3").await;
     g.test(
         "SELECT id, name FROM Allegro",
         Ok(select!(
@@ -128,9 +128,9 @@ test_case!(primary_key, {
         );
         ",
     )
-    .await?;
+    .await;
     g.run("INSERT INTO Strslice VALUES (SUBSTR(SUBSTR('foo', 1), 1));")
-        .await?;
+        .await;
 
     g.named_test(
         "PRIMARY KEY includes UNIQUE constraint",

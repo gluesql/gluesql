@@ -12,9 +12,9 @@ test_case!(int16, {
         field_two INT16,
     );",
     )
-    .await?;
+    .await;
     g.run("INSERT INTO Item VALUES (1, -1), (-2, 2), (3, 3), (-4, -4);")
-        .await?;
+        .await;
 
     let parse_i16 = |text: &str| -> i16 { text.parse().unwrap() };
 
@@ -101,5 +101,5 @@ test_case!(int16, {
     )
     .await;
 
-    g.run("DELETE FROM Item").await?;
+    g.run("DELETE FROM Item").await;
 });

@@ -11,8 +11,8 @@ test_case!(ordering, {
         );
     ",
     )
-    .await?;
-    g.run("DELETE FROM Operator").await?;
+    .await;
+    g.run("DELETE FROM Operator").await;
     g.run(
         "
         INSERT INTO Operator (id, name) VALUES
@@ -23,7 +23,7 @@ test_case!(ordering, {
             (5,    'Trade');
     ",
     )
-    .await?;
+    .await;
 
     let test_cases = [
         (1, "SELECT * FROM Operator WHERE id < 2;"),

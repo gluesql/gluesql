@@ -13,9 +13,9 @@ test_case!(skip, {
             list LIST
             )",
     )
-    .await?;
+    .await;
     g.run("INSERT INTO Test (id, list) VALUES (1,'[1,2,3,4,5]')")
-        .await?;
+        .await;
 
     g.named_test(
         "skip function with normal usage",

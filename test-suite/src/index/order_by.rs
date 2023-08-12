@@ -11,7 +11,7 @@ CREATE TABLE Test (
     name TEXT,
 )",
     )
-    .await?;
+    .await;
     g.run(
         "
         INSERT INTO Test (id, num, name)
@@ -22,7 +22,7 @@ CREATE TABLE Test (
             (4, 7,    'Monday');
    ",
     )
-    .await?;
+    .await;
 
     g.test(
         "CREATE INDEX idx_name ON Test (name)",
@@ -108,7 +108,7 @@ CREATE TABLE Multi (
     num INTEGER
 )",
     )
-    .await?;
+    .await;
 
     g.run(
         "
@@ -120,7 +120,7 @@ CREATE TABLE Multi (
             (1, 30), (1, 40), (1, 20), (1, 50), (1, 10);
     ",
     )
-    .await?;
+    .await;
 
     g.test(
         "CREATE INDEX idx_id_num ON Multi (id + num DESC)",

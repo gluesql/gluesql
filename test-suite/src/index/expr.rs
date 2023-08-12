@@ -19,7 +19,7 @@ test_case!(expr, {
         )
     ",
     )
-    .await?;
+    .await;
 
     g.run(
         "
@@ -29,7 +29,7 @@ test_case!(expr, {
             (1, 2, 'Hello');
     ",
     )
-    .await?;
+    .await;
 
     g.test("CREATE INDEX idx_id ON Test (id)", Ok(Payload::CreateIndex))
         .await;

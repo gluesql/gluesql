@@ -7,7 +7,7 @@ use {
 test_case!(basic, {
     let g = get_tester!();
 
-    g.run("CREATE TABLE Player").await?;
+    g.run("CREATE TABLE Player").await;
     g.run(
         format!(
             "INSERT INTO Player VALUES ('{}'), ('{}');",
@@ -16,9 +16,9 @@ test_case!(basic, {
         )
         .as_str(),
     )
-    .await?;
+    .await;
 
-    g.run("CREATE TABLE Item").await?;
+    g.run("CREATE TABLE Item").await;
     g.run(
         format!(
             "INSERT INTO Item VALUES ('{}'), ('{}');",
@@ -37,7 +37,7 @@ test_case!(basic, {
         )
         .as_str(),
     )
-    .await?;
+    .await;
 
     g.test(
         "SELECT name, dex, rare FROM Item WHERE id = 100",
@@ -78,7 +78,7 @@ test_case!(basic, {
     )
     .await;
 
-    g.run("DELETE FROM Item WHERE id > 100").await?;
+    g.run("DELETE FROM Item WHERE id > 100").await;
     g.run(
         "
         UPDATE Item
@@ -87,7 +87,7 @@ test_case!(basic, {
             rare = NOT rare
     ",
     )
-    .await?;
+    .await;
     g.test(
         "SELECT id, name, dex, rare FROM Item",
         Ok(select!(
@@ -99,7 +99,7 @@ test_case!(basic, {
     .await;
 
     // add new field to existing row
-    g.run("UPDATE Item SET new_field = 'Hello'").await?;
+    g.run("UPDATE Item SET new_field = 'Hello'").await;
     g.test(
         r#"SELECT new_field, obj['cost'] AS cost FROM Item"#,
         Ok(select!(

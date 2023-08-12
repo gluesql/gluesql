@@ -13,7 +13,7 @@ test_case!(sql_types, {
         );
     ",
     )
-    .await?;
+    .await;
     g.run(
         "
         INSERT INTO Item
@@ -24,7 +24,7 @@ test_case!(sql_types, {
             ( 1, 'test',    False,   0.0);
     ",
     )
-    .await?;
+    .await;
 
     let test_sqls = [
         (3, "SELECT * FROM Item;"),
@@ -44,5 +44,5 @@ test_case!(sql_types, {
         g.count(sql, num).await;
     }
 
-    g.run("DELETE FROM Item").await?;
+    g.run("DELETE FROM Item").await;
 });

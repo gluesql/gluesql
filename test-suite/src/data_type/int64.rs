@@ -18,9 +18,9 @@ test_case!(int64, {
         field_two INT,
     );",
     )
-    .await?;
+    .await;
     g.run("INSERT INTO Item VALUES (1, -1), (-2, 2), (3, 3), (-4, -4);")
-        .await?;
+        .await;
 
     let parse_i64 = |text: &str| -> i64 { text.parse().unwrap() };
 
@@ -144,5 +144,5 @@ test_case!(int64, {
     )
     .await;
 
-    g.run("DELETE FROM Item").await?;
+    g.run("DELETE FROM Item").await;
 });

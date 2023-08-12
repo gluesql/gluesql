@@ -18,7 +18,7 @@ test_case!(filter, {
     ];
 
     for sql in create_sqls {
-        g.run(sql).await?;
+        g.run(sql).await;
     }
 
     let insert_sqls = [
@@ -39,7 +39,7 @@ test_case!(filter, {
     ];
 
     for sql in insert_sqls {
-        g.run(sql).await?;
+        g.run(sql).await;
     }
 
     let select_sqls = [

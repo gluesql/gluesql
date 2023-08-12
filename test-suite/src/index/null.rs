@@ -15,7 +15,7 @@ CREATE TABLE NullIdx (
     flag BOOLEAN NULL
 )",
     )
-    .await?;
+    .await;
 
     g.run(
         "
@@ -29,7 +29,7 @@ CREATE TABLE NullIdx (
             (4,    NULL,         True);
     ",
     )
-    .await?;
+    .await;
 
     g.test(
         "CREATE INDEX idx_id ON NullIdx (id)",

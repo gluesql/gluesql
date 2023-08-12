@@ -7,7 +7,7 @@ use {
 test_case!(error, {
     let g = get_tester!();
 
-    g.run("CREATE TABLE Item").await?;
+    g.run("CREATE TABLE Item").await;
     g.run(
         format!(
             "INSERT INTO Item VALUES ('{}');",
@@ -23,9 +23,9 @@ test_case!(error, {
         )
         .as_str(),
     )
-    .await?;
+    .await;
 
-    g.run("CREATE TABLE Player").await?;
+    g.run("CREATE TABLE Player").await;
     g.run(
         format!(
             "INSERT INTO Player VALUES ('{}'), ('{}');",
@@ -34,9 +34,9 @@ test_case!(error, {
         )
         .as_str(),
     )
-    .await?;
+    .await;
 
-    g.run("CREATE TABLE Food").await?;
+    g.run("CREATE TABLE Food").await;
     g.run(
         format!(
             "INSERT INTO Food VALUES (SUBSTR(SUBSTR(' hi{}', 4), 1));",
@@ -44,7 +44,7 @@ test_case!(error, {
         )
         .as_str(),
     )
-    .await?;
+    .await;
 
     g.test(
         r#"

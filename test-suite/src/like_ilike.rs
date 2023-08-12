@@ -34,7 +34,7 @@ test_case!(like_ilike, {
         );
     ",
     )
-    .await?;
+    .await;
     g.run(
         "
         INSERT INTO Item (id, name) VALUES
@@ -45,7 +45,7 @@ test_case!(like_ilike, {
             (5,     'Maria');
     ",
     )
-    .await?;
+    .await;
 
     let test_cases = [
         (2, "SELECT name FROM Item WHERE name LIKE '_a%'"),

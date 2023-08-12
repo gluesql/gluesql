@@ -13,7 +13,7 @@ CREATE TABLE Test (
     num INTEGER,
 )"#,
     )
-    .await?;
+    .await;
 
     g.run(
         r#"
@@ -22,7 +22,7 @@ CREATE TABLE OverflowTest (
     num INTEGER,
 )"#,
     )
-    .await?;
+    .await;
 
     g.run(
         r#"
@@ -31,18 +31,18 @@ CREATE TABLE NullTest (
     num INTEGER,
 )"#,
     )
-    .await?;
+    .await;
 
-    g.run("INSERT INTO Test (id, num) VALUES (1, 1)").await?;
-    g.run("INSERT INTO Test (id, num) VALUES (1, 2)").await?;
+    g.run("INSERT INTO Test (id, num) VALUES (1, 1)").await;
+    g.run("INSERT INTO Test (id, num) VALUES (1, 2)").await;
     g.run("INSERT INTO Test (id, num) VALUES (3, 4), (4, 8)")
-        .await?;
+        .await;
 
     g.run("INSERT INTO OverflowTest (id, num) VALUES (1, 1)")
-        .await?;
+        .await;
 
     g.run("INSERT INTO NullTest (id, num) VALUES (NULL, 1)")
-        .await?;
+        .await;
 
     g.named_test(
         "select all from table",

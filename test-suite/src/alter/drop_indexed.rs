@@ -10,10 +10,10 @@ use {
 test_case!(drop_indexed_table, {
     let g = get_tester!();
 
-    g.run("DROP TABLE IF EXISTS Test;").await?;
-    g.run("CREATE TABLE Test (id INTEGER);").await?;
-    g.run("INSERT INTO Test VALUES (1), (2);").await?;
-    g.run("CREATE INDEX idx_id ON Test (id)").await?;
+    g.run("DROP TABLE IF EXISTS Test;").await;
+    g.run("CREATE TABLE Test (id INTEGER);").await;
+    g.run("INSERT INTO Test VALUES (1), (2);").await;
+    g.run("CREATE INDEX idx_id ON Test (id)").await;
     g.test_idx(
         "SELECT * FROM Test WHERE id = 1",
         Ok(select!(id I64; 1)),
@@ -21,15 +21,15 @@ test_case!(drop_indexed_table, {
     )
     .await;
 
-    g.run("DROP TABLE Test;").await?;
+    g.run("DROP TABLE Test;").await;
     g.test(
         "SELECT * FROM Test;",
         Err(FetchError::TableNotFound("Test".to_owned()).into()),
     )
     .await;
 
-    g.run("CREATE TABLE Test (id INTEGER);").await?;
-    g.run("INSERT INTO Test VALUES (3), (4);").await?;
+    g.run("CREATE TABLE Test (id INTEGER);").await;
+    g.run("INSERT INTO Test VALUES (3), (4);").await;
     g.test_idx(
         "SELECT * FROM Test WHERE id = 3",
         Ok(select!(id I64; 3)),
@@ -37,7 +37,7 @@ test_case!(drop_indexed_table, {
     )
     .await;
 
-    g.run("CREATE INDEX idx_id ON Test (id)").await?;
+    g.run("CREATE INDEX idx_id ON Test (id)").await;
     g.test_idx(
         "SELECT * FROM Test WHERE id < 10",
         Ok(select!(id I64; 3; 4)),
@@ -68,7 +68,7 @@ CREATE TABLE Test (
     name TEXT
 )",
     )
-    .await?;
+    .await;
 
     g.run(
         "
@@ -78,7 +78,7 @@ CREATE TABLE Test (
             (1, 2, 'Hello');
     ",
     )
-    .await?;
+    .await;
 
     // create indexes
     for query in [
@@ -89,7 +89,7 @@ CREATE TABLE Test (
         "CREATE INDEX idx_unary_op ON Test (-id);",
         "CREATE INDEX idx_cast ON Test (CAST(id AS TEXT));",
     ] {
-        g.run(query).await?;
+        g.run(query).await;
     }
 
     // check indexes working
@@ -182,7 +182,7 @@ CREATE TABLE Test (
     )
     .await;
 
-    g.run("ALTER TABLE Test DROP COLUMN id").await?;
+    g.run("ALTER TABLE Test DROP COLUMN id").await;
 
     g.test_idx(
         "SELECT * FROM Test",

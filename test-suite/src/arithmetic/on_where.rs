@@ -12,8 +12,8 @@ test_case!(on_where, {
         );
     ",
     )
-    .await?;
-    g.run("DELETE FROM Arith").await?;
+    .await;
+    g.run("DELETE FROM Arith").await;
     g.run(
         "
         INSERT INTO Arith (id, num, name) VALUES
@@ -24,7 +24,7 @@ test_case!(on_where, {
             (5, 3, 'E');
     ",
     )
-    .await?;
+    .await;
 
     let test_cases = [
         // add on WHERE

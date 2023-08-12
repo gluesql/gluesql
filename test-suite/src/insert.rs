@@ -17,7 +17,7 @@ CREATE TABLE Test (
     name TEXT NOT NULL,
 );",
     )
-    .await?;
+    .await;
 
     g.named_test(
         "basic insert - single item",
@@ -77,7 +77,7 @@ CREATE TABLE Test (
     .await;
 
     g.run("CREATE TABLE Target AS SELECT * FROM Test WHERE 1 = 0;")
-        .await?;
+        .await;
 
     g.named_test(
         "insert into target from source",

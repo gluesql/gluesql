@@ -16,7 +16,7 @@ test_case!(basic, {
             (2, 'Phone');
     ",
     ] {
-        g.run(query).await?;
+        g.run(query).await;
     }
 
     g.test("BEGIN;", Ok(Payload::StartTransaction)).await;
@@ -185,6 +185,6 @@ test_case!(basic, {
         "BEGIN;",
         "COMMIT;",
     ] {
-        g.run(query).await?;
+        g.run(query).await;
     }
 });

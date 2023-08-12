@@ -16,7 +16,7 @@ test_case!(error, {
         );
     ",
     )
-    .await?;
+    .await;
     g.run(
         "
         INSERT INTO Item (id, quantity, age, total) VALUES
@@ -27,7 +27,7 @@ test_case!(error, {
             (5, 25, NULL, 1);
     ",
     )
-    .await?;
+    .await;
 
     let test_cases = [
         (

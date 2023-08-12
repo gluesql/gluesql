@@ -14,9 +14,9 @@ test_case!(concat, {
         );
     ",
     )
-    .await?;
+    .await;
     g.run("INSERT INTO Concat VALUES (1, 2.3, TRUE, 'Foo', NULL);")
-        .await?;
+        .await;
 
     g.test(
         "

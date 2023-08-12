@@ -31,8 +31,8 @@ test_case!(ascii, {
         );
     ",
     )
-    .await?;
-    g.run("INSERT INTO Ascii VALUES (1, 'F');").await?;
+    .await;
+    g.run("INSERT INTO Ascii VALUES (1, 'F');").await;
     g.test(
         r#"select ascii(text) as ascii from Ascii;"#,
         Ok(select!(
@@ -110,7 +110,7 @@ test_case!(ascii, {
     )
     .await;
 
-    g.run("INSERT INTO Ascii VALUES (1, 'Foo');").await?;
+    g.run("INSERT INTO Ascii VALUES (1, 'Foo');").await;
 
     g.test(
         r#"select ascii(text) as ascii from Ascii;"#,
