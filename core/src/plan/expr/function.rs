@@ -321,10 +321,7 @@ mod tests {
             r#"SUBSTR('   >++++("<   ', 3, 11)"#,
             &[r#"'   >++++("<   '"#, "3", "11"],
         );
-        test(
-            r#"SPLICE(list, 2, 4)"#,
-            &["list", "2", "4"],
-        );
+        test(r#"SPLICE(list, 2, 4)"#, &["list", "2", "4"]);
 
         // Quadruple
         test(
