@@ -4,15 +4,14 @@ use {
     std::borrow::Cow,
 };
 
-test_case!(types, async move {
+test_case!(types, {
     let g = get_tester!();
 
-    g.run("CREATE TABLE TableB (id BOOLEAN);").await.unwrap();
+    g.run("CREATE TABLE TableB (id BOOLEAN);").await?;
     g.run("CREATE TABLE TableC (uid INTEGER NOT NULL, null_val INTEGER NULL);")
-        .await
-        .unwrap();
-    g.run("INSERT INTO TableB VALUES (FALSE);").await.unwrap();
-    g.run("INSERT INTO TableC VALUES (1, NULL);").await.unwrap();
+        .await?;
+    g.run("INSERT INTO TableB VALUES (FALSE);").await?;
+    g.run("INSERT INTO TableC VALUES (1, NULL);").await?;
 
     let test_cases = [
         (

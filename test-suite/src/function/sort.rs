@@ -3,13 +3,12 @@ use {
     gluesql_core::{error::EvaluateError, prelude::Value::*},
 };
 
-test_case!(sort, async move {
+test_case!(sort, {
     let g = get_tester!();
 
-    g.run("CREATE TABLE Test1 (list LIST)").await.unwrap();
+    g.run("CREATE TABLE Test1 (list LIST)").await?;
     g.run("INSERT INTO Test1 (list) VALUES ('[2, 1, 4, 3]')")
-        .await
-        .unwrap();
+        .await?;
 
     g.named_test(
         "sort the list by default order",
@@ -46,12 +45,9 @@ test_case!(sort, async move {
     )
     .await;
 
-    g.run("CREATE TABLE Test2 (id INTEGER, list LIST)")
-        .await
-        .unwrap();
+    g.run("CREATE TABLE Test2 (id INTEGER, list LIST)").await?;
     g.run("INSERT INTO Test2 (id, list) VALUES (1, '[2, \"1\", [\"a\", \"b\"], 3]')")
-        .await
-        .unwrap();
+        .await?;
 
     g.named_test(
         "sort non-LIST items",

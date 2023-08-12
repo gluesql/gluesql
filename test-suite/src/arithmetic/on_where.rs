@@ -1,6 +1,6 @@
 use crate::*;
 
-test_case!(on_where, async move {
+test_case!(on_where, {
     let g = get_tester!();
 
     g.run(
@@ -12,9 +12,8 @@ test_case!(on_where, async move {
         );
     ",
     )
-    .await
-    .unwrap();
-    g.run("DELETE FROM Arith").await.unwrap();
+    .await?;
+    g.run("DELETE FROM Arith").await?;
     g.run(
         "
         INSERT INTO Arith (id, num, name) VALUES
@@ -25,8 +24,7 @@ test_case!(on_where, async move {
             (5, 3, 'E');
     ",
     )
-    .await
-    .unwrap();
+    .await?;
 
     let test_cases = [
         // add on WHERE

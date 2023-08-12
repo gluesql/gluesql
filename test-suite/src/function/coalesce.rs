@@ -3,7 +3,7 @@ use {
     gluesql_core::{error::EvaluateError, prelude::Value::*},
 };
 
-test_case!(coalesce, async move {
+test_case!(coalesce, {
     let g = get_tester!();
 
     g.test(
@@ -138,8 +138,7 @@ test_case!(coalesce, async move {
             boolean_value BOOLEAN NULL
         );",
     )
-    .await
-    .unwrap();
+    .await?;
     g.run(
         "
         INSERT INTO TestCoalesce (id, text_value, integer_value, float_value, boolean_value) VALUES 
@@ -150,8 +149,7 @@ test_case!(coalesce, async move {
             (5, 'Universe', 84, 2.22, FALSE);
         ",
     )
-    .await
-    .unwrap();
+    .await?;
 
     g.test(
         // Test COALESCE with table column values and different types of default values

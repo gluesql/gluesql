@@ -6,7 +6,7 @@ use {
     },
 };
 
-test_case!(floor, async move {
+test_case!(floor, {
     let g = get_tester!();
 
     let test_cases = [

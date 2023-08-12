@@ -8,7 +8,7 @@ use {
     },
 };
 
-test_case!(coalesce, async move {
+test_case!(coalesce, {
     let glue = get_glue!();
 
     // create table - Foo

@@ -9,7 +9,7 @@ use {
     },
 };
 
-test_case!(sin, async move {
+test_case!(sin, {
     let g = get_tester!();
 
     let test_cases = [
@@ -62,7 +62,7 @@ test_case!(sin, async move {
     }
 });
 
-test_case!(cos, async move {
+test_case!(cos, {
     let g = get_tester!();
 
     let test_cases = [
@@ -115,7 +115,7 @@ test_case!(cos, async move {
     }
 });
 
-test_case!(tan, async move {
+test_case!(tan, {
     let g = get_tester!();
 
     let test_cases = [
@@ -168,7 +168,7 @@ test_case!(tan, async move {
     }
 });
 
-test_case!(asin, async move {
+test_case!(asin, {
     let g = get_tester!();
 
     let test_cases = [
@@ -213,7 +213,7 @@ test_case!(asin, async move {
     }
 });
 
-test_case!(acos, async move {
+test_case!(acos, {
     let g = get_tester!();
 
     let test_cases = [
@@ -262,7 +262,7 @@ test_case!(acos, async move {
     }
 });
 
-test_case!(atan, async move {
+test_case!(atan, {
     let g = get_tester!();
 
     let test_cases = [

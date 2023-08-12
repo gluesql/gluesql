@@ -3,7 +3,7 @@ use {
     gluesql_core::{ast_builder::*, executor::Payload, prelude::Value::*},
 };
 
-test_case!(rounding, async move {
+test_case!(rounding, {
     let glue = get_glue!();
 
     // create table - Number

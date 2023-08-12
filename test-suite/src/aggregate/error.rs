@@ -3,7 +3,7 @@ use {
     gluesql_core::error::{EvaluateError, TranslateError},
 };
 
-test_case!(error, async move {
+test_case!(error, {
     let g = get_tester!();
 
     g.run(
@@ -16,8 +16,7 @@ test_case!(error, async move {
         );
     ",
     )
-    .await
-    .unwrap();
+    .await?;
     g.run(
         "
         INSERT INTO Item (id, quantity, age, total) VALUES
@@ -28,8 +27,7 @@ test_case!(error, async move {
             (5, 25, NULL, 1);
     ",
     )
-    .await
-    .unwrap();
+    .await?;
 
     let test_cases = [
         (

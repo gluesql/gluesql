@@ -10,7 +10,7 @@ use {
     std::borrow::Cow,
 };
 
-test_case!(point, async move {
+test_case!(point, {
     let g = get_tester!();
 
     let test_cases = [

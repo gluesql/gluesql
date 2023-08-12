@@ -3,7 +3,7 @@ use {
     gluesql_core::{ast::DataType, error::TranslateError, prelude::Payload},
 };
 
-test_case!(generate_uuid, async move {
+test_case!(generate_uuid, {
     let g = get_tester!();
 
     let test_cases = [

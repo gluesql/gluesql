@@ -1,6 +1,6 @@
 use {crate::*, gluesql_core::prelude::Value::*};
 
-test_case!(group_by, async move {
+test_case!(group_by, {
     let g = get_tester!();
 
     g.run(
@@ -13,8 +13,7 @@ test_case!(group_by, async move {
         );
     ",
     )
-    .await
-    .unwrap();
+    .await?;
     g.run(
         "
         INSERT INTO Item (id, quantity, city, ratio) VALUES
@@ -26,8 +25,7 @@ test_case!(group_by, async move {
             (5,   24, 'Seattle', 6.11);
     ",
     )
-    .await
-    .unwrap();
+    .await?;
     let test_cases = [
         (
             "SELECT id, COUNT(*) FROM Item GROUP BY id",
@@ -100,10 +98,9 @@ test_case!(group_by, async move {
         g.test(sql, Ok(expected)).await;
     }
 
-    g.run("CREATE TABLE Sub (id INTEGER);").await.unwrap();
+    g.run("CREATE TABLE Sub (id INTEGER);").await?;
     g.run("INSERT INTO Sub VALUES (101), (102), (103), (104), (105);")
-        .await
-        .unwrap();
+        .await?;
     g.named_test(
         "HAVING - nested select context handling edge case",
         "

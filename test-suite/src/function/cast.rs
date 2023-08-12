@@ -12,7 +12,7 @@ use {
     rust_decimal::Decimal,
 };
 
-test_case!(cast_literal, async move {
+test_case!(cast_literal, {
     let g = get_tester!();
 
     let test_cases = [
@@ -339,7 +339,7 @@ test_case!(cast_literal, async move {
     }
 });
 
-test_case!(cast_value, async move {
+test_case!(cast_value, {
     let g = get_tester!();
 
     // More test cases are in `gluesql::Value` unit tests.

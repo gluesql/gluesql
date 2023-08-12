@@ -1,6 +1,6 @@
 use {crate::*, gluesql_core::executor::EvaluateError, gluesql_core::prelude::Value::*};
 
-test_case!(take, async move {
+test_case!(take, {
     let g = get_tester!();
 
     g.run(
@@ -10,16 +10,14 @@ test_case!(take, async move {
         );
         ",
     )
-    .await
-    .unwrap();
+    .await?;
     g.run(
         r#"
             INSERT INTO Take VALUES
             (TAKE(CAST('[1, 2, 3, 4, 5]' AS LIST), 5));
         "#,
     )
-    .await
-    .unwrap();
+    .await?;
     g.test(
         r#"select take(items, 0) as mygoodtake from Take;"#,
         Ok(select!(

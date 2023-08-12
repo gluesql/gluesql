@@ -3,7 +3,7 @@ use {
     gluesql_core::{executor::EvaluateError, prelude::Value::*},
 };
 
-test_case!(skip, async move {
+test_case!(skip, {
     let g = get_tester!();
 
     g.run(
@@ -13,11 +13,9 @@ test_case!(skip, async move {
             list LIST
             )",
     )
-    .await
-    .unwrap();
+    .await?;
     g.run("INSERT INTO Test (id, list) VALUES (1,'[1,2,3,4,5]')")
-        .await
-        .unwrap();
+        .await?;
 
     g.named_test(
         "skip function with normal usage",

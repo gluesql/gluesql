@@ -7,7 +7,7 @@ use {
     },
 };
 
-test_case!(to_date, async move {
+test_case!(to_date, {
     let g = get_tester!();
 
     fn assert_chrono_error_kind_eq(error: Error, kind: ParseErrorKind) {

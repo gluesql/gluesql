@@ -1,6 +1,6 @@
 use crate::*;
 
-test_case!(sql_types, async move {
+test_case!(sql_types, {
     let g = get_tester!();
 
     g.run(
@@ -13,8 +13,7 @@ test_case!(sql_types, async move {
         );
     ",
     )
-    .await
-    .unwrap();
+    .await?;
     g.run(
         "
         INSERT INTO Item
@@ -25,8 +24,7 @@ test_case!(sql_types, async move {
             ( 1, 'test',    False,   0.0);
     ",
     )
-    .await
-    .unwrap();
+    .await?;
 
     let test_sqls = [
         (3, "SELECT * FROM Item;"),
@@ -46,5 +44,5 @@ test_case!(sql_types, async move {
         g.count(sql, num).await;
     }
 
-    g.run("DELETE FROM Item").await.unwrap();
+    g.run("DELETE FROM Item").await?;
 });

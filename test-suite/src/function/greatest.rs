@@ -6,7 +6,7 @@ use {
     },
 };
 
-test_case!(greatest, async move {
+test_case!(greatest, {
     let g = get_tester!();
 
     g.test(

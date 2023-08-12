@@ -3,7 +3,7 @@ use {
     gluesql_core::{error::ValueError, prelude::Value::*},
 };
 
-test_case!(timestamp, async move {
+test_case!(timestamp, {
     let g = get_tester!();
 
     g.run(
@@ -14,8 +14,7 @@ CREATE TABLE TimestampLog (
     t2 TIMESTAMP,
 )",
     )
-    .await
-    .unwrap();
+    .await?;
 
     g.run(
         "
@@ -25,8 +24,7 @@ INSERT INTO TimestampLog VALUES
     (3, '2021-04-30T07:00:00.1234-17:00', '2021-05-01T09:00:00.1234+09:00');
 ",
     )
-    .await
-    .unwrap();
+    .await?;
 
     macro_rules! t {
         ($timestamp: expr) => {

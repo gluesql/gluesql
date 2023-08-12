@@ -6,7 +6,7 @@ use {
     },
 };
 
-test_case!(reverse, async move {
+test_case!(reverse, {
     let g = get_tester!();
 
     let test_cases = [

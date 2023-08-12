@@ -3,7 +3,7 @@ use {
     gluesql_core::{ast::DataType, error::ExecuteError, executor::Payload},
 };
 
-test_case!(show_columns, async move {
+test_case!(show_columns, {
     let g = get_tester!();
 
     g.run(
@@ -25,8 +25,7 @@ test_case!(show_columns, async move {
         );
     ",
     )
-    .await
-    .unwrap();
+    .await?;
 
     g.test(
         r#"Show columns from mytable"#,

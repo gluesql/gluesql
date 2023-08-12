@@ -8,7 +8,7 @@ use {
     },
 };
 
-test_case!(position_and_indexing, async move {
+test_case!(position_and_indexing, {
     // test - find_idx
 
     let glue = get_glue!();

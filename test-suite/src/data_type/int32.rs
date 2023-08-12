@@ -6,7 +6,7 @@ use {
     },
 };
 
-test_case!(int32, async move {
+test_case!(int32, {
     let g = get_tester!();
 
     g.run(
@@ -15,11 +15,9 @@ test_case!(int32, async move {
         field_two INT32,
     );",
     )
-    .await
-    .unwrap();
+    .await?;
     g.run("INSERT INTO Item VALUES (1, -1), (-2, 2), (3, 3), (-4, -4);")
-        .await
-        .unwrap();
+        .await?;
 
     let parse_i32 = |text: &str| -> i32 { text.parse().unwrap() };
 
@@ -146,5 +144,5 @@ test_case!(int32, async move {
     )
     .await;
 
-    g.run("DELETE FROM Item").await.unwrap();
+    g.run("DELETE FROM Item").await?;
 });

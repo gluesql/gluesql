@@ -3,7 +3,7 @@ use {
     gluesql_core::{error::EvaluateError, prelude::Value::*},
 };
 
-test_case!(log2, async move {
+test_case!(log2, {
     let g = get_tester!();
 
     let test_cases = [
@@ -41,7 +41,7 @@ test_case!(log2, async move {
     }
 });
 
-test_case!(log10, async move {
+test_case!(log10, {
     let g = get_tester!();
 
     let test_cases = [
@@ -79,7 +79,7 @@ test_case!(log10, async move {
     }
 });
 
-test_case!(ln, async move {
+test_case!(ln, {
     let g = get_tester!();
 
     let test_cases = [
@@ -114,7 +114,7 @@ test_case!(ln, async move {
     }
 });
 
-test_case!(log, async move {
+test_case!(log, {
     let g = get_tester!();
 
     let test_cases = [
@@ -160,7 +160,7 @@ test_case!(log, async move {
     }
 });
 
-test_case!(exp, async move {
+test_case!(exp, {
     let g = get_tester!();
 
     let test_cases = [

@@ -3,7 +3,7 @@ use {
     gluesql_core::prelude::{Payload, Value::*},
 };
 
-test_case!(float32, async move {
+test_case!(float32, {
     let g = get_tester!();
 
     let test_cases = [

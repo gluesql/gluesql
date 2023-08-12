@@ -1,6 +1,6 @@
 use {crate::*, gluesql_core::prelude::*, Value::*};
 
-test_case!(order_by, async move {
+test_case!(order_by, {
     let g = get_tester!();
 
     g.run(
@@ -11,8 +11,7 @@ CREATE TABLE Test (
     name TEXT,
 )",
     )
-    .await
-    .unwrap();
+    .await?;
     g.run(
         "
         INSERT INTO Test (id, num, name)
@@ -23,8 +22,7 @@ CREATE TABLE Test (
             (4, 7,    'Monday');
    ",
     )
-    .await
-    .unwrap();
+    .await?;
 
     g.test(
         "CREATE INDEX idx_name ON Test (name)",
@@ -100,7 +98,7 @@ CREATE TABLE Test (
     .await;
 });
 
-test_case!(order_by_multi, async move {
+test_case!(order_by_multi, {
     let g = get_tester!();
 
     g.run(
@@ -110,8 +108,7 @@ CREATE TABLE Multi (
     num INTEGER
 )",
     )
-    .await
-    .unwrap();
+    .await?;
 
     g.run(
         "
@@ -123,8 +120,7 @@ CREATE TABLE Multi (
             (1, 30), (1, 40), (1, 20), (1, 50), (1, 10);
     ",
     )
-    .await
-    .unwrap();
+    .await?;
 
     g.test(
         "CREATE INDEX idx_id_num ON Multi (id + num DESC)",

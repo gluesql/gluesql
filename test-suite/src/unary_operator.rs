@@ -6,7 +6,7 @@ use {
     },
 };
 
-test_case!(unary_operator, async move {
+test_case!(unary_operator, {
     let g = get_tester!();
 
     let test_cases = [

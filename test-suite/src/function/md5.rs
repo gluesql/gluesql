@@ -3,7 +3,7 @@ use {
     gluesql_core::{error::TranslateError, prelude::Payload, prelude::Value::*},
 };
 
-test_case!(md5, async move {
+test_case!(md5, {
     let g = get_tester!();
 
     g.test(

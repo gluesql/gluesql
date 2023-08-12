@@ -3,7 +3,7 @@ use {
     gluesql_core::prelude::Value::{self, *},
 };
 
-test_case!(project, async move {
+test_case!(project, {
     let g = get_tester!();
 
     g.run(
@@ -14,9 +14,8 @@ test_case!(project, async move {
         );
     ",
     )
-    .await
-    .unwrap();
-    g.run("DELETE FROM Arith").await.unwrap();
+    .await?;
+    g.run("DELETE FROM Arith").await?;
     g.run(
         "
         INSERT INTO Arith (id, num) VALUES
@@ -27,8 +26,7 @@ test_case!(project, async move {
             (5, 3);
     ",
     )
-    .await
-    .unwrap();
+    .await?;
 
     let test_cases = [
         (
