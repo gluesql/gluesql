@@ -1,2 +1,0 @@
-- name: MongoDB in GitHub Actions
-  uses: supercharge/mongodb-github-action@v1.10.0
