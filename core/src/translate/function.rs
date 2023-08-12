@@ -604,6 +604,19 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             let expr = translate_expr(args[0])?;
             Ok(Expr::Function(Box::new(Function::Values(expr))))
         }
+        "SPLICE" => {
+            check_len_range(name, args.len(), 3, 4)?;
+
+            let expr1 = translate_expr(args[0])?;
+            let expr2 = translate_expr(args[1])?;
+            let expr3 = translate_expr(args[2])?;
+            let expr4 = if args.len() == 4 {
+                Some(translate_expr(args[3]))
+            } else {
+                None
+            };
+            Ok(Expr::Function(Box::new(Function::Values(expr1))))
+        }
         _ => {
             let exprs = args
                 .into_iter()
