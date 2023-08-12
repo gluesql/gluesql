@@ -44,15 +44,16 @@ impl StoreMut for MongoStorage {
             .as_ref()
             .map(|column_defs| {
                 column_defs.iter().fold(
-                    (vec![], doc! {}, vec![]),
+                    (Vec::new(), Document::new(), Vec::new()),
                     |(mut names, mut column_types, mut indexes), column_def| {
-                        let column_name = column_def.name.clone();
+                        let column_name = &column_def.name;
                         names.push(column_name.clone());
+
                         let data_type = BsonType::from(&column_def.data_type).into();
                         let maximum = column_def.data_type.into_max();
                         let minimum = column_def.data_type.into_min();
 
-                        let mut bson_type = match column_def.clone().nullable {
+                        let mut bson_type = match column_def.nullable {
                             true => vec![data_type, "null"],
                             false => vec![data_type],
                         };
@@ -159,7 +160,6 @@ impl StoreMut for MongoStorage {
                         .partial_filter_expression(
                             doc! { "partialFilterExpression": { name.clone(): { "$en": null } } },
                         )
-                        // .sparse(true)
                         .name(name)
                         .build(),
                     _ => index_options.name(name).build(),
