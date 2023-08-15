@@ -9,7 +9,9 @@ use {
     },
 };
 
-test_case!(sin, async move {
+test_case!(sin, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "SELECT SIN(0.5) AS sin1, SIN(1) AS sin2",
@@ -56,11 +58,13 @@ test_case!(sin, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });
 
-test_case!(cos, async move {
+test_case!(cos, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "SELECT COS(0.5) AS cos1, COS(1) AS cos2",
@@ -107,11 +111,13 @@ test_case!(cos, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });
 
-test_case!(tan, async move {
+test_case!(tan, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "SELECT TAN(0.5) AS tan1, TAN(1) AS tan2",
@@ -158,11 +164,13 @@ test_case!(tan, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });
 
-test_case!(asin, async move {
+test_case!(asin, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "SELECT ASIN(0.5) AS asin1, ASIN(1) AS asin2",
@@ -201,11 +209,13 @@ test_case!(asin, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });
 
-test_case!(acos, async move {
+test_case!(acos, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "SELECT ACOS(0.5) AS acos1, ACOS(1) AS acos2",
@@ -248,11 +258,13 @@ test_case!(acos, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });
 
-test_case!(atan, async move {
+test_case!(atan, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "CREATE TABLE SingleItem (id INTEGER DEFAULT ATAN(3.14))",
@@ -303,6 +315,6 @@ test_case!(atan, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

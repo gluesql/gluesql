@@ -3,7 +3,9 @@ use {
     gluesql_core::{error::TranslateError, prelude::Value::*},
 };
 
-test_case!(pi, async move {
+test_case!(pi, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "SELECT PI() AS pi",
@@ -25,6 +27,6 @@ test_case!(pi, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

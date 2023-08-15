@@ -6,7 +6,9 @@ use {
     },
 };
 
-test_case!(find_idx, async move {
+test_case!(find_idx, {
+    let g = get_tester!();
+
     let test_cases = [
         ("CREATE TABLE Meal (menu Text null)", Ok(Payload::Create)),
         ("INSERT INTO Meal VALUES ('pork')", Ok(Payload::Insert(1))),
@@ -49,6 +51,6 @@ test_case!(find_idx, async move {
         ),
     ];
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });
