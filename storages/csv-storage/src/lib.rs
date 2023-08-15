@@ -99,8 +99,16 @@ impl CsvStorage {
         self.path_by(table_name, "csv")
     }
 
+    fn tmp_data_path(&self, table_name: &str) -> PathBuf {
+        self.path_by(table_name, "tmp.csv")
+    }
+
     fn types_path(&self, table_name: &str) -> PathBuf {
         self.path_by(table_name, "types.csv")
+    }
+
+    fn tmp_types_path(&self, table_name: &str) -> PathBuf {
+        self.path_by(table_name, "types.tmp.csv")
     }
 
     fn scan_data(&self, table_name: &str) -> Result<(Option<Vec<String>>, RowIter)> {

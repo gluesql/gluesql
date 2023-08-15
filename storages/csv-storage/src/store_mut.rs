@@ -12,7 +12,7 @@ use {
     },
     std::{
         collections::BTreeSet,
-        fs::{remove_file, File, OpenOptions},
+        fs::{remove_file, rename, File, OpenOptions},
         io::Write,
         {cmp::Ordering, iter::Peekable, vec::IntoIter},
     },
@@ -126,9 +126,8 @@ impl CsvStorage {
         columns: Option<Vec<String>>,
         rows: T,
     ) -> Result<()> {
-        let rows = rows.collect::<Result<Vec<_>>>()?;
-
-        let mut data_wtr = File::create(self.data_path(table_name))
+        let tmp_data_path = self.tmp_data_path(table_name);
+        let mut data_wtr = File::create(&tmp_data_path)
             .map_storage_err()
             .map(Writer::from_writer)?;
 
@@ -136,57 +135,59 @@ impl CsvStorage {
             data_wtr.write_record(&columns).map_storage_err()?;
 
             for row in rows {
-                let row = convert(row)?;
+                let row = convert(row?)?;
 
                 data_wtr.write_record(&row).map_storage_err()?;
             }
+        } else {
+            let tmp_types_path = self.tmp_types_path(table_name);
+            let mut types_wtr = File::create(&tmp_types_path)
+                .map(Writer::from_writer)
+                .map_storage_err()?;
 
-            return Ok(());
-        }
-
-        let mut types_wtr = File::create(self.types_path(table_name))
-            .map(Writer::from_writer)
-            .map_storage_err()?;
-
-        // schemaless
-        let mut columns = BTreeSet::new();
-        let rows = rows
-            .into_iter()
-            .map(|row| match row {
-                DataRow::Vec(_) => Err(CsvStorageError::UnreachableVecTypeDataRowTypeFound.into()),
-                DataRow::Map(values) => Ok(values),
-            })
-            .collect::<Result<Vec<_>>>()?;
-
-        for row in &rows {
-            columns.extend(row.keys());
-        }
-
-        data_wtr.write_record(&columns).map_storage_err()?;
-        types_wtr.write_record(&columns).map_storage_err()?;
-
-        for row in &rows {
-            let (row, data_types): (Vec<_>, Vec<_>) = columns
-                .iter()
-                .map(|key| {
-                    row.get(key.as_str())
-                        .map(|value| {
-                            let data_type = value
-                                .get_type()
-                                .map(|t| t.to_string())
-                                .unwrap_or("NULL".to_owned());
-
-                            (String::from(value), data_type)
-                        })
-                        .unwrap_or(("NULL".to_owned(), "".to_owned()))
+            let mut columns = BTreeSet::new();
+            let rows = rows
+                .into_iter()
+                .map(|row| match row? {
+                    DataRow::Vec(_) => {
+                        Err(CsvStorageError::UnreachableVecTypeDataRowTypeFound.into())
+                    }
+                    DataRow::Map(values) => Ok(values),
                 })
-                .unzip();
+                .collect::<Result<Vec<_>>>()?;
 
-            data_wtr.write_record(&row).map_storage_err()?;
-            types_wtr.write_record(&data_types).map_storage_err()?;
+            for row in &rows {
+                columns.extend(row.keys());
+            }
+
+            data_wtr.write_record(&columns).map_storage_err()?;
+            types_wtr.write_record(&columns).map_storage_err()?;
+
+            for row in &rows {
+                let (row, data_types): (Vec<_>, Vec<_>) = columns
+                    .iter()
+                    .map(|key| {
+                        row.get(key.as_str())
+                            .map(|value| {
+                                let data_type = value
+                                    .get_type()
+                                    .map(|t| t.to_string())
+                                    .unwrap_or("NULL".to_owned());
+
+                                (String::from(value), data_type)
+                            })
+                            .unwrap_or(("NULL".to_owned(), "".to_owned()))
+                    })
+                    .unzip();
+
+                data_wtr.write_record(&row).map_storage_err()?;
+                types_wtr.write_record(&data_types).map_storage_err()?;
+            }
+
+            rename(tmp_types_path, self.types_path(table_name)).map_storage_err()?
         }
 
-        Ok(())
+        rename(tmp_data_path, self.data_path(table_name)).map_storage_err()
     }
 }
 
