@@ -5,7 +5,7 @@ use {
     gluesql_core::{ast_builder::*, executor::Payload, prelude::Value::*},
 };
 
-test_case!(conversion, async move {
+test_case!(conversion, {
     let glue = get_glue!();
 
     let actual = table("Visitor")

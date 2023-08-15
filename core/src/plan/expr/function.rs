@@ -187,10 +187,12 @@ impl Function {
                 start: Some(expr3),
             } => Exprs::Triple([expr, expr2, expr3].into_iter()),
             Self::Custom { name: _, exprs } => Exprs::VariableArgs(exprs.iter()),
+            Self::Coalesce(exprs) => Exprs::VariableArgs(exprs.iter()),
             Self::Concat(exprs) => Exprs::VariableArgs(exprs.iter()),
             Self::ConcatWs { separator, exprs } => {
                 Exprs::VariableArgsWithSingle(once(separator).chain(exprs.iter()))
             }
+            Self::Greatest(exprs) => Exprs::VariableArgs(exprs.iter()),
             Self::Entries(expr) => Exprs::Single([expr].into_iter()),
         }
     }
@@ -313,6 +315,10 @@ mod tests {
         );
 
         //VariableArgs
+        test(r#"COALESCE("test")"#, &[r#""test""#]);
+
+        test(r#"COALESCE(NULL, "test")"#, &["NULL", r#""test""#]);
+
         test(r#"CONCAT("abc")"#, &[r#""abc""#]);
 
         test(r#"CONCAT("abc", "123")"#, &[r#""abc""#, r#""123""#]);

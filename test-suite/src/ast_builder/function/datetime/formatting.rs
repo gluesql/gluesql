@@ -3,7 +3,7 @@ use {
     chrono::{NaiveDate, NaiveTime},
     gluesql_core::{ast_builder::*, executor::Payload, prelude::Value::*},
 };
-test_case!(formatting, async move {
+test_case!(formatting, {
     let glue = get_glue!();
 
     // create table -"Visitor"
