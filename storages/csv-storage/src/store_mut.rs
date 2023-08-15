@@ -86,8 +86,7 @@ impl StoreMut for CsvStorage {
         } else {
             let rows = prev_rows
                 .map(|item| item.map(|(_, row)| row))
-                .chain(rows.into_iter().map(Ok))
-                .collect::<Result<Vec<_>>>()?;
+                .chain(rows.into_iter().map(Ok));
 
             self.write(table_name, columns, rows)
         }
@@ -98,37 +97,37 @@ impl StoreMut for CsvStorage {
 
         rows.sort_by(|(key_a, _), (key_b, _)| key_a.cmp(key_b));
 
-        let sort_merge = SortMerge::new(prev_rows, rows.into_iter());
-        let merged = sort_merge.collect::<Result<Vec<_>>>()?;
+        let merged = SortMerge::new(prev_rows, rows.into_iter());
 
         self.write(table_name, columns, merged)
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let (columns, prev_rows) = self.scan_data(table_name)?;
-        let rows = prev_rows
-            .filter_map(|result| {
-                result
-                    .map(|(key, data_row)| {
-                        let preservable = !keys.iter().any(|target_key| target_key == &key);
+        let rows = prev_rows.filter_map(|item| {
+            let (key, data_row) = match item {
+                Ok(item) => item,
+                Err(e) => return Some(Err(e)),
+            };
 
-                        preservable.then_some(data_row)
-                    })
-                    .transpose()
-            })
-            .collect::<Result<Vec<_>>>()?;
+            keys.iter()
+                .all(|target_key| target_key != &key)
+                .then_some(Ok(data_row))
+        });
 
         self.write(table_name, columns, rows)
     }
 }
 
 impl CsvStorage {
-    fn write(
+    fn write<T: Iterator<Item = Result<DataRow>>>(
         &self,
         table_name: &str,
         columns: Option<Vec<String>>,
-        rows: Vec<DataRow>,
+        rows: T,
     ) -> Result<()> {
+        let rows = rows.collect::<Result<Vec<_>>>()?;
+
         let mut data_wtr = File::create(self.data_path(table_name))
             .map_storage_err()
             .map(Writer::from_writer)?;
