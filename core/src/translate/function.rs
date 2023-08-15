@@ -616,6 +616,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 start,
                 length,
             })))
+        }
         "GREATEST" => {
             check_len_min(name, args.len(), 2)?;
             let exprs = args
