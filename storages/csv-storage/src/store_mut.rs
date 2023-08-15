@@ -147,7 +147,6 @@ impl CsvStorage {
 
             let mut columns = BTreeSet::new();
             let rows = rows
-                .into_iter()
                 .map(|row| match row? {
                     DataRow::Vec(_) => {
                         Err(CsvStorageError::UnreachableVecTypeDataRowTypeFound.into())
