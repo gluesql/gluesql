@@ -85,11 +85,9 @@ impl StoreMut for CsvStorage {
             Ok(())
         } else {
             let rows = prev_rows
-                .collect::<Result<Vec<_>>>()?
-                .into_iter()
-                .map(|(_, row)| row)
-                .chain(rows)
-                .collect();
+                .map(|item| item.map(|(_, row)| row))
+                .chain(rows.into_iter().map(Ok))
+                .collect::<Result<Vec<_>>>()?;
 
             self.write(table_name, columns, rows)
         }
