@@ -41,6 +41,7 @@ pub mod reverse;
 pub mod round;
 pub mod sign;
 pub mod skip;
+pub mod slice;
 pub mod sort;
 pub mod sqrt_power;
 pub mod substr;

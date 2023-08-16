@@ -605,6 +605,18 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             let expr = translate_expr(args[0])?;
             Ok(Expr::Function(Box::new(Function::IsEmpty(expr))))
         }
+        "SLICE" => {
+            check_len(name, args.len(), 3)?;
+            let expr = translate_expr(args[0])?;
+            let start = translate_expr(args[1])?;
+            let length = translate_expr(args[2])?;
+
+            Ok(Expr::Function(Box::new(Function::Slice {
+                expr,
+                start,
+                length,
+            })))
+        }
         "GREATEST" => {
             check_len_min(name, args.len(), 2)?;
             let exprs = args
