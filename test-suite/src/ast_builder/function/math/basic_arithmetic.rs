@@ -3,7 +3,7 @@ use {
     gluesql_core::{ast_builder::*, executor::Payload, prelude::Value::*},
 };
 
-test_case!(basic_arithmetic, async move {
+test_case!(basic_arithmetic, {
     let glue = get_glue!();
 
     // Create table - Number

@@ -6,7 +6,9 @@ use {
     },
 };
 
-test_case!(dictionary, async move {
+test_case!(dictionary, {
+    let g = get_tester!();
+
     let tables = |v: Vec<&str>| {
         Ok(ShowVariable(PayloadVariable::Tables(
             v.into_iter().map(ToOwned::to_owned).collect(),
@@ -14,34 +16,39 @@ test_case!(dictionary, async move {
     };
 
     assert!(matches!(
-        run!("SHOW VERSION;"),
+        g.run("SHOW VERSION;").await,
         ShowVariable(PayloadVariable::Version(_))
     ));
 
-    test!("SHOW TABLES", tables(Vec::new()));
+    g.test("SHOW TABLES", tables(Vec::new())).await;
 
-    run!("CREATE TABLE Foo (id INTEGER, name TEXT NULL, type TEXT NULL);");
-    test!("SHOW TABLES", tables(vec!["Foo"]));
+    g.run("CREATE TABLE Foo (id INTEGER, name TEXT NULL, type TEXT NULL);")
+        .await;
+    g.test("SHOW TABLES", tables(vec!["Foo"])).await;
 
-    run!("CREATE TABLE Zoo (id INTEGER PRIMARY KEY);");
-    run!("CREATE TABLE Bar (id INTEGER UNIQUE, name TEXT NOT NULL DEFAULT 'NONE');");
+    g.run("CREATE TABLE Zoo (id INTEGER PRIMARY KEY);").await;
+    g.run("CREATE TABLE Bar (id INTEGER UNIQUE, name TEXT NOT NULL DEFAULT 'NONE');")
+        .await;
 
-    test!("SHOW TABLES", tables(vec!["Bar", "Foo", "Zoo"]));
+    g.test("SHOW TABLES", tables(vec!["Bar", "Foo", "Zoo"]))
+        .await;
 
-    test!(
+    g.test(
         "SHOW WHATEVER",
-        Err(TranslateError::UnsupportedShowVariableKeyword("WHATEVER".to_owned()).into())
-    );
+        Err(TranslateError::UnsupportedShowVariableKeyword("WHATEVER".to_owned()).into()),
+    )
+    .await;
 
-    test!(
+    g.test(
         "SHOW ME THE CHICKEN",
         Err(
             TranslateError::UnsupportedShowVariableStatement("SHOW ME THE CHICKEN".to_owned())
-                .into()
-        )
-    );
+                .into(),
+        ),
+    )
+    .await;
 
-    test!(
+    g.test(
         "SELECT * FROM GLUE_TABLES",
         Ok(select!(
             TABLE_NAME;
@@ -49,10 +56,11 @@ test_case!(dictionary, async move {
             "Bar".to_owned();
             "Foo".to_owned();
             "Zoo".to_owned()
-        ))
-    );
+        )),
+    )
+    .await;
 
-    test!(
+    g.test(
         "SELECT * FROM GLUE_TABLE_COLUMNS",
         Ok(select!(
             TABLE_NAME       | COLUMN_NAME      | COLUMN_ID | NULLABLE | KEY                      | DEFAULT;
@@ -64,5 +72,5 @@ test_case!(dictionary, async move {
             "Foo".to_owned()   "type".to_owned()  3           true       "".to_owned()              "".to_owned();
             "Zoo".to_owned()   "id".to_owned()    1           false      "PRIMARY KEY".to_owned()   "".to_owned()
         ))
-    );
+    ).await;
 });

@@ -7,24 +7,28 @@ use {
     },
 };
 
-test_case!(migrate, async move {
-    run!(
+test_case!(migrate, {
+    let g = get_tester!();
+
+    g.run(
         "
         CREATE TABLE Test (
             id INT,
             num INT,
             name TEXT
         );
-    "
-    );
-    run!(
+    ",
+    )
+    .await;
+    g.run(
         "
         INSERT INTO Test (id, num, name) VALUES
             (1,     2,     'Hello'),
             (-(-1), 9,     'World'),
             (+3,    2 * 2, 'Great');
-        "
-    );
+        ",
+    )
+    .await;
 
     let error_cases = [
         (
@@ -73,10 +77,10 @@ test_case!(migrate, async move {
     ];
 
     for (sql, error) in error_cases {
-        test!(sql, Err(error));
+        g.test(sql, Err(error)).await;
     }
 
-    let found = run!("SELECT id, num, name FROM Test");
+    let found = "SELECT id, num, name FROM Test";
     let expected = select!(
         id  | num | name
         I64 | I64 | Str;
@@ -84,20 +88,20 @@ test_case!(migrate, async move {
         1     9     "World".to_owned();
         3     4     "Great".to_owned()
     );
-    assert_eq!(expected, found);
+    g.test(found, Ok(expected)).await;
 
-    let found = run!("SELECT id, num, name FROM Test WHERE id = 1");
+    let found = "SELECT id, num, name FROM Test WHERE id = 1";
     let expected = select!(
         id  | num | name
         I64 | I64 | Str;
         1     2     "Hello".to_owned();
         1     9     "World".to_owned()
     );
-    assert_eq!(expected, found);
+    g.test(found, Ok(expected)).await;
 
-    run!("UPDATE Test SET id = 2");
+    g.run("UPDATE Test SET id = 2").await;
 
-    let found = run!("SELECT id, num, name FROM Test");
+    let found = "SELECT id, num, name FROM Test";
     let expected = select!(
         id  | num | name;
         I64 | I64 | Str;
@@ -105,21 +109,21 @@ test_case!(migrate, async move {
         2     9     "World".to_owned();
         2     4     "Great".to_owned()
     );
-    assert_eq!(expected, found);
+    g.test(found, Ok(expected)).await;
 
-    let found = run!("SELECT id FROM Test");
+    let found = "SELECT id FROM Test";
     let expected = select!(id; I64; 2; 2; 2);
-    assert_eq!(expected, found);
+    g.test(found, Ok(expected)).await;
 
-    let found = run!("SELECT id, num FROM Test");
+    let found = "SELECT id, num FROM Test";
     let expected = select!(id | num; I64 | I64; 2 2; 2 9; 2 4);
-    assert_eq!(expected, found);
+    g.test(found, Ok(expected)).await;
 
-    let found = run!("SELECT id, num FROM Test LIMIT 1 OFFSET 1");
+    let found = "SELECT id, num FROM Test LIMIT 1 OFFSET 1";
     let expected = select!(id | num; I64 | I64; 2 9);
-    assert_eq!(expected, found);
+    g.test(found, Ok(expected)).await;
 
-    let found = run!("SELECT id, num FROM Test LIMIT 1 OFFSET 1");
+    let found = "SELECT id, num FROM Test LIMIT 1 OFFSET 1";
     let expected = select!(id | num; I64 | I64; 2 9);
-    assert_eq!(expected, found);
+    g.test(found, Ok(expected)).await;
 });

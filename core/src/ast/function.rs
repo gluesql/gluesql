@@ -168,6 +168,11 @@ pub enum Function {
         expr: Expr,
         order: Option<Expr>,
     },
+    Slice {
+        expr: Expr,
+        start: Expr,
+        length: Expr,
+    },
     Prepend {
         expr: Expr,
         value: Expr,
@@ -424,6 +429,18 @@ impl ToSql for Function {
                     format!("SORT({}, {})", expr.to_sql(), order.to_sql())
                 }
             },
+            Function::Slice {
+                expr,
+                start,
+                length,
+            } => {
+                format!(
+                    "SLICE({}, {}, {})",
+                    expr.to_sql(),
+                    start.to_sql(),
+                    length.to_sql()
+                )
+            }
             Function::Take { expr, size } => {
                 format!("TAKE({}, {})", expr.to_sql(), size.to_sql())
             }
@@ -1201,6 +1218,16 @@ mod tests {
             &Expr::Function(Box::new(Function::Sort {
                 expr: Expr::Identifier("list".to_owned()),
                 order: Some(Expr::Literal(AstLiteral::QuotedString("ASC".to_owned())))
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"SLICE("list", 1, 2)"#,
+            &Expr::Function(Box::new(Function::Slice {
+                expr: (Expr::Identifier("list".to_owned())),
+                start: (Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap()))),
+                length: (Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())))
             }))
             .to_sql()
         );

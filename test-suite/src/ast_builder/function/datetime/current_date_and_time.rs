@@ -6,7 +6,7 @@ use {
     },
 };
 
-test_case!(current_date_and_time, async move {
+test_case!(current_date_and_time, {
     macro_rules! t {
         ($timestamp: expr) => {
             $timestamp.parse().unwrap()
