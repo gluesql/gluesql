@@ -43,6 +43,7 @@ pub mod sign;
 pub mod skip;
 pub mod slice;
 pub mod sort;
+pub mod splice;
 pub mod sqrt_power;
 pub mod substr;
 pub mod take;

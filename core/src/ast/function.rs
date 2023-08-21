@@ -198,6 +198,12 @@ pub enum Function {
     IsEmpty(Expr),
     Length(Expr),
     Values(Expr),
+    Splice {
+        list_data: Expr,
+        begin_index: Expr,
+        end_index: Expr,
+        values: Option<Expr>,
+    },
 }
 
 impl ToSql for Function {
@@ -455,6 +461,26 @@ impl ToSql for Function {
             Function::Length(e) => format!("LENGTH({})", e.to_sql()),
             Function::Values(e) => format!("VALUES({})", e.to_sql()),
             Function::Entries(e) => format!("ENTRIES({})", e.to_sql()),
+            Function::Splice {
+                list_data,
+                begin_index,
+                end_index,
+                values,
+            } => match values {
+                Some(v) => format!(
+                    "SPLICE({}, {}, {}, {})",
+                    list_data.to_sql(),
+                    begin_index.to_sql(),
+                    end_index.to_sql(),
+                    v.to_sql()
+                ),
+                None => format!(
+                    "SPLICE({}, {}, {})",
+                    list_data.to_sql(),
+                    begin_index.to_sql(),
+                    end_index.to_sql(),
+                ),
+            },
         }
     }
 }
@@ -1284,6 +1310,28 @@ mod tests {
             &Expr::Function(Box::new(Function::Entries(Expr::Identifier(
                 "map".to_owned()
             ))))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"SPLICE("list", 2, 4)"#,
+            &Expr::Function(Box::new(Function::Splice {
+                list_data: Expr::Identifier("list".to_owned()),
+                begin_index: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())),
+                end_index: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("4").unwrap())),
+                values: None
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"SPLICE("list", 2, 4, "values")"#,
+            &Expr::Function(Box::new(Function::Splice {
+                list_data: Expr::Identifier("list".to_owned()),
+                begin_index: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())),
+                end_index: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("4").unwrap())),
+                values: Some(Expr::Identifier("values".to_owned()))
+            }))
             .to_sql()
         );
     }

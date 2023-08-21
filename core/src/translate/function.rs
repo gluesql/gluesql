@@ -631,6 +631,23 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             let expr = translate_expr(args[0])?;
             Ok(Expr::Function(Box::new(Function::Values(expr))))
         }
+        "SPLICE" => {
+            check_len_range(name, args.len(), 3, 4)?;
+            let list_data = translate_expr(args[0])?;
+            let begin_index = translate_expr(args[1])?;
+            let end_index = translate_expr(args[2])?;
+            let values = if args.len() == 4 {
+                Some(translate_expr(args[3])?)
+            } else {
+                None
+            };
+            Ok(Expr::Function(Box::new(Function::Splice {
+                list_data,
+                begin_index,
+                end_index,
+                values,
+            })))
+        }
         _ => {
             let exprs = args
                 .into_iter()
