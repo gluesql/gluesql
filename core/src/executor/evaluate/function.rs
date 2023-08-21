@@ -1,5 +1,3 @@
-use chrono::Datelike;
-
 use {
     super::{EvaluateError, Evaluated},
     crate::{
@@ -782,24 +780,39 @@ pub fn to_timestamp<'a>(
     }
 }
 
-pub fn add_month(name: String, expr: Evaluated<'_>, size: Evaluated<'_>) -> Result<Evaluated<'_>> {
-    match expr.try_into()? {
-        Value::Str(expr) => {
-            let format = eval_to_str!(name, format);
-            let data = chrono::NaiveTime::parse_from_str(&expr, &format)
-                .map(Value::Time)
-                .map(Evaluated::from)
-                .map_err(|err| {
-                    let err: EvaluateError = err.into();
-                    err.into()
-                });
-            return data;
-
-            
-            //return date;
-        }
-        _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+pub fn add_month<'a>(
+    name: String,
+    expr: Evaluated<'_>,
+    size: Evaluated<'_>,
+) -> Result<Evaluated<'a>> {
+    let size = eval_to_int!(name, size);
+    let expr = chrono::NaiveDate::parse_from_str(&eval_to_str!(name, expr), "%Y-%m-%d").map_err(
+        |err| {
+            let err: EvaluateError = err.into();
+            err
+        },
+    )?;
+    let date;
+    if size <= 0 {
+        date = expr
+            .checked_sub_months(chrono::Months::new(
+                size.abs()
+                    .try_into()
+                    .map_err(|_err| ValueError::ValueTou32ConversionFailure(name))?,
+            ))
+            .ok_or(EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255)?;
+    } else {
+        date = expr
+            .checked_add_months(chrono::Months::new(
+                size.try_into()
+                    .map_err(|_err| ValueError::ValueTou32ConversionFailure(name))?,
+            ))
+            .ok_or(EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255)?;
     }
+    let value = Value::Date(date);
+    let e = Evaluated::from(value);
+
+    Ok(e)
 }
 
 pub fn to_time<'a>(
