@@ -49,6 +49,10 @@ pub enum FunctionNode<'a> {
         power: ExprNode<'a>,
     },
     Sqrt(ExprNode<'a>),
+    Skip {
+        expr: ExprNode<'a>,
+        size: ExprNode<'a>,
+    },
     Gcd {
         left: ExprNode<'a>,
         right: ExprNode<'a>,
@@ -80,10 +84,15 @@ pub enum FunctionNode<'a> {
     },
     Degrees(ExprNode<'a>),
     Radians(ExprNode<'a>),
+    Coalesce(ExprList<'a>),
     Concat(ExprList<'a>),
     ConcatWs {
         separator: ExprNode<'a>,
         exprs: ExprList<'a>,
+    },
+    Take {
+        expr: ExprNode<'a>,
+        size: ExprNode<'a>,
     },
     Substr {
         expr: ExprNode<'a>,
@@ -150,10 +159,15 @@ pub enum FunctionNode<'a> {
     },
     GetX(ExprNode<'a>),
     GetY(ExprNode<'a>),
+    Greatest(ExprList<'a>),
     CalcDistance {
         geometry1: ExprNode<'a>,
         geometry2: ExprNode<'a>,
     },
+    Length(ExprNode<'a>),
+    IsEmpty(ExprNode<'a>),
+    LastDay(ExprNode<'a>),
+    Entries(ExprNode<'a>),
 }
 
 impl<'a> TryFrom<FunctionNode<'a>> for Function {
@@ -210,6 +224,11 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
                 Ok(Function::Power { expr, power })
             }
             FunctionNode::Sqrt(expr_node) => expr_node.try_into().map(Function::Sqrt),
+            FunctionNode::Skip { expr, size } => {
+                let expr = expr.try_into()?;
+                let size = size.try_into()?;
+                Ok(Function::Skip { expr, size })
+            }
             FunctionNode::Gcd { left, right } => {
                 let left = left.try_into()?;
                 let right = right.try_into()?;
@@ -244,11 +263,17 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
                 let size = size.try_into()?;
                 Ok(Function::Rpad { expr, size, fill })
             }
+            FunctionNode::Coalesce(expr_list) => expr_list.try_into().map(Function::Coalesce),
             FunctionNode::Concat(expr_list) => expr_list.try_into().map(Function::Concat),
             FunctionNode::ConcatWs { separator, exprs } => {
                 let separator = separator.try_into()?;
                 let exprs = exprs.try_into()?;
                 Ok(Function::ConcatWs { separator, exprs })
+            }
+            FunctionNode::Take { expr, size } => {
+                let expr = expr.try_into()?;
+                let size = size.try_into()?;
+                Ok(Function::Take { expr, size })
             }
             FunctionNode::Degrees(expr) => expr.try_into().map(Function::Degrees),
             FunctionNode::Radians(expr) => expr.try_into().map(Function::Radians),
@@ -343,6 +368,7 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
             }
             FunctionNode::GetX(expr) => expr.try_into().map(Function::GetX),
             FunctionNode::GetY(expr) => expr.try_into().map(Function::GetY),
+            FunctionNode::Greatest(expr_list) => expr_list.try_into().map(Function::Greatest),
             FunctionNode::CalcDistance {
                 geometry1,
                 geometry2,
@@ -354,6 +380,10 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
                     geometry2,
                 })
             }
+            FunctionNode::Length(expr) => expr.try_into().map(Function::Length),
+            FunctionNode::IsEmpty(expr) => expr.try_into().map(Function::IsEmpty),
+            FunctionNode::LastDay(expr) => expr.try_into().map(Function::LastDay),
+            FunctionNode::Entries(expr) => expr.try_into().map(Function::Entries),
         }
     }
 }
@@ -431,6 +461,10 @@ impl<'a> ExprNode<'a> {
         sign(self)
     }
 
+    pub fn skip<T: Into<ExprNode<'a>>>(self, size: T) -> ExprNode<'a> {
+        skip(self, size)
+    }
+
     pub fn power<T: Into<ExprNode<'a>>>(self, pwr: T) -> ExprNode<'a> {
         power(self, pwr)
     }
@@ -465,6 +499,9 @@ impl<'a> ExprNode<'a> {
     }
     pub fn rpad<T: Into<ExprNode<'a>>>(self, size: T, fill: Option<ExprNode<'a>>) -> ExprNode<'a> {
         rpad(self, size, fill)
+    }
+    pub fn take<T: Into<ExprNode<'a>>>(self, size: T) -> ExprNode<'a> {
+        take(self, size)
     }
     pub fn exp(self) -> ExprNode<'a> {
         exp(self)
@@ -510,6 +547,15 @@ impl<'a> ExprNode<'a> {
     pub fn extract(self, field: DateTimeField) -> ExprNode<'a> {
         extract(field, self)
     }
+    pub fn is_empty(self) -> ExprNode<'a> {
+        is_empty(self)
+    }
+    pub fn last_day(self) -> ExprNode<'a> {
+        last_day(self)
+    }
+    pub fn entries(self) -> ExprNode<'a> {
+        entries(self)
+    }
 }
 
 pub fn abs<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
@@ -538,6 +584,9 @@ pub fn rand(expr: Option<ExprNode>) -> ExprNode {
 }
 pub fn round<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Round(expr.into())))
+}
+pub fn coalesce<'a, T: Into<ExprList<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Coalesce(expr.into())))
 }
 pub fn concat<'a, T: Into<ExprList<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Concat(expr.into())))
@@ -619,6 +668,13 @@ pub fn sign<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Sign(expr.into())))
 }
 
+pub fn skip<'a, T: Into<ExprNode<'a>>, V: Into<ExprNode<'a>>>(expr: T, size: V) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Skip {
+        expr: expr.into(),
+        size: size.into(),
+    }))
+}
+
 pub fn power<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(expr: T, power: U) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Power {
         expr: expr.into(),
@@ -693,6 +749,13 @@ pub fn degrees<'a, V: Into<ExprNode<'a>>>(expr: V) -> ExprNode<'a> {
 
 pub fn radians<'a, V: Into<ExprNode<'a>>>(expr: V) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Radians(expr.into())))
+}
+
+pub fn take<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(expr: T, size: U) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Take {
+        expr: expr.into(),
+        size: size.into(),
+    }))
 }
 
 pub fn exp<'a, V: Into<ExprNode<'a>>>(expr: V) -> ExprNode<'a> {
@@ -850,6 +913,10 @@ pub fn get_y<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::GetY(expr.into())))
 }
 
+pub fn greatest<'a, T: Into<ExprList<'a>>>(exprs: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Greatest(exprs.into())))
+}
+
 pub fn calc_distance<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
     geometry1: T,
     geometry2: U,
@@ -860,17 +927,34 @@ pub fn calc_distance<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
     }))
 }
 
+pub fn length<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Length(expr.into())))
+}
+
+pub fn is_empty<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::IsEmpty(expr.into())))
+}
+
+pub fn last_day<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::LastDay(expr.into())))
+}
+
+pub fn entries<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Entries(expr.into())))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
         ast::DateTimeField,
         ast_builder::{
-            abs, acos, ascii, asin, atan, calc_distance, cast, ceil, chr, col, concat, concat_ws,
-            cos, date, degrees, divide, exp, expr, extract, find_idx, floor, format, gcd,
-            generate_uuid, get_x, get_y, ifnull, initcap, lcm, left, ln, log, log10, log2, lower,
-            lpad, ltrim, md5, modulo, now, num, pi, point, position, power, radians, rand, repeat,
-            replace, reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr, tan, test_expr,
-            text, time, timestamp, to_date, to_time, to_timestamp, upper,
+            abs, acos, ascii, asin, atan, calc_distance, cast, ceil, chr, coalesce, col, concat,
+            concat_ws, cos, date, degrees, divide, entries, exp, expr, extract, find_idx, floor,
+            format, gcd, generate_uuid, get_x, get_y, greatest, ifnull, initcap, is_empty,
+            last_day, lcm, left, length, ln, log, log10, log2, lower, lpad, ltrim, md5, modulo,
+            now, null, num, pi, point, position, power, radians, rand, repeat, replace, reverse,
+            right, round, rpad, rtrim, sign, sin, skip, sqrt, substr, take, tan, test_expr, text,
+            time, timestamp, to_date, to_time, to_timestamp, upper,
         },
         prelude::DataType,
     };
@@ -1118,6 +1202,18 @@ mod tests {
         let expected = "SIGN(id)";
         test_expr(actual, expected);
     }
+
+    #[test]
+    fn function_skip() {
+        let actual = skip(col("list"), num(2));
+        let expected = "SKIP(list,2)";
+        test_expr(actual, expected);
+
+        let actual = expr("list").skip(num(2));
+        let expected = "SKIP(list,2)";
+        test_expr(actual, expected);
+    }
+
     #[test]
     fn function_power() {
         let actual = power(num(2), num(4));
@@ -1196,6 +1292,13 @@ mod tests {
     }
 
     #[test]
+    fn function_coalesce() {
+        let actual = coalesce(vec![null(), text("Glue")]);
+        let expected = "COALESCE(NULL, 'Glue')";
+        test_expr(actual, expected);
+    }
+
+    #[test]
     fn function_concat() {
         let actual = concat(vec![text("Glue"), text("SQL"), text("Go")]);
         let expected = "CONCAT('Glue','SQL','Go')";
@@ -1252,6 +1355,17 @@ mod tests {
 
         let actual = text("GlueSQL").rpad(num(10), None);
         let expected = "RPAD('GlueSQL', 10)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_take() {
+        let actual = take(col("list"), num(3));
+        let expected = "TAKE(list,3)";
+        test_expr(actual, expected);
+
+        let actual = expr("list").take(num(3));
+        let expected = "TAKE(list,3)";
         test_expr(actual, expected);
     }
 
@@ -1552,6 +1666,17 @@ mod tests {
     }
 
     #[test]
+    fn function_greatest() {
+        let actual = greatest(vec![num(1), num(2), num(3)]);
+        let expected = "GREATEST(1, 2, 3)";
+        test_expr(actual, expected);
+
+        let actual = greatest(vec![text("Glue"), text("SQL"), text("Go")]);
+        let expected = "GREATEST('Glue','SQL','Go')";
+        test_expr(actual, expected);
+    }
+
+    #[test]
     fn function_calc_distance() {
         let actual = calc_distance(point(num(1), num(2)), point(num(3), num(4)));
         let expected = "CALC_DISTANCE(POINT(1, 2), POINT(3, 4))";
@@ -1566,6 +1691,57 @@ mod tests {
 
         let actual = text("Mticky GlueMQL").replace(text("M"), text("S"));
         let expected = "REPLACE('Mticky GlueMQL','M','S')";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_length() {
+        let actual = length(text("GlueSQL"));
+        let expected = "LENGTH('GlueSQL')";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_is_empty() {
+        let actual = col("list").is_empty();
+        let expected = "IS_EMPTY(list)";
+        test_expr(actual, expected);
+
+        let actual = is_empty(col("list"));
+        let expected = "IS_EMPTY(list)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_last_day_date() {
+        let actual = last_day(date("2023-07-29"));
+        let expected = "LAST_DAY(DATE'2023-07-29')";
+        test_expr(actual, expected);
+
+        let actual = date("2023-07-29").last_day();
+        let expected = "LAST_DAY(DATE'2023-07-29')";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_last_day_timestamp() {
+        let actual = last_day(timestamp("2023-07-29 11:00:00"));
+        let expected = "LAST_DAY(TIMESTAMP '2023-07-29 11:00:00')";
+        test_expr(actual, expected);
+
+        let actual = timestamp("2023-07-29 11:00:00").last_day();
+        let expected = "LAST_DAY(TIMESTAMP '2023-07-29 11:00:00')";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_entries() {
+        let actual = entries(col("map"));
+        let expected = "ENTRIES(map)";
+        test_expr(actual, expected);
+
+        let actual = col("map").entries();
+        let expected = "ENTRIES(map)";
         test_expr(actual, expected);
     }
 }

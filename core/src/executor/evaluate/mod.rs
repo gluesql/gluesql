@@ -94,7 +94,12 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 .await?
                 .map(|row| {
                     let value = match row? {
-                        Row::Vec { values, .. } => values,
+                        Row::Vec { columns, values } => {
+                            if columns.len() > 1 {
+                                return Err(EvaluateError::MoreThanOneColumnReturned.into());
+                            }
+                            values
+                        }
                         Row::Map(_) => {
                             return Err(EvaluateError::SchemalessProjectionForSubQuery.into());
                         }
@@ -404,6 +409,10 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
 
             f::lpad_or_rpad(name, expr, size, fill)
         }
+        Function::LastDay(expr) => {
+            let expr = eval(expr).await?;
+            f::last_day(name, expr)
+        }
         Function::Trim {
             expr,
             filter_chars,
@@ -552,6 +561,10 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             f::unwrap(name, expr, selector)
         }
         Function::GenerateUuid() => Ok(f::generate_uuid()),
+        Function::Greatest(exprs) => {
+            let exprs = stream::iter(exprs).then(eval).try_collect().await?;
+            f::greatest(name, exprs)
+        }
         Function::Now() => Ok(Evaluated::from(Value::Timestamp(Utc::now().naive_utc()))),
         Function::Format { expr, format } => {
             let expr = eval(expr).await?;
@@ -603,6 +616,10 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let expr = eval(expr).await?;
             f::extract(field, expr)
         }
+        Function::Coalesce(exprs) => {
+            let exprs = stream::iter(exprs).then(eval).try_collect().await?;
+            f::coalesce(exprs)
+        }
 
         // --- list ---
         Function::Append { expr, value } => {
@@ -615,10 +632,33 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let value = eval(value).await?;
             f::prepend(expr, value)
         }
+        Function::Skip { expr, size } => {
+            let expr = eval(expr).await?;
+            let size = eval(size).await?;
+            f::skip(name, expr, size)
+        }
+        Function::Sort { expr, order } => {
+            let expr = eval(expr).await?;
+            let order = match order {
+                Some(o) => eval(o).await?,
+                None => Evaluated::from(Value::Str("ASC".to_owned())),
+            };
+            f::sort(expr, order)
+        }
         Function::Take { expr, size } => {
             let expr = eval(expr).await?;
             let size = eval(size).await?;
             f::take(name, expr, size)
+        }
+        Function::Slice {
+            expr,
+            start,
+            length,
+        } => {
+            let expr = eval(expr).await?;
+            let start = eval(start).await?;
+            let length = eval(length).await?;
+            f::slice(name, expr, start, length)
         }
         Function::IsEmpty(expr) => {
             let expr = eval(expr).await?;
@@ -628,6 +668,11 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let expr = eval(expr).await?;
             let size = eval(size).await?;
             f::add_month(name, expr, size)
+        Function::Length(expr) => f::length(name, eval(expr).await?),
+        Function::Entries(expr) => f::entries(name, eval(expr).await?),
+        Function::Values(expr) => {
+            let expr = eval(expr).await?;
+            f::values(expr)
         }
     }
 }

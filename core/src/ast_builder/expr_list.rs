@@ -80,6 +80,7 @@ mod tests {
             ast::Expr, ast_builder::col, parse_sql::parse_comma_separated_exprs, result::Result,
             translate::translate_expr,
         },
+        pretty_assertions::assert_eq,
     };
 
     fn test(actual: ExprList, expected: &str) {

@@ -1,6 +1,8 @@
 use {crate::*, gluesql_core::prelude::*, Value::*};
 
-test_case!(limit, async move {
+test_case!(limit, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "CREATE TABLE Test (
@@ -108,6 +110,6 @@ test_case!(limit, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, Ok(expected));
+        g.test(sql, Ok(expected)).await;
     }
 });

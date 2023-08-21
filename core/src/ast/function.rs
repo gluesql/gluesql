@@ -47,6 +47,7 @@ pub enum Function {
         data_type: DataType,
     },
     Ceil(Expr),
+    Coalesce(Vec<Expr>),
     Concat(Vec<Expr>),
     ConcatWs {
         separator: Expr,
@@ -68,6 +69,7 @@ pub enum Function {
         filter_chars: Option<Expr>,
         trim_where_field: Option<TrimWhereField>,
     },
+    Entries(Expr),
     Exp(Expr),
     Extract {
         field: DateTimeField,
@@ -108,6 +110,7 @@ pub enum Function {
     Degrees(Expr),
     Now(),
     Pi(),
+    LastDay(Expr),
     Ltrim {
         expr: Expr,
         chars: Option<Expr>,
@@ -132,6 +135,7 @@ pub enum Function {
         selector: Expr,
     },
     GenerateUuid(),
+    Greatest(Vec<Expr>),
     Format {
         expr: Expr,
         format: Expr,
@@ -164,9 +168,22 @@ pub enum Function {
         expr: Expr,
         value: Expr,
     },
+    Sort {
+        expr: Expr,
+        order: Option<Expr>,
+    },
+    Slice {
+        expr: Expr,
+        start: Expr,
+        length: Expr,
+    },
     Prepend {
         expr: Expr,
         value: Expr,
+    },
+    Skip {
+        expr: Expr,
+        size: Expr,
     },
     Take {
         expr: Expr,
@@ -183,6 +200,8 @@ pub enum Function {
         geometry2: Expr,
     },
     IsEmpty(Expr),
+    Length(Expr),
+    Values(Expr),
 }
 
 impl ToSql for Function {
@@ -224,6 +243,14 @@ impl ToSql for Function {
                 format!("CAST({} AS {data_type})", expr.to_sql())
             }
             Function::Ceil(e) => format!("CEIL({})", e.to_sql()),
+            Function::Coalesce(items) => {
+                let items = items
+                    .iter()
+                    .map(ToSql::to_sql)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("COALESCE({items})")
+            }
             Function::Concat(items) => {
                 let items = items
                     .iter()
@@ -303,6 +330,7 @@ impl ToSql for Function {
             Function::Degrees(e) => format!("DEGREES({})", e.to_sql()),
             Function::Now() => "NOW()".to_owned(),
             Function::Pi() => "PI()".to_owned(),
+            Function::LastDay(expr) => format!("LAST_DAY({})", expr.to_sql()),
             Function::Ltrim { expr, chars } => match chars {
                 None => format!("LTRIM({})", expr.to_sql()),
                 Some(chars) => format!("LTRIM({}, {})", expr.to_sql(), chars.to_sql()),
@@ -336,6 +364,14 @@ impl ToSql for Function {
                 format!("UNWRAP({}, {})", expr.to_sql(), selector.to_sql())
             }
             Function::GenerateUuid() => "GENERATE_UUID()".to_owned(),
+            Function::Greatest(items) => {
+                let items = items
+                    .iter()
+                    .map(ToSql::to_sql)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("GREATEST({})", items)
+            }
             Function::Format { expr, format } => {
                 format!("FORMAT({}, {})", expr.to_sql(), format.to_sql())
             }
@@ -385,6 +421,27 @@ impl ToSql for Function {
                     value = value.to_sql()
                 }
             }
+            Function::Skip { expr, size } => {
+                format!("SKIP({}, {})", expr.to_sql(), size.to_sql())
+            }
+            Function::Sort { expr, order } => match order {
+                None => format!("SORT({})", expr.to_sql()),
+                Some(order) => {
+                    format!("SORT({}, {})", expr.to_sql(), order.to_sql())
+                }
+            },
+            Function::Slice {
+                expr,
+                start,
+                length,
+            } => {
+                format!(
+                    "SLICE({}, {}, {})",
+                    expr.to_sql(),
+                    start.to_sql(),
+                    length.to_sql()
+                )
+            }
             Function::Take { expr, size } => {
                 format!("TAKE({}, {})", expr.to_sql(), size.to_sql())
             }
@@ -402,6 +459,9 @@ impl ToSql for Function {
                 )
             }
             Function::IsEmpty(e) => format!("IS_EMPTY({})", e.to_sql()),
+            Function::Length(e) => format!("LENGTH({})", e.to_sql()),
+            Function::Values(e) => format!("VALUES({})", e.to_sql()),
+            Function::Entries(e) => format!("ENTRIES({})", e.to_sql()),
         }
     }
 }
@@ -611,6 +671,16 @@ mod tests {
                 name: "CUSTOM_FUNC".to_owned(),
                 exprs: vec![]
             }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"COALESCE("First", NULL, "Last")"#,
+            &Expr::Function(Box::new(Function::Coalesce(vec![
+                Expr::Identifier("First".to_owned()),
+                Expr::Literal(AstLiteral::Null),
+                Expr::Identifier("Last".to_owned()),
+            ])))
             .to_sql()
         );
 
@@ -975,6 +1045,16 @@ mod tests {
         );
 
         assert_eq!(
+            "GREATEST(16, 9, 7)",
+            &Expr::Function(Box::new(Function::Greatest(vec![
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("16").unwrap())),
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("9").unwrap())),
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("7").unwrap()))
+            ])))
+            .to_sql()
+        );
+
+        assert_eq!(
             "FORMAT(DATE '2022-10-12', '%Y-%m')",
             &Expr::Function(Box::new(Function::Format {
                 expr: Expr::TypedString {
@@ -983,6 +1063,15 @@ mod tests {
                 },
                 format: Expr::Literal(AstLiteral::QuotedString("%Y-%m".to_owned()))
             }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            "LAST_DAY(DATE '2022-10-12')",
+            &Expr::Function(Box::new(Function::LastDay(Expr::TypedString {
+                data_type: DataType::Date,
+                value: "2022-10-12".to_owned()
+            })))
             .to_sql()
         );
 
@@ -1096,6 +1185,43 @@ mod tests {
         );
 
         assert_eq!(
+            r#"SKIP("list", 2)"#,
+            &Expr::Function(Box::new(Function::Skip {
+                expr: Expr::Identifier("list".to_owned()),
+                size: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap()))
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"SORT("list")"#,
+            &Expr::Function(Box::new(Function::Sort {
+                expr: Expr::Identifier("list".to_owned()),
+                order: None
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"SORT("list", 'ASC')"#,
+            &Expr::Function(Box::new(Function::Sort {
+                expr: Expr::Identifier("list".to_owned()),
+                order: Some(Expr::Literal(AstLiteral::QuotedString("ASC".to_owned())))
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"SLICE("list", 1, 2)"#,
+            &Expr::Function(Box::new(Function::Slice {
+                expr: (Expr::Identifier("list".to_owned())),
+                start: (Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap()))),
+                length: (Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())))
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
             r#"TAKE("list", 3)"#,
             &Expr::Function(Box::new(Function::Take {
                 expr: Expr::Identifier("list".to_owned()),
@@ -1148,6 +1274,30 @@ mod tests {
             r#"IS_EMPTY("list")"#,
             &Expr::Function(Box::new(Function::IsEmpty(Expr::Identifier(
                 "list".to_owned()
+            ))))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"LENGTH("GlueSQL")"#,
+            &Expr::Function(Box::new(Function::Length(Expr::Identifier(
+                "GlueSQL".to_owned()
+            ))))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"VALUES("map")"#,
+            &Expr::Function(Box::new(Function::Values(Expr::Identifier(
+                "map".to_owned()
+            ))))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"ENTRIES("map")"#,
+            &Expr::Function(Box::new(Function::Entries(Expr::Identifier(
+                "map".to_owned()
             ))))
             .to_sql()
         );

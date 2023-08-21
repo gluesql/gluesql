@@ -20,6 +20,7 @@ impl Function {
                 Exprs::Empty(empty())
             }
             Self::Lower(expr)
+            | Self::Length(expr)
             | Self::Initcap(expr)
             | Self::Upper(expr)
             | Self::Sin(expr)
@@ -44,6 +45,7 @@ impl Function {
             | Self::Ascii(expr)
             | Self::Chr(expr)
             | Self::Md5(expr)
+            | Self::LastDay(expr)
             | Self::Ltrim { expr, chars: None }
             | Self::Rtrim { expr, chars: None }
             | Self::Trim {
@@ -56,7 +58,9 @@ impl Function {
             | Self::Extract { expr, .. }
             | Self::GetX(expr)
             | Self::GetY(expr)
-            | Self::IsEmpty(expr) => Exprs::Single([expr].into_iter()),
+            | Self::IsEmpty(expr)
+            | Self::Sort { expr, order: None }
+            | Self::Values(expr) => Exprs::Single([expr].into_iter()),
             Self::Left { expr, size: expr2 }
             | Self::Right { expr, size: expr2 }
             | Self::Lpad {
@@ -141,6 +145,11 @@ impl Function {
             }
             | Self::Append { expr, value: expr2 }
             | Self::Prepend { expr, value: expr2 }
+            | Self::Skip { expr, size: expr2 }
+            | Self::Sort {
+                expr,
+                order: Some(expr2),
+            }
             | Self::Take { expr, size: expr2 }
             | Self::Point { x: expr, y: expr2 }
             | Self::CalcDistance {
@@ -169,16 +178,24 @@ impl Function {
                 old: expr2,
                 new: expr3,
             }
+            | Self::Slice {
+                expr,
+                start: expr2,
+                length: expr3,
+            }
             | Self::FindIdx {
                 from_expr: expr,
                 sub_expr: expr2,
                 start: Some(expr3),
             } => Exprs::Triple([expr, expr2, expr3].into_iter()),
             Self::Custom { name: _, exprs } => Exprs::VariableArgs(exprs.iter()),
+            Self::Coalesce(exprs) => Exprs::VariableArgs(exprs.iter()),
             Self::Concat(exprs) => Exprs::VariableArgs(exprs.iter()),
             Self::ConcatWs { separator, exprs } => {
                 Exprs::VariableArgsWithSingle(once(separator).chain(exprs.iter()))
             }
+            Self::Greatest(exprs) => Exprs::VariableArgs(exprs.iter()),
+            Self::Entries(expr) => Exprs::Single([expr].into_iter()),
         }
     }
 }
@@ -238,12 +255,14 @@ mod tests {
         test("LOG2(16)", &["16"]);
         test("LOG10(150 - 50)", &["150 - 50"]);
         test("SQRT(144)", &["144"]);
+        test("LASTDAY(DATE '2020-01-01')", &[r#"DATE '2020-01-01'"#]);
         test(r#"LTRIM("  hello")"#, &[r#""  hello""#]);
         test(r#"RTRIM("world  ")"#, &[r#""world  ""#]);
         test(r#"TRIM("  rust  ")"#, &[r#""  rust  ""#]);
         test(r#"REVERSE("abcde")"#, &[r#""abcde""#]);
         test(r#"CAST(1 AS BOOLEAN)"#, &["1"]);
         test(r#"IS_EMPTY(col)"#, &["col"]);
+        test(r#"VALUES(col)"#, &["col"]);
 
         test(r#"ABS(1)"#, &["1"]);
         test(r#"ABS(-1)"#, &["-1"]);
@@ -281,6 +300,7 @@ mod tests {
         test("REPEAT(col || col2, 3)", &["col || col2", "3"]);
         test("REPEAT(column, 2)", &["column", "2"]);
         test(r#"UNWRAP(field, "foo.1")"#, &["field", r#""foo.1""#]);
+        test(r#"SKIP(list, 2)"#, &[r#""list""#, r#"2"#]);
 
         // Triple
         test(
@@ -297,6 +317,10 @@ mod tests {
         );
 
         //VariableArgs
+        test(r#"COALESCE("test")"#, &[r#""test""#]);
+
+        test(r#"COALESCE(NULL, "test")"#, &["NULL", r#""test""#]);
+
         test(r#"CONCAT("abc")"#, &[r#""abc""#]);
 
         test(r#"CONCAT("abc", "123")"#, &[r#""abc""#, r#""123""#]);

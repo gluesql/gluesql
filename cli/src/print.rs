@@ -99,30 +99,30 @@ impl<'a, W: Write> Print<W> {
     pub fn payload(&mut self, payload: &Payload) -> IOResult<()> {
         let mut affected = |n: usize, msg: &str| -> IOResult<()> {
             let payload = format!("{} row{} {}", n, if n > 1 { "s" } else { "" }, msg);
-            self.write(payload)
+            self.writeln(payload)
         };
 
         match payload {
-            Payload::Create => self.write("Table created")?,
-            Payload::DropTable => self.write("Table dropped")?,
-            Payload::DropFunction => self.write("Function dropped")?,
-            Payload::AlterTable => self.write("Table altered")?,
-            Payload::CreateIndex => self.write("Index created")?,
-            Payload::DropIndex => self.write("Index dropped")?,
-            Payload::Commit => self.write("Commit completed")?,
-            Payload::Rollback => self.write("Rollback completed")?,
-            Payload::StartTransaction => self.write("Transaction started")?,
+            Payload::Create => self.writeln("Table created")?,
+            Payload::DropTable => self.writeln("Table dropped")?,
+            Payload::DropFunction => self.writeln("Function dropped")?,
+            Payload::AlterTable => self.writeln("Table altered")?,
+            Payload::CreateIndex => self.writeln("Index created")?,
+            Payload::DropIndex => self.writeln("Index dropped")?,
+            Payload::Commit => self.writeln("Commit completed")?,
+            Payload::Rollback => self.writeln("Rollback completed")?,
+            Payload::StartTransaction => self.writeln("Transaction started")?,
             Payload::Insert(n) => affected(*n, "inserted")?,
             Payload::Delete(n) => affected(*n, "deleted")?,
             Payload::Update(n) => affected(*n, "updated")?,
-            Payload::ShowVariable(PayloadVariable::Version(v)) => self.write(format!("v{v}"))?,
+            Payload::ShowVariable(PayloadVariable::Version(v)) => self.writeln(format!("v{v}"))?,
             Payload::ShowVariable(PayloadVariable::Tables(names)) => {
                 let mut table = self.get_table(["tables"]);
                 for name in names {
                     table.add_record([name]);
                 }
                 let table = self.build_table(table);
-                self.write(table)?;
+                self.writeln(table)?;
             }
             Payload::ShowVariable(PayloadVariable::Functions(names)) => {
                 let mut table = self.get_table(["functions"]);
@@ -130,7 +130,7 @@ impl<'a, W: Write> Print<W> {
                     table.add_record([name]);
                 }
                 let table = self.build_table(table);
-                self.write(table)?;
+                self.writeln(table)?;
             }
             Payload::ShowColumns(columns) => {
                 let mut table = self.get_table(vec!["Field", "Type"]);
@@ -138,7 +138,7 @@ impl<'a, W: Write> Print<W> {
                     table.add_record([field, &field_type.to_string()]);
                 }
                 let table = self.build_table(table);
-                self.write(table)?;
+                self.writeln(table)?;
             }
             Payload::Select { labels, rows } => match &self.option.tabular {
                 true => {
@@ -150,35 +150,12 @@ impl<'a, W: Write> Print<W> {
                         table.add_record(row);
                     }
                     let table = self.build_table(table);
-                    self.write(table)?;
+                    self.writeln(table)?;
                 }
                 false => {
-                    let PrintOption {
-                        colsep,
-                        colwrap,
-                        heading,
-                        ..
-                    } = &self.option;
-
-                    if *heading {
-                        let labels = labels
-                            .iter()
-                            .map(|v| format!("{colwrap}{v}{colwrap}"))
-                            .collect::<Vec<_>>()
-                            .join(colsep.as_str());
-
-                        writeln!(self.output, "{}", labels)?;
-                    }
-
-                    for row in rows {
-                        let row = row
-                            .iter()
-                            .map(Into::into)
-                            .map(|v: String| format!("{colwrap}{v}{colwrap}"))
-                            .collect::<Vec<_>>()
-                            .join(colsep.as_str());
-                        writeln!(self.output, "{}", row)?
-                    }
+                    self.write_header(labels.iter().map(|s| s.as_str()))?;
+                    let rows = rows.iter().map(|row| row.iter().map(String::from));
+                    self.write_rows(rows)?;
                 }
             },
             Payload::SelectMap(rows) => {
@@ -197,52 +174,23 @@ impl<'a, W: Write> Print<W> {
                         for row in rows {
                             let row = labels
                                 .iter()
-                                .map(|label| {
-                                    row.get(*label)
-                                        .map(Into::into)
-                                        .unwrap_or_else(|| "".to_owned())
-                                })
+                                .map(|label| row.get(*label).map(Into::into).unwrap_or_default())
                                 .collect::<Vec<String>>();
 
                             table.add_record(row);
                         }
                         let table = self.build_table(table);
-                        self.write(table)?;
+                        self.writeln(table)?;
                     }
                     false => {
-                        let PrintOption {
-                            colsep,
-                            colwrap,
-                            heading,
-                            ..
-                        } = &self.option;
+                        self.write_header(labels.iter().map(AsRef::as_ref))?;
 
-                        if *heading {
-                            let labels = labels
+                        let rows = rows.iter().map(|row| {
+                            labels
                                 .iter()
-                                .map(|v| format!("{colwrap}{v}{colwrap}"))
-                                .collect::<Vec<_>>()
-                                .join(colsep.as_str());
-
-                            writeln!(self.output, "{}", labels)?;
-                        }
-
-                        for row in rows {
-                            let row = labels
-                                .iter()
-                                .map(|label| {
-                                    let v = row
-                                        .get(*label)
-                                        .map(Into::into)
-                                        .unwrap_or_else(|| "".to_owned());
-
-                                    format!("{colwrap}{v}{colwrap}")
-                                })
-                                .collect::<Vec<_>>()
-                                .join(colsep.as_str());
-
-                            writeln!(self.output, "{}", row)?
-                        }
+                                .map(|label| row.get(*label).map(String::from).unwrap_or_default())
+                        });
+                        self.write_rows(rows)?;
                     }
                 }
             }
@@ -251,12 +199,56 @@ impl<'a, W: Write> Print<W> {
         Ok(())
     }
 
-    fn write(&mut self, payload: impl Display) -> IOResult<()> {
+    fn write_rows(
+        &mut self,
+        rows: impl Iterator<Item = impl Iterator<Item = String>>,
+    ) -> IOResult<()> {
+        for row in rows {
+            let row = row
+                .map(|v| format!("{c}{v}{c}", c = self.option.colwrap))
+                .collect::<Vec<_>>()
+                .join(self.option.colsep.as_str());
+
+            self.write(row)?;
+        }
+
+        Ok(())
+    }
+
+    fn write_lf(&mut self, payload: impl Display, lf: &str) -> IOResult<()> {
         if let Some(file) = &self.spool_file {
-            writeln!(file.to_owned(), "{}\n", payload)?;
+            writeln!(file.to_owned(), "{payload}{lf}")?;
         };
 
-        writeln!(self.output, "{}\n", payload)
+        writeln!(self.output, "{payload}{lf}")
+    }
+
+    fn write(&mut self, payload: impl Display) -> IOResult<()> {
+        self.write_lf(payload, "")
+    }
+
+    fn writeln(&mut self, payload: impl Display) -> IOResult<()> {
+        self.write_lf(payload, "\n")
+    }
+
+    fn write_header<'b>(&mut self, labels: impl Iterator<Item = &'b str>) -> IOResult<()> {
+        let PrintOption {
+            heading,
+            colsep,
+            colwrap,
+            ..
+        } = &self.option;
+
+        if !heading {
+            return Ok(());
+        }
+
+        let labels = labels
+            .map(|v| format!("{colwrap}{v}{colwrap}"))
+            .collect::<Vec<_>>()
+            .join(colsep.as_str());
+
+        self.write(labels)
     }
 
     pub fn help(&mut self) -> IOResult<()> {
@@ -318,7 +310,7 @@ impl<'a, W: Write> Print<W> {
 
     pub fn show_option(&mut self, option: ShowOption) -> IOResult<()> {
         let payload = self.option.format(option);
-        self.write(payload)?;
+        self.writeln(payload)?;
 
         Ok(())
     }
@@ -779,9 +771,9 @@ heading ON"
         // Spooling on file
         fs::create_dir_all("tmp").unwrap();
         assert!(print.spool_on(PathBuf::from("tmp/spool.txt")).is_ok());
-        assert!(print.write("Test").is_ok());
+        assert!(print.writeln("Test").is_ok());
         assert!(print.show_option(ShowOption::All).is_ok());
         print.spool_off();
-        assert!(print.write("Test").is_ok());
+        assert!(print.writeln("Test").is_ok());
     }
 }
