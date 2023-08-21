@@ -624,5 +624,10 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let expr = eval(expr).await?;
             f::is_empty(expr)
         }
+        Function::AddMonth { expr, size } => {
+            let expr = eval(expr).await?;
+            let size = eval(size).await?;
+            f::add_month(name, expr, size)
+        }
     }
 }

@@ -965,6 +965,14 @@ mod tests {
             "GENERATE_UUID()",
             &Expr::Function(Box::new(Function::GenerateUuid())).to_sql()
         );
+        assert_eq!(
+            "ADD MONTH('2023-06-15',1)",
+            &Expr::Function(Box::new(Function::AddMonth {
+                expr: Expr::Literal(AstLiteral::QuotedString("2023-06-15".to_owned())),
+                size: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap()))
+            }))
+            .to_sql()
+        );
 
         assert_eq!(
             "FORMAT(DATE '2022-10-12', '%Y-%m')",
