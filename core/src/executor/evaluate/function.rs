@@ -792,23 +792,20 @@ pub fn add_month<'a>(
             err
         },
     )?;
-    let date;
-    if size <= 0 {
-        date = expr
-            .checked_sub_months(chrono::Months::new(
-                size.abs()
-                    .try_into()
-                    .map_err(|_err| ValueError::ValueTou32ConversionFailure(name))?,
-            ))
-            .ok_or(EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255)?;
-    } else {
-        date = expr
-            .checked_add_months(chrono::Months::new(
-                size.try_into()
-                    .map_err(|_err| ValueError::ValueTou32ConversionFailure(name))?,
-            ))
-            .ok_or(EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255)?;
-    }
+    let date = {
+        let size_as_u32 = size
+            .abs()
+            .try_into()
+            .map_err(|_err| ValueError::ValueTou32ConversionFailure(name))?;
+        let new_months = chrono::Months::new(size_as_u32);
+
+        if size <= 0 {
+            expr.checked_sub_months(new_months)
+        } else {
+            expr.checked_add_months(new_months)
+        }
+        .ok_or(EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255)?
+    };
     let value = Value::Date(date);
     let e = Evaluated::from(value);
 
