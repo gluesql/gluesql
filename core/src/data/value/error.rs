@@ -233,7 +233,7 @@ pub enum ValueError {
     ValueToExprConversionFailure,
 
     #[error("failed to convert Value to u32: {0}")]
-    ValueTou32ConversionFailure(String),
+    I64ToU32ConversionFailure(String),
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Display)]
