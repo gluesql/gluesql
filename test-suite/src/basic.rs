@@ -6,7 +6,7 @@ use {
     },
 };
 
-test_case!(basic, async move {
+test_case!(basic, {
     let g = get_tester!();
 
     let queries = [
@@ -34,7 +34,7 @@ test_case!(basic, async move {
     ];
 
     for query in queries {
-        g.run(query).await.unwrap();
+        g.run(query).await;
     }
 
     g.named_test(
@@ -71,7 +71,7 @@ test_case!(basic, async move {
 
     g.count("SELECT * FROM Test", 4).await;
 
-    g.run("UPDATE Test SET id = 2").await.unwrap();
+    g.run("UPDATE Test SET id = 2").await;
 
     g.test(
         "SELECT id FROM Test",

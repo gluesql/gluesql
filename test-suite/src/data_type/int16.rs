@@ -3,7 +3,7 @@ use {
     gluesql_core::{error::ValueError, prelude::Value::*},
 };
 
-test_case!(int16, async move {
+test_case!(int16, {
     let g = get_tester!();
 
     g.run(
@@ -12,11 +12,9 @@ test_case!(int16, async move {
         field_two INT16,
     );",
     )
-    .await
-    .unwrap();
+    .await;
     g.run("INSERT INTO Item VALUES (1, -1), (-2, 2), (3, 3), (-4, -4);")
-        .await
-        .unwrap();
+        .await;
 
     let parse_i16 = |text: &str| -> i16 { text.parse().unwrap() };
 
@@ -103,5 +101,5 @@ test_case!(int16, async move {
     )
     .await;
 
-    g.run("DELETE FROM Item").await.unwrap();
+    g.run("DELETE FROM Item").await;
 });

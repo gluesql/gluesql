@@ -7,7 +7,7 @@ use {
     },
 };
 
-test_case!(create_table, async move {
+test_case!(create_table, {
     let g = get_tester!();
 
     let test_cases = [

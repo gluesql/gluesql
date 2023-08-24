@@ -3,7 +3,7 @@ use {
     gluesql_core::{error::FetchError, prelude::Value::*},
 };
 
-test_case!(alter_table_rename_table, async move {
+test_case!(alter_table_rename_table, {
     let g = get_tester!();
 
     for query in [
@@ -12,7 +12,7 @@ test_case!(alter_table_rename_table, async move {
         "BEGIN;",
         "ALTER TABLE RenameTable RENAME TO NewName;",
     ] {
-        g.run(query).await.unwrap();
+        g.run(query).await;
     }
 
     g.test(
@@ -23,7 +23,7 @@ test_case!(alter_table_rename_table, async move {
     g.test("SELECT * FROM NewName", Ok(select!(id I64; 1)))
         .await;
 
-    g.run("ROLLBACK;").await.unwrap();
+    g.run("ROLLBACK;").await;
 
     g.test(
         "SELECT * FROM NewName",
@@ -34,44 +34,41 @@ test_case!(alter_table_rename_table, async move {
         .await;
 });
 
-test_case!(alter_table_rename_column, async move {
+test_case!(alter_table_rename_column, {
     let g = get_tester!();
 
-    g.run("CREATE TABLE RenameCol (id INTEGER);").await.unwrap();
-    g.run("INSERT INTO RenameCol VALUES (1);").await.unwrap();
+    g.run("CREATE TABLE RenameCol (id INTEGER);").await;
+    g.run("INSERT INTO RenameCol VALUES (1);").await;
 
     // ROLLBACK
-    g.run("BEGIN;").await.unwrap();
+    g.run("BEGIN;").await;
     g.run("ALTER TABLE RenameCol RENAME COLUMN id TO new_id;")
-        .await
-        .unwrap();
+        .await;
     g.test("SELECT * FROM RenameCol", Ok(select!(new_id I64; 1)))
         .await;
-    g.run("ROLLBACK;").await.unwrap();
+    g.run("ROLLBACK;").await;
     g.test("SELECT * FROM RenameCol", Ok(select!(id I64; 1)))
         .await;
 
     // COMMIT
-    g.run("BEGIN;").await.unwrap();
+    g.run("BEGIN;").await;
     g.run("ALTER TABLE RenameCol RENAME COLUMN id TO new_id;")
-        .await
-        .unwrap();
-    g.run("COMMIT;").await.unwrap();
+        .await;
+    g.run("COMMIT;").await;
     g.test("SELECT * FROM RenameCol", Ok(select!(new_id I64; 1)))
         .await;
 });
 
-test_case!(alter_table_add_column, async move {
+test_case!(alter_table_add_column, {
     let g = get_tester!();
 
-    g.run("CREATE TABLE AddCol (id INTEGER);").await.unwrap();
-    g.run("INSERT INTO AddCol VALUES (1);").await.unwrap();
+    g.run("CREATE TABLE AddCol (id INTEGER);").await;
+    g.run("INSERT INTO AddCol VALUES (1);").await;
 
     // ROLLBACK
-    g.run("BEGIN;").await.unwrap();
+    g.run("BEGIN;").await;
     g.run("ALTER TABLE AddCol ADD COLUMN new_col INTEGER DEFAULT 3;")
-        .await
-        .unwrap();
+        .await;
     g.test(
         "SELECT * FROM AddCol",
         Ok(select!(
@@ -81,15 +78,14 @@ test_case!(alter_table_add_column, async move {
         )),
     )
     .await;
-    g.run("ROLLBACK;").await.unwrap();
+    g.run("ROLLBACK;").await;
     g.test("SELECT * FROM AddCol", Ok(select!(id I64; 1))).await;
 
     // COMMIT
-    g.run("BEGIN;").await.unwrap();
+    g.run("BEGIN;").await;
     g.run("ALTER TABLE AddCol ADD COLUMN new_col INTEGER DEFAULT 3;")
-        .await
-        .unwrap();
-    g.run("COMMIT;").await.unwrap();
+        .await;
+    g.run("COMMIT;").await;
     g.test(
         "SELECT * FROM AddCol",
         Ok(select!(
@@ -101,20 +97,19 @@ test_case!(alter_table_add_column, async move {
     .await;
 });
 
-test_case!(alter_table_drop_column, async move {
+test_case!(alter_table_drop_column, {
     let g = get_tester!();
 
     g.run("CREATE TABLE DropCol (id INTEGER, num INTEGER);")
-        .await
-        .unwrap();
-    g.run("INSERT INTO DropCol VALUES (1, 2);").await.unwrap();
+        .await;
+    g.run("INSERT INTO DropCol VALUES (1, 2);").await;
 
     // ROLLBACK
-    g.run("BEGIN;").await.unwrap();
-    g.run("ALTER TABLE DropCol DROP COLUMN num;").await.unwrap();
+    g.run("BEGIN;").await;
+    g.run("ALTER TABLE DropCol DROP COLUMN num;").await;
     g.test("SELECT * FROM DropCol", Ok(select!(id I64; 1)))
         .await;
-    g.run("ROLLBACK;").await.unwrap();
+    g.run("ROLLBACK;").await;
     g.test(
         "SELECT * FROM DropCol",
         Ok(select!(
@@ -126,9 +121,9 @@ test_case!(alter_table_drop_column, async move {
     .await;
 
     // COMMIT
-    g.run("BEGIN;").await.unwrap();
-    g.run("ALTER TABLE DropCol DROP COLUMN num;").await.unwrap();
-    g.run("COMMIT;").await.unwrap();
+    g.run("BEGIN;").await;
+    g.run("ALTER TABLE DropCol DROP COLUMN num;").await;
+    g.run("COMMIT;").await;
     g.test("SELECT * FROM DropCol", Ok(select!(id I64; 1)))
         .await;
 });

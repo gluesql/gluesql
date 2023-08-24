@@ -10,7 +10,7 @@ use {
     std::borrow::Cow,
 };
 
-test_case!(bytea, async move {
+test_case!(bytea, {
     let g = get_tester!();
 
     let bytea = |v| hex::decode(v).unwrap();

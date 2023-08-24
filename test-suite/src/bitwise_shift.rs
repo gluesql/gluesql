@@ -3,7 +3,7 @@ use {
     gluesql_core::{data::NumericBinaryOperator, error::ValueError, prelude::Value::*},
 };
 
-test_case!(bitwise_shift_left, async move {
+test_case!(bitwise_shift_left, {
     let g = get_tester!();
 
     g.run(
@@ -13,8 +13,7 @@ CREATE TABLE Test (
     num INTEGER,
 )"#,
     )
-    .await
-    .unwrap();
+    .await;
 
     g.run(
         r#"
@@ -23,8 +22,7 @@ CREATE TABLE OverflowTest (
     num INTEGER,
 )"#,
     )
-    .await
-    .unwrap();
+    .await;
 
     g.run(
         r#"
@@ -33,26 +31,18 @@ CREATE TABLE NullTest (
     num INTEGER,
 )"#,
     )
-    .await
-    .unwrap();
+    .await;
 
-    g.run("INSERT INTO Test (id, num) VALUES (1, 1)")
-        .await
-        .unwrap();
-    g.run("INSERT INTO Test (id, num) VALUES (1, 2)")
-        .await
-        .unwrap();
+    g.run("INSERT INTO Test (id, num) VALUES (1, 1)").await;
+    g.run("INSERT INTO Test (id, num) VALUES (1, 2)").await;
     g.run("INSERT INTO Test (id, num) VALUES (3, 4), (4, 8)")
-        .await
-        .unwrap();
+        .await;
 
     g.run("INSERT INTO OverflowTest (id, num) VALUES (1, 1)")
-        .await
-        .unwrap();
+        .await;
 
     g.run("INSERT INTO NullTest (id, num) VALUES (NULL, 1)")
-        .await
-        .unwrap();
+        .await;
 
     g.named_test(
         "select all from table",

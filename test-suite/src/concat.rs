@@ -1,6 +1,6 @@
 use {crate::*, gluesql_core::prelude::Value::*};
 
-test_case!(concat, async move {
+test_case!(concat, {
     let g = get_tester!();
 
     g.run(
@@ -14,11 +14,9 @@ test_case!(concat, async move {
         );
     ",
     )
-    .await
-    .unwrap();
+    .await;
     g.run("INSERT INTO Concat VALUES (1, 2.3, TRUE, 'Foo', NULL);")
-        .await
-        .unwrap();
+        .await;
 
     g.test(
         "

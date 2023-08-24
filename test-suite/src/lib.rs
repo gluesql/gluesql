@@ -150,6 +150,7 @@ macro_rules! generate_store_tests {
             function_geometry_calc_distance,
             function::geometry::calc_distance
         );
+        glue!(function_slice, function::slice::slice);
         glue!(function_entries, function::entries::entries);
         glue!(join, join::join);
         glue!(join_project, join::project);
@@ -209,6 +210,7 @@ macro_rules! generate_store_tests {
         glue!(function_sort, function::sort::sort);
         glue!(function_take, function::take::take);
         glue!(column_alias, column_alias::column_alias);
+        glue!(function_splice, function::splice::splice);
 
         // ast-builder
         glue!(ast_builder_basic, ast_builder::basic::basic);

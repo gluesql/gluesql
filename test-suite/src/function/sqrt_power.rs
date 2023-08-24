@@ -6,7 +6,7 @@ use {
     },
 };
 
-test_case!(sqrt, async move {
+test_case!(sqrt, {
     let g = get_tester!();
 
     let test_cases = [
@@ -52,7 +52,7 @@ test_case!(sqrt, async move {
     }
 });
 
-test_case!(power, async move {
+test_case!(power, {
     let g = get_tester!();
 
     let test_cases = [

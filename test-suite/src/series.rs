@@ -6,7 +6,7 @@ use {
     },
 };
 
-test_case!(series, async move {
+test_case!(series, {
     let g = get_tester!();
 
     let test_cases = vec![

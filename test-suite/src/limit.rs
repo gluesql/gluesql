@@ -1,6 +1,6 @@
 use {crate::*, gluesql_core::prelude::*, Value::*};
 
-test_case!(limit, async move {
+test_case!(limit, {
     let g = get_tester!();
 
     let test_cases = [

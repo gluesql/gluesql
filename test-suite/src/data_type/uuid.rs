@@ -11,7 +11,7 @@ use {
     uuid::Uuid as UUID,
 };
 
-test_case!(uuid, async move {
+test_case!(uuid, {
     let g = get_tester!();
 
     let parse_uuid = |v| UUID::parse_str(v).unwrap().as_u128();

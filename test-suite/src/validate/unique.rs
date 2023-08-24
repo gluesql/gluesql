@@ -3,7 +3,7 @@ use {
     gluesql_core::{error::ValidateError, prelude::Value},
 };
 
-test_case!(unique, async move {
+test_case!(unique, {
     let g = get_tester!();
 
     let queries = [
@@ -36,7 +36,7 @@ test_case!(unique, async move {
     ];
 
     for query in queries {
-        g.run(query).await.unwrap();
+        g.run(query).await;
     }
 
     let error_cases = [

@@ -6,7 +6,7 @@ use {
     },
 };
 
-test_case!(project, async move {
+test_case!(project, {
     let g = get_tester!();
 
     let create_sqls: [&str; 2] = [
@@ -26,13 +26,13 @@ test_case!(project, async move {
     ];
 
     for sql in create_sqls {
-        g.run(sql).await.unwrap();
+        g.run(sql).await;
     }
 
     let delete_sqls = ["DELETE FROM ProjectUser", "DELETE FROM ProjectItem"];
 
     for sql in delete_sqls {
-        g.run(sql).await.unwrap();
+        g.run(sql).await;
     }
 
     let insert_sqls = [
@@ -53,7 +53,7 @@ test_case!(project, async move {
     ];
 
     for insert_sql in insert_sqls {
-        g.run(insert_sql).await.unwrap();
+        g.run(insert_sql).await;
     }
 
     let test_cases = [

@@ -7,7 +7,7 @@ use {
     std::{net::IpAddr, str::FromStr},
 };
 
-test_case!(inet, async move {
+test_case!(inet, {
     let g = get_tester!();
 
     let inet = |v| IpAddr::from_str(v).unwrap();

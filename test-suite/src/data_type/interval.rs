@@ -3,7 +3,7 @@ use {
     gluesql_core::{data::Interval as I, error::IntervalError, prelude::Value::*},
 };
 
-test_case!(interval, async move {
+test_case!(interval, {
     let g = get_tester!();
 
     g.run(
@@ -14,8 +14,7 @@ CREATE TABLE IntervalLog (
     interval2 INTERVAL,
 )",
     )
-    .await
-    .unwrap();
+    .await;
 
     g.run(
         "
@@ -29,8 +28,7 @@ INSERT INTO IntervalLog VALUES
     (7, INTERVAL '-1000-11' YEAR TO MONTH,    INTERVAL '-30:11' MINUTE TO SECOND);
 ",
     )
-    .await
-    .unwrap();
+    .await;
 
     g.test(
         "SELECT * FROM IntervalLog;",

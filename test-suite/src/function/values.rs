@@ -3,12 +3,10 @@ use {
     gluesql_core::{error::EvaluateError, prelude::Value},
 };
 
-test_case!(values, async move {
+test_case!(values, {
     let g = get_tester!();
 
-    g.run("CREATE TABLE USER (id INTEGER, data MAP);")
-        .await
-        .unwrap();
+    g.run("CREATE TABLE USER (id INTEGER, data MAP);").await;
     g.run(
         r#"
             INSERT INTO USER VALUES 
@@ -17,8 +15,7 @@ test_case!(values, async move {
             (3, '{}');
         "#,
     )
-    .await
-    .unwrap();
+    .await;
 
     g.named_test(
          "return all values from map by ascending order",

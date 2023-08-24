@@ -7,7 +7,7 @@ use {
     },
 };
 
-test_case!(migrate, async move {
+test_case!(migrate, {
     let g = get_tester!();
 
     g.run(
@@ -19,8 +19,7 @@ test_case!(migrate, async move {
         );
     ",
     )
-    .await
-    .unwrap();
+    .await;
     g.run(
         "
         INSERT INTO Test (id, num, name) VALUES
@@ -29,8 +28,7 @@ test_case!(migrate, async move {
             (+3,    2 * 2, 'Great');
         ",
     )
-    .await
-    .unwrap();
+    .await;
 
     let error_cases = [
         (
@@ -101,7 +99,7 @@ test_case!(migrate, async move {
     );
     g.test(found, Ok(expected)).await;
 
-    g.run("UPDATE Test SET id = 2").await.unwrap();
+    g.run("UPDATE Test SET id = 2").await;
 
     let found = "SELECT id, num, name FROM Test";
     let expected = select!(

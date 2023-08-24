@@ -1,6 +1,6 @@
 use {crate::*, gluesql_core::prelude::*, Value::*};
 
-test_case!(basic, async move {
+test_case!(basic, {
     let g = get_tester!();
 
     for query in [
@@ -16,7 +16,7 @@ test_case!(basic, async move {
             (2, 'Phone');
     ",
     ] {
-        g.run(query).await.unwrap();
+        g.run(query).await;
     }
 
     g.test("BEGIN;", Ok(Payload::StartTransaction)).await;
@@ -185,6 +185,6 @@ test_case!(basic, async move {
         "BEGIN;",
         "COMMIT;",
     ] {
-        g.run(query).await.unwrap();
+        g.run(query).await;
     }
 });

@@ -2,7 +2,7 @@ use {
     crate::*,
     gluesql_core::{error::EvaluateError, prelude::Value::*},
 };
-test_case!(is_empty, async move {
+test_case!(is_empty, {
     let g = get_tester!();
 
     g.run(
@@ -12,8 +12,7 @@ test_case!(is_empty, async move {
             map_items MAP
         );",
     )
-    .await
-    .unwrap();
+    .await;
     g.run(
         r#"
             INSERT INTO IsEmpty VALUES
@@ -23,8 +22,7 @@ test_case!(is_empty, async move {
             (4, '[10]', '{}');
         "#,
     )
-    .await
-    .unwrap();
+    .await;
 
     g.named_test(
         "is_empty for list, return true",

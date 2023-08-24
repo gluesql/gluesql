@@ -7,7 +7,7 @@ use {
     },
 };
 
-test_case!(expr, async move {
+test_case!(expr, {
     let g = get_tester!();
 
     g.run(
@@ -19,8 +19,7 @@ test_case!(expr, async move {
         )
     ",
     )
-    .await
-    .unwrap();
+    .await;
 
     g.run(
         "
@@ -30,8 +29,7 @@ test_case!(expr, async move {
             (1, 2, 'Hello');
     ",
     )
-    .await
-    .unwrap();
+    .await;
 
     g.test("CREATE INDEX idx_id ON Test (id)", Ok(Payload::CreateIndex))
         .await;

@@ -5,7 +5,7 @@ use {
         prelude::{Payload, Value::*},
     },
 };
-test_case!(append, async move {
+test_case!(append, {
     let g = get_tester!();
 
     g.run(
@@ -18,16 +18,14 @@ test_case!(append, async move {
         );
     ",
     )
-    .await
-    .unwrap();
+    .await;
     g.run(
         r#"
             INSERT INTO Append VALUES
             (1, '[1, 2, 3]', 4, 'Foo');
         "#,
     )
-    .await
-    .unwrap();
+    .await;
     g.test(
         r#"select append(items, element) as myappend from Append;"#,
         Ok(select!(
@@ -66,8 +64,7 @@ test_case!(append, async move {
             INSERT INTO Foo VALUES (APPEND(CAST('[1, 2, 3]' AS LIST), 4));
         "#,
     )
-    .await
-    .unwrap();
+    .await;
     g.test(
         r#"select elements as myappend from Foo;"#,
         Ok(select!(

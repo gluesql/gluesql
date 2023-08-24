@@ -6,7 +6,7 @@ use {
     },
 };
 
-test_case!(column_alias, async move {
+test_case!(column_alias, {
     let g = get_tester!();
 
     let test_cases = [

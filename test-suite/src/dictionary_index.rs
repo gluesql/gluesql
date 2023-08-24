@@ -3,16 +3,12 @@ use {
     gluesql_core::{error::TranslateError, prelude::Value::*},
 };
 
-test_case!(ditionary_index, async move {
+test_case!(ditionary_index, {
     let g = get_tester!();
 
-    g.run("CREATE TABLE Foo (id INT, name TEXT);")
-        .await
-        .unwrap();
-    g.run("CREATE INDEX Foo_id ON Foo (id)").await.unwrap();
-    g.run("CREATE INDEX Foo_id_2 ON Foo (id + 2)")
-        .await
-        .unwrap();
+    g.run("CREATE TABLE Foo (id INT, name TEXT);").await;
+    g.run("CREATE INDEX Foo_id ON Foo (id)").await;
+    g.run("CREATE INDEX Foo_id_2 ON Foo (id + 2)").await;
     g.test(
         "SELECT * FROM GLUE_INDEXES",
         Ok(select!(
@@ -24,11 +20,9 @@ test_case!(ditionary_index, async move {
     ).await;
 
     g.run("CREATE TABLE Bar (id INT PRIMARY KEY, name TEXT);")
-        .await
-        .unwrap();
+        .await;
     g.run("CREATE INDEX Bar_name_concat ON Bar (name + '_')")
-        .await
-        .unwrap();
+        .await;
     g.test(
         "SELECT * FROM GLUE_INDEXES",
         Ok(select!(

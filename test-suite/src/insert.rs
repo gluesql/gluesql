@@ -6,7 +6,7 @@ use {
     },
 };
 
-test_case!(insert, async move {
+test_case!(insert, {
     let g = get_tester!();
 
     g.run(
@@ -17,8 +17,7 @@ CREATE TABLE Test (
     name TEXT NOT NULL,
 );",
     )
-    .await
-    .unwrap();
+    .await;
 
     g.named_test(
         "basic insert - single item",
@@ -78,8 +77,7 @@ CREATE TABLE Test (
     .await;
 
     g.run("CREATE TABLE Target AS SELECT * FROM Test WHERE 1 = 0;")
-        .await
-        .unwrap();
+        .await;
 
     g.named_test(
         "insert into target from source",

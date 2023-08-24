@@ -3,7 +3,7 @@ use {
     gluesql_core::{error::ValueError, prelude::Value::*},
 };
 
-test_case!(nullable, async move {
+test_case!(nullable, {
     let g = get_tester!();
 
     g.run(
@@ -15,8 +15,7 @@ test_case!(nullable, async move {
         )
         ",
     )
-    .await
-    .unwrap();
+    .await;
     g.run(
         "
         INSERT INTO Test (id, num, name) VALUES
@@ -25,8 +24,7 @@ test_case!(nullable, async move {
             (   3, 4, 'Great');
         ",
     )
-    .await
-    .unwrap();
+    .await;
 
     let test_cases = [
         (
@@ -229,7 +227,7 @@ test_case!(nullable, async move {
         g.test(sql, Ok(expected)).await;
     }
 
-    g.run("UPDATE Test SET id = 2").await.unwrap();
+    g.run("UPDATE Test SET id = 2").await;
 
     let test_cases = [
         ("SELECT id FROM Test", Ok(select!(id I64; 2; 2; 2))),
@@ -254,7 +252,7 @@ test_case!(nullable, async move {
     }
 });
 
-test_case!(nullable_text, async move {
+test_case!(nullable_text, {
     let g = get_tester!();
 
     g.run(
@@ -265,15 +263,13 @@ test_case!(nullable_text, async move {
         );
     ",
     )
-    .await
-    .unwrap();
+    .await;
 
     g.run("INSERT INTO Foo (id, name) VALUES (1, 'Hello'), (2, Null);")
-        .await
-        .unwrap();
+        .await;
 });
 
-test_case!(nullable_implicit_insert, async move {
+test_case!(nullable_implicit_insert, {
     let g = get_tester!();
 
     g.run(
@@ -284,10 +280,9 @@ test_case!(nullable_implicit_insert, async move {
         );
     ",
     )
-    .await
-    .unwrap();
+    .await;
 
-    g.run("INSERT INTO Foo (id) VALUES (1)").await.unwrap();
+    g.run("INSERT INTO Foo (id) VALUES (1)").await;
     g.test(
         "SELECT id, name FROM Foo",
         Ok(select_with_null!(

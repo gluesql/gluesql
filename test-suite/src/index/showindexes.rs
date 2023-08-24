@@ -6,7 +6,7 @@ use {
     },
 };
 
-test_case!(showindexes, async move {
+test_case!(showindexes, {
     let g = get_tester!();
 
     g.run(
@@ -17,8 +17,7 @@ CREATE TABLE Test (
     name TEXT
 )",
     )
-    .await
-    .unwrap();
+    .await;
 
     g.run(
         "
@@ -31,8 +30,7 @@ CREATE TABLE Test (
             (4, 7, 'Job');
     ",
     )
-    .await
-    .unwrap();
+    .await;
 
     g.test("CREATE INDEX idx_id ON Test (id)", Ok(Payload::CreateIndex))
         .await;

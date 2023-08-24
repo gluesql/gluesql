@@ -9,7 +9,7 @@ use {
     },
 };
 
-test_case!(position, async move {
+test_case!(position, {
     let g = get_tester!();
 
     let test_cases = [

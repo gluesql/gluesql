@@ -3,7 +3,7 @@ use {
     gluesql_core::{ast_builder::*, executor::Payload, prelude::Value::*},
 };
 
-test_case!(case_conversion, async move {
+test_case!(case_conversion, {
     let glue = get_glue!();
 
     let actual = table("Item")

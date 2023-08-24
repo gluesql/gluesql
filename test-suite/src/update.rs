@@ -7,7 +7,7 @@ use {
     Value::*,
 };
 
-test_case!(update, async move {
+test_case!(update, {
     let g = get_tester!();
 
     g.run(
@@ -19,8 +19,7 @@ test_case!(update, async move {
             name TEXT,
         )",
     )
-    .await
-    .unwrap();
+    .await;
 
     g.run(
         "
@@ -32,8 +31,7 @@ test_case!(update, async move {
             (4, 7, 10, 'Job');
         ",
     )
-    .await
-    .unwrap();
+    .await;
 
     g.run(
         "
@@ -43,8 +41,7 @@ test_case!(update, async move {
             rank INTEGER,
         )",
     )
-    .await
-    .unwrap();
+    .await;
 
     g.run(
         "
@@ -56,8 +53,7 @@ test_case!(update, async move {
             (4, 7, 4);
         ",
     )
-    .await
-    .unwrap();
+    .await;
 
     let test_cases = [
         ("UPDATE TableA SET id = 2", Ok(Payload::Update(4))),
@@ -109,12 +105,8 @@ test_case!(update, async move {
     }
 
     // Test Error cases for UPDATE
-    g.run("CREATE TABLE ErrTestTable (id INTEGER);")
-        .await
-        .unwrap();
-    g.run("INSERT INTO ErrTestTable (id) VALUES (1),(9);")
-        .await
-        .unwrap();
+    g.run("CREATE TABLE ErrTestTable (id INTEGER);").await;
+    g.run("INSERT INTO ErrTestTable (id) VALUES (1),(9);").await;
 
     let error_cases = [
         (

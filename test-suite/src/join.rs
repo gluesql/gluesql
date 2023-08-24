@@ -7,7 +7,7 @@ use {
     Value::*,
 };
 
-test_case!(join, async move {
+test_case!(join, {
     let g = get_tester!();
 
     let create_sqls: [&str; 2] = [
@@ -27,13 +27,13 @@ test_case!(join, async move {
     ];
 
     for sql in create_sqls {
-        g.run(sql).await.unwrap();
+        g.run(sql).await;
     }
 
     let delete_sqls = ["DELETE FROM Player", "DELETE FROM Item"];
 
     for sql in delete_sqls {
-        g.run(sql).await.unwrap();
+        g.run(sql).await;
     }
 
     let insert_sqls = [
@@ -66,7 +66,7 @@ test_case!(join, async move {
     ];
 
     for insert_sql in insert_sqls {
-        g.run(insert_sql).await.unwrap();
+        g.run(insert_sql).await;
     }
 
     let select_sqls = [
@@ -146,11 +146,11 @@ test_case!(join, async move {
     }
 
     for sql in delete_sqls {
-        g.run(sql).await.unwrap();
+        g.run(sql).await;
     }
 });
 
-test_case!(project, async move {
+test_case!(project, {
     let g = get_tester!();
 
     let create_sqls: [&str; 2] = [
@@ -170,7 +170,7 @@ test_case!(project, async move {
     ];
 
     for sql in create_sqls {
-        g.run(sql).await.unwrap();
+        g.run(sql).await;
     }
 
     let insert_sqls = [
@@ -191,7 +191,7 @@ test_case!(project, async move {
     ];
 
     for insert_sql in insert_sqls {
-        g.run(insert_sql).await.unwrap();
+        g.run(insert_sql).await;
     }
 
     let sql = "
@@ -259,18 +259,13 @@ test_case!(project, async move {
     g.test(sql, Ok(expected)).await;
 
     // To test `PlanError` while using `JOIN`
-    g.run("CREATE TABLE Users (id INTEGER, name TEXT);")
-        .await
-        .unwrap();
+    g.run("CREATE TABLE Users (id INTEGER, name TEXT);").await;
     g.run("INSERT INTO Users (id, name) VALUES (1, 'Harry');")
-        .await
-        .unwrap();
+        .await;
     g.run("CREATE TABLE Testers (id INTEGER, nickname TEXT);")
-        .await
-        .unwrap();
+        .await;
     g.run("INSERT INTO Testers (id, nickname) VALUES (1, 'Ron');")
-        .await
-        .unwrap();
+        .await;
 
     let error_cases = [
         (

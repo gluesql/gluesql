@@ -9,7 +9,7 @@ use {
     std::{borrow::Cow, str::FromStr},
 };
 
-test_case!(like_ilike, async move {
+test_case!(like_ilike, {
     let g = get_tester!();
 
     g.named_test(
@@ -34,8 +34,7 @@ test_case!(like_ilike, async move {
         );
     ",
     )
-    .await
-    .unwrap();
+    .await;
     g.run(
         "
         INSERT INTO Item (id, name) VALUES
@@ -46,8 +45,7 @@ test_case!(like_ilike, async move {
             (5,     'Maria');
     ",
     )
-    .await
-    .unwrap();
+    .await;
 
     let test_cases = [
         (2, "SELECT name FROM Item WHERE name LIKE '_a%'"),

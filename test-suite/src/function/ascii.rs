@@ -6,7 +6,7 @@ use {
     },
 };
 
-test_case!(ascii, async move {
+test_case!(ascii, {
     let g = get_tester!();
 
     g.test(
@@ -31,9 +31,8 @@ test_case!(ascii, async move {
         );
     ",
     )
-    .await
-    .unwrap();
-    g.run("INSERT INTO Ascii VALUES (1, 'F');").await.unwrap();
+    .await;
+    g.run("INSERT INTO Ascii VALUES (1, 'F');").await;
     g.test(
         r#"select ascii(text) as ascii from Ascii;"#,
         Ok(select!(
@@ -111,7 +110,7 @@ test_case!(ascii, async move {
     )
     .await;
 
-    g.run("INSERT INTO Ascii VALUES (1, 'Foo');").await.unwrap();
+    g.run("INSERT INTO Ascii VALUES (1, 'Foo');").await;
 
     g.test(
         r#"select ascii(text) as ascii from Ascii;"#,

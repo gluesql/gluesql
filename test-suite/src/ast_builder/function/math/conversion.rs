@@ -4,7 +4,7 @@ use {
     std::f64::consts::*,
 };
 
-test_case!(conversion, async move {
+test_case!(conversion, {
     let glue = get_glue!();
 
     // Create table - Number

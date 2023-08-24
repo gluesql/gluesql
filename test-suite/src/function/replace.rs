@@ -6,7 +6,7 @@ use {
     },
 };
 
-test_case!(replace, async move {
+test_case!(replace, {
     let g = get_tester!();
 
     g.named_test(
@@ -83,5 +83,5 @@ test_case!(replace, async move {
         Ok(select_with_null!(test; Value::Null)),
     )
     .await;
-    g.run("DELETE FROM Item").await.unwrap();
+    g.run("DELETE FROM Item").await;
 });

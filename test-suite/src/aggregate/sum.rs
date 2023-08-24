@@ -1,6 +1,6 @@
 use {crate::*, gluesql_core::prelude::Value::*};
 
-test_case!(sum, async move {
+test_case!(sum, {
     let g = get_tester!();
 
     g.run(
@@ -13,8 +13,7 @@ test_case!(sum, async move {
         );
     ",
     )
-    .await
-    .unwrap();
+    .await;
     g.run(
         "
         INSERT INTO Item (id, quantity, age, total) VALUES
@@ -25,8 +24,7 @@ test_case!(sum, async move {
             (5, 25, NULL, 1);
     ",
     )
-    .await
-    .unwrap();
+    .await;
 
     let test_cases = [
         (

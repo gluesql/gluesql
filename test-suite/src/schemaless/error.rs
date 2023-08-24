@@ -4,10 +4,10 @@ use {
     serde_json::json,
 };
 
-test_case!(error, async move {
+test_case!(error, {
     let g = get_tester!();
 
-    g.run("CREATE TABLE Item").await.unwrap();
+    g.run("CREATE TABLE Item").await;
     g.run(
         format!(
             "INSERT INTO Item VALUES ('{}');",
@@ -23,10 +23,9 @@ test_case!(error, async move {
         )
         .as_str(),
     )
-    .await
-    .unwrap();
+    .await;
 
-    g.run("CREATE TABLE Player").await.unwrap();
+    g.run("CREATE TABLE Player").await;
     g.run(
         format!(
             "INSERT INTO Player VALUES ('{}'), ('{}');",
@@ -35,10 +34,9 @@ test_case!(error, async move {
         )
         .as_str(),
     )
-    .await
-    .unwrap();
+    .await;
 
-    g.run("CREATE TABLE Food").await.unwrap();
+    g.run("CREATE TABLE Food").await;
     g.run(
         format!(
             "INSERT INTO Food VALUES (SUBSTR(SUBSTR(' hi{}', 4), 1));",
@@ -46,8 +44,7 @@ test_case!(error, async move {
         )
         .as_str(),
     )
-    .await
-    .unwrap();
+    .await;
 
     g.test(
         r#"

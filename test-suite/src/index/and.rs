@@ -4,7 +4,7 @@ use {
     Value::*,
 };
 
-test_case!(and, async move {
+test_case!(and, {
     let g = get_tester!();
 
     g.run(
@@ -15,8 +15,7 @@ CREATE TABLE NullIdx (
     flag BOOLEAN
 )",
     )
-    .await
-    .unwrap();
+    .await;
 
     g.run(
         "
@@ -30,8 +29,7 @@ CREATE TABLE NullIdx (
             (5, '2030-03-01', False);
     ",
     )
-    .await
-    .unwrap();
+    .await;
 
     g.test(
         "CREATE INDEX idx_id ON NullIdx (id)",

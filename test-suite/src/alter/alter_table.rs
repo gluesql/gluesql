@@ -8,7 +8,7 @@ use {
     },
 };
 
-test_case!(alter_table_rename, async move {
+test_case!(alter_table_rename, {
     let g = get_tester!();
 
     let test_cases = [
@@ -48,7 +48,7 @@ test_case!(alter_table_rename, async move {
     }
 });
 
-test_case!(alter_table_add_drop, async move {
+test_case!(alter_table_add_drop, {
     let g = get_tester!();
 
     let test_cases = [

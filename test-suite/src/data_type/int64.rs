@@ -9,7 +9,7 @@ use {
 #[cfg(not(target_arch = "wasm32"))]
 use gluesql_core::prelude::Payload;
 
-test_case!(int64, async move {
+test_case!(int64, {
     let g = get_tester!();
 
     g.run(
@@ -18,11 +18,9 @@ test_case!(int64, async move {
         field_two INT,
     );",
     )
-    .await
-    .unwrap();
+    .await;
     g.run("INSERT INTO Item VALUES (1, -1), (-2, 2), (3, 3), (-4, -4);")
-        .await
-        .unwrap();
+        .await;
 
     let parse_i64 = |text: &str| -> i64 { text.parse().unwrap() };
 
@@ -146,5 +144,5 @@ test_case!(int64, async move {
     )
     .await;
 
-    g.run("DELETE FROM Item").await.unwrap();
+    g.run("DELETE FROM Item").await;
 });
