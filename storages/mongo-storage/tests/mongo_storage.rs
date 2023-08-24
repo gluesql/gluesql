@@ -1,6 +1,7 @@
-use gluesql_core::prelude::{Error, Glue, Value::I64};
-
-use {async_trait::async_trait, gluesql_mongo_storage::MongoStorage, test_suite::*};
+use {
+    async_trait::async_trait, gluesql_core::prelude::Glue, gluesql_mongo_storage::MongoStorage,
+    test_suite::*,
+};
 
 struct MongoTester {
     glue: Glue<MongoStorage>,

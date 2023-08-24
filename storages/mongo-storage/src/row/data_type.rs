@@ -1,16 +1,7 @@
-use chrono::{NaiveDateTime, TimeZone};
-use gluesql_core::{
-    ast::{Expr, ToSql},
-    chrono::{NaiveDate, Utc},
-    data::{Interval, Point},
-    parse_sql::parse_interval,
-    prelude::DataType,
-    translate::translate_expr,
+use {
+    gluesql_core::prelude::DataType,
+    strum_macros::{EnumString, IntoStaticStr},
 };
-use mongodb::bson::{self, doc, Binary, Bson, DateTime, Decimal128, Document};
-use rust_decimal::Decimal;
-use strum_macros::{EnumString, IntoStaticStr};
-use {gluesql_core::data::Value, gluesql_core::prelude::Result};
 
 #[derive(IntoStaticStr, EnumString)]
 pub enum BsonType {
@@ -97,12 +88,12 @@ pub const B31: i64 = 2_i64.pow(31);
 pub const TIME: i64 = 86400000 - 1;
 
 pub trait IntoRange {
-    fn into_max(&self) -> Option<i64>;
-    fn into_min(&self) -> Option<i64>;
+    fn get_max(&self) -> Option<i64>;
+    fn get_min(&self) -> Option<i64>;
 }
 
 impl IntoRange for DataType {
-    fn into_max(&self) -> Option<i64> {
+    fn get_max(&self) -> Option<i64> {
         match self {
             DataType::Int8 => Some(B7),
             DataType::Int16 => Some(B15),
@@ -113,10 +104,10 @@ impl IntoRange for DataType {
         }
     }
 
-    fn into_min(&self) -> Option<i64> {
+    fn get_min(&self) -> Option<i64> {
         match self {
             DataType::Time => Some(0),
-            v => v.into_max().map(|max| -max),
+            v => v.get_max().map(|max| -max),
         }
     }
 }

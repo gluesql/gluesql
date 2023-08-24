@@ -10,6 +10,8 @@ use mongodb::bson::Document;
 
 use gluesql_core::prelude::Result;
 
+use crate::error::ResultExt;
+
 use self::value::IntoValue;
 
 pub trait IntoRow {
@@ -27,8 +29,12 @@ impl IntoRow for Document {
         has_primary: bool,
     ) -> Result<(Key, DataRow)> {
         let key = match has_primary {
-            true => self.get_binary_generic("_id").unwrap().to_owned(),
-            false => self.get_object_id("_id").unwrap().bytes().to_vec(),
+            true => self.get_binary_generic("_id").map_storage_err()?.to_owned(),
+            false => self
+                .get_object_id("_id")
+                .map_storage_err()?
+                .bytes()
+                .to_vec(),
         };
         let key = Key::Bytea(key);
 
@@ -37,7 +43,7 @@ impl IntoRow for Document {
             .skip(1)
             .zip(data_types)
             .map(|((_, bson), data_type)| bson.into_value(data_type))
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>>>()?;
 
         Ok((key, DataRow::Vec(row)))
     }

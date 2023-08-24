@@ -1,33 +1,25 @@
-use gluesql_core::{
-    ast::{ColumnUniqueOption, ToSql},
-    prelude::Error,
-};
-use mongodb::{
-    bson::{self, bson, doc, Bson, Document},
-    options::{CreateCollectionOptions, IndexOptions, ReplaceOptions, UpdateOptions},
-    Collection,
-};
-
-use crate::{
-    error::{MongoStorageError, OptionExt},
-    row::data_type::BsonType,
-    row::{data_type::IntoRange, key::into_object_id, key::KeyIntoBson, value::IntoBson},
-    utils::get_primary_key,
-};
-
 use {
-    crate::{error::ResultExt, MongoStorage},
+    crate::{
+        error::{MongoStorageError, OptionExt, ResultExt},
+        row::{
+            data_type::{BsonType, IntoRange},
+            key::{into_object_id, KeyIntoBson},
+            value::IntoBson,
+        },
+        utils::get_primary_key,
+        MongoStorage,
+    },
     async_trait::async_trait,
     gluesql_core::{
+        ast::{ColumnUniqueOption, ToSql},
         data::{Key, Schema},
         error::Result,
+        prelude::Error,
         store::{DataRow, StoreMut},
     },
-    serde_json::{to_string_pretty, Map, Value as JsonValue},
-    std::{
-        fs::File,
-        io::Write,
-        {cmp::Ordering, iter::Peekable, vec::IntoIter},
+    mongodb::{
+        bson::{doc, Bson, Document},
+        options::{CreateCollectionOptions, IndexOptions, ReplaceOptions},
     },
 };
 
@@ -50,8 +42,8 @@ impl StoreMut for MongoStorage {
                         names.push(column_name.clone());
 
                         let data_type = BsonType::from(&column_def.data_type).into();
-                        let maximum = column_def.data_type.into_max();
-                        let minimum = column_def.data_type.into_min();
+                        let maximum = column_def.data_type.get_max();
+                        let minimum = column_def.data_type.get_min();
 
                         let mut bson_type = match column_def.nullable {
                             true => vec![data_type, "null"],
@@ -229,7 +221,9 @@ impl StoreMut for MongoStorage {
     async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
         let column_defs = self.get_column_defs(table_name).await?;
 
-        let primary_key = column_defs.as_ref().and_then(get_primary_key);
+        let primary_key = column_defs
+            .as_ref()
+            .and_then(|column_defs| get_primary_key(column_defs));
 
         for (key, row) in rows {
             let doc = match row {
@@ -273,7 +267,9 @@ impl StoreMut for MongoStorage {
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let column_defs = self.get_column_defs(table_name).await?;
-        let primary_key = column_defs.as_ref().and_then(get_primary_key);
+        let primary_key = column_defs
+            .as_ref()
+            .and_then(|column_defs| get_primary_key(column_defs));
 
         self.db
             .collection::<Bson>(table_name)

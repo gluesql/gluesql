@@ -1,40 +1,27 @@
-use std::{
-    collections::{HashMap, HashSet},
-    future,
-    str::FromStr,
-};
-
-use futures::{stream, FutureExt, Stream, StreamExt, TryStreamExt};
-use gluesql_core::{
-    ast::{ColumnDef, ColumnUniqueOption, Expr},
-    parse_sql::{parse_data_type, parse_expr},
-    prelude::{DataType, Error, Value},
-    store::Index,
-    translate::{translate_data_type, translate_expr},
-};
-use mongodb::{
-    bson::{doc, Bson, Document},
-    options::{FindOptions, IndexOptions, ListIndexesOptions},
-    IndexModel,
-};
-
-use crate::{
-    index,
-    row::{key::KeyIntoBson, value::IntoValue, IntoRow},
-    utils::get_primary_key,
-};
-
 use {
     crate::{
         error::{MongoStorageError, OptionExt, ResultExt},
+        row::{key::KeyIntoBson, value::IntoValue, IntoRow},
+        utils::get_primary_key,
         MongoStorage,
     },
     async_trait::async_trait,
+    futures::{stream, Stream, StreamExt, TryStreamExt},
     gluesql_core::{
+        ast::{ColumnDef, ColumnUniqueOption},
         data::{Key, Schema},
         error::Result,
+        parse_sql::{parse_data_type, parse_expr},
+        prelude::{Error, Value},
         store::{DataRow, RowIter, Store},
+        translate::{translate_data_type, translate_expr},
     },
+    mongodb::{
+        bson::{doc, Document},
+        options::{FindOptions, ListIndexesOptions},
+        IndexModel,
+    },
+    std::{collections::HashMap, future},
 };
 
 #[async_trait(?Send)]
@@ -81,27 +68,28 @@ impl Store for MongoStorage {
             .await
             .map_storage_err()?;
 
-        Ok(cursor
+        cursor
             .next()
             .await
             .transpose()
             .map_storage_err()?
             .map(|doc| {
-                let row = doc
-                    .into_iter()
+                doc.into_iter()
                     .zip(column_defs.iter())
                     .map(|((_, bson), column_def)| bson.into_value(&column_def.data_type))
-                    .collect::<Vec<_>>();
-
-                DataRow::Vec(row)
-            }))
+                    .collect::<Result<Vec<_>>>()
+                    .map(DataRow::Vec)
+            })
+            .transpose()
     }
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
         // let schema = self.fetch_schema(table_name).await?;
         let column_defs = self.get_column_defs(table_name).await?; // TODO: should be from schema
 
-        let primary_key = column_defs.as_ref().and_then(get_primary_key);
+        let primary_key = column_defs
+            .as_ref()
+            .and_then(|column_defs| get_primary_key(column_defs));
 
         let options = FindOptions::builder();
         let options = match primary_key {
@@ -143,8 +131,8 @@ impl Store for MongoStorage {
                             .to_vec();
                         let key = Key::Bytea(key_bytes);
                         let row = iter
-                            .map(|(key, bson)| (key, bson.into_value_schemaless()))
-                            .collect::<HashMap<String, Value>>();
+                            .map(|(key, bson)| Ok((key, bson.into_value_schemaless()?)))
+                            .collect::<Result<HashMap<String, Value>>>()?;
 
                         Ok((key, DataRow::Map(row)))
                     }

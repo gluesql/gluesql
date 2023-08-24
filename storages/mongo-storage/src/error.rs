@@ -34,4 +34,7 @@ pub enum MongoStorageError {
 
     #[error("unreachable")]
     Unreachable,
+
+    #[error("unsupported bson type")]
+    UnsupportedBsonType,
 }
