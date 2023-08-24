@@ -1,19 +1,19 @@
-mod alter_table;
 pub mod error;
-mod function;
-mod index;
 pub mod row;
 mod store;
 mod store_mut;
-mod transaction;
 mod utils;
 
 use {
     error::ResultExt,
-    gluesql_core::{error::Result, store::Metadata},
+    gluesql_core::{
+        error::Result,
+        store::{
+            AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Transaction,
+        },
+    },
+    mongodb::{options::ClientOptions, Client, Database},
 };
-
-use mongodb::{options::ClientOptions, Client, Database};
 
 pub struct MongoStorage {
     pub db: Database,
@@ -34,3 +34,9 @@ impl MongoStorage {
 }
 
 impl Metadata for MongoStorage {}
+impl AlterTable for MongoStorage {}
+impl CustomFunction for MongoStorage {}
+impl CustomFunctionMut for MongoStorage {}
+impl Index for MongoStorage {}
+impl IndexMut for MongoStorage {}
+impl Transaction for MongoStorage {}

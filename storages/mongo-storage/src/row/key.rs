@@ -1,8 +1,9 @@
-use std::str::FromStr;
-
-use bson::{Binary, Bson};
-use gluesql_core::prelude::Key;
-use gluesql_core::prelude::Result;
+use {
+    crate::error::{MongoStorageError, ResultExt},
+    bson::{Binary, Bson},
+    gluesql_core::prelude::{Error, Key, Result},
+    std::str::FromStr,
+};
 
 pub trait KeyIntoBson {
     fn into_bson(self, has_primary: bool) -> Result<Bson>;
@@ -15,14 +16,14 @@ impl KeyIntoBson for Key {
                 subtype: bson::spec::BinarySubtype::Generic,
                 bytes: self.to_cmp_be_bytes()?,
             })),
-            false => Ok(into_object_id(self)),
+            false => into_object_id(self),
         }
     }
 }
 
-pub fn into_object_id(key: Key) -> Bson {
-    match key {
-        Key::Str(str) => Bson::ObjectId(bson::oid::ObjectId::from_str(&str).unwrap()),
+pub fn into_object_id(key: Key) -> Result<Bson> {
+    Ok(match key {
+        Key::Str(str) => Bson::ObjectId(bson::oid::ObjectId::from_str(&str).map_storage_err()?),
         Key::Bytea(bytes) => {
             if bytes.len() != 12 {
                 todo!();
@@ -34,6 +35,10 @@ pub fn into_object_id(key: Key) -> Bson {
             }
         }
         Key::U8(val) => Bson::ObjectId(bson::oid::ObjectId::from([val; 12])),
-        _ => todo!(),
-    }
+        _ => {
+            return Err(Error::StorageMsg(
+                MongoStorageError::UnsupportedBsonType.to_string(),
+            ))
+        }
+    })
 }

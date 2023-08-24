@@ -2,17 +2,15 @@ pub mod data_type;
 pub mod key;
 pub mod value;
 
-use gluesql_core::{
-    prelude::{DataType, Key},
-    store::DataRow,
+use {
+    self::value::IntoValue,
+    crate::error::ResultExt,
+    gluesql_core::{
+        prelude::{DataType, Key, Result},
+        store::DataRow,
+    },
+    mongodb::bson::Document,
 };
-use mongodb::bson::Document;
-
-use gluesql_core::prelude::Result;
-
-use crate::error::ResultExt;
-
-use self::value::IntoValue;
 
 pub trait IntoRow {
     fn into_row<'a>(

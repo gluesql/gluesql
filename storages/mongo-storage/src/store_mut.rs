@@ -240,7 +240,7 @@ impl StoreMut for MongoStorage {
                         },
                     ),
                 DataRow::Map(hash_map) => hash_map.into_iter().fold(
-                    Ok(doc! {"_id": into_object_id(key.clone())}),
+                    Ok(doc! {"_id": into_object_id(key.clone())?}),
                     |acc, (key, value)| {
                         let mut acc = acc?;
                         acc.extend(doc! {key: value.into_bson()?});
