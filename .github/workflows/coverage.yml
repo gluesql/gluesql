@@ -4,11 +4,11 @@ on:
   push:
     branches: [main, release-*]
     paths-ignore:
-      - 'docs/**'
+      - "docs/**"
   pull_request:
     branches: [main, release-*]
     paths-ignore:
-      - 'docs/**'
+      - "docs/**"
 
 env:
   CARGO_TERM_COLOR: always
@@ -40,6 +40,8 @@ jobs:
         env:
           RUSTFLAGS: -Cinstrument-coverage
           LLVM_PROFILE_FILE: gluesql-%p-%m.profraw
+      - name: MongoDB in GitHub Actions
+        uses: supercharge/mongodb-github-action@v1.10.0
         run: cargo test --all-features --verbose
       - name: Run grcov
         run: |
