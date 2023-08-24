@@ -182,16 +182,22 @@ impl MongoStorage {
             let cursor = collection.list_indexes(options).await.map_storage_err()?;
             let indexes = cursor
                 .into_stream()
+                .map_err(|e| Error::StorageMsg(e.to_string()))
                 .try_filter_map(|index_model| {
                     let IndexModel { keys, options, .. } = index_model;
-                    let index_key = keys.into_iter().map(|(index_key, _)| index_key).next(); // TODO: should throw error if there are multiple keys?
+                    let index_keys = &mut keys.into_iter().map(|(index_key, _)| index_key);
+                    if index_keys.size_hint().0 > 1 {
+                        return future::ready(Err(Error::StorageMsg(
+                            MongoStorageError::CompositIndexNotSupported.to_string(),
+                        )));
+                    }
+                    let index_key = index_keys.next();
                     let name = options.and_then(|options| options.name);
 
-                    future::ready(Ok(index_key.zip(name)))
+                    future::ready(Ok::<_, Error>(index_key.zip(name)))
                 })
                 .try_collect::<HashMap<String, String>>()
-                .await
-                .map_storage_err()?;
+                .await?;
 
             let column_defs = validators
                 .get_document("$jsonSchema")

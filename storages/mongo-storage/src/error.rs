@@ -29,6 +29,9 @@ pub enum MongoStorageError {
     #[error("index does not have option")]
     MissingIndexOption,
 
+    #[error("composite index is not supported")]
+    CompositIndexNotSupported,
+
     #[error("invalid document")]
     InvalidDocument,
 
