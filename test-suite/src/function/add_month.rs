@@ -78,7 +78,7 @@ test_case!(add_month, {
     g.named_test(
         "out of range test with i64::MAX",
         "SELECT ADD_MONTH('2017-01-31',9223372036854775807) AS test;",
-        Err(ValueError::ValueTou32ConversionFailure("ADD_MONTH".to_owned()).into()),
+        Err(ValueError::I64ToU32ConversionFailure("ADD_MONTH".to_owned()).into()),
     )
     .await;
     g.named_test(
