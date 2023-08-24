@@ -796,7 +796,7 @@ pub fn add_month<'a>(
         let size_as_u32 = size
             .abs()
             .try_into()
-            .map_err(|_| ValueError::ValueTou32ConversionFailure(name))?;
+            .map_err(|_| ValueError::I64ToU32ConversionFailure(name))?;
         let new_months = chrono::Months::new(size_as_u32);
 
         if size <= 0 {
