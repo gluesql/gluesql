@@ -183,7 +183,7 @@ impl StoreMut for MongoStorage {
                 DataRow::Vec(values) => column_defs
                     .as_ref()
                     .map_storage_err(MongoStorageError::Unreachable)?
-                    .into_iter()
+                    .iter()
                     .zip(values.into_iter())
                     .fold(Ok(Document::new()), |acc, (column_def, value)| {
                         let mut acc = acc?;
@@ -228,7 +228,7 @@ impl StoreMut for MongoStorage {
                 DataRow::Vec(values) => column_defs
                     .as_ref()
                     .map_storage_err(MongoStorageError::Unreachable)?
-                    .into_iter()
+                    .iter()
                     .zip(values.into_iter())
                     .fold(
                         Ok::<_, Error>(doc! {"_id": key.clone().into_bson(primary_key.is_some())?}),
