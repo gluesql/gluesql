@@ -26,13 +26,15 @@ pub fn into_object_id(key: Key) -> Result<Bson> {
         Key::Str(str) => Bson::ObjectId(bson::oid::ObjectId::from_str(&str).map_storage_err()?),
         Key::Bytea(bytes) => {
             if bytes.len() != 12 {
-                todo!();
-            } else {
-                let mut byte_array: [u8; 12] = [0; 12];
-                byte_array[..].copy_from_slice(&bytes[..]);
-
-                Bson::ObjectId(bson::oid::ObjectId::from_bytes(byte_array))
+                return Err(Error::StorageMsg(
+                    MongoStorageError::UnsupportedBsonType.to_string(),
+                ));
             }
+
+            let mut byte_array: [u8; 12] = [0; 12];
+            byte_array[..].copy_from_slice(&bytes[..]);
+
+            Bson::ObjectId(bson::oid::ObjectId::from_bytes(byte_array))
         }
         Key::U8(val) => Bson::ObjectId(bson::oid::ObjectId::from([val; 12])),
         _ => {
