@@ -180,19 +180,17 @@ impl StoreMut for MongoStorage {
         let data = rows
             .into_iter()
             .map(|row| match row {
-                DataRow::Vec(values) => {
-                    column_defs
-                        .clone() // TODO: remove clone
-                        .map_storage_err(MongoStorageError::Unreachable)?
-                        .into_iter()
-                        .zip(values.into_iter())
-                        .fold(Ok(Document::new()), |acc, (column_def, value)| {
-                            let mut acc = acc?;
-                            acc.extend(doc! {column_def.name: value.into_bson()?});
+                DataRow::Vec(values) => column_defs
+                    .as_ref()
+                    .map_storage_err(MongoStorageError::Unreachable)?
+                    .into_iter()
+                    .zip(values.into_iter())
+                    .fold(Ok(Document::new()), |acc, (column_def, value)| {
+                        let mut acc = acc?;
+                        acc.extend(doc! {column_def.name.clone(): value.into_bson()?});
 
-                            Ok(acc)
-                        })
-                }
+                        Ok(acc)
+                    }),
                 DataRow::Map(hash_map) => {
                     hash_map
                         .into_iter()
@@ -228,7 +226,7 @@ impl StoreMut for MongoStorage {
         for (key, row) in rows {
             let doc = match row {
                 DataRow::Vec(values) => column_defs
-                    .clone()
+                    .as_ref()
                     .map_storage_err(MongoStorageError::Unreachable)?
                     .into_iter()
                     .zip(values.into_iter())
@@ -236,7 +234,7 @@ impl StoreMut for MongoStorage {
                         Ok::<_, Error>(doc! {"_id": key.clone().into_bson(primary_key.is_some())?}),
                         |acc, (column_def, value)| {
                             let mut acc = acc.map_storage_err()?;
-                            acc.extend(doc! {column_def.name: value.into_bson()?});
+                            acc.extend(doc! {column_def.name.clone(): value.into_bson()?});
 
                             Ok(acc)
                         },
