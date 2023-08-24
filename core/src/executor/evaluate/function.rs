@@ -806,10 +806,7 @@ pub fn add_month<'a>(
         }
         .ok_or(EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255)?
     };
-    let value = Value::Date(date);
-    let e = Evaluated::from(value);
-
-    Ok(e)
+    Ok(Evaluated::Value(Value::Date(date)))
 }
 
 pub fn to_time<'a>(
