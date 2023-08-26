@@ -84,8 +84,7 @@ impl Store for MongoStorage {
     }
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
-        // let schema = self.fetch_schema(table_name).await?;
-        let column_defs = self.get_column_defs(table_name).await?; // TODO: should be from schema
+        let column_defs = self.get_column_defs(table_name).await?;
 
         let primary_key = column_defs
             .as_ref()

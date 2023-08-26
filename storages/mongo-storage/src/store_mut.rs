@@ -26,6 +26,12 @@ use {
 struct IndexInfo {
     name: String, // TODO: convert to enum with primary and unique
     key: String,
+    index_type: IndexType,
+}
+
+enum IndexType {
+    Primary,
+    Unique,
 }
 
 #[async_trait(?Send)]
@@ -56,6 +62,7 @@ impl StoreMut for MongoStorage {
                                     indexes.push(IndexInfo {
                                         name: format!("{column_name}_PK"),
                                         key: column_name.clone(),
+                                        index_type: IndexType::Primary,
                                     });
                                 }
                                 false => {
@@ -63,6 +70,7 @@ impl StoreMut for MongoStorage {
                                     indexes.push(IndexInfo {
                                         name: format!("{column_name}_UNIQUE"),
                                         key: column_name.clone(),
+                                        index_type: IndexType::Unique,
                                     });
                                 }
                             },
@@ -139,23 +147,29 @@ impl StoreMut for MongoStorage {
 
         let index_models = indexes
             .into_iter()
-            .map(|IndexInfo { name, key }| {
-                let index_options = IndexOptions::builder().unique(true);
-                let index_options = match name.split_once('_') {
-                    Some((_, "UNIQUE")) => index_options
-                        .partial_filter_expression(
-                            doc! { "partialFilterExpression": { name.clone(): { "$en": null } } },
-                        )
-                        .name(name)
-                        .build(),
-                    _ => index_options.name(name).build(),
-                };
+            .map(
+                |IndexInfo {
+                     name,
+                     key,
+                     index_type,
+                 }| {
+                    let index_options = IndexOptions::builder().unique(true);
+                    let index_options = match index_type {
+                        IndexType::Primary => index_options.name(name).build(),
+                        IndexType::Unique => index_options
+                            .partial_filter_expression(
+                                doc! { "partialFilterExpression": { key.clone(): { "$ne": null } } }, 
+                            )
+                            .name(name)
+                            .build(),
+                    };
 
-                mongodb::IndexModel::builder()
-                    .keys(doc! {key: 1})
-                    .options(index_options)
-                    .build()
-            })
+                    mongodb::IndexModel::builder()
+                        .keys(doc! {key: 1})
+                        .options(index_options)
+                        .build()
+                },
+            )
             .collect::<Vec<_>>();
 
         self.db
