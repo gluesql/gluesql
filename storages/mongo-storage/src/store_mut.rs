@@ -24,7 +24,7 @@ use {
 };
 
 struct IndexInfo {
-    name: String, // TODO: convert to enum with primary and unique
+    name: String,
     key: String,
     index_type: IndexType,
 }

@@ -257,12 +257,12 @@ impl IntoBson for Value {
             Value::U128(val) => Ok(Bson::Decimal128(Decimal128::from_bytes(val.to_be_bytes()))),
             Value::U8(val) => Ok(Bson::Int32(val.into())),
             Value::U64(val) => {
-                // TODO: this is a hack, but it works for now
-                let mut my_new_bytes: [u8; 16] = [0; 16];
-                my_new_bytes[..8].copy_from_slice(&val.to_be_bytes());
+                let mut bytes_128: [u8; 16] = [0; 16];
+                bytes_128[..8].copy_from_slice(&val.to_be_bytes());
 
-                Ok(Bson::Decimal128(Decimal128::from_bytes(my_new_bytes)))
+                Ok(Bson::Decimal128(Decimal128::from_bytes(bytes_128)))
             }
+
             Value::Interval(val) => Ok(Bson::String(val.to_sql_str())),
         }
     }
