@@ -78,7 +78,7 @@ impl PyGlue {
     pub fn query(&mut self, py: Python, sql: &PyString) -> PyResult<PyObject> {
         if self.storage.is_none() {
             return Err(EngineNotLoadedError::new_err(
-                "Storage engine not loaded, please call `set_default_engine` first",
+                "Storage engine not loaded, please call `set_default_engine` first to load a storage engine.",
             ));
         }
 
