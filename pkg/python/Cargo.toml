@@ -1,6 +1,9 @@
 [package]
 name = "gluesql-py"
-authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
+authors = [
+    "Gyubong Lee <jopemachine@naver.com>",
+    "Taehoon Moon <taehoon.moon@outlook.com>"
+]
 version.workspace = true
 edition.workspace = true
 description.workspace = true
