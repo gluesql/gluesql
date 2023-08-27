@@ -69,7 +69,6 @@ impl PySharedMemoryStorage {
 pub struct PySledStorageModeConfig(pub sled::Mode);
 
 #[pymethods]
-// TODO: Implement this enum.
 impl PySledStorageModeConfig {
     pub fn __repr__(&self) -> PyResult<String> {
         match self.0 {

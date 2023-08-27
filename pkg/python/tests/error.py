@@ -28,4 +28,3 @@ def test_engine_not_loaded():
     sql = ""
     with pytest.raises(EngineNotLoadedError):
         db.query(sql)
-
