@@ -33,7 +33,7 @@ impl From<PyGlueSQLError> for PyErr {
             Error::Translate(e) => TranslateError::new_err(e.to_string()),
             Error::Execute(e) => ExecuteError::new_err(e.to_string()),
             Error::Plan(e) => PlanError::new_err(e.to_string()),
-            _ => panic!("Unknown error occurred!"),
+            _ => panic!("Unknown error occurred! {:?}", e.0),
         }
     }
 }
