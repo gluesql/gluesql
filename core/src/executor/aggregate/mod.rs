@@ -95,15 +95,16 @@ impl<'a, T: GStore> Aggregator<'a, T> {
 
                     let state = state.apply(index, group, Rc::clone(&project_context));
                     let state = stream::iter(self.fields)
-                        .fold(Ok(state), |state, field| {
+                        .map(Ok)
+                        .try_fold(state, |state, field| {
                             let filter_clone = filter_context.as_ref().map(Rc::clone);
 
                             async move {
                                 match field {
                                     SelectItem::Expr { expr, .. } => {
-                                        aggregate(state?, filter_clone, expr).await
+                                        aggregate(state, filter_clone, expr).await
                                     }
-                                    _ => state,
+                                    _ => Ok(state),
                                 }
                             }
                         })
@@ -199,18 +200,14 @@ async fn aggregate<'a, T: GStore>(
             expr, low, high, ..
         } => {
             stream::iter([expr, low, high])
-                .fold(
-                    Ok(state),
-                    |state, expr| async move { aggr(state?, expr).await },
-                )
+                .map(Ok)
+                .try_fold(state, |state, expr| async move { aggr(state, expr).await })
                 .await
         }
         Expr::BinaryOp { left, right, .. } => {
             stream::iter([left, right])
-                .fold(
-                    Ok(state),
-                    |state, expr| async move { aggr(state?, expr).await },
-                )
+                .map(Ok)
+                .try_fold(state, |state, expr| async move { aggr(state, expr).await })
                 .await
         }
         Expr::UnaryOp { expr, .. } => aggr(state, expr).await,
@@ -228,11 +225,8 @@ async fn aggregate<'a, T: GStore>(
             let else_result = std::iter::once(else_result.as_ref())
                 .filter_map(|else_result| else_result.map(|else_result| &**else_result));
 
-            stream::iter(operand.chain(when_then).chain(else_result))
-                .fold(
-                    Ok(state),
-                    |state, expr| async move { aggr(state?, expr).await },
-                )
+            stream::iter(operand.chain(when_then).chain(else_result).map(Ok))
+                .try_fold(state, aggr)
                 .await
         }
         Expr::Aggregate(aggr) => state.accumulate(filter_context, aggr.as_ref()).await,
