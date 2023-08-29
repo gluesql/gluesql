@@ -47,7 +47,7 @@ impl AlterTable for MemoryStorage {
             return Err(AlterTableError::AlreadyExistingColumn(new_column_name.to_owned()).into());
         }
 
-        let mut column_def = column_defs
+        let column_def = column_defs
             .iter_mut()
             .find(|column_def| column_def.name == old_column_name)
             .ok_or(AlterTableError::RenamingColumnNotFound)?;
