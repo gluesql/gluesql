@@ -237,6 +237,15 @@ mod tests {
             .to_sql()
         );
         assert_eq!(
+            "1 >> 2",
+            &Expr::BinaryOp {
+                left: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(1)))),
+                op: BinaryOperator::BitwiseShiftRight,
+                right: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(2))))
+            }
+            .to_sql()
+        );
+        assert_eq!(
             r#""condition_0" AND "condition_1""#,
             &Expr::BinaryOp {
                 left: Box::new(Expr::Identifier("condition_0".to_owned())),
