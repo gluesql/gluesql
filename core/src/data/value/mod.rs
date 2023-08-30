@@ -639,6 +639,44 @@ impl Value {
         })
     }
 
+    pub fn bitwise_shift_right(&self, rhs: &Value) -> Result<Value> {
+        use Value::*;
+
+        if *rhs == Null {
+            return Ok(Null);
+        }
+        let rhs = u32::try_from(rhs)?;
+        match self {
+            I8(lhs) => lhs.checked_shr(rhs).map(I8),
+            I16(lhs) => lhs.checked_shr(rhs).map(I16),
+            I32(lhs) => lhs.checked_shr(rhs).map(I32),
+            I64(lhs) => lhs.checked_shr(rhs).map(I64),
+            I128(lhs) => lhs.checked_shr(rhs).map(I128),
+            U8(lhs) => lhs.checked_shr(rhs).map(U8),
+            U16(lhs) => lhs.checked_shr(rhs).map(U16),
+            U32(lhs) => lhs.checked_shr(rhs).map(U32),
+            U64(lhs) => lhs.checked_shr(rhs).map(U64),
+            U128(lhs) => lhs.checked_shr(rhs).map(U128),
+            Null => Some(Null),
+            _ => {
+                return Err(ValueError::NonNumericMathOperation {
+                    lhs: self.clone(),
+                    rhs: U32(rhs),
+                    operator: NumericBinaryOperator::BitwiseShiftRight,
+                }
+                .into());
+            }
+        }
+        .ok_or_else(|| {
+            ValueError::BinaryOperationOverflow {
+                lhs: self.clone(),
+                rhs: U32(rhs),
+                operator: NumericBinaryOperator::BitwiseShiftRight,
+            }
+            .into()
+        })
+    }
+
     pub fn is_null(&self) -> bool {
         matches!(self, Value::Null)
     }
