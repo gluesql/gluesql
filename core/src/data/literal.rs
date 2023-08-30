@@ -233,6 +233,29 @@ impl<'a> Literal<'a> {
         }
     }
 
+    pub fn bitwise_shift_right(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
+        match (self, other) {
+            (Number(l), Number(r)) => {
+                let l = l
+                    .to_i64()
+                    .ok_or(LiteralError::BitwiseNonIntegerOperand(l.to_string()))?;
+                if !r.is_integer() {
+                    return Err(LiteralError::BitwiseNonIntegerOperand(r.to_string()).into());
+                }
+                let r = r.to_u32().ok_or(LiteralError::ImpossibleConversion(
+                    r.to_string(),
+                    "u32".to_owned(),
+                ))?;
+                let res = l
+                    .checked_shr(r)
+                    .ok_or(LiteralError::BitwiseOperationOverflow)?;
+                Ok(Number(Cow::Owned(BigDecimal::from(res))))
+            }
+            (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
+            _ => Err(LiteralError::BitwiseNonNumberLiteral.into()),
+        }
+    }
+
     pub fn like(&self, other: &Literal<'a>, case_sensitive: bool) -> Result<Self> {
         match (self, other) {
             (Text(l), Text(r)) => l.like(r, case_sensitive).map(Boolean),
