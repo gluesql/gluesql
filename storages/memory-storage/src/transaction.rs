@@ -26,13 +26,7 @@ impl Transaction for MemoryStorage {
 
     async fn rollback(&mut self) -> Result<()> {
         while let Some(log) = self.pop_log() {
-            let task = log.clone();
-            if self.undo(log).await.is_err() {
-                return Err(Error::StorageMsg(format!(
-                    "failed to rollback transaction while undoing {:?}",
-                    task
-                )));
-            }
+            self.undo(log).await?
         }
 
         self.clear_buffer();
