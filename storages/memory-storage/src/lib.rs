@@ -43,8 +43,6 @@ pub enum Log {
     UpdateData(String, Vec<(Key, DataRow)>),
     DeleteData(String, Vec<(Key, DataRow)>),
     AppendData(String, Vec<Key>),
-    InsertFunction(String),
-    DeleteFunction(StructCustomFunction),
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Item {
@@ -102,14 +100,12 @@ impl CustomFunction for MemoryStorage {
 #[async_trait(?Send)]
 impl CustomFunctionMut for MemoryStorage {
     async fn insert_function(&mut self, func: StructCustomFunction) -> Result<()> {
-        self.push_log(Log::InsertFunction(func.func_name.to_uppercase()));
         self.functions.insert(func.func_name.to_uppercase(), func);
         Ok(())
     }
 
     async fn delete_function(&mut self, func_name: &str) -> Result<()> {
-        if let Some(func) = self.functions.get(&func_name.to_uppercase()) {
-            self.push_log(Log::DeleteFunction(func.to_owned()));
+        if self.functions.get(&func_name.to_uppercase()).is_some() {
             self.functions.remove(&func_name.to_uppercase());
         }
         Ok(())
