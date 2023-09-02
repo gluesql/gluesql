@@ -68,7 +68,7 @@ mod tests {
         assert_eq!(actual, expected);
 
         let actual = non_clustered("idx".to_owned())
-            .eq("1")
+            .eq("2")
             .desc()
             .build()
             .prebuild()
@@ -76,7 +76,7 @@ mod tests {
         let expected = IndexItem::NonClustered {
             name: "idx".to_owned(),
             asc: Some(false),
-            cmp_expr: Some((IndexOperator::Eq, to_expr("1"))),
+            cmp_expr: Some((IndexOperator::Eq, to_expr("2"))),
         };
         assert_eq!(actual, expected);
     }
