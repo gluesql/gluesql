@@ -956,15 +956,16 @@ pub fn values<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
 mod tests {
     use crate::{
         ast::DateTimeField,
-        ast_builder::{
-            abs, acos, ascii, asin, atan, calc_distance, cast, ceil, chr, coalesce, col, concat,
-            concat_ws, cos, date, degrees, divide, entries, exp, expr, extract, find_idx, floor,
-            fn_values, format, gcd, generate_uuid, get_x, get_y, greatest, ifnull, initcap,
-            is_empty, last_day, lcm, left, length, ln, log, log10, log2, lower, lpad, ltrim, md5,
-            modulo, now, null, num, pi, point, position, power, radians, rand, repeat, replace,
-            reverse, right, round, rpad, rtrim, sign, sin, skip, sqrt, substr, take, tan,
-            test_expr, text, time, timestamp, to_date, to_time, to_timestamp, upper,
+        ast_builder::function::{
+            abs, acos, ascii, asin, atan, calc_distance, cast, ceil, chr, coalesce, concat,
+            concat_ws, cos, degrees, divide, entries, exp, extract, find_idx, floor, format, gcd,
+            generate_uuid, get_x, get_y, greatest, ifnull, initcap, is_empty, last_day, lcm, left,
+            length, ln, log, log10, log2, lower, lpad, ltrim, md5, modulo, now, pi, point,
+            position, power, radians, rand, repeat, replace, reverse, right, round, rpad, rtrim,
+            sign, sin, skip, sqrt, substr, take, tan, to_date, to_time, to_timestamp, upper,
+            values,
         },
+        ast_builder::{col, date, expr, null, num, test_expr, text, time, timestamp},
         prelude::DataType,
     };
 
@@ -1760,7 +1761,7 @@ mod tests {
         let expected = "VALUES(map)";
         test_expr(actual, expected);
 
-        let actual = fn_values(col("map"));
+        let actual = values(col("map"));
         let expected = "VALUES(map)";
         test_expr(actual, expected);
     }
