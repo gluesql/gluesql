@@ -1,7 +1,9 @@
 use {crate::*, gluesql_core::prelude::Value::*};
 
-test_case!(variance, async move {
-    run!(
+test_case!(variance, {
+    let g = get_tester!();
+
+    g.run(
         "
     CREATE TABLE Item (
         id INTEGER,
@@ -9,9 +11,10 @@ test_case!(variance, async move {
         age INTEGER NULL,
         total INTEGER,
     );
-    "
-    );
-    run!(
+    ",
+    )
+    .await;
+    g.run(
         "
     INSERT INTO Item (id, quantity, age, total) VALUES
         (1, 10,   11, 1),
@@ -19,8 +22,9 @@ test_case!(variance, async move {
         (3,  9, NULL, 3),
         (4,  3,    3, 1),
         (5, 25, NULL, 1);
-    "
-    );
+    ",
+    )
+    .await;
 
     let test_cases = [
         (
@@ -38,6 +42,6 @@ test_case!(variance, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, Ok(expected));
+        g.test(sql, Ok(expected)).await;
     }
 });

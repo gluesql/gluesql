@@ -1,0 +1,1 @@
+CREATE TABLE City (Country TEXT NOT NULL, City TEXT NOT NULL, Population INT NOT NULL);

@@ -133,6 +133,7 @@ mod test {
                 test_query, SelectItemList,
             },
         },
+        pretty_assertions::assert_eq,
     };
 
     #[test]

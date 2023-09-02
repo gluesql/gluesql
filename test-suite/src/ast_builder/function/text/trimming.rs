@@ -3,7 +3,7 @@ use {
     gluesql_core::{ast_builder::*, executor::Payload, prelude::Value::*},
 };
 
-test_case!(trimming, async move {
+test_case!(trimming, {
     let glue = get_glue!();
 
     // rtrim test

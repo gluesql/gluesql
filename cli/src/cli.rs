@@ -48,7 +48,7 @@ where
         self.print.help()?;
 
         let mut rl = Editor::<CliHelper>::new();
-        rl.set_helper(Some(CliHelper::default()));
+        rl.set_helper(Some(CliHelper));
 
         loop {
             let line = match rl.readline("gluesql> ") {

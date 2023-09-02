@@ -574,6 +574,40 @@ pub fn sort<'a>(expr: Evaluated<'_>, order: Evaluated<'_>) -> Result<Evaluated<'
     }
 }
 
+pub fn slice<'a>(
+    name: String,
+    expr: Evaluated<'_>,
+    start: Evaluated<'_>,
+    length: Evaluated<'_>,
+) -> Result<Evaluated<'a>> {
+    let expr: Value = expr.try_into()?;
+    let mut start = eval_to_int!(name, start);
+    let length = match length.try_into()? {
+        Value::I64(number) => {
+            usize::try_from(number).map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name))?
+        }
+        _ => {
+            return Err(EvaluateError::FunctionRequiresIntegerValue(name).into());
+        }
+    };
+    match expr {
+        Value::List(l) => {
+            if start < 0 {
+                start += l.len() as i64;
+            }
+            if start < 0 {
+                start = 0;
+            }
+
+            let start_usize = start as usize;
+
+            let l = l.into_iter().skip(start_usize).take(length).collect();
+            Ok(Evaluated::Value(Value::List(l)))
+        }
+        _ => Err(EvaluateError::ListTypeRequired.into()),
+    }
+}
+
 pub fn take<'a>(name: String, expr: Evaluated<'_>, size: Evaluated<'_>) -> Result<Evaluated<'a>> {
     if expr.is_null() || size.is_null() {
         return Ok(Evaluated::Value(Value::Null));
@@ -643,6 +677,24 @@ pub fn unwrap<'a>(
 
 pub fn generate_uuid<'a>() -> Evaluated<'a> {
     Evaluated::from(Value::Uuid(Uuid::new_v4().as_u128()))
+}
+
+pub fn greatest(name: String, exprs: Vec<Evaluated<'_>>) -> Result<Evaluated<'_>> {
+    exprs
+        .into_iter()
+        .try_fold(None, |greatest, expr| -> Result<_> {
+            let greatest = match greatest {
+                Some(greatest) => greatest,
+                None => return Ok(Some(expr)),
+            };
+
+            match greatest.evaluate_cmp(&expr) {
+                Some(std::cmp::Ordering::Less) => Ok(Some(expr)),
+                Some(_) => Ok(Some(greatest)),
+                None => Err(EvaluateError::NonComparableArgumentError(name.to_owned()).into()),
+            }
+        })?
+        .ok_or(EvaluateError::FunctionRequiresAtLeastOneArgument(name.to_owned()).into())
 }
 
 pub fn format<'a>(
@@ -726,6 +778,31 @@ pub fn to_timestamp<'a>(
         }
         _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
     }
+}
+
+pub fn add_month<'a>(
+    name: String,
+    expr: Evaluated<'_>,
+    size: Evaluated<'_>,
+) -> Result<Evaluated<'a>> {
+    let size = eval_to_int!(name, size);
+    let expr = chrono::NaiveDate::parse_from_str(&eval_to_str!(name, expr), "%Y-%m-%d")
+        .map_err(EvaluateError::from)?;
+    let date = {
+        let size_as_u32 = size
+            .abs()
+            .try_into()
+            .map_err(|_| ValueError::I64ToU32ConversionFailure(name))?;
+        let new_months = chrono::Months::new(size_as_u32);
+
+        if size <= 0 {
+            expr.checked_sub_months(new_months)
+        } else {
+            expr.checked_add_months(new_months)
+        }
+        .ok_or(EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255)?
+    };
+    Ok(Evaluated::Value(Value::Date(date)))
 }
 
 pub fn to_time<'a>(
@@ -815,6 +892,31 @@ pub fn calc_distance<'a>(x: Evaluated<'_>, y: Evaluated<'_>) -> Result<Evaluated
     Ok(Evaluated::from(Value::F64(Point::calc_distance(&x, &y))))
 }
 
+pub fn coalesce<'a>(exprs: Vec<Evaluated<'_>>) -> Result<Evaluated<'a>> {
+    if exprs.is_empty() {
+        return Err((EvaluateError::FunctionRequiresMoreArguments {
+            function_name: "COALESCE".to_owned(),
+            required_minimum: 1,
+            found: exprs.len(),
+        })
+        .into());
+    }
+
+    let control_flow = exprs.into_iter().map(|expr| expr.try_into()).try_for_each(
+        |item: Result<Value>| match item {
+            Ok(value) if value.is_null() => ControlFlow::Continue(()),
+            Ok(value) => ControlFlow::Break(Ok(value)),
+            Err(err) => ControlFlow::Break(Err(err)),
+        },
+    );
+
+    match control_flow {
+        ControlFlow::Break(Ok(value)) => Ok(Evaluated::from(value)),
+        ControlFlow::Break(Err(err)) => Err(err),
+        ControlFlow::Continue(()) => Ok(Evaluated::from(Value::Null)),
+    }
+}
+
 pub fn length<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
     match expr.try_into()? {
         Value::Str(expr) => Ok(Evaluated::from(Value::U64(expr.chars().count() as u64))),
@@ -835,4 +937,48 @@ pub fn entries<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
         }
         _ => Err(EvaluateError::FunctionRequiresMapValue(name).into()),
     }
+}
+
+pub fn splice<'a>(
+    name: String,
+    list_data: Evaluated<'_>,
+    begin_index: Evaluated<'_>,
+    end_index: Evaluated<'_>,
+    values: Option<Evaluated<'_>>,
+) -> Result<Evaluated<'a>> {
+    let list_data = match Value::try_from(list_data)? {
+        Value::List(list) => Ok(list),
+        _ => Err(EvaluateError::ListTypeRequired),
+    }?;
+
+    let begin_index = usize::try_from(eval_to_int!(name, begin_index).max(0))
+        .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.clone()))?;
+
+    let end_index = usize::try_from(eval_to_int!(name, end_index).min(list_data.len() as i64))
+        .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name))?;
+
+    let (left, right) = {
+        let mut list_iter = list_data.into_iter();
+        let left: Vec<_> = list_iter.by_ref().take(begin_index).collect();
+        let right: Vec<_> = list_iter.skip(end_index - begin_index).collect();
+        (left, right)
+    };
+
+    let center = match values {
+        Some(values) => match Value::try_from(values)? {
+            Value::List(list) => Ok(list),
+            _ => Err(EvaluateError::ListTypeRequired),
+        }?,
+        None => vec![],
+    };
+
+    let result = {
+        let mut result = vec![];
+        result.extend(left);
+        result.extend(center);
+        result.extend(right);
+        result
+    };
+
+    Ok(Evaluated::from(Value::List(result)))
 }

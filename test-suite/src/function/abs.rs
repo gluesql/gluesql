@@ -6,7 +6,9 @@ use {
     },
 };
 
-test_case!(abs, async move {
+test_case!(abs, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "SELECT ABS(1) AS ABS1, 
@@ -82,6 +84,6 @@ test_case!(abs, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

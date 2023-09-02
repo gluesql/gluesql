@@ -14,6 +14,9 @@ impl<'a> ExprNode<'a> {
     pub fn factorial(self) -> Self {
         factorial(self)
     }
+    pub fn bitwise_not(self) -> Self {
+        bitwise_not(self)
+    }
 }
 
 pub fn plus<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
@@ -44,6 +47,13 @@ pub fn factorial<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     }
 }
 
+pub fn bitwise_not<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::UnaryOp {
+        op: UnaryOperator::BitwiseNot,
+        expr: Box::new(expr.into()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{col, num, test_expr};
@@ -64,6 +74,10 @@ mod tests {
 
         let actual = num(10).factorial();
         let expected = "10!";
+        test_expr(actual, expected);
+
+        let actual = num(10).bitwise_not();
+        let expected = "~10";
         test_expr(actual, expected);
     }
 }

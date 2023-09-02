@@ -1,0 +1,7 @@
+Name,Gender,Age,Grade
+John,Male,18,A
+Jane,Female,17,B
+Bob,NULL,NULL,C
+Alice,Female,18,NULL
+Mike,Male,NULL,B
+Lisa,NULL,18,A
