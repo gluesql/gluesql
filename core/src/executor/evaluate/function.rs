@@ -780,6 +780,31 @@ pub fn to_timestamp<'a>(
     }
 }
 
+pub fn add_month<'a>(
+    name: String,
+    expr: Evaluated<'_>,
+    size: Evaluated<'_>,
+) -> Result<Evaluated<'a>> {
+    let size = eval_to_int!(name, size);
+    let expr = chrono::NaiveDate::parse_from_str(&eval_to_str!(name, expr), "%Y-%m-%d")
+        .map_err(EvaluateError::from)?;
+    let date = {
+        let size_as_u32 = size
+            .abs()
+            .try_into()
+            .map_err(|_| ValueError::I64ToU32ConversionFailure(name))?;
+        let new_months = chrono::Months::new(size_as_u32);
+
+        if size <= 0 {
+            expr.checked_sub_months(new_months)
+        } else {
+            expr.checked_add_months(new_months)
+        }
+        .ok_or(EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255)?
+    };
+    Ok(Evaluated::Value(Value::Date(date)))
+}
+
 pub fn to_time<'a>(
     name: String,
     expr: Evaluated<'_>,

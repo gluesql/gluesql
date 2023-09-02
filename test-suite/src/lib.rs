@@ -150,6 +150,7 @@ macro_rules! generate_store_tests {
             function_geometry_calc_distance,
             function::geometry::calc_distance
         );
+        glue!(function_add_month, function::add_month::add_month);
         glue!(function_slice, function::slice::slice);
         glue!(function_entries, function::entries::entries);
         glue!(join, join::join);
