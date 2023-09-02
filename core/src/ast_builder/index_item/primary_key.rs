@@ -4,7 +4,7 @@ use {super::PrimaryKeyCmpExprNode, crate::ast_builder::ExprNode};
 pub struct PrimaryKeyNode;
 
 impl<'a> PrimaryKeyNode {
-    pub fn eq<T: Into<ExprNode<'a>>>(self, expr: T) -> PrimaryKeyCmpExprNode {
+    pub fn eq<T: Into<ExprNode<'a>>>(self, expr: T) -> PrimaryKeyCmpExprNode<'a> {
         PrimaryKeyCmpExprNode::new(expr.into())
     }
 }

@@ -1,38 +1,38 @@
 use {
-    super::OrderNode,
-    crate::{
-        ast::{IndexItem, IndexOperator},
-        ast_builder::insert::Expr,
-        ast_builder::ExprNode,
-    },
+    super::{IndexItemNode, OrderNode},
+    crate::{ast::IndexOperator, ast_builder::ExprNode},
 };
 
 #[derive(Clone, Debug)]
-pub struct CmpExprNode {
+pub struct CmpExprNode<'a> {
     pub index_name: String,
     pub operator: IndexOperator,
-    pub expr: Expr,
+    pub expr: ExprNode<'a>,
 }
 
-impl CmpExprNode {
-    pub fn new(index_name: String, operator: IndexOperator, expr: ExprNode) -> Self {
+impl<'a> CmpExprNode<'a> {
+    pub fn new<T: Into<ExprNode<'a>>>(
+        index_name: String,
+        operator: IndexOperator,
+        expr: T,
+    ) -> Self {
         Self {
             index_name,
             operator,
-            expr: expr.try_into().ok().unwrap(),
+            expr: expr.into(),
         }
     }
 
-    pub fn asc(self) -> OrderNode {
+    pub fn asc(self) -> OrderNode<'a> {
         OrderNode::new(self, true)
     }
 
-    pub fn desc(self) -> OrderNode {
+    pub fn desc(self) -> OrderNode<'a> {
         OrderNode::new(self, false)
     }
 
-    pub fn build(self) -> IndexItem {
-        IndexItem::NonClustered {
+    pub fn build(self) -> IndexItemNode<'a> {
+        IndexItemNode::NonClustered {
             name: self.index_name,
             asc: None,
             cmp_expr: Some((self.operator, self.expr)),
@@ -43,32 +43,41 @@ impl CmpExprNode {
 #[cfg(test)]
 mod tests {
 
-    use {
-        super::IndexItem,
-        crate::{
-            ast::IndexOperator,
-            ast_builder::{index_item::non_clustered, to_expr},
+    use crate::{
+        ast::IndexOperator,
+        ast_builder::{
+            index_item::{non_clustered, IndexItem},
+            select::Prebuild,
+            to_expr,
         },
     };
 
     #[test]
     fn test() {
-        let actual = non_clustered("idx".to_owned()).eq("1").asc().build();
+        let actual = non_clustered("idx".to_owned())
+            .eq("1")
+            .asc()
+            .build()
+            .prebuild()
+            .unwrap();
         let expected = IndexItem::NonClustered {
             name: "idx".to_owned(),
             asc: Some(true),
             cmp_expr: Some((IndexOperator::Eq, to_expr("1"))),
         };
-
         assert_eq!(actual, expected);
 
-        let actual = non_clustered("idx".to_owned()).eq("1").desc().build();
+        let actual = non_clustered("idx".to_owned())
+            .eq("1")
+            .desc()
+            .build()
+            .prebuild()
+            .unwrap();
         let expected = IndexItem::NonClustered {
             name: "idx".to_owned(),
             asc: Some(false),
             cmp_expr: Some((IndexOperator::Eq, to_expr("1"))),
         };
-
         assert_eq!(actual, expected);
     }
 }

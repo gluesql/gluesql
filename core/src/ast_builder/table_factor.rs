@@ -1,6 +1,6 @@
 use {
-    super::{ExprNode, QueryNode, SelectNode},
-    crate::ast::{Dictionary, IndexItem},
+    super::{ExprNode, IndexItemNode, QueryNode, SelectNode},
+    crate::ast::Dictionary,
 };
 
 #[derive(Clone, Debug)]
@@ -19,7 +19,7 @@ pub struct TableFactorNode<'a> {
     pub table_name: String,
     pub table_type: TableType<'a>,
     pub table_alias: Option<String>,
-    pub index: Option<IndexItem>,
+    pub index: Option<IndexItemNode<'a>>,
 }
 
 impl<'a> TableFactorNode<'a> {

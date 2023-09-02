@@ -84,11 +84,16 @@ impl<'a> Prebuild<Select> for SelectNode<'a> {
             columns: Vec::new(),
         });
 
+        let index = match self.table_node.index {
+            Some(index) => Some(index.prebuild()?),
+            None => None,
+        };
+
         let relation = match self.table_node.table_type {
             TableType::Table => TableFactor::Table {
                 name: self.table_node.table_name,
                 alias,
-                index: self.table_node.index,
+                index,
             },
             TableType::Dictionary(dict) => TableFactor::Dictionary {
                 dict,

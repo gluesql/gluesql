@@ -13,7 +13,6 @@ mod expr;
 mod expr_list;
 mod expr_with_alias;
 mod index;
-mod index_by;
 mod index_item;
 mod insert;
 mod order_by_expr;
@@ -41,9 +40,9 @@ pub use {
     execute::Execute,
     expr_list::ExprList,
     expr_with_alias::ExprWithAliasNode,
-    index_by::IndexNode,
     index_item::{
-        non_clustered, primary_key, CmpExprNode, NonClusteredNode, OrderNode, PrimaryKeyNode,
+        non_clustered, primary_key, CmpExprNode, IndexItemNode, NonClusteredNode, OrderNode,
+        PrimaryKeyNode,
     },
     insert::InsertNode,
     order_by_expr::OrderByExprNode,

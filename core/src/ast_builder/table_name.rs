@@ -1,11 +1,8 @@
-use crate::ast::IndexItem;
-
 use super::{
     table_factor::TableType, AlterTableNode, CreateIndexNode, CreateTableNode, DeleteNode,
-    DropIndexNode, DropTableNode, IndexNode, InsertNode, OrderByExprNode, SelectNode,
+    DropIndexNode, DropTableNode, IndexItemNode, InsertNode, OrderByExprNode, SelectNode,
     ShowColumnsNode, TableFactorNode, UpdateNode,
 };
-
 #[derive(Clone, Debug)]
 pub struct TableNameNode {
     pub table_name: String,
@@ -80,14 +77,13 @@ impl<'a> TableNameNode {
         AlterTableNode::new(self.table_name)
     }
 
-    pub fn index_by(self, index: IndexItem) -> IndexNode<'a> {
-        let table_factor = TableFactorNode {
+    pub fn index_by<T: Into<IndexItemNode<'a>>>(self, index_item: T) -> TableFactorNode<'a> {
+        TableFactorNode {
             table_name: self.table_name,
             table_type: TableType::Table,
             table_alias: None,
-            index: None,
-        };
-        IndexNode::new(table_factor, index)
+            index: Some(index_item.into()),
+        }
     }
 }
 
