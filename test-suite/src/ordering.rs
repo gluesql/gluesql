@@ -1,4 +1,4 @@
-use crate::*;
+use {crate::*, gluesql_core::prelude::Value::Bool};
 
 test_case!(ordering, {
     let g = get_tester!();
@@ -68,4 +68,12 @@ test_case!(ordering, {
     for (num, sql) in test_cases {
         g.count(sql, num).await;
     }
+
+    // Literal comparison with BinaryOperator
+    g.test("select 1 < 'a' as test", Ok(select!(test Bool; false)))
+        .await;
+    g.test("select 1 >= 'a' as test", Ok(select!(test Bool; false)))
+        .await;
+    g.test("select 1 = 'a' as test", Ok(select!(test Bool; false)))
+        .await;
 });
