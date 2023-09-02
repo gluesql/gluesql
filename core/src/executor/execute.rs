@@ -101,6 +101,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
             if_not_exists,
             source,
             engine,
+            constraints,
             ..
         } => create_table(
             storage,
@@ -109,6 +110,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
             *if_not_exists,
             source,
             engine,
+            constraints,
         )
         .await
         .map(|_| Payload::Create),

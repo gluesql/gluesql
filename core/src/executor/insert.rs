@@ -1,3 +1,10 @@
+use sqlparser::ast::Table;
+
+use crate::{
+    ast::{ForeignKey, TableConstraint},
+    result::ValidateError,
+};
+
 use {
     super::{
         select::select,
@@ -51,14 +58,26 @@ pub async fn insert<T: GStore + GStoreMut>(
     columns: &[String],
     source: &Query,
 ) -> Result<usize> {
-    let Schema { column_defs, .. } = storage
+    let Schema {
+        column_defs,
+        constraints,
+        ..
+    } = storage
         .fetch_schema(table_name)
         .await?
         .ok_or_else(|| InsertError::TableNotFound(table_name.to_owned()))?;
 
     let rows = match column_defs {
         Some(column_defs) => {
-            fetch_vec_rows(storage, table_name, column_defs, columns, source).await
+            fetch_vec_rows(
+                storage,
+                table_name,
+                column_defs,
+                columns,
+                source,
+                constraints,
+            )
+            .await
         }
         None => fetch_map_rows(storage, source).await.map(RowsData::Append),
     }?;
@@ -89,6 +108,7 @@ async fn fetch_vec_rows<T: GStore>(
     column_defs: Vec<ColumnDef>,
     columns: &[String],
     source: &Query,
+    constraints: Option<Vec<TableConstraint>>,
 ) -> Result<RowsData> {
     let labels = Rc::from(
         column_defs
@@ -158,6 +178,46 @@ async fn fetch_vec_rows<T: GStore>(
         rows.iter().map(|values| values.as_slice()),
     )
     .await?;
+
+    // FK validation
+    if let Some(constraints) = constraints {
+        for constraint in constraints {
+            match constraint {
+                TableConstraint::ForeignKey(ForeignKey {
+                    name,
+                    columns,
+                    foreign_table,
+                    referred_columns,
+                    on_delete,
+                    on_update,
+                }) => {
+                    for (child_column, parent_column) in columns.iter().zip(referred_columns) {
+                        if let Some((column_index, _)) =
+                            columns.iter().enumerate().find(|(_, c)| c == &child_column)
+                        {
+                            for row in rows.iter() {
+                                let child = row.get(column_index).unwrap();
+                                let no_parent = storage
+                                    .fetch_data(&foreign_table, &Key::try_from(child)?)
+                                    .await?
+                                    .is_none();
+
+                                if no_parent {
+                                    return Err(ValidateError::ForeignKeyViolation {
+                                        child_table: table_name.to_owned(),
+                                        child_column: child_column.to_owned(),
+                                        parent_table: foreign_table.to_owned(),
+                                        parent_column: parent_column.to_owned(),
+                                    }
+                                    .into());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     let primary_key = column_defs.iter().position(|ColumnDef { unique, .. }| {
         unique == &Some(ColumnUniqueOption { is_primary: true })

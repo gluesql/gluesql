@@ -20,6 +20,7 @@ test_case!(foreign_key, {
     )
     .await;
 
+    // should be error if Parent does not have PK or unique
     g.run(
         "
         CREATE TABLE Child (

@@ -1,3 +1,5 @@
+use crate::ast::TableConstraint;
+
 use {
     super::{validate, validate_column_names, AlterError},
     crate::{
@@ -18,6 +20,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
     if_not_exists: bool,
     source: &Option<Box<Query>>,
     engine: &Option<String>,
+    constraints: &Option<Vec<TableConstraint>>,
 ) -> Result<()> {
     let target_columns_defs = match source.as_deref() {
         Some(Query { body, .. }) => match body {
@@ -106,6 +109,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
             column_defs: target_columns_defs,
             indexes: vec![],
             engine: engine.clone(),
+            constraints: constraints.to_owned(),
         };
 
         storage.insert_schema(&schema).await?;
