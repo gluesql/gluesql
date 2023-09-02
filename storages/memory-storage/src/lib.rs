@@ -215,8 +215,7 @@ impl StoreMut for MemoryStorage {
                     keys.push(key.clone());
                 }
             }
-            println!("keys : {:?}", keys);
-            println!("history: {:?}", history);
+
             match keys.is_empty() {
                 true => self.push_log(Log::UpdateData(table_name.to_owned(), history)),
                 false => self.push_log(Log::InsertData(table_name.to_owned(), keys)),
