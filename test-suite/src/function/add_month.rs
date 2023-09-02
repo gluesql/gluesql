@@ -1,10 +1,8 @@
-use gluesql_core::error::ValueError;
-
 use {
     crate::*,
     chrono::format::ParseErrorKind,
     gluesql_core::{
-        error::EvaluateError,
+        error::{EvaluateError, ValueError},
         prelude::{Error, Value},
     },
 };

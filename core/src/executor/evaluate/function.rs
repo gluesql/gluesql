@@ -786,12 +786,8 @@ pub fn add_month<'a>(
     size: Evaluated<'_>,
 ) -> Result<Evaluated<'a>> {
     let size = eval_to_int!(name, size);
-    let expr = chrono::NaiveDate::parse_from_str(&eval_to_str!(name, expr), "%Y-%m-%d").map_err(
-        |err| {
-            let err: EvaluateError = err.into();
-            err
-        },
-    )?;
+    let expr = chrono::NaiveDate::parse_from_str(&eval_to_str!(name, expr), "%Y-%m-%d")
+        .map_err(EvaluateError::from)?;
     let date = {
         let size_as_u32 = size
             .abs()
