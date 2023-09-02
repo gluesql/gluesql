@@ -6,8 +6,8 @@ pub mod arithmetic;
 pub mod ast_builder;
 pub mod basic;
 pub mod bitwise_and;
-pub mod bitwise_shift_right;
 pub mod bitwise_shift_left;
+pub mod bitwise_shift_right;
 pub mod case;
 pub mod column_alias;
 pub mod concat;
@@ -89,7 +89,10 @@ macro_rules! generate_store_tests {
         glue!(concat, concat::concat);
         glue!(project, project::project);
         glue!(bitwise_shift_left, bitwise_shift_left::bitwise_shift_left);
-        glue!(bitwise_shift_right, bitwise_shift_right::bitwise_shift_right);
+        glue!(
+            bitwise_shift_right,
+            bitwise_shift_right::bitwise_shift_right
+        );
         glue!(create_table, alter::create_table);
         glue!(drop_table, alter::drop_table);
         glue!(default, default::default);
