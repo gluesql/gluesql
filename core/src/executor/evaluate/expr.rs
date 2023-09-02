@@ -50,14 +50,14 @@ pub fn binary_op<'a>(
         BinaryOperator::NotEq => cmp!(!l.evaluate_eq(&r)),
         BinaryOperator::Lt => cmp!(l.evaluate_cmp(&r) == Some(Ordering::Less)),
         BinaryOperator::LtEq => {
-            if l.evaluate_cmp(&r) == None {
+            if l.evaluate_cmp(&r).is_none() {
                 return Ok(Evaluated::from(Value::Bool(false)));
             }
             cmp!(l.evaluate_cmp(&r) != Some(Ordering::Greater))
         }
         BinaryOperator::Gt => cmp!(l.evaluate_cmp(&r) == Some(Ordering::Greater)),
         BinaryOperator::GtEq => {
-            if l.evaluate_cmp(&r) == None {
+            if l.evaluate_cmp(&r).is_none() {
                 return Ok(Evaluated::from(Value::Bool(false)));
             }
             cmp!(l.evaluate_cmp(&r) != Some(Ordering::Less))
