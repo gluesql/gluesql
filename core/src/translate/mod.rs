@@ -7,10 +7,6 @@ mod function;
 mod operator;
 mod query;
 
-use sqlparser::ast::Table;
-
-use crate::ast::{ForeignKey, ReferentialAction, TableConstraint};
-
 pub use self::{
     data_type::translate_data_type,
     ddl::{translate_column_def, translate_operate_function_arg},
@@ -21,7 +17,7 @@ pub use self::{
 
 use {
     crate::{
-        ast::{Assignment, Statement, Variable},
+        ast::{Assignment, ForeignKey, ReferentialAction, Statement, TableConstraint, Variable},
         result::Result,
     },
     ddl::translate_alter_table_operation,
@@ -315,7 +311,7 @@ fn translate_table_constraint(table_constraint: &SqlTableConstraint) -> Option<T
             on_delete,
             on_update,
         } => Some(TableConstraint::ForeignKey(ForeignKey {
-            name: name.map(|v| v.value),
+            name: name.to_owned().map(|v| v.value),
             columns: translate_idents(columns),
             foreign_table: translate_object_name(foreign_table).unwrap(),
             referred_columns: translate_idents(referred_columns),

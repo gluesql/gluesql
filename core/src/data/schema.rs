@@ -51,6 +51,7 @@ impl Schema {
             columns: column_defs.to_owned(),
             engine: engine.to_owned(),
             source: None,
+            constraints: None,
         }
         .to_sql();
 

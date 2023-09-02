@@ -28,12 +28,13 @@ pub trait ToSqlUnquoted {
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash, Serialize, Deserialize)]
 pub struct ForeignKey {
-    name: Option<String>,
-    columns: Vec<String>,
-    foreign_table: String,
-    referred_columns: Vec<String>,
-    on_delete: Option<ReferentialAction>,
-    on_update: Option<ReferentialAction>,
+    // TODO: how to remove pub?
+    pub name: Option<String>,
+    pub columns: Vec<String>,
+    pub foreign_table: String,
+    pub referred_columns: Vec<String>,
+    pub on_delete: Option<ReferentialAction>,
+    pub on_update: Option<ReferentialAction>,
 }
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash, Serialize, Deserialize)]
