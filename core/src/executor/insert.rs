@@ -190,7 +190,6 @@ async fn fetch_map_rows<T: GStore>(storage: &T, source: &Query) -> Result<Vec<Da
             let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref()).await?;
             let rows = stream::iter(values_list).then(|values| async move {
                 if values.len() > 1 {
-                    println!("{values:#?}");
                     return Err(InsertError::OnlySingleValueAcceptedForSchemalessRow.into());
                 }
 

@@ -67,7 +67,6 @@ impl From<&DataType> for BsonType {
             DataType::Float => BsonType::Double,
             DataType::Text => BsonType::String,
             DataType::Bytea => BsonType::Binary,
-            // DataType::Inet => BsonType::String,
             DataType::Date => BsonType::Date,
             DataType::Timestamp => BsonType::String,
             DataType::Time => BsonType::Date,
