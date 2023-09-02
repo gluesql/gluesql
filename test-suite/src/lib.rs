@@ -110,6 +110,7 @@ macro_rules! generate_store_tests {
         glue!(function_ltrim_rtrim, function::ltrim_rtrim::ltrim_rtrim);
         glue!(function_cast_literal, function::cast::cast_literal);
         glue!(function_cast_value, function::cast::cast_value);
+        glue!(function_coalesce, function::coalesce::coalesce);
         glue!(function_concat, function::concat::concat);
         glue!(function_concat_ws, function::concat_ws::concat_ws);
         glue!(function_ifnull, function::ifnull::ifnull);
@@ -149,6 +150,8 @@ macro_rules! generate_store_tests {
             function_geometry_calc_distance,
             function::geometry::calc_distance
         );
+        glue!(function_add_month, function::add_month::add_month);
+        glue!(function_slice, function::slice::slice);
         glue!(function_entries, function::entries::entries);
         glue!(join, join::join);
         glue!(join_project, join::project);
@@ -200,6 +203,7 @@ macro_rules! generate_store_tests {
             function_generate_uuid,
             function::generate_uuid::generate_uuid
         );
+        glue!(function_greatest, function::greatest::greatest);
         glue!(type_match, type_match::type_match);
         glue!(dictionary, dictionary::dictionary);
         glue!(function_append, function::append::append);
@@ -207,6 +211,7 @@ macro_rules! generate_store_tests {
         glue!(function_sort, function::sort::sort);
         glue!(function_take, function::take::take);
         glue!(column_alias, column_alias::column_alias);
+        glue!(function_splice, function::splice::splice);
 
         // ast-builder
         glue!(ast_builder_basic, ast_builder::basic::basic);
@@ -231,6 +236,10 @@ macro_rules! generate_store_tests {
         glue!(
             ast_builder_function_text_case_conversion,
             ast_builder::function::text::case_conversion
+        );
+        glue!(
+            ast_builder_function_other_coalesce,
+            ast_builder::function::other::coalesce::coalesce
         );
         glue!(
             ast_builder_function_other_ifnull,

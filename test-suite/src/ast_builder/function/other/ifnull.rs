@@ -7,7 +7,7 @@ use {
     },
 };
 
-test_case!(ifnull, async move {
+test_case!(ifnull, {
     let glue = get_glue!();
 
     // create table - Foo

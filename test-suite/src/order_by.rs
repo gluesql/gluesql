@@ -6,17 +6,20 @@ use {
     },
 };
 
-test_case!(order_by, async move {
-    run!(
+test_case!(order_by, {
+    let g = get_tester!();
+
+    g.run(
         "
 CREATE TABLE Test (
     id INTEGER,
     num INTEGER,
     name TEXT NULL,
     rate FLOAT NULL
-)"
-    );
-    run!(
+)",
+    )
+    .await;
+    g.run(
         "
         INSERT INTO Test (id, num, name, rate)
         VALUES
@@ -24,10 +27,11 @@ CREATE TABLE Test (
             (1, 9, NULL,       NULL),
             (3, 4, 'World',    1.0),
             (4, 7, 'Thursday', NULL);
-    "
-    );
+    ",
+    )
+    .await;
 
-    test!(
+    g.test(
         "SELECT id, num FROM Test",
         Ok(select!(
             id  | num
@@ -36,8 +40,9 @@ CREATE TABLE Test (
             1     9;
             3     4;
             4     7
-        ))
-    );
+        )),
+    )
+    .await;
 
     macro_rules! s {
         ($v: literal) => {
@@ -45,7 +50,7 @@ CREATE TABLE Test (
         };
     }
 
-    test!(
+    g.test(
         "SELECT id, num, name FROM Test ORDER BY id + num ASC",
         Ok(select_with_null!(
             id     | num    | name;
@@ -53,10 +58,11 @@ CREATE TABLE Test (
             I64(3)   I64(4)   s!("World");
             I64(1)   I64(9)   Null;
             I64(4)   I64(7)   s!("Thursday")
-        ))
-    );
+        )),
+    )
+    .await;
 
-    test!(
+    g.test(
         "SELECT id, num, name FROM Test ORDER BY num DESC",
         Ok(select_with_null!(
             id     | num    | name;
@@ -64,10 +70,11 @@ CREATE TABLE Test (
             I64(4)   I64(7)   s!("Thursday");
             I64(3)   I64(4)   s!("World");
             I64(1)   I64(2)   s!("Hello")
-        ))
-    );
+        )),
+    )
+    .await;
 
-    test!(
+    g.test(
         "SELECT id, num, name FROM Test ORDER BY name",
         Ok(select_with_null!(
             id     | num    | name;
@@ -75,10 +82,11 @@ CREATE TABLE Test (
             I64(4)   I64(7)   s!("Thursday");
             I64(3)   I64(4)   s!("World");
             I64(1)   I64(9)   Null
-        ))
-    );
+        )),
+    )
+    .await;
 
-    test!(
+    g.test(
         "SELECT id, num, name FROM Test ORDER BY name DESC",
         Ok(select_with_null!(
             id     | num    | name;
@@ -86,10 +94,11 @@ CREATE TABLE Test (
             I64(3)   I64(4)   s!("World");
             I64(4)   I64(7)   s!("Thursday");
             I64(1)   I64(2)   s!("Hello")
-        ))
-    );
+        )),
+    )
+    .await;
 
-    test!(
+    g.test(
         "SELECT id, num, name, rate FROM Test ORDER BY rate DESC, id DESC",
         Ok(select_with_null!(
             id     | num    | name           | rate;
@@ -97,10 +106,11 @@ CREATE TABLE Test (
             I64(1)   I64(9)   Null             Null;
             I64(1)   I64(2)   s!("Hello")      F64(3.0);
             I64(3)   I64(4)   s!("World")      F64(1.0)
-        ))
-    );
+        )),
+    )
+    .await;
 
-    test!(
+    g.test(
         "SELECT id, num FROM Test ORDER BY id ASC, num DESC",
         Ok(select!(
             id  | num
@@ -109,10 +119,11 @@ CREATE TABLE Test (
             1     2;
             3     4;
             4     7
-        ))
-    );
+        )),
+    )
+    .await;
 
-    test!(
+    g.test(
         "
         SELECT id, num FROM Test
         ORDER BY
@@ -126,10 +137,11 @@ CREATE TABLE Test (
             1     2;
             3     4;
             4     7
-        ))
-    );
+        )),
+    )
+    .await;
 
-    test!(
+    g.test(
         "
         SELECT id, num FROM Test
         ORDER BY
@@ -146,69 +158,77 @@ CREATE TABLE Test (
             1     2;
             3     4;
             4     7
-        ))
-    );
+        )),
+    )
+    .await;
 
-    test!(
+    g.test(
         "SELECT * FROM Test ORDER BY id NULLS FIRST",
-        Err(TranslateError::OrderByNullsFirstOrLastNotSupported.into())
-    );
-    test! {
-        name: "ORDER BY aliases",
-        sql:"SELECT id AS C1, num AS C2 FROM Test ORDER BY C1 ASC, C2 DESC",
-        expected:Ok(select!(
+        Err(TranslateError::OrderByNullsFirstOrLastNotSupported.into()),
+    )
+    .await;
+    g.named_test(
+        "ORDER BY aliases",
+        "SELECT id AS C1, num AS C2 FROM Test ORDER BY C1 ASC, C2 DESC",
+        Ok(select!(
             C1  | C2
             I64 | I64;
             1     9;
             1     2;
             3     4;
             4     7
-        ))
-    };
-    test! {
-        name: "original column_names still work even if aliases were used at SELECT clause",
-        sql: "SELECT id AS C1, num AS C2 FROM Test ORDER BY id ASC, num DESC",
-        expected: Ok(select!(
+        )),
+    )
+    .await;
+    g.named_test(
+        "original column_names still work even if aliases were used at SELECT clause",
+        "SELECT id AS C1, num AS C2 FROM Test ORDER BY id ASC, num DESC",
+        Ok(select!(
             C1  | C2
             I64 | I64;
             1     9;
             1     2;
             3     4;
             4     7
-        ))
-    };
-    test! {
-        name: "ORDER BY I64 and UnaryOperator::PLUS work as COLUMN_INDEX",
-        sql: "SELECT id, num FROM Test ORDER BY 1 ASC, +2 DESC",
-        expected: Ok(select!(
+        )),
+    )
+    .await;
+    g.named_test(
+        "ORDER BY I64 and UnaryOperator::PLUS work as COLUMN_INDEX",
+        "SELECT id, num FROM Test ORDER BY 1 ASC, +2 DESC",
+        Ok(select!(
             id  | num
             I64 | I64;
             1     9;
             1     2;
             3     4;
             4     7
-        ))
-    };
-    test! {
-        name: "ORDER BY UnaryOperator::MINUS works as a normal integer",
-        sql: "SELECT id, num FROM Test ORDER BY -1",
-        expected: Ok(select!(
+        )),
+    )
+    .await;
+    g.named_test(
+        "ORDER BY UnaryOperator::MINUS works as a normal integer",
+        "SELECT id, num FROM Test ORDER BY -1",
+        Ok(select!(
             id  | num
             I64 | I64;
             1     2;
             1     9;
             3     4;
             4     7
-        ))
-    };
-    test! {
-        name: "ORDER BY COLUMN_INDEX should be larger than 0",
-        sql: "SELECT id, num FROM Test ORDER BY 0",
-        expected: Err(SortError::ColumnIndexOutOfRange(0).into())
-    };
-    test! {
-        name: "ORDER BY COLUMN_INDEX should be less than the number of columns",
-        sql: "SELECT id, num FROM Test ORDER BY 3",
-        expected: Err(SortError::ColumnIndexOutOfRange(3).into())
-    };
+        )),
+    )
+    .await;
+    g.named_test(
+        "ORDER BY COLUMN_INDEX should be larger than 0",
+        "SELECT id, num FROM Test ORDER BY 0",
+        Err(SortError::ColumnIndexOutOfRange(0).into()),
+    )
+    .await;
+    g.named_test(
+        "ORDER BY COLUMN_INDEX should be less than the number of columns",
+        "SELECT id, num FROM Test ORDER BY 3",
+        Err(SortError::ColumnIndexOutOfRange(3).into()),
+    )
+    .await;
 });

@@ -58,7 +58,7 @@ impl<'a> From<&'a Expr> for PlanExpr<'a> {
 
                 let exprs = when
                     .into_iter()
-                    .chain(then.into_iter())
+                    .chain(then)
                     .chain(operand.iter().map(AsRef::as_ref))
                     .chain(else_result.iter().map(AsRef::as_ref))
                     .collect();

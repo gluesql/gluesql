@@ -10,7 +10,9 @@ use {
     std::borrow::Cow,
 };
 
-test_case!(point, async move {
+test_case!(point, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "CREATE TABLE POINT (point_field POINT)",
@@ -80,6 +82,6 @@ test_case!(point, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

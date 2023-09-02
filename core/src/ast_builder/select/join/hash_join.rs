@@ -143,12 +143,15 @@ fn build_join_executor(
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        ast::{
-            Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SetExpr, Statement,
-            TableAlias, TableFactor, TableWithJoins,
+    use {
+        crate::{
+            ast::{
+                Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SetExpr,
+                Statement, TableAlias, TableFactor, TableWithJoins,
+            },
+            ast_builder::{col, expr, table, Build, SelectItemList},
         },
-        ast_builder::{col, expr, table, Build, SelectItemList},
+        pretty_assertions::assert_eq,
     };
 
     #[test]

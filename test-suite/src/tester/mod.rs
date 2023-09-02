@@ -7,6 +7,7 @@ use {
         store::{GStore, GStoreMut},
         translate::translate_expr,
     },
+    pretty_assertions::assert_eq,
 };
 
 pub mod macros;
@@ -145,6 +146,67 @@ pub trait Tester<T: GStore + GStoreMut> {
     async fn new(namespace: &str) -> Self;
 
     fn get_glue(&mut self) -> &mut Glue<T>;
+
+    async fn run_inner(&mut self, sql: &str) -> Result<Payload> {
+        let glue = self.get_glue();
+
+        println!("[RUN] {}", sql);
+        let parsed = parse(sql)?;
+        let statement = translate(&parsed[0])?;
+        let statement = plan(&glue.storage, statement).await?;
+
+        glue.execute_stmt(&statement).await
+    }
+
+    async fn run(&mut self, sql: &str) -> Payload {
+        self.run_inner(sql).await.unwrap()
+    }
+
+    async fn run_err(&mut self, sql: &str) -> Error {
+        self.run_inner(sql).await.unwrap_err()
+    }
+
+    async fn count(&mut self, sql: &str, expected: usize) {
+        let actual = match self.run_inner(sql).await.unwrap() {
+            Payload::Select { rows, .. } => rows.len(),
+            Payload::Delete(num) | Payload::Update(num) => num,
+            _ => panic!("compare is only for Select, Delete and Update"),
+        };
+
+        assert_eq!(actual, expected, "[COUNT] {sql}");
+    }
+
+    async fn type_match(&mut self, sql: &str, expected: &[DataType]) {
+        let actual = self.run_inner(sql).await.unwrap();
+
+        type_match(expected, Ok(actual));
+    }
+
+    async fn test(&mut self, sql: &str, expected: Result<Payload>) {
+        let actual = self.run_inner(sql).await;
+
+        assert_eq!(actual, expected, "[TEST] {sql}");
+    }
+
+    async fn named_test(&mut self, name: &str, sql: &str, expected: Result<Payload>) {
+        let actual = self.run_inner(sql).await;
+
+        assert_eq!(actual, expected, "[TEST] {name}");
+    }
+
+    async fn test_idx(&mut self, sql: &str, expected: Result<Payload>, indexes: Vec<IndexItem>) {
+        let glue = self.get_glue();
+
+        let parsed = parse(sql).unwrap();
+        let statement = translate(&parsed[0]).unwrap();
+        let statement = plan(&glue.storage, statement).await.unwrap();
+
+        test_indexes(&statement, Some(indexes));
+
+        let actual = glue.execute_stmt(&statement).await;
+
+        assert_eq!(actual, expected, "[TEST IDX] {sql}");
+    }
 }
 
 #[macro_export]
@@ -154,6 +216,7 @@ macro_rules! test_case {
         where
             T: gluesql_core::store::GStore + gluesql_core::store::GStoreMut,
         {
+            #[allow(unused_variables)]
             let glue = tester.get_glue();
 
             #[allow(unused_macros)]
@@ -164,91 +227,19 @@ macro_rules! test_case {
             }
 
             #[allow(unused_macros)]
-            macro_rules! schema {
-                ($table_name: literal) => {
-                    glue.storage
-                        .fetch_schema($table_name)
-                        .await
-                        .expect("error fetching schema")
-                        .expect("table not found")
+            macro_rules! get_tester {
+                () => {
+                    &mut tester
                 };
             }
 
-            #[allow(unused_macros)]
-            macro_rules! expr {
-                ($sql: literal) => {
-                    $crate::expr($sql)
-                };
+            async {
+                $content;
+
+                gluesql_core::prelude::Result::<()>::Ok(())
             }
-
-            #[allow(unused_macros)]
-            macro_rules! run {
-                ($sql: expr) => {
-                    $crate::run($sql, glue, None).await.unwrap()
-                };
-            }
-
-            #[allow(unused_macros)]
-            macro_rules! run_err {
-                ($sql: expr) => {
-                    $crate::run($sql, glue, None).await.unwrap_err()
-                };
-            }
-
-            #[allow(unused_macros)]
-            macro_rules! count {
-                ($count: expr, $sql: expr) => {
-                    match $crate::run($sql, glue, None).await.unwrap() {
-                        gluesql_core::prelude::Payload::Select { rows, .. } => {
-                            assert_eq!($count, rows.len())
-                        }
-                        gluesql_core::prelude::Payload::Delete(num) => assert_eq!($count, num),
-                        gluesql_core::prelude::Payload::Update(num) => assert_eq!($count, num),
-                        _ => panic!("compare is only for Select, Delete and Update"),
-                    };
-                };
-            }
-
-            #[allow(unused_macros)]
-            macro_rules! type_match {
-                ($expected: expr, $sql: expr) => {
-                    let found = run($sql, glue, None).await;
-
-                    $crate::type_match($expected, found);
-                };
-            }
-
-            #[allow(unused_macros)]
-            macro_rules! test {
-                (name: $test_name: literal, sql: $sql: expr, expected: $expected: expr) => {
-                    let found = run($sql, glue, None).await;
-
-                    assert_eq!(found, $expected, $test_name);
-                };
-
-                (sql: $sql: expr, expected: $expected: expr) => {
-                    let found = run($sql, glue, None).await;
-
-                    assert_eq!(found, $expected);
-                };
-
-                ($sql: expr, $expected: expr) => {
-                    let found = run($sql, glue, None).await;
-
-                    assert_eq!(found, $expected);
-                };
-            }
-
-            #[allow(unused_macros)]
-            macro_rules! test_idx {
-                ($expected: expr, $indexes: expr, $sql: expr) => {
-                    let found = run($sql, glue, Some($indexes)).await;
-
-                    assert_eq!(found, $expected);
-                };
-            }
-
-            $content.await
+            .await
+            .unwrap()
         }
     };
 }
