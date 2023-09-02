@@ -135,6 +135,7 @@ pub fn select<'a>() -> SelectNode<'a> {
             table_name: "Series".to_owned(),
             table_type: TableType::Series(Expr::Literal(AstLiteral::Number(1.into())).into()),
             table_alias: None,
+            index: None,
         },
     }
 }
