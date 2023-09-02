@@ -7,6 +7,10 @@ mod function;
 mod operator;
 mod query;
 
+use sqlparser::ast::Table;
+
+use crate::ast::{ForeignKey, ReferentialAction, TableConstraint};
+
 pub use self::{
     data_type::translate_data_type,
     ddl::{translate_column_def, translate_operate_function_arg},
@@ -23,7 +27,9 @@ use {
     ddl::translate_alter_table_operation,
     sqlparser::ast::{
         Assignment as SqlAssignment, Ident as SqlIdent, ObjectName as SqlObjectName,
-        ObjectType as SqlObjectType, Statement as SqlStatement, TableFactor, TableWithJoins,
+        ObjectType as SqlObjectType, ReferentialAction as SqlReferentialAction,
+        Statement as SqlStatement, TableConstraint as SqlTableConstraint, TableFactor,
+        TableWithJoins,
     },
 };
 
@@ -73,6 +79,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             columns,
             query,
             engine,
+            constraints,
             ..
         } => {
             let columns = columns
@@ -81,6 +88,13 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 .collect::<Result<Vec<_>>>()?;
 
             let columns = (!columns.is_empty()).then_some(columns);
+
+            let constraints = constraints
+                .iter()
+                .filter_map(translate_table_constraint)
+                .collect::<Vec<_>>();
+
+            let constraints = (!constraints.is_empty()).then_some(constraints);
 
             Ok(Statement::CreateTable {
                 if_not_exists: *if_not_exists,
@@ -91,6 +105,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                     None => None,
                 },
                 engine: engine.clone(),
+                constraints,
             })
         }
         SqlStatement::AlterTable {
@@ -278,4 +293,35 @@ fn translate_object_name(sql_object_name: &SqlObjectName) -> Result<String> {
 
 pub fn translate_idents(idents: &[SqlIdent]) -> Vec<String> {
     idents.iter().map(|v| v.value.to_owned()).collect()
+}
+
+pub fn translate_referential_action(action: SqlReferentialAction) -> ReferentialAction {
+    match action {
+        SqlReferentialAction::NoAction => ReferentialAction::NoAction,
+        SqlReferentialAction::Restrict => ReferentialAction::Restrict,
+        SqlReferentialAction::Cascade => ReferentialAction::Cascade,
+        SqlReferentialAction::SetNull => ReferentialAction::SetNull,
+        SqlReferentialAction::SetDefault => ReferentialAction::SetDefault,
+    }
+}
+
+fn translate_table_constraint(table_constraint: &SqlTableConstraint) -> Option<TableConstraint> {
+    match table_constraint {
+        SqlTableConstraint::ForeignKey {
+            name,
+            columns,
+            foreign_table,
+            referred_columns,
+            on_delete,
+            on_update,
+        } => Some(TableConstraint::ForeignKey(ForeignKey {
+            name: name.map(|v| v.value),
+            columns: translate_idents(columns),
+            foreign_table: translate_object_name(foreign_table).unwrap(),
+            referred_columns: translate_idents(referred_columns),
+            on_delete: on_delete.map(translate_referential_action),
+            on_update: on_update.map(translate_referential_action),
+        })),
+        _ => None,
+    }
 }

@@ -26,6 +26,30 @@ pub trait ToSqlUnquoted {
     fn to_sql_unquoted(&self) -> String;
 }
 
+#[derive(PartialEq, Debug, Clone, Eq, Hash, Serialize, Deserialize)]
+pub struct ForeignKey {
+    name: Option<String>,
+    columns: Vec<String>,
+    foreign_table: String,
+    referred_columns: Vec<String>,
+    on_delete: Option<ReferentialAction>,
+    on_update: Option<ReferentialAction>,
+}
+
+#[derive(PartialEq, Debug, Clone, Eq, Hash, Serialize, Deserialize)]
+pub enum ReferentialAction {
+    Restrict,
+    Cascade,
+    SetNull,
+    NoAction,
+    SetDefault,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum TableConstraint {
+    ForeignKey(ForeignKey),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Statement {
     ShowColumns {
@@ -67,6 +91,7 @@ pub enum Statement {
         columns: Option<Vec<ColumnDef>>,
         source: Option<Box<Query>>,
         engine: Option<String>,
+        constraints: Option<Vec<TableConstraint>>,
     },
     /// CREATE FUNCTION
     CreateFunction {
@@ -182,6 +207,7 @@ impl ToSql for Statement {
                 columns,
                 source,
                 engine,
+                constraints,
             } => {
                 let if_not_exists = if_not_exists.then_some("IF NOT EXISTS");
                 let body = match source {
@@ -410,6 +436,7 @@ mod tests {
                 columns: None,
                 source: None,
                 engine: None,
+                constraints: None,
             }
             .to_sql()
         );
@@ -422,6 +449,7 @@ mod tests {
                 columns: None,
                 source: None,
                 engine: None,
+                constraints: None,
             }
             .to_sql()
         );
@@ -440,6 +468,7 @@ mod tests {
                 },]),
                 source: None,
                 engine: None,
+                constraints: None,
             }
             .to_sql()
         );
@@ -474,6 +503,7 @@ mod tests {
                 ]),
                 source: None,
                 engine: None,
+                constraints: None,
             }
             .to_sql()
         );
@@ -516,6 +546,7 @@ mod tests {
                     offset: None
                 })),
                 engine: None,
+                constraints: None,
             }
             .to_sql()
         );
@@ -535,6 +566,7 @@ mod tests {
                     offset: None
                 })),
                 engine: None,
+                constraints: None,
             }
             .to_sql()
         );
@@ -550,6 +582,7 @@ mod tests {
                 columns: None,
                 source: None,
                 engine: Some("MEMORY".to_owned()),
+                constraints: None,
             }
             .to_sql()
         );
@@ -568,6 +601,7 @@ mod tests {
                 },]),
                 source: None,
                 engine: Some("SLED".to_owned()),
+                constraints: None,
             }
             .to_sql()
         );
