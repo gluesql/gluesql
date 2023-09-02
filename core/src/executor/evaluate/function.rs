@@ -942,3 +942,47 @@ pub fn entries<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
         _ => Err(EvaluateError::FunctionRequiresMapValue(name).into()),
     }
 }
+
+pub fn splice<'a>(
+    name: String,
+    list_data: Evaluated<'_>,
+    begin_index: Evaluated<'_>,
+    end_index: Evaluated<'_>,
+    values: Option<Evaluated<'_>>,
+) -> Result<Evaluated<'a>> {
+    let list_data = match Value::try_from(list_data)? {
+        Value::List(list) => Ok(list),
+        _ => Err(EvaluateError::ListTypeRequired),
+    }?;
+
+    let begin_index = usize::try_from(eval_to_int!(name, begin_index).max(0))
+        .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.clone()))?;
+
+    let end_index = usize::try_from(eval_to_int!(name, end_index).min(list_data.len() as i64))
+        .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name))?;
+
+    let (left, right) = {
+        let mut list_iter = list_data.into_iter();
+        let left: Vec<_> = list_iter.by_ref().take(begin_index).collect();
+        let right: Vec<_> = list_iter.skip(end_index - begin_index).collect();
+        (left, right)
+    };
+
+    let center = match values {
+        Some(values) => match Value::try_from(values)? {
+            Value::List(list) => Ok(list),
+            _ => Err(EvaluateError::ListTypeRequired),
+        }?,
+        None => vec![],
+    };
+
+    let result = {
+        let mut result = vec![];
+        result.extend(left);
+        result.extend(center);
+        result.extend(right);
+        result
+    };
+
+    Ok(Evaluated::from(Value::List(result)))
+}

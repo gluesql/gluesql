@@ -6,13 +6,14 @@ use {
 impl Function {
     pub fn as_exprs(&self) -> impl Iterator<Item = &Expr> {
         #[derive(iter_enum::Iterator)]
-        enum Exprs<I0, I1, I2, I3, I4, I5> {
+        enum Exprs<I0, I1, I2, I3, I4, I5, I6> {
             Empty(I0),
             Single(I1),
             Double(I2),
             Triple(I3),
             VariableArgs(I4),
             VariableArgsWithSingle(I5),
+            Quadruple(I6),
         }
 
         match self {
@@ -187,6 +188,12 @@ impl Function {
                 from_expr: expr,
                 sub_expr: expr2,
                 start: Some(expr3),
+            }
+            | Self::Splice {
+                list_data: expr,
+                begin_index: expr2,
+                end_index: expr3,
+                values: None,
             } => Exprs::Triple([expr, expr2, expr3].into_iter()),
             Self::Custom { name: _, exprs } => Exprs::VariableArgs(exprs.iter()),
             Self::Coalesce(exprs) => Exprs::VariableArgs(exprs.iter()),
@@ -196,6 +203,12 @@ impl Function {
             }
             Self::Greatest(exprs) => Exprs::VariableArgs(exprs.iter()),
             Self::Entries(expr) => Exprs::Single([expr].into_iter()),
+            Self::Splice {
+                list_data: expr,
+                begin_index: expr2,
+                end_index: expr3,
+                values: Some(expr4),
+            } => Exprs::Quadruple([expr, expr2, expr3, expr4].into_iter()),
         }
     }
 }
@@ -314,6 +327,13 @@ mod tests {
         test(
             r#"SUBSTR('   >++++("<   ', 3, 11)"#,
             &[r#"'   >++++("<   '"#, "3", "11"],
+        );
+        test(r#"SPLICE(list, 2, 4)"#, &["list", "2", "4"]);
+
+        // Quadruple
+        test(
+            r#"SPLICE(list, 3, 5, values)"#,
+            &["list", "3", "5", "values"],
         );
 
         //VariableArgs

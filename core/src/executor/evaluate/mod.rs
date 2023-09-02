@@ -675,5 +675,25 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let expr = eval(expr).await?;
             f::values(expr)
         }
+        Function::Splice {
+            list_data,
+            begin_index,
+            end_index,
+            values,
+        } => {
+            let list_data = eval(list_data).await?;
+            let begin_index = eval(begin_index).await?;
+            let end_index = eval(end_index).await?;
+            let values = match values {
+                Some(v) => Some(eval(v).await?),
+                None => None,
+            };
+            f::splice(name, list_data, begin_index, end_index, values)
+        }
+        Function::AddMonth { expr, size } => {
+            let expr = eval(expr).await?;
+            let size = eval(size).await?;
+            f::add_month(name, expr, size)
+        }
     }
 }
