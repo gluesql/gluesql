@@ -96,12 +96,8 @@ pub enum ValueError {
     #[error("unreachable failure on parsing number")]
     UnreachableNumberParsing,
 
-    // Cast errors from value to value
-    #[error("impossible cast")]
-    ImpossibleCast,
-
-    #[error("unimplemented cast")]
-    UnimplementedCast,
+    #[error("unimplemented cast: {value:?} as {data_type}")]
+    UnimplementedCast { value: Value, data_type: DataType },
 
     #[error("failed to cast from hex string to bytea: {0}")]
     CastFromHexToByteaFailed(String),
