@@ -190,7 +190,7 @@ impl CsvStorage {
                     record
                         .into_iter()
                         .zip(columns.iter())
-                        .zip(types.into_iter())
+                        .zip(&types)
                         .filter_map(|((value, column), data_type)| {
                             if data_type.is_empty() {
                                 return None;
