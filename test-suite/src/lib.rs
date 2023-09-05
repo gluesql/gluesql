@@ -344,6 +344,7 @@ macro_rules! generate_transaction_tests {
             transaction::create_drop_table
         );
         glue!(transaction_dictionary, transaction::dictionary);
+        glue!(transaction_ast_builder, transaction::ast_builder);
     };
 }
 
