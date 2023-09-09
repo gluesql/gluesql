@@ -41,8 +41,12 @@ impl<'a> TryFrom<AssignmentNode<'a>> for Assignment {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        ast_builder::AssignmentNode, parse_sql::parse_assignment, translate::translate_assignment,
+    use {
+        crate::{
+            ast_builder::AssignmentNode, parse_sql::parse_assignment,
+            translate::translate_assignment,
+        },
+        pretty_assertions::assert_eq,
     };
 
     fn test(actual: AssignmentNode, expected: &str) {

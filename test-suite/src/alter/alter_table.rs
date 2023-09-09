@@ -8,7 +8,9 @@ use {
     },
 };
 
-test_case!(alter_table_rename, async move {
+test_case!(alter_table_rename, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "CREATE TABLE Foo (id INTEGER, name TEXT);",
@@ -42,11 +44,13 @@ test_case!(alter_table_rename, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });
 
-test_case!(alter_table_add_drop, async move {
+test_case!(alter_table_add_drop, {
+    let g = get_tester!();
+
     let test_cases = [
         ("CREATE TABLE Foo (id INTEGER);", Ok(Payload::Create)),
         ("INSERT INTO Foo VALUES (1), (2);", Ok(Payload::Insert(2))),
@@ -101,7 +105,7 @@ test_case!(alter_table_add_drop, async move {
         (
             "ALTER TABLE Foo ADD COLUMN something INTEGER DEFAULT (SELECT id FROM Bar LIMIT 1)",
             Err(
-                EvaluateError::UnsupportedStatelessExpr(expr!("(SELECT id FROM Bar LIMIT 1)"))
+                EvaluateError::UnsupportedStatelessExpr(expr("(SELECT id FROM Bar LIMIT 1)"))
                     .into(),
             ),
         ),
@@ -166,6 +170,6 @@ test_case!(alter_table_add_drop, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

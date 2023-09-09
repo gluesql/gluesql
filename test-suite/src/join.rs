@@ -7,7 +7,9 @@ use {
     Value::*,
 };
 
-test_case!(join, async move {
+test_case!(join, {
+    let g = get_tester!();
+
     let create_sqls: [&str; 2] = [
         "
         CREATE TABLE Player (
@@ -25,13 +27,13 @@ test_case!(join, async move {
     ];
 
     for sql in create_sqls {
-        run!(sql);
+        g.run(sql).await;
     }
 
     let delete_sqls = ["DELETE FROM Player", "DELETE FROM Item"];
 
     for sql in delete_sqls {
-        run!(sql);
+        g.run(sql).await;
     }
 
     let insert_sqls = [
@@ -64,7 +66,7 @@ test_case!(join, async move {
     ];
 
     for insert_sql in insert_sqls {
-        run!(insert_sql);
+        g.run(insert_sql).await;
     }
 
     let select_sqls = [
@@ -140,15 +142,17 @@ test_case!(join, async move {
     ];
 
     for (num, sql) in select_sqls {
-        count!(num, sql);
+        g.count(sql, num).await;
     }
 
     for sql in delete_sqls {
-        run!(sql);
+        g.run(sql).await;
     }
 });
 
-test_case!(project, async move {
+test_case!(project, {
+    let g = get_tester!();
+
     let create_sqls: [&str; 2] = [
         "
         CREATE TABLE Player (
@@ -166,7 +170,7 @@ test_case!(project, async move {
     ];
 
     for sql in create_sqls {
-        run!(sql);
+        g.run(sql).await;
     }
 
     let insert_sqls = [
@@ -187,7 +191,7 @@ test_case!(project, async move {
     ];
 
     for insert_sql in insert_sqls {
-        run!(insert_sql);
+        g.run(insert_sql).await;
     }
 
     let sql = "
@@ -204,7 +208,7 @@ test_case!(project, async move {
         I64(4)   I64(103);
         I64(5)   Null
     );
-    test!(sql, Ok(expected));
+    g.test(sql, Ok(expected)).await;
 
     let sql = "
         SELECT p.id, player_id
@@ -220,7 +224,7 @@ test_case!(project, async move {
         I64(4)   I64(4);
         I64(5)   Null
     );
-    test!(sql, Ok(expected));
+    g.test(sql, Ok(expected)).await;
 
     let sql = "
         SELECT Item.*
@@ -236,7 +240,7 @@ test_case!(project, async move {
         I64(103)   I64(9)     I64(4);
         Null       Null       Null
     );
-    test!(sql, Ok(expected));
+    g.test(sql, Ok(expected)).await;
 
     let sql = "
         SELECT *
@@ -252,13 +256,16 @@ test_case!(project, async move {
         I64(4)   Str("Berry".to_owned())     I64(103)   I64(9)     I64(4);
         I64(5)   Str("Hwan".to_owned())      Null       Null       Null
     );
-    test!(sql, Ok(expected));
+    g.test(sql, Ok(expected)).await;
 
     // To test `PlanError` while using `JOIN`
-    run!("CREATE TABLE Users (id INTEGER, name TEXT);");
-    run!("INSERT INTO Users (id, name) VALUES (1, 'Harry');");
-    run!("CREATE TABLE Testers (id INTEGER, nickname TEXT);");
-    run!("INSERT INTO Testers (id, nickname) VALUES (1, 'Ron');");
+    g.run("CREATE TABLE Users (id INTEGER, name TEXT);").await;
+    g.run("INSERT INTO Users (id, name) VALUES (1, 'Harry');")
+        .await;
+    g.run("CREATE TABLE Testers (id INTEGER, nickname TEXT);")
+        .await;
+    g.run("INSERT INTO Testers (id, nickname) VALUES (1, 'Ron');")
+        .await;
 
     let error_cases = [
         (
@@ -293,6 +300,6 @@ test_case!(project, async move {
     ];
 
     for (sql, error) in error_cases {
-        test!(sql, Err(error));
+        g.test(sql, Err(error)).await;
     }
 });

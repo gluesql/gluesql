@@ -7,7 +7,9 @@ use {
     },
 };
 
-test_case!(to_date, async move {
+test_case!(to_date, {
+    let g = get_tester!();
+
     fn assert_chrono_error_kind_eq(error: Error, kind: ParseErrorKind) {
         match error {
             Error::Evaluate(EvaluateError::FormatParseError(err)) => {
@@ -89,44 +91,58 @@ test_case!(to_date, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 
     let error_cases = [
         (
-            run_err!("SELECT TO_DATE('2015-09-05', '%Y-%m') AS date"),
+            g.run_err("SELECT TO_DATE('2015-09-05', '%Y-%m') AS date")
+                .await,
             chrono::format::ParseErrorKind::TooLong,
         ),
         (
-            run_err!("SELECT TO_TIME('23:56', '%H:%M:%S') AS time"),
+            g.run_err("SELECT TO_TIME('23:56', '%H:%M:%S') AS time")
+                .await,
             chrono::format::ParseErrorKind::TooShort,
         ),
         (
-            run_err!("SELECT TO_TIMESTAMP('2015-05 23', '%Y-%d %H') AS timestamp"),
+            g.run_err("SELECT TO_TIMESTAMP('2015-05 23', '%Y-%d %H') AS timestamp")
+                .await,
             chrono::format::ParseErrorKind::NotEnough,
         ),
         (
-            run_err!("SELECT TO_TIMESTAMP('2015-14-05 23:56:12','%Y-%m-%d %H:%M:%S') AS timestamp"),
+            g.run_err(
+                "SELECT TO_TIMESTAMP('2015-14-05 23:56:12','%Y-%m-%d %H:%M:%S') AS timestamp",
+            )
+            .await,
             chrono::format::ParseErrorKind::OutOfRange,
         ),
         (
-            run_err!("SELECT TO_TIMESTAMP('2015-14-05 23:56:12','%Y-%m-%d %H:%M:%S') AS timestamp"),
+            g.run_err(
+                "SELECT TO_TIMESTAMP('2015-14-05 23:56:12','%Y-%m-%d %H:%M:%S') AS timestamp",
+            )
+            .await,
             chrono::format::ParseErrorKind::OutOfRange,
         ),
         (
-            run_err!(
-                "SELECT TO_TIMESTAMP('2015-14-05 23:56:12','%Y-%m-%d %H:%M:%%S') AS timestamp;"
-            ),
+            g.run_err(
+                "SELECT TO_TIMESTAMP('2015-14-05 23:56:12','%Y-%m-%d %H:%M:%%S') AS timestamp;",
+            )
+            .await,
             chrono::format::ParseErrorKind::Invalid,
         ),
         (
-            run_err!(
-                "SELECT TO_TIMESTAMP('2015-09-05 23:56:04', '%Y-%m-%d %H:%M:%M') AS timestamp"
-            ),
+            g.run_err(
+                "SELECT TO_TIMESTAMP('2015-09-05 23:56:04', '%Y-%m-%d %H:%M:%M') AS timestamp",
+            )
+            .await,
             chrono::format::ParseErrorKind::Impossible,
         ),
         (
-            run_err!("SELECT TO_TIMESTAMP('2015-09-05 23:56:04', '%Y-%m-%d %H:%M:%') AS timestamp"),
+            g.run_err(
+                "SELECT TO_TIMESTAMP('2015-09-05 23:56:04', '%Y-%m-%d %H:%M:%') AS timestamp",
+            )
+            .await,
             chrono::format::ParseErrorKind::BadFormat,
         ),
     ];

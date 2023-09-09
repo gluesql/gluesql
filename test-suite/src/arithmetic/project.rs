@@ -3,17 +3,20 @@ use {
     gluesql_core::prelude::Value::{self, *},
 };
 
-test_case!(project, async move {
-    run!(
+test_case!(project, {
+    let g = get_tester!();
+
+    g.run(
         "
         CREATE TABLE Arith (
             id INTEGER,
             num INTEGER,
         );
-    "
-    );
-    run!("DELETE FROM Arith");
-    run!(
+    ",
+    )
+    .await;
+    g.run("DELETE FROM Arith").await;
+    g.run(
         "
         INSERT INTO Arith (id, num) VALUES
             (1, 6),
@@ -21,8 +24,9 @@ test_case!(project, async move {
             (3, 4),
             (4, 2),
             (5, 3);
-    "
-    );
+    ",
+    )
+    .await;
 
     let test_cases = [
         (
@@ -56,6 +60,6 @@ test_case!(project, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, Ok(expected));
+        g.test(sql, Ok(expected)).await;
     }
 });

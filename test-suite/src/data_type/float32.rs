@@ -3,7 +3,9 @@ use {
     gluesql_core::prelude::{Payload, Value::*},
 };
 
-test_case!(float32, async move {
+test_case!(float32, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "CREATE TABLE line (x FLOAT32, y FLOAT32)",
@@ -49,6 +51,6 @@ test_case!(float32, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

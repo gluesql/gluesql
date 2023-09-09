@@ -1,7 +1,7 @@
 use {
-    super::StringExt,
+    super::{BigDecimalExt, StringExt},
     crate::{
-        ast::AstLiteral,
+        ast::{AstLiteral, BinaryOperator, ToSql},
         result::{Error, Result},
     },
     bigdecimal::BigDecimal,
@@ -13,8 +13,24 @@ use {
 
 #[derive(Error, Serialize, Debug, PartialEq, Eq)]
 pub enum LiteralError {
-    #[error("unsupported literal binary arithmetic between {0} and {1}")]
-    UnsupportedBinaryArithmetic(String, String),
+    #[error("unsupported literal binary operation {} {} {}", .left, .op.to_sql(), .right)]
+    UnsupportedBinaryOperation {
+        left: String,
+        op: BinaryOperator,
+        right: String,
+    },
+
+    #[error("a operand '{0}' is not integer type")]
+    BitwiseNonIntegerOperand(String),
+
+    #[error("given operands is not Number literal type")]
+    BitwiseNonNumberLiteral,
+
+    #[error("overflow occured while running bitwise operation")]
+    BitwiseOperationOverflow,
+
+    #[error("impossible conversion from {0} to {1} type")]
+    ImpossibleConversion(String, String),
 
     #[error("the divisor should not be zero")]
     DivisorShouldNotBeZero,
@@ -63,6 +79,14 @@ impl<'a> TryFrom<&'a AstLiteral> for Literal<'a> {
         };
 
         Ok(literal)
+    }
+}
+
+fn unsupported_binary_op(left: &Literal, op: BinaryOperator, right: &Literal) -> LiteralError {
+    LiteralError::UnsupportedBinaryOperation {
+        left: format!("{:?}", left),
+        op,
+        right: format!("{:?}", right),
     }
 }
 
@@ -122,11 +146,7 @@ impl<'a> Literal<'a> {
         match (self, other) {
             (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() + r.as_ref()))),
             (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
-            _ => Err(LiteralError::UnsupportedBinaryArithmetic(
-                format!("{:?}", self),
-                format!("{:?}", other),
-            )
-            .into()),
+            _ => Err(unsupported_binary_op(self, BinaryOperator::Plus, other).into()),
         }
     }
 
@@ -134,11 +154,7 @@ impl<'a> Literal<'a> {
         match (self, other) {
             (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() - r.as_ref()))),
             (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
-            _ => Err(LiteralError::UnsupportedBinaryArithmetic(
-                format!("{:?}", self),
-                format!("{:?}", other),
-            )
-            .into()),
+            _ => Err(unsupported_binary_op(self, BinaryOperator::Minus, other).into()),
         }
     }
 
@@ -146,11 +162,7 @@ impl<'a> Literal<'a> {
         match (self, other) {
             (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() * r.as_ref()))),
             (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
-            _ => Err(LiteralError::UnsupportedBinaryArithmetic(
-                format!("{:?}", self),
-                format!("{:?}", other),
-            )
-            .into()),
+            _ => Err(unsupported_binary_op(self, BinaryOperator::Multiply, other).into()),
         }
     }
 
@@ -164,11 +176,23 @@ impl<'a> Literal<'a> {
                 }
             }
             (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
-            _ => Err(LiteralError::UnsupportedBinaryArithmetic(
-                format!("{:?}", self),
-                format!("{:?}", other),
-            )
-            .into()),
+            _ => Err(unsupported_binary_op(self, BinaryOperator::Divide, other).into()),
+        }
+    }
+
+    pub fn bitwise_and(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
+        match (self, other) {
+            (Number(l), Number(r)) => match (l.to_i64(), r.to_i64()) {
+                (Some(l), Some(r)) => Ok(Number(Cow::Owned(BigDecimal::from(l & r)))),
+                _ => Err(LiteralError::UnsupportedBinaryOperation {
+                    left: format!("{:?}", self),
+                    op: BinaryOperator::BitwiseAnd,
+                    right: format!("{:?}", other),
+                }
+                .into()),
+            },
+            (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
+            _ => Err(unsupported_binary_op(self, BinaryOperator::BitwiseAnd, other).into()),
         }
     }
 
@@ -182,11 +206,53 @@ impl<'a> Literal<'a> {
                 }
             }
             (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
-            _ => Err(LiteralError::UnsupportedBinaryArithmetic(
-                format!("{:?}", self),
-                format!("{:?}", other),
-            )
-            .into()),
+            _ => Err(unsupported_binary_op(self, BinaryOperator::Modulo, other).into()),
+        }
+    }
+
+    pub fn bitwise_shift_left(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
+        match (self, other) {
+            (Number(l), Number(r)) => {
+                let l = l
+                    .to_i64()
+                    .ok_or(LiteralError::BitwiseNonIntegerOperand(l.to_string()))?;
+                if !r.is_integer() {
+                    return Err(LiteralError::BitwiseNonIntegerOperand(r.to_string()).into());
+                }
+                let r = r.to_u32().ok_or(LiteralError::ImpossibleConversion(
+                    r.to_string(),
+                    "u32".to_owned(),
+                ))?;
+                let res = l
+                    .checked_shl(r)
+                    .ok_or(LiteralError::BitwiseOperationOverflow)?;
+                Ok(Number(Cow::Owned(BigDecimal::from(res))))
+            }
+            (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
+            _ => Err(LiteralError::BitwiseNonNumberLiteral.into()),
+        }
+    }
+
+    pub fn bitwise_shift_right(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
+        match (self, other) {
+            (Number(l), Number(r)) => {
+                let l = l
+                    .to_i64()
+                    .ok_or(LiteralError::BitwiseNonIntegerOperand(l.to_string()))?;
+                if !r.is_integer() {
+                    return Err(LiteralError::BitwiseNonIntegerOperand(r.to_string()).into());
+                }
+                let r = r.to_u32().ok_or(LiteralError::ImpossibleConversion(
+                    r.to_string(),
+                    "u32".to_owned(),
+                ))?;
+                let res = l
+                    .checked_shr(r)
+                    .ok_or(LiteralError::BitwiseOperationOverflow)?;
+                Ok(Number(Cow::Owned(BigDecimal::from(res))))
+            }
+            (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
+            _ => Err(LiteralError::BitwiseNonNumberLiteral.into()),
         }
     }
 
@@ -207,6 +273,7 @@ impl<'a> Literal<'a> {
 mod tests {
     use {
         super::Literal::*,
+        crate::ast::BinaryOperator,
         bigdecimal::BigDecimal,
         std::{borrow::Cow, str::FromStr},
     };
@@ -257,10 +324,11 @@ mod tests {
         assert_eq!(Null.subtract(&Null), Ok(Null));
         assert_eq!(
             Boolean(true).subtract(&num(3)),
-            Err(LiteralError::UnsupportedBinaryArithmetic(
-                format!("{:?}", Boolean(true)),
-                format!("{:?}", num(3)),
-            )
+            Err(LiteralError::UnsupportedBinaryOperation {
+                left: format!("{:?}", Boolean(true)),
+                op: BinaryOperator::Minus,
+                right: format!("{:?}", num(3)),
+            }
             .into()),
         );
 
@@ -270,10 +338,11 @@ mod tests {
         assert_eq!(Null.multiply(&Null), Ok(Null));
         assert_eq!(
             Boolean(true).multiply(&num(3)),
-            Err(LiteralError::UnsupportedBinaryArithmetic(
-                format!("{:?}", Boolean(true)),
-                format!("{:?}", num(3)),
-            )
+            Err(LiteralError::UnsupportedBinaryOperation {
+                left: format!("{:?}", Boolean(true)),
+                op: BinaryOperator::Multiply,
+                right: format!("{:?}", num(3))
+            }
             .into()),
         );
 
@@ -281,6 +350,92 @@ mod tests {
         assert_eq!(Null.unary_plus(), Ok(Null));
         assert_eq!(num(1).unary_minus(), Ok(num(-1)));
         assert_eq!(Null.unary_minus(), Ok(Null));
+    }
+
+    #[test]
+    fn bitwise_shift_left() {
+        use crate::data::LiteralError;
+
+        let num = |n: i32| Number(Cow::Owned(BigDecimal::from(n)));
+        macro_rules! num {
+            ($num: expr) => {
+                Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
+            };
+        }
+
+        assert_eq!(
+            num(1).bitwise_shift_left(&num(2)),
+            Ok(Number(Cow::Borrowed(&BigDecimal::from(4))))
+        );
+
+        assert_eq!(
+            num(1).bitwise_shift_left(&num(65)),
+            Err(LiteralError::BitwiseOperationOverflow.into())
+        );
+
+        assert_eq!(num(2).bitwise_shift_left(&Null), Ok(Null));
+        assert_eq!(Null.bitwise_shift_left(&num(2)), Ok(Null));
+        assert_eq!(Null.bitwise_shift_left(&Null), Ok(Null));
+
+        assert_eq!(
+            Boolean(true).bitwise_shift_left(&num(2)),
+            Err(LiteralError::BitwiseNonNumberLiteral.into())
+        );
+        assert_eq!(
+            num(1).bitwise_shift_left(&num(-1)),
+            Err(LiteralError::ImpossibleConversion("-1".to_owned(), "u32".to_owned()).into())
+        );
+        assert_eq!(
+            num!("1.1").bitwise_shift_left(&num(2)),
+            Err(LiteralError::BitwiseNonIntegerOperand("1.1".to_owned()).into())
+        );
+        assert_eq!(
+            num(1).bitwise_shift_left(&num!("2.1")),
+            Err(LiteralError::BitwiseNonIntegerOperand("2.1".to_owned()).into())
+        );
+    }
+
+    #[test]
+    fn bitwise_shift_right() {
+        use crate::data::LiteralError;
+
+        let num = |n: i32| Number(Cow::Owned(BigDecimal::from(n)));
+        macro_rules! num {
+            ($num: expr) => {
+                Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
+            };
+        }
+
+        assert_eq!(
+            num(4).bitwise_shift_right(&num(2)),
+            Ok(Number(Cow::Borrowed(&BigDecimal::from(1))))
+        );
+
+        assert_eq!(
+            num(1).bitwise_shift_right(&num(65)),
+            Err(LiteralError::BitwiseOperationOverflow.into())
+        );
+
+        assert_eq!(num(2).bitwise_shift_right(&Null), Ok(Null));
+        assert_eq!(Null.bitwise_shift_right(&num(2)), Ok(Null));
+        assert_eq!(Null.bitwise_shift_right(&Null), Ok(Null));
+
+        assert_eq!(
+            Boolean(true).bitwise_shift_right(&num(2)),
+            Err(LiteralError::BitwiseNonNumberLiteral.into())
+        );
+        assert_eq!(
+            num(1).bitwise_shift_right(&num(-1)),
+            Err(LiteralError::ImpossibleConversion("-1".to_owned(), "u32".to_owned()).into())
+        );
+        assert_eq!(
+            num!("1.1").bitwise_shift_right(&num(2)),
+            Err(LiteralError::BitwiseNonIntegerOperand("1.1".to_owned()).into())
+        );
+        assert_eq!(
+            num(1).bitwise_shift_right(&num!("2.1")),
+            Err(LiteralError::BitwiseNonIntegerOperand("2.1".to_owned()).into())
+        );
     }
 
     #[test]
@@ -326,11 +481,12 @@ mod tests {
         assert_eq!(Null.divide(&num_divisor("2.5")).unwrap(), Null);
         assert_eq!(Null.divide(&Null).unwrap(), Null);
         assert_eq!(
-            Boolean(true).divide(&num_divisor("3")),
-            Err(LiteralError::UnsupportedBinaryArithmetic(
-                format!("{:?}", Boolean(true)),
-                format!("{:?}", num!("3")),
-            )
+            Boolean(true).divide(&num!("3")),
+            Err(LiteralError::UnsupportedBinaryOperation {
+                left: format!("{:?}", Boolean(true)),
+                op: BinaryOperator::Divide,
+                right: format!("{:?}", num!("3"))
+            }
             .into()),
         );
 
@@ -342,6 +498,17 @@ mod tests {
         assert_eq!(num!("12").modulo(&Null).unwrap(), Null);
         assert_eq!(Null.modulo(&num_divisor("2")).unwrap(), Null);
         assert_eq!(Null.modulo(&Null).unwrap(), Null);
+
+        let text = Text(Cow::Owned("some".to_owned()));
+        assert_eq!(
+            num!("12").modulo(&text),
+            Err(LiteralError::UnsupportedBinaryOperation {
+                left: format!("{:?}", num!("12")),
+                op: BinaryOperator::Modulo,
+                right: format!("{:?}", text)
+            }
+            .into())
+        )
     }
 
     #[test]
@@ -470,5 +637,38 @@ mod tests {
         );
         assert_eq!(bytea!("345D").evaluate_cmp(&Null), None);
         assert_eq!(Null.evaluate_cmp(&Null), None);
+    }
+
+    #[test]
+    fn bitwise_and() {
+        use crate::data::LiteralError;
+
+        let num = |val: i32| Number(Cow::Owned(BigDecimal::from(val)));
+        let text = |val: &str| Text(Cow::Owned(String::from(val)));
+
+        macro_rules! ok {
+            ($left: expr, $right: expr, $expected: expr) => {
+                assert_eq!(($left).bitwise_and(&$right), Ok($expected))
+            };
+        }
+
+        macro_rules! err {
+            ($left: expr, $right: expr) => {
+                assert_eq!(
+                    ($left).bitwise_and(&$right),
+                    Err(LiteralError::UnsupportedBinaryOperation {
+                        left: format!("{:?}", $left),
+                        op: BinaryOperator::BitwiseAnd,
+                        right: format!("{:?}", $right)
+                    }
+                    .into())
+                )
+            };
+        }
+
+        ok!(num(11), num(12), num(8));
+        err!(text("11"), num(12));
+        err!(num(11), text("12"));
+        err!(text("11"), text("12"));
     }
 }

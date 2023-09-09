@@ -13,7 +13,7 @@ use {
 #[wasm_bindgen_test]
 async fn join_multiple_storages() {
     let mut glue = Glue::new();
-    let loaded = glue.load_indexeddb();
+    let loaded = glue.load_indexeddb(None);
     JsFuture::from(loaded).await.unwrap();
 
     let mut test = |sql: &'static str, expected| {

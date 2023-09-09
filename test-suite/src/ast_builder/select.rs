@@ -3,7 +3,7 @@ use {
     gluesql_core::{ast_builder::*, executor::Payload, prelude::Value::*},
 };
 
-test_case!(select, async move {
+test_case!(select, {
     let glue = get_glue!();
 
     // create table - Category

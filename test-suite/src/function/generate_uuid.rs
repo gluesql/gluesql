@@ -3,7 +3,9 @@ use {
     gluesql_core::{ast::DataType, error::TranslateError, prelude::Payload},
 };
 
-test_case!(generate_uuid, async move {
+test_case!(generate_uuid, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "CREATE TABLE SingleItem (id UUID DEFAULT GENERATE_UUID())",
@@ -25,12 +27,13 @@ test_case!(generate_uuid, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 
-    count!(1, "SELECT GENERATE_UUID() FROM SingleItem");
-    type_match!(
+    g.count("SELECT GENERATE_UUID() FROM SingleItem", 1).await;
+    g.type_match(
+        "SELECT GENERATE_UUID() as uuid FROM SingleItem",
         &[DataType::Uuid],
-        "SELECT GENERATE_UUID() as uuid FROM SingleItem"
-    );
+    )
+    .await;
 });

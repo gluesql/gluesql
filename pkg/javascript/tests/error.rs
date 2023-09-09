@@ -29,11 +29,11 @@ async fn error() {
         ))
     );
 
-    let loaded = glue.load_indexeddb();
+    let loaded = glue.load_indexeddb(None);
     JsFuture::from(loaded).await.unwrap();
     assert_eq!(glue.set_default_engine("indexedDB".to_owned()), Ok(()));
 
-    let loaded = glue.load_indexeddb();
+    let loaded = glue.load_indexeddb(None);
     assert_eq!(
         JsFuture::from(loaded).await,
         Err(JsValue::from_str("indexedDB storage is already loaded"))

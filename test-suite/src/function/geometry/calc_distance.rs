@@ -6,7 +6,9 @@ use {
     },
 };
 
-test_case!(calc_distance, async move {
+test_case!(calc_distance, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "CREATE TABLE Foo (geo1 Point, geo2 Point, bar Float)",
@@ -45,6 +47,6 @@ test_case!(calc_distance, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

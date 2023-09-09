@@ -1,9 +1,13 @@
 use {
     crate::*,
-    gluesql_core::{ast_builder::*, executor::Payload, prelude::Value::*},
+    gluesql_core::{
+        ast_builder::{function as f, *},
+        executor::Payload,
+        prelude::Value::*,
+    },
 };
 
-test_case!(trimming, async move {
+test_case!(trimming, {
     let glue = get_glue!();
 
     // rtrim test
@@ -42,7 +46,7 @@ test_case!(trimming, async move {
         .columns("id, name")
         .values(vec![vec![
             num(2),
-            ltrim(text("   chicken"), Some(text(" "))),
+            f::ltrim(text("   chicken"), Some(text(" "))),
         ]])
         .execute(glue)
         .await;

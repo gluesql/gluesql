@@ -2,24 +2,28 @@ use {
     crate::*,
     bigdecimal::BigDecimal,
     gluesql_core::{
+        ast::BinaryOperator,
         data::{Literal, NumericBinaryOperator},
         error::{EvaluateError, LiteralError, UpdateError, ValueError},
         prelude::Value,
     },
     std::borrow::Cow,
 };
-test_case!(error, async move {
-    run!(
+test_case!(error, {
+    let g = get_tester!();
+
+    g.run(
         "
         CREATE TABLE Arith (
             id INTEGER,
             num INTEGER,
             name TEXT,
         );
-    "
-    );
-    run!("DELETE FROM Arith");
-    run!(
+    ",
+    )
+    .await;
+    g.run("DELETE FROM Arith").await;
+    g.run(
         "
         INSERT INTO Arith (id, num, name) VALUES
             (1, 6, 'A'),
@@ -27,8 +31,9 @@ test_case!(error, async move {
             (3, 4, 'C'),
             (4, 2, 'D'),
             (5, 3, 'E');
-    "
-    );
+    ",
+    )
+    .await;
 
     let test_cases = [
         (
@@ -82,10 +87,11 @@ test_case!(error, async move {
         ),
         (
             "SELECT * FROM Arith WHERE TRUE + 1 = 1",
-            LiteralError::UnsupportedBinaryArithmetic(
-                format!("{:?}", Literal::Boolean(true)),
-                format!("{:?}", Literal::Number(Cow::Owned(BigDecimal::from(1)))),
-            )
+            LiteralError::UnsupportedBinaryOperation {
+                left: format!("{:?}", Literal::Boolean(true)),
+                op: BinaryOperator::Plus,
+                right: format!("{:?}", Literal::Number(Cow::Owned(BigDecimal::from(1)))),
+            }
             .into(),
         ),
         (
@@ -127,6 +133,6 @@ test_case!(error, async move {
     ];
 
     for (sql, error) in test_cases {
-        test!(sql, Err(error));
+        g.test(sql, Err(error)).await;
     }
 });

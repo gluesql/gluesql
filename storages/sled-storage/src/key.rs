@@ -9,10 +9,7 @@ pub fn data_prefix(table_name: &str) -> String {
 }
 
 pub fn data(table_name: &str, key: Vec<u8>) -> IVec {
-    let key = data_prefix(table_name)
-        .into_bytes()
-        .into_iter()
-        .chain(key.into_iter());
+    let key = data_prefix(table_name).into_bytes().into_iter().chain(key);
 
     IVec::from_iter(key)
 }

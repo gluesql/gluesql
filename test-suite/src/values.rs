@@ -10,8 +10,10 @@ use {
     std::borrow::Cow,
 };
 
-test_case!(values, async move {
-    run!("CREATE TABLE Items (id INTEGER NOT NULL, name TEXT, status TEXT DEFAULT 'ACTIVE' NOT NULL);");
+test_case!(values, {
+    let g = get_tester!();
+
+    g.run("CREATE TABLE Items (id INTEGER NOT NULL, name TEXT, status TEXT DEFAULT 'ACTIVE' NOT NULL);").await;
 
     let test_cases = [
         (
@@ -163,6 +165,6 @@ test_case!(values, async move {
         ),
     ];
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

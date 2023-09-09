@@ -3,24 +3,28 @@ use {
     gluesql_core::{error::ValueError, prelude::Value::*},
 };
 
-test_case!(nullable, async move {
-    run!(
+test_case!(nullable, {
+    let g = get_tester!();
+
+    g.run(
         "
         CREATE TABLE Test (
             id INTEGER NULL,
             num INTEGER NOT NULL,
             name TEXT
         )
-        "
-    );
-    run!(
+        ",
+    )
+    .await;
+    g.run(
         "
         INSERT INTO Test (id, num, name) VALUES
             (NULL, 2, 'Hello'),
             (   1, 9, 'World'),
             (   3, 4, 'Great');
-        "
-    );
+        ",
+    )
+    .await;
 
     let test_cases = [
         (
@@ -220,10 +224,10 @@ test_case!(nullable, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, Ok(expected));
+        g.test(sql, Ok(expected)).await;
     }
 
-    run!("UPDATE Test SET id = 2");
+    g.run("UPDATE Test SET id = 2").await;
 
     let test_cases = [
         ("SELECT id FROM Test", Ok(select!(id I64; 2; 2; 2))),
@@ -244,39 +248,47 @@ test_case!(nullable, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });
 
-test_case!(nullable_text, async move {
-    run!(
+test_case!(nullable_text, {
+    let g = get_tester!();
+
+    g.run(
         "
         CREATE TABLE Foo (
             id INTEGER,
             name TEXT NULL
         );
-    "
-    );
+    ",
+    )
+    .await;
 
-    run!("INSERT INTO Foo (id, name) VALUES (1, 'Hello'), (2, Null);");
+    g.run("INSERT INTO Foo (id, name) VALUES (1, 'Hello'), (2, Null);")
+        .await;
 });
 
-test_case!(nullable_implicit_insert, async move {
-    run!(
+test_case!(nullable_implicit_insert, {
+    let g = get_tester!();
+
+    g.run(
         "
         CREATE TABLE Foo (
             id INTEGER,
             name TEXT NULL
         );
-    "
-    );
+    ",
+    )
+    .await;
 
-    run!("INSERT INTO Foo (id) VALUES (1)");
-    test!(
+    g.run("INSERT INTO Foo (id) VALUES (1)").await;
+    g.test(
         "SELECT id, name FROM Foo",
         Ok(select_with_null!(
             id   | name;
             I64(1)  Null
-        ))
-    );
+        )),
+    )
+    .await;
 });

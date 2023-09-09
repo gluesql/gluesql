@@ -9,7 +9,9 @@ use {
     },
 };
 
-test_case!(position, async move {
+test_case!(position, {
+    let g = get_tester!();
+
     let test_cases = [
         ("CREATE TABLE Food (name Text null)", Ok(Payload::Create)),
         ("INSERT INTO Food VALUES ('pork')", Ok(Payload::Insert(1))),
@@ -36,6 +38,6 @@ test_case!(position, async move {
         ),
     ];
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

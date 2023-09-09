@@ -15,7 +15,8 @@ use {
         translate::function::translate_trim,
     },
     sqlparser::ast::{
-        DateTimeField as SqlDateTimeField, Expr as SqlExpr, OrderByExpr as SqlOrderByExpr,
+        DateTimeField as SqlDateTimeField, Expr as SqlExpr, Interval as SqlInterval,
+        OrderByExpr as SqlOrderByExpr,
     },
 };
 
@@ -160,12 +161,12 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             indexes: indexes.iter().map(translate_expr).collect::<Result<_>>()?,
         }),
         SqlExpr::Position { expr, r#in } => translate_position(expr, r#in),
-        SqlExpr::Interval {
+        SqlExpr::Interval(SqlInterval {
             value,
             leading_field,
             last_field,
             ..
-        } => Ok(Expr::Interval {
+        }) => Ok(Expr::Interval {
             expr: translate_expr(value).map(Box::new)?,
             leading_field: leading_field
                 .as_ref()
@@ -189,7 +190,7 @@ pub fn translate_order_by_expr(sql_order_by_expr: &SqlOrderByExpr) -> Result<Ord
         nulls_first,
     } = sql_order_by_expr;
 
-    if matches!(nulls_first, Some(_)) {
+    if nulls_first.is_some() {
         return Err(TranslateError::OrderByNullsFirstOrLastNotSupported.into());
     }
 
