@@ -24,6 +24,7 @@ mod selector;
 mod uuid;
 
 pub use {
+    convert::ConvertError,
     error::{NumericBinaryOperator, ValueError},
     json::HashMapJsonExt,
 };
@@ -247,36 +248,45 @@ impl Value {
 
             (_, Value::Null) => Ok(Value::Null),
 
-            (DataType::Boolean, value) => value.try_into().map(Value::Bool),
-            (DataType::Int8, value) => value.try_into().map(Value::I8),
-            (DataType::Int16, value) => value.try_into().map(Value::I16),
-            (DataType::Int32, value) => value.try_into().map(Value::I32),
-            (DataType::Int, value) => value.try_into().map(Value::I64),
-            (DataType::Int128, value) => value.try_into().map(Value::I128),
-            (DataType::Uint8, value) => value.try_into().map(Value::U8),
-            (DataType::Uint16, value) => value.try_into().map(Value::U16),
-            (DataType::Uint32, value) => value.try_into().map(Value::U32),
-            (DataType::Uint64, value) => value.try_into().map(Value::U64),
-            (DataType::Uint128, value) => value.try_into().map(Value::U128),
-            (DataType::Float32, value) => value.try_into().map(Value::F32),
-            (DataType::Float, value) => value.try_into().map(Value::F64),
-            (DataType::Decimal, value) => value.try_into().map(Value::Decimal),
+            (DataType::Boolean, value) => Ok(value.try_into().map(Value::Bool)?),
+            (DataType::Int8, value) => Ok(value.try_into().map(Value::I8)?),
+            (DataType::Int16, value) => Ok(value.try_into().map(Value::I16)?),
+            (DataType::Int32, value) => Ok(value.try_into().map(Value::I32)?),
+            (DataType::Int, value) => Ok(value.try_into().map(Value::I64)?),
+            (DataType::Int128, value) => Ok(value.try_into().map(Value::I128)?),
+            (DataType::Uint8, value) => Ok(value.try_into().map(Value::U8)?),
+            (DataType::Uint16, value) => Ok(value.try_into().map(Value::U16)?),
+            (DataType::Uint32, value) => Ok(value.try_into().map(Value::U32)?),
+            (DataType::Uint64, value) => Ok(value.try_into().map(Value::U64)?),
+            (DataType::Uint128, value) => Ok(value.try_into().map(Value::U128)?),
+            (DataType::Float32, value) => Ok(value.try_into().map(Value::F32)?),
+            (DataType::Float, value) => Ok(value.try_into().map(Value::F64)?),
+            (DataType::Decimal, value) => Ok(value.try_into().map(Value::Decimal)?),
+
             (DataType::Text, value) => Ok(Value::Str(value.into())),
-            (DataType::Date, value) => value.try_into().map(Value::Date),
-            (DataType::Time, value) => value.try_into().map(Value::Time),
+
+            (DataType::Date, value) => Ok(value.try_into().map(Value::Date)?),
+            (DataType::Time, value) => Ok(value.try_into().map(Value::Time)?),
+            (DataType::Timestamp, value) => Ok(value.try_into().map(Value::Timestamp)?),
+
             (DataType::Interval, Value::Str(value)) => Interval::parse(value).map(Value::Interval),
-            (DataType::Timestamp, value) => value.try_into().map(Value::Timestamp),
             (DataType::Uuid, Value::Str(value)) => uuid::parse_uuid(value).map(Value::Uuid),
-            (DataType::Uuid, value) => value.try_into().map(Value::Uuid),
-            (DataType::Inet, value) => value.try_into().map(Value::Inet),
-            (DataType::Point, value) => value.try_into().map(Value::Point),
+
+            (DataType::Uuid, value) => Ok(value.try_into().map(Value::Uuid)?),
+            (DataType::Inet, value) => Ok(value.try_into().map(Value::Inet)?),
+            (DataType::Point, value) => Ok(value.try_into().map(Value::Point)?),
+
             (DataType::Bytea, Value::Str(value)) => hex::decode(value)
                 .map_err(|_| ValueError::CastFromHexToByteaFailed(value.clone()).into())
                 .map(Value::Bytea),
             (DataType::List, Value::Str(value)) => Self::parse_json_list(value),
             (DataType::Map, Value::Str(value)) => Self::parse_json_map(value),
 
-            _ => Err(ValueError::UnimplementedCast.into()),
+            _ => Err(ValueError::UnimplementedCast {
+                value: self.clone(),
+                data_type: data_type.clone(),
+            }
+            .into()),
         }
     }
 
@@ -1908,6 +1918,8 @@ mod tests {
 
     #[test]
     fn bitwise_shift_left() {
+        use {super::convert::ConvertError, crate::ast::DataType};
+
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
                 assert!($a.$op(&$b).unwrap().evaluate_eq(&$c));
@@ -2037,7 +2049,11 @@ mod tests {
         // cast error test
         assert_eq!(
             I64(1).bitwise_shift_left(&I64(-2)),
-            Err(ValueError::ImpossibleCast.into())
+            Err(ConvertError {
+                value: I64(-2),
+                data_type: DataType::Uint32,
+            }
+            .into())
         );
 
         // non numeric test
@@ -2463,7 +2479,11 @@ mod tests {
         // Casting error
         assert_eq!(
             Value::Uuid(123).cast(&List),
-            Err(ValueError::UnimplementedCast.into())
+            Err(ValueError::UnimplementedCast {
+                value: Value::Uuid(123),
+                data_type: List,
+            }
+            .into())
         );
     }
 
