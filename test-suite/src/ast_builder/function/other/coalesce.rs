@@ -2,7 +2,7 @@ use {
     crate::*,
     chrono::{NaiveDate, NaiveDateTime},
     gluesql_core::{
-        ast_builder::{self, *},
+        ast_builder::{function as f, *},
         executor::Payload,
         prelude::Value::*,
     },
@@ -41,7 +41,7 @@ test_case!(coalesce, {
     let actual = table("Foo")
         .select()
         .project("id")
-        .project(ast_builder::coalesce(vec![
+        .project(f::coalesce(vec![
             null(),
             col("first"),
             col("second"),
@@ -60,13 +60,9 @@ test_case!(coalesce, {
     assert_eq!(actual, expected, "coalesce with table columns");
 
     let actual = values(vec![
-        vec![ast_builder::coalesce(vec![text("뀨")])],
-        vec![ast_builder::coalesce(vec![null(), num(1)])],
-        vec![ast_builder::coalesce(vec![
-            null(),
-            null(),
-            date("2000-01-01"),
-        ])],
+        vec![f::coalesce(vec![text("뀨")])],
+        vec![f::coalesce(vec![null(), num(1)])],
+        vec![f::coalesce(vec![null(), null(), date("2000-01-01")])],
     ])
     .execute(glue)
     .await;

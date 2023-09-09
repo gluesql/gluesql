@@ -6,7 +6,8 @@ pub mod arithmetic;
 pub mod ast_builder;
 pub mod basic;
 pub mod bitwise_and;
-pub mod bitwise_shift;
+pub mod bitwise_shift_left;
+pub mod bitwise_shift_right;
 pub mod case;
 pub mod column_alias;
 pub mod concat;
@@ -87,7 +88,11 @@ macro_rules! generate_store_tests {
         glue!(arithmetic_on_where, arithmetic::on_where::on_where);
         glue!(concat, concat::concat);
         glue!(project, project::project);
-        glue!(bitwise_shift, bitwise_shift::bitwise_shift_left);
+        glue!(bitwise_shift_left, bitwise_shift_left::bitwise_shift_left);
+        glue!(
+            bitwise_shift_right,
+            bitwise_shift_right::bitwise_shift_right
+        );
         glue!(create_table, alter::create_table);
         glue!(drop_table, alter::drop_table);
         glue!(default, default::default);
@@ -150,6 +155,7 @@ macro_rules! generate_store_tests {
             function_geometry_calc_distance,
             function::geometry::calc_distance
         );
+        glue!(function_add_month, function::add_month::add_month);
         glue!(function_slice, function::slice::slice);
         glue!(function_entries, function::entries::entries);
         glue!(join, join::join);
@@ -343,6 +349,7 @@ macro_rules! generate_transaction_tests {
             transaction::create_drop_table
         );
         glue!(transaction_dictionary, transaction::dictionary);
+        glue!(transaction_ast_builder, transaction::ast_builder);
     };
 }
 

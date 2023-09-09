@@ -15,7 +15,7 @@ pub fn literal(ast_literal: &AstLiteral) -> Result<Evaluated<'_>> {
 pub fn typed_string<'a>(data_type: &'a DataType, value: Cow<'a, str>) -> Result<Evaluated<'a>> {
     let literal = Literal::Text(value);
 
-    Value::try_from_literal(data_type, &literal).map(Evaluated::from)
+    Value::try_from_literal(data_type, &literal).map(Evaluated::Value)
 }
 
 pub fn binary_op<'a>(
@@ -25,7 +25,7 @@ pub fn binary_op<'a>(
 ) -> Result<Evaluated<'a>> {
     macro_rules! cmp {
         ($expr: expr) => {
-            Ok(Evaluated::from(Value::Bool($expr)))
+            Ok(Evaluated::Value(Value::Bool($expr)))
         };
     }
 
@@ -35,7 +35,7 @@ pub fn binary_op<'a>(
             let r: bool = r.try_into()?;
             let v = l $op r;
 
-            Ok(Evaluated::from(Value::Bool(v)))
+            Ok(Evaluated::Value(Value::Bool(v)))
         }};
     }
 
@@ -57,6 +57,7 @@ pub fn binary_op<'a>(
         BinaryOperator::Xor => cond!(l ^ r),
         BinaryOperator::BitwiseAnd => l.bitwise_and(&r),
         BinaryOperator::BitwiseShiftLeft => l.bitwise_shift_left(&r),
+        BinaryOperator::BitwiseShiftRight => l.bitwise_shift_right(&r),
     }
 }
 
@@ -64,7 +65,9 @@ pub fn unary_op<'a>(op: &UnaryOperator, v: Evaluated<'a>) -> Result<Evaluated<'a
     match op {
         UnaryOperator::Plus => v.unary_plus(),
         UnaryOperator::Minus => v.unary_minus(),
-        UnaryOperator::Not => v.try_into().map(|v: bool| Evaluated::from(Value::Bool(!v))),
+        UnaryOperator::Not => v
+            .try_into()
+            .map(|v: bool| Evaluated::Value(Value::Bool(!v))),
         UnaryOperator::Factorial => v.unary_factorial(),
         UnaryOperator::BitwiseNot => v.unary_bitwise_not(),
     }
@@ -80,7 +83,7 @@ pub fn between<'a>(
         && target.evaluate_cmp(&high) != Some(Ordering::Greater);
     let v = negated ^ v;
 
-    Ok(Evaluated::from(Value::Bool(v)))
+    Ok(Evaluated::Value(Value::Bool(v)))
 }
 
 pub fn array_index<'a>(obj: Evaluated<'a>, indexes: Vec<Evaluated<'a>>) -> Result<Evaluated<'a>> {
@@ -92,5 +95,5 @@ pub fn array_index<'a>(obj: Evaluated<'a>, indexes: Vec<Evaluated<'a>>) -> Resul
         .into_iter()
         .map(Value::try_from)
         .collect::<Result<Vec<_>>>()?;
-    value.selector_by_index(&indexes).map(Evaluated::from)
+    value.selector_by_index(&indexes).map(Evaluated::Value)
 }

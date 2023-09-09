@@ -9,6 +9,10 @@ use {
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 pub enum Function {
     Abs(Expr),
+    AddMonth {
+        expr: Expr,
+        size: Expr,
+    },
     Lower(Expr),
     Initcap(Expr),
     Upper(Expr),
@@ -210,6 +214,9 @@ impl ToSql for Function {
     fn to_sql(&self) -> String {
         match self {
             Function::Abs(e) => format!("ABS({})", e.to_sql()),
+            Function::AddMonth { expr, size } => {
+                format!("ADD_MONTH({},{})", expr.to_sql(), size.to_sql())
+            }
             Function::Initcap(e) => format!("INITCAP({})", e.to_sql()),
             Function::Lower(e) => format!("LOWER({})", e.to_sql()),
             Function::Upper(e) => format!("UPPER({})", e.to_sql()),
@@ -1053,6 +1060,14 @@ mod tests {
         assert_eq!(
             "GENERATE_UUID()",
             &Expr::Function(Box::new(Function::GenerateUuid())).to_sql()
+        );
+        assert_eq!(
+            "ADD_MONTH('2023-06-15',1)",
+            &Expr::Function(Box::new(Function::AddMonth {
+                expr: Expr::Literal(AstLiteral::QuotedString("2023-06-15".to_owned())),
+                size: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap()))
+            }))
+            .to_sql()
         );
 
         assert_eq!(

@@ -71,7 +71,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 Some(value) => Ok(value.clone()),
                 None => Err(EvaluateError::ValueNotFound(ident.to_owned()).into()),
             }
-            .map(Evaluated::from)
+            .map(Evaluated::Value)
         }
         Expr::Nested(expr) => eval(expr).await,
         Expr::CompoundIdentifier { alias, ident } => {
@@ -84,7 +84,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 Some(value) => Ok(value.clone()),
                 None => Err(EvaluateError::ValueNotFound(column.to_string()).into()),
             }
-            .map(Evaluated::from)
+            .map(Evaluated::Value)
         }
         Expr::Subquery(query) => {
             let storage =
@@ -123,7 +123,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 .flatten()
                 .unwrap_or(Value::Null);
 
-            Ok(Evaluated::from(value))
+            Ok(Evaluated::Value(value))
         }
         Expr::BinaryOp { op, left, right } => {
             let left = eval(left).await?;
@@ -140,7 +140,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
             .as_ref()
             .and_then(|aggregated| aggregated.get(aggr.as_ref()))
         {
-            Some(value) => Ok(Evaluated::from(value.clone())),
+            Some(value) => Ok(Evaluated::Value(value.clone())),
             None => Err(EvaluateError::UnreachableEmptyAggregateValue(*aggr.clone()).into()),
         },
         Expr::Function(func) => {
@@ -164,7 +164,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 .await
                 .map(|v| v.is_some() ^ negated)
                 .map(Value::Bool)
-                .map(Evaluated::from)
+                .map(Evaluated::Value)
         }
         Expr::InSubquery {
             expr: target_expr,
@@ -188,14 +188,14 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
                     .next()
                     .unwrap_or(Value::Null);
 
-                    Ok(Evaluated::from(value))
+                    Ok(Evaluated::Value(value))
                 })
                 .try_filter(|evaluated| ready(evaluated.evaluate_eq(&target)))
                 .try_next()
                 .await
                 .map(|v| v.is_some() ^ negated)
                 .map(Value::Bool)
-                .map(Evaluated::from)
+                .map(Evaluated::Value)
         }
         Expr::Between {
             expr,
@@ -219,7 +219,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let evaluated = target.like(pattern, true)?;
 
             Ok(match negated {
-                true => Evaluated::from(Value::Bool(
+                true => Evaluated::Value(Value::Bool(
                     evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false))),
                 )),
                 false => evaluated,
@@ -235,7 +235,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let evaluated = target.like(pattern, false)?;
 
             Ok(match negated {
-                true => Evaluated::from(Value::Bool(
+                true => Evaluated::Value(Value::Bool(
                     evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false))),
                 )),
                 false => evaluated,
@@ -251,17 +251,17 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 .await
                 .map(|v| v.is_some() ^ negated)
                 .map(Value::Bool)
-                .map(Evaluated::from)
+                .map(Evaluated::Value)
         }
         Expr::IsNull(expr) => {
             let v = eval(expr).await?.is_null();
 
-            Ok(Evaluated::from(Value::Bool(v)))
+            Ok(Evaluated::Value(Value::Bool(v)))
         }
         Expr::IsNotNull(expr) => {
             let v = eval(expr).await?.is_null();
 
-            Ok(Evaluated::from(Value::Bool(!v)))
+            Ok(Evaluated::Value(Value::Bool(!v)))
         }
         Expr::Case {
             operand,
@@ -270,7 +270,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
         } => {
             let operand = match operand {
                 Some(op) => eval(op).await?,
-                None => Evaluated::from(Value::Bool(true)),
+                None => Evaluated::Value(Value::Bool(true)),
             };
 
             for (when, then) in when_then.iter() {
@@ -283,7 +283,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
 
             match else_result {
                 Some(er) => eval(er).await,
-                None => Ok(Evaluated::from(Value::Null)),
+                None => Ok(Evaluated::Value(Value::Null)),
             }
         }
         Expr::ArrayIndex { obj, indexes } => {
@@ -303,7 +303,7 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
 
             Interval::try_from_str(&value, *leading_field, *last_field)
                 .map(Value::Interval)
-                .map(Evaluated::from)
+                .map(Evaluated::Value)
         }
     }
 }
@@ -490,7 +490,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         Function::Floor(expr) => f::floor(name, eval(expr).await?),
         Function::Radians(expr) => f::radians(name, eval(expr).await?),
         Function::Degrees(expr) => f::degrees(name, eval(expr).await?),
-        Function::Pi() => Ok(Evaluated::from(Value::F64(std::f64::consts::PI))),
+        Function::Pi() => Ok(Evaluated::Value(Value::F64(std::f64::consts::PI))),
         Function::Exp(expr) => f::exp(name, eval(expr).await?),
         Function::Log { antilog, base } => {
             let antilog = eval(antilog).await?;
@@ -565,7 +565,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let exprs = stream::iter(exprs).then(eval).try_collect().await?;
             f::greatest(name, exprs)
         }
-        Function::Now() => Ok(Evaluated::from(Value::Timestamp(Utc::now().naive_utc()))),
+        Function::Now() => Ok(Evaluated::Value(Value::Timestamp(Utc::now().naive_utc()))),
         Function::Format { expr, format } => {
             let expr = eval(expr).await?;
             let format = eval(format).await?;
@@ -641,7 +641,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let expr = eval(expr).await?;
             let order = match order {
                 Some(o) => eval(o).await?,
-                None => Evaluated::from(Value::Str("ASC".to_owned())),
+                None => Evaluated::Value(Value::Str("ASC".to_owned())),
             };
             f::sort(expr, order)
         }
@@ -663,6 +663,11 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         Function::IsEmpty(expr) => {
             let expr = eval(expr).await?;
             f::is_empty(expr)
+        }
+        Function::AddMonth { expr, size } => {
+            let expr = eval(expr).await?;
+            let size = eval(size).await?;
+            f::add_month(name, expr, size)
         }
         Function::Length(expr) => f::length(name, eval(expr).await?),
         Function::Entries(expr) => f::entries(name, eval(expr).await?),
