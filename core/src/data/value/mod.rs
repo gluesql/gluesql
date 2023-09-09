@@ -639,6 +639,44 @@ impl Value {
         })
     }
 
+    pub fn bitwise_shift_right(&self, rhs: &Value) -> Result<Value> {
+        use Value::*;
+
+        if *rhs == Null {
+            return Ok(Null);
+        }
+        let rhs = u32::try_from(rhs)?;
+        match self {
+            I8(lhs) => lhs.checked_shr(rhs).map(I8),
+            I16(lhs) => lhs.checked_shr(rhs).map(I16),
+            I32(lhs) => lhs.checked_shr(rhs).map(I32),
+            I64(lhs) => lhs.checked_shr(rhs).map(I64),
+            I128(lhs) => lhs.checked_shr(rhs).map(I128),
+            U8(lhs) => lhs.checked_shr(rhs).map(U8),
+            U16(lhs) => lhs.checked_shr(rhs).map(U16),
+            U32(lhs) => lhs.checked_shr(rhs).map(U32),
+            U64(lhs) => lhs.checked_shr(rhs).map(U64),
+            U128(lhs) => lhs.checked_shr(rhs).map(U128),
+            Null => Some(Null),
+            _ => {
+                return Err(ValueError::NonNumericMathOperation {
+                    lhs: self.clone(),
+                    rhs: U32(rhs),
+                    operator: NumericBinaryOperator::BitwiseShiftRight,
+                }
+                .into());
+            }
+        }
+        .ok_or_else(|| {
+            ValueError::BinaryOperationOverflow {
+                lhs: self.clone(),
+                rhs: U32(rhs),
+                operator: NumericBinaryOperator::BitwiseShiftRight,
+            }
+            .into()
+        })
+    }
+
     pub fn is_null(&self) -> bool {
         matches!(self, Value::Null)
     }
@@ -2022,6 +2060,162 @@ mod tests {
 
         null_test!(bitwise_shift_left   I64(1), Null);
         null_test!(bitwise_shift_left   Null, I64(1));
+    }
+
+    #[test]
+    fn bitwise_shift_right() {
+        macro_rules! test {
+            ($op: ident $a: expr, $b: expr => $c: expr) => {
+                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c));
+            };
+        }
+
+        macro_rules! mon {
+            ($n: expr) => {
+                Interval(Interval::Month($n))
+            };
+        }
+
+        // operation result test
+        test!(bitwise_shift_right I8(1),     I64(2) => I8(0));
+        test!(bitwise_shift_right I16(1),    I64(2) => I16(0));
+        test!(bitwise_shift_right I32(1),    I64(2) => I32(0));
+        test!(bitwise_shift_right I64(1),    I64(2) => I64(0));
+        test!(bitwise_shift_right I128(1),   I64(2) => I128(0));
+        test!(bitwise_shift_right U8(1),     I64(2) => U8(0));
+        test!(bitwise_shift_right U16(1),    I64(2) => U16(0));
+        test!(bitwise_shift_right U32(1),    I64(2) => U32(0));
+        test!(bitwise_shift_right U64(1),    I64(2) => U64(0));
+        test!(bitwise_shift_right U128(1),   I64(2) => U128(0));
+        test!(bitwise_shift_right I8(1),     U32(2) => I8(0));
+        test!(bitwise_shift_right I16(1),    U32(2) => I16(0));
+        test!(bitwise_shift_right I32(1),    U32(2) => I32(0));
+        test!(bitwise_shift_right I64(1),    U32(2) => I64(0));
+        test!(bitwise_shift_right I128(1),   U32(2) => I128(0));
+        test!(bitwise_shift_right U8(1),     U32(2) => U8(0));
+        test!(bitwise_shift_right U16(1),    U32(2) => U16(0));
+        test!(bitwise_shift_right U32(1),    U32(2) => U32(0));
+        test!(bitwise_shift_right U64(1),    U32(2) => U64(0));
+        test!(bitwise_shift_right U128(1),   U32(2) => U128(0));
+
+        //overflow test
+        assert_eq!(
+            I8(1).bitwise_shift_right(&I64(100)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I8(1),
+                rhs: U32(100),
+                operator: NumericBinaryOperator::BitwiseShiftRight
+            }
+            .into())
+        );
+        assert_eq!(
+            I16(1).bitwise_shift_right(&I64(100)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I16(1),
+                rhs: U32(100),
+                operator: NumericBinaryOperator::BitwiseShiftRight
+            }
+            .into())
+        );
+        assert_eq!(
+            I32(1).bitwise_shift_right(&I64(100)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I32(1),
+                rhs: U32(100),
+                operator: NumericBinaryOperator::BitwiseShiftRight
+            }
+            .into())
+        );
+        assert_eq!(
+            I64(1).bitwise_shift_right(&I64(100)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I64(1),
+                rhs: U32(100),
+                operator: NumericBinaryOperator::BitwiseShiftRight
+            }
+            .into())
+        );
+        assert_eq!(
+            I128(1).bitwise_shift_right(&I64(150)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I128(1),
+                rhs: U32(150),
+                operator: NumericBinaryOperator::BitwiseShiftRight
+            }
+            .into())
+        );
+        assert_eq!(
+            U8(1).bitwise_shift_right(&I64(100)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: U8(1),
+                rhs: U32(100),
+                operator: NumericBinaryOperator::BitwiseShiftRight
+            }
+            .into())
+        );
+        assert_eq!(
+            U16(1).bitwise_shift_right(&I64(100)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: U16(1),
+                rhs: U32(100),
+                operator: NumericBinaryOperator::BitwiseShiftRight
+            }
+            .into())
+        );
+        assert_eq!(
+            U32(1).bitwise_shift_right(&I64(100)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: U32(1),
+                rhs: U32(100),
+                operator: NumericBinaryOperator::BitwiseShiftRight
+            }
+            .into())
+        );
+        assert_eq!(
+            U64(1).bitwise_shift_right(&I64(100)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: U64(1),
+                rhs: U32(100),
+                operator: NumericBinaryOperator::BitwiseShiftRight
+            }
+            .into())
+        );
+        assert_eq!(
+            U128(1).bitwise_shift_right(&I64(150)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: U128(1),
+                rhs: U32(150),
+                operator: NumericBinaryOperator::BitwiseShiftRight
+            }
+            .into())
+        );
+
+        // cast error test
+        assert_eq!(
+            I64(1).bitwise_shift_right(&I64(-2)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+
+        // non numeric test
+        assert_eq!(
+            mon!(3).bitwise_shift_right(&I64(2)),
+            Err(ValueError::NonNumericMathOperation {
+                lhs: mon!(3),
+                rhs: U32(2),
+                operator: NumericBinaryOperator::BitwiseShiftRight,
+            }
+            .into())
+        );
+
+        // null test
+        macro_rules! null_test {
+            ($op: ident $a: expr, $b: expr) => {
+                assert!($a.$op(&$b).unwrap().is_null());
+            };
+        }
+
+        null_test!(bitwise_shift_right   I64(1), Null);
+        null_test!(bitwise_shift_right   Null, I64(1));
     }
 
     #[test]
