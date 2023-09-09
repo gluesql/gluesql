@@ -43,7 +43,6 @@ impl Store for ParquetStorage {
             .collect::<Result<Vec<Schema>>>()?;
 
         schemas.sort_by(|a, b| a.table_name.cmp(&b.table_name));
-        println!("fetch all schemas! {:?}", schemas);
         Ok(schemas)
     }
 
