@@ -2080,6 +2080,8 @@ mod tests {
 
     #[test]
     fn bitwise_shift_right() {
+        use {super::convert::ConvertError, crate::ast::DataType};
+
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
                 assert!($a.$op(&$b).unwrap().evaluate_eq(&$c));
@@ -2209,7 +2211,11 @@ mod tests {
         // cast error test
         assert_eq!(
             I64(1).bitwise_shift_right(&I64(-2)),
-            Err(ValueError::ImpossibleCast.into())
+            Err(ConvertError {
+                value: I64(-2),
+                data_type: DataType::Uint32,
+            }
+            .into())
         );
 
         // non numeric test
