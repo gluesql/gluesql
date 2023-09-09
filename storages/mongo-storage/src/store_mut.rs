@@ -199,8 +199,7 @@ impl StoreMut for MongoStorage {
                     .map_storage_err(MongoStorageError::Unreachable)?
                     .iter()
                     .zip(values.into_iter())
-                    .fold(Ok(Document::new()), |acc, (column_def, value)| {
-                        let mut acc = acc?;
+                    .try_fold(Document::new(), |mut acc, (column_def, value)| {
                         acc.extend(doc! {column_def.name.clone(): value.into_bson()?});
 
                         Ok(acc)
@@ -208,8 +207,7 @@ impl StoreMut for MongoStorage {
                 DataRow::Map(hash_map) => {
                     hash_map
                         .into_iter()
-                        .fold(Ok(Document::new()), |acc, (key, value)| {
-                            let mut acc = acc?;
+                        .try_fold(Document::new(), |mut acc, (key, value)| {
                             acc.extend(doc! {key: value.into_bson()?});
 
                             Ok(acc)
@@ -244,19 +242,17 @@ impl StoreMut for MongoStorage {
                     .map_storage_err(MongoStorageError::Unreachable)?
                     .iter()
                     .zip(values.into_iter())
-                    .fold(
-                        Ok::<_, Error>(doc! {"_id": key.clone().into_bson(primary_key.is_some())?}),
-                        |acc, (column_def, value)| {
-                            let mut acc = acc.map_storage_err()?;
+                    .try_fold(
+                        doc! {"_id": key.clone().into_bson(primary_key.is_some())?},
+                        |mut acc, (column_def, value)| {
                             acc.extend(doc! {column_def.name.clone(): value.into_bson()?});
 
-                            Ok(acc)
+                            Ok::<_, Error>(acc)
                         },
                     ),
-                DataRow::Map(hash_map) => hash_map.into_iter().fold(
-                    Ok(doc! {"_id": into_object_id(key.clone())?}),
-                    |acc, (key, value)| {
-                        let mut acc = acc?;
+                DataRow::Map(hash_map) => hash_map.into_iter().try_fold(
+                    doc! {"_id": into_object_id(key.clone())?},
+                    |mut acc, (key, value)| {
                         acc.extend(doc! {key: value.into_bson()?});
 
                         Ok(acc)

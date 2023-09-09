@@ -240,15 +240,14 @@ impl IntoBson for Value {
             Value::I16(val) => Ok(Bson::Int32(val.into())),
             Value::I128(val) => Ok(Bson::Decimal128(Decimal128::from_bytes(val.to_be_bytes()))),
             Value::Map(hash_map) => {
-                let doc = hash_map.into_iter().fold(
-                    Ok::<_, Error>(Document::new()),
-                    |acc, (key, value)| {
-                        let mut acc = acc?;
-                        acc.extend(doc! {key: value.into_bson()?});
+                let doc =
+                    hash_map
+                        .into_iter()
+                        .try_fold(Document::new(), |mut acc, (key, value)| {
+                            acc.extend(doc! {key: value.into_bson()?});
 
-                        Ok(acc)
-                    },
-                )?;
+                            Ok::<_, Error>(acc)
+                        })?;
 
                 Ok(Bson::Document(doc))
             }
