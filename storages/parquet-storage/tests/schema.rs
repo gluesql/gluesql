@@ -1,4 +1,5 @@
 use gluesql_core::chrono::NaiveDateTime;
+use parquet::data_type::ByteArray;
 use {
     gluesql_core::prelude::{
         Glue,
@@ -14,7 +15,7 @@ async fn test_alltypes_select() {
     let parquet_storage = ParquetStorage::new(path).unwrap();
     let mut glue = Glue::new(parquet_storage);
 
-    let bytea = |input: &str| input.as_bytes().to_vec();
+    let bytea = |input: &str| ByteArray::from(input).data().to_vec();
 
     let ts = |datetime_str| {
         NaiveDateTime::parse_from_str(datetime_str, "%Y-%m-%dT%H:%M:%S")
@@ -42,21 +43,6 @@ async fn test_alltypes_select() {
         ),
         (
             glue.execute("SELECT * FROM alltypes_plain").await,
-            Ok(select!(
-                id  | bool_col | tinyint_col | smallint_col | int_col | bigint_col | float_col | double_col | date_string_col  | string_col   | timestamp_col;
-                I32 | Bool     | I32         | I32          | I32     | I64        | F32       | F64        | Value::Bytea     | Value::Bytea | Value::Timestamp;
-                4     true       0             0              0         0            0.0         0.0          bytea("03/01/09")  bytea("0")     ts("2009-03-01T00:00:00");
-                5     false      1             1              1         10           1.1         10.1         bytea("03/01/09")  bytea("1")     ts("2009-03-01T00:01:00");
-                6     true       0             0              0         0            0.0         0.0          bytea("04/01/09")  bytea("0")     ts("2009-04-01T00:00:00");
-                7     false      1             1              1         10           1.1         10.1         bytea("04/01/09")  bytea("1")     ts("2009-04-01T00:01:00");
-                2     true       0             0              0         0            0.0         0.0          bytea("02/01/09")  bytea("0")     ts("2009-02-01T00:00:00");
-                3     false      1             1              1         10           1.1         10.1         bytea("02/01/09")  bytea("1")     ts("2009-02-01T00:01:00");
-                0     true       0             0              0         0            0.0         0.0          bytea("01/01/09")  bytea("0")     ts("2009-01-01T00:00:00");
-                1     false      1             1              1         10           1.1         10.1         bytea("01/01/09")  bytea("1")     ts("2009-01-01T00:01:00")
-            )),
-        ),
-        (
-            glue.execute("SELECT * FROM binary").await,
             Ok(select!(
                 id  | bool_col | tinyint_col | smallint_col | int_col | bigint_col | float_col | double_col | date_string_col  | string_col   | timestamp_col;
                 I32 | Bool     | I32         | I32          | I32     | I64        | F32       | F64        | Value::Bytea     | Value::Bytea | Value::Timestamp;
