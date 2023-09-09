@@ -31,8 +31,10 @@ strum_macros = "0.24"
 strum = "0.24"
 rust_decimal = { version = "1", features = ["serde-str"] }
 
-
 [dev-dependencies]
 test-suite.workspace = true
 uuid = "1"
 composite-storage.workspace = true
+
+[features]
+test-mongo = []

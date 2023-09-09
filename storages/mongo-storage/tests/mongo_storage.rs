@@ -25,4 +25,5 @@ impl Tester<MongoStorage> for MongoTester {
     }
 }
 
+#[cfg(feature = "test-mongo")]
 generate_store_tests!(tokio::test, MongoTester);
