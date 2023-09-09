@@ -185,32 +185,31 @@ async fn fetch_vec_rows<T: GStore>(
             match constraint {
                 TableConstraint::ForeignKey(ForeignKey {
                     name,
-                    columns,
+                    column,
                     foreign_table,
-                    referred_columns,
+                    referred_column,
                     on_delete,
                     on_update,
                 }) => {
-                    for (child_column, parent_column) in columns.iter().zip(referred_columns) {
-                        if let Some((column_index, _)) =
-                            columns.iter().enumerate().find(|(_, c)| c == &child_column)
-                        {
-                            for row in rows.iter() {
-                                let child = row.get(column_index).unwrap();
-                                let no_parent = storage
-                                    .fetch_data(&foreign_table, &Key::try_from(child)?)
-                                    .await?
-                                    .is_none();
+                    if let Some((column_index, _)) =
+                        columns.iter().enumerate().find(|(_, c)| c == &&column)
+                    {
+                        for row in rows.iter() {
+                            let child = row.get(column_index).unwrap();
+                            let no_parent = storage
+                                .fetch_data(&foreign_table, &Key::try_from(child)?)
+                                .await?
+                                .is_none();
 
-                                if no_parent {
-                                    return Err(ValidateError::ForeignKeyViolation {
-                                        child_table: table_name.to_owned(),
-                                        child_column: child_column.to_owned(),
-                                        parent_table: foreign_table.to_owned(),
-                                        parent_column: parent_column.to_owned(),
-                                    }
-                                    .into());
+                            if no_parent {
+                                return Err(ValidateError::ForeignKeyViolation {
+                                    name: name.to_owned(),
+                                    table: table_name.to_owned(),
+                                    column: column.to_owned(),
+                                    foreign_table: foreign_table.to_owned(),
+                                    referred_column: referred_column.to_owned(),
                                 }
+                                .into());
                             }
                         }
                     }

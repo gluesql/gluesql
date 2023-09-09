@@ -1,4 +1,4 @@
-use crate::ast::TableConstraint;
+use crate::ast::{ForeignKey, TableConstraint};
 
 use {
     super::{validate, validate_column_names, AlterError},
@@ -100,6 +100,21 @@ pub async fn create_table<T: GStore + GStoreMut>(
 
         for column_def in column_defs {
             validate(column_def).await?;
+        }
+    }
+
+    if let Some(constraints) = constraints.as_deref() {
+        for constraint in constraints {
+            match constraint {
+                TableConstraint::ForeignKey(ForeignKey {
+                    name,
+                    column: columns,
+                    foreign_table,
+                    referred_column: referred_columns,
+                    on_delete,
+                    on_update,
+                }) => todo!(),
+            }
         }
     }
 

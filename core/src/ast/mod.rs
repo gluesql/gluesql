@@ -30,9 +30,9 @@ pub trait ToSqlUnquoted {
 pub struct ForeignKey {
     // TODO: how to remove pub?
     pub name: Option<String>,
-    pub columns: Vec<String>,
+    pub column: String, // TODO: should be Vec after impl composit index
     pub foreign_table: String,
-    pub referred_columns: Vec<String>,
+    pub referred_column: String, // TODO: should be Vec after impl composit index
     pub on_delete: Option<ReferentialAction>,
     pub on_update: Option<ReferentialAction>,
 }

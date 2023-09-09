@@ -87,8 +87,8 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
 
             let constraints = constraints
                 .iter()
-                .filter_map(translate_table_constraint)
-                .collect::<Vec<_>>();
+                .filter_map(|x| translate_table_constraint(x).transpose())
+                .collect::<Result<Vec<_>>>()?;
 
             let constraints = (!constraints.is_empty()).then_some(constraints);
 
@@ -301,8 +301,10 @@ pub fn translate_referential_action(action: SqlReferentialAction) -> Referential
     }
 }
 
-fn translate_table_constraint(table_constraint: &SqlTableConstraint) -> Option<TableConstraint> {
-    match table_constraint {
+fn translate_table_constraint(
+    table_constraint: &SqlTableConstraint,
+) -> Result<Option<TableConstraint>> {
+    Ok(match table_constraint {
         SqlTableConstraint::ForeignKey {
             name,
             columns,
@@ -312,12 +314,22 @@ fn translate_table_constraint(table_constraint: &SqlTableConstraint) -> Option<T
             on_update,
         } => Some(TableConstraint::ForeignKey(ForeignKey {
             name: name.to_owned().map(|v| v.value),
-            columns: translate_idents(columns),
+            column: columns
+                .first()
+                .ok_or(TranslateError::InvalidForeignKeyConstraint(
+                    name.map(|i| i.value).unwrap_or("".to_owned()),
+                ))?
+                .value,
             foreign_table: translate_object_name(foreign_table).unwrap(),
-            referred_columns: translate_idents(referred_columns),
+            referred_column: referred_columns
+                .first()
+                .ok_or(TranslateError::InvalidForeignKeyConstraint(
+                    name.map(|i| i.value).unwrap_or("".to_owned()),
+                ))?
+                .value,
             on_delete: on_delete.map(translate_referential_action),
             on_update: on_update.map(translate_referential_action),
         })),
         _ => None,
-    }
+    })
 }

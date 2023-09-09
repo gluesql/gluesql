@@ -26,12 +26,13 @@ pub enum ValidateError {
     #[error("duplicate entry '{0:?}' for primary_key field")]
     DuplicateEntryOnPrimaryKeyField(Key),
 
-    #[error("foreign key violation! child table: '{child_table}', child column: '{child_column}', parent table: '{parent_table}', parent column: '{parent_column}'")]
+    #[error("foreign key `{name}` violated - chlid: {table}.{column}, parent: {foreign_table}.{referred_column}")]
     ForeignKeyViolation {
-        child_table: String,
-        child_column: String,
-        parent_table: String,
-        parent_column: String,
+        name: String,
+        table: String,
+        column: String,
+        foreign_table: String,
+        referred_column: String,
     },
 }
 

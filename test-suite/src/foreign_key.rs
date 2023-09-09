@@ -1,3 +1,5 @@
+use gluesql_core::executor::ExecuteError;
+
 use {
     crate::*,
     gluesql_core::{
@@ -9,6 +11,30 @@ use {
 
 test_case!(foreign_key, {
     let g = get_tester!();
+
+    g.run(
+        "
+        CREATE TABLE ParentWithoutPK (
+            id INTEGER,
+            name TEXT,
+        );
+    ",
+    )
+    .await;
+
+    g.named_test(
+        "Create table with foreign key should be failed if parent table does not have primary key",
+        "
+        CREATE TABLE Child (
+            id INT,
+            name TEXT,
+            parent_id INT,
+            FOREIGN KEY(parent_id) REFERENCES ParentWithoutPK(id)
+        );
+        ",
+        Err(ExecuteError::TableNotFound("A".to_owned()).into()),
+    )
+    .await;
 
     g.run(
         "
@@ -37,10 +63,11 @@ test_case!(foreign_key, {
         "If there is no parent, insert should fail",
         "INSERT INTO Child VALUES (1, 'foo', 1);",
         Err(ValidateError::ForeignKeyViolation {
-            child_table: "Child".to_owned(),
-            child_column: "parent_id".to_owned(),
-            parent_table: "Parent".to_owned(),
-            parent_column: "id".to_owned(),
+            name: "aaa".to_owned(),
+            table: "Child".to_owned(),
+            column: "parent_id".to_owned(),
+            foreign_table: "Parent".to_owned(),
+            referred_column: "id".to_owned(),
         }
         .into()),
     )
