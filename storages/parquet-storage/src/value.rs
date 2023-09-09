@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use byteorder::{BigEndian, ByteOrder};
 use gluesql_core::{
-    chrono::{DateTime, Duration, NaiveDate, NaiveDateTime, NaiveTime, Utc},
+    chrono::{Duration, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc},
     data::{Schema, Value},
     prelude::{DataType, Error, Result},
 };
@@ -161,7 +161,8 @@ impl ParquetField {
                     .and_hms_opt(hour, minute, second)
                     .ok_or_else(|| Error::StorageMsg("Invalid time".to_string()))?;
 
-                let epoch_day_and_time_utc = DateTime::<Utc>::from_utc(epoch_day_and_time, Utc);
+                // Use the recommended method instead of the deprecated one
+                let epoch_day_and_time_utc = Utc.from_utc_datetime(&epoch_day_and_time);
 
                 let result_date = epoch_day_and_time_utc
                     .checked_add_signed(Duration::days(*v as i64))
