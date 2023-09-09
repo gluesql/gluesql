@@ -1,8 +1,10 @@
-use parquet::errors::ParquetError;
 use std::path::PathBuf;
 
 use gluesql_core::store::DataRow;
-use parquet::basic::Type;
+use parquet::{
+    basic::{ConvertedType, Type},
+    errors::ParquetError,
+};
 
 use std::fmt;
 use {
@@ -76,6 +78,9 @@ pub enum ParquetStorageError {
 
     #[error("unmapped parquet type: {0}")]
     UnmappedParquetType(Type),
+
+    #[error("unmapped parquet converted type: {0}")]
+    UnmappedParquetConvertedType(ConvertedType),
 
     #[error("unmapped glue data type: {0}")]
     UnmappedGlueDataType(DataType),
