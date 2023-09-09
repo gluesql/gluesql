@@ -1,9 +1,8 @@
 #[cfg(feature = "sled-storage")]
 mod hello_ast_builder {
-    use gluesql_core::ast_builder::Execute;
     use {
         gluesql::{
-            core::ast_builder,
+            core::ast_builder::{self, Execute},
             prelude::{Glue, Payload, Value},
             sled_storage::SledStorage,
         },
