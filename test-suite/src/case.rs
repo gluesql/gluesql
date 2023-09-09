@@ -6,7 +6,9 @@ use {
     },
 };
 
-test_case!(case, async move {
+test_case!(case, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "CREATE TABLE Item (id INTEGER, name TEXT);",
@@ -119,7 +121,8 @@ test_case!(case, async move {
             Err(TranslateError::UnsupportedExpr("1 COLLATE Item".to_owned()).into()),
         ),
     ];
+
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

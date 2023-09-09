@@ -3,41 +3,46 @@ use {
     gluesql_core::{error::FetchError, prelude::Value::*},
 };
 
-test_case!(create_drop_table, async move {
+test_case!(create_drop_table, {
+    let g = get_tester!();
+
     // CREATE && ROLLBACK
-    run!("BEGIN;");
-    run!("CREATE TABLE Test (id INTEGER);");
-    run!("INSERT INTO Test VALUES (1);");
-    test!("SELECT * FROM Test;", Ok(select!(id I64; 1)));
-    run!("ROLLBACK;");
-    test!(
+    g.run("BEGIN;").await;
+    g.run("CREATE TABLE Test (id INTEGER);").await;
+    g.run("INSERT INTO Test VALUES (1);").await;
+    g.test("SELECT * FROM Test;", Ok(select!(id I64; 1))).await;
+    g.run("ROLLBACK;").await;
+    g.test(
         "SELECT * FROM Test;",
-        Err(FetchError::TableNotFound("Test".to_owned()).into())
-    );
+        Err(FetchError::TableNotFound("Test".to_owned()).into()),
+    )
+    .await;
 
     // CREATE && COMMIT
-    run!("BEGIN;");
-    run!("CREATE TABLE Test (id INTEGER);");
-    run!("INSERT INTO Test VALUES (3);");
-    run!("COMMIT;");
-    test!("SELECT * FROM Test;", Ok(select!(id I64; 3)));
+    g.run("BEGIN;").await;
+    g.run("CREATE TABLE Test (id INTEGER);").await;
+    g.run("INSERT INTO Test VALUES (3);").await;
+    g.run("COMMIT;").await;
+    g.test("SELECT * FROM Test;", Ok(select!(id I64; 3))).await;
 
     // DROP && ROLLBACK
-    run!("BEGIN;");
-    run!("DROP TABLE Test;");
-    test!(
+    g.run("BEGIN;").await;
+    g.run("DROP TABLE Test;").await;
+    g.test(
         "SELECT * FROM Test;",
-        Err(FetchError::TableNotFound("Test".to_owned()).into())
-    );
-    run!("ROLLBACK;");
-    test!("SELECT * FROM Test;", Ok(select!(id I64; 3)));
+        Err(FetchError::TableNotFound("Test".to_owned()).into()),
+    )
+    .await;
+    g.run("ROLLBACK;").await;
+    g.test("SELECT * FROM Test;", Ok(select!(id I64; 3))).await;
 
     // DROP && COMMIT
-    run!("BEGIN;");
-    run!("DROP TABLE Test;");
-    run!("COMMIT;");
-    test!(
+    g.run("BEGIN;").await;
+    g.run("DROP TABLE Test;").await;
+    g.run("COMMIT;").await;
+    g.test(
         "SELECT * FROM Test;",
-        Err(FetchError::TableNotFound("Test".to_owned()).into())
-    );
+        Err(FetchError::TableNotFound("Test".to_owned()).into()),
+    )
+    .await;
 });

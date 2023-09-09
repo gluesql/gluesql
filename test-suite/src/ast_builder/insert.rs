@@ -3,7 +3,7 @@ use {
     gluesql_core::{ast_builder::*, executor::Payload, prelude::Value::*},
 };
 
-test_case!(insert, async move {
+test_case!(insert, {
     let glue = get_glue!();
 
     // create table - Foo

@@ -6,7 +6,9 @@ use {
     },
 };
 
-test_case!(div_mod, async move {
+test_case!(div_mod, {
+    let g = get_tester!();
+
     let eval_div = |dividend, divisor| (dividend / divisor) as i64;
     let eval_mod = |dividend, divisor| dividend % divisor;
     let test_cases = [
@@ -137,6 +139,6 @@ test_case!(div_mod, async move {
         ),
     ];
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

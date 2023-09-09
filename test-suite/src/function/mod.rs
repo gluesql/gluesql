@@ -1,4 +1,5 @@
 pub mod abs;
+pub mod add_month;
 pub mod append;
 pub mod ascii;
 pub mod cast;
@@ -41,7 +42,9 @@ pub mod reverse;
 pub mod round;
 pub mod sign;
 pub mod skip;
+pub mod slice;
 pub mod sort;
+pub mod splice;
 pub mod sqrt_power;
 pub mod substr;
 pub mod take;

@@ -2,7 +2,7 @@ use {
     crate::*,
     chrono::{NaiveDate, NaiveTime},
     gluesql_core::{
-        data::Interval as I,
+        data::{value::ConvertError, Interval as I},
         error::ValueError,
         prelude::{
             DataType, Payload,
@@ -12,7 +12,9 @@ use {
     rust_decimal::Decimal,
 };
 
-test_case!(cast_literal, async move {
+test_case!(cast_literal, {
+    let g = get_tester!();
+
     let test_cases = [
         ("CREATE TABLE Item (number TEXT)", Ok(Payload::Create)),
         ("INSERT INTO Item VALUES ('1')", Ok(Payload::Insert(1))),
@@ -182,7 +184,10 @@ test_case!(cast_literal, async move {
         ),
         (
             "SELECT CAST(mytext AS Decimal) AS cast FROM test",
-            Err(ValueError::ImpossibleCast.into()),
+            Err(ConvertError {
+                value: Str("foobar".to_owned()),
+                data_type: DataType::Decimal,
+            }.into()),
         ),
         (
             "SELECT CAST(myint8 AS Decimal) AS cast FROM test",
@@ -216,7 +221,10 @@ test_case!(cast_literal, async move {
 
         (
             "SELECT CAST(mydate AS Decimal) AS cast FROM test",
-            Err(ValueError::ImpossibleCast.into()),
+            Err(ConvertError {
+                value: Value::Date(NaiveDate::from_ymd_opt(2001, 9, 11).unwrap()),
+                data_type: DataType::Decimal,
+            }.into()),
         ),
         (
             "SELECT CAST(1 AS TEXT) AS cast FROM Item",
@@ -333,11 +341,13 @@ test_case!(cast_literal, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });
 
-test_case!(cast_value, async move {
+test_case!(cast_value, {
+    let g = get_tester!();
+
     // More test cases are in `gluesql::Value` unit tests.
 
     let test_cases = [
@@ -373,7 +383,10 @@ test_case!(cast_value, async move {
         ),
         (
             "SELECT CAST(number AS BOOLEAN) FROM Item",
-            Err(ValueError::ImpossibleCast.into()),
+            Err(ConvertError {
+                value: Str("1".to_owned()),
+                data_type: DataType::Boolean,
+            }.into()),
         ),
         (
             "
@@ -414,6 +427,6 @@ test_case!(cast_value, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

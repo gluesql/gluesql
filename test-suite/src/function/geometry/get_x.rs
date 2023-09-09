@@ -6,7 +6,9 @@ use {
     },
 };
 
-test_case!(get_x, async move {
+test_case!(get_x, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "CREATE TABLE PointGroup (point_field POINT)",
@@ -48,6 +50,6 @@ test_case!(get_x, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });
