@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        ast_builder::{self, *},
+        ast_builder::{function as f, *},
         executor::Payload,
         prelude::Value::*,
     },
@@ -66,8 +66,8 @@ test_case!(ifnull, {
 
     // ifnull without table
     let actual = values(vec![
-        vec![ast_builder::ifnull(text("HELLO"), text("WORLD"))],
-        vec![ast_builder::ifnull(null(), text("WORLD"))],
+        vec![f::ifnull(text("HELLO"), text("WORLD"))],
+        vec![f::ifnull(null(), text("WORLD"))],
     ])
     .execute(glue)
     .await;

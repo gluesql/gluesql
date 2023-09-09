@@ -1,6 +1,10 @@
 use {
     crate::*,
-    gluesql_core::{ast_builder::*, executor::Payload, prelude::Value::*},
+    gluesql_core::{
+        ast_builder::{function as f, *},
+        executor::Payload,
+        prelude::Value::*,
+    },
 };
 
 test_case!(rounding, {
@@ -29,7 +33,7 @@ test_case!(rounding, {
     let actual = table("Number")
         .select()
         .project("id")
-        .project(ceil("number"))
+        .project(f::ceil("number"))
         .project(col("number").ceil())
         .execute(glue)
         .await;
@@ -47,7 +51,7 @@ test_case!(rounding, {
     let actual = table("Number")
         .select()
         .project("id")
-        .project(floor("number"))
+        .project(f::floor("number"))
         .project(col("number").floor())
         .execute(glue)
         .await;
@@ -65,7 +69,7 @@ test_case!(rounding, {
     let actual = table("Number")
         .select()
         .project("id")
-        .project(round("number"))
+        .project(f::round("number"))
         .project(col("number").round())
         .execute(glue)
         .await;
