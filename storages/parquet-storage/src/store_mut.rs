@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use gluesql_core::{
     ast::{ColumnDef, ToSql},
@@ -14,8 +14,7 @@ use parquet::{
     schema::types::Type as SchemaType,
 };
 
-use crate::data_type::ParquetBasicConvertedType;
-
+use lazy_static::lazy_static;
 use {
     crate::{error::ResultExt, ParquetStorage},
     async_trait::async_trait,
@@ -29,6 +28,38 @@ use {
         {cmp::Ordering, iter::Peekable, vec::IntoIter},
     },
 };
+
+lazy_static! {
+    static ref GLUESQL_TO_PARQUET_DATA_TYPE_MAPPING: HashMap<DataType, &'static str> = {
+        let mut m = HashMap::new();
+        m.insert(DataType::Boolean, "Boolean");
+        m.insert(DataType::Int8, "Int8");
+        m.insert(DataType::Int16, "Int16");
+        m.insert(DataType::Int32, "Int32");
+        m.insert(DataType::Int, "Int");
+        m.insert(DataType::Int128, "Int128");
+        m.insert(DataType::Uint8, "Uint8");
+        m.insert(DataType::Uint16, "Uint16");
+        m.insert(DataType::Uint32, "Uint32");
+        m.insert(DataType::Uint64, "Uint64");
+        m.insert(DataType::Uint128, "Uint128");
+        m.insert(DataType::Float32, "Float32");
+        m.insert(DataType::Float, "Float");
+        m.insert(DataType::Text, "Text");
+        m.insert(DataType::Bytea, "Bytea");
+        m.insert(DataType::Inet, "Inet");
+        m.insert(DataType::Date, "Date");
+        m.insert(DataType::Timestamp, "Timestamp");
+        m.insert(DataType::Time, "Time");
+        m.insert(DataType::Interval, "Interval");
+        m.insert(DataType::Uuid, "Uuid");
+        m.insert(DataType::Map, "Map");
+        m.insert(DataType::List, "List");
+        m.insert(DataType::Decimal, "Decimal");
+        m.insert(DataType::Point, "Point");
+        m
+    };
+}
 
 #[async_trait(?Send)]
 impl StoreMut for ParquetStorage {
@@ -338,26 +369,27 @@ impl ParquetStorage {
                                 }
                             }
                             Value::U128(val) => {
-                                let value_bytes = val.to_le_bytes();
-
-                                let byte_array = ByteArray::from(value_bytes.to_vec());
-
+                                let serialized = bincode::serialize(&val).map_err(|e| {
+                                    Error::StorageMsg(format!("Failed to serialize I128: {}", e))
+                                })?;
                                 if let ColumnWriter::ByteArrayColumnWriter(ref mut typed) =
                                     col_writer
                                 {
                                     typed
-                                        .write_batch(&[byte_array], Some(&[1]), None)
+                                        .write_batch(&[serialized.into()], Some(&[1]), None)
                                         .map_storage_err()?;
                                 }
                             }
                             Value::Uuid(val) => {
-                                let uuid_bytes = val.to_be_bytes();
+                                let serialized = bincode::serialize(&val).map_err(|e| {
+                                    Error::StorageMsg(format!("Failed to serialize I128: {}", e))
+                                })?;
                                 if let ColumnWriter::FixedLenByteArrayColumnWriter(ref mut typed) =
                                     col_writer
                                 {
                                     typed
                                         .write_batch(
-                                            &[FixedLenByteArray::from(uuid_bytes.to_vec())],
+                                            &[FixedLenByteArray::from(serialized.to_vec())],
                                             Some(&[1]),
                                             None,
                                         )
@@ -394,14 +426,14 @@ impl ParquetStorage {
                             }
                             Value::Decimal(val) => {
                                 // Convert the decimal value to a fixed-length byte array.
-                                let byte_array = bincode::serialize(&val).map_err(|e| {
+                                let serialized = bincode::serialize(&val).map_err(|e| {
                                     Error::StorageMsg(format!("Failed to serialize Decimal: {}", e))
                                 })?;
                                 if let ColumnWriter::ByteArrayColumnWriter(ref mut typed) =
                                     col_writer
                                 {
                                     typed
-                                        .write_batch(&[byte_array.into()], Some(&[1]), None)
+                                        .write_batch(&[serialized.into()], Some(&[1]), None)
                                         .map_storage_err()?;
                                 }
                             }
@@ -432,14 +464,14 @@ impl ParquetStorage {
                             }
                             Value::Map(m) => {
                                 // Serialize the entire HashMap to a byte vector
-                                let serialized_map = bincode::serialize(&m).map_err(|e| {
+                                let serialized = bincode::serialize(&m).map_err(|e| {
                                     Error::StorageMsg(format!("Failed to serialize HashMap: {}", e))
                                 })?;
 
                                 if let ColumnWriter::ByteArrayColumnWriter(typed) = col_writer {
                                     // Write the serialized map
                                     typed
-                                        .write_batch(&[serialized_map.into()], Some(&[1]), None)
+                                        .write_batch(&[serialized.into()], Some(&[1]), None)
                                         .map_storage_err()?;
                                 } else {
                                     return Err(Error::StorageMsg(
@@ -448,14 +480,14 @@ impl ParquetStorage {
                                 }
                             }
                             Value::List(l) => {
-                                let byte_array = bincode::serialize(&l).map_err(|e| {
+                                let serialized = bincode::serialize(&l).map_err(|e| {
                                     Error::StorageMsg(format!("Failed to serialize list: {}", e))
                                 })?;
                                 if let ColumnWriter::ByteArrayColumnWriter(ref mut typed) =
                                     col_writer
                                 {
                                     typed
-                                        .write_batch(&[byte_array.into()], Some(&[1]), None)
+                                        .write_batch(&[serialized.into()], Some(&[1]), None)
                                         .map_storage_err()?;
                                 }
                             }
@@ -492,13 +524,13 @@ impl ParquetStorage {
                         }
                     }
                     DataRow::Map(map) => {
-                        let serialized_map = bincode::serialize(&map).map_err(|e| {
+                        let serialized = bincode::serialize(&map).map_err(|e| {
                             Error::StorageMsg(format!("Failed to serialize HashMap: {}", e))
                         })?;
 
                         if let ColumnWriter::ByteArrayColumnWriter(typed) = col_writer {
                             typed
-                                .write_batch(&[serialized_map.into()], Some(&[1]), None)
+                                .write_batch(&[serialized.into()], Some(&[1]), None)
                                 .map_storage_err()?;
                         } else {
                             return Err(Error::StorageMsg("Expected ByteArrayColumnWriter".into()));
@@ -532,62 +564,14 @@ impl ParquetStorage {
                 }]
             }
         };
-        //int 96,
-        for column_def in column_defs {
-            let converted_type_result =
-                ParquetBasicConvertedType::try_from(column_def.data_type.clone());
 
+        for column_def in column_defs {
+            let (physical_type, converted_type_option) =
+                Self::get_parquet_type_mappings(&column_def.data_type)?;
             let repetition = if column_def.nullable {
                 parquet::basic::Repetition::OPTIONAL
             } else {
                 parquet::basic::Repetition::REQUIRED
-            };
-
-            let (physical_type, converted_type_option) = match converted_type_result {
-                Ok(ct) => match ct.as_converted_type() {
-                    ConvertedType::UTF8 => (Type::BYTE_ARRAY, Some(ConvertedType::UTF8)),
-                    ConvertedType::INT_8 => (Type::INT32, Some(ConvertedType::INT_8)),
-                    ConvertedType::INT_16 => (Type::INT32, Some(ConvertedType::INT_16)),
-                    ConvertedType::INT_32 => (Type::INT32, Some(ConvertedType::INT_32)),
-                    ConvertedType::INT_64 => (Type::INT64, Some(ConvertedType::INT_64)),
-
-                    ConvertedType::DATE => (Type::INT32, Some(ConvertedType::DATE)),
-                    ConvertedType::UINT_8 => (Type::INT32, Some(ConvertedType::UINT_8)),
-                    ConvertedType::UINT_16 => (Type::INT32, Some(ConvertedType::UINT_16)),
-                    ConvertedType::UINT_32 => (Type::INT32, Some(ConvertedType::UINT_32)),
-                    ConvertedType::UINT_64 => (Type::INT64, Some(ConvertedType::UINT_64)),
-                    ConvertedType::TIME_MICROS => (Type::INT64, Some(ConvertedType::TIME_MICROS)),
-                    //ConvertedType::DECIMAL => (Type::INT96, Some(ConvertedType::DECIMAL)),
-                    _ => {
-                        return Err(Error::StorageMsg(format!(
-                            "unsupported data type: {:?}",
-                            column_def.data_type
-                        )))
-                    }
-                },
-                Err(_) => match column_def.data_type {
-                    DataType::Boolean => (Type::BOOLEAN, None),
-                    DataType::Float32 => (Type::FLOAT, None),
-                    DataType::Float => (Type::DOUBLE, None),
-                    DataType::Uuid => (Type::FIXED_LEN_BYTE_ARRAY, None),
-                    DataType::Point => (Type::BYTE_ARRAY, None),
-                    DataType::Inet => (Type::BYTE_ARRAY, None),
-                    DataType::Uint128 => (Type::BYTE_ARRAY, None),
-                    DataType::Int128 => (Type::BYTE_ARRAY, None),
-                    DataType::Time => (Type::INT64, None),
-                    DataType::Map => (Type::BYTE_ARRAY, None),
-                    DataType::List => (Type::BYTE_ARRAY, None),
-                    DataType::Interval => (Type::BYTE_ARRAY, None),
-                    DataType::Decimal => (Type::BYTE_ARRAY, None),
-                    DataType::Timestamp => (Type::BYTE_ARRAY, None),
-                    DataType::Bytea => (Type::BYTE_ARRAY, None),
-                    _ => {
-                        return Err(Error::StorageMsg(format!(
-                            "unsupported data type: {:?}",
-                            column_def.data_type
-                        )))
-                    }
-                },
             };
 
             let mut field_builder = parquet::schema::types::Type::primitive_type_builder(
@@ -639,70 +623,12 @@ impl ParquetStorage {
                     });
                 }
 
-                if let DataType::Uuid = column_def.data_type {
+                if let Some(data_type_str) =
+                    GLUESQL_TO_PARQUET_DATA_TYPE_MAPPING.get(&column_def.data_type)
+                {
                     metadata.push(KeyValue {
                         key: format!("data_type{}", column_def.name),
-                        value: Some("Uuid".to_string()),
-                    });
-                }
-                if let DataType::Uint128 = column_def.data_type {
-                    metadata.push(KeyValue {
-                        key: format!("data_type{}", column_def.name),
-                        value: Some("Uint128".to_string()),
-                    });
-                }
-                if let DataType::Int128 = column_def.data_type {
-                    metadata.push(KeyValue {
-                        key: format!("data_type{}", column_def.name),
-                        value: Some("Int128".to_string()),
-                    });
-                }
-                if let DataType::Time = column_def.data_type {
-                    metadata.push(KeyValue {
-                        key: format!("data_type{}", column_def.name),
-                        value: Some("Time".to_string()),
-                    });
-                }
-                if let DataType::Map = column_def.data_type {
-                    metadata.push(KeyValue {
-                        key: format!("data_type{}", column_def.name),
-                        value: Some("Map".to_string()),
-                    });
-                }
-                if let DataType::List = column_def.data_type {
-                    metadata.push(KeyValue {
-                        key: format!("data_type{}", column_def.name),
-                        value: Some("List".to_string()),
-                    });
-                }
-                if let DataType::Inet = column_def.data_type {
-                    metadata.push(KeyValue {
-                        key: format!("data_type{}", column_def.name),
-                        value: Some("Inet".to_string()),
-                    });
-                }
-                if let DataType::Point = column_def.data_type {
-                    metadata.push(KeyValue {
-                        key: format!("data_type{}", column_def.name),
-                        value: Some("Point".to_string()),
-                    });
-                }
-                if let DataType::Interval = column_def.data_type {
-                    metadata.push(KeyValue {
-                        key: format!("data_type{}", column_def.name),
-                        value: Some("Interval".to_string()),
-                    });
-                }
-                if let DataType::Decimal = column_def.data_type {
-                    metadata.push(KeyValue {
-                        key: format!("data_type{}", column_def.name),
-                        value: Some("Decimal".to_string()),
-                    });
-                }
-                if let DataType::Timestamp = column_def.data_type {
-                    metadata.push(KeyValue {
-                        key: format!("data_type{}", column_def.name),
-                        value: Some("Timestamp".to_string()),
+                        value: Some(data_type_str.to_string()),
                     });
                 }
             }
@@ -717,6 +643,36 @@ impl ParquetStorage {
             None
         } else {
             Some(metadata)
+        }
+    }
+
+    fn get_parquet_type_mappings(data_type: &DataType) -> Result<(Type, Option<ConvertedType>)> {
+        match data_type {
+            DataType::Text => Ok((Type::BYTE_ARRAY, Some(ConvertedType::UTF8))),
+            DataType::Date => Ok((Type::INT32, Some(ConvertedType::DATE))),
+            DataType::Uint8 => Ok((Type::INT32, Some(ConvertedType::UINT_8))),
+            DataType::Int => Ok((Type::INT64, Some(ConvertedType::INT_64))),
+            DataType::Int8 => Ok((Type::INT32, Some(ConvertedType::INT_8))),
+            DataType::Int16 => Ok((Type::INT32, Some(ConvertedType::INT_16))),
+            DataType::Int32 => Ok((Type::INT32, Some(ConvertedType::INT_32))),
+            DataType::Uint16 => Ok((Type::INT32, Some(ConvertedType::UINT_16))),
+            DataType::Uint32 => Ok((Type::INT32, Some(ConvertedType::UINT_32))),
+            DataType::Uint64 => Ok((Type::INT64, Some(ConvertedType::UINT_64))),
+            DataType::Boolean => Ok((Type::BOOLEAN, None)),
+            DataType::Float32 => Ok((Type::FLOAT, None)),
+            DataType::Float => Ok((Type::DOUBLE, None)),
+            DataType::Uuid => Ok((Type::FIXED_LEN_BYTE_ARRAY, None)),
+            DataType::Point => Ok((Type::BYTE_ARRAY, None)),
+            DataType::Inet => Ok((Type::BYTE_ARRAY, None)),
+            DataType::Uint128 => Ok((Type::BYTE_ARRAY, None)),
+            DataType::Int128 => Ok((Type::BYTE_ARRAY, None)),
+            DataType::Time => Ok((Type::INT64, None)),
+            DataType::Map => Ok((Type::BYTE_ARRAY, None)),
+            DataType::List => Ok((Type::BYTE_ARRAY, None)),
+            DataType::Interval => Ok((Type::BYTE_ARRAY, None)),
+            DataType::Decimal => Ok((Type::BYTE_ARRAY, None)),
+            DataType::Timestamp => Ok((Type::BYTE_ARRAY, None)),
+            DataType::Bytea => Ok((Type::BYTE_ARRAY, None)),
         }
     }
 }
