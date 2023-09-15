@@ -1,3 +1,5 @@
+use crate::utils::get_collection_options;
+
 use {
     crate::{
         error::{MongoStorageError, OptionExt, ResultExt},
@@ -19,7 +21,7 @@ use {
     },
     mongodb::{
         bson::{doc, Bson, Document},
-        options::{CreateCollectionOptions, IndexOptions, ReplaceOptions},
+        options::{ IndexOptions, ReplaceOptions},
     },
 };
 
@@ -37,15 +39,15 @@ enum IndexType {
 #[async_trait(?Send)]
 impl StoreMut for MongoStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
-        let (names, column_types, indexes) = schema
+        let (mut labels, column_types, indexes) = schema
             .column_defs
             .as_ref()
             .map(|column_defs| {
                 column_defs.iter().fold(
                     (Vec::new(), Document::new(), Vec::new()),
-                    |(mut names, mut column_types, mut indexes), column_def| {
+                    |(mut labels, mut column_types, mut indexes), column_def| {
                         let column_name = &column_def.name;
-                        names.push(column_name.clone());
+                        labels.push(column_name.clone());
 
                         let data_type = BsonType::from(&column_def.data_type).into();
                         let maximum = column_def.data_type.get_max();
@@ -110,34 +112,22 @@ impl StoreMut for MongoStorage {
 
                         column_types.extend(column_type);
 
-                        (names, column_types, indexes)
+                        (labels, column_types, indexes)
                     },
                 )
             })
             .unwrap_or_default();
 
+        labels.insert(0, "_id".to_owned());
         let mut properties = doc! {
             "_id": { "bsonType": ["objectId", "binData"] }
         };
         properties.extend(column_types);
-        let mut required = vec!["_id".to_string()];
-        required.extend(names.clone());
-
-        let additional_properties = matches!(names.len(), 0);
-
-        let option = CreateCollectionOptions::builder()
-            .validator(Some(doc! {
-                "$jsonSchema": {
-                    "type": "object",
-                    "required": required,
-                    "properties": properties,
-                    "additionalProperties": additional_properties
-                  }
-            }))
-            .build();
+        let additional_properties = matches!(labels.len(), 1);
+        let options = get_collection_options(labels, properties, additional_properties);
 
         self.db
-            .create_collection(&schema.table_name, option)
+            .create_collection(&schema.table_name, options)
             .await
             .map_storage_err()?;
 
