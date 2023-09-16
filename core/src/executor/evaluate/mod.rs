@@ -659,7 +659,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let expr = eval(expr).await?;
             let start = eval(start).await?;
             let length = eval(length).await?;
-            return f::slice(name, expr, start, length);
+            f::slice(name, expr, start, length)
         }
         Function::IsEmpty(expr) => {
             let expr = eval(expr).await?;
@@ -668,7 +668,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         Function::AddMonth { expr, size } => {
             let expr = eval(expr).await?;
             let size = eval(size).await?;
-            return f::add_month(name, expr, size);
+            f::add_month(name, expr, size)
         }
         Function::Length(expr) => f::length(name, eval(expr).await?),
         Function::Entries(expr) => f::entries(name, eval(expr).await?),
@@ -689,7 +689,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 Some(v) => Some(eval(v).await?),
                 None => None,
             };
-            return f::splice(name, list_data, begin_index, end_index, values);
+            f::splice(name, list_data, begin_index, end_index, values)
         }
     };
 

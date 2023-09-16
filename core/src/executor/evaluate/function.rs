@@ -32,34 +32,6 @@ impl<T> ContinueOrBreak<T> for Option<T> {
     }
 }
 
-macro_rules! eval_to_str {
-    ($name: expr, $evaluated: expr) => {
-        match $evaluated.try_into()? {
-            Value::Str(value) => value,
-            Value::Null => {
-                return Ok(Evaluated::Value(Value::Null));
-            }
-            _ => {
-                return Err(EvaluateError::FunctionRequiresStringValue($name).into());
-            }
-        }
-    };
-}
-
-macro_rules! eval_to_int {
-    ($name: expr, $evaluated: expr) => {
-        match $evaluated.try_into()? {
-            Value::I64(num) => num,
-            Value::Null => {
-                return Ok(Evaluated::Value(Value::Null));
-            }
-            _ => {
-                return Err(EvaluateError::FunctionRequiresIntegerValue($name).into());
-            }
-        }
-    };
-}
-
 trait BreakIfNull<T> {
     fn break_if_null(self) -> ControlFlow<T>;
 }
@@ -663,23 +635,19 @@ pub fn sort<'a>(expr: Evaluated<'_>, order: Evaluated<'_>) -> ControlFlow<Evalua
     }
 }
 
-// TODO:
 pub fn slice<'a>(
     name: String,
     expr: Evaluated<'_>,
     start: Evaluated<'_>,
     length: Evaluated<'_>,
-) -> Result<Evaluated<'a>> {
-    let expr: Value = expr.try_into()?;
-    let mut start = eval_to_int!(name, start);
-    let length = match length.try_into()? {
-        Value::I64(number) => {
-            usize::try_from(number).map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name))?
-        }
-        _ => {
-            return Err(EvaluateError::FunctionRequiresIntegerValue(name).into());
-        }
-    };
+) -> ControlFlow<Evaluated<'a>> {
+    let expr = expr.try_into().break_if_null()?;
+    let mut start = eval_to_int(&name, start)?;
+    let length = eval_to_int(&name, length)
+        .map(usize::try_from)?
+        .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.clone()).into())
+        .into_control_flow()?;
+
     match expr {
         Value::List(l) => {
             if start < 0 {
@@ -692,9 +660,9 @@ pub fn slice<'a>(
             let start_usize = start as usize;
 
             let l = l.into_iter().skip(start_usize).take(length).collect();
-            Ok(Evaluated::Value(Value::List(l)))
+            Continue(Evaluated::Value(Value::List(l)))
         }
-        _ => Err(EvaluateError::ListTypeRequired.into()),
+        _ => Err(EvaluateError::ListTypeRequired.into()).into_control_flow(),
     }
 }
 
@@ -766,7 +734,6 @@ pub fn generate_uuid<'a>() -> Evaluated<'a> {
     Evaluated::Value(Value::Uuid(Uuid::new_v4().as_u128()))
 }
 
-// TODO:
 pub fn greatest(name: String, exprs: Vec<Evaluated<'_>>) -> Result<Evaluated<'_>> {
     exprs
         .into_iter()
@@ -863,20 +830,23 @@ pub fn to_timestamp<'a>(
     .into_control_flow()
 }
 
-// TODO:
 pub fn add_month<'a>(
     name: String,
     expr: Evaluated<'_>,
     size: Evaluated<'_>,
-) -> Result<Evaluated<'a>> {
-    let size = eval_to_int!(name, size);
-    let expr = chrono::NaiveDate::parse_from_str(&eval_to_str!(name, expr), "%Y-%m-%d")
-        .map_err(EvaluateError::from)?;
+) -> ControlFlow<Evaluated<'a>> {
+    let size = eval_to_int(&name, size)?;
+    let expr = eval_to_str(&name, expr)?;
+    let expr = chrono::NaiveDate::parse_from_str(&expr, "%Y-%m-%d")
+        .map_err(EvaluateError::from)
+        .map_err(Error::from)
+        .into_control_flow()?;
     let date = {
         let size_as_u32 = size
             .abs()
             .try_into()
-            .map_err(|_| ValueError::I64ToU32ConversionFailure(name))?;
+            .map_err(|_| ValueError::I64ToU32ConversionFailure(name).into())
+            .into_control_flow()?;
         let new_months = chrono::Months::new(size_as_u32);
 
         if size <= 0 {
@@ -884,9 +854,9 @@ pub fn add_month<'a>(
         } else {
             expr.checked_add_months(new_months)
         }
-        .ok_or(EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255)?
+        .continue_or_break(EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255.into())?
     };
-    Ok(Evaluated::Value(Value::Date(date)))
+    Continue(Evaluated::Value(Value::Date(date)))
 }
 
 pub fn to_time<'a>(
@@ -998,7 +968,6 @@ pub fn length<'a>(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a
     .into_control_flow()
 }
 
-// TODO:
 pub fn coalesce<'a>(exprs: Vec<Evaluated<'_>>) -> Result<Evaluated<'a>> {
     if exprs.is_empty() {
         return Err((EvaluateError::FunctionRequiresMoreArguments {
@@ -1038,24 +1007,43 @@ pub fn entries<'a>(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'
     .into_control_flow()
 }
 
-// TODO:
 pub fn splice<'a>(
     name: String,
     list_data: Evaluated<'_>,
     begin_index: Evaluated<'_>,
     end_index: Evaluated<'_>,
     values: Option<Evaluated<'_>>,
-) -> Result<Evaluated<'a>> {
+) -> ControlFlow<Evaluated<'a>> {
+    let list_data = match list_data.try_into().break_if_null()? {
+        Value::List(list) => list,
+        _ => {
+            return Err(EvaluateError::ListTypeRequired.into()).into_control_flow();
+        }
+    };
+
+    /*
     let list_data = match Value::try_from(list_data)? {
         Value::List(list) => Ok(list),
         _ => Err(EvaluateError::ListTypeRequired),
     }?;
+    */
 
+    let begin_index = eval_to_int(&name, begin_index)?.max(0);
+    let begin_index = usize::try_from(begin_index)
+        .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.clone()).into())
+        .into_control_flow()?;
+    let end_index = eval_to_int(&name, end_index)?.max(0);
+    let end_index = usize::try_from(end_index)
+        .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.clone()).into())
+        .into_control_flow()?;
+
+    /*
     let begin_index = usize::try_from(eval_to_int!(name, begin_index).max(0))
         .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.clone()))?;
 
     let end_index = usize::try_from(eval_to_int!(name, end_index).min(list_data.len() as i64))
         .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name))?;
+        */
 
     let (left, right) = {
         let mut list_iter = list_data.into_iter();
@@ -1065,10 +1053,10 @@ pub fn splice<'a>(
     };
 
     let center = match values {
-        Some(values) => match Value::try_from(values)? {
-            Value::List(list) => Ok(list),
-            _ => Err(EvaluateError::ListTypeRequired),
-        }?,
+        Some(values) => match values.try_into().break_if_null()? {
+            Value::List(list) => list,
+            _ => return Err(EvaluateError::ListTypeRequired.into()).into_control_flow(),
+        },
         None => vec![],
     };
 
@@ -1080,5 +1068,5 @@ pub fn splice<'a>(
         result
     };
 
-    Ok(Evaluated::Value(Value::List(result)))
+    Continue(Evaluated::Value(Value::List(result)))
 }
