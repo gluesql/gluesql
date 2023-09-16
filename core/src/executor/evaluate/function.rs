@@ -148,13 +148,9 @@ fn eval_to_point(name: &str, evaluated: Evaluated<'_>) -> ControlFlow<Point> {
 pub fn concat(exprs: Vec<Evaluated<'_>>) -> ControlFlow<Evaluated> {
     let value = exprs
         .into_iter()
-        .try_fold(None, |left: Option<Evaluated>, right| {
-            let left = match left {
-                None => return Continue(Some(right)),
-                Some(left) => left,
-            };
-
-            left.concat(right).break_if_null().map(Some)
+        .try_fold(None, |left: Option<Evaluated>, right| match left {
+            None => Continue(Some(right)),
+            Some(left) => left.concat(right).break_if_null().map(Some),
         })?;
 
     value.continue_or_break(ValueError::EmptyArgNotAllowedInConcat.into())
@@ -554,8 +550,8 @@ fn gcd_i64(a: i64, b: i64) -> ControlFlow<i64> {
 
 // --- list ---
 pub fn append<'a>(expr: Evaluated<'_>, value: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    let expr: Value = expr.try_into().break_if_null()?;
-    let value: Value = value.try_into().break_if_null()?;
+    let expr = expr.try_into().break_if_null()?;
+    let value = value.try_into().break_if_null()?;
 
     match (expr, value) {
         (Value::List(mut l), v) => {
@@ -567,8 +563,8 @@ pub fn append<'a>(expr: Evaluated<'_>, value: Evaluated<'_>) -> ControlFlow<Eval
 }
 
 pub fn prepend<'a>(expr: Evaluated<'_>, value: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    let expr: Value = expr.try_into().break_if_null()?;
-    let value: Value = value.try_into().break_if_null()?;
+    let expr = expr.try_into().break_if_null()?;
+    let value = value.try_into().break_if_null()?;
 
     match (expr, value) {
         (Value::List(mut l), v) => {
@@ -584,7 +580,7 @@ pub fn skip<'a>(
     expr: Evaluated<'_>,
     size: Evaluated<'_>,
 ) -> ControlFlow<Evaluated<'a>> {
-    let expr: Value = expr.try_into().break_if_null()?;
+    let expr = expr.try_into().break_if_null()?;
     let size: usize = match size.try_into().break_if_null()? {
         Value::I64(number) => usize::try_from(number)
             .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name).into()),
@@ -602,8 +598,8 @@ pub fn skip<'a>(
 }
 
 pub fn sort<'a>(expr: Evaluated<'_>, order: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    let expr: Value = expr.try_into().break_if_null()?;
-    let order: Value = order.try_into().break_if_null()?;
+    let expr = expr.try_into().break_if_null()?;
+    let order = order.try_into().break_if_null()?;
 
     match expr {
         Value::List(l) => {
@@ -671,7 +667,7 @@ pub fn take<'a>(
     expr: Evaluated<'_>,
     size: Evaluated<'_>,
 ) -> ControlFlow<Evaluated<'a>> {
-    let expr: Value = expr.try_into().break_if_null()?;
+    let expr = expr.try_into().break_if_null()?;
     let size = eval_to_int(&name, size)
         .map(usize::try_from)?
         .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.clone()).into())
@@ -687,7 +683,7 @@ pub fn take<'a>(
 }
 
 pub fn is_empty<'a>(expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    let expr: Value = expr.try_into().break_if_null()?;
+    let expr = expr.try_into().break_if_null()?;
     let length = match expr {
         Value::List(l) => l.len(),
         Value::Map(m) => m.len(),
@@ -700,8 +696,7 @@ pub fn is_empty<'a>(expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
 }
 
 pub fn values<'a>(expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    let expr: Value = expr.try_into().break_if_null()?;
-    match expr {
+    match expr.try_into().break_if_null()? {
         Value::Map(m) => Ok(Evaluated::Value(Value::List(m.into_values().collect()))),
         _ => Err(EvaluateError::MapTypeRequired.into()),
     }
@@ -885,8 +880,8 @@ pub fn position<'a>(
     from_expr: Evaluated<'_>,
     sub_expr: Evaluated<'_>,
 ) -> ControlFlow<Evaluated<'a>> {
-    let from: Value = from_expr.try_into().break_if_null()?;
-    let sub: Value = sub_expr.try_into().break_if_null()?;
+    let from = from_expr.try_into().break_if_null()?;
+    let sub = sub_expr.try_into().break_if_null()?;
 
     from.position(&sub)
         .map(Evaluated::Value)
