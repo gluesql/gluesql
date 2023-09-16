@@ -880,7 +880,7 @@ pub fn position<'a>(
     from_expr: Evaluated<'_>,
     sub_expr: Evaluated<'_>,
 ) -> ControlFlow<Evaluated<'a>> {
-    let from = from_expr.try_into().break_if_null()?;
+    let from: Value = from_expr.try_into().break_if_null()?;
     let sub = sub_expr.try_into().break_if_null()?;
 
     from.position(&sub)
