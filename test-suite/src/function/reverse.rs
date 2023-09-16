@@ -6,7 +6,9 @@ use {
     },
 };
 
-test_case!(reverse, async move {
+test_case!(reverse, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "CREATE TABLE Item (name TEXT DEFAULT REVERSE('world'))",
@@ -39,6 +41,6 @@ test_case!(reverse, async move {
         ),
     ];
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

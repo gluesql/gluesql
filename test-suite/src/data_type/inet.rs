@@ -7,7 +7,9 @@ use {
     std::{net::IpAddr, str::FromStr},
 };
 
-test_case!(inet, async move {
+test_case!(inet, {
+    let g = get_tester!();
+
     let inet = |v| IpAddr::from_str(v).unwrap();
 
     let test_cases = [
@@ -60,6 +62,6 @@ test_case!(inet, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

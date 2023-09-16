@@ -6,7 +6,9 @@ use {
     },
 };
 
-test_case!(sqrt, async move {
+test_case!(sqrt, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "SELECT
@@ -46,11 +48,13 @@ test_case!(sqrt, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });
 
-test_case!(power, async move {
+test_case!(power, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "SELECT
@@ -109,6 +113,6 @@ test_case!(power, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

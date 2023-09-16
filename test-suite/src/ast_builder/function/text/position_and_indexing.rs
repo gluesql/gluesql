@@ -1,14 +1,13 @@
-use gluesql_core::ast_builder::left;
 use {
     crate::*,
     gluesql_core::{
-        ast_builder::{find_idx, num, position, right, table, text, Execute},
+        ast_builder::{function as f, *},
         executor::Payload,
         prelude::Value::*,
     },
 };
 
-test_case!(position_and_indexing, async move {
+test_case!(position_and_indexing, {
     // test - find_idx
 
     let glue = get_glue!();
@@ -24,7 +23,7 @@ test_case!(position_and_indexing, async move {
     assert_eq!(actual, expected, "create table - Item");
 
     // insert table - Item
-    let test_num = find_idx(text("strawberry"), text("berry"), None);
+    let test_num = f::find_idx(text("strawberry"), text("berry"), None);
     let actual = table("Item")
         .insert()
         .columns("id, index")
@@ -43,7 +42,7 @@ test_case!(position_and_indexing, async move {
     ));
     assert_eq!(actual, expected, "select from Item");
 
-    let test_num = find_idx(
+    let test_num = f::find_idx(
         text("Oracle Database 12c Release"),
         text("as"),
         Some(num(15)),
@@ -89,7 +88,7 @@ test_case!(position_and_indexing, async move {
     assert_eq!(actual, expected, "select from Item");
 
     // test - position
-    let test_num = position(text("cake"), text("ke"));
+    let test_num = f::position(text("cake"), text("ke"));
 
     // insert table - Item
     let actual = table("Item")
@@ -123,7 +122,7 @@ test_case!(position_and_indexing, async move {
     let expected = Ok(Payload::Create);
     assert_eq!(actual, expected, "create table - LeftRight");
 
-    let test_str = left(text("Hello, World"), num(7));
+    let test_str = f::left(text("Hello, World"), num(7));
 
     // insert table - Item
     let actual = table("LeftRight")
@@ -145,7 +144,7 @@ test_case!(position_and_indexing, async move {
     assert_eq!(actual, expected, "select from LeftRight");
 
     // test - right
-    let test_str = right(text("Hello, World"), num(7));
+    let test_str = f::right(text("Hello, World"), num(7));
     // insert table - Item
     let actual = table("LeftRight")
         .insert()

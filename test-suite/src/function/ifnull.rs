@@ -5,7 +5,9 @@ use {
     rust_decimal::Decimal,
 };
 
-test_case!(ifnull, async move {
+test_case!(ifnull, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "CREATE TABLE SingleItem (id integer null, int8 int8 null, dec decimal null,
@@ -67,6 +69,6 @@ test_case!(ifnull, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, Ok(expected));
+        g.test(sql, Ok(expected)).await;
     }
 });

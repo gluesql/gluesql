@@ -9,7 +9,9 @@ use {
     },
 };
 
-test_case!(ltrim_rtrim, async move {
+test_case!(ltrim_rtrim, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "CREATE TABLE Item (name TEXT DEFAULT RTRIM(LTRIM('   abc   ')))",
@@ -173,6 +175,6 @@ test_case!(ltrim_rtrim, async move {
         ),
     ];
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

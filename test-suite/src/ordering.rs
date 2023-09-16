@@ -1,16 +1,19 @@
-use crate::*;
+use {crate::*, gluesql_core::prelude::Value::Bool};
 
-test_case!(ordering, async move {
-    run!(
+test_case!(ordering, {
+    let g = get_tester!();
+
+    g.run(
         "
         CREATE TABLE Operator (
             id INTEGER,
             name TEXT,
         );
-    "
-    );
-    run!("DELETE FROM Operator");
-    run!(
+    ",
+    )
+    .await;
+    g.run("DELETE FROM Operator").await;
+    g.run(
         "
         INSERT INTO Operator (id, name) VALUES
             (1, 'Abstract'),
@@ -18,8 +21,9 @@ test_case!(ordering, async move {
             (3,     'July'),
             (4,    'Romeo'),
             (5,    'Trade');
-    "
-    );
+    ",
+    )
+    .await;
 
     let test_cases = [
         (1, "SELECT * FROM Operator WHERE id < 2;"),
@@ -62,6 +66,14 @@ test_case!(ordering, async move {
     ];
 
     for (num, sql) in test_cases {
-        count!(num, sql);
+        g.count(sql, num).await;
     }
+
+    // Literal comparison with BinaryOperator
+    g.test("select 1 < 'a' as test", Ok(select!(test Bool; false)))
+        .await;
+    g.test("select 1 >= 'a' as test", Ok(select!(test Bool; false)))
+        .await;
+    g.test("select 1 = 'a' as test", Ok(select!(test Bool; false)))
+        .await;
 });

@@ -1,9 +1,13 @@
 use {
     crate::*,
-    gluesql_core::{ast_builder::*, executor::Payload, prelude::Value::*},
+    gluesql_core::{
+        ast_builder::{function as f, *},
+        executor::Payload,
+        prelude::Value::*,
+    },
 };
 
-test_case!(case_conversion, async move {
+test_case!(case_conversion, {
     let glue = get_glue!();
 
     let actual = table("Item")
@@ -34,7 +38,7 @@ test_case!(case_conversion, async move {
         .select()
         .filter(col("name").lower().eq("'abcd'"))
         .project("name")
-        .project(lower("name"))
+        .project(f::lower("name"))
         .execute(glue)
         .await;
     let expected = Ok(select!(

@@ -1,10 +1,14 @@
 use {
     crate::*,
-    gluesql_core::{ast_builder::*, executor::Payload, prelude::Value::*},
+    gluesql_core::{
+        ast_builder::{function as f, *},
+        executor::Payload,
+        prelude::Value::*,
+    },
     std::f64::consts::*,
 };
 
-test_case!(conversion, async move {
+test_case!(conversion, {
     let glue = get_glue!();
 
     // Create table - Number
@@ -30,7 +34,7 @@ test_case!(conversion, async move {
     let actual = table("Number")
         .select()
         .project("input")
-        .project(degrees("number"))
+        .project(f::degrees("number"))
         .project(col("number").degrees())
         .execute(glue)
         .await;
@@ -48,7 +52,7 @@ test_case!(conversion, async move {
     let actual = table("Number")
         .select()
         .project("input")
-        .project(radians("number"))
+        .project(f::radians("number"))
         .project(col("number").radians())
         .execute(glue)
         .await;

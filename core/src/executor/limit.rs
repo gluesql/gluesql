@@ -3,7 +3,7 @@ use {
     crate::{
         ast::Expr,
         data::{Row, Value},
-        result::Result,
+        result::{Error, Result},
     },
     futures::stream::{Stream, StreamExt},
 };
@@ -22,9 +22,9 @@ impl Limit {
             };
 
             let evaluated = evaluate_stateless(None, expr).await?;
-            let size: Result<usize> = Value::try_from(evaluated)?.try_into();
+            let size: usize = Value::try_from(evaluated)?.try_into()?;
 
-            size.map(Some)
+            Result::<Option<usize>, Error>::Ok(Some(size))
         };
 
         let limit = eval(limit).await?;

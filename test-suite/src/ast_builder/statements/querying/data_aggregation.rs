@@ -3,7 +3,7 @@ use {
     gluesql_core::{ast_builder::*, executor::Payload, prelude::Value::*},
 };
 
-test_case!(data_aggregation, async move {
+test_case!(data_aggregation, {
     let glue = get_glue!();
 
     let actual = table("User")

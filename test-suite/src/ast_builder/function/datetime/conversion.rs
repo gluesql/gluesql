@@ -2,10 +2,14 @@ use chrono::{NaiveDate, NaiveTime};
 
 use {
     crate::*,
-    gluesql_core::{ast_builder::*, executor::Payload, prelude::Value::*},
+    gluesql_core::{
+        ast_builder::{function as f, *},
+        executor::Payload,
+        prelude::Value::*,
+    },
 };
 
-test_case!(conversion, async move {
+test_case!(conversion, {
     let glue = get_glue!();
 
     let actual = table("Visitor")
@@ -37,7 +41,7 @@ test_case!(conversion, async move {
         .project("id")
         .project("name")
         .project(col("visit_date").to_date("'%Y-%m-%d'"))
-        .project(to_date("visit_date", "'%Y-%m-%d'"))
+        .project(f::to_date("visit_date", "'%Y-%m-%d'"))
         .execute(glue)
         .await;
     let expected = Ok(select!(
@@ -54,7 +58,7 @@ test_case!(conversion, async move {
         .project("id")
         .project("name")
         .project(col("visit_time").to_time("'%H:%M:%S'"))
-        .project(to_time("visit_time", "'%H:%M:%S'"))
+        .project(f::to_time("visit_time", "'%H:%M:%S'"))
         .execute(glue)
         .await;
     let expected = Ok(select!(
@@ -71,7 +75,7 @@ test_case!(conversion, async move {
         .project("id")
         .project("name")
         .project(col("visit_time_stamp").to_timestamp("'%Y-%m-%d %H:%M:%S'"))
-        .project(to_timestamp("visit_time_stamp", "'%Y-%m-%d %H:%M:%S'"))
+        .project(f::to_timestamp("visit_time_stamp", "'%Y-%m-%d %H:%M:%S'"))
         .execute(glue)
         .await;
     let expected = Ok(select!(

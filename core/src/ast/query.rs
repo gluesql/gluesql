@@ -179,7 +179,7 @@ impl Query {
             _ => "".to_owned(),
         };
 
-        let string = vec![order_by, limit, offset]
+        let string = [order_by, limit, offset]
             .iter()
             .filter(|sql| !sql.is_empty())
             .join(" ");
@@ -265,7 +265,7 @@ impl Select {
             None => "".to_owned(),
         };
 
-        let condition = vec![selection, group_by, having]
+        let condition = [selection, group_by, having]
             .iter()
             .filter(|sql| !sql.is_empty())
             .join(" ");
@@ -450,7 +450,7 @@ impl Join {
             ),
         };
 
-        let join_constraints = vec![join_constraint, join_executor]
+        let join_constraints = [join_constraint, join_executor]
             .iter()
             .filter(|sql| !sql.is_empty())
             .join(" AND ");

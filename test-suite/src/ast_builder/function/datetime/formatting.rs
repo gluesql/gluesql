@@ -1,9 +1,13 @@
 use {
     crate::*,
     chrono::{NaiveDate, NaiveTime},
-    gluesql_core::{ast_builder::*, executor::Payload, prelude::Value::*},
+    gluesql_core::{
+        ast_builder::{function as f, *},
+        executor::Payload,
+        prelude::Value::*,
+    },
 };
-test_case!(formatting, async move {
+test_case!(formatting, {
     let glue = get_glue!();
 
     // create table -"Visitor"
@@ -49,7 +53,7 @@ test_case!(formatting, async move {
         .project("name")
         .project("visit_date")
         .project(col("visit_date").format(text("%Y-%m")))
-        .project(format(col("visit_date"), text("%m")))
+        .project(f::format(col("visit_date"), text("%m")))
         .execute(glue)
         .await;
     let expected = Ok(select!(
@@ -66,7 +70,7 @@ test_case!(formatting, async move {
         .project("name")
         .project("visit_time")
         .project(col("visit_time").format(text("%H:%M:%S")))
-        .project(format(col("visit_time"), text("%M:%S")))
+        .project(f::format(col("visit_time"), text("%M:%S")))
         .execute(glue)
         .await;
     let expected = Ok(select!(
@@ -83,7 +87,7 @@ test_case!(formatting, async move {
         .project("name")
         .project("visit_timestamp")
         .project(col("visit_timestamp").format(text("%Y-%m-%d %H:%M:%S")))
-        .project(format(col("visit_timestamp"), text("%Y-%m-%d %H:%M:%S")))
+        .project(f::format(col("visit_timestamp"), text("%Y-%m-%d %H:%M:%S")))
         .execute(glue)
         .await;
     let expected = Ok(select!(

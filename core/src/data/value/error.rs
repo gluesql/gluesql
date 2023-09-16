@@ -96,12 +96,8 @@ pub enum ValueError {
     #[error("unreachable failure on parsing number")]
     UnreachableNumberParsing,
 
-    // Cast errors from value to value
-    #[error("impossible cast")]
-    ImpossibleCast,
-
-    #[error("unimplemented cast")]
-    UnimplementedCast,
+    #[error("unimplemented cast: {value:?} as {data_type}")]
+    UnimplementedCast { value: Value, data_type: DataType },
 
     #[error("failed to cast from hex string to bytea: {0}")]
     CastFromHexToByteaFailed(String),
@@ -231,6 +227,9 @@ pub enum ValueError {
 
     #[error("failed to convert Value to Expr")]
     ValueToExprConversionFailure,
+
+    #[error("failed to convert Value to u32: {0}")]
+    I64ToU32ConversionFailure(String),
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Display)]
@@ -249,4 +248,6 @@ pub enum NumericBinaryOperator {
     BitwiseAnd,
     #[strum(to_string = "<<")]
     BitwiseShiftLeft,
+    #[strum(to_string = ">>")]
+    BitwiseShiftRight,
 }

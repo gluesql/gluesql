@@ -46,9 +46,12 @@ impl<'a> TryFrom<OrderByExprNode<'a>> for OrderByExpr {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        ast_builder::OrderByExprNode, parse_sql::parse_order_by_expr,
-        translate::translate_order_by_expr,
+    use {
+        crate::{
+            ast_builder::OrderByExprNode, parse_sql::parse_order_by_expr,
+            translate::translate_order_by_expr,
+        },
+        pretty_assertions::assert_eq,
     };
 
     fn test(actual: OrderByExprNode, expected: &str) {

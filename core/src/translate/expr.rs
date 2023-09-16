@@ -190,7 +190,7 @@ pub fn translate_order_by_expr(sql_order_by_expr: &SqlOrderByExpr) -> Result<Ord
         nulls_first,
     } = sql_order_by_expr;
 
-    if matches!(nulls_first, Some(_)) {
+    if nulls_first.is_some() {
         return Err(TranslateError::OrderByNullsFirstOrLastNotSupported.into());
     }
 

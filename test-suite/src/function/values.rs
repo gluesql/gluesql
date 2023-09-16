@@ -3,44 +3,50 @@ use {
     gluesql_core::{error::EvaluateError, prelude::Value},
 };
 
-test_case!(values, async move {
-    run!("CREATE TABLE USER (id INTEGER, data MAP);");
-    run!(
+test_case!(values, {
+    let g = get_tester!();
+
+    g.run("CREATE TABLE USER (id INTEGER, data MAP);").await;
+    g.run(
         r#"
             INSERT INTO USER VALUES 
-            (1, '{"id": "1", "name": "alice"}'),
+            (1, '{"id": 1, "name": "alice", "is_male": false}'),
             (2, '{"name": "bob"}'),
             (3, '{}');
-        "#
-    );
+        "#,
+    )
+    .await;
 
-    test!(
-        name: "return all values from map by ascending order",
-        sql: r#"SELECT SORT(VALUES(data), 'ASC') as result FROM USER WHERE id=1"#,
-        expected: {
-            Ok(select!(result; Value::List; vec![Value::Str("1".to_owned()), Value::Str("alice".to_owned())]))
+    g.named_test(
+         "return all values from map by ascending order",
+        r#"SELECT SORT(VALUES(data), 'DESC') as result FROM USER WHERE id=1"#,
+        {
+            Ok(select!(result; Value::List; vec![Value::I64(1), Value::Bool(false), Value::Str("alice".to_owned())]))
         }
-    );
-    test!(
-        name: "return all values from map by descending order",
-        sql: r#"SELECT SORT(VALUES(data), 'DESC') as result FROM USER WHERE id=1"#,
-        expected: {
-            Ok(select!(result; Value::List; vec![Value::Str("alice".to_owned()), Value::Str("1".to_owned())]))
+    ).await;
+    g.named_test(
+         "return all values from map by descending order",
+        r#"SELECT SORT(VALUES(data), 'ASC') as result FROM USER WHERE id=1"#,
+        {
+            Ok(select!(result; Value::List; vec![Value::Str("alice".to_owned()), Value::Bool(false), Value::I64(1)]))
         }
-    );
-    test!(
-        name: "return all values from map",
-        sql: r#"SELECT VALUES(data) as result FROM USER WHERE id=2"#,
-        expected: Ok(select!(result; Value::List; vec![Value::Str("bob".to_owned())]))
-    );
-    test!(
-        name: "return null from empty map",
-        sql: r#"SELECT VALUES(data) as result FROM USER WHERE id=3"#,
-        expected: Ok(select!(result; Value::List; vec![]))
-    );
-    test!(
-        name: "return arguemnt type error",
-        sql: r#"SELECT VALUES(id) FROM USER WHERE id=1"#,
-        expected: Err(EvaluateError::MapTypeRequired.into())
-    );
+    ).await;
+    g.named_test(
+        "return all values from map",
+        r#"SELECT VALUES(data) as result FROM USER WHERE id=2"#,
+        Ok(select!(result; Value::List; vec![Value::Str("bob".to_owned())])),
+    )
+    .await;
+    g.named_test(
+        "return null from empty map",
+        r#"SELECT VALUES(data) as result FROM USER WHERE id=3"#,
+        Ok(select!(result; Value::List; vec![])),
+    )
+    .await;
+    g.named_test(
+        "return arguemnt type error",
+        r#"SELECT VALUES(id) FROM USER WHERE id=1"#,
+        Err(EvaluateError::MapTypeRequired.into()),
+    )
+    .await;
 });

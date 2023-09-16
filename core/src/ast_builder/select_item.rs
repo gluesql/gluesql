@@ -2,6 +2,7 @@ use {
     super::ExprNode,
     crate::{
         ast::{Expr, SelectItem, ToSqlUnquoted},
+        ast_builder::ExprWithAliasNode,
         parse_sql::parse_select_item,
         result::{Error, Result},
         translate::translate_select_item,
@@ -13,6 +14,7 @@ pub enum SelectItemNode<'a> {
     SelectItem(SelectItem),
     Expr(ExprNode<'a>),
     Text(String),
+    ExprWithAliasNode(ExprWithAliasNode<'a>),
 }
 
 impl<'a> From<SelectItem> for SelectItemNode<'a> {
@@ -33,6 +35,12 @@ impl<'a> From<&str> for SelectItemNode<'a> {
     }
 }
 
+impl<'a> From<ExprWithAliasNode<'a>> for SelectItemNode<'a> {
+    fn from(expr_node: ExprWithAliasNode<'a>) -> Self {
+        Self::ExprWithAliasNode(expr_node)
+    }
+}
+
 impl<'a> TryFrom<SelectItemNode<'a>> for SelectItem {
     type Error = Error;
 
@@ -48,17 +56,25 @@ impl<'a> TryFrom<SelectItemNode<'a>> for SelectItem {
 
                 Ok(SelectItem::Expr { expr, label })
             }
+            SelectItemNode::ExprWithAliasNode(alias_node) => {
+                let (expr, label) = alias_node.try_into()?;
+
+                Ok(SelectItem::Expr { expr, label })
+            }
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        ast::SelectItem,
-        ast_builder::{col, SelectItemNode},
-        parse_sql::parse_select_item,
-        translate::translate_select_item,
+    use {
+        crate::{
+            ast::SelectItem,
+            ast_builder::{col, SelectItemNode},
+            parse_sql::parse_select_item,
+            translate::translate_select_item,
+        },
+        pretty_assertions::assert_eq,
     };
 
     fn test(actual: SelectItemNode, expected: &str) {
