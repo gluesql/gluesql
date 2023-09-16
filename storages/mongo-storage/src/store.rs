@@ -211,6 +211,7 @@ impl MongoStorage {
 
                     let nullable = doc
                         .get_array("bsonType")
+                        .map_err(|_| MongoStorageError::InvalidBsonType)
                         .map_storage_err()?
                         .get(1)
                         .and_then(|x| x.as_str())
@@ -219,6 +220,7 @@ impl MongoStorage {
 
                     let data_type = doc
                         .get_str("title")
+                        .map_err(|_| MongoStorageError::InvalidGlueType)
                         .map_storage_err()
                         .and_then(parse_data_type)
                         .and_then(|s| translate_data_type(&s))?;

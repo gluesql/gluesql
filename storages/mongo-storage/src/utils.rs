@@ -10,14 +10,23 @@ pub fn get_primary_key(column_defs: &[ColumnDef]) -> Option<&ColumnDef> {
 
 pub fn get_collection_options(
     labels: Vec<String>,
-    properties: Document,
-    additional_properties: bool,
+    column_types: Document,
 ) -> CreateCollectionOptions {
+    let mut required = vec!["_id".to_owned()];
+    required.extend(labels);
+
+    let mut properties = doc! {
+        "_id": { "bsonType": ["objectId", "binData"] }
+    };
+    properties.extend(column_types);
+
+    let additional_properties = matches!(required.len(), 1);
+
     CreateCollectionOptions::builder()
         .validator(Some(doc! {
             "$jsonSchema": {
                 "type": "object",
-                "required": labels,
+                "required": required,
                 "properties": properties,
                 "additionalProperties": additional_properties
               }

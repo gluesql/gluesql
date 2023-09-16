@@ -173,10 +173,22 @@ impl IntoValue for Bson {
             }
             (Bson::DateTime(dt), DataType::Time) => Value::Time(dt.to_chrono().time()),
             (Bson::DateTime(dt), _) => Value::Date(dt.to_chrono().date_naive()),
+            (Bson::JavaScriptCode(code), _) => Value::Str(code),
+            (Bson::JavaScriptCodeWithScope(bson::JavaScriptCodeWithScope { code, scope }), _) => {
+                Value::Map(HashMap::from([
+                    ("code".to_owned(), Value::Str(code)),
+                    (
+                        "scope".to_owned(),
+                        bson::to_bson(&scope)
+                            .map_storage_err()?
+                            .into_value_schemaless()?,
+                    ),
+                ]))
+            }
             _ => {
                 return Err(Error::StorageMsg(
                     MongoStorageError::UnsupportedBsonType.to_string(),
-                ))
+                ));
             }
         })
     }

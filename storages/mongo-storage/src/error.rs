@@ -40,4 +40,10 @@ pub enum MongoStorageError {
 
     #[error("unsupported bson type")]
     UnsupportedBsonType,
+
+    #[error(r#"Invalid bsonType - it should be Array eg) ["string"] or ["string", "null"]"#)]
+    InvalidBsonType,
+
+    #[error("Invalid glueType - it should be type of GlueSQL Value")]
+    InvalidGlueType,
 }

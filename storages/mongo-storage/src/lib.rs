@@ -2,7 +2,9 @@ pub mod error;
 pub mod row;
 mod store;
 mod store_mut;
-mod utils;
+pub mod utils;
+
+pub use utils::get_collection_options;
 
 use {
     error::ResultExt,

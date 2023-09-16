@@ -1,5 +1,3 @@
-use crate::utils::get_collection_options;
-
 use {
     crate::{
         error::{MongoStorageError, OptionExt, ResultExt},
@@ -8,7 +6,7 @@ use {
             key::{into_object_id, KeyIntoBson},
             value::IntoBson,
         },
-        utils::get_primary_key,
+        utils::{get_collection_options, get_primary_key},
         MongoStorage,
     },
     async_trait::async_trait,
@@ -21,7 +19,7 @@ use {
     },
     mongodb::{
         bson::{doc, Bson, Document},
-        options::{ IndexOptions, ReplaceOptions},
+        options::{IndexOptions, ReplaceOptions},
     },
 };
 
@@ -39,7 +37,7 @@ enum IndexType {
 #[async_trait(?Send)]
 impl StoreMut for MongoStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
-        let (mut labels, column_types, indexes) = schema
+        let (labels, column_types, indexes) = schema
             .column_defs
             .as_ref()
             .map(|column_defs| {
@@ -118,13 +116,7 @@ impl StoreMut for MongoStorage {
             })
             .unwrap_or_default();
 
-        labels.insert(0, "_id".to_owned());
-        let mut properties = doc! {
-            "_id": { "bsonType": ["objectId", "binData"] }
-        };
-        properties.extend(column_types);
-        let additional_properties = matches!(labels.len(), 1);
-        let options = get_collection_options(labels, properties, additional_properties);
+        let options = get_collection_options(labels, column_types);
 
         self.db
             .create_collection(&schema.table_name, options)
