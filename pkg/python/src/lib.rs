@@ -1,7 +1,6 @@
 #![cfg(feature = "include-python-workspace")]
 
 use {
-    pyo3::{prelude::*, types::PyString},
     error::{
         EngineNotLoadedError, ExecuteError, GlueSQLError, ParsingError, PlanError, TranslateError,
     },
@@ -11,6 +10,7 @@ use {
         translate::translate,
     },
     payload::{convert, PyPayload},
+    pyo3::{prelude::*, types::PyString},
     storages::{
         PyJsonStorage, PyMemoryStorage, PySharedMemoryStorage, PySledStorage, PySledStorageConfig,
         PySledStorageModeConfig, PyStorageEngine,

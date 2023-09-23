@@ -1,6 +1,6 @@
 use {
     gluesql_core::prelude::Error,
-    pyo3::{prelude::*, create_exception, exceptions::PyException, pyclass::CompareOp},
+    pyo3::{create_exception, exceptions::PyException, prelude::*, pyclass::CompareOp},
 };
 
 #[pyclass(name = "GlueSQLError")]
