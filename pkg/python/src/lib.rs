@@ -1,9 +1,7 @@
 #![cfg(feature = "include-python-workspace")]
 
 use {
-    error::{
-        ExecuteError, GlueSQLError, ParsingError, PlanError, TranslateError,
-    },
+    error::GlueSQLError,
     gluesql_core::{
         ast::Statement,
         prelude::{execute, parse, plan, Payload},
@@ -30,7 +28,7 @@ macro_rules! plan {
     ($storage:expr, $statement:expr) => {{
         plan(&$storage.0, $statement)
             .await
-            .map_err(|e| PlanError::new_err(e.to_string()))
+            .map_err(|e| GlueSQLError::new_err(e.to_string()))
     }};
 }
 
@@ -38,7 +36,7 @@ macro_rules! execute {
     ($storage:expr, $statement:expr) => {{
         execute(&mut $storage.0, $statement)
             .await
-            .map_err(|e| ExecuteError::new_err(e.to_string()))
+            .map_err(|e| GlueSQLError::new_err(e.to_string()))
     }};
 }
 
@@ -77,11 +75,11 @@ impl PyGlue {
 
     pub fn query(&mut self, py: Python, sql: &PyString) -> PyResult<PyObject> {
         let sql = sql.to_string();
-        let queries = parse(&sql).map_err(|e| ParsingError::new_err(e.to_string()))?;
+        let queries = parse(&sql).map_err(|e| GlueSQLError::new_err(e.to_string()))?;
 
         let mut payloads: Vec<PyPayload> = vec![];
         for query in queries.iter() {
-            let statement = translate(query).map_err(|e| TranslateError::new_err(e.to_string()))?;
+            let statement = translate(query).map_err(|e| GlueSQLError::new_err(e.to_string()))?;
             let statement = self.plan(statement)?;
 
             let payload = self.execute(statement)?;
@@ -104,9 +102,5 @@ fn gluesql(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PySledStorageModeConfig>()?;
 
     m.add("GlueSQLError", py.get_type::<GlueSQLError>())?;
-    m.add("PlanError", py.get_type::<PlanError>())?;
-    m.add("ExecuteError", py.get_type::<ExecuteError>())?;
-    m.add("TranslateError", py.get_type::<TranslateError>())?;
-    m.add("ParsingError", py.get_type::<ParsingError>())?;
     Ok(())
 }

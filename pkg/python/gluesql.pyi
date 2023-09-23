@@ -66,16 +66,3 @@ class SledStorage(Storage):
     def try_from(config: "SledStorageConfig") -> "SledStorage": ...
 
 class GlueSQLError(Exception):
-    """ """
-
-class ParsingError(GlueSQLError):
-    """ """
-
-class TranslateError(GlueSQLError):
-    """ """
-
-class ExecuteError(GlueSQLError):
-    """ """
-
-class PlanError(GlueSQLError):
-    """ """
