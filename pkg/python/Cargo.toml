@@ -16,7 +16,7 @@ name = "gluesql"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-default = ["include-python-workspace"]
+default = []
 include-python-workspace = []
 
 [dependencies]
