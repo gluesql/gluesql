@@ -21,10 +21,12 @@ async fn mongo_types() {
     let labels = vec![
         "col_javascript".to_owned(),
         "col_javascriptWithScope".to_owned(),
+        "col_regex".to_owned(),
     ];
     let column_types = doc! {
         "col_javascript": { "bsonType": ["javascript"], "title": "TEXT" },
-        "col_javascriptWithScope": { "bsonType": ["javascriptWithScope"], "title": "TEXT" }
+        "col_javascriptWithScope": { "bsonType": ["javascriptWithScope"], "title": "TEXT" },
+        "col_regex": { "bsonType": ["regex"], "title": "TEXT" }
     };
 
     let options = get_collection_options(labels, column_types);
@@ -42,6 +44,10 @@ async fn mongo_types() {
         "col_javascriptWithScope": Bson::JavaScriptCodeWithScope(bson::JavaScriptCodeWithScope {
             code: "function sub(a, b) { return a - b; }".to_owned(),
             scope: doc! { "a": 1, "b": 2 }
+        }),
+        "col_regex": Bson::RegularExpression(bson::Regex {
+            pattern: "^[a-z]*$".to_owned(),
+            options: "i".to_owned()
         })
     };
 
@@ -60,6 +66,7 @@ async fn mongo_types() {
             labels: vec![
                 "col_javascript".to_owned(),
                 "col_javascriptWithScope".to_owned(),
+                "col_regex".to_owned(),
             ],
             rows: vec![vec![
                 Value::Str("function add(a, b) { return a + b; }".to_owned()),
@@ -76,6 +83,7 @@ async fn mongo_types() {
                         ])),
                     ),
                 ])),
+                Value::Str("/^[a-z]*$/i".to_owned()),
             ]],
         }),
     )];
