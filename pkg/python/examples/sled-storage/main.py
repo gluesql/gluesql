@@ -7,6 +7,8 @@ db = Glue(SledStorage("./fixtures"))
 def run():
     db.query(
         """
+        DROP TABLE IF EXISTS User;
+        DROP TABLE IF EXISTS Device;
         CREATE TABLE User (id INTEGER, name TEXT);
         CREATE TABLE Device (name TEXT, userId INTEGER);
         INSERT INTO User VALUES
