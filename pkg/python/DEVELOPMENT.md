@@ -5,7 +5,7 @@
 To build `gluesql-py`, run below command.
 
 ```
-maturin build --features include-python-workspace
+maturin build
 ```
 
 ### Test
@@ -21,7 +21,7 @@ pytest
 To build `gluesql-py` in release mode, run below command.
 
 ```
-maturin build --features include-python-workspace --release --strip
+maturin build --release --strip
 ```
 
 To deploy `gluesql-py` in pypi, run below command.
