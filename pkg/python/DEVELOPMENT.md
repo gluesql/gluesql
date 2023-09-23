@@ -15,3 +15,17 @@ To run `gluesql-py` tests, run below command.
 ```
 pytest
 ```
+
+## Deployment
+
+To build `gluesql-py` in release mode, run below command.
+
+```
+maturin build --features include-python-workspace --release --strip
+```
+
+To deploy `gluesql-py` in pypi, run below command.
+
+```
+maturin publish
+```
