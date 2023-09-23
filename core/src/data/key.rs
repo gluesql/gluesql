@@ -82,28 +82,13 @@ impl Ord for Key {
             (Key::None, _) => Ordering::Greater,
             (_, Key::None) => Ordering::Less,
 
-            (Key::I8(_), _)
-            | (Key::I16(_), _)
-            | (Key::I32(_), _)
-            | (Key::I64(_), _)
-            | (Key::I128(_), _)
-            | (Key::U8(_), _)
-            | (Key::U16(_), _)
-            | (Key::U32(_), _)
-            | (Key::U64(_), _)
-            | (Key::U128(_), _)
-            | (Key::F32(_), _)
-            | (Key::F64(_), _)
-            | (Key::Decimal(_), _)
-            | (Key::Bool(_), _)
-            | (Key::Str(_), _)
-            | (Key::Bytea(_), _)
-            | (Key::Date(_), _)
-            | (Key::Timestamp(_), _)
-            | (Key::Time(_), _)
-            | (Key::Interval(_), _)
-            | (Key::Uuid(_), _)
-            | (Key::Inet(_), _) => Ordering::Greater,
+            (left, right) => {
+                if left.to_order() <= right.to_order() {
+                    Ordering::Greater
+                } else {
+                    Ordering::Less
+                }
+            }
         }
     }
 }
@@ -376,6 +361,34 @@ impl Key {
                 .collect::<Vec<_>>(),
             Key::None => vec![NONE],
         })
+    }
+
+    fn to_order(&self) -> u8 {
+        match self {
+            Key::I8(_) => 1,
+            Key::I16(_) => 2,
+            Key::I32(_) => 3,
+            Key::I64(_) => 4,
+            Key::I128(_) => 5,
+            Key::U8(_) => 6,
+            Key::U16(_) => 7,
+            Key::U32(_) => 8,
+            Key::U64(_) => 9,
+            Key::U128(_) => 10,
+            Key::F32(_) => 11,
+            Key::F64(_) => 12,
+            Key::Decimal(_) => 13,
+            Key::Bool(_) => 14,
+            Key::Str(_) => 15,
+            Key::Bytea(_) => 16,
+            Key::Date(_) => 17,
+            Key::Timestamp(_) => 18,
+            Key::Time(_) => 19,
+            Key::Interval(_) => 20,
+            Key::Uuid(_) => 21,
+            Key::Inet(_) => 22,
+            Key::None => 23,
+        }
     }
 }
 

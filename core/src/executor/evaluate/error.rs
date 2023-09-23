@@ -38,6 +38,9 @@ pub enum EvaluateError {
     #[error("function requires point value: {0}")]
     FunctionRequiresPointValue(String),
 
+    #[error("function requires date or datetime value: {0}")]
+    FunctionRequiresDateOrDateTimeValue(String),
+
     #[error("function requires one of string, list, map types: {0}")]
     FunctionRequiresStrOrListOrMapValue(String),
 
@@ -126,8 +129,18 @@ pub enum EvaluateError {
     #[error("unsupported evaluate string unary factorial: {0}")]
     UnsupportedUnaryFactorial(String),
 
+    #[error("incompatible bit operation ~{0}")]
+    IncompatibleUnaryBitwiseNotOperation(String),
+
     #[error("unsupported custom function in subqueries")]
     UnsupportedCustomFunction,
+
+    #[error(r#"The function "{function_name}" requires at least {required_minimum} argument(s), but {found} were provided."#)]
+    FunctionRequiresMoreArguments {
+        function_name: String,
+        required_minimum: usize,
+        found: usize,
+    },
 
     #[error("function args.length not matching: {name}, expected: {expected_minimum} ~ {expected_maximum}, found: {found}")]
     FunctionArgsLengthNotWithinRange {
@@ -139,6 +152,12 @@ pub enum EvaluateError {
 
     #[error("unsupported function: {0}")]
     UnsupportedFunction(String),
+
+    #[error("The provided arguments are non-comparable: {0}")]
+    NonComparableArgumentError(String),
+
+    #[error("function requires at least one argument: {0}")]
+    FunctionRequiresAtLeastOneArgument(String),
 }
 
 fn error_serialize<S>(error: &chrono::format::ParseError, serializer: S) -> Result<S::Ok, S::Error>

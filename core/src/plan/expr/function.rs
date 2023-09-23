@@ -6,13 +6,14 @@ use {
 impl Function {
     pub fn as_exprs(&self) -> impl Iterator<Item = &Expr> {
         #[derive(iter_enum::Iterator)]
-        enum Exprs<I0, I1, I2, I3, I4, I5> {
+        enum Exprs<I0, I1, I2, I3, I4, I5, I6> {
             Empty(I0),
             Single(I1),
             Double(I2),
             Triple(I3),
             VariableArgs(I4),
             VariableArgsWithSingle(I5),
+            Quadruple(I6),
         }
 
         match self {
@@ -45,6 +46,7 @@ impl Function {
             | Self::Ascii(expr)
             | Self::Chr(expr)
             | Self::Md5(expr)
+            | Self::LastDay(expr)
             | Self::Ltrim { expr, chars: None }
             | Self::Rtrim { expr, chars: None }
             | Self::Trim {
@@ -144,6 +146,7 @@ impl Function {
             }
             | Self::Append { expr, value: expr2 }
             | Self::Prepend { expr, value: expr2 }
+            | Self::Skip { expr, size: expr2 }
             | Self::Sort {
                 expr,
                 order: Some(expr2),
@@ -153,7 +156,9 @@ impl Function {
             | Self::CalcDistance {
                 geometry1: expr,
                 geometry2: expr2,
-            } => Exprs::Double([expr, expr2].into_iter()),
+            }
+            | Self::AddMonth { expr, size: expr2 } => Exprs::Double([expr, expr2].into_iter()),
+
             Self::Lpad {
                 expr,
                 size: expr2,
@@ -174,16 +179,36 @@ impl Function {
                 old: expr2,
                 new: expr3,
             }
+            | Self::Slice {
+                expr,
+                start: expr2,
+                length: expr3,
+            }
             | Self::FindIdx {
                 from_expr: expr,
                 sub_expr: expr2,
                 start: Some(expr3),
+            }
+            | Self::Splice {
+                list_data: expr,
+                begin_index: expr2,
+                end_index: expr3,
+                values: None,
             } => Exprs::Triple([expr, expr2, expr3].into_iter()),
             Self::Custom { name: _, exprs } => Exprs::VariableArgs(exprs.iter()),
+            Self::Coalesce(exprs) => Exprs::VariableArgs(exprs.iter()),
             Self::Concat(exprs) => Exprs::VariableArgs(exprs.iter()),
             Self::ConcatWs { separator, exprs } => {
                 Exprs::VariableArgsWithSingle(once(separator).chain(exprs.iter()))
             }
+            Self::Greatest(exprs) => Exprs::VariableArgs(exprs.iter()),
+            Self::Entries(expr) => Exprs::Single([expr].into_iter()),
+            Self::Splice {
+                list_data: expr,
+                begin_index: expr2,
+                end_index: expr3,
+                values: Some(expr4),
+            } => Exprs::Quadruple([expr, expr2, expr3, expr4].into_iter()),
         }
     }
 }
@@ -243,6 +268,7 @@ mod tests {
         test("LOG2(16)", &["16"]);
         test("LOG10(150 - 50)", &["150 - 50"]);
         test("SQRT(144)", &["144"]);
+        test("LASTDAY(DATE '2020-01-01')", &[r#"DATE '2020-01-01'"#]);
         test(r#"LTRIM("  hello")"#, &[r#""  hello""#]);
         test(r#"RTRIM("world  ")"#, &[r#""world  ""#]);
         test(r#"TRIM("  rust  ")"#, &[r#""  rust  ""#]);
@@ -287,6 +313,7 @@ mod tests {
         test("REPEAT(col || col2, 3)", &["col || col2", "3"]);
         test("REPEAT(column, 2)", &["column", "2"]);
         test(r#"UNWRAP(field, "foo.1")"#, &["field", r#""foo.1""#]);
+        test(r#"SKIP(list, 2)"#, &[r#""list""#, r#"2"#]);
 
         // Triple
         test(
@@ -301,8 +328,19 @@ mod tests {
             r#"SUBSTR('   >++++("<   ', 3, 11)"#,
             &[r#"'   >++++("<   '"#, "3", "11"],
         );
+        test(r#"SPLICE(list, 2, 4)"#, &["list", "2", "4"]);
+
+        // Quadruple
+        test(
+            r#"SPLICE(list, 3, 5, values)"#,
+            &["list", "3", "5", "values"],
+        );
 
         //VariableArgs
+        test(r#"COALESCE("test")"#, &[r#""test""#]);
+
+        test(r#"COALESCE(NULL, "test")"#, &["NULL", r#""test""#]);
+
         test(r#"CONCAT("abc")"#, &[r#""abc""#]);
 
         test(r#"CONCAT("abc", "123")"#, &[r#""abc""#, r#""123""#]);

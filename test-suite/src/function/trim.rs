@@ -6,7 +6,9 @@ use {
     },
 };
 
-test_case!(trim, async move {
+test_case!(trim, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "CREATE TABLE Item (
@@ -156,6 +158,6 @@ test_case!(trim, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

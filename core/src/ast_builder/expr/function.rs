@@ -49,6 +49,10 @@ pub enum FunctionNode<'a> {
         power: ExprNode<'a>,
     },
     Sqrt(ExprNode<'a>),
+    Skip {
+        expr: ExprNode<'a>,
+        size: ExprNode<'a>,
+    },
     Gcd {
         left: ExprNode<'a>,
         right: ExprNode<'a>,
@@ -80,10 +84,15 @@ pub enum FunctionNode<'a> {
     },
     Degrees(ExprNode<'a>),
     Radians(ExprNode<'a>),
+    Coalesce(ExprList<'a>),
     Concat(ExprList<'a>),
     ConcatWs {
         separator: ExprNode<'a>,
         exprs: ExprList<'a>,
+    },
+    Take {
+        expr: ExprNode<'a>,
+        size: ExprNode<'a>,
     },
     Substr {
         expr: ExprNode<'a>,
@@ -150,11 +159,16 @@ pub enum FunctionNode<'a> {
     },
     GetX(ExprNode<'a>),
     GetY(ExprNode<'a>),
+    Greatest(ExprList<'a>),
     CalcDistance {
         geometry1: ExprNode<'a>,
         geometry2: ExprNode<'a>,
     },
     Length(ExprNode<'a>),
+    IsEmpty(ExprNode<'a>),
+    LastDay(ExprNode<'a>),
+    Entries(ExprNode<'a>),
+    Values(ExprNode<'a>),
 }
 
 impl<'a> TryFrom<FunctionNode<'a>> for Function {
@@ -211,6 +225,11 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
                 Ok(Function::Power { expr, power })
             }
             FunctionNode::Sqrt(expr_node) => expr_node.try_into().map(Function::Sqrt),
+            FunctionNode::Skip { expr, size } => {
+                let expr = expr.try_into()?;
+                let size = size.try_into()?;
+                Ok(Function::Skip { expr, size })
+            }
             FunctionNode::Gcd { left, right } => {
                 let left = left.try_into()?;
                 let right = right.try_into()?;
@@ -245,11 +264,17 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
                 let size = size.try_into()?;
                 Ok(Function::Rpad { expr, size, fill })
             }
+            FunctionNode::Coalesce(expr_list) => expr_list.try_into().map(Function::Coalesce),
             FunctionNode::Concat(expr_list) => expr_list.try_into().map(Function::Concat),
             FunctionNode::ConcatWs { separator, exprs } => {
                 let separator = separator.try_into()?;
                 let exprs = exprs.try_into()?;
                 Ok(Function::ConcatWs { separator, exprs })
+            }
+            FunctionNode::Take { expr, size } => {
+                let expr = expr.try_into()?;
+                let size = size.try_into()?;
+                Ok(Function::Take { expr, size })
             }
             FunctionNode::Degrees(expr) => expr.try_into().map(Function::Degrees),
             FunctionNode::Radians(expr) => expr.try_into().map(Function::Radians),
@@ -344,6 +369,7 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
             }
             FunctionNode::GetX(expr) => expr.try_into().map(Function::GetX),
             FunctionNode::GetY(expr) => expr.try_into().map(Function::GetY),
+            FunctionNode::Greatest(expr_list) => expr_list.try_into().map(Function::Greatest),
             FunctionNode::CalcDistance {
                 geometry1,
                 geometry2,
@@ -356,6 +382,10 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
                 })
             }
             FunctionNode::Length(expr) => expr.try_into().map(Function::Length),
+            FunctionNode::IsEmpty(expr) => expr.try_into().map(Function::IsEmpty),
+            FunctionNode::LastDay(expr) => expr.try_into().map(Function::LastDay),
+            FunctionNode::Entries(expr) => expr.try_into().map(Function::Entries),
+            FunctionNode::Values(expr) => expr.try_into().map(Function::Values),
         }
     }
 }
@@ -433,6 +463,10 @@ impl<'a> ExprNode<'a> {
         sign(self)
     }
 
+    pub fn skip<T: Into<ExprNode<'a>>>(self, size: T) -> ExprNode<'a> {
+        skip(self, size)
+    }
+
     pub fn power<T: Into<ExprNode<'a>>>(self, pwr: T) -> ExprNode<'a> {
         power(self, pwr)
     }
@@ -467,6 +501,9 @@ impl<'a> ExprNode<'a> {
     }
     pub fn rpad<T: Into<ExprNode<'a>>>(self, size: T, fill: Option<ExprNode<'a>>) -> ExprNode<'a> {
         rpad(self, size, fill)
+    }
+    pub fn take<T: Into<ExprNode<'a>>>(self, size: T) -> ExprNode<'a> {
+        take(self, size)
     }
     pub fn exp(self) -> ExprNode<'a> {
         exp(self)
@@ -512,6 +549,18 @@ impl<'a> ExprNode<'a> {
     pub fn extract(self, field: DateTimeField) -> ExprNode<'a> {
         extract(field, self)
     }
+    pub fn is_empty(self) -> ExprNode<'a> {
+        is_empty(self)
+    }
+    pub fn last_day(self) -> ExprNode<'a> {
+        last_day(self)
+    }
+    pub fn entries(self) -> ExprNode<'a> {
+        entries(self)
+    }
+    pub fn values(self) -> ExprNode<'a> {
+        values(self)
+    }
 }
 
 pub fn abs<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
@@ -540,6 +589,9 @@ pub fn rand(expr: Option<ExprNode>) -> ExprNode {
 }
 pub fn round<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Round(expr.into())))
+}
+pub fn coalesce<'a, T: Into<ExprList<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Coalesce(expr.into())))
 }
 pub fn concat<'a, T: Into<ExprList<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Concat(expr.into())))
@@ -621,6 +673,13 @@ pub fn sign<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Sign(expr.into())))
 }
 
+pub fn skip<'a, T: Into<ExprNode<'a>>, V: Into<ExprNode<'a>>>(expr: T, size: V) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Skip {
+        expr: expr.into(),
+        size: size.into(),
+    }))
+}
+
 pub fn power<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(expr: T, power: U) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Power {
         expr: expr.into(),
@@ -695,6 +754,13 @@ pub fn degrees<'a, V: Into<ExprNode<'a>>>(expr: V) -> ExprNode<'a> {
 
 pub fn radians<'a, V: Into<ExprNode<'a>>>(expr: V) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Radians(expr.into())))
+}
+
+pub fn take<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(expr: T, size: U) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Take {
+        expr: expr.into(),
+        size: size.into(),
+    }))
 }
 
 pub fn exp<'a, V: Into<ExprNode<'a>>>(expr: V) -> ExprNode<'a> {
@@ -852,6 +918,10 @@ pub fn get_y<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::GetY(expr.into())))
 }
 
+pub fn greatest<'a, T: Into<ExprList<'a>>>(exprs: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Greatest(exprs.into())))
+}
+
 pub fn calc_distance<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
     geometry1: T,
     geometry2: U,
@@ -866,24 +936,34 @@ pub fn length<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Length(expr.into())))
 }
 
+pub fn is_empty<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::IsEmpty(expr.into())))
+}
+
+pub fn last_day<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::LastDay(expr.into())))
+}
+
+pub fn entries<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Entries(expr.into())))
+}
+
+pub fn values<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Values(expr.into())))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
         ast::DateTimeField,
-        ast_builder::{
-            abs, acos, ascii, asin, atan, calc_distance, cast, ceil, chr, col, concat, concat_ws,
-            cos, date, degrees, divide, exp, expr, extract, find_idx, floor, format, gcd,
-            generate_uuid, get_x, get_y, ifnull, initcap, lcm, left, length, ln, log, log10, log2,
-            lower, lpad, ltrim, md5, modulo, now, num, pi, point, position, power, radians, rand,
-            repeat, replace, reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr, tan,
-            test_expr, text, time, timestamp, to_date, to_time, to_timestamp, upper,
-        },
+        ast_builder::function as f,
+        ast_builder::{col, date, expr, null, num, test_expr, text, time, timestamp},
         prelude::DataType,
     };
 
     #[test]
     fn function_abs() {
-        let actual = abs(col("num"));
+        let actual = f::abs(col("num"));
         let expected = "ABS(num)";
         test_expr(actual, expected);
 
@@ -894,7 +974,7 @@ mod tests {
 
     #[test]
     fn function_upper() {
-        let actual = upper(text("ABC"));
+        let actual = f::upper(text("ABC"));
         let expected = "UPPER('ABC')";
         test_expr(actual, expected);
 
@@ -904,7 +984,7 @@ mod tests {
     }
     #[test]
     fn function_ifnull() {
-        let actual = ifnull(text("HELLO"), text("WORLD"));
+        let actual = f::ifnull(text("HELLO"), text("WORLD"));
         let expected = "IFNULL('HELLO', 'WORLD')";
         test_expr(actual, expected);
 
@@ -915,7 +995,7 @@ mod tests {
 
     #[test]
     fn function_ceil() {
-        let actual = ceil(col("num"));
+        let actual = f::ceil(col("num"));
         let expected = "CEIL(num)";
         test_expr(actual, expected);
 
@@ -926,11 +1006,11 @@ mod tests {
 
     #[test]
     fn function_rand() {
-        let actual = rand(None);
+        let actual = f::rand(None);
         let expected = "RAND()";
         test_expr(actual, expected);
 
-        let actual = rand(Some(col("num")));
+        let actual = f::rand(Some(col("num")));
         let expected = "RAND(num)";
         test_expr(actual, expected);
 
@@ -941,7 +1021,7 @@ mod tests {
 
     #[test]
     fn function_round() {
-        let actual = round(col("num"));
+        let actual = f::round(col("num"));
         let expected = "ROUND(num)";
         test_expr(actual, expected);
 
@@ -952,7 +1032,7 @@ mod tests {
 
     #[test]
     fn function_floor() {
-        let actual = floor(col("num"));
+        let actual = f::floor(col("num"));
         let expected = "FLOOR(num)";
         test_expr(actual, expected);
 
@@ -964,7 +1044,7 @@ mod tests {
     #[test]
     fn function_trigonometrics() {
         // asin
-        let actual = asin(col("num"));
+        let actual = f::asin(col("num"));
         let expected = "ASIN(num)";
         test_expr(actual, expected);
 
@@ -973,7 +1053,7 @@ mod tests {
         test_expr(actual, expected);
 
         // acos
-        let actual = acos(col("num"));
+        let actual = f::acos(col("num"));
         let expected = "ACOS(num)";
         test_expr(actual, expected);
 
@@ -982,7 +1062,7 @@ mod tests {
         test_expr(actual, expected);
 
         // atan
-        let actual = atan(col("num"));
+        let actual = f::atan(col("num"));
         let expected = "ATAN(num)";
         test_expr(actual, expected);
 
@@ -991,7 +1071,7 @@ mod tests {
         test_expr(actual, expected);
 
         // sin
-        let actual = sin(col("num"));
+        let actual = f::sin(col("num"));
         let expected = "SIN(num)";
         test_expr(actual, expected);
 
@@ -1000,7 +1080,7 @@ mod tests {
         test_expr(actual, expected);
 
         // cos
-        let actual = cos(col("num"));
+        let actual = f::cos(col("num"));
         let expected = "COS(num)";
         test_expr(actual, expected);
 
@@ -1009,7 +1089,7 @@ mod tests {
         test_expr(actual, expected);
 
         // tan
-        let actual = tan(col("num"));
+        let actual = f::tan(col("num"));
         let expected = "TAN(num)";
         test_expr(actual, expected);
 
@@ -1018,28 +1098,28 @@ mod tests {
         test_expr(actual, expected);
 
         // pi
-        let actual = pi();
+        let actual = f::pi();
         let expected = "PI()";
         test_expr(actual, expected);
     }
 
     #[test]
     fn function_now() {
-        let actual = now();
+        let actual = f::now();
         let expected = "NOW()";
         test_expr(actual, expected);
     }
 
     #[test]
     fn function_generate_uuid() {
-        let actual = generate_uuid();
+        let actual = f::generate_uuid();
         let expected = "GENERATE_UUID()";
         test_expr(actual, expected);
     }
 
     #[test]
     fn function_left() {
-        let actual = left(text("GlueSQL"), num(2));
+        let actual = f::left(text("GlueSQL"), num(2));
         let expected = "LEFT('GlueSQL', 2)";
         test_expr(actual, expected);
 
@@ -1050,7 +1130,7 @@ mod tests {
 
     #[test]
     fn function_log() {
-        let actual = log(num(64), num(8));
+        let actual = f::log(num(64), num(8));
         let expected = "log(64,8)";
         test_expr(actual, expected);
 
@@ -1061,7 +1141,7 @@ mod tests {
 
     #[test]
     fn function_log2() {
-        let actual = log2(col("num"));
+        let actual = f::log2(col("num"));
         let expected = "LOG2(num)";
         test_expr(actual, expected);
 
@@ -1072,7 +1152,7 @@ mod tests {
 
     #[test]
     fn function_log10() {
-        let actual = log10(col("num"));
+        let actual = f::log10(col("num"));
         let expected = "LOG10(num)";
         test_expr(actual, expected);
 
@@ -1083,7 +1163,7 @@ mod tests {
 
     #[test]
     fn function_ln() {
-        let actual = ln(num(2));
+        let actual = f::ln(num(2));
         let expected = "LN(2)";
         test_expr(actual, expected);
 
@@ -1094,7 +1174,7 @@ mod tests {
 
     #[test]
     fn function_right() {
-        let actual = right(text("GlueSQL"), num(2));
+        let actual = f::right(text("GlueSQL"), num(2));
         let expected = "RIGHT('GlueSQL', 2)";
         test_expr(actual, expected);
 
@@ -1105,7 +1185,7 @@ mod tests {
 
     #[test]
     fn function_reverse() {
-        let actual = reverse(text("GlueSQL"));
+        let actual = f::reverse(text("GlueSQL"));
         let expected = "REVERSE('GlueSQL')";
         test_expr(actual, expected);
 
@@ -1116,7 +1196,7 @@ mod tests {
 
     #[test]
     fn function_sign() {
-        let actual = sign(col("id"));
+        let actual = f::sign(col("id"));
         let expected = "SIGN(id)";
         test_expr(actual, expected);
 
@@ -1124,9 +1204,21 @@ mod tests {
         let expected = "SIGN(id)";
         test_expr(actual, expected);
     }
+
+    #[test]
+    fn function_skip() {
+        let actual = f::skip(col("list"), num(2));
+        let expected = "SKIP(list,2)";
+        test_expr(actual, expected);
+
+        let actual = expr("list").skip(num(2));
+        let expected = "SKIP(list,2)";
+        test_expr(actual, expected);
+    }
+
     #[test]
     fn function_power() {
-        let actual = power(num(2), num(4));
+        let actual = f::power(num(2), num(4));
         let expected = "POWER(2,4)";
         test_expr(actual, expected);
 
@@ -1137,7 +1229,7 @@ mod tests {
 
     #[test]
     fn function_sqrt() {
-        let actual = sqrt(num(9));
+        let actual = f::sqrt(num(9));
         let expected = "SQRT(9)";
         test_expr(actual, expected);
 
@@ -1148,7 +1240,7 @@ mod tests {
 
     #[test]
     fn function_gcd() {
-        let actual = gcd(num(64), num(8));
+        let actual = f::gcd(num(64), num(8));
         let expected = "gcd(64,8)";
         test_expr(actual, expected);
 
@@ -1159,7 +1251,7 @@ mod tests {
 
     #[test]
     fn function_lcm() {
-        let actual = lcm(num(64), num(8));
+        let actual = f::lcm(num(64), num(8));
         let expected = "lcm(64,8)";
         test_expr(actual, expected);
 
@@ -1170,7 +1262,7 @@ mod tests {
 
     #[test]
     fn function_repeat() {
-        let actual = repeat(text("GlueSQL"), num(2));
+        let actual = f::repeat(text("GlueSQL"), num(2));
         let expected = "REPEAT('GlueSQL', 2)";
         test_expr(actual, expected);
 
@@ -1181,7 +1273,7 @@ mod tests {
 
     #[test]
     fn function_degrees() {
-        let actual = degrees(num(1));
+        let actual = f::degrees(num(1));
         let expected = "DEGREES(1)";
         test_expr(actual, expected);
 
@@ -1192,7 +1284,7 @@ mod tests {
 
     #[test]
     fn function_radians() {
-        let actual = radians(num(1));
+        let actual = f::radians(num(1));
         let expected = "RADIANS(1)";
         test_expr(actual, expected);
 
@@ -1202,34 +1294,41 @@ mod tests {
     }
 
     #[test]
+    fn function_coalesce() {
+        let actual = f::coalesce(vec![null(), text("Glue")]);
+        let expected = "COALESCE(NULL, 'Glue')";
+        test_expr(actual, expected);
+    }
+
+    #[test]
     fn function_concat() {
-        let actual = concat(vec![text("Glue"), text("SQL"), text("Go")]);
+        let actual = f::concat(vec![text("Glue"), text("SQL"), text("Go")]);
         let expected = "CONCAT('Glue','SQL','Go')";
         test_expr(actual, expected);
 
-        let actual = concat(vec!["Glue", "SQL", "Go"]);
+        let actual = f::concat(vec!["Glue", "SQL", "Go"]);
         let expected = "CONCAT(Glue, SQL, Go)";
         test_expr(actual, expected);
     }
 
     #[test]
     fn function_concat_ws() {
-        let actual = concat_ws(text(","), vec![text("Glue"), text("SQL"), text("Go")]);
+        let actual = f::concat_ws(text(","), vec![text("Glue"), text("SQL"), text("Go")]);
         let expected = "CONCAT_WS(',', 'Glue', 'SQL', 'Go')";
         test_expr(actual, expected);
 
-        let actual = concat_ws(text(","), vec!["Glue", "SQL", "Go"]);
+        let actual = f::concat_ws(text(","), vec!["Glue", "SQL", "Go"]);
         let expected = "CONCAT_WS(',', Glue, SQL, Go)";
         test_expr(actual, expected);
     }
 
     #[test]
     fn function_lpad() {
-        let actual = lpad(text("GlueSQL"), num(10), Some(text("Go")));
+        let actual = f::lpad(text("GlueSQL"), num(10), Some(text("Go")));
         let expected = "LPAD('GlueSQL', 10, 'Go')";
         test_expr(actual, expected);
 
-        let actual = lpad(text("GlueSQL"), num(10), None);
+        let actual = f::lpad(text("GlueSQL"), num(10), None);
         let expected = "LPAD('GlueSQL', 10)";
         test_expr(actual, expected);
 
@@ -1244,11 +1343,11 @@ mod tests {
 
     #[test]
     fn function_rpad() {
-        let actual = rpad(text("GlueSQL"), num(10), Some(text("Go")));
+        let actual = f::rpad(text("GlueSQL"), num(10), Some(text("Go")));
         let expected = "RPAD('GlueSQL', 10, 'Go')";
         test_expr(actual, expected);
 
-        let actual = rpad(text("GlueSQL"), num(10), None);
+        let actual = f::rpad(text("GlueSQL"), num(10), None);
         let expected = "RPAD('GlueSQL', 10)";
         test_expr(actual, expected);
 
@@ -1262,8 +1361,19 @@ mod tests {
     }
 
     #[test]
+    fn function_take() {
+        let actual = f::take(col("list"), num(3));
+        let expected = "TAKE(list,3)";
+        test_expr(actual, expected);
+
+        let actual = expr("list").take(num(3));
+        let expected = "TAKE(list,3)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
     fn function_exp() {
-        let actual = exp(num(2));
+        let actual = f::exp(num(2));
         let expected = "EXP(2)";
         test_expr(actual, expected);
 
@@ -1274,11 +1384,11 @@ mod tests {
 
     #[test]
     fn function_substr() {
-        let actual = substr(text("GlueSQL"), num(2), Some(num(4)));
+        let actual = f::substr(text("GlueSQL"), num(2), Some(num(4)));
         let expected = "SUBSTR('GlueSQL', 2, 4)";
         test_expr(actual, expected);
 
-        let actual = substr(text("GlueSQL"), num(2), None);
+        let actual = f::substr(text("GlueSQL"), num(2), None);
         let expected = "SUBSTR('GlueSQL', 2)";
         test_expr(actual, expected);
 
@@ -1294,7 +1404,7 @@ mod tests {
         let expected = "SUBSTR('GlueSQL', 2)";
         test_expr(actual, expected);
 
-        let actual = substr(text("GlueSQL      ").rtrim(None), num(2), None);
+        let actual = f::substr(text("GlueSQL      ").rtrim(None), num(2), None);
         let expected = "SUBSTR(RTRIM('GlueSQL      '), 2)";
         test_expr(actual, expected);
 
@@ -1302,7 +1412,7 @@ mod tests {
         let expected = "SUBSTR(RTRIM('GlueSQL      '), 2)";
         test_expr(actual, expected);
 
-        let actual = substr(text("      GlueSQL").ltrim(None), num(2), None);
+        let actual = f::substr(text("      GlueSQL").ltrim(None), num(2), None);
         let expected = "SUBSTR(LTRIM('      GlueSQL'), 2)";
         test_expr(actual, expected);
 
@@ -1313,7 +1423,7 @@ mod tests {
 
     #[test]
     fn function_rtrim() {
-        let actual = rtrim(text("GlueSQL      "), None);
+        let actual = f::rtrim(text("GlueSQL      "), None);
         let expected = "RTRIM('GlueSQL      ')";
         test_expr(actual, expected);
 
@@ -1321,7 +1431,7 @@ mod tests {
         let expected = "RTRIM('GlueSQL      ')";
         test_expr(actual, expected);
 
-        let actual = rtrim(text("GlueSQLABC"), Some(text("ABC")));
+        let actual = f::rtrim(text("GlueSQLABC"), Some(text("ABC")));
         let expected = "RTRIM('GlueSQLABC','ABC')";
         test_expr(actual, expected);
 
@@ -1333,14 +1443,14 @@ mod tests {
         let expected = "RTRIM(LTRIM('chicken'),'en')";
         test_expr(actual, expected);
 
-        let actual = rtrim(text("chicken").ltrim(Some(text("chick"))), None);
+        let actual = f::rtrim(text("chicken").ltrim(Some(text("chick"))), None);
         let expected = "RTRIM(LTRIM('chicken','chick'))";
         test_expr(actual, expected);
     }
 
     #[test]
     fn function_ltrim() {
-        let actual = ltrim(text("      GlueSQL"), None);
+        let actual = f::ltrim(text("      GlueSQL"), None);
         let expected = "LTRIM('      GlueSQL')";
         test_expr(actual, expected);
 
@@ -1348,7 +1458,7 @@ mod tests {
         let expected = "LTRIM('      GlueSQL')";
         test_expr(actual, expected);
 
-        let actual = ltrim(text("ABCGlueSQL"), Some(text("ABC")));
+        let actual = f::ltrim(text("ABCGlueSQL"), Some(text("ABC")));
         let expected = "LTRIM('ABCGlueSQL','ABC')";
         test_expr(actual, expected);
 
@@ -1367,21 +1477,21 @@ mod tests {
 
     #[test]
     fn function_mod() {
-        let actual = modulo(num(64), num(8));
+        let actual = f::modulo(num(64), num(8));
         let expected = "mod(64,8)";
         test_expr(actual, expected);
     }
 
     #[test]
     fn function_div() {
-        let actual = divide(num(64), num(8));
+        let actual = f::divide(num(64), num(8));
         let expected = "div(64,8)";
         test_expr(actual, expected);
     }
 
     #[test]
     fn function_format() {
-        let actual = format(date("2017-06-15"), text("%Y-%m"));
+        let actual = f::format(date("2017-06-15"), text("%Y-%m"));
         let expected = "FORMAT(DATE'2017-06-15','%Y-%m')";
         test_expr(actual, expected);
 
@@ -1389,7 +1499,7 @@ mod tests {
         let expected = "FORMAT(DATE '2017-06-15','%Y-%m')";
         test_expr(actual, expected);
 
-        let actual = format(timestamp("2015-09-05 23:56:04"), text("%Y-%m-%d %H:%M:%S"));
+        let actual = f::format(timestamp("2015-09-05 23:56:04"), text("%Y-%m-%d %H:%M:%S"));
         let expected = "FORMAT(TIMESTAMP '2015-09-05 23:56:04', '%Y-%m-%d %H:%M:%S')";
         test_expr(actual, expected);
 
@@ -1397,7 +1507,7 @@ mod tests {
         let expected = "FORMAT(TIMESTAMP '2015-09-05 23:56:04', '%Y-%m-%d %H:%M:%S')";
         test_expr(actual, expected);
 
-        let actual = format(time("23:56:04"), text("%H:%M:%S"));
+        let actual = f::format(time("23:56:04"), text("%H:%M:%S"));
         let expected = "FORMAT(TIME '23:56:04', '%H:%M:%S')";
         test_expr(actual, expected);
 
@@ -1408,7 +1518,7 @@ mod tests {
 
     #[test]
     fn function_to_date() {
-        let actual = to_date(text("2017-06-15"), text("%Y-%m-%d"));
+        let actual = f::to_date(text("2017-06-15"), text("%Y-%m-%d"));
         let expected = "TO_DATE('2017-06-15','%Y-%m-%d')";
         test_expr(actual, expected);
 
@@ -1419,7 +1529,7 @@ mod tests {
 
     #[test]
     fn function_to_timestamp() {
-        let actual = to_timestamp(text("2015-09-05 23:56:04"), text("%Y-%m-%d %H:%M:%S"));
+        let actual = f::to_timestamp(text("2015-09-05 23:56:04"), text("%Y-%m-%d %H:%M:%S"));
         let expected = "TO_TIMESTAMP('2015-09-05 23:56:04','%Y-%m-%d %H:%M:%S')";
         test_expr(actual, expected);
 
@@ -1430,7 +1540,7 @@ mod tests {
 
     #[test]
     fn function_to_time() {
-        let actual = to_time(text("23:56:04"), text("%H:%M:%S"));
+        let actual = f::to_time(text("23:56:04"), text("%H:%M:%S"));
         let expected = "TO_TIME('23:56:04','%H:%M:%S')";
         test_expr(actual, expected);
 
@@ -1442,7 +1552,7 @@ mod tests {
     #[test]
     fn function_lower() {
         // Lower
-        let actual = lower(text("ABC"));
+        let actual = f::lower(text("ABC"));
         let expected = "LOWER('ABC')";
         test_expr(actual, expected);
 
@@ -1454,7 +1564,7 @@ mod tests {
     #[test]
     fn function_initcap() {
         // Initcap
-        let actual = initcap(text("ABC"));
+        let actual = f::initcap(text("ABC"));
         let expected = "INITCAP('ABC')";
         test_expr(actual, expected);
 
@@ -1465,7 +1575,7 @@ mod tests {
 
     #[test]
     fn function_position() {
-        let actual = position(expr("cake"), text("ke"));
+        let actual = f::position(expr("cake"), text("ke"));
         let expected = "POSITION('ke' IN cake)";
         test_expr(actual, expected);
 
@@ -1476,11 +1586,11 @@ mod tests {
 
     #[test]
     fn function_find_idx() {
-        let actual = find_idx(expr("oatmeal"), text("meal"), Some(num(2)));
+        let actual = f::find_idx(expr("oatmeal"), text("meal"), Some(num(2)));
         let expected = "FIND_IDX(oatmeal, 'meal', 2)";
         test_expr(actual, expected);
 
-        let actual = find_idx(expr("strawberry"), text("berry"), None);
+        let actual = f::find_idx(expr("strawberry"), text("berry"), None);
         let expected = "FIND_IDX(strawberry, 'berry')";
         test_expr(actual, expected);
 
@@ -1499,7 +1609,7 @@ mod tests {
         let expected = "CAST(date AS INTEGER)";
         test_expr(actual, expected);
 
-        let actual = cast(expr("date"), "INTEGER");
+        let actual = f::cast(expr("date"), "INTEGER");
         let expected = "CAST(date AS INTEGER)";
         test_expr(actual, expected);
     }
@@ -1510,63 +1620,74 @@ mod tests {
         let expected = "EXTRACT(YEAR FROM date)";
         test_expr(actual, expected);
 
-        let actual = extract(DateTimeField::Year, expr("date"));
+        let actual = f::extract(DateTimeField::Year, expr("date"));
         let expected = "EXTRACT(YEAR FROM date)";
         test_expr(actual, expected);
     }
 
     #[test]
     fn function_ascii() {
-        let actual = ascii(text("A"));
+        let actual = f::ascii(text("A"));
         let expected = "ASCII('A')";
         test_expr(actual, expected);
     }
 
     #[test]
     fn function_chr() {
-        let actual = chr(num(65));
+        let actual = f::chr(num(65));
         let expected = "CHR(65)";
         test_expr(actual, expected);
     }
 
     #[test]
     fn function_md5() {
-        let actual = md5(text("abc"));
+        let actual = f::md5(text("abc"));
         let expected = "MD5('abc')";
         test_expr(actual, expected);
     }
 
     #[test]
     fn function_point() {
-        let actual = point(num(1), num(2));
+        let actual = f::point(num(1), num(2));
         let expected = "POINT(1, 2)";
         test_expr(actual, expected);
     }
 
     #[test]
     fn function_get_x() {
-        let actual = get_x(point(num(1), num(2)));
+        let actual = f::get_x(f::point(num(1), num(2)));
         let expected = "GET_X(POINT(1, 2))";
         test_expr(actual, expected);
     }
 
     #[test]
     fn function_get_y() {
-        let actual = get_y(point(num(1), num(2)));
+        let actual = f::get_y(f::point(num(1), num(2)));
         let expected = "GET_Y(POINT(1, 2))";
         test_expr(actual, expected);
     }
 
     #[test]
+    fn function_greatest() {
+        let actual = f::greatest(vec![num(1), num(2), num(3)]);
+        let expected = "GREATEST(1, 2, 3)";
+        test_expr(actual, expected);
+
+        let actual = f::greatest(vec![text("Glue"), text("SQL"), text("Go")]);
+        let expected = "GREATEST('Glue','SQL','Go')";
+        test_expr(actual, expected);
+    }
+
+    #[test]
     fn function_calc_distance() {
-        let actual = calc_distance(point(num(1), num(2)), point(num(3), num(4)));
+        let actual = f::calc_distance(f::point(num(1), num(2)), f::point(num(3), num(4)));
         let expected = "CALC_DISTANCE(POINT(1, 2), POINT(3, 4))";
         test_expr(actual, expected);
     }
 
     #[test]
     fn function_replace() {
-        let actual = replace(text("Mticky GlueMQL"), text("M"), text("S"));
+        let actual = f::replace(text("Mticky GlueMQL"), text("M"), text("S"));
         let expected = "REPLACE('Mticky GlueMQL','M','S')";
         test_expr(actual, expected);
 
@@ -1577,8 +1698,63 @@ mod tests {
 
     #[test]
     fn function_length() {
-        let actual = length(text("GlueSQL"));
+        let actual = f::length(text("GlueSQL"));
         let expected = "LENGTH('GlueSQL')";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_is_empty() {
+        let actual = col("list").is_empty();
+        let expected = "IS_EMPTY(list)";
+        test_expr(actual, expected);
+
+        let actual = f::is_empty(col("list"));
+        let expected = "IS_EMPTY(list)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_last_day_date() {
+        let actual = f::last_day(date("2023-07-29"));
+        let expected = "LAST_DAY(DATE'2023-07-29')";
+        test_expr(actual, expected);
+
+        let actual = date("2023-07-29").last_day();
+        let expected = "LAST_DAY(DATE'2023-07-29')";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_last_day_timestamp() {
+        let actual = f::last_day(timestamp("2023-07-29 11:00:00"));
+        let expected = "LAST_DAY(TIMESTAMP '2023-07-29 11:00:00')";
+        test_expr(actual, expected);
+
+        let actual = timestamp("2023-07-29 11:00:00").last_day();
+        let expected = "LAST_DAY(TIMESTAMP '2023-07-29 11:00:00')";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_entries() {
+        let actual = f::entries(col("map"));
+        let expected = "ENTRIES(map)";
+        test_expr(actual, expected);
+
+        let actual = col("map").entries();
+        let expected = "ENTRIES(map)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_fn_values() {
+        let actual = col("map").values();
+        let expected = "VALUES(map)";
+        test_expr(actual, expected);
+
+        let actual = f::values(col("map"));
+        let expected = "VALUES(map)";
         test_expr(actual, expected);
     }
 }

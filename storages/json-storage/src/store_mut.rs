@@ -187,7 +187,7 @@ impl JsonStorage {
             .map(|row| match row {
                 DataRow::Vec(values) => labels
                     .iter()
-                    .zip(values.into_iter())
+                    .zip(values)
                     .map(|(key, value)| Ok((key.to_string(), value.try_into()?)))
                     .collect::<Result<Map<String, JsonValue>>>(),
                 DataRow::Map(hash_map) => hash_map

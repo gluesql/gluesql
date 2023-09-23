@@ -1,12 +1,12 @@
 use {
     crate::*,
     gluesql_core::{
-        ast_builder::*,
+        ast_builder::{function as f, *},
         prelude::{Payload, Value::*},
     },
 };
 
-test_case!(current_date_and_time, async move {
+test_case!(current_date_and_time, {
     macro_rules! t {
         ($timestamp: expr) => {
             $timestamp.parse().unwrap()
@@ -39,7 +39,7 @@ test_case!(current_date_and_time, async move {
     // Now
     let actual = table("Record")
         .select()
-        .filter(col("time_stamp").gt(now()))
+        .filter(col("time_stamp").gt(f::now()))
         .project("id, time_stamp")
         .execute(glue)
         .await;

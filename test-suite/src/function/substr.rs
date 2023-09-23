@@ -7,7 +7,9 @@ use {
     },
 };
 
-test_case!(substr, async move {
+test_case!(substr, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "CREATE TABLE Item (name TEXT DEFAULT SUBSTR('abc', 0, 2))",
@@ -268,8 +270,12 @@ test_case!(substr, async move {
             r#"SELECT SUBSTR('123', 2, 3)! AS test FROM SingleItem"#,
             Err(EvaluateError::UnsupportedUnaryFactorial("23".to_owned()).into()),
         ),
+        (
+            r#"SELECT ~SUBSTR('123', 2, 3) AS test FROM SingleItem"#,
+            Err(EvaluateError::IncompatibleUnaryBitwiseNotOperation("23".to_owned()).into()),
+        ),
     ];
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

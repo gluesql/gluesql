@@ -2,11 +2,54 @@
 mod hello_world {
     use {
         gluesql::{
-            prelude::{Glue, Payload, Value},
+            prelude::{Glue, Payload},
             sled_storage::SledStorage,
         },
         std::fs,
     };
+
+    struct GreetTable {
+        rows: Vec<GreetRow>,
+    }
+    struct GreetRow {
+        name: String,
+    }
+
+    impl TryFrom<Payload> for GreetTable {
+        type Error = &'static str;
+
+        fn try_from(payload: Payload) -> Result<Self, Self::Error> {
+            match payload {
+                Payload::Select { labels: _, rows } => {
+                    let rows = rows
+                        .into_iter()
+                        .map(|mut row| {
+                            let name = row.remove(0);
+                            GreetRow {
+                                name: String::from(name),
+                            }
+                        })
+                        .collect::<Vec<_>>();
+
+                    Ok(Self { rows })
+                }
+                Payload::SelectMap(rows) => {
+                    let rows = rows
+                        .into_iter()
+                        .map(|row| {
+                            let name = row.get("name").unwrap();
+                            GreetRow {
+                                name: String::from(name),
+                            }
+                        })
+                        .collect::<Vec<_>>();
+
+                    Ok(Self { rows })
+                }
+                _ => Err("unexpected payload, expected a select query result"),
+            }
+        }
+    }
 
     pub async fn run() {
         /*
@@ -42,29 +85,17 @@ mod hello_world {
             SELECT name FROM greet
         ";
 
-        let result = glue.execute(queries).await.expect("Failed to execute");
+        let mut result = glue.execute(queries).await.expect("Failed to execute");
 
         /*
             Query results are wrapped into a payload enum, on the basis of the query type
         */
         assert_eq!(result.len(), 1);
-        let rows = match &result[0] {
-            Payload::Select { labels: _, rows } => rows,
-            _ => panic!("Unexpected result: {:?}", result),
-        };
 
-        let first_row = &rows[0];
-        let first_value = first_row.iter().next().unwrap();
+        let table: GreetTable = result.remove(0).try_into().unwrap();
+        assert_eq!(table.rows.len(), 1);
 
-        /*
-            Row values are wrapped into a value enum, on the basis of the result type
-        */
-        let to_greet = match first_value {
-            Value::Str(to_greet) => to_greet,
-            value => panic!("Unexpected type: {:?}", value),
-        };
-
-        println!("Hello {}!", to_greet); // Will always output "Hello World!"
+        println!("Hello {}!", table.rows[0].name); // Will always output "Hello World!"
     }
 }
 

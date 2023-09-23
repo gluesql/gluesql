@@ -18,12 +18,6 @@ pub enum Evaluated<'a> {
     Value(Value),
 }
 
-impl<'a> From<Value> for Evaluated<'a> {
-    fn from(value: Value) -> Self {
-        Evaluated::Value(value)
-    }
-}
-
 impl TryFrom<Evaluated<'_>> for Value {
     type Error = Error;
 
@@ -110,12 +104,12 @@ where
     match (l, r) {
         (Evaluated::Literal(l), Evaluated::Literal(r)) => literal_op(l, r).map(Evaluated::Literal),
         (Evaluated::Literal(l), Evaluated::Value(r)) => {
-            value_op(&Value::try_from(l)?, r).map(Evaluated::from)
+            value_op(&Value::try_from(l)?, r).map(Evaluated::Value)
         }
         (Evaluated::Value(l), Evaluated::Literal(r)) => {
-            value_op(l, &Value::try_from(r)?).map(Evaluated::from)
+            value_op(l, &Value::try_from(r)?).map(Evaluated::Value)
         }
-        (Evaluated::Value(l), Evaluated::Value(r)) => value_op(l, r).map(Evaluated::from),
+        (Evaluated::Value(l), Evaluated::Value(r)) => value_op(l, r).map(Evaluated::Value),
         (l, r) => Err(EvaluateError::UnsupportedBinaryOperation {
             left: format!("{:?}", l),
             op,
@@ -127,7 +121,7 @@ where
 
 pub fn exceptional_int_val_to_eval<'a>(name: String, v: Value) -> Result<Evaluated<'a>> {
     match v {
-        Value::Null => Ok(Evaluated::from(Value::Null)),
+        Value::Null => Ok(Evaluated::Value(Value::Null)),
         _ => Err(EvaluateError::FunctionRequiresIntegerValue(name).into()),
     }
 }
@@ -272,10 +266,20 @@ impl<'a> Evaluated<'a> {
         )
     }
 
+    pub fn bitwise_shift_right<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
+        binary_op(
+            self,
+            other,
+            BinaryOperator::BitwiseShiftRight,
+            |l, r| l.bitwise_shift_right(r),
+            |l, r| l.bitwise_shift_right(r),
+        )
+    }
+
     pub fn unary_plus(&self) -> Result<Evaluated<'a>> {
         match self {
             Evaluated::Literal(v) => v.unary_plus().map(Evaluated::Literal),
-            Evaluated::Value(v) => v.unary_plus().map(Evaluated::from),
+            Evaluated::Value(v) => v.unary_plus().map(Evaluated::Value),
             Evaluated::StrSlice { source, range } => {
                 Err(EvaluateError::UnsupportedUnaryPlus(source[range.clone()].to_owned()).into())
             }
@@ -285,7 +289,7 @@ impl<'a> Evaluated<'a> {
     pub fn unary_minus(&self) -> Result<Evaluated<'a>> {
         match self {
             Evaluated::Literal(v) => v.unary_minus().map(Evaluated::Literal),
-            Evaluated::Value(v) => v.unary_minus().map(Evaluated::from),
+            Evaluated::Value(v) => v.unary_minus().map(Evaluated::Value),
             Evaluated::StrSlice { source, range } => {
                 Err(EvaluateError::UnsupportedUnaryMinus(source[range.clone()].to_owned()).into())
             }
@@ -301,7 +305,21 @@ impl<'a> Evaluated<'a> {
             )
             .into()),
         }
-        .map(Evaluated::from)
+        .map(Evaluated::Value)
+    }
+
+    pub fn unary_bitwise_not(&self) -> Result<Evaluated<'a>> {
+        match self {
+            Evaluated::Literal(v) => Value::try_from(v).and_then(|v| v.unary_bitwise_not()),
+            Evaluated::Value(v) => v.unary_bitwise_not(),
+            Evaluated::StrSlice { source, range } => {
+                Err(EvaluateError::IncompatibleUnaryBitwiseNotOperation(
+                    source[range.clone()].to_owned(),
+                )
+                .into())
+            }
+        }
+        .map(Evaluated::Value)
     }
 
     pub fn cast(self, data_type: &DataType) -> Result<Evaluated<'a>> {
@@ -312,30 +330,30 @@ impl<'a> Evaluated<'a> {
                 Value::Str(source[range].to_owned()).cast(data_type)
             }
         }
-        .map(Evaluated::from)
+        .map(Evaluated::Value)
     }
 
     pub fn concat(self, other: Evaluated) -> Result<Evaluated<'a>> {
         let evaluated = match (self, other) {
             (Evaluated::Literal(l), Evaluated::Literal(r)) => Evaluated::Literal(l.concat(r)),
             (Evaluated::Literal(l), Evaluated::Value(r)) => {
-                Evaluated::from((Value::try_from(l)?).concat(r))
+                Evaluated::Value((Value::try_from(l)?).concat(r))
             }
             (Evaluated::Value(l), Evaluated::Literal(r)) => {
-                Evaluated::from(l.concat(Value::try_from(r)?))
+                Evaluated::Value(l.concat(Value::try_from(r)?))
             }
-            (Evaluated::Value(l), Evaluated::Value(r)) => Evaluated::from(l.concat(r)),
+            (Evaluated::Value(l), Evaluated::Value(r)) => Evaluated::Value(l.concat(r)),
             (Evaluated::Literal(l), Evaluated::StrSlice { source, range }) => {
-                Evaluated::from((Value::try_from(l)?).concat(Value::Str(source[range].to_owned())))
+                Evaluated::Value((Value::try_from(l)?).concat(Value::Str(source[range].to_owned())))
             }
             (Evaluated::Value(l), Evaluated::StrSlice { source, range }) => {
-                Evaluated::from(l.concat(Value::Str(source[range].to_owned())))
+                Evaluated::Value(l.concat(Value::Str(source[range].to_owned())))
             }
             (Evaluated::StrSlice { source, range }, Evaluated::Literal(r)) => {
-                Evaluated::from(Value::Str(source[range].to_owned()).concat(Value::try_from(r)?))
+                Evaluated::Value(Value::Str(source[range].to_owned()).concat(Value::try_from(r)?))
             }
             (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => {
-                Evaluated::from(Value::Str(source[range].to_owned()).concat(r))
+                Evaluated::Value(Value::Str(source[range].to_owned()).concat(r))
             }
             (
                 Evaluated::StrSlice {
@@ -346,7 +364,9 @@ impl<'a> Evaluated<'a> {
                     source: b,
                     range: br,
                 },
-            ) => Evaluated::from(Value::Str(a[ar].to_owned()).concat(Value::Str(b[br].to_owned()))),
+            ) => {
+                Evaluated::Value(Value::Str(a[ar].to_owned()).concat(Value::Str(b[br].to_owned())))
+            }
         };
 
         Ok(evaluated)
@@ -358,18 +378,18 @@ impl<'a> Evaluated<'a> {
                 Evaluated::Literal(l.like(&r, case_sensitive)?)
             }
             (Evaluated::Literal(l), Evaluated::Value(r)) => {
-                Evaluated::from((Value::try_from(l)?).like(&r, case_sensitive)?)
+                Evaluated::Value((Value::try_from(l)?).like(&r, case_sensitive)?)
             }
             (Evaluated::Value(l), Evaluated::Literal(r)) => {
-                Evaluated::from(l.like(&Value::try_from(r)?, case_sensitive)?)
+                Evaluated::Value(l.like(&Value::try_from(r)?, case_sensitive)?)
             }
             (Evaluated::Value(l), Evaluated::Value(r)) => {
-                Evaluated::from(l.like(&r, case_sensitive)?)
+                Evaluated::Value(l.like(&r, case_sensitive)?)
             }
-            (Evaluated::Literal(l), Evaluated::StrSlice { source, range }) => Evaluated::from(
+            (Evaluated::Literal(l), Evaluated::StrSlice { source, range }) => Evaluated::Value(
                 Value::try_from(l)?.like(&Value::Str(source[range].to_owned()), case_sensitive)?,
             ),
-            (Evaluated::StrSlice { source, range }, Evaluated::Literal(r)) => Evaluated::from(
+            (Evaluated::StrSlice { source, range }, Evaluated::Literal(r)) => Evaluated::Value(
                 Value::Str(source[range.clone()].to_owned())
                     .like(&Value::try_from(r)?, case_sensitive)?,
             ),
@@ -382,15 +402,15 @@ impl<'a> Evaluated<'a> {
                     source: b,
                     range: br,
                 },
-            ) => Evaluated::from(
+            ) => Evaluated::Value(
                 Value::Str(a[ar.clone()].to_owned())
                     .like(&Value::Str(b[br].to_owned()), case_sensitive)?,
             ),
-            (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => Evaluated::from(
+            (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => Evaluated::Value(
                 Value::Str(source[range.clone()].to_owned()).like(&r, case_sensitive)?,
             ),
             (Evaluated::Value(l), Evaluated::StrSlice { source, range }) => {
-                Evaluated::from(l.like(&Value::Str(source[range].to_owned()), case_sensitive)?)
+                Evaluated::Value(l.like(&Value::Str(source[range].to_owned()), case_sensitive)?)
             }
         };
 
@@ -404,7 +424,7 @@ impl<'a> Evaluated<'a> {
                 (l, 0..end)
             }
             Evaluated::Literal(Literal::Null) | Evaluated::Value(Value::Null) => {
-                return Ok(Evaluated::from(Value::Null))
+                return Ok(Evaluated::Value(Value::Null))
             }
             Evaluated::StrSlice { source, range } => (source, range),
             Evaluated::Value(Value::Str(v)) => {
@@ -418,7 +438,7 @@ impl<'a> Evaluated<'a> {
             Some(expr) => match expr.try_into()? {
                 Value::Str(value) => value,
                 Value::Null => {
-                    return Ok(Evaluated::from(Value::Null));
+                    return Ok(Evaluated::Value(Value::Null));
                 }
                 _ => {
                     return Err(EvaluateError::FunctionRequiresStringValue(name).into());
@@ -482,7 +502,7 @@ impl<'a> Evaluated<'a> {
                 (l, 0..end)
             }
             Evaluated::Literal(Literal::Null) | Evaluated::Value(Value::Null) => {
-                return Ok(Evaluated::from(Value::Null))
+                return Ok(Evaluated::Value(Value::Null))
             }
             Evaluated::StrSlice { source, range } => (source, range),
             Evaluated::Value(Value::Str(v)) => {
@@ -496,7 +516,7 @@ impl<'a> Evaluated<'a> {
             Some(expr) => match expr.try_into()? {
                 Value::Str(value) => value,
                 Value::Null => {
-                    return Ok(Evaluated::from(Value::Null));
+                    return Ok(Evaluated::Value(Value::Null));
                 }
                 _ => {
                     return Err(EvaluateError::FunctionRequiresStringValue(name).into());
@@ -559,7 +579,7 @@ impl<'a> Evaluated<'a> {
                 (l, 0..end)
             }
             Evaluated::Literal(Literal::Null) | Evaluated::Value(Value::Null) => {
-                return Ok(Evaluated::from(Value::Null))
+                return Ok(Evaluated::Value(Value::Null))
             }
             Evaluated::StrSlice { source, range } => (source, range),
             Evaluated::Value(Value::Str(v)) => {
@@ -614,7 +634,7 @@ impl<'a> Evaluated<'a> {
                 (l, 0..end)
             }
             Evaluated::Literal(Literal::Null) | Evaluated::Value(Value::Null) => {
-                return Ok(Evaluated::from(Value::Null))
+                return Ok(Evaluated::Value(Value::Null))
             }
             Evaluated::StrSlice { source, range } => (source, range),
             Evaluated::Value(Value::Str(v)) => {
@@ -628,7 +648,7 @@ impl<'a> Evaluated<'a> {
             Some(expr) => match expr.try_into()? {
                 Value::Str(value) => value,
                 Value::Null => {
-                    return Ok(Evaluated::from(Value::Null));
+                    return Ok(Evaluated::Value(Value::Null));
                 }
                 _ => {
                     return Err(EvaluateError::FunctionRequiresStringValue(name).into());

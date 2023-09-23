@@ -6,7 +6,7 @@ use {
     rustyline_derive::{Completer, Helper, Highlighter, Hinter},
 };
 
-#[derive(Default, Completer, Helper, Highlighter, Hinter)]
+#[derive(Completer, Helper, Highlighter, Hinter)]
 pub struct CliHelper;
 
 impl Validator for CliHelper {

@@ -233,6 +233,29 @@ impl<'a> Literal<'a> {
         }
     }
 
+    pub fn bitwise_shift_right(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
+        match (self, other) {
+            (Number(l), Number(r)) => {
+                let l = l
+                    .to_i64()
+                    .ok_or(LiteralError::BitwiseNonIntegerOperand(l.to_string()))?;
+                if !r.is_integer() {
+                    return Err(LiteralError::BitwiseNonIntegerOperand(r.to_string()).into());
+                }
+                let r = r.to_u32().ok_or(LiteralError::ImpossibleConversion(
+                    r.to_string(),
+                    "u32".to_owned(),
+                ))?;
+                let res = l
+                    .checked_shr(r)
+                    .ok_or(LiteralError::BitwiseOperationOverflow)?;
+                Ok(Number(Cow::Owned(BigDecimal::from(res))))
+            }
+            (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
+            _ => Err(LiteralError::BitwiseNonNumberLiteral.into()),
+        }
+    }
+
     pub fn like(&self, other: &Literal<'a>, case_sensitive: bool) -> Result<Self> {
         match (self, other) {
             (Text(l), Text(r)) => l.like(r, case_sensitive).map(Boolean),
@@ -368,6 +391,49 @@ mod tests {
         );
         assert_eq!(
             num(1).bitwise_shift_left(&num!("2.1")),
+            Err(LiteralError::BitwiseNonIntegerOperand("2.1".to_owned()).into())
+        );
+    }
+
+    #[test]
+    fn bitwise_shift_right() {
+        use crate::data::LiteralError;
+
+        let num = |n: i32| Number(Cow::Owned(BigDecimal::from(n)));
+        macro_rules! num {
+            ($num: expr) => {
+                Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
+            };
+        }
+
+        assert_eq!(
+            num(4).bitwise_shift_right(&num(2)),
+            Ok(Number(Cow::Borrowed(&BigDecimal::from(1))))
+        );
+
+        assert_eq!(
+            num(1).bitwise_shift_right(&num(65)),
+            Err(LiteralError::BitwiseOperationOverflow.into())
+        );
+
+        assert_eq!(num(2).bitwise_shift_right(&Null), Ok(Null));
+        assert_eq!(Null.bitwise_shift_right(&num(2)), Ok(Null));
+        assert_eq!(Null.bitwise_shift_right(&Null), Ok(Null));
+
+        assert_eq!(
+            Boolean(true).bitwise_shift_right(&num(2)),
+            Err(LiteralError::BitwiseNonNumberLiteral.into())
+        );
+        assert_eq!(
+            num(1).bitwise_shift_right(&num(-1)),
+            Err(LiteralError::ImpossibleConversion("-1".to_owned(), "u32".to_owned()).into())
+        );
+        assert_eq!(
+            num!("1.1").bitwise_shift_right(&num(2)),
+            Err(LiteralError::BitwiseNonIntegerOperand("1.1".to_owned()).into())
+        );
+        assert_eq!(
+            num(1).bitwise_shift_right(&num!("2.1")),
             Err(LiteralError::BitwiseNonIntegerOperand("2.1".to_owned()).into())
         );
     }

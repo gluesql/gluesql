@@ -3,7 +3,9 @@ use {
     gluesql_core::{error::EvaluateError, prelude::Value::*},
 };
 
-test_case!(log2, async move {
+test_case!(log2, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "SELECT
@@ -35,11 +37,13 @@ test_case!(log2, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });
 
-test_case!(log10, async move {
+test_case!(log10, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "SELECT
@@ -71,11 +75,13 @@ test_case!(log10, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });
 
-test_case!(ln, async move {
+test_case!(ln, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "SELECT
@@ -104,11 +110,13 @@ test_case!(ln, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });
 
-test_case!(log, async move {
+test_case!(log, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "SELECT
@@ -148,11 +156,13 @@ test_case!(log, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });
 
-test_case!(exp, async move {
+test_case!(exp, {
+    let g = get_tester!();
+
     let test_cases = [
         (
             "SELECT
@@ -181,6 +191,6 @@ test_case!(exp, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(sql, expected);
+        g.test(sql, expected).await;
     }
 });

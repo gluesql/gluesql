@@ -188,7 +188,10 @@ impl<'a> Prebuild<Select> for JoinNode<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{table, test, Build};
+    use {
+        crate::ast_builder::{table, test, Build},
+        pretty_assertions::assert_eq,
+    };
 
     #[test]
     fn inner_join() {

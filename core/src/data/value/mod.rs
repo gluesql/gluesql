@@ -24,6 +24,7 @@ mod selector;
 mod uuid;
 
 pub use {
+    convert::ConvertError,
     error::{NumericBinaryOperator, ValueError},
     json::HashMapJsonExt,
 };
@@ -247,36 +248,45 @@ impl Value {
 
             (_, Value::Null) => Ok(Value::Null),
 
-            (DataType::Boolean, value) => value.try_into().map(Value::Bool),
-            (DataType::Int8, value) => value.try_into().map(Value::I8),
-            (DataType::Int16, value) => value.try_into().map(Value::I16),
-            (DataType::Int32, value) => value.try_into().map(Value::I32),
-            (DataType::Int, value) => value.try_into().map(Value::I64),
-            (DataType::Int128, value) => value.try_into().map(Value::I128),
-            (DataType::Uint8, value) => value.try_into().map(Value::U8),
-            (DataType::Uint16, value) => value.try_into().map(Value::U16),
-            (DataType::Uint32, value) => value.try_into().map(Value::U32),
-            (DataType::Uint64, value) => value.try_into().map(Value::U64),
-            (DataType::Uint128, value) => value.try_into().map(Value::U128),
-            (DataType::Float32, value) => value.try_into().map(Value::F32),
-            (DataType::Float, value) => value.try_into().map(Value::F64),
-            (DataType::Decimal, value) => value.try_into().map(Value::Decimal),
+            (DataType::Boolean, value) => Ok(value.try_into().map(Value::Bool)?),
+            (DataType::Int8, value) => Ok(value.try_into().map(Value::I8)?),
+            (DataType::Int16, value) => Ok(value.try_into().map(Value::I16)?),
+            (DataType::Int32, value) => Ok(value.try_into().map(Value::I32)?),
+            (DataType::Int, value) => Ok(value.try_into().map(Value::I64)?),
+            (DataType::Int128, value) => Ok(value.try_into().map(Value::I128)?),
+            (DataType::Uint8, value) => Ok(value.try_into().map(Value::U8)?),
+            (DataType::Uint16, value) => Ok(value.try_into().map(Value::U16)?),
+            (DataType::Uint32, value) => Ok(value.try_into().map(Value::U32)?),
+            (DataType::Uint64, value) => Ok(value.try_into().map(Value::U64)?),
+            (DataType::Uint128, value) => Ok(value.try_into().map(Value::U128)?),
+            (DataType::Float32, value) => Ok(value.try_into().map(Value::F32)?),
+            (DataType::Float, value) => Ok(value.try_into().map(Value::F64)?),
+            (DataType::Decimal, value) => Ok(value.try_into().map(Value::Decimal)?),
+
             (DataType::Text, value) => Ok(Value::Str(value.into())),
-            (DataType::Date, value) => value.try_into().map(Value::Date),
-            (DataType::Time, value) => value.try_into().map(Value::Time),
+
+            (DataType::Date, value) => Ok(value.try_into().map(Value::Date)?),
+            (DataType::Time, value) => Ok(value.try_into().map(Value::Time)?),
+            (DataType::Timestamp, value) => Ok(value.try_into().map(Value::Timestamp)?),
+
             (DataType::Interval, Value::Str(value)) => Interval::parse(value).map(Value::Interval),
-            (DataType::Timestamp, value) => value.try_into().map(Value::Timestamp),
             (DataType::Uuid, Value::Str(value)) => uuid::parse_uuid(value).map(Value::Uuid),
-            (DataType::Uuid, value) => value.try_into().map(Value::Uuid),
-            (DataType::Inet, value) => value.try_into().map(Value::Inet),
-            (DataType::Point, value) => value.try_into().map(Value::Point),
+
+            (DataType::Uuid, value) => Ok(value.try_into().map(Value::Uuid)?),
+            (DataType::Inet, value) => Ok(value.try_into().map(Value::Inet)?),
+            (DataType::Point, value) => Ok(value.try_into().map(Value::Point)?),
+
             (DataType::Bytea, Value::Str(value)) => hex::decode(value)
                 .map_err(|_| ValueError::CastFromHexToByteaFailed(value.clone()).into())
                 .map(Value::Bytea),
             (DataType::List, Value::Str(value)) => Self::parse_json_list(value),
             (DataType::Map, Value::Str(value)) => Self::parse_json_map(value),
 
-            _ => Err(ValueError::UnimplementedCast.into()),
+            _ => Err(ValueError::UnimplementedCast {
+                value: self.clone(),
+                data_type: data_type.clone(),
+            }
+            .into()),
         }
     }
 
@@ -639,6 +649,44 @@ impl Value {
         })
     }
 
+    pub fn bitwise_shift_right(&self, rhs: &Value) -> Result<Value> {
+        use Value::*;
+
+        if *rhs == Null {
+            return Ok(Null);
+        }
+        let rhs = u32::try_from(rhs)?;
+        match self {
+            I8(lhs) => lhs.checked_shr(rhs).map(I8),
+            I16(lhs) => lhs.checked_shr(rhs).map(I16),
+            I32(lhs) => lhs.checked_shr(rhs).map(I32),
+            I64(lhs) => lhs.checked_shr(rhs).map(I64),
+            I128(lhs) => lhs.checked_shr(rhs).map(I128),
+            U8(lhs) => lhs.checked_shr(rhs).map(U8),
+            U16(lhs) => lhs.checked_shr(rhs).map(U16),
+            U32(lhs) => lhs.checked_shr(rhs).map(U32),
+            U64(lhs) => lhs.checked_shr(rhs).map(U64),
+            U128(lhs) => lhs.checked_shr(rhs).map(U128),
+            Null => Some(Null),
+            _ => {
+                return Err(ValueError::NonNumericMathOperation {
+                    lhs: self.clone(),
+                    rhs: U32(rhs),
+                    operator: NumericBinaryOperator::BitwiseShiftRight,
+                }
+                .into());
+            }
+        }
+        .ok_or_else(|| {
+            ValueError::BinaryOperationOverflow {
+                lhs: self.clone(),
+                rhs: U32(rhs),
+                operator: NumericBinaryOperator::BitwiseShiftRight,
+            }
+            .into()
+        })
+    }
+
     pub fn is_null(&self) -> bool {
         matches!(self, Value::Null)
     }
@@ -700,6 +748,27 @@ impl Value {
             F64(_) => Err(ValueError::FactorialOnNonInteger.into()),
             Null => Ok(Null),
             _ => Err(ValueError::FactorialOnNonNumeric.into()),
+        }
+    }
+
+    pub fn unary_bitwise_not(&self) -> Result<Value> {
+        use Value::*;
+
+        match self {
+            I8(v) => Ok(Value::I8(!v)),
+            I16(v) => Ok(Value::I16(!v)),
+            I32(v) => Ok(Value::I32(!v)),
+            I64(v) => Ok(Value::I64(!v)),
+            I128(v) => Ok(Value::I128(!v)),
+            U8(v) => Ok(Value::U8(!v)),
+            U16(v) => Ok(Value::U16(!v)),
+            U32(v) => Ok(Value::U32(!v)),
+            U64(v) => Ok(Value::U64(!v)),
+            U128(v) => Ok(Value::U128(!v)),
+            F32(_) => Err(ValueError::UnaryBitwiseNotOnNonInteger.into()),
+            F64(_) => Err(ValueError::UnaryBitwiseNotOnNonInteger.into()),
+            Null => Ok(Null),
+            _ => Err(ValueError::UnaryBitwiseNotOnNonNumeric.into()),
         }
     }
 
@@ -1849,6 +1918,8 @@ mod tests {
 
     #[test]
     fn bitwise_shift_left() {
+        use {super::convert::ConvertError, crate::ast::DataType};
+
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
                 assert!($a.$op(&$b).unwrap().evaluate_eq(&$c));
@@ -1978,7 +2049,11 @@ mod tests {
         // cast error test
         assert_eq!(
             I64(1).bitwise_shift_left(&I64(-2)),
-            Err(ValueError::ImpossibleCast.into())
+            Err(ConvertError {
+                value: I64(-2),
+                data_type: DataType::Uint32,
+            }
+            .into())
         );
 
         // non numeric test
@@ -2001,6 +2076,168 @@ mod tests {
 
         null_test!(bitwise_shift_left   I64(1), Null);
         null_test!(bitwise_shift_left   Null, I64(1));
+    }
+
+    #[test]
+    fn bitwise_shift_right() {
+        use {super::convert::ConvertError, crate::ast::DataType};
+
+        macro_rules! test {
+            ($op: ident $a: expr, $b: expr => $c: expr) => {
+                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c));
+            };
+        }
+
+        macro_rules! mon {
+            ($n: expr) => {
+                Interval(Interval::Month($n))
+            };
+        }
+
+        // operation result test
+        test!(bitwise_shift_right I8(1),     I64(2) => I8(0));
+        test!(bitwise_shift_right I16(1),    I64(2) => I16(0));
+        test!(bitwise_shift_right I32(1),    I64(2) => I32(0));
+        test!(bitwise_shift_right I64(1),    I64(2) => I64(0));
+        test!(bitwise_shift_right I128(1),   I64(2) => I128(0));
+        test!(bitwise_shift_right U8(1),     I64(2) => U8(0));
+        test!(bitwise_shift_right U16(1),    I64(2) => U16(0));
+        test!(bitwise_shift_right U32(1),    I64(2) => U32(0));
+        test!(bitwise_shift_right U64(1),    I64(2) => U64(0));
+        test!(bitwise_shift_right U128(1),   I64(2) => U128(0));
+        test!(bitwise_shift_right I8(1),     U32(2) => I8(0));
+        test!(bitwise_shift_right I16(1),    U32(2) => I16(0));
+        test!(bitwise_shift_right I32(1),    U32(2) => I32(0));
+        test!(bitwise_shift_right I64(1),    U32(2) => I64(0));
+        test!(bitwise_shift_right I128(1),   U32(2) => I128(0));
+        test!(bitwise_shift_right U8(1),     U32(2) => U8(0));
+        test!(bitwise_shift_right U16(1),    U32(2) => U16(0));
+        test!(bitwise_shift_right U32(1),    U32(2) => U32(0));
+        test!(bitwise_shift_right U64(1),    U32(2) => U64(0));
+        test!(bitwise_shift_right U128(1),   U32(2) => U128(0));
+
+        //overflow test
+        assert_eq!(
+            I8(1).bitwise_shift_right(&I64(100)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I8(1),
+                rhs: U32(100),
+                operator: NumericBinaryOperator::BitwiseShiftRight
+            }
+            .into())
+        );
+        assert_eq!(
+            I16(1).bitwise_shift_right(&I64(100)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I16(1),
+                rhs: U32(100),
+                operator: NumericBinaryOperator::BitwiseShiftRight
+            }
+            .into())
+        );
+        assert_eq!(
+            I32(1).bitwise_shift_right(&I64(100)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I32(1),
+                rhs: U32(100),
+                operator: NumericBinaryOperator::BitwiseShiftRight
+            }
+            .into())
+        );
+        assert_eq!(
+            I64(1).bitwise_shift_right(&I64(100)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I64(1),
+                rhs: U32(100),
+                operator: NumericBinaryOperator::BitwiseShiftRight
+            }
+            .into())
+        );
+        assert_eq!(
+            I128(1).bitwise_shift_right(&I64(150)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I128(1),
+                rhs: U32(150),
+                operator: NumericBinaryOperator::BitwiseShiftRight
+            }
+            .into())
+        );
+        assert_eq!(
+            U8(1).bitwise_shift_right(&I64(100)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: U8(1),
+                rhs: U32(100),
+                operator: NumericBinaryOperator::BitwiseShiftRight
+            }
+            .into())
+        );
+        assert_eq!(
+            U16(1).bitwise_shift_right(&I64(100)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: U16(1),
+                rhs: U32(100),
+                operator: NumericBinaryOperator::BitwiseShiftRight
+            }
+            .into())
+        );
+        assert_eq!(
+            U32(1).bitwise_shift_right(&I64(100)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: U32(1),
+                rhs: U32(100),
+                operator: NumericBinaryOperator::BitwiseShiftRight
+            }
+            .into())
+        );
+        assert_eq!(
+            U64(1).bitwise_shift_right(&I64(100)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: U64(1),
+                rhs: U32(100),
+                operator: NumericBinaryOperator::BitwiseShiftRight
+            }
+            .into())
+        );
+        assert_eq!(
+            U128(1).bitwise_shift_right(&I64(150)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: U128(1),
+                rhs: U32(150),
+                operator: NumericBinaryOperator::BitwiseShiftRight
+            }
+            .into())
+        );
+
+        // cast error test
+        assert_eq!(
+            I64(1).bitwise_shift_right(&I64(-2)),
+            Err(ConvertError {
+                value: I64(-2),
+                data_type: DataType::Uint32,
+            }
+            .into())
+        );
+
+        // non numeric test
+        assert_eq!(
+            mon!(3).bitwise_shift_right(&I64(2)),
+            Err(ValueError::NonNumericMathOperation {
+                lhs: mon!(3),
+                rhs: U32(2),
+                operator: NumericBinaryOperator::BitwiseShiftRight,
+            }
+            .into())
+        );
+
+        // null test
+        macro_rules! null_test {
+            ($op: ident $a: expr, $b: expr) => {
+                assert!($a.$op(&$b).unwrap().is_null());
+            };
+        }
+
+        null_test!(bitwise_shift_right   I64(1), Null);
+        null_test!(bitwise_shift_right   Null, I64(1));
     }
 
     #[test]
@@ -2248,7 +2485,11 @@ mod tests {
         // Casting error
         assert_eq!(
             Value::Uuid(123).cast(&List),
-            Err(ValueError::UnimplementedCast.into())
+            Err(ValueError::UnimplementedCast {
+                value: Value::Uuid(123),
+                data_type: List,
+            }
+            .into())
         );
     }
 

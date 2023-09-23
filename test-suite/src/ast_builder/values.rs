@@ -3,7 +3,7 @@ use {
     gluesql_core::{ast_builder::*, prelude::Value::*},
 };
 
-test_case!(values, async move {
+test_case!(values, {
     use gluesql_core::ast_builder::values;
     let glue = get_glue!();
 
