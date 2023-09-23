@@ -1,18 +1,22 @@
-use error::{
-    EngineNotLoadedError, ExecuteError, GlueSQLError, ParsingError, PlanError, TranslateError,
-};
-use payload::{convert, PyPayload};
+#![cfg(feature = "include-python-workspace")]
 
-use gluesql_core::{
-    ast::Statement,
-    prelude::{execute, parse, plan, Payload},
-    translate::translate,
+use {
+    pyo3::{prelude::*, types::PyString},
+    error::{
+        EngineNotLoadedError, ExecuteError, GlueSQLError, ParsingError, PlanError, TranslateError,
+    },
+    gluesql_core::{
+        ast::Statement,
+        prelude::{execute, parse, plan, Payload},
+        translate::translate,
+    },
+    payload::{convert, PyPayload},
+    storages::{
+        PyJsonStorage, PyMemoryStorage, PySharedMemoryStorage, PySledStorage, PySledStorageConfig,
+        PySledStorageModeConfig, PyStorageEngine,
+    },
 };
-use pyo3::{prelude::*, types::PyString};
-use storages::{
-    PyJsonStorage, PyMemoryStorage, PySharedMemoryStorage, PySledStorage, PySledStorageConfig,
-    PySledStorageModeConfig, PyStorageEngine,
-};
+
 mod error;
 mod payload;
 mod storages;

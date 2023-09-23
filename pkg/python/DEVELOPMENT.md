@@ -1,28 +1,27 @@
 ## 🚴 Usage
 
 ### Setup
-Uncomment `pkg/python` lines in `workspace` of `Cargo.toml`
+
+Add `include-python-workspace` to the `features` of the `python/pkg/Cargo.toml` like below to build `gluesql-py`.
+
 ```
-# enable this only for gluesql-py build
-[workspace]
-members = [
-	...
-	"pkg/python",
-	...
-]
-default-members = [
-	...
-	"pkg/python",
-	...
-]
+[features]
+default = ["include-python-workspace"]
+include-python-workspace = []
 ```
 
 ### Build
+
+To build `gluesql-py`, run below command.
+
 ```
-cd pkg/python
 maturin build
 ```
 
 ### Test
+
+To run `gluesql-py` tests, run below command.
+
 ```
+pytest
 ```

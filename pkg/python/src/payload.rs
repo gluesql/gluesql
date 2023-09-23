@@ -1,11 +1,9 @@
 use {
-    gluesql_core::prelude::Payload,
+    pyo3::{pyclass, PyObject, Python},
+    gluesql_core::prelude::{Payload, PayloadVariable},
+    pythonize::pythonize,
     serde_json::{json, Value as Json},
 };
-
-use gluesql_core::prelude::PayloadVariable;
-use pyo3::{pyclass, PyObject, Python};
-use pythonize::pythonize;
 
 #[pyclass]
 pub struct PyPayload {

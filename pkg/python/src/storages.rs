@@ -1,10 +1,11 @@
-use pyo3::{prelude::*, types::PyString};
-use std::path::PathBuf;
-
-use json_storage::JsonStorage;
-use memory_storage::MemoryStorage;
-use shared_memory_storage::SharedMemoryStorage;
-use sled_storage::{sled, SledStorage};
+use {
+    std::path::PathBuf,
+    pyo3::{prelude::*, types::PyString},
+    json_storage::JsonStorage,
+    memory_storage::MemoryStorage,
+    shared_memory_storage::SharedMemoryStorage,
+    sled_storage::{sled, SledStorage},
+};
 
 #[derive(FromPyObject)]
 pub enum PyStorageEngine {
