@@ -68,9 +68,6 @@ class SledStorage(Storage):
 class GlueSQLError(Exception):
     """ """
 
-class EngineNotLoadedError(GlueSQLError):
-    """ """
-
 class ParsingError(GlueSQLError):
     """ """
 

@@ -2,7 +2,7 @@
 
 use {
     error::{
-        EngineNotLoadedError, ExecuteError, GlueSQLError, ParsingError, PlanError, TranslateError,
+        ExecuteError, GlueSQLError, ParsingError, PlanError, TranslateError,
     },
     gluesql_core::{
         ast::Statement,
@@ -104,10 +104,6 @@ fn gluesql(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PySledStorageModeConfig>()?;
 
     m.add("GlueSQLError", py.get_type::<GlueSQLError>())?;
-    m.add(
-        "EngineNotLoadedError",
-        py.get_type::<EngineNotLoadedError>(),
-    )?;
     m.add("PlanError", py.get_type::<PlanError>())?;
     m.add("ExecuteError", py.get_type::<ExecuteError>())?;
     m.add("TranslateError", py.get_type::<TranslateError>())?;
