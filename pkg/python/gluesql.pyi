@@ -6,8 +6,8 @@ from abc import ABCMeta
 from typing import Any, Final
 
 class Glue:
+    def __init__(self, storage: "Storage") -> None: ...
     def query(sql: str): ...
-    def set_default_engine(engine: "Storage"): ...
 
 class Storage(metaclass=ABCMeta):
     pass

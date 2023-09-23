@@ -1,8 +1,7 @@
 from gluesql import Glue, SharedMemoryStorage
 from tabulate import tabulate
 
-db = Glue()
-db.set_default_engine(SharedMemoryStorage())
+db = Glue(SharedMemoryStorage())
 
 
 def run():

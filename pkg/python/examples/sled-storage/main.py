@@ -1,8 +1,7 @@
 from gluesql import Glue, SledStorage
 from tabulate import tabulate
 
-db = Glue()
-db.set_default_engine(SledStorage("./fixtures"))
+db = Glue(SledStorage("./fixtures"))
 
 
 def run():

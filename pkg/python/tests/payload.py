@@ -2,8 +2,7 @@ from gluesql import Glue, MemoryStorage
 
 
 def test_payload():
-    db = Glue()
-    db.set_default_engine(MemoryStorage())
+    db = Glue(MemoryStorage())
 
     assert (
         db.query(

@@ -23,7 +23,7 @@ mod storages;
 
 #[pyclass(name = "Glue")]
 pub struct PyGlue {
-    pub storage: Option<PyStorageEngine>,
+    pub storage: PyStorageEngine,
 }
 
 macro_rules! plan {
@@ -45,7 +45,7 @@ macro_rules! execute {
 impl PyGlue {
     #[tokio::main]
     pub async fn plan(&self, statement: Statement) -> PyResult<Statement> {
-        let storage = self.storage.as_ref().unwrap();
+        let storage = &self.storage;
 
         match storage {
             PyStorageEngine::MemoryStorage(storage) => plan!(storage, statement),
@@ -57,7 +57,7 @@ impl PyGlue {
 
     #[tokio::main]
     pub async fn execute(&mut self, statement: Statement) -> PyResult<Payload> {
-        let storage = self.storage.as_mut().unwrap();
+        let storage = &mut self.storage;
 
         match storage {
             PyStorageEngine::MemoryStorage(storage) => execute!(storage, &statement),
@@ -71,21 +71,11 @@ impl PyGlue {
 #[pymethods]
 impl PyGlue {
     #[new]
-    pub fn new() -> Self {
-        PyGlue { storage: None }
-    }
-
-    pub fn set_default_engine(&mut self, default_engine: PyStorageEngine) {
-        self.storage = Some(default_engine);
+    pub fn new(storage: PyStorageEngine) -> Self {
+        PyGlue { storage }
     }
 
     pub fn query(&mut self, py: Python, sql: &PyString) -> PyResult<PyObject> {
-        if self.storage.is_none() {
-            return Err(EngineNotLoadedError::new_err(
-                "Storage engine not loaded, please call `set_default_engine` first to load a storage engine.",
-            ));
-        }
-
         let sql = sql.to_string();
         let queries = parse(&sql).map_err(|e| ParsingError::new_err(e.to_string()))?;
 

@@ -1,8 +1,7 @@
 from gluesql import Glue, JsonStorage
 from tabulate import tabulate
 
-db = Glue()
-db.set_default_engine(JsonStorage("./fixtures"))
+db = Glue(JsonStorage("./fixtures"))
 
 
 def run():
