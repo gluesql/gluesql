@@ -4,6 +4,7 @@ mod expr;
 mod function;
 
 use {
+    self::function::BreakCase,
     super::{context::RowContext, select::select},
     crate::{
         ast::{Aggregate, Expr, Function},
@@ -19,7 +20,7 @@ use {
         stream::{self, StreamExt, TryStreamExt},
     },
     im_rc::HashMap,
-    std::{borrow::Cow, rc::Rc},
+    std::{borrow::Cow, ops::ControlFlow, rc::Rc},
 };
 
 pub use {error::EvaluateError, evaluated::Evaluated};
@@ -325,7 +326,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
 
     let name = func.to_string();
 
-    match func {
+    let result = match func {
         // --- text ---
         Function::Concat(exprs) => {
             let exprs = stream::iter(exprs).then(eval).try_collect().await?;
@@ -376,7 +377,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                     Some(Rc::new(context))
                 })?;
 
-            evaluate_inner(storage, context, None, body).await
+            return evaluate_inner(storage, context, None, body).await;
         }
         Function::ConcatWs { separator, exprs } => {
             let separator = eval(separator).await?;
@@ -397,6 +398,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let expr = eval(expr).await?;
             let old = eval(old).await?;
             let new = eval(new).await?;
+
             f::replace(name, expr, old, new)
         }
         Function::Lpad { expr, size, fill } | Function::Rpad { expr, size, fill } => {
@@ -424,7 +426,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 None => None,
             };
 
-            expr.trim(name, filter_chars, trim_where_field)
+            return expr.trim(name, filter_chars, trim_where_field);
         }
         Function::Ltrim { expr, chars } => {
             let expr = eval(expr).await?;
@@ -433,7 +435,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 None => None,
             };
 
-            expr.ltrim(name, chars)
+            return expr.ltrim(name, chars);
         }
         Function::Rtrim { expr, chars } => {
             let expr = eval(expr).await?;
@@ -442,7 +444,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 None => None,
             };
 
-            expr.rtrim(name, chars)
+            return expr.rtrim(name, chars);
         }
         Function::Reverse(expr) => {
             let expr = eval(expr).await?;
@@ -462,7 +464,8 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 Some(v) => Some(eval(v).await?),
                 None => None,
             };
-            expr.substr(name, start, count)
+
+            return expr.substr(name, start, count);
         }
         Function::Ascii(expr) => f::ascii(name, eval(expr).await?),
         Function::Chr(expr) => f::chr(name, eval(expr).await?),
@@ -484,13 +487,14 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 Some(v) => Some(eval(v).await?),
                 None => None,
             };
+
             f::rand(name, expr)
         }
         Function::Round(expr) => f::round(name, eval(expr).await?),
         Function::Floor(expr) => f::floor(name, eval(expr).await?),
         Function::Radians(expr) => f::radians(name, eval(expr).await?),
         Function::Degrees(expr) => f::degrees(name, eval(expr).await?),
-        Function::Pi() => Ok(Evaluated::Value(Value::F64(std::f64::consts::PI))),
+        Function::Pi() => return Ok(Evaluated::Value(Value::F64(std::f64::consts::PI))),
         Function::Exp(expr) => f::exp(name, eval(expr).await?),
         Function::Log { antilog, base } => {
             let antilog = eval(antilog).await?;
@@ -519,7 +523,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let dividend = eval(dividend).await?;
             let divisor = eval(divisor).await?;
 
-            dividend.modulo(&divisor)
+            return dividend.modulo(&divisor);
         }
         Function::Gcd { left, right } => {
             let left = eval(left).await?;
@@ -539,7 +543,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let x = eval(x).await?;
             let y = eval(y).await?;
 
-            f::point(x, y)
+            f::point(name, x, y)
         }
         Function::GetX(expr) => f::get_x(name, eval(expr).await?),
         Function::GetY(expr) => f::get_y(name, eval(expr).await?),
@@ -550,7 +554,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let geometry1 = eval(geometry1).await?;
             let geometry2 = eval(geometry2).await?;
 
-            f::calc_distance(geometry1, geometry2)
+            f::calc_distance(name, geometry1, geometry2)
         }
 
         // --- etc ---
@@ -560,12 +564,12 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
 
             f::unwrap(name, expr, selector)
         }
-        Function::GenerateUuid() => Ok(f::generate_uuid()),
+        Function::GenerateUuid() => return Ok(f::generate_uuid()),
         Function::Greatest(exprs) => {
             let exprs = stream::iter(exprs).then(eval).try_collect().await?;
-            f::greatest(name, exprs)
+            return f::greatest(name, exprs);
         }
-        Function::Now() => Ok(Evaluated::Value(Value::Timestamp(Utc::now().naive_utc()))),
+        Function::Now() => return Ok(Evaluated::Value(Value::Timestamp(Utc::now().naive_utc()))),
         Function::Format { expr, format } => {
             let expr = eval(expr).await?;
             let format = eval(format).await?;
@@ -608,17 +612,14 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             };
             f::find_idx(name, from_expr, sub_expr, start)
         }
-        Function::Cast { expr, data_type } => {
-            let expr = eval(expr).await?;
-            f::cast(expr, data_type)
-        }
+        Function::Cast { expr, data_type } => return eval(expr).await?.cast(data_type),
         Function::Extract { field, expr } => {
             let expr = eval(expr).await?;
             f::extract(field, expr)
         }
         Function::Coalesce(exprs) => {
             let exprs = stream::iter(exprs).then(eval).try_collect().await?;
-            f::coalesce(exprs)
+            return f::coalesce(exprs);
         }
 
         // --- list ---
@@ -690,5 +691,11 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             };
             f::splice(name, list_data, begin_index, end_index, values)
         }
+    };
+
+    match result {
+        ControlFlow::Continue(v) => Ok(v),
+        ControlFlow::Break(BreakCase::Null) => Ok(Evaluated::Value(Value::Null)),
+        ControlFlow::Break(BreakCase::Err(err)) => Err(err),
     }
 }
