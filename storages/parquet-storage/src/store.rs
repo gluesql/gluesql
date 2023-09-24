@@ -23,10 +23,6 @@ impl Store for ParquetStorage {
         let mut schemas = paths
             .map(|result| {
                 let path = result.map_storage_err()?.path();
-                let extension = path.extension().and_then(OsStr::to_str);
-                if extension != Some("parquet") {
-                    return Ok(None);
-                }
 
                 let table_name = path
                     .file_stem()

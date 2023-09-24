@@ -74,8 +74,7 @@ impl ParquetStorage {
                 if kv.key == *"schemaless".to_string() {
                     match kv.value.as_deref() {
                         Some("true") => is_schemaless = true,
-                        Some("false") => is_schemaless = false,
-                        _ => {}
+                        _ => is_schemaless = false,
                     }
                 }
             }

@@ -632,6 +632,10 @@ impl ParquetStorage {
                     });
                 }
             }
+            metadata.push(KeyValue {
+                key: "schemaless".to_string(),
+                value: Some("false".to_string()),
+            });
         } else {
             metadata.push(KeyValue {
                 key: "schemaless".to_string(),

@@ -15,7 +15,7 @@ use {
 
 #[tokio::test]
 async fn test_alltypes_select() {
-    let path = "./tests/samples/parquet_data";
+    let path = "./tests/samples/";
     let parquet_storage = ParquetStorage::new(path).unwrap();
     let mut glue = Glue::new(parquet_storage);
 
