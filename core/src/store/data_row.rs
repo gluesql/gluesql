@@ -1,5 +1,3 @@
-use core::fmt;
-
 use {
     crate::{
         data::{Row, Value},
@@ -53,11 +51,5 @@ impl DataRow {
             },
             Self::Map(values) => RowContext::RefMapData(values),
         }
-    }
-}
-
-impl fmt::Display for DataRow {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "DataRow: {:?}", self)
     }
 }
