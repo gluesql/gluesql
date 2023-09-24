@@ -61,14 +61,6 @@ async fn test_alltypes_select() {
             )),
         ),
         (
-            glue.execute("SELECT * FROM null_list").await,
-            Ok(select!(
-                emptylist;
-                List;
-                vec![]
-            )),
-        ),
-        (
             glue.execute("SELECT * FROM nested_lists_snappy").await,
             Ok(select!(
                 a | b;

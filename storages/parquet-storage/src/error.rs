@@ -35,6 +35,7 @@ impl<T, E: ToString> OptionExt<T, E> for std::option::Option<T> {
             .map_err(Error::StorageMsg)
     }
 }
+
 impl From<ParquetStorageError> for Error {
     fn from(error: ParquetStorageError) -> Self {
         Self::StorageMsg(error.to_string())

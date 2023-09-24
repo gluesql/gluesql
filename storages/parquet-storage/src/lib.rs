@@ -20,7 +20,6 @@ use value::ParquetField;
 
 mod alter_table;
 mod column_def;
-mod data_type;
 mod error;
 mod function;
 mod index;
@@ -140,7 +139,6 @@ impl ParquetStorage {
                 rows.push(Ok((generated_key, DataRow::Vec(row))));
             }
         } else {
-            // Process schema-less data (DataRow::Map)
             let tmp_schema = Self::generate_temp_schema();
             for record in row_iter {
                 let record: Row = record.map_storage_err()?;
@@ -151,7 +149,7 @@ impl ParquetStorage {
                     let generated_key = Key::U64(key_counter);
                     key_counter += 1;
                     if let Value::Map(inner_map) = value {
-                        data_map = inner_map; // assign the inner map directly to data_map
+                        data_map = inner_map;
                     }
 
                     rows.push(Ok((generated_key, DataRow::Map(data_map.clone()))));

@@ -230,18 +230,18 @@ impl ParquetField {
             Field::MapInternal(m) => {
                 let mut result_map = HashMap::new();
                 for (key_field, value_field) in m.entries() {
-                    // Assuming your key is a string (Field::Str)
                     match key_field {
                         Field::Str(key_str) => {
-                            // Convert the value_field into a gluesql Value using to_value
                             let glue_value =
                                 ParquetField(value_field.clone()).to_value(schema, idx)?;
                             result_map.insert(key_str.clone(), glue_value);
                         }
                         _ => {
-                            return Err(Error::StorageMsg(
-                                "Expected string key for map".to_string(),
-                            ));
+                            let received_key_type = format!("{:?}", key_field);
+                            return Err(Error::StorageMsg(format!(
+                                "Unexpected key type for map: received {}, expected String",
+                                received_key_type
+                            )));
                         }
                     }
                 }
