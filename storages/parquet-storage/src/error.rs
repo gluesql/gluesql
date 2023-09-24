@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use gluesql_core::store::DataRow;
 use parquet::{
     basic::{ConvertedType, Type},
     errors::ParquetError,
@@ -85,7 +84,4 @@ pub enum ParquetStorageError {
 
     #[error("unmapped glue data type: {0}")]
     UnmappedGlueDataType(DataType),
-
-    #[error("unsupported DataRow::Map : {0}")]
-    UnSupportedMapTypeDataRow(DataRow),
 }
