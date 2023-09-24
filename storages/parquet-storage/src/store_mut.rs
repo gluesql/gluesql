@@ -1,10 +1,21 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    cmp::Ordering,
+    collections::HashMap,
+    fs::{remove_file, File},
+    iter::Peekable,
+    sync::Arc,
+    vec::IntoIter,
+};
 
 use gluesql_core::{
     ast::{ColumnDef, ToSql},
     chrono::{NaiveDate, Timelike},
+    data::{Key, Schema},
+    error::Result,
     prelude::{DataType, Error, Value},
+    store::{DataRow, StoreMut},
 };
+
 use parquet::{
     basic::{ConvertedType, Type},
     column::writer::ColumnWriter,
@@ -14,20 +25,9 @@ use parquet::{
     schema::types::Type as SchemaType,
 };
 
+use crate::{error::ResultExt, ParquetStorage};
+use async_trait::async_trait;
 use lazy_static::lazy_static;
-use {
-    crate::{error::ResultExt, ParquetStorage},
-    async_trait::async_trait,
-    gluesql_core::{
-        data::{Key, Schema},
-        error::Result,
-        store::{DataRow, StoreMut},
-    },
-    std::{
-        fs::{remove_file, File},
-        {cmp::Ordering, iter::Peekable, vec::IntoIter},
-    },
-};
 
 lazy_static! {
     static ref GLUESQL_TO_PARQUET_DATA_TYPE_MAPPING: HashMap<DataType, &'static str> = {
