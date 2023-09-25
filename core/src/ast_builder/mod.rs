@@ -1,3 +1,4 @@
+//! Statement building and operations.
 mod alter_table;
 mod assignment;
 mod build;

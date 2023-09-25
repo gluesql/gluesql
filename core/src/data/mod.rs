@@ -1,3 +1,4 @@
+//! Table constituents.
 mod bigdecimal_ext;
 mod function;
 mod interval;

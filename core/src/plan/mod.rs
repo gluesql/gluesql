@@ -1,3 +1,4 @@
+//! Query planning.
 mod context;
 mod error;
 mod evaluable;

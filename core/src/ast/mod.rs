@@ -1,3 +1,4 @@
+//! Syntax elements.
 mod ast_literal;
 mod data_type;
 mod ddl;

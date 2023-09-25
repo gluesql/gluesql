@@ -1,3 +1,4 @@
+//! Sql parsing.
 mod ast_literal;
 mod data_type;
 mod ddl;

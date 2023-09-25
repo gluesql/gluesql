@@ -1,3 +1,4 @@
+//! Execute statments on database.
 mod aggregate;
 mod alter;
 mod context;

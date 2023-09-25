@@ -14,6 +14,7 @@ use {
     },
 };
 
+/// Database connection isntance.
 pub struct Glue<T: GStore + GStoreMut> {
     pub storage: T,
 }
