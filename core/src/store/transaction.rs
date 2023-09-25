@@ -3,6 +3,7 @@ use {
     async_trait::async_trait,
 };
 
+/// Enables the use of atomic groups of operations.
 #[async_trait(?Send)]
 pub trait Transaction {
     async fn begin(&mut self, autocommit: bool) -> Result<bool> {

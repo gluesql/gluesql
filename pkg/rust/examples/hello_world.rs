@@ -3,7 +3,7 @@ mod hello_world {
     use {
         gluesql::{
             prelude::{Glue, Payload},
-            sled_storage::SledStorage,
+            storage::SledStorage,
         },
         std::fs,
     };

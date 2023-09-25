@@ -30,6 +30,8 @@ pub enum AlterTableError {
     SchemalessTableFound(String),
 }
 
+/// Enables modification of existing tables.
+///
 #[async_trait(?Send)]
 pub trait AlterTable {
     async fn rename_schema(&mut self, _table_name: &str, _new_table_name: &str) -> Result<()> {

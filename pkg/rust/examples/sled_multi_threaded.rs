@@ -4,7 +4,7 @@ mod sled_multi_threaded {
         futures::executor::block_on,
         gluesql::{
             prelude::{Glue, Payload, Value},
-            sled_storage::SledStorage,
+            storage::SledStorage,
         },
         std::thread,
     };

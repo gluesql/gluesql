@@ -2,9 +2,9 @@
 mod hello_ast_builder {
     use {
         gluesql::{
-            core::ast_builder::{self, Execute},
+            ast_builder::{self, Execute},
             prelude::{Glue, Payload, Value},
-            sled_storage::SledStorage,
+            storage::SledStorage,
         },
         std::fs,
     };

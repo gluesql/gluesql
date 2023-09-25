@@ -1,7 +1,7 @@
 #[cfg(feature = "sled-storage")]
 use {
     futures::executor::block_on,
-    gluesql::{prelude::Glue, sled_storage::SledStorage},
+    gluesql::{prelude::Glue, storage::SledStorage},
     sled_storage::sled,
     std::convert::TryFrom,
 };

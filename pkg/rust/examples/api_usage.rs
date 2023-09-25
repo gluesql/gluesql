@@ -1,6 +1,6 @@
 #[cfg(feature = "sled-storage")]
 mod api_usage {
-    use gluesql::prelude::{Glue, SledStorage};
+    use gluesql::{prelude::Glue, storage::SledStorage};
 
     pub async fn run() {
         let storage = SledStorage::new("data/mutable-api").unwrap();

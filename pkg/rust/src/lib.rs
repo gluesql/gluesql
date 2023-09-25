@@ -5,36 +5,13 @@
 //!
 //! For more information on how to use GlueSQL, please refer to the [**official documentation website**](https://gluesql.org/docs). The documentation provides detailed information on how to install and use GlueSQL, as well as examples and tutorials on how to create custom storage systems and perform SQL operations.
 
-pub mod core {
-    pub use gluesql_core::*;
-}
+pub use gluesql_core::{ast, ast_builder, data, error, executor, parse_sql, plan, translate};
 
-#[cfg(feature = "memory-storage")]
-pub use memory_storage;
-
-#[cfg(feature = "shared-memory-storage")]
-pub use shared_memory_storage;
-
-#[cfg(feature = "sled-storage")]
-pub use sled_storage;
-
-#[cfg(feature = "json-storage")]
-pub use json_storage;
-
-#[cfg(feature = "composite-storage")]
-pub use composite_storage;
-
-#[cfg(all(feature = "web-storage", target_arch = "wasm32"))]
-pub use web_storage;
-
-#[cfg(all(feature = "idb-storage", target_arch = "wasm32"))]
-pub use idb_storage;
-
-#[cfg(feature = "test-suite")]
-pub use test_suite;
-
-pub mod prelude {
-    pub use gluesql_core::prelude::*;
+/// The storage module.
+///
+/// Includes traits implemented by storage backends, as well as exisiting implementations.
+pub mod storage {
+    pub use gluesql_core::store::*;
 
     #[cfg(feature = "memory-storage")]
     pub use memory_storage::MemoryStorage;
@@ -56,4 +33,13 @@ pub mod prelude {
 
     #[cfg(all(feature = "idb-storage", target_arch = "wasm32"))]
     pub use idb_storage::IdbStorage;
+}
+
+pub mod test {
+    #[cfg(feature = "test-suite")]
+    pub use test_suite::*;
+}
+
+pub mod prelude {
+    pub use gluesql_core::prelude::*;
 }

@@ -6,6 +6,7 @@ use {
     async_trait::async_trait,
 };
 
+/// Enables the executation of exisitng functions.
 #[async_trait(?Send)]
 pub trait CustomFunction {
     async fn fetch_function(&self, _func_name: &str) -> Result<Option<&StructCustomFunction>> {
@@ -20,6 +21,7 @@ pub trait CustomFunction {
     }
 }
 
+/// Enables the creation and delation of functions.
 #[async_trait(?Send)]
 pub trait CustomFunctionMut {
     async fn insert_function(&mut self, _func: StructCustomFunction) -> Result<()> {
