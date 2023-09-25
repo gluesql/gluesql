@@ -38,6 +38,9 @@ pub enum IndexError {
     ConflictOnIndexDataDeleteSync,
 }
 
+/// Enables efficient queries through ordered table indicies.
+///
+/// An implementaion should return a iterator over all rows of the table in the order of the index.
 #[async_trait(?Send)]
 pub trait Index {
     async fn scan_indexed_data(
@@ -53,6 +56,9 @@ pub trait Index {
     }
 }
 
+/// Enables the creation of table indicies.
+///
+/// An implementaion should store a ordered index data structured inside the database.
 #[async_trait(?Send)]
 pub trait IndexMut {
     async fn create_index(
