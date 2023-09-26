@@ -6,8 +6,10 @@ use {
     },
 };
 
-test_case!(explain_table, async move {
-    run!(
+test_case!(explain_table, {
+    let g = get_tester!();
+
+    g.run(
         "
         CREATE TABLE person(
             id INT PRIMARY KEY,
@@ -15,10 +17,11 @@ test_case!(explain_table, async move {
             age INT NOT NULL,
             alive BOOLEAN DEFAULT true
         )
-    "
-    );
+    ",
+    )
+    .await;
 
-    test!(
+    g.test(
         r#"EXPLAIN person"#,
         Ok(Payload::ExplainTable(vec![
             ExplainTableRow {
@@ -48,12 +51,14 @@ test_case!(explain_table, async move {
                 nullable: true,
                 key: "".to_owned(),
                 default: "TRUE".to_owned(),
-            }
-        ]))
-    );
+            },
+        ])),
+    )
+    .await;
 
-    test!(
+    g.test(
         r#"EXPLAIN mytable1"#,
-        Err(ExecuteError::TableNotFound("mytable1".to_owned()).into())
-    );
+        Err(ExecuteError::TableNotFound("mytable1".to_owned()).into()),
+    )
+    .await;
 });
