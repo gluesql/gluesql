@@ -889,7 +889,7 @@ mod tests {
         test!(num!("1.0"), Value::F64(1.0));
         test!(&Literal::Boolean(false), Value::Bool(false));
         assert_eq!(
-            Value::try_from(num!("1e500")),
+            Value::try_from(num!("1.23456789123456789e100")),
             Err(ValueError::FailedToParseNumber.into())
         );
 
