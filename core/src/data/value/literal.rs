@@ -27,15 +27,14 @@ impl TryFrom<&Literal<'_>> for Value {
             Literal::Number(v) => {
                 let num_str = v.to_string();
                 if num_str.contains('.') {
-                    match num_str.parse::<f64>() {
-                        Ok(num_as_f64) => Ok(Value::F64(num_as_f64)),
-                        Err(_) => Err(ValueError::FailedToParseNumber.into()),
-                    }
+                    v.to_f64()
+                        .map(Value::F64)
+                        .ok_or_else(|| ValueError::FailedToParseNumber.into())
                 } else {
-                    match num_str.parse::<i64>() {
-                        Ok(num_as_i64) => Ok(Value::I64(num_as_i64)),
-                        Err(_) => Err(ValueError::FailedToParseNumber.into()),
-                    }
+                    num_str
+                        .parse::<i64>()
+                        .map(Value::I64)
+                        .map_err(|_| ValueError::FailedToParseNumber.into())
                 }
             }
             Literal::Boolean(v) => Ok(Value::Bool(*v)),
