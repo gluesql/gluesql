@@ -500,6 +500,7 @@ mod tests {
     use {
         super::parse_uuid,
         crate::data::{Literal, Value},
+        crate::result::ValueError,
         bigdecimal::BigDecimal,
         chrono::{NaiveDate, NaiveDateTime, NaiveTime},
         rust_decimal::Decimal,
@@ -887,6 +888,11 @@ mod tests {
         test!(num!("1.0"), Value::F32(1.0_f32));
         test!(num!("1.0"), Value::F64(1.0));
         test!(&Literal::Boolean(false), Value::Bool(false));
+        assert_eq!(
+            Value::try_from(num!("1e500")),
+            Err(ValueError::FailedToParseNumber.into())
+        );
+
         assert!(matches!(Value::try_from(&Literal::Null), Ok(Value::Null)))
     }
 
