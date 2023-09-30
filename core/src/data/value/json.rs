@@ -1,7 +1,7 @@
 use {
     super::{Value, ValueError},
     crate::result::{Error, Result},
-    chrono::{offset::Utc, DateTime},
+    chrono::{offset::Utc, TimeZone},
     core::str::FromStr,
     serde_json::{Map as JsonMap, Number as JsonNumber, Value as JsonValue},
     std::collections::HashMap,
@@ -79,7 +79,7 @@ impl TryFrom<Value> for JsonValue {
             Value::Bytea(v) => Ok(hex::encode(v).into()),
             Value::Inet(v) => Ok(v.to_string().into()),
             Value::Date(v) => Ok(v.to_string().into()),
-            Value::Timestamp(v) => Ok(DateTime::<Utc>::from_utc(v, Utc).to_string().into()),
+            Value::Timestamp(v) => Ok(Utc.from_utc_datetime(&v).to_string().into()),
             Value::Time(v) => Ok(v.to_string().into()),
             Value::Interval(v) => Ok(v.to_sql_str().into()),
             Value::Uuid(v) => Ok(Uuid::from_u128(v).hyphenated().to_string().into()),
