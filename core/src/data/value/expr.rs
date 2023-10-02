@@ -2,7 +2,7 @@ use {
     super::ValueError::ValueToExprConversionFailure,
     crate::{
         ast::{AstLiteral, DateTimeField, Expr},
-        chrono::{offset::Utc, TimeZone},
+        chrono::{TimeZone, Utc},
         data::Interval,
         prelude::{DataType, Value},
         result::{Error, Result},
