@@ -20,7 +20,7 @@ use value::ParquetField;
 
 mod alter_table;
 mod column_def;
-mod error;
+pub mod error;
 mod function;
 mod index;
 mod store;
@@ -52,7 +52,18 @@ impl ParquetStorage {
         let file_metadata = parquet_metadata.file_metadata();
         let schema = file_metadata.schema();
         let key_value_file_metadata = file_metadata.key_value_metadata();
-        let mut column_defs: Option<Vec<ColumnDef>> = if schema.get_fields().is_empty() {
+
+        let mut is_schemaless = false;
+        if let Some(metadata) = key_value_file_metadata {
+            for kv in metadata.iter() {
+                if kv.key == *"schemaless".to_string() {
+                    is_schemaless = matches!(kv.value.as_deref(), Some("true"));
+                    break;
+                }
+            }
+        }
+
+        let column_defs = if is_schemaless {
             None
         } else {
             Some(
@@ -68,20 +79,6 @@ impl ParquetStorage {
                     .collect::<Result<Vec<ColumnDef>, _>>()?,
             )
         };
-        let mut is_schemaless = false;
-        if let Some(metadata) = key_value_file_metadata {
-            for kv in metadata.iter() {
-                if kv.key == *"schemaless".to_string() {
-                    match kv.value.as_deref() {
-                        Some("true") => is_schemaless = true,
-                        _ => is_schemaless = false,
-                    }
-                }
-            }
-        }
-        if is_schemaless {
-            column_defs = None;
-        }
 
         Ok(Some(Schema {
             table_name: table_name.to_owned(),

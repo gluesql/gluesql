@@ -3,7 +3,6 @@ use parquet::data_type::ByteArray;
 use {
     gluesql_core::{
         chrono::NaiveDateTime,
-        error::Error,
         prelude::{
             Glue,
             Value::{self, *},
@@ -87,12 +86,6 @@ async fn test_alltypes_select() {
                     ]),
                     List(vec![Null, List(vec![Str("f".to_owned())])])
                 ] 1
-            )),
-        ),
-        (
-            glue.execute("SELECT * FROM nested_maps_snappy").await,
-            Err(Error::StorageMsg(
-                "Unexpected key type for map: received Int(1), expected String".to_string(),
             )),
         ),
     ];

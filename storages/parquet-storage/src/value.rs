@@ -8,7 +8,7 @@ use gluesql_core::{
 };
 use parquet::record::Field;
 
-use crate::error::OptionExt;
+use crate::error::{OptionExt, ParquetStorageError};
 
 #[derive(Debug)]
 pub struct ParquetField(pub Field);
@@ -237,11 +237,11 @@ impl ParquetField {
                             result_map.insert(key_str.clone(), glue_value);
                         }
                         _ => {
-                            let received_key_type = format!("{:?}", key_field);
-                            return Err(Error::StorageMsg(format!(
-                                "Unexpected key type for map: received {}, expected String",
-                                received_key_type
-                            )));
+                            return Err(ParquetStorageError::UnexpectedKeyTypeForMap(format!(
+                                "{:?}",
+                                key_field
+                            ))
+                            .into());
                         }
                     }
                 }

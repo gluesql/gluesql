@@ -1,11 +1,8 @@
-use std::path::PathBuf;
-
 use parquet::{
     basic::{ConvertedType, Type},
     errors::ParquetError,
 };
 
-use std::fmt;
 use {
     gluesql_core::{ast::DataType, prelude::Error},
     thiserror::Error,
@@ -41,23 +38,8 @@ impl From<ParquetStorageError> for Error {
     }
 }
 
-impl From<ParquetError> for GlueParquetError {
-    fn from(err: ParquetError) -> Self {
-        GlueParquetError(err)
-    }
-}
-
-impl fmt::Display for GlueParquetError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "GlueParquetError: {}", self.0)
-    }
-}
-
 #[derive(Error, Debug)]
 pub enum ParquetStorageError {
-    #[error("cannot open file: {0}")]
-    CannotOpenFile(PathBuf),
-
     #[error("unable to set new SerialiszedFileReader")]
     UnableToSetNewSerializedFileReader,
 
@@ -84,4 +66,7 @@ pub enum ParquetStorageError {
 
     #[error("unmapped glue data type: {0}")]
     UnmappedGlueDataType(DataType),
+
+    #[error("Unexpected key type for map: received {0}, expected String")]
+    UnexpectedKeyTypeForMap(String),
 }

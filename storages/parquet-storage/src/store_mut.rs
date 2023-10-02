@@ -194,9 +194,7 @@ impl ParquetStorage {
         );
 
         let mut file_writer =
-            SerializedFileWriter::new(file, schema_type.clone(), props).map_err(|e| {
-                Error::StorageMsg(format!("Failed to create SerializedFileWriter: {}", e))
-            })?;
+            SerializedFileWriter::new(file, schema_type.clone(), props).map_storage_err()?;
 
         let mut row_group_writer = file_writer.next_row_group().map_storage_err()?;
 
@@ -209,13 +207,6 @@ impl ParquetStorage {
             for row in &rows {
                 match row {
                     DataRow::Vec(values) => {
-                        if values.len() != schema_type.get_fields().len() {
-                            return Err(Error::StorageMsg(format!(
-                                "Mismatch between schema fields and DataRow values. Expected {} fields but got {} values.",
-                                schema_type.get_fields().len(),
-                                values.len()
-                            )));
-                        }
                         let value = values[i].clone();
 
                         match value {

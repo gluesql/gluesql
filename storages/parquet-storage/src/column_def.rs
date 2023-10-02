@@ -69,8 +69,8 @@ impl<'a> TryFrom<ParquetSchemaType<'a>> for ColumnDef {
         let name = inner.name().to_owned();
         let mut data_type = match inner {
             SchemaType::PrimitiveType { physical_type, .. } => convert_to_data_type(physical_type),
-            SchemaType::GroupType { .. } => Ok(DataType::Map),
-        }?;
+            SchemaType::GroupType { .. } => DataType::Map,
+        };
         let nullable = inner.is_optional();
         let mut unique = None;
         let mut default = None;
@@ -113,8 +113,8 @@ impl<'a> TryFrom<ParquetSchemaType<'a>> for ColumnDef {
     }
 }
 
-fn convert_to_data_type(pt: &PhysicalType) -> Result<DataType, Error> {
-    Ok(match pt {
+fn convert_to_data_type(pt: &PhysicalType) -> DataType {
+    match pt {
         PhysicalType::BOOLEAN => DataType::Boolean,
         PhysicalType::INT32 => DataType::Int32,
         PhysicalType::INT64 => DataType::Int,
@@ -122,5 +122,5 @@ fn convert_to_data_type(pt: &PhysicalType) -> Result<DataType, Error> {
         PhysicalType::DOUBLE => DataType::Float,
         PhysicalType::INT96 => DataType::Int128,
         PhysicalType::BYTE_ARRAY | PhysicalType::FIXED_LEN_BYTE_ARRAY => DataType::Bytea,
-    })
+    }
 }
