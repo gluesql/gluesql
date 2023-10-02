@@ -186,7 +186,6 @@ impl ParquetStorage {
 
         let metadata = Self::gather_metadata_from_glue_schema(&schema);
 
-        // Set metadata using the WriterPropertiesBuilder
         let props = Arc::new(
             WriterProperties::builder()
                 .set_key_value_metadata(metadata)
@@ -242,7 +241,6 @@ impl ParquetStorage {
                                 }
                             }
                             Value::Bool(val) => {
-                                // Handle boolean value case.
                                 if let ColumnWriter::BoolColumnWriter(ref mut typed) = col_writer {
                                     typed
                                         .write_batch(&[val], Some(&[1]), None)
@@ -272,13 +270,8 @@ impl ParquetStorage {
                             }
                             Value::Date(d) => {
                                 if let ColumnWriter::Int32ColumnWriter(ref mut typed) = col_writer {
-                                    let epoch =
-                                        NaiveDate::from_ymd_opt(1970, 1, 1).ok_or_else(|| {
-                                            Error::StorageMsg(
-                                                "Invalid epoch data while write function"
-                                                    .to_string(),
-                                            )
-                                        })?;
+                                    let epoch = NaiveDate::from_ymd_opt(1970, 1, 1)
+                                        .expect("Invalid epoch date");
                                     let days_since_epoch = (d - epoch).num_days() as i32;
                                     typed
                                         .write_batch(&[days_since_epoch], Some(&[1]), None)
@@ -293,7 +286,6 @@ impl ParquetStorage {
                                 }
                             }
                             Value::U16(val) => {
-                                // Handle integer value cases. Here, just showing Int32ColumnWriter.
                                 if let ColumnWriter::Int32ColumnWriter(ref mut typed) = col_writer {
                                     typed
                                         .write_batch(&[val as i32], Some(&[1]), None)
@@ -323,8 +315,8 @@ impl ParquetStorage {
                             }
                             Value::Time(val) => {
                                 let total_micros = (val.hour() as i64 * 60 * 60 * 1_000_000) // hours to micros
-                                + (val.minute() as i64 * 60 * 1_000_000)                // minutes to micros
-                                + (val.second() as i64 * 1_000_000)                     // seconds to micros
+                                + (val.minute() as i64 * 60 * 1_000_000)                          // minutes to micros
+                                + (val.second() as i64 * 1_000_000)                               // seconds to micros
                                 + (val.nanosecond() as i64 / 1_000); // nanos to micros
                                 if let ColumnWriter::Int64ColumnWriter(ref mut typed) = col_writer {
                                     typed
@@ -333,12 +325,7 @@ impl ParquetStorage {
                                 }
                             }
                             Value::Timestamp(val) => {
-                                let serialized = bincode::serialize(&val).map_err(|e| {
-                                    Error::StorageMsg(format!(
-                                        "Failed to serialize Interval: {}",
-                                        e
-                                    ))
-                                })?;
+                                let serialized = bincode::serialize(&val).map_storage_err()?;
                                 if let ColumnWriter::ByteArrayColumnWriter(ref mut typed) =
                                     col_writer
                                 {
@@ -348,9 +335,7 @@ impl ParquetStorage {
                                 }
                             }
                             Value::I128(val) => {
-                                let serialized = bincode::serialize(&val).map_err(|e| {
-                                    Error::StorageMsg(format!("Failed to serialize I128: {}", e))
-                                })?;
+                                let serialized = bincode::serialize(&val).map_storage_err()?;
                                 if let ColumnWriter::ByteArrayColumnWriter(ref mut typed) =
                                     col_writer
                                 {
@@ -360,9 +345,7 @@ impl ParquetStorage {
                                 }
                             }
                             Value::U128(val) => {
-                                let serialized = bincode::serialize(&val).map_err(|e| {
-                                    Error::StorageMsg(format!("Failed to serialize I128: {}", e))
-                                })?;
+                                let serialized = bincode::serialize(&val).map_storage_err()?;
                                 if let ColumnWriter::ByteArrayColumnWriter(ref mut typed) =
                                     col_writer
                                 {
@@ -372,9 +355,7 @@ impl ParquetStorage {
                                 }
                             }
                             Value::Uuid(val) => {
-                                let serialized = bincode::serialize(&val).map_err(|e| {
-                                    Error::StorageMsg(format!("Failed to serialize I128: {}", e))
-                                })?;
+                                let serialized = bincode::serialize(&val).map_storage_err()?;
                                 if let ColumnWriter::FixedLenByteArrayColumnWriter(ref mut typed) =
                                     col_writer
                                 {
@@ -416,10 +397,7 @@ impl ParquetStorage {
                                 }
                             }
                             Value::Decimal(val) => {
-                                // Convert the decimal value to a fixed-length byte array.
-                                let serialized = bincode::serialize(&val).map_err(|e| {
-                                    Error::StorageMsg(format!("Failed to serialize Decimal: {}", e))
-                                })?;
+                                let serialized = bincode::serialize(&val).map_storage_err()?;
                                 if let ColumnWriter::ByteArrayColumnWriter(ref mut typed) =
                                     col_writer
                                 {
@@ -429,12 +407,7 @@ impl ParquetStorage {
                                 }
                             }
                             Value::Interval(val) => {
-                                let serialized = bincode::serialize(&val).map_err(|e| {
-                                    Error::StorageMsg(format!(
-                                        "Failed to serialize Interval: {}",
-                                        e
-                                    ))
-                                })?;
+                                let serialized = bincode::serialize(&val).map_storage_err()?;
                                 if let ColumnWriter::ByteArrayColumnWriter(ref mut typed) =
                                     col_writer
                                 {
@@ -454,26 +427,15 @@ impl ParquetStorage {
                                 }
                             }
                             Value::Map(m) => {
-                                // Serialize the entire HashMap to a byte vector
-                                let serialized = bincode::serialize(&m).map_err(|e| {
-                                    Error::StorageMsg(format!("Failed to serialize HashMap: {}", e))
-                                })?;
-
+                                let serialized = bincode::serialize(&m).map_storage_err()?;
                                 if let ColumnWriter::ByteArrayColumnWriter(typed) = col_writer {
-                                    // Write the serialized map
                                     typed
                                         .write_batch(&[serialized.into()], Some(&[1]), None)
                                         .map_storage_err()?;
-                                } else {
-                                    return Err(Error::StorageMsg(
-                                        "Expected ByteArrayColumnWriter".into(),
-                                    ));
                                 }
                             }
                             Value::List(l) => {
-                                let serialized = bincode::serialize(&l).map_err(|e| {
-                                    Error::StorageMsg(format!("Failed to serialize list: {}", e))
-                                })?;
+                                let serialized = bincode::serialize(&l).map_storage_err()?;
                                 if let ColumnWriter::ByteArrayColumnWriter(ref mut typed) =
                                     col_writer
                                 {
@@ -483,48 +445,29 @@ impl ParquetStorage {
                                 }
                             }
                             Value::Point(p) => {
-                                let serialized = bincode::serialize(&p).map_err(|e| {
-                                    Error::StorageMsg(format!("Failed to serialize HashMap: {}", e))
-                                })?;
+                                let serialized = bincode::serialize(&p).map_storage_err()?;
                                 if let ColumnWriter::ByteArrayColumnWriter(typed) = col_writer {
-                                    // Write the serialized map
                                     typed
                                         .write_batch(&[serialized.into()], Some(&[1]), None)
                                         .map_storage_err()?;
-                                } else {
-                                    return Err(Error::StorageMsg(
-                                        "Expected ByteArrayColumnWriter".into(),
-                                    ));
                                 }
                             }
                             Value::Inet(inet) => {
-                                let serialized = bincode::serialize(&inet).map_err(|e| {
-                                    Error::StorageMsg(format!("Failed to serialize HashMap: {}", e))
-                                })?;
+                                let serialized = bincode::serialize(&inet).map_storage_err()?;
                                 if let ColumnWriter::ByteArrayColumnWriter(typed) = col_writer {
-                                    // Write the serialized map
                                     typed
                                         .write_batch(&[serialized.into()], Some(&[1]), None)
                                         .map_storage_err()?;
-                                } else {
-                                    return Err(Error::StorageMsg(
-                                        "Expected ByteArrayColumnWriter".into(),
-                                    ));
                                 }
                             }
                         }
                     }
                     DataRow::Map(map) => {
-                        let serialized = bincode::serialize(&map).map_err(|e| {
-                            Error::StorageMsg(format!("Failed to serialize HashMap: {}", e))
-                        })?;
-
+                        let serialized = bincode::serialize(&map).map_storage_err()?;
                         if let ColumnWriter::ByteArrayColumnWriter(typed) = col_writer {
                             typed
                                 .write_batch(&[serialized.into()], Some(&[1]), None)
                                 .map_storage_err()?;
-                        } else {
-                            return Err(Error::StorageMsg("Expected ByteArrayColumnWriter".into()));
                         }
                     }
                 }
@@ -570,16 +513,13 @@ impl ParquetStorage {
                 physical_type,
             )
             .with_repetition(repetition)
-            .with_scale(0) // Set the scale for Uint128
-            .with_length(16);
+            .with_length(16); // for FIXED_LEN_BYTE_ARRAY length
 
             if let Some(converted_type) = converted_type_option {
                 field_builder = field_builder.with_converted_type(converted_type);
             }
 
-            let field = field_builder
-                .build()
-                .map_err(|e| Error::StorageMsg(format!("Failed to create schema type: {}", e)))?;
+            let field = field_builder.build().map_storage_err()?;
 
             fields.push(Arc::new(field));
         }
@@ -634,11 +574,7 @@ impl ParquetStorage {
             });
         }
 
-        if metadata.is_empty() {
-            None
-        } else {
-            Some(metadata)
-        }
+        Some(metadata)
     }
 
     fn get_parquet_type_mappings(data_type: &DataType) -> Result<(Type, Option<ConvertedType>)> {

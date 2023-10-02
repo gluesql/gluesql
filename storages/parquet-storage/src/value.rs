@@ -2,13 +2,13 @@ use std::collections::HashMap;
 
 use byteorder::{BigEndian, ByteOrder};
 use gluesql_core::{
-    chrono::{Duration, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc},
+    chrono::{Duration, NaiveDate, NaiveDateTime, NaiveTime},
     data::{Schema, Value},
     prelude::{DataType, Error, Result},
 };
 use parquet::record::Field;
 
-use crate::error::{OptionExt, ParquetStorageError};
+use crate::error::{OptionExt, ParquetStorageError, ResultExt};
 
 #[derive(Debug)]
 pub struct ParquetField(pub Field);
@@ -35,21 +35,16 @@ impl ParquetField {
                             let seconds = total_seconds % 60;
                             let micros = v % 1_000_000;
 
-                            let time = NaiveTime::from_hms_micro_opt(
+                            return NaiveTime::from_hms_micro_opt(
                                 hours as u32,
                                 minutes as u32,
                                 seconds as u32,
                                 micros as u32,
-                            );
-
-                            match time {
-                                Some(t) => return Ok(Value::Time(t)),
-                                None => {
-                                    return Err(Error::StorageMsg(
-                                        "Failed to convert to NaiveTime".to_string(),
-                                    ));
-                                }
-                            }
+                            )
+                            .ok_or_else(|| {
+                                Error::StorageMsg("Failed to convert to NaiveTime".to_string())
+                            })
+                            .map(Value::Time);
                         }
                     }
                 }
@@ -67,87 +62,45 @@ impl ParquetField {
                     if let Some(column) = columns.get(idx) {
                         match column.data_type {
                             DataType::Timestamp => {
-                                let timestamp = bincode::deserialize(v.data()).map_err(|e| {
-                                    Error::StorageMsg(format!(
-                                        "Error deserializing timestamp: {:?}",
-                                        e
-                                    ))
-                                })?;
+                                let timestamp = bincode::deserialize(v.data()).map_storage_err()?;
                                 return Ok(Value::Timestamp(timestamp));
                             }
                             DataType::Uuid => {
-                                let uuid = bincode::deserialize(v.data()).map_err(|e| {
-                                    Error::StorageMsg(format!("Error deserializing uuid: {:?}", e))
-                                })?;
+                                let uuid = bincode::deserialize(v.data()).map_storage_err()?;
                                 return Ok(Value::Uuid(uuid));
                             }
                             DataType::Uint128 => {
-                                let uint128 = bincode::deserialize(v.data()).map_err(|e| {
-                                    Error::StorageMsg(format!(
-                                        "Error deserializing uint128: {:?}",
-                                        e
-                                    ))
-                                })?;
+                                let uint128 = bincode::deserialize(v.data()).map_storage_err()?;
                                 return Ok(Value::U128(uint128));
                             }
                             DataType::Int128 => {
-                                let int128 = bincode::deserialize(v.data()).map_err(|e| {
-                                    Error::StorageMsg(format!(
-                                        "Error deserializing int128: {:?}",
-                                        e
-                                    ))
-                                })?;
+                                let int128 = bincode::deserialize(v.data()).map_storage_err()?;
                                 return Ok(Value::I128(int128));
                             }
                             DataType::Interval => {
-                                let interval = bincode::deserialize(v.data()).map_err(|e| {
-                                    Error::StorageMsg(format!(
-                                        "Error deserializing Interval: {:?}",
-                                        e
-                                    ))
-                                })?;
+                                let interval = bincode::deserialize(v.data()).map_storage_err()?;
                                 return Ok(Value::Interval(interval));
                             }
                             DataType::Decimal => {
-                                let decimal = bincode::deserialize(v.data()).map_err(|e| {
-                                    Error::StorageMsg(format!(
-                                        "Error deserializing Decimal: {:?}",
-                                        e
-                                    ))
-                                })?;
+                                let decimal = bincode::deserialize(v.data()).map_storage_err()?;
                                 return Ok(Value::Decimal(decimal));
                             }
                             DataType::Map => {
-                                let map: HashMap<String, Value> = bincode::deserialize(v.data())
-                                    .map_err(|e| {
-                                        Error::StorageMsg(format!(
-                                            "Error deserializing HashMap: {:?}",
-                                            e
-                                        ))
-                                    })?;
-
+                                let map: HashMap<String, Value> =
+                                    bincode::deserialize(v.data()).map_storage_err()?;
                                 return Ok(Value::Map(map));
                             }
                             DataType::List => {
                                 let list: Vec<Value> =
-                                    bincode::deserialize(v.data()).map_err(|e| {
-                                        Error::StorageMsg(format!(
-                                            "Error deserializing Vec: {:?}",
-                                            e
-                                        ))
-                                    })?;
+                                    bincode::deserialize(v.data()).map_storage_err()?;
                                 return Ok(Value::List(list));
                             }
                             DataType::Inet => {
-                                let inet = bincode::deserialize(v.data()).map_err(|e| {
-                                    Error::StorageMsg(format!("Error deserializing inet: {:?}", e))
-                                })?;
+                                let inet = bincode::deserialize(v.data()).map_storage_err()?;
                                 return Ok(Value::Inet(inet));
                             }
                             DataType::Point => {
-                                let point = bincode::deserialize(v.data()).map_err(|e| {
-                                    Error::StorageMsg(format!("Error deserializing point: {:?}", e))
-                                })?;
+                                let point = bincode::deserialize(v.data()).map_storage_err()?;
                                 return Ok(Value::Point(point));
                             }
                             _ => {}
@@ -157,27 +110,9 @@ impl ParquetField {
                 Ok(Value::Bytea(v.data().to_vec()))
             }
             Field::Date(v) => {
-                let epoch_day = NaiveDate::from_ymd_opt(1970, 1, 1)
-                    .ok_or_else(|| Error::StorageMsg("Invalid epoch date".to_string()))?;
-
-                let hour = 0;
-                let minute = 0;
-                let second = 0;
-
-                let epoch_day_and_time = epoch_day
-                    .and_hms_opt(hour, minute, second)
-                    .ok_or_else(|| Error::StorageMsg("Invalid time".to_string()))?;
-
-                // Use the recommended method instead of the deprecated one
-                let epoch_day_and_time_utc = Utc.from_utc_datetime(&epoch_day_and_time);
-
-                let result_date = epoch_day_and_time_utc
-                    .checked_add_signed(Duration::days(*v as i64))
-                    .ok_or_else(|| {
-                        Error::StorageMsg("Overflow when adding duration to date".to_string())
-                    })?;
-
-                Ok(Value::Date(result_date.date_naive()))
+                let epoch = NaiveDate::from_ymd_opt(1970, 1, 1).expect("Invalid epoch date");
+                let result_date = epoch + Duration::days(*v as i64);
+                Ok(Value::Date(result_date))
             }
             Field::Group(v) => {
                 let mut map = HashMap::new();

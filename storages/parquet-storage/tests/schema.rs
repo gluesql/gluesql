@@ -1,4 +1,5 @@
 use parquet::data_type::ByteArray;
+use test_suite::select_with_null;
 
 use {
     gluesql_core::{
@@ -86,6 +87,13 @@ async fn test_alltypes_select() {
                     ]),
                     List(vec![Null, List(vec![Str("f".to_owned())])])
                 ] 1
+            )),
+        ),
+        (
+            glue.execute("SELECT * FROM all_types_with_nulls").await,
+            Ok(select_with_null!(
+                bool_field | int32_field | int64_field | int96_field | float_field | double_field | binary_field | flba_field;
+                Null         Null          Null          Null          Null          Null           Null           Null
             )),
         ),
     ];
