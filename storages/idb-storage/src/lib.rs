@@ -8,6 +8,7 @@ use {
     async_trait::async_trait,
     convert::convert,
     error::ErrInto,
+    futures::stream::{empty, iter},
     gloo_utils::format::JsValueSerdeExt,
     gluesql_core::{
         data::{Key, Schema, Value},
@@ -16,10 +17,7 @@ use {
     },
     idb::{CursorDirection, Database, Factory, ObjectStoreParams, Query, TransactionMode},
     serde_json::Value as JsonValue,
-    std::{
-        iter::empty,
-        sync::{Arc, Mutex},
-    },
+    std::sync::{Arc, Mutex},
     wasm_bindgen::JsValue,
     web_sys::console,
 };
@@ -190,7 +188,7 @@ impl Store for IdbStorage {
         let mut cursor = match cursor {
             Some(cursor) => cursor,
             None => {
-                return Ok(Box::new(empty()));
+                return Ok(Box::pin(empty()));
             }
         };
 
@@ -214,7 +212,7 @@ impl Store for IdbStorage {
         transaction.commit().await.err_into()?;
 
         let rows = rows.into_iter().map(Ok);
-        Ok(Box::new(rows))
+        Ok(Box::pin(iter(rows)))
     }
 }
 

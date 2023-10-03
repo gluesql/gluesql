@@ -15,6 +15,7 @@ serde = { version = "1", features = ["derive"] }
 gloo-storage = "0.2.2"
 uuid = { version = "1.2.2", features = ["v4"] }
 web-sys = { version = "0.3.60" }
+futures = "0.3"
 
 [dev-dependencies]
 test-suite.workspace = true

@@ -9,13 +9,15 @@ use {
     crate::cli::Cli,
     anyhow::Result,
     clap::Parser,
-    futures::executor::block_on,
+    futures::{
+        executor::block_on,
+        stream::{StreamExt, TryStreamExt},
+    },
     gluesql_core::{
         ast::{Expr, SetExpr, Statement, ToSql, Values},
         data::Value,
         store::{DataRow, GStore, GStoreMut, Store, Transaction},
     },
-    itertools::Itertools,
     json_storage::JsonStorage,
     memory_storage::MemoryStorage,
     sled_storage::SledStorage,
@@ -120,14 +122,15 @@ pub fn dump_database(storage: &mut SledStorage, dump_path: PathBuf) -> Result<()
         for schema in schemas {
             writeln!(&file, "{}", schema.to_ddl())?;
 
-            let rows_list = storage
+            let mut rows_list = storage
                 .scan_data(&schema.table_name)
                 .await?
                 .map_ok(|(_, row)| row)
                 .chunks(100);
 
-            for rows in &rows_list {
+            while let Some(rows) = rows_list.next().await {
                 let exprs_list = rows
+                    .into_iter()
                     .map(|result| {
                         result.map(|data_row| {
                             let values = match data_row {
