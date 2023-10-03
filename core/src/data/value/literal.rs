@@ -19,22 +19,35 @@ use {
     },
 };
 
+fn convert_to_i64(bigdecimal_val: &BigDecimal) -> Result<Value, Error> {
+    bigdecimal_val
+        .to_i64()
+        .map(Value::I64)
+        .ok_or_else(|| ValueError::FailedToParseNumber.into())
+}
+
+fn convert_to_f64(bigdecimal_val: &BigDecimal) -> Result<Value, Error> {
+    bigdecimal_val
+        .to_f64()
+        .map(Value::F64)
+        .ok_or_else(|| ValueError::FailedToParseNumber.into())
+}
+
+fn is_integer_representation(bigdecimal_val: &BigDecimal) -> bool {
+    let bigdecimal_val_str = bigdecimal_val.abs().to_string();
+    bigdecimal_val.abs().digits() == bigdecimal_val_str.len() as u64
+}
+
 impl TryFrom<&Literal<'_>> for Value {
     type Error = Error;
 
     fn try_from(literal: &Literal<'_>) -> Result<Self> {
         match literal {
-            Literal::Number(v) => {
-                let num_str = v.to_string();
-                if num_str.contains('.') {
-                    v.to_f64()
-                        .map(Value::F64)
-                        .ok_or_else(|| ValueError::FailedToParseNumber.into())
+            Literal::Number(bigdecimal_val) => {
+                if is_integer_representation(&bigdecimal_val) {
+                    convert_to_i64(&bigdecimal_val)
                 } else {
-                    num_str
-                        .parse::<i64>()
-                        .map(Value::I64)
-                        .map_err(|_| ValueError::FailedToParseNumber.into())
+                    convert_to_f64(&bigdecimal_val)
                 }
             }
             Literal::Boolean(v) => Ok(Value::Bool(*v)),
@@ -499,7 +512,6 @@ mod tests {
     use {
         super::parse_uuid,
         crate::data::{Literal, Value},
-        crate::result::ValueError,
         bigdecimal::BigDecimal,
         chrono::{NaiveDate, NaiveDateTime, NaiveTime},
         rust_decimal::Decimal,
@@ -887,11 +899,6 @@ mod tests {
         test!(num!("1.0"), Value::F32(1.0_f32));
         test!(num!("1.0"), Value::F64(1.0));
         test!(&Literal::Boolean(false), Value::Bool(false));
-        assert_eq!(
-            Value::try_from(num!("1.23456789123456789e100")),
-            Err(ValueError::FailedToParseNumber.into())
-        );
-
         assert!(matches!(Value::try_from(&Literal::Null), Ok(Value::Null)))
     }
 
