@@ -37,6 +37,7 @@ jobs:
 
       - name: Build and Test
         run: |
+          cd pkg/python
           maturin build
           pip install .
           pytest
