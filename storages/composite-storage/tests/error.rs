@@ -1,7 +1,8 @@
 use {
+    futures::stream::TryStreamExt,
     gluesql_composite_storage::CompositeStorage,
     gluesql_core::{
-        prelude::{Error, Glue, Result},
+        prelude::{Error, Glue},
         store::{Store, StoreMut},
     },
     memory_storage::MemoryStorage,
@@ -87,7 +88,8 @@ async fn composite_storage_index() {
             .scan_data("Idx")
             .await
             .unwrap()
-            .collect::<Result<Vec<_>>>()
+            .try_collect::<Vec<_>>()
+            .await
             .as_ref()
             .map(Vec::len),
         Ok(0),

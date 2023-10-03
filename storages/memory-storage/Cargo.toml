@@ -12,8 +12,8 @@ documentation.workspace = true
 gluesql-core.workspace = true
 async-trait = "0.1"
 serde = { version = "1", features = ["derive"] }
+futures = "0.3"
 
 [dev-dependencies]
 test-suite.workspace = true
 tokio = { version = "1", features = ["rt", "macros"] }
-futures = "0.3"

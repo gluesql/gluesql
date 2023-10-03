@@ -12,7 +12,7 @@ use {
         ast::ColumnUniqueOption,
         data::{value::HashMapJsonExt, Key, Schema},
         error::{Error, Result},
-        store::{DataRow, Metadata, RowIter},
+        store::{DataRow, Metadata},
     },
     iter_enum::Iterator,
     serde_json::Value as JsonValue,
@@ -23,6 +23,8 @@ use {
         path::{Path, PathBuf},
     },
 };
+
+type RowIter = Box<dyn Iterator<Item = Result<(Key, DataRow)>>>;
 
 #[derive(Clone, Debug)]
 pub struct JsonStorage {
