@@ -1,0 +1,43 @@
+name: Python
+
+on:
+  push:
+    branches: [main, release-*]
+    paths-ignore:
+      - 'docs/**'
+  pull_request:
+    branches: [main, release-*]
+    paths-ignore:
+      - 'docs/**'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  python_storage_tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.11.4"
+
+      - name: Set up pip and requirements
+        run: |
+          cd pkg/python
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Set up Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Build and Test
+        run: |
+          cd pkg/python
+          maturin build
+          pip install .
+          pytest
