@@ -812,7 +812,7 @@ mod tests {
         let n2 = Timestamp(
             NaiveDate::from_ymd_opt(1989, 3, 20)
                 .unwrap()
-                .and_hms_milli_opt(10, 0, 0, 999)
+                .and_hms_milli_opt(10, 0, 0, 1000)
                 .unwrap(),
         )
         .to_cmp_be_bytes();
