@@ -44,10 +44,10 @@ impl TryFrom<&Literal<'_>> for Value {
     fn try_from(literal: &Literal<'_>) -> Result<Self> {
         match literal {
             Literal::Number(bigdecimal_val) => {
-                if is_integer_representation(&bigdecimal_val) {
-                    convert_to_i64(&bigdecimal_val)
+                if is_integer_representation(bigdecimal_val) {
+                    convert_to_i64(bigdecimal_val)
                 } else {
-                    convert_to_f64(&bigdecimal_val)
+                    convert_to_f64(bigdecimal_val)
                 }
             }
             Literal::Boolean(v) => Ok(Value::Bool(*v)),
