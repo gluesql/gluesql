@@ -66,3 +66,4 @@ class SledStorage(Storage):
     def try_from(config: "SledStorageConfig") -> "SledStorage": ...
 
 class GlueSQLError(Exception):
+    pass
