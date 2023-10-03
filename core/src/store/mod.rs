@@ -32,9 +32,11 @@ use {
         result::Result,
     },
     async_trait::async_trait,
+    futures::stream::Stream,
+    std::pin::Pin,
 };
 
-pub type RowIter = Box<dyn Iterator<Item = Result<(Key, DataRow)>>>;
+pub type RowIter = Pin<Box<dyn Stream<Item = Result<(Key, DataRow)>>>>;
 
 /// By implementing `Store` trait, you can run `SELECT` query.
 #[async_trait(?Send)]

@@ -7,6 +7,7 @@ mod transaction;
 
 use {
     async_trait::async_trait,
+    futures::stream::{empty, iter},
     gluesql_core::{
         chrono::Utc,
         data::{CustomFunction as StructCustomFunction, Key, Schema, Value},
@@ -14,10 +15,7 @@ use {
         store::{CustomFunction, CustomFunctionMut, DataRow, RowIter, Store, StoreMut},
     },
     serde::{Deserialize, Serialize},
-    std::{
-        collections::{BTreeMap, HashMap},
-        iter::empty,
-    },
+    std::collections::{BTreeMap, HashMap},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -87,8 +85,8 @@ impl Store for MemoryStorage {
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
         let rows: RowIter = match self.items.get(table_name) {
-            Some(item) => Box::new(item.rows.clone().into_iter().map(Ok)),
-            None => Box::new(empty()),
+            Some(item) => Box::pin(iter(item.rows.clone().into_iter().map(Ok))),
+            None => Box::pin(empty()),
         };
 
         Ok(rows)

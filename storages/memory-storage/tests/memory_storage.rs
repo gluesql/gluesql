@@ -1,6 +1,6 @@
 use {
-    async_trait::async_trait, gluesql_core::prelude::Glue, gluesql_memory_storage::MemoryStorage,
-    test_suite::*,
+    async_trait::async_trait, futures::stream::TryStreamExt, gluesql_core::prelude::Glue,
+    gluesql_memory_storage::MemoryStorage, test_suite::*,
 };
 
 struct MemoryTester {
@@ -44,7 +44,7 @@ macro_rules! test {
 #[tokio::test]
 async fn memory_storage_index() {
     use gluesql_core::{
-        prelude::{Error, Glue, Result},
+        prelude::{Error, Glue},
         store::{Index, Store},
     };
 
@@ -55,7 +55,8 @@ async fn memory_storage_index() {
             .scan_data("Idx")
             .await
             .unwrap()
-            .collect::<Result<Vec<_>>>()
+            .try_collect::<Vec<_>>()
+            .await
             .as_ref()
             .map(Vec::len),
         Ok(0),
