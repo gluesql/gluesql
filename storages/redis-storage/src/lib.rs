@@ -26,7 +26,6 @@ pub struct RedisStorage {
     pub namespace: String,
     pub items: HashMap<String, Item>,
     pub conn: RefCell<Connection>,
-    pub metadata: HashMap<String, HashMap<String, Value>>,
     pub functions: HashMap<String, StructCustomFunction>,
 }
 
@@ -68,7 +67,6 @@ impl RedisStorage {
             namespace: namespace.to_owned(),
             items,
             conn: RefCell::new(conn),
-            metadata: HashMap::new(),
             functions: HashMap::new(),
         }
     }
@@ -125,6 +123,14 @@ impl RedisStorage {
         metadata_name: &str,
     ) -> String {
         format!("#metadata#{}#{}#{}#", namespace, tablename, metadata_name)
+    }
+
+    fn redis_generate_scan_metadata_key(namespace: &str, tablename: &str) -> String {
+        format!("#metadata#{}#{}#*", namespace, tablename)
+    }
+
+    fn redis_generate_scan_all_metadata_key(namespace: &str) -> String {
+        format!("#metadata#{}#*", namespace)
     }
 
     fn redis_execute_get(&mut self, key: &str) -> Result<Option<String>> {
@@ -290,9 +296,15 @@ impl StoreMut for RedisStorage {
 
         // TODO: store metadata into both of the DB and memory
         let current_time = Value::Timestamp(Utc::now().naive_utc());
-        let created = HashMap::from([("CREATED".to_owned(), current_time.clone())]);
-        let meta = HashMap::from([(schema.table_name.clone(), created)]);
-        self.metadata.extend(meta);
+        let current_time_value = serde_json::to_string(&current_time).map_err(|e| {
+            Error::StorageMsg(format!(
+                "[RedisStorage] failed to serialize metadata={:?} error={}",
+                current_time, e
+            ))
+        })?;
+        let metadata_key =
+            Self::redis_generate_metadata_key(&self.namespace, &schema.table_name, "CREATED");
+        self.redis_execute_set(&metadata_key, &current_time_value)?;
 
         let table_name = schema.table_name.clone();
         let metadata_key =
@@ -340,8 +352,21 @@ impl StoreMut for RedisStorage {
         }
 
         // delete metadata
-        self.metadata.remove(table_name);
-        // TODO: delete metadata from the DB
+        let metadata_scan_key = Self::redis_generate_scan_metadata_key(&self.namespace, table_name);
+        let metadata_redis_keys: Vec<String> = self
+            .conn
+            .borrow_mut()
+            .scan_match(&metadata_scan_key)
+            .map(|iter| iter.collect::<Vec<String>>())
+            .map_err(|_| {
+                Error::StorageMsg(format!(
+                    "[RedisStorage] failed to scan metadata: namespace={} table_name={}",
+                    self.namespace, table_name
+                ))
+            })?;
+        for key in metadata_redis_keys {
+            self.redis_execute_del(&key)?;
+        }
 
         // delete schema
         self.items.remove(table_name);
