@@ -7,6 +7,7 @@ mod transaction;
 
 use {
     async_trait::async_trait,
+    futures::stream::iter,
     gluesql_core::{
         chrono::Utc,
         data::{CustomFunction as StructCustomFunction, Key, Schema, Value},
@@ -282,7 +283,7 @@ impl Store for RedisStorage {
             }
         });
 
-        Ok(Box::new(rows.into_iter().map(Ok)))
+        Ok(Box::pin(iter(rows.into_iter().map(Ok))))
     }
 }
 
