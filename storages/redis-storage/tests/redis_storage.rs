@@ -428,3 +428,47 @@ async fn redis_storage_alter_tablename() {
 
     exec!(glue "DROP TABLE dumdum;");
 }
+
+#[tokio::test]
+async fn redis_storage_reconnect() {
+    use gluesql_core::prelude::Glue;
+
+    {
+        let url = "localhost";
+        let port: u16 = 6379;
+        let storage = RedisStorage::new("redis_storage_reconnect", url, port);
+        let mut glue = Glue::new(storage);
+
+        exec!(glue "DROP TABLE IF EXISTS dummy;");
+
+        exec!(glue "CREATE TABLE dummy (id INTEGER PRIMARY KEY);");
+        exec!(glue "INSERT INTO dummy (id) values (1)");
+        exec!(glue "INSERT INTO dummy (id) values (11)");
+
+        println!("disconnect");
+    }
+
+    {
+        println!("reconnect");
+        let url = "localhost";
+        let port: u16 = 6379;
+        let storage = RedisStorage::new("redis_storage_reconnect", url, port);
+        let mut glue = Glue::new(storage);
+
+        println!("do SELECT");
+        let ret = glue.execute("SELECT * FROM dummy;").await.unwrap();
+        match &ret[0] {
+            Payload::Select { labels, rows } => {
+                assert_eq!(labels[0], "id");
+                assert_eq!(rows[0].len(), 1);
+                assert_eq!(rows[1].len(), 1);
+                assert_eq!(rows[0][0], Value::I64(1));
+                assert_eq!(rows[1][0], Value::I64(11));
+            }
+            _ => unreachable!(),
+        }
+        exec!(glue "DROP TABLE dummy;");
+
+        // TODO: check dummy is removed
+    }
+}

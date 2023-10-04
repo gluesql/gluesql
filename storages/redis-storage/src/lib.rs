@@ -33,14 +33,40 @@ pub struct RedisStorage {
 impl RedisStorage {
     pub fn new(namespace: &str, url: &str, port: u16) -> Self {
         let redis_url = format!("redis://{}:{}", url, port);
-        let conn = redis::Client::open(redis_url)
+        let mut conn = redis::Client::open(redis_url)
             .expect("Invalid connection URL")
             .get_connection()
             .expect("failed to connect to Redis");
 
+        // TODO: read schemas from Redis if exist
+        let mut items = HashMap::new();
+        let scan_schema_key = format!("#schema#{}#*", namespace);
+        let redis_keys: Vec<String> = conn
+            .scan_match(&scan_schema_key)
+            .map(|iter| iter.collect::<Vec<String>>())
+            .map_err(|_| {
+                Error::StorageMsg(format!(
+                    "[RedisStorage] failed to scan schemas: namespace={}",
+                    namespace
+                ))
+            })
+            .unwrap(); // ignore error???
+
+        // Then read all schemas of the namespace
+        redis_keys.into_iter().for_each(|redis_key| {
+            // Another client just has removed the value with the key.
+            // It's not a problem. Just ignore it.
+            if let Ok(value) = redis::cmd("GET").arg(&redis_key).query::<String>(&mut conn) {
+                if let Ok(schema) = serde_json::from_str::<Schema>(&value) {
+                    let table_name = schema.table_name.clone();
+                    items.insert(table_name, Item { schema });
+                }
+            }
+        });
+
         RedisStorage {
             namespace: namespace.to_owned(),
-            items: HashMap::new(),
+            items,
             conn: RefCell::new(conn),
             metadata: HashMap::new(),
             functions: HashMap::new(),
@@ -49,6 +75,11 @@ impl RedisStorage {
 
     ///
     /// Make a key to insert/delete a value with the namespace, table-name.
+    ///
+    /// Redis documentation recommends to use ':' as a separator for namespace and table-name.
+    /// But it is not a good idea when using serde_json to serialize/deserialize a key.
+    /// JSON uses ':' as a separator for key and value. So it conflicts with the JSON format.
+    /// Therefore I use '#' as a separator: "namespace"#"table-name"#"key"#"value".
     ///
     fn redis_generate_key(namespace: &str, table_name: &str, key: &Key) -> Result<String> {
         let k = serde_json::to_string(key).map_err(|e| {
@@ -77,11 +108,23 @@ impl RedisStorage {
     /// Make a key pattern to do scan and get all data in the namespace
     ///
     fn redis_generate_scankey(namespace: &str, tablename: &str) -> String {
-        // First I used "{}:{}*" pattern. It had a problem when using
+        // First I used "{}#{}*" pattern. It had a problem when using
         // similar table-names such like Test, TestA and TestB.
         // When scanning Test, it gets all data from Test, TestA and TestB.
-        // Therefore it is very important to use the semi-colon twice.
+        // Therefore it is very important to use the # twice.
         format!("{}#{}#*", namespace, tablename)
+    }
+
+    fn redis_generate_schema_key(namespace: &str) -> String {
+        format!("#schema#{}#", namespace)
+    }
+
+    fn redis_generate_metadata_key(
+        namespace: &str,
+        tablename: &str,
+        metadata_name: &str,
+    ) -> String {
+        format!("#metadata#{}#{}#{}#", namespace, tablename, metadata_name)
     }
 
     fn redis_execute_get(&mut self, key: &str) -> Result<Option<String>> {
@@ -162,6 +205,7 @@ impl CustomFunctionMut for RedisStorage {
 #[async_trait(?Send)]
 impl Store for RedisStorage {
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
+        println!("fetch_all_schemas");
         let mut schemas = self
             .items
             .values()
@@ -172,6 +216,7 @@ impl Store for RedisStorage {
         Ok(schemas)
     }
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
+        println!("fetch_schema: table={}", table_name);
         self.items
             .get(table_name)
             .map(|item| Ok(item.schema.clone()))
@@ -238,14 +283,37 @@ impl Store for RedisStorage {
 #[async_trait(?Send)]
 impl StoreMut for RedisStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
-        let created = HashMap::from([(
-            "CREATED".to_owned(),
-            Value::Timestamp(Utc::now().naive_utc()),
-        )]);
+        println!(
+            "insert_schema: table={} schema={:?}",
+            schema.table_name, schema
+        );
+
+        // TODO: store metadata into both of the DB and memory
+        let current_time = Value::Timestamp(Utc::now().naive_utc());
+        let created = HashMap::from([("CREATED".to_owned(), current_time.clone())]);
         let meta = HashMap::from([(schema.table_name.clone(), created)]);
         self.metadata.extend(meta);
 
         let table_name = schema.table_name.clone();
+        let metadata_key =
+            Self::redis_generate_metadata_key(&self.namespace, &table_name, "CREATED");
+        let metadata_value = serde_json::to_string(&current_time).map_err(|e| {
+            Error::StorageMsg(format!(
+                "[RedisStorage] failed to serialize metadata={:?} error={}",
+                current_time, e
+            ))
+        })?;
+        self.redis_execute_set(&metadata_key, &metadata_value)?;
+
+        // store schema into both of the DB and memory
+        let schema_value = serde_json::to_string(schema).map_err(|e| {
+            Error::StorageMsg(format!(
+                "[RedisStorage] failed to serialize schema={:?} error={}",
+                schema, e
+            ))
+        })?;
+        let schema_key = Self::redis_generate_schema_key(&self.namespace);
+        self.redis_execute_set(&schema_key, &schema_value)?;
 
         let item = Item {
             schema: schema.clone(),
@@ -257,20 +325,28 @@ impl StoreMut for RedisStorage {
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
+        println!("delete_schema: table={}", table_name);
+
         if self.items.get(table_name).is_none() {
             // Ignore it if the table is already removed by another client
             // or the table is not found.
             return Ok(());
         }
 
+        // delete rows
         let redis_key_iter: Vec<String> = self.redis_execute_scan(table_name)?;
-
         for key in redis_key_iter {
             self.redis_execute_del(&key)?;
         }
 
+        // delete metadata
         self.metadata.remove(table_name);
+        // TODO: delete metadata from the DB
+
+        // delete schema
         self.items.remove(table_name);
+        let schema_key = Self::redis_generate_schema_key(&self.namespace);
+        self.redis_execute_del(&schema_key)?;
 
         Ok(())
     }
