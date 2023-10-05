@@ -212,7 +212,6 @@ impl CustomFunctionMut for RedisStorage {
 #[async_trait(?Send)]
 impl Store for RedisStorage {
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
-        println!("fetch_all_schemas");
         let mut schemas = self
             .items
             .values()
@@ -223,7 +222,6 @@ impl Store for RedisStorage {
         Ok(schemas)
     }
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
-        println!("fetch_schema: table={}", table_name);
         self.items
             .get(table_name)
             .map(|item| Ok(item.schema.clone()))
@@ -290,11 +288,6 @@ impl Store for RedisStorage {
 #[async_trait(?Send)]
 impl StoreMut for RedisStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
-        println!(
-            "insert_schema: table={} schema={:?}",
-            schema.table_name, schema
-        );
-
         // TODO: store metadata into both of the DB and memory
         let current_time = Value::Timestamp(Utc::now().naive_utc());
         let current_time_value = serde_json::to_string(&current_time).map_err(|e| {
@@ -338,8 +331,6 @@ impl StoreMut for RedisStorage {
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
-        println!("delete_schema: table={}", table_name);
-
         if self.items.get(table_name).is_none() {
             // Ignore it if the table is already removed by another client
             // or the table is not found.
