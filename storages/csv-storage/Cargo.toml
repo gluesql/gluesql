@@ -19,6 +19,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "1.0"
 csv = "1.2.2"
+futures = "0.3"
 
 [dev-dependencies]
 test-suite.workspace = true

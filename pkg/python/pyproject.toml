@@ -1,0 +1,16 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[tool.maturin]
+bindings = "pyo3"
+features = ["include-python-workspace"]
+
+[project]
+name = "gluesql"
+requires-python = ">=3.10"
+description = "GlueSQL is quite sticky. It attaches to anywhere."
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+]

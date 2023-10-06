@@ -5,6 +5,7 @@ use {
         lock, SledStorage, Snapshot, State,
     },
     async_trait::async_trait,
+    futures::stream::iter,
     gluesql_core::{
         ast::IndexOperator,
         data::{Key, Value},
@@ -149,8 +150,8 @@ impl Index for SledStorage {
         let data_keys = data_keys.map(|v| v.map_err(err_into));
 
         Ok(match asc {
-            Some(true) | None => Box::new(data_keys.flat_map(flat_map)),
-            Some(false) => Box::new(data_keys.rev().flat_map(flat_map)),
+            Some(true) | None => Box::pin(iter(data_keys.flat_map(flat_map))),
+            Some(false) => Box::pin(iter(data_keys.rev().flat_map(flat_map))),
         })
     }
 }
