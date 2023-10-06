@@ -73,16 +73,9 @@ impl StoreMut for ParquetStorage {
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         let schema_path = self.data_path(table_name);
-
-        if let true = schema_path.exists() {
-            remove_file(schema_path).map_storage_err()?
-        }
-
-        let schema_path = self.data_path(table_name);
         if schema_path.exists() {
             remove_file(schema_path).map_storage_err()?;
         }
-
         Ok(())
     }
 
