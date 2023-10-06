@@ -213,6 +213,10 @@ This is attributed to the fact that GlueSQL's HashMap is of type <String, Value>
 
 2. The interface for reading data in columnar units is currently not supported by GlueSQL, which might result in suboptimal read and write performance.
 
+3. Incompatibility with Parquet Physical Types:
+
+GlueSQL currently lacks support for certain Parquet physical types, specifically INT96 and FIXED_LENGTH_BYTE_ARRAY. As a result, when executing data modification queries like INSERT or UPDATE on Parquet files, the data type for these columns will be transformed. Columns originally in the INT96 type will be changed to GlueSQL's int128, and those in FIXED_LENGTH_BYTE_ARRAY will be converted to GlueSQL's bytea type. This conversion can have implications on data consistency and might necessitate additional transformations when interacting with other systems or tools that expect the original Parquet physical types.
+
 ## Conclusion
 
 Despite certain limitations, this extension significantly simplifies interactions with Parquet files, making GlueSQL a more versatile tool by supporting a popular columnar storage file format.
