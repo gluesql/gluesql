@@ -1,17 +1,31 @@
-use parquet::data_type::ByteArray;
-use test_suite::select_with_null;
-
+use test_suite::concat_with_null;
 use {
-    gluesql_core::{
-        chrono::NaiveDateTime,
-        prelude::{
-            Glue,
-            Value::{self, *},
+    parquet::data_type::ByteArray,
+    std::fs,
+    {
+        gluesql_core::{
+            chrono::NaiveDateTime,
+            prelude::{
+                Glue, Payload,
+                Value::{self, *},
+            },
         },
+        gluesql_parquet_storage::ParquetStorage,
+        test_suite::{concat_with, row, select, select_with_null, stringify_label},
     },
-    gluesql_parquet_storage::ParquetStorage,
-    test_suite::{concat_with, row, select, stringify_label},
 };
+
+struct FileGuard {
+    path: String,
+}
+
+impl Drop for FileGuard {
+    fn drop(&mut self) {
+        if let Err(err) = fs::remove_file(&self.path) {
+            eprintln!("Failed to remove file: {:?}", err);
+        }
+    }
+}
 
 #[tokio::test]
 async fn test_alltypes_select() {
@@ -20,7 +34,6 @@ async fn test_alltypes_select() {
     let mut glue = Glue::new(parquet_storage);
 
     let bytea = |input: &str| ByteArray::from(input).data().to_vec();
-
     let ts = |datetime_str| {
         NaiveDateTime::parse_from_str(datetime_str, "%Y-%m-%dT%H:%M:%S")
             .expect("Failed to parse date time")
@@ -89,11 +102,56 @@ async fn test_alltypes_select() {
                 ] 1
             )),
         ),
+    ];
+
+    for (actual, expected) in cases {
+        assert_eq!(actual.map(|mut payloads| payloads.remove(0)), expected);
+    }
+}
+
+#[tokio::test]
+async fn test_data_modify() {
+    let path = "./tests/samples/";
+    let parquet_storage = ParquetStorage::new(path).unwrap();
+    let mut glue = Glue::new(parquet_storage);
+
+    let original_file = "./tests/samples/all_types_with_nulls.parquet"; // adjust the extension if needed
+    let copied_file = "./tests/samples/all_types_with_nulls_copy.parquet"; // adjust the extension if needed
+    fs::copy(original_file, copied_file).expect("Failed to copy file");
+
+    //invoke delete copy file
+    let _file_guard = FileGuard {
+        path: copied_file.to_string(),
+    };
+
+    let cases = vec![
         (
-            glue.execute("SELECT * FROM all_types_with_nulls").await,
+            glue.execute("SELECT * FROM all_types_with_nulls_copy").await,
             Ok(select_with_null!(
                 bool_field | int32_field | int64_field | int96_field | float_field | double_field | binary_field | flba_field;
                 Null         Null          Null          Null          Null          Null           Null           Null
+            )),
+        ),
+        (
+            glue.execute("INSERT INTO all_types_with_nulls_copy VALUES(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)").await,
+            Ok(Payload::Insert(1)),
+        ),
+        (
+            glue.execute("SELECT * FROM all_types_with_nulls_copy").await,
+            Ok(select_with_null!(
+                bool_field | int32_field | int64_field | int96_field | float_field | double_field | binary_field | flba_field;
+                Null         Null          Null          Null          Null          Null           Null           Null;
+                Null         Null          Null          Null          Null          Null           Null           Null
+            )),
+        ),
+        (
+            glue.execute("DELETE FROM all_types_with_nulls_copy").await,
+            Ok(Payload::Delete(2)),
+        ),
+        (
+            glue.execute("SELECT * FROM all_types_with_nulls_copy").await,
+            Ok(select!(
+                bool_field | int32_field | int64_field | int96_field | float_field | double_field | binary_field | flba_field;
             )),
         ),
     ];
