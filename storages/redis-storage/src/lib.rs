@@ -16,7 +16,7 @@ use {
     },
     redis::{Commands, Connection},
     std::cell::RefCell,
-    std::collections::{BTreeMap, HashMap},
+    std::collections::BTreeMap,
 };
 
 pub struct Item {
@@ -25,50 +25,20 @@ pub struct Item {
 
 pub struct RedisStorage {
     pub namespace: String,
-    pub items: HashMap<String, Item>,
     pub conn: RefCell<Connection>,
-    pub functions: HashMap<String, StructCustomFunction>,
 }
 
 impl RedisStorage {
     pub fn new(namespace: &str, url: &str, port: u16) -> Self {
         let redis_url = format!("redis://{}:{}", url, port);
-        let mut conn = redis::Client::open(redis_url)
+        let conn = redis::Client::open(redis_url)
             .expect("Invalid connection URL")
             .get_connection()
             .expect("failed to connect to Redis");
 
-        // TODO: read schemas from Redis if exist
-        let mut items = HashMap::new();
-        let scan_schema_key = format!("#schema#{}#*", namespace);
-        let redis_keys: Vec<String> = conn
-            .scan_match(&scan_schema_key)
-            .map(|iter| iter.collect::<Vec<String>>())
-            .map_err(|_| {
-                Error::StorageMsg(format!(
-                    "[RedisStorage] failed to scan schemas: namespace={}",
-                    namespace
-                ))
-            })
-            .unwrap(); // ignore error???
-
-        // Then read all schemas of the namespace
-        redis_keys.into_iter().for_each(|redis_key| {
-            // Another client just has removed the value with the key.
-            // It's not a problem. Just ignore it.
-            if let Ok(value) = redis::cmd("GET").arg(&redis_key).query::<String>(&mut conn) {
-                if let Ok(schema) = serde_json::from_str::<Schema>(&value) {
-                    let table_name = schema.table_name.clone();
-                    items.insert(table_name, Item { schema });
-                }
-            }
-        });
-
         RedisStorage {
             namespace: namespace.to_owned(),
-            items,
             conn: RefCell::new(conn),
-            functions: HashMap::new(),
         }
     }
 
@@ -114,8 +84,15 @@ impl RedisStorage {
         format!("{}#{}#*", namespace, tablename)
     }
 
-    fn redis_generate_schema_key(namespace: &str) -> String {
-        format!("#schema#{}#", namespace)
+    ///
+    /// Make a key pattern to do scan and get all schemas in the namespace
+    ///
+    fn redis_generate_schema_key(namespace: &str, table_name: &str) -> String {
+        format!("#schema#{}#{}#", namespace, table_name)
+    }
+
+    fn redis_generate_scan_schema_key(namespace: &str) -> String {
+        format!("#schema#{}#*", namespace)
     }
 
     fn redis_generate_metadata_key(
@@ -184,68 +161,167 @@ impl RedisStorage {
 
         Ok(redis_keys)
     }
+
+    pub fn redis_store_schema(&mut self, schema: &Schema) -> Result<()> {
+        let schema_value = serde_json::to_string(schema).map_err(|e| {
+            Error::StorageMsg(format!(
+                "[RedisStorage] failed to serialize schema={:?} error={}",
+                schema, e
+            ))
+        })?;
+        let schema_key = Self::redis_generate_schema_key(&self.namespace, &schema.table_name);
+        self.redis_execute_set(&schema_key, &schema_value)?;
+
+        Ok(())
+    }
+
+    pub fn redis_delete_schema(&mut self, table_name: &str) -> Result<()> {
+        let schema_key = Self::redis_generate_schema_key(&self.namespace, table_name);
+        println!("redis_delete_schema: try get {}", schema_key);
+        // It's already if the schema is already removed by another client.
+        if let Ok(schema_value) = self.redis_execute_get(&schema_key) {
+            if let Some(value) = schema_value {
+                let schema = serde_json::from_str::<Schema>(&value).map_err(|e| {
+                    Error::StorageMsg(format!(
+                        "[RedisStorage] failed to deserialize schema={:?} error={}",
+                        value, e
+                    ))
+                })?;
+                if schema.table_name == table_name {
+                    self.redis_execute_del(&schema_key)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 #[async_trait(?Send)]
 impl CustomFunction for RedisStorage {
-    async fn fetch_function(&self, func_name: &str) -> Result<Option<&StructCustomFunction>> {
-        Ok(self.functions.get(&func_name.to_uppercase()))
+    async fn fetch_function(&self, _func_name: &str) -> Result<Option<&StructCustomFunction>> {
+        unimplemented!("function is not supported yet for RedisStorage")
     }
     async fn fetch_all_functions(&self) -> Result<Vec<&StructCustomFunction>> {
-        Ok(self.functions.values().collect())
+        unimplemented!("function is not supported yet for RedisStorage")
     }
 }
 
 #[async_trait(?Send)]
 impl CustomFunctionMut for RedisStorage {
-    async fn insert_function(&mut self, func: StructCustomFunction) -> Result<()> {
-        self.functions.insert(func.func_name.to_uppercase(), func);
-        Ok(())
+    async fn insert_function(&mut self, _func: StructCustomFunction) -> Result<()> {
+        unimplemented!("function is not supported yet for RedisStorage")
     }
 
-    async fn delete_function(&mut self, func_name: &str) -> Result<()> {
-        self.functions.remove(&func_name.to_uppercase());
-        Ok(())
+    async fn delete_function(&mut self, _func_name: &str) -> Result<()> {
+        unimplemented!("function is not supported yet for RedisStorage")
     }
 }
 
 #[async_trait(?Send)]
 impl Store for RedisStorage {
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
-        let mut schemas = self
-            .items
-            .values()
-            .map(|item| item.schema.clone())
-            .collect::<Vec<_>>();
+        /*         let mut schemas = self
+                   .items
+                   .values()
+                   .map(|item| item.schema.clone())
+                   .collect::<Vec<_>>();
+        */
+        // TODO: read all schemas from DB
+
+        // TODO: read schemas from Redis if exist
+        //let scan_schema_key = format!("#schema#{}#*", self.namespace);
+        let mut schemas = Vec::<Schema>::new();
+        let scan_schema_key = Self::redis_generate_scan_schema_key(&self.namespace);
+        let redis_keys: Vec<String> = self
+            .conn
+            .borrow_mut()
+            .scan_match(&scan_schema_key)
+            .map(|iter| iter.collect::<Vec<String>>())
+            .map_err(|_| {
+                Error::StorageMsg(format!(
+                    "[RedisStorage] failed to scan schemas: namespace={}",
+                    self.namespace
+                ))
+            })?;
+
+        // Then read all schemas of the namespace
+        redis_keys.into_iter().for_each(|redis_key| {
+            // Another client just has removed the value with the key.
+            // It's not a problem. Just ignore it.
+            if let Ok(value) = redis::cmd("GET")
+                .arg(&redis_key)
+                .query::<String>(&mut self.conn.borrow_mut())
+            {
+                if let Ok(schema) = serde_json::from_str::<Schema>(&value) {
+                    schemas.push(schema);
+                }
+            }
+        });
+
         schemas.sort_by(|a, b| a.table_name.cmp(&b.table_name));
 
         Ok(schemas)
     }
+
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
-        self.items
-            .get(table_name)
-            .map(|item| Ok(item.schema.clone()))
-            .transpose()
+        /*         self.items
+                   .get(table_name)
+                   .map(|item| Ok(item.schema.clone()))
+                   .transpose()
+        */
+        // TODO: read a schema from DB
+        let mut found = None;
+        let scan_schema_key = Self::redis_generate_scan_schema_key(&self.namespace);
+        let redis_keys: Vec<String> = self
+            .conn
+            .borrow_mut()
+            .scan_match(&scan_schema_key)
+            .map(|iter| iter.collect::<Vec<String>>())
+            .map_err(|_| {
+                Error::StorageMsg(format!(
+                    "[RedisStorage] failed to scan schemas: namespace={}",
+                    self.namespace
+                ))
+            })?;
+
+        // Then read all schemas of the namespace
+        redis_keys.into_iter().for_each(|redis_key| {
+            // Another client just has removed the value with the key.
+            // It's not a problem. Just ignore it.
+            if let Ok(value) = redis::cmd("GET")
+                .arg(&redis_key)
+                .query::<String>(&mut self.conn.borrow_mut())
+            {
+                if let Ok(schema) = serde_json::from_str::<Schema>(&value) {
+                    if schema.table_name == table_name {
+                        found = Some(schema);
+                    }
+                }
+            }
+        });
+
+        Ok(found)
     }
 
     async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {
-        if self.items.get(table_name).is_some() {
-            let key = Self::redis_generate_key(&self.namespace, table_name, key)?;
-            // It's not a problem if the value with the key is removed by another client.
-            if let Ok(value) = redis::cmd("GET")
-                .arg(&key)
-                .query::<String>(&mut self.conn.borrow_mut())
-            {
-                return serde_json::from_str::<DataRow>(&value)
-                    .map_err(|e| {
-                        Error::StorageMsg(format!(
-                            "[RedisStorage] failed to deserialize value={} error={:?}",
-                            value, e
-                        ))
-                    })
-                    .map(Some);
-            }
+        //if self.items.get(table_name).is_some() {
+        let key = Self::redis_generate_key(&self.namespace, table_name, key)?;
+        // It's not a problem if the value with the key is removed by another client.
+        if let Ok(value) = redis::cmd("GET")
+            .arg(&key)
+            .query::<String>(&mut self.conn.borrow_mut())
+        {
+            return serde_json::from_str::<DataRow>(&value)
+                .map_err(|e| {
+                    Error::StorageMsg(format!(
+                        "[RedisStorage] failed to deserialize value={} error={:?}",
+                        value, e
+                    ))
+                })
+                .map(Some);
         }
+        //}
         Ok(None)
     }
 
@@ -312,32 +388,35 @@ impl StoreMut for RedisStorage {
         self.redis_execute_set(&metadata_key, &metadata_value)?;
 
         // store schema into both of the DB and memory
-        let schema_value = serde_json::to_string(schema).map_err(|e| {
-            Error::StorageMsg(format!(
-                "[RedisStorage] failed to serialize schema={:?} error={}",
-                schema, e
-            ))
-        })?;
-        let schema_key = Self::redis_generate_schema_key(&self.namespace);
-        self.redis_execute_set(&schema_key, &schema_value)?;
-
-        let item = Item {
-            schema: schema.clone(),
-        };
-
-        self.items.insert(table_name, item);
+        self.redis_store_schema(schema)?;
+        /*         let schema_value = serde_json::to_string(schema).map_err(|e| {
+                   Error::StorageMsg(format!(
+                       "[RedisStorage] failed to serialize schema={:?} error={}",
+                       schema, e
+                   ))
+               })?;
+               let schema_key = Self::redis_generate_schema_key(&self.namespace);
+               self.redis_execute_set(&schema_key, &schema_value)?;
+        */
+        /*         let item = Item {
+                   schema: schema.clone(),
+               };
+        */
+        //self.items.insert(table_name, item);
 
         Ok(())
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
-        if self.items.get(table_name).is_none() {
-            // Ignore it if the table is already removed by another client
-            // or the table is not found.
-            return Ok(());
-        }
+        // TODO: check schema in DB
+        //if self.items.get(table_name).is_none() {
+        // Ignore it if the table is already removed by another client
+        // or the table is not found.
+        //    return Ok(());
+        //}
 
         // delete rows
+        println!("start delete_schema:{}", table_name);
         let redis_key_iter: Vec<String> = self.redis_execute_scan(table_name)?;
         for key in redis_key_iter {
             self.redis_execute_del(&key)?;
@@ -360,10 +439,12 @@ impl StoreMut for RedisStorage {
             self.redis_execute_del(&key)?;
         }
 
-        // delete schema
-        self.items.remove(table_name);
-        let schema_key = Self::redis_generate_schema_key(&self.namespace);
-        self.redis_execute_del(&schema_key)?;
+        // TODO: delete schema from DB
+        //self.items.remove(table_name);
+        /*         let schema_key = Self::redis_generate_schema_key(&self.namespace, table_name);
+               self.redis_execute_del(&schema_key)?;
+        */
+        self.redis_delete_schema(table_name)?;
 
         Ok(())
     }
