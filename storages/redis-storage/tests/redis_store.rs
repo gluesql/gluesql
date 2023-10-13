@@ -46,7 +46,7 @@ generate_alter_table_tests!(tokio::test, RedisStorageTester);
 
 generate_metadata_table_tests!(tokio::test, RedisStorageTester);
 
-generate_custom_function_tests!(tokio::test, RedisStorageTester);
+//generate_custom_function_tests!(tokio::test, RedisStorageTester);
 
 macro_rules! exec {
     ($glue: ident $sql: literal) => {

@@ -177,7 +177,6 @@ impl RedisStorage {
 
     pub fn redis_delete_schema(&mut self, table_name: &str) -> Result<()> {
         let schema_key = Self::redis_generate_schema_key(&self.namespace, table_name);
-        println!("redis_delete_schema: try get {}", schema_key);
         // It's already if the schema is already removed by another client.
         if let Ok(schema_value) = self.redis_execute_get(&schema_key) {
             if let Some(value) = schema_value {
@@ -221,16 +220,6 @@ impl CustomFunctionMut for RedisStorage {
 #[async_trait(?Send)]
 impl Store for RedisStorage {
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
-        /*         let mut schemas = self
-                   .items
-                   .values()
-                   .map(|item| item.schema.clone())
-                   .collect::<Vec<_>>();
-        */
-        // TODO: read all schemas from DB
-
-        // TODO: read schemas from Redis if exist
-        //let scan_schema_key = format!("#schema#{}#*", self.namespace);
         let mut schemas = Vec::<Schema>::new();
         let scan_schema_key = Self::redis_generate_scan_schema_key(&self.namespace);
         let redis_keys: Vec<String> = self
@@ -265,12 +254,6 @@ impl Store for RedisStorage {
     }
 
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
-        /*         self.items
-                   .get(table_name)
-                   .map(|item| Ok(item.schema.clone()))
-                   .transpose()
-        */
-        // TODO: read a schema from DB
         let mut found = None;
         let scan_schema_key = Self::redis_generate_scan_schema_key(&self.namespace);
         let redis_keys: Vec<String> = self
@@ -305,7 +288,6 @@ impl Store for RedisStorage {
     }
 
     async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {
-        //if self.items.get(table_name).is_some() {
         let key = Self::redis_generate_key(&self.namespace, table_name, key)?;
         // It's not a problem if the value with the key is removed by another client.
         if let Ok(value) = redis::cmd("GET")
@@ -321,7 +303,6 @@ impl Store for RedisStorage {
                 })
                 .map(Some);
         }
-        //}
         Ok(None)
     }
 
@@ -364,7 +345,6 @@ impl Store for RedisStorage {
 #[async_trait(?Send)]
 impl StoreMut for RedisStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
-        // TODO: store metadata into both of the DB and memory
         let current_time = Value::Timestamp(Utc::now().naive_utc());
         let current_time_value = serde_json::to_string(&current_time).map_err(|e| {
             Error::StorageMsg(format!(
@@ -387,36 +367,13 @@ impl StoreMut for RedisStorage {
         })?;
         self.redis_execute_set(&metadata_key, &metadata_value)?;
 
-        // store schema into both of the DB and memory
+        // Finally it's ok to store the new schema
         self.redis_store_schema(schema)?;
-        /*         let schema_value = serde_json::to_string(schema).map_err(|e| {
-                   Error::StorageMsg(format!(
-                       "[RedisStorage] failed to serialize schema={:?} error={}",
-                       schema, e
-                   ))
-               })?;
-               let schema_key = Self::redis_generate_schema_key(&self.namespace);
-               self.redis_execute_set(&schema_key, &schema_value)?;
-        */
-        /*         let item = Item {
-                   schema: schema.clone(),
-               };
-        */
-        //self.items.insert(table_name, item);
 
         Ok(())
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
-        // TODO: check schema in DB
-        //if self.items.get(table_name).is_none() {
-        // Ignore it if the table is already removed by another client
-        // or the table is not found.
-        //    return Ok(());
-        //}
-
-        // delete rows
-        println!("start delete_schema:{}", table_name);
         let redis_key_iter: Vec<String> = self.redis_execute_scan(table_name)?;
         for key in redis_key_iter {
             self.redis_execute_del(&key)?;
@@ -439,11 +396,6 @@ impl StoreMut for RedisStorage {
             self.redis_execute_del(&key)?;
         }
 
-        // TODO: delete schema from DB
-        //self.items.remove(table_name);
-        /*         let schema_key = Self::redis_generate_schema_key(&self.namespace, table_name);
-               self.redis_execute_del(&schema_key)?;
-        */
         self.redis_delete_schema(table_name)?;
 
         Ok(())

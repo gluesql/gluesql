@@ -17,18 +17,6 @@ use {
 #[async_trait(?Send)]
 impl AlterTable for RedisStorage {
     async fn rename_schema(&mut self, table_name: &str, new_table_name: &str) -> Result<()> {
-        /*         let mut item = self
-                   .items
-                   .remove(table_name)
-                   .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
-        */
-        // TODO: get the schema from DB
-
-        // TODO: rename the schema and store it back to DB
-
-        //item.schema.table_name = new_table_name.to_owned();
-        //self.items.insert(new_table_name.to_owned(), item);
-
         if let Some(mut schema) = self.fetch_schema(table_name).await? {
             // Which should be done first? deleting or storing?
             self.redis_delete_schema(table_name)?;
@@ -60,18 +48,6 @@ impl AlterTable for RedisStorage {
         old_column_name: &str,
         new_column_name: &str,
     ) -> Result<()> {
-        /*         let item = self
-                   .items
-                   .get_mut(table_name)
-                   .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
-        */
-        /*         let column_defs = item
-                   .schema
-                   .column_defs
-                   .as_mut()
-                   .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.to_owned()))?;
-        */
-        // TODO: get the schema from DB
         if let Some(mut schema) = self.fetch_schema(table_name).await? {
             let column_defs = schema
                 .column_defs
@@ -94,7 +70,6 @@ impl AlterTable for RedisStorage {
 
             column_def.name = new_column_name.to_owned();
 
-            // TODO: store schema back to DB
             self.redis_delete_schema(table_name)?;
             self.redis_store_schema(&schema)?;
         } else {
@@ -105,31 +80,11 @@ impl AlterTable for RedisStorage {
     }
 
     async fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
-        /*         let item = self
-                   .items
-                   .get_mut(table_name)
-                   .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
-        */
-        // TODO: get the schema from DB
-
-        /*         let column_defs = item
-                   .schema
-                   .column_defs
-                   .as_mut()
-                   .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.to_owned()))?;
-        */
-        println!(
-            "add_column: table_name={} column_def={:?}",
-            table_name, column_def
-        );
         if let Some(mut schema) = self.fetch_schema(table_name).await? {
-            println!("found schema={:?}", schema);
-
             let column_defs = schema
                 .column_defs
                 .as_mut()
                 .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.to_owned()))?;
-            println!("found column_defs={:?}", column_defs);
 
             if column_defs
                 .iter()
@@ -226,8 +181,6 @@ impl AlterTable for RedisStorage {
 
             column_defs.push(column_def.clone());
             self.redis_delete_schema(table_name)?; // No problem yet, finally it's ok to delete the old schema
-
-            println!("store schema={:?}", schema);
             self.redis_store_schema(&schema)?;
         } else {
             return Err(AlterTableError::TableNotFound(table_name.to_owned()).into());
@@ -242,18 +195,6 @@ impl AlterTable for RedisStorage {
         column_name: &str,
         if_exists: bool,
     ) -> Result<()> {
-        /*         let item = self
-                    .items
-                    .get_mut(table_name)
-                    .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
-
-                let column_defs = item
-                    .schema
-                    .column_defs
-                    .as_mut()
-                    .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.to_owned()))?;
-        */
-        // TODO: get the schema from DB
         if let Some(mut schema) = self.fetch_schema(table_name).await? {
             let column_defs = schema
                 .column_defs
