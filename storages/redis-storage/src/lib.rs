@@ -178,17 +178,15 @@ impl RedisStorage {
     pub fn redis_delete_schema(&mut self, table_name: &str) -> Result<()> {
         let schema_key = Self::redis_generate_schema_key(&self.namespace, table_name);
         // It's already if the schema is already removed by another client.
-        if let Ok(schema_value) = self.redis_execute_get(&schema_key) {
-            if let Some(value) = schema_value {
-                let schema = serde_json::from_str::<Schema>(&value).map_err(|e| {
-                    Error::StorageMsg(format!(
-                        "[RedisStorage] failed to deserialize schema={:?} error={}",
-                        value, e
-                    ))
-                })?;
-                if schema.table_name == table_name {
-                    self.redis_execute_del(&schema_key)?;
-                }
+        if let Ok(Some(schema_value)) = self.redis_execute_get(&schema_key) {
+            let schema = serde_json::from_str::<Schema>(&schema_value).map_err(|e| {
+                Error::StorageMsg(format!(
+                    "[RedisStorage] failed to deserialize schema={:?} error={}",
+                    schema_value, e
+                ))
+            })?;
+            if schema.table_name == table_name {
+                self.redis_execute_del(&schema_key)?;
             }
         }
 
@@ -199,21 +197,30 @@ impl RedisStorage {
 #[async_trait(?Send)]
 impl CustomFunction for RedisStorage {
     async fn fetch_function(&self, _func_name: &str) -> Result<Option<&StructCustomFunction>> {
-        unimplemented!("function is not supported yet for RedisStorage")
+        Err(Error::StorageMsg(
+            "[RedisStorage] fetch_function is not supported yet".to_owned(),
+        ))
     }
+
     async fn fetch_all_functions(&self) -> Result<Vec<&StructCustomFunction>> {
-        unimplemented!("function is not supported yet for RedisStorage")
+        Err(Error::StorageMsg(
+            "[RedisStorage] fetch_all_functions is not supported yet".to_owned(),
+        ))
     }
 }
 
 #[async_trait(?Send)]
 impl CustomFunctionMut for RedisStorage {
     async fn insert_function(&mut self, _func: StructCustomFunction) -> Result<()> {
-        unimplemented!("function is not supported yet for RedisStorage")
+        Err(Error::StorageMsg(
+            "[RedisStorage] insert_function is not supported yet".to_owned(),
+        ))
     }
 
     async fn delete_function(&mut self, _func_name: &str) -> Result<()> {
-        unimplemented!("function is not supported yet for RedisStorage")
+        Err(Error::StorageMsg(
+            "[RedisStorage] delete_function is not supported yet".to_owned(),
+        ))
     }
 }
 
