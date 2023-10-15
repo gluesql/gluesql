@@ -64,6 +64,7 @@ mod hello_world {
             .collect::<Vec<_>>();
 
         assert_eq!(rows.len(), 1);
+        assert_eq!(&rows[0].name, "World");
 
         println!("Hello {}!", rows[0].name); // Will always output "Hello World!"
     }
