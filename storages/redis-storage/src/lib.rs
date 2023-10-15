@@ -19,10 +19,6 @@ use {
     std::collections::BTreeMap,
 };
 
-pub struct Item {
-    pub schema: Schema,
-}
-
 pub struct RedisStorage {
     pub namespace: String,
     pub conn: RefCell<Connection>,
@@ -339,8 +335,6 @@ impl Store for RedisStorage {
     }
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
-        let mut rows: BTreeMap<Key, DataRow> = BTreeMap::new();
-
         // First read all keys of the table
         let redis_keys: Vec<String> = self
             .conn
@@ -354,32 +348,34 @@ impl Store for RedisStorage {
                 ))
             })?;
 
-        // Then read all values of the table
-        for redis_key in redis_keys.into_iter() {
-            // Another client just has removed the value with the key.
-            // It's not a problem. Just ignore it.
-            if let Ok(value) = redis::cmd("GET")
-                .arg(&redis_key)
-                .query::<String>(&mut self.conn.borrow_mut())
-            {
-                if let Ok(key) = Self::redis_parse_key(&redis_key) {
-                    serde_json::from_str::<DataRow>(&value)
-                        .map(|row| rows.insert(key, row))
-                        .map_err(|e| {
-                            Error::StorageMsg(format!(
-                                "[RedisStorage] failed to deserialize value={} error={:?}",
-                                value, e
-                            ))
-                        })?;
-                } else {
-                    return Err(Error::StorageMsg(format!(
-                        "[RedisStorage] Wrong key format: key={}",
-                        redis_key
-                    )));
-                }
-            }
-        }
+        let rows = redis_keys
+            .into_iter()
+            .filter_map(|redis_key| {
+                // Another client just has removed the value with the key.
+                // It's not a problem. Just ignore it.
+                redis::cmd("GET")
+                    .arg(&redis_key)
+                    .query::<String>(&mut self.conn.borrow_mut())
+                    .ok()
+                    .map(|value| (redis_key, value))
+            })
+            .map(|(redis_key, value)| {
+                let key = Self::redis_parse_key(&redis_key).map_err(|e| {
+                    Error::StorageMsg(format!(
+                        "[RedisStorage] Wrong key format: key={} error={}",
+                        redis_key, e
+                    ))
+                })?;
 
+                let row = serde_json::from_str::<DataRow>(&value).map_err(|e| {
+                    Error::StorageMsg(format!(
+                        "[RedisStorage] failed to deserialize value={} error={:?}",
+                        value, e
+                    ))
+                })?;
+                Ok((key, row))
+            })
+            .collect::<Result<BTreeMap<Key, DataRow>>>()?;
         Ok(Box::pin(iter(rows.into_iter().map(Ok))))
     }
 }
