@@ -41,9 +41,9 @@ impl ParquetField {
                                 seconds as u32,
                                 micros as u32,
                             )
-                            .ok_or_else(|| {
-                                Error::StorageMsg("Failed to convert to NaiveTime".to_string())
-                            })
+                            .map_storage_err(Error::StorageMsg(
+                                "Failed to convert to NaiveTime".to_string(),
+                            ))
                             .map(Value::Time);
                         }
                     }
