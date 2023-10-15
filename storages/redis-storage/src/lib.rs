@@ -115,8 +115,11 @@ impl RedisStorage {
         let value = redis::cmd("GET")
             .arg(key)
             .query::<String>(&mut self.conn.get_mut())
-            .map_err(|_| {
-                Error::StorageMsg(format!("[RedisStorage] failed to execute GET: key={}", key))
+            .map_err(|e| {
+                Error::StorageMsg(format!(
+                    "[RedisStorage] failed to execute GET: key={} error={}",
+                    key, e
+                ))
             })?;
 
         Ok(Some(value))
@@ -127,10 +130,10 @@ impl RedisStorage {
             .arg(key)
             .arg(value)
             .query(&mut self.conn.get_mut())
-            .map_err(|_| {
+            .map_err(|e| {
                 Error::StorageMsg(format!(
-                    "[RedisStorage] failed to execute SET: key={} value={}",
-                    key, value
+                    "[RedisStorage] failed to execute SET: key={} value={} error={}",
+                    key, value, e
                 ))
             })?;
 
@@ -141,8 +144,11 @@ impl RedisStorage {
         redis::cmd("DEL")
             .arg(key)
             .query(&mut self.conn.get_mut())
-            .map_err(|_| {
-                Error::StorageMsg(format!("[RedisStorage] failed to execute DEL: key={}", key))
+            .map_err(|e| {
+                Error::StorageMsg(format!(
+                    "[RedisStorage] failed to execute DEL: key={} error={}",
+                    key, e
+                ))
             })?;
 
         Ok(())
@@ -155,8 +161,11 @@ impl RedisStorage {
             .get_mut()
             .scan_match(&key)
             .map(|iter| iter.collect::<Vec<String>>())
-            .map_err(|_| {
-                Error::StorageMsg(format!("[RedisStorage] failed to scan data: key={}", key))
+            .map_err(|e| {
+                Error::StorageMsg(format!(
+                    "[RedisStorage] failed to scan data: key={} error={}",
+                    key, e
+                ))
             })?;
 
         Ok(redis_keys)
@@ -234,26 +243,31 @@ impl Store for RedisStorage {
             .borrow_mut()
             .scan_match(&scan_schema_key)
             .map(|iter| iter.collect::<Vec<String>>())
-            .map_err(|_| {
+            .map_err(|e| {
                 Error::StorageMsg(format!(
-                    "[RedisStorage] failed to scan schemas: namespace={}",
-                    self.namespace
+                    "[RedisStorage] failed to scan schemas: namespace={} error={}",
+                    self.namespace, e
                 ))
             })?;
 
         // Then read all schemas of the namespace
-        redis_keys.into_iter().for_each(|redis_key| {
+        for redis_key in redis_keys.into_iter() {
             // Another client just has removed the value with the key.
             // It's not a problem. Just ignore it.
             if let Ok(value) = redis::cmd("GET")
                 .arg(&redis_key)
                 .query::<String>(&mut self.conn.borrow_mut())
             {
-                if let Ok(schema) = serde_json::from_str::<Schema>(&value) {
-                    schemas.push(schema);
-                }
+                serde_json::from_str::<Schema>(&value)
+                    .map_err(|e| {
+                        Error::StorageMsg(format!(
+                            "[RedisStorage] failed to deserialize schema={} error={}",
+                            value, e
+                        ))
+                    })
+                    .map(|schema| schemas.push(schema))?;
             }
-        });
+        }
 
         schemas.sort_by(|a, b| a.table_name.cmp(&b.table_name));
 
@@ -268,28 +282,39 @@ impl Store for RedisStorage {
             .borrow_mut()
             .scan_match(&scan_schema_key)
             .map(|iter| iter.collect::<Vec<String>>())
-            .map_err(|_| {
+            .map_err(|e| {
                 Error::StorageMsg(format!(
-                    "[RedisStorage] failed to scan schemas: namespace={}",
-                    self.namespace
+                    "[RedisStorage] failed to scan schemas: namespace={} error={}",
+                    self.namespace, e
                 ))
             })?;
 
         // Then read all schemas of the namespace
-        redis_keys.into_iter().for_each(|redis_key| {
+        for redis_key in redis_keys.into_iter() {
             // Another client just has removed the value with the key.
             // It's not a problem. Just ignore it.
             if let Ok(value) = redis::cmd("GET")
                 .arg(&redis_key)
                 .query::<String>(&mut self.conn.borrow_mut())
             {
-                if let Ok(schema) = serde_json::from_str::<Schema>(&value) {
-                    if schema.table_name == table_name {
-                        found = Some(schema);
-                    }
-                }
+                serde_json::from_str::<Schema>(&value)
+                    .map_err(|e| {
+                        Error::StorageMsg(format!(
+                            "[RedisStorage] failed to deserialize schema={} error={}",
+                            value, e
+                        ))
+                    })
+                    .map(|schema| {
+                        if schema.table_name == table_name {
+                            found = Some(schema);
+                        }
+                    })?;
             }
-        });
+
+            if found.is_some() {
+                break;
+            }
+        }
 
         Ok(found)
     }
@@ -322,15 +347,15 @@ impl Store for RedisStorage {
             .borrow_mut()
             .scan_match(&Self::redis_generate_scankey(&self.namespace, table_name))
             .map(|iter| iter.collect::<Vec<String>>())
-            .map_err(|_| {
+            .map_err(|e| {
                 Error::StorageMsg(format!(
-                    "[RedisStorage] failed to scan data: namespace={} table_name={}",
-                    self.namespace, table_name
+                    "[RedisStorage] failed to scan data: namespace={} table_name={} error={}",
+                    self.namespace, table_name, e
                 ))
             })?;
 
         // Then read all values of the table
-        redis_keys.into_iter().for_each(|redis_key| {
+        for redis_key in redis_keys.into_iter() {
             // Another client just has removed the value with the key.
             // It's not a problem. Just ignore it.
             if let Ok(value) = redis::cmd("GET")
@@ -338,12 +363,22 @@ impl Store for RedisStorage {
                 .query::<String>(&mut self.conn.borrow_mut())
             {
                 if let Ok(key) = Self::redis_parse_key(&redis_key) {
-                    if let Ok(row) = serde_json::from_str::<DataRow>(&value) {
-                        rows.insert(key, row);
-                    }
+                    serde_json::from_str::<DataRow>(&value)
+                        .map(|row| rows.insert(key, row))
+                        .map_err(|e| {
+                            Error::StorageMsg(format!(
+                                "[RedisStorage] failed to deserialize value={} error={:?}",
+                                value, e
+                            ))
+                        })?;
+                } else {
+                    return Err(Error::StorageMsg(format!(
+                        "[RedisStorage] Wrong key format: key={}",
+                        redis_key
+                    )));
                 }
             }
-        });
+        }
 
         Ok(Box::pin(iter(rows.into_iter().map(Ok))))
     }
@@ -393,10 +428,10 @@ impl StoreMut for RedisStorage {
             .borrow_mut()
             .scan_match(&metadata_scan_key)
             .map(|iter| iter.collect::<Vec<String>>())
-            .map_err(|_| {
+            .map_err(|e| {
                 Error::StorageMsg(format!(
-                    "[RedisStorage] failed to scan metadata: namespace={} table_name={}",
-                    self.namespace, table_name
+                    "[RedisStorage] failed to scan metadata: namespace={} table_name={} error={}",
+                    self.namespace, table_name, e
                 ))
             })?;
         for key in metadata_redis_keys {
