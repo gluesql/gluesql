@@ -2,12 +2,13 @@ mod cmp_expr;
 mod non_clustered;
 mod order;
 mod primary_key;
-mod primary_key_expr;
 
 pub use {
-    crate::ast::IndexItem, crate::result::Result, cmp_expr::CmpExprNode,
-    non_clustered::non_clustered, non_clustered::NonClusteredNode, order::OrderNode,
-    primary_key::primary_key, primary_key::PrimaryKeyNode, primary_key_expr::PrimaryKeyCmpExprNode,
+    crate::{ast::IndexItem, result::Result},
+    cmp_expr::CmpExprNode,
+    non_clustered::{non_clustered, NonClusteredNode},
+    order::OrderNode,
+    primary_key::{primary_key, PrimaryKeyNode},
 };
 
 use {
@@ -23,6 +24,26 @@ pub enum IndexItemNode<'a> {
         cmp_expr: Option<(IndexOperator, ExprNode<'a>)>,
     },
     PrimaryKey(ExprNode<'a>),
+}
+
+impl<'a> From<CmpExprNode<'a>> for IndexItemNode<'a> {
+    fn from(cmp_expr: CmpExprNode<'a>) -> Self {
+        IndexItemNode::NonClustered {
+            name: cmp_expr.index_name,
+            asc: None,
+            cmp_expr: Some((cmp_expr.operator, cmp_expr.expr)),
+        }
+    }
+}
+
+impl<'a> From<NonClusteredNode> for IndexItemNode<'a> {
+    fn from(non_clustered: NonClusteredNode) -> Self {
+        IndexItemNode::NonClustered {
+            name: non_clustered.index_name,
+            asc: None,
+            cmp_expr: None,
+        }
+    }
 }
 
 impl<'a> Prebuild<IndexItem> for IndexItemNode<'a> {

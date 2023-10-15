@@ -1,5 +1,5 @@
 use {
-    super::{IndexItemNode, OrderNode},
+    super::IndexItemNode,
     crate::{ast::IndexOperator, ast_builder::ExprNode},
 };
 
@@ -23,18 +23,18 @@ impl<'a> CmpExprNode<'a> {
         }
     }
 
-    pub fn asc(self) -> OrderNode<'a> {
-        OrderNode::new(self, true)
-    }
-
-    pub fn desc(self) -> OrderNode<'a> {
-        OrderNode::new(self, false)
-    }
-
-    pub fn build(self) -> IndexItemNode<'a> {
+    pub fn asc(self) -> IndexItemNode<'a> {
         IndexItemNode::NonClustered {
             name: self.index_name,
-            asc: None,
+            asc: Some(true),
+            cmp_expr: Some((self.operator, self.expr)),
+        }
+    }
+
+    pub fn desc(self) -> IndexItemNode<'a> {
+        IndexItemNode::NonClustered {
+            name: self.index_name,
+            asc: Some(false),
             cmp_expr: Some((self.operator, self.expr)),
         }
     }
@@ -48,7 +48,7 @@ mod tests {
         ast_builder::{
             index_item::{non_clustered, IndexItem},
             select::Prebuild,
-            to_expr,
+            to_expr, IndexItemNode,
         },
     };
 
@@ -57,7 +57,6 @@ mod tests {
         let actual = non_clustered("idx".to_owned())
             .eq("1")
             .asc()
-            .build()
             .prebuild()
             .unwrap();
         let expected = IndexItem::NonClustered {
@@ -70,13 +69,21 @@ mod tests {
         let actual = non_clustered("idx".to_owned())
             .eq("2")
             .desc()
-            .build()
             .prebuild()
             .unwrap();
         let expected = IndexItem::NonClustered {
             name: "idx".to_owned(),
             asc: Some(false),
             cmp_expr: Some((IndexOperator::Eq, to_expr("2"))),
+        };
+        assert_eq!(actual, expected);
+
+        let index_item: IndexItemNode = non_clustered("idx".to_owned()).eq("3").into();
+        let actual = index_item.prebuild().unwrap();
+        let expected = IndexItem::NonClustered {
+            name: "idx".to_owned(),
+            asc: None,
+            cmp_expr: Some((IndexOperator::Eq, to_expr("3"))),
         };
         assert_eq!(actual, expected);
     }

@@ -1,5 +1,5 @@
 use {
-    super::{CmpExprNode, IndexItemNode},
+    super::CmpExprNode,
     crate::{ast::IndexOperator, ast_builder::ExprNode},
 };
 
@@ -28,14 +28,6 @@ impl<'a> NonClusteredNode {
     pub fn eq<T: Into<ExprNode<'a>>>(self, expr: T) -> CmpExprNode<'a> {
         CmpExprNode::new(self.index_name, IndexOperator::Eq, expr.into())
     }
-
-    pub fn build(self) -> IndexItemNode<'a> {
-        IndexItemNode::NonClustered {
-            name: self.index_name,
-            asc: None,
-            cmp_expr: None,
-        }
-    }
 }
 
 pub fn non_clustered(index_name: String) -> NonClusteredNode {
@@ -46,17 +38,14 @@ pub fn non_clustered(index_name: String) -> NonClusteredNode {
 mod tests {
     use crate::{
         ast::IndexOperator,
-        ast_builder::index_item::IndexItem,
         ast_builder::{index_item::non_clustered::non_clustered, select::Prebuild, to_expr},
+        ast_builder::{index_item::IndexItem, IndexItemNode},
     };
 
     #[test]
     fn test() {
-        let actual = non_clustered("idx".to_owned())
-            .gt("1")
-            .build()
-            .prebuild()
-            .unwrap();
+        let index_node: IndexItemNode = non_clustered("idx".to_owned()).gt("1").into();
+        let actual = index_node.prebuild().unwrap();
         let expected = IndexItem::NonClustered {
             name: "idx".to_owned(),
             asc: None,
@@ -64,11 +53,8 @@ mod tests {
         };
         assert_eq!(actual, expected);
 
-        let actual = non_clustered("idx".to_owned())
-            .lt("1")
-            .build()
-            .prebuild()
-            .unwrap();
+        let index_node: IndexItemNode = non_clustered("idx".to_owned()).lt("1").into();
+        let actual = index_node.prebuild().unwrap();
         let expected = IndexItem::NonClustered {
             name: "idx".to_owned(),
             asc: None,
@@ -76,11 +62,8 @@ mod tests {
         };
         assert_eq!(actual, expected);
 
-        let actual = non_clustered("idx".to_owned())
-            .gte("1")
-            .build()
-            .prebuild()
-            .unwrap();
+        let index_node: IndexItemNode = non_clustered("idx".to_owned()).gte("1").into();
+        let actual = index_node.prebuild().unwrap();
         let expected = IndexItem::NonClustered {
             name: "idx".to_owned(),
             asc: None,
@@ -88,11 +71,8 @@ mod tests {
         };
         assert_eq!(actual, expected);
 
-        let actual = non_clustered("idx".to_owned())
-            .lte("1")
-            .build()
-            .prebuild()
-            .unwrap();
+        let index_node: IndexItemNode = non_clustered("idx".to_owned()).lte("1").into();
+        let actual = index_node.prebuild().unwrap();
         let expected = IndexItem::NonClustered {
             name: "idx".to_owned(),
             asc: None,
@@ -100,11 +80,8 @@ mod tests {
         };
         assert_eq!(actual, expected);
 
-        let actual = non_clustered("idx".to_owned())
-            .eq("1")
-            .build()
-            .prebuild()
-            .unwrap();
+        let index_node: IndexItemNode = non_clustered("idx".to_owned()).eq("1").into();
+        let actual = index_node.prebuild().unwrap();
         let expected = IndexItem::NonClustered {
             name: "idx".to_owned(),
             asc: None,
@@ -112,7 +89,8 @@ mod tests {
         };
         assert_eq!(actual, expected);
 
-        let actual = non_clustered("idx".to_owned()).build().prebuild().unwrap();
+        let index_node: IndexItemNode = non_clustered("idx".to_owned()).into();
+        let actual = index_node.prebuild().unwrap();
         let expected = IndexItem::NonClustered {
             name: "idx".to_owned(),
             asc: None,
