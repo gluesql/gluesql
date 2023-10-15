@@ -51,7 +51,7 @@ impl IntoValue for Bson {
             Bson::Symbol(sym) => Value::Str(sym),
             Bson::Undefined => Value::Null,
             Bson::MaxKey => Value::Null,
-            Bson::MinKey => Value::Null,
+            Bson::MinKey => Value::I64(0),
             Bson::Decimal128(decimal128) => {
                 let decimal = Decimal::deserialize(decimal128.bytes());
 
