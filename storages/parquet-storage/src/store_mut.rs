@@ -1,33 +1,32 @@
-use std::{
-    cmp::Ordering,
-    collections::HashMap,
-    fs::{remove_file, File},
-    iter::Peekable,
-    sync::Arc,
-    vec::IntoIter,
+use {
+    crate::{error::ResultExt, ParquetStorage},
+    async_trait::async_trait,
+    gluesql_core::{
+        ast::{ColumnDef, ToSql},
+        chrono::{NaiveDate, Timelike},
+        data::{Key, Schema},
+        error::Result,
+        prelude::{DataType, Error, Value},
+        store::{DataRow, StoreMut},
+    },
+    lazy_static::lazy_static,
+    parquet::{
+        basic::{ConvertedType, Type},
+        column::writer::ColumnWriter,
+        data_type::{ByteArray, FixedLenByteArray},
+        file::{properties::WriterProperties, writer::SerializedFileWriter},
+        format::KeyValue,
+        schema::types::Type as SchemaType,
+    },
+    std::{
+        cmp::Ordering,
+        collections::HashMap,
+        fs::{remove_file, File},
+        iter::Peekable,
+        sync::Arc,
+        vec::IntoIter,
+    },
 };
-
-use gluesql_core::{
-    ast::{ColumnDef, ToSql},
-    chrono::{NaiveDate, Timelike},
-    data::{Key, Schema},
-    error::Result,
-    prelude::{DataType, Error, Value},
-    store::{DataRow, StoreMut},
-};
-
-use parquet::{
-    basic::{ConvertedType, Type},
-    column::writer::ColumnWriter,
-    data_type::{ByteArray, FixedLenByteArray},
-    file::{properties::WriterProperties, writer::SerializedFileWriter},
-    format::KeyValue,
-    schema::types::Type as SchemaType,
-};
-
-use crate::{error::ResultExt, ParquetStorage};
-use async_trait::async_trait;
-use lazy_static::lazy_static;
 
 lazy_static! {
     static ref GLUESQL_TO_PARQUET_DATA_TYPE_MAPPING: HashMap<DataType, &'static str> = {

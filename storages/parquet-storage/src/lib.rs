@@ -1,22 +1,24 @@
-use column_def::ParquetSchemaType;
-use error::{OptionExt, ParquetStorageError, ResultExt};
-use gluesql_core::{
-    ast::{ColumnDef, ColumnUniqueOption},
-    data::Schema,
-    error::Result,
-    prelude::{DataType, Key, Value},
-    store::{DataRow, Metadata, RowIter},
+use {
+    column_def::ParquetSchemaType,
+    error::{OptionExt, ParquetStorageError, ResultExt},
+    gluesql_core::{
+        ast::{ColumnDef, ColumnUniqueOption},
+        data::Schema,
+        error::Result,
+        prelude::{DataType, Key, Value},
+        store::{DataRow, Metadata},
+    },
+    parquet::{
+        file::{reader::FileReader, serialized_reader::SerializedFileReader},
+        record::Row,
+    },
+    std::{
+        collections::HashMap,
+        fs::{self, File},
+        path::PathBuf,
+    },
+    value::ParquetField,
 };
-use parquet::{
-    file::{reader::FileReader, serialized_reader::SerializedFileReader},
-    record::Row,
-};
-use std::{
-    collections::HashMap,
-    fs::{self, File},
-    path::PathBuf,
-};
-use value::ParquetField;
 
 mod alter_table;
 mod column_def;
@@ -27,6 +29,8 @@ mod store;
 mod store_mut;
 mod transaction;
 mod value;
+
+type RowIter = Box<dyn Iterator<Item = Result<(Key, DataRow)>>>;
 
 #[derive(Debug, Clone)]
 pub struct ParquetStorage {
