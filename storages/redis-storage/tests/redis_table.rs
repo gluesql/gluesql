@@ -1,49 +1,6 @@
 use gluesql_redis_storage::RedisStorage;
 
-use {
-    async_trait::async_trait,
-    gluesql_core::prelude::{Glue, Payload, Value},
-    redis::Commands,
-    test_suite::*,
-};
-
-struct RedisStorageTester {
-    glue: Glue<RedisStorage>,
-}
-
-/// MUST run redis locally before test
-/// eg.) docker run --rm -p 6379:6379 redis
-#[async_trait(?Send)]
-impl Tester<RedisStorage> for RedisStorageTester {
-    async fn new(namespace: &str) -> Self {
-        let url = "localhost";
-        let port: u16 = 6379;
-        let storage = RedisStorage::new(namespace, url, port);
-
-        // MUST clear namespace before test
-        // DO NOT USE FLUSHALL command because it also flushes all namespaces of other clients.
-        // It must clear only its own namespace.
-        let key_iter: Vec<String> = storage
-            .conn
-            .borrow_mut()
-            .scan_match(&format!("{}#*", namespace))
-            .unwrap()
-            .collect();
-        for key in key_iter {
-            let _: () = redis::cmd("DEL")
-                .arg(&key)
-                .query(&mut storage.conn.borrow_mut())
-                .unwrap_or_else(|_| panic!("failed to execute DEL for key={}", key));
-        }
-
-        let glue = Glue::new(storage);
-        RedisStorageTester { glue }
-    }
-
-    fn get_glue(&mut self) -> &mut Glue<RedisStorage> {
-        &mut self.glue
-    }
-}
+use gluesql_core::prelude::{Glue, Payload, Value};
 
 macro_rules! exec {
     ($glue: ident $sql: literal) => {
@@ -51,6 +8,8 @@ macro_rules! exec {
     };
 }
 
+/// MUST run redis locally before test
+/// eg.) docker run --rm -p 6379:6379 redis
 #[tokio::test]
 async fn redis_storage_tables() {
     use chrono::NaiveDate;
