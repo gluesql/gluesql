@@ -1,15 +1,6 @@
 use gluesql_redis_storage::RedisStorage;
 
-use {
-    async_trait::async_trait,
-    gluesql_core::prelude::{Glue, Payload, Value},
-    redis::Commands,
-    test_suite::*,
-};
-
-struct RedisStorageTester {
-    glue: Glue<RedisStorage>,
-}
+use gluesql_core::prelude::{Payload, Value};
 
 macro_rules! exec {
     ($glue: ident $sql: literal) => {
