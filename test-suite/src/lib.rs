@@ -217,6 +217,7 @@ macro_rules! generate_store_tests {
         glue!(function_take, function::take::take);
         glue!(column_alias, column_alias::column_alias);
         glue!(function_splice, function::splice::splice);
+        glue!(function_dedup, function::dedup::dedup);
 
         // ast-builder
         glue!(ast_builder_basic, ast_builder::basic::basic);

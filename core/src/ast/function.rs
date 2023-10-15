@@ -208,6 +208,7 @@ pub enum Function {
         end_index: Expr,
         values: Option<Expr>,
     },
+    Dedup(Expr),
 }
 
 impl ToSql for Function {
@@ -488,6 +489,7 @@ impl ToSql for Function {
                     end_index.to_sql(),
                 ),
             },
+            Function::Dedup(list) => format!("DEDUP({})", list.to_sql()),
         }
     }
 }
@@ -1349,6 +1351,14 @@ mod tests {
             }))
             .to_sql()
         );
+
+        assert_eq!(
+            r#"DEDUP("list")"#,
+            &Expr::Function(Box::new(Function::Dedup(Expr::Identifier(
+                "list".to_owned()
+            ))))
+            .to_sql(),
+        )
     }
 
     #[test]

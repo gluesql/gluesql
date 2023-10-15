@@ -6,6 +6,7 @@ use {
         result::{Error, Result},
     },
     chrono::{Datelike, Duration, Months},
+    itertools::Itertools,
     md5::{Digest, Md5},
     rand::{rngs::StdRng, Rng, SeedableRng},
     std::ops::ControlFlow::{self as StdControlFlow, Break, Continue},
@@ -1063,5 +1064,16 @@ pub fn splice<'a>(
         result
     };
 
+    Continue(Evaluated::Value(Value::List(result)))
+}
+
+pub fn dedup<'a>(list: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    let list = match list.try_into().break_if_null()? {
+        Value::List(list) => list,
+        _ => {
+            return Err(EvaluateError::ListTypeRequired.into()).into_control_flow();
+        }
+    };
+    let result = list.into_iter().dedup_by(|a, b| a == b).collect::<Vec<_>>();
     Continue(Evaluated::Value(Value::List(result)))
 }
