@@ -50,8 +50,8 @@ impl IntoValue for Bson {
             Bson::ObjectId(oid) => Value::Str(oid.to_hex()),
             Bson::Symbol(sym) => Value::Str(sym),
             Bson::Undefined => Value::Null,
-            Bson::MaxKey => Value::Null,
-            Bson::MinKey => Value::I64(0),
+            Bson::MinKey => Value::Str("MinKey()".to_owned()),
+            Bson::MaxKey => Value::Str("MaxKey()".to_owned()),
             Bson::Decimal128(decimal128) => {
                 let decimal = Decimal::deserialize(decimal128.bytes());
 
@@ -60,7 +60,7 @@ impl IntoValue for Bson {
             _ => {
                 return Err(Error::StorageMsg(
                     MongoStorageError::UnsupportedBsonType.to_string(),
-                ))
+                ));
             }
         })
     }
@@ -185,6 +185,8 @@ impl IntoValue for Bson {
                     ),
                 ]))
             }
+            (Bson::MinKey, _) => Value::Str("MinKey()".to_owned()),
+            (Bson::MaxKey, _) => Value::Str("MaxKey()".to_owned()),
             _ => {
                 return Err(Error::StorageMsg(
                     MongoStorageError::UnsupportedBsonType.to_string(),
