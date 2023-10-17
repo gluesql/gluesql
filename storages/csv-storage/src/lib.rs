@@ -11,7 +11,7 @@ use {
         parse_sql::parse_data_type,
         store::{
             AlterTable, CustomFunction, CustomFunctionMut, DataRow, Index, IndexMut, Metadata,
-            RowIter, Transaction,
+            Transaction,
         },
         translate::translate_data_type,
     },
@@ -22,6 +22,8 @@ use {
         path::PathBuf,
     },
 };
+
+type RowIter = Box<dyn Iterator<Item = Result<(Key, DataRow)>>>;
 
 pub struct CsvStorage {
     pub path: PathBuf,

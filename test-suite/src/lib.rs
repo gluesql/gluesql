@@ -243,6 +243,10 @@ macro_rules! generate_store_tests {
             ast_builder::function::text::case_conversion
         );
         glue!(
+            ast_builder_function_text_character_conversion,
+            ast_builder::function::text::character_conversion
+        );
+        glue!(
             ast_builder_function_other_coalesce,
             ast_builder::function::other::coalesce::coalesce
         );

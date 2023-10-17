@@ -1,6 +1,7 @@
 use {
     super::{err_into, key, lock, SledStorage, Snapshot, State},
     async_trait::async_trait,
+    futures::stream::iter,
     gluesql_core::{
         data::{Key, Schema},
         error::{Error, Result},
@@ -121,6 +122,6 @@ impl Store for SledStorage {
             })
             .filter_map(|item| item.transpose());
 
-        Ok(Box::new(result_set))
+        Ok(Box::pin(iter(result_set)))
     }
 }

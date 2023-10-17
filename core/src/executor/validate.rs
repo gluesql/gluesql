@@ -5,6 +5,7 @@ use {
         result::Result,
         store::{DataRow, Store},
     },
+    futures::stream::TryStreamExt,
     im_rc::HashSet,
     serde::Serialize,
     std::fmt::Debug,
@@ -141,26 +142,31 @@ pub async fn validate_unique<T: Store>(
             }
 
             let unique_constraints = &unique_constraints;
-            storage.scan_data(table_name).await?.try_for_each(|result| {
-                let (_, data_row) = result?;
-                let values = match data_row {
-                    DataRow::Vec(values) => values,
-                    DataRow::Map(_) => {
-                        return Err(ValidateError::ConflictOnUnexpectedSchemalessRowFound.into());
-                    }
-                };
+            storage
+                .scan_data(table_name)
+                .await?
+                .try_for_each(|(_, data_row)| async {
+                    let values = match data_row {
+                        DataRow::Vec(values) => values,
+                        DataRow::Map(_) => {
+                            return Err(
+                                ValidateError::ConflictOnUnexpectedSchemalessRowFound.into()
+                            );
+                        }
+                    };
 
-                unique_constraints.iter().try_for_each(|constraint| {
-                    let col_idx = constraint.column_index;
-                    let val = values
-                        .get(col_idx)
-                        .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
+                    unique_constraints.iter().try_for_each(|constraint| {
+                        let col_idx = constraint.column_index;
+                        let val = values
+                            .get(col_idx)
+                            .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
 
-                    constraint.check(val)?;
+                        constraint.check(val)?;
 
-                    Ok(())
+                        Ok(())
+                    })
                 })
-            })
+                .await
         }
     }
 }

@@ -49,9 +49,15 @@ pub fn binary_op<'a>(
         BinaryOperator::Eq => cmp!(l.evaluate_eq(&r)),
         BinaryOperator::NotEq => cmp!(!l.evaluate_eq(&r)),
         BinaryOperator::Lt => cmp!(l.evaluate_cmp(&r) == Some(Ordering::Less)),
-        BinaryOperator::LtEq => cmp!(l.evaluate_cmp(&r) != Some(Ordering::Greater)),
+        BinaryOperator::LtEq => cmp!(matches!(
+            l.evaluate_cmp(&r),
+            Some(Ordering::Less) | Some(Ordering::Equal)
+        )),
         BinaryOperator::Gt => cmp!(l.evaluate_cmp(&r) == Some(Ordering::Greater)),
-        BinaryOperator::GtEq => cmp!(l.evaluate_cmp(&r) != Some(Ordering::Less)),
+        BinaryOperator::GtEq => cmp!(matches!(
+            l.evaluate_cmp(&r),
+            Some(Ordering::Greater) | Some(Ordering::Equal)
+        )),
         BinaryOperator::And => cond!(l && r),
         BinaryOperator::Or => cond!(l || r),
         BinaryOperator::Xor => cond!(l ^ r),

@@ -1,5 +1,5 @@
 use {
-    async_trait::async_trait, gluesql_core::prelude::Glue,
+    async_trait::async_trait, futures::stream::TryStreamExt, gluesql_core::prelude::Glue,
     gluesql_shared_memory_storage::SharedMemoryStorage, test_suite::*,
 };
 
@@ -40,7 +40,7 @@ macro_rules! test {
 #[tokio::test]
 async fn shared_memory_storage_index() {
     use gluesql_core::{
-        error::{Error, Result},
+        error::Error,
         prelude::Glue,
         store::{Index, Store},
     };
@@ -52,7 +52,8 @@ async fn shared_memory_storage_index() {
             .scan_data("Idx")
             .await
             .unwrap()
-            .collect::<Result<Vec<_>>>()
+            .try_collect::<Vec<_>>()
+            .await
             .as_ref()
             .map(Vec::len),
         Ok(0),
