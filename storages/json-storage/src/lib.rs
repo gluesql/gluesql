@@ -26,6 +26,7 @@ use {
 
 type RowIter = Box<dyn Iterator<Item = Result<(Key, DataRow)>>>;
 
+#[derive(Clone, Debug)]
 pub struct JsonStorage {
     pub path: PathBuf,
 }
