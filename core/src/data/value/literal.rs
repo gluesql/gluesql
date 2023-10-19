@@ -34,8 +34,7 @@ fn convert_to_f64(bigdecimal_val: &BigDecimal) -> Result<Value, Error> {
 }
 
 fn is_integer_representation(bigdecimal_val: &BigDecimal) -> bool {
-    let bigdecimal_val_str = bigdecimal_val.abs().to_string();
-    bigdecimal_val.abs().digits() == bigdecimal_val_str.len() as u64
+    bigdecimal_val.fractional_digit_count() == 0
 }
 
 impl TryFrom<&Literal<'_>> for Value {
