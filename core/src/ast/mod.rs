@@ -31,6 +31,9 @@ pub enum Statement {
     ShowColumns {
         table_name: String,
     },
+    ExplainTable {
+        table_name: String,
+    },
     /// SELECT, VALUES
     Query(Query),
     /// INSERT
@@ -136,6 +139,9 @@ impl ToSql for Statement {
         match self {
             Statement::ShowColumns { table_name } => {
                 format!("SHOW COLUMNS FROM {table_name};")
+            }
+            Statement::ExplainTable { table_name } => {
+                format!("EXPLAIN {table_name};")
             }
             Statement::Insert {
                 table_name,
@@ -306,6 +312,17 @@ mod tests {
         assert_eq!(
             "SHOW COLUMNS FROM Bar;",
             Statement::ShowColumns {
+                table_name: "Bar".into()
+            }
+            .to_sql()
+        )
+    }
+
+    #[test]
+    fn to_sql_explain_table() {
+        assert_eq!(
+            "EXPLAIN Bar;",
+            Statement::ExplainTable {
                 table_name: "Bar".into()
             }
             .to_sql()
