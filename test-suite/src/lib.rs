@@ -248,6 +248,10 @@ macro_rules! generate_store_tests {
             ast_builder::function::text::character_conversion
         );
         glue!(
+            ast_builder_function_text_padding,
+            ast_builder::function::text::padding
+        );
+        glue!(
             ast_builder_function_other_coalesce,
             ast_builder::function::other::coalesce::coalesce
         );
@@ -283,6 +287,7 @@ macro_rules! generate_store_tests {
             ast_builder_function_text_position_and_indexing,
             ast_builder::function::text::position_and_indexing
         );
+        glue!(ast_builder_index_by, ast_builder::index_by::index_by);
 
         // schemaless data support
         glue!(schemaless_basic, schemaless::basic);
