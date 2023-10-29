@@ -41,8 +41,7 @@ pub use {
     expr_list::ExprList,
     expr_with_alias::ExprWithAliasNode,
     index_item::{
-        non_clustered, primary_key, CmpExprNode, IndexItemNode, NonClusteredNode, OrderNode,
-        PrimaryKeyNode,
+        non_clustered, primary_key, CmpExprNode, IndexItemNode, NonClusteredNode, PrimaryKeyNode,
     },
     insert::InsertNode,
     order_by_expr::OrderByExprNode,

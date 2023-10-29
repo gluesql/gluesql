@@ -1,13 +1,11 @@
 mod cmp_expr;
 mod non_clustered;
-mod order;
 mod primary_key;
 
 pub use {
     crate::{ast::IndexItem, result::Result},
     cmp_expr::CmpExprNode,
     non_clustered::{non_clustered, NonClusteredNode},
-    order::OrderNode,
     primary_key::{primary_key, PrimaryKeyNode},
 };
 
