@@ -656,6 +656,11 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 values,
             })))
         }
+        "DEDUP" => {
+            check_len(name, args.len(), 1)?;
+            let list = translate_expr(args[0])?;
+            Ok(Expr::Function(Box::new(Function::Dedup(list))))
+        }
         _ => {
             let exprs = args
                 .into_iter()

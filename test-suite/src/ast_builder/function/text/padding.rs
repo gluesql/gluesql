@@ -1,28 +1,3 @@
-# Padding
-
-The AST Builder API in GlueSQL allows you to execute lpad and rpad functions for text padding.
-
-## lpad
-
-`lpad` returns the string with leading space if the length of the string is less than the specified length.
-
-```rs
-lpad<'a, T: Into<ExprNode<'a>>>(expr: T, len: usize, fill: Option<String>) -> ExprNode<'a>
-```
-
-## rpad
-
-`rpad` returns the string with trailing space if the length of the string is less than the specified length.
-
-```rs
-rpad<'a, T: Into<ExprNode<'a>>>(expr: T, len: usize, fill: Option<String>) -> ExprNode<'a>
-```
-
-## Examples
-
-In these examples, the LPAD and RPAD functions should return matching values.
-
-```rs
 use {
     crate::*,
     gluesql_core::{
@@ -66,14 +41,3 @@ test_case!(padding, {
         "lpad and rpad should pad the string with given length"
     );
 });
-```
-
-```
-| lpaded       | rpaded       |
-| ------------ | ------------ |
-| '     hello' | 'hello     ' |
-| 'ababahello' | 'helloababa' |
-| 'hel'        | 'hel'        |
-| 'hel'        | 'hel'        |
-| Null         | Null         |
-```

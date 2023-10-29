@@ -61,7 +61,8 @@ impl Function {
             | Self::GetY(expr)
             | Self::IsEmpty(expr)
             | Self::Sort { expr, order: None }
-            | Self::Values(expr) => Exprs::Single([expr].into_iter()),
+            | Self::Values(expr)
+            | Self::Dedup(expr) => Exprs::Single([expr].into_iter()),
             Self::Left { expr, size: expr2 }
             | Self::Right { expr, size: expr2 }
             | Self::Lpad {
@@ -290,6 +291,8 @@ mod tests {
         test(r#"SIGN(-2)"#, &["-2"]);
         test(r#"SIGN(3.0)"#, &["3.0"]);
         test(r#"SIGN(-3.0)"#, &["-3.0"]);
+
+        test(r#"DEDUP(list)"#, &["list"]);
 
         // Double
         test(r#"LEFT("hello", 2)"#, &[r#""hello""#, "2"]);
