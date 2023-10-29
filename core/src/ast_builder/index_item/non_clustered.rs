@@ -37,9 +37,12 @@ pub fn non_clustered(index_name: String) -> NonClusteredNode {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ast::IndexOperator,
-        ast_builder::{index_item::non_clustered::non_clustered, select::Prebuild, to_expr},
-        ast_builder::{index_item::IndexItem, IndexItemNode},
+        ast::{AstLiteral, Expr, IndexOperator},
+        ast_builder::{
+            index_item::{non_clustered, IndexItem},
+            select::Prebuild,
+            IndexItemNode,
+        },
     };
 
     #[test]
@@ -49,7 +52,10 @@ mod tests {
         let expected = IndexItem::NonClustered {
             name: "idx".to_owned(),
             asc: None,
-            cmp_expr: Some((IndexOperator::Gt, to_expr("1"))),
+            cmp_expr: Some((
+                IndexOperator::Gt,
+                Expr::Literal(AstLiteral::Number(1.into())),
+            )),
         };
         assert_eq!(actual, expected);
 
@@ -58,7 +64,10 @@ mod tests {
         let expected = IndexItem::NonClustered {
             name: "idx".to_owned(),
             asc: None,
-            cmp_expr: Some((IndexOperator::Lt, to_expr("1"))),
+            cmp_expr: Some((
+                IndexOperator::Lt,
+                Expr::Literal(AstLiteral::Number(1.into())),
+            )),
         };
         assert_eq!(actual, expected);
 
@@ -67,7 +76,10 @@ mod tests {
         let expected = IndexItem::NonClustered {
             name: "idx".to_owned(),
             asc: None,
-            cmp_expr: Some((IndexOperator::GtEq, to_expr("1"))),
+            cmp_expr: Some((
+                IndexOperator::GtEq,
+                Expr::Literal(AstLiteral::Number(1.into())),
+            )),
         };
         assert_eq!(actual, expected);
 
@@ -76,7 +88,10 @@ mod tests {
         let expected = IndexItem::NonClustered {
             name: "idx".to_owned(),
             asc: None,
-            cmp_expr: Some((IndexOperator::LtEq, to_expr("1"))),
+            cmp_expr: Some((
+                IndexOperator::LtEq,
+                Expr::Literal(AstLiteral::Number(1.into())),
+            )),
         };
         assert_eq!(actual, expected);
 
@@ -85,7 +100,10 @@ mod tests {
         let expected = IndexItem::NonClustered {
             name: "idx".to_owned(),
             asc: None,
-            cmp_expr: Some((IndexOperator::Eq, to_expr("1"))),
+            cmp_expr: Some((
+                IndexOperator::Eq,
+                Expr::Literal(AstLiteral::Number(1.into())),
+            )),
         };
         assert_eq!(actual, expected);
 

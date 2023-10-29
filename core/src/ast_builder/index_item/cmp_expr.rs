@@ -44,11 +44,11 @@ impl<'a> CmpExprNode<'a> {
 mod tests {
 
     use crate::{
-        ast::IndexOperator,
+        ast::{AstLiteral, Expr, IndexOperator},
         ast_builder::{
             index_item::{non_clustered, IndexItem},
             select::Prebuild,
-            to_expr, IndexItemNode,
+            IndexItemNode,
         },
     };
 
@@ -62,7 +62,10 @@ mod tests {
         let expected = IndexItem::NonClustered {
             name: "idx".to_owned(),
             asc: Some(true),
-            cmp_expr: Some((IndexOperator::Eq, to_expr("1"))),
+            cmp_expr: Some((
+                IndexOperator::Eq,
+                Expr::Literal(AstLiteral::Number(1.into())),
+            )),
         };
         assert_eq!(actual, expected);
 
@@ -74,7 +77,10 @@ mod tests {
         let expected = IndexItem::NonClustered {
             name: "idx".to_owned(),
             asc: Some(false),
-            cmp_expr: Some((IndexOperator::Eq, to_expr("2"))),
+            cmp_expr: Some((
+                IndexOperator::Eq,
+                Expr::Literal(AstLiteral::Number(2.into())),
+            )),
         };
         assert_eq!(actual, expected);
 
@@ -83,7 +89,10 @@ mod tests {
         let expected = IndexItem::NonClustered {
             name: "idx".to_owned(),
             asc: None,
-            cmp_expr: Some((IndexOperator::Eq, to_expr("3"))),
+            cmp_expr: Some((
+                IndexOperator::Eq,
+                Expr::Literal(AstLiteral::Number(3.into())),
+            )),
         };
         assert_eq!(actual, expected);
     }
