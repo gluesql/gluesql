@@ -1050,3 +1050,13 @@ pub fn splice<'a>(
 
     Continue(Evaluated::Value(Value::List(result)))
 }
+
+pub fn dedup<'a>(list: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    match list.try_into().break_if_null()? {
+        Value::List(mut list) => {
+            list.dedup();
+            Continue(Evaluated::Value(Value::List(list)))
+        }
+        _ => Err(EvaluateError::ListTypeRequired.into()).into_control_flow(),
+    }
+}
