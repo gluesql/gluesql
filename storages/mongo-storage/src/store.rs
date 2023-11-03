@@ -110,38 +110,34 @@ impl Store for MongoStorage {
                 .collect::<Vec<_>>()
         });
 
-        let row_iter = cursor
-            .map(|doc| {
-                let doc = doc.map_storage_err()?;
+        let row_iter = cursor.map(|doc| {
+            let doc = doc.map_storage_err()?;
 
-                match &column_types {
-                    Some(column_types) => {
-                        doc.into_row(column_types.iter().copied(), primary_key.is_some())
-                    }
-                    None => {
-                        let mut iter = doc.into_iter();
-                        let (_, first_value) = iter
-                            .next()
-                            .map_storage_err(MongoStorageError::InvalidDocument)?;
-                        let key_bytes = first_value
-                            .as_object_id()
-                            .map_storage_err(MongoStorageError::InvalidDocument)?
-                            .bytes()
-                            .to_vec();
-                        let key = Key::Bytea(key_bytes);
-                        let row = iter
-                            .map(|(key, bson)| Ok((key, bson.into_value_schemaless()?)))
-                            .collect::<Result<HashMap<String, Value>>>()?;
-
-                        Ok((key, DataRow::Map(row)))
-                    }
+            match &column_types {
+                Some(column_types) => {
+                    doc.into_row(column_types.iter().copied(), primary_key.is_some())
                 }
-            })
-            .collect::<Vec<_>>()
-            .await
-            .into_iter();
+                None => {
+                    let mut iter = doc.into_iter();
+                    let (_, first_value) = iter
+                        .next()
+                        .map_storage_err(MongoStorageError::InvalidDocument)?;
+                    let key_bytes = first_value
+                        .as_object_id()
+                        .map_storage_err(MongoStorageError::InvalidDocument)?
+                        .bytes()
+                        .to_vec();
+                    let key = Key::Bytea(key_bytes);
+                    let row = iter
+                        .map(|(key, bson)| Ok((key, bson.into_value_schemaless()?)))
+                        .collect::<Result<HashMap<String, Value>>>()?;
 
-        Ok(Box::new(row_iter))
+                    Ok((key, DataRow::Map(row)))
+                }
+            }
+        });
+
+        Ok(Box::pin(row_iter))
     }
 }
 
