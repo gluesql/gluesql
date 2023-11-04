@@ -3,6 +3,7 @@ pub mod basic;
 pub mod delete;
 pub mod expr;
 pub mod function;
+pub mod index_by;
 pub mod insert;
 pub mod select;
 pub mod statements;

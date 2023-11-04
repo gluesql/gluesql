@@ -217,6 +217,7 @@ macro_rules! generate_store_tests {
         glue!(function_take, function::take::take);
         glue!(column_alias, column_alias::column_alias);
         glue!(function_splice, function::splice::splice);
+        glue!(function_dedup, function::dedup::dedup);
 
         // ast-builder
         glue!(ast_builder_basic, ast_builder::basic::basic);
@@ -241,6 +242,14 @@ macro_rules! generate_store_tests {
         glue!(
             ast_builder_function_text_case_conversion,
             ast_builder::function::text::case_conversion
+        );
+        glue!(
+            ast_builder_function_text_character_conversion,
+            ast_builder::function::text::character_conversion
+        );
+        glue!(
+            ast_builder_function_text_padding,
+            ast_builder::function::text::padding
         );
         glue!(
             ast_builder_function_other_coalesce,
@@ -278,6 +287,7 @@ macro_rules! generate_store_tests {
             ast_builder_function_text_position_and_indexing,
             ast_builder::function::text::position_and_indexing
         );
+        glue!(ast_builder_index_by, ast_builder::index_by::index_by);
 
         // schemaless data support
         glue!(schemaless_basic, schemaless::basic);

@@ -1016,13 +1016,6 @@ pub fn splice<'a>(
         }
     };
 
-    /*
-    let list_data = match Value::try_from(list_data)? {
-        Value::List(list) => Ok(list),
-        _ => Err(EvaluateError::ListTypeRequired),
-    }?;
-    */
-
     let begin_index = eval_to_int(&name, begin_index)?.max(0);
     let begin_index = usize::try_from(begin_index)
         .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.clone()).into())
@@ -1031,14 +1024,6 @@ pub fn splice<'a>(
     let end_index = usize::try_from(end_index)
         .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.clone()).into())
         .into_control_flow()?;
-
-    /*
-    let begin_index = usize::try_from(eval_to_int!(name, begin_index).max(0))
-        .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.clone()))?;
-
-    let end_index = usize::try_from(eval_to_int!(name, end_index).min(list_data.len() as i64))
-        .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name))?;
-        */
 
     let (left, right) = {
         let mut list_iter = list_data.into_iter();
@@ -1064,4 +1049,14 @@ pub fn splice<'a>(
     };
 
     Continue(Evaluated::Value(Value::List(result)))
+}
+
+pub fn dedup<'a>(list: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    match list.try_into().break_if_null()? {
+        Value::List(mut list) => {
+            list.dedup();
+            Continue(Evaluated::Value(Value::List(list)))
+        }
+        _ => Err(EvaluateError::ListTypeRequired.into()).into_control_flow(),
+    }
 }
