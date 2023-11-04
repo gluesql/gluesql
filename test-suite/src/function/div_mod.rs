@@ -83,7 +83,7 @@ test_case!(div_mod, {
             Ok(Payload::Insert(4)),
         ),
         (
-            "INSERT INTO IntDiv (dividend, divisor) VALUES (12, 2.0)",
+            "INSERT INTO IntDiv (dividend, divisor) VALUES (12, 2)",
             Ok(Payload::Insert(1)),
         ),
         (
