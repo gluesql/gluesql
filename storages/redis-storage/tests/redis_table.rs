@@ -80,8 +80,6 @@ async fn redis_storage_tables() {
 
 #[tokio::test]
 async fn redis_storage_add_column() {
-    use gluesql_core::prelude::Glue;
-
     let mut path = env::current_dir().unwrap();
     path.push("tests/redis-storage.toml");
     let redis_config_str = fs::read_to_string(path).unwrap();
@@ -140,8 +138,6 @@ async fn redis_storage_add_column() {
 
 #[tokio::test]
 async fn redis_storage_drop_column() {
-    use gluesql_core::prelude::Glue;
-
     let mut path = env::current_dir().unwrap();
     path.push("tests/redis-storage.toml");
     let redis_config_str = fs::read_to_string(path).unwrap();
@@ -199,8 +195,6 @@ async fn redis_storage_drop_column() {
 
 #[tokio::test]
 async fn redis_storage_alter_tablename() {
-    use gluesql_core::prelude::Glue;
-
     let mut path = env::current_dir().unwrap();
     path.push("tests/redis-storage.toml");
     let redis_config_str = fs::read_to_string(path).unwrap();

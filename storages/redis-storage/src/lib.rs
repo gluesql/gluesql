@@ -15,8 +15,7 @@ use {
         store::{CustomFunction, CustomFunctionMut, DataRow, RowIter, Store, StoreMut},
     },
     redis::{Commands, Connection},
-    std::cell::RefCell,
-    std::collections::BTreeMap,
+    std::{cell::RefCell, collections::BTreeMap},
 };
 
 pub struct RedisStorage {
