@@ -90,6 +90,8 @@ impl Store for MongoStorage {
             .as_ref()
             .and_then(|column_defs| get_primary_key(column_defs));
 
+        let has_primary = primary_key.is_some();
+
         let options = FindOptions::builder();
         let options = match primary_key {
             Some(primary_key) => options.sort(doc! { primary_key.name.to_owned(): 1}).build(),
@@ -106,17 +108,15 @@ impl Store for MongoStorage {
         let column_types = column_defs.as_ref().map(|column_defs| {
             column_defs
                 .iter()
-                .map(|column_def| &column_def.data_type)
+                .map(|column_def| column_def.data_type.clone())
                 .collect::<Vec<_>>()
         });
 
-        let row_iter = cursor.map(|doc| {
+        let row_iter = cursor.map(move |doc| {
             let doc = doc.map_storage_err()?;
 
             match &column_types {
-                Some(column_types) => {
-                    doc.into_row(column_types.iter().copied(), primary_key.is_some())
-                }
+                Some(column_types) => doc.into_row(column_types.iter(), has_primary),
                 None => {
                     let mut iter = doc.into_iter();
                     let (_, first_value) = iter
