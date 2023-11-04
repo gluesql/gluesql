@@ -1,13 +1,7 @@
-use std::collections::HashMap;
-use std::vec;
-
-use bson::doc;
-use bson::Bson;
-use gluesql_core::prelude::Glue;
-use gluesql_core::prelude::Payload;
-use gluesql_core::prelude::Value;
-use gluesql_mongo_storage::get_collection_options;
-use gluesql_mongo_storage::MongoStorage;
+use bson::{doc, Bson};
+use gluesql_core::prelude::{Glue, Payload, Value};
+use gluesql_mongo_storage::{get_collection_options, MongoStorage};
+use std::{collections::HashMap, vec};
 
 #[tokio::test]
 async fn mongo_types() {
