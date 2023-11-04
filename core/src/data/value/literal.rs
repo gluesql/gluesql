@@ -19,32 +19,16 @@ use {
     },
 };
 
-fn convert_to_i64(bigdecimal_val: &BigDecimal) -> Result<Value, Error> {
-    bigdecimal_val
-        .to_i64()
-        .map(Value::I64)
-        .ok_or_else(|| ValueError::FailedToParseNumber.into())
-}
-
-fn convert_to_f64(bigdecimal_val: &BigDecimal) -> Result<Value, Error> {
-    bigdecimal_val
-        .to_f64()
-        .map(Value::F64)
-        .ok_or_else(|| ValueError::FailedToParseNumber.into())
-}
-
 impl TryFrom<&Literal<'_>> for Value {
     type Error = Error;
 
     fn try_from(literal: &Literal<'_>) -> Result<Self> {
         match literal {
-            Literal::Number(bigdecimal_val) => {
-                if bigdecimal_val.is_integer_representation() {
-                    convert_to_i64(bigdecimal_val)
-                } else {
-                    convert_to_f64(bigdecimal_val)
-                }
-            }
+            Literal::Number(v) => v
+                .to_i64()
+                .map(Value::I64)
+                .or_else(|| v.to_f64().map(Value::F64))
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
             Literal::Boolean(v) => Ok(Value::Bool(*v)),
             Literal::Text(v) => Ok(Value::Str(v.as_ref().to_owned())),
             Literal::Bytea(v) => Ok(Value::Bytea(v.to_vec())),

@@ -82,7 +82,7 @@ test_case!(add_month, {
     g.named_test(
         "out of range test",
         "SELECT ADD_MONTH('2017-01-31',10000000000000000000) AS test;",
-        Err(ValueError::FailedToParseNumber.into()),
+        Err(EvaluateError::FunctionRequiresIntegerValue("ADD_MONTH".to_owned()).into()),
     )
     .await;
     g.named_test(
