@@ -2,11 +2,10 @@ use {
     super::RedisStorage,
     async_trait::async_trait,
     gluesql_core::{
-        store::Store,
         ast::ColumnDef,
         data::Value,
         error::{AlterTableError, Error, Result},
-        store::{AlterTable, DataRow},
+        store::{AlterTable, DataRow, Store},
     },
     redis::Commands,
 };
