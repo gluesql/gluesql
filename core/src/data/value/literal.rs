@@ -33,17 +33,13 @@ fn convert_to_f64(bigdecimal_val: &BigDecimal) -> Result<Value, Error> {
         .ok_or_else(|| ValueError::FailedToParseNumber.into())
 }
 
-fn is_integer_representation(bigdecimal_val: &BigDecimal) -> bool {
-    bigdecimal_val.fractional_digit_count() == 0
-}
-
 impl TryFrom<&Literal<'_>> for Value {
     type Error = Error;
 
     fn try_from(literal: &Literal<'_>) -> Result<Self> {
         match literal {
             Literal::Number(bigdecimal_val) => {
-                if is_integer_representation(bigdecimal_val) {
+                if bigdecimal_val.is_integer_representation() {
                     convert_to_i64(bigdecimal_val)
                 } else {
                     convert_to_f64(bigdecimal_val)

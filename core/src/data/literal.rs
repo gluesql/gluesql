@@ -216,7 +216,7 @@ impl<'a> Literal<'a> {
                 let l = l
                     .to_i64()
                     .ok_or(LiteralError::BitwiseNonIntegerOperand(l.to_string()))?;
-                if !r.is_integer() {
+                if !r.is_integer_representation() {
                     return Err(LiteralError::BitwiseNonIntegerOperand(r.to_string()).into());
                 }
                 let r = r.to_u32().ok_or(LiteralError::ImpossibleConversion(
@@ -239,7 +239,7 @@ impl<'a> Literal<'a> {
                 let l = l
                     .to_i64()
                     .ok_or(LiteralError::BitwiseNonIntegerOperand(l.to_string()))?;
-                if !r.is_integer() {
+                if !r.is_integer_representation() {
                     return Err(LiteralError::BitwiseNonIntegerOperand(r.to_string()).into());
                 }
                 let r = r.to_u32().ok_or(LiteralError::ImpossibleConversion(
