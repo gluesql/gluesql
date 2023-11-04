@@ -1,9 +1,8 @@
 use super::{
     table_factor::TableType, AlterTableNode, CreateIndexNode, CreateTableNode, DeleteNode,
-    DropIndexNode, DropTableNode, InsertNode, OrderByExprNode, SelectNode, ShowColumnsNode,
-    TableFactorNode, UpdateNode,
+    DropIndexNode, DropTableNode, IndexItemNode, InsertNode, OrderByExprNode, SelectNode,
+    ShowColumnsNode, TableFactorNode, UpdateNode,
 };
-
 #[derive(Clone, Debug)]
 pub struct TableNameNode {
     pub table_name: String,
@@ -15,6 +14,7 @@ impl<'a> TableNameNode {
             table_name: self.table_name,
             table_type: TableType::Table,
             table_alias: None,
+            index: None,
         };
 
         SelectNode::new(table_factor)
@@ -41,6 +41,7 @@ impl<'a> TableNameNode {
             table_name: self.table_name,
             table_type: TableType::Table,
             table_alias: Some(table_alias.to_owned()),
+            index: None,
         }
     }
 
@@ -74,6 +75,15 @@ impl<'a> TableNameNode {
 
     pub fn alter_table(self) -> AlterTableNode {
         AlterTableNode::new(self.table_name)
+    }
+
+    pub fn index_by<T: Into<IndexItemNode<'a>>>(self, index_item: T) -> TableFactorNode<'a> {
+        TableFactorNode {
+            table_name: self.table_name,
+            table_type: TableType::Table,
+            table_alias: None,
+            index: Some(index_item.into()),
+        }
     }
 }
 
