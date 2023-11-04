@@ -1,5 +1,7 @@
-use gluesql_core::prelude::{Error, Payload};
-use gluesql_redis_storage::RedisStorage;
+use {
+    gluesql_core::prelude::{Error, Payload},
+    gluesql_redis_storage::RedisStorage,
+};
 
 macro_rules! exec {
     ($glue: ident $sql: literal) => {

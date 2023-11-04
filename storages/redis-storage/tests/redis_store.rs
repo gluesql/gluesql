@@ -1,6 +1,10 @@
-use gluesql_redis_storage::RedisStorage;
-
-use {async_trait::async_trait, gluesql_core::prelude::Glue, redis::Commands, test_suite::*};
+use {
+    async_trait::async_trait,
+    gluesql_core::prelude::Glue,
+    redis::Commands,
+    test_suite::*,
+    gluesql_redis_storage::RedisStorage,
+};
 
 struct RedisStorageTester {
     glue: Glue<RedisStorage>,
@@ -45,8 +49,6 @@ generate_store_tests!(tokio::test, RedisStorageTester);
 generate_alter_table_tests!(tokio::test, RedisStorageTester);
 
 generate_metadata_table_tests!(tokio::test, RedisStorageTester);
-
-//generate_custom_function_tests!(tokio::test, RedisStorageTester);
 
 macro_rules! exec {
     ($glue: ident $sql: literal) => {

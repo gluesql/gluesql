@@ -1,11 +1,8 @@
-//use test_suite::metadata::table;
-
-use gluesql_core::store::Store;
-
 use {
     super::RedisStorage,
     async_trait::async_trait,
     gluesql_core::{
+        store::Store,
         ast::ColumnDef,
         data::Value,
         error::{AlterTableError, Error, Result},

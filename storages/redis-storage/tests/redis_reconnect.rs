@@ -1,6 +1,7 @@
-use gluesql_redis_storage::RedisStorage;
-
-use gluesql_core::prelude::{Payload, Value};
+use {
+    gluesql_core::prelude::{Payload, Value},
+    gluesql_redis_storage::RedisStorage,
+};
 
 macro_rules! exec {
     ($glue: ident $sql: literal) => {
