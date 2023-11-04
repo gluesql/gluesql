@@ -57,7 +57,11 @@ impl IntoValue for Bson {
 
                 Value::Decimal(decimal)
             }
-            _ => {
+            Bson::JavaScriptCode(_) => todo!(),
+            Bson::JavaScriptCodeWithScope(_) => todo!(),
+            Bson::Timestamp(_) => todo!(),
+            Bson::DateTime(_) => todo!(),
+            Bson::DbPointer(_) => {
                 return Err(Error::StorageMsg(
                     MongoStorageError::UnsupportedBsonType.to_string(),
                 ));
@@ -187,6 +191,7 @@ impl IntoValue for Bson {
             }
             (Bson::MinKey, _) => Value::Str("MinKey()".to_owned()),
             (Bson::MaxKey, _) => Value::Str("MaxKey()".to_owned()),
+            (Bson::Symbol(symbol), _) => Value::Str(symbol),
             _ => {
                 return Err(Error::StorageMsg(
                     MongoStorageError::UnsupportedBsonType.to_string(),

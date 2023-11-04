@@ -18,13 +18,15 @@ async fn mongo_types() {
         "col_regex".to_owned(),
         "col_minKey".to_owned(),
         "col_maxKey".to_owned(),
+        "col_symbol".to_owned(),
     ];
     let column_types = doc! {
         "col_javascript": { "bsonType": ["javascript"], "title": "TEXT" },
         "col_javascriptWithScope": { "bsonType": ["javascriptWithScope"], "title": "TEXT" },
         "col_regex": { "bsonType": ["regex"], "title": "TEXT" },
         "col_minKey": { "bsonType": ["minKey"], "title": "TEXT" },
-        "col_maxKey": { "bsonType": ["maxKey"], "title": "TEXT" }
+        "col_maxKey": { "bsonType": ["maxKey"], "title": "TEXT" },
+        "col_symbol": { "bsonType": ["symbol"], "title": "TEXT" }
     };
 
     let options = get_collection_options(labels, column_types);
@@ -48,7 +50,8 @@ async fn mongo_types() {
             options: "i".to_owned()
         }),
         "col_minKey": Bson::MinKey,
-        "col_maxKey": Bson::MaxKey
+        "col_maxKey": Bson::MaxKey,
+        "col_symbol": Bson::Symbol("symbol".to_owned())
     };
 
     storage
@@ -69,6 +72,7 @@ async fn mongo_types() {
                 "col_regex".to_owned(),
                 "col_minKey".to_owned(),
                 "col_maxKey".to_owned(),
+                "col_symbol".to_owned(),
             ],
             rows: vec![vec![
                 Value::Str("function add(a, b) { return a + b; }".to_owned()),
@@ -88,6 +92,7 @@ async fn mongo_types() {
                 Value::Str("/^[a-z]*$/i".to_owned()),
                 Value::Str("MinKey()".to_owned()),
                 Value::Str("MaxKey()".to_owned()),
+                Value::Str("symbol".to_owned()),
             ]],
         }),
     )];
