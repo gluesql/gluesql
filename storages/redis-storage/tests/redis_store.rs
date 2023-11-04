@@ -1,9 +1,10 @@
 use {
     async_trait::async_trait,
     gluesql_core::prelude::Glue,
-    redis::Commands,
-    test_suite::*,
     gluesql_redis_storage::RedisStorage,
+    redis::Commands,
+    std::{env, fs},
+    test_suite::*,
 };
 
 struct RedisStorageTester {
@@ -15,8 +16,13 @@ struct RedisStorageTester {
 #[async_trait(?Send)]
 impl Tester<RedisStorage> for RedisStorageTester {
     async fn new(namespace: &str) -> Self {
-        let url = "localhost";
-        let port: u16 = 6379;
+        let mut path = env::current_dir().unwrap();
+        path.push("tests/redis-storage.toml");
+        let redis_config_str = fs::read_to_string(path).unwrap();
+        let redis_config: toml::Value = toml::from_str(&redis_config_str).unwrap();
+        let url = redis_config["redis"]["url"].as_str().unwrap();
+        let port: u16 = redis_config["redis"]["port"].as_integer().unwrap() as u16;
+
         let storage = RedisStorage::new(namespace, url, port);
 
         // MUST clear namespace before test
@@ -60,8 +66,13 @@ macro_rules! exec {
 #[tokio::test]
 async fn redis_storage_namespace() {
     use gluesql_core::prelude::Glue;
-    let url = "localhost";
-    let port: u16 = 6379;
+
+    let mut path = env::current_dir().unwrap();
+    path.push("tests/redis-storage.toml");
+    let redis_config_str = fs::read_to_string(path).unwrap();
+    let redis_config: toml::Value = toml::from_str(&redis_config_str).unwrap();
+    let url = redis_config["redis"]["url"].as_str().unwrap();
+    let port: u16 = redis_config["redis"]["port"].as_integer().unwrap() as u16;
 
     let storage_first = RedisStorage::new("redis_storage_namespace_first", url, port);
     let mut glue_first = Glue::new(storage_first);
@@ -86,8 +97,12 @@ async fn redis_storage_no_primarykey() {
     use chrono::NaiveDate;
     use gluesql_core::prelude::{Glue, Payload, Value};
 
-    let url = "localhost";
-    let port: u16 = 6379;
+    let mut path = env::current_dir().unwrap();
+    path.push("tests/redis-storage.toml");
+    let redis_config_str = fs::read_to_string(path).unwrap();
+    let redis_config: toml::Value = toml::from_str(&redis_config_str).unwrap();
+    let url = redis_config["redis"]["url"].as_str().unwrap();
+    let port: u16 = redis_config["redis"]["port"].as_integer().unwrap() as u16;
 
     let storage = RedisStorage::new("redis_storage_no_primarykey", url, port);
     let mut glue = Glue::new(storage);
@@ -171,8 +186,12 @@ async fn redis_storage_primarykey() {
     use chrono::NaiveDate;
     use gluesql_core::prelude::{Glue, Payload, Value};
 
-    let url = "localhost";
-    let port: u16 = 6379;
+    let mut path = env::current_dir().unwrap();
+    path.push("tests/redis-storage.toml");
+    let redis_config_str = fs::read_to_string(path).unwrap();
+    let redis_config: toml::Value = toml::from_str(&redis_config_str).unwrap();
+    let url = redis_config["redis"]["url"].as_str().unwrap();
+    let port: u16 = redis_config["redis"]["port"].as_integer().unwrap() as u16;
 
     let storage = RedisStorage::new("redis_storage_primarykey", url, port);
     let mut glue = Glue::new(storage);

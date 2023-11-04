@@ -1,6 +1,7 @@
 use {
     gluesql_core::prelude::{Error, Payload},
     gluesql_redis_storage::RedisStorage,
+    std::{env, fs},
 };
 
 macro_rules! exec {
@@ -20,8 +21,13 @@ macro_rules! test {
 #[tokio::test]
 async fn redis_storage_errors() {
     use gluesql_core::prelude::Glue;
-    let url = "localhost";
-    let port: u16 = 6379;
+
+    let mut path = env::current_dir().unwrap();
+    path.push("tests/redis-storage.toml");
+    let redis_config_str = fs::read_to_string(path).unwrap();
+    let redis_config: toml::Value = toml::from_str(&redis_config_str).unwrap();
+    let url = redis_config["redis"]["url"].as_str().unwrap();
+    let port: u16 = redis_config["redis"]["port"].as_integer().unwrap() as u16;
 
     let storage = RedisStorage::new("redis_storage_namespace_first", url, port);
     let mut glue = Glue::new(storage);

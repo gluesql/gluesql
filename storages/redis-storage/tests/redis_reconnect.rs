@@ -1,6 +1,7 @@
 use {
     gluesql_core::prelude::{Payload, Value},
     gluesql_redis_storage::RedisStorage,
+    std::{env, fs},
 };
 
 macro_rules! exec {
@@ -15,9 +16,14 @@ macro_rules! exec {
 async fn redis_storage_reconnect() {
     use gluesql_core::prelude::Glue;
 
+    let mut path = env::current_dir().unwrap();
+    path.push("tests/redis-storage.toml");
+    let redis_config_str = fs::read_to_string(path).unwrap();
+    let redis_config: toml::Value = toml::from_str(&redis_config_str).unwrap();
+    let url = redis_config["redis"]["url"].as_str().unwrap();
+    let port: u16 = redis_config["redis"]["port"].as_integer().unwrap() as u16;
+
     {
-        let url = "localhost";
-        let port: u16 = 6379;
         let storage = RedisStorage::new("redis_storage_reconnect", url, port);
         let mut glue = Glue::new(storage);
 
@@ -29,8 +35,6 @@ async fn redis_storage_reconnect() {
     }
 
     {
-        let url = "localhost";
-        let port: u16 = 6379;
         let storage = RedisStorage::new("redis_storage_reconnect", url, port);
         let mut glue = Glue::new(storage);
 
@@ -53,9 +57,14 @@ async fn redis_storage_reconnect() {
 async fn redis_storage_reconnect_drop() {
     use gluesql_core::prelude::Glue;
 
+    let mut path = env::current_dir().unwrap();
+    path.push("tests/redis-storage.toml");
+    let redis_config_str = fs::read_to_string(path).unwrap();
+    let redis_config: toml::Value = toml::from_str(&redis_config_str).unwrap();
+    let url = redis_config["redis"]["url"].as_str().unwrap();
+    let port: u16 = redis_config["redis"]["port"].as_integer().unwrap() as u16;
+
     {
-        let url = "localhost";
-        let port: u16 = 6379;
         let storage = RedisStorage::new("redis_storage_reconnect_drop", url, port);
         let mut glue = Glue::new(storage);
 
@@ -68,8 +77,6 @@ async fn redis_storage_reconnect_drop() {
     }
 
     {
-        let url = "localhost";
-        let port: u16 = 6379;
         let storage = RedisStorage::new("redis_storage_reconnect_drop", url, port);
         let mut glue = Glue::new(storage);
 
