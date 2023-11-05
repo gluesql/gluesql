@@ -48,8 +48,6 @@ impl IntoValue for Bson {
             Bson::Int64(i) => Value::I64(i),
             Bson::Binary(Binary { bytes, .. }) => Value::Bytea(bytes),
             Bson::ObjectId(oid) => Value::Str(oid.to_hex()),
-            Bson::Symbol(sym) => Value::Str(sym),
-            Bson::Undefined => Value::Null,
             Bson::MinKey => Value::Str("MinKey()".to_owned()),
             Bson::MaxKey => Value::Str("MaxKey()".to_owned()),
             Bson::Decimal128(decimal128) => {
@@ -61,7 +59,7 @@ impl IntoValue for Bson {
             Bson::JavaScriptCodeWithScope(_) => todo!(),
             Bson::Timestamp(_) => todo!(),
             Bson::DateTime(_) => todo!(),
-            Bson::DbPointer(_) => {
+            _ => {
                 return Err(Error::StorageMsg(
                     MongoStorageError::UnsupportedBsonType.to_string(),
                 ));
@@ -151,7 +149,6 @@ impl IntoValue for Bson {
             }
             (Bson::Binary(Binary { bytes, .. }), _) => Value::Bytea(bytes),
             (Bson::ObjectId(oid), _) => Value::Str(oid.to_hex()),
-            (Bson::Undefined, _) => Value::Null,
             (Bson::Decimal128(decimal128), DataType::Uint64) => {
                 let bytes = decimal128.bytes();
                 let u64 = u64::from_be_bytes(bytes[..8].try_into().map_storage_err()?);
@@ -191,7 +188,6 @@ impl IntoValue for Bson {
             }
             (Bson::MinKey, _) => Value::Str("MinKey()".to_owned()),
             (Bson::MaxKey, _) => Value::Str("MaxKey()".to_owned()),
-            (Bson::Symbol(symbol), _) => Value::Str(symbol),
             _ => {
                 return Err(Error::StorageMsg(
                     MongoStorageError::UnsupportedBsonType.to_string(),
