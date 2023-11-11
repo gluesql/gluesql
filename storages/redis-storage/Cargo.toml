@@ -1,5 +1,5 @@
 [package]
-name = "gluesql_redis_storage"
+name = "gluesql-redis-storage"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
 version.workspace = true
 edition.workspace = true
