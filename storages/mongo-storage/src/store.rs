@@ -47,11 +47,6 @@ impl Store for MongoStorage {
     }
 
     async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<DataRow>> {
-        // println!(
-        //     "fetch_data: table_name: {}, target: {:?}",
-        //     table_name, target
-        // );
-        // panic!();
         let column_defs = self
             .get_column_defs(table_name)
             .await?
@@ -67,10 +62,6 @@ impl Store for MongoStorage {
             .projection(projection)
             .sort(doc! { primary_key.name.clone(): 1 })
             .build();
-        // let options = match primary_key {
-        //     Some(primary_key) => options.sort(doc! { primary_key.name.clone(): 1 }).build(),
-        //     None => options.build(),
-        // };
 
         let mut cursor = self
             .db
@@ -191,12 +182,11 @@ impl MongoStorage {
                 .map_err(|e| Error::StorageMsg(e.to_string()))
                 .try_filter_map(|index_model| {
                     let IndexModel { keys, options, .. } = index_model;
-                    let index_keys = &mut keys.into_iter().map(|(index_key, _)| index_key);
-                    if index_keys.size_hint().0 > 1 {
-                        return future::ready(Err(Error::StorageMsg(
-                            MongoStorageError::CompositIndexNotSupported.to_string(),
-                        )));
+                    if keys.len() > 1 {
+                        return future::ready(Ok::<_, Error>(None));
                     }
+
+                    let index_keys = &mut keys.into_iter().map(|(index_key, _)| index_key);
                     let index_key = index_keys.next();
                     let name = options.and_then(|options| options.name);
 
