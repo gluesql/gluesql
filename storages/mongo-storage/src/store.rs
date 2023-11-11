@@ -47,19 +47,30 @@ impl Store for MongoStorage {
     }
 
     async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<DataRow>> {
+        // println!(
+        //     "fetch_data: table_name: {}, target: {:?}",
+        //     table_name, target
+        // );
+        // panic!();
         let column_defs = self
             .get_column_defs(table_name)
             .await?
             .map_storage_err(MongoStorageError::Unreachable)?;
 
-        let primary_key = get_primary_key(&column_defs);
-        let filter = doc! { "_id": target.to_owned().into_bson(primary_key.is_some())?};
+        let primary_key = get_primary_key(&column_defs)
+            .ok_or(MongoStorageError::Unreachable)
+            .map_storage_err()?;
+
+        let filter = doc! { "_id": target.to_owned().into_bson(true)?};
         let projection = doc! {"_id": 0};
-        let options = FindOptions::builder().projection(projection);
-        let options = match primary_key {
-            Some(primary_key) => options.sort(doc! { primary_key.name.clone(): 1 }).build(),
-            None => options.build(),
-        };
+        let options = FindOptions::builder()
+            .projection(projection)
+            .sort(doc! { primary_key.name.clone(): 1 })
+            .build();
+        // let options = match primary_key {
+        //     Some(primary_key) => options.sort(doc! { primary_key.name.clone(): 1 }).build(),
+        //     None => options.build(),
+        // };
 
         let mut cursor = self
             .db
