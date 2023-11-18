@@ -46,10 +46,10 @@ impl PyGlue {
         let storage = &self.storage;
 
         match storage {
-            PyStorageEngine::MemoryStorage(storage) => plan!(storage, statement),
-            PyStorageEngine::JsonStorage(storage) => plan!(storage, statement),
-            PyStorageEngine::SharedMemoryStorage(storage) => plan!(storage, statement),
-            PyStorageEngine::SledStorage(storage) => plan!(storage, statement),
+            PyStorageEngine::Memory(storage) => plan!(storage, statement),
+            PyStorageEngine::Json(storage) => plan!(storage, statement),
+            PyStorageEngine::SharedMemory(storage) => plan!(storage, statement),
+            PyStorageEngine::Sled(storage) => plan!(storage, statement),
         }
     }
 
@@ -58,10 +58,10 @@ impl PyGlue {
         let storage = &mut self.storage;
 
         match storage {
-            PyStorageEngine::MemoryStorage(storage) => execute!(storage, &statement),
-            PyStorageEngine::JsonStorage(storage) => execute!(storage, &statement),
-            PyStorageEngine::SharedMemoryStorage(storage) => execute!(storage, &statement),
-            PyStorageEngine::SledStorage(storage) => execute!(storage, &statement),
+            PyStorageEngine::Memory(storage) => execute!(storage, &statement),
+            PyStorageEngine::Json(storage) => execute!(storage, &statement),
+            PyStorageEngine::SharedMemory(storage) => execute!(storage, &statement),
+            PyStorageEngine::Sled(storage) => execute!(storage, &statement),
         }
     }
 }

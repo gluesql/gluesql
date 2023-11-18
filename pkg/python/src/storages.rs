@@ -9,21 +9,21 @@ use {
 
 #[derive(FromPyObject)]
 pub enum PyStorageEngine {
-    MemoryStorage(PyMemoryStorage),
-    JsonStorage(PyJsonStorage),
-    SharedMemoryStorage(PySharedMemoryStorage),
-    SledStorage(PySledStorage),
+    Memory(PyMemoryStorage),
+    Json(PyJsonStorage),
+    SharedMemory(PySharedMemoryStorage),
+    Sled(PySledStorage),
 }
 
 #[pyclass(name = "MemoryStorage")]
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct PyMemoryStorage(pub MemoryStorage);
 
 #[pymethods]
 impl PyMemoryStorage {
     #[new]
     pub fn new() -> Self {
-        PyMemoryStorage(MemoryStorage::default())
+        Default::default()
     }
 
     pub fn __repr__(&self) -> PyResult<String> {
@@ -50,14 +50,14 @@ impl PyJsonStorage {
 }
 
 #[pyclass(name = "SharedMemoryStorage")]
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct PySharedMemoryStorage(pub SharedMemoryStorage);
 
 #[pymethods]
 impl PySharedMemoryStorage {
     #[new]
     pub fn new() -> Self {
-        PySharedMemoryStorage(SharedMemoryStorage::default())
+        Default::default()
     }
 
     pub fn __repr__(&self) -> PyResult<String> {
@@ -145,7 +145,7 @@ impl PySledStorage {
             .compression_factor(cfg.compression_factor)
             .create_new(cfg.create_new)
             .mode(cfg.mode.0)
-            .path(cfg.path.to_owned())
+            .path(&cfg.path)
             .print_profile_on_drop(cfg.print_profile_on_drop)
             .temporary(cfg.temporary)
             .use_compression(cfg.use_compression);
