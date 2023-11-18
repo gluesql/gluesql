@@ -1,3 +1,5 @@
+use gluesql_core::translate::TranslateError;
+
 use {
     crate::*,
     chrono::{NaiveDate, NaiveTime},
@@ -413,7 +415,7 @@ test_case!(cast_value, {
         (
             "SELECT id, CAST(interval_str_1 as INTERVAL) as stoi_1, CAST(interval_str_2 as INTERVAL) as stoi_2 FROM IntervalLog;",
             Ok(select!(
-            id  | stoi_1          | stoi_2
+            id  | stoi_1              | stoi_2
             I64 | Interval            | Interval;
             1     I::months(14)         I::months(30);
             2     I::days(12)           I::hours(35);
@@ -423,6 +425,10 @@ test_case!(cast_value, {
             6     I::hours(12)          I::seconds(-(12 * 3600 + 30 * 60 + 12));
             7     I::months(-12_011)    I::seconds(-(30 * 60 + 11))
             )),
+        ),
+        (
+            "SELECT CAST(1 AS STRING FORMAT 'ASCII') AS bytes_to_string;",
+            Err(TranslateError::UnsupportedCastFormat("'ASCII'".to_owned()).into())
         )
     ];
 
