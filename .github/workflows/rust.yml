@@ -63,6 +63,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: MongoDB in GitHub Actions
         uses: supercharge/mongodb-github-action@v1.10.0
+      - name: Redis in GitHub Actions
+        uses: supercharge/redis-github-action@1.7.0
+        with:
+          redis-version: 6
       - run: |
           cargo test --all-features --lib --bins --tests --examples --verbose -- --skip sled_transaction_timeout
           cargo test sled_transaction_timeout --verbose -- --test-threads=1
@@ -80,4 +84,4 @@ jobs:
           cargo run --package gluesql --example memory_storage_usage
           cargo run --package gluesql --example sled_multi_threaded
           cargo run --package gluesql --example using_config
-          cargo run --package gluesql --example hello_ast_builder 
+          cargo run --package gluesql --example hello_ast_builder
