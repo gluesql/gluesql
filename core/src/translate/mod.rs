@@ -312,24 +312,34 @@ fn translate_table_constraint(
             referred_columns,
             on_delete,
             on_update,
-        } => Some(TableConstraint::ForeignKey(ForeignKey {
-            name: name.to_owned().map(|v| v.value),
-            column: columns
+        } => {
+            let column = columns.first().map(|i| i.value.clone()).ok_or(
+                TranslateError::InvalidForeignKeyConstraint(
+                    name.to_owned()
+                        .map(|i| i.value.clone())
+                        .unwrap_or("".to_owned()),
+                ),
+            )?;
+
+            let referred_column = referred_columns
                 .first()
                 .ok_or(TranslateError::InvalidForeignKeyConstraint(
-                    name.map(|i| i.value).unwrap_or("".to_owned()),
+                    name.clone()
+                        .map(|i| i.value.clone())
+                        .unwrap_or("".to_owned()),
                 ))?
-                .value,
-            foreign_table: translate_object_name(foreign_table).unwrap(),
-            referred_column: referred_columns
-                .first()
-                .ok_or(TranslateError::InvalidForeignKeyConstraint(
-                    name.map(|i| i.value).unwrap_or("".to_owned()),
-                ))?
-                .value,
-            on_delete: on_delete.map(translate_referential_action),
-            on_update: on_update.map(translate_referential_action),
-        })),
+                .value
+                .clone();
+
+            Some(TableConstraint::ForeignKey(ForeignKey {
+                name: name.to_owned().map(|v| v.value),
+                column: column,
+                foreign_table: translate_object_name(foreign_table).unwrap(),
+                referred_column,
+                on_delete: on_delete.map(translate_referential_action),
+                on_update: on_update.map(translate_referential_action),
+            }))
+        }
         _ => None,
     })
 }

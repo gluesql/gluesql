@@ -203,7 +203,7 @@ async fn fetch_vec_rows<T: GStore>(
 
                             if no_parent {
                                 return Err(ValidateError::ForeignKeyViolation {
-                                    name: name.to_owned(),
+                                    name: name.unwrap(),
                                     table: table_name.to_owned(),
                                     column: column.to_owned(),
                                     foreign_table: foreign_table.to_owned(),

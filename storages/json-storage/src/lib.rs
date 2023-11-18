@@ -74,6 +74,7 @@ impl JsonStorage {
             column_defs,
             indexes: vec![],
             engine: None,
+            constraints: None,
         }))
     }
 

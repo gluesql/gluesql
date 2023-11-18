@@ -108,13 +108,90 @@ pub async fn create_table<T: GStore + GStoreMut>(
             match constraint {
                 TableConstraint::ForeignKey(ForeignKey {
                     name,
-                    column: columns,
+                    column,
                     foreign_table,
-                    referred_column: referred_columns,
+                    referred_column,
                     on_delete,
                     on_update,
-                }) => todo!(),
-            }
+                }) => {
+                    // 1. check if foreign_table exists
+                    // 2. check if referred_column exists in foreign_table
+                    // 3. check if column exists in target_table
+                    // 4. check if column and referred_column have same data type
+                    // 5. check if column and referred_column have same nullable
+                    // 6. check if column and referred_column have same unique
+                    // 7. check if on_delete and on_update are valid
+                    let foreign_schema =
+                        storage
+                            .fetch_schema(foreign_table)
+                            .await?
+                            .ok_or_else(|| -> Error {
+                                AlterError::ForeignTableNotFound(foreign_table.to_owned()).into()
+                            })?;
+
+                    let foreign_column_def = foreign_schema
+                        .column_defs
+                        .unwrap()
+                        .into_iter()
+                        .find(|column_def| column_def.name == *referred_column)
+                        .ok_or_else(|| -> Error {
+                            AlterError::ForeignKeyColumnNotFound(referred_column.to_owned()).into()
+                        })?;
+
+                    let target_column_def = target_columns_defs
+                        .as_deref()
+                        .and_then(|column_defs| {
+                            column_defs
+                                .iter()
+                                .find(|column_def| column_def.name == *column)
+                        })
+                        .ok_or_else(|| -> Error {
+                            AlterError::ForeignKeyColumnNotFound(column.to_owned()).into()
+                        })?;
+
+                    if target_column_def.data_type != foreign_column_def.data_type {
+                        return Err(AlterError::ForeignKeyDataTypeMismatch {
+                            column: column.to_owned(),
+                            column_type: target_column_def.data_type.to_owned(),
+                            foreign_column: referred_column.to_owned(),
+                            foreign_column_type: foreign_column_def.data_type.to_owned(),
+                        }
+                        .into());
+                    }
+
+                    if target_column_def.nullable != foreign_column_def.nullable {
+                        return Err(AlterError::ForeignKeyNullableMismatch {
+                            column: column.to_owned(),
+                            foreign_column: referred_column.to_owned(),
+                        }
+                        .into());
+                    }
+
+                    if target_column_def.unique.is_none() {
+                        return Err(AlterError::ReferredColumnNotUnique {
+                            foreign_table: foreign_table.to_owned(),
+                            referred_column: referred_column.to_owned(),
+                        }
+                        .into());
+                    }
+
+                    Ok::<_, Error>(())
+
+                    // if on_delete.is_some() && on_delete != Some("cascade".to_owned()) {
+                    //     return Err(AlterError::ForeignKeyInvalidAction {
+                    //         action: on_delete.to_owned().unwrap(),
+                    //     }
+                    //     .into());
+                    // }
+
+                    // if on_update.is_some() && on_update != Some("cascade".to_owned()) {
+                    //     return Err(AlterError::ForeignKeyInvalidAction {
+                    //         action: on_update.to_owned().unwrap(),
+                    //     }
+                    //     .into());
+                    // }
+                }
+            }?
         }
     }
 
