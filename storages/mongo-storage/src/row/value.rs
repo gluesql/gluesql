@@ -22,46 +22,18 @@ pub trait IntoValue {
 impl IntoValue for Bson {
     fn into_value_schemaless(self) -> Result<Value> {
         Ok(match self {
-            Bson::Null => Value::Null,
-            Bson::Double(num) => Value::F64(num),
             Bson::String(string) => Value::Str(string),
-            Bson::Array(array) => {
-                let values = array
-                    .into_iter()
-                    .map(|bson| bson.into_value_schemaless())
-                    .collect::<Result<Vec<_>>>()?;
-
-                Value::List(values)
-            }
             Bson::Document(d) => Value::Map(
                 d.into_iter()
                     .map(|(k, v)| Ok((k, v.into_value_schemaless()?)))
                     .collect::<Result<HashMap<_, _>>>()?,
             ),
             Bson::Boolean(b) => Value::Bool(b),
-            Bson::RegularExpression(regex) => {
-                let pattern = regex.pattern;
-                let options = regex.options;
-                Value::Str(format!("/{}/{}", pattern, options))
-            }
             Bson::Int32(i) => Value::I32(i),
             Bson::Int64(i) => Value::I64(i),
-            Bson::Binary(Binary { bytes, .. }) => Value::Bytea(bytes),
-            Bson::ObjectId(oid) => Value::Str(oid.to_hex()),
-            Bson::MinKey => Value::Str("MinKey()".to_owned()),
-            Bson::MaxKey => Value::Str("MaxKey()".to_owned()),
-            Bson::Decimal128(decimal128) => {
-                let decimal = Decimal::deserialize(decimal128.bytes());
-
-                Value::Decimal(decimal)
-            }
-            Bson::JavaScriptCode(_) => todo!(),
-            Bson::JavaScriptCodeWithScope(_) => todo!(),
-            Bson::Timestamp(_) => todo!(),
-            Bson::DateTime(_) => todo!(),
             _ => {
                 return Err(Error::StorageMsg(
-                    MongoStorageError::UnsupportedBsonType.to_string(),
+                    MongoStorageError::Unreachable.to_string(),
                 ));
             }
         })
@@ -93,7 +65,7 @@ impl IntoValue for Bson {
                     )?),
                     _ => {
                         return Err(Error::StorageMsg(
-                            MongoStorageError::UnsupportedBsonType.to_string(),
+                            MongoStorageError::Unreachable.to_string(),
                         ))
                     }
                 }
@@ -148,7 +120,6 @@ impl IntoValue for Bson {
                 Value::Uuid(u128)
             }
             (Bson::Binary(Binary { bytes, .. }), _) => Value::Bytea(bytes),
-            (Bson::ObjectId(oid), _) => Value::Str(oid.to_hex()),
             (Bson::Decimal128(decimal128), DataType::Uint64) => {
                 let bytes = decimal128.bytes();
                 let u64 = u64::from_be_bytes(bytes[..8].try_into().map_storage_err()?);

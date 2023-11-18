@@ -44,8 +44,7 @@ async fn mongo_indexes() {
     let mut glue = Glue::new(storage);
 
     let cases = vec![(
-        glue.execute("SELECT * FROM collection_with_composite_index")
-            .await,
+        glue.execute(format! {"SELECT * FROM {table_name}"}).await,
         Ok(Payload::Select {
             labels: vec!["id".to_owned(), "name".to_owned()],
             rows: vec![],

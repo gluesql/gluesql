@@ -63,7 +63,7 @@ async fn mongo_types() {
     let mut glue = Glue::new(storage);
 
     let cases = vec![(
-        glue.execute("SELECT * FROM mongo_type_collection").await,
+        glue.execute(format! {"SELECT * FROM {table_name}"}).await,
         Ok(Payload::Select {
             labels: vec![
                 "col_javascript".to_owned(),
