@@ -10,7 +10,14 @@ use {
 pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
     match sql_data_type {
         SqlDataType::Boolean => Ok(DataType::Boolean),
-        SqlDataType::Int(None) | SqlDataType::Integer(None) => Ok(DataType::Int),
+        SqlDataType::Int(None) | SqlDataType::Integer(None) | SqlDataType::Int64 => {
+            Ok(DataType::Int)
+        }
+        SqlDataType::Int8(None) => Ok(DataType::Int8),
+
+        SqlDataType::UnsignedInt(None) | SqlDataType::UnsignedInteger(None) => Ok(DataType::Uint64),
+        SqlDataType::UnsignedInt8(None) => Ok(DataType::Uint8),
+
         SqlDataType::Float(_) => Ok(DataType::Float),
         SqlDataType::Text => Ok(DataType::Text),
         SqlDataType::Bytea => Ok(DataType::Bytea),
