@@ -1,6 +1,8 @@
-use bson::{doc, Document};
-use gluesql_core::ast::ColumnDef;
-use mongodb::options::CreateCollectionOptions;
+use {
+    bson::{doc, Document},
+    gluesql_core::ast::ColumnDef,
+    mongodb::options::CreateCollectionOptions,
+};
 
 pub fn get_primary_key(column_defs: &[ColumnDef]) -> Option<&ColumnDef> {
     column_defs
