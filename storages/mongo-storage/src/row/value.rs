@@ -33,7 +33,7 @@ impl IntoValue for Bson {
             Bson::Int64(i) => Value::I64(i),
             _ => {
                 return Err(Error::StorageMsg(
-                    MongoStorageError::Unreachable.to_string(),
+                    MongoStorageError::UnsupportedBsonType.to_string(),
                 ));
             }
         })
@@ -65,7 +65,7 @@ impl IntoValue for Bson {
                     )?),
                     _ => {
                         return Err(Error::StorageMsg(
-                            MongoStorageError::Unreachable.to_string(),
+                            MongoStorageError::UnsupportedBsonType.to_string(),
                         ))
                     }
                 }

@@ -23,15 +23,6 @@ impl<T, E: ToString> OptionExt<T, E> for std::option::Option<T> {
 
 #[derive(Error, Debug)]
 pub enum MongoStorageError {
-    #[error("table does not exist")]
-    TableDoesNotExist,
-
-    #[error("index does not have option")]
-    MissingIndexOption,
-
-    #[error("composite index is not supported")]
-    CompositIndexNotSupported,
-
     #[error("invalid document")]
     InvalidDocument,
 
