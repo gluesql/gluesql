@@ -672,6 +672,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         }
         Function::Length(expr) => f::length(name, eval(expr).await?),
         Function::Entries(expr) => f::entries(name, eval(expr).await?),
+        Function::Keys(expr) => f::keys(eval(expr).await?),
         Function::Values(expr) => {
             let expr = eval(expr).await?;
             f::values(expr)

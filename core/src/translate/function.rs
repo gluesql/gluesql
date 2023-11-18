@@ -406,13 +406,6 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 divisor,
             })))
         }
-        "ENTRIES" => {
-            check_len(name, args.len(), 1)?;
-
-            let expr = translate_expr(args[0])?;
-
-            Ok(Expr::Function(Box::new(Function::Entries(expr))))
-        }
         "MOD" => {
             check_len(name, args.len(), 2)?;
 
@@ -632,6 +625,18 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 .map(translate_expr)
                 .collect::<Result<Vec<_>>>()?;
             Ok(Expr::Function(Box::new(Function::Greatest(exprs))))
+        }
+        "ENTRIES" => {
+            check_len(name, args.len(), 1)?;
+
+            let expr = translate_expr(args[0])?;
+            Ok(Expr::Function(Box::new(Function::Entries(expr))))
+        }
+        "KEYS" => {
+            check_len(name, args.len(), 1)?;
+
+            let expr = translate_expr(args[0])?;
+            Ok(Expr::Function(Box::new(Function::Keys(expr))))
         }
         "VALUES" => {
             check_len(name, args.len(), 1)?;

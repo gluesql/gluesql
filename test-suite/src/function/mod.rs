@@ -24,6 +24,7 @@ pub mod greatest;
 pub mod ifnull;
 pub mod initcap;
 pub mod is_empty;
+pub mod keys;
 pub mod last_day;
 pub mod left_right;
 pub mod length;
