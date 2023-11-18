@@ -54,6 +54,24 @@ pub enum TranslateError {
     #[error("empty function body is not supported")]
     UnsupportedEmptyFunctionBody,
 
+    #[error("unsupported unnamed index")]
+    UnsupportedUnnamedIndex,
+
+    #[error("unsupported trim chars: expected: `TRIM((BOTH | LEADING | TRAILING) <text> FROM <expr>)`, got: `TRIM(<expr> [<chars>, ..])` syntax")]
+    UnsupportedTrimChars,
+
+    #[error("unsupported CAST format: {0}")]
+    UnsupportedCastFormat(String),
+
+    #[error("unsupported multiple alter table operations, expected: `ALTER TABLE <table> <operation>`, got: `ALTER TABLE <table> <operation>, <operation>, ..`")]
+    UnsupportedMultipleAlterTableOperations,
+
+    #[error("unreachable empty alter table operation")]
+    UnreachableEmptyAlterTableOperation,
+
+    #[error("unsupported `GROUP BY (ALL)`")]
+    UnsupportedGroupByAll,
+
     #[error("wildcard function arg is not accepted")]
     WildcardFunctionArgNotAccepted,
 

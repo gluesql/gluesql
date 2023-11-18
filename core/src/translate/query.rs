@@ -11,9 +11,9 @@ use {
         result::Result,
     },
     sqlparser::ast::{
-        Expr as SqlExpr, FunctionArg as SqlFunctionArg, Join as SqlJoin,
-        JoinConstraint as SqlJoinConstraint, JoinOperator as SqlJoinOperator, Query as SqlQuery,
-        Select as SqlSelect, SelectItem as SqlSelectItem, SetExpr as SqlSetExpr,
+        Expr as SqlExpr, FunctionArg as SqlFunctionArg, GroupByExpr as SqlGroupByExpr,
+        Join as SqlJoin, JoinConstraint as SqlJoinConstraint, JoinOperator as SqlJoinOperator,
+        Query as SqlQuery, Select as SqlSelect, SelectItem as SqlSelectItem, SetExpr as SqlSetExpr,
         TableAlias as SqlTableAlias, TableFactor as SqlTableFactor,
         TableWithJoins as SqlTableWithJoins,
     },
@@ -92,6 +92,11 @@ fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
             },
             joins: vec![],
         },
+    };
+
+    let group_by = match group_by {
+        SqlGroupByExpr::Expressions(group_by) => group_by,
+        SqlGroupByExpr::All => return Err(TranslateError::UnsupportedGroupByAll.into()),
     };
 
     Ok(Select {

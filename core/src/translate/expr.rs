@@ -111,7 +111,14 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             expr,
             trim_where,
             trim_what,
-        } => translate_trim(expr, trim_where, trim_what),
+            trim_characters,
+        } => {
+            if trim_characters.is_some() {
+                return Err(TranslateError::UnsupportedTrimChars.into());
+            }
+
+            translate_trim(expr, trim_where, trim_what)
+        }
         SqlExpr::Floor { expr, field } => {
             if !matches!(field, SqlDateTimeField::NoDateTime) {
                 return Err(TranslateError::UnsupportedExpr(sql_expr.to_string()).into());
@@ -177,7 +184,17 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
                 .map(translate_datetime_field)
                 .transpose()?,
         }),
-        SqlExpr::Cast { expr, data_type } => translate_cast(expr, data_type),
+        SqlExpr::Cast {
+            expr,
+            data_type,
+            format,
+        } => {
+            if let Some(format) = format {
+                return Err(TranslateError::UnsupportedCastFormat(format.to_string()).into());
+            }
+
+            translate_cast(expr, data_type)
+        }
 
         _ => Err(TranslateError::UnsupportedExpr(sql_expr.to_string()).into()),
     }
