@@ -35,6 +35,7 @@ jobs:
         run: |
           cargo clean
           rm -rf ./target/debug/deps/gluesql*
+          rm *.profraw && rm **/*.profraw
           cd storages/csv-storage && rm -rf ./tmp && cd ../..
           cd storages/json-storage && rm -rf ./tmp && cd ../..
           redis-cli flushall
