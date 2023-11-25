@@ -26,10 +26,6 @@ jobs:
           toolchain: ${{ steps.rust-toolchain.outputs.toolchain }}
       - uses: Swatinem/rust-cache@v2
       - run: rustup component add llvm-tools-preview
-      - name: Redis in GitHub Actions
-        uses: supercharge/redis-github-action@1.7.0
-        with:
-          redis-version: 6
       - name: Install grcov
         uses: actions-rs/install@v0.1
         with:
