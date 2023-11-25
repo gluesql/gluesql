@@ -37,6 +37,7 @@ jobs:
           rm -rf ./target/debug/deps/gluesql*
           cd storages/csv-storage && rm -rf ./tmp && cd ../..
           cd storages/json-storage && rm -rf ./tmp && cd ../..
+          redis-cli flushall
       - name: build
         env:
           RUSTFLAGS: -Cinstrument-coverage
