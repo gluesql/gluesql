@@ -31,6 +31,7 @@ csv-storage = { workspace = true, optional = true }
 composite-storage = { workspace = true, optional = true }
 web-storage = { workspace = true, optional = true }
 idb-storage = { workspace = true, optional = true }
+redis-storage = { workspace = true, optional = true }
 
 [dev-dependencies]
 futures = "0.3"
@@ -46,4 +47,5 @@ default = [
 	"json-storage",
 	"csv-storage",
 	"composite-storage",
+	"redis-storage",
 ]
