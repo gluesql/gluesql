@@ -31,6 +31,12 @@ jobs:
           crate: grcov
           version: latest
           use-tool-cache: true
+      - name: clean
+        run: |
+          cargo clean
+          rm -rf ./target/debug/deps/gluesql*
+          cd storages/csv-storage && rm -rf ./tmp && cd ../..
+          cd storages/json-storage && rm -rf ./tmp && cd ../..
       - name: build
         env:
           RUSTFLAGS: -Cinstrument-coverage
