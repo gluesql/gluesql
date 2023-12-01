@@ -26,5 +26,7 @@ rust_decimal = { version = "1", features = ["serde-str"] }
 
 [dev-dependencies]
 test-suite.workspace = true
-
 tokio = { version = "1", features = ["rt", "macros"] }
+
+[features]
+test-mongo = []
