@@ -83,17 +83,31 @@ test_case!(foreign_key, {
     )
     .await;
 
-    // g.named_test(
-    //     "If there is no parent, insert should fail",
-    //     "INSERT INTO Child VALUES (1, 'orphan', 1);",
-    //     Err(ValidateError::ForeignKeyViolation {
-    //         name: "aaa".to_owned(),
-    //         table: "Child".to_owned(),
-    //         column: "parent_id".to_owned(),
-    //         foreign_table: "Parent".to_owned(),
-    //         referred_column: "id".to_owned(),
-    //     }
-    //     .into()),
-    // )
-    // .await;
+    g.named_test(
+        "If there is no parent, insert should fail",
+        "INSERT INTO Child VALUES (1, 'orphan', 1);",
+        Err(ValidateError::ForeignKeyViolation {
+            name: "".to_owned(),
+            table: "Child".to_owned(),
+            column: "parent_id".to_owned(),
+            foreign_table: "ParentWithPK".to_owned(),
+            referred_column: "id".to_owned(),
+        }
+        .into()),
+    )
+    .await;
+
+    //     g.named_test(
+    //         "Even If there is no parent, NULL is fine",
+    //         "INSERT INTO Child VALUES (1, 'nullIsNotOrphan', NULL);",
+    //         Err(ValidateError::ForeignKeyViolation {
+    //             name: "a".to_owned(),
+    //             table: "Child".to_owned(),
+    //             column: "parent_id".to_owned(),
+    //             foreign_table: "ParentWithPK".to_owned(),
+    //             referred_column: "id".to_owned(),
+    //         }
+    //         .into()),
+    //     )
+    //     .await;
 });

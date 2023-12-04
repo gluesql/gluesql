@@ -191,6 +191,8 @@ async fn fetch_vec_rows<T: GStore>(
                     on_delete,
                     on_update,
                 }) => {
+                    println!("columns : {:#?}", columns);
+                    // with columns => filter from columns
                     if let Some((column_index, _)) =
                         columns.iter().enumerate().find(|(_, c)| c == &&column)
                     {
@@ -201,9 +203,37 @@ async fn fetch_vec_rows<T: GStore>(
                                 .await?
                                 .is_none();
 
+                            println!("looking for {child:#?}: {no_parent}");
                             if no_parent {
                                 return Err(ValidateError::ForeignKeyViolation {
                                     name: name.unwrap(),
+                                    table: table_name.to_owned(),
+                                    column: column.to_owned(),
+                                    foreign_table: foreign_table.to_owned(),
+                                    referred_column: referred_column.to_owned(),
+                                }
+                                .into());
+                            }
+                        }
+                    }
+
+                    // without columns => match row index from column_defs
+                    if let Some(target_index) = column_defs
+                        .iter()
+                        .enumerate()
+                        .find(|(_, c)| c.name == column)
+                    {
+                        for row in rows.iter() {
+                            let child = row.get(target_index.0).unwrap();
+                            let no_parent = storage
+                                .fetch_data(&foreign_table, &Key::try_from(child)?)
+                                .await?
+                                .is_none();
+
+                            println!("looking for {child:#?}: {no_parent}");
+                            if no_parent {
+                                return Err(ValidateError::ForeignKeyViolation {
+                                    name: name.unwrap_or_default(),
                                     table: table_name.to_owned(),
                                     column: column.to_owned(),
                                     foreign_table: foreign_table.to_owned(),
