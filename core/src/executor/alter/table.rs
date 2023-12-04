@@ -159,15 +159,16 @@ pub async fn create_table<T: GStore + GStoreMut>(
                         .into());
                     }
 
-                    if target_column_def.nullable != foreign_column_def.nullable {
-                        return Err(AlterError::ForeignKeyNullableMismatch {
-                            column: column.to_owned(),
-                            foreign_column: referred_column.to_owned(),
-                        }
-                        .into());
-                    }
+                    // TODO: looks like no DBMS checks nullable compatibility
+                    // if target_column_def.nullable != foreign_column_def.nullable {
+                    //     return Err(AlterError::ForeignKeyNullableMismatch {
+                    //         column: column.to_owned(),
+                    //         foreign_column: referred_column.to_owned(),
+                    //     }
+                    //     .into());
+                    // }
 
-                    if target_column_def.unique.is_none() {
+                    if foreign_column_def.unique.is_none() {
                         return Err(AlterError::ReferredColumnNotUnique {
                             foreign_table: foreign_table.to_owned(),
                             referred_column: referred_column.to_owned(),

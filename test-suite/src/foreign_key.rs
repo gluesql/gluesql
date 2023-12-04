@@ -23,11 +23,10 @@ test_case!(foreign_key, {
     .await;
 
     g.named_test(
-        "Create table with foreign key should be failed if parent table does not have primary key",
+        "Create table with foreign key should be failed if parent table does not have primary key or unique",
         "
         CREATE TABLE Child (
-            id INT,
-            name TEXT,
+            id INT, name TEXT,
             parent_id INT,
             FOREIGN KEY(parent_id) REFERENCES ParentWithoutPK(id)
         );
@@ -40,32 +39,53 @@ test_case!(foreign_key, {
     )
     .await;
 
-    // g.run(
-    //     "
-    //     CREATE TABLE Parent (
-    //         id INTEGER PRIMARY KEY,
-    //         name TEXT,
-    //     );
-    // ",
-    // )
-    // .await;
+    g.run(
+        "
+        CREATE TABLE ParentWithUnique (
+            id INTEGER UNIQUE,
+            name TEXT,
+        );
+    ",
+    )
+    .await;
 
-    // // should be error if Parent does not have PK or unique
-    // g.run(
-    //     "
-    //     CREATE TABLE Child (
-    //         id INT,
-    //         name TEXT,
-    //         parent_id INT,
-    //         FOREIGN KEY(parent_id) REFERENCES Parent(id)
-    //     );
-    // ",
-    // )
-    // .await;
+    g.run(
+        "
+        CREATE TABLE ChildReferringUnique (
+            id INT,
+            name TEXT,
+            parent_id INT,
+            FOREIGN KEY(parent_id) REFERENCES ParentWithUnique(id)
+        );
+    ",
+    )
+    .await;
+
+    g.run(
+        "
+        CREATE TABLE ParentWithPK (
+            id INTEGER PRIMARY KEY,
+            name TEXT,
+        );
+    ",
+    )
+    .await;
+
+    g.run(
+        "
+        CREATE TABLE Child (
+            id INT,
+            name TEXT,
+            parent_id INT,
+            FOREIGN KEY(parent_id) REFERENCES ParentWithPK(id)
+        );
+    ",
+    )
+    .await;
 
     // g.named_test(
     //     "If there is no parent, insert should fail",
-    //     "INSERT INTO Child VALUES (1, 'foo', 1);",
+    //     "INSERT INTO Child VALUES (1, 'orphan', 1);",
     //     Err(ValidateError::ForeignKeyViolation {
     //         name: "aaa".to_owned(),
     //         table: "Child".to_owned(),
