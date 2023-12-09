@@ -1,24 +1,24 @@
 [workspace]
 resolver = "2"
 members = [
-	"cli",
-	"core",
-	"pkg/rust",
-	"pkg/javascript",
-	"pkg/python",
-	"storages/*",
-	"test-suite",
-	"utils",
+  "cli",
+  "core",
+  "pkg/rust",
+  "pkg/javascript",
+  "pkg/python",
+  "storages/*",
+  "test-suite",
+  "utils",
 ]
 default-members = [
-	"cli",
-	"core",
-	"pkg/rust",
-	"pkg/javascript",
-	"pkg/python",
-	"storages/*",
-	"test-suite",
-	"utils",
+  "cli",
+  "core",
+  "pkg/rust",
+  "pkg/javascript",
+  "pkg/python",
+  "storages/*",
+  "test-suite",
+  "utils",
 ]
 
 # ref. https://github.com/rustwasm/wasm-pack/issues/1111
@@ -48,4 +48,5 @@ composite-storage = { package = "gluesql-composite-storage", path = "./storages/
 web-storage = { package = "gluesql-web-storage", path = "./storages/web-storage", version = "0.15.0" }
 idb-storage = { package = "gluesql-idb-storage", path = "./storages/idb-storage", version = "0.15.0" }
 redis-storage = { package = "gluesql-redis-storage", path = "./storages/redis-storage", version = "0.15.0" }
+mongo-storage = { package = "gluesql-mongo-storage", path = "./storages/mongo-storage", version = "0.15.0" }
 utils = { package = "gluesql-utils", path = "./utils", version = "0.15.0" }
