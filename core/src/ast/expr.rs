@@ -77,7 +77,7 @@ pub enum Expr {
         leading_field: Option<DateTimeField>,
         last_field: Option<DateTimeField>,
     },
-    Array(Vec<Expr>)
+    Array{elem:Vec<Expr>}
 }
 
 impl ToSql for Expr {
@@ -667,7 +667,7 @@ mod tests {
         assert_eq!(
             r#"['GlueSQL','Rust']"#,
             Expr::Array {
-                elem: vec![
+                elem:vec![
                     Expr::Literal(AstLiteral::QuotedString("GlueSQL".to_owned())),
                     Expr::Literal(AstLiteral::QuotedString("Rust".to_owned()))
                 ]
