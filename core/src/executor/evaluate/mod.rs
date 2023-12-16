@@ -292,6 +292,10 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let indexes = try_join_all(indexes.iter().map(eval)).await?;
             expr::array_index(obj, indexes)
         }
+        Expr::Array{elem}=>{
+            let elem =  try_join_all(elem.iter().map(eval)).await?;
+            expr::array(elem)
+        }
         Expr::Interval {
             expr,
             leading_field,

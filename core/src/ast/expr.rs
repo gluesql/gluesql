@@ -240,7 +240,7 @@ impl Expr {
                     .join("");
                 format!("{obj}{indexes}")
             }
-            Expr::Array(elem)=>{
+            Expr::Array{elem}=>{
                 let elem = elem.iter().map(|e| format!("[{}]", e.to_sql_with(quoted))).collect::<Vec<_>>().join("");
                 format!("{elem}")
             }
