@@ -1,3 +1,5 @@
+use sqlparser::ast::Array;
+
 use {
     super::{
         ast_literal::{translate_ast_literal, translate_datetime_field},
@@ -167,6 +169,9 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             obj: translate_expr(obj).map(Box::new)?,
             indexes: indexes.iter().map(translate_expr).collect::<Result<_>>()?,
         }),
+        SqlExpr::Array(Array { elem, named }) => Ok(Expr::Array(
+            elem.iter().map(translate_expr).collect::<Result<_>>()?,
+        )),
         SqlExpr::Position { expr, r#in } => translate_position(expr, r#in),
         SqlExpr::Interval(SqlInterval {
             value,

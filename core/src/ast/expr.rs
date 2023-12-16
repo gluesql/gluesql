@@ -1,6 +1,6 @@
 use {
     super::{
-        Aggregate, AstLiteral, BinaryOperator, DataType, DateTimeField, Function, Query, ToSql,
+        Aggregate, AstLiteral, BinaryOperator, DataType, DateTimeField, Function, Query,ToSql,
         ToSqlUnquoted, UnaryOperator,
     },
     serde::{Deserialize, Serialize},
@@ -77,6 +77,7 @@ pub enum Expr {
         leading_field: Option<DateTimeField>,
         last_field: Option<DateTimeField>,
     },
+    Array(Vec<Expr>)
 }
 
 impl ToSql for Expr {
@@ -238,6 +239,10 @@ impl Expr {
                     .collect::<Vec<_>>()
                     .join("");
                 format!("{obj}{indexes}")
+            }
+            Expr::Array(elem)=>{
+                let elem = elem.iter().map(|e| format!("[{}]", e.to_sql_with(quoted))).collect::<Vec<_>>().join("");
+                format!("{elem}")
             }
             Expr::Subquery(query) => format!("({})", query.to_sql()),
             Expr::Interval {
@@ -657,6 +662,16 @@ mod tests {
                 ]
             }
             .to_sql()
+        );
+
+        assert_eq!(
+            r#"['GlueSQL','Rust']"#,
+            Expr::Array {
+                elem: vec![
+                    Expr::Literal(AstLiteral::QuotedString("GlueSQL".to_owned())),
+                    Expr::Literal(AstLiteral::QuotedString("Rust".to_owned()))
+                ]
+            }.to_sql()
         );
 
         assert_eq!(
