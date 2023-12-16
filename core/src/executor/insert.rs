@@ -198,6 +198,9 @@ async fn fetch_vec_rows<T: GStore>(
                     {
                         for row in rows.iter() {
                             let child = row.get(column_index).unwrap();
+                            if (child == &Value::Null) {
+                                continue;
+                            }
                             let no_parent = storage
                                 .fetch_data(&foreign_table, &Key::try_from(child)?)
                                 .await?
@@ -225,6 +228,9 @@ async fn fetch_vec_rows<T: GStore>(
                     {
                         for row in rows.iter() {
                             let child = row.get(target_index.0).unwrap();
+                            if (child == &Value::Null) {
+                                continue;
+                            }
                             let no_parent = storage
                                 .fetch_data(&foreign_table, &Key::try_from(child)?)
                                 .await?

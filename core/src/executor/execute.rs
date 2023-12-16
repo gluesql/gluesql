@@ -153,7 +153,11 @@ async fn execute_inner<T: GStore + GStoreMut>(
             selection,
             assignments,
         } => {
-            let Schema { column_defs, .. } = storage
+            let Schema {
+                column_defs,
+                constraints,
+                ..
+            } = storage
                 .fetch_schema(table_name)
                 .await?
                 .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;

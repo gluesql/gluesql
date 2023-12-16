@@ -97,17 +97,34 @@ test_case!(foreign_key, {
     )
     .await;
 
-    //     g.named_test(
-    //         "Even If there is no parent, NULL is fine",
-    //         "INSERT INTO Child VALUES (1, 'nullIsNotOrphan', NULL);",
-    //         Err(ValidateError::ForeignKeyViolation {
-    //             name: "a".to_owned(),
-    //             table: "Child".to_owned(),
-    //             column: "parent_id".to_owned(),
-    //             foreign_table: "ParentWithPK".to_owned(),
-    //             referred_column: "id".to_owned(),
-    //         }
-    //         .into()),
-    //     )
-    //     .await;
+    g.named_test(
+        "Even If there is no parent, NULL should be inserted",
+        "INSERT INTO Child VALUES (1, 'Null is independent', NULL);",
+        Ok(Payload::Insert(1)),
+    )
+    .await;
+
+    g.run("INSERT INTO ParentWithPK VALUES (1, 'parent1');")
+        .await;
+
+    g.named_test(
+        "With valid parent, insert should succeed",
+        "INSERT INTO Child VALUES (2, 'child with parent', 1);",
+        Ok(Payload::Insert(1)),
+    )
+    .await;
+
+    g.named_test(
+        "Even If there is no parent, it should be able to update to NULL",
+        "UPDATE Child SET parent_id = NULL WHERE id = 2;",
+        Ok(Payload::Update(1)),
+    )
+    .await;
+
+    g.named_test(
+        "With valid parent, insert should succeed",
+        "UPDATE Child SET parent_id = 2 WHERE id = 2;",
+        Ok(Payload::Update(1)),
+    )
+    .await;
 });
