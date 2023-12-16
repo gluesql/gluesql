@@ -86,11 +86,16 @@ impl<'a> Prebuild<Select> for SelectNode<'a> {
             columns: Vec::new(),
         });
 
+        let index = match self.table_node.index {
+            Some(index) => Some(index.prebuild()?),
+            None => None,
+        };
+
         let relation = match self.table_node.table_type {
             TableType::Table => TableFactor::Table {
                 name: self.table_node.table_name,
                 alias,
-                index: None,
+                index,
             },
             TableType::Dictionary(dict) => TableFactor::Dictionary {
                 dict,
@@ -130,6 +135,7 @@ pub fn select<'a>() -> SelectNode<'a> {
             table_name: "Series".to_owned(),
             table_type: TableType::Series(Expr::Literal(AstLiteral::Number(1.into())).into()),
             table_alias: None,
+            index: None,
         },
     }
 }

@@ -42,6 +42,7 @@ impl<'a> QueryNode<'a> {
                 alias: table_alias.to_owned(),
             },
             table_alias: None,
+            index: None,
         }
     }
 }

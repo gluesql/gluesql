@@ -18,14 +18,14 @@ test_case!(values, {
     .await;
 
     g.named_test(
-         "return all values from map by ascending order",
+         "return all values from map by descending order",
         r#"SELECT SORT(VALUES(data), 'DESC') as result FROM USER WHERE id=1"#,
         {
             Ok(select!(result; Value::List; vec![Value::I64(1), Value::Bool(false), Value::Str("alice".to_owned())]))
         }
     ).await;
     g.named_test(
-         "return all values from map by descending order",
+         "return all values from map by ascending order",
         r#"SELECT SORT(VALUES(data), 'ASC') as result FROM USER WHERE id=1"#,
         {
             Ok(select!(result; Value::List; vec![Value::Str("alice".to_owned()), Value::Bool(false), Value::I64(1)]))
@@ -44,7 +44,7 @@ test_case!(values, {
     )
     .await;
     g.named_test(
-        "return arguemnt type error",
+        "return argument type error",
         r#"SELECT VALUES(id) FROM USER WHERE id=1"#,
         Err(EvaluateError::MapTypeRequired.into()),
     )

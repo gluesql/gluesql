@@ -4,6 +4,7 @@ use {
         JsonStorage,
     },
     async_trait::async_trait,
+    futures::stream::iter,
     gluesql_core::{
         data::{Key, Schema},
         error::Result,
@@ -58,6 +59,8 @@ impl Store for JsonStorage {
     }
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
-        Ok(self.scan_data(table_name)?.0)
+        let rows = self.scan_data(table_name)?.0;
+
+        Ok(Box::pin(iter(rows)))
     }
 }

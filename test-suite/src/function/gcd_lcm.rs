@@ -147,6 +147,10 @@ test_case!(gcd_lcm, {
             "SELECT LCM(10000000019, 10000000033)",
             Err(ValueError::LcmResultOutOfRange.into()),
         ),
+        (
+            "SELECT gcd(1.0, 1);",
+            Err(EvaluateError::FunctionRequiresIntegerValue("GCD".to_owned()).into()),
+        ),
     ];
     for (sql, expected) in test_cases {
         g.test(sql, expected).await;

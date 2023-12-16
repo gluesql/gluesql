@@ -1,0 +1,26 @@
+[package]
+name = "gluesql-redis-storage"
+authors = [
+    "Gioh Kim <gurugio@gmail.com>",
+    "Taehoon Moon <taehoon.moon@outlook.com>",
+]
+version.workspace = true
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation.workspace = true
+
+[dependencies]
+gluesql-core.workspace = true
+async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
+redis = "0.23.3"
+serde_json = "1.0.105"
+chrono = { version = "0.4.31", features = ["serde", "wasmbind"] }
+futures = "0.3"
+
+[dev-dependencies]
+test-suite.workspace = true
+tokio = { version = "1", features = ["rt", "macros"] }
+toml = "0.8.6"

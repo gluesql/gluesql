@@ -1,128 +1,189 @@
 use {
     super::{EvaluateError, Evaluated},
     crate::{
-        ast::{DataType, DateTimeField},
+        ast::DateTimeField,
         data::{Key, Point, Value, ValueError},
         result::{Error, Result},
     },
     chrono::{Datelike, Duration, Months},
     md5::{Digest, Md5},
     rand::{rngs::StdRng, Rng, SeedableRng},
-    std::ops::ControlFlow,
+    std::ops::ControlFlow::{self as StdControlFlow, Break, Continue},
     uuid::Uuid,
 };
 
-macro_rules! eval_to_str {
-    ($name: expr, $evaluated: expr) => {
-        match $evaluated.try_into()? {
-            Value::Str(value) => value,
-            Value::Null => {
-                return Ok(Evaluated::Value(Value::Null));
-            }
-            _ => {
-                return Err(EvaluateError::FunctionRequiresStringValue($name).into());
-            }
-        }
-    };
+type ControlFlow<T> = std::ops::ControlFlow<BreakCase, T>;
+
+pub enum BreakCase {
+    Null,
+    Err(Error),
 }
 
-macro_rules! eval_to_int {
-    ($name: expr, $evaluated: expr) => {
-        match $evaluated.try_into()? {
-            Value::I64(num) => num,
-            Value::Null => {
-                return Ok(Evaluated::Value(Value::Null));
-            }
-            _ => {
-                return Err(EvaluateError::FunctionRequiresIntegerValue($name).into());
-            }
-        }
-    };
+trait ContinueOrBreak<T> {
+    fn continue_or_break(self, err: Error) -> ControlFlow<T>;
 }
 
-macro_rules! eval_to_float {
-    ($name: expr, $evaluated: expr) => {
-        match $evaluated.try_into()? {
-            Value::I64(v) => v as f64,
-            Value::F32(v) => v.into(),
-            Value::F64(v) => v,
-            Value::Null => {
-                return Ok(Evaluated::Value(Value::Null));
-            }
-            _ => {
-                return Err(EvaluateError::FunctionRequiresFloatValue($name).into());
-            }
+impl<T> ContinueOrBreak<T> for Option<T> {
+    fn continue_or_break(self, err: Error) -> ControlFlow<T> {
+        match self {
+            Some(v) => Continue(v),
+            None => Break(BreakCase::Err(err)),
         }
-    };
+    }
 }
 
-macro_rules! eval_to_point {
-    ($name: expr, $evaluated: expr) => {
-        match $evaluated.try_into()? {
-            Value::Point(v) => v,
-            Value::Null => {
-                return Ok(Evaluated::Value(Value::Null));
-            }
-            _ => {
-                return Err(EvaluateError::FunctionRequiresPointValue($name).into());
-            }
+trait BreakIfNull<T> {
+    fn break_if_null(self) -> ControlFlow<T>;
+}
+
+impl<'a> BreakIfNull<Evaluated<'a>> for Result<Evaluated<'a>> {
+    fn break_if_null(self) -> ControlFlow<Evaluated<'a>> {
+        match self {
+            Err(err) => Break(BreakCase::Err(err)),
+            Ok(value) if value.is_null() => Break(BreakCase::Null),
+            Ok(value) => Continue(value),
         }
-    };
+    }
+}
+
+impl BreakIfNull<Value> for Result<Value> {
+    fn break_if_null(self) -> ControlFlow<Value> {
+        match self {
+            Err(err) => Break(BreakCase::Err(err)),
+            Ok(value) if value.is_null() => Break(BreakCase::Null),
+            Ok(value) => Continue(value),
+        }
+    }
+}
+
+trait ControlFlowMap<T, U, F> {
+    fn map(self, f: F) -> ControlFlow<U>
+    where
+        F: FnOnce(T) -> U;
+}
+
+impl<T, U, F> ControlFlowMap<T, U, F> for ControlFlow<T> {
+    fn map(self, f: F) -> ControlFlow<U>
+    where
+        F: FnOnce(T) -> U,
+    {
+        match self {
+            Continue(v) => Continue(f(v)),
+            Break(v) => Break(v),
+        }
+    }
+}
+
+trait ControlFlowMapErr<T, F> {
+    fn map_err(self, f: F) -> ControlFlow<T>
+    where
+        F: FnOnce(Error) -> Error;
+}
+
+impl<T, F> ControlFlowMapErr<T, F> for ControlFlow<T> {
+    fn map_err(self, f: F) -> ControlFlow<T>
+    where
+        F: FnOnce(Error) -> Error,
+    {
+        match self {
+            Continue(v) => Continue(v),
+            Break(BreakCase::Null) => Break(BreakCase::Null),
+            Break(BreakCase::Err(err)) => Break(BreakCase::Err(f(err))),
+        }
+    }
+}
+
+pub trait IntoControlFlow<T> {
+    fn into_control_flow(self) -> ControlFlow<T>;
+}
+
+impl<T> IntoControlFlow<T> for Result<T> {
+    fn into_control_flow(self) -> ControlFlow<T> {
+        match self {
+            Err(err) => Break(BreakCase::Err(err)),
+            Ok(value) => Continue(value),
+        }
+    }
+}
+
+fn eval_to_str(name: &str, evaluated: Evaluated<'_>) -> ControlFlow<String> {
+    match evaluated.try_into().break_if_null()? {
+        Value::Str(value) => Continue(value),
+        _ => Break(BreakCase::Err(
+            EvaluateError::FunctionRequiresStringValue(name.to_owned()).into(),
+        )),
+    }
+}
+
+fn eval_to_int(name: &str, evaluated: Evaluated<'_>) -> ControlFlow<i64> {
+    match evaluated.try_into().break_if_null()? {
+        Value::I64(num) => Continue(num),
+        _ => Break(BreakCase::Err(
+            EvaluateError::FunctionRequiresIntegerValue(name.to_owned()).into(),
+        )),
+    }
+}
+
+fn eval_to_float(name: &str, evaluated: Evaluated<'_>) -> ControlFlow<f64> {
+    match evaluated.try_into().break_if_null()? {
+        Value::I64(v) => Continue(v as f64),
+        Value::F32(v) => Continue(v.into()),
+        Value::F64(v) => Continue(v),
+        _ => Break(BreakCase::Err(
+            EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into(),
+        )),
+    }
+}
+
+fn eval_to_point(name: &str, evaluated: Evaluated<'_>) -> ControlFlow<Point> {
+    match evaluated.try_into().break_if_null()? {
+        Value::Point(v) => Continue(v),
+        _ => Break(BreakCase::Err(
+            EvaluateError::FunctionRequiresPointValue(name.to_owned()).into(),
+        )),
+    }
 }
 
 // --- text ---
+pub fn concat(exprs: Vec<Evaluated<'_>>) -> ControlFlow<Evaluated> {
+    let value = exprs
+        .into_iter()
+        .try_fold(None, |left: Option<Evaluated>, right| match left {
+            None => Continue(Some(right)),
+            Some(left) => left.concat(right).break_if_null().map(Some),
+        })?;
 
-pub fn concat(exprs: Vec<Evaluated<'_>>) -> Result<Evaluated> {
-    enum BreakCase {
-        Null,
-        Err(crate::result::Error),
-    }
-
-    let control_flow = exprs.into_iter().map(|expr| expr.try_into()).try_fold(
-        None,
-        |left: Option<Value>, right: Result<Value>| match (left, right) {
-            (_, Ok(value)) if value.is_null() => ControlFlow::Break(BreakCase::Null),
-            (_, Err(err)) => ControlFlow::Break(BreakCase::Err(err)),
-            (Some(left), Ok(value)) => ControlFlow::Continue(Some(left.concat(value))),
-            (None, Ok(value)) => ControlFlow::Continue(Some(value)),
-        },
-    );
-
-    match control_flow {
-        ControlFlow::Continue(Some(value)) => Ok(Evaluated::Value(value)),
-        ControlFlow::Continue(None) => Err(ValueError::EmptyArgNotAllowedInConcat.into()),
-        ControlFlow::Break(BreakCase::Null) => Ok(Evaluated::Value(Value::Null)),
-        ControlFlow::Break(BreakCase::Err(err)) => Err(err),
-    }
+    value.continue_or_break(ValueError::EmptyArgNotAllowedInConcat.into())
 }
 
 pub fn concat_ws<'a>(
     name: String,
     separator: Evaluated<'a>,
     exprs: Vec<Evaluated<'a>>,
-) -> Result<Evaluated<'a>> {
-    let separator = eval_to_str!(name, separator);
+) -> ControlFlow<Evaluated<'a>> {
+    let separator = eval_to_str(&name, separator)?;
 
     let result = exprs
         .into_iter()
         .map(Value::try_from)
         .filter(|value| !matches!(value, Ok(Value::Null)))
         .map(|value| Ok(String::from(value?)))
-        .collect::<Result<Vec<_>>>()?
+        .collect::<Result<Vec<_>>>()
+        .into_control_flow()?
         .join(&separator);
 
-    Ok(Evaluated::Value(Value::Str(result)))
+    Continue(Evaluated::Value(Value::Str(result)))
 }
 
-pub fn lower(name: String, expr: Evaluated<'_>) -> Result<Evaluated> {
-    Ok(Evaluated::Value(Value::Str(
-        eval_to_str!(name, expr).to_lowercase(),
-    )))
+pub fn lower(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'_>> {
+    eval_to_str(&name, expr)
+        .map(|value| value.to_lowercase())
+        .map(Value::Str)
+        .map(Evaluated::Value)
 }
 
-pub fn initcap(name: String, expr: Evaluated<'_>) -> Result<Evaluated> {
-    let string = eval_to_str!(name, expr);
-    let string = string
+pub fn initcap(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'_>> {
+    let string = eval_to_str(&name, expr)?
         .chars()
         .scan(true, |state, c| {
             let c = if *state {
@@ -134,31 +195,27 @@ pub fn initcap(name: String, expr: Evaluated<'_>) -> Result<Evaluated> {
             Some(c)
         })
         .collect();
-    Ok(Evaluated::Value(Value::Str(string)))
+
+    Continue(Evaluated::Value(Value::Str(string)))
 }
 
-pub fn upper(name: String, expr: Evaluated<'_>) -> Result<Evaluated> {
-    Ok(Evaluated::Value(Value::Str(
-        eval_to_str!(name, expr).to_uppercase(),
-    )))
+pub fn upper(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'_>> {
+    eval_to_str(&name, expr)
+        .map(|value| value.to_uppercase())
+        .map(Value::Str)
+        .map(Evaluated::Value)
 }
 
 pub fn left_or_right<'a>(
     name: String,
     expr: Evaluated<'_>,
     size: Evaluated<'_>,
-) -> Result<Evaluated<'a>> {
-    let string = eval_to_str!(name, expr);
-    let size = match size.try_into()? {
-        Value::I64(number) => usize::try_from(number)
-            .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.clone()))?,
-        Value::Null => {
-            return Ok(Evaluated::Value(Value::Null));
-        }
-        _ => {
-            return Err(EvaluateError::FunctionRequiresIntegerValue(name).into());
-        }
-    };
+) -> ControlFlow<Evaluated<'a>> {
+    let string = eval_to_str(&name, expr)?;
+    let size = eval_to_int(&name, size)
+        .map(usize::try_from)?
+        .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.clone()).into())
+        .into_control_flow()?;
 
     let converted = if name == "LEFT" {
         string.get(..size).map(|v| v.to_owned()).unwrap_or(string)
@@ -175,7 +232,7 @@ pub fn left_or_right<'a>(
             .unwrap_or(string)
     };
 
-    Ok(Evaluated::Value(Value::Str(converted)))
+    Continue(Evaluated::Value(Value::Str(converted)))
 }
 
 pub fn lpad_or_rpad<'a>(
@@ -183,21 +240,15 @@ pub fn lpad_or_rpad<'a>(
     expr: Evaluated<'_>,
     size: Evaluated<'_>,
     fill: Option<Evaluated<'_>>,
-) -> Result<Evaluated<'a>> {
-    let string = eval_to_str!(name, expr);
-    let size = match size.try_into()? {
-        Value::I64(number) => usize::try_from(number)
-            .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.clone()))?,
-        Value::Null => {
-            return Ok(Evaluated::Value(Value::Null));
-        }
-        _ => {
-            return Err(EvaluateError::FunctionRequiresIntegerValue(name).into());
-        }
-    };
+) -> ControlFlow<Evaluated<'a>> {
+    let string = eval_to_str(&name, expr)?;
+    let size = eval_to_int(&name, size)
+        .map(usize::try_from)?
+        .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.clone()).into())
+        .into_control_flow()?;
 
     let fill = match fill {
-        Some(expr) => eval_to_str!(name, expr),
+        Some(expr) => eval_to_str(&name, expr)?,
         None => " ".to_owned(),
     };
 
@@ -216,21 +267,25 @@ pub fn lpad_or_rpad<'a>(
         string[0..size].to_owned()
     };
 
-    Ok(Evaluated::Value(Value::Str(result)))
+    Continue(Evaluated::Value(Value::Str(result)))
 }
 
-pub fn reverse(name: String, expr: Evaluated<'_>) -> Result<Evaluated> {
-    let value = eval_to_str!(name, expr).chars().rev().collect::<String>();
+pub fn reverse(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'_>> {
+    let value = eval_to_str(&name, expr)?.chars().rev().collect::<String>();
 
-    Ok(Evaluated::Value(Value::Str(value)))
+    Continue(Evaluated::Value(Value::Str(value)))
 }
 
-pub fn repeat<'a>(name: String, expr: Evaluated<'_>, num: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    let expr = eval_to_str!(name, expr);
-    let num = eval_to_int!(name, num) as usize;
+pub fn repeat<'a>(
+    name: String,
+    expr: Evaluated<'_>,
+    num: Evaluated<'_>,
+) -> ControlFlow<Evaluated<'a>> {
+    let expr = eval_to_str(&name, expr)?;
+    let num = eval_to_int(&name, num)? as usize;
     let value = expr.repeat(num);
 
-    Ok(Evaluated::Value(Value::Str(value)))
+    Continue(Evaluated::Value(Value::Str(value)))
 }
 
 pub fn replace<'a>(
@@ -238,178 +293,188 @@ pub fn replace<'a>(
     expr: Evaluated<'_>,
     old: Evaluated<'_>,
     new: Evaluated<'_>,
-) -> Result<Evaluated<'a>> {
-    let expr = eval_to_str!(name, expr);
-    let old = eval_to_str!(name, old);
-    let new = eval_to_str!(name, new);
+) -> ControlFlow<Evaluated<'a>> {
+    let expr = eval_to_str(&name, expr)?;
+    let old = eval_to_str(&name, old)?;
+    let new = eval_to_str(&name, new)?;
     let value = expr.replace(&old, &new);
-    Ok(Evaluated::Value(Value::Str(value)))
+
+    Continue(Evaluated::Value(Value::Str(value)))
 }
 
-pub fn ascii<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    let string = eval_to_str!(name, expr);
+pub fn ascii<'a>(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    let string = eval_to_str(&name, expr)?;
     let mut iter = string.chars();
 
     match (iter.next(), iter.next()) {
         (Some(c), None) => {
             if c.is_ascii() {
-                Ok(Evaluated::Value(Value::U8(c as u8)))
+                Continue(Evaluated::Value(Value::U8(c as u8)))
             } else {
-                Err(EvaluateError::NonAsciiCharacterNotAllowed.into())
+                Err(EvaluateError::NonAsciiCharacterNotAllowed.into()).into_control_flow()
             }
         }
-        _ => Err(EvaluateError::AsciiFunctionRequiresSingleCharacterValue.into()),
+        _ => {
+            Err(EvaluateError::AsciiFunctionRequiresSingleCharacterValue.into()).into_control_flow()
+        }
     }
 }
 
-pub fn chr<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    let expr = eval_to_int!(name, expr);
+pub fn chr<'a>(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    let expr = eval_to_int(&name, expr)?;
 
     match expr {
         0..=255 => {
             let expr = expr as u8;
-            Ok(Evaluated::Value(Value::Str((expr as char).to_string())))
+
+            Continue(Evaluated::Value(Value::Str((expr as char).to_string())))
         }
-        _ => Err(EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255.into()),
+        _ => Err(EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255.into())
+            .into_control_flow(),
     }
 }
 
-pub fn md5<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    let string = eval_to_str!(name, expr);
+pub fn md5<'a>(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    let string = eval_to_str(&name, expr)?;
     let mut hasher = Md5::new();
     hasher.update(string.as_bytes());
     let result = hasher.finalize();
     let result = format!("{:x}", result);
 
-    Ok(Evaluated::Value(Value::Str(result)))
+    Continue(Evaluated::Value(Value::Str(result)))
 }
 
 // --- float ---
 
-pub fn abs<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    match n.try_into()? {
-        Value::I8(v) => Ok(Evaluated::Value(Value::I8(v.abs()))),
-        Value::I32(v) => Ok(Evaluated::Value(Value::I32(v.abs()))),
-        Value::I64(v) => Ok(Evaluated::Value(Value::I64(v.abs()))),
-        Value::I128(v) => Ok(Evaluated::Value(Value::I128(v.abs()))),
-        Value::Decimal(v) => Ok(Evaluated::Value(Value::Decimal(v.abs()))),
-        Value::F32(v) => Ok(Evaluated::Value(Value::F32(v.abs()))),
-        Value::F64(v) => Ok(Evaluated::Value(Value::F64(v.abs()))),
-        Value::Null => Ok(Evaluated::Value(Value::Null)),
-        _ => Err(EvaluateError::FunctionRequiresFloatValue(name).into()),
-    }
+pub fn abs<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    let value = match n.try_into().break_if_null()? {
+        Value::I8(v) => Value::I8(v.abs()),
+        Value::I32(v) => Value::I32(v.abs()),
+        Value::I64(v) => Value::I64(v.abs()),
+        Value::I128(v) => Value::I128(v.abs()),
+        Value::Decimal(v) => Value::Decimal(v.abs()),
+        Value::F32(v) => Value::F32(v.abs()),
+        Value::F64(v) => Value::F64(v.abs()),
+        _ => {
+            return Err(EvaluateError::FunctionRequiresFloatValue(name).into()).into_control_flow()
+        }
+    };
+
+    Continue(Evaluated::Value(value))
 }
 
-pub fn ifnull<'a>(expr: Evaluated<'a>, then: Evaluated<'a>) -> Result<Evaluated<'a>> {
-    Ok(match expr.is_null() {
+pub fn ifnull<'a>(expr: Evaluated<'a>, then: Evaluated<'a>) -> ControlFlow<Evaluated<'a>> {
+    Continue(match expr.is_null() {
         true => then,
         false => expr,
     })
 }
 
-pub fn sign(name: String, n: Evaluated<'_>) -> Result<Evaluated> {
-    let x = eval_to_float!(name, n);
+pub fn sign(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'_>> {
+    let x = eval_to_float(&name, n)?;
     if x == 0.0 {
-        return Ok(Evaluated::Value(Value::I8(0)));
+        return Continue(Evaluated::Value(Value::I8(0)));
     }
-    Ok(Evaluated::Value(Value::I8(x.signum() as i8)))
+
+    Continue(Evaluated::Value(Value::I8(x.signum() as i8)))
 }
 
-pub fn sqrt<'a>(n: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    Ok(Evaluated::Value(Value::sqrt(&n.try_into()?)?))
+pub fn sqrt<'a>(n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    Value::try_from(n)
+        .and_then(|v| v.sqrt())
+        .into_control_flow()
+        .map(Evaluated::Value)
 }
 
-pub fn power<'a>(name: String, expr: Evaluated<'_>, power: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    let expr = eval_to_float!(name, expr);
-    let power = eval_to_float!(name, power);
+pub fn power<'a>(
+    name: String,
+    expr: Evaluated<'_>,
+    power: Evaluated<'_>,
+) -> ControlFlow<Evaluated<'a>> {
+    let expr = eval_to_float(&name, expr)?;
+    let power = eval_to_float(&name, power)?;
 
-    Ok(Evaluated::Value(Value::F64(expr.powf(power))))
+    Continue(Evaluated::Value(Value::F64(expr.powf(power))))
 }
 
-pub fn ceil<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    Ok(Evaluated::Value(Value::F64(eval_to_float!(name, n).ceil())))
+pub fn ceil<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    eval_to_float(&name, n).map(|n| Evaluated::Value(Value::F64(n.ceil())))
 }
 
-pub fn rand<'a>(name: String, seed: Option<Evaluated<'_>>) -> Result<Evaluated<'a>> {
+pub fn rand<'a>(name: String, seed: Option<Evaluated<'_>>) -> ControlFlow<Evaluated<'a>> {
     let seed = if let Some(v) = seed {
-        StdRng::seed_from_u64(eval_to_float!(name, v) as u64).gen()
+        StdRng::seed_from_u64(eval_to_float(&name, v)? as u64).gen()
     } else {
         rand::random()
     };
-    Ok(Evaluated::Value(Value::F64(seed)))
+    Continue(Evaluated::Value(Value::F64(seed)))
 }
 
-pub fn round<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    Ok(Evaluated::Value(Value::F64(
-        eval_to_float!(name, n).round(),
-    )))
+pub fn round<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    eval_to_float(&name, n).map(|n| Evaluated::Value(Value::F64(n.round())))
 }
 
-pub fn floor<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    Ok(Evaluated::Value(Value::F64(
-        eval_to_float!(name, n).floor(),
-    )))
+pub fn floor<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    eval_to_float(&name, n).map(|n| Evaluated::Value(Value::F64(n.floor())))
 }
 
-pub fn radians<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    Ok(Evaluated::Value(Value::F64(
-        eval_to_float!(name, n).to_radians(),
-    )))
+pub fn radians<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    eval_to_float(&name, n).map(|n| Evaluated::Value(Value::F64(n.to_radians())))
 }
 
-pub fn degrees<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    Ok(Evaluated::Value(Value::F64(
-        eval_to_float!(name, n).to_degrees(),
-    )))
+pub fn degrees<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    eval_to_float(&name, n).map(|n| Evaluated::Value(Value::F64(n.to_degrees())))
 }
 
-pub fn exp<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    Ok(Evaluated::Value(Value::F64(eval_to_float!(name, n).exp())))
+pub fn exp<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    eval_to_float(&name, n).map(|n| Evaluated::Value(Value::F64(n.exp())))
 }
 
-pub fn log<'a>(name: String, antilog: Evaluated<'_>, base: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    let antilog = eval_to_float!(name, antilog);
-    let base = eval_to_float!(name, base);
+pub fn log<'a>(
+    name: String,
+    antilog: Evaluated<'_>,
+    base: Evaluated<'_>,
+) -> ControlFlow<Evaluated<'a>> {
+    let antilog = eval_to_float(&name, antilog)?;
+    let base = eval_to_float(&name, base)?;
 
-    Ok(Evaluated::Value(Value::F64(antilog.log(base))))
+    Continue(Evaluated::Value(Value::F64(antilog.log(base))))
 }
 
-pub fn ln<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    Ok(Evaluated::Value(Value::F64(eval_to_float!(name, n).ln())))
+pub fn ln<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    eval_to_float(&name, n).map(|n| Evaluated::Value(Value::F64(n.ln())))
 }
 
-pub fn log2<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    Ok(Evaluated::Value(Value::F64(eval_to_float!(name, n).log2())))
+pub fn log2<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    eval_to_float(&name, n).map(|n| Evaluated::Value(Value::F64(n.log2())))
 }
 
-pub fn log10<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    Ok(Evaluated::Value(Value::F64(
-        eval_to_float!(name, n).log10(),
-    )))
+pub fn log10<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    eval_to_float(&name, n).map(|n| Evaluated::Value(Value::F64(n.log10())))
 }
 
-pub fn sin<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    Ok(Evaluated::Value(Value::F64(eval_to_float!(name, n).sin())))
+pub fn sin<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    eval_to_float(&name, n).map(|n| Evaluated::Value(Value::F64(n.sin())))
 }
 
-pub fn cos<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    Ok(Evaluated::Value(Value::F64(eval_to_float!(name, n).cos())))
+pub fn cos<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    eval_to_float(&name, n).map(|n| Evaluated::Value(Value::F64(n.cos())))
 }
 
-pub fn tan<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    Ok(Evaluated::Value(Value::F64(eval_to_float!(name, n).tan())))
+pub fn tan<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    eval_to_float(&name, n).map(|n| Evaluated::Value(Value::F64(n.tan())))
 }
 
-pub fn asin<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    Ok(Evaluated::Value(Value::F64(eval_to_float!(name, n).asin())))
+pub fn asin<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    eval_to_float(&name, n).map(|n| Evaluated::Value(Value::F64(n.asin())))
 }
 
-pub fn acos<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    Ok(Evaluated::Value(Value::F64(eval_to_float!(name, n).acos())))
+pub fn acos<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    eval_to_float(&name, n).map(|n| Evaluated::Value(Value::F64(n.acos())))
 }
 
-pub fn atan<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    Ok(Evaluated::Value(Value::F64(eval_to_float!(name, n).atan())))
+pub fn atan<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    eval_to_float(&name, n).map(|n| Evaluated::Value(Value::F64(n.atan())))
 }
 
 // --- integer ---
@@ -418,55 +483,39 @@ pub fn div<'a>(
     name: String,
     dividend: Evaluated<'_>,
     divisor: Evaluated<'_>,
-) -> Result<Evaluated<'a>> {
-    let dividend = match dividend.try_into()? {
-        Value::F32(number) => number as f64,
-        Value::F64(number) => number,
-        Value::I64(number) => number as f64,
-        Value::Null => {
-            return Ok(Evaluated::Value(Value::Null));
-        }
-        _ => {
-            return Err(EvaluateError::FunctionRequiresFloatOrIntegerValue(name).into());
-        }
-    };
+) -> ControlFlow<Evaluated<'a>> {
+    let dividend = eval_to_float(&name, dividend)
+        .map_err(|_| EvaluateError::FunctionRequiresFloatOrIntegerValue(name.clone()).into())?;
+    let divisor = eval_to_float(&name, divisor)
+        .map_err(|_| EvaluateError::FunctionRequiresFloatOrIntegerValue(name.clone()).into())?;
 
-    let divisor = match divisor.try_into()? {
-        Value::F32(number) => match number {
-            x if x == 0.0 => return Err(EvaluateError::DivisorShouldNotBeZero.into()),
-            _ => number as f64,
-        },
-        Value::F64(number) => match number {
-            x if x == 0.0 => return Err(EvaluateError::DivisorShouldNotBeZero.into()),
-            _ => number,
-        },
-        Value::I64(number) => match number {
-            0 => return Err(EvaluateError::DivisorShouldNotBeZero.into()),
-            _ => number as f64,
-        },
-        Value::Null => {
-            return Ok(Evaluated::Value(Value::Null));
-        }
-        _ => {
-            return Err(EvaluateError::FunctionRequiresFloatOrIntegerValue(name).into());
-        }
-    };
+    if divisor == 0.0 {
+        return Err(EvaluateError::DivisorShouldNotBeZero.into()).into_control_flow();
+    }
 
-    Ok(Evaluated::Value(Value::I64((dividend / divisor) as i64)))
+    Continue(Evaluated::Value(Value::I64((dividend / divisor) as i64)))
 }
 
-pub fn gcd<'a>(name: String, left: Evaluated<'_>, right: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    let left = eval_to_int!(name, left);
-    let right = eval_to_int!(name, right);
+pub fn gcd<'a>(
+    name: String,
+    left: Evaluated<'_>,
+    right: Evaluated<'_>,
+) -> ControlFlow<Evaluated<'a>> {
+    let left = eval_to_int(&name, left)?;
+    let right = eval_to_int(&name, right)?;
 
-    Ok(Evaluated::Value(Value::I64(gcd_i64(left, right)?)))
+    gcd_i64(left, right).map(|gcd| Evaluated::Value(Value::I64(gcd)))
 }
 
-pub fn lcm<'a>(name: String, left: Evaluated<'_>, right: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    let left = eval_to_int!(name, left);
-    let right = eval_to_int!(name, right);
+pub fn lcm<'a>(
+    name: String,
+    left: Evaluated<'_>,
+    right: Evaluated<'_>,
+) -> ControlFlow<Evaluated<'a>> {
+    let left = eval_to_int(&name, left)?;
+    let right = eval_to_int(&name, right)?;
 
-    fn lcm(a: i64, b: i64) -> Result<i64> {
+    fn lcm(a: i64, b: i64) -> ControlFlow<i64> {
         let gcd_val: i128 = gcd_i64(a, b)?.into();
 
         let a: i128 = a.into();
@@ -476,80 +525,81 @@ pub fn lcm<'a>(name: String, left: Evaluated<'_>, right: Evaluated<'_>) -> Resul
         // lcm(a, b) = 0                        if gcd(a, b) == 0
         let result = (a * b).abs().checked_div(gcd_val).unwrap_or(0);
 
-        i64::try_from(result).map_err(|_| Error::Value(ValueError::LcmResultOutOfRange))
+        i64::try_from(result)
+            .map_err(|_| Error::Value(ValueError::LcmResultOutOfRange))
+            .into_control_flow()
     }
 
-    Ok(Evaluated::Value(Value::I64(lcm(left, right)?)))
+    lcm(left, right).map(|lcm| Evaluated::Value(Value::I64(lcm)))
 }
 
-fn gcd_i64(a: i64, b: i64) -> Result<i64> {
+fn gcd_i64(a: i64, b: i64) -> ControlFlow<i64> {
     let mut a = a
         .checked_abs()
-        .ok_or(Error::Value(ValueError::GcdLcmOverflow(a)))?;
+        .continue_or_break(ValueError::GcdLcmOverflow(a).into())?;
     let mut b = b
         .checked_abs()
-        .ok_or(Error::Value(ValueError::GcdLcmOverflow(b)))?;
+        .continue_or_break(ValueError::GcdLcmOverflow(b).into())?;
 
     while b > 0 {
         (a, b) = (b, a % b);
     }
 
-    Ok(a)
+    Continue(a)
 }
 
 // --- list ---
-pub fn append<'a>(expr: Evaluated<'_>, value: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    let expr: Value = expr.try_into()?;
-    let value: Value = value.try_into()?;
+pub fn append<'a>(expr: Evaluated<'_>, value: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    let expr = expr.try_into().break_if_null()?;
+    let value = value.try_into().break_if_null()?;
 
     match (expr, value) {
         (Value::List(mut l), v) => {
             l.push(v);
-            Ok(Evaluated::Value(Value::List(l)))
+            Continue(Evaluated::Value(Value::List(l)))
         }
-        _ => Err(EvaluateError::ListTypeRequired.into()),
+        _ => Err(EvaluateError::ListTypeRequired.into()).into_control_flow(),
     }
 }
 
-pub fn prepend<'a>(expr: Evaluated<'_>, value: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    let expr: Value = expr.try_into()?;
-    let value: Value = value.try_into()?;
+pub fn prepend<'a>(expr: Evaluated<'_>, value: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    let expr = expr.try_into().break_if_null()?;
+    let value = value.try_into().break_if_null()?;
 
     match (expr, value) {
         (Value::List(mut l), v) => {
             l.insert(0, v);
-            Ok(Evaluated::Value(Value::List(l)))
+            Continue(Evaluated::Value(Value::List(l)))
         }
-        _ => Err(EvaluateError::ListTypeRequired.into()),
+        _ => Err(EvaluateError::ListTypeRequired.into()).into_control_flow(),
     }
 }
 
-pub fn skip<'a>(name: String, expr: Evaluated<'_>, size: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    if expr.is_null() || size.is_null() {
-        return Ok(Evaluated::Value(Value::Null));
+pub fn skip<'a>(
+    name: String,
+    expr: Evaluated<'_>,
+    size: Evaluated<'_>,
+) -> ControlFlow<Evaluated<'a>> {
+    let expr = expr.try_into().break_if_null()?;
+    let size: usize = match size.try_into().break_if_null()? {
+        Value::I64(number) => usize::try_from(number)
+            .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name).into()),
+        _ => Err(EvaluateError::FunctionRequiresIntegerValue(name).into()),
     }
-    let expr: Value = expr.try_into()?;
-    let size: usize = match size.try_into()? {
-        Value::I64(number) => {
-            usize::try_from(number).map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name))?
-        }
-        _ => {
-            return Err(EvaluateError::FunctionRequiresIntegerValue(name).into());
-        }
-    };
+    .into_control_flow()?;
 
     match expr {
         Value::List(l) => {
             let l = l.into_iter().skip(size).collect();
-            Ok(Evaluated::Value(Value::List(l)))
+            Continue(Evaluated::Value(Value::List(l)))
         }
-        _ => Err(EvaluateError::ListTypeRequired.into()),
+        _ => Err(EvaluateError::ListTypeRequired.into()).into_control_flow(),
     }
 }
 
-pub fn sort<'a>(expr: Evaluated<'_>, order: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    let expr: Value = expr.try_into()?;
-    let order: Value = order.try_into()?;
+pub fn sort<'a>(expr: Evaluated<'_>, order: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    let expr = expr.try_into().break_if_null()?;
+    let order = order.try_into().break_if_null()?;
 
     match expr {
         Value::List(l) => {
@@ -557,26 +607,27 @@ pub fn sort<'a>(expr: Evaluated<'_>, order: Evaluated<'_>) -> Result<Evaluated<'
                 .into_iter()
                 .map(|v| match Key::try_from(&v) {
                     Ok(key) => Ok((key, v)),
-                    Err(_) => Err(EvaluateError::InvalidSortType),
+                    Err(_) => Err(EvaluateError::InvalidSortType.into()),
                 })
-                .collect::<Result<Vec<(Key, Value)>, EvaluateError>>()?;
+                .collect::<Result<Vec<(Key, Value)>>>()
+                .into_control_flow()?;
 
             let asc = match order {
                 Value::Str(s) => match s.to_uppercase().as_str() {
                     "ASC" => true,
                     "DESC" => false,
-                    _ => return Err(EvaluateError::InvalidSortOrder.into()),
+                    _ => return Err(EvaluateError::InvalidSortOrder.into()).into_control_flow(),
                 },
-                _ => return Err(EvaluateError::InvalidSortOrder.into()),
+                _ => return Err(EvaluateError::InvalidSortOrder.into()).into_control_flow(),
             };
 
             l.sort_by(|a, b| if asc { a.0.cmp(&b.0) } else { b.0.cmp(&a.0) });
 
-            Ok(Evaluated::Value(Value::List(
+            Continue(Evaluated::Value(Value::List(
                 l.into_iter().map(|(_, v)| v).collect(),
             )))
         }
-        _ => Err(EvaluateError::ListTypeRequired.into()),
+        _ => Err(EvaluateError::ListTypeRequired.into()).into_control_flow(),
     }
 }
 
@@ -585,17 +636,14 @@ pub fn slice<'a>(
     expr: Evaluated<'_>,
     start: Evaluated<'_>,
     length: Evaluated<'_>,
-) -> Result<Evaluated<'a>> {
-    let expr: Value = expr.try_into()?;
-    let mut start = eval_to_int!(name, start);
-    let length = match length.try_into()? {
-        Value::I64(number) => {
-            usize::try_from(number).map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name))?
-        }
-        _ => {
-            return Err(EvaluateError::FunctionRequiresIntegerValue(name).into());
-        }
-    };
+) -> ControlFlow<Evaluated<'a>> {
+    let expr = expr.try_into().break_if_null()?;
+    let mut start = eval_to_int(&name, start)?;
+    let length = eval_to_int(&name, length)
+        .map(usize::try_from)?
+        .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.clone()).into())
+        .into_control_flow()?;
+
     match expr {
         Value::List(l) => {
             if start < 0 {
@@ -608,77 +656,65 @@ pub fn slice<'a>(
             let start_usize = start as usize;
 
             let l = l.into_iter().skip(start_usize).take(length).collect();
-            Ok(Evaluated::Value(Value::List(l)))
+            Continue(Evaluated::Value(Value::List(l)))
         }
-        _ => Err(EvaluateError::ListTypeRequired.into()),
+        _ => Err(EvaluateError::ListTypeRequired.into()).into_control_flow(),
     }
 }
 
-pub fn take<'a>(name: String, expr: Evaluated<'_>, size: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    if expr.is_null() || size.is_null() {
-        return Ok(Evaluated::Value(Value::Null));
-    }
-
-    let expr: Value = expr.try_into()?;
-    let size = match size.try_into()? {
-        Value::I64(number) => {
-            usize::try_from(number).map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name))?
-        }
-        _ => {
-            return Err(EvaluateError::FunctionRequiresIntegerValue(name).into());
-        }
-    };
+pub fn take<'a>(
+    name: String,
+    expr: Evaluated<'_>,
+    size: Evaluated<'_>,
+) -> ControlFlow<Evaluated<'a>> {
+    let expr = expr.try_into().break_if_null()?;
+    let size = eval_to_int(&name, size)
+        .map(usize::try_from)?
+        .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.clone()).into())
+        .into_control_flow()?;
 
     match expr {
         Value::List(l) => {
             let l = l.into_iter().take(size).collect();
-            Ok(Evaluated::Value(Value::List(l)))
+            Continue(Evaluated::Value(Value::List(l)))
         }
-        _ => Err(EvaluateError::ListTypeRequired.into()),
+        _ => Err(EvaluateError::ListTypeRequired.into()).into_control_flow(),
     }
 }
 
-pub fn is_empty<'a>(expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    let expr: Value = expr.try_into()?;
+pub fn is_empty<'a>(expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    let expr = expr.try_into().break_if_null()?;
     let length = match expr {
         Value::List(l) => l.len(),
         Value::Map(m) => m.len(),
         _ => {
-            return Err(EvaluateError::MapOrListTypeRequired.into());
+            return Err(EvaluateError::MapOrListTypeRequired.into()).into_control_flow();
         }
     };
 
-    Ok(Evaluated::Value(Value::Bool(length == 0)))
-}
-
-pub fn values<'a>(expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    let expr: Value = expr.try_into()?;
-    match expr {
-        Value::Map(m) => Ok(Evaluated::Value(Value::List(m.into_values().collect()))),
-        _ => Err(EvaluateError::MapTypeRequired.into()),
-    }
+    Continue(Evaluated::Value(Value::Bool(length == 0)))
 }
 
 // --- etc ---
 
 pub fn unwrap<'a>(
     name: String,
-    expr: Evaluated<'_>,
+    expr: Evaluated<'a>,
     selector: Evaluated<'_>,
-) -> Result<Evaluated<'a>> {
-    if expr.is_null() {
-        return Ok(Evaluated::Value(Value::Null));
-    }
-
+) -> ControlFlow<Evaluated<'a>> {
     let value = match expr {
+        _ if expr.is_null() => return Continue(expr),
         Evaluated::Value(value) => value,
         _ => {
-            return Err(EvaluateError::FunctionRequiresMapValue(name).into());
+            return Err(EvaluateError::FunctionRequiresMapValue(name).into()).into_control_flow();
         }
     };
+    let selector = eval_to_str(&name, selector)?;
 
-    let selector = eval_to_str!(name, selector);
-    Ok(Evaluated::Value(value.selector(&selector)?))
+    value
+        .selector(&selector)
+        .into_control_flow()
+        .map(Evaluated::Value)
 }
 
 pub fn generate_uuid<'a>() -> Evaluated<'a> {
@@ -707,39 +743,32 @@ pub fn format<'a>(
     name: String,
     expr: Evaluated<'_>,
     format: Evaluated<'_>,
-) -> Result<Evaluated<'a>> {
-    match expr.try_into()? {
-        Value::Date(expr) => {
-            let format = eval_to_str!(name, format);
-
-            Ok(Evaluated::Value(Value::Str(
-                chrono::NaiveDate::format(&expr, &format).to_string(),
-            )))
-        }
-        Value::Timestamp(expr) => {
-            let format = eval_to_str!(name, format);
-            Ok(Evaluated::Value(Value::Str(
-                chrono::NaiveDateTime::format(&expr, &format).to_string(),
-            )))
-        }
-        Value::Time(expr) => {
-            let format = eval_to_str!(name, format);
-            Ok(Evaluated::Value(Value::Str(
-                chrono::NaiveTime::format(&expr, &format).to_string(),
-            )))
-        }
-        value => Err(EvaluateError::UnsupportedExprForFormatFunction(value.into()).into()),
+) -> ControlFlow<Evaluated<'a>> {
+    match expr.try_into().break_if_null()? {
+        Value::Date(expr) => eval_to_str(&name, format)
+            .map(|format| chrono::NaiveDate::format(&expr, &format).to_string()),
+        Value::Timestamp(expr) => eval_to_str(&name, format)
+            .map(|format| chrono::NaiveDateTime::format(&expr, &format).to_string()),
+        Value::Time(expr) => eval_to_str(&name, format)
+            .map(|format| chrono::NaiveTime::format(&expr, &format).to_string()),
+        value => Err(EvaluateError::UnsupportedExprForFormatFunction(value.into()).into())
+            .into_control_flow(),
     }
+    .map(Value::Str)
+    .map(Evaluated::Value)
 }
 
-pub fn last_day<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    let date = match expr.try_into()? {
+pub fn last_day<'a>(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    let date = match expr.try_into().break_if_null()? {
         Value::Date(date) => date,
         Value::Timestamp(timestamp) => timestamp.date(),
-        _ => return Err(EvaluateError::FunctionRequiresDateOrDateTimeValue(name).into()),
+        _ => {
+            return Err(EvaluateError::FunctionRequiresDateOrDateTimeValue(name).into())
+                .into_control_flow()
+        }
     };
 
-    Ok(Evaluated::Value(Value::Date(
+    Continue(Evaluated::Value(Value::Date(
         date + Months::new(1) - Duration::days(date.day() as i64),
     )))
 }
@@ -748,10 +777,10 @@ pub fn to_date<'a>(
     name: String,
     expr: Evaluated<'_>,
     format: Evaluated<'_>,
-) -> Result<Evaluated<'a>> {
-    match expr.try_into()? {
+) -> ControlFlow<Evaluated<'a>> {
+    match expr.try_into().break_if_null()? {
         Value::Str(expr) => {
-            let format = eval_to_str!(name, format);
+            let format = eval_to_str(&name, format)?;
 
             chrono::NaiveDate::parse_from_str(&expr, &format)
                 .map(Value::Date)
@@ -763,16 +792,17 @@ pub fn to_date<'a>(
         }
         _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
     }
+    .into_control_flow()
 }
 
 pub fn to_timestamp<'a>(
     name: String,
     expr: Evaluated<'_>,
     format: Evaluated<'_>,
-) -> Result<Evaluated<'a>> {
-    match expr.try_into()? {
+) -> ControlFlow<Evaluated<'a>> {
+    match expr.try_into().break_if_null()? {
         Value::Str(expr) => {
-            let format = eval_to_str!(name, format);
+            let format = eval_to_str(&name, format)?;
 
             chrono::NaiveDateTime::parse_from_str(&expr, &format)
                 .map(Value::Timestamp)
@@ -784,21 +814,26 @@ pub fn to_timestamp<'a>(
         }
         _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
     }
+    .into_control_flow()
 }
 
 pub fn add_month<'a>(
     name: String,
     expr: Evaluated<'_>,
     size: Evaluated<'_>,
-) -> Result<Evaluated<'a>> {
-    let size = eval_to_int!(name, size);
-    let expr = chrono::NaiveDate::parse_from_str(&eval_to_str!(name, expr), "%Y-%m-%d")
-        .map_err(EvaluateError::from)?;
+) -> ControlFlow<Evaluated<'a>> {
+    let size = eval_to_int(&name, size)?;
+    let expr = eval_to_str(&name, expr)?;
+    let expr = chrono::NaiveDate::parse_from_str(&expr, "%Y-%m-%d")
+        .map_err(EvaluateError::from)
+        .map_err(Error::from)
+        .into_control_flow()?;
     let date = {
         let size_as_u32 = size
             .abs()
             .try_into()
-            .map_err(|_| ValueError::I64ToU32ConversionFailure(name))?;
+            .map_err(|_| ValueError::I64ToU32ConversionFailure(name).into())
+            .into_control_flow()?;
         let new_months = chrono::Months::new(size_as_u32);
 
         if size <= 0 {
@@ -806,19 +841,19 @@ pub fn add_month<'a>(
         } else {
             expr.checked_add_months(new_months)
         }
-        .ok_or(EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255)?
+        .continue_or_break(EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255.into())?
     };
-    Ok(Evaluated::Value(Value::Date(date)))
+    Continue(Evaluated::Value(Value::Date(date)))
 }
 
 pub fn to_time<'a>(
     name: String,
     expr: Evaluated<'_>,
     format: Evaluated<'_>,
-) -> Result<Evaluated<'a>> {
-    match expr.try_into()? {
+) -> ControlFlow<Evaluated<'a>> {
+    match expr.try_into().break_if_null()? {
         Value::Str(expr) => {
-            let format = eval_to_str!(name, format);
+            let format = eval_to_str(&name, format)?;
 
             chrono::NaiveTime::parse_from_str(&expr, &format)
                 .map(Value::Time)
@@ -830,13 +865,19 @@ pub fn to_time<'a>(
         }
         _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
     }
+    .into_control_flow()
 }
 
-pub fn position<'a>(from_expr: Evaluated<'_>, sub_expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    let from: Value = from_expr.try_into()?;
-    let sub: Value = sub_expr.try_into()?;
+pub fn position<'a>(
+    from_expr: Evaluated<'_>,
+    sub_expr: Evaluated<'_>,
+) -> ControlFlow<Evaluated<'a>> {
+    let from: Value = from_expr.try_into().break_if_null()?;
+    let sub = sub_expr.try_into().break_if_null()?;
 
-    from.position(&sub).map(Evaluated::Value)
+    from.position(&sub)
+        .map(Evaluated::Value)
+        .into_control_flow()
 }
 
 pub fn find_idx<'a>(
@@ -844,13 +885,13 @@ pub fn find_idx<'a>(
     from: Evaluated<'a>,
     sub: Evaluated<'a>,
     start: Option<Evaluated<'a>>,
-) -> Result<Evaluated<'a>> {
-    let from_expr = eval_to_str!(name, from);
-    let sub_expr = eval_to_str!(name, sub);
+) -> ControlFlow<Evaluated<'a>> {
+    let from_expr = eval_to_str(&name, from)?;
+    let sub_expr = eval_to_str(&name, sub)?;
 
     match start {
         Some(start) => {
-            let start = eval_to_int!(name, start);
+            let start = eval_to_int(&name, start)?;
             Value::find_idx(
                 &Value::Str(from_expr),
                 &Value::Str(sub_expr),
@@ -860,42 +901,58 @@ pub fn find_idx<'a>(
         None => Value::position(&Value::Str(from_expr), &Value::Str(sub_expr)),
     }
     .map(Evaluated::Value)
+    .into_control_flow()
 }
 
-pub fn cast<'a>(expr: Evaluated<'a>, data_type: &DataType) -> Result<Evaluated<'a>> {
-    expr.cast(data_type)
+pub fn extract<'a>(field: &DateTimeField, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    Value::try_from(expr)
+        .and_then(|v| v.extract(field))
+        .map(Evaluated::Value)
+        .into_control_flow()
 }
 
-pub fn extract<'a>(field: &DateTimeField, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    Ok(Evaluated::Value(Value::try_from(expr)?.extract(field)?))
+pub fn point<'a>(name: String, x: Evaluated<'_>, y: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    let x = eval_to_float(&name, x)?;
+    let y = eval_to_float(&name, y)?;
+
+    Continue(Evaluated::Value(Value::Point(Point::new(x, y))))
 }
 
-pub fn point<'a>(x: Evaluated<'_>, y: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    let x = eval_to_float!("point".to_owned(), x);
-    let y = eval_to_float!("point".to_owned(), y);
-
-    Ok(Evaluated::Value(Value::Point(Point::new(x, y))))
-}
-
-pub fn get_x<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    match expr.try_into()? {
+pub fn get_x<'a>(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    match expr.try_into().break_if_null()? {
         Value::Point(v) => Ok(Evaluated::Value(Value::F64(v.x))),
         _ => Err(EvaluateError::FunctionRequiresPointValue(name).into()),
     }
+    .into_control_flow()
 }
 
-pub fn get_y<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    match expr.try_into()? {
+pub fn get_y<'a>(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    match expr.try_into().break_if_null()? {
         Value::Point(v) => Ok(Evaluated::Value(Value::F64(v.y))),
         _ => Err(EvaluateError::FunctionRequiresPointValue(name).into()),
     }
+    .into_control_flow()
 }
 
-pub fn calc_distance<'a>(x: Evaluated<'_>, y: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    let x = eval_to_point!("calc_distance".to_owned(), x);
-    let y = eval_to_point!("calc_distance".to_owned(), y);
+pub fn calc_distance<'a>(
+    name: String,
+    x: Evaluated<'_>,
+    y: Evaluated<'_>,
+) -> ControlFlow<Evaluated<'a>> {
+    let x = eval_to_point(&name, x)?;
+    let y = eval_to_point(&name, y)?;
 
-    Ok(Evaluated::Value(Value::F64(Point::calc_distance(&x, &y))))
+    Continue(Evaluated::Value(Value::F64(Point::calc_distance(&x, &y))))
+}
+
+pub fn length<'a>(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    match expr.try_into().break_if_null()? {
+        Value::Str(expr) => Ok(Evaluated::Value(Value::U64(expr.chars().count() as u64))),
+        Value::List(expr) => Ok(Evaluated::Value(Value::U64(expr.len() as u64))),
+        Value::Map(expr) => Ok(Evaluated::Value(Value::U64(expr.len() as u64))),
+        _ => Err(EvaluateError::FunctionRequiresStrOrListOrMapValue(name).into()),
+    }
+    .into_control_flow()
 }
 
 pub fn coalesce<'a>(exprs: Vec<Evaluated<'_>>) -> Result<Evaluated<'a>> {
@@ -910,30 +967,21 @@ pub fn coalesce<'a>(exprs: Vec<Evaluated<'_>>) -> Result<Evaluated<'a>> {
 
     let control_flow = exprs.into_iter().map(|expr| expr.try_into()).try_for_each(
         |item: Result<Value>| match item {
-            Ok(value) if value.is_null() => ControlFlow::Continue(()),
-            Ok(value) => ControlFlow::Break(Ok(value)),
-            Err(err) => ControlFlow::Break(Err(err)),
+            Ok(value) if value.is_null() => StdControlFlow::Continue(()),
+            Ok(value) => StdControlFlow::Break(Ok(value)),
+            Err(err) => StdControlFlow::Break(Err(err)),
         },
     );
 
     match control_flow {
-        ControlFlow::Break(Ok(value)) => Ok(Evaluated::Value(value)),
-        ControlFlow::Break(Err(err)) => Err(err),
-        ControlFlow::Continue(()) => Ok(Evaluated::Value(Value::Null)),
+        StdControlFlow::Break(Ok(value)) => Ok(Evaluated::Value(value)),
+        StdControlFlow::Break(Err(err)) => Err(err),
+        StdControlFlow::Continue(()) => Ok(Evaluated::Value(Value::Null)),
     }
 }
 
-pub fn length<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    match expr.try_into()? {
-        Value::Str(expr) => Ok(Evaluated::Value(Value::U64(expr.chars().count() as u64))),
-        Value::List(expr) => Ok(Evaluated::Value(Value::U64(expr.len() as u64))),
-        Value::Map(expr) => Ok(Evaluated::Value(Value::U64(expr.len() as u64))),
-        _ => Err(EvaluateError::FunctionRequiresStrOrListOrMapValue(name).into()),
-    }
-}
-
-pub fn entries<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
-    match expr.try_into()? {
+pub fn entries<'a>(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    match expr.try_into().break_if_null()? {
         Value::Map(expr) => {
             let entries = expr
                 .into_iter()
@@ -943,6 +991,25 @@ pub fn entries<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
         }
         _ => Err(EvaluateError::FunctionRequiresMapValue(name).into()),
     }
+    .into_control_flow()
+}
+
+pub fn keys<'a>(expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    match expr.try_into().break_if_null()? {
+        Value::Map(m) => Ok(Evaluated::Value(Value::List(
+            m.into_keys().map(Value::Str).collect(),
+        ))),
+        _ => Err(EvaluateError::MapTypeRequired.into()),
+    }
+    .into_control_flow()
+}
+
+pub fn values<'a>(expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    match expr.try_into().break_if_null()? {
+        Value::Map(m) => Ok(Evaluated::Value(Value::List(m.into_values().collect()))),
+        _ => Err(EvaluateError::MapTypeRequired.into()),
+    }
+    .into_control_flow()
 }
 
 pub fn splice<'a>(
@@ -951,17 +1018,22 @@ pub fn splice<'a>(
     begin_index: Evaluated<'_>,
     end_index: Evaluated<'_>,
     values: Option<Evaluated<'_>>,
-) -> Result<Evaluated<'a>> {
-    let list_data = match Value::try_from(list_data)? {
-        Value::List(list) => Ok(list),
-        _ => Err(EvaluateError::ListTypeRequired),
-    }?;
+) -> ControlFlow<Evaluated<'a>> {
+    let list_data = match list_data.try_into().break_if_null()? {
+        Value::List(list) => list,
+        _ => {
+            return Err(EvaluateError::ListTypeRequired.into()).into_control_flow();
+        }
+    };
 
-    let begin_index = usize::try_from(eval_to_int!(name, begin_index).max(0))
-        .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.clone()))?;
-
-    let end_index = usize::try_from(eval_to_int!(name, end_index).min(list_data.len() as i64))
-        .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name))?;
+    let begin_index = eval_to_int(&name, begin_index)?.max(0);
+    let begin_index = usize::try_from(begin_index)
+        .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.clone()).into())
+        .into_control_flow()?;
+    let end_index = eval_to_int(&name, end_index)?.max(0);
+    let end_index = usize::try_from(end_index)
+        .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.clone()).into())
+        .into_control_flow()?;
 
     let (left, right) = {
         let mut list_iter = list_data.into_iter();
@@ -971,10 +1043,10 @@ pub fn splice<'a>(
     };
 
     let center = match values {
-        Some(values) => match Value::try_from(values)? {
-            Value::List(list) => Ok(list),
-            _ => Err(EvaluateError::ListTypeRequired),
-        }?,
+        Some(values) => match values.try_into().break_if_null()? {
+            Value::List(list) => list,
+            _ => return Err(EvaluateError::ListTypeRequired.into()).into_control_flow(),
+        },
         None => vec![],
     };
 
@@ -986,5 +1058,15 @@ pub fn splice<'a>(
         result
     };
 
-    Ok(Evaluated::Value(Value::List(result)))
+    Continue(Evaluated::Value(Value::List(result)))
+}
+
+pub fn dedup<'a>(list: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    match list.try_into().break_if_null()? {
+        Value::List(mut list) => {
+            list.dedup();
+            Continue(Evaluated::Value(Value::List(list)))
+        }
+        _ => Err(EvaluateError::ListTypeRequired.into()).into_control_flow(),
+    }
 }

@@ -69,7 +69,6 @@ pub enum Function {
         filter_chars: Option<Expr>,
         trim_where_field: Option<TrimWhereField>,
     },
-    Entries(Expr),
     Exp(Expr),
     Extract {
         field: DateTimeField,
@@ -201,6 +200,8 @@ pub enum Function {
     },
     IsEmpty(Expr),
     Length(Expr),
+    Entries(Expr),
+    Keys(Expr),
     Values(Expr),
     Splice {
         list_data: Expr,
@@ -208,6 +209,7 @@ pub enum Function {
         end_index: Expr,
         values: Option<Expr>,
     },
+    Dedup(Expr),
 }
 
 impl ToSql for Function {
@@ -466,8 +468,9 @@ impl ToSql for Function {
             }
             Function::IsEmpty(e) => format!("IS_EMPTY({})", e.to_sql()),
             Function::Length(e) => format!("LENGTH({})", e.to_sql()),
-            Function::Values(e) => format!("VALUES({})", e.to_sql()),
             Function::Entries(e) => format!("ENTRIES({})", e.to_sql()),
+            Function::Keys(e) => format!("KEYS({})", e.to_sql()),
+            Function::Values(e) => format!("VALUES({})", e.to_sql()),
             Function::Splice {
                 list_data,
                 begin_index,
@@ -488,6 +491,7 @@ impl ToSql for Function {
                     end_index.to_sql(),
                 ),
             },
+            Function::Dedup(list) => format!("DEDUP({})", list.to_sql()),
         }
     }
 }
@@ -1313,16 +1317,21 @@ mod tests {
         );
 
         assert_eq!(
-            r#"VALUES("map")"#,
-            &Expr::Function(Box::new(Function::Values(Expr::Identifier(
+            r#"ENTRIES("map")"#,
+            &Expr::Function(Box::new(Function::Entries(Expr::Identifier(
                 "map".to_owned()
             ))))
             .to_sql()
         );
 
         assert_eq!(
-            r#"ENTRIES("map")"#,
-            &Expr::Function(Box::new(Function::Entries(Expr::Identifier(
+            r#"KEYS("map")"#,
+            &Expr::Function(Box::new(Function::Keys(Expr::Identifier("map".to_owned())))).to_sql()
+        );
+
+        assert_eq!(
+            r#"VALUES("map")"#,
+            &Expr::Function(Box::new(Function::Values(Expr::Identifier(
                 "map".to_owned()
             ))))
             .to_sql()
@@ -1349,6 +1358,14 @@ mod tests {
             }))
             .to_sql()
         );
+
+        assert_eq!(
+            r#"DEDUP("list")"#,
+            &Expr::Function(Box::new(Function::Dedup(Expr::Identifier(
+                "list".to_owned()
+            ))))
+            .to_sql(),
+        )
     }
 
     #[test]

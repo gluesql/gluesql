@@ -1,0 +1,3 @@
+[redis]
+url="localhost"
+port=6379

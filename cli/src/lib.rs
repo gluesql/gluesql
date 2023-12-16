@@ -9,13 +9,16 @@ use {
     crate::cli::Cli,
     anyhow::Result,
     clap::Parser,
-    futures::executor::block_on,
+    csv_storage::CsvStorage,
+    futures::{
+        executor::block_on,
+        stream::{StreamExt, TryStreamExt},
+    },
     gluesql_core::{
         ast::{Expr, SetExpr, Statement, ToSql, Values},
         data::Value,
         store::{DataRow, GStore, GStoreMut, Store, Transaction},
     },
-    itertools::Itertools,
     json_storage::JsonStorage,
     memory_storage::MemoryStorage,
     sled_storage::SledStorage,
@@ -52,6 +55,7 @@ enum Storage {
     Memory,
     Sled,
     Json,
+    Csv,
 }
 
 pub fn run() -> Result<()> {
@@ -80,6 +84,14 @@ pub fn run() -> Result<()> {
 
             run(
                 JsonStorage::new(path).expect("failed to load json-storage"),
+                args.execute,
+            );
+        }
+        (Some(path), Some(Storage::Csv), _) => {
+            println!("[csv-storage] connected to {}", path);
+
+            run(
+                CsvStorage::new(path).expect("failed to load csv-storage"),
                 args.execute,
             );
         }
@@ -120,14 +132,15 @@ pub fn dump_database(storage: &mut SledStorage, dump_path: PathBuf) -> Result<()
         for schema in schemas {
             writeln!(&file, "{}", schema.to_ddl())?;
 
-            let rows_list = storage
+            let mut rows_list = storage
                 .scan_data(&schema.table_name)
                 .await?
                 .map_ok(|(_, row)| row)
                 .chunks(100);
 
-            for rows in &rows_list {
+            while let Some(rows) = rows_list.next().await {
                 let exprs_list = rows
+                    .into_iter()
                     .map(|result| {
                         result.map(|data_row| {
                             let values = match data_row {

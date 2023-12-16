@@ -9,6 +9,7 @@ use {
     },
     async_io::block_on,
     async_trait::async_trait,
+    futures::stream::TryStreamExt,
     gluesql_core::{
         ast::OrderByExpr,
         chrono::Utc,
@@ -48,7 +49,8 @@ impl IndexMut for SledStorage {
         let rows = self
             .scan_data(table_name)
             .await?
-            .collect::<Result<Vec<_>>>()?;
+            .try_collect::<Vec<_>>()
+            .await?;
 
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
@@ -140,7 +142,8 @@ impl IndexMut for SledStorage {
         let rows = self
             .scan_data(table_name)
             .await?
-            .collect::<Result<Vec<_>>>()?;
+            .try_collect::<Vec<_>>()
+            .await?;
 
         let state = &self.state;
         let tx_timeout = self.tx_timeout;

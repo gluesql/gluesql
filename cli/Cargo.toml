@@ -13,6 +13,7 @@ gluesql-core.workspace = true
 sled-storage.workspace = true
 memory-storage.workspace = true
 json-storage.workspace = true
+csv-storage.workspace = true
 
 clap = { version = "3.2.2", features = ["derive"] }
 rustyline = "9.1"
@@ -22,7 +23,6 @@ thiserror = "1.0"
 edit = "0.1.4"
 futures = "0.3"
 anyhow = "1.0"
-itertools = "0.10"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }

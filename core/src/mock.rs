@@ -84,30 +84,6 @@ impl StoreMut for MockStorage {
         self.schema_map.insert(table_name, schema);
         Ok(())
     }
-
-    async fn delete_schema(&mut self, _table_name: &str) -> Result<()> {
-        let msg = "[MockStorage] delete_schema is not supported".to_owned();
-
-        Err(Error::StorageMsg(msg))
-    }
-
-    async fn append_data(&mut self, _table_name: &str, _rows: Vec<DataRow>) -> Result<()> {
-        let msg = "[MockStorage] append_data is not supported".to_owned();
-
-        Err(Error::StorageMsg(msg))
-    }
-
-    async fn insert_data(&mut self, _table_name: &str, _rows: Vec<(Key, DataRow)>) -> Result<()> {
-        let msg = "[MockStorage] insert_data is not supported".to_owned();
-
-        Err(Error::StorageMsg(msg))
-    }
-
-    async fn delete_data(&mut self, _table_name: &str, _keys: Vec<Key>) -> Result<()> {
-        let msg = "[MockStorage] delete_data is not supported".to_owned();
-
-        Err(Error::StorageMsg(msg))
-    }
 }
 
 impl AlterTable for MockStorage {}
