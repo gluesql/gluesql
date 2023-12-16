@@ -99,7 +99,7 @@ impl IndexMut for SledStorage {
                 column_defs,
                 indexes,
                 engine,
-                constraints: None,
+                foreign_keys: None,
             };
 
             let index_sync = IndexSync::from_schema(tree, txid, &schema);
@@ -185,7 +185,7 @@ impl IndexMut for SledStorage {
                 column_defs,
                 indexes,
                 engine,
-                constraints: None,
+                foreign_keys: None,
             };
 
             let index_sync = IndexSync::from_schema(tree, txid, &schema);

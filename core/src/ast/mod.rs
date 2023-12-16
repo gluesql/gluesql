@@ -47,11 +47,6 @@ pub enum ReferentialAction {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum TableConstraint {
-    ForeignKey(ForeignKey),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Statement {
     ShowColumns {
         table_name: String,
@@ -92,7 +87,7 @@ pub enum Statement {
         columns: Option<Vec<ColumnDef>>,
         source: Option<Box<Query>>,
         engine: Option<String>,
-        constraints: Option<Vec<TableConstraint>>,
+        foreign_keys: Option<Vec<ForeignKey>>,
     },
     /// CREATE FUNCTION
     CreateFunction {
@@ -208,7 +203,7 @@ impl ToSql for Statement {
                 columns,
                 source,
                 engine,
-                constraints,
+                foreign_keys,
             } => {
                 let if_not_exists = if_not_exists.then_some("IF NOT EXISTS");
                 let body = match source {
@@ -437,7 +432,7 @@ mod tests {
                 columns: None,
                 source: None,
                 engine: None,
-                constraints: None,
+                foreign_keys: None,
             }
             .to_sql()
         );
@@ -450,7 +445,7 @@ mod tests {
                 columns: None,
                 source: None,
                 engine: None,
-                constraints: None,
+                foreign_keys: None,
             }
             .to_sql()
         );
@@ -469,7 +464,7 @@ mod tests {
                 },]),
                 source: None,
                 engine: None,
-                constraints: None,
+                foreign_keys: None,
             }
             .to_sql()
         );
@@ -504,7 +499,7 @@ mod tests {
                 ]),
                 source: None,
                 engine: None,
-                constraints: None,
+                foreign_keys: None,
             }
             .to_sql()
         );
@@ -547,7 +542,7 @@ mod tests {
                     offset: None
                 })),
                 engine: None,
-                constraints: None,
+                foreign_keys: None,
             }
             .to_sql()
         );
@@ -567,7 +562,7 @@ mod tests {
                     offset: None
                 })),
                 engine: None,
-                constraints: None,
+                foreign_keys: None,
             }
             .to_sql()
         );
@@ -583,7 +578,7 @@ mod tests {
                 columns: None,
                 source: None,
                 engine: Some("MEMORY".to_owned()),
-                constraints: None,
+                foreign_keys: None,
             }
             .to_sql()
         );
@@ -602,7 +597,7 @@ mod tests {
                 },]),
                 source: None,
                 engine: Some("SLED".to_owned()),
-                constraints: None,
+                foreign_keys: None,
             }
             .to_sql()
         );

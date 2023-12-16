@@ -1,4 +1,4 @@
-use crate::ast::{ForeignKey, TableConstraint};
+use crate::ast::ForeignKey;
 
 use {
     super::{validate, validate_column_names, AlterError},
@@ -20,7 +20,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
     if_not_exists: bool,
     source: &Option<Box<Query>>,
     engine: &Option<String>,
-    constraints: &Option<Vec<TableConstraint>>,
+    foreign_keys: &Option<Vec<ForeignKey>>,
 ) -> Result<()> {
     let target_columns_defs = match source.as_deref() {
         Some(Query { body, .. }) => match body {
@@ -103,96 +103,82 @@ pub async fn create_table<T: GStore + GStoreMut>(
         }
     }
 
-    if let Some(constraints) = constraints.as_deref() {
-        for constraint in constraints {
-            match constraint {
-                TableConstraint::ForeignKey(ForeignKey {
-                    name,
-                    column,
-                    foreign_table,
-                    referred_column,
-                    on_delete,
-                    on_update,
-                }) => {
-                    // 1. check if foreign_table exists
-                    // 2. check if referred_column exists in foreign_table
-                    // 3. check if column exists in target_table
-                    // 4. check if column and referred_column have same data type
-                    // 5. check if column and referred_column have same nullable
-                    // 6. check if column and referred_column have same unique
-                    // 7. check if on_delete and on_update are valid
-                    let foreign_schema =
-                        storage
-                            .fetch_schema(foreign_table)
-                            .await?
-                            .ok_or_else(|| -> Error {
-                                AlterError::ForeignTableNotFound(foreign_table.to_owned()).into()
-                            })?;
+    if let Some(foreign_keys) = foreign_keys.as_deref() {
+        for foreign_key in foreign_keys {
+            let ForeignKey {
+                name,
+                column,
+                foreign_table,
+                referred_column,
+                on_delete,
+                on_update,
+            } = foreign_key;
+            // 1. check if foreign_table exists
+            // 2. check if referred_column exists in foreign_table
+            // 3. check if column exists in target_table
+            // 4. check if column and referred_column have same data type
+            // 5. check if column and referred_column have same nullable
+            // 6. check if column and referred_column have same unique
+            // 7. check if on_delete and on_update are valid
+            let foreign_schema =
+                storage
+                    .fetch_schema(foreign_table)
+                    .await?
+                    .ok_or_else(|| -> Error {
+                        AlterError::ForeignTableNotFound(foreign_table.to_owned()).into()
+                    })?;
 
-                    let foreign_column_def = foreign_schema
-                        .column_defs
-                        .unwrap()
-                        .into_iter()
-                        .find(|column_def| column_def.name == *referred_column)
-                        .ok_or_else(|| -> Error {
-                            AlterError::ForeignKeyColumnNotFound(referred_column.to_owned()).into()
-                        })?;
+            let foreign_column_def = foreign_schema
+                .column_defs
+                .unwrap()
+                .into_iter()
+                .find(|column_def| column_def.name == *referred_column)
+                .ok_or_else(|| -> Error {
+                    AlterError::ForeignKeyColumnNotFound(referred_column.to_owned()).into()
+                })?;
 
-                    let target_column_def = target_columns_defs
-                        .as_deref()
-                        .and_then(|column_defs| {
-                            column_defs
-                                .iter()
-                                .find(|column_def| column_def.name == *column)
-                        })
-                        .ok_or_else(|| -> Error {
-                            AlterError::ForeignKeyColumnNotFound(column.to_owned()).into()
-                        })?;
+            let target_column_def = target_columns_defs
+                .as_deref()
+                .and_then(|column_defs| {
+                    column_defs
+                        .iter()
+                        .find(|column_def| column_def.name == *column)
+                })
+                .ok_or_else(|| -> Error {
+                    AlterError::ForeignKeyColumnNotFound(column.to_owned()).into()
+                })?;
 
-                    if target_column_def.data_type != foreign_column_def.data_type {
-                        return Err(AlterError::ForeignKeyDataTypeMismatch {
-                            column: column.to_owned(),
-                            column_type: target_column_def.data_type.to_owned(),
-                            foreign_column: referred_column.to_owned(),
-                            foreign_column_type: foreign_column_def.data_type.to_owned(),
-                        }
-                        .into());
-                    }
-
-                    // TODO: looks like no DBMS checks nullable compatibility
-                    // if target_column_def.nullable != foreign_column_def.nullable {
-                    //     return Err(AlterError::ForeignKeyNullableMismatch {
-                    //         column: column.to_owned(),
-                    //         foreign_column: referred_column.to_owned(),
-                    //     }
-                    //     .into());
-                    // }
-
-                    if foreign_column_def.unique.is_none() {
-                        return Err(AlterError::ReferredColumnNotUnique {
-                            foreign_table: foreign_table.to_owned(),
-                            referred_column: referred_column.to_owned(),
-                        }
-                        .into());
-                    }
-
-                    Ok::<_, Error>(())
-
-                    // if on_delete.is_some() && on_delete != Some("cascade".to_owned()) {
-                    //     return Err(AlterError::ForeignKeyInvalidAction {
-                    //         action: on_delete.to_owned().unwrap(),
-                    //     }
-                    //     .into());
-                    // }
-
-                    // if on_update.is_some() && on_update != Some("cascade".to_owned()) {
-                    //     return Err(AlterError::ForeignKeyInvalidAction {
-                    //         action: on_update.to_owned().unwrap(),
-                    //     }
-                    //     .into());
-                    // }
+            if target_column_def.data_type != foreign_column_def.data_type {
+                return Err(AlterError::ForeignKeyDataTypeMismatch {
+                    column: column.to_owned(),
+                    column_type: target_column_def.data_type.to_owned(),
+                    foreign_column: referred_column.to_owned(),
+                    foreign_column_type: foreign_column_def.data_type.to_owned(),
                 }
-            }?
+                .into());
+            }
+
+            if foreign_column_def.unique.is_none() {
+                return Err(AlterError::ReferredColumnNotUnique {
+                    foreign_table: foreign_table.to_owned(),
+                    referred_column: referred_column.to_owned(),
+                }
+                .into());
+            }
+
+            // if on_delete.is_some() && on_delete != Some("cascade".to_owned()) {
+            //     return Err(AlterError::ForeignKeyInvalidAction {
+            //         action: on_delete.to_owned().unwrap(),
+            //     }
+            //     .into());
+            // }
+
+            // if on_update.is_some() && on_update != Some("cascade".to_owned()) {
+            //     return Err(AlterError::ForeignKeyInvalidAction {
+            //         action: on_update.to_owned().unwrap(),
+            //     }
+            //     .into());
+            // }
         }
     }
 
@@ -202,7 +188,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
             column_defs: target_columns_defs,
             indexes: vec![],
             engine: engine.clone(),
-            constraints: constraints.to_owned(),
+            foreign_keys: foreign_keys.to_owned(),
         };
 
         storage.insert_schema(&schema).await?;

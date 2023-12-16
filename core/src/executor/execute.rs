@@ -101,7 +101,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
             if_not_exists,
             source,
             engine,
-            constraints,
+            foreign_keys,
             ..
         } => create_table(
             storage,
@@ -110,7 +110,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
             *if_not_exists,
             source,
             engine,
-            constraints,
+            foreign_keys,
         )
         .await
         .map(|_| Payload::Create),
@@ -155,7 +155,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
         } => {
             let Schema {
                 column_defs,
-                constraints,
+                foreign_keys,
                 ..
             } = storage
                 .fetch_schema(table_name)

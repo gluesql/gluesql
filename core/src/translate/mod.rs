@@ -17,7 +17,7 @@ pub use self::{
 
 use {
     crate::{
-        ast::{Assignment, ForeignKey, ReferentialAction, Statement, TableConstraint, Variable},
+        ast::{Assignment, ForeignKey, ReferentialAction, Statement, Variable},
         result::Result,
     },
     ddl::translate_alter_table_operation,
@@ -85,12 +85,12 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
 
             let columns = (!columns.is_empty()).then_some(columns);
 
-            let constraints = constraints
+            let foreign_keys = constraints
                 .iter()
-                .filter_map(|x| translate_table_constraint(x).transpose())
+                .filter_map(|x| translate_foreign_key(x).transpose())
                 .collect::<Result<Vec<_>>>()?;
 
-            let constraints = (!constraints.is_empty()).then_some(constraints);
+            let foreign_keys = (!foreign_keys.is_empty()).then_some(foreign_keys);
 
             Ok(Statement::CreateTable {
                 if_not_exists: *if_not_exists,
@@ -101,7 +101,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                     None => None,
                 },
                 engine: engine.clone(),
-                constraints,
+                foreign_keys,
             })
         }
         SqlStatement::AlterTable {
@@ -301,9 +301,7 @@ pub fn translate_referential_action(action: SqlReferentialAction) -> Referential
     }
 }
 
-fn translate_table_constraint(
-    table_constraint: &SqlTableConstraint,
-) -> Result<Option<TableConstraint>> {
+fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Option<ForeignKey>> {
     Ok(match table_constraint {
         SqlTableConstraint::ForeignKey {
             name,
@@ -331,14 +329,14 @@ fn translate_table_constraint(
                 .value
                 .clone();
 
-            Some(TableConstraint::ForeignKey(ForeignKey {
+            Some(ForeignKey {
                 name: name.to_owned().map(|v| v.value),
                 column: column,
                 foreign_table: translate_object_name(foreign_table).unwrap(),
                 referred_column,
                 on_delete: on_delete.map(translate_referential_action),
                 on_update: on_update.map(translate_referential_action),
-            }))
+            })
         }
         _ => None,
     })

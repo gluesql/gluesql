@@ -52,7 +52,7 @@ impl Build for CreateTableNode {
             columns,
             source: None,
             engine: None,
-            constraints: None,
+            foreign_keys: None,
         })
     }
 }
