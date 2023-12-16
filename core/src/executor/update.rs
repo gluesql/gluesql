@@ -1,3 +1,7 @@
+use crate::{ast::ForeignKey, prelude::Key};
+
+use super::ValidateError;
+
 use {
     super::{
         context::RowContext,
@@ -64,7 +68,12 @@ impl<'a, T: GStore> Update<'a, T> {
         })
     }
 
-    pub async fn apply(&self, row: Row) -> Result<Row> {
+    pub async fn apply(
+        &self,
+        row: Row,
+        foreign_keys: Option<Vec<ForeignKey>>,
+        table_name: &'a str,
+    ) -> Result<Row> {
         let context = RowContext::new(self.table_name, Cow::Borrowed(&row), None);
         let context = Some(Rc::new(context));
 
@@ -112,6 +121,45 @@ impl<'a, T: GStore> Update<'a, T> {
             })
             .try_collect::<Vec<(&str, Value)>>()
             .await?;
+
+        for (id, value) in assignments.iter() {
+            if let Some(foreign_keys) = &foreign_keys {
+                for ForeignKey {
+                    name,
+                    column,
+                    foreign_table,
+                    referred_column,
+                    on_delete,
+                    on_update,
+                } in foreign_keys
+                {
+                    if column != id {
+                        continue;
+                    }
+
+                    if value == &Value::Null {
+                        continue;
+                    }
+
+                    let no_parent = self
+                        .storage
+                        .fetch_data(foreign_table, &Key::try_from(value)?)
+                        .await?
+                        .is_none();
+
+                    if no_parent {
+                        return Err(ValidateError::ForeignKeyViolation {
+                            name: name.clone().unwrap_or_default(),
+                            table: table_name.to_owned(),
+                            column: column.to_owned(),
+                            foreign_table: foreign_table.to_owned(),
+                            referred_column: referred_column.to_owned(),
+                        }
+                        .into());
+                    }
+                }
+            }
+        }
 
         Ok(match row {
             Row::Vec { columns, values } => {

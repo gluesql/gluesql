@@ -234,7 +234,7 @@ async fn fetch_vec_rows<T: GStore>(
                     println!("looking for {child:#?}: {no_parent}");
                     if no_parent {
                         return Err(ValidateError::ForeignKeyViolation {
-                            name: name.unwrap_or_default(),
+                            name: name.unwrap_or_default(), // TODO: fix this
                             table: table_name.to_owned(),
                             column: column.to_owned(),
                             foreign_table: foreign_table.to_owned(),

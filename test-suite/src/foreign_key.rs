@@ -115,6 +115,20 @@ test_case!(foreign_key, {
     .await;
 
     g.named_test(
+        "If there is no parent, update should fail",
+        "UPDATE Child SET parent_id = 2 WHERE id = 2;",
+        Err(ValidateError::ForeignKeyViolation {
+            name: "".to_owned(),
+            table: "Child".to_owned(),
+            column: "parent_id".to_owned(),
+            foreign_table: "ParentWithPK".to_owned(),
+            referred_column: "id".to_owned(),
+        }
+        .into()),
+    )
+    .await;
+
+    g.named_test(
         "Even If there is no parent, it should be able to update to NULL",
         "UPDATE Child SET parent_id = NULL WHERE id = 2;",
         Ok(Payload::Update(1)),
@@ -122,8 +136,8 @@ test_case!(foreign_key, {
     .await;
 
     g.named_test(
-        "With valid parent, insert should succeed",
-        "UPDATE Child SET parent_id = 2 WHERE id = 2;",
+        "With valid parent, update should succeed",
+        "UPDATE Child SET parent_id = 1 WHERE id = 2;",
         Ok(Payload::Update(1)),
     )
     .await;
