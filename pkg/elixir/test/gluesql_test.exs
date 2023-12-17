@@ -3,7 +3,7 @@ defmodule GlueSQLTest do
   doctest GlueSQL
 
   test "create table" do
-    db = GlueSQL.glue(GlueSQL.memory_stroage())
+    db = GlueSQL.glue(GlueSQL.memory_storage())
 
     assert db.query("CREATE TABLE Foo (id INTEGER);") == %{type: "CREATE TABLE"}
     assert db.query("CREATE TABLE Bar;") == %{type: "CREATE TABLE"}
