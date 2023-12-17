@@ -1,6 +1,6 @@
-defmodule Gluesql do
+defmodule GlueSQL do
   @moduledoc """
-  Documentation for `Gluesql`.
+  Documentation for `GlueSQL`.
   """
 
   @doc """
@@ -8,7 +8,7 @@ defmodule Gluesql do
 
   ## Examples
 
-      iex> Gluesql.hello()
+      iex> GlueSQL.hello()
       :world
 
   """
