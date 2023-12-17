@@ -74,21 +74,31 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             expr,
             negated,
             pattern,
-            escape_char: None,
+            escape_char,
         } => Ok(Expr::Like {
             expr: translate_expr(expr).map(Box::new)?,
             negated: *negated,
             pattern: translate_expr(pattern).map(Box::new)?,
+            escape_char: if let Some(escape) = escape_char {
+                Some(*escape)
+            } else {
+                Some('\\')
+            },
         }),
         SqlExpr::ILike {
             expr,
             negated,
             pattern,
-            escape_char: None,
+            escape_char,
         } => Ok(Expr::ILike {
             expr: translate_expr(expr).map(Box::new)?,
             negated: *negated,
             pattern: translate_expr(pattern).map(Box::new)?,
+            escape_char: if let Some(escape) = escape_char {
+                Some(*escape)
+            } else {
+                Some('\\')
+            },
         }),
         SqlExpr::BinaryOp { left, op, right } => Ok(Expr::BinaryOp {
             left: translate_expr(left).map(Box::new)?,

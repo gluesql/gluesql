@@ -156,6 +156,7 @@ impl<'a> TryFrom<ExprNode<'a>> for Expr {
                     expr,
                     negated,
                     pattern,
+                    escape_char: Some('\\'),
                 })
             }
             ExprNode::ILike {
@@ -170,6 +171,7 @@ impl<'a> TryFrom<ExprNode<'a>> for Expr {
                     expr,
                     negated,
                     pattern,
+                    escape_char: Some('\\'),
                 })
             }
             ExprNode::BinaryOp { left, op, right } => {

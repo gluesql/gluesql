@@ -372,27 +372,39 @@ impl<'a> Evaluated<'a> {
         Ok(evaluated)
     }
 
-    pub fn like(&self, other: Evaluated<'a>, case_sensitive: bool) -> Result<Evaluated<'a>> {
+    pub fn like(
+        &self,
+        other: Evaluated<'a>,
+        case_sensitive: bool,
+        escape_char: &Option<char>,
+    ) -> Result<Evaluated<'a>> {
         let evaluated = match (self, other) {
             (Evaluated::Literal(l), Evaluated::Literal(r)) => {
-                Evaluated::Literal(l.like(&r, case_sensitive)?)
+                Evaluated::Literal(l.like(&r, case_sensitive, escape_char)?)
             }
             (Evaluated::Literal(l), Evaluated::Value(r)) => {
-                Evaluated::Value((Value::try_from(l)?).like(&r, case_sensitive)?)
+                Evaluated::Value((Value::try_from(l)?).like(&r, case_sensitive, &None)?)
             }
             (Evaluated::Value(l), Evaluated::Literal(r)) => {
-                Evaluated::Value(l.like(&Value::try_from(r)?, case_sensitive)?)
+                Evaluated::Value(l.like(&Value::try_from(r)?, case_sensitive, &None)?)
             }
             (Evaluated::Value(l), Evaluated::Value(r)) => {
-                Evaluated::Value(l.like(&r, case_sensitive)?)
+                Evaluated::Value(l.like(&r, case_sensitive, &None)?)
             }
-            (Evaluated::Literal(l), Evaluated::StrSlice { source, range }) => Evaluated::Value(
-                Value::try_from(l)?.like(&Value::Str(source[range].to_owned()), case_sensitive)?,
-            ),
-            (Evaluated::StrSlice { source, range }, Evaluated::Literal(r)) => Evaluated::Value(
-                Value::Str(source[range.clone()].to_owned())
-                    .like(&Value::try_from(r)?, case_sensitive)?,
-            ),
+            (Evaluated::Literal(l), Evaluated::StrSlice { source, range }) => {
+                Evaluated::Value(Value::try_from(l)?.like(
+                    &Value::Str(source[range].to_owned()),
+                    case_sensitive,
+                    escape_char,
+                )?)
+            }
+            (Evaluated::StrSlice { source, range }, Evaluated::Literal(r)) => {
+                Evaluated::Value(Value::Str(source[range.clone()].to_owned()).like(
+                    &Value::try_from(r)?,
+                    case_sensitive,
+                    &None,
+                )?)
+            }
             (
                 Evaluated::StrSlice {
                     source: a,
@@ -402,15 +414,24 @@ impl<'a> Evaluated<'a> {
                     source: b,
                     range: br,
                 },
-            ) => Evaluated::Value(
-                Value::Str(a[ar.clone()].to_owned())
-                    .like(&Value::Str(b[br].to_owned()), case_sensitive)?,
-            ),
-            (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => Evaluated::Value(
-                Value::Str(source[range.clone()].to_owned()).like(&r, case_sensitive)?,
-            ),
+            ) => Evaluated::Value(Value::Str(a[ar.clone()].to_owned()).like(
+                &Value::Str(b[br].to_owned()),
+                case_sensitive,
+                escape_char,
+            )?),
+            (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => {
+                Evaluated::Value(Value::Str(source[range.clone()].to_owned()).like(
+                    &r,
+                    case_sensitive,
+                    escape_char,
+                )?)
+            }
             (Evaluated::Value(l), Evaluated::StrSlice { source, range }) => {
-                Evaluated::Value(l.like(&Value::Str(source[range].to_owned()), case_sensitive)?)
+                Evaluated::Value(l.like(
+                    &Value::Str(source[range].to_owned()),
+                    case_sensitive,
+                    escape_char,
+                )?)
             }
         };
 

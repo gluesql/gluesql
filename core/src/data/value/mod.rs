@@ -772,11 +772,16 @@ impl Value {
         }
     }
 
-    pub fn like(&self, other: &Value, case_sensitive: bool) -> Result<Value> {
+    pub fn like(
+        &self,
+        other: &Value,
+        case_sensitive: bool,
+        escape_char: &Option<char>,
+    ) -> Result<Value> {
         use Value::*;
 
         match (self, other) {
-            (Str(a), Str(b)) => a.like(b, case_sensitive).map(Bool),
+            (Str(a), Str(b)) => a.like(b, case_sensitive, escape_char).map(Bool),
             _ => Err(ValueError::LikeOnNonString {
                 base: self.clone(),
                 pattern: other.clone(),
