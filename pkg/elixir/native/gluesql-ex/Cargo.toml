@@ -12,16 +12,14 @@ repository.workspace = true
 documentation.workspace = true
 
 [lib]
-name = "gluesql"
-crate-type = ["cdylib", "rlib"]
+name = "gluesql_ex"
+path = "src/lib.rs"
+crate-type = ["cdylib"]
 
-[features]
-default = []
 
 [dependencies]
 gluesql-core.workspace = true
 memory-storage.workspace = true
-
 rustler = "0.30.0"
 
 [dev-dependencies]

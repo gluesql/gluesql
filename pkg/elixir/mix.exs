@@ -1,4 +1,4 @@
-defmodule Gluesql.MixProject do
+defmodule GlueSQL.MixProject do
   use Mix.Project
 
   def project do

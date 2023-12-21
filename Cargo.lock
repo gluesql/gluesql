@@ -1162,6 +1162,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "gluesql-ex"
+version = "0.15.0"
+dependencies = [
+ "gluesql-core",
+ "gluesql-test-suite",
+ "gluesql_memory_storage",
+ "rustler",
+]
+
+[[package]]
 name = "gluesql-idb-storage"
 version = "0.15.0"
 dependencies = [
@@ -1222,26 +1232,18 @@ dependencies = [
 name = "gluesql-mongo-storage"
 version = "0.15.0"
 dependencies = [
- "async-io",
  "async-trait",
  "bson",
  "chrono",
  "futures",
- "gluesql-composite-storage",
  "gluesql-core",
  "gluesql-test-suite",
- "gluesql-utils",
- "hex",
- "iter-enum",
  "mongodb",
  "rust_decimal",
- "serde",
- "serde_json",
  "strum",
  "strum_macros 0.24.3",
  "thiserror",
  "tokio",
- "uuid",
 ]
 
 [[package]]
@@ -2548,6 +2550,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustler"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4b4fea69e23de68c42c06769d6624d2d018da550c17244dd4b691f90ced4a7e"
+dependencies = [
+ "lazy_static",
+ "rustler_codegen",
+ "rustler_sys",
+]
+
+[[package]]
+name = "rustler_codegen"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "406061bd07aaf052c344257afed4988c5ec8efe4d2352b4c2cf27ea7c8575b12"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.38",
+]
+
+[[package]]
+name = "rustler_sys"
+version = "2.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0a7c0740e5322b64e2b952d8f0edce5f90fcf6f6fe74cca3f6e78eb3de5ea858"
+dependencies = [
+ "regex",
+ "unreachable",
+]
+
+[[package]]
 name = "rustls"
 version = "0.21.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3330,6 +3365,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e1766d682d402817b5ac4490b3c3002d91dfa0d22812f341609f97b08757359c"
 
 [[package]]
+name = "unreachable"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "382810877fe448991dfc7f0dd6e3ae5d58088fd0ea5e35189655f84e6814fa56"
+dependencies = [
+ "void",
+]
+
+[[package]]
 name = "untrusted"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3368,6 +3412,12 @@ name = "version_check"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
+
+[[package]]
+name = "void"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6a02e4885ed3bc0f2de90ea6dd45ebcbb66dacffe03547fadbb0eeae2770887d"
 
 [[package]]
 name = "waker-fn"
