@@ -1,6 +1,22 @@
+mod storages;
+
+use {
+    rustler::{Env, Term},
+    storages::memory_storage::{ExMemoryStorage, ExMemoryStorageRef},
+};
+
 #[rustler::nif]
-fn glue(a: i64) -> i64 {
-    a
+fn glue_memory_storage() -> ExMemoryStorage {
+    ExMemoryStorage::new()
 }
 
-rustler::init!("Elixir.GlueSQL.Native", [glue]);
+fn on_load(env: Env, _info: Term) -> bool {
+    rustler::resource!(ExMemoryStorageRef, env);
+    true
+}
+
+rustler::init!(
+    "Elixir.GlueSQL.Native",
+    [glue_memory_storage],
+    load = on_load
+);
