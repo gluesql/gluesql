@@ -4,10 +4,9 @@ defmodule GlueSQL do
   """
 
   @doc """
-  Create a glue object.
-  It accepts storage engine, and enables query/mutation features.
+  Create a GlueSQL database, using memory storage.
   """
-  def glue(storage) do
-    GlueSQL.Native.glue(storage)
+  def glue_memory_storage() do
+    GlueSQL.Native.glue_memory_storage()
   end
 end
