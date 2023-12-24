@@ -30,3 +30,4 @@
 **/*.rs.bk
 
 __pycache__
+pkg/elixir/.elixir_ls

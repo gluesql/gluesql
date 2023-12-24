@@ -1,5 +1,4 @@
 use {
-    gluesql_core::prelude::Glue,
     memory_storage::MemoryStorage,
     rustler::{NifStruct, ResourceArc},
     std::ops::Deref,
@@ -11,27 +10,26 @@ pub struct ExMemoryStorage {
     pub resource: ResourceArc<ExMemoryStorageRef>,
 }
 
-impl ExMemoryStorage {
-    pub fn new() -> Self {
-        Self {
-            resource: ResourceArc::new(ExMemoryStorageRef::new()),
-        }
+#[rustler::nif(schedule = "DirtyCpu")]
+pub fn memory_storage_new() -> ExMemoryStorage {
+    ExMemoryStorage {
+        resource: ResourceArc::new(ExMemoryStorageRef::new()),
     }
 }
 
-// Implement Deref so we can call `Glue<MemoryStorage` functions directly from a `ExMemoryStorage` struct.
+// Implement Deref so we can call `Glue<MemoryStorage>` functions directly from a `ExMemoryStorage` struct.
 impl Deref for ExMemoryStorage {
-    type Target = Glue<MemoryStorage>;
+    type Target = MemoryStorage;
 
     fn deref(&self) -> &Self::Target {
         &self.resource.0
     }
 }
 
-pub struct ExMemoryStorageRef(pub Glue<MemoryStorage>);
+pub struct ExMemoryStorageRef(pub MemoryStorage);
 
 impl ExMemoryStorageRef {
     fn new() -> Self {
-        Self(Glue::new(MemoryStorage::default()))
+        Self(MemoryStorage::default())
     }
 }

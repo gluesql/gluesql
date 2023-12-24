@@ -6,7 +6,7 @@ defmodule GlueSQL do
   @doc """
   Create a GlueSQL database, using memory storage.
   """
-  def glue_memory_storage() do
-    GlueSQL.Native.glue_memory_storage()
+  def glue_new(storage) do
+    GlueSQL.Native.glue_new(storage)
   end
 end
