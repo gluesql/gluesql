@@ -21,6 +21,7 @@ crate-type = ["cdylib"]
 gluesql-core.workspace = true
 memory-storage.workspace = true
 rustler = "0.30.0"
+serde_json = "1"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
 
 [dev-dependencies]

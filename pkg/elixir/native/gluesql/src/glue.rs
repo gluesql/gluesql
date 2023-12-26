@@ -1,11 +1,11 @@
 use {
     crate::{
-        payload::convert,
+        payload::convert_payloads,
         result::{parse_sql, translate_sql_statement, ExResult},
         storages::{execute_query, plan_query, ExStorage},
     },
     gluesql_core::prelude::Payload,
-    rustler::{NifStruct, Term},
+    rustler::NifStruct,
 };
 
 #[derive(NifStruct)]
@@ -20,7 +20,7 @@ pub fn glue_new(storage: ExStorage) -> ExGlue {
 }
 
 #[rustler::nif(schedule = "DirtyCpu")]
-pub fn glue_query<'a>(glue: ExGlue, sql: String) -> ExResult<Term<'a>> {
+pub fn glue_query<'a>(glue: ExGlue, sql: String) -> ExResult<Vec<String>> {
     let mut storage = glue.storage;
 
     parse_sql(sql)?
@@ -31,5 +31,5 @@ pub fn glue_query<'a>(glue: ExGlue, sql: String) -> ExResult<Term<'a>> {
                 .and_then(|st| execute_query(&mut storage, st))
         })
         .collect::<ExResult<Vec<Payload>>>()
-        .and_then(|payloads| Ok(convert(payloads)))
+        .and_then(|payloads| Ok(convert_payloads(payloads)))
 }
