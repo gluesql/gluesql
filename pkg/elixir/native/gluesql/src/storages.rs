@@ -18,7 +18,7 @@ pub enum ExStorage {
 }
 
 #[tokio::main]
-pub async fn storage_plan(storage: &ExStorage, statement: Statement) -> ExResult<Statement> {
+pub async fn plan_query(storage: &ExStorage, statement: Statement) -> ExResult<Statement> {
     match storage {
         ExStorage::MemoryStorage(storage) => {
             let lock = storage.resource.locked_storage.read().unwrap();
@@ -30,7 +30,7 @@ pub async fn storage_plan(storage: &ExStorage, statement: Statement) -> ExResult
 }
 
 #[tokio::main]
-pub async fn storage_execute(storage: &mut ExStorage, statement: Statement) -> ExResult<Payload> {
+pub async fn execute_query(storage: &mut ExStorage, statement: Statement) -> ExResult<Payload> {
     match storage {
         ExStorage::MemoryStorage(storage) => {
             let mut lock = storage.resource.locked_storage.write().unwrap();
