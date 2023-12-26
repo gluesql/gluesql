@@ -1,35 +1,30 @@
 use {
     memory_storage::MemoryStorage,
     rustler::{NifStruct, ResourceArc},
-    std::ops::Deref,
+    std::sync::RwLock,
 };
 
 #[derive(NifStruct)]
 #[module = "GlueSQL.Native.MemoryStorage"]
 pub struct ExMemoryStorage {
-    pub resource: ResourceArc<ExMemoryStorageRef>,
+    pub resource: ResourceArc<ExMemoryStorageResource>,
 }
 
 #[rustler::nif(schedule = "DirtyCpu")]
 pub fn memory_storage_new() -> ExMemoryStorage {
     ExMemoryStorage {
-        resource: ResourceArc::new(ExMemoryStorageRef::new()),
+        resource: ResourceArc::new(ExMemoryStorageResource::new()),
     }
 }
 
-// Implement Deref so we can call `Glue<MemoryStorage>` functions directly from a `ExMemoryStorage` struct.
-impl Deref for ExMemoryStorage {
-    type Target = MemoryStorage;
-
-    fn deref(&self) -> &Self::Target {
-        &self.resource.0
-    }
+pub struct ExMemoryStorageResource {
+    pub locked_storage: RwLock<MemoryStorage>,
 }
 
-pub struct ExMemoryStorageRef(pub MemoryStorage);
-
-impl ExMemoryStorageRef {
+impl ExMemoryStorageResource {
     fn new() -> Self {
-        Self(MemoryStorage::default())
+        Self {
+            locked_storage: RwLock::new(MemoryStorage::default()),
+        }
     }
 }
