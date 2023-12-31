@@ -16,10 +16,14 @@ defmodule GlueSQL do
   Read and execute given query for database
   """
   def query(glue_db, sql) do
-    {result, payload} = GlueSQL.Native.glue_query(glue_db, sql)
-    decoded_payload = decode_payload(payload)
+    case GlueSQL.Native.glue_query(glue_db, sql) do
+      {:ok, payload} ->
+        decoded_payload = decode_payload(payload)
+        {:ok, decoded_payload}
 
-    {result, decoded_payload}
+      result ->
+        result
+    end
   end
 
   defp decode_payload(payload) when is_list(payload) do
