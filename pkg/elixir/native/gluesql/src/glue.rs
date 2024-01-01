@@ -31,5 +31,5 @@ pub fn glue_query(glue: ExGlue, sql: String) -> ExResult<Vec<String>> {
                 .and_then(|st| execute_query(&mut storage, st))
         })
         .collect::<ExResult<Vec<Payload>>>()
-        .and_then(|payloads| Ok(convert_payloads(payloads)))
+        .map(convert_payloads)
 }
