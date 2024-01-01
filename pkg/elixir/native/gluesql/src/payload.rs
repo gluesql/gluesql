@@ -17,7 +17,7 @@ pub fn convert_payload(payload: Payload) -> String {
                 .map(|values| {
                     let row = labels
                         .iter()
-                        .zip(values.into_iter())
+                        .zip(values)
                         .map(|(label, value)| {
                             let key = label.to_owned();
                             let value = Json::try_from(value).unwrap();
