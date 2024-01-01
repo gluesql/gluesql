@@ -22,7 +22,9 @@ defmodule GlueSQL.MixProject do
   defp deps do
     [
       {:rustler, "~> 0.30.0"},
-      {:jason, "~> 1.4.1"}
+      {:jason, "~> 1.4.1"},
+      {:ex_doc, "~> 0.31", only: :dev, runtime: false},
+      {:earmark, "~> 1.4", only: :dev, runtime: false}
     ]
   end
 end
