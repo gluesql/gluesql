@@ -59,7 +59,7 @@ defmodule GlueSQL.MixProject do
         "README.md",
         "CHANGELOG.md"
       ],
-      maintainers: ["hoonwee"],
+      maintainers: ["Hoon Wee"],
       licenses: ["Apache-2.0"],
       links: %{"GitHub" => @repo_url}
     ]
