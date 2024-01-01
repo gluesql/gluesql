@@ -36,8 +36,6 @@ It's better understood by reading the example below.
 alias GlueSQL.Storages.MemoryStorage
 alias GlueSQL
 
-storage = MemoryStorage.new()
-
 # Create SQL database with memory storage
 db =
   MemoryStorage.new()

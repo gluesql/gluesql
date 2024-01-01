@@ -10,13 +10,30 @@ defmodule GlueSQL do
 
   @doc """
   Create a GlueSQL database with given storage engine.
+
+  ## Example: Create a SQL database that runs on in-memory storage.
+
+      alias GlueSQL.Storages.MemoryStorage
+
+      db =
+        MemoryStorage.new()
+        |> GlueSQL.glue_new()
+
   """
   def glue_new(storage) do
     GlueSQL.Native.glue_new(storage)
   end
 
   @doc """
-  Read and execute given query for database
+  Execute given query for database.
+  SQL query should be provided as string format.
+
+  ## Example: Create tables (with-or-without schema). 
+
+       GlueSQL.query(db, \"""
+           CREATE TABLE Foo (id INTEGER); # schema
+           CREATE TABLE Bar; #schema-less
+           \""")
   """
   def query(glue_db, sql) do
     case GlueSQL.Native.glue_query(glue_db, sql) do

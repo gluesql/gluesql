@@ -39,7 +39,13 @@ defmodule GlueSQL.MixProject do
       extras: ["CHANGELOG.md"],
       skip_undefined_reference_warnings_on: ["CHANGELOG.md"],
       source_ref: "v#{@version}",
-      source_url: @repo_url
+      source_url: @repo_url,
+      groups_for_modules: [
+        Storages: [
+          GlueSQL.Storages,
+          GlueSQL.Storages.MemoryStorage
+        ]
+      ]
     ]
   end
 
