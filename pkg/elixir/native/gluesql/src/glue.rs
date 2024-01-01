@@ -20,7 +20,7 @@ pub fn glue_new(storage: ExStorage) -> ExGlue {
 }
 
 #[rustler::nif(schedule = "DirtyCpu")]
-pub fn glue_query<'a>(glue: ExGlue, sql: String) -> ExResult<Vec<String>> {
+pub fn glue_query(glue: ExGlue, sql: String) -> ExResult<Vec<String>> {
     let mut storage = glue.storage;
 
     parse_sql(sql)?
