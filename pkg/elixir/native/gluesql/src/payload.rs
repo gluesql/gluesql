@@ -3,7 +3,7 @@ use {
     serde_json::{json, Value as Json},
 };
 
-pub fn convert_payloads<'a>(payloads: Vec<Payload>) -> Vec<String> {
+pub fn convert_payloads(payloads: Vec<Payload>) -> Vec<String> {
     payloads.into_iter().map(convert_payload).collect()
 }
 
