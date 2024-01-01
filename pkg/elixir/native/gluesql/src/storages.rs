@@ -9,7 +9,6 @@ use {
         plan::plan,
     },
     rustler::NifUntaggedEnum,
-    std::ops::{Deref, DerefMut},
 };
 
 #[derive(NifUntaggedEnum)]
@@ -21,10 +20,9 @@ pub enum ExStorage {
 pub async fn plan_query(storage: &ExStorage, statement: Statement) -> ExResult<Statement> {
     match storage {
         ExStorage::MemoryStorage(storage) => {
-            let lock = storage.resource.locked_storage.read().unwrap();
-            let storage = lock.deref();
+            let storage = storage.resource.locked_storage.read().await;
 
-            plan(storage, statement).await.map_err(|e| e.to_string())
+            plan(&*storage, statement).await.map_err(|e| e.to_string())
         }
     }
 }
@@ -33,10 +31,9 @@ pub async fn plan_query(storage: &ExStorage, statement: Statement) -> ExResult<S
 pub async fn execute_query(storage: &mut ExStorage, statement: Statement) -> ExResult<Payload> {
     match storage {
         ExStorage::MemoryStorage(storage) => {
-            let mut lock = storage.resource.locked_storage.write().unwrap();
-            let mut_storage = lock.deref_mut();
+            let mut storage = storage.resource.locked_storage.write().await;
 
-            execute(mut_storage, &statement)
+            execute(&mut *storage, &statement)
                 .await
                 .map_err(|e| e.to_string())
         }

@@ -1,7 +1,7 @@
 use {
     memory_storage::MemoryStorage,
     rustler::{NifStruct, ResourceArc},
-    std::sync::RwLock,
+    tokio::sync::RwLock,
 };
 
 #[derive(NifStruct)]
