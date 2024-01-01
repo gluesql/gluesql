@@ -1,7 +1,10 @@
 defmodule GlueSQL do
-  @moduledoc """
-  Documentation for `GlueSQL`.
-  """
+  @external_resource "README.md"
+
+  @moduledoc "README.md"
+             |> File.read!()
+             |> String.split("<!-- MDOC -->")
+             |> Enum.fetch!(1)
 
   alias Jason
 

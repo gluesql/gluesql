@@ -1,5 +1,7 @@
 # GlueSQL (Elixir Binding)
 
+<!-- MDOC -->
+
 GlueSQL is a SQL database library for Elixir.  
 This repository is an Elixir binding of the original Rust library [`gluesql-rs`](https://github.com/gluesql/gluesql).
 
