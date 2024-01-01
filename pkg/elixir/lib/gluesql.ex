@@ -6,7 +6,7 @@ defmodule GlueSQL do
   alias Jason
 
   @doc """
-  Create a GlueSQL database, using memory storage.
+  Create a GlueSQL database with given storage engine.
   """
   def glue_new(storage) do
     GlueSQL.Native.glue_new(storage)
