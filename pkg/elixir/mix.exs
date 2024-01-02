@@ -12,7 +12,8 @@ defmodule GlueSQL.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       docs: docs(),
-      package: package()
+      package: package(),
+      description: description()
     ]
   end
 
@@ -49,12 +50,18 @@ defmodule GlueSQL.MixProject do
     ]
   end
 
+  defp description do
+    """
+    GlueSQL is a SQL database library for Elixir.  
+    This repository is an Elixir binding of the original Rust library `gluesql-rs`.
+    """
+  end
+
   defp package do
     [
       files: [
         "lib",
         "native",
-        "checksum-*.exs",
         "mix.exs",
         "README.md",
         "CHANGELOG.md"
