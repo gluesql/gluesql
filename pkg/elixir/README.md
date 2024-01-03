@@ -70,7 +70,7 @@ by adding `gluesql` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:gluesql, "~> 0.1.0"}
+    {:gluesql, "~> 0.15.0"}
   ]
 end
 
