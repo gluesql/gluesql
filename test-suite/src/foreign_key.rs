@@ -141,4 +141,11 @@ test_case!(foreign_key, {
         Ok(Payload::Update(1)),
     )
     .await;
+
+    g.named_test(
+        "delete does not care parents",
+        "DELETE FROM Child WHERE id = 2;",
+        Ok(Payload::Delete(1)),
+    )
+    .await;
 });
