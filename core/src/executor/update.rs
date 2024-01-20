@@ -133,11 +133,7 @@ impl<'a, T: GStore> Update<'a, T> {
                     on_update,
                 } in foreign_keys
                 {
-                    if column != id {
-                        continue;
-                    }
-
-                    if value == &Value::Null {
+                    if column != id || value == &Value::Null {
                         continue;
                     }
 
