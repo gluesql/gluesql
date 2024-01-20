@@ -206,6 +206,13 @@ impl ToSql for Statement {
                 foreign_keys,
             } => {
                 let if_not_exists = if_not_exists.then_some("IF NOT EXISTS");
+                let foreign_keys = foreign_keys.to_owned().map(|foreign_keys| {
+                    foreign_keys
+                        .iter()
+                        .map(ToSql::to_sql)
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                });
                 let body = match source {
                     Some(query) => Some(format!("AS {}", query.to_sql())),
                     None if columns.is_none() => None,
@@ -221,7 +228,11 @@ impl ToSql for Statement {
                             })
                             .unwrap_or_else(|| "".to_owned());
 
-                        Some(format!("({columns})"))
+                        Some(format!(
+                            "({}, {})",
+                            columns,
+                            foreign_keys.unwrap_or_default()
+                        ))
                     }
                 };
                 let engine = engine.as_ref().map(|engine| format!("ENGINE = {engine}"));
@@ -308,6 +319,37 @@ impl ToSql for Statement {
 impl ToSql for Assignment {
     fn to_sql(&self) -> String {
         format!(r#""{}" = {}"#, self.id, self.value.to_sql())
+    }
+}
+
+impl ToSql for ForeignKey {
+    fn to_sql(&self) -> String {
+        let ForeignKey {
+            name,
+            column,
+            foreign_table,
+            referred_column,
+            on_delete,
+            on_update,
+        } = self;
+        // let name = name
+        //     .as_ref()
+        //     .map(|name| format!(r#"CONSTRAINT "{}" "#, name));
+        // let on_delete = on_delete
+        //     .as_ref()
+        //     .map(|action| format!("ON DELETE {}", action.to_sql()));
+        // let on_update = on_update
+        //     .as_ref()
+        //     .map(|action| format!("ON UPDATE {}", action.to_sql()));
+
+        format!(
+            r#"FOREIGN KEY ("{}") REFERENCES "{}"("{}")"#,
+            column,
+            foreign_table,
+            referred_column,
+            // on_delete.unwrap_or_default(),
+            // on_update.unwrap_or_default()
+        )
     }
 }
 

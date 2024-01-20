@@ -51,7 +51,7 @@ impl JsonStorage {
         }
 
         let schema_path = self.schema_path(table_name);
-        let column_defs = match schema_path.exists() {
+        let (column_defs, foreign_keys) = match schema_path.exists() {
             true => {
                 let mut file = File::open(&schema_path).map_storage_err()?;
                 let mut ddl = String::new();
@@ -64,9 +64,9 @@ impl JsonStorage {
                     ));
                 }
 
-                schema.column_defs
+                (schema.column_defs, schema.foreign_keys)
             }
-            false => None,
+            false => (None, None),
         };
 
         Ok(Some(Schema {
@@ -74,7 +74,7 @@ impl JsonStorage {
             column_defs,
             indexes: vec![],
             engine: None,
-            foreign_keys: None,
+            foreign_keys,
         }))
     }
 

@@ -45,6 +45,7 @@ impl Schema {
             column_defs,
             indexes,
             engine,
+            foreign_keys,
             ..
         } = self;
 
@@ -54,7 +55,7 @@ impl Schema {
             columns: column_defs.to_owned(),
             engine: engine.to_owned(),
             source: None,
-            foreign_keys: None,
+            foreign_keys: foreign_keys.to_owned(),
         }
         .to_sql();
 
