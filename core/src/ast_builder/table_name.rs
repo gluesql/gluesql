@@ -24,7 +24,7 @@ impl<'a> TableNameNode {
         DeleteNode::new(self.table_name)
     }
 
-    pub fn update(self) -> UpdateNode<'static> {
+    pub fn update(self) -> UpdateNode {
         UpdateNode::new(self.table_name)
     }
 
