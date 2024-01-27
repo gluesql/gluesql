@@ -40,7 +40,7 @@ impl<'a> UpdateFilterNode<'a> {
     }
 
     pub fn filter<T: Into<ExprNode<'a>>>(mut self, expr: T) -> Self {
-        self.selection = expr.into();
+        self.selection = self.selection.and(expr.into());
         self
     }
 
@@ -98,7 +98,7 @@ impl<'a> Build for UpdateSetNode<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{table, test, Build};
+    use crate::ast_builder::{col, num, table, test, text, Build};
 
     #[test]
     fn update() {
@@ -121,6 +121,18 @@ mod tests {
             .set("name", "americano")
             .build();
         let expected = "UPDATE Foo SET id = 2, name = americano WHERE Bar = 1";
+        test(actual, expected);
+
+        let actual = table("Foo")
+            .update()
+            .filter(col("id").gt(num(1)))
+            .filter("name = 'americano'")
+            .set("name", text("espresso"))
+            .build();
+        let expected = "
+            UPDATE Foo
+            SET name = 'espresso'
+            WHERE id > 1 AND name = 'americano'";
         test(actual, expected);
 
         let actual = table("Foo")
