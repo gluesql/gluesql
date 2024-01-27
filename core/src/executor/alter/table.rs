@@ -230,11 +230,11 @@ pub async fn drop_table<T: GStore + GStoreMut>(
         }
 
         let schemas = storage.fetch_all_schemas().await?;
-        let refferencing_children: Vec<RefferencingChild> = schemas
+        let referring_children: Vec<ReferingChild> = schemas
             .into_iter()
             .filter_map(
                 |Schema {
-                     table_name: refferencing_table_name,
+                     table_name: referring_table_name,
                      foreign_keys,
                      ..
                  }| {
@@ -248,10 +248,10 @@ pub async fn drop_table<T: GStore + GStoreMut>(
                                      ..
                                  }| {
                                     if &foreign_table == table_name
-                                        && &refferencing_table_name != table_name
+                                        && &referring_table_name != table_name
                                     {
-                                        return Some(RefferencingChild {
-                                            table_name: refferencing_table_name.clone(),
+                                        return Some(ReferingChild {
+                                            table_name: referring_table_name.clone(),
                                             constraint_name: name
                                                 .unwrap_or("defaultFK".to_owned())
                                                 .to_owned(),
@@ -268,10 +268,10 @@ pub async fn drop_table<T: GStore + GStoreMut>(
             .flatten()
             .collect();
 
-        if refferencing_children.len() > 0 {
+        if referring_children.len() > 0 {
             return Err(AlterError::CannotDropTableParentOnDependentChildren {
-                parent_table_name: table_name.into(),
-                children: refferencing_children,
+                parent: table_name.into(),
+                referring_children,
             }
             .into());
         }
@@ -283,12 +283,12 @@ pub async fn drop_table<T: GStore + GStoreMut>(
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize)]
-pub struct RefferencingChild {
+pub struct ReferingChild {
     pub table_name: String,
     pub constraint_name: String,
 }
 
-impl fmt::Display for RefferencingChild {
+impl fmt::Display for ReferingChild {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

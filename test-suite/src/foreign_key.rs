@@ -1,4 +1,4 @@
-use gluesql_core::executor::{AlterError, ExecuteError, RefferencingChild};
+use gluesql_core::executor::{AlterError, ExecuteError, ReferingChild};
 
 use {
     crate::*,
@@ -153,8 +153,8 @@ test_case!(foreign_key, {
         "Can not drop parent if child exists",
         "DROP TABLE ParentWithPK;",
         Err(AlterError::CannotDropTableParentOnDependentChildren {
-            parent_table_name: "ParentWithPK".to_owned(),
-            children: vec![RefferencingChild {
+            parent: "ParentWithPK".to_owned(),
+            referring_children: vec![ReferingChild {
                 table_name: "Child".to_owned(),
                 constraint_name: "defaultFK".to_owned(),
             }],

@@ -1,5 +1,5 @@
 use {
-    super::table::RefferencingChild,
+    super::table::ReferingChild,
     crate::ast::{DataType, Expr},
     serde::Serialize,
     std::fmt::{self, Debug},
@@ -78,9 +78,9 @@ pub enum AlterError {
     //     column: String,
     //     foreign_column: String,
     // },
-    #[error("cannot drop table parent '{parent_table_name}' due to foreign key constraint from child '{}'",children.into_iter().map(|v| v.to_string()).collect::<Vec<_>>().join(", ") )]
+    #[error("cannot drop table parent '{parent}' due to foreign key constraint from child '{}'", referring_children.into_iter().map(|v| v.to_string()).collect::<Vec<_>>().join(", "))]
     CannotDropTableParentOnDependentChildren {
-        parent_table_name: String,
-        children: Vec<RefferencingChild>,
+        parent: String,
+        referring_children: Vec<ReferingChild>,
     },
 }

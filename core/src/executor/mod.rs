@@ -16,7 +16,7 @@ mod validate;
 pub use {
     aggregate::AggregateError,
     alter::AlterError,
-    alter::RefferencingChild,
+    alter::ReferingChild,
     context::RowContext,
     evaluate::{evaluate_stateless, EvaluateError},
     execute::{execute, ExecuteError, Payload, PayloadVariable},
