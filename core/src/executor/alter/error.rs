@@ -68,9 +68,9 @@ pub enum AlterError {
     //     column: String,
     //     foreign_column: String,
     // },
-    #[error("referred column '{foreign_table}.{referred_column}' is not unique, cannot be used as foreign key")]
+    #[error("referred column '{referred_table}.{referred_column}' is not unique, cannot be used as foreign key")]
     ReferredColumnNotUnique {
-        foreign_table: String,
+        referred_table: String,
         referred_column: String,
     },
     // #[error("foreign key on delete action '{action}' is invalid")]
@@ -78,8 +78,8 @@ pub enum AlterError {
     //     column: String,
     //     foreign_column: String,
     // },
-    #[error("cannot drop table parent '{parent}' due to foreign key constraint from child '{}'", referring_children.into_iter().map(|v| v.to_string()).collect::<Vec<_>>().join(", "))]
-    CannotDropTableParentOnDependentChildren {
+    #[error("cannot drop table parent '{parent}' due to foreign key constraint from child '{}'", referring_children.into_iter().map(ToString::to_string).collect::<Vec<_>>().join(", "))]
+    CannotDropTableParentOnReferringChildren {
         parent: String,
         referring_children: Vec<ReferingChild>,
     },

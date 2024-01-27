@@ -112,7 +112,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
             let ForeignKey {
                 name,
                 column,
-                foreign_table,
+                referred_table,
                 referred_column,
                 on_delete,
                 on_update,
@@ -126,10 +126,10 @@ pub async fn create_table<T: GStore + GStoreMut>(
             // 7. check if on_delete and on_update are valid
             let foreign_schema =
                 storage
-                    .fetch_schema(foreign_table)
+                    .fetch_schema(referred_table)
                     .await?
                     .ok_or_else(|| -> Error {
-                        AlterError::ForeignTableNotFound(foreign_table.to_owned()).into()
+                        AlterError::ForeignTableNotFound(referred_table.to_owned()).into()
                     })?;
 
             let foreign_column_def = foreign_schema
@@ -164,7 +164,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
 
             if foreign_column_def.unique.is_none() {
                 return Err(AlterError::ReferredColumnNotUnique {
-                    foreign_table: foreign_table.to_owned(),
+                    referred_table: referred_table.to_owned(),
                     referred_column: referred_column.to_owned(),
                 }
                 .into());
@@ -243,18 +243,16 @@ pub async fn drop_table<T: GStore + GStoreMut>(
                             .into_iter()
                             .filter_map(
                                 |ForeignKey {
-                                     name,
-                                     foreign_table,
+                                     name: constraint_name,
+                                     referred_table,
                                      ..
                                  }| {
-                                    if &foreign_table == table_name
+                                    if &referred_table == table_name
                                         && &referring_table_name != table_name
                                     {
                                         return Some(ReferingChild {
                                             table_name: referring_table_name.clone(),
-                                            constraint_name: name
-                                                .unwrap_or("defaultFK".to_owned())
-                                                .to_owned(),
+                                            constraint_name,
                                         });
                                     }
 
@@ -269,7 +267,7 @@ pub async fn drop_table<T: GStore + GStoreMut>(
             .collect();
 
         if referring_children.len() > 0 {
-            return Err(AlterError::CannotDropTableParentOnDependentChildren {
+            return Err(AlterError::CannotDropTableParentOnReferringChildren {
                 parent: table_name.into(),
                 referring_children,
             }

@@ -29,9 +29,9 @@ pub trait ToSqlUnquoted {
 #[derive(PartialEq, Debug, Clone, Eq, Hash, Serialize, Deserialize)]
 pub struct ForeignKey {
     // TODO: how to remove pub?
-    pub name: Option<String>,
+    pub name: String,
     pub column: String, // TODO: should be Vec after impl composit index
-    pub foreign_table: String,
+    pub referred_table: String,
     pub referred_column: String, // TODO: should be Vec after impl composit index
     pub on_delete: Option<ReferentialAction>,
     pub on_update: Option<ReferentialAction>,
@@ -327,7 +327,7 @@ impl ToSql for ForeignKey {
         let ForeignKey {
             name,
             column,
-            foreign_table,
+            referred_table,
             referred_column,
             on_delete,
             on_update,
@@ -345,7 +345,7 @@ impl ToSql for ForeignKey {
         format!(
             r#"FOREIGN KEY ("{}") REFERENCES "{}"("{}")"#,
             column,
-            foreign_table,
+            referred_table,
             referred_column,
             // on_delete.unwrap_or_default(),
             // on_update.unwrap_or_default()

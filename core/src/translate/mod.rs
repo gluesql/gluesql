@@ -85,16 +85,18 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
 
             let columns = (!columns.is_empty()).then_some(columns);
 
+            let name = translate_object_name(name)?;
+
             let foreign_keys = constraints
                 .iter()
-                .filter_map(|x| translate_foreign_key(x).transpose())
+                .filter_map(|x| translate_foreign_key(x, &name).transpose())
                 .collect::<Result<Vec<_>>>()?;
 
             let foreign_keys = (!foreign_keys.is_empty()).then_some(foreign_keys);
 
             Ok(Statement::CreateTable {
                 if_not_exists: *if_not_exists,
-                name: translate_object_name(name)?,
+                name,
                 columns,
                 source: match query {
                     Some(v) => Some(translate_query(v).map(Box::new)?),
@@ -301,7 +303,10 @@ pub fn translate_referential_action(action: SqlReferentialAction) -> Referential
     }
 }
 
-fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Option<ForeignKey>> {
+fn translate_foreign_key(
+    table_constraint: &SqlTableConstraint,
+    table_name: &String,
+) -> Result<Option<ForeignKey>> {
     Ok(match table_constraint {
         SqlTableConstraint::ForeignKey {
             name,
@@ -329,10 +334,17 @@ fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Option
                 .value
                 .clone();
 
+            let referred_table = translate_object_name(foreign_table)?;
+
+            let name = match name {
+                Some(name) => name.value.clone(),
+                None => format!("FK_{table_name}_{column}-{referred_table}_{referred_column}"),
+            };
+
             Some(ForeignKey {
-                name: name.to_owned().map(|v| v.value),
+                name,
                 column: column,
-                foreign_table: translate_object_name(foreign_table).unwrap(),
+                referred_table,
                 referred_column,
                 on_delete: on_delete.map(translate_referential_action),
                 on_update: on_update.map(translate_referential_action),

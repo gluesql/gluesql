@@ -182,7 +182,7 @@ async fn fetch_vec_rows<T: GStore>(
             let ForeignKey {
                 name,
                 column,
-                foreign_table,
+                referred_table,
                 referred_column,
                 on_delete,
                 on_update,
@@ -197,17 +197,17 @@ async fn fetch_vec_rows<T: GStore>(
                         continue;
                     }
                     let no_parent = storage
-                        .fetch_data(&foreign_table, &Key::try_from(child)?)
+                        .fetch_data(&referred_table, &Key::try_from(child)?)
                         .await?
                         .is_none();
 
                     println!("looking for {child:#?}: {no_parent}");
                     if no_parent {
                         return Err(ValidateError::ForeignKeyViolation {
-                            name: name.unwrap(),
+                            name,
                             table: table_name.to_owned(),
                             column: column.to_owned(),
-                            foreign_table: foreign_table.to_owned(),
+                            referred_table: referred_table.to_owned(),
                             referred_column: referred_column.to_owned(),
                         }
                         .into());
@@ -227,17 +227,17 @@ async fn fetch_vec_rows<T: GStore>(
                         continue;
                     }
                     let no_parent = storage
-                        .fetch_data(&foreign_table, &Key::try_from(child)?)
+                        .fetch_data(&referred_table, &Key::try_from(child)?)
                         .await?
                         .is_none();
 
                     println!("looking for {child:#?}: {no_parent}");
                     if no_parent {
                         return Err(ValidateError::ForeignKeyViolation {
-                            name: name.unwrap_or_default(), // TODO: fix this
+                            name,
                             table: table_name.to_owned(),
                             column: column.to_owned(),
-                            foreign_table: foreign_table.to_owned(),
+                            referred_table: referred_table.to_owned(),
                             referred_column: referred_column.to_owned(),
                         }
                         .into());

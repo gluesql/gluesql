@@ -32,7 +32,7 @@ test_case!(foreign_key, {
         );
         ",
         Err(AlterError::ReferredColumnNotUnique {
-            foreign_table: "ParentWithoutPK".to_owned(),
+            referred_table: "ParentWithoutPK".to_owned(),
             referred_column: "id".to_owned(),
         }
         .into()),
@@ -87,10 +87,10 @@ test_case!(foreign_key, {
         "If there is no parent, insert should fail",
         "INSERT INTO Child VALUES (1, 'orphan', 1);",
         Err(ValidateError::ForeignKeyViolation {
-            name: "".to_owned(),
+            name: "FK_Child_parent_id-ParentWithPK_id".to_owned(),
             table: "Child".to_owned(),
             column: "parent_id".to_owned(),
-            foreign_table: "ParentWithPK".to_owned(),
+            referred_table: "ParentWithPK".to_owned(),
             referred_column: "id".to_owned(),
         }
         .into()),
@@ -118,10 +118,10 @@ test_case!(foreign_key, {
         "If there is no parent, update should fail",
         "UPDATE Child SET parent_id = 2 WHERE id = 2;",
         Err(ValidateError::ForeignKeyViolation {
-            name: "".to_owned(),
+            name: "FK_Child_parent_id-ParentWithPK_id".to_owned(),
             table: "Child".to_owned(),
             column: "parent_id".to_owned(),
-            foreign_table: "ParentWithPK".to_owned(),
+            referred_table: "ParentWithPK".to_owned(),
             referred_column: "id".to_owned(),
         }
         .into()),
@@ -150,13 +150,13 @@ test_case!(foreign_key, {
     .await;
 
     g.named_test(
-        "Can not drop parent if child exists",
+        "Cannot drop parent if child exists",
         "DROP TABLE ParentWithPK;",
-        Err(AlterError::CannotDropTableParentOnDependentChildren {
+        Err(AlterError::CannotDropTableParentOnReferringChildren {
             parent: "ParentWithPK".to_owned(),
             referring_children: vec![ReferingChild {
                 table_name: "Child".to_owned(),
-                constraint_name: "defaultFK".to_owned(),
+                constraint_name: "FK_Child_parent_id-ParentWithPK_id".to_owned(),
             }],
         }
         .into()),

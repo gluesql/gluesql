@@ -127,7 +127,7 @@ impl<'a, T: GStore> Update<'a, T> {
                 for ForeignKey {
                     name,
                     column,
-                    foreign_table,
+                    referred_table,
                     referred_column,
                     on_delete,
                     on_update,
@@ -139,16 +139,16 @@ impl<'a, T: GStore> Update<'a, T> {
 
                     let no_parent = self
                         .storage
-                        .fetch_data(foreign_table, &Key::try_from(value)?)
+                        .fetch_data(referred_table, &Key::try_from(value)?)
                         .await?
                         .is_none();
 
                     if no_parent {
                         return Err(ValidateError::ForeignKeyViolation {
-                            name: name.clone().unwrap_or_default(),
+                            name: name.to_owned(),
                             table: table_name.to_owned(),
                             column: column.to_owned(),
-                            foreign_table: foreign_table.to_owned(),
+                            referred_table: referred_table.to_owned(),
                             referred_column: referred_column.to_owned(),
                         }
                         .into());
