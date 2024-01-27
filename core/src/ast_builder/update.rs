@@ -7,24 +7,69 @@ use {
 };
 
 #[derive(Clone, Debug)]
-pub struct UpdateNode<'a> {
+pub struct UpdateNode {
     table_name: String,
-    assignments: Vec<AssignmentNode<'a>>,
-    selection: Option<ExprNode<'a>>,
 }
 
-impl<'a> UpdateNode<'a> {
+impl UpdateNode {
     pub fn new(table_name: String) -> Self {
+        Self { table_name }
+    }
+
+    pub fn filter<'a, T: Into<ExprNode<'a>>>(self, expr: T) -> UpdateFilterNode<'a> {
+        UpdateFilterNode::new(self.table_name, expr)
+    }
+
+    pub fn set<'a, T: Into<ExprNode<'a>>>(self, id: &str, value: T) -> UpdateSetNode<'a> {
+        UpdateSetNode::new(self.table_name, None, id, value)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct UpdateFilterNode<'a> {
+    table_name: String,
+    selection: ExprNode<'a>,
+}
+
+impl<'a> UpdateFilterNode<'a> {
+    pub fn new<T: Into<ExprNode<'a>>>(table_name: String, expr: T) -> Self {
         Self {
             table_name,
-            assignments: Vec::new(),
-            selection: None,
+            selection: expr.into(),
         }
     }
 
     pub fn filter<T: Into<ExprNode<'a>>>(mut self, expr: T) -> Self {
-        self.selection = Some(expr.into());
+        self.selection = expr.into();
         self
+    }
+
+    pub fn set<T: Into<ExprNode<'a>>>(self, id: &str, value: T) -> UpdateSetNode<'a> {
+        UpdateSetNode::new(self.table_name, Some(self.selection), id, value)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct UpdateSetNode<'a> {
+    table_name: String,
+    selection: Option<ExprNode<'a>>,
+    assignments: Vec<AssignmentNode<'a>>,
+}
+
+impl<'a> UpdateSetNode<'a> {
+    pub fn new<T: Into<ExprNode<'a>>>(
+        table_name: String,
+        selection: Option<ExprNode<'a>>,
+        id: &str,
+        value: T,
+    ) -> Self {
+        let assignments = vec![AssignmentNode::Expr(id.to_owned(), value.into())];
+
+        Self {
+            table_name,
+            selection,
+            assignments,
+        }
     }
 
     pub fn set<T: Into<ExprNode<'a>>>(mut self, id: &str, value: T) -> Self {
@@ -34,7 +79,7 @@ impl<'a> UpdateNode<'a> {
     }
 }
 
-impl<'a> Build for UpdateNode<'a> {
+impl<'a> Build for UpdateSetNode<'a> {
     fn build(self) -> Result<Statement> {
         let table_name = self.table_name;
         let selection = self.selection.map(Expr::try_from).transpose()?;
@@ -53,7 +98,7 @@ impl<'a> Build for UpdateNode<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{table, test, Build};
+    use crate::ast_builder::{table, col, num, text, test, Build};
 
     #[test]
     fn update() {
@@ -71,21 +116,33 @@ mod tests {
 
         let actual = table("Foo")
             .update()
+            .filter("Bar = 1")
             .set("id", "2")
             .set("name", "americano")
-            .filter("Bar = 1")
             .build();
         let expected = "UPDATE Foo SET id = 2, name = americano WHERE Bar = 1";
         test(actual, expected);
 
         let actual = table("Foo")
             .update()
+            .filter(col("id").gt(num(1)))
+            .filter("name = 'americano'")
+            .set("name", text("espresso"))
+            .build();
+        let expected = "
+            UPDATE Foo
+            SET name = 'espresso'
+            WHERE id > 1 AND name = 'americano'";
+        test(actual, expected);
+
+        let actual = table("Foo")
+            .update()
+            .filter("body_item = 1")
             .set("id", "2")
             .set(
                 "head_item",
                 "(SELECT id FROM head_item WHERE level = 3 LIMIT 1)",
             )
-            .filter("body_item = 1")
             .build();
         let expected = "UPDATE Foo SET id = 2, head_item = (SELECT id FROM head_item WHERE level = 3 LIMIT 1) WHERE body_item = 1";
         test(actual, expected);
