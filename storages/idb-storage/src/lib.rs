@@ -214,8 +214,8 @@ impl Store for IdbStorage {
             rows.push((key, row));
 
             cursor.advance(1).await.err_into()?;
-            current_key = cursor.key().err_into()?.unwrap_or_else(|| JsValue::NULL);
-            current_row = cursor.value().err_into()?.unwrap_or_else(|| JsValue::NULL);
+            current_key = cursor.key().err_into()?.unwrap_or(JsValue::NULL);
+            current_row = cursor.value().err_into()?.unwrap_or(JsValue::NULL);
         }
 
         transaction.commit().err_into()?.await.err_into()?;
