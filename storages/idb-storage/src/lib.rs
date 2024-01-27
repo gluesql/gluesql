@@ -202,8 +202,8 @@ impl Store for IdbStorage {
         };
 
         let mut rows = Vec::new();
-        let mut current_key = cursor.key().err_into()?.unwrap_or_else(|| JsValue::NULL);
-        let mut current_row = cursor.value().err_into()?.unwrap_or_else(|| JsValue::NULL);
+        let mut current_key = cursor.key().err_into()?.unwrap_or(JsValue::NULL);
+        let mut current_row = cursor.value().err_into()?.unwrap_or(JsValue::NULL);
 
         while !current_key.is_null() {
             let key: JsonValue = current_key.into_serde().err_into()?;
