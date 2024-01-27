@@ -1,7 +1,8 @@
 use {
+    super::table::RefferencingChild,
     crate::ast::{DataType, Expr},
     serde::Serialize,
-    std::fmt::Debug,
+    std::fmt::{self, Debug},
     thiserror::Error,
 };
 
@@ -62,12 +63,11 @@ pub enum AlterError {
         foreign_column_type: DataType,
     },
 
-    #[error("|{column}| and |{foreign_column}| have different nullable")]
-    ForeignKeyNullableMismatch {
-        column: String,
-        foreign_column: String,
-    },
-
+    // #[error("|{column}| and |{foreign_column}| have different nullable")]
+    // ForeignKeyNullableMismatch {
+    //     column: String,
+    //     foreign_column: String,
+    // },
     #[error("referred column '{foreign_table}.{referred_column}' is not unique, cannot be used as foreign key")]
     ReferredColumnNotUnique {
         foreign_table: String,
@@ -78,4 +78,9 @@ pub enum AlterError {
     //     column: String,
     //     foreign_column: String,
     // },
+    #[error("cannot drop table parent '{parent_table_name}' due to foreign key constraint from child '{}'",children.into_iter().map(|v| v.to_string()).collect::<Vec<_>>().join(", ") )]
+    CannotDropTableParentOnDependentChildren {
+        parent_table_name: String,
+        children: Vec<RefferencingChild>,
+    },
 }

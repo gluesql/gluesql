@@ -1,4 +1,4 @@
-use gluesql_core::executor::{AlterError, ExecuteError};
+use gluesql_core::executor::{AlterError, ExecuteError, RefferencingChild};
 
 use {
     crate::*,
@@ -143,9 +143,23 @@ test_case!(foreign_key, {
     .await;
 
     g.named_test(
-        "delete does not care parents",
+        "Deleting child does not care parents",
         "DELETE FROM Child WHERE id = 2;",
         Ok(Payload::Delete(1)),
+    )
+    .await;
+
+    g.named_test(
+        "Can not drop parent if child exists",
+        "DROP TABLE ParentWithPK;",
+        Err(AlterError::CannotDropTableParentOnDependentChildren {
+            parent_table_name: "ParentWithPK".to_owned(),
+            children: vec![RefferencingChild {
+                table_name: "Child".to_owned(),
+                constraint_name: "defaultFK".to_owned(),
+            }],
+        }
+        .into()),
     )
     .await;
 });

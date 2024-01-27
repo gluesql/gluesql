@@ -1,3 +1,7 @@
+use std::fmt;
+
+use serde::Serialize;
+
 use crate::ast::ForeignKey;
 
 use {
@@ -225,8 +229,71 @@ pub async fn drop_table<T: GStore + GStoreMut>(
             schema.ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
         }
 
+        let schemas = storage.fetch_all_schemas().await?;
+        let refferencing_children: Vec<RefferencingChild> = schemas
+            .into_iter()
+            .filter_map(
+                |Schema {
+                     table_name: refferencing_table_name,
+                     foreign_keys,
+                     ..
+                 }| {
+                    foreign_keys.map(|foreign_keys| {
+                        foreign_keys
+                            .into_iter()
+                            .filter_map(
+                                |ForeignKey {
+                                     name,
+                                     foreign_table,
+                                     ..
+                                 }| {
+                                    if &foreign_table == table_name
+                                        && &refferencing_table_name != table_name
+                                    {
+                                        return Some(RefferencingChild {
+                                            table_name: refferencing_table_name.clone(),
+                                            constraint_name: name
+                                                .unwrap_or("defaultFK".to_owned())
+                                                .to_owned(),
+                                        });
+                                    }
+
+                                    None
+                                },
+                            )
+                            .collect::<Vec<_>>()
+                    })
+                },
+            )
+            .flatten()
+            .collect();
+
+        if refferencing_children.len() > 0 {
+            return Err(AlterError::CannotDropTableParentOnDependentChildren {
+                parent_table_name: table_name.into(),
+                children: refferencing_children,
+            }
+            .into());
+        }
+
         storage.delete_schema(table_name).await?;
     }
 
     Ok(())
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize)]
+pub struct RefferencingChild {
+    pub table_name: String,
+    pub constraint_name: String,
+}
+
+impl fmt::Display for RefferencingChild {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "constraint {} on table {} depends on table parent",
+            self.constraint_name, self.table_name
+        )
+    }
 }
