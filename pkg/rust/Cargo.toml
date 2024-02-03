@@ -27,10 +27,12 @@ memory-storage = { workspace = true, optional = true }
 shared-memory-storage = { workspace = true, optional = true }
 sled-storage = { workspace = true, optional = true }
 json-storage = { workspace = true, optional = true }
-parquet-storage = { workspace = true, optional = true }
+csv-storage = { workspace = true, optional = true }
 composite-storage = { workspace = true, optional = true }
 web-storage = { workspace = true, optional = true }
 idb-storage = { workspace = true, optional = true }
+redis-storage = { workspace = true, optional = true }
+parquet-storage = { workspace = true, optional = true }
 
 [dev-dependencies]
 futures = "0.3"
@@ -45,5 +47,7 @@ default = [
 	"sled-storage",
 	"json-storage",
 	"parquet-storage",
+	"csv-storage",
 	"composite-storage",
+	"redis-storage",
 ]

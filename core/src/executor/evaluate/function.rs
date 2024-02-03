@@ -695,14 +695,6 @@ pub fn is_empty<'a>(expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     Continue(Evaluated::Value(Value::Bool(length == 0)))
 }
 
-pub fn values<'a>(expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    match expr.try_into().break_if_null()? {
-        Value::Map(m) => Ok(Evaluated::Value(Value::List(m.into_values().collect()))),
-        _ => Err(EvaluateError::MapTypeRequired.into()),
-    }
-    .into_control_flow()
-}
-
 // --- etc ---
 
 pub fn unwrap<'a>(
@@ -998,6 +990,24 @@ pub fn entries<'a>(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'
             Ok(Evaluated::Value(Value::List(entries)))
         }
         _ => Err(EvaluateError::FunctionRequiresMapValue(name).into()),
+    }
+    .into_control_flow()
+}
+
+pub fn keys<'a>(expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    match expr.try_into().break_if_null()? {
+        Value::Map(m) => Ok(Evaluated::Value(Value::List(
+            m.into_keys().map(Value::Str).collect(),
+        ))),
+        _ => Err(EvaluateError::MapTypeRequired.into()),
+    }
+    .into_control_flow()
+}
+
+pub fn values<'a>(expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    match expr.try_into().break_if_null()? {
+        Value::Map(m) => Ok(Evaluated::Value(Value::List(m.into_values().collect()))),
+        _ => Err(EvaluateError::MapTypeRequired.into()),
     }
     .into_control_flow()
 }

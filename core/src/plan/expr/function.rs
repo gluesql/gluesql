@@ -61,8 +61,10 @@ impl Function {
             | Self::GetY(expr)
             | Self::IsEmpty(expr)
             | Self::Sort { expr, order: None }
-            | Self::Values(expr)
-            | Self::Dedup(expr) => Exprs::Single([expr].into_iter()),
+            | Self::Dedup(expr)
+            | Self::Entries(expr)
+            | Self::Keys(expr)
+            | Self::Values(expr) => Exprs::Single([expr].into_iter()),
             Self::Left { expr, size: expr2 }
             | Self::Right { expr, size: expr2 }
             | Self::Lpad {
@@ -203,7 +205,6 @@ impl Function {
                 Exprs::VariableArgsWithSingle(once(separator).chain(exprs.iter()))
             }
             Self::Greatest(exprs) => Exprs::VariableArgs(exprs.iter()),
-            Self::Entries(expr) => Exprs::Single([expr].into_iter()),
             Self::Splice {
                 list_data: expr,
                 begin_index: expr2,

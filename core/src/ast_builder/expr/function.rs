@@ -168,6 +168,7 @@ pub enum FunctionNode<'a> {
     IsEmpty(ExprNode<'a>),
     LastDay(ExprNode<'a>),
     Entries(ExprNode<'a>),
+    Keys(ExprNode<'a>),
     Values(ExprNode<'a>),
 }
 
@@ -385,6 +386,7 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
             FunctionNode::IsEmpty(expr) => expr.try_into().map(Function::IsEmpty),
             FunctionNode::LastDay(expr) => expr.try_into().map(Function::LastDay),
             FunctionNode::Entries(expr) => expr.try_into().map(Function::Entries),
+            FunctionNode::Keys(expr) => expr.try_into().map(Function::Keys),
             FunctionNode::Values(expr) => expr.try_into().map(Function::Values),
         }
     }
@@ -557,6 +559,9 @@ impl<'a> ExprNode<'a> {
     }
     pub fn entries(self) -> ExprNode<'a> {
         entries(self)
+    }
+    pub fn keys(self) -> ExprNode<'a> {
+        keys(self)
     }
     pub fn values(self) -> ExprNode<'a> {
         values(self)
@@ -946,6 +951,10 @@ pub fn last_day<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
 
 pub fn entries<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Entries(expr.into())))
+}
+
+pub fn keys<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Keys(expr.into())))
 }
 
 pub fn values<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
@@ -1755,6 +1764,17 @@ mod tests {
 
         let actual = f::values(col("map"));
         let expected = "VALUES(map)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_keys() {
+        let actual = f::keys(col("map"));
+        let expected = "KEYS(map)";
+        test_expr(actual, expected);
+
+        let actual = col("map").keys();
+        let expected = "KEYS(map)";
         test_expr(actual, expected);
     }
 }

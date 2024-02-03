@@ -102,7 +102,6 @@ macro_rules! generate_store_tests {
         glue!(inline_view, inline_view::inline_view);
         glue!(values, values::values);
         glue!(unary_operator, unary_operator::unary_operator);
-        glue!(function_values, function::values::values);
         glue!(function_upper_lower, function::upper_lower::upper_lower);
         glue!(function_initcap, function::initcap::initcap);
         glue!(function_gcd_lcm, function::gcd_lcm::gcd_lcm);
@@ -158,6 +157,8 @@ macro_rules! generate_store_tests {
         glue!(function_add_month, function::add_month::add_month);
         glue!(function_slice, function::slice::slice);
         glue!(function_entries, function::entries::entries);
+        glue!(function_keys, function::keys::keys);
+        glue!(function_values, function::values::values);
         glue!(join, join::join);
         glue!(join_project, join::project);
         glue!(migrate, migrate::migrate);

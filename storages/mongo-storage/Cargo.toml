@@ -1,0 +1,32 @@
+[package]
+name = "gluesql-mongo-storage"
+authors = [
+  "Hyoungkwan Cho <devgony@gmail.com>",
+  "Taehoon Moon <taehoon.moon@outlook.com>",
+]
+version.workspace = true
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation.workspace = true
+
+[dependencies]
+gluesql-core.workspace = true
+
+async-trait = "0.1"
+futures = "0.3"
+thiserror = "1.0"
+mongodb = "2.5.0"
+bson = { version = "2.6.1", features = ["chrono-0_4"] }
+chrono = { version = "0.4.26", features = ["serde", "wasmbind"] }
+strum_macros = "0.24"
+strum = "0.24"
+rust_decimal = { version = "1", features = ["serde-str"] }
+
+[dev-dependencies]
+test-suite.workspace = true
+tokio = { version = "1", features = ["rt", "macros"] }
+
+[features]
+test-mongo = []

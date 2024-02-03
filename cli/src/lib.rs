@@ -9,6 +9,7 @@ use {
     crate::cli::Cli,
     anyhow::Result,
     clap::Parser,
+    csv_storage::CsvStorage,
     futures::{
         executor::block_on,
         stream::{StreamExt, TryStreamExt},
@@ -55,6 +56,7 @@ enum Storage {
     Memory,
     Sled,
     Json,
+    Csv,
     Parquet,
 }
 
@@ -84,6 +86,14 @@ pub fn run() -> Result<()> {
 
             run(
                 JsonStorage::new(path).expect("failed to load json-storage"),
+                args.execute,
+            );
+        }
+        (Some(path), Some(Storage::Csv), _) => {
+            println!("[csv-storage] connected to {}", path);
+
+            run(
+                CsvStorage::new(path).expect("failed to load csv-storage"),
                 args.execute,
             );
         }

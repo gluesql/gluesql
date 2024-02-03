@@ -196,8 +196,8 @@ test_case!(ast_builder, {
 
     let actual = table("TxTest")
         .update()
-        .set("name", "'Sunday'")
         .filter("id = 1")
+        .set("name", "'Sunday'")
         .execute(glue)
         .await;
     let expected = Ok(Payload::Update(1));
@@ -239,8 +239,8 @@ test_case!(ast_builder, {
 
     let actual = table("TxTest")
         .update()
-        .set("name", "'Sunday'")
         .filter("id = 1")
+        .set("name", "'Sunday'")
         .execute(glue)
         .await;
     let expected = Ok(Payload::Update(1));
