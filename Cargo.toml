@@ -49,5 +49,5 @@ web-storage = { package = "gluesql-web-storage", path = "./storages/web-storage"
 idb-storage = { package = "gluesql-idb-storage", path = "./storages/idb-storage", version = "0.15.0" }
 redis-storage = { package = "gluesql-redis-storage", path = "./storages/redis-storage", version = "0.15.0" }
 mongo-storage = { package = "gluesql-mongo-storage", path = "./storages/mongo-storage", version = "0.15.0" }
-parquet-storage = { package = "gluesql-parquet-storage", path = "./storages/parquet-storage", version = "0.14.0" }
+parquet-storage = { package = "gluesql-parquet-storage", path = "./storages/parquet-storage", version = "0.15.0" }
 utils = { package = "gluesql-utils", path = "./utils", version = "0.15.0" }
