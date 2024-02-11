@@ -62,12 +62,12 @@ jobs:
       - uses: actions/checkout@v3
       - uses: Swatinem/rust-cache@v2
       - run: |
-        cd core && cargo test --verbose && cd .. 
-        cd utils && cargo test --verbose && cd ..
-        cd cli && cargo test --verbose && cd ..
-        cd pkg/rust
-        cargo test --lib --bins --tests --examples --verbose --no-default-features --features "memory-storage sled-storage"
-        cd ../../
+          cd core && cargo test --verbose && cd .. 
+          cd utils && cargo test --verbose && cd ..
+          cd cli && cargo test --verbose && cd ..
+          cd pkg/rust
+          cargo test --lib --bins --tests --examples --verbose --no-default-features --features "memory-storage sled-storage"
+          cd ../../
  
   run_storage_tests:
     name: Run storage tests
@@ -76,16 +76,16 @@ jobs:
       - uses: actions/checkout@v3
       - uses: Swatinem/rust-cache@v2
       - run: |
-        cd storages
-        cd memory-storage && cargo test --verbose && cd ..
-        cd shared-memory-storage && cargo test --verbose && cd ..
-        cd composite-storage && cargo test --verbose && cd ..
-        cd json-storage && cargo test --verbose && cd ..
-        cd csv-storage && cargo test --verbose && cd ..
-        cd sled-storage
-        cargo test --verbose -- --skip sled_transaction_timeout
-        cargo test sled_transaction_timeout --verbose -- --test-threads=1
-        cargo test --benches
+          cd storages
+          cd memory-storage && cargo test --verbose && cd ..
+          cd shared-memory-storage && cargo test --verbose && cd ..
+          cd composite-storage && cargo test --verbose && cd ..
+          cd json-storage && cargo test --verbose && cd ..
+          cd csv-storage && cargo test --verbose && cd ..
+          cd sled-storage
+          cargo test --verbose -- --skip sled_transaction_timeout
+          cargo test sled_transaction_timeout --verbose -- --test-threads=1
+          cargo test --benches
 
   run_mongostorage_tests:
     name: Run MongoStorage tests
@@ -96,8 +96,8 @@ jobs:
       - name: MongoDB in GitHub Actions
         uses: supercharge/mongodb-github-action@v1.10.0
       - run: |
-        cd storages/mongo-storage
-        cargo test --verbose --features test-mongo
+          cd storages/mongo-storage
+          cargo test --verbose --features test-mongo
 
   run_redisstorage_tests:
     name: Run RedisStorage tests
