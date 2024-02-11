@@ -22,7 +22,7 @@ jobs:
       - name: Set up node
         uses: actions/setup-node@v3
         with:
-          node-version: 16
+          node-version: 20
       - uses: browser-actions/setup-firefox@latest
       - name: Set up wasm pack
         uses: jetli/wasm-pack-action@v0.4.0
@@ -44,7 +44,7 @@ jobs:
       - name: Set up node
         uses: actions/setup-node@v3
         with:
-          node-version: 16
+          node-version: 20
       - uses: browser-actions/setup-firefox@latest
       - name: Set up wasm pack
         uses: jetli/wasm-pack-action@v0.4.0
