@@ -17,7 +17,7 @@ jobs:
   coverage:
     runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Read rust-toolchain file
         id: rust-toolchain
         run: echo "toolchain=$(cat rust-toolchain)" >> $GITHUB_OUTPUT
