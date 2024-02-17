@@ -1,0 +1,42 @@
+name: Elixir
+
+on:
+  push:
+    branches: [main, release-*]
+    paths-ignore:
+      - "docs/**"
+  pull_request:
+    branches: [main, release-*]
+    paths-ignore:
+      - "docs/**"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  elixir_storage_test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: "26.1"
+          elixir-version: "1.15.2"
+
+      - name: Fetch mix dependencies
+        run: |
+          cd pkg/elixir
+          mix deps.get
+
+      - name: Set up Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Test elixir library
+        run: |
+          cd pkg/elixir
+          mix test
