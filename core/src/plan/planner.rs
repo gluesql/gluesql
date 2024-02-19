@@ -81,6 +81,7 @@ pub trait Planner<'a> {
                 expr,
                 negated,
                 pattern,
+                escape_char,
             } => {
                 let expr =
                     Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *expr));
@@ -91,12 +92,14 @@ pub trait Planner<'a> {
                     expr,
                     negated,
                     pattern,
+                    escape_char,
                 }
             }
             Expr::ILike {
                 expr,
                 negated,
                 pattern,
+                escape_char,
             } => {
                 let expr =
                     Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *expr));
@@ -107,6 +110,7 @@ pub trait Planner<'a> {
                     expr,
                     negated,
                     pattern,
+                    escape_char,
                 }
             }
             Expr::BinaryOp { left, op, right } => Expr::BinaryOp {

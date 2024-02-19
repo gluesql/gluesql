@@ -214,10 +214,11 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
             expr,
             negated,
             pattern,
+            escape_char,
         } => {
             let target = eval(expr).await?;
             let pattern = eval(pattern).await?;
-            let evaluated = target.like(pattern, true)?;
+            let evaluated = target.like(pattern, true, escape_char)?;
 
             Ok(match negated {
                 true => Evaluated::Value(Value::Bool(
@@ -230,10 +231,11 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
             expr,
             negated,
             pattern,
+            escape_char,
         } => {
             let target = eval(expr).await?;
             let pattern = eval(pattern).await?;
-            let evaluated = target.like(pattern, false)?;
+            let evaluated = target.like(pattern, false, escape_char)?;
 
             Ok(match negated {
                 true => Evaluated::Value(Value::Bool(

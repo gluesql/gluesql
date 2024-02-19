@@ -35,11 +35,13 @@ pub enum Expr {
         expr: Box<Expr>,
         negated: bool,
         pattern: Box<Expr>,
+        escape_char: Option<char>,
     },
     ILike {
         expr: Box<Expr>,
         negated: bool,
         pattern: Box<Expr>,
+        escape_char: Option<char>,
     },
     BinaryOp {
         left: Box<Expr>,
@@ -148,6 +150,7 @@ impl Expr {
                 expr,
                 negated,
                 pattern,
+                escape_char: _,
             } => {
                 let expr = expr.to_sql_with(quoted);
                 let pattern = pattern.to_sql_with(quoted);
@@ -161,6 +164,7 @@ impl Expr {
                 expr,
                 negated,
                 pattern,
+                escape_char: _,
             } => {
                 let expr = expr.to_sql_with(quoted);
                 let pattern = pattern.to_sql_with(quoted);
@@ -364,6 +368,7 @@ mod tests {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 negated: false,
                 pattern: Box::new(Expr::Literal(AstLiteral::QuotedString("%abc".to_owned()))),
+                escape_char: None,
             }
             .to_sql()
         );
@@ -374,6 +379,7 @@ mod tests {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 negated: true,
                 pattern: Box::new(Expr::Literal(AstLiteral::QuotedString("%abc".to_owned()))),
+                escape_char: None,
             }
             .to_sql()
         );
@@ -384,6 +390,7 @@ mod tests {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 negated: false,
                 pattern: Box::new(Expr::Literal(AstLiteral::QuotedString("%abc_".to_owned()))),
+                escape_char: None,
             }
             .to_sql()
         );
@@ -394,6 +401,7 @@ mod tests {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 negated: true,
                 pattern: Box::new(Expr::Literal(AstLiteral::QuotedString("%abc_".to_owned()))),
+                escape_char: None,
             }
             .to_sql()
         );

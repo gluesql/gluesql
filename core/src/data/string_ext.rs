@@ -1,4 +1,6 @@
-use {crate::result::Result, regex::Regex, serde::Serialize, thiserror::Error};
+use regex::RegexBuilder;
+
+use {crate::result::Result, serde::Serialize, thiserror::Error};
 
 #[derive(Error, Serialize, Debug, PartialEq, Eq)]
 pub enum StringExtError {
@@ -7,28 +9,38 @@ pub enum StringExtError {
 }
 
 pub trait StringExt {
-    fn like(&self, pattern: &str, case_sensitive: bool) -> Result<bool>;
+    fn like(&self, pattern: &str, case_sensitive: bool, escape_char: &Option<char>)
+        -> Result<bool>;
 }
 
 impl StringExt for str {
-    fn like(&self, pattern: &str, case_sensitive: bool) -> Result<bool> {
-        let (match_string, match_pattern) = match case_sensitive {
-            true => (self.to_owned(), pattern.to_owned()),
-            false => {
-                let lowercase_string = self.to_lowercase();
-                let lowercase_pattern = pattern.to_lowercase();
-
-                (lowercase_string, lowercase_pattern)
-            }
-        };
-
-        Ok(Regex::new(&format!(
-            "^{}$",
-            regex::escape(match_pattern.as_str())
-                .replace('%', ".*")
-                .replace('_', ".")
-        ))
-        .map_err(|_| StringExtError::UnreachablePatternParsing)?
-        .is_match(match_string.as_str()))
+    fn like(
+        &self,
+        pattern: &str,
+        case_sensitive: bool,
+        escape_char: &Option<char>,
+    ) -> Result<bool> {
+        let pattern = pattern
+            .chars()
+            .scan(false, |escaped, char| {
+                if !*escaped && Some(char) == *escape_char {
+                    *escaped = true;
+                    return Some("".to_owned());
+                }
+                let regex = match (&escaped, &char) {
+                    (false, '_') => ".".to_owned(),
+                    (false, '%') => ".*".to_owned(),
+                    (true, '\\') => "\\\\".to_owned(),
+                    _ => char.to_string(),
+                };
+                *escaped = false;
+                Some(regex)
+            })
+            .collect::<String>();
+        RegexBuilder::new(&format!("^{pattern}$"))
+            .case_insensitive(!case_sensitive)
+            .build()
+            .map(|regex| regex.is_match(self))
+            .map_err(|_| StringExtError::UnreachablePatternParsing.into())
     }
 }
