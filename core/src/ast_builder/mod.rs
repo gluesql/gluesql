@@ -13,6 +13,7 @@ mod expr;
 mod expr_list;
 mod expr_with_alias;
 mod index;
+mod index_item;
 mod insert;
 mod order_by_expr;
 mod order_by_expr_list;
@@ -39,6 +40,9 @@ pub use {
     execute::Execute,
     expr_list::ExprList,
     expr_with_alias::ExprWithAliasNode,
+    index_item::{
+        non_clustered, primary_key, CmpExprNode, IndexItemNode, NonClusteredNode, PrimaryKeyNode,
+    },
     insert::InsertNode,
     order_by_expr::OrderByExprNode,
     order_by_expr_list::OrderByExprList,
@@ -72,14 +76,7 @@ pub use {index::CreateIndexNode, index::DropIndexNode};
 /// Available aggregate or normal SQL functions
 pub use expr::{
     aggregate::{avg, count, max, min, stdev, sum, variance, AggregateNode},
-    function::{
-        abs, acos, ascii, asin, atan, calc_distance, cast, ceil, chr, coalesce, concat, concat_ws,
-        cos, degrees, divide, entries, exp, extract, find_idx, floor, format, gcd, generate_uuid,
-        get_x, get_y, greatest, ifnull, initcap, is_empty, last_day, lcm, left, length, ln, log,
-        log10, log2, lower, lpad, ltrim, md5, modulo, now, pi, point, position, power, radians,
-        rand, repeat, replace, reverse, right, round, rpad, rtrim, sign, sin, skip, sqrt, substr,
-        take, tan, to_date, to_time, to_timestamp, upper, FunctionNode,
-    },
+    function,
 };
 
 /// Functions for building transaction statements

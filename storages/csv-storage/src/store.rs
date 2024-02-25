@@ -4,6 +4,7 @@ use {
         CsvStorage,
     },
     async_trait::async_trait,
+    futures::stream::iter,
     gluesql_core::{
         data::{Key, Schema},
         error::Result,
@@ -62,6 +63,8 @@ impl Store for CsvStorage {
     }
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
-        self.scan_data(table_name).map(|(_, rows)| rows)
+        let rows = self.scan_data(table_name).map(|(_, rows)| rows)?;
+
+        Ok(Box::pin(iter(rows)))
     }
 }

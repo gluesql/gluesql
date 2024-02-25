@@ -57,6 +57,39 @@ pub enum Payload {
     ShowVariable(PayloadVariable),
 }
 
+impl Payload {
+    /// Exports `select` payloads as an [`std::iter::Iterator`].
+    ///
+    /// The items of the Iterator are `HashMap<Column, Value>`, and they are borrowed by default.
+    /// If ownership is required, you need to acquire them directly.
+    ///
+    /// - Some: [`Payload::Select`], [`Payload::SelectMap`]
+    /// - None: otherwise
+    pub fn select(&self) -> Option<impl Iterator<Item = HashMap<&str, &Value>>> {
+        #[derive(iter_enum::Iterator)]
+        enum Iter<I1, I2> {
+            Schema(I1),
+            Schemaless(I2),
+        }
+
+        Some(match self {
+            Payload::Select { labels, rows } => Iter::Schema(rows.iter().map(move |row| {
+                labels
+                    .iter()
+                    .zip(row.iter())
+                    .map(|(label, value)| (label.as_str(), value))
+                    .collect::<HashMap<_, _>>()
+            })),
+            Payload::SelectMap(rows) => Iter::Schemaless(rows.iter().map(|row| {
+                row.iter()
+                    .map(|(k, v)| (k.as_str(), v))
+                    .collect::<HashMap<_, _>>()
+            })),
+            _ => return None,
+        })
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum PayloadVariable {
     Tables(Vec<String>),

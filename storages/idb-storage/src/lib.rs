@@ -8,18 +8,19 @@ use {
     async_trait::async_trait,
     convert::convert,
     error::ErrInto,
+    futures::stream::{empty, iter},
     gloo_utils::format::JsValueSerdeExt,
     gluesql_core::{
         data::{Key, Schema, Value},
         error::{Error, Result},
         store::{DataRow, Metadata, RowIter, Store, StoreMut},
     },
-    idb::{CursorDirection, Database, Factory, ObjectStoreParams, Query, TransactionMode},
-    serde_json::Value as JsonValue,
-    std::{
-        iter::empty,
-        sync::{Arc, Mutex},
+    idb::{
+        CursorDirection, Database, DatabaseEvent, Factory, ObjectStoreParams, Query,
+        TransactionMode,
     },
+    serde_json::Value as JsonValue,
+    std::sync::{Arc, Mutex},
     wasm_bindgen::JsValue,
     web_sys::console,
 };
@@ -97,7 +98,11 @@ impl IdbStorage {
     }
 
     pub async fn delete(&self) -> Result<()> {
-        self.factory.delete(&self.namespace).await.err_into()
+        self.factory
+            .delete(&self.namespace)
+            .err_into()?
+            .await
+            .err_into()
     }
 }
 
@@ -110,9 +115,9 @@ impl Store for IdbStorage {
             .err_into()?;
 
         let store = transaction.object_store(SCHEMA_STORE).err_into()?;
-        let schemas = store.get_all(None, None).await.err_into()?;
+        let schemas = store.get_all(None, None).err_into()?.await.err_into()?;
 
-        transaction.commit().await.err_into()?;
+        transaction.commit().err_into()?.await.err_into()?;
         schemas
             .into_iter()
             .map(|schema| {
@@ -136,13 +141,14 @@ impl Store for IdbStorage {
         let store = transaction.object_store(SCHEMA_STORE).err_into()?;
         let schema = store
             .get(JsValue::from_str(table_name))
+            .err_into()?
             .await
             .err_into()?
             .and_then(|schema| JsValue::as_string(&schema))
             .map(|schema| Schema::from_ddl(schema.as_str()))
             .transpose()?;
 
-        transaction.commit().await.err_into()?;
+        transaction.commit().err_into()?.await.err_into()?;
         Ok(schema)
     }
 
@@ -161,9 +167,9 @@ impl Store for IdbStorage {
         let key: Value = target.clone().into();
         let key: JsonValue = key.try_into()?;
         let key = JsValue::from_serde(&key).err_into()?;
-        let row = store.get(key).await.err_into()?;
+        let row = store.get(key).err_into()?.await.err_into()?;
 
-        transaction.commit().await.err_into()?;
+        transaction.commit().err_into()?.await.err_into()?;
 
         match row {
             Some(row) => convert(row, column_defs.as_deref()).map(Some),
@@ -184,19 +190,20 @@ impl Store for IdbStorage {
         let store = transaction.object_store(table_name).err_into()?;
         let cursor = store
             .open_cursor(None, Some(CursorDirection::Next))
+            .err_into()?
             .await
             .err_into()?;
 
         let mut cursor = match cursor {
-            Some(cursor) => cursor,
+            Some(cursor) => cursor.into_managed(),
             None => {
-                return Ok(Box::new(empty()));
+                return Ok(Box::pin(empty()));
             }
         };
 
         let mut rows = Vec::new();
-        let mut current_key = cursor.key().err_into()?;
-        let mut current_row = cursor.value().err_into()?;
+        let mut current_key = cursor.key().err_into()?.unwrap_or(JsValue::NULL);
+        let mut current_row = cursor.value().err_into()?.unwrap_or(JsValue::NULL);
 
         while !current_key.is_null() {
             let key: JsonValue = current_key.into_serde().err_into()?;
@@ -207,14 +214,14 @@ impl Store for IdbStorage {
             rows.push((key, row));
 
             cursor.advance(1).await.err_into()?;
-            current_key = cursor.key().err_into()?;
-            current_row = cursor.value().err_into()?;
+            current_key = cursor.key().err_into()?.unwrap_or(JsValue::NULL);
+            current_row = cursor.value().err_into()?.unwrap_or(JsValue::NULL);
         }
 
-        transaction.commit().await.err_into()?;
+        transaction.commit().err_into()?.await.err_into()?;
 
         let rows = rows.into_iter().map(Ok);
-        Ok(Box::new(rows))
+        Ok(Box::pin(iter(rows)))
     }
 }
 
@@ -288,9 +295,18 @@ impl StoreMut for IdbStorage {
 
         let key = JsValue::from_str(&schema.table_name);
         let schema = JsValue::from(schema.to_ddl());
-        store.add(&schema, Some(&key)).await.err_into()?;
+        store
+            .add(&schema, Some(&key))
+            .err_into()?
+            .await
+            .err_into()?;
 
-        transaction.commit().await.err_into()
+        transaction
+            .commit()
+            .err_into()?
+            .await
+            .err_into()
+            .map(|_| ())
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
@@ -365,9 +381,18 @@ impl StoreMut for IdbStorage {
         let store = transaction.object_store(SCHEMA_STORE).err_into()?;
 
         let key = JsValue::from_str(table_name);
-        store.delete(Query::from(key)).await.err_into()?;
+        store
+            .delete(Query::from(key))
+            .err_into()?
+            .await
+            .err_into()?;
 
-        transaction.commit().await.err_into()
+        transaction
+            .commit()
+            .err_into()?
+            .await
+            .err_into()
+            .map(|_| ())
     }
 
     async fn append_data(&mut self, table_name: &str, new_rows: Vec<DataRow>) -> Result<()> {
@@ -386,10 +411,15 @@ impl StoreMut for IdbStorage {
             let row = JsonValue::try_from(row)?;
             let row = JsValue::from_serde(&row).err_into()?;
 
-            store.add(&row, None).await.err_into()?;
+            store.add(&row, None).err_into()?.await.err_into()?;
         }
 
-        transaction.commit().await.err_into()
+        transaction
+            .commit()
+            .err_into()?
+            .await
+            .err_into()
+            .map(|_| ())
     }
 
     async fn insert_data(&mut self, table_name: &str, new_rows: Vec<(Key, DataRow)>) -> Result<()> {
@@ -411,10 +441,15 @@ impl StoreMut for IdbStorage {
             let key: JsonValue = Value::from(key).try_into()?;
             let key = JsValue::from_serde(&key).err_into()?;
 
-            store.put(&row, Some(&key)).await.err_into()?;
+            store.put(&row, Some(&key)).err_into()?.await.err_into()?;
         }
 
-        transaction.commit().await.err_into()
+        transaction
+            .commit()
+            .err_into()?
+            .await
+            .err_into()
+            .map(|_| ())
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
@@ -429,10 +464,15 @@ impl StoreMut for IdbStorage {
             let key = JsValue::from_serde(&key).err_into()?;
             let key = Query::from(key);
 
-            store.delete(key).await.err_into()?;
+            store.delete(key).err_into()?.await.err_into()?;
         }
 
-        transaction.commit().await.err_into()
+        transaction
+            .commit()
+            .err_into()?
+            .await
+            .err_into()
+            .map(|_| ())
     }
 }
 

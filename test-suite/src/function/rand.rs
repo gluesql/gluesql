@@ -11,7 +11,7 @@ test_case!(rand, {
 
     let test_cases = [
         (
-            "CREATE TABLE SingleItem (qty INTEGER DEFAULT ROUND(RAND()*100))",
+            "CREATE TABLE SingleItem (qty Float DEFAULT ROUND(RAND()*100))",
             Ok(Payload::Create),
         ),
         (

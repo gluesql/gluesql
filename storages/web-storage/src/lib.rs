@@ -3,6 +3,7 @@
 
 use {
     async_trait::async_trait,
+    futures::stream::iter,
     gloo_storage::{errors::StorageError, LocalStorage, SessionStorage, Storage},
     gluesql_core::{
         ast::ColumnUniqueOption,
@@ -132,7 +133,7 @@ impl Store for WebStorage {
             _ => {}
         }
 
-        Ok(Box::new(rows.into_iter().map(Ok)))
+        Ok(Box::pin(iter(rows.into_iter().map(Ok))))
     }
 }
 

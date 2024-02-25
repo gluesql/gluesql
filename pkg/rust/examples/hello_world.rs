@@ -1,54 +1,12 @@
 #[cfg(feature = "sled-storage")]
 mod hello_world {
     use {
-        gluesql::{
-            prelude::{Glue, Payload},
-            sled_storage::SledStorage,
-        },
+        gluesql::{prelude::Glue, sled_storage::SledStorage},
         std::fs,
     };
 
-    struct GreetTable {
-        rows: Vec<GreetRow>,
-    }
     struct GreetRow {
         name: String,
-    }
-
-    impl TryFrom<Payload> for GreetTable {
-        type Error = &'static str;
-
-        fn try_from(payload: Payload) -> Result<Self, Self::Error> {
-            match payload {
-                Payload::Select { labels: _, rows } => {
-                    let rows = rows
-                        .into_iter()
-                        .map(|mut row| {
-                            let name = row.remove(0);
-                            GreetRow {
-                                name: String::from(name),
-                            }
-                        })
-                        .collect::<Vec<_>>();
-
-                    Ok(Self { rows })
-                }
-                Payload::SelectMap(rows) => {
-                    let rows = rows
-                        .into_iter()
-                        .map(|row| {
-                            let name = row.get("name").unwrap();
-                            GreetRow {
-                                name: String::from(name),
-                            }
-                        })
-                        .collect::<Vec<_>>();
-
-                    Ok(Self { rows })
-                }
-                _ => Err("unexpected payload, expected a select query result"),
-            }
-        }
     }
 
     pub async fn run() {
@@ -92,10 +50,23 @@ mod hello_world {
         */
         assert_eq!(result.len(), 1);
 
-        let table: GreetTable = result.remove(0).try_into().unwrap();
-        assert_eq!(table.rows.len(), 1);
+        let payload = result.remove(0);
 
-        println!("Hello {}!", table.rows[0].name); // Will always output "Hello World!"
+        let rows = payload
+            .select()
+            .unwrap()
+            .map(|map| {
+                let name = *map.get("name").unwrap();
+                let name = name.into();
+
+                GreetRow { name }
+            })
+            .collect::<Vec<_>>();
+
+        assert_eq!(rows.len(), 1);
+        assert_eq!(&rows[0].name, "World");
+
+        println!("Hello {}!", rows[0].name); // Will always output "Hello World!"
     }
 }
 

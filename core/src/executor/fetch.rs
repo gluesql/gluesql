@@ -15,9 +15,10 @@ use {
         store::{DataRow, GStore},
     },
     async_recursion::async_recursion,
-    futures::stream::{self, Stream, StreamExt, TryStreamExt},
-    iter_enum::Iterator,
-    itertools::Itertools,
+    futures::{
+        future,
+        stream::{self, Stream, StreamExt, TryStreamExt},
+    },
     serde::Serialize,
     std::{borrow::Cow, collections::HashMap, fmt::Debug, iter, rc::Rc},
     thiserror::Error as ThisError,
@@ -47,8 +48,7 @@ pub async fn fetch<'a, T: GStore>(
     let columns = columns.unwrap_or_else(|| Rc::from([]));
     let rows = storage
         .scan_data(table_name)
-        .await
-        .map(stream::iter)?
+        .await?
         .try_filter_map(move |(key, data_row)| {
             let row = match data_row {
                 DataRow::Vec(values) => Row::Vec {
@@ -114,11 +114,12 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
         }
         TableFactor::Table { name, .. } => {
             let rows = {
-                #[derive(Iterator)]
-                enum Rows<I1, I2, I3> {
+                #[derive(futures_enum::Stream)]
+                enum Rows<I1, I2, I3, I4> {
                     Indexed(I1),
                     PrimaryKey(I2),
-                    FullScan(I3),
+                    PrimaryKeyEmpty(I3),
+                    FullScan(I4),
                 }
 
                 match get_index(table_factor) {
@@ -156,20 +157,20 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                             .and_then(Value::try_from)
                             .and_then(Key::try_from)?;
 
-                        let rows = storage
-                            .fetch_data(name, &key)
-                            .await
-                            .transpose()
-                            .map(|row| vec![row])
-                            .unwrap_or_else(Vec::new);
+                        match storage.fetch_data(name, &key).await? {
+                            Some(data_row) => {
+                                let row = match data_row {
+                                    DataRow::Vec(values) => Row::Vec {
+                                        columns: Rc::clone(&columns),
+                                        values,
+                                    },
+                                    DataRow::Map(values) => Row::Map(values),
+                                };
 
-                        Rows::PrimaryKey(rows.into_iter().map_ok(move |data_row| match data_row {
-                            DataRow::Vec(values) => Row::Vec {
-                                columns: Rc::clone(&columns),
-                                values,
-                            },
-                            DataRow::Map(values) => Row::Map(values),
-                        }))
+                                Rows::PrimaryKey(stream::once(future::ready(Ok(row))))
+                            }
+                            None => Rows::PrimaryKeyEmpty(stream::empty()),
+                        }
                     }
                     _ => {
                         let rows = storage.scan_data(name).await?.map_ok(move |(_, data_row)| {
@@ -187,7 +188,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                 }
             };
 
-            Ok(Rows::Table(stream::iter(rows)))
+            Ok(Rows::Table(rows))
         }
         TableFactor::Series { size, .. } => {
             let value: Value = evaluate_stateless(None, size).await?.try_into()?;
@@ -209,13 +210,14 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
         }
         TableFactor::Dictionary { dict, .. } => {
             let rows = {
-                #[derive(Iterator)]
+                #[derive(futures_enum::Stream)]
                 enum Rows<I1, I2, I3, I4> {
                     Tables(I1),
                     TableColumns(I2),
                     Indexes(I3),
                     Objects(I4),
                 }
+
                 match dict {
                     Dictionary::GlueObjects => {
                         let schemas = storage.fetch_all_schemas().await?;
@@ -251,7 +253,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                 .map(|hash_map| Ok(Row::Map(hash_map)))
                         });
 
-                        Rows::Objects(rows)
+                        Rows::Objects(stream::iter(rows))
                     }
                     Dictionary::GlueTables => {
                         let schemas = storage.fetch_all_schemas().await?;
@@ -262,7 +264,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                             })
                         });
 
-                        Rows::Tables(rows)
+                        Rows::Tables(stream::iter(rows))
                     }
                     Dictionary::GlueTableColumns => {
                         let schemas = storage.fetch_all_schemas().await?;
@@ -302,7 +304,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                 })
                         });
 
-                        Rows::TableColumns(rows)
+                        Rows::TableColumns(stream::iter(rows))
                     }
                     Dictionary::GlueIndexes => {
                         let schemas = storage.fetch_all_schemas().await?;
@@ -354,12 +356,12 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                             clustered.into_iter().chain(non_clustered)
                         });
 
-                        Rows::Indexes(rows)
+                        Rows::Indexes(stream::iter(rows))
                     }
                 }
             };
 
-            Ok(Rows::Dictionary(stream::iter(rows)))
+            Ok(Rows::Dictionary(rows))
         }
     }
 }

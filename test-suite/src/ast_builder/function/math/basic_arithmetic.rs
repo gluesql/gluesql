@@ -1,6 +1,10 @@
 use {
     crate::*,
-    gluesql_core::{ast_builder::*, executor::Payload, prelude::Value::*},
+    gluesql_core::{
+        ast_builder::{function as f, *},
+        executor::Payload,
+        prelude::Value::*,
+    },
 };
 
 test_case!(basic_arithmetic, {
@@ -30,7 +34,7 @@ test_case!(basic_arithmetic, {
         .alias_as("number")
         .select()
         .project("column1")
-        .project(abs("column2"))
+        .project(f::abs("column2"))
         .project(col("column2").abs())
         .execute(glue)
         .await;
@@ -48,8 +52,8 @@ test_case!(basic_arithmetic, {
     let actual = table("Number")
         .select()
         .project("id")
-        .project(divide("number", 3))
-        .project(divide(col("number"), 3))
+        .project(f::divide("number", 3))
+        .project(f::divide(col("number"), 3))
         .execute(glue)
         .await;
     let expected = Ok(select!(
@@ -66,8 +70,8 @@ test_case!(basic_arithmetic, {
     let actual = table("Number")
         .select()
         .project("id")
-        .project(modulo("number", 4))
-        .project(modulo(col("number"), 4))
+        .project(f::modulo("number", 4))
+        .project(f::modulo(col("number"), 4))
         .execute(glue)
         .await;
     let expected = Ok(select!(
@@ -84,8 +88,8 @@ test_case!(basic_arithmetic, {
     let actual = table("Number")
         .select()
         .project("id")
-        .project(gcd("number", 12))
-        .project(gcd(col("number"), 12))
+        .project(f::gcd("number", 12))
+        .project(f::gcd(col("number"), 12))
         .execute(glue)
         .await;
     let expected = Ok(select!(
@@ -102,8 +106,8 @@ test_case!(basic_arithmetic, {
     let actual = table("Number")
         .select()
         .project("id")
-        .project(lcm("number", 3))
-        .project(lcm(col("number"), 3))
+        .project(f::lcm("number", 3))
+        .project(f::lcm(col("number"), 3))
         .execute(glue)
         .await;
     let expected = Ok(select!(

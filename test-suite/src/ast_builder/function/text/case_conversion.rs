@@ -1,6 +1,10 @@
 use {
     crate::*,
-    gluesql_core::{ast_builder::*, executor::Payload, prelude::Value::*},
+    gluesql_core::{
+        ast_builder::{function as f, *},
+        executor::Payload,
+        prelude::Value::*,
+    },
 };
 
 test_case!(case_conversion, {
@@ -34,7 +38,7 @@ test_case!(case_conversion, {
         .select()
         .filter(col("name").lower().eq("'abcd'"))
         .project("name")
-        .project(lower("name"))
+        .project(f::lower("name"))
         .execute(glue)
         .await;
     let expected = Ok(select!(

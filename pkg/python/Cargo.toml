@@ -1,0 +1,40 @@
+[package]
+name = "gluesql-py"
+authors = [
+    "Gyubong Lee <jopemachine@naver.com>",
+    "Taehoon Moon <taehoon.moon@outlook.com>"
+]
+version.workspace = true
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation.workspace = true
+
+[lib]
+name = "gluesql"
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+include-python-workspace = []
+
+[dependencies]
+gluesql-core.workspace = true
+memory-storage.workspace = true
+web-storage.workspace = true
+idb-storage.workspace = true
+composite-storage.workspace = true
+sled-storage.workspace = true
+json-storage.workspace = true
+shared-memory-storage.workspace = true
+
+pyo3 = { version = "0.19.2", features = ["extension-module"] }
+pythonize = "0.19.0"
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
+serde = "1"
+serde_json = "1"
+gloo-utils = { version = "0.1.6", features = ["serde"] }
+
+[dev-dependencies]
+test-suite.workspace = true

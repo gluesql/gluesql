@@ -1,13 +1,13 @@
-use crate::{ast::Statement, result::Result};
+use crate::ast::Statement;
 
-pub fn begin() -> Result<Statement> {
-    Ok(Statement::StartTransaction)
+pub fn begin() -> Statement {
+    Statement::StartTransaction
 }
-pub fn commit() -> Result<Statement> {
-    Ok(Statement::Commit)
+pub fn commit() -> Statement {
+    Statement::Commit
 }
-pub fn rollback() -> Result<Statement> {
-    Ok(Statement::Rollback)
+pub fn rollback() -> Statement {
+    Statement::Rollback
 }
 
 #[cfg(test)]
@@ -18,14 +18,14 @@ mod tests {
     fn transaction() {
         let actual = begin();
         let expected = "START TRANSACTION";
-        test(actual, expected);
+        test(Ok(actual), expected);
 
         let actual = commit();
         let expected = "COMMIT";
-        test(actual, expected);
+        test(Ok(actual), expected);
 
         let actual = rollback();
         let expected = "ROLLBACK";
-        test(actual, expected);
+        test(Ok(actual), expected);
     }
 }

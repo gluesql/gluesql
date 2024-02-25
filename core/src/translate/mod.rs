@@ -107,11 +107,22 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             })
         }
         SqlStatement::AlterTable {
-            name, operation, ..
-        } => Ok(Statement::AlterTable {
-            name: translate_object_name(name)?,
-            operation: translate_alter_table_operation(operation)?,
-        }),
+            name, operations, ..
+        } => {
+            if operations.len() > 1 {
+                return Err(TranslateError::UnsupportedMultipleAlterTableOperations.into());
+            }
+
+            let operation = operations
+                .iter()
+                .next()
+                .ok_or(TranslateError::UnreachableEmptyAlterTableOperation)?;
+
+            Ok(Statement::AlterTable {
+                name: translate_object_name(name)?,
+                operation: translate_alter_table_operation(operation)?,
+            })
+        }
         SqlStatement::Drop {
             object_type: SqlObjectType::Table,
             if_exists,
@@ -146,6 +157,10 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             if columns.len() > 1 {
                 return Err(TranslateError::CompositeIndexNotSupported.into());
             }
+
+            let Some(name) = name else {
+                return Err(TranslateError::UnsupportedUnnamedIndex.into());
+            };
 
             let name = translate_object_name(name)?;
 

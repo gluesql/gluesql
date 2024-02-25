@@ -2,7 +2,7 @@ use {
     super::ValueError::ValueToExprConversionFailure,
     crate::{
         ast::{AstLiteral, DateTimeField, Expr},
-        chrono::{DateTime, Utc},
+        chrono::{TimeZone, Utc},
         data::Interval,
         prelude::{DataType, Value},
         result::{Error, Result},
@@ -69,7 +69,7 @@ impl TryFrom<Value> for Expr {
             },
             Value::Timestamp(v) => Expr::TypedString {
                 data_type: DataType::Timestamp,
-                value: DateTime::<Utc>::from_utc(v, Utc).to_string(),
+                value: Utc.from_utc_datetime(&v).to_string(),
             },
             Value::Time(v) => Expr::TypedString {
                 data_type: DataType::Time,

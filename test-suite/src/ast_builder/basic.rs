@@ -42,8 +42,8 @@ test_case!(basic, {
 
     let actual = table("Foo")
         .update()
-        .set("id", col("id").mul(2))
         .filter(col("id").eq(200))
+        .set("id", col("id").mul(2))
         .execute(glue)
         .await;
     let expected = Ok(Payload::Update(1));

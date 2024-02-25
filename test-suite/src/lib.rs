@@ -6,7 +6,8 @@ pub mod arithmetic;
 pub mod ast_builder;
 pub mod basic;
 pub mod bitwise_and;
-pub mod bitwise_shift;
+pub mod bitwise_shift_left;
+pub mod bitwise_shift_right;
 pub mod case;
 pub mod column_alias;
 pub mod concat;
@@ -88,7 +89,11 @@ macro_rules! generate_store_tests {
         glue!(arithmetic_on_where, arithmetic::on_where::on_where);
         glue!(concat, concat::concat);
         glue!(project, project::project);
-        glue!(bitwise_shift, bitwise_shift::bitwise_shift_left);
+        glue!(bitwise_shift_left, bitwise_shift_left::bitwise_shift_left);
+        glue!(
+            bitwise_shift_right,
+            bitwise_shift_right::bitwise_shift_right
+        );
         glue!(create_table, alter::create_table);
         glue!(drop_table, alter::drop_table);
         glue!(default, default::default);
@@ -98,7 +103,6 @@ macro_rules! generate_store_tests {
         glue!(inline_view, inline_view::inline_view);
         glue!(values, values::values);
         glue!(unary_operator, unary_operator::unary_operator);
-        glue!(function_values, function::values::values);
         glue!(function_upper_lower, function::upper_lower::upper_lower);
         glue!(function_initcap, function::initcap::initcap);
         glue!(function_gcd_lcm, function::gcd_lcm::gcd_lcm);
@@ -151,8 +155,11 @@ macro_rules! generate_store_tests {
             function_geometry_calc_distance,
             function::geometry::calc_distance
         );
+        glue!(function_add_month, function::add_month::add_month);
         glue!(function_slice, function::slice::slice);
         glue!(function_entries, function::entries::entries);
+        glue!(function_keys, function::keys::keys);
+        glue!(function_values, function::values::values);
         glue!(join, join::join);
         glue!(join_project, join::project);
         glue!(migrate, migrate::migrate);
@@ -213,6 +220,7 @@ macro_rules! generate_store_tests {
         glue!(function_take, function::take::take);
         glue!(column_alias, column_alias::column_alias);
         glue!(function_splice, function::splice::splice);
+        glue!(function_dedup, function::dedup::dedup);
 
         // ast-builder
         glue!(ast_builder_basic, ast_builder::basic::basic);
@@ -237,6 +245,14 @@ macro_rules! generate_store_tests {
         glue!(
             ast_builder_function_text_case_conversion,
             ast_builder::function::text::case_conversion
+        );
+        glue!(
+            ast_builder_function_text_character_conversion,
+            ast_builder::function::text::character_conversion
+        );
+        glue!(
+            ast_builder_function_text_padding,
+            ast_builder::function::text::padding
         );
         glue!(
             ast_builder_function_other_coalesce,
@@ -274,6 +290,7 @@ macro_rules! generate_store_tests {
             ast_builder_function_text_position_and_indexing,
             ast_builder::function::text::position_and_indexing
         );
+        glue!(ast_builder_index_by, ast_builder::index_by::index_by);
 
         // schemaless data support
         glue!(schemaless_basic, schemaless::basic);
@@ -345,6 +362,7 @@ macro_rules! generate_transaction_tests {
             transaction::create_drop_table
         );
         glue!(transaction_dictionary, transaction::dictionary);
+        glue!(transaction_ast_builder, transaction::ast_builder);
     };
 }
 

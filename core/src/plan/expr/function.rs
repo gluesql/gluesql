@@ -61,6 +61,9 @@ impl Function {
             | Self::GetY(expr)
             | Self::IsEmpty(expr)
             | Self::Sort { expr, order: None }
+            | Self::Dedup(expr)
+            | Self::Entries(expr)
+            | Self::Keys(expr)
             | Self::Values(expr) => Exprs::Single([expr].into_iter()),
             Self::Left { expr, size: expr2 }
             | Self::Right { expr, size: expr2 }
@@ -156,7 +159,9 @@ impl Function {
             | Self::CalcDistance {
                 geometry1: expr,
                 geometry2: expr2,
-            } => Exprs::Double([expr, expr2].into_iter()),
+            }
+            | Self::AddMonth { expr, size: expr2 } => Exprs::Double([expr, expr2].into_iter()),
+
             Self::Lpad {
                 expr,
                 size: expr2,
@@ -200,7 +205,6 @@ impl Function {
                 Exprs::VariableArgsWithSingle(once(separator).chain(exprs.iter()))
             }
             Self::Greatest(exprs) => Exprs::VariableArgs(exprs.iter()),
-            Self::Entries(expr) => Exprs::Single([expr].into_iter()),
             Self::Splice {
                 list_data: expr,
                 begin_index: expr2,
@@ -288,6 +292,8 @@ mod tests {
         test(r#"SIGN(-2)"#, &["-2"]);
         test(r#"SIGN(3.0)"#, &["3.0"]);
         test(r#"SIGN(-3.0)"#, &["-3.0"]);
+
+        test(r#"DEDUP(list)"#, &["list"]);
 
         // Double
         test(r#"LEFT("hello", 2)"#, &[r#""hello""#, "2"]);

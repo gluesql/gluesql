@@ -4,27 +4,26 @@ on:
   push:
     branches: [main, release-*]
     paths-ignore:
-      - 'docs/**'
+      - "docs/**"
   pull_request:
     branches: [main, release-*]
     paths-ignore:
-      - 'docs/**'
+      - "docs/**"
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   coverage:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Read rust-toolchain file
         id: rust-toolchain
         run: echo "toolchain=$(cat rust-toolchain)" >> $GITHUB_OUTPUT
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ steps.rust-toolchain.outputs.toolchain }}
-      - uses: Swatinem/rust-cache@v2
       - run: rustup component add llvm-tools-preview
       - name: Install grcov
         uses: actions-rs/install@v0.1
@@ -32,6 +31,14 @@ jobs:
           crate: grcov
           version: latest
           use-tool-cache: true
+      - name: clean
+        run: |
+          cargo clean
+          rm -rf ./target/debug/deps/gluesql*
+          rm *.profraw && rm **/*.profraw
+          cd storages/csv-storage && rm -rf ./tmp && cd ../..
+          cd storages/json-storage && rm -rf ./tmp && cd ../..
+          redis-cli flushall
       - name: build
         env:
           RUSTFLAGS: -Cinstrument-coverage
