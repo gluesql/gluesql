@@ -54,10 +54,10 @@ test_case!(data_selection_and_projection, {
         id  | age | name;
         I64 | I64 | Str;
         1     20    "Alice".to_owned();
-        2     30   "Bob".to_owned();
-        3     30   "Carol".to_owned();
-        4     50   "Dave".to_owned();
-        5     50   "Eve".to_owned()
+        2     30    "Bob".to_owned();
+        3     30    "Carol".to_owned();
+        4     50    "Dave".to_owned();
+        5     50    "Eve".to_owned()
     ));
     assert_eq!(actual, expected, "project");
 });
