@@ -9,18 +9,11 @@ pub trait GStore: Store + Index + Metadata + CustomFunction {}
 impl<S: Store + Index + Metadata + CustomFunction> GStore for S {}
 
 pub trait GStoreMut:
-    StoreMut + IndexMut + AlterTable + Transaction + CustomFunction + CustomFunctionMut + ForeignKeyMut
+    StoreMut + IndexMut + AlterTable + Transaction + CustomFunction + CustomFunctionMut
 {
 }
-impl<
-        S: StoreMut
-            + IndexMut
-            + AlterTable
-            + Transaction
-            + CustomFunction
-            + CustomFunctionMut
-            + ForeignKeyMut,
-    > GStoreMut for S
+impl<S: StoreMut + IndexMut + AlterTable + Transaction + CustomFunction + CustomFunctionMut>
+    GStoreMut for S
 {
 }
 
@@ -69,35 +62,4 @@ pub trait StoreMut {
     async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()>;
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()>;
-}
-
-#[async_trait(?Send)]
-pub trait ForeignKeyMut {
-    // async fn validate(&self, table_name: &str, data: &DataRow) -> Result<()>;
-    async fn add_foreign_key(&mut self, table_name: &str, foreign_key: &ForeignKey) -> Result<()> {
-        let msg = "[Storage] AlterTable::add_foreign_key is not supported".to_owned();
-
-        Err(Error::StorageMsg(msg))
-    }
-    async fn drop_foreign_key(
-        &mut self,
-        table_name: &str,
-        foreign_key_name: &str,
-        if_exists: bool,
-        cascade: bool,
-    ) -> Result<()> {
-        let msg = "[Storage] AlterTable::drop_foreign_key is not supported".to_owned();
-
-        Err(Error::StorageMsg(msg))
-    }
-    async fn rename_constraint(
-        &mut self,
-        table_name: &str,
-        old_constraint_name: &str,
-        new_constraint_name: &str,
-    ) -> Result<()> {
-        let msg = "[Storage] AlterTable::rename_constraint is not supported".to_owned();
-
-        Err(Error::StorageMsg(msg))
-    }
 }

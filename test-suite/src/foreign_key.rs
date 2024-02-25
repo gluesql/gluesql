@@ -163,17 +163,17 @@ test_case!(foreign_key, {
     )
     .await;
 
-    // g.named_test(
-    //     "Drop table with cascade should drop both table and constraint",
-    //     "DROP TABLE ParentWithPK CASCADE;",
-    //     Ok(Payload::DropTable),
-    // )
-    // .await;
-
     g.named_test(
-        "Cannot drop parent if child exists",
-        "ALTER TABLE Child DROP CONSTRAINT \"FK_parent_id-ParentWithPK_id\";",
+        "Drop table with cascade should drop both table and constraint",
+        "DROP TABLE ParentWithPK CASCADE;",
         Ok(Payload::DropTable),
     )
     .await;
+
+    // g.named_test(
+    //     "Cannot drop parent if child exists",
+    //     "ALTER TABLE Child DROP CONSTRAINT \"FK_parent_id-ParentWithPK_id\";",
+    //     Ok(Payload::DropTable),
+    // )
+    // .await;
 });

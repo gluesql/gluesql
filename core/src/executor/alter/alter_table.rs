@@ -55,21 +55,17 @@ pub async fn alter_table<T: GStore + GStoreMut>(
                 .await
         }
         AlterTableOperation::AddForeignKey { foreign_key } => {
-            storage.add_foreign_key(table_name, foreign_key).await
+            todo!()
         }
         AlterTableOperation::DropForeignKey {
             if_exists,
             name,
             cascade,
         } => {
-            storage
-                .drop_foreign_key(table_name, name, *if_exists, *cascade)
-                .await
+            todo!()
         }
         AlterTableOperation::RenameConstraint { old_name, new_name } => {
-            storage
-                .rename_constraint(table_name, old_name, new_name)
-                .await
+            todo!()
         }
     }
 }

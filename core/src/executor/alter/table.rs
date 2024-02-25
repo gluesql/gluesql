@@ -276,15 +276,20 @@ pub async fn drop_table<T: GStore + GStoreMut>(
                 .into());
             }
             (true, true) => {
-                // for ReferingChild {
-                //     table_name: referring_table_name,
-                //     constraint_name,
-                // } in referring_children
-                // {
-                //     storage
-                //         .delete_foreign_key(referring_table_name, constraint_name)
-                //         .await?;
-                // }
+                for ReferingChild {
+                    table_name: referring_table_name,
+                    constraint_name,
+                } in referring_children
+                {
+                    let mut schema = storage.fetch_schema(table_name).await?.unwrap();
+                    schema
+                        .foreign_keys
+                        .as_mut()
+                        .map(|a| a.retain(|foreign_key| foreign_key.name != constraint_name));
+                    storage.insert_schema(&schema).await?;
+                    //     .delete_foreign_key(referring_table_name, constraint_name)
+                    //     .await?;
+                }
             }
             (false, _) => {}
         }
