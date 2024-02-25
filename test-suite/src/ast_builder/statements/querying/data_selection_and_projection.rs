@@ -53,11 +53,11 @@ test_case!(data_selection_and_projection, {
     let expected = Ok(select!(
         id | name | age;
         I64 | Str | I64;
-        1   "Alice".to_string()  20;
-        2   "Bob".to_string()  30;
-        3   "Carol".to_string()  30;
-        4   "Dave".to_string()  50;
-        5   "Eve".to_string()  50
+        1   "Alice".to_owned()  20;
+        2   "Bob".to_owned()  30;
+        3   "Carol".to_owned()  30;
+        4   "Dave".to_owned()  50;
+        5   "Eve".to_owned()  50
     ));
     assert_eq!(actual, expected, "project");
 });
