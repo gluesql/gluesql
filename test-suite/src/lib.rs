@@ -227,6 +227,10 @@ macro_rules! generate_store_tests {
             ast_builder::statements::querying::data_aggregation
         );
         glue!(
+            ast_builder_statements_queryinng_data_selection_and_projection,
+            ast_builder::statements::querying::data_selection_and_projection
+        );
+        glue!(
             ast_builder_function_math_rounding,
             ast_builder::function::math::rounding
         );
