@@ -89,7 +89,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
 
             let foreign_keys = constraints
                 .iter()
-                .filter_map(|x| translate_foreign_key(x, &name).transpose())
+                .map(translate_foreign_key)
                 .collect::<Result<Vec<_>>>()?;
 
             let foreign_keys = (!foreign_keys.is_empty()).then_some(foreign_keys);
@@ -116,6 +116,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             object_type: SqlObjectType::Table,
             if_exists,
             names,
+            cascade,
             ..
         } => Ok(Statement::DropTable {
             if_exists: *if_exists,
@@ -123,6 +124,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 .iter()
                 .map(translate_object_name)
                 .collect::<Result<Vec<_>>>()?,
+            cascade: *cascade,
         }),
         SqlStatement::DropFunction {
             if_exists,
@@ -303,11 +305,8 @@ pub fn translate_referential_action(action: SqlReferentialAction) -> Referential
     }
 }
 
-fn translate_foreign_key(
-    table_constraint: &SqlTableConstraint,
-    table_name: &String,
-) -> Result<Option<ForeignKey>> {
-    Ok(match table_constraint {
+fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<ForeignKey> {
+    match table_constraint {
         SqlTableConstraint::ForeignKey {
             name,
             columns,
@@ -338,10 +337,10 @@ fn translate_foreign_key(
 
             let name = match name {
                 Some(name) => name.value.clone(),
-                None => format!("FK_{table_name}_{column}-{referred_table}_{referred_column}"),
+                None => format!("FK_{column}-{referred_table}_{referred_column}"),
             };
 
-            Some(ForeignKey {
+            Ok(ForeignKey {
                 name,
                 column: column,
                 referred_table,
@@ -350,6 +349,6 @@ fn translate_foreign_key(
                 on_update: on_update.map(translate_referential_action),
             })
         }
-        _ => None,
-    })
+        _ => Err(TranslateError::UnsupportedConstraint(table_constraint.to_string()).into()),
+    }
 }

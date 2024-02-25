@@ -12,7 +12,7 @@ use {
         ast::ColumnUniqueOption,
         data::{value::HashMapJsonExt, Key, Schema},
         error::{Error, Result},
-        store::{DataRow, Metadata, RowIter},
+        store::{DataRow, ForeignKeyMut, Metadata, RowIter},
     },
     iter_enum::Iterator,
     serde_json::Value as JsonValue,
@@ -203,3 +203,4 @@ where
 }
 
 impl Metadata for JsonStorage {}
+impl ForeignKeyMut for JsonStorage {}

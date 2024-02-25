@@ -53,12 +53,14 @@ impl<'a> TableNameNode {
     }
 
     pub fn drop_table(self) -> DropTableNode {
-        DropTableNode::new(self.table_name, false)
+        DropTableNode::new(self.table_name, false, false)
     }
 
     pub fn drop_table_if_exists(self) -> DropTableNode {
-        DropTableNode::new(self.table_name, true)
+        DropTableNode::new(self.table_name, true, false)
     }
+
+    // TODO: should cascade be a parameter or a separate method?
 
     pub fn drop_index(self, name: &str) -> DropIndexNode {
         DropIndexNode::new(self.table_name, name.to_owned())

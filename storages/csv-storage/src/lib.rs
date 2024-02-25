@@ -10,8 +10,8 @@ use {
         error::Result,
         parse_sql::parse_data_type,
         store::{
-            AlterTable, CustomFunction, CustomFunctionMut, DataRow, Index, IndexMut, Metadata,
-            RowIter, Transaction,
+            AlterTable, CustomFunction, CustomFunctionMut, DataRow, ForeignKeyMut, Index, IndexMut,
+            Metadata, RowIter, Transaction,
         },
         translate::translate_data_type,
     },
@@ -253,3 +253,4 @@ impl Index for CsvStorage {}
 impl IndexMut for CsvStorage {}
 impl Transaction for CsvStorage {}
 impl Metadata for CsvStorage {}
+impl ForeignKeyMut for CsvStorage {}

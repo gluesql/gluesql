@@ -3,8 +3,8 @@ use {
         data::{Key, Schema},
         result::{Error, Result},
         store::{
-            AlterTable, CustomFunction, CustomFunctionMut, DataRow, Index, IndexMut, Metadata,
-            RowIter, Store, StoreMut, Transaction,
+            AlterTable, CustomFunction, CustomFunctionMut, DataRow, ForeignKeyMut, Index, IndexMut,
+            Metadata, RowIter, Store, StoreMut, Transaction,
         },
     },
     async_trait::async_trait,
@@ -183,3 +183,4 @@ mod tests {
 }
 
 impl Metadata for MockStorage {}
+impl ForeignKeyMut for MockStorage {}

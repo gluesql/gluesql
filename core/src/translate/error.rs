@@ -137,4 +137,7 @@ pub enum TranslateError {
 
     #[error("invalid Foreign Key Constraint: {0}")]
     InvalidForeignKeyConstraint(String),
+
+    #[error("unsupported constraint: {0}")]
+    UnsupportedConstraint(String),
 }

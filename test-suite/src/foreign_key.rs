@@ -87,7 +87,7 @@ test_case!(foreign_key, {
         "If there is no parent, insert should fail",
         "INSERT INTO Child VALUES (1, 'orphan', 1);",
         Err(ValidateError::ForeignKeyViolation {
-            name: "FK_Child_parent_id-ParentWithPK_id".to_owned(),
+            name: "FK_parent_id-ParentWithPK_id".to_owned(),
             table: "Child".to_owned(),
             column: "parent_id".to_owned(),
             referred_table: "ParentWithPK".to_owned(),
@@ -118,7 +118,7 @@ test_case!(foreign_key, {
         "If there is no parent, update should fail",
         "UPDATE Child SET parent_id = 2 WHERE id = 2;",
         Err(ValidateError::ForeignKeyViolation {
-            name: "FK_Child_parent_id-ParentWithPK_id".to_owned(),
+            name: "FK_parent_id-ParentWithPK_id".to_owned(),
             table: "Child".to_owned(),
             column: "parent_id".to_owned(),
             referred_table: "ParentWithPK".to_owned(),
@@ -156,10 +156,24 @@ test_case!(foreign_key, {
             parent: "ParentWithPK".to_owned(),
             referring_children: vec![ReferingChild {
                 table_name: "Child".to_owned(),
-                constraint_name: "FK_Child_parent_id-ParentWithPK_id".to_owned(),
+                constraint_name: "FK_parent_id-ParentWithPK_id".to_owned(),
             }],
         }
         .into()),
+    )
+    .await;
+
+    // g.named_test(
+    //     "Drop table with cascade should drop both table and constraint",
+    //     "DROP TABLE ParentWithPK CASCADE;",
+    //     Ok(Payload::DropTable),
+    // )
+    // .await;
+
+    g.named_test(
+        "Cannot drop parent if child exists",
+        "ALTER TABLE Child DROP CONSTRAINT \"FK_parent_id-ParentWithPK_id\";",
+        Ok(Payload::DropTable),
     )
     .await;
 });

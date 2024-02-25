@@ -13,6 +13,7 @@ mod store;
 mod store_mut;
 mod transaction;
 
+use gluesql_core::store::ForeignKeyMut;
 // re-export
 pub use sled;
 
@@ -148,3 +149,4 @@ fn fetch_schema(
 impl Metadata for SledStorage {}
 impl gluesql_core::store::CustomFunction for SledStorage {}
 impl gluesql_core::store::CustomFunctionMut for SledStorage {}
+impl ForeignKeyMut for SledStorage {}

@@ -221,6 +221,7 @@ pub async fn drop_table<T: GStore + GStoreMut>(
     storage: &mut T,
     table_names: &[String],
     if_exists: bool,
+    cascade: bool,
 ) -> Result<()> {
     for table_name in table_names {
         let schema = storage.fetch_schema(table_name).await?;
@@ -266,13 +267,34 @@ pub async fn drop_table<T: GStore + GStoreMut>(
             .flatten()
             .collect();
 
-        if referring_children.len() > 0 {
-            return Err(AlterError::CannotDropTableParentOnReferringChildren {
-                parent: table_name.into(),
-                referring_children,
+        match (referring_children.len() > 0, cascade) {
+            (true, false) => {
+                return Err(AlterError::CannotDropTableParentOnReferringChildren {
+                    parent: table_name.into(),
+                    referring_children,
+                }
+                .into());
             }
-            .into());
+            (true, true) => {
+                // for ReferingChild {
+                //     table_name: referring_table_name,
+                //     constraint_name,
+                // } in referring_children
+                // {
+                //     storage
+                //         .delete_foreign_key(referring_table_name, constraint_name)
+                //         .await?;
+                // }
+            }
+            (false, _) => {}
         }
+        // if referring_children.len() > 0 && !cascade {
+        //     return Err(AlterError::CannotDropTableParentOnReferringChildren {
+        //         parent: table_name.into(),
+        //         referring_children,
+        //     }
+        //     .into());
+        // }
 
         storage.delete_schema(table_name).await?;
     }

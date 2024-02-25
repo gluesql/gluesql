@@ -16,6 +16,7 @@ pub use {
     query::*,
 };
 
+use chrono::format;
 use serde::{Deserialize, Serialize};
 
 pub trait ToSql {
@@ -109,6 +110,8 @@ pub enum Statement {
         if_exists: bool,
         /// One or more objects to drop. (ANSI SQL requires exactly one.)
         names: Vec<String>,
+        /// An optional `CASCADE` clause for dropping dependent constructs.
+        cascade: bool,
     },
     /// DROP FUNCTION
     DropFunction {
@@ -269,16 +272,20 @@ impl ToSql for Statement {
             Statement::AlterTable { name, operation } => {
                 format!(r#"ALTER TABLE "{name}" {};"#, operation.to_sql())
             }
-            Statement::DropTable { if_exists, names } => {
+            Statement::DropTable {
+                if_exists,
+                names,
+                cascade,
+            } => {
+                let if_exists = if_exists.then_some("IF EXISTS").unwrap_or("");
                 let names = names
                     .iter()
                     .map(|name| format!(r#""{name}""#))
                     .collect::<Vec<_>>()
                     .join(", ");
-                match if_exists {
-                    true => format!("DROP TABLE IF EXISTS {};", names),
-                    false => format!("DROP TABLE {};", names),
-                }
+                let cascade = cascade.then_some("CASCADE").unwrap_or("");
+
+                vec!["DROP TABLE", if_exists, &names, cascade].join(" ")
             }
             Statement::DropFunction { if_exists, names } => {
                 let names = names.join(", ");
@@ -750,7 +757,8 @@ mod tests {
             r#"DROP TABLE "Test";"#,
             Statement::DropTable {
                 if_exists: false,
-                names: vec!["Test".into()]
+                names: vec!["Test".into()],
+                cascade: false,
             }
             .to_sql()
         );
@@ -759,7 +767,8 @@ mod tests {
             r#"DROP TABLE IF EXISTS "Test";"#,
             Statement::DropTable {
                 if_exists: true,
-                names: vec!["Test".into()]
+                names: vec!["Test".into()],
+                cascade: false,
             }
             .to_sql()
         );
@@ -768,7 +777,8 @@ mod tests {
             r#"DROP TABLE "Foo", "Bar";"#,
             Statement::DropTable {
                 if_exists: false,
-                names: vec!["Foo".into(), "Bar".into(),]
+                names: vec!["Foo".into(), "Bar".into(),],
+                cascade: false,
             }
             .to_sql()
         );

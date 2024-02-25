@@ -8,10 +8,13 @@ mod transaction;
 use {
     async_trait::async_trait,
     gluesql_core::{
+        ast::ForeignKey,
         chrono::Utc,
         data::{CustomFunction as StructCustomFunction, Key, Schema, Value},
         error::Result,
-        store::{CustomFunction, CustomFunctionMut, DataRow, RowIter, Store, StoreMut},
+        store::{
+            CustomFunction, CustomFunctionMut, DataRow, ForeignKeyMut, RowIter, Store, StoreMut,
+        },
     },
     serde::{Deserialize, Serialize},
     std::{
@@ -152,5 +155,25 @@ impl StoreMut for MemoryStorage {
         }
 
         Ok(())
+    }
+}
+
+#[async_trait(?Send)]
+impl ForeignKeyMut for MemoryStorage {
+    async fn add_foreign_key(&mut self, table_name: &str, foreign_key: &ForeignKey) -> Result<()> {
+        let schema = self.fetch_schema(table_name).await?.unwrap();
+        schema.foreign_keys.map(|mut a| a.push(foreign_key.clone()));
+
+        Ok(())
+        // schema.foreign_keys =
+        // let new_schema = Schema {
+        //     foreign_keys: schema
+        //         .foreign_keys
+        //         .iter()
+        //         .cloned()
+        //         .chain(std::iter::once(foreign_key.clone()))
+        //         .collect(),
+        //     ..schema
+        // };
     }
 }
