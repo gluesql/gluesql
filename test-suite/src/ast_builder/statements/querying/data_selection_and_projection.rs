@@ -34,30 +34,30 @@ test_case!(data_selection_and_projection, {
     let actual = table("User")
         .select()
         .filter(col("age").gt(30))
-        .project("id, name, age")
+        .project("id, age, name")
         .execute(glue)
         .await;
     let expected = Ok(select!(
-        id | name | age;
-        I64 | Str | I64;
-        4   "Dave".to_owned()   50;
-        5   "Eve".to_owned()   50
+        id  | age | name;
+        I64 | I64 | Str;
+        4     50    "Dave".to_owned();
+        5     50    "Eve".to_owned()
     ));
     assert_eq!(actual, expected, "filter");
 
     let actual = table("User")
         .select()
-        .project("id, name, age")
+        .project("id, age, name")
         .execute(glue)
         .await;
     let expected = Ok(select!(
-        id | name | age;
-        I64 | Str | I64;
-        1   "Alice".to_owned()  20;
-        2   "Bob".to_owned()  30;
-        3   "Carol".to_owned()  30;
-        4   "Dave".to_owned()  50;
-        5   "Eve".to_owned()  50
+        id  | age | name;
+        I64 | I64 | Str;
+        1     20    "Alice".to_owned();
+        2     30   "Bob".to_owned();
+        3     30   "Carol".to_owned();
+        4     50   "Dave".to_owned();
+        5     50   "Eve".to_owned()
     ));
     assert_eq!(actual, expected, "project");
 });
