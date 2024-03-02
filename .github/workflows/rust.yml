@@ -82,6 +82,7 @@ jobs:
           cd composite-storage && cargo test --verbose && cd ..
           cd json-storage && cargo test --verbose && cd ..
           cd csv-storage && cargo test --verbose && cd ..
+          cd parquet-storage && cargo test --verbose && cd ..
           cd sled-storage
           cargo test --verbose -- --skip sled_transaction_timeout
           cargo test sled_transaction_timeout --verbose -- --test-threads=1
@@ -111,17 +112,6 @@ jobs:
           redis-version: 6
       - run: |
           cd storages/redis-storage
-          cargo test --verbose
-
-
-  run_parquetstorage_tests:
-    name: Run ParquetStorage tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: Swatinem/rust-cache@v2
-      - run: |
-          cd storages/parquet-storage
           cargo test --verbose
 
   run_examples:
