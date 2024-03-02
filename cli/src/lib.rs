@@ -21,6 +21,7 @@ use {
     },
     json_storage::JsonStorage,
     memory_storage::MemoryStorage,
+    parquet_storage::ParquetStorage,
     sled_storage::SledStorage,
     std::{
         fmt::Debug,
@@ -56,6 +57,7 @@ enum Storage {
     Sled,
     Json,
     Csv,
+    Parquet,
 }
 
 pub fn run() -> Result<()> {
@@ -92,6 +94,14 @@ pub fn run() -> Result<()> {
 
             run(
                 CsvStorage::new(path).expect("failed to load csv-storage"),
+                args.execute,
+            );
+        }
+        (Some(path), Some(Storage::Parquet), _) => {
+            println!("[parquet-storage] connected to {}", path);
+
+            run(
+                ParquetStorage::new(path).expect("failed to load parquet-storage"),
                 args.execute,
             );
         }

@@ -32,6 +32,7 @@ composite-storage = { workspace = true, optional = true }
 web-storage = { workspace = true, optional = true }
 idb-storage = { workspace = true, optional = true }
 redis-storage = { workspace = true, optional = true }
+parquet-storage = { workspace = true, optional = true }
 
 [dev-dependencies]
 futures = "0.3"
@@ -45,6 +46,7 @@ default = [
 	"shared-memory-storage",
 	"sled-storage",
 	"json-storage",
+	"parquet-storage",
 	"csv-storage",
 	"composite-storage",
 	"redis-storage",
