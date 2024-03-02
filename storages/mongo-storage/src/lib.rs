@@ -1,3 +1,4 @@
+mod description;
 pub mod error;
 pub mod row;
 mod store;
