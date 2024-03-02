@@ -24,3 +24,6 @@ futures = "0.3"
 test-suite.workspace = true
 tokio = { version = "1", features = ["rt", "macros"] }
 toml = "0.8.6"
+
+[features]
+test-redis = []

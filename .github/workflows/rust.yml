@@ -68,7 +68,7 @@ jobs:
           cd pkg/rust
           cargo test --lib --bins --tests --examples --verbose --no-default-features --features "memory-storage sled-storage"
           cd ../../
- 
+
   run_storage_tests:
     name: Run storage tests
     runs-on: ubuntu-latest
@@ -112,7 +112,7 @@ jobs:
           redis-version: 6
       - run: |
           cd storages/redis-storage
-          cargo test --verbose
+          cargo test --verbose --features test-redis
 
   run_examples:
     name: Run examples
