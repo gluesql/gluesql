@@ -113,6 +113,17 @@ jobs:
           cd storages/redis-storage
           cargo test --verbose
 
+
+  run_parquetstorage_tests:
+    name: Run ParquetStorage tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: Swatinem/rust-cache@v2
+      - run: |
+          cd storages/parquet-storage
+          cargo test --verbose
+
   run_examples:
     name: Run examples
     runs-on: ubuntu-latest
