@@ -1,9 +1,11 @@
-use gluesql_core::{
-    ast::{ColumnDef, DataType},
-    data::Schema,
-    store::{Store, StoreMut},
+use {
+    gluesql_core::{
+        ast::{ColumnDef, DataType},
+        data::Schema,
+        store::{Store, StoreMut},
+    },
+    gluesql_mongo_storage::MongoStorage,
 };
-use gluesql_mongo_storage::MongoStorage;
 
 #[tokio::test]
 async fn mongo_insert_schema() {

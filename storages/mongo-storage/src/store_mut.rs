@@ -118,7 +118,6 @@ impl StoreMut for MongoStorage {
 
         let validator = Validator::new(labels, column_types);
 
-        // if the collection already exists, alter schema
         let schema_exists = self
             .fetch_schema(&schema.table_name)
             .await
@@ -132,13 +131,11 @@ impl StoreMut for MongoStorage {
                 "validationLevel": "strict",
                 "validationAction": "error",
             };
-
             self.db.run_command(command, None).await.map_storage_err()?;
 
             return Ok(());
         }
 
-        // else create collection
         let options = validator.to_options();
 
         self.db
