@@ -1,7 +1,7 @@
-use test_suite::concat_with_null;
 use {
     parquet::data_type::ByteArray,
     std::fs,
+    test_suite::concat_with_null,
     {
         gluesql_core::{
             chrono::NaiveDateTime,

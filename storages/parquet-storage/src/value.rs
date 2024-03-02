@@ -1,14 +1,14 @@
-use std::collections::HashMap;
-
-use byteorder::{BigEndian, ByteOrder};
-use gluesql_core::{
-    chrono::{Duration, NaiveDate, NaiveDateTime, NaiveTime},
-    data::{Schema, Value},
-    prelude::{DataType, Error, Result},
+use {
+    crate::error::{OptionExt, ParquetStorageError, ResultExt},
+    byteorder::{BigEndian, ByteOrder},
+    gluesql_core::{
+        chrono::{Duration, NaiveDate, NaiveDateTime, NaiveTime},
+        data::{Schema, Value},
+        prelude::{DataType, Error, Result},
+    },
+    parquet::record::Field,
+    std::collections::HashMap,
 };
-use parquet::record::Field;
-
-use crate::error::{OptionExt, ParquetStorageError, ResultExt};
 
 #[derive(Debug)]
 pub struct ParquetField(pub Field);

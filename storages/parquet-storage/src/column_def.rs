@@ -1,12 +1,14 @@
-use gluesql_core::{
-    ast::{ColumnDef, ColumnUniqueOption},
-    parse_sql::parse_expr,
-    prelude::{DataType, Error},
-    translate::translate_expr,
+use {
+    gluesql_core::{
+        ast::{ColumnDef, ColumnUniqueOption},
+        parse_sql::parse_expr,
+        prelude::{DataType, Error},
+        translate::translate_expr,
+    },
+    lazy_static::lazy_static,
+    parquet::{basic::Type as PhysicalType, format::KeyValue, schema::types::Type as SchemaType},
+    std::{collections::HashMap, convert::TryFrom},
 };
-use lazy_static::lazy_static;
-use parquet::{basic::Type as PhysicalType, format::KeyValue, schema::types::Type as SchemaType};
-use std::{collections::HashMap, convert::TryFrom};
 
 lazy_static! {
     static ref PARQUET_TO_GLUESQL_DATA_TYPE_MAPPING: HashMap<&'static str, DataType> = {

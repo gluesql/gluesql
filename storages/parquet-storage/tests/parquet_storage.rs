@@ -1,8 +1,6 @@
-use std::fs::remove_dir_all;
-
 use {
     async_trait::async_trait, gluesql_core::prelude::Glue, gluesql_parquet_storage::ParquetStorage,
-    test_suite::*,
+    std::fs::remove_dir_all, test_suite::*,
 };
 
 struct ParquetTester {

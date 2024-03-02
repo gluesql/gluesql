@@ -1,5 +1,5 @@
 use {
-    crate::{error::ResultExt, ParquetStorage},
+    crate::{error::ResultExt, ParquetStorage, ParquetStorageError},
     async_trait::async_trait,
     gluesql_core::{
         ast::{ColumnDef, ToSql},
@@ -194,265 +194,223 @@ impl ParquetStorage {
                 .next_column()
                 .map_storage_err()?
                 .ok_or(Error::StorageMsg("Expected a column but found None".into()))?;
-            let col_writer = writer.untyped();
+            let mut col_writer = writer.untyped();
             for row in &rows {
                 match row {
                     DataRow::Vec(values) => {
                         let value = values[i].clone();
-
-                        match value {
-                            Value::Null => {
-                                if let ColumnWriter::BoolColumnWriter(ref mut typed) = col_writer {
-                                    typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
-                                }
-                                if let ColumnWriter::Int32ColumnWriter(ref mut typed) = col_writer {
-                                    typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
-                                }
-                                if let ColumnWriter::Int64ColumnWriter(ref mut typed) = col_writer {
-                                    typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
-                                }
-                                if let ColumnWriter::Int96ColumnWriter(ref mut typed) = col_writer {
-                                    typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
-                                }
-                                if let ColumnWriter::FloatColumnWriter(ref mut typed) = col_writer {
-                                    typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
-                                }
-                                if let ColumnWriter::DoubleColumnWriter(ref mut typed) = col_writer
-                                {
-                                    typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
-                                }
-                                if let ColumnWriter::ByteArrayColumnWriter(ref mut typed) =
-                                    col_writer
-                                {
-                                    typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
-                                }
-                                if let ColumnWriter::FixedLenByteArrayColumnWriter(ref mut typed) =
-                                    col_writer
-                                {
-                                    typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
-                                }
+                        let col_writer = &mut col_writer;
+                        match (value, col_writer) {
+                            (Value::Null, ColumnWriter::BoolColumnWriter(ref mut typed)) => {
+                                typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
                             }
-                            Value::Bool(val) => {
-                                if let ColumnWriter::BoolColumnWriter(ref mut typed) = col_writer {
-                                    typed
-                                        .write_batch(&[val], Some(&[1]), None)
-                                        .map_storage_err()?;
-                                }
+                            (Value::Null, ColumnWriter::Int32ColumnWriter(ref mut typed)) => {
+                                typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
                             }
-                            Value::I8(val) => {
-                                if let ColumnWriter::Int32ColumnWriter(ref mut typed) = col_writer {
-                                    typed
-                                        .write_batch(&[val as i32], Some(&[1]), None)
-                                        .map_storage_err()?;
-                                }
+                            (Value::Null, ColumnWriter::Int64ColumnWriter(ref mut typed)) => {
+                                typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
                             }
-                            Value::I16(val) => {
-                                if let ColumnWriter::Int32ColumnWriter(ref mut typed) = col_writer {
-                                    typed
-                                        .write_batch(&[val as i32], Some(&[1]), None)
-                                        .map_storage_err()?;
-                                }
+                            (Value::Null, ColumnWriter::Int96ColumnWriter(ref mut typed)) => {
+                                typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
                             }
-                            Value::I32(val) => {
-                                if let ColumnWriter::Int32ColumnWriter(ref mut typed) = col_writer {
-                                    typed
-                                        .write_batch(&[val], Some(&[1]), None)
-                                        .map_storage_err()?;
-                                }
+                            (Value::Null, ColumnWriter::FloatColumnWriter(ref mut typed)) => {
+                                typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
                             }
-                            Value::Date(d) => {
-                                if let ColumnWriter::Int32ColumnWriter(ref mut typed) = col_writer {
-                                    let epoch = NaiveDate::from_ymd_opt(1970, 1, 1)
-                                        .expect("Invalid epoch date");
-                                    let days_since_epoch = (d - epoch).num_days() as i32;
-                                    typed
-                                        .write_batch(&[days_since_epoch], Some(&[1]), None)
-                                        .map_storage_err()?;
-                                }
+                            (Value::Null, ColumnWriter::DoubleColumnWriter(ref mut typed)) => {
+                                typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
                             }
-                            Value::U8(val) => {
-                                if let ColumnWriter::Int32ColumnWriter(ref mut typed) = col_writer {
-                                    typed
-                                        .write_batch(&[val as i32], Some(&[1]), None)
-                                        .map_storage_err()?;
-                                }
+                            (Value::Null, ColumnWriter::ByteArrayColumnWriter(ref mut typed)) => {
+                                typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
                             }
-                            Value::U16(val) => {
-                                if let ColumnWriter::Int32ColumnWriter(ref mut typed) = col_writer {
-                                    typed
-                                        .write_batch(&[val as i32], Some(&[1]), None)
-                                        .map_storage_err()?;
-                                }
+                            (
+                                Value::Null,
+                                ColumnWriter::FixedLenByteArrayColumnWriter(ref mut typed),
+                            ) => {
+                                typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
                             }
-                            Value::U32(val) => {
-                                if let ColumnWriter::Int32ColumnWriter(ref mut typed) = col_writer {
-                                    typed
-                                        .write_batch(&[val as i32], Some(&[1]), None)
-                                        .map_storage_err()?;
-                                }
+                            (Value::Bool(val), ColumnWriter::BoolColumnWriter(ref mut typed)) => {
+                                typed
+                                    .write_batch(&[val], Some(&[1]), None)
+                                    .map_storage_err()?;
                             }
-                            Value::U64(val) => {
-                                if let ColumnWriter::Int64ColumnWriter(ref mut typed) = col_writer {
-                                    typed
-                                        .write_batch(&[val as i64], Some(&[1]), None)
-                                        .map_storage_err()?;
-                                }
+                            (Value::I8(val), ColumnWriter::Int32ColumnWriter(ref mut typed)) => {
+                                typed
+                                    .write_batch(&[val as i32], Some(&[1]), None)
+                                    .map_storage_err()?;
                             }
-                            Value::I64(val) => {
-                                if let ColumnWriter::Int64ColumnWriter(ref mut typed) = col_writer {
-                                    typed
-                                        .write_batch(&[val], Some(&[1]), None)
-                                        .map_storage_err()?;
-                                }
+                            (Value::I16(val), ColumnWriter::Int32ColumnWriter(ref mut typed)) => {
+                                typed
+                                    .write_batch(&[val as i32], Some(&[1]), None)
+                                    .map_storage_err()?;
                             }
-                            Value::Time(val) => {
+                            (Value::I32(val), ColumnWriter::Int32ColumnWriter(ref mut typed)) => {
+                                typed
+                                    .write_batch(&[val], Some(&[1]), None)
+                                    .map_storage_err()?;
+                            }
+                            (Value::Date(d), ColumnWriter::Int32ColumnWriter(ref mut typed)) => {
+                                let epoch = NaiveDate::from_ymd_opt(1970, 1, 1)
+                                    .expect("Invalid epoch date");
+                                let days_since_epoch = (d - epoch).num_days() as i32;
+                                typed
+                                    .write_batch(&[days_since_epoch], Some(&[1]), None)
+                                    .map_storage_err()?;
+                            }
+                            (Value::U8(val), ColumnWriter::Int32ColumnWriter(ref mut typed)) => {
+                                typed
+                                    .write_batch(&[val as i32], Some(&[1]), None)
+                                    .map_storage_err()?;
+                            }
+                            (Value::U16(val), ColumnWriter::Int32ColumnWriter(ref mut typed)) => {
+                                typed
+                                    .write_batch(&[val as i32], Some(&[1]), None)
+                                    .map_storage_err()?;
+                            }
+                            (Value::U32(val), ColumnWriter::Int32ColumnWriter(ref mut typed)) => {
+                                typed
+                                    .write_batch(&[val as i32], Some(&[1]), None)
+                                    .map_storage_err()?;
+                            }
+                            (Value::U64(val), ColumnWriter::Int64ColumnWriter(ref mut typed)) => {
+                                typed
+                                    .write_batch(&[val as i64], Some(&[1]), None)
+                                    .map_storage_err()?;
+                            }
+                            (Value::I64(val), ColumnWriter::Int64ColumnWriter(ref mut typed)) => {
+                                typed
+                                    .write_batch(&[val], Some(&[1]), None)
+                                    .map_storage_err()?;
+                            }
+                            (Value::Time(val), ColumnWriter::Int64ColumnWriter(ref mut typed)) => {
                                 let total_micros = (val.hour() as i64 * 60 * 60 * 1_000_000) // hours to micros
                                 + (val.minute() as i64 * 60 * 1_000_000)                          // minutes to micros
                                 + (val.second() as i64 * 1_000_000)                               // seconds to micros
                                 + (val.nanosecond() as i64 / 1_000); // nanos to micros
-                                if let ColumnWriter::Int64ColumnWriter(ref mut typed) = col_writer {
-                                    typed
-                                        .write_batch(&[total_micros], Some(&[1]), None)
-                                        .map_storage_err()?;
-                                }
+                                typed
+                                    .write_batch(&[total_micros], Some(&[1]), None)
+                                    .map_storage_err()?;
                             }
-                            Value::Timestamp(val) => {
+                            (
+                                Value::Timestamp(val),
+                                ColumnWriter::ByteArrayColumnWriter(ref mut typed),
+                            ) => {
                                 let serialized = bincode::serialize(&val).map_storage_err()?;
-                                if let ColumnWriter::ByteArrayColumnWriter(ref mut typed) =
-                                    col_writer
-                                {
-                                    typed
-                                        .write_batch(&[serialized.into()], Some(&[1]), None)
-                                        .map_storage_err()?;
-                                }
+                                typed
+                                    .write_batch(&[serialized.into()], Some(&[1]), None)
+                                    .map_storage_err()?;
                             }
-                            Value::I128(val) => {
+                            (
+                                Value::I128(val),
+                                ColumnWriter::ByteArrayColumnWriter(ref mut typed),
+                            ) => {
                                 let serialized = bincode::serialize(&val).map_storage_err()?;
-                                if let ColumnWriter::ByteArrayColumnWriter(ref mut typed) =
-                                    col_writer
-                                {
-                                    typed
-                                        .write_batch(&[serialized.into()], Some(&[1]), None)
-                                        .map_storage_err()?;
-                                }
+                                typed
+                                    .write_batch(&[serialized.into()], Some(&[1]), None)
+                                    .map_storage_err()?;
                             }
-                            Value::U128(val) => {
+                            (
+                                Value::U128(val),
+                                ColumnWriter::ByteArrayColumnWriter(ref mut typed),
+                            ) => {
                                 let serialized = bincode::serialize(&val).map_storage_err()?;
-                                if let ColumnWriter::ByteArrayColumnWriter(ref mut typed) =
-                                    col_writer
-                                {
-                                    typed
-                                        .write_batch(&[serialized.into()], Some(&[1]), None)
-                                        .map_storage_err()?;
-                                }
+                                typed
+                                    .write_batch(&[serialized.into()], Some(&[1]), None)
+                                    .map_storage_err()?;
                             }
-                            Value::Uuid(val) => {
+                            (
+                                Value::Uuid(val),
+                                ColumnWriter::FixedLenByteArrayColumnWriter(ref mut typed),
+                            ) => {
                                 let serialized = bincode::serialize(&val).map_storage_err()?;
-                                if let ColumnWriter::FixedLenByteArrayColumnWriter(ref mut typed) =
-                                    col_writer
-                                {
-                                    typed
-                                        .write_batch(
-                                            &[FixedLenByteArray::from(serialized.to_vec())],
-                                            Some(&[1]),
-                                            None,
-                                        )
-                                        .map_storage_err()?;
-                                }
+                                typed
+                                    .write_batch(
+                                        &[FixedLenByteArray::from(serialized.to_vec())],
+                                        Some(&[1]),
+                                        None,
+                                    )
+                                    .map_storage_err()?;
                             }
-                            Value::F32(val) => {
-                                if let ColumnWriter::FloatColumnWriter(ref mut typed) = col_writer {
-                                    typed
-                                        .write_batch(&[val], Some(&[1]), None)
-                                        .map_storage_err()?;
-                                }
+                            (Value::F32(val), ColumnWriter::FloatColumnWriter(ref mut typed)) => {
+                                typed
+                                    .write_batch(&[val], Some(&[1]), None)
+                                    .map_storage_err()?;
                             }
-                            Value::F64(val) => {
-                                if let ColumnWriter::DoubleColumnWriter(ref mut typed) = col_writer
-                                {
-                                    typed
-                                        .write_batch(&[val], Some(&[1]), None)
-                                        .map_storage_err()?;
-                                }
+                            (Value::F64(val), ColumnWriter::DoubleColumnWriter(ref mut typed)) => {
+                                typed
+                                    .write_batch(&[val], Some(&[1]), None)
+                                    .map_storage_err()?;
                             }
-                            Value::Str(val) => {
-                                if let ColumnWriter::ByteArrayColumnWriter(ref mut typed) =
-                                    col_writer
-                                {
-                                    typed
-                                        .write_batch(
-                                            &[ByteArray::from(val.as_bytes())],
-                                            Some(&[1]),
-                                            None,
-                                        )
-                                        .map_storage_err()?;
-                                }
+                            (
+                                Value::Str(val),
+                                ColumnWriter::ByteArrayColumnWriter(ref mut typed),
+                            ) => {
+                                typed
+                                    .write_batch(
+                                        &[ByteArray::from(val.as_bytes())],
+                                        Some(&[1]),
+                                        None,
+                                    )
+                                    .map_storage_err()?;
                             }
-                            Value::Decimal(val) => {
+                            (
+                                Value::Decimal(val),
+                                ColumnWriter::ByteArrayColumnWriter(ref mut typed),
+                            ) => {
                                 let serialized = bincode::serialize(&val).map_storage_err()?;
-                                if let ColumnWriter::ByteArrayColumnWriter(ref mut typed) =
-                                    col_writer
-                                {
-                                    typed
-                                        .write_batch(&[serialized.into()], Some(&[1]), None)
-                                        .map_storage_err()?;
-                                }
+                                typed
+                                    .write_batch(&[serialized.into()], Some(&[1]), None)
+                                    .map_storage_err()?;
                             }
-                            Value::Interval(val) => {
+                            (
+                                Value::Interval(val),
+                                ColumnWriter::ByteArrayColumnWriter(ref mut typed),
+                            ) => {
                                 let serialized = bincode::serialize(&val).map_storage_err()?;
-                                if let ColumnWriter::ByteArrayColumnWriter(ref mut typed) =
-                                    col_writer
-                                {
-                                    typed
-                                        .write_batch(&[serialized.into()], Some(&[1]), None)
-                                        .map_storage_err()?;
-                                }
+                                typed
+                                    .write_batch(&[serialized.into()], Some(&[1]), None)
+                                    .map_storage_err()?;
                             }
-                            Value::Bytea(val) => {
-                                if let ColumnWriter::ByteArrayColumnWriter(ref mut typed) =
-                                    col_writer
-                                {
-                                    let byte_array = ByteArray::from(val);
-                                    typed
-                                        .write_batch(&[byte_array], Some(&[1]), None)
-                                        .map_storage_err()?;
-                                }
+                            (
+                                Value::Bytea(val),
+                                ColumnWriter::ByteArrayColumnWriter(ref mut typed),
+                            ) => {
+                                let byte_array = ByteArray::from(val);
+                                typed
+                                    .write_batch(&[byte_array], Some(&[1]), None)
+                                    .map_storage_err()?;
                             }
-                            Value::Map(m) => {
+                            (Value::Map(m), ColumnWriter::ByteArrayColumnWriter(typed)) => {
                                 let serialized = bincode::serialize(&m).map_storage_err()?;
-                                if let ColumnWriter::ByteArrayColumnWriter(typed) = col_writer {
-                                    typed
-                                        .write_batch(&[serialized.into()], Some(&[1]), None)
-                                        .map_storage_err()?;
-                                }
+                                typed
+                                    .write_batch(&[serialized.into()], Some(&[1]), None)
+                                    .map_storage_err()?;
                             }
-                            Value::List(l) => {
+                            (
+                                Value::List(l),
+                                ColumnWriter::ByteArrayColumnWriter(ref mut typed),
+                            ) => {
                                 let serialized = bincode::serialize(&l).map_storage_err()?;
-                                if let ColumnWriter::ByteArrayColumnWriter(ref mut typed) =
-                                    col_writer
-                                {
-                                    typed
-                                        .write_batch(&[serialized.into()], Some(&[1]), None)
-                                        .map_storage_err()?;
-                                }
+                                typed
+                                    .write_batch(&[serialized.into()], Some(&[1]), None)
+                                    .map_storage_err()?;
                             }
-                            Value::Point(p) => {
+                            (Value::Point(p), ColumnWriter::ByteArrayColumnWriter(typed)) => {
                                 let serialized = bincode::serialize(&p).map_storage_err()?;
-                                if let ColumnWriter::ByteArrayColumnWriter(typed) = col_writer {
-                                    typed
-                                        .write_batch(&[serialized.into()], Some(&[1]), None)
-                                        .map_storage_err()?;
-                                }
+                                typed
+                                    .write_batch(&[serialized.into()], Some(&[1]), None)
+                                    .map_storage_err()?;
                             }
-                            Value::Inet(inet) => {
+                            (Value::Inet(inet), ColumnWriter::ByteArrayColumnWriter(typed)) => {
                                 let serialized = bincode::serialize(&inet).map_storage_err()?;
-                                if let ColumnWriter::ByteArrayColumnWriter(typed) = col_writer {
-                                    typed
-                                        .write_batch(&[serialized.into()], Some(&[1]), None)
-                                        .map_storage_err()?;
-                                }
+                                typed
+                                    .write_batch(&[serialized.into()], Some(&[1]), None)
+                                    .map_storage_err()?;
                             }
-                        }
+                            _ => return Err(
+                                ParquetStorageError::UnreachableGlueSqlValueTypeForParquetWriter
+                                    .into(),
+                            ),
+                        };
                     }
                     DataRow::Map(map) => {
                         let serialized = bincode::serialize(&map).map_storage_err()?;

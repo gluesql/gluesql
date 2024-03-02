@@ -1,5 +1,7 @@
-use gluesql_core::prelude::Glue;
-use gluesql_parquet_storage::{error::ParquetStorageError, ParquetStorage};
+use {
+    gluesql_core::prelude::Glue,
+    gluesql_parquet_storage::{error::ParquetStorageError, ParquetStorage},
+};
 
 #[tokio::test]
 async fn test_from_parquet_storage_error_to_error() {

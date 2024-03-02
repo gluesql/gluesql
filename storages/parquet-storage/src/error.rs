@@ -1,12 +1,4 @@
-use parquet::{
-    basic::{ConvertedType, Type},
-    errors::ParquetError,
-};
-
-use {
-    gluesql_core::{ast::DataType, prelude::Error},
-    thiserror::Error,
-};
+use {gluesql_core::prelude::Error, parquet::errors::ParquetError, thiserror::Error};
 
 #[derive(Debug)]
 pub struct GlueParquetError(ParquetError);
@@ -40,33 +32,15 @@ impl From<ParquetStorageError> for Error {
 
 #[derive(Error, Debug)]
 pub enum ParquetStorageError {
-    #[error("unable to set new SerialiszedFileReader")]
-    UnableToSetNewSerializedFileReader,
-
     #[error("file not found")]
     FileNotFound,
 
     #[error("table {0} does not exist")]
     TableDoesNotExist(String),
 
-    #[error("column does not exist: {0}")]
-    ColumnDoesNotExist(String),
-
-    #[error("table name does not match with file")]
-    TableNameDoesNotMatchWithFile,
-
-    #[error("invalid parquet file content: {0}")]
-    InvalidParquetContent(String),
-
-    #[error("unmapped parquet type: {0}")]
-    UnmappedParquetType(Type),
-
-    #[error("unmapped parquet converted type: {0}")]
-    UnmappedParquetConvertedType(ConvertedType),
-
-    #[error("unmapped glue data type: {0}")]
-    UnmappedGlueDataType(DataType),
-
     #[error("Unexpected key type for map: received {0}, expected String")]
     UnexpectedKeyTypeForMap(String),
+
+    #[error("Unreachable gluesql value type for parquet writer")]
+    UnreachableGlueSqlValueTypeForParquetWriter,
 }
