@@ -116,7 +116,7 @@ impl StoreMut for MongoStorage {
             })
             .unwrap_or_default();
 
-        let options = get_collection_options(labels, column_types);
+        let options = get_collection_options(labels, column_types, schema.foreign_keys.clone())?;
 
         self.db
             .create_collection(&schema.table_name, options)

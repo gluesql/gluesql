@@ -1220,6 +1220,8 @@ dependencies = [
  "gluesql-test-suite",
  "mongodb",
  "rust_decimal",
+ "serde",
+ "serde_json",
  "strum",
  "strum_macros 0.24.3",
  "thiserror",

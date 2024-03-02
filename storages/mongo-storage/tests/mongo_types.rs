@@ -29,7 +29,7 @@ async fn mongo_types() {
         "col_maxKey": { "bsonType": ["maxKey"], "title": "TEXT" },
     };
 
-    let options = get_collection_options(labels, column_types);
+    let options = get_collection_options(labels, column_types, None).unwrap();
 
     let table_name = "mongo_type_collection";
 

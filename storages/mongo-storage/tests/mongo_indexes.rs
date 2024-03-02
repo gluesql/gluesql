@@ -21,7 +21,7 @@ async fn mongo_indexes() {
         "name": { "bsonType": ["string"], "title": "TEXT" },
     };
 
-    let options = get_collection_options(labels, column_types);
+    let options = get_collection_options(labels, column_types, None).unwrap();
 
     let table_name = "collection_with_composite_index";
 
