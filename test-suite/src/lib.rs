@@ -36,6 +36,7 @@ pub mod project;
 pub mod schemaless;
 pub mod series;
 pub mod show_columns;
+pub mod store;
 pub mod synthesize;
 pub mod transaction;
 pub mod type_match;

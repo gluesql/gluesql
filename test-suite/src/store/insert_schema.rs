@@ -1,21 +1,13 @@
 use {
+    crate::*,
     gluesql_core::{
         ast::{ColumnDef, DataType},
         data::Schema,
-        store::{Store, StoreMut},
     },
-    gluesql_mongo_storage::MongoStorage,
 };
 
-#[tokio::test]
-async fn mongo_insert_schema() {
-    let conn_str = "mongodb://localhost:27017";
-
-    let mut storage = MongoStorage::new(conn_str, "mongo_indexes")
-        .await
-        .expect("MongoStorage::new");
-    storage.drop_database().await.expect("database dropped");
-
+test_case!(insert_schema, {
+    let storage = &mut get_glue!().storage;
     let column_defs = Some(vec![ColumnDef {
         name: "id".to_owned(),
         data_type: DataType::Int,
@@ -46,7 +38,6 @@ async fn mongo_insert_schema() {
     });
 
     storage.insert_schema(&schema).await.unwrap();
-
     let actual = storage
         .fetch_schema("mutable_table")
         .await
@@ -54,4 +45,4 @@ async fn mongo_insert_schema() {
         .unwrap();
 
     assert_eq!(actual, schema);
-}
+});
