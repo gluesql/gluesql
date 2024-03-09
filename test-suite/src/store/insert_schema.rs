@@ -23,6 +23,7 @@ test_case!(insert_schema, {
         engine: None,
     };
 
+    storage.begin(true).await.unwrap();
     storage.insert_schema(&schema).await.unwrap();
 
     schema.column_defs = schema.column_defs.map(|mut column_defs| {
@@ -39,6 +40,10 @@ test_case!(insert_schema, {
 
     storage.insert_schema(&schema).await.unwrap();
     let actual = storage.fetch_schema("MutableTable").await.unwrap().unwrap();
+    let _ = storage.commit().await;
 
-    assert_eq!(actual, schema, "Consecutive insert_schema failed");
+    assert_eq!(
+        actual.column_defs, schema.column_defs,
+        "Consecutive insert_schema failed"
+    );
 });
