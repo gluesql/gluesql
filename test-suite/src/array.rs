@@ -70,6 +70,5 @@ test_case!(array, {
         )),
     ).await;
 
-    g.run("DELETE FROM Item").await;
     g.run("DELETE FROM Target").await;
 });

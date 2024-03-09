@@ -79,7 +79,6 @@ pub enum Expr {
     },
     Array {
         elem: Vec<Expr>,
-        named: bool,
     },
 }
 
@@ -243,17 +242,13 @@ impl Expr {
                     .join("");
                 format!("{obj}{indexes}")
             }
-            Expr::Array { elem, named } => {
+            Expr::Array { elem } => {
                 let elem = elem
                     .iter()
                     .map(|e| format!("[{}]", e.to_sql_with(quoted)))
                     .collect::<Vec<_>>()
                     .join("");
-                let named = match named {
-                    true => format!("ARRAY"),
-                    false => format!(""),
-                };
-                format!("{named}{elem}")
+                format!("{elem}")
             }
             Expr::Subquery(query) => format!("({})", query.to_sql()),
             Expr::Interval {
@@ -681,8 +676,7 @@ mod tests {
                 elem: vec![
                     Expr::Literal(AstLiteral::QuotedString("GlueSQL".to_owned())),
                     Expr::Literal(AstLiteral::QuotedString("Rust".to_owned()))
-                ],
-                named: true
+                ]
             }
             .to_sql()
         );

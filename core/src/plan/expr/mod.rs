@@ -69,7 +69,7 @@ impl<'a> From<&'a Expr> for PlanExpr<'a> {
                 let exprs = indexes.iter().chain(once(obj.as_ref())).collect();
                 PlanExpr::MultiExprs(exprs)
             }
-            Expr::Array { elem, named } => {
+            Expr::Array { elem } => {
                 let exprs = elem.iter().collect();
                 PlanExpr::MultiExprs(exprs)
                 //fix
