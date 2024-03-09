@@ -60,9 +60,9 @@ test_case!(update, {
     // update set multiple and use filter
     let actual = table("Foo")
         .update()
+        .filter(col("score").lte(30))
         .set("score", "score * 2 + 5")
         .set("flag", col("flag").negate())
-        .filter(col("score").lte(30))
         .execute(glue)
         .await;
     let expected = Ok(Payload::Update(2));

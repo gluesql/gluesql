@@ -14,6 +14,7 @@ use {
     },
 };
 
+#[derive(Debug)]
 pub struct Glue<T: GStore + GStoreMut> {
     pub storage: T,
 }

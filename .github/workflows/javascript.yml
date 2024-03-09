@@ -18,11 +18,11 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version: 20
       - uses: browser-actions/setup-firefox@latest
       - name: Set up wasm pack
         uses: jetli/wasm-pack-action@v0.4.0
@@ -40,11 +40,11 @@ jobs:
     name: Storage tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version: 20
       - uses: browser-actions/setup-firefox@latest
       - name: Set up wasm pack
         uses: jetli/wasm-pack-action@v0.4.0

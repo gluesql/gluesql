@@ -1,3 +1,5 @@
+#![cfg(feature = "test-mongo")]
+
 use {
     async_trait::async_trait, gluesql_core::prelude::Glue, gluesql_mongo_storage::MongoStorage,
     test_suite::*,
@@ -25,5 +27,4 @@ impl Tester<MongoStorage> for MongoTester {
     }
 }
 
-#[cfg(feature = "test-mongo")]
 generate_store_tests!(tokio::test, MongoTester);
