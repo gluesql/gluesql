@@ -228,6 +228,14 @@ impl Store for IdbStorage {
 #[async_trait(?Send)]
 impl StoreMut for IdbStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
+        console::log_1(&">>>".into());
+        let schema_exists = self
+            .fetch_schema(&schema.table_name)
+            .await
+            .map_err(|e| e.to_string())
+            .map_err(Error::StorageMsg)?
+            .is_some();
+        console::log_1(&">>>3".into());
         let version = self.database.version().err_into()? + 1;
         self.database.close();
 
@@ -261,59 +269,80 @@ impl StoreMut for IdbStorage {
                 let mut params = ObjectStoreParams::new();
                 params.auto_increment(true);
 
-                if let Err(e) = database.create_object_store(&table_name, params).err_into() {
-                    let mut error = match error.lock() {
-                        Ok(error) => error,
-                        Err(_) => {
-                            let msg = JsValue::from_str("infallible - lock acquire failed");
-                            console::error_1(&msg);
-                            return;
-                        }
-                    };
+                match schema_exists {
+                    true => (),
+                    false => {
+                        if let Err(e) = database.create_object_store(&table_name, params).err_into()
+                        {
+                            let mut error = match error.lock() {
+                                Ok(error) => error,
+                                Err(_) => {
+                                    let msg = JsValue::from_str("infallible - lock acquire failed");
+                                    console::error_1(&msg);
+                                    return;
+                                }
+                            };
 
-                    *error = Some(e);
-                }
+                            *error = Some(e);
+                        }
+                    }
+                };
             });
 
             open_request
         };
+        console::log_1(&">>>4".into());
 
         self.database = open_request.await.err_into()?;
+        console::log_1(&">>>5".into());
         if let Some(e) = Arc::try_unwrap(error)
             .map_err(|_| Error::StorageMsg("infallible - Arc::try_unwrap failed".to_owned()))?
             .into_inner()
             .err_into()?
         {
+            console::log_1(&">>>5-1".into());
             return Err(e);
         }
 
-        let schema_exists = self
-            .fetch_schema(&schema.table_name)
-            .await
-            .map_err(|e| e.to_string())
-            .map_err(Error::StorageMsg)?
-            .is_some();
+        console::log_1(&">>>6".into());
+        // let schema_exists = self
+        //     .fetch_schema(&schema.table_name)
+        //     .await
+        //     .map_err(|e| e.to_string())
+        //     .map_err(Error::StorageMsg)?
+        //     .is_some();
+        console::log_1(&">>>7".into());
 
         let transaction = self
             .database
             .transaction(&[SCHEMA_STORE], TransactionMode::ReadWrite)
             .err_into()?;
+        console::log_1(&">>>here".into());
         let store = transaction.object_store(SCHEMA_STORE).err_into()?;
+        console::log_1(&">>>there".into());
 
         let key = JsValue::from_str(&schema.table_name);
         let schema = JsValue::from(schema.to_ddl());
 
         match schema_exists {
-            true => store
-                .put(&schema, Some(&key))
-                .err_into()?
-                .await
-                .err_into()?,
-            false => store
-                .add(&schema, Some(&key))
-                .err_into()?
-                .await
-                .err_into()?,
+            true => {
+                console::log_1(&">>>schema exists".into());
+                console::log_1(&schema);
+                store
+                    .put(&schema, Some(&key))
+                    .err_into()?
+                    .await
+                    .err_into()?
+            }
+            false => {
+                console::log_1(&">>>schema does not exists".into());
+                console::log_1(&schema);
+                store
+                    .add(&schema, Some(&key))
+                    .err_into()?
+                    .await
+                    .err_into()?
+            }
         };
 
         transaction
