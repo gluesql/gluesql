@@ -11,7 +11,7 @@ use {
     futures::stream::{empty, iter},
     gloo_utils::format::JsValueSerdeExt,
     gluesql_core::{
-        data::{Key, Schema, Value},
+        data::{schema, Key, Schema, Value},
         error::{Error, Result},
         store::{DataRow, Metadata, RowIter, Store, StoreMut},
     },
@@ -293,13 +293,29 @@ impl StoreMut for IdbStorage {
             .err_into()?;
         let store = transaction.object_store(SCHEMA_STORE).err_into()?;
 
+        let schema_exists = self
+            .fetch_schema(&schema.table_name)
+            .await
+            .map_err(|e| e.to_string())
+            .map_err(Error::StorageMsg)
+            .is_some();
+
         let key = JsValue::from_str(&schema.table_name);
         let schema = JsValue::from(schema.to_ddl());
-        store
-            .add(&schema, Some(&key))
-            .err_into()?
-            .await
-            .err_into()?;
+
+        if schema_exists {
+            store
+                .put(&JsValue::from(schema.to_ddl()), Some(&key))
+                .err_into()?
+                .await
+                .err_into()?;
+        } else {
+            store
+                .add(&schema, Some(&key))
+                .err_into()?
+                .await
+                .err_into()?;
+        }
 
         transaction
             .commit()
