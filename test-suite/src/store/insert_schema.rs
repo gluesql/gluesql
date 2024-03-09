@@ -17,7 +17,7 @@ test_case!(insert_schema, {
     }]);
 
     let mut schema = Schema {
-        table_name: "mutable_table".to_owned(),
+        table_name: "MutableTable".to_owned(),
         column_defs,
         indexes: Vec::new(),
         engine: None,
@@ -38,11 +38,7 @@ test_case!(insert_schema, {
     });
 
     storage.insert_schema(&schema).await.unwrap();
-    let actual = storage
-        .fetch_schema("mutable_table")
-        .await
-        .unwrap()
-        .unwrap();
+    let actual = storage.fetch_schema("MutableTable").await.unwrap().unwrap();
 
-    assert_eq!(actual, schema);
+    assert_eq!(actual, schema, "Consecutive insert_schema failed");
 });
