@@ -287,18 +287,18 @@ impl StoreMut for IdbStorage {
             return Err(e);
         }
 
-        let transaction = self
-            .database
-            .transaction(&[SCHEMA_STORE], TransactionMode::ReadWrite)
-            .err_into()?;
-        let store = transaction.object_store(SCHEMA_STORE).err_into()?;
-
         let schema_exists = self
             .fetch_schema(&schema.table_name)
             .await
             .map_err(|e| e.to_string())
             .map_err(Error::StorageMsg)?
             .is_some();
+
+        let transaction = self
+            .database
+            .transaction(&[SCHEMA_STORE], TransactionMode::ReadWrite)
+            .err_into()?;
+        let store = transaction.object_store(SCHEMA_STORE).err_into()?;
 
         let key = JsValue::from_str(&schema.table_name);
         let schema = JsValue::from(schema.to_ddl());
