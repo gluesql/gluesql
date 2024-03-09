@@ -104,7 +104,7 @@ pub fn array_index<'a>(obj: Evaluated<'a>, indexes: Vec<Evaluated<'a>>) -> Resul
     value.selector_by_index(&indexes).map(Evaluated::Value)
 }
 
-pub fn array<'a>(elem: Vec<Evaluated<'a>>) -> Result<Evaluated<'a>> {
+pub fn array(elem: Vec<Evaluated<'_>>) -> Result<Evaluated<'_>> {
     let elem = elem
         .into_iter()
         .map(Value::try_from)
