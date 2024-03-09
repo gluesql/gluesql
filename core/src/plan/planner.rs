@@ -153,12 +153,12 @@ pub trait Planner<'a> {
                 let obj = Box::new(self.subquery_expr(outer_context, *obj));
                 Expr::ArrayIndex { obj, indexes }
             }
-            Expr::Array{elem, named}=>{
+            Expr::Array { elem, named } => {
                 let elem = elem
                     .into_iter()
                     .map(|expr| self.subquery_expr(outer_context.as_ref().map(Rc::clone), expr))
                     .collect();
-                Expr::Array{elem,named}
+                Expr::Array { elem, named }
             }
             Expr::Interval {
                 expr,

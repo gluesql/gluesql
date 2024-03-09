@@ -289,7 +289,7 @@ impl ToSql for Assignment {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Array {
     pub elem: Vec<Expr>,
     pub named: bool,

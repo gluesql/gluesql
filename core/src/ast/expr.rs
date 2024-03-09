@@ -1,6 +1,6 @@
 use {
     super::{
-        Aggregate, AstLiteral, BinaryOperator, DataType, DateTimeField, Function, Query,ToSql,
+        Aggregate, AstLiteral, BinaryOperator, DataType, DateTimeField, Function, Query, ToSql,
         ToSqlUnquoted, UnaryOperator,
     },
     serde::{Deserialize, Serialize},
@@ -77,7 +77,10 @@ pub enum Expr {
         leading_field: Option<DateTimeField>,
         last_field: Option<DateTimeField>,
     },
-    Array{elem:Vec<Expr>, named: bool}
+    Array {
+        elem: Vec<Expr>,
+        named: bool,
+    },
 }
 
 impl ToSql for Expr {
@@ -240,12 +243,16 @@ impl Expr {
                     .join("");
                 format!("{obj}{indexes}")
             }
-            Expr::Array{elem, named}=>{
-                let elem = elem.iter().map(|e| format!("[{}]", e.to_sql_with(quoted))).collect::<Vec<_>>().join(""); 
-                match named {
+            Expr::Array { elem, named } => {
+                let elem = elem
+                    .iter()
+                    .map(|e| format!("[{}]", e.to_sql_with(quoted)))
+                    .collect::<Vec<_>>()
+                    .join("");
+                let named = match named {
                     true => format!("ARRAY"),
                     false => format!(""),
-                }
+                };
                 format!("{named}{elem}")
             }
             Expr::Subquery(query) => format!("({})", query.to_sql()),
@@ -671,12 +678,13 @@ mod tests {
         assert_eq!(
             r#"ARRAY['GlueSQL','Rust']"#,
             Expr::Array {
-                elem:vec![
+                elem: vec![
                     Expr::Literal(AstLiteral::QuotedString("GlueSQL".to_owned())),
                     Expr::Literal(AstLiteral::QuotedString("Rust".to_owned()))
                 ],
                 named: true
-            }.to_sql()
+            }
+            .to_sql()
         );
 
         assert_eq!(
