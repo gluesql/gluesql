@@ -245,10 +245,10 @@ impl Expr {
             Expr::Array { elem } => {
                 let elem = elem
                     .iter()
-                    .map(|e| format!("[{}]", e.to_sql_with(quoted)))
+                    .map(|e| e.to_sql_with(quoted))
                     .collect::<Vec<_>>()
-                    .join("");
-                format!("{elem}")
+                    .join(", ");
+                format!("[{}]", elem)
             }
             Expr::Subquery(query) => format!("({})", query.to_sql()),
             Expr::Interval {
@@ -671,7 +671,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"ARRAY['GlueSQL','Rust']"#,
+            r#"['GlueSQL', 'Rust']"#,
             Expr::Array {
                 elem: vec![
                     Expr::Literal(AstLiteral::QuotedString("GlueSQL".to_owned())),
