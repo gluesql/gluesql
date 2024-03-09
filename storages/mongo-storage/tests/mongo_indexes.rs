@@ -1,3 +1,5 @@
+#![cfg(feature = "test-mongo")]
+
 use {
     bson::{doc, Document},
     gluesql_core::prelude::{Glue, Payload},

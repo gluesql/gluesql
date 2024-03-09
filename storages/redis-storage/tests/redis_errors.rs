@@ -1,3 +1,5 @@
+#![cfg(feature = "test-redis")]
+
 use {
     gluesql_core::prelude::{Error, Payload},
     gluesql_redis_storage::RedisStorage,

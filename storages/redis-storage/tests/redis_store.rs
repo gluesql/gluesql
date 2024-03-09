@@ -1,3 +1,5 @@
+#![cfg(feature = "test-redis")]
+
 use {
     async_trait::async_trait,
     gluesql_core::prelude::Glue,
@@ -51,9 +53,7 @@ impl Tester<RedisStorage> for RedisStorageTester {
 }
 
 generate_store_tests!(tokio::test, RedisStorageTester);
-
 generate_alter_table_tests!(tokio::test, RedisStorageTester);
-
 generate_metadata_table_tests!(tokio::test, RedisStorageTester);
 
 macro_rules! exec {
