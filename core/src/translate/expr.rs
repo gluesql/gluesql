@@ -171,6 +171,7 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
         }),
         SqlExpr::Array(Array { elem, named }) => Ok(Expr::Array{
             elem: elem.iter().map(translate_expr).collect::<Result<_>>()?,
+            named: *named,
         }),
         SqlExpr::Position { expr, r#in } => translate_position(expr, r#in),
         SqlExpr::Interval(SqlInterval {

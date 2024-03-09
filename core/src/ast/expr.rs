@@ -77,7 +77,7 @@ pub enum Expr {
         leading_field: Option<DateTimeField>,
         last_field: Option<DateTimeField>,
     },
-    Array{elem:Vec<Expr>}
+    Array{elem:Vec<Expr>, named: bool}
 }
 
 impl ToSql for Expr {
@@ -240,9 +240,13 @@ impl Expr {
                     .join("");
                 format!("{obj}{indexes}")
             }
-            Expr::Array{elem}=>{
-                let elem = elem.iter().map(|e| format!("[{}]", e.to_sql_with(quoted))).collect::<Vec<_>>().join("");
-                format!("{elem}")
+            Expr::Array{elem, named}=>{
+                let elem = elem.iter().map(|e| format!("[{}]", e.to_sql_with(quoted))).collect::<Vec<_>>().join(""); 
+                match named {
+                    true => format!("ARRAY"),
+                    false => format!(""),
+                }
+                format!("{named}{elem}")
             }
             Expr::Subquery(query) => format!("({})", query.to_sql()),
             Expr::Interval {
@@ -665,12 +669,13 @@ mod tests {
         );
 
         assert_eq!(
-            r#"['GlueSQL','Rust']"#,
+            r#"ARRAY['GlueSQL','Rust']"#,
             Expr::Array {
                 elem:vec![
                     Expr::Literal(AstLiteral::QuotedString("GlueSQL".to_owned())),
                     Expr::Literal(AstLiteral::QuotedString("Rust".to_owned()))
-                ]
+                ],
+                named: true
             }.to_sql()
         );
 

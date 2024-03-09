@@ -104,6 +104,6 @@ pub fn array_index<'a>(obj: Evaluated<'a>, indexes: Vec<Evaluated<'a>>) -> Resul
     value.selector_by_index(&indexes).map(Evaluated::Value)
 }
 
-pub fn array<'a>(elem:Vec<Evaluated<'a>>)-> Result<Evaluated<'a>>{
+pub fn array<'a>(elem:Vec<Evaluated<'a>>, named: bool)-> Result<Evaluated<'a>>{
     //smth
 }

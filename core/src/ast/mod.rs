@@ -289,6 +289,12 @@ impl ToSql for Assignment {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+pub struct Array {
+    pub elem: Vec<Expr>,
+    pub named: bool,
+}
+
 #[cfg(test)]
 mod tests {
     use {
