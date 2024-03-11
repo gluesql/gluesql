@@ -248,5 +248,13 @@ mod tests {
             query: &subquery,
         };
         test!(actual, expected);
+
+        let actual = expr(r#"["GlueSql","Rust"]"#);
+        let expected = ["GlueSql", "Rust"]
+            .into_iter()
+            .map(expr)
+            .collect::<Vec<_>>();
+        let expected = PlanExpr::MultiExprs(expected.iter().collect());
+        test!(actual, expected);
     }
 }
