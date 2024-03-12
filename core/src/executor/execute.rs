@@ -4,7 +4,9 @@ use {
             alter_table, create_index, create_table, delete_function, drop_table, insert_function,
         },
         fetch::{fetch, fetch_columns},
-        insert::insert,
+        insert::{
+            InsertError, {fetch_insert_rows, insert},
+        },
         select::{select, select_with_labels},
         update::Update,
         validate::{validate_unique, ColumnValidation},
@@ -176,9 +178,23 @@ async fn execute_inner<T: GStore + GStoreMut>(
             table_name,
             columns,
             source,
-        } => insert(storage, table_name, columns, source)
-            .await
-            .map(Payload::Insert),
+        } => {
+            let Schema { column_defs, .. } = storage
+                .fetch_schema(table_name)
+                .await?
+                .ok_or_else(|| InsertError::TableNotFound(table_name.to_owned()))?;
+
+            let rows = fetch_insert_rows(
+                storage,
+                Some(table_name),
+                columns,
+                source,
+                column_defs.as_deref(),
+            )
+            .await?;
+
+            insert(storage, table_name, rows).await.map(Payload::Insert)
+        }
         Statement::Update {
             table_name,
             selection,
@@ -225,7 +241,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
                     Row::Map(_) => None,
                 });
 
-                validate_unique(storage, table_name, column_validation, rows).await?;
+                validate_unique(storage, Some(table_name), column_validation, rows).await?;
             }
 
             let num_rows = rows.len();

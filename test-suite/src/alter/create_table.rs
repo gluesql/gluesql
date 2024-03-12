@@ -1,10 +1,16 @@
 use {
     crate::*,
     gluesql_core::{
-        data::value::Value::{Null, Str, I64},
+        data::{
+            value::Value::{Null, Str, I64},
+            Literal, ValueError,
+        },
         error::{AlterError, EvaluateError, TranslateError},
-        prelude::Payload,
+        executor::FetchError,
+        prelude::{DataType::Int, Payload, Value},
     },
+    serde_json::json,
+    std::borrow::Cow,
 };
 
 test_case!(create_table, {
@@ -121,6 +127,37 @@ test_case!(create_table, {
             )),
         ),
         (
+            "CREATE TABLE TargetTableWithLiteral AS SELECT num, 'literal' as literal_col FROM CreateTable2",
+            Ok(Payload::Create),
+        ),
+        (
+            "SELECT * FROM TargetTableWithLiteral",
+            Ok(select_with_null!(
+                num    | "literal_col";
+                I64(1)   Str("literal".to_owned());
+                I64(2)   Str("literal".to_owned())
+            )),
+        ),
+        (
+            "CREATE TABLE Schemaless",
+            Ok(Payload::Create),
+        ),
+        (
+            r#"INSERT INTO Schemaless VALUES ('{"id": 1, "name": "Glue"}'), ('{"id": 2, "name": "SQL"}')"#,
+            Ok(Payload::Insert(2)),
+        ),
+        (
+            "CREATE TABLE TargetTableFromSchemaless AS SELECT * FROM Schemaless",
+            Ok(Payload::Create),
+        ),
+        (
+            "SELECT * FROM TargetTableFromSchemaless",
+            Ok(select_map![
+                json!({"name": "Glue", "id": 1}),
+                json!({"name": "SQL", "id": 2})
+            ]),
+        ),
+        (
             // Target Table already exists
             "CREATE TABLE TargetTableWithData AS SELECT * FROM CreateTable2",
             Err(AlterError::TableAlreadyExists("TargetTableWithData".to_owned()).into()),
@@ -129,6 +166,24 @@ test_case!(create_table, {
             // Source table does not exists
             "CREATE TABLE TargetTableWithData2 AS SELECT * FROM NonExistentTable",
             Err(AlterError::CtasSourceTableNotFound("NonExistentTable".to_owned()).into()),
+        ),
+        (
+            "CREATE TABLE IncompatibleDataTypeCtasWithLiteral AS VALUES (1), ('b')",
+            Err(ValueError::IncompatibleLiteralForDataType{
+                data_type: Int,
+                literal: format!("{:?}", Literal::Text(Cow::Owned("b".to_owned()))),
+            }.into()),
+        ),
+        (
+            "CREATE TABLE IncompatibleDataTypeCtasWithValue AS SELECT CASE ID WHEN 1 THEN 1 ELSE 'b' END AS wrongColumn FROM (VALUES (1), (2)) AS SUB (ID)",
+            Err(ValueError::IncompatibleDataType{
+                data_type: Int,
+                value: Value::Str("b".to_owned())
+            }.into()),
+        ),
+        (
+            "SELECT COUNT(*) FROM IncompatibleDataTypeCtasWithValue",
+            Err(FetchError::TableNotFound("IncompatibleDataTypeCtasWithValue".to_owned()).into()),
         ),
         (
             // Cannot create table with duplicate column name

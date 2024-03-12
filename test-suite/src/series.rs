@@ -145,7 +145,7 @@ test_case!(series, {
         (
             "SELECT * FROM TargetTable",
             Ok(select!(
-                N
+                "1"
                 I64;
                 1
             )),

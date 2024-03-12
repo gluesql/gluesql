@@ -5,7 +5,7 @@ use {
     },
     crate::{
         ast::{ColumnDef, ColumnUniqueOption, Expr, Query, SetExpr, Values},
-        data::{Key, Row, Schema, Value},
+        data::{Key, Row, Value},
         executor::{evaluate::evaluate_stateless, limit::Limit},
         result::Result,
         store::{DataRow, GStore, GStoreMut},
@@ -40,29 +40,29 @@ pub enum InsertError {
     MapTypeValueRequired(String),
 }
 
-enum RowsData {
+pub enum RowsData {
     Append(Vec<DataRow>),
     Insert(Vec<(Key, DataRow)>),
+}
+
+pub async fn fetch_insert_rows<T: GStore>(
+    storage: &T,
+    table_name: Option<&str>,
+    columns: &[String],
+    query: &Query,
+    column_defs: Option<&[ColumnDef]>,
+) -> Result<RowsData> {
+    match column_defs {
+        Some(column_defs) => fetch_vec_rows(storage, table_name, column_defs, columns, query).await,
+        None => fetch_map_rows(storage, query).await.map(RowsData::Append),
+    }
 }
 
 pub async fn insert<T: GStore + GStoreMut>(
     storage: &mut T,
     table_name: &str,
-    columns: &[String],
-    source: &Query,
+    rows: RowsData,
 ) -> Result<usize> {
-    let Schema { column_defs, .. } = storage
-        .fetch_schema(table_name)
-        .await?
-        .ok_or_else(|| InsertError::TableNotFound(table_name.to_owned()))?;
-
-    let rows = match column_defs {
-        Some(column_defs) => {
-            fetch_vec_rows(storage, table_name, column_defs, columns, source).await
-        }
-        None => fetch_map_rows(storage, source).await.map(RowsData::Append),
-    }?;
-
     match rows {
         RowsData::Append(rows) => {
             let num_rows = rows.len();
@@ -85,8 +85,8 @@ pub async fn insert<T: GStore + GStoreMut>(
 
 async fn fetch_vec_rows<T: GStore>(
     storage: &T,
-    table_name: &str,
-    column_defs: Vec<ColumnDef>,
+    table_name: Option<&str>,
+    column_defs: &[ColumnDef],
     columns: &[String],
     source: &Query,
 ) -> Result<RowsData> {

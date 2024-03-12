@@ -84,10 +84,15 @@ impl UniqueConstraint {
 
 pub async fn validate_unique<T: Store>(
     storage: &T,
-    table_name: &str,
+    table_name: Option<&str>,
     column_validation: ColumnValidation<'_>,
     row_iter: impl Iterator<Item = &[Value]> + Clone,
 ) -> Result<()> {
+    let table_name = match table_name {
+        Some(table_name) => table_name,
+        None => return Ok(()),
+    };
+
     enum Columns {
         /// key index
         PrimaryKeyOnly(usize),
