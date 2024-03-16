@@ -69,6 +69,10 @@ impl<'a> From<&'a Expr> for PlanExpr<'a> {
                 let exprs = indexes.iter().chain(once(obj.as_ref())).collect();
                 PlanExpr::MultiExprs(exprs)
             }
+            Expr::Array { elem } => {
+                let exprs = elem.iter().collect();
+                PlanExpr::MultiExprs(exprs)
+            }
             Expr::Function(function) => PlanExpr::MultiExprs(function.as_exprs().collect()),
             Expr::Subquery(subquery) | Expr::Exists { subquery, .. } => PlanExpr::Query(subquery),
             Expr::InSubquery {
@@ -242,6 +246,14 @@ mod tests {
             expr: &target,
             query: &subquery,
         };
+        test!(actual, expected);
+
+        let actual = expr(r#"["GlueSql","Rust"]"#);
+        let expected = ["GlueSql", "Rust"]
+            .into_iter()
+            .map(expr)
+            .collect::<Vec<_>>();
+        let expected = PlanExpr::MultiExprs(expected.iter().collect());
         test!(actual, expected);
     }
 }

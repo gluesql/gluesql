@@ -15,7 +15,7 @@ use {
         translate::function::translate_trim,
     },
     sqlparser::ast::{
-        DateTimeField as SqlDateTimeField, Expr as SqlExpr, Interval as SqlInterval,
+        Array, DateTimeField as SqlDateTimeField, Expr as SqlExpr, Interval as SqlInterval,
         OrderByExpr as SqlOrderByExpr,
     },
 };
@@ -166,6 +166,9 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
         SqlExpr::ArrayIndex { obj, indexes } => Ok(Expr::ArrayIndex {
             obj: translate_expr(obj).map(Box::new)?,
             indexes: indexes.iter().map(translate_expr).collect::<Result<_>>()?,
+        }),
+        SqlExpr::Array(Array { elem, .. }) => Ok(Expr::Array {
+            elem: elem.iter().map(translate_expr).collect::<Result<_>>()?,
         }),
         SqlExpr::Position { expr, r#in } => translate_position(expr, r#in),
         SqlExpr::Interval(SqlInterval {
