@@ -209,33 +209,31 @@ impl ToSql for Statement {
                 foreign_keys,
             } => {
                 let if_not_exists = if_not_exists.then_some("IF NOT EXISTS");
-                let foreign_keys = foreign_keys.to_owned().map(|foreign_keys| {
-                    foreign_keys
-                        .iter()
-                        .map(ToSql::to_sql)
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                });
-                let body = match source {
-                    Some(query) => Some(format!("AS {}", query.to_sql())),
-                    None if columns.is_none() => None,
-                    None => {
-                        let columns = columns
-                            .as_ref()
-                            .map(|columns| {
-                                columns
-                                    .iter()
-                                    .map(ToSql::to_sql)
-                                    .collect::<Vec<_>>()
-                                    .join(", ")
-                            })
-                            .unwrap_or_else(|| "".to_owned());
+                let body = match (source, columns) {
+                    (Some(query), _) => Some(format!("AS {}", query.to_sql())),
+                    (None, None) => None,
+                    (None, Some(columns)) => {
+                        let foreign_keys = foreign_keys
+                            .as_deref()
+                            .unwrap_or_default()
+                            .iter()
+                            .map(ToSql::to_sql);
+                        let body = columns
+                            .iter()
+                            .map(ToSql::to_sql)
+                            .chain(foreign_keys)
+                            .collect::<Vec<_>>()
+                            .join(", ");
+                        // let columns = columns
+                        //     .as_ref()
+                        //     .map(|columns| columns.iter().map(ToSql::to_sql));
+                        // let foreign_keys = foreign_keys.to_owned().map(|foreign_keys| {
+                        //     foreign_keys
+                        //         .iter()
+                        //         .map(ToSql::to_sql)
+                        // });
 
-                        Some(format!(
-                            "({}, {})",
-                            columns,
-                            foreign_keys.unwrap_or_default()
-                        ))
+                        Some(format!("({body})"))
                     }
                 };
                 let engine = engine.as_ref().map(|engine| format!("ENGINE = {engine}"));
