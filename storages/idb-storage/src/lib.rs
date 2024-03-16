@@ -28,6 +28,11 @@ use {
 const SCHEMA_STORE: &str = "gluesql-schema";
 const DEFAULT_NAMESPACE: &str = "gluesql";
 
+enum AlterType {
+    InsertSchema,
+    DeleteSchema,
+}
+
 pub struct IdbStorage {
     namespace: String,
     factory: Factory,
@@ -103,6 +108,94 @@ impl IdbStorage {
             .err_into()?
             .await
             .err_into()
+    }
+
+    async fn alter_object_store(
+        &mut self,
+        table_name: String,
+        alter_type: AlterType,
+    ) -> Result<()> {
+        let version = self.database.version().err_into()? + 1;
+        self.database.close();
+
+        let error = Arc::new(Mutex::new(None));
+        let open_request = {
+            let error = Arc::clone(&error);
+            let mut open_request = self
+                .factory
+                .open(self.namespace.as_str(), Some(version))
+                .err_into()?;
+
+            open_request.on_upgrade_needed(move |event| {
+                let database = match event.database().err_into() {
+                    Ok(database) => database,
+                    Err(e) => {
+                        let mut error = match error.lock() {
+                            Ok(error) => error,
+                            Err(_) => {
+                                let msg = JsValue::from_str("infallible - lock acquire failed");
+                                console::error_1(&msg);
+                                return;
+                            }
+                        };
+
+                        *error = Some(e);
+                        return;
+                    }
+                };
+
+                let err = match alter_type {
+                    AlterType::InsertSchema => {
+                        let mut params = ObjectStoreParams::new();
+                        params.auto_increment(true);
+
+                        database
+                            .create_object_store(&table_name, params)
+                            .err_into()
+                            .map(|_| ())
+                    }
+                    AlterType::DeleteSchema => {
+                        if !database
+                            .store_names()
+                            .iter()
+                            .any(|name| name == &table_name)
+                        {
+                            return;
+                        }
+                        database
+                            .delete_object_store(table_name.as_str())
+                            .err_into()
+                            .map(|_| ())
+                    }
+                };
+
+                if let Err(e) = err {
+                    let mut error = match error.lock() {
+                        Ok(error) => error,
+                        Err(_) => {
+                            let msg = JsValue::from_str("infallible - lock acquire failed");
+                            console::error_1(&msg);
+                            return;
+                        }
+                    };
+
+                    *error = Some(e);
+                }
+            });
+
+            open_request
+        };
+
+        self.database = open_request.await.err_into()?;
+        if let Some(e) = Arc::try_unwrap(error)
+            .map_err(|_| Error::StorageMsg("infallible - Arc::try_unwrap failed".to_owned()))?
+            .into_inner()
+            .err_into()?
+        {
+            return Err(e);
+        }
+
+        Ok(())
     }
 }
 
@@ -373,100 +466,6 @@ impl StoreMut for IdbStorage {
             .await
             .err_into()
             .map(|_| ())
-    }
-}
-
-enum AlterType {
-    InsertSchema,
-    DeleteSchema,
-}
-impl IdbStorage {
-    async fn alter_object_store(
-        &mut self,
-        table_name: String,
-        alter_type: AlterType,
-    ) -> Result<()> {
-        let version = self.database.version().err_into()? + 1;
-        self.database.close();
-
-        let error = Arc::new(Mutex::new(None));
-        let open_request = {
-            let error = Arc::clone(&error);
-            let mut open_request = self
-                .factory
-                .open(self.namespace.as_str(), Some(version))
-                .err_into()?;
-
-            open_request.on_upgrade_needed(move |event| {
-                let database = match event.database().err_into() {
-                    Ok(database) => database,
-                    Err(e) => {
-                        let mut error = match error.lock() {
-                            Ok(error) => error,
-                            Err(_) => {
-                                let msg = JsValue::from_str("infallible - lock acquire failed");
-                                console::error_1(&msg);
-                                return;
-                            }
-                        };
-
-                        *error = Some(e);
-                        return;
-                    }
-                };
-
-                let err = match alter_type {
-                    AlterType::InsertSchema => {
-                        let mut params = ObjectStoreParams::new();
-                        params.auto_increment(true);
-
-                        database
-                            .create_object_store(&table_name, params)
-                            .err_into()
-                            .map(|_| ())
-                    }
-                    AlterType::DeleteSchema => {
-                        if !database
-                            .store_names()
-                            .iter()
-                            .any(|name| name == &table_name)
-                        {
-                            return;
-                        }
-                        database
-                            .delete_object_store(table_name.as_str())
-                            .err_into()
-                            .map(|_| ())
-                    }
-                };
-
-                if let Err(e) = err {
-                    let mut error = match error.lock() {
-                        Ok(error) => error,
-                        Err(_) => {
-                            let msg = JsValue::from_str("infallible - lock acquire failed");
-                            console::error_1(&msg);
-                            return;
-                        }
-                    };
-
-                    *error = Some(e);
-                }
-            });
-
-            open_request
-        };
-
-        self.database = open_request.await.err_into()?;
-        if let Some(e) = Arc::try_unwrap(error)
-            .map_err(|_| Error::StorageMsg("infallible - Arc::try_unwrap failed".to_owned()))?
-            .into_inner()
-            .err_into()?
-        {
-            return Err(e);
-        }
-
-        Ok(())
     }
 }
 
