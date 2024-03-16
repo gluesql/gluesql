@@ -72,7 +72,6 @@ impl<'a> From<&'a Expr> for PlanExpr<'a> {
             Expr::Array { elem } => {
                 let exprs = elem.iter().collect();
                 PlanExpr::MultiExprs(exprs)
-                //fix
             }
             Expr::Function(function) => PlanExpr::MultiExprs(function.as_exprs().collect()),
             Expr::Subquery(subquery) | Expr::Exists { subquery, .. } => PlanExpr::Query(subquery),
