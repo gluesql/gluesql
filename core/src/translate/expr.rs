@@ -1,5 +1,3 @@
-use sqlparser::ast::Array;
-
 use {
     super::{
         ast_literal::{translate_ast_literal, translate_datetime_field},
@@ -17,7 +15,7 @@ use {
         translate::function::translate_trim,
     },
     sqlparser::ast::{
-        DateTimeField as SqlDateTimeField, Expr as SqlExpr, Interval as SqlInterval,
+        Array, DateTimeField as SqlDateTimeField, Expr as SqlExpr, Interval as SqlInterval,
         OrderByExpr as SqlOrderByExpr,
     },
 };
