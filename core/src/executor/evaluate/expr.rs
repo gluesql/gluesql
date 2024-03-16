@@ -104,14 +104,3 @@ pub fn array_index<'a>(obj: Evaluated<'a>, indexes: Vec<Evaluated<'a>>) -> Resul
     value.selector_by_index(&indexes).map(Evaluated::Value)
 }
 
-pub fn array(elem: Vec<Evaluated<'_>>) -> Result<Evaluated<'_>> {
-    let elem = elem
-        .into_iter()
-        .map(Value::try_from)
-        .collect::<Result<Vec<_>>>();
-
-    match elem {
-        Ok(value) => Ok(Evaluated::Value(Value::List(value))),
-        Err(e) => Err(e),
-    }
-}
