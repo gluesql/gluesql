@@ -3,7 +3,7 @@
 use {
     bson::{doc, Bson},
     gluesql_core::prelude::{Glue, Payload, Value},
-    gluesql_mongo_storage::{get_collection_options, MongoStorage},
+    gluesql_mongo_storage::{utils::Validator, MongoStorage},
     std::{collections::HashMap, vec},
 };
 
@@ -31,7 +31,7 @@ async fn mongo_types() {
         "col_maxKey": { "bsonType": ["maxKey"], "title": "TEXT" },
     };
 
-    let options = get_collection_options(labels, column_types);
+    let options = Validator::new(labels, column_types).to_options();
 
     let table_name = "mongo_type_collection";
 

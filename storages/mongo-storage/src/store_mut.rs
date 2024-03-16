@@ -6,7 +6,7 @@ use {
             key::{into_object_id, KeyIntoBson},
             value::IntoBson,
         },
-        utils::{get_collection_options, get_primary_key},
+        utils::{get_primary_key, Validator},
         MongoStorage,
     },
     async_trait::async_trait,
@@ -15,7 +15,7 @@ use {
         data::{Key, Schema},
         error::Result,
         prelude::Error,
-        store::{DataRow, StoreMut},
+        store::{DataRow, Store, StoreMut},
     },
     mongodb::{
         bson::{doc, Bson, Document},
@@ -116,7 +116,27 @@ impl StoreMut for MongoStorage {
             })
             .unwrap_or_default();
 
-        let options = get_collection_options(labels, column_types);
+        let validator = Validator::new(labels, column_types);
+
+        let schema_exists = self
+            .fetch_schema(&schema.table_name)
+            .await
+            .map_storage_err()?
+            .is_some();
+
+        if schema_exists {
+            let command = doc! {
+                "collMod": schema.table_name.clone(),
+                "validator": validator.document,
+                "validationLevel": "strict",
+                "validationAction": "error",
+            };
+            self.db.run_command(command, None).await.map_storage_err()?;
+
+            return Ok(());
+        }
+
+        let options = validator.to_options();
 
         self.db
             .create_collection(&schema.table_name, options)
