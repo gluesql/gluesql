@@ -5,8 +5,6 @@ mod store;
 mod store_mut;
 pub mod utils;
 
-pub use utils::get_collection_options;
-
 use {
     error::ResultExt,
     gluesql_core::{

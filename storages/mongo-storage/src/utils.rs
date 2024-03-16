@@ -15,25 +15,30 @@ pub fn get_primary_key(column_defs: &[ColumnDef]) -> Option<&ColumnDef> {
         .find(|column_def| column_def.unique.map(|x| x.is_primary).unwrap_or(false))
 }
 
-pub fn get_collection_options(
-    labels: Vec<String>,
-    column_types: Document,
-    foreign_keys: Option<Vec<ForeignKey>>,
-) -> Result<CreateCollectionOptions> {
-    let mut required = vec!["_id".to_owned()];
-    required.extend(labels);
+pub struct Validator {
+    pub document: Document,
+}
 
-    let mut properties = doc! {
-        "_id": { "bsonType": ["objectId", "binData"] }
-    };
-    properties.extend(column_types);
+impl Validator {
+    pub fn new(
+        labels: Vec<String>,
+        column_types: Document,
+        foreign_keys: Option<Vec<ForeignKey>>,
+    ) -> Self {
+        let mut required = vec!["_id".to_owned()];
+        required.extend(labels);
 
-    let additional_properties = matches!(required.len(), 1);
+        let mut properties = doc! {
+            "_id": { "bsonType": ["objectId", "binData"] }
+        };
+        properties.extend(column_types);
 
-    let table_description = to_string(&(TableDescription { foreign_keys })).map_storage_err()?;
+        let additional_properties = matches!(required.len(), 1);
+        let table_description = to_string(&(TableDescription { foreign_keys }))
+            .map_storage_err()
+            .unwrap();
 
-    Ok(CreateCollectionOptions::builder()
-        .validator(Some(doc! {
+        let document = doc! {
             "$jsonSchema": {
                 "type": "object",
                 "required": required,
@@ -41,6 +46,14 @@ pub fn get_collection_options(
                 "description": table_description,
                 "additionalProperties": additional_properties
               }
-        }))
-        .build())
+        };
+
+        Validator { document }
+    }
+
+    pub fn to_options(self) -> CreateCollectionOptions {
+        CreateCollectionOptions::builder()
+            .validator(Some(self.document))
+            .build()
+    }
 }

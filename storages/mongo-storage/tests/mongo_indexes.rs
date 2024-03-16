@@ -1,7 +1,9 @@
+#![cfg(feature = "test-mongo")]
+
 use {
     bson::{doc, Document},
     gluesql_core::prelude::{Glue, Payload},
-    gluesql_mongo_storage::{get_collection_options, MongoStorage},
+    gluesql_mongo_storage::{utils::Validator, MongoStorage},
     mongodb::{options::IndexOptions, IndexModel},
     std::vec,
 };
@@ -21,7 +23,7 @@ async fn mongo_indexes() {
         "name": { "bsonType": ["string"], "title": "TEXT" },
     };
 
-    let options = get_collection_options(labels, column_types, None).unwrap();
+    let options = Validator::new(labels, column_types).to_options();
 
     let table_name = "collection_with_composite_index";
 

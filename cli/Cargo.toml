@@ -14,6 +14,7 @@ sled-storage.workspace = true
 memory-storage.workspace = true
 json-storage.workspace = true
 csv-storage.workspace = true
+parquet-storage.workspace = true
 
 clap = { version = "3.2.2", features = ["derive"] }
 rustyline = "9.1"

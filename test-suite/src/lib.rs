@@ -37,6 +37,7 @@ pub mod project;
 pub mod schemaless;
 pub mod series;
 pub mod show_columns;
+pub mod store;
 pub mod synthesize;
 pub mod transaction;
 pub mod type_match;
@@ -295,6 +296,8 @@ macro_rules! generate_store_tests {
         // schemaless data support
         glue!(schemaless_basic, schemaless::basic);
         glue!(schemaless_error, schemaless::error);
+
+        glue!(store, store::insert_schema::insert_schema);
     };
 }
 
