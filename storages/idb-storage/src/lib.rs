@@ -236,7 +236,7 @@ impl StoreMut for IdbStorage {
             .is_some();
 
         if !schema_exists {
-            self.upgrade_version(schema.table_name.to_owned(), RequestType::InsertSchema)
+            self.alter_object_store(schema.table_name.to_owned(), AlterType::InsertSchema)
                 .await?;
         }
 
@@ -271,7 +271,7 @@ impl StoreMut for IdbStorage {
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
-        self.upgrade_version(table_name.to_owned(), RequestType::DeleteSchema)
+        self.alter_object_store(table_name.to_owned(), AlterType::DeleteSchema)
             .await?;
 
         let transaction = self
@@ -376,15 +376,15 @@ impl StoreMut for IdbStorage {
     }
 }
 
-enum RequestType {
+enum AlterType {
     InsertSchema,
     DeleteSchema,
 }
 impl IdbStorage {
-    async fn upgrade_version(
+    async fn alter_object_store(
         &mut self,
         table_name: String,
-        request_type: RequestType,
+        alter_type: AlterType,
     ) -> Result<()> {
         let version = self.database.version().err_into()? + 1;
         self.database.close();
@@ -415,8 +415,8 @@ impl IdbStorage {
                     }
                 };
 
-                let err = match request_type {
-                    RequestType::InsertSchema => {
+                let err = match alter_type {
+                    AlterType::InsertSchema => {
                         let mut params = ObjectStoreParams::new();
                         params.auto_increment(true);
 
@@ -425,7 +425,7 @@ impl IdbStorage {
                             .err_into()
                             .map(|_| ())
                     }
-                    RequestType::DeleteSchema => {
+                    AlterType::DeleteSchema => {
                         if !database
                             .store_names()
                             .iter()
