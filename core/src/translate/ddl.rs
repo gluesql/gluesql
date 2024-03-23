@@ -10,7 +10,7 @@ use {
     sqlparser::ast::{
         AlterTableOperation as SqlAlterTableOperation, ColumnDef as SqlColumnDef,
         ColumnOption as SqlColumnOption, ColumnOptionDef as SqlColumnOptionDef,
-        OperateFunctionArg as SqlOperateFunctionArg, TableConstraint as SqlTableConstraint,
+        OperateFunctionArg as SqlOperateFunctionArg,
     },
 };
 

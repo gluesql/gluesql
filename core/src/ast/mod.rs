@@ -275,15 +275,20 @@ impl ToSql for Statement {
                 names,
                 cascade,
             } => {
-                let if_exists = if_exists.then_some("IF EXISTS").unwrap_or("");
+                let if_exists = if_exists.then_some("IF EXISTS").unwrap_or_default();
                 let names = names
                     .iter()
                     .map(|name| format!(r#""{name}""#))
                     .collect::<Vec<_>>()
                     .join(", ");
-                let cascade = cascade.then_some("CASCADE").unwrap_or("");
+                let cascade = cascade.then_some("CASCADE").unwrap_or_default();
 
-                vec!["DROP TABLE", if_exists, &names, cascade].join(" ")
+                vec!["DROP TABLE", if_exists, &names, cascade]
+                    .into_iter()
+                    .filter(|s| !s.is_empty())
+                    .collect::<Vec<_>>()
+                    .join(" ")
+                    + ";"
             }
             Statement::DropFunction { if_exists, names } => {
                 let names = names.join(", ");
