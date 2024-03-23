@@ -77,6 +77,9 @@ pub enum Expr {
         leading_field: Option<DateTimeField>,
         last_field: Option<DateTimeField>,
     },
+    Array {
+        elem: Vec<Expr>,
+    },
 }
 
 impl ToSql for Expr {
@@ -238,6 +241,14 @@ impl Expr {
                     .collect::<Vec<_>>()
                     .join("");
                 format!("{obj}{indexes}")
+            }
+            Expr::Array { elem } => {
+                let elem = elem
+                    .iter()
+                    .map(|e| e.to_sql_with(quoted))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("[{}]", elem)
             }
             Expr::Subquery(query) => format!("({})", query.to_sql()),
             Expr::Interval {
@@ -654,6 +665,17 @@ mod tests {
                 indexes: vec![
                     Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
                     Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap()))
+                ]
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"['GlueSQL', 'Rust']"#,
+            Expr::Array {
+                elem: vec![
+                    Expr::Literal(AstLiteral::QuotedString("GlueSQL".to_owned())),
+                    Expr::Literal(AstLiteral::QuotedString("Rust".to_owned()))
                 ]
             }
             .to_sql()
