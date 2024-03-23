@@ -2,9 +2,9 @@ use {
     column_def::ParquetSchemaType,
     error::{OptionExt, ParquetStorageError, ResultExt},
     gluesql_core::{
-        ast::{ColumnDef, ColumnUniqueOption},
+        ast::{ColumnDef, ColumnUniqueOption, ForeignKey},
         data::Schema,
-        error::Result,
+        error::{Error, Result},
         prelude::{DataType, Key, Value},
         store::{DataRow, Metadata},
     },
@@ -58,11 +58,22 @@ impl ParquetStorage {
         let key_value_file_metadata = file_metadata.key_value_metadata();
 
         let mut is_schemaless = false;
+        let mut foreign_keys = Vec::new();
         if let Some(metadata) = key_value_file_metadata {
             for kv in metadata.iter() {
-                if kv.key == *"schemaless".to_string() {
+                if kv.key == "schemaless" {
                     is_schemaless = matches!(kv.value.as_deref(), Some("true"));
-                    break;
+                    // break;
+                }
+
+                if kv.key.starts_with("foreign_key") {
+                    let fk = kv
+                        .value
+                        .as_ref()
+                        .map(|x| ForeignKey::from_sql(&x))
+                        .ok_or(Error::StorageMsg("No value found on metadata".to_owned()))??;
+
+                    foreign_keys.push(fk);
                 }
             }
         }
@@ -89,7 +100,7 @@ impl ParquetStorage {
             column_defs,
             indexes: vec![],
             engine: None,
-            foreign_keys: None,
+            foreign_keys: Some(foreign_keys),
         }))
     }
 

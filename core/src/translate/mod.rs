@@ -320,7 +320,7 @@ pub fn translate_referential_action(action: SqlReferentialAction) -> Referential
     }
 }
 
-fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<ForeignKey> {
+pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<ForeignKey> {
     match table_constraint {
         SqlTableConstraint::ForeignKey {
             name,

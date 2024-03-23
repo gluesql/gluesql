@@ -6,7 +6,10 @@ mod function;
 mod operator;
 mod query;
 
+use crate::{result::Error, translate::translate_foreign_key};
+
 pub use {
+    crate::error::Result,
     ast_literal::{AstLiteral, DateTimeField, TrimWhereField},
     data_type::DataType,
     ddl::*,
@@ -14,13 +17,19 @@ pub use {
     function::{Aggregate, CountArgExpr, Function},
     operator::*,
     query::*,
+    sqlparser::parser::Parser,
 };
 
-use chrono::format;
+use chrono::format::{self, parse};
 use serde::{Deserialize, Serialize};
+use sqlparser::dialect::GenericDialect;
 
 pub trait ToSql {
     fn to_sql(&self) -> String;
+}
+
+pub trait FromSql {
+    fn from_sql(&self) -> String;
 }
 
 pub trait ToSqlUnquoted {
@@ -329,6 +338,18 @@ impl ToSql for Statement {
 impl ToSql for Assignment {
     fn to_sql(&self) -> String {
         format!(r#""{}" = {}"#, self.id, self.value.to_sql())
+    }
+}
+
+impl ForeignKey {
+    pub fn from_sql(sql: &str) -> Result<Self> {
+        let constraint = Parser::new(&GenericDialect {})
+            .try_with_sql(sql)
+            .and_then(|mut p| p.parse_optional_table_constraint())
+            .map_err(|e| Error::Parser(format!("{:#?}", e)))?
+            .ok_or_else(|| Error::Parser("No foreign key constraint found".to_owned()))?;
+
+        translate_foreign_key(&constraint)
     }
 }
 
