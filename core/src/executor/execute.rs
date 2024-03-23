@@ -1,3 +1,7 @@
+use crate::ast::Assignment;
+
+use super::evaluate::evaluate;
+
 use {
     super::{
         alter::{
@@ -134,6 +138,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
             if_not_exists,
             source,
             engine,
+            foreign_keys,
             ..
         } => create_table(
             storage,
@@ -142,12 +147,16 @@ async fn execute_inner<T: GStore + GStoreMut>(
             *if_not_exists,
             source,
             engine,
+            foreign_keys,
         )
         .await
         .map(|_| Payload::Create),
         Statement::DropTable {
-            names, if_exists, ..
-        } => drop_table(storage, names, *if_exists)
+            names,
+            if_exists,
+            cascade,
+            ..
+        } => drop_table(storage, names, *if_exists, *cascade)
             .await
             .map(|_| Payload::DropTable),
         Statement::AlterTable { name, operation } => alter_table(storage, name, operation)
@@ -184,7 +193,11 @@ async fn execute_inner<T: GStore + GStoreMut>(
             selection,
             assignments,
         } => {
-            let Schema { column_defs, .. } = storage
+            let Schema {
+                column_defs,
+                foreign_keys,
+                ..
+            } = storage
                 .fetch_schema(table_name)
                 .await?
                 .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
@@ -195,12 +208,39 @@ async fn execute_inner<T: GStore + GStoreMut>(
                     .map(|col_def| col_def.name.to_owned())
                     .collect()
             });
-            let columns_to_update = assignments
+            let columns_to_update: Vec<String> = assignments
                 .iter()
                 .map(|assignment| assignment.id.to_owned())
                 .collect();
 
+            // for assignment in assignments {
+            //     let Assignment { id, value } = assignment;
+            //     if let Some(foreign_keys) = foreign_keys.as_ref() {
+            //         if let Some((foreign_table, reffered_column)) = foreign_keys
+            //             .iter()
+            //             .find(|fk| fk.column == *id)
+            //             .map(|fk| (fk.foreign_table.clone(), fk.referred_column.clone()))
+            //         {
+            //             let evaluated = evaluate(storage, context, None, value_expr).await?;
+            //             let parent = storage
+            //                 .fetch_data(&foreign_table, &Key::try_from(value)?)
+            //                 .await?;
+            //         }
+            //     }
+            // }
+
             let update = Update::new(storage, table_name, assignments, column_defs.as_deref())?;
+
+            // let fk_positions = columns_to_update
+            //     .iter()
+            //     .enumerate()
+            //     .filter_map(|(i, column)| {
+            //         foreign_keys.as_ref().and_then(|fks| {
+            //             fks.iter()
+            //                 .find_map(|fk| (fk.column == *column).then_some(i))
+            //         })
+            //     })
+            //     .collect::<Vec<_>>();
 
             let rows = fetch(storage, table_name, all_columns, selection.as_ref())
                 .await?
@@ -208,8 +248,9 @@ async fn execute_inner<T: GStore + GStoreMut>(
                     let update = &update;
                     let (key, row) = item;
 
+                    let fk2 = foreign_keys.clone();
                     async move {
-                        let row = update.apply(row).await?;
+                        let row = update.apply(row, fk2, table_name).await?;
 
                         Ok((key, row))
                     }

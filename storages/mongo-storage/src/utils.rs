@@ -1,7 +1,12 @@
 use {
-    bson::{doc, Document},
-    gluesql_core::ast::ColumnDef,
+    crate::{description::TableDescription, error::ResultExt},
+    bson::{doc, to_document, Document},
+    gluesql_core::{
+        ast::{ColumnDef, ForeignKey},
+        error::Result,
+    },
     mongodb::options::CreateCollectionOptions,
+    serde_json::to_string,
 };
 
 pub fn get_primary_key(column_defs: &[ColumnDef]) -> Option<&ColumnDef> {
@@ -15,7 +20,11 @@ pub struct Validator {
 }
 
 impl Validator {
-    pub fn new(labels: Vec<String>, column_types: Document) -> Self {
+    pub fn new(
+        labels: Vec<String>,
+        column_types: Document,
+        foreign_keys: Option<Vec<ForeignKey>>,
+    ) -> Self {
         let mut required = vec!["_id".to_owned()];
         required.extend(labels);
 
@@ -25,12 +34,16 @@ impl Validator {
         properties.extend(column_types);
 
         let additional_properties = matches!(required.len(), 1);
+        let table_description = to_string(&(TableDescription { foreign_keys }))
+            .map_storage_err()
+            .unwrap();
 
         let document = doc! {
             "$jsonSchema": {
                 "type": "object",
                 "required": required,
                 "properties": properties,
+                "description": table_description,
                 "additionalProperties": additional_properties
               }
         };

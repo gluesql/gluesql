@@ -21,6 +21,7 @@ test_case!(insert_schema, {
         column_defs,
         indexes: Vec::new(),
         engine: None,
+        foreign_keys: None,
     };
 
     storage.begin(true).await.unwrap();

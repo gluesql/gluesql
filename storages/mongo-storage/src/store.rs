@@ -1,11 +1,13 @@
 use {
     crate::{
+        description::TableDescription,
         error::{MongoStorageError, OptionExt, ResultExt},
         row::{key::KeyIntoBson, value::IntoValue, IntoRow},
         utils::get_primary_key,
         MongoStorage,
     },
     async_trait::async_trait,
+    bson::from_document,
     futures::{stream, Stream, StreamExt, TryStreamExt},
     gluesql_core::{
         ast::{ColumnDef, ColumnUniqueOption},
@@ -21,6 +23,7 @@ use {
         options::{FindOptions, ListIndexesOptions},
         IndexModel,
     },
+    serde_json::from_str,
     std::{collections::HashMap, future},
 };
 
@@ -195,8 +198,10 @@ impl MongoStorage {
                 .try_collect::<HashMap<String, String>>()
                 .await?;
 
-            let column_defs = validators
-                .get_document("$jsonSchema")
+            let json_schema = validators.get_document("$jsonSchema");
+
+            let column_defs = json_schema
+                .clone()
                 .and_then(|doc| doc.get_document("properties"))
                 .map_storage_err()?
                 .into_iter()
@@ -255,11 +260,19 @@ impl MongoStorage {
                 _ => Some(column_defs),
             };
 
+            let table_description = json_schema
+                .and_then(|doc| doc.get_str("description"))
+                .map_storage_err()?;
+
+            let table_description =
+                from_str::<TableDescription>(table_description).map_storage_err()?;
+
             let schema = Schema {
                 table_name: collection_name.to_owned(),
                 column_defs,
                 indexes: Vec::new(),
                 engine: None,
+                foreign_keys: table_description.foreign_keys,
             };
 
             Ok::<_, Error>(schema)

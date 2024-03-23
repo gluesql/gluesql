@@ -1,7 +1,8 @@
 use {
+    super::table::ReferingChild,
     crate::ast::{DataType, Expr},
     serde::Serialize,
-    std::fmt::Debug,
+    std::fmt::{self, Debug},
     thiserror::Error,
 };
 
@@ -47,4 +48,39 @@ pub enum AlterError {
 
     #[error("non-default argument should not follow the default argument")]
     NonDefaultArgumentFollowsDefaultArgument,
+
+    #[error("foreign table not found: {0}")]
+    ForeignTableNotFound(String),
+
+    #[error("foreign key column not found: {0}")]
+    ForeignKeyColumnNotFound(String),
+
+    #[error("foreign key column '{column}' of data type '{column_type:?}' does not match foreign column '{foreign_column}' of data type '{foreign_column_type:?}'")]
+    ForeignKeyDataTypeMismatch {
+        column: String,
+        column_type: DataType,
+        foreign_column: String,
+        foreign_column_type: DataType,
+    },
+
+    // #[error("|{column}| and |{foreign_column}| have different nullable")]
+    // ForeignKeyNullableMismatch {
+    //     column: String,
+    //     foreign_column: String,
+    // },
+    #[error("referred column '{referred_table}.{referred_column}' is not unique, cannot be used as foreign key")]
+    ReferredColumnNotUnique {
+        referred_table: String,
+        referred_column: String,
+    },
+    // #[error("foreign key on delete action '{action}' is invalid")]
+    // ForeignKeyOnDeleteOnUpdateMismatch {
+    //     column: String,
+    //     foreign_column: String,
+    // },
+    #[error("cannot drop table parent '{parent}' due to foreign key constraint from child '{}'", referring_children.into_iter().map(ToString::to_string).collect::<Vec<_>>().join(", "))]
+    CannotDropTableParentOnReferringChildren {
+        parent: String,
+        referring_children: Vec<ReferingChild>,
+    },
 }

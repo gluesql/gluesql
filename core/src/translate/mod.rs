@@ -17,13 +17,15 @@ pub use self::{
 
 use {
     crate::{
-        ast::{Assignment, Statement, Variable},
+        ast::{Assignment, ForeignKey, ReferentialAction, Statement, Variable},
         result::Result,
     },
     ddl::translate_alter_table_operation,
     sqlparser::ast::{
         Assignment as SqlAssignment, Ident as SqlIdent, ObjectName as SqlObjectName,
-        ObjectType as SqlObjectType, Statement as SqlStatement, TableFactor, TableWithJoins,
+        ObjectType as SqlObjectType, ReferentialAction as SqlReferentialAction,
+        Statement as SqlStatement, TableConstraint as SqlTableConstraint, TableFactor,
+        TableWithJoins,
     },
 };
 
@@ -73,6 +75,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             columns,
             query,
             engine,
+            constraints,
             ..
         } => {
             let columns = columns
@@ -82,15 +85,25 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
 
             let columns = (!columns.is_empty()).then_some(columns);
 
+            let name = translate_object_name(name)?;
+
+            let foreign_keys = constraints
+                .iter()
+                .map(translate_foreign_key)
+                .collect::<Result<Vec<_>>>()?;
+
+            let foreign_keys = (!foreign_keys.is_empty()).then_some(foreign_keys);
+
             Ok(Statement::CreateTable {
                 if_not_exists: *if_not_exists,
-                name: translate_object_name(name)?,
+                name,
                 columns,
                 source: match query {
                     Some(v) => Some(translate_query(v).map(Box::new)?),
                     None => None,
                 },
                 engine: engine.clone(),
+                foreign_keys,
             })
         }
         SqlStatement::AlterTable {
@@ -114,6 +127,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             object_type: SqlObjectType::Table,
             if_exists,
             names,
+            cascade,
             ..
         } => Ok(Statement::DropTable {
             if_exists: *if_exists,
@@ -121,6 +135,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 .iter()
                 .map(translate_object_name)
                 .collect::<Result<Vec<_>>>()?,
+            cascade: *cascade,
         }),
         SqlStatement::DropFunction {
             if_exists,
@@ -293,4 +308,62 @@ fn translate_object_name(sql_object_name: &SqlObjectName) -> Result<String> {
 
 pub fn translate_idents(idents: &[SqlIdent]) -> Vec<String> {
     idents.iter().map(|v| v.value.to_owned()).collect()
+}
+
+pub fn translate_referential_action(action: SqlReferentialAction) -> ReferentialAction {
+    match action {
+        SqlReferentialAction::NoAction => ReferentialAction::NoAction,
+        SqlReferentialAction::Restrict => ReferentialAction::Restrict,
+        SqlReferentialAction::Cascade => ReferentialAction::Cascade,
+        SqlReferentialAction::SetNull => ReferentialAction::SetNull,
+        SqlReferentialAction::SetDefault => ReferentialAction::SetDefault,
+    }
+}
+
+pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<ForeignKey> {
+    match table_constraint {
+        SqlTableConstraint::ForeignKey {
+            name,
+            columns,
+            foreign_table,
+            referred_columns,
+            on_delete,
+            on_update,
+        } => {
+            let column = columns.first().map(|i| i.value.clone()).ok_or(
+                TranslateError::InvalidForeignKeyConstraint(
+                    name.to_owned()
+                        .map(|i| i.value.clone())
+                        .unwrap_or("".to_owned()),
+                ),
+            )?;
+
+            let referred_column = referred_columns
+                .first()
+                .ok_or(TranslateError::InvalidForeignKeyConstraint(
+                    name.clone()
+                        .map(|i| i.value.clone())
+                        .unwrap_or("".to_owned()),
+                ))?
+                .value
+                .clone();
+
+            let referred_table = translate_object_name(foreign_table)?;
+
+            let name = match name {
+                Some(name) => name.value.clone(),
+                None => format!("FK_{column}-{referred_table}_{referred_column}"),
+            };
+
+            Ok(ForeignKey {
+                name,
+                column: column,
+                referred_table,
+                referred_column,
+                on_delete: on_delete.map(translate_referential_action),
+                on_update: on_update.map(translate_referential_action),
+            })
+        }
+        _ => Err(TranslateError::UnsupportedConstraint(table_constraint.to_string()).into()),
+    }
 }

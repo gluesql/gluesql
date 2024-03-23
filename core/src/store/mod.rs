@@ -28,6 +28,7 @@ pub use {
 
 use {
     crate::{
+        ast::ForeignKey,
         data::{Key, Schema},
         result::{Error, Result},
     },

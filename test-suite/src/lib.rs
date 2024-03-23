@@ -19,6 +19,7 @@ pub mod delete;
 pub mod dictionary;
 pub mod dictionary_index;
 pub mod filter;
+pub mod foreign_key;
 pub mod function;
 pub mod index;
 pub mod inline_view;
@@ -167,6 +168,7 @@ macro_rules! generate_store_tests {
         glue!(migrate, migrate::migrate);
         glue!(nested_select, nested_select::nested_select);
         glue!(primary_key, primary_key::primary_key);
+        glue!(foreign_key, foreign_key::foreign_key);
         glue!(series, series::series);
         glue!(nullable, nullable::nullable);
         glue!(nullable_text, nullable::nullable_text);

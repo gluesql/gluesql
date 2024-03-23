@@ -9,6 +9,7 @@ use {
     async_trait::async_trait,
     futures::stream::{empty, iter},
     gluesql_core::{
+        ast::ForeignKey,
         chrono::Utc,
         data::{CustomFunction as StructCustomFunction, Key, Schema, Value},
         error::Result,

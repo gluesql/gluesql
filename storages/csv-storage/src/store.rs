@@ -26,7 +26,7 @@ impl Store for CsvStorage {
             .map(|result| {
                 let path = result.map_storage_err()?.path();
                 let extension = path.extension().and_then(OsStr::to_str);
-                if extension != Some("csv") {
+                if extension != Some("csv") || path.to_string_lossy().ends_with(".types.csv") {
                     return Ok(None);
                 }
 

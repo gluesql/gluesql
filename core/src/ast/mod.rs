@@ -6,7 +6,10 @@ mod function;
 mod operator;
 mod query;
 
+use crate::{result::Error, translate::translate_foreign_key};
+
 pub use {
+    crate::error::Result,
     ast_literal::{AstLiteral, DateTimeField, TrimWhereField},
     data_type::DataType,
     ddl::*,
@@ -14,16 +17,43 @@ pub use {
     function::{Aggregate, CountArgExpr, Function},
     operator::*,
     query::*,
+    sqlparser::parser::Parser,
 };
 
+use chrono::format::{self, parse};
 use serde::{Deserialize, Serialize};
+use sqlparser::dialect::GenericDialect;
 
 pub trait ToSql {
     fn to_sql(&self) -> String;
 }
 
+pub trait FromSql {
+    fn from_sql(&self) -> String;
+}
+
 pub trait ToSqlUnquoted {
     fn to_sql_unquoted(&self) -> String;
+}
+
+#[derive(PartialEq, Debug, Clone, Eq, Hash, Serialize, Deserialize)]
+pub struct ForeignKey {
+    // TODO: how to remove pub?
+    pub name: String,
+    pub column: String, // TODO: should be Vec after impl composit index
+    pub referred_table: String,
+    pub referred_column: String, // TODO: should be Vec after impl composit index
+    pub on_delete: Option<ReferentialAction>,
+    pub on_update: Option<ReferentialAction>,
+}
+
+#[derive(PartialEq, Debug, Clone, Eq, Hash, Serialize, Deserialize)]
+pub enum ReferentialAction {
+    Restrict,
+    Cascade,
+    SetNull,
+    NoAction,
+    SetDefault,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -67,6 +97,7 @@ pub enum Statement {
         columns: Option<Vec<ColumnDef>>,
         source: Option<Box<Query>>,
         engine: Option<String>,
+        foreign_keys: Option<Vec<ForeignKey>>,
     },
     /// CREATE FUNCTION
     CreateFunction {
@@ -88,6 +119,8 @@ pub enum Statement {
         if_exists: bool,
         /// One or more objects to drop. (ANSI SQL requires exactly one.)
         names: Vec<String>,
+        /// An optional `CASCADE` clause for dropping dependent constructs.
+        cascade: bool,
     },
     /// DROP FUNCTION
     DropFunction {
@@ -182,24 +215,34 @@ impl ToSql for Statement {
                 columns,
                 source,
                 engine,
+                foreign_keys,
             } => {
                 let if_not_exists = if_not_exists.then_some("IF NOT EXISTS");
-                let body = match source {
-                    Some(query) => Some(format!("AS {}", query.to_sql())),
-                    None if columns.is_none() => None,
-                    None => {
-                        let columns = columns
-                            .as_ref()
-                            .map(|columns| {
-                                columns
-                                    .iter()
-                                    .map(ToSql::to_sql)
-                                    .collect::<Vec<_>>()
-                                    .join(", ")
-                            })
-                            .unwrap_or_else(|| "".to_owned());
+                let body = match (source, columns) {
+                    (Some(query), _) => Some(format!("AS {}", query.to_sql())),
+                    (None, None) => None,
+                    (None, Some(columns)) => {
+                        let foreign_keys = foreign_keys
+                            .as_deref()
+                            .unwrap_or_default()
+                            .iter()
+                            .map(ToSql::to_sql);
+                        let body = columns
+                            .iter()
+                            .map(ToSql::to_sql)
+                            .chain(foreign_keys)
+                            .collect::<Vec<_>>()
+                            .join(", ");
+                        // let columns = columns
+                        //     .as_ref()
+                        //     .map(|columns| columns.iter().map(ToSql::to_sql));
+                        // let foreign_keys = foreign_keys.to_owned().map(|foreign_keys| {
+                        //     foreign_keys
+                        //         .iter()
+                        //         .map(ToSql::to_sql)
+                        // });
 
-                        Some(format!("({columns})"))
+                        Some(format!("({body})"))
                     }
                 };
                 let engine = engine.as_ref().map(|engine| format!("ENGINE = {engine}"));
@@ -236,16 +279,25 @@ impl ToSql for Statement {
             Statement::AlterTable { name, operation } => {
                 format!(r#"ALTER TABLE "{name}" {};"#, operation.to_sql())
             }
-            Statement::DropTable { if_exists, names } => {
+            Statement::DropTable {
+                if_exists,
+                names,
+                cascade,
+            } => {
+                let if_exists = if_exists.then_some("IF EXISTS").unwrap_or_default();
                 let names = names
                     .iter()
                     .map(|name| format!(r#""{name}""#))
                     .collect::<Vec<_>>()
                     .join(", ");
-                match if_exists {
-                    true => format!("DROP TABLE IF EXISTS {};", names),
-                    false => format!("DROP TABLE {};", names),
-                }
+                let cascade = cascade.then_some("CASCADE").unwrap_or_default();
+
+                vec!["DROP TABLE", if_exists, &names, cascade]
+                    .into_iter()
+                    .filter(|s| !s.is_empty())
+                    .collect::<Vec<_>>()
+                    .join(" ")
+                    + ";"
             }
             Statement::DropFunction { if_exists, names } => {
                 let names = names.join(", ");
@@ -286,6 +338,49 @@ impl ToSql for Statement {
 impl ToSql for Assignment {
     fn to_sql(&self) -> String {
         format!(r#""{}" = {}"#, self.id, self.value.to_sql())
+    }
+}
+
+impl ForeignKey {
+    pub fn from_sql(sql: &str) -> Result<Self> {
+        let constraint = Parser::new(&GenericDialect {})
+            .try_with_sql(sql)
+            .and_then(|mut p| p.parse_optional_table_constraint())
+            .map_err(|e| Error::Parser(format!("{:#?}", e)))?
+            .ok_or_else(|| Error::Parser("No foreign key constraint found".to_owned()))?;
+
+        translate_foreign_key(&constraint)
+    }
+}
+
+impl ToSql for ForeignKey {
+    fn to_sql(&self) -> String {
+        let ForeignKey {
+            name,
+            column,
+            referred_table,
+            referred_column,
+            on_delete,
+            on_update,
+        } = self;
+        // let name = name
+        //     .as_ref()
+        //     .map(|name| format!(r#"CONSTRAINT "{}" "#, name));
+        // let on_delete = on_delete
+        //     .as_ref()
+        //     .map(|action| format!("ON DELETE {}", action.to_sql()));
+        // let on_update = on_update
+        //     .as_ref()
+        //     .map(|action| format!("ON UPDATE {}", action.to_sql()));
+
+        format!(
+            r#"FOREIGN KEY ("{}") REFERENCES "{}"("{}")"#,
+            column,
+            referred_table,
+            referred_column,
+            // on_delete.unwrap_or_default(),
+            // on_update.unwrap_or_default()
+        )
     }
 }
 
@@ -416,6 +511,7 @@ mod tests {
                 columns: None,
                 source: None,
                 engine: None,
+                foreign_keys: None,
             }
             .to_sql()
         );
@@ -428,6 +524,7 @@ mod tests {
                 columns: None,
                 source: None,
                 engine: None,
+                foreign_keys: None,
             }
             .to_sql()
         );
@@ -446,6 +543,7 @@ mod tests {
                 },]),
                 source: None,
                 engine: None,
+                foreign_keys: None,
             }
             .to_sql()
         );
@@ -480,6 +578,7 @@ mod tests {
                 ]),
                 source: None,
                 engine: None,
+                foreign_keys: None,
             }
             .to_sql()
         );
@@ -522,6 +621,7 @@ mod tests {
                     offset: None
                 })),
                 engine: None,
+                foreign_keys: None,
             }
             .to_sql()
         );
@@ -541,6 +641,7 @@ mod tests {
                     offset: None
                 })),
                 engine: None,
+                foreign_keys: None,
             }
             .to_sql()
         );
@@ -556,6 +657,7 @@ mod tests {
                 columns: None,
                 source: None,
                 engine: Some("MEMORY".to_owned()),
+                foreign_keys: None,
             }
             .to_sql()
         );
@@ -574,6 +676,7 @@ mod tests {
                 },]),
                 source: None,
                 engine: Some("SLED".to_owned()),
+                foreign_keys: None,
             }
             .to_sql()
         );
@@ -684,7 +787,8 @@ mod tests {
             r#"DROP TABLE "Test";"#,
             Statement::DropTable {
                 if_exists: false,
-                names: vec!["Test".into()]
+                names: vec!["Test".into()],
+                cascade: false,
             }
             .to_sql()
         );
@@ -693,7 +797,8 @@ mod tests {
             r#"DROP TABLE IF EXISTS "Test";"#,
             Statement::DropTable {
                 if_exists: true,
-                names: vec!["Test".into()]
+                names: vec!["Test".into()],
+                cascade: false,
             }
             .to_sql()
         );
@@ -702,7 +807,8 @@ mod tests {
             r#"DROP TABLE "Foo", "Bar";"#,
             Statement::DropTable {
                 if_exists: false,
-                names: vec!["Foo".into(), "Bar".into(),]
+                names: vec!["Foo".into(), "Bar".into(),],
+                cascade: false,
             }
             .to_sql()
         );

@@ -152,4 +152,10 @@ pub enum TranslateError {
 
     #[error("cannot drop primary index")]
     CannotDropPrimary,
+
+    #[error("invalid Foreign Key Constraint: {0}")]
+    InvalidForeignKeyConstraint(String),
+
+    #[error("unsupported constraint: {0}")]
+    UnsupportedConstraint(String),
 }

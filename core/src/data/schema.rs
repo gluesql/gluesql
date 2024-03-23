@@ -1,3 +1,5 @@
+use crate::ast::ForeignKey;
+
 use {
     crate::{
         ast::{ColumnDef, Expr, OrderByExpr, Statement, ToSql},
@@ -33,6 +35,7 @@ pub struct Schema {
     pub column_defs: Option<Vec<ColumnDef>>,
     pub indexes: Vec<SchemaIndex>,
     pub engine: Option<String>,
+    pub foreign_keys: Option<Vec<ForeignKey>>,
 }
 
 impl Schema {
@@ -42,6 +45,7 @@ impl Schema {
             column_defs,
             indexes,
             engine,
+            foreign_keys,
             ..
         } = self;
 
@@ -51,6 +55,7 @@ impl Schema {
             columns: column_defs.to_owned(),
             engine: engine.to_owned(),
             source: None,
+            foreign_keys: foreign_keys.to_owned(),
         }
         .to_sql();
 
@@ -107,12 +112,14 @@ impl Schema {
                 name,
                 columns,
                 engine,
+                foreign_keys,
                 ..
             } => Ok(Schema {
                 table_name: name,
                 column_defs: columns,
                 indexes,
                 engine,
+                foreign_keys,
             }),
             _ => Err(SchemaParseError::CannotParseDDL.into()),
         }
@@ -201,6 +208,7 @@ mod tests {
             ]),
             indexes: Vec::new(),
             engine: None,
+            foreign_keys: None,
         };
 
         let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NULL DEFAULT 'glue');"#;
@@ -214,6 +222,7 @@ mod tests {
             column_defs: None,
             indexes: Vec::new(),
             engine: None,
+            foreign_keys: None,
         };
         let ddl = r#"CREATE TABLE "Test";"#;
         assert_eq!(schema.to_ddl(), ddl);
@@ -235,6 +244,7 @@ mod tests {
             }]),
             indexes: Vec::new(),
             engine: None,
+            foreign_keys: None,
         };
 
         let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL PRIMARY KEY);"#;
@@ -287,6 +297,7 @@ mod tests {
                 },
             ],
             engine: None,
+            foreign_keys: None,
         };
         let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);
 CREATE INDEX "User_id" ON "User" ("id");
@@ -329,6 +340,7 @@ CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);"#;
                 created: Utc::now().naive_utc(),
             }],
             engine: None,
+            foreign_keys: None,
         };
         let ddl = r#"CREATE TABLE "1" ("2" INT NULL, ";" INT NULL);
 CREATE INDEX "." ON "1" (";");"#;
