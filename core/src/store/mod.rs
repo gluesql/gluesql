@@ -36,7 +36,7 @@ use {
     std::pin::Pin,
 };
 
-pub type RowIter = Pin<Box<dyn Stream<Item = Result<(Key, DataRow)>>>>;
+pub type RowIter<'a> = Pin<Box<dyn Stream<Item = Result<(Key, DataRow)>> + 'a>>;
 
 /// By implementing `Store` trait, you can run `SELECT` query.
 #[async_trait(?Send)]
@@ -47,7 +47,7 @@ pub trait Store {
 
     async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>>;
 
-    async fn scan_data(&self, table_name: &str) -> Result<RowIter>;
+    async fn scan_data(&self, table_name: &str) -> Result<RowIter<'_>>;
 }
 
 /// By implementing `StoreMut` trait,
