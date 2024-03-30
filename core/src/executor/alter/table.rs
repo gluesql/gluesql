@@ -110,12 +110,10 @@ pub async fn create_table<T: GStore + GStoreMut>(
     if let Some(foreign_keys) = foreign_keys.as_deref() {
         for foreign_key in foreign_keys {
             let ForeignKey {
-                name,
                 column,
                 referred_table,
                 referred_column,
-                on_delete,
-                on_update,
+                ..
             } = foreign_key;
             // 1. check if foreign_table exists
             // 2. check if referred_column exists in foreign_table
@@ -267,7 +265,7 @@ pub async fn drop_table<T: GStore + GStoreMut>(
             .flatten()
             .collect();
 
-        match (referring_children.len() > 0, cascade) {
+        match (!referring_children.is_empty(), cascade) {
             (true, false) => {
                 return Err(AlterError::CannotDropTableParentOnReferringChildren {
                     parent: table_name.into(),
@@ -277,15 +275,17 @@ pub async fn drop_table<T: GStore + GStoreMut>(
             }
             (true, true) => {
                 for ReferingChild {
-                    table_name: referring_table_name,
-                    constraint_name,
+                    constraint_name, ..
                 } in referring_children
                 {
                     let mut schema = storage.fetch_schema(table_name).await?.unwrap();
-                    schema
-                        .foreign_keys
-                        .as_mut()
-                        .map(|a| a.retain(|foreign_key| foreign_key.name != constraint_name));
+                    // schema
+                    //     .foreign_keys
+                    //     .as_mut()
+                    //     .map(|a| a.retain(|foreign_key| foreign_key.name != constraint_name));
+                    if let Some(a) = schema.foreign_keys.as_mut() {
+                        a.retain(|foreign_key| foreign_key.name != constraint_name)
+                    }
                     storage.insert_schema(&schema).await?;
                     //     .delete_foreign_key(referring_table_name, constraint_name)
                     //     .await?;

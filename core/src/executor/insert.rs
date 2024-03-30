@@ -184,8 +184,7 @@ async fn fetch_vec_rows<T: GStore>(
                 column,
                 referred_table,
                 referred_column,
-                on_delete,
-                on_update,
+                ..
             } = foreign_key;
             println!("columns : {:#?}", columns);
             // with columns => filter from columns

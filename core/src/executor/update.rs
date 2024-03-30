@@ -129,8 +129,7 @@ impl<'a, T: GStore> Update<'a, T> {
                     column,
                     referred_table,
                     referred_column,
-                    on_delete,
-                    on_update,
+                    ..
                 } in foreign_keys
                 {
                     if column != id || value == &Value::Null {

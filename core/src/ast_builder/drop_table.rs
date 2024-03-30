@@ -15,7 +15,7 @@ impl DropTableNode {
         Self {
             table_name,
             if_exists: exists,
-            cascade: false,
+            cascade,
         }
     }
 }

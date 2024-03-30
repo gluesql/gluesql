@@ -20,7 +20,6 @@ pub use {
     sqlparser::parser::Parser,
 };
 
-use chrono::format::{self, parse};
 use serde::{Deserialize, Serialize};
 use sqlparser::dialect::GenericDialect;
 
@@ -29,7 +28,7 @@ pub trait ToSql {
 }
 
 pub trait FromSql {
-    fn from_sql(&self) -> String;
+    fn from_sql() -> String;
 }
 
 pub trait ToSqlUnquoted {
@@ -356,12 +355,10 @@ impl ForeignKey {
 impl ToSql for ForeignKey {
     fn to_sql(&self) -> String {
         let ForeignKey {
-            name,
             column,
             referred_table,
             referred_column,
-            on_delete,
-            on_update,
+            ..
         } = self;
         // let name = name
         //     .as_ref()
