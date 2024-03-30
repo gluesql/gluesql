@@ -195,12 +195,12 @@ async fn fetch_vec_rows<T: GStore>(
 
 async fn validate_foreign_key<T: GStore>(
     foreign_keys: Option<Vec<ForeignKey>>,
-    rows: &Vec<Vec<Value>>,
+    rows: &[Vec<Value>],
     storage: &T,
     table_name: &str,
     column_defs: &Rc<[ColumnDef]>,
 ) -> Result<()> {
-    Ok(if let Some(foreign_keys) = foreign_keys {
+    if let Some(foreign_keys) = foreign_keys {
         for foreign_key in foreign_keys {
             let ForeignKey {
                 name,
@@ -240,7 +240,9 @@ async fn validate_foreign_key<T: GStore>(
                 }
             }
         }
-    })
+    }
+
+    Ok(())
 }
 
 async fn fetch_map_rows<T: GStore>(storage: &T, source: &Query) -> Result<Vec<DataRow>> {
