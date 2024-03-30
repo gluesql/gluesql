@@ -155,17 +155,17 @@ test_case!(alter_table_add_drop, {
         ),
         (
             r#"ALTER TABLE Foo ADD CONSTRAINT "hey" PRIMARY KEY (asdf);"#,
-            Err(TranslateError::UnsupportedConstraint(
-                r#"CONSTRAINT "hey" PRIMARY KEY (asdf)"#.to_owned(),
+            Err(TranslateError::UnsupportedAlterTableOperation(
+                r#"ADD CONSTRAINT "hey" PRIMARY KEY (asdf)"#.to_owned(),
             )
             .into()),
         ),
         (
             "ALTER TABLE Foo ADD CONSTRAINT hello UNIQUE (id)",
-            Err(
-                TranslateError::UnsupportedConstraint("CONSTRAINT hello UNIQUE (id)".to_owned())
-                    .into(),
-            ),
+            Err(TranslateError::UnsupportedAlterTableOperation(
+                "ADD CONSTRAINT hello UNIQUE (id)".to_owned(),
+            )
+            .into()),
         ),
     ];
 

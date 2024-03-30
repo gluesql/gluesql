@@ -1,5 +1,5 @@
 use {
-    super::{DataType, Expr, ForeignKey},
+    super::{DataType, Expr},
     crate::ast::ToSql,
     serde::{Deserialize, Serialize},
 };
@@ -7,9 +7,7 @@ use {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AlterTableOperation {
     /// `ADD [ COLUMN ] <column_def>`
-    AddColumn {
-        column_def: ColumnDef,
-    },
+    AddColumn { column_def: ColumnDef },
     /// `DROP [ COLUMN ] [ IF EXISTS ] <column_name> [ CASCADE ]`
     DropColumn {
         column_name: String,
@@ -21,21 +19,7 @@ pub enum AlterTableOperation {
         new_column_name: String,
     },
     /// `RENAME TO <table_name>`
-    RenameTable {
-        table_name: String,
-    },
-    AddForeignKey {
-        foreign_key: ForeignKey,
-    },
-    DropForeignKey {
-        if_exists: bool,
-        name: String,
-        cascade: bool,
-    },
-    RenameConstraint {
-        old_name: String,
-        new_name: String,
-    },
+    RenameTable { table_name: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -81,26 +65,6 @@ impl ToSql for AlterTableOperation {
             } => format!(r#"RENAME COLUMN "{old_column_name}" TO "{new_column_name}""#),
             AlterTableOperation::RenameTable { table_name } => {
                 format!(r#"RENAME TO "{table_name}""#)
-            }
-            AlterTableOperation::AddForeignKey {
-                foreign_key: forein_key,
-            } => format!(
-                r#"ADD FOREIGN KEY ({}) REFERENCES {} ({})"#,
-                forein_key.column, forein_key.referred_table, forein_key.referred_column
-            ),
-            AlterTableOperation::DropForeignKey {
-                if_exists,
-                name,
-                cascade,
-            } => [
-                "DROP CONSTRAINT",
-                if_exists.then_some("IF EXISTS").unwrap_or_default(),
-                name,
-                cascade.then_some("CASCADE").unwrap_or_default(),
-            ]
-            .join(" "),
-            AlterTableOperation::RenameConstraint { old_name, new_name } => {
-                format!(r#"RENAME CONSTRAINT "{old_name}" TO "{new_name}""#,)
             }
         }
     }
