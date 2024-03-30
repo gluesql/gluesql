@@ -6,8 +6,6 @@ mod function;
 mod operator;
 mod query;
 
-use crate::{result::Error, translate::translate_foreign_key};
-
 pub use {
     crate::error::Result,
     ast_literal::{AstLiteral, DateTimeField, TrimWhereField},
@@ -20,8 +18,11 @@ pub use {
     sqlparser::parser::Parser,
 };
 
-use serde::{Deserialize, Serialize};
-use sqlparser::dialect::GenericDialect;
+use {
+    crate::{result::Error, translate::translate_foreign_key},
+    serde::{Deserialize, Serialize},
+    sqlparser::dialect::GenericDialect,
+};
 
 pub trait ToSql {
     fn to_sql(&self) -> String;

@@ -1,13 +1,7 @@
-use std::fmt;
-
-use serde::Serialize;
-
-use crate::ast::ForeignKey;
-
 use {
     super::{validate, validate_column_names, AlterError},
     crate::{
-        ast::{ColumnDef, Query, SetExpr, TableFactor, Values},
+        ast::{ColumnDef, ForeignKey, Query, SetExpr, TableFactor, Values},
         data::{Schema, TableError},
         executor::{evaluate_stateless, select::select},
         prelude::{DataType, Value},
@@ -15,6 +9,8 @@ use {
         store::{GStore, GStoreMut},
     },
     futures::stream::TryStreamExt,
+    serde::Serialize,
+    std::fmt,
 };
 
 pub async fn create_table<T: GStore + GStoreMut>(

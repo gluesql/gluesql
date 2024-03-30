@@ -1,15 +1,13 @@
-use crate::{ast::ForeignKey, prelude::Key};
-
-use super::ValidateError;
-
 use {
     super::{
         context::RowContext,
         evaluate::{evaluate, Evaluated},
+        ValidateError,
     },
     crate::{
-        ast::{Assignment, ColumnDef, ColumnUniqueOption},
+        ast::{Assignment, ColumnDef, ColumnUniqueOption, ForeignKey},
         data::{Row, Value},
+        prelude::Key,
         result::{Error, Result},
         store::GStore,
     },

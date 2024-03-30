@@ -1,5 +1,7 @@
-use gluesql_core::ast::ForeignKey;
-use serde::{Deserialize, Serialize};
+use {
+    gluesql_core::ast::ForeignKey,
+    serde::{Deserialize, Serialize},
+};
 
 #[derive(Serialize, Deserialize)]
 pub struct TableDescription {

@@ -1,15 +1,13 @@
-use crate::{ast::ForeignKey, result::ValidateError};
-
 use {
     super::{
         select::select,
         validate::{validate_unique, ColumnValidation},
     },
     crate::{
-        ast::{ColumnDef, ColumnUniqueOption, Expr, Query, SetExpr, Values},
+        ast::{ColumnDef, ColumnUniqueOption, Expr, ForeignKey, Query, SetExpr, Values},
         data::{Key, Row, Schema, Value},
         executor::{evaluate::evaluate_stateless, limit::Limit},
-        result::Result,
+        result::{Result, ValidateError},
         store::{DataRow, GStore, GStoreMut},
     },
     futures::stream::{self, StreamExt, TryStreamExt},
