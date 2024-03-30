@@ -210,4 +210,3 @@ impl gluesql_core::store::Transaction for WebStorage {}
 impl Metadata for WebStorage {}
 impl gluesql_core::store::CustomFunction for WebStorage {}
 impl gluesql_core::store::CustomFunctionMut for WebStorage {}
-impl ForeignKeyMut for WebStorage {}
