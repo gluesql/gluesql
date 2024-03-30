@@ -51,8 +51,7 @@ async fn memory_storage_index() {
     let storage = MemoryStorage::default();
 
     assert_eq!(
-        storage
-            .scan_data("Idx")
+        Store::scan_data(&storage, "Idx")
             .await
             .unwrap()
             .try_collect::<Vec<_>>()

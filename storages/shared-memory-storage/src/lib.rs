@@ -6,6 +6,7 @@ mod transaction;
 
 use {
     async_trait::async_trait,
+    futures::stream,
     gluesql_core::{
         data::{Key, Schema},
         error::Result,
@@ -66,10 +67,15 @@ impl Store for SharedMemoryStorage {
     }
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
-        let database = Arc::clone(&self.database);
-        let database = database.read().await;
+        let rows = self
+            .database
+            .read()
+            .await
+            .scan_data(table_name)
+            .into_iter()
+            .map(Ok);
 
-        database.scan_data(table_name).await
+        Ok(Box::pin(stream::iter(rows)))
     }
 }
 
