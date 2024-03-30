@@ -1,7 +1,6 @@
 use {
     super::{
-        data_type::translate_data_type, expr::translate_expr, translate_foreign_key,
-        translate_object_name, TranslateError,
+        data_type::translate_data_type, expr::translate_expr, translate_object_name, TranslateError,
     },
     crate::{
         ast::{AlterTableOperation, ColumnDef, ColumnUniqueOption, OperateFunctionArg},
@@ -43,26 +42,26 @@ pub fn translate_alter_table_operation(
                 table_name: translate_object_name(table_name)?,
             })
         }
-        SqlAlterTableOperation::AddConstraint(table_constraint) => {
-            let foreign_key = translate_foreign_key(table_constraint)?;
+        // SqlAlterTableOperation::AddConstraint(table_constraint) => {
+        //     let foreign_key = translate_foreign_key(table_constraint)?;
 
-            Ok(AlterTableOperation::AddForeignKey { foreign_key })
-        }
-        SqlAlterTableOperation::DropConstraint {
-            if_exists,
-            name,
-            cascade,
-        } => Ok(AlterTableOperation::DropForeignKey {
-            if_exists: *if_exists,
-            name: name.value.to_owned(),
-            cascade: *cascade,
-        }),
-        SqlAlterTableOperation::RenameConstraint { old_name, new_name } => {
-            Ok(AlterTableOperation::RenameConstraint {
-                old_name: old_name.value.to_owned(),
-                new_name: new_name.value.to_owned(),
-            })
-        }
+        //     Ok(AlterTableOperation::AddForeignKey { foreign_key })
+        // }
+        // SqlAlterTableOperation::DropConstraint {
+        //     if_exists,
+        //     name,
+        //     cascade,
+        // } => Ok(AlterTableOperation::DropForeignKey {
+        //     if_exists: *if_exists,
+        //     name: name.value.to_owned(),
+        //     cascade: *cascade,
+        // }),
+        // SqlAlterTableOperation::RenameConstraint { old_name, new_name } => {
+        //     Ok(AlterTableOperation::RenameConstraint {
+        //         old_name: old_name.value.to_owned(),
+        //         new_name: new_name.value.to_owned(),
+        //     })
+        // }
         _ => Err(TranslateError::UnsupportedAlterTableOperation(
             sql_alter_table_operation.to_string(),
         )
