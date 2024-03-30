@@ -1,6 +1,6 @@
 use {
     crate::{
-        ast::ColumnDef,
+        ast::{ColumnDef, ForeignKey},
         result::{Error, Result},
     },
     async_trait::async_trait,
@@ -62,6 +62,39 @@ pub trait AlterTable {
         _if_exists: bool,
     ) -> Result<()> {
         let msg = "[Storage] AlterTable::drop_column is not supported".to_owned();
+
+        Err(Error::StorageMsg(msg))
+    }
+
+    async fn add_foreign_key(
+        &mut self,
+        _table_name: &str,
+        _foreign_key: &ForeignKey,
+    ) -> Result<()> {
+        let msg = "[Storage] AlterTable::add_foreign_key is not supported".to_owned();
+
+        Err(Error::StorageMsg(msg))
+    }
+
+    async fn drop_foreign_key(
+        &mut self,
+        _table_name: &str,
+        _name: &str,
+        _if_exists: bool,
+        _cascade: bool,
+    ) -> Result<()> {
+        let msg = "[Storage] AlterTable::drop_foreign_key is not supported".to_owned();
+
+        Err(Error::StorageMsg(msg))
+    }
+
+    async fn rename_constraint(
+        &mut self,
+        _table_name: &str,
+        _old_constraint_name: &str,
+        _new_constraint_name: &str,
+    ) -> Result<()> {
+        let msg = "[Storage] AlterTable::rename_constraint is not supported".to_owned();
 
         Err(Error::StorageMsg(msg))
     }

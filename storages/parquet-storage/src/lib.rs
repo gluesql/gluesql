@@ -70,7 +70,7 @@ impl ParquetStorage {
                     let fk = kv
                         .value
                         .as_ref()
-                        .map(|x| ForeignKey::from_sql(&x))
+                        .map(|x| ForeignKey::from_sql(x))
                         .ok_or(Error::StorageMsg("No value found on metadata".to_owned()))??;
 
                     foreign_keys.push(fk);
