@@ -172,75 +172,7 @@ async fn fetch_vec_rows<T: GStore>(
     )
     .await?;
 
-    // FK validation
-    if let Some(foreign_keys) = foreign_keys {
-        for foreign_key in foreign_keys {
-            let ForeignKey {
-                name,
-                column,
-                referred_table,
-                referred_column,
-                ..
-            } = foreign_key;
-            println!("columns : {:#?}", columns);
-            // with columns => filter from columns
-            if let Some((column_index, _)) = columns.iter().enumerate().find(|(_, c)| c == &&column)
-            {
-                for row in rows.iter() {
-                    let child = row.get(column_index).unwrap();
-                    if child == &Value::Null {
-                        continue;
-                    }
-                    let no_parent = storage
-                        .fetch_data(&referred_table, &Key::try_from(child)?)
-                        .await?
-                        .is_none();
-
-                    println!("looking for {child:#?}: {no_parent}");
-                    if no_parent {
-                        return Err(ValidateError::ForeignKeyViolation {
-                            name,
-                            table: table_name.to_owned(),
-                            column: column.to_owned(),
-                            referred_table: referred_table.to_owned(),
-                            referred_column: referred_column.to_owned(),
-                        }
-                        .into());
-                    }
-                }
-            }
-
-            // without columns => match row index from column_defs
-            if let Some(target_index) = column_defs
-                .iter()
-                .enumerate()
-                .find(|(_, c)| c.name == column)
-            {
-                for row in rows.iter() {
-                    let child = row.get(target_index.0).unwrap();
-                    if child == &Value::Null {
-                        continue;
-                    }
-                    let no_parent = storage
-                        .fetch_data(&referred_table, &Key::try_from(child)?)
-                        .await?
-                        .is_none();
-
-                    println!("looking for {child:#?}: {no_parent}");
-                    if no_parent {
-                        return Err(ValidateError::ForeignKeyViolation {
-                            name,
-                            table: table_name.to_owned(),
-                            column: column.to_owned(),
-                            referred_table: referred_table.to_owned(),
-                            referred_column: referred_column.to_owned(),
-                        }
-                        .into());
-                    }
-                }
-            }
-        }
-    }
+    validte_foreign_key(foreign_keys, &rows, storage, table_name, &column_defs).await?;
 
     let primary_key = column_defs.iter().position(|ColumnDef { unique, .. }| {
         unique == &Some(ColumnUniqueOption { is_primary: true })
@@ -259,6 +191,56 @@ async fn fetch_vec_rows<T: GStore>(
             .map(RowsData::Insert),
         None => Ok(RowsData::Append(rows.into_iter().map(Into::into).collect())),
     }
+}
+
+async fn validte_foreign_key<T: GStore>(
+    foreign_keys: Option<Vec<ForeignKey>>,
+    rows: &Vec<Vec<Value>>,
+    storage: &T,
+    table_name: &str,
+    column_defs: &Rc<[ColumnDef]>,
+) -> Result<()> {
+    Ok(if let Some(foreign_keys) = foreign_keys {
+        for foreign_key in foreign_keys {
+            let ForeignKey {
+                name,
+                column,
+                referred_table,
+                referred_column,
+                ..
+            } = foreign_key;
+            if let Some(target_index) = column_defs
+                .iter()
+                .enumerate()
+                .find(|(_, c)| c.name == column)
+            {
+                for row in rows.iter() {
+                    let child = row
+                        .get(target_index.0)
+                        .ok_or(InsertError::WrongColumnName(column.to_owned()))?;
+
+                    if child == &Value::Null {
+                        continue;
+                    }
+                    let no_parent = storage
+                        .fetch_data(&referred_table, &Key::try_from(child)?)
+                        .await?
+                        .is_none();
+
+                    if no_parent {
+                        return Err(ValidateError::ForeignKeyViolation {
+                            name,
+                            table: table_name.to_owned(),
+                            column: column.to_owned(),
+                            referred_table: referred_table.to_owned(),
+                            referred_column: referred_column.to_owned(),
+                        }
+                        .into());
+                    }
+                }
+            }
+        }
+    })
 }
 
 async fn fetch_map_rows<T: GStore>(storage: &T, source: &Query) -> Result<Vec<DataRow>> {
