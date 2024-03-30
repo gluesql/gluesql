@@ -209,34 +209,9 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 .map(|assignment| assignment.id.to_owned())
                 .collect();
 
-            // for assignment in assignments {
-            //     let Assignment { id, value } = assignment;
-            //     if let Some(foreign_keys) = foreign_keys.as_ref() {
-            //         if let Some((foreign_table, reffered_column)) = foreign_keys
-            //             .iter()
-            //             .find(|fk| fk.column == *id)
-            //             .map(|fk| (fk.foreign_table.clone(), fk.referred_column.clone()))
-            //         {
-            //             let evaluated = evaluate(storage, context, None, value_expr).await?;
-            //             let parent = storage
-            //                 .fetch_data(&foreign_table, &Key::try_from(value)?)
-            //                 .await?;
-            //         }
-            //     }
-            // }
-
             let update = Update::new(storage, table_name, assignments, column_defs.as_deref())?;
 
-            // let fk_positions = columns_to_update
-            //     .iter()
-            //     .enumerate()
-            //     .filter_map(|(i, column)| {
-            //         foreign_keys.as_ref().and_then(|fks| {
-            //             fks.iter()
-            //                 .find_map(|fk| (fk.column == *column).then_some(i))
-            //         })
-            //     })
-            //     .collect::<Vec<_>>();
+            let foreign_keys = Rc::new(foreign_keys);
 
             let rows = fetch(storage, table_name, all_columns, selection.as_ref())
                 .await?
@@ -244,9 +219,9 @@ async fn execute_inner<T: GStore + GStoreMut>(
                     let update = &update;
                     let (key, row) = item;
 
-                    let fk2 = foreign_keys.clone();
+                    let foreign_keys = Rc::clone(&foreign_keys);
                     async move {
-                        let row = update.apply(row, fk2, table_name).await?;
+                        let row = update.apply(row, foreign_keys.as_ref(), table_name).await?;
 
                         Ok((key, row))
                     }
