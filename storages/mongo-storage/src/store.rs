@@ -7,7 +7,6 @@ use {
         MongoStorage,
     },
     async_trait::async_trait,
-    bson::from_document,
     futures::{stream, Stream, StreamExt, TryStreamExt},
     gluesql_core::{
         ast::{ColumnDef, ColumnUniqueOption},

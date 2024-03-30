@@ -1,10 +1,7 @@
 use {
     crate::{description::TableDescription, error::ResultExt},
-    bson::{doc, to_document, Document},
-    gluesql_core::{
-        ast::{ColumnDef, ForeignKey},
-        error::Result,
-    },
+    bson::{doc, Document},
+    gluesql_core::ast::{ColumnDef, ForeignKey},
     mongodb::options::CreateCollectionOptions,
     serde_json::to_string,
 };

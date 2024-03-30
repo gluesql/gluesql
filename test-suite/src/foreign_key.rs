@@ -1,12 +1,8 @@
-use gluesql_core::executor::{AlterError, ExecuteError, ReferingChild};
+use gluesql_core::executor::{AlterError, ReferingChild};
 
 use {
     crate::*,
-    gluesql_core::{
-        data::Value::*,
-        error::{UpdateError, ValidateError, ValueError},
-        prelude::{Key, Payload},
-    },
+    gluesql_core::{error::ValidateError, prelude::Payload},
 };
 
 test_case!(foreign_key, {
