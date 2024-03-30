@@ -357,7 +357,7 @@ pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Fo
 
             Ok(ForeignKey {
                 name,
-                column: column,
+                column,
                 referred_table,
                 referred_column,
                 on_delete: on_delete.map(translate_referential_action),

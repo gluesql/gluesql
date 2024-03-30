@@ -1,5 +1,3 @@
-use sqlparser::ast::Table;
-
 use crate::{ast::ForeignKey, result::ValidateError};
 
 use {
