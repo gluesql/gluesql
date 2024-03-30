@@ -163,20 +163,6 @@ pub async fn create_table<T: GStore + GStoreMut>(
                 }
                 .into());
             }
-
-            // if on_delete.is_some() && on_delete != Some("cascade".to_owned()) {
-            //     return Err(AlterError::ForeignKeyInvalidAction {
-            //         action: on_delete.to_owned().unwrap(),
-            //     }
-            //     .into());
-            // }
-
-            // if on_update.is_some() && on_update != Some("cascade".to_owned()) {
-            //     return Err(AlterError::ForeignKeyInvalidAction {
-            //         action: on_update.to_owned().unwrap(),
-            //     }
-            //     .into());
-            // }
         }
     }
 
@@ -275,27 +261,14 @@ pub async fn drop_table<T: GStore + GStoreMut>(
                 } in referring_children
                 {
                     let mut schema = storage.fetch_schema(table_name).await?.unwrap();
-                    // schema
-                    //     .foreign_keys
-                    //     .as_mut()
-                    //     .map(|a| a.retain(|foreign_key| foreign_key.name != constraint_name));
                     if let Some(a) = schema.foreign_keys.as_mut() {
                         a.retain(|foreign_key| foreign_key.name != constraint_name)
                     }
                     storage.insert_schema(&schema).await?;
-                    //     .delete_foreign_key(referring_table_name, constraint_name)
-                    //     .await?;
                 }
             }
             (false, _) => {}
         }
-        // if referring_children.len() > 0 && !cascade {
-        //     return Err(AlterError::CannotDropTableParentOnReferringChildren {
-        //         parent: table_name.into(),
-        //         referring_children,
-        //     }
-        //     .into());
-        // }
 
         storage.delete_schema(table_name).await?;
     }

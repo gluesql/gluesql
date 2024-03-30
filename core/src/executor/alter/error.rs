@@ -63,21 +63,12 @@ pub enum AlterError {
         foreign_column_type: DataType,
     },
 
-    // #[error("|{column}| and |{foreign_column}| have different nullable")]
-    // ForeignKeyNullableMismatch {
-    //     column: String,
-    //     foreign_column: String,
-    // },
     #[error("referred column '{referred_table}.{referred_column}' is not unique, cannot be used as foreign key")]
     ReferredColumnNotUnique {
         referred_table: String,
         referred_column: String,
     },
-    // #[error("foreign key on delete action '{action}' is invalid")]
-    // ForeignKeyOnDeleteOnUpdateMismatch {
-    //     column: String,
-    //     foreign_column: String,
-    // },
+
     #[error("cannot drop table parent '{parent}' due to foreign key constraint from child '{}'", referring_children.iter().map(ToString::to_string).collect::<Vec<_>>().join(", "))]
     CannotDropTableParentOnReferringChildren {
         parent: String,

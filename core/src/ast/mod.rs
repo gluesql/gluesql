@@ -38,11 +38,10 @@ pub trait ToSqlUnquoted {
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash, Serialize, Deserialize)]
 pub struct ForeignKey {
-    // TODO: how to remove pub?
     pub name: String,
-    pub column: String, // TODO: should be Vec after impl composit index
+    pub column: String,
     pub referred_table: String,
-    pub referred_column: String, // TODO: should be Vec after impl composit index
+    pub referred_column: String,
     pub on_delete: Option<ReferentialAction>,
     pub on_update: Option<ReferentialAction>,
 }
@@ -233,14 +232,6 @@ impl ToSql for Statement {
                             .chain(foreign_keys)
                             .collect::<Vec<_>>()
                             .join(", ");
-                        // let columns = columns
-                        //     .as_ref()
-                        //     .map(|columns| columns.iter().map(ToSql::to_sql));
-                        // let foreign_keys = foreign_keys.to_owned().map(|foreign_keys| {
-                        //     foreign_keys
-                        //         .iter()
-                        //         .map(ToSql::to_sql)
-                        // });
 
                         Some(format!("({body})"))
                     }
@@ -361,23 +352,10 @@ impl ToSql for ForeignKey {
             referred_column,
             ..
         } = self;
-        // let name = name
-        //     .as_ref()
-        //     .map(|name| format!(r#"CONSTRAINT "{}" "#, name));
-        // let on_delete = on_delete
-        //     .as_ref()
-        //     .map(|action| format!("ON DELETE {}", action.to_sql()));
-        // let on_update = on_update
-        //     .as_ref()
-        //     .map(|action| format!("ON UPDATE {}", action.to_sql()));
 
         format!(
             r#"FOREIGN KEY ("{}") REFERENCES "{}"("{}")"#,
-            column,
-            referred_table,
-            referred_column,
-            // on_delete.unwrap_or_default(),
-            // on_update.unwrap_or_default()
+            column, referred_table, referred_column,
         )
     }
 }

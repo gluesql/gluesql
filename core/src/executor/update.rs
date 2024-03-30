@@ -69,7 +69,7 @@ impl<'a, T: GStore> Update<'a, T> {
     pub async fn apply(
         &self,
         row: Row,
-        foreign_keys: Option<Vec<ForeignKey>>,
+        foreign_keys: &Option<Vec<ForeignKey>>,
         table_name: &'a str,
     ) -> Result<Row> {
         let context = RowContext::new(self.table_name, Cow::Borrowed(&row), None);
@@ -121,7 +121,7 @@ impl<'a, T: GStore> Update<'a, T> {
             .await?;
 
         for (id, value) in assignments.iter() {
-            if let Some(foreign_keys) = &foreign_keys {
+            if let Some(foreign_keys) = foreign_keys {
                 for ForeignKey {
                     name,
                     column,
