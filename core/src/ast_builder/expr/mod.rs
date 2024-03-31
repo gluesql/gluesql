@@ -362,6 +362,13 @@ pub fn time<'a, T: Into<Cow<'a, str>>>(time: T) -> ExprNode<'a> {
     }
 }
 
+pub fn uuid<'a, T: Into<Cow<'a, str>>>(uuid: T) -> ExprNode<'a> {
+    ExprNode::TypedString {
+        data_type: DataType::Uuid,
+        value: uuid.into(),
+    }
+}
+
 pub fn subquery<'a, T: Into<QueryNode<'a>>>(query_node: T) -> ExprNode<'a> {
     ExprNode::Subquery(Box::new(query_node.into()))
 }
@@ -378,7 +385,7 @@ mod tests {
             ast::Expr,
             ast_builder::{
                 col, date, expr, null, num, subquery, table, test_expr, text, time, timestamp,
-                QueryNode,
+                uuid, QueryNode,
             },
         },
     };
@@ -454,6 +461,10 @@ mod tests {
 
         let actual = time("15:00:07");
         let expected = "TIME '15:00:07'";
+        test_expr(actual, expected);
+
+        let actual = uuid("936DA01F9ABD4d9d80C702AF85C822A8");
+        let expected = "UUID '936DA01F9ABD4d9d80C702AF85C822A8'";
         test_expr(actual, expected);
 
         let actual = subquery(table("Foo").select().filter("id IS NOT NULL"));
