@@ -76,6 +76,7 @@ impl<'a> TryFrom<ParquetSchemaType<'a>> for ColumnDef {
         let nullable = inner.is_optional();
         let mut unique = None;
         let mut default = None;
+        let mut comment = None;
 
         if let Some(metadata) = parquet_col_def.get_metadata().as_deref() {
             for kv in metadata.iter() {
@@ -101,6 +102,11 @@ impl<'a> TryFrom<ParquetSchemaType<'a>> for ColumnDef {
                             default = Some(tran);
                         }
                     }
+                    k if k == format!("comment_{}", name) => {
+                        if let Some(value) = &kv.value {
+                            comment = Some(value.clone());
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -111,6 +117,7 @@ impl<'a> TryFrom<ParquetSchemaType<'a>> for ColumnDef {
             nullable,
             default,
             unique,
+            comment,
         })
     }
 }

@@ -443,6 +443,7 @@ mod tests {
                     nullable: false,
                     default: None,
                     unique: None,
+                    comment: None,
                 },]),
                 source: None,
                 engine: None,
@@ -462,6 +463,7 @@ mod tests {
                         nullable: false,
                         default: None,
                         unique: None,
+                        comment: None,
                     },
                     ColumnDef {
                         name: "num".to_owned(),
@@ -469,6 +471,7 @@ mod tests {
                         nullable: true,
                         default: None,
                         unique: None,
+                        comment: None,
                     },
                     ColumnDef {
                         name: "name".to_owned(),
@@ -476,6 +479,7 @@ mod tests {
                         nullable: false,
                         default: None,
                         unique: None,
+                        comment: None,
                     }
                 ]),
                 source: None,
@@ -571,6 +575,7 @@ mod tests {
                     nullable: false,
                     default: None,
                     unique: None,
+                    comment: None,
                 },]),
                 source: None,
                 engine: Some("SLED".to_owned()),
@@ -624,6 +629,7 @@ mod tests {
                             BigDecimal::from_str("10").unwrap()
                         ))),
                         unique: None,
+                        comment: None,
                     }
                 }
             }

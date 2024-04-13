@@ -63,6 +63,7 @@ test_case!(alter_table_add_drop, {
                 nullable: false,
                 default: None,
                 unique: None,
+                comment: None,
             })
             .into()),
         ),

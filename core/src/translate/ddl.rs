@@ -57,16 +57,16 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> 
         ..
     } = sql_column_def;
 
-    let (nullable, default, unique) = options.iter().try_fold(
-        (true, None, None),
-        |(nullable, default, unique), SqlColumnOptionDef { option, .. }| -> Result<_> {
+    let (nullable, default, unique, comment) = options.iter().try_fold(
+        (true, None, None, None),
+        |(nullable, default, unique, comment), SqlColumnOptionDef { option, .. }| -> Result<_> {
             match option {
-                SqlColumnOption::Null => Ok((nullable, default, unique)),
-                SqlColumnOption::NotNull => Ok((false, default, unique)),
+                SqlColumnOption::Null => Ok((nullable, default, unique, comment)),
+                SqlColumnOption::NotNull => Ok((false, default, unique, comment)),
                 SqlColumnOption::Default(default) => {
                     let default = translate_expr(default).map(Some)?;
 
-                    Ok((nullable, default, unique))
+                    Ok((nullable, default, unique, comment))
                 }
                 SqlColumnOption::Unique { is_primary } => {
                     let nullable = if *is_primary { false } else { nullable };
@@ -74,7 +74,10 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> 
                         is_primary: *is_primary,
                     });
 
-                    Ok((nullable, default, unique))
+                    Ok((nullable, default, unique, comment))
+                }
+                SqlColumnOption::Comment(comment) => {
+                    Ok((nullable, default, unique, Some(comment.to_string())))
                 }
                 _ => Err(TranslateError::UnsupportedColumnOption(option.to_string()).into()),
             }
@@ -87,6 +90,7 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> 
         nullable,
         default,
         unique,
+        comment,
     })
 }
 

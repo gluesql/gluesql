@@ -128,6 +128,7 @@ mod tests {
                 nullable: false,
                 default: None,
                 unique: None,
+                comment: None,
             },
         ))
         .is_err());

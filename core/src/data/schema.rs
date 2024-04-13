@@ -190,6 +190,7 @@ mod tests {
                     nullable: false,
                     default: None,
                     unique: None,
+                    comment: None,
                 },
                 ColumnDef {
                     name: "name".to_owned(),
@@ -197,6 +198,7 @@ mod tests {
                     nullable: true,
                     default: Some(Expr::Literal(AstLiteral::QuotedString("glue".to_owned()))),
                     unique: None,
+                    comment: None,
                 },
             ]),
             indexes: Vec::new(),
@@ -232,6 +234,7 @@ mod tests {
                 nullable: false,
                 default: None,
                 unique: Some(ColumnUniqueOption { is_primary: true }),
+                comment: None,
             }]),
             indexes: Vec::new(),
             engine: None,
@@ -263,6 +266,7 @@ mod tests {
                     nullable: false,
                     default: None,
                     unique: None,
+                    comment: None,
                 },
                 ColumnDef {
                     name: "name".to_owned(),
@@ -270,6 +274,7 @@ mod tests {
                     nullable: false,
                     default: None,
                     unique: None,
+                    comment: None,
                 },
             ]),
             indexes: vec![
@@ -313,6 +318,7 @@ CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);"#;
                     nullable: true,
                     default: None,
                     unique: None,
+                    comment: None,
                 },
                 ColumnDef {
                     name: ";".to_owned(),
@@ -320,6 +326,7 @@ CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);"#;
                     nullable: true,
                     default: None,
                     unique: None,
+                    comment: None,
                 },
             ]),
             indexes: vec![SchemaIndex {

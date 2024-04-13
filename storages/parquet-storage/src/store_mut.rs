@@ -445,6 +445,7 @@ impl ParquetStorage {
                     nullable: true,
                     default: None,
                     unique: None,
+                    comment: None,
                 }]
             }
         };
@@ -501,6 +502,13 @@ impl ParquetStorage {
                     metadata.push(KeyValue {
                         key: format!("default_{}", column_def.name),
                         value: Some(ToSql::to_sql(default_value)),
+                    });
+                }
+
+                if let Some(comment) = &column_def.comment {
+                    metadata.push(KeyValue {
+                        key: format!("comment_{}", column_def.name),
+                        value: Some(comment.to_string()),
                     });
                 }
 
