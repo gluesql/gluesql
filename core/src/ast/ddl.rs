@@ -31,6 +31,7 @@ pub struct ColumnDef {
     pub default: Option<Expr>,
     /// `{ PRIMARY KEY | UNIQUE }`
     pub unique: Option<ColumnUniqueOption>,
+    pub comment: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -78,6 +79,7 @@ impl ToSql for ColumnDef {
             nullable,
             default,
             unique,
+            comment,
         } = self;
         {
             let nullable = match nullable {
@@ -89,8 +91,11 @@ impl ToSql for ColumnDef {
                 .as_ref()
                 .map(|expr| format!("DEFAULT {}", expr.to_sql()));
             let unique = unique.as_ref().map(ToSql::to_sql);
+            let comment = comment
+                .as_ref()
+                .map(|comment| format!("COMMENT '{}'", comment));
 
-            [Some(column_def), default, unique]
+            [Some(column_def), default, unique, comment]
                 .into_iter()
                 .flatten()
                 .collect::<Vec<_>>()
@@ -141,6 +146,7 @@ mod tests {
                 nullable: false,
                 default: None,
                 unique: Some(ColumnUniqueOption { is_primary: false }),
+                comment: None,
             }
             .to_sql()
         );
@@ -153,6 +159,7 @@ mod tests {
                 nullable: true,
                 default: None,
                 unique: None,
+                comment: None,
             }
             .to_sql()
         );
@@ -165,6 +172,7 @@ mod tests {
                 nullable: false,
                 default: None,
                 unique: Some(ColumnUniqueOption { is_primary: true }),
+                comment: None,
             }
             .to_sql()
         );
@@ -177,6 +185,7 @@ mod tests {
                 nullable: false,
                 default: Some(Expr::Literal(AstLiteral::Boolean(false))),
                 unique: None,
+                comment: None,
             }
             .to_sql()
         );
@@ -189,6 +198,20 @@ mod tests {
                 nullable: false,
                 default: Some(Expr::Literal(AstLiteral::Boolean(false))),
                 unique: Some(ColumnUniqueOption { is_primary: false }),
+                comment: None,
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#""accepted" BOOLEAN NOT NULL COMMENT 'this is comment'"#,
+            ColumnDef {
+                name: "accepted".to_owned(),
+                data_type: DataType::Boolean,
+                nullable: false,
+                default: None,
+                unique: None,
+                comment: Some("this is comment".to_owned()),
             }
             .to_sql()
         );

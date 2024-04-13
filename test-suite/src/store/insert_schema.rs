@@ -14,6 +14,7 @@ test_case!(insert_schema, {
         nullable: false,
         default: None,
         unique: None,
+        comment: None,
     }]);
 
     let mut schema = Schema {
@@ -33,6 +34,7 @@ test_case!(insert_schema, {
             nullable: false,
             default: None,
             unique: None,
+            comment: Some("this is comment for name column".to_owned()),
         });
 
         column_defs

@@ -169,6 +169,7 @@ impl ParquetStorage {
                 nullable: true,
                 default: None,
                 unique: None,
+                comment: None,
             }]),
             indexes: vec![],
             engine: None,

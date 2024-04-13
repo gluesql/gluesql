@@ -21,6 +21,7 @@ use {
         options::{FindOptions, ListIndexesOptions},
         IndexModel,
     },
+    regex::Regex,
     std::{collections::HashMap, future},
 };
 
@@ -231,9 +232,25 @@ impl MongoStorage {
                     }
                     .map(|is_primary| ColumnUniqueOption { is_primary });
 
-                    let default = doc
+                    let default_comment_patterns =
+                        Regex::new(r"^(?:DEFAULT\s*(.*?))?(?:\s*COMMENT\s*'(.*?)')?$")
+                            .map_err(|_| MongoStorageError::Unreachable)
+                            .map_storage_err()?;
+
+                    let (default, comment) = doc
                         .get_str("description")
                         .ok()
+                        .and_then(|desc| {
+                            default_comment_patterns.captures(desc).map(|cap| {
+                                let default = cap.get(1).map(|m| m.as_str().to_string());
+                                let comment = cap.get(2).map(|m| m.as_str().to_string());
+
+                                (default, comment)
+                            })
+                        })
+                        .unwrap_or((None, None));
+
+                    let default = default
                         .map(parse_expr)
                         .map(|expr| expr.and_then(|expr| translate_expr(&expr)))
                         .transpose()?;
@@ -244,6 +261,7 @@ impl MongoStorage {
                         nullable,
                         default,
                         unique,
+                        comment,
                     };
 
                     Ok(column_def)

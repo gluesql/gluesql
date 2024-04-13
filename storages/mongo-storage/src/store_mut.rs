@@ -93,10 +93,27 @@ impl StoreMut for MongoStorage {
                             });
                         }
 
-                        if let Some(default) = &column_def.default {
-                            property.extend(doc! {
-                                "description": default.to_sql()
-                            });
+                        match (&column_def.default, &column_def.comment) {
+                            (Some(default), Some(comment)) => {
+                                property.extend(doc! {
+                                    "description": format!(
+                                        "DEFAULT {} COMMENT '{}'",
+                                        default.to_sql(),
+                                        comment
+                                    ),
+                                });
+                            }
+                            (Some(default), None) => {
+                                property.extend(doc! {
+                                    "description": format!("DEFAULT {}", default.to_sql()),
+                                });
+                            }
+                            (None, Some(comment)) => {
+                                property.extend(doc! {
+                                    "description": format!("COMMENT '{}'", comment)
+                                });
+                            }
+                            _ => {}
                         }
 
                         let type_str = column_def.data_type.to_string();
