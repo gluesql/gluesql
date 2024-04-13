@@ -18,19 +18,9 @@ jobs:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
-      - name: Read rust-toolchain file
-        id: rust-toolchain
-        run: echo "toolchain=$(cat rust-toolchain)" >> $GITHUB_OUTPUT
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ steps.rust-toolchain.outputs.toolchain }}
+      - uses: Swatinem/rust-cache@v2
       - run: rustup component add llvm-tools-preview
-      - name: Install grcov
-        uses: actions-rs/install@v0.1
-        with:
-          crate: grcov
-          version: latest
-          use-tool-cache: true
+      - run: cargo install grcov
       - name: clean
         run: |
           cargo clean
