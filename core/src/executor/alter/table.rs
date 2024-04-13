@@ -111,13 +111,6 @@ pub async fn create_table<T: GStore + GStoreMut>(
                 referred_column,
                 ..
             } = foreign_key;
-            // 1. check if foreign_table exists
-            // 2. check if referred_column exists in foreign_table
-            // 3. check if column exists in target_table
-            // 4. check if column and referred_column have same data type
-            // 5. check if column and referred_column have same nullable
-            // 6. check if column and referred_column have same unique
-            // 7. check if on_delete and on_update are valid
             let foreign_schema =
                 storage
                     .fetch_schema(referred_table)
