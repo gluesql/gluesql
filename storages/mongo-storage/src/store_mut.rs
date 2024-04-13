@@ -116,7 +116,7 @@ impl StoreMut for MongoStorage {
             })
             .unwrap_or_default();
 
-        let validator = Validator::new(labels, column_types, schema.foreign_keys.clone());
+        let validator = Validator::new(labels, column_types, schema.foreign_keys.clone())?;
 
         let schema_exists = self
             .fetch_schema(&schema.table_name)

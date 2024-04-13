@@ -128,9 +128,11 @@ pub async fn create_table<T: GStore + GStoreMut>(
 
             let foreign_column_def = foreign_schema
                 .column_defs
-                .unwrap()
-                .into_iter()
-                .find(|column_def| column_def.name == *referred_column)
+                .and_then(|foreign_column_defs| {
+                    foreign_column_defs
+                        .into_iter()
+                        .find(|column_def| column_def.name == *referred_column)
+                })
                 .ok_or_else(|| -> Error {
                     AlterError::ForeignKeyColumnNotFound(referred_column.to_owned()).into()
                 })?;
@@ -260,9 +262,12 @@ pub async fn drop_table<T: GStore + GStoreMut>(
                     constraint_name, ..
                 } in referring_children
                 {
-                    let mut schema = storage.fetch_schema(table_name).await?.unwrap();
-                    if let Some(a) = schema.foreign_keys.as_mut() {
-                        a.retain(|foreign_key| foreign_key.name != constraint_name)
+                    let mut schema = storage
+                        .fetch_schema(table_name)
+                        .await?
+                        .ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
+                    if let Some(foreign_keys) = schema.foreign_keys.as_mut() {
+                        foreign_keys.retain(|foreign_key| foreign_key.name != constraint_name)
                     }
                     storage.insert_schema(&schema).await?;
                 }
