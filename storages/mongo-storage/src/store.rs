@@ -1,5 +1,6 @@
 use {
     crate::{
+        column_description::ColumnDescription,
         error::{MongoStorageError, OptionExt, ResultExt},
         row::{key::KeyIntoBson, value::IntoValue, IntoRow},
         utils::get_primary_key,
@@ -11,17 +12,16 @@ use {
         ast::{ColumnDef, ColumnUniqueOption},
         data::{Key, Schema},
         error::Result,
-        parse_sql::{parse_data_type, parse_expr},
+        parse_sql::parse_data_type,
         prelude::{Error, Value},
         store::{DataRow, RowIter, Store},
-        translate::{translate_data_type, translate_expr},
+        translate::translate_data_type,
     },
     mongodb::{
-        bson::{doc, Document},
+        bson::{doc, document::ValueAccessError, Document},
         options::{FindOptions, ListIndexesOptions},
         IndexModel,
     },
-    regex::Regex,
     std::{collections::HashMap, future},
 };
 
@@ -232,28 +232,21 @@ impl MongoStorage {
                     }
                     .map(|is_primary| ColumnUniqueOption { is_primary });
 
-                    let default_comment_patterns =
-                        Regex::new(r"^(?:DEFAULT\s*(.*?))?(?:\s*COMMENT\s*'(.*?)')?$")
-                            .map_err(|_| MongoStorageError::Unreachable)
-                            .map_storage_err()?;
-
-                    let (default, comment) = doc
-                        .get_str("description")
-                        .ok()
-                        .and_then(|desc| {
-                            default_comment_patterns.captures(desc).map(|cap| {
-                                let default = cap.get(1).map(|m| m.as_str().to_string());
-                                let comment = cap.get(2).map(|m| m.as_str().to_string());
-
-                                (default, comment)
-                            })
-                        })
-                        .unwrap_or((None, None));
-
-                    let default = default
-                        .map(parse_expr)
-                        .map(|expr| expr.and_then(|expr| translate_expr(&expr)))
-                        .transpose()?;
+                    let column_description = doc.get_str("description");
+                    let ColumnDescription { default, comment } = match column_description {
+                        Ok(desc) => {
+                            serde_json::from_str::<ColumnDescription>(desc).map_storage_err()?
+                        }
+                        Err(ValueAccessError::NotPresent) => ColumnDescription {
+                            default: None,
+                            comment: None,
+                        },
+                        Err(_) => {
+                            return Err(Error::StorageMsg(
+                                MongoStorageError::InvalidGlueType.to_string(),
+                            ))
+                        }
+                    };
 
                     let column_def = ColumnDef {
                         name: column_name.to_owned(),

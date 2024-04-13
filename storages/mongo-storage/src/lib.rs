@@ -1,3 +1,4 @@
+mod column_description;
 pub mod error;
 pub mod row;
 mod store;

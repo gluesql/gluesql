@@ -1,5 +1,6 @@
 use {
     crate::{
+        column_description::ColumnDescription,
         error::{MongoStorageError, OptionExt, ResultExt},
         row::{
             data_type::{BsonType, IntoRange},
@@ -11,10 +12,9 @@ use {
     },
     async_trait::async_trait,
     gluesql_core::{
-        ast::{ColumnUniqueOption, ToSql},
+        ast::ColumnUniqueOption,
         data::{Key, Schema},
-        error::Result,
-        prelude::Error,
+        error::{Error, Result},
         store::{DataRow, Store, StoreMut},
     },
     mongodb::{
@@ -41,7 +41,7 @@ impl StoreMut for MongoStorage {
             .column_defs
             .as_ref()
             .map(|column_defs| {
-                column_defs.iter().fold(
+                column_defs.iter().try_fold(
                     (Vec::new(), Document::new(), Vec::new()),
                     |(mut labels, mut column_types, mut indexes), column_def| {
                         let column_name = &column_def.name;
@@ -93,28 +93,16 @@ impl StoreMut for MongoStorage {
                             });
                         }
 
-                        match (&column_def.default, &column_def.comment) {
-                            (Some(default), Some(comment)) => {
-                                property.extend(doc! {
-                                    "description": format!(
-                                        "DEFAULT {} COMMENT '{}'",
-                                        default.to_sql(),
-                                        comment
-                                    ),
-                                });
-                            }
-                            (Some(default), None) => {
-                                property.extend(doc! {
-                                    "description": format!("DEFAULT {}", default.to_sql()),
-                                });
-                            }
-                            (None, Some(comment)) => {
-                                property.extend(doc! {
-                                    "description": format!("COMMENT '{}'", comment)
-                                });
-                            }
-                            _ => {}
-                        }
+                        let column_description = ColumnDescription {
+                            default: column_def.default.clone(),
+                            comment: column_def.comment.clone(),
+                        };
+                        let column_description =
+                            serde_json::to_string(&column_description).map_storage_err()?;
+
+                        property.extend(doc! {
+                            "description": column_description,
+                        });
 
                         let type_str = column_def.data_type.to_string();
                         property.extend(doc! {
@@ -127,10 +115,11 @@ impl StoreMut for MongoStorage {
 
                         column_types.extend(column_type);
 
-                        (labels, column_types, indexes)
+                        Ok::<_, Error>((labels, column_types, indexes))
                     },
                 )
             })
+            .transpose()?
             .unwrap_or_default();
 
         let validator = Validator::new(labels, column_types);
