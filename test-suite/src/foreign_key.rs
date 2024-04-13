@@ -2,7 +2,7 @@ use {
     crate::*,
     gluesql_core::{
         error::ValidateError,
-        executor::{AlterError, ReferingChild},
+        executor::{AlterError, ReferringChild},
         prelude::Payload,
     },
 };
@@ -152,7 +152,7 @@ test_case!(foreign_key, {
         "DROP TABLE ParentWithPK;",
         Err(AlterError::CannotDropTableParentOnReferringChildren {
             parent: "ParentWithPK".to_owned(),
-            referring_children: vec![ReferingChild {
+            referring_children: vec![ReferringChild {
                 table_name: "Child".to_owned(),
                 constraint_name: "FK_parent_id-ParentWithPK_id".to_owned(),
             }],
