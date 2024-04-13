@@ -26,7 +26,8 @@ test_case!(dictionary, {
         .await;
     g.test("SHOW TABLES", tables(vec!["Foo"])).await;
 
-    g.run("CREATE TABLE Zoo (id INTEGER PRIMARY KEY COMMENT 'hello');").await;
+    g.run("CREATE TABLE Zoo (id INTEGER PRIMARY KEY COMMENT 'hello');")
+        .await;
     g.run("CREATE TABLE Bar (id INTEGER UNIQUE, name TEXT NOT NULL DEFAULT 'NONE');")
         .await;
 
