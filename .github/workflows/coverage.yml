@@ -18,7 +18,6 @@ jobs:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
-      - uses: Swatinem/rust-cache@v2
       - run: rustup component add llvm-tools-preview
       - run: cargo install grcov
       - name: clean
