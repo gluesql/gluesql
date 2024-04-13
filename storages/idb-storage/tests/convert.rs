@@ -26,6 +26,7 @@ async fn convert_schema() {
             nullable: false,
             default: None,
             unique: None,
+            comment: None,
         },
         ColumnDef {
             name: "name".to_owned(),
@@ -33,6 +34,7 @@ async fn convert_schema() {
             nullable: false,
             default: None,
             unique: None,
+            comment: None,
         },
         ColumnDef {
             name: "flag".to_owned(),
@@ -40,6 +42,7 @@ async fn convert_schema() {
             nullable: true,
             default: None,
             unique: None,
+            comment: None,
         },
     ];
     let expected = DataRow::Vec(vec![
