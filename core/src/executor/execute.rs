@@ -30,7 +30,7 @@ pub enum ExecuteError {
     TableNotFound(String),
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub enum Payload {
     ShowColumns(Vec<(String, DataType)>),
     Create,
@@ -86,7 +86,7 @@ impl Payload {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub enum PayloadVariable {
     Tables(Vec<String>),
     Functions(Vec<String>),
