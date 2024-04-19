@@ -15,7 +15,7 @@ pub struct Validator {
 }
 
 impl Validator {
-    pub fn new(labels: Vec<String>, column_types: Document) -> Self {
+    pub fn new(labels: Vec<String>, column_types: Document, comment: Option<String>) -> Self {
         let mut required = vec!["_id".to_owned()];
         required.extend(labels);
 
@@ -31,8 +31,9 @@ impl Validator {
                 "type": "object",
                 "required": required,
                 "properties": properties,
-                "additionalProperties": additional_properties
-              }
+                "additionalProperties": additional_properties,
+                "description": comment.unwrap_or_default(),
+            }
         };
 
         Validator { document }

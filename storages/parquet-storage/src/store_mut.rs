@@ -532,6 +532,13 @@ impl ParquetStorage {
             });
         }
 
+        if schema.comment.is_some() {
+            metadata.push(KeyValue {
+                key: "comment".to_string(),
+                value: schema.comment.as_ref().map(ToOwned::to_owned),
+            });
+        }
+
         Some(metadata)
     }
 

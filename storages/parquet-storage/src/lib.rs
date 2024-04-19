@@ -58,10 +58,13 @@ impl ParquetStorage {
         let key_value_file_metadata = file_metadata.key_value_metadata();
 
         let mut is_schemaless = false;
+        let mut comment = None;
         if let Some(metadata) = key_value_file_metadata {
             for kv in metadata.iter() {
-                if kv.key == *"schemaless".to_string() {
+                if kv.key == "schemaless" {
                     is_schemaless = matches!(kv.value.as_deref(), Some("true"));
+                } else if kv.key == "comment" {
+                    comment = kv.value.clone();
                     break;
                 }
             }
@@ -89,6 +92,7 @@ impl ParquetStorage {
             column_defs,
             indexes: vec![],
             engine: None,
+            comment,
         }))
     }
 
@@ -173,6 +177,7 @@ impl ParquetStorage {
             }]),
             indexes: vec![],
             engine: None,
+            comment: None,
         }
     }
 }

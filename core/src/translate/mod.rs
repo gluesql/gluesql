@@ -73,6 +73,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             columns,
             query,
             engine,
+            comment,
             ..
         } => {
             let columns = columns
@@ -91,6 +92,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                     None => None,
                 },
                 engine: engine.clone(),
+                comment: comment.clone(),
             })
         }
         SqlStatement::AlterTable {
