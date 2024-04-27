@@ -51,6 +51,9 @@ pub enum TranslateError {
     #[error("unnamed function arg is not supported")]
     UnNamedFunctionArgNotSupported,
 
+    #[error("INSERT INTO {0} DEFAULT VALUES is not supported")]
+    DefaultValuesOnInsertNotSupported(String),
+
     #[error("empty function body is not supported")]
     UnsupportedEmptyFunctionBody,
 

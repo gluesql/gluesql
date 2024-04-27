@@ -35,11 +35,22 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             columns,
             source,
             ..
-        } => Ok(Statement::Insert {
-            table_name: translate_object_name(table_name)?,
-            columns: translate_idents(columns),
-            source: translate_query(source)?,
-        }),
+        } => {
+            let table_name = translate_object_name(table_name)?;
+            let columns = translate_idents(columns);
+            let source = source
+                .as_deref()
+                .ok_or_else(|| {
+                    TranslateError::DefaultValuesOnInsertNotSupported(table_name.clone()).into()
+                })
+                .and_then(translate_query)?;
+
+            Ok(Statement::Insert {
+                table_name,
+                columns,
+                source,
+            })
+        }
         SqlStatement::Update {
             table,
             assignments,
@@ -293,4 +304,19 @@ fn translate_object_name(sql_object_name: &SqlObjectName) -> Result<String> {
 
 pub fn translate_idents(idents: &[SqlIdent]) -> Vec<String> {
     idents.iter().map(|v| v.value.to_owned()).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use {super::*, crate::parse_sql::parse};
+
+    #[test]
+    fn statement() {
+        let sql = "INSERT INTO Foo DEFAULT VALUES";
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+        let expected =
+            Err(TranslateError::DefaultValuesOnInsertNotSupported("Foo".to_owned()).into());
+
+        assert_eq!(actual, expected);
+    }
 }
