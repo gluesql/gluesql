@@ -61,6 +61,14 @@ impl<'a> TableNameNode {
         DropTableNode::new(self.table_name, true, false)
     }
 
+    pub fn drop_table_cascade(self) -> DropTableNode {
+        DropTableNode::new(self.table_name, false, true)
+    }
+
+    pub fn drop_table_if_exists_cascade(self) -> DropTableNode {
+        DropTableNode::new(self.table_name, true, true)
+    }
+
     pub fn drop_index(self, name: &str) -> DropIndexNode {
         DropIndexNode::new(self.table_name, name.to_owned())
     }

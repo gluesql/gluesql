@@ -47,5 +47,13 @@ mod tests {
         let actual = table("Foo").drop_table_if_exists().build();
         let expected = "DROP TABLE IF EXISTS Foo";
         test(actual, expected);
+
+        let actual = table("Foo").drop_table_cascade().build();
+        let expected = "DROP TABLE Foo CASCADE";
+        test(actual, expected);
+
+        let actual = table("Foo").drop_table_if_exists_cascade().build();
+        let expected = "DROP TABLE IF EXISTS Foo CASCADE";
+        test(actual, expected);
     }
 }
