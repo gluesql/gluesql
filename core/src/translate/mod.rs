@@ -324,7 +324,7 @@ pub fn translate_idents(idents: &[SqlIdent]) -> Vec<String> {
 pub fn translate_referential_action(action: SqlReferentialAction) -> ReferentialAction {
     match action {
         SqlReferentialAction::NoAction => ReferentialAction::NoAction,
-        SqlReferentialAction::Restrict => ReferentialAction::Restrict,
+        SqlReferentialAction::Restrict => ReferentialAction::NoAction,
         SqlReferentialAction::Cascade => ReferentialAction::Cascade,
         SqlReferentialAction::SetNull => ReferentialAction::SetNull,
         SqlReferentialAction::SetDefault => ReferentialAction::SetDefault,

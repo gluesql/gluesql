@@ -48,7 +48,6 @@ pub struct ForeignKey {
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash, Serialize, Deserialize)]
 pub enum ReferentialAction {
-    Restrict,
     Cascade,
     SetNull,
     NoAction,
