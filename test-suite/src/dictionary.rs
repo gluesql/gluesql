@@ -51,12 +51,11 @@ test_case!(dictionary, {
 
     g.test(
         "SELECT * FROM GLUE_TABLES",
-        Ok(select!(
-            TABLE_NAME       | COMMENT;
-            Str              | Str;
-            "Bar".to_owned()   "".to_owned();
-            "Foo".to_owned()   "this is table comment".to_owned();
-            "Zoo".to_owned()   "".to_owned()
+        Ok(select_with_null!(
+            TABLE_NAME            | COMMENT;
+            Str("Bar".to_owned())   Null;
+            Str("Foo".to_owned())   Str("this is table comment".to_owned());
+            Str("Zoo".to_owned())   Null
         )),
     )
     .await;

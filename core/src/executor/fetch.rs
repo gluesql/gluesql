@@ -262,7 +262,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                 columns: Rc::clone(&columns),
                                 values: vec![
                                     Value::Str(schema.table_name),
-                                    Value::Str(schema.comment.unwrap_or_default()),
+                                    schema.comment.map(Value::Str).unwrap_or(Value::Null),
                                 ],
                             })
                         });
