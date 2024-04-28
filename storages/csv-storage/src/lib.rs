@@ -57,6 +57,7 @@ impl CsvStorage {
                             unique: None,
                             default: None,
                             nullable: true,
+                            comment: None,
                         })
                         .collect::<Vec<_>>(),
                 ),

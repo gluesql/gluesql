@@ -1,6 +1,6 @@
 use {
     crate::{
-        description::TableDescription,
+        description::{ColumnDescription, TableDescription},
         error::{MongoStorageError, OptionExt, ResultExt},
         row::{key::KeyIntoBson, value::IntoValue, IntoRow},
         utils::get_primary_key,
@@ -12,13 +12,13 @@ use {
         ast::{ColumnDef, ColumnUniqueOption},
         data::{Key, Schema},
         error::Result,
-        parse_sql::{parse_data_type, parse_expr},
+        parse_sql::parse_data_type,
         prelude::{Error, Value},
         store::{DataRow, RowIter, Store},
-        translate::{translate_data_type, translate_expr},
+        translate::translate_data_type,
     },
     mongodb::{
-        bson::{doc, Document},
+        bson::{doc, document::ValueAccessError, Document},
         options::{FindOptions, ListIndexesOptions},
         IndexModel,
     },
@@ -235,12 +235,21 @@ impl MongoStorage {
                     }
                     .map(|is_primary| ColumnUniqueOption { is_primary });
 
-                    let default = doc
-                        .get_str("description")
-                        .ok()
-                        .map(parse_expr)
-                        .map(|expr| expr.and_then(|expr| translate_expr(&expr)))
-                        .transpose()?;
+                    let column_description = doc.get_str("description");
+                    let ColumnDescription { default, comment } = match column_description {
+                        Ok(desc) => {
+                            serde_json::from_str::<ColumnDescription>(desc).map_storage_err()?
+                        }
+                        Err(ValueAccessError::NotPresent) => ColumnDescription {
+                            default: None,
+                            comment: None,
+                        },
+                        Err(_) => {
+                            return Err(Error::StorageMsg(
+                                MongoStorageError::InvalidGlueType.to_string(),
+                            ))
+                        }
+                    };
 
                     let column_def = ColumnDef {
                         name: column_name.to_owned(),
@@ -248,6 +257,7 @@ impl MongoStorage {
                         nullable,
                         default,
                         unique,
+                        comment,
                     };
 
                     Ok(column_def)

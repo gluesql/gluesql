@@ -7,7 +7,7 @@ mod transaction;
 
 use {
     async_trait::async_trait,
-    futures::stream::{empty, iter},
+    futures::stream::iter,
     gluesql_core::{
         chrono::Utc,
         data::{CustomFunction as StructCustomFunction, Key, Schema, Value},
@@ -30,6 +30,15 @@ pub struct MemoryStorage {
     pub items: HashMap<String, Item>,
     pub metadata: HashMap<String, HashMap<String, Value>>,
     pub functions: HashMap<String, StructCustomFunction>,
+}
+
+impl MemoryStorage {
+    pub fn scan_data(&self, table_name: &str) -> Vec<(Key, DataRow)> {
+        match self.items.get(table_name) {
+            Some(item) => item.rows.clone().into_iter().collect(),
+            None => vec![],
+        }
+    }
 }
 
 #[async_trait(?Send)]
@@ -84,12 +93,11 @@ impl Store for MemoryStorage {
     }
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
-        let rows: RowIter = match self.items.get(table_name) {
-            Some(item) => Box::pin(iter(item.rows.clone().into_iter().map(Ok))),
-            None => Box::pin(empty()),
-        };
+        let rows = MemoryStorage::scan_data(self, table_name)
+            .into_iter()
+            .map(Ok);
 
-        Ok(rows)
+        Ok(Box::pin(iter(rows)))
     }
 }
 

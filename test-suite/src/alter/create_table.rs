@@ -25,7 +25,7 @@ test_case!(create_table, {
         CREATE TABLE CreateTable1 (
             id INTEGER NULL,
             num INTEGER,
-            name TEXT
+            name TEXT COMMENT 'this is comment for name column'
         )",
             Err(AlterError::TableAlreadyExists("CreateTable1".to_owned()).into()),
         ),

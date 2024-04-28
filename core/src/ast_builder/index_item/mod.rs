@@ -10,8 +10,8 @@ pub use {
 };
 
 use {
-    super::{insert::Expr, select::Prebuild, ExprNode},
-    crate::ast::IndexOperator,
+    super::{select::Prebuild, ExprNode},
+    crate::ast::{Expr, IndexOperator},
 };
 
 #[derive(Clone, Debug)]

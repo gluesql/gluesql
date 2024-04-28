@@ -68,7 +68,7 @@ impl Store for MockStorage {
         ))
     }
 
-    async fn scan_data(&self, _table_name: &str) -> Result<RowIter> {
+    async fn scan_data(&self, _table_name: &str) -> Result<RowIter<'_>> {
         Err(Error::StorageMsg(
             "[MockStorage] scan_data not supported".to_owned(),
         ))
@@ -128,6 +128,7 @@ mod tests {
                 nullable: false,
                 default: None,
                 unique: None,
+                comment: None,
             },
         ))
         .is_err());

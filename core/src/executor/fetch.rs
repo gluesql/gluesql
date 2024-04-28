@@ -295,6 +295,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                                 .map(|expr| expr.to_sql())
                                                 .unwrap_or_default(),
                                         ),
+                                        Value::Str(column_def.comment.unwrap_or_default()),
                                     ];
 
                                     Ok(Row::Vec {
@@ -429,6 +430,7 @@ pub async fn fetch_relation_columns<T: GStore>(
                 "NULLABLE".to_owned(),
                 "KEY".to_owned(),
                 "DEFAULT".to_owned(),
+                "COMMENT".to_owned(),
             ],
             Dictionary::GlueIndexes => vec![
                 "TABLE_NAME".to_owned(),
