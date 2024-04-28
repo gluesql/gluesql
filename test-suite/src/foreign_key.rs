@@ -167,11 +167,4 @@ test_case!(foreign_key, {
         Ok(Payload::DropTable),
     )
     .await;
-
-    // g.named_test(
-    //     "Cannot drop parent if child exists",
-    //     "ALTER TABLE Child DROP CONSTRAINT \"FK_parent_id-ParentWithPK_id\";",
-    //     Ok(Payload::DropTable),
-    // )
-    // .await;
 });
