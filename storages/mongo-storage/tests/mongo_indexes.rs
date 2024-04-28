@@ -23,7 +23,9 @@ async fn mongo_indexes() {
         "name": { "bsonType": ["string"], "title": "TEXT" },
     };
 
-    let options = Validator::new(labels, column_types, None).to_options();
+    let options = Validator::new(labels, column_types, None)
+        .unwrap()
+        .to_options();
 
     let table_name = "collection_with_composite_index";
 

@@ -175,7 +175,13 @@ impl MongoStorage {
                 .and_then(|doc| doc.get_document("validator"))
                 .and_then(|doc| doc.get_document("$jsonSchema"))
                 .map_storage_err()?;
-            let collection_comment = validator.get_str("description").ok().map(ToOwned::to_owned);
+            let collection_comment = match validator.get_str("description") {
+                Ok(comment) => serde_json::from_str(comment).map_storage_err()?,
+                Err(ValueAccessError::NotPresent) => None,
+                Err(e) => {
+                    return Err(Error::StorageMsg(e.to_string()));
+                }
+            };
 
             let collection = self.db.collection::<Document>(collection_name);
             let options = ListIndexesOptions::builder().build();
