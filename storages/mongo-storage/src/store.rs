@@ -170,10 +170,18 @@ impl MongoStorage {
                 .map_storage_err(MongoStorageError::InvalidDocument)?;
 
             let collection_name = doc.get_str("name").map_storage_err()?;
-            let validators = doc
+            let validator = doc
                 .get_document("options")
                 .and_then(|doc| doc.get_document("validator"))
+                .and_then(|doc| doc.get_document("$jsonSchema"))
                 .map_storage_err()?;
+            let collection_comment = match validator.get_str("description") {
+                Ok(comment) => serde_json::from_str(comment).map_storage_err()?,
+                Err(ValueAccessError::NotPresent) => None,
+                Err(e) => {
+                    return Err(Error::StorageMsg(e.to_string()));
+                }
+            };
 
             let collection = self.db.collection::<Document>(collection_name);
             let options = ListIndexesOptions::builder().build();
@@ -196,9 +204,8 @@ impl MongoStorage {
                 .try_collect::<HashMap<String, String>>()
                 .await?;
 
-            let column_defs = validators
-                .get_document("$jsonSchema")
-                .and_then(|doc| doc.get_document("properties"))
+            let column_defs = validator
+                .get_document("properties")
                 .map_storage_err()?
                 .into_iter()
                 .skip(1)
@@ -271,6 +278,7 @@ impl MongoStorage {
                 column_defs,
                 indexes: Vec::new(),
                 engine: None,
+                comment: collection_comment,
             };
 
             Ok::<_, Error>(schema)

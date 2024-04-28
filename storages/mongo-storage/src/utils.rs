@@ -1,6 +1,7 @@
 use {
+    crate::ResultExt,
     bson::{doc, Document},
-    gluesql_core::ast::ColumnDef,
+    gluesql_core::{ast::ColumnDef, error::Result},
     mongodb::options::CreateCollectionOptions,
 };
 
@@ -15,7 +16,11 @@ pub struct Validator {
 }
 
 impl Validator {
-    pub fn new(labels: Vec<String>, column_types: Document) -> Self {
+    pub fn new(
+        labels: Vec<String>,
+        column_types: Document,
+        comment: Option<String>,
+    ) -> Result<Self> {
         let mut required = vec!["_id".to_owned()];
         required.extend(labels);
 
@@ -25,17 +30,19 @@ impl Validator {
         properties.extend(column_types);
 
         let additional_properties = matches!(required.len(), 1);
+        let comment = serde_json::to_string(&comment).map_storage_err()?;
 
         let document = doc! {
             "$jsonSchema": {
                 "type": "object",
                 "required": required,
                 "properties": properties,
-                "additionalProperties": additional_properties
-              }
+                "additionalProperties": additional_properties,
+                "description": comment,
+            }
         };
 
-        Validator { document }
+        Ok(Validator { document })
     }
 
     pub fn to_options(self) -> CreateCollectionOptions {

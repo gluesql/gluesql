@@ -67,6 +67,7 @@ pub enum Statement {
         columns: Option<Vec<ColumnDef>>,
         source: Option<Box<Query>>,
         engine: Option<String>,
+        comment: Option<String>,
     },
     /// CREATE FUNCTION
     CreateFunction {
@@ -182,6 +183,7 @@ impl ToSql for Statement {
                 columns,
                 source,
                 engine,
+                comment,
             } => {
                 let if_not_exists = if_not_exists.then_some("IF NOT EXISTS");
                 let body = match source {
@@ -203,12 +205,16 @@ impl ToSql for Statement {
                     }
                 };
                 let engine = engine.as_ref().map(|engine| format!("ENGINE = {engine}"));
+                let comment = comment
+                    .as_ref()
+                    .map(|comment| format!("COMMENT = '{comment}'"));
                 let sql = vec![
                     Some("CREATE TABLE"),
                     if_not_exists,
                     Some(&format! {r#""{name}""#}),
                     body.as_deref(),
                     engine.as_deref(),
+                    comment.as_deref(),
                 ]
                 .into_iter()
                 .flatten()
@@ -416,6 +422,7 @@ mod tests {
                 columns: None,
                 source: None,
                 engine: None,
+                comment: None,
             }
             .to_sql()
         );
@@ -428,12 +435,13 @@ mod tests {
                 columns: None,
                 source: None,
                 engine: None,
+                comment: None,
             }
             .to_sql()
         );
 
         assert_eq!(
-            r#"CREATE TABLE IF NOT EXISTS "Foo" ("id" BOOLEAN NOT NULL);"#,
+            r#"CREATE TABLE IF NOT EXISTS "Foo" ("id" BOOLEAN NOT NULL) COMMENT = 'this is comment';"#,
             Statement::CreateTable {
                 if_not_exists: true,
                 name: "Foo".into(),
@@ -447,6 +455,7 @@ mod tests {
                 },]),
                 source: None,
                 engine: None,
+                comment: Some("this is comment".to_owned()),
             }
             .to_sql()
         );
@@ -484,6 +493,7 @@ mod tests {
                 ]),
                 source: None,
                 engine: None,
+                comment: None,
             }
             .to_sql()
         );
@@ -526,6 +536,7 @@ mod tests {
                     offset: None
                 })),
                 engine: None,
+                comment: None,
             }
             .to_sql()
         );
@@ -545,6 +556,7 @@ mod tests {
                     offset: None
                 })),
                 engine: None,
+                comment: None,
             }
             .to_sql()
         );
@@ -560,6 +572,7 @@ mod tests {
                 columns: None,
                 source: None,
                 engine: Some("MEMORY".to_owned()),
+                comment: None,
             }
             .to_sql()
         );
@@ -579,6 +592,7 @@ mod tests {
                 },]),
                 source: None,
                 engine: Some("SLED".to_owned()),
+                comment: None,
             }
             .to_sql()
         );

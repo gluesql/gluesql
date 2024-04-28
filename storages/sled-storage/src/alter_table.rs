@@ -51,6 +51,7 @@ impl AlterTable for SledStorage {
                 column_defs,
                 indexes,
                 engine,
+                comment,
                 ..
             } = old_schema
                 .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())
@@ -61,6 +62,7 @@ impl AlterTable for SledStorage {
                 column_defs,
                 indexes,
                 engine,
+                comment,
             };
 
             bincode::serialize(&old_snapshot)
@@ -159,6 +161,7 @@ impl AlterTable for SledStorage {
                 column_defs,
                 indexes,
                 engine,
+                comment: schema_comment,
                 ..
             } = snapshot
                 .get(txid, None)
@@ -209,6 +212,7 @@ impl AlterTable for SledStorage {
                 column_defs: Some(column_defs),
                 indexes,
                 engine,
+                comment: schema_comment,
             };
             let (snapshot, _) = snapshot.update(txid, schema);
             let value = bincode::serialize(&snapshot)
@@ -261,6 +265,7 @@ impl AlterTable for SledStorage {
                 column_defs,
                 indexes,
                 engine,
+                comment,
                 ..
             } = schema_snapshot
                 .get(txid, None)
@@ -358,6 +363,7 @@ impl AlterTable for SledStorage {
                 column_defs: Some(column_defs),
                 indexes,
                 engine,
+                comment,
             };
             let (schema_snapshot, _) = schema_snapshot.update(txid, schema);
             let schema_value = bincode::serialize(&schema_snapshot)
@@ -413,6 +419,7 @@ impl AlterTable for SledStorage {
                 column_defs,
                 indexes,
                 engine,
+                comment,
                 ..
             } = schema_snapshot
                 .get(txid, None)
@@ -496,6 +503,7 @@ impl AlterTable for SledStorage {
                 column_defs: Some(column_defs),
                 indexes,
                 engine,
+                comment,
             };
             let (schema_snapshot, _) = schema_snapshot.update(txid, schema);
             let schema_value = bincode::serialize(&schema_snapshot)

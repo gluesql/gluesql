@@ -69,6 +69,7 @@ impl CsvStorage {
                 column_defs,
                 indexes: Vec::new(),
                 engine: None,
+                comment: None,
             };
 
             return Ok(Some((schema, true)));

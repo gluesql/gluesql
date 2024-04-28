@@ -52,6 +52,7 @@ impl Build for CreateTableNode {
             columns,
             source: None,
             engine: None,
+            comment: None,
         })
     }
 }

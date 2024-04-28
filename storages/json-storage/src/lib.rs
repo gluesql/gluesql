@@ -54,7 +54,7 @@ impl JsonStorage {
         }
 
         let schema_path = self.schema_path(table_name);
-        let column_defs = match schema_path.exists() {
+        let schema = match schema_path.exists() {
             true => {
                 let mut file = File::open(&schema_path).map_storage_err()?;
                 let mut ddl = String::new();
@@ -67,17 +67,18 @@ impl JsonStorage {
                     ));
                 }
 
-                schema.column_defs
+                schema
             }
-            false => None,
+            false => Schema {
+                table_name: table_name.to_owned(),
+                column_defs: None,
+                indexes: vec![],
+                engine: None,
+                comment: None,
+            },
         };
 
-        Ok(Some(Schema {
-            table_name: table_name.to_owned(),
-            column_defs,
-            indexes: vec![],
-            engine: None,
-        }))
+        Ok(Some(schema))
     }
 
     fn jsonl_path(&self, table_name: &str) -> PathBuf {

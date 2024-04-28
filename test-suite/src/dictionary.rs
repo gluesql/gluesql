@@ -22,7 +22,7 @@ test_case!(dictionary, {
 
     g.test("SHOW TABLES", tables(Vec::new())).await;
 
-    g.run("CREATE TABLE Foo (id INTEGER, name TEXT NULL, type TEXT NULL);")
+    g.run("CREATE TABLE Foo (id INTEGER, name TEXT NULL, type TEXT NULL) COMMENT='this is table comment';")
         .await;
     g.test("SHOW TABLES", tables(vec!["Foo"])).await;
 
@@ -51,12 +51,11 @@ test_case!(dictionary, {
 
     g.test(
         "SELECT * FROM GLUE_TABLES",
-        Ok(select!(
-            TABLE_NAME;
-            Str;
-            "Bar".to_owned();
-            "Foo".to_owned();
-            "Zoo".to_owned()
+        Ok(select_with_null!(
+            TABLE_NAME            | COMMENT;
+            Str("Bar".to_owned())   Null;
+            Str("Foo".to_owned())   Str("this is table comment".to_owned());
+            Str("Zoo".to_owned())   Null
         )),
     )
     .await;
