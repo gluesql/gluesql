@@ -21,6 +21,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
     source: &Option<Box<Query>>,
     engine: &Option<String>,
     foreign_keys: &Option<Vec<ForeignKey>>,
+    comment: &Option<String>,
 ) -> Result<()> {
     let target_columns_defs = match source.as_deref() {
         Some(Query { body, .. }) => match body {
@@ -169,7 +170,8 @@ pub async fn create_table<T: GStore + GStoreMut>(
             column_defs: target_columns_defs,
             indexes: vec![],
             engine: engine.clone(),
-            foreign_keys: foreign_keys.to_owned(),
+            foreign_keys: foreign_keys.clone(),
+            comment: comment.clone(),
         };
 
         storage.insert_schema(&schema).await?;

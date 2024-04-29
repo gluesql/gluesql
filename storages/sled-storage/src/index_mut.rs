@@ -74,6 +74,8 @@ impl IndexMut for SledStorage {
                 column_defs,
                 indexes,
                 engine,
+                foreign_keys,
+                comment,
                 ..
             } = schema
                 .ok_or_else(|| IndexError::ConflictTableNotFound(table_name.to_owned()).into())
@@ -101,7 +103,8 @@ impl IndexMut for SledStorage {
                 column_defs,
                 indexes,
                 engine,
-                foreign_keys: None,
+                foreign_keys,
+                comment,
             };
 
             let index_sync = IndexSync::from_schema(tree, txid, &schema);
@@ -166,6 +169,8 @@ impl IndexMut for SledStorage {
                 column_defs,
                 indexes,
                 engine,
+                foreign_keys,
+                comment,
                 ..
             } = schema
                 .ok_or_else(|| IndexError::ConflictTableNotFound(table_name.to_owned()).into())
@@ -188,7 +193,8 @@ impl IndexMut for SledStorage {
                 column_defs,
                 indexes,
                 engine,
-                foreign_keys: None,
+                foreign_keys,
+                comment,
             };
 
             let index_sync = IndexSync::from_schema(tree, txid, &schema);

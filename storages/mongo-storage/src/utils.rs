@@ -1,10 +1,8 @@
 use {
     crate::{description::TableDescription, error::ResultExt},
     bson::{doc, Document},
-    gluesql_core::{
-        ast::{ColumnDef, ForeignKey},
-        error::Result,
-    },
+    gluesql_core::ast::ForeignKey,
+    gluesql_core::{ast::ColumnDef, error::Result},
     mongodb::options::CreateCollectionOptions,
     serde_json::to_string,
 };
@@ -24,6 +22,7 @@ impl Validator {
         labels: Vec<String>,
         column_types: Document,
         foreign_keys: Option<Vec<ForeignKey>>,
+        comment: Option<String>,
     ) -> Result<Self> {
         let mut required = vec!["_id".to_owned()];
         required.extend(labels);
@@ -34,8 +33,13 @@ impl Validator {
         properties.extend(column_types);
 
         let additional_properties = matches!(required.len(), 1);
-        let table_description =
-            to_string(&(TableDescription { foreign_keys })).map_storage_err()?;
+        let table_description = to_string(
+            &(TableDescription {
+                foreign_keys,
+                comment,
+            }),
+        )
+        .map_storage_err()?;
 
         let document = doc! {
             "$jsonSchema": {

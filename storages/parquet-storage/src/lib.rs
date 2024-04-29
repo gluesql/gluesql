@@ -59,6 +59,7 @@ impl ParquetStorage {
 
         let mut is_schemaless = false;
         let mut foreign_keys = Vec::new();
+        let mut comment = None;
         if let Some(metadata) = key_value_file_metadata {
             for kv in metadata.iter() {
                 if kv.key == "schemaless" {
@@ -74,6 +75,11 @@ impl ParquetStorage {
                         .ok_or(Error::StorageMsg("No value found on metadata".to_owned()))??;
 
                     foreign_keys.push(fk);
+                }
+
+                if kv.key == "comment" {
+                    comment = kv.value.clone();
+                    // break;
                 }
             }
         }
@@ -101,6 +107,7 @@ impl ParquetStorage {
             indexes: vec![],
             engine: None,
             foreign_keys: Some(foreign_keys),
+            comment,
         }))
     }
 
@@ -186,6 +193,7 @@ impl ParquetStorage {
             indexes: vec![],
             engine: None,
             foreign_keys: None,
+            comment: None,
         }
     }
 }

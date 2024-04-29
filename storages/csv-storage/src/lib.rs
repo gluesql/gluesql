@@ -70,6 +70,7 @@ impl CsvStorage {
                 indexes: Vec::new(),
                 engine: None,
                 foreign_keys: None,
+                comment: None,
             };
 
             return Ok(Some((schema, true)));

@@ -22,7 +22,7 @@ test_case!(dictionary, {
 
     g.test("SHOW TABLES", tables(Vec::new())).await;
 
-    g.run("CREATE TABLE Foo (id INTEGER, name TEXT NULL, type TEXT NULL);")
+    g.run("CREATE TABLE Foo (id INTEGER, name TEXT NULL, type TEXT NULL) COMMENT='this is table comment';")
         .await;
     g.test("SHOW TABLES", tables(vec!["Foo"])).await;
 
@@ -51,27 +51,27 @@ test_case!(dictionary, {
 
     g.test(
         "SELECT * FROM GLUE_TABLES",
-        Ok(select!(
-            TABLE_NAME;
-            Str;
-            "Bar".to_owned();
-            "Foo".to_owned();
-            "Zoo".to_owned()
+        Ok(select_with_null!(
+            TABLE_NAME            | COMMENT;
+            Str("Bar".to_owned())   Null;
+            Str("Foo".to_owned())   Str("this is table comment".to_owned());
+            Str("Zoo".to_owned())   Null
         )),
     )
     .await;
 
+    let s = |v: &str| Str(v.to_owned());
+
     g.test(
         "SELECT * FROM GLUE_TABLE_COLUMNS",
-        Ok(select!(
-            TABLE_NAME       | COLUMN_NAME      | COLUMN_ID | NULLABLE | KEY                      | DEFAULT              | COMMENT;
-            Str              | Str              | I64       | Bool     | Str                      | Str                  | Str;
-            "Bar".to_owned()   "id".to_owned()    1           true       "UNIQUE".to_owned()        "".to_owned()          "".to_owned();
-            "Bar".to_owned()   "name".to_owned()  2           false      "".to_owned()              "'NONE'".to_owned()    "".to_owned();
-            "Foo".to_owned()   "id".to_owned()    1           true       "".to_owned()              "".to_owned()          "".to_owned();
-            "Foo".to_owned()   "name".to_owned()  2           true       "".to_owned()              "".to_owned()          "".to_owned();
-            "Foo".to_owned()   "type".to_owned()  3           true       "".to_owned()              "".to_owned()          "".to_owned();
-            "Zoo".to_owned()   "id".to_owned()    1           false      "PRIMARY KEY".to_owned()   "".to_owned()          "hello".to_owned() 
+        Ok(select_with_null!(
+            TABLE_NAME | COLUMN_NAME | COLUMN_ID | NULLABLE    | KEY              | DEFAULT     | COMMENT;
+            s("Bar")     s("id")       I64(1)      Bool(true)    s("UNIQUE")        Null          Null;
+            s("Bar")     s("name")     I64(2)      Bool(false)   Null               s("'NONE'")   Null;
+            s("Foo")     s("id")       I64(1)      Bool(true)    Null               Null          Null;
+            s("Foo")     s("name")     I64(2)      Bool(true)    Null               Null          Null;
+            s("Foo")     s("type")     I64(3)      Bool(true)    Null               Null          Null;
+            s("Zoo")     s("id")       I64(1)      Bool(false)   s("PRIMARY KEY")   Null          s("hello") 
         ))
     ).await;
 });

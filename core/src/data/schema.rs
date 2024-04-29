@@ -34,6 +34,7 @@ pub struct Schema {
     pub indexes: Vec<SchemaIndex>,
     pub engine: Option<String>,
     pub foreign_keys: Option<Vec<ForeignKey>>,
+    pub comment: Option<String>,
 }
 
 impl Schema {
@@ -44,7 +45,7 @@ impl Schema {
             indexes,
             engine,
             foreign_keys,
-            ..
+            comment,
         } = self;
 
         let create_table = Statement::CreateTable {
@@ -52,6 +53,7 @@ impl Schema {
             name: table_name.to_owned(),
             columns: column_defs.to_owned(),
             engine: engine.to_owned(),
+            comment: comment.to_owned(),
             source: None,
             foreign_keys: foreign_keys.to_owned(),
         }
@@ -111,6 +113,7 @@ impl Schema {
                 columns,
                 engine,
                 foreign_keys,
+                comment,
                 ..
             } => Ok(Schema {
                 table_name: name,
@@ -118,6 +121,7 @@ impl Schema {
                 indexes,
                 engine,
                 foreign_keys,
+                comment,
             }),
             _ => Err(SchemaParseError::CannotParseDDL.into()),
         }
@@ -148,7 +152,8 @@ mod tests {
             column_defs,
             indexes,
             engine,
-            ..
+            foreign_keys,
+            comment,
         } = actual;
 
         let Schema {
@@ -156,12 +161,15 @@ mod tests {
             column_defs: column_defs_e,
             indexes: indexes_e,
             engine: engine_e,
-            ..
+            foreign_keys: foreign_keys_e,
+            comment: comment_e,
         } = expected;
 
         assert_eq!(table_name, table_name_e);
         assert_eq!(column_defs, column_defs_e);
         assert_eq!(engine, engine_e);
+        assert_eq!(foreign_keys, foreign_keys_e);
+        assert_eq!(comment, comment_e);
         indexes
             .into_iter()
             .zip(indexes_e)
@@ -209,6 +217,7 @@ mod tests {
             indexes: Vec::new(),
             engine: None,
             foreign_keys: None,
+            comment: None,
         };
 
         let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NULL DEFAULT 'glue');"#;
@@ -223,6 +232,7 @@ mod tests {
             indexes: Vec::new(),
             engine: None,
             foreign_keys: None,
+            comment: None,
         };
         let ddl = r#"CREATE TABLE "Test";"#;
         assert_eq!(schema.to_ddl(), ddl);
@@ -246,6 +256,7 @@ mod tests {
             indexes: Vec::new(),
             engine: None,
             foreign_keys: None,
+            comment: None,
         };
 
         let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL PRIMARY KEY);"#;
@@ -301,6 +312,7 @@ mod tests {
             ],
             engine: None,
             foreign_keys: None,
+            comment: None,
         };
         let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);
 CREATE INDEX "User_id" ON "User" ("id");
@@ -346,6 +358,7 @@ CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);"#;
             }],
             engine: None,
             foreign_keys: None,
+            comment: None,
         };
         let ddl = r#"CREATE TABLE "1" ("2" INT NULL, ";" INT NULL);
 CREATE INDEX "." ON "1" (";");"#;

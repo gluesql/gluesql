@@ -171,9 +171,10 @@ impl MongoStorage {
                 .map_storage_err(MongoStorageError::InvalidDocument)?;
 
             let collection_name = doc.get_str("name").map_storage_err()?;
-            let validators = doc
+            let validator = doc
                 .get_document("options")
                 .and_then(|doc| doc.get_document("validator"))
+                .and_then(|doc| doc.get_document("$jsonSchema"))
                 .map_storage_err()?;
 
             let collection = self.db.collection::<Document>(collection_name);
@@ -197,11 +198,8 @@ impl MongoStorage {
                 .try_collect::<HashMap<String, String>>()
                 .await?;
 
-            let json_schema = validators.get_document("$jsonSchema");
-
-            let column_defs = json_schema
-                .clone()
-                .and_then(|doc| doc.get_document("properties"))
+            let column_defs = validator
+                .get_document("properties")
                 .map_storage_err()?
                 .into_iter()
                 .skip(1)
@@ -269,19 +267,19 @@ impl MongoStorage {
                 _ => Some(column_defs),
             };
 
-            let table_description = json_schema
-                .and_then(|doc| doc.get_str("description"))
-                .map_storage_err()?;
-
-            let table_description =
-                from_str::<TableDescription>(table_description).map_storage_err()?;
+            let table_description = validator.get_str("description").map_storage_err()?;
+            let TableDescription {
+                foreign_keys,
+                comment,
+            } = from_str::<TableDescription>(table_description).map_storage_err()?;
 
             let schema = Schema {
                 table_name: collection_name.to_owned(),
                 column_defs,
                 indexes: Vec::new(),
                 engine: None,
-                foreign_keys: table_description.foreign_keys,
+                foreign_keys,
+                comment,
             };
 
             Ok::<_, Error>(schema)

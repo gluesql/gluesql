@@ -260,7 +260,10 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                         let rows = schemas.into_iter().map(move |schema| {
                             Ok(Row::Vec {
                                 columns: Rc::clone(&columns),
-                                values: vec![Value::Str(schema.table_name)],
+                                values: vec![
+                                    Value::Str(schema.table_name),
+                                    schema.comment.map(Value::Str).unwrap_or(Value::Null),
+                                ],
                             })
                         });
 
@@ -283,19 +286,15 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                         Value::Str(column_def.name),
                                         Value::I64(index as i64 + 1),
                                         Value::Bool(column_def.nullable),
-                                        Value::Str(
-                                            column_def
-                                                .unique
-                                                .map(|unique| unique.to_sql())
-                                                .unwrap_or_default(),
-                                        ),
-                                        Value::Str(
-                                            column_def
-                                                .default
-                                                .map(|expr| expr.to_sql())
-                                                .unwrap_or_default(),
-                                        ),
-                                        Value::Str(column_def.comment.unwrap_or_default()),
+                                        column_def
+                                            .unique
+                                            .map(|unique| Value::Str(unique.to_sql()))
+                                            .unwrap_or(Value::Null),
+                                        column_def
+                                            .default
+                                            .map(|expr| Value::Str(expr.to_sql()))
+                                            .unwrap_or(Value::Null),
+                                        column_def.comment.map(Value::Str).unwrap_or(Value::Null),
                                     ];
 
                                     Ok(Row::Vec {
@@ -422,7 +421,7 @@ pub async fn fetch_relation_columns<T: GStore>(
                 "OBJECT_TYPE".to_owned(),
                 "CREATED".to_owned(),
             ],
-            Dictionary::GlueTables => vec!["TABLE_NAME".to_owned()],
+            Dictionary::GlueTables => vec!["TABLE_NAME".to_owned(), "COMMENT".to_owned()],
             Dictionary::GlueTableColumns => vec![
                 "TABLE_NAME".to_owned(),
                 "COLUMN_NAME".to_owned(),
