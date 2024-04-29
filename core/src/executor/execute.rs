@@ -2,6 +2,7 @@ use {
     super::{
         alter::{
             alter_table, create_index, create_table, delete_function, drop_table, insert_function,
+            CreateTableOptions,
         },
         fetch::{fetch, fetch_columns},
         insert::insert,
@@ -136,18 +137,21 @@ async fn execute_inner<T: GStore + GStoreMut>(
             engine,
             foreign_keys,
             comment,
-        } => create_table(
-            storage,
-            name,
-            columns.as_ref().map(Vec::as_slice),
-            *if_not_exists,
-            source,
-            engine,
-            foreign_keys,
-            comment,
-        )
-        .await
-        .map(|_| Payload::Create),
+        } => {
+            let options = CreateTableOptions {
+                target_table_name: name,
+                column_defs: columns.as_ref().map(Vec::as_slice),
+                if_not_exists: *if_not_exists,
+                source,
+                engine,
+                foreign_keys,
+                comment,
+            };
+
+            create_table(storage, options)
+                .await
+                .map(|_| Payload::Create)
+        }
         Statement::DropTable {
             names,
             if_exists,

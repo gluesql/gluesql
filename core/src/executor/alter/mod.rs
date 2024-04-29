@@ -12,5 +12,5 @@ pub use {
     error::AlterError,
     function::{delete_function, insert_function},
     index::create_index,
-    table::{create_table, drop_table, ReferringChild},
+    table::{create_table, drop_table, CreateTableOptions, ReferringChild},
 };

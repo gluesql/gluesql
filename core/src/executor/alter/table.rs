@@ -13,15 +13,27 @@ use {
     std::fmt,
 };
 
+pub struct CreateTableOptions<'a> {
+    pub target_table_name: &'a str,
+    pub column_defs: Option<&'a [ColumnDef]>,
+    pub if_not_exists: bool,
+    pub source: &'a Option<Box<Query>>,
+    pub engine: &'a Option<String>,
+    pub foreign_keys: &'a Option<Vec<ForeignKey>>,
+    pub comment: &'a Option<String>,
+}
+
 pub async fn create_table<T: GStore + GStoreMut>(
     storage: &mut T,
-    target_table_name: &str,
-    column_defs: Option<&[ColumnDef]>,
-    if_not_exists: bool,
-    source: &Option<Box<Query>>,
-    engine: &Option<String>,
-    foreign_keys: &Option<Vec<ForeignKey>>,
-    comment: &Option<String>,
+    CreateTableOptions {
+        target_table_name,
+        column_defs,
+        if_not_exists,
+        source,
+        engine,
+        foreign_keys,
+        comment,
+    }: CreateTableOptions<'_>,
 ) -> Result<()> {
     let target_columns_defs = match source.as_deref() {
         Some(Query { body, .. }) => match body {
