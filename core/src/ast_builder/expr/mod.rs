@@ -374,7 +374,7 @@ pub fn uuid<'a, T: Into<Cow<'a, str>>>(uuid: T) -> ExprNode<'a> {
 /// # Arguments
 /// * `bytea` - A byte array to be converted to a Bytea AST node.
 ///
-pub fn bytea(bytea: &[u8]) -> ExprNode<'_> {
+pub fn bytea<'a, T: AsRef<[u8]>>(bytea: T) -> ExprNode<'a> {
     ExprNode::TypedString {
         data_type: DataType::Bytea,
         value: hex::encode(bytea).into(),
