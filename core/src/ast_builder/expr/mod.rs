@@ -370,10 +370,10 @@ pub fn uuid<'a, T: Into<Cow<'a, str>>>(uuid: T) -> ExprNode<'a> {
 }
 
 /// Returns an AST ExprNode containing the provided Bytea.
-/// 
+///
 /// # Arguments
 /// * `bytea` - A byte array to be converted to a Bytea AST node.
-/// 
+///
 pub fn bytea<'a>(bytea: &'a [u8]) -> ExprNode<'a> {
     ExprNode::TypedString {
         data_type: DataType::Bytea,
@@ -396,8 +396,8 @@ mod tests {
         crate::{
             ast::Expr,
             ast_builder::{
-                col, date, expr, null, num, subquery, table, test_expr, text, time, timestamp,
-                uuid, QueryNode, bytea
+                bytea, col, date, expr, null, num, subquery, table, test_expr, text, time,
+                timestamp, uuid, QueryNode,
             },
         },
     };
