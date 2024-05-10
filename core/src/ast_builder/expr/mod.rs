@@ -369,6 +369,18 @@ pub fn uuid<'a, T: Into<Cow<'a, str>>>(uuid: T) -> ExprNode<'a> {
     }
 }
 
+/// Returns an AST ExprNode containing the provided Bytea.
+///
+/// # Arguments
+/// * `bytea` - A byte array to be converted to a Bytea AST node.
+///
+pub fn bytea<'a, T: AsRef<[u8]>>(bytea: T) -> ExprNode<'a> {
+    ExprNode::TypedString {
+        data_type: DataType::Bytea,
+        value: hex::encode(bytea).into(),
+    }
+}
+
 pub fn subquery<'a, T: Into<QueryNode<'a>>>(query_node: T) -> ExprNode<'a> {
     ExprNode::Subquery(Box::new(query_node.into()))
 }
@@ -384,8 +396,8 @@ mod tests {
         crate::{
             ast::Expr,
             ast_builder::{
-                col, date, expr, null, num, subquery, table, test_expr, text, time, timestamp,
-                uuid, QueryNode,
+                bytea, col, date, expr, null, num, subquery, table, test_expr, text, time,
+                timestamp, uuid, QueryNode,
             },
         },
     };
@@ -465,6 +477,10 @@ mod tests {
 
         let actual = uuid("936DA01F9ABD4d9d80C702AF85C822A8");
         let expected = "UUID '936DA01F9ABD4d9d80C702AF85C822A8'";
+        test_expr(actual, expected);
+
+        let actual = bytea(b"hello world");
+        let expected = "BYTEA '68656c6c6f20776f726c64'";
         test_expr(actual, expected);
 
         let actual = subquery(table("Foo").select().filter("id IS NOT NULL"));
