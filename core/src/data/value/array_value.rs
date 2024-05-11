@@ -43,34 +43,23 @@ pub enum ArrayValue {
     Null,
 }
 
-fn try_i128_to_json(v: i128) -> Result<JsonValue> {
-    JsonNumber::from_str(&v.to_string())
+fn try_big_number_to_json<T>(big_number: T) -> Result<JsonValue>
+where
+    T: ToString,
+{
+    JsonNumber::from_str(&big_number.to_string())
         .map(JsonValue::Number)
-        .map_err(|_| ValueError::UnreachableJsonNumberParseFailure(v.to_string()).into())
+        .map_err(|_| ValueError::UnreachableJsonNumberParseFailure(big_number.to_string()).into())
 }
 
-fn try_i128_vec_to_json(v: Vec<i128>) -> Result<JsonValue> {
-    v.into_iter().map(try_i128_to_json).collect()
-}
-
-fn try_u128_to_json(v: u128) -> Result<JsonValue> {
-    JsonNumber::from_str(&v.to_string())
-        .map(JsonValue::Number)
-        .map_err(|_| ValueError::UnreachableJsonNumberParseFailure(v.to_string()).into())
-}
-
-fn try_u128_vec_to_json(v: Vec<u128>) -> Result<JsonValue> {
-    v.into_iter().map(try_u128_to_json).collect()
-}
-
-fn try_decimal_to_json(v: Decimal) -> Result<JsonValue> {
-    JsonNumber::from_str(&v.to_string())
-        .map(JsonValue::Number)
-        .map_err(|_| ValueError::UnreachableJsonNumberParseFailure(v.to_string()).into())
-}
-
-fn try_decimal_vec_to_json(v: Vec<Decimal>) -> Result<JsonValue> {
-    v.into_iter().map(try_decimal_to_json).collect()
+fn try_big_number_vec_to_json<T>(big_number_vec: Vec<T>) -> Result<JsonValue>
+where
+    T: ToString,
+{
+    big_number_vec
+        .into_iter()
+        .map(try_big_number_to_json)
+        .collect()
 }
 
 fn try_map_to_json(v: HashMap<String, Value>) -> Result<JsonValue> {
@@ -95,6 +84,28 @@ fn try_list_vec_to_json(v: Vec<Vec<Value>>) -> Result<JsonValue> {
     v.into_iter().map(try_list_to_json).collect()
 }
 
+fn try_to_string_vec_to_json<T>(v: Vec<T>) -> Result<JsonValue>
+where
+    T: ToString,
+{
+    Ok(JsonValue::from(
+        v.into_iter()
+            .map(|item| item.to_string())
+            .collect::<Vec<String>>(),
+    ))
+}
+
+fn try_stringy_vec_to_json<T, U>(v: Vec<T>, stringifier: fn(T) -> U) -> Result<JsonValue>
+where
+    U: ToString,
+{
+    Ok(JsonValue::from(
+        v.into_iter()
+            .map(|item| stringifier(item).to_string())
+            .collect::<Vec<String>>(),
+    ))
+}
+
 impl TryFrom<ArrayValue> for JsonValue {
     type Error = Error;
 
@@ -105,55 +116,40 @@ impl TryFrom<ArrayValue> for JsonValue {
             ArrayValue::I16(v) => Ok(JsonValue::from(v)),
             ArrayValue::I32(v) => Ok(JsonValue::from(v)),
             ArrayValue::I64(v) => Ok(JsonValue::from(v)),
-            ArrayValue::I128(v) => try_i128_vec_to_json(v),
+            ArrayValue::I128(v) => try_big_number_vec_to_json(v),
             ArrayValue::U8(v) => Ok(JsonValue::from(v)),
             ArrayValue::U16(v) => Ok(JsonValue::from(v)),
             ArrayValue::U32(v) => Ok(JsonValue::from(v)),
             ArrayValue::U64(v) => Ok(JsonValue::from(v)),
-            ArrayValue::U128(v) => try_u128_vec_to_json(v),
+            ArrayValue::U128(v) => try_big_number_vec_to_json(v),
             ArrayValue::F32(v) => Ok(JsonValue::from(v)),
             ArrayValue::F64(v) => Ok(JsonValue::from(v)),
-            ArrayValue::Decimal(v) => try_decimal_vec_to_json(v),
+            ArrayValue::Decimal(v) => try_big_number_vec_to_json(v),
             ArrayValue::Str(v) => Ok(JsonValue::from(v)),
             ArrayValue::Bytea(v) => Ok(JsonValue::from(v)),
-            ArrayValue::Inet(v) => Ok(JsonValue::from(
-                v.into_iter()
-                    .map(|item| item.to_string())
-                    .collect::<Vec<String>>(),
-            )),
-            ArrayValue::Date(v) => Ok(JsonValue::from(
-                v.into_iter()
-                    .map(|item| item.to_string())
-                    .collect::<Vec<String>>(),
-            )),
-            ArrayValue::Timestamp(v) => Ok(JsonValue::from(
-                v.into_iter()
-                    .map(|item| Utc.from_utc_datetime(&item).to_string())
-                    .collect::<Vec<String>>(),
-            )),
-            ArrayValue::Time(v) => Ok(JsonValue::from(
-                v.into_iter()
-                    .map(|item| item.to_string())
-                    .collect::<Vec<String>>(),
-            )),
+            ArrayValue::Inet(v) => try_to_string_vec_to_json(v),
+            ArrayValue::Date(v) => try_to_string_vec_to_json(v),
+            ArrayValue::Timestamp(v) => {
+                try_stringy_vec_to_json(v, |item| Utc.from_utc_datetime(&item))
+            }
+
+            ArrayValue::Time(v) => try_to_string_vec_to_json(v),
+            // It is unwise to use `try_stringy_vec_to_json` for `Interval`
+            // because `item.to_sql_str()` already returns `String`,
+            // hence calling `to_string()` again in `try_stringy_vec_to_json` will
+            // clone the `String` which is unnecessary and not performant.
             ArrayValue::Interval(v) => Ok(JsonValue::from(
                 v.into_iter()
                     .map(|item| item.to_sql_str())
                     .collect::<Vec<String>>(),
             )),
-            ArrayValue::Uuid(v) => Ok(JsonValue::from(
-                v.into_iter()
-                    .map(|item| Uuid::from_u128(item).hyphenated().to_string())
-                    .collect::<Vec<String>>(),
-            )),
+            ArrayValue::Uuid(v) => {
+                try_stringy_vec_to_json(v, |item| Uuid::from_u128(item).hyphenated())
+            }
             ArrayValue::Map(v) => try_map_vec_to_json(v),
             ArrayValue::List(v) => try_list_vec_to_json(v),
             ArrayValue::Array(v) => v.into_iter().map(JsonValue::try_from).collect(),
-            ArrayValue::Point(v) => Ok(JsonValue::from(
-                v.into_iter()
-                    .map(|item| item.to_string())
-                    .collect::<Vec<String>>(),
-            )),
+            ArrayValue::Point(v) => try_to_string_vec_to_json(v),
             ArrayValue::Null => Ok(JsonValue::Null),
         }
     }
