@@ -5,6 +5,7 @@ use {
         data::point::Point,
         result::Result,
     },
+    array_value::ArrayValue,
     binary_op::TryBinaryOperator,
     chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
     core::ops::Sub,
@@ -13,6 +14,7 @@ use {
     std::{cmp::Ordering, collections::HashMap, fmt::Debug, net::IpAddr},
 };
 
+mod array_value;
 mod binary_op;
 mod convert;
 mod date;
@@ -55,6 +57,7 @@ pub enum Value {
     Uuid(u128),
     Map(HashMap<String, Value>),
     List(Vec<Value>),
+    Array(Vec<ArrayValue>),
     Point(Point),
     Null,
 }
