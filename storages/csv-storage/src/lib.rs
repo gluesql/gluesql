@@ -69,7 +69,7 @@ impl CsvStorage {
                 column_defs,
                 indexes: Vec::new(),
                 engine: None,
-                foreign_keys: None,
+                foreign_keys: Vec::new(),
                 comment: None,
             };
 

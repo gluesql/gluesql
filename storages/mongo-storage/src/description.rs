@@ -5,7 +5,7 @@ use {
 
 #[derive(Serialize, Deserialize)]
 pub struct TableDescription {
-    pub foreign_keys: Option<Vec<ForeignKey>>,
+    pub foreign_keys: Vec<ForeignKey>,
     pub comment: Option<String>,
 }
 

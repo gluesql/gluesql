@@ -69,7 +69,7 @@ impl<'a, T: GStore> Update<'a, T> {
     pub async fn apply(
         &self,
         row: Row,
-        foreign_keys: &Option<Vec<ForeignKey>>,
+        foreign_keys: &Vec<ForeignKey>,
         table_name: &'a str,
     ) -> Result<Row> {
         let context = RowContext::new(self.table_name, Cow::Borrowed(&row), None);
@@ -121,35 +121,33 @@ impl<'a, T: GStore> Update<'a, T> {
             .await?;
 
         for (id, value) in assignments.iter() {
-            if let Some(foreign_keys) = foreign_keys {
-                for ForeignKey {
-                    name,
-                    column,
-                    referred_table,
-                    referred_column,
-                    ..
-                } in foreign_keys
-                {
-                    if column != id || value == &Value::Null {
-                        continue;
-                    }
+            for ForeignKey {
+                name,
+                column,
+                referred_table,
+                referred_column,
+                ..
+            } in foreign_keys
+            {
+                if column != id || value == &Value::Null {
+                    continue;
+                }
 
-                    let no_parent = self
-                        .storage
-                        .fetch_data(referred_table, &Key::try_from(value)?)
-                        .await?
-                        .is_none();
+                let no_parent = self
+                    .storage
+                    .fetch_data(referred_table, &Key::try_from(value)?)
+                    .await?
+                    .is_none();
 
-                    if no_parent {
-                        return Err(ValidateError::ForeignKeyViolation {
-                            name: name.to_owned(),
-                            table: table_name.to_owned(),
-                            column: column.to_owned(),
-                            referred_table: referred_table.to_owned(),
-                            referred_column: referred_column.to_owned(),
-                        }
-                        .into());
+                if no_parent {
+                    return Err(ValidateError::ForeignKeyViolation {
+                        name: name.to_owned(),
+                        table: table_name.to_owned(),
+                        column: column.to_owned(),
+                        referred_table: referred_table.to_owned(),
+                        referred_column: referred_column.to_owned(),
                     }
+                    .into());
                 }
             }
         }

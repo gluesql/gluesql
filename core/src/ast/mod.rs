@@ -87,7 +87,7 @@ pub enum Statement {
         columns: Option<Vec<ColumnDef>>,
         source: Option<Box<Query>>,
         engine: Option<String>,
-        foreign_keys: Option<Vec<ForeignKey>>,
+        foreign_keys: Vec<ForeignKey>,
         comment: Option<String>,
     },
     /// CREATE FUNCTION
@@ -214,11 +214,7 @@ impl ToSql for Statement {
                     (Some(query), _) => Some(format!("AS {}", query.to_sql())),
                     (None, None) => None,
                     (None, Some(columns)) => {
-                        let foreign_keys = foreign_keys
-                            .as_deref()
-                            .unwrap_or_default()
-                            .iter()
-                            .map(ToSql::to_sql);
+                        let foreign_keys = foreign_keys.iter().map(ToSql::to_sql);
                         let body = columns
                             .iter()
                             .map(ToSql::to_sql)
@@ -472,7 +468,7 @@ mod tests {
                 columns: None,
                 source: None,
                 engine: None,
-                foreign_keys: None,
+                foreign_keys: Vec::new(),
                 comment: None,
             }
             .to_sql()
@@ -486,7 +482,7 @@ mod tests {
                 columns: None,
                 source: None,
                 engine: None,
-                foreign_keys: None,
+                foreign_keys: Vec::new(),
                 comment: None,
             }
             .to_sql()
@@ -507,7 +503,7 @@ mod tests {
                 },]),
                 source: None,
                 engine: None,
-                foreign_keys: None,
+                foreign_keys: Vec::new(),
                 comment: Some("this is comment".to_owned()),
             }
             .to_sql()
@@ -546,7 +542,7 @@ mod tests {
                 ]),
                 source: None,
                 engine: None,
-                foreign_keys: None,
+                foreign_keys: Vec::new(),
                 comment: None,
             }
             .to_sql()
@@ -590,7 +586,7 @@ mod tests {
                     offset: None
                 })),
                 engine: None,
-                foreign_keys: None,
+                foreign_keys: Vec::new(),
                 comment: None,
             }
             .to_sql()
@@ -611,7 +607,7 @@ mod tests {
                     offset: None
                 })),
                 engine: None,
-                foreign_keys: None,
+                foreign_keys: Vec::new(),
                 comment: None,
             }
             .to_sql()
@@ -628,7 +624,7 @@ mod tests {
                 columns: None,
                 source: None,
                 engine: Some("MEMORY".to_owned()),
-                foreign_keys: None,
+                foreign_keys: Vec::new(),
                 comment: None,
             }
             .to_sql()
@@ -649,7 +645,7 @@ mod tests {
                 },]),
                 source: None,
                 engine: Some("SLED".to_owned()),
-                foreign_keys: None,
+                foreign_keys: Vec::new(),
                 comment: None,
             }
             .to_sql()

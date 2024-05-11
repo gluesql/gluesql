@@ -33,7 +33,7 @@ pub struct Schema {
     pub column_defs: Option<Vec<ColumnDef>>,
     pub indexes: Vec<SchemaIndex>,
     pub engine: Option<String>,
-    pub foreign_keys: Option<Vec<ForeignKey>>,
+    pub foreign_keys: Vec<ForeignKey>,
     pub comment: Option<String>,
 }
 
@@ -216,7 +216,7 @@ mod tests {
             ]),
             indexes: Vec::new(),
             engine: None,
-            foreign_keys: None,
+            foreign_keys: Vec::new(),
             comment: None,
         };
 
@@ -231,7 +231,7 @@ mod tests {
             column_defs: None,
             indexes: Vec::new(),
             engine: None,
-            foreign_keys: None,
+            foreign_keys: Vec::new(),
             comment: None,
         };
         let ddl = r#"CREATE TABLE "Test";"#;
@@ -255,7 +255,7 @@ mod tests {
             }]),
             indexes: Vec::new(),
             engine: None,
-            foreign_keys: None,
+            foreign_keys: Vec::new(),
             comment: None,
         };
 
@@ -311,7 +311,7 @@ mod tests {
                 },
             ],
             engine: None,
-            foreign_keys: None,
+            foreign_keys: Vec::new(),
             comment: None,
         };
         let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);
@@ -357,7 +357,7 @@ CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);"#;
                 created: Utc::now().naive_utc(),
             }],
             engine: None,
-            foreign_keys: None,
+            foreign_keys: Vec::new(),
             comment: None,
         };
         let ddl = r#"CREATE TABLE "1" ("2" INT NULL, ";" INT NULL);

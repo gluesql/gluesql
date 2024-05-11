@@ -101,7 +101,7 @@ async fn fetch_vec_rows<T: GStore>(
     column_defs: Vec<ColumnDef>,
     columns: &[String],
     source: &Query,
-    foreign_keys: Option<Vec<ForeignKey>>,
+    foreign_keys: Vec<ForeignKey>,
 ) -> Result<RowsData> {
     let labels = Rc::from(
         column_defs
@@ -194,49 +194,47 @@ async fn fetch_vec_rows<T: GStore>(
 }
 
 async fn validate_foreign_key<T: GStore>(
-    foreign_keys: Option<Vec<ForeignKey>>,
+    foreign_keys: Vec<ForeignKey>,
     rows: &[Vec<Value>],
     storage: &T,
     table_name: &str,
     column_defs: &Rc<[ColumnDef]>,
 ) -> Result<()> {
-    if let Some(foreign_keys) = foreign_keys {
-        for foreign_key in foreign_keys {
-            let ForeignKey {
-                name,
-                column,
-                referred_table,
-                referred_column,
-                ..
-            } = foreign_key;
-            if let Some(target_index) = column_defs
-                .iter()
-                .enumerate()
-                .find(|(_, c)| c.name == column)
-            {
-                for row in rows.iter() {
-                    let child = row
-                        .get(target_index.0)
-                        .ok_or(InsertError::WrongColumnName(column.to_owned()))?;
+    for foreign_key in foreign_keys {
+        let ForeignKey {
+            name,
+            column,
+            referred_table,
+            referred_column,
+            ..
+        } = foreign_key;
+        if let Some(target_index) = column_defs
+            .iter()
+            .enumerate()
+            .find(|(_, c)| c.name == column)
+        {
+            for row in rows.iter() {
+                let child = row
+                    .get(target_index.0)
+                    .ok_or(InsertError::WrongColumnName(column.to_owned()))?;
 
-                    if child == &Value::Null {
-                        continue;
-                    }
-                    let no_parent = storage
-                        .fetch_data(&referred_table, &Key::try_from(child)?)
-                        .await?
-                        .is_none();
+                if child == &Value::Null {
+                    continue;
+                }
+                let no_parent = storage
+                    .fetch_data(&referred_table, &Key::try_from(child)?)
+                    .await?
+                    .is_none();
 
-                    if no_parent {
-                        return Err(ValidateError::ForeignKeyViolation {
-                            name,
-                            table: table_name.to_owned(),
-                            column: column.to_owned(),
-                            referred_table: referred_table.to_owned(),
-                            referred_column: referred_column.to_owned(),
-                        }
-                        .into());
+                if no_parent {
+                    return Err(ValidateError::ForeignKeyViolation {
+                        name,
+                        table: table_name.to_owned(),
+                        column: column.to_owned(),
+                        referred_table: referred_table.to_owned(),
+                        referred_column: referred_column.to_owned(),
                     }
+                    .into());
                 }
             }
         }

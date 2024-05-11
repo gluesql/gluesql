@@ -22,7 +22,7 @@ test_case!(insert_schema, {
         column_defs,
         indexes: Vec::new(),
         engine: None,
-        foreign_keys: None,
+        foreign_keys: Vec::new(),
         comment: Some("this is comment for table".to_owned()),
     };
 
@@ -56,7 +56,7 @@ test_case!(insert_schema, {
         column_defs: None,
         indexes: Vec::new(),
         engine: None,
-        foreign_keys: None,
+        foreign_keys: Vec::new(),
         comment: Some("this is comment for schemaless table".to_owned()),
     };
     storage.insert_schema(&schema).await.unwrap();

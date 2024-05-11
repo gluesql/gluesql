@@ -104,8 +104,6 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 .map(translate_foreign_key)
                 .collect::<Result<Vec<_>>>()?;
 
-            let foreign_keys = (!foreign_keys.is_empty()).then_some(foreign_keys);
-
             Ok(Statement::CreateTable {
                 if_not_exists: *if_not_exists,
                 name,

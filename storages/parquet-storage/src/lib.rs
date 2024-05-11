@@ -110,7 +110,7 @@ impl ParquetStorage {
             column_defs,
             indexes: vec![],
             engine: None,
-            foreign_keys: Some(foreign_keys),
+            foreign_keys,
             comment,
         }))
     }
@@ -196,7 +196,7 @@ impl ParquetStorage {
             }]),
             indexes: vec![],
             engine: None,
-            foreign_keys: None,
+            foreign_keys: Vec::new(),
             comment: None,
         }
     }

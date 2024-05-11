@@ -19,7 +19,7 @@ pub struct CreateTableOptions<'a> {
     pub if_not_exists: bool,
     pub source: &'a Option<Box<Query>>,
     pub engine: &'a Option<String>,
-    pub foreign_keys: &'a Option<Vec<ForeignKey>>,
+    pub foreign_keys: &'a Vec<ForeignKey>,
     pub comment: &'a Option<String>,
 }
 
@@ -118,61 +118,59 @@ pub async fn create_table<T: GStore + GStoreMut>(
         }
     }
 
-    if let Some(foreign_keys) = foreign_keys.as_deref() {
-        for foreign_key in foreign_keys {
-            let ForeignKey {
-                column,
-                referred_table,
-                referred_column,
-                ..
-            } = foreign_key;
-            let foreign_schema =
-                storage
-                    .fetch_schema(referred_table)
-                    .await?
-                    .ok_or_else(|| -> Error {
-                        AlterError::ForeignTableNotFound(referred_table.to_owned()).into()
-                    })?;
-
-            let foreign_column_def = foreign_schema
-                .column_defs
-                .and_then(|foreign_column_defs| {
-                    foreign_column_defs
-                        .into_iter()
-                        .find(|column_def| column_def.name == *referred_column)
-                })
+    for foreign_key in foreign_keys {
+        let ForeignKey {
+            column,
+            referred_table,
+            referred_column,
+            ..
+        } = foreign_key;
+        let foreign_schema =
+            storage
+                .fetch_schema(referred_table)
+                .await?
                 .ok_or_else(|| -> Error {
-                    AlterError::ForeignKeyColumnNotFound(referred_column.to_owned()).into()
+                    AlterError::ForeignTableNotFound(referred_table.to_owned()).into()
                 })?;
 
-            let target_column_def = target_columns_defs
-                .as_deref()
-                .and_then(|column_defs| {
-                    column_defs
-                        .iter()
-                        .find(|column_def| column_def.name == *column)
-                })
-                .ok_or_else(|| -> Error {
-                    AlterError::ForeignKeyColumnNotFound(column.to_owned()).into()
-                })?;
+        let foreign_column_def = foreign_schema
+            .column_defs
+            .and_then(|foreign_column_defs| {
+                foreign_column_defs
+                    .into_iter()
+                    .find(|column_def| column_def.name == *referred_column)
+            })
+            .ok_or_else(|| -> Error {
+                AlterError::ForeignKeyColumnNotFound(referred_column.to_owned()).into()
+            })?;
 
-            if target_column_def.data_type != foreign_column_def.data_type {
-                return Err(AlterError::ForeignKeyDataTypeMismatch {
-                    column: column.to_owned(),
-                    column_type: target_column_def.data_type.to_owned(),
-                    foreign_column: referred_column.to_owned(),
-                    foreign_column_type: foreign_column_def.data_type.to_owned(),
-                }
-                .into());
-            }
+        let target_column_def = target_columns_defs
+            .as_deref()
+            .and_then(|column_defs| {
+                column_defs
+                    .iter()
+                    .find(|column_def| column_def.name == *column)
+            })
+            .ok_or_else(|| -> Error {
+                AlterError::ForeignKeyColumnNotFound(column.to_owned()).into()
+            })?;
 
-            if foreign_column_def.unique.is_none() {
-                return Err(AlterError::ReferredColumnNotUnique {
-                    referred_table: referred_table.to_owned(),
-                    referred_column: referred_column.to_owned(),
-                }
-                .into());
+        if target_column_def.data_type != foreign_column_def.data_type {
+            return Err(AlterError::ForeignKeyDataTypeMismatch {
+                column: column.to_owned(),
+                column_type: target_column_def.data_type.to_owned(),
+                foreign_column: referred_column.to_owned(),
+                foreign_column_type: foreign_column_def.data_type.to_owned(),
             }
+            .into());
+        }
+
+        if foreign_column_def.unique.is_none() {
+            return Err(AlterError::ReferredColumnNotUnique {
+                referred_table: referred_table.to_owned(),
+                referred_column: referred_column.to_owned(),
+            }
+            .into());
         }
     }
 
@@ -224,35 +222,33 @@ pub async fn drop_table<T: GStore + GStoreMut>(
         let schemas = storage.fetch_all_schemas().await?;
         let referring_children: Vec<ReferringChild> = schemas
             .into_iter()
-            .filter_map(
+            .map(
                 |Schema {
                      table_name: referring_table_name,
                      foreign_keys,
                      ..
                  }| {
-                    foreign_keys.map(|foreign_keys| {
-                        foreign_keys
-                            .into_iter()
-                            .filter_map(
-                                |ForeignKey {
-                                     name: constraint_name,
-                                     referred_table,
-                                     ..
-                                 }| {
-                                    if &referred_table == table_name
-                                        && &referring_table_name != table_name
-                                    {
-                                        return Some(ReferringChild {
-                                            table_name: referring_table_name.clone(),
-                                            constraint_name,
-                                        });
-                                    }
+                    foreign_keys
+                        .into_iter()
+                        .filter_map(
+                            |ForeignKey {
+                                 name: constraint_name,
+                                 referred_table,
+                                 ..
+                             }| {
+                                if &referred_table == table_name
+                                    && &referring_table_name != table_name
+                                {
+                                    return Some(ReferringChild {
+                                        table_name: referring_table_name.clone(),
+                                        constraint_name,
+                                    });
+                                }
 
-                                    None
-                                },
-                            )
-                            .collect::<Vec<_>>()
-                    })
+                                None
+                            },
+                        )
+                        .collect::<Vec<_>>()
                 },
             )
             .flatten()
@@ -275,9 +271,9 @@ pub async fn drop_table<T: GStore + GStoreMut>(
                         .fetch_schema(table_name)
                         .await?
                         .ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
-                    if let Some(foreign_keys) = schema.foreign_keys.as_mut() {
-                        foreign_keys.retain(|foreign_key| foreign_key.name != constraint_name)
-                    }
+                    schema
+                        .foreign_keys
+                        .retain(|foreign_key| foreign_key.name != constraint_name);
                     storage.insert_schema(&schema).await?;
                 }
             }

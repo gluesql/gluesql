@@ -21,7 +21,7 @@ impl Validator {
     pub fn new(
         labels: Vec<String>,
         column_types: Document,
-        foreign_keys: Option<Vec<ForeignKey>>,
+        foreign_keys: Vec<ForeignKey>,
         comment: Option<String>,
     ) -> Result<Self> {
         let mut required = vec!["_id".to_owned()];

@@ -485,13 +485,11 @@ impl ParquetStorage {
     fn gather_metadata_from_glue_schema(schema: &Schema) -> Result<Option<Vec<KeyValue>>> {
         let mut metadata = Vec::new();
 
-        if let Some(foreign_keys) = &schema.foreign_keys {
-            for foreign_key in foreign_keys {
-                metadata.push(KeyValue {
-                    key: format!("foreign_key_{}", foreign_key.name),
-                    value: Some(serde_json::to_string(foreign_key).map_storage_err()?),
-                });
-            }
+        for foreign_key in &schema.foreign_keys {
+            metadata.push(KeyValue {
+                key: format!("foreign_key_{}", foreign_key.name),
+                value: Some(serde_json::to_string(&foreign_key).map_storage_err()?),
+            });
         }
 
         if let Some(column_defs) = &schema.column_defs {

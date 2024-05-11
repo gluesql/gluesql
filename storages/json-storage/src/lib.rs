@@ -69,7 +69,7 @@ impl JsonStorage {
 
                 (schema.column_defs, schema.foreign_keys, schema.comment)
             }
-            false => (None, None, None),
+            false => (None, Vec::new(), None),
         };
 
         Ok(Some(Schema {
