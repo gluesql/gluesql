@@ -2,7 +2,7 @@ use {
     super::TranslateError,
     crate::{ast::DataType, result::Result},
     sqlparser::ast::{
-        DataType as SqlDataType, ExactNumberInfo as SqlExactNumberInfo,
+        ArrayElemTypeDef, DataType as SqlDataType, ExactNumberInfo as SqlExactNumberInfo,
         TimezoneInfo as SqlTimezoneInfo,
     },
 };
@@ -28,6 +28,12 @@ pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
         SqlDataType::Interval => Ok(DataType::Interval),
         SqlDataType::Uuid => Ok(DataType::Uuid),
         SqlDataType::Decimal(SqlExactNumberInfo::None) => Ok(DataType::Decimal),
+        SqlDataType::Array(typedef) => match typedef {
+            ArrayElemTypeDef::SquareBracket(types) => Ok(DataType::Array(Box::new(
+                translate_data_type(types.as_ref())?,
+            ))),
+            _ => Err(TranslateError::UnsupportedDataType(sql_data_type.to_string()).into()),
+        },
         SqlDataType::Custom(name, _idents) => {
             let name = name.0.get(0).map(|v| v.value.to_uppercase());
 
