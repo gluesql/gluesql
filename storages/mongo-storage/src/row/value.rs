@@ -189,6 +189,14 @@ impl IntoBson for Value {
 
                 Ok(Bson::Array(bson))
             }
+            // Value::Array(val) => {
+            //     let bson = val
+            //         .into_iter()
+            //         .map(|val| val.into_bson())
+            //         .collect::<Result<Vec<_>>>()?;
+            //
+            //     Ok(Bson::Array(bson))
+            // }
             Value::Bytea(bytes) => Ok(Bson::Binary(bson::Binary {
                 subtype: bson::spec::BinarySubtype::Generic,
                 bytes,

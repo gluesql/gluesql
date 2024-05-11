@@ -169,9 +169,7 @@ impl Value {
             Value::Uuid(_) => Some(DataType::Uuid),
             Value::Map(_) => Some(DataType::Map),
             Value::List(_) => Some(DataType::List),
-            Value::Array(array_value) => array_value
-                .get_type()
-                .map(|data_type| DataType::Array(Box::new(data_type))),
+            Value::Array(array_value) => Some(DataType::Array(Box::new(array_value.get_type()))),
             Value::Point(_) => Some(DataType::Point),
             Value::Null => None,
         }
@@ -204,7 +202,14 @@ impl Value {
             Value::Map(_) => matches!(data_type, DataType::Map),
             Value::List(_) => matches!(data_type, DataType::List),
             Value::Point(_) => matches!(data_type, DataType::Point),
-            Value::Array(array_value) => array_value.get_type().as_ref() == Some(data_type),
+            // First we check if the data type is an array,
+            // then we check if the inner data type of the array is the same as the data type of the value
+            Value::Array(array_value) => {
+                matches!(data_type, DataType::Array(_)) && {
+                    let array_data_type = array_value.get_type();
+                    data_type == &DataType::Array(Box::new(array_data_type))
+                }
+            }
             Value::Null => true,
         };
 
