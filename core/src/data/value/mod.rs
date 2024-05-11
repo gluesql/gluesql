@@ -57,7 +57,7 @@ pub enum Value {
     Uuid(u128),
     Map(HashMap<String, Value>),
     List(Vec<Value>),
-    Array(Vec<ArrayValue>),
+    Array(ArrayValue),
     Point(Point),
     Null,
 }
@@ -169,6 +169,9 @@ impl Value {
             Value::Uuid(_) => Some(DataType::Uuid),
             Value::Map(_) => Some(DataType::Map),
             Value::List(_) => Some(DataType::List),
+            Value::Array(array_value) => array_value
+                .get_type()
+                .map(|data_type| DataType::Array(Box::new(data_type))),
             Value::Point(_) => Some(DataType::Point),
             Value::Null => None,
         }
@@ -201,6 +204,7 @@ impl Value {
             Value::Map(_) => matches!(data_type, DataType::Map),
             Value::List(_) => matches!(data_type, DataType::List),
             Value::Point(_) => matches!(data_type, DataType::Point),
+            Value::Array(array_value) => array_value.get_type().as_ref() == Some(data_type),
             Value::Null => true,
         };
 

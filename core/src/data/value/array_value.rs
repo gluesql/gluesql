@@ -1,6 +1,7 @@
 use {
     super::{Interval, Value},
     crate::{
+        ast::DataType,
         data::point::Point,
         result::{Error, Result, ValueError},
     },
@@ -41,6 +42,40 @@ pub enum ArrayValue {
     Array(Vec<ArrayValue>),
     Point(Vec<Point>),
     Null,
+}
+
+impl ArrayValue {
+    pub fn get_type(&self) -> Option<DataType> {
+        match self {
+            ArrayValue::Bool(_) => Some(DataType::Boolean),
+            ArrayValue::I8(_) => Some(DataType::Int8),
+            ArrayValue::I16(_) => Some(DataType::Int16),
+            ArrayValue::I32(_) => Some(DataType::Int32),
+            ArrayValue::I64(_) => Some(DataType::Int),
+            ArrayValue::I128(_) => Some(DataType::Int128),
+            ArrayValue::U8(_) => Some(DataType::Uint8),
+            ArrayValue::U16(_) => Some(DataType::Uint16),
+            ArrayValue::U32(_) => Some(DataType::Uint32),
+            ArrayValue::U64(_) => Some(DataType::Uint64),
+            ArrayValue::U128(_) => Some(DataType::Uint128),
+            ArrayValue::F32(_) => Some(DataType::Float32),
+            ArrayValue::F64(_) => Some(DataType::Float),
+            ArrayValue::Decimal(_) => Some(DataType::Decimal),
+            ArrayValue::Str(_) => Some(DataType::Text),
+            ArrayValue::Bytea(_) => Some(DataType::Bytea),
+            ArrayValue::Inet(_) => Some(DataType::Inet),
+            ArrayValue::Date(_) => Some(DataType::Date),
+            ArrayValue::Timestamp(_) => Some(DataType::Timestamp),
+            ArrayValue::Time(_) => Some(DataType::Time),
+            ArrayValue::Interval(_) => Some(DataType::Interval),
+            ArrayValue::Uuid(_) => Some(DataType::Uuid),
+            ArrayValue::Map(_) => Some(DataType::Map),
+            ArrayValue::List(_) => Some(DataType::List),
+            ArrayValue::Array(_) => Some(DataType::Array(Box::new(DataType::Boolean))),
+            ArrayValue::Point(_) => Some(DataType::Point),
+            ArrayValue::Null => None,
+        }
+    }
 }
 
 fn try_big_number_to_json<T>(big_number: T) -> Result<JsonValue>
@@ -132,7 +167,6 @@ impl TryFrom<ArrayValue> for JsonValue {
             ArrayValue::Timestamp(v) => {
                 try_stringy_vec_to_json(v, |item| Utc.from_utc_datetime(&item))
             }
-
             ArrayValue::Time(v) => try_to_string_vec_to_json(v),
             // It is unwise to use `try_stringy_vec_to_json` for `Interval`
             // because `item.to_sql_str()` already returns `String`,
