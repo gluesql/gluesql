@@ -22,6 +22,9 @@ pub enum KeyError {
     #[error("LIST data type cannot be used as Key")]
     ListTypeKeyNotSupported,
 
+    #[error("ARRAY data type cannot be used as Key")]
+    ArrayTypeKeyNotSupported,
+
     #[error("POINT data type cannot be used as Key")]
     PointTypeKeyNotSupported,
 }
@@ -153,6 +156,7 @@ impl TryFrom<Value> for Key {
             Null => Ok(Key::None),
             Map(_) => Err(KeyError::MapTypeKeyNotSupported.into()),
             List(_) => Err(KeyError::ListTypeKeyNotSupported.into()),
+            Array(_) => Err(KeyError::ArrayTypeKeyNotSupported.into()),
             Point(_) => Err(KeyError::PointTypeKeyNotSupported.into()),
         }
     }
