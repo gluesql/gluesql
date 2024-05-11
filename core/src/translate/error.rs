@@ -147,6 +147,9 @@ pub enum TranslateError {
     #[error("unreachable empty table")]
     UnreachableEmptyTable,
 
+    #[error("unreachable - FROM cannot be ommitted in DELETE statement")]
+    UnreachableOmittingFromInDelete,
+
     #[error("unimplemented - compound object is supported: {0}")]
     CompoundObjectNotSupported(String),
 
