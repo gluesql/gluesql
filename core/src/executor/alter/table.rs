@@ -222,7 +222,7 @@ pub async fn drop_table<T: GStore + GStoreMut>(
         let schemas = storage.fetch_all_schemas().await?;
         let referring_children: Vec<ReferringChild> = schemas
             .into_iter()
-            .map(
+            .flat_map(
                 |Schema {
                      table_name: referring_table_name,
                      foreign_keys,
@@ -251,7 +251,6 @@ pub async fn drop_table<T: GStore + GStoreMut>(
                         .collect::<Vec<_>>()
                 },
             )
-            .flatten()
             .collect();
 
         match (!referring_children.is_empty(), cascade) {
