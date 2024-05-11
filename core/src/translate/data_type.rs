@@ -32,7 +32,9 @@ pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
             ArrayElemTypeDef::SquareBracket(types) => Ok(DataType::Array(Box::new(
                 translate_data_type(types.as_ref())?,
             ))),
-            _ => Err(TranslateError::UnsupportedDataType(sql_data_type.to_string()).into()),
+            _ => Err(
+                TranslateError::UnsupportedArrayTypeDefinition(sql_data_type.to_string()).into(),
+            ),
         },
         SqlDataType::Custom(name, _idents) => {
             let name = name.0.get(0).map(|v| v.value.to_uppercase());
