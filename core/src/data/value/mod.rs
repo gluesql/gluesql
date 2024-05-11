@@ -5,7 +5,6 @@ use {
         data::point::Point,
         result::Result,
     },
-    array_value::ArrayValue,
     binary_op::TryBinaryOperator,
     chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
     core::ops::Sub,
@@ -26,6 +25,7 @@ mod selector;
 mod uuid;
 
 pub use {
+    array_value::ArrayValue,
     convert::ConvertError,
     error::{NumericBinaryOperator, ValueError},
     json::HashMapJsonExt,

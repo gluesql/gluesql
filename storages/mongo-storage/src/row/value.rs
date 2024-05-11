@@ -3,11 +3,10 @@ use {
     gluesql_core::{
         ast::{Expr, ToSql},
         chrono::{NaiveDate, NaiveDateTime, TimeZone, Utc},
-        data::{Interval, Point},
+        data::{value::ArrayValue, Interval, Point, Value},
         parse_sql::parse_interval,
-        prelude::{DataType, Error},
+        prelude::{DataType, Error, Result},
         translate::translate_expr,
-        {data::Value, prelude::Result},
     },
     mongodb::bson::{self, doc, Binary, Bson, DateTime, Decimal128, Document},
     rust_decimal::Decimal,
@@ -189,14 +188,7 @@ impl IntoBson for Value {
 
                 Ok(Bson::Array(bson))
             }
-            // Value::Array(val) => {
-            //     let bson = val
-            //         .into_iter()
-            //         .map(|val| val.into_bson())
-            //         .collect::<Result<Vec<_>>>()?;
-            //
-            //     Ok(Bson::Array(bson))
-            // }
+            Value::Array(array_value) => array_value.into_bson(),
             Value::Bytea(bytes) => Ok(Bson::Binary(bson::Binary {
                 subtype: bson::spec::BinarySubtype::Generic,
                 bytes,
@@ -257,6 +249,113 @@ impl IntoBson for Value {
             }
 
             Value::Interval(val) => Ok(Bson::String(val.to_sql_str())),
+        }
+    }
+}
+
+fn vec_to_bson<T>(val: Vec<T>, bsonizer: fn(T) -> Bson) -> Result<Bson> {
+    Ok(Bson::Array(val.into_iter().map(bsonizer).collect()))
+}
+
+fn try_vec_to_bson<T>(val: Vec<T>, bsonizer: fn(T) -> Result<Bson>) -> Result<Bson> {
+    val.into_iter()
+        .map(bsonizer)
+        .collect::<Result<Vec<_>>>()
+        .map(Bson::Array)
+}
+
+impl IntoBson for ArrayValue {
+    fn into_bson(self) -> Result<Bson> {
+        match self {
+            ArrayValue::I8(val) => vec_to_bson(val, |val| Bson::Int32(val.into())),
+            ArrayValue::I16(val) => vec_to_bson(val, |val| Bson::Int32(val.into())),
+            ArrayValue::I32(val) => vec_to_bson(val, Bson::Int32),
+            ArrayValue::I64(val) => vec_to_bson(val, Bson::Int64),
+            ArrayValue::I128(val) => vec_to_bson(val, |val| {
+                Bson::Decimal128(Decimal128::from_bytes(val.to_be_bytes()))
+            }),
+            ArrayValue::U8(val) => vec_to_bson(val, |val| Bson::Int32(val.into())),
+            ArrayValue::U16(val) => vec_to_bson(val, |val| Bson::Int32(val.into())),
+            ArrayValue::U32(val) => vec_to_bson(val, |val| Bson::Int64(val.into())),
+            ArrayValue::U64(val) => vec_to_bson(val, |val| {
+                let mut bytes_128: [u8; 16] = [0; 16];
+                bytes_128[..8].copy_from_slice(&val.to_be_bytes());
+
+                Bson::Decimal128(Decimal128::from_bytes(bytes_128))
+            }),
+            ArrayValue::U128(val) => vec_to_bson(val, |val| {
+                Bson::Decimal128(Decimal128::from_bytes(val.to_be_bytes()))
+            }),
+            ArrayValue::F32(val) => vec_to_bson(val, |val| Bson::Double(val.into())),
+            ArrayValue::F64(val) => vec_to_bson(val, Bson::Double),
+            ArrayValue::Decimal(decimal) => vec_to_bson(decimal, |val| {
+                Bson::Decimal128(Decimal128::from_bytes(val.serialize()))
+            }),
+            ArrayValue::Bool(val) => vec_to_bson(val, Bson::Boolean),
+            ArrayValue::Str(val) => vec_to_bson(val, Bson::String),
+            ArrayValue::Bytea(bytes) => vec_to_bson(bytes, |val| {
+                Bson::Binary(bson::Binary {
+                    subtype: bson::spec::BinarySubtype::Generic,
+                    bytes: val,
+                })
+            }),
+            ArrayValue::Uuid(val) => vec_to_bson(val, |val| {
+                Bson::Binary(Binary {
+                    subtype: bson::spec::BinarySubtype::Uuid,
+                    bytes: val.to_be_bytes().to_vec(),
+                })
+            }),
+            ArrayValue::Date(vals) => try_vec_to_bson(vals, |val| {
+                let utc = Utc.from_utc_datetime(
+                    &val.and_hms_opt(0, 0, 0)
+                        .map_storage_err(MongoStorageError::UnsupportedBsonType)?,
+                );
+                let datetime = DateTime::from_chrono(utc);
+
+                Ok(Bson::DateTime(datetime))
+            }),
+            ArrayValue::Timestamp(val) => vec_to_bson(val, |val| Bson::String(val.to_string())),
+            ArrayValue::Time(val) => try_vec_to_bson(val, |val| {
+                let date = NaiveDate::from_ymd_opt(1970, 1, 1)
+                    .map_storage_err(MongoStorageError::UnsupportedBsonType)?;
+                let utc = Utc.from_utc_datetime(&NaiveDateTime::new(date, val));
+                let datetime = DateTime::from_chrono(utc);
+
+                Ok(Bson::DateTime(datetime))
+            }),
+            ArrayValue::Point(val) => vec_to_bson(val, |Point { x, y }| {
+                Bson::Document(doc! {  "x": x, "y": y })
+            }),
+            ArrayValue::Inet(val) => vec_to_bson(val, |val| Bson::String(val.to_string())),
+            ArrayValue::Map(hash_map) => try_vec_to_bson(hash_map, |hash_map| {
+                let doc =
+                    hash_map
+                        .into_iter()
+                        .try_fold(Document::new(), |mut acc, (key, value)| {
+                            acc.extend(doc! {key: value.into_bson()?});
+
+                            Ok::<_, Error>(acc)
+                        })?;
+
+                Ok(Bson::Document(doc))
+            }),
+
+            ArrayValue::Interval(val) => vec_to_bson(val, |val| Bson::String(val.to_sql_str())),
+            ArrayValue::List(val) => val
+                .into_iter()
+                .map(|val| {
+                    val.into_iter()
+                        .map(IntoBson::into_bson)
+                        .collect::<Result<Vec<_>>>()
+                        .map(Bson::Array)
+                })
+                .collect::<Result<Vec<_>>>()
+                .map(Bson::Array),
+            ArrayValue::Array(array_values) => array_values
+                .into_iter()
+                .map(IntoBson::into_bson)
+                .collect::<Result<Vec<_>>>()
+                .map(Bson::Array),
         }
     }
 }
