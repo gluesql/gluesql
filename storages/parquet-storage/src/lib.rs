@@ -12,6 +12,7 @@ use {
         file::{reader::FileReader, serialized_reader::SerializedFileReader},
         record::Row,
     },
+    serde_json::from_str,
     std::{
         collections::HashMap,
         fs::{self, File},
@@ -71,8 +72,11 @@ impl ParquetStorage {
                     let fk = kv
                         .value
                         .as_ref()
-                        .map(|x| ForeignKey::from_sql(x))
-                        .ok_or(Error::StorageMsg("No value found on metadata".to_owned()))??;
+                        .map(|x| from_str::<ForeignKey>(x))
+                        .map_storage_err(Error::StorageMsg(
+                            "No value found on metadata".to_owned(),
+                        ))?
+                        .map_storage_err()?;
 
                     foreign_keys.push(fk);
                 }

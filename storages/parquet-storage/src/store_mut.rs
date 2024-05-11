@@ -176,7 +176,7 @@ impl ParquetStorage {
         let schema_type: Arc<SchemaType> =
             self.convert_to_parquet_schema(&schema).map_storage_err()?;
 
-        let metadata = Self::gather_metadata_from_glue_schema(&schema);
+        let metadata = Self::gather_metadata_from_glue_schema(&schema)?;
 
         let props = Arc::new(
             WriterProperties::builder()
@@ -482,14 +482,14 @@ impl ParquetStorage {
         Ok(Arc::new(parquet_schema))
     }
 
-    fn gather_metadata_from_glue_schema(schema: &Schema) -> Option<Vec<KeyValue>> {
+    fn gather_metadata_from_glue_schema(schema: &Schema) -> Result<Option<Vec<KeyValue>>> {
         let mut metadata = Vec::new();
 
         if let Some(foreign_keys) = &schema.foreign_keys {
             for foreign_key in foreign_keys {
                 metadata.push(KeyValue {
                     key: format!("foreign_key_{}", foreign_key.name),
-                    value: Some(foreign_key.to_sql()),
+                    value: Some(serde_json::to_string(foreign_key).map_storage_err()?),
                 });
             }
         }
@@ -548,7 +548,7 @@ impl ParquetStorage {
             });
         }
 
-        Some(metadata)
+        Ok(Some(metadata))
     }
 
     fn get_parquet_type_mappings(data_type: &DataType) -> Result<(Type, Option<ConvertedType>)> {
