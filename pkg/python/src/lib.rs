@@ -1,5 +1,3 @@
-#![cfg(feature = "include-python-workspace")]
-
 use {
     error::GlueSQLError,
     gluesql_core::{

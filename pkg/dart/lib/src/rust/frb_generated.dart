@@ -3,7 +3,9 @@
 
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
+import 'api/payload.dart';
 import 'api/simple.dart';
+import 'api/value.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.io.dart' if (dart.library.html) 'frb_generated.web.dart';
@@ -56,7 +58,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.0.0-dev.32';
 
   @override
-  int get rustContentHash => -1918914929;
+  int get rustContentHash => -1064277823;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -67,9 +69,100 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
-  String greet({required String name, dynamic hint});
+  Future<List<DartPayload>> execute({required String sql, dynamic hint});
+
+  Future<Payload> greet({dynamic hint});
 
   Future<void> initApp({dynamic hint});
+
+  RustArcIncrementStrongCountFnType
+      get rust_arc_increment_strong_count_DataType;
+
+  RustArcDecrementStrongCountFnType
+      get rust_arc_decrement_strong_count_DataType;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_DataTypePtr;
+
+  RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_Decimal;
+
+  RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_Decimal;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_DecimalPtr;
+
+  RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_Error;
+
+  RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_Error;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_ErrorPtr;
+
+  RustArcIncrementStrongCountFnType
+      get rust_arc_increment_strong_count_Interval;
+
+  RustArcDecrementStrongCountFnType
+      get rust_arc_decrement_strong_count_Interval;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_IntervalPtr;
+
+  RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_IpAddr;
+
+  RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_IpAddr;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_IpAddrPtr;
+
+  RustArcIncrementStrongCountFnType
+      get rust_arc_increment_strong_count_NaiveDate;
+
+  RustArcDecrementStrongCountFnType
+      get rust_arc_decrement_strong_count_NaiveDate;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_NaiveDatePtr;
+
+  RustArcIncrementStrongCountFnType
+      get rust_arc_increment_strong_count_NaiveTime;
+
+  RustArcDecrementStrongCountFnType
+      get rust_arc_decrement_strong_count_NaiveTime;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_NaiveTimePtr;
+
+  RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_Payload;
+
+  RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_Payload;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_PayloadPtr;
+
+  RustArcIncrementStrongCountFnType
+      get rust_arc_increment_strong_count_PayloadVariable;
+
+  RustArcDecrementStrongCountFnType
+      get rust_arc_decrement_strong_count_PayloadVariable;
+
+  CrossPlatformFinalizerArg
+      get rust_arc_decrement_strong_count_PayloadVariablePtr;
+
+  RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_Point;
+
+  RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_Point;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_PointPtr;
+
+  RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_Value;
+
+  RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_Value;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_ValuePtr;
+
+  RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_I128;
+
+  RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_I128;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_I128Ptr;
+
+  RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_U128;
+
+  RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_U128;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_U128Ptr;
 }
 
 class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
@@ -81,19 +174,46 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
-  String greet({required String name, dynamic hint}) {
-    return handler.executeSync(SyncTask(
-      callFfi: () {
+  Future<List<DartPayload>> execute({required String sql, dynamic hint}) {
+    return handler.executeNormal(NormalTask(
+      callFfi: (port_) {
         final serializer = SseSerializer(generalizedFrbRustBinding);
-        sse_encode_String(name, serializer);
-        return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 1)!;
+        sse_encode_String(sql, serializer);
+        pdeCallFfi(generalizedFrbRustBinding, serializer,
+            funcId: 2, port: port_);
       },
       codec: SseCodec(
-        decodeSuccessData: sse_decode_String,
+        decodeSuccessData: sse_decode_list_dart_payload,
+        decodeErrorData:
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockError,
+      ),
+      constMeta: kExecuteConstMeta,
+      argValues: [sql],
+      apiImpl: this,
+      hint: hint,
+    ));
+  }
+
+  TaskConstMeta get kExecuteConstMeta => const TaskConstMeta(
+        debugName: "execute",
+        argNames: ["sql"],
+      );
+
+  @override
+  Future<Payload> greet({dynamic hint}) {
+    return handler.executeNormal(NormalTask(
+      callFfi: (port_) {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        pdeCallFfi(generalizedFrbRustBinding, serializer,
+            funcId: 1, port: port_);
+      },
+      codec: SseCodec(
+        decodeSuccessData:
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayload,
         decodeErrorData: null,
       ),
       constMeta: kGreetConstMeta,
-      argValues: [name],
+      argValues: [],
       apiImpl: this,
       hint: hint,
     ));
@@ -101,7 +221,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kGreetConstMeta => const TaskConstMeta(
         debugName: "greet",
-        argNames: ["name"],
+        argNames: [],
       );
 
   @override
@@ -110,7 +230,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       callFfi: (port_) {
         final serializer = SseSerializer(generalizedFrbRustBinding);
         pdeCallFfi(generalizedFrbRustBinding, serializer,
-            funcId: 2, port: port_);
+            funcId: 3, port: port_);
       },
       codec: SseCodec(
         decodeSuccessData: sse_decode_unit,
@@ -128,6 +248,332 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         argNames: [],
       );
 
+  RustArcIncrementStrongCountFnType
+      get rust_arc_increment_strong_count_DataType => wire
+          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDataType;
+
+  RustArcDecrementStrongCountFnType
+      get rust_arc_decrement_strong_count_DataType => wire
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDataType;
+
+  RustArcIncrementStrongCountFnType
+      get rust_arc_increment_strong_count_Decimal => wire
+          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDecimal;
+
+  RustArcDecrementStrongCountFnType
+      get rust_arc_decrement_strong_count_Decimal => wire
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDecimal;
+
+  RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_Error =>
+      wire.rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockError;
+
+  RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_Error =>
+      wire.rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockError;
+
+  RustArcIncrementStrongCountFnType
+      get rust_arc_increment_strong_count_Interval => wire
+          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockInterval;
+
+  RustArcDecrementStrongCountFnType
+      get rust_arc_decrement_strong_count_Interval => wire
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockInterval;
+
+  RustArcIncrementStrongCountFnType
+      get rust_arc_increment_strong_count_IpAddr => wire
+          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockIpAddr;
+
+  RustArcDecrementStrongCountFnType
+      get rust_arc_decrement_strong_count_IpAddr => wire
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockIpAddr;
+
+  RustArcIncrementStrongCountFnType
+      get rust_arc_increment_strong_count_NaiveDate => wire
+          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveDate;
+
+  RustArcDecrementStrongCountFnType
+      get rust_arc_decrement_strong_count_NaiveDate => wire
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveDate;
+
+  RustArcIncrementStrongCountFnType
+      get rust_arc_increment_strong_count_NaiveTime => wire
+          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveTime;
+
+  RustArcDecrementStrongCountFnType
+      get rust_arc_decrement_strong_count_NaiveTime => wire
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveTime;
+
+  RustArcIncrementStrongCountFnType
+      get rust_arc_increment_strong_count_Payload => wire
+          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayload;
+
+  RustArcDecrementStrongCountFnType
+      get rust_arc_decrement_strong_count_Payload => wire
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayload;
+
+  RustArcIncrementStrongCountFnType
+      get rust_arc_increment_strong_count_PayloadVariable => wire
+          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayloadVariable;
+
+  RustArcDecrementStrongCountFnType
+      get rust_arc_decrement_strong_count_PayloadVariable => wire
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayloadVariable;
+
+  RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_Point =>
+      wire.rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPoint;
+
+  RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_Point =>
+      wire.rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPoint;
+
+  RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_Value =>
+      wire.rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue;
+
+  RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_Value =>
+      wire.rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue;
+
+  RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_I128 =>
+      wire.rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocki128;
+
+  RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_I128 =>
+      wire.rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocki128;
+
+  RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_U128 =>
+      wire.rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocku128;
+
+  RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_U128 =>
+      wire.rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocku128;
+
+  @protected
+  DataType
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDataType(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return DataType.dcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  Decimal
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDecimal(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return Decimal.dcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  Error
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockError(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return Error.dcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  Interval
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockInterval(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return Interval.dcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  IpAddr
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockIpAddr(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return IpAddr.dcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  NaiveDate
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveDate(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return NaiveDate.dcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  NaiveTime
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveTime(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return NaiveTime.dcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  Payload
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayload(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return Payload.dcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  PayloadVariable
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayloadVariable(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return PayloadVariable.dcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  Point
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPoint(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return Point.dcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  Value
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return Value.dcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  I128
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocki128(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return I128.dcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  U128
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocku128(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return U128.dcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  DateTime dco_decode_Chrono_Naive(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dcoDecodeTimestamp(ts: dco_decode_i_64(raw).toInt(), isUtc: true);
+  }
+
+  @protected
+  Map<String, Value>
+      dco_decode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return Map.fromEntries(
+        dco_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_value(
+                raw)
+            .map((e) => MapEntry(e.$1, e.$2)));
+  }
+
+  @protected
+  Map<String, DartValue> dco_decode_Map_String_dart_value(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return Map.fromEntries(dco_decode_list_record_string_dart_value(raw)
+        .map((e) => MapEntry(e.$1, e.$2)));
+  }
+
+  @protected
+  DataType
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDataType(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return DataType.dcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  Decimal
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDecimal(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return Decimal.dcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  Error
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockError(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return Error.dcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  Interval
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockInterval(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return Interval.dcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  IpAddr
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockIpAddr(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return IpAddr.dcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  NaiveDate
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveDate(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return NaiveDate.dcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  NaiveTime
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveTime(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return NaiveTime.dcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  Payload
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayload(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return Payload.dcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  PayloadVariable
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayloadVariable(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return PayloadVariable.dcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  Point
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPoint(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return Point.dcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  Value
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return Value.dcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  I128
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocki128(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return I128.dcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  U128
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocku128(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return U128.dcoDecode(raw as List<dynamic>);
+  }
+
   @protected
   String dco_decode_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
@@ -135,9 +581,373 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  bool dco_decode_bool(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as bool;
+  }
+
+  @protected
+  DartPayload dco_decode_dart_payload(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return DartPayload_ShowColumns(
+          dco_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_data_type(
+              raw[1]),
+        );
+      case 1:
+        return DartPayload_Create();
+      case 2:
+        return DartPayload_Insert(
+          dco_decode_usize(raw[1]),
+        );
+      case 3:
+        return DartPayload_Select(
+          labels: dco_decode_list_String(raw[1]),
+          rows: dco_decode_list_list_dart_value(raw[2]),
+        );
+      case 4:
+        return DartPayload_SelectMap(
+          dco_decode_list_Map_String_dart_value(raw[1]),
+        );
+      case 5:
+        return DartPayload_Delete(
+          dco_decode_usize(raw[1]),
+        );
+      case 6:
+        return DartPayload_Update(
+          dco_decode_usize(raw[1]),
+        );
+      case 7:
+        return DartPayload_DropTable();
+      case 8:
+        return DartPayload_DropFunction();
+      case 9:
+        return DartPayload_AlterTable();
+      case 10:
+        return DartPayload_CreateIndex();
+      case 11:
+        return DartPayload_DropIndex();
+      case 12:
+        return DartPayload_StartTransaction();
+      case 13:
+        return DartPayload_Commit();
+      case 14:
+        return DartPayload_Rollback();
+      case 15:
+        return DartPayload_ShowVariable(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayloadVariable(
+              raw[1]),
+        );
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  DartValue dco_decode_dart_value(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return DartValue_Bool(
+          dco_decode_bool(raw[1]),
+        );
+      case 1:
+        return DartValue_I8(
+          dco_decode_i_8(raw[1]),
+        );
+      case 2:
+        return DartValue_I16(
+          dco_decode_i_16(raw[1]),
+        );
+      case 3:
+        return DartValue_I32(
+          dco_decode_i_32(raw[1]),
+        );
+      case 4:
+        return DartValue_I64(
+          dco_decode_i_64(raw[1]),
+        );
+      case 5:
+        return DartValue_I128(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocki128(
+              raw[1]),
+        );
+      case 6:
+        return DartValue_U8(
+          dco_decode_u_8(raw[1]),
+        );
+      case 7:
+        return DartValue_U16(
+          dco_decode_u_16(raw[1]),
+        );
+      case 8:
+        return DartValue_U32(
+          dco_decode_u_32(raw[1]),
+        );
+      case 9:
+        return DartValue_U64(
+          dco_decode_u_64(raw[1]),
+        );
+      case 10:
+        return DartValue_U128(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocku128(
+              raw[1]),
+        );
+      case 11:
+        return DartValue_F32(
+          dco_decode_f_32(raw[1]),
+        );
+      case 12:
+        return DartValue_F64(
+          dco_decode_f_64(raw[1]),
+        );
+      case 13:
+        return DartValue_Decimal(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDecimal(
+              raw[1]),
+        );
+      case 14:
+        return DartValue_Str(
+          dco_decode_String(raw[1]),
+        );
+      case 15:
+        return DartValue_Bytea(
+          dco_decode_list_prim_u_8_strict(raw[1]),
+        );
+      case 16:
+        return DartValue_Inet(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockIpAddr(
+              raw[1]),
+        );
+      case 17:
+        return DartValue_Date(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveDate(
+              raw[1]),
+        );
+      case 18:
+        return DartValue_Timestamp(
+          dco_decode_Chrono_Naive(raw[1]),
+        );
+      case 19:
+        return DartValue_Time(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveTime(
+              raw[1]),
+        );
+      case 20:
+        return DartValue_Interval(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockInterval(
+              raw[1]),
+        );
+      case 21:
+        return DartValue_Uuid(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocku128(
+              raw[1]),
+        );
+      case 22:
+        return DartValue_Map(
+          dco_decode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
+              raw[1]),
+        );
+      case 23:
+        return DartValue_List(
+          dco_decode_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
+              raw[1]),
+        );
+      case 24:
+        return DartValue_Point(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPoint(
+              raw[1]),
+        );
+      case 25:
+        return DartValue_NullData();
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  double dco_decode_f_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as double;
+  }
+
+  @protected
+  double dco_decode_f_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as double;
+  }
+
+  @protected
+  int dco_decode_i_16(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
+  }
+
+  @protected
+  int dco_decode_i_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
+  }
+
+  @protected
+  int dco_decode_i_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dcoDecodeI64OrU64(raw);
+  }
+
+  @protected
+  int dco_decode_i_8(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
+  }
+
+  @protected
+  List<Value>
+      dco_decode_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(
+            dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue)
+        .toList();
+  }
+
+  @protected
+  List<Map<String, DartValue>> dco_decode_list_Map_String_dart_value(
+      dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_Map_String_dart_value)
+        .toList();
+  }
+
+  @protected
+  List<String> dco_decode_list_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_String).toList();
+  }
+
+  @protected
+  List<DartPayload> dco_decode_list_dart_payload(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_dart_payload).toList();
+  }
+
+  @protected
+  List<DartValue> dco_decode_list_dart_value(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_dart_value).toList();
+  }
+
+  @protected
+  List<List<DartValue>> dco_decode_list_list_dart_value(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_list_dart_value).toList();
+  }
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Uint8List;
+  }
+
+  @protected
+  List<(String, DataType)>
+      dco_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_data_type(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(
+            dco_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_data_type)
+        .toList();
+  }
+
+  @protected
+  List<(String, Value)>
+      dco_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_value(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(
+            dco_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_value)
+        .toList();
+  }
+
+  @protected
+  List<(String, DartValue)> dco_decode_list_record_string_dart_value(
+      dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>)
+        .map(dco_decode_record_string_dart_value)
+        .toList();
+  }
+
+  @protected
+  (
+    String,
+    DataType
+  ) dco_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_data_type(
+      dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2) {
+      throw Exception('Expected 2 elements, got ${arr.length}');
+    }
+    return (
+      dco_decode_String(arr[0]),
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDataType(
+          arr[1]),
+    );
+  }
+
+  @protected
+  (
+    String,
+    Value
+  ) dco_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_value(
+      dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2) {
+      throw Exception('Expected 2 elements, got ${arr.length}');
+    }
+    return (
+      dco_decode_String(arr[0]),
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
+          arr[1]),
+    );
+  }
+
+  @protected
+  (String, DartValue) dco_decode_record_string_dart_value(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2) {
+      throw Exception('Expected 2 elements, got ${arr.length}');
+    }
+    return (
+      dco_decode_String(arr[0]),
+      dco_decode_dart_value(arr[1]),
+    );
+  }
+
+  @protected
+  int dco_decode_u_16(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
+  }
+
+  @protected
+  int dco_decode_u_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
+  }
+
+  @protected
+  int dco_decode_u_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dcoDecodeI64OrU64(raw);
   }
 
   @protected
@@ -153,6 +963,272 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  int dco_decode_usize(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dcoDecodeI64OrU64(raw);
+  }
+
+  @protected
+  DataType
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDataType(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return DataType.sseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  Decimal
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDecimal(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return Decimal.sseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  Error
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockError(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return Error.sseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  Interval
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockInterval(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return Interval.sseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  IpAddr
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockIpAddr(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return IpAddr.sseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  NaiveDate
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveDate(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return NaiveDate.sseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  NaiveTime
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveTime(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return NaiveTime.sseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  Payload
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayload(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return Payload.sseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  PayloadVariable
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayloadVariable(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return PayloadVariable.sseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  Point
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPoint(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return Point.sseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  Value
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return Value.sseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  I128
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocki128(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return I128.sseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  U128
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocku128(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return U128.sseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  DateTime sse_decode_Chrono_Naive(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_64(deserializer);
+    return DateTime.fromMicrosecondsSinceEpoch(inner, isUtc: true);
+  }
+
+  @protected
+  Map<String, Value>
+      sse_decode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner =
+        sse_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_value(
+            deserializer);
+    return Map.fromEntries(inner.map((e) => MapEntry(e.$1, e.$2)));
+  }
+
+  @protected
+  Map<String, DartValue> sse_decode_Map_String_dart_value(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_list_record_string_dart_value(deserializer);
+    return Map.fromEntries(inner.map((e) => MapEntry(e.$1, e.$2)));
+  }
+
+  @protected
+  DataType
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDataType(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return DataType.sseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  Decimal
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDecimal(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return Decimal.sseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  Error
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockError(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return Error.sseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  Interval
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockInterval(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return Interval.sseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  IpAddr
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockIpAddr(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return IpAddr.sseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  NaiveDate
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveDate(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return NaiveDate.sseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  NaiveTime
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveTime(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return NaiveTime.sseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  Payload
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayload(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return Payload.sseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  PayloadVariable
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayloadVariable(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return PayloadVariable.sseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  Point
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPoint(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return Point.sseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  Value
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return Value.sseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  I128
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocki128(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return I128.sseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  U128
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocku128(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return U128.sseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
   String sse_decode_String(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_list_prim_u_8_strict(deserializer);
@@ -160,10 +1236,395 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  bool sse_decode_bool(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint8() != 0;
+  }
+
+  @protected
+  DartPayload sse_decode_dart_payload(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_field0 =
+            sse_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_data_type(
+                deserializer);
+        return DartPayload_ShowColumns(var_field0);
+      case 1:
+        return DartPayload_Create();
+      case 2:
+        var var_field0 = sse_decode_usize(deserializer);
+        return DartPayload_Insert(var_field0);
+      case 3:
+        var var_labels = sse_decode_list_String(deserializer);
+        var var_rows = sse_decode_list_list_dart_value(deserializer);
+        return DartPayload_Select(labels: var_labels, rows: var_rows);
+      case 4:
+        var var_field0 = sse_decode_list_Map_String_dart_value(deserializer);
+        return DartPayload_SelectMap(var_field0);
+      case 5:
+        var var_field0 = sse_decode_usize(deserializer);
+        return DartPayload_Delete(var_field0);
+      case 6:
+        var var_field0 = sse_decode_usize(deserializer);
+        return DartPayload_Update(var_field0);
+      case 7:
+        return DartPayload_DropTable();
+      case 8:
+        return DartPayload_DropFunction();
+      case 9:
+        return DartPayload_AlterTable();
+      case 10:
+        return DartPayload_CreateIndex();
+      case 11:
+        return DartPayload_DropIndex();
+      case 12:
+        return DartPayload_StartTransaction();
+      case 13:
+        return DartPayload_Commit();
+      case 14:
+        return DartPayload_Rollback();
+      case 15:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayloadVariable(
+                deserializer);
+        return DartPayload_ShowVariable(var_field0);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  DartValue sse_decode_dart_value(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_field0 = sse_decode_bool(deserializer);
+        return DartValue_Bool(var_field0);
+      case 1:
+        var var_field0 = sse_decode_i_8(deserializer);
+        return DartValue_I8(var_field0);
+      case 2:
+        var var_field0 = sse_decode_i_16(deserializer);
+        return DartValue_I16(var_field0);
+      case 3:
+        var var_field0 = sse_decode_i_32(deserializer);
+        return DartValue_I32(var_field0);
+      case 4:
+        var var_field0 = sse_decode_i_64(deserializer);
+        return DartValue_I64(var_field0);
+      case 5:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocki128(
+                deserializer);
+        return DartValue_I128(var_field0);
+      case 6:
+        var var_field0 = sse_decode_u_8(deserializer);
+        return DartValue_U8(var_field0);
+      case 7:
+        var var_field0 = sse_decode_u_16(deserializer);
+        return DartValue_U16(var_field0);
+      case 8:
+        var var_field0 = sse_decode_u_32(deserializer);
+        return DartValue_U32(var_field0);
+      case 9:
+        var var_field0 = sse_decode_u_64(deserializer);
+        return DartValue_U64(var_field0);
+      case 10:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocku128(
+                deserializer);
+        return DartValue_U128(var_field0);
+      case 11:
+        var var_field0 = sse_decode_f_32(deserializer);
+        return DartValue_F32(var_field0);
+      case 12:
+        var var_field0 = sse_decode_f_64(deserializer);
+        return DartValue_F64(var_field0);
+      case 13:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDecimal(
+                deserializer);
+        return DartValue_Decimal(var_field0);
+      case 14:
+        var var_field0 = sse_decode_String(deserializer);
+        return DartValue_Str(var_field0);
+      case 15:
+        var var_field0 = sse_decode_list_prim_u_8_strict(deserializer);
+        return DartValue_Bytea(var_field0);
+      case 16:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockIpAddr(
+                deserializer);
+        return DartValue_Inet(var_field0);
+      case 17:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveDate(
+                deserializer);
+        return DartValue_Date(var_field0);
+      case 18:
+        var var_field0 = sse_decode_Chrono_Naive(deserializer);
+        return DartValue_Timestamp(var_field0);
+      case 19:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveTime(
+                deserializer);
+        return DartValue_Time(var_field0);
+      case 20:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockInterval(
+                deserializer);
+        return DartValue_Interval(var_field0);
+      case 21:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocku128(
+                deserializer);
+        return DartValue_Uuid(var_field0);
+      case 22:
+        var var_field0 =
+            sse_decode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
+                deserializer);
+        return DartValue_Map(var_field0);
+      case 23:
+        var var_field0 =
+            sse_decode_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
+                deserializer);
+        return DartValue_List(var_field0);
+      case 24:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPoint(
+                deserializer);
+        return DartValue_Point(var_field0);
+      case 25:
+        return DartValue_NullData();
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  double sse_decode_f_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getFloat32();
+  }
+
+  @protected
+  double sse_decode_f_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getFloat64();
+  }
+
+  @protected
+  int sse_decode_i_16(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getInt16();
+  }
+
+  @protected
+  int sse_decode_i_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getInt32();
+  }
+
+  @protected
+  int sse_decode_i_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getInt64();
+  }
+
+  @protected
+  int sse_decode_i_8(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getInt8();
+  }
+
+  @protected
+  List<Value>
+      sse_decode_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <Value>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(
+          sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
+              deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<Map<String, DartValue>> sse_decode_list_Map_String_dart_value(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <Map<String, DartValue>>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_Map_String_dart_value(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <String>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_String(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<DartPayload> sse_decode_list_dart_payload(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <DartPayload>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_dart_payload(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<DartValue> sse_decode_list_dart_value(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <DartValue>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_dart_value(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<List<DartValue>> sse_decode_list_list_dart_value(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <List<DartValue>>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_list_dart_value(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
     return deserializer.buffer.getUint8List(len_);
+  }
+
+  @protected
+  List<(String, DataType)>
+      sse_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_data_type(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <(String, DataType)>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(
+          sse_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_data_type(
+              deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<(String, Value)>
+      sse_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_value(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <(String, Value)>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(
+          sse_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_value(
+              deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<(String, DartValue)> sse_decode_list_record_string_dart_value(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <(String, DartValue)>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_record_string_dart_value(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  (
+    String,
+    DataType
+  ) sse_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_data_type(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_field0 = sse_decode_String(deserializer);
+    var var_field1 =
+        sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDataType(
+            deserializer);
+    return (var_field0, var_field1);
+  }
+
+  @protected
+  (
+    String,
+    Value
+  ) sse_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_value(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_field0 = sse_decode_String(deserializer);
+    var var_field1 =
+        sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
+            deserializer);
+    return (var_field0, var_field1);
+  }
+
+  @protected
+  (String, DartValue) sse_decode_record_string_dart_value(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_field0 = sse_decode_String(deserializer);
+    var var_field1 = sse_decode_dart_value(deserializer);
+    return (var_field0, var_field1);
+  }
+
+  @protected
+  int sse_decode_u_16(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint16();
+  }
+
+  @protected
+  int sse_decode_u_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint32();
+  }
+
+  @protected
+  int sse_decode_u_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint64();
   }
 
   @protected
@@ -178,15 +1639,240 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  int sse_decode_i_32(SseDeserializer deserializer) {
+  int sse_decode_usize(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getInt32();
+    return deserializer.buffer.getUint64();
   }
 
   @protected
-  bool sse_decode_bool(SseDeserializer deserializer) {
+  void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDataType(
+          DataType self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getUint8() != 0;
+    sse_encode_usize(self.sseEncode(move: true), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDecimal(
+          Decimal self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.sseEncode(move: true), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockError(
+          Error self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.sseEncode(move: true), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockInterval(
+          Interval self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.sseEncode(move: true), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockIpAddr(
+          IpAddr self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.sseEncode(move: true), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveDate(
+          NaiveDate self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.sseEncode(move: true), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveTime(
+          NaiveTime self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.sseEncode(move: true), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayload(
+          Payload self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.sseEncode(move: true), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayloadVariable(
+          PayloadVariable self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.sseEncode(move: true), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPoint(
+          Point self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.sseEncode(move: true), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
+          Value self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.sseEncode(move: true), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocki128(
+          I128 self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.sseEncode(move: true), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocku128(
+          U128 self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.sseEncode(move: true), serializer);
+  }
+
+  @protected
+  void sse_encode_Chrono_Naive(DateTime self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_64(self.microsecondsSinceEpoch, serializer);
+  }
+
+  @protected
+  void
+      sse_encode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
+          Map<String, Value> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_value(
+        self.entries.map((e) => (e.key, e.value)).toList(), serializer);
+  }
+
+  @protected
+  void sse_encode_Map_String_dart_value(
+      Map<String, DartValue> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_record_string_dart_value(
+        self.entries.map((e) => (e.key, e.value)).toList(), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDataType(
+          DataType self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.sseEncode(move: null), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDecimal(
+          Decimal self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.sseEncode(move: null), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockError(
+          Error self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.sseEncode(move: null), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockInterval(
+          Interval self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.sseEncode(move: null), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockIpAddr(
+          IpAddr self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.sseEncode(move: null), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveDate(
+          NaiveDate self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.sseEncode(move: null), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveTime(
+          NaiveTime self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.sseEncode(move: null), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayload(
+          Payload self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.sseEncode(move: null), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayloadVariable(
+          PayloadVariable self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.sseEncode(move: null), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPoint(
+          Point self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.sseEncode(move: null), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
+          Value self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.sseEncode(move: null), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocki128(
+          I128 self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.sseEncode(move: null), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocku128(
+          U128 self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(self.sseEncode(move: null), serializer);
   }
 
   @protected
@@ -196,11 +1882,338 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_bool(bool self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint8(self ? 1 : 0);
+  }
+
+  @protected
+  void sse_encode_dart_payload(DartPayload self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case DartPayload_ShowColumns(field0: final field0):
+        sse_encode_i_32(0, serializer);
+        sse_encode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_data_type(
+            field0, serializer);
+      case DartPayload_Create():
+        sse_encode_i_32(1, serializer);
+      case DartPayload_Insert(field0: final field0):
+        sse_encode_i_32(2, serializer);
+        sse_encode_usize(field0, serializer);
+      case DartPayload_Select(labels: final labels, rows: final rows):
+        sse_encode_i_32(3, serializer);
+        sse_encode_list_String(labels, serializer);
+        sse_encode_list_list_dart_value(rows, serializer);
+      case DartPayload_SelectMap(field0: final field0):
+        sse_encode_i_32(4, serializer);
+        sse_encode_list_Map_String_dart_value(field0, serializer);
+      case DartPayload_Delete(field0: final field0):
+        sse_encode_i_32(5, serializer);
+        sse_encode_usize(field0, serializer);
+      case DartPayload_Update(field0: final field0):
+        sse_encode_i_32(6, serializer);
+        sse_encode_usize(field0, serializer);
+      case DartPayload_DropTable():
+        sse_encode_i_32(7, serializer);
+      case DartPayload_DropFunction():
+        sse_encode_i_32(8, serializer);
+      case DartPayload_AlterTable():
+        sse_encode_i_32(9, serializer);
+      case DartPayload_CreateIndex():
+        sse_encode_i_32(10, serializer);
+      case DartPayload_DropIndex():
+        sse_encode_i_32(11, serializer);
+      case DartPayload_StartTransaction():
+        sse_encode_i_32(12, serializer);
+      case DartPayload_Commit():
+        sse_encode_i_32(13, serializer);
+      case DartPayload_Rollback():
+        sse_encode_i_32(14, serializer);
+      case DartPayload_ShowVariable(field0: final field0):
+        sse_encode_i_32(15, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayloadVariable(
+            field0, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_dart_value(DartValue self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case DartValue_Bool(field0: final field0):
+        sse_encode_i_32(0, serializer);
+        sse_encode_bool(field0, serializer);
+      case DartValue_I8(field0: final field0):
+        sse_encode_i_32(1, serializer);
+        sse_encode_i_8(field0, serializer);
+      case DartValue_I16(field0: final field0):
+        sse_encode_i_32(2, serializer);
+        sse_encode_i_16(field0, serializer);
+      case DartValue_I32(field0: final field0):
+        sse_encode_i_32(3, serializer);
+        sse_encode_i_32(field0, serializer);
+      case DartValue_I64(field0: final field0):
+        sse_encode_i_32(4, serializer);
+        sse_encode_i_64(field0, serializer);
+      case DartValue_I128(field0: final field0):
+        sse_encode_i_32(5, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocki128(
+            field0, serializer);
+      case DartValue_U8(field0: final field0):
+        sse_encode_i_32(6, serializer);
+        sse_encode_u_8(field0, serializer);
+      case DartValue_U16(field0: final field0):
+        sse_encode_i_32(7, serializer);
+        sse_encode_u_16(field0, serializer);
+      case DartValue_U32(field0: final field0):
+        sse_encode_i_32(8, serializer);
+        sse_encode_u_32(field0, serializer);
+      case DartValue_U64(field0: final field0):
+        sse_encode_i_32(9, serializer);
+        sse_encode_u_64(field0, serializer);
+      case DartValue_U128(field0: final field0):
+        sse_encode_i_32(10, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocku128(
+            field0, serializer);
+      case DartValue_F32(field0: final field0):
+        sse_encode_i_32(11, serializer);
+        sse_encode_f_32(field0, serializer);
+      case DartValue_F64(field0: final field0):
+        sse_encode_i_32(12, serializer);
+        sse_encode_f_64(field0, serializer);
+      case DartValue_Decimal(field0: final field0):
+        sse_encode_i_32(13, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDecimal(
+            field0, serializer);
+      case DartValue_Str(field0: final field0):
+        sse_encode_i_32(14, serializer);
+        sse_encode_String(field0, serializer);
+      case DartValue_Bytea(field0: final field0):
+        sse_encode_i_32(15, serializer);
+        sse_encode_list_prim_u_8_strict(field0, serializer);
+      case DartValue_Inet(field0: final field0):
+        sse_encode_i_32(16, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockIpAddr(
+            field0, serializer);
+      case DartValue_Date(field0: final field0):
+        sse_encode_i_32(17, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveDate(
+            field0, serializer);
+      case DartValue_Timestamp(field0: final field0):
+        sse_encode_i_32(18, serializer);
+        sse_encode_Chrono_Naive(field0, serializer);
+      case DartValue_Time(field0: final field0):
+        sse_encode_i_32(19, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveTime(
+            field0, serializer);
+      case DartValue_Interval(field0: final field0):
+        sse_encode_i_32(20, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockInterval(
+            field0, serializer);
+      case DartValue_Uuid(field0: final field0):
+        sse_encode_i_32(21, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocku128(
+            field0, serializer);
+      case DartValue_Map(field0: final field0):
+        sse_encode_i_32(22, serializer);
+        sse_encode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
+            field0, serializer);
+      case DartValue_List(field0: final field0):
+        sse_encode_i_32(23, serializer);
+        sse_encode_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
+            field0, serializer);
+      case DartValue_Point(field0: final field0):
+        sse_encode_i_32(24, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPoint(
+            field0, serializer);
+      case DartValue_NullData():
+        sse_encode_i_32(25, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_f_32(double self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putFloat32(self);
+  }
+
+  @protected
+  void sse_encode_f_64(double self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putFloat64(self);
+  }
+
+  @protected
+  void sse_encode_i_16(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putInt16(self);
+  }
+
+  @protected
+  void sse_encode_i_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putInt32(self);
+  }
+
+  @protected
+  void sse_encode_i_64(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putInt64(self);
+  }
+
+  @protected
+  void sse_encode_i_8(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putInt8(self);
+  }
+
+  @protected
+  void
+      sse_encode_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
+          List<Value> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
+          item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_Map_String_dart_value(
+      List<Map<String, DartValue>> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_Map_String_dart_value(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_String(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_dart_payload(
+      List<DartPayload> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_dart_payload(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_dart_value(
+      List<DartValue> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_dart_value(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_list_dart_value(
+      List<List<DartValue>> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_list_dart_value(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_prim_u_8_strict(
       Uint8List self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     serializer.buffer.putUint8List(self);
+  }
+
+  @protected
+  void
+      sse_encode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_data_type(
+          List<(String, DataType)> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_data_type(
+          item, serializer);
+    }
+  }
+
+  @protected
+  void
+      sse_encode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_value(
+          List<(String, Value)> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_value(
+          item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_record_string_dart_value(
+      List<(String, DartValue)> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_record_string_dart_value(item, serializer);
+    }
+  }
+
+  @protected
+  void
+      sse_encode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_data_type(
+          (String, DataType) self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.$1, serializer);
+    sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDataType(
+        self.$2, serializer);
+  }
+
+  @protected
+  void
+      sse_encode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_value(
+          (String, Value) self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.$1, serializer);
+    sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
+        self.$2, serializer);
+  }
+
+  @protected
+  void sse_encode_record_string_dart_value(
+      (String, DartValue) self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.$1, serializer);
+    sse_encode_dart_value(self.$2, serializer);
+  }
+
+  @protected
+  void sse_encode_u_16(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint16(self);
+  }
+
+  @protected
+  void sse_encode_u_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint32(self);
+  }
+
+  @protected
+  void sse_encode_u_64(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint64(self);
   }
 
   @protected
@@ -215,14 +2228,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_i_32(int self, SseSerializer serializer) {
+  void sse_encode_usize(int self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putInt32(self);
-  }
-
-  @protected
-  void sse_encode_bool(bool self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putUint8(self ? 1 : 0);
+    serializer.buffer.putUint64(self);
   }
 }

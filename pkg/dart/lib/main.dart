@@ -12,12 +12,13 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    var payload = execute(sql: "SELECT 12");
+    debugPrint("result: $payload");
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(title: const Text('flutter_rust_bridge quickstart')),
         body: Center(
-          child: Text(
-              'Action: Call Rust `greet("Tom")`\nResult: `${greet(name: "Tom")}`'),
+          child: Text('Action: Call Rust `greet("Tom")`\nResult: `$payload`'),
         ),
       ),
     );
