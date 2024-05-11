@@ -346,6 +346,7 @@ pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Fo
             referred_columns,
             on_delete,
             on_update,
+            ..
         } => {
             let column = columns.first().map(|i| i.value.clone()).ok_or(
                 TranslateError::InvalidForeignKeyConstraint(
