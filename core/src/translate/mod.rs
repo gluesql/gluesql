@@ -22,8 +22,9 @@ use {
     },
     ddl::translate_alter_table_operation,
     sqlparser::ast::{
-        Assignment as SqlAssignment, Ident as SqlIdent, ObjectName as SqlObjectName,
-        ObjectType as SqlObjectType, Statement as SqlStatement, TableFactor, TableWithJoins,
+        Assignment as SqlAssignment, FromTable as SqlFromTable, Ident as SqlIdent,
+        ObjectName as SqlObjectName, ObjectType as SqlObjectType, Statement as SqlStatement,
+        TableFactor, TableWithJoins,
     },
 };
 
@@ -67,6 +68,12 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
         SqlStatement::Delete {
             from, selection, ..
         } => {
+            let from = match from {
+                SqlFromTable::WithFromKeyword(from) => from,
+                SqlFromTable::WithoutKeyword(_) => {
+                    return Err(TranslateError::UnreachableOmittingFromInDelete.into())
+                }
+            };
             let table_name = from
                 .iter()
                 .map(translate_table_with_join)
