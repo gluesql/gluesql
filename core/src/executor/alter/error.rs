@@ -55,7 +55,7 @@ pub enum AlterError {
     #[error("foreign key column not found: {0}")]
     ForeignKeyColumnNotFound(String),
 
-    #[error("foreign key column '{column}' of data type '{column_type:?}' does not match foreign column '{foreign_column}' of data type '{foreign_column_type:?}'")]
+    #[error("foreign key column '{column}' of data type '{column_type}' does not match foreign column '{foreign_column}' of data type '{foreign_column_type}'")]
     ForeignKeyDataTypeMismatch {
         column: String,
         column_type: DataType,
