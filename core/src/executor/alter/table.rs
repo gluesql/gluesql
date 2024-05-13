@@ -253,30 +253,26 @@ pub async fn drop_table<T: GStore + GStoreMut>(
             )
             .collect();
 
-        match (!referring_children.is_empty(), cascade) {
-            (true, false) => {
-                return Err(AlterError::CannotDropTableParentOnReferringChildren {
-                    parent: table_name.into(),
-                    referring_children,
-                }
-                .into());
+        if !referring_children.is_empty() && !cascade {
+            return Err(AlterError::CannotDropTableParentOnReferringChildren {
+                parent: table_name.into(),
+                referring_children,
             }
-            (true, true) => {
-                for ReferringChild {
-                    constraint_name, ..
-                } in referring_children
-                {
-                    let mut schema = storage
-                        .fetch_schema(table_name)
-                        .await?
-                        .ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
-                    schema
-                        .foreign_keys
-                        .retain(|foreign_key| foreign_key.name != constraint_name);
-                    storage.insert_schema(&schema).await?;
-                }
-            }
-            (false, _) => {}
+            .into());
+        }
+
+        for ReferringChild {
+            constraint_name, ..
+        } in referring_children
+        {
+            let mut schema = storage
+                .fetch_schema(table_name)
+                .await?
+                .ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
+            schema
+                .foreign_keys
+                .retain(|foreign_key| foreign_key.name != constraint_name);
+            storage.insert_schema(&schema).await?;
         }
 
         storage.delete_schema(table_name).await?;
