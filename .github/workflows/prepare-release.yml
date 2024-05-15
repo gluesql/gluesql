@@ -20,7 +20,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
-      - uses: taiki-e/install-action@cargo-release
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-release
       - uses: actions/setup-node@v4
         with:
           node-version: 20
