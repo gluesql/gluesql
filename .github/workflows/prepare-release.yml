@@ -20,12 +20,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@cargo-release
       - uses: actions/setup-node@v4
         with:
           node-version: 20
       - name: Bump versions
         run: |
-          cargo install cargo-release
           cargo release version ${{ github.event.inputs.version }} --workspace --execute
           cd pkg/javascript 
           NEW_VERSION=$(npm version ${{ github.event.inputs.version }})
