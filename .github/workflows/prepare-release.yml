@@ -26,9 +26,9 @@ jobs:
           node-version: 20
       - name: Bump versions
         run: |
-          cargo release version ${{ github.event.inputs.version }} --workspace --execute
+          cargo release version minor --workspace --execute
           cd pkg/javascript 
-          NEW_VERSION=$(npm version ${{ github.event.inputs.version }})
+          NEW_VERSION=$(npm version minor)
           cd ../../
       - name: Commit version changes
         run: |
