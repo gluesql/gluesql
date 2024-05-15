@@ -222,35 +222,27 @@ pub async fn drop_table<T: GStore + GStoreMut>(
         let schemas = storage.fetch_all_schemas().await?;
         let referring_children: Vec<ReferringChild> = schemas
             .into_iter()
-            .flat_map(
-                |Schema {
-                     table_name: referring_table_name,
-                     foreign_keys,
-                     ..
-                 }| {
-                    foreign_keys
-                        .into_iter()
-                        .filter_map(
-                            |ForeignKey {
-                                 name: constraint_name,
-                                 referred_table,
-                                 ..
-                             }| {
-                                if &referred_table == table_name
-                                    && &referring_table_name != table_name
-                                {
-                                    return Some(ReferringChild {
-                                        table_name: referring_table_name.clone(),
-                                        constraint_name,
-                                    });
-                                }
+            .flat_map(|schema| {
+                let Schema {
+                    table_name: referring_table_name,
+                    foreign_keys,
+                    ..
+                } = schema;
 
-                                None
-                            },
-                        )
-                        .collect::<Vec<_>>()
-                },
-            )
+                foreign_keys.into_iter().filter_map(move |foreign_key| {
+                    let ForeignKey {
+                        name: constraint_name,
+                        referred_table,
+                        ..
+                    } = foreign_key;
+
+                    (&referred_table == table_name && &referring_table_name != table_name)
+                        .then_some(ReferringChild {
+                            table_name: referring_table_name.clone(),
+                            constraint_name,
+                        })
+                })
+            })
             .collect();
 
         if !referring_children.is_empty() && !cascade {
