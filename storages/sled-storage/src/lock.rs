@@ -121,10 +121,9 @@ pub fn acquire(
             autocommit,
         } => (*txid, *created_at, *autocommit),
         State::Idle => {
-            return Err(Error::StorageMsg(
+            return Err(ConflictableTransactionError::Abort(Error::StorageMsg(
                 "conflict - cannot acquire lock from idle state".to_owned(),
-            ))
-            .map_err(ConflictableTransactionError::Abort);
+            )));
         }
     };
 
@@ -135,15 +134,13 @@ pub fn acquire(
         .as_millis();
 
     if tx_timeout.map(|tx_timeout| now - created_at >= tx_timeout) == Some(true) {
-        return Err(Error::StorageMsg(
+        return Err(ConflictableTransactionError::Abort(Error::StorageMsg(
             "acquire failed - expired transaction has used (timeout)".to_owned(),
-        ))
-        .map_err(ConflictableTransactionError::Abort);
+        )));
     } else if gc_txid.is_some() && Some(txid) <= gc_txid {
-        return Err(Error::StorageMsg(
+        return Err(ConflictableTransactionError::Abort(Error::StorageMsg(
             "acquire failed - expired transaction has used (txid)".to_owned(),
-        ))
-        .map_err(ConflictableTransactionError::Abort);
+        )));
     }
 
     let txid = match lock_txid {
@@ -151,8 +148,9 @@ pub fn acquire(
             if tx_timeout.map(|tx_timeout| now - lock_created_at >= tx_timeout) == Some(true) {
                 return Ok(LockAcquired::RollbackAndRetry { lock_txid });
             } else if txid != lock_txid {
-                return Err(Error::StorageMsg("database is locked".to_owned()))
-                    .map_err(ConflictableTransactionError::Abort);
+                return Err(ConflictableTransactionError::Abort(Error::StorageMsg(
+                    "database is locked".to_owned(),
+                )));
             }
 
             txid
