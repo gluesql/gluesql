@@ -573,7 +573,7 @@ mod tests {
 
     #[test]
     fn evaluate_cmp_with_literal() {
-        let num = |n| Literal::Number(Cow::Owned(BigDecimal::try_from(n).unwrap()));
+        let num = |n| Literal::Number(Cow::Owned(BigDecimal::from(n)));
         let text = |v: &str| Literal::Text(Cow::Owned(v.to_owned()));
 
         let test = |value: Value, literal, expected| {

@@ -69,7 +69,6 @@ impl StoreMut for JsonStorage {
                 .map_storage_err(JsonStorageError::TableDoesNotExist)?;
 
             let file = OpenOptions::new()
-                .write(true)
                 .append(true)
                 .open(self.jsonl_path(&schema.table_name))
                 .map_storage_err()?;
