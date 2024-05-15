@@ -1,0 +1,42 @@
+name: Prepare Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number or step to bump'
+        required: true
+        default: 'minor'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  bump_version:
+    name: Bump versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Bump versions
+        run: |
+          cargo release version ${{ github.event.inputs.version }} --workspace --execute
+          cd pkg/javascript 
+          NEW_VERSION=$(npm version ${{ github.event.inputs.version }})
+          cd ../../
+      - name: Commit version changes
+        run: |
+          NEW_BRANCH="release-$NEW_VERSION"
+          git checkout -b $NEW_BRANCH
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .
+          git commit -m "Bump version to $NEW_VERSION"
+          git push origin $NEW_BRANCH
+      - name: Create pull request
+        run: gh pr create --draft --title "Prepare release $NEW_VERSION" --repo $GITHUB_REPOSITORY
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
