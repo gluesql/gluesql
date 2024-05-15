@@ -213,7 +213,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
         SqlStatement::ShowFunctions { filter: None } => {
             Ok(Statement::ShowVariable(Variable::Functions))
         }
-        SqlStatement::ShowVariable { variable } => match (variable.len(), variable.get(0)) {
+        SqlStatement::ShowVariable { variable } => match (variable.len(), variable.first()) {
             (1, Some(keyword)) => match keyword.value.to_uppercase().as_str() {
                 "VERSION" => Ok(Statement::ShowVariable(Variable::Version)),
                 v => Err(TranslateError::UnsupportedShowVariableKeyword(v.to_owned()).into()),
@@ -280,7 +280,7 @@ pub fn translate_assignment(sql_assignment: &SqlAssignment) -> Result<Assignment
 
     Ok(Assignment {
         id: id
-            .get(0)
+            .first()
             .ok_or(TranslateError::UnreachableEmptyIdent)?
             .value
             .to_owned(),
@@ -306,7 +306,7 @@ fn translate_object_name(sql_object_name: &SqlObjectName) -> Result<String> {
     }
 
     sql_object_name
-        .get(0)
+        .first()
         .map(|v| v.value.to_owned())
         .ok_or_else(|| TranslateError::UnreachableEmptyObject.into())
 }
