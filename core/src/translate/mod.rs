@@ -22,21 +22,21 @@ use {
     },
     ddl::translate_alter_table_operation,
     sqlparser::ast::{
-        Assignment as SqlAssignment, FromTable as SqlFromTable, Ident as SqlIdent,
-        ObjectName as SqlObjectName, ObjectType as SqlObjectType, Statement as SqlStatement,
-        TableFactor, TableWithJoins,
+        Assignment as SqlAssignment, Delete as SqlDelete, FromTable as SqlFromTable,
+        Ident as SqlIdent, Insert as SqlInsert, ObjectName as SqlObjectName,
+        ObjectType as SqlObjectType, Statement as SqlStatement, TableFactor, TableWithJoins,
     },
 };
 
 pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
     match sql_statement {
         SqlStatement::Query(query) => translate_query(query).map(Statement::Query),
-        SqlStatement::Insert {
+        SqlStatement::Insert(SqlInsert {
             table_name,
             columns,
             source,
             ..
-        } => {
+        }) => {
             let table_name = translate_object_name(table_name)?;
             let columns = translate_idents(columns);
             let source = source
@@ -65,9 +65,9 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 .collect::<Result<_>>()?,
             selection: selection.as_ref().map(translate_expr).transpose()?,
         }),
-        SqlStatement::Delete {
+        SqlStatement::Delete(SqlDelete {
             from, selection, ..
-        } => {
+        }) => {
             let from = match from {
                 SqlFromTable::WithFromKeyword(from) => from,
                 SqlFromTable::WithoutKeyword(_) => {
