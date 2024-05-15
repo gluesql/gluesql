@@ -1224,7 +1224,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "futures",
  "gluesql-cli",
@@ -1244,7 +1244,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-cli"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "anyhow",
  "clap 3.2.25",
@@ -1265,7 +1265,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-composite-storage"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -1279,7 +1279,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-core"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -1309,7 +1309,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-csv-storage"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "async-trait",
  "csv",
@@ -1327,7 +1327,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-idb-storage"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -1345,7 +1345,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-js"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "async-trait",
  "console_error_panic_hook",
@@ -1366,7 +1366,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-json-storage"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -1384,7 +1384,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-mongo-storage"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "async-trait",
  "bson",
@@ -1404,7 +1404,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-parquet-storage"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "async-trait",
  "bincode",
@@ -1424,7 +1424,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-py"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "gloo-utils 0.1.7",
  "gluesql-composite-storage",
@@ -1445,7 +1445,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-redis-storage"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1461,7 +1461,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-shared-memory-storage"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -1474,7 +1474,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-test-suite"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "async-trait",
  "bigdecimal",
@@ -1489,7 +1489,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-utils"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "futures",
  "indexmap 1.9.3",
@@ -1498,7 +1498,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-web-storage"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -1513,7 +1513,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql_memory_storage"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -1525,7 +1525,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql_sled_storage"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "async-io",
  "async-trait",
