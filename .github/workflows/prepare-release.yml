@@ -42,6 +42,6 @@ jobs:
           git commit -m "Bump version to $NEW_VERSION"
           git push origin $NEW_BRANCH
       - name: Create pull request
-        run: gh pr create --draft --title "Prepare release $NEW_VERSION" --repo $GITHUB_REPOSITORY
+        run: gh pr create --draft --title "Prepare release $NEW_VERSION" --body "Prepare release $NEW_VERSION" --repo $GITHUB_REPOSITORY
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
