@@ -254,11 +254,12 @@ pub async fn drop_table<T: GStore + GStoreMut>(
         }
 
         for ReferringChild {
-            constraint_name, ..
+            constraint_name,
+            table_name,
         } in referring_children
         {
             let mut schema = storage
-                .fetch_schema(table_name)
+                .fetch_schema(&table_name)
                 .await?
                 .ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
             schema
