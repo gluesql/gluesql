@@ -80,7 +80,7 @@ fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
         return Err(TranslateError::SelectDistinctNotSupported.into());
     }
 
-    let from = match from.get(0) {
+    let from = match from.first() {
         Some(sql_table_with_joins) => translate_table_with_joins(sql_table_with_joins)?,
         None => TableWithJoins {
             relation: TableFactor::Series {
@@ -170,7 +170,7 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
             })
             .collect::<Result<Vec<_>>>()?;
 
-        match translate_function_arg_exprs(function_arg_exprs)?.get(0) {
+        match translate_function_arg_exprs(function_arg_exprs)?.first() {
             Some(expr) => Ok(translate_expr(expr)?),
             None => Err(TranslateError::LackOfArgs.into()),
         }

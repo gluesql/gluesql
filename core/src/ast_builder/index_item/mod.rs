@@ -54,9 +54,8 @@ impl<'a> Prebuild<IndexItem> for IndexItemNode<'a> {
             } => {
                 let (index_operator, expr) = cmp_expr.unzip();
                 let expr_result: Option<Expr> = expr.map(ExprNode::try_into).transpose()?;
-                let cmp_expr_result: Option<(IndexOperator, Expr)> = index_operator
-                    .zip(expr_result)
-                    .map(|(index_operator, expr)| (index_operator, expr));
+                let cmp_expr_result: Option<(IndexOperator, Expr)> =
+                    index_operator.zip(expr_result);
 
                 Ok(IndexItem::NonClustered {
                     name,
