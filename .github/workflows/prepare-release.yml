@@ -1,8 +1,6 @@
 name: Prepare Release
 
 on:
-  pull_request:
-    branches: [main]
   workflow_dispatch:
     inputs:
       version:
@@ -30,9 +28,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cargo release version minor --workspace --execute --no-confirm
+          cargo release version ${{ github.event.inputs.version }} --workspace --execute --no-confirm
           cd pkg/javascript 
-          NEW_VERSION=$(npm version minor>&1)
+          NEW_VERSION=$(npm version ${{ github.event.inputs.version }}>&1)
           cd ../../
           NEW_BRANCH="release-$NEW_VERSION"
           git checkout -b $NEW_BRANCH
