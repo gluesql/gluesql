@@ -30,7 +30,7 @@ jobs:
         run: |
           cargo release version minor --workspace --execute
           cd pkg/javascript 
-          NEW_VERSION=$(npm version minor)
+          NEW_VERSION=$(npm version minor>&1)
           cd ../../
       - name: Commit version changes
         run: |
