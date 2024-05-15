@@ -28,7 +28,7 @@ jobs:
           node-version: 20
       - name: Bump versions
         run: |
-          cargo release version minor --workspace --execute
+          cargo release version minor --workspace --execute --no-confirm
           cd pkg/javascript 
           NEW_VERSION=$(npm version minor>&1)
           cd ../../
