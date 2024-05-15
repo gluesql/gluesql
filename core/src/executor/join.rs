@@ -139,7 +139,7 @@ async fn join<'a, T: GStore>(
                                 storage,
                                 table_alias,
                                 filter_context.as_ref().map(Rc::clone),
-                                Some(&project_context).map(Rc::clone),
+                                Some(Rc::clone(&project_context)),
                                 where_clause,
                                 row,
                             )
@@ -166,7 +166,7 @@ async fn join<'a, T: GStore>(
                             let rows = stream::iter(rows)
                                 .filter_map(|row| {
                                     let filter_context = filter_context.as_ref().map(Rc::clone);
-                                    let project_context = Some(&project_context).map(Rc::clone);
+                                    let project_context = Some(Rc::clone(&project_context));
 
                                     async {
                                         check_where_clause(
@@ -248,14 +248,10 @@ impl<'a> JoinExecutor<'a> {
                         filter_context,
                     ));
 
-                    let hash_key: Key = evaluate(
-                        storage,
-                        Some(&filter_context).map(Rc::clone),
-                        None,
-                        key_expr,
-                    )
-                    .await?
-                    .try_into()?;
+                    let hash_key: Key =
+                        evaluate(storage, Some(Rc::clone(&filter_context)), None, key_expr)
+                            .await?
+                            .try_into()?;
 
                     if matches!(hash_key, Key::None) {
                         return Ok(None);

@@ -878,7 +878,7 @@ impl Value {
         }
         let from = &String::from(self);
         let sub = &String::from(sub_val);
-        let position = str_position(&from[(start - 1) as usize..].to_owned(), sub) as i64;
+        let position = str_position(&from[(start - 1) as usize..], sub) as i64;
         let position = match position {
             0 => 0,
             _ => position + start - 1,
@@ -887,7 +887,7 @@ impl Value {
     }
 }
 
-fn str_position(from_str: &String, sub_str: &String) -> usize {
+fn str_position(from_str: &str, sub_str: &str) -> usize {
     if from_str.is_empty() || sub_str.is_empty() {
         return 0;
     }
