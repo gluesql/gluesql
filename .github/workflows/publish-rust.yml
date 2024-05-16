@@ -1,0 +1,23 @@
+name: Publish Rust
+
+on:
+  workflow_dispatch:
+    inputs:
+      # Latest commit to include with the release. If omitted, use the latest commit on the main branch.
+      sha:
+        description: Commit SHA
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  publish_to_crates:
+    name: to crates.io
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo release publish --workspace --no-confirm --no-publish
+        env:
+         CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES }} 
