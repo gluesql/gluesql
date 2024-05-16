@@ -6,6 +6,7 @@ const darkCodeTheme = require('prism-react-renderer/themes/dracula');
 
 const { env } = require('node:process');
 const isBlog = env.GLUESQL_DOC_TYPE === 'blog';
+const docsBaseUrl = env.GLUESQL_DOCS_BASE_URL ?? '/docs/dev/';
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -17,7 +18,7 @@ const config = {
   url: 'https://gluesql.org',
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: isBlog ? '/blog/' : '/docs/dev/',
+  baseUrl: isBlog ? '/blog/' : docsBaseUrl,
 
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',

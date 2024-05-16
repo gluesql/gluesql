@@ -28,19 +28,22 @@ jobs:
           cd gluesql.github.io &&
           git checkout gh-pages
 
+      - name: Fetch version
+        run: |
+          VERSION=$(grep "^version = " Cargo.toml | sed 's/version = "\(.*\)"/\1/'>&1)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          
       - name: Build docs
         run: |
           cd docs
           yarn install
-          yarn build
+          GLUESQL_DOCS_BASE_URL=/docs/${{ env.VERSION }}/ yarn build
 
       - name: Update docs/dev/ to gluesql.org
         run: |
-          VERSION=$(grep "^version = " Cargo.toml | sed 's/version = "\(.*\)"/\1/'>&1)
-          VERSION=temp
-          rm -rf gluesql.github.io/docs/$VERSION
-          mkdir docs/$VERSION/
-          mv docs/build gluesql.github.io/docs/$VERSION
+          rm -rf gluesql.github.io/docs/${{ env.VERSION }}
+          mkdir docs/${{ env.VERSION }}/
+          mv docs/build gluesql.github.io/docs/${{ env.VERSION }}
 
       - name: Prepare
         run: |
@@ -49,11 +52,9 @@ jobs:
 
       - name: Commit and deploy
         run: |
-          VERSION=$(grep "^version = " Cargo.toml | sed 's/version = "\(.*\)"/\1/'>&1)
-          VERSION=temp
           cd gluesql.github.io
-          git add docs/$VERSION
+          git add docs/${{ env.VERSION }}
           git diff-index --quiet HEAD || (
-            git commit -m "Publish Docs - $VERSION" &&
+            git commit -m "Publish Docs - ${{ env.VERSION }}" &&
             git push https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/gluesql.github.io.git
           )
