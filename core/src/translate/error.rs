@@ -51,6 +51,9 @@ pub enum TranslateError {
     #[error("unnamed function arg is not supported")]
     UnNamedFunctionArgNotSupported,
 
+    #[error("subquery function arg is not supported")]
+    UnreachableSubqueryFunctionArgNotSupported,
+
     #[error("INSERT INTO {0} DEFAULT VALUES is not supported")]
     DefaultValuesOnInsertNotSupported(String),
 
@@ -65,6 +68,12 @@ pub enum TranslateError {
 
     #[error("unsupported CAST format: {0}")]
     UnsupportedCastFormat(String),
+
+    #[error("TRY_CAST(..) is not supported")]
+    TryCastNotSupported,
+
+    #[error("SAFE_CAST(..) is not supported")]
+    SafeCastNotSupported,
 
     #[error("unsupported multiple alter table operations, expected: `ALTER TABLE <table> <operation>`, got: `ALTER TABLE <table> <operation>, <operation>, ..`")]
     UnsupportedMultipleAlterTableOperations,

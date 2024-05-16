@@ -22,22 +22,23 @@ use {
     },
     ddl::translate_alter_table_operation,
     sqlparser::ast::{
-        Assignment as SqlAssignment, FromTable as SqlFromTable, Ident as SqlIdent,
-        ObjectName as SqlObjectName, ObjectType as SqlObjectType,
-        ReferentialAction as SqlReferentialAction, Statement as SqlStatement,
-        TableConstraint as SqlTableConstraint, TableFactor, TableWithJoins,
+        Assignment as SqlAssignment, Delete as SqlDelete, FromTable as SqlFromTable,
+        Ident as SqlIdent, Insert as SqlInsert, ObjectName as SqlObjectName,
+        ObjectType as SqlObjectType, ReferentialAction as SqlReferentialAction,
+        Statement as SqlStatement, TableConstraint as SqlTableConstraint, TableFactor,
+        TableWithJoins,
     },
 };
 
 pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
     match sql_statement {
         SqlStatement::Query(query) => translate_query(query).map(Statement::Query),
-        SqlStatement::Insert {
+        SqlStatement::Insert(SqlInsert {
             table_name,
             columns,
             source,
             ..
-        } => {
+        }) => {
             let table_name = translate_object_name(table_name)?;
             let columns = translate_idents(columns);
             let source = source
@@ -66,9 +67,9 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 .collect::<Result<_>>()?,
             selection: selection.as_ref().map(translate_expr).transpose()?,
         }),
-        SqlStatement::Delete {
+        SqlStatement::Delete(SqlDelete {
             from, selection, ..
-        } => {
+        }) => {
             let from = match from {
                 SqlFromTable::WithFromKeyword(from) => from,
                 SqlFromTable::WithoutKeyword(_) => {
@@ -225,7 +226,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
         SqlStatement::ShowFunctions { filter: None } => {
             Ok(Statement::ShowVariable(Variable::Functions))
         }
-        SqlStatement::ShowVariable { variable } => match (variable.len(), variable.get(0)) {
+        SqlStatement::ShowVariable { variable } => match (variable.len(), variable.first()) {
             (1, Some(keyword)) => match keyword.value.to_uppercase().as_str() {
                 "VERSION" => Ok(Statement::ShowVariable(Variable::Version)),
                 v => Err(TranslateError::UnsupportedShowVariableKeyword(v.to_owned()).into()),
@@ -292,7 +293,7 @@ pub fn translate_assignment(sql_assignment: &SqlAssignment) -> Result<Assignment
 
     Ok(Assignment {
         id: id
-            .get(0)
+            .first()
             .ok_or(TranslateError::UnreachableEmptyIdent)?
             .value
             .to_owned(),
@@ -318,7 +319,7 @@ fn translate_object_name(sql_object_name: &SqlObjectName) -> Result<String> {
     }
 
     sql_object_name
-        .get(0)
+        .first()
         .map(|v| v.value.to_owned())
         .ok_or_else(|| TranslateError::UnreachableEmptyObject.into())
 }
