@@ -97,6 +97,13 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
+      - name: Set Rust target for aarch64
+        if: matrix.architecture == 'aarch64'
+        id: target
+        run: |
+          TARGET=${{ matrix.os == 'macos-13' && 'aarch64-apple-darwin' || 'aarch64-unknown-linux-gnu'}}
+          echo "target=$TARGET" >> $GITHUB_OUTPUT
+
       - name: Build wheel
         uses: PyO3/maturin-action@v1
         with:
