@@ -19,7 +19,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: "3.8"
+  PYTHON_VERSION: "3.11"
   CARGO_INCREMENTAL: 0
   CARGO_NET_RETRY: 10
   CARGO_TERM_COLOR: always
@@ -113,6 +113,7 @@ jobs:
             --release
             --manifest-path pkg/python/Cargo.toml
             --out dist
+            --interpreter ${{ env.PYTHON_VERSION }}
           manylinux: ${{ matrix.architecture == 'aarch64' && '2_24' || 'auto' }}
 
       - name: Test wheel
