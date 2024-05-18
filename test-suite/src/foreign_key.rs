@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        error::ValidateError,
+        error::{ExecuteError, ValidateError},
         executor::{AlterError, ReferringChild},
         prelude::Payload,
     },
@@ -137,6 +137,13 @@ test_case!(foreign_key, {
         "With valid parent, update should succeed",
         "UPDATE Child SET parent_id = 1 WHERE id = 2;",
         Ok(Payload::Update(1)),
+    )
+    .await;
+
+    g.named_test(
+        "Delete parent should fail if child exists (by default: NO ACTION)",
+        "DELETE FROM ParentWithPK WHERE id = 1;",
+        Err(ExecuteError::ReferringColumnExists("ParentWithPK.id".to_owned()).into()),
     )
     .await;
 

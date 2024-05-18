@@ -12,11 +12,11 @@ use {
     },
     crate::{
         ast::{
-            AstLiteral, BinaryOperator, DataType, Dictionary, Expr, Query, SelectItem, SetExpr,
-            Statement, TableAlias, TableFactor, TableWithJoins, Variable,
+            AstLiteral, BinaryOperator, DataType, Dictionary, Expr, ForeignKey, Query, SelectItem,
+            SetExpr, Statement, TableAlias, TableFactor, TableWithJoins, Variable,
         },
         data::{Key, Row, Schema, Value},
-        result::Result,
+        result::{Error, Result},
         store::{GStore, GStoreMut},
     },
     futures::stream::{StreamExt, TryStreamExt},
@@ -29,6 +29,9 @@ use {
 pub enum ExecuteError {
     #[error("table not found: {0}")]
     TableNotFound(String),
+
+    #[error("referring column exists: {0}")]
+    ReferringColumnExists(String),
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -260,11 +263,61 @@ async fn execute_inner<T: GStore + GStoreMut>(
             table_name,
             selection,
         } => {
+            println!(">>>here");
             let columns = fetch_columns(storage, table_name).await?.map(Rc::from);
-            let keys = fetch(storage, table_name, columns, selection.as_ref())
+
+            let schemas = storage.fetch_all_schemas().await?;
+
+            let referring_foreign_keys = schemas.into_iter().flat_map(|schema| {
+                let table_name_clone = schema.table_name.clone();
+                schema
+                    .foreign_keys
+                    .into_iter()
+                    .filter({
+                        move |ForeignKey { referred_table, .. }| referred_table == table_name
+                    })
+                    .map({
+                        let table_name_clone = table_name_clone.clone(); // Clone table_name_clone again here
+                        move |fk| (fk, table_name_clone.clone())
+                    })
+            });
+
+            let keys: Vec<Key> = fetch(storage, table_name, columns, selection.as_ref())
                 .await?
-                .map_ok(|(key, _)| key)
-                .try_collect::<Vec<_>>()
+                .into_stream()
+                .then(|item| async {
+                    let (key, row) = item?;
+
+                    for (
+                        ForeignKey {
+                            referred_table,
+                            referred_column,
+                            ..
+                        },
+                        referring_table_name,
+                    ) in referring_foreign_keys.clone()
+                    {
+                        let value = row.get_value(&referred_column).unwrap();
+                        let expr = &Expr::BinaryOp {
+                            left: Box::new(Expr::Identifier(referred_column.clone())),
+                            op: BinaryOperator::Eq,
+                            right: Box::new(value.to_owned().try_into()?),
+                        };
+                        let referring_rows =
+                            fetch(storage, &referring_table_name, None, Some(expr)).await?;
+
+                        let len = referring_rows.count().await;
+                        if len > 0 {
+                            return Err(ExecuteError::ReferringColumnExists(format!(
+                                "{referred_table}.{referred_column}"
+                            ))
+                            .into());
+                        }
+                    }
+
+                    Ok::<_, Error>(key)
+                })
+                .try_collect()
                 .await?;
 
             let num_keys = keys.len();
