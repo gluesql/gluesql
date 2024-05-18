@@ -65,10 +65,9 @@ impl ParquetStorage {
             for kv in metadata.iter() {
                 if kv.key == "schemaless" {
                     is_schemaless = matches!(kv.value.as_deref(), Some("true"));
-                    // break;
-                }
-
-                if kv.key.starts_with("foreign_key") {
+                } else if kv.key == "comment" {
+                    comment = kv.value.clone();
+                } else if kv.key.starts_with("foreign_key") {
                     let fk = kv
                         .value
                         .as_ref()
@@ -79,11 +78,6 @@ impl ParquetStorage {
                         .map_storage_err()?;
 
                     foreign_keys.push(fk);
-                }
-
-                if kv.key == "comment" {
-                    comment = kv.value.clone();
-                    // break;
                 }
             }
         }
