@@ -154,6 +154,21 @@ async fn test_data_modify() {
                 bool_field | int32_field | int64_field | int96_field | float_field | double_field | binary_field | flba_field;
             )),
         ),
+        (
+            glue.execute("SELECT TABLE_NAME FROM GLUE_TABLES").await,
+            Ok(select!(
+                TABLE_NAME;
+                Str;
+                "all_types_with_nulls".to_owned();
+                "all_types_with_nulls_copy".to_owned();
+                "alltypes_dictionary".to_owned();
+                "alltypes_plain".to_owned();
+                "alltypes_plain_snappy".to_owned();
+                "nested_lists_snappy".to_owned();
+                "nested_maps_snappy".to_owned() 
+            ))
+            ,
+        ),
     ];
 
     for (actual, expected) in cases {
