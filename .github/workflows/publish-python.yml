@@ -150,8 +150,6 @@ jobs:
             --release
             --manifest-path pkg/python/Cargo.toml
             --out dist
-            --interpreter ${{ env.PYTHON_VERSION }}
-          manylinux: 'auto'
 
       - name: Test wheel
         run: |
