@@ -141,9 +141,9 @@ test_case!(foreign_key, {
     .await;
 
     g.named_test(
-        "Delete parent should fail if child exists (by default: NO ACTION)",
+        "Delete parent should fail if child exists (by default: NO ACTION and gets error)",
         "DELETE FROM ParentWithPK WHERE id = 1;",
-        Err(ExecuteError::ReferringColumnExists("ParentWithPK.id".to_owned()).into()),
+        Err(ExecuteError::ReferringColumnExists("Child.parent_id".to_owned()).into()),
     )
     .await;
 

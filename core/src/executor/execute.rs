@@ -32,6 +32,9 @@ pub enum ExecuteError {
 
     #[error("referring column exists: {0}")]
     ReferringColumnExists(String),
+
+    #[error("Value not found on column: {0}")]
+    ValueNotFound(String),
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -263,26 +266,20 @@ async fn execute_inner<T: GStore + GStoreMut>(
             table_name,
             selection,
         } => {
-            println!(">>>here");
             let columns = fetch_columns(storage, table_name).await?.map(Rc::from);
-
             let schemas = storage.fetch_all_schemas().await?;
+            let referring_foreign_keys = schemas
+                .into_iter()
+                .flat_map(|schema| {
+                    schema
+                        .foreign_keys
+                        .into_iter()
+                        .filter(|ForeignKey { referred_table, .. }| referred_table == table_name)
+                        .map(move |fk| (fk, schema.table_name.clone())) // Todo: gather with hierarchy: tablename -> matched foreign keys
+                })
+                .collect::<Vec<_>>();
 
-            let referring_foreign_keys = schemas.into_iter().flat_map(|schema| {
-                let table_name_clone = schema.table_name.clone();
-                schema
-                    .foreign_keys
-                    .into_iter()
-                    .filter({
-                        move |ForeignKey { referred_table, .. }| referred_table == table_name
-                    })
-                    .map({
-                        let table_name_clone = table_name_clone.clone(); // Clone table_name_clone again here
-                        move |fk| (fk, table_name_clone.clone())
-                    })
-            });
-
-            let keys: Vec<Key> = fetch(storage, table_name, columns, selection.as_ref())
+            let keys = fetch(storage, table_name, columns, selection.as_ref())
                 .await?
                 .into_stream()
                 .then(|item| async {
@@ -290,26 +287,31 @@ async fn execute_inner<T: GStore + GStoreMut>(
 
                     for (
                         ForeignKey {
-                            referred_table,
+                            column,
                             referred_column,
                             ..
                         },
                         referring_table_name,
-                    ) in referring_foreign_keys.clone()
+                    ) in &referring_foreign_keys
                     {
-                        let value = row.get_value(&referred_column).unwrap();
+                        let value = row
+                            .get_value(referred_column)
+                            .ok_or(ExecuteError::ValueNotFound(referred_column.to_owned()))?;
+
                         let expr = &Expr::BinaryOp {
-                            left: Box::new(Expr::Identifier(referred_column.clone())),
+                            left: Box::new(Expr::Identifier(column.clone())),
                             op: BinaryOperator::Eq,
                             right: Box::new(value.to_owned().try_into()?),
                         };
+
+                        let columns = Some(vec![column.to_owned()]).map(Rc::from);
                         let referring_rows =
-                            fetch(storage, &referring_table_name, None, Some(expr)).await?;
+                            fetch(storage, referring_table_name, columns, Some(expr)).await?;
 
                         let len = referring_rows.count().await;
                         if len > 0 {
                             return Err(ExecuteError::ReferringColumnExists(format!(
-                                "{referred_table}.{referred_column}"
+                                "{referring_table_name}.{column}"
                             ))
                             .into());
                         }
@@ -317,7 +319,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
 
                     Ok::<_, Error>(key)
                 })
-                .try_collect()
+                .try_collect::<Vec<_>>()
                 .await?;
 
             let num_keys = keys.len();
