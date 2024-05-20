@@ -125,13 +125,10 @@ pub async fn create_table<T: GStore + GStoreMut>(
             referred_column,
             ..
         } = foreign_key;
-        let foreign_schema =
-            storage
-                .fetch_schema(referred_table)
-                .await?
-                .ok_or_else(|| -> Error {
-                    AlterError::ForeignTableNotFound(referred_table.to_owned()).into()
-                })?;
+        let foreign_schema = storage
+            .fetch_schema(referred_table)
+            .await?
+            .ok_or_else(|| AlterError::ForeignTableNotFound(referred_table.to_owned()))?;
 
         let foreign_column_def = foreign_schema
             .column_defs
