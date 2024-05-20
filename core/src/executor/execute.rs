@@ -232,7 +232,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
 
                     let foreign_keys = Rc::clone(&foreign_keys);
                     async move {
-                        let row = update.apply(row, foreign_keys.as_ref(), table_name).await?;
+                        let row = update.apply(row, foreign_keys.as_ref()).await?;
 
                         Ok((key, row))
                     }

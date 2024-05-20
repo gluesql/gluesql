@@ -1,7 +1,8 @@
 use {
     crate::*,
     gluesql_core::{
-        error::{ExecuteError, ValidateError},
+        ast::ForeignKey,
+        error::{ExecuteError, InsertError, UpdateError},
         executor::{AlterError, ReferringChild},
         prelude::Payload,
     },
@@ -84,12 +85,16 @@ test_case!(foreign_key, {
     g.named_test(
         "If there is no parent, insert should fail",
         "INSERT INTO Child VALUES (1, 'orphan', 1);",
-        Err(ValidateError::ForeignKeyViolation {
-            name: "FK_parent_id-ParentWithPK_id".to_owned(),
-            table: "Child".to_owned(),
-            column: "parent_id".to_owned(),
-            referred_table: "ParentWithPK".to_owned(),
-            referred_column: "id".to_owned(),
+        Err(InsertError::CannotFindReferencedValue {
+            foreign_key: ForeignKey {
+                name: "FK_parent_id-ParentWithPK_id".to_owned(),
+                column: "parent_id".to_owned(),
+                referred_table: "ParentWithPK".to_owned(),
+                referred_column: "id".to_owned(),
+                on_delete: None,
+                on_update: None,
+            },
+            referenced_value: "1".to_owned(),
         }
         .into()),
     )
@@ -115,12 +120,16 @@ test_case!(foreign_key, {
     g.named_test(
         "If there is no parent, update should fail",
         "UPDATE Child SET parent_id = 2 WHERE id = 2;",
-        Err(ValidateError::ForeignKeyViolation {
-            name: "FK_parent_id-ParentWithPK_id".to_owned(),
-            table: "Child".to_owned(),
-            column: "parent_id".to_owned(),
-            referred_table: "ParentWithPK".to_owned(),
-            referred_column: "id".to_owned(),
+        Err(UpdateError::CannotFindReferencedValue {
+            foreign_key: ForeignKey {
+                name: "FK_parent_id-ParentWithPK_id".to_owned(),
+                column: "parent_id".to_owned(),
+                referred_table: "ParentWithPK".to_owned(),
+                referred_column: "id".to_owned(),
+                on_delete: None,
+                on_update: None,
+            },
+            referenced_value: "2".to_owned(),
         }
         .into()),
     )

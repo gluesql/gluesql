@@ -2,7 +2,6 @@ use {
     super::{
         context::RowContext,
         evaluate::{evaluate, Evaluated},
-        ValidateError,
     },
     crate::{
         ast::{Assignment, ColumnDef, ColumnUniqueOption, ForeignKey},
@@ -28,6 +27,12 @@ pub enum UpdateError {
 
     #[error("conflict on schema, row data does not fit to schema")]
     ConflictOnSchema,
+
+    #[error("cannot find referenced value for {foreign_key:?} with value {referenced_value:?}")]
+    CannotFindReferencedValue {
+        foreign_key: ForeignKey,
+        referenced_value: String,
+    },
 }
 
 pub struct Update<'a, T: GStore> {
@@ -66,12 +71,7 @@ impl<'a, T: GStore> Update<'a, T> {
         })
     }
 
-    pub async fn apply(
-        &self,
-        row: Row,
-        foreign_keys: &Vec<ForeignKey>,
-        table_name: &'a str,
-    ) -> Result<Row> {
+    pub async fn apply(&self, row: Row, foreign_keys: &Vec<ForeignKey>) -> Result<Row> {
         let context = RowContext::new(self.table_name, Cow::Borrowed(&row), None);
         let context = Some(Rc::new(context));
 
@@ -118,31 +118,25 @@ impl<'a, T: GStore> Update<'a, T> {
                 }
             })
             .and_then(|(id, value)| async move {
-                // TODO: extract `fn validate_parents`
+                // TODO: extract `fn validate_referenceds`
                 for foreign_key in foreign_keys {
                     let ForeignKey {
-                        name,
                         column,
                         referred_table,
-                        referred_column,
                         ..
                     } = foreign_key;
                     if column != id || value == Value::Null {
                         return Ok((id, value));
                     }
-                    let no_parent = self
+
+                    if let None = self
                         .storage
                         .fetch_data(referred_table, &Key::try_from(&value)?)
                         .await?
-                        .is_none();
-
-                    if no_parent {
-                        return Err(ValidateError::ForeignKeyViolation {
-                            name: name.to_owned(),
-                            table: table_name.to_owned(),
-                            column: column.to_owned(),
-                            referred_table: referred_table.to_owned(),
-                            referred_column: referred_column.to_owned(),
+                    {
+                        return Err(UpdateError::CannotFindReferencedValue {
+                            foreign_key: foreign_key.to_owned(),
+                            referenced_value: String::from(value),
                         }
                         .into());
                     }
@@ -150,6 +144,7 @@ impl<'a, T: GStore> Update<'a, T> {
 
                 Ok((id, value))
             })
+            // TODO: impl validate_referencings
             .try_collect::<Vec<(&str, Value)>>()
             .await?;
 

@@ -7,7 +7,7 @@ use {
         ast::{ColumnDef, ColumnUniqueOption, Expr, ForeignKey, Query, SetExpr, Values},
         data::{Key, Row, Schema, Value},
         executor::{evaluate::evaluate_stateless, limit::Limit},
-        result::{Result, ValidateError},
+        result::Result,
         store::{DataRow, GStore, GStoreMut},
     },
     futures::stream::{self, StreamExt, TryStreamExt},
@@ -38,6 +38,13 @@ pub enum InsertError {
 
     #[error("map type required: {0}")]
     MapTypeValueRequired(String),
+
+    // TODO: merge with UpdateError::CannotFindReferencedValue
+    #[error("cannot find referenced value for {foreign_key:?} with value {referenced_value:?}")]
+    CannotFindReferencedValue {
+        foreign_key: ForeignKey,
+        referenced_value: String,
+    },
 }
 
 enum RowsData {
@@ -172,7 +179,7 @@ async fn fetch_vec_rows<T: GStore>(
     )
     .await?;
 
-    validate_foreign_key(foreign_keys, &rows, storage, table_name, &column_defs).await?;
+    validate_foreign_key(foreign_keys, &rows, storage, &column_defs).await?;
 
     let primary_key = column_defs.iter().position(|ColumnDef { unique, .. }| {
         unique == &Some(ColumnUniqueOption { is_primary: true })
@@ -197,42 +204,35 @@ async fn validate_foreign_key<T: GStore>(
     foreign_keys: Vec<ForeignKey>,
     rows: &[Vec<Value>],
     storage: &T,
-    table_name: &str,
     column_defs: &Rc<[ColumnDef]>,
 ) -> Result<()> {
     for foreign_key in foreign_keys {
         let ForeignKey {
-            name,
             column,
             referred_table,
-            referred_column,
             ..
-        } = foreign_key;
+        } = &foreign_key;
         if let Some(target_index) = column_defs
             .iter()
             .enumerate()
-            .find(|(_, c)| c.name == column)
+            .find(|(_, c)| &c.name == column)
         {
             for row in rows.iter() {
-                let child = row
+                let value = row
                     .get(target_index.0)
                     .ok_or(InsertError::WrongColumnName(column.to_owned()))?;
 
-                if child == &Value::Null {
+                if value == &Value::Null {
                     continue;
                 }
-                let no_parent = storage
-                    .fetch_data(&referred_table, &Key::try_from(child)?)
-                    .await?
-                    .is_none();
 
-                if no_parent {
-                    return Err(ValidateError::ForeignKeyViolation {
-                        name,
-                        table: table_name.to_owned(),
-                        column: column.to_owned(),
-                        referred_table: referred_table.to_owned(),
-                        referred_column: referred_column.to_owned(),
+                if let None = storage
+                    .fetch_data(&referred_table, &Key::try_from(value)?)
+                    .await?
+                {
+                    return Err(InsertError::CannotFindReferencedValue {
+                        foreign_key,
+                        referenced_value: String::from(value),
                     }
                     .into());
                 }
