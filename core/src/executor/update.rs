@@ -117,40 +117,41 @@ impl<'a, T: GStore> Update<'a, T> {
                     Ok::<_, Error>((id.as_ref(), value))
                 }
             })
+            .and_then(|(id, value)| async move {
+                // TODO: extract `fn validate_parents`
+                for foreign_key in foreign_keys {
+                    let ForeignKey {
+                        name,
+                        column,
+                        referred_table,
+                        referred_column,
+                        ..
+                    } = foreign_key;
+                    if column != id || value == Value::Null {
+                        return Ok((id, value));
+                    }
+                    let no_parent = self
+                        .storage
+                        .fetch_data(referred_table, &Key::try_from(&value)?)
+                        .await?
+                        .is_none();
+
+                    if no_parent {
+                        return Err(ValidateError::ForeignKeyViolation {
+                            name: name.to_owned(),
+                            table: table_name.to_owned(),
+                            column: column.to_owned(),
+                            referred_table: referred_table.to_owned(),
+                            referred_column: referred_column.to_owned(),
+                        }
+                        .into());
+                    }
+                }
+
+                Ok((id, value))
+            })
             .try_collect::<Vec<(&str, Value)>>()
             .await?;
-
-        for (id, value) in assignments.iter() {
-            for ForeignKey {
-                name,
-                column,
-                referred_table,
-                referred_column,
-                ..
-            } in foreign_keys
-            {
-                if column != id || value == &Value::Null {
-                    continue;
-                }
-
-                let no_parent = self
-                    .storage
-                    .fetch_data(referred_table, &Key::try_from(value)?)
-                    .await?
-                    .is_none();
-
-                if no_parent {
-                    return Err(ValidateError::ForeignKeyViolation {
-                        name: name.to_owned(),
-                        table: table_name.to_owned(),
-                        column: column.to_owned(),
-                        referred_table: referred_table.to_owned(),
-                        referred_column: referred_column.to_owned(),
-                    }
-                    .into());
-                }
-            }
-        }
 
         Ok(match row {
             Row::Vec { columns, values } => {
