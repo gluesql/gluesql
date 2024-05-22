@@ -27,13 +27,13 @@ pub enum ValidateError {
     #[error("duplicate entry '{0:?}' for primary_key field")]
     DuplicateEntryOnPrimaryKeyField(Key),
 
-    #[error("foreign key `{name}` violated - chlid: {table}.{column}, parent: {referred_table}.{referred_column}")]
+    #[error("foreign key `{name}` violated - referencing: {table}.{column}, referenced: {referenced_table}.{referenced_column}")]
     ForeignKeyViolation {
         name: String,
         table: String,
         column: String,
-        referred_table: String,
-        referred_column: String,
+        referenced_table: String,
+        referenced_column: String,
     },
 }
 

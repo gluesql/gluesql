@@ -30,8 +30,8 @@ pub enum ExecuteError {
     #[error("table not found: {0}")]
     TableNotFound(String),
 
-    #[error("referring column exists: {0}")]
-    ReferringColumnExists(String),
+    #[error("referencing column exists: {0}")]
+    ReferencingColumnExists(String),
 
     #[error("Value not found on column: {0}")]
     ValueNotFound(String),
@@ -268,13 +268,18 @@ async fn execute_inner<T: GStore + GStoreMut>(
         } => {
             let columns = fetch_columns(storage, table_name).await?.map(Rc::from);
             let schemas = storage.fetch_all_schemas().await?;
-            let referring_foreign_keys = schemas
+            let referencing_foreign_keys = schemas
                 .into_iter()
                 .flat_map(|schema| {
                     schema
                         .foreign_keys
                         .into_iter()
-                        .filter(|ForeignKey { referred_table, .. }| referred_table == table_name)
+                        .filter(
+                            |ForeignKey {
+                                 referenced_table_name,
+                                 ..
+                             }| referenced_table_name == table_name,
+                        )
                         .map(move |fk| (fk, schema.table_name.clone())) // Todo: gather with hierarchy: tablename -> matched foreign keys
                 })
                 .collect::<Vec<_>>();
@@ -287,31 +292,31 @@ async fn execute_inner<T: GStore + GStoreMut>(
 
                     for (
                         ForeignKey {
-                            column,
-                            referred_column,
+                            referencing_column_name,
+                            referenced_column_name,
                             ..
                         },
-                        referring_table_name,
-                    ) in &referring_foreign_keys
+                        referencing_table_name,
+                    ) in &referencing_foreign_keys
                     {
-                        let value = row
-                            .get_value(referred_column)
-                            .ok_or(ExecuteError::ValueNotFound(referred_column.to_owned()))?;
+                        let value = row.get_value(referenced_column_name).ok_or(
+                            ExecuteError::ValueNotFound(referenced_column_name.to_owned()),
+                        )?;
 
                         let expr = &Expr::BinaryOp {
-                            left: Box::new(Expr::Identifier(column.clone())),
+                            left: Box::new(Expr::Identifier(referencing_column_name.clone())),
                             op: BinaryOperator::Eq,
                             right: Box::new(value.to_owned().try_into()?),
                         };
 
-                        let columns = Some(vec![column.to_owned()]).map(Rc::from);
-                        let referring_rows =
-                            fetch(storage, referring_table_name, columns, Some(expr)).await?;
+                        let columns = Some(vec![referencing_column_name.to_owned()]).map(Rc::from);
+                        let referencing_rows =
+                            fetch(storage, referencing_table_name, columns, Some(expr)).await?;
 
-                        let len = referring_rows.count().await;
+                        let len = referencing_rows.count().await;
                         if len > 0 {
-                            return Err(ExecuteError::ReferringColumnExists(format!(
-                                "{referring_table_name}.{column}"
+                            return Err(ExecuteError::ReferencingColumnExists(format!(
+                                "{referencing_table_name}.{referencing_column_name}"
                             ))
                             .into());
                         }

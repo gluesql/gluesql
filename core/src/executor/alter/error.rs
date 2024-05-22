@@ -1,5 +1,5 @@
 use {
-    super::table::ReferringChild,
+    super::table::Referencing,
     crate::ast::{DataType, Expr},
     serde::Serialize,
     std::fmt::Debug,
@@ -63,15 +63,15 @@ pub enum AlterError {
         foreign_column_type: DataType,
     },
 
-    #[error("referred column '{referred_table}.{referred_column}' is not unique, cannot be used as foreign key")]
-    ReferredColumnNotUnique {
-        referred_table: String,
-        referred_column: String,
+    #[error("referenced column '{referenced_table}.{referenced_column}' is not unique, cannot be used as foreign key")]
+    ReferencedColumnNotUnique {
+        referenced_table: String,
+        referenced_column: String,
     },
 
-    #[error("cannot drop table parent '{parent}' due to foreign key constraint from child '{}'", referring_children.iter().map(ToString::to_string).collect::<Vec<_>>().join(", "))]
-    CannotDropTableParentOnReferringChildren {
-        parent: String,
-        referring_children: Vec<ReferringChild>,
+    #[error("cannot drop table '{referenced_table_name}' due to referencing tables: '{}'", referencings.iter().map(ToString::to_string).collect::<Vec<_>>().join(", "))]
+    CannotDropTableWitnReferencing {
+        referenced_table_name: String,
+        referencings: Vec<Referencing>,
     },
 }

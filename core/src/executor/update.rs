@@ -122,9 +122,9 @@ impl<'a, T: GStore> Update<'a, T> {
                 // TODO: extract `fn validate_referenceds`
                 for foreign_key in foreign_keys {
                     let ForeignKey {
-                        column,
-                        referred_table,
-                        referred_column,
+                        referencing_column_name: column,
+                        referenced_table_name,
+                        referenced_column_name,
                         ..
                     } = foreign_key;
                     if column != id || value == Value::Null {
@@ -133,14 +133,14 @@ impl<'a, T: GStore> Update<'a, T> {
 
                     let no_referenced = self
                         .storage
-                        .fetch_data(referred_table, &Key::try_from(&value)?)
+                        .fetch_data(referenced_table_name, &Key::try_from(&value)?)
                         .await?
                         .is_none();
 
                     if no_referenced {
                         return Err(UpdateError::CannotFindReferencedValue {
-                            table_name: referred_table.to_owned(),
-                            column_name: referred_column.to_owned(),
+                            table_name: referenced_table_name.to_owned(),
+                            column_name: referenced_column_name.to_owned(),
                             referenced_value: String::from(value),
                         }
                         .into());

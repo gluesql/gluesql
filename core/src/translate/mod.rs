@@ -357,7 +357,7 @@ pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Fo
                 ),
             )?;
 
-            let referred_column = referred_columns
+            let referenced_column = referred_columns
                 .first()
                 .ok_or(TranslateError::InvalidForeignKeyConstraint(
                     name.clone()
@@ -367,18 +367,18 @@ pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Fo
                 .value
                 .clone();
 
-            let referred_table = translate_object_name(foreign_table)?;
+            let referenced_table = translate_object_name(foreign_table)?;
 
             let name = match name {
                 Some(name) => name.value.clone(),
-                None => format!("FK_{column}-{referred_table}_{referred_column}"),
+                None => format!("FK_{column}-{referenced_table}_{referenced_column}"),
             };
 
             Ok(ForeignKey {
                 name,
-                column,
-                referred_table,
-                referred_column,
+                referencing_column_name: column,
+                referenced_table_name: referenced_table,
+                referenced_column_name: referenced_column,
                 on_delete: on_delete.map(translate_referential_action),
                 on_update: on_update.map(translate_referential_action),
             })

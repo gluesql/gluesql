@@ -2,7 +2,7 @@ use {
     crate::*,
     gluesql_core::{
         error::{ExecuteError, InsertError, UpdateError},
-        executor::{AlterError, ReferringChild},
+        executor::{AlterError, Referencing},
         prelude::Payload,
     },
 };
@@ -12,7 +12,7 @@ test_case!(foreign_key, {
 
     g.run(
         "
-        CREATE TABLE ParentWithoutPK (
+        CREATE TABLE ReferencedTableWithoutPK (
             id INTEGER,
             name TEXT,
         );
@@ -21,17 +21,17 @@ test_case!(foreign_key, {
     .await;
 
     g.named_test(
-        "Create table with foreign key should be failed if parent table does not have primary key or unique",
+        "Create table with foreign key should be failed if referenced table does not have primary key or unique",
         "
-        CREATE TABLE Child (
+        CREATE TABLE ReferencingTable (
             id INT, name TEXT,
-            parent_id INT,
-            FOREIGN KEY(parent_id) REFERENCES ParentWithoutPK(id)
+            referenced_table_id INT,
+            FOREIGN KEY(referenced_table_id) REFERENCES ReferencedTableWithoutPK(id)
         );
         ",
-        Err(AlterError::ReferredColumnNotUnique {
-            referred_table: "ParentWithoutPK".to_owned(),
-            referred_column: "id".to_owned(),
+        Err(AlterError::ReferencedColumnNotUnique {
+            referenced_table: "ReferencedTableWithoutPK".to_owned(),
+            referenced_column: "id".to_owned(),
         }
         .into()),
     )
@@ -39,7 +39,7 @@ test_case!(foreign_key, {
 
     g.run(
         "
-        CREATE TABLE ParentWithUnique (
+        CREATE TABLE ReferencedTableWithUnique (
             id INTEGER UNIQUE,
             name TEXT,
         );
@@ -49,11 +49,11 @@ test_case!(foreign_key, {
 
     g.run(
         "
-        CREATE TABLE ChildReferringUnique (
+        CREATE TABLE ReferencingTableUnique (
             id INT,
             name TEXT,
-            parent_id INT,
-            FOREIGN KEY(parent_id) REFERENCES ParentWithUnique(id)
+            referenced_table_id INT,
+            FOREIGN KEY(referenced_table_id) REFERENCES ReferencedTableWithUnique(id)
         );
     ",
     )
@@ -61,7 +61,7 @@ test_case!(foreign_key, {
 
     g.run(
         "
-        CREATE TABLE ParentWithPK (
+        CREATE TABLE ReferencedTableWithPK (
             id INTEGER PRIMARY KEY,
             name TEXT,
         );
@@ -71,21 +71,21 @@ test_case!(foreign_key, {
 
     g.run(
         "
-        CREATE TABLE Child (
+        CREATE TABLE ReferencingTable (
             id INT,
             name TEXT,
-            parent_id INT,
-            FOREIGN KEY(parent_id) REFERENCES ParentWithPK(id)
+            referenced_table_id INT,
+            FOREIGN KEY(referenced_table_id) REFERENCES ReferencedTableWithPK (id)
         );
     ",
     )
     .await;
 
     g.named_test(
-        "If there is no parent, insert should fail",
-        "INSERT INTO Child VALUES (1, 'orphan', 1);",
+        "If there is no referenced table, insert should fail",
+        "INSERT INTO ReferencingTable VALUES (1, 'orphan', 1);",
         Err(InsertError::CannotFindReferencedValue {
-            table_name: "ParentWithPK".to_owned(),
+            table_name: "ReferencedTableWithPK".to_owned(),
             column_name: "id".to_owned(),
             referenced_value: "1".to_owned(),
         }
@@ -94,27 +94,27 @@ test_case!(foreign_key, {
     .await;
 
     g.named_test(
-        "Even If there is no parent, NULL should be inserted",
-        "INSERT INTO Child VALUES (1, 'Null is independent', NULL);",
+        "Even If there is no referenced table, NULL should be inserted",
+        "INSERT INTO ReferencingTable VALUES (1, 'Null is independent', NULL);",
         Ok(Payload::Insert(1)),
     )
     .await;
 
-    g.run("INSERT INTO ParentWithPK VALUES (1, 'parent1');")
+    g.run("INSERT INTO ReferencedTableWithPK VALUES (1, 'referenced_table1');")
         .await;
 
     g.named_test(
-        "With valid parent, insert should succeed",
-        "INSERT INTO Child VALUES (2, 'child with parent', 1);",
+        "With valid referenced table, insert should succeed",
+        "INSERT INTO ReferencingTable VALUES (2, 'referencing_table with referenced_table', 1);",
         Ok(Payload::Insert(1)),
     )
     .await;
 
     g.named_test(
-        "If there is no parent, update should fail",
-        "UPDATE Child SET parent_id = 2 WHERE id = 2;",
+        "If there is no referenced table, update should fail",
+        "UPDATE ReferencingTable SET referenced_table_id = 2 WHERE id = 2;",
         Err(UpdateError::CannotFindReferencedValue {
-            table_name: "ParentWithPK".to_owned(),
+            table_name: "ReferencedTableWithPK".to_owned(),
             column_name: "id".to_owned(),
             referenced_value: "2".to_owned(),
         }
@@ -123,41 +123,41 @@ test_case!(foreign_key, {
     .await;
 
     g.named_test(
-        "Even If there is no parent, it should be able to update to NULL",
-        "UPDATE Child SET parent_id = NULL WHERE id = 2;",
+        "Even If there is no referenced table, it should be able to update to NULL",
+        "UPDATE ReferencingTable SET referenced_table_id = NULL WHERE id = 2;",
         Ok(Payload::Update(1)),
     )
     .await;
 
     g.named_test(
-        "With valid parent, update should succeed",
-        "UPDATE Child SET parent_id = 1 WHERE id = 2;",
+        "With valid referenced table, update should succeed",
+        "UPDATE ReferencingTable SET referenced_table_id = 1 WHERE id = 2;",
         Ok(Payload::Update(1)),
     )
     .await;
 
     g.named_test(
-        "Delete parent should fail if child exists (by default: NO ACTION and gets error)",
-        "DELETE FROM ParentWithPK WHERE id = 1;",
-        Err(ExecuteError::ReferringColumnExists("Child.parent_id".to_owned()).into()),
+        "Delete referenced table should fail if referencing table exists (by default: NO ACTION and gets error)",
+        "DELETE FROM ReferencedTableWithPK WHERE id = 1;",
+        Err(ExecuteError::ReferencingColumnExists("ReferencingTable.referenced_table_id".to_owned()).into()),
     )
     .await;
 
     g.named_test(
-        "Deleting child does not care parents",
-        "DELETE FROM Child WHERE id = 2;",
+        "Deleting referencing table does not care referenced tables",
+        "DELETE FROM ReferencingTable WHERE id = 2;",
         Ok(Payload::Delete(1)),
     )
     .await;
 
     g.named_test(
-        "Cannot drop parent if child exists",
-        "DROP TABLE ParentWithPK;",
-        Err(AlterError::CannotDropTableParentOnReferringChildren {
-            parent: "ParentWithPK".to_owned(),
-            referring_children: vec![ReferringChild {
-                table_name: "Child".to_owned(),
-                constraint_name: "FK_parent_id-ParentWithPK_id".to_owned(),
+        "Cannot drop referenced table if referencing table exists",
+        "DROP TABLE ReferencedTableWithPK;",
+        Err(AlterError::CannotDropTableWitnReferencing {
+            referenced_table_name: "ReferencedTableWithPK".to_owned(),
+            referencings: vec![Referencing {
+                table_name: "ReferencingTable".to_owned(),
+                constraint_name: "FK_referenced_table_id-ReferencedTableWithPK_id".to_owned(),
             }],
         }
         .into()),
@@ -166,7 +166,7 @@ test_case!(foreign_key, {
 
     g.named_test(
         "Drop table with cascade should drop both table and constraint",
-        "DROP TABLE ParentWithPK CASCADE;",
+        "DROP TABLE ReferencedTableWithPK CASCADE;",
         Ok(Payload::DropTable),
     )
     .await;

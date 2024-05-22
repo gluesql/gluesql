@@ -31,9 +31,9 @@ pub trait ToSqlUnquoted {
 #[derive(PartialEq, Debug, Clone, Eq, Hash, Serialize, Deserialize)]
 pub struct ForeignKey {
     pub name: String,
-    pub column: String,
-    pub referred_table: String,
-    pub referred_column: String,
+    pub referencing_column_name: String,
+    pub referenced_table_name: String,
+    pub referenced_column_name: String,
     pub on_delete: Option<ReferentialAction>,
     pub on_update: Option<ReferentialAction>,
 }
@@ -328,15 +328,15 @@ impl ToSql for Assignment {
 impl ToSql for ForeignKey {
     fn to_sql(&self) -> String {
         let ForeignKey {
-            column,
-            referred_table,
-            referred_column,
+            referencing_column_name,
+            referenced_table_name,
+            referenced_column_name,
             ..
         } = self;
 
         format!(
             r#"FOREIGN KEY ("{}") REFERENCES "{}"("{}")"#,
-            column, referred_table, referred_column,
+            referencing_column_name, referenced_table_name, referenced_column_name,
         )
     }
 }
