@@ -1,7 +1,6 @@
 use {
     crate::*,
     gluesql_core::{
-        ast::ForeignKey,
         error::{ExecuteError, InsertError, UpdateError},
         executor::{AlterError, ReferringChild},
         prelude::Payload,
@@ -86,14 +85,8 @@ test_case!(foreign_key, {
         "If there is no parent, insert should fail",
         "INSERT INTO Child VALUES (1, 'orphan', 1);",
         Err(InsertError::CannotFindReferencedValue {
-            foreign_key: ForeignKey {
-                name: "FK_parent_id-ParentWithPK_id".to_owned(),
-                column: "parent_id".to_owned(),
-                referred_table: "ParentWithPK".to_owned(),
-                referred_column: "id".to_owned(),
-                on_delete: None,
-                on_update: None,
-            },
+            table_name: "ParentWithPK".to_owned(),
+            column_name: "id".to_owned(),
             referenced_value: "1".to_owned(),
         }
         .into()),
@@ -121,14 +114,8 @@ test_case!(foreign_key, {
         "If there is no parent, update should fail",
         "UPDATE Child SET parent_id = 2 WHERE id = 2;",
         Err(UpdateError::CannotFindReferencedValue {
-            foreign_key: ForeignKey {
-                name: "FK_parent_id-ParentWithPK_id".to_owned(),
-                column: "parent_id".to_owned(),
-                referred_table: "ParentWithPK".to_owned(),
-                referred_column: "id".to_owned(),
-                on_delete: None,
-                on_update: None,
-            },
+            table_name: "ParentWithPK".to_owned(),
+            column_name: "id".to_owned(),
             referenced_value: "2".to_owned(),
         }
         .into()),

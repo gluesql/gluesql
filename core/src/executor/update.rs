@@ -28,9 +28,10 @@ pub enum UpdateError {
     #[error("conflict on schema, row data does not fit to schema")]
     ConflictOnSchema,
 
-    #[error("cannot find referenced value for {foreign_key:?} with value {referenced_value:?}")]
+    #[error("cannot find referenced value on {table_name}.{column_name} with value {referenced_value:?}")]
     CannotFindReferencedValue {
-        foreign_key: ForeignKey,
+        table_name: String,
+        column_name: String,
         referenced_value: String,
     },
 }
@@ -123,6 +124,7 @@ impl<'a, T: GStore> Update<'a, T> {
                     let ForeignKey {
                         column,
                         referred_table,
+                        referred_column,
                         ..
                     } = foreign_key;
                     if column != id || value == Value::Null {
@@ -135,7 +137,8 @@ impl<'a, T: GStore> Update<'a, T> {
                         .await?
                     {
                         return Err(UpdateError::CannotFindReferencedValue {
-                            foreign_key: foreign_key.to_owned(),
+                            table_name: referred_table.to_owned(),
+                            column_name: referred_column.to_owned(),
                             referenced_value: String::from(value),
                         }
                         .into());

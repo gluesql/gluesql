@@ -40,9 +40,10 @@ pub enum InsertError {
     MapTypeValueRequired(String),
 
     // TODO: merge with UpdateError::CannotFindReferencedValue
-    #[error("cannot find referenced value for {foreign_key:?} with value {referenced_value:?}")]
+    #[error("cannot find referenced value on {table_name}.{column_name} with value {referenced_value:?}")]
     CannotFindReferencedValue {
-        foreign_key: ForeignKey,
+        table_name: String,
+        column_name: String,
         referenced_value: String,
     },
 }
@@ -210,6 +211,7 @@ async fn validate_foreign_key<T: GStore>(
         let ForeignKey {
             column,
             referred_table,
+            referred_column,
             ..
         } = &foreign_key;
         if let Some(target_index) = column_defs
@@ -231,7 +233,8 @@ async fn validate_foreign_key<T: GStore>(
                     .await?
                 {
                     return Err(InsertError::CannotFindReferencedValue {
-                        foreign_key,
+                        table_name: referred_table.to_owned(),
+                        column_name: referred_column.to_owned(),
                         referenced_value: String::from(value),
                     }
                     .into());
