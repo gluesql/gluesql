@@ -228,10 +228,12 @@ async fn validate_foreign_key<T: GStore>(
                     continue;
                 }
 
-                if let None = storage
-                    .fetch_data(&referred_table, &Key::try_from(value)?)
+                let no_referenced = storage
+                    .fetch_data(referred_table, &Key::try_from(value)?)
                     .await?
-                {
+                    .is_none();
+
+                if no_referenced {
                     return Err(InsertError::CannotFindReferencedValue {
                         table_name: referred_table.to_owned(),
                         column_name: referred_column.to_owned(),

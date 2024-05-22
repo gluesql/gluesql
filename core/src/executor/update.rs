@@ -131,11 +131,13 @@ impl<'a, T: GStore> Update<'a, T> {
                         return Ok((id, value));
                     }
 
-                    if let None = self
+                    let no_referenced = self
                         .storage
                         .fetch_data(referred_table, &Key::try_from(&value)?)
                         .await?
-                    {
+                        .is_none();
+
+                    if no_referenced {
                         return Err(UpdateError::CannotFindReferencedValue {
                             table_name: referred_table.to_owned(),
                             column_name: referred_column.to_owned(),
