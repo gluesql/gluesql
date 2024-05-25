@@ -28,7 +28,9 @@ pub use {
 
 use {
     crate::{
+        ast::ForeignKey,
         data::{Key, Schema},
+        executor::Referencing,
         result::{Error, Result},
     },
     async_trait::async_trait,
@@ -48,6 +50,29 @@ pub trait Store {
     async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>>;
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter<'_>>;
+
+    async fn fetch_referencings(&self, table_name: &str) -> Result<Vec<Referencing>> {
+        let schemas = self.fetch_all_schemas().await?;
+
+        Ok(schemas
+            .into_iter()
+            .flat_map(|schema| {
+                schema
+                    .foreign_keys
+                    .into_iter()
+                    .filter(
+                        |ForeignKey {
+                             referenced_table_name,
+                             ..
+                         }| referenced_table_name == table_name,
+                    )
+                    .map(move |fk| Referencing {
+                        table_name: schema.table_name.clone(),
+                        foreign_key: fk,
+                    })
+            })
+            .collect::<Vec<_>>())
+    }
 }
 
 /// By implementing `StoreMut` trait,

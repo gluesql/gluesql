@@ -1,6 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
+        ast::{ForeignKey, ReferentialAction},
         error::{ExecuteError, InsertError, UpdateError},
         executor::{AlterError, Referencing},
         prelude::Payload,
@@ -153,7 +154,14 @@ test_case!(foreign_key, {
             referenced_table_name: "ReferencedTableWithPK".to_owned(),
             referencings: vec![Referencing {
                 table_name: "ReferencingTable".to_owned(),
-                constraint_name: "FK_referenced_table_id-ReferencedTableWithPK_id".to_owned(),
+                foreign_key: ForeignKey {
+                    name: "FK_referenced_table_id-ReferencedTableWithPK_id".to_owned(),
+                    referencing_column_name: "referenced_table_id".to_owned(),
+                    referenced_table_name: "ReferencedTableWithPK".to_owned(),
+                    referenced_column_name: "id".to_owned(),
+                    on_delete: ReferentialAction::NoAction,
+                    on_update: ReferentialAction::NoAction,
+                },
             }],
         }
         .into()),

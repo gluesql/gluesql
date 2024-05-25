@@ -9,6 +9,7 @@ use {
         select::{select, select_with_labels},
         update::Update,
         validate::{validate_unique, ColumnValidation},
+        Referencing,
     },
     crate::{
         ast::{
@@ -268,22 +269,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
             selection,
         } => {
             let columns = fetch_columns(storage, table_name).await?.map(Rc::from);
-            let schemas = storage.fetch_all_schemas().await?;
-            let referencing_foreign_keys = schemas
-                .into_iter()
-                .flat_map(|schema| {
-                    schema
-                        .foreign_keys
-                        .into_iter()
-                        .filter(
-                            |ForeignKey {
-                                 referenced_table_name,
-                                 ..
-                             }| referenced_table_name == table_name,
-                        )
-                        .map(move |fk| (fk, schema.table_name.clone())) // Todo: gather with hierarchy: tablename -> matched foreign keys
-                })
-                .collect::<Vec<_>>();
+            let referencings = storage.fetch_referencings(table_name).await?;
 
             let keys = fetch(storage, table_name, columns, selection.as_ref())
                 .await?
@@ -291,15 +277,16 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 .then(|item| async {
                     let (key, row) = item?;
 
-                    for (
-                        ForeignKey {
-                            referencing_column_name,
-                            referenced_column_name,
-                            on_delete,
-                            ..
-                        },
-                        referencing_table_name,
-                    ) in &referencing_foreign_keys
+                    for Referencing {
+                        table_name: referencing_table_name,
+                        foreign_key:
+                            ForeignKey {
+                                referencing_column_name,
+                                referenced_column_name,
+                                on_delete,
+                                ..
+                            },
+                    } in &referencings
                     {
                         let value = row.get_value(referenced_column_name).ok_or(
                             ExecuteError::ValueNotFound(referenced_column_name.to_owned()),

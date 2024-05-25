@@ -231,16 +231,11 @@ pub async fn drop_table<T: GStore + GStoreMut>(
                 } = schema;
 
                 foreign_keys.into_iter().filter_map(move |foreign_key| {
-                    let ForeignKey {
-                        name: constraint_name,
-                        referenced_table_name,
-                        ..
-                    } = foreign_key;
-
-                    (&referenced_table_name == table_name && &referencing_table_name != table_name)
+                    (&foreign_key.referenced_table_name == table_name
+                        && &referencing_table_name != table_name)
                         .then_some(Referencing {
                             table_name: referencing_table_name.clone(),
-                            constraint_name,
+                            foreign_key,
                         })
                 })
             })
@@ -255,8 +250,8 @@ pub async fn drop_table<T: GStore + GStoreMut>(
         }
 
         for Referencing {
-            constraint_name,
             table_name,
+            foreign_key: ForeignKey { name, .. },
         } in referencings
         {
             let mut schema = storage
@@ -265,7 +260,7 @@ pub async fn drop_table<T: GStore + GStoreMut>(
                 .ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
             schema
                 .foreign_keys
-                .retain(|foreign_key| foreign_key.name != constraint_name);
+                .retain(|foreign_key| foreign_key.name != name);
             storage.insert_schema(&schema).await?;
         }
 
@@ -278,7 +273,7 @@ pub async fn drop_table<T: GStore + GStoreMut>(
 #[derive(Debug, PartialEq, Eq, Serialize)]
 pub struct Referencing {
     pub table_name: String,
-    pub constraint_name: String,
+    pub foreign_key: ForeignKey,
 }
 
 impl fmt::Display for Referencing {
@@ -286,7 +281,7 @@ impl fmt::Display for Referencing {
         write!(
             f,
             "constraint {} on referencing table {}",
-            self.constraint_name, self.table_name
+            self.foreign_key.name, self.table_name
         )
     }
 }
