@@ -70,7 +70,14 @@ impl ArrayValue {
             ArrayValue::Uuid(_) => DataType::Uuid,
             ArrayValue::Map(_) => DataType::Map,
             ArrayValue::List(_) => DataType::List,
-            ArrayValue::Array(_) => DataType::Array(Box::new(DataType::Boolean)),
+            ArrayValue::Array(array_values) => {
+                let data_type = array_values
+                    .first()
+                    .map_or(DataType::Text, |value| value.get_type());
+                let array_length = array_values.len();
+
+                DataType::Array(Box::new(data_type), Some(array_length))
+            }
             ArrayValue::Point(_) => DataType::Point,
         }
     }

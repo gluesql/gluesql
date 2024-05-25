@@ -29,9 +29,10 @@ pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
         SqlDataType::Uuid => Ok(DataType::Uuid),
         SqlDataType::Decimal(SqlExactNumberInfo::None) => Ok(DataType::Decimal),
         SqlDataType::Array(typedef) => match typedef {
-            ArrayElemTypeDef::SquareBracket(types) => Ok(DataType::Array(Box::new(
-                translate_data_type(types.as_ref())?,
-            ))),
+            ArrayElemTypeDef::SquareBracket(types, array_length) => Ok(DataType::Array(
+                Box::new(translate_data_type(types.as_ref())?),
+                array_length.map(|v| v as usize),
+            )),
             _ => Err(
                 TranslateError::UnsupportedArrayTypeDefinition(sql_data_type.to_string()).into(),
             ),

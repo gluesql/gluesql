@@ -169,7 +169,11 @@ impl Value {
             Value::Uuid(_) => Some(DataType::Uuid),
             Value::Map(_) => Some(DataType::Map),
             Value::List(_) => Some(DataType::List),
-            Value::Array(array_value) => Some(DataType::Array(Box::new(array_value.get_type()))),
+            Value::Array(array_value) => {
+                let data_type = array_value.get_type();
+                // FIXME: implement ArrayValue::get_length
+                Some(DataType::Array(Box::new(data_type), None))
+            }
             Value::Point(_) => Some(DataType::Point),
             Value::Null => None,
         }
@@ -205,9 +209,10 @@ impl Value {
             // First we check if the data type is an array,
             // then we check if the inner data type of the array is the same as the data type of the value
             Value::Array(array_value) => {
-                matches!(data_type, DataType::Array(_)) && {
+                matches!(data_type, DataType::Array(..)) && {
                     let array_data_type = array_value.get_type();
-                    data_type == &DataType::Array(Box::new(array_data_type))
+                    // FIXME: implement ArrayValue::get_length
+                    data_type == &DataType::Array(Box::new(array_data_type), None)
                 }
             }
             Value::Null => true,

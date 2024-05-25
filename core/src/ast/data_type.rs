@@ -31,5 +31,5 @@ pub enum DataType {
     List,
     Decimal,
     Point,
-    Array(Box<DataType>),
+    Array(Box<DataType>, Option<usize>),
 }
