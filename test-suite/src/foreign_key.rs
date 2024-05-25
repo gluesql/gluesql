@@ -11,24 +11,20 @@ test_case!(foreign_key, {
     let g = get_tester!();
 
     g.run(
-        "
-        CREATE TABLE ReferencedTableWithoutPK (
+        "CREATE TABLE ReferencedTableWithoutPK (
             id INTEGER,
             name TEXT,
-        );
-    ",
+        );",
     )
     .await;
 
     g.named_test(
-        "Create table with foreign key should be failed if referenced table does not have primary key",
-        "
-        CREATE TABLE ReferencingTable (
+        "Creating table with foreign key should be failed if referenced table does not have primary key",
+        "CREATE TABLE ReferencingTable (
             id INT, name TEXT,
             referenced_table_id INT,
-            FOREIGN KEY(referenced_table_id) REFERENCES ReferencedTableWithoutPK(id)
-        );
-        ",
+            FOREIGN KEY (referenced_table_id) REFERENCES ReferencedTableWithoutPK (id)
+        );",
         Err(AlterError::ReferencingNonPKColumn {
             referenced_table: "ReferencedTableWithoutPK".to_owned(),
             referenced_column: "id".to_owned(),
@@ -38,25 +34,21 @@ test_case!(foreign_key, {
     .await;
 
     g.run(
-        "
-        CREATE TABLE ReferencedTableWithUnique (
+        "CREATE TABLE ReferencedTableWithUnique (
             id INTEGER UNIQUE,
             name TEXT,
-        );
-    ",
+        );",
     )
     .await;
 
     g.named_test(
-        "Create table with foreign key should be failed if referenced table has only Unique constraint",
-        "
-        CREATE TABLE ReferencingTableUnique (
+        "Creating table with foreign key should be failed if referenced table has only Unique constraint",
+        "CREATE TABLE ReferencingTable (
             id INT,
             name TEXT,
             referenced_table_id INT,
-            FOREIGN KEY(referenced_table_id) REFERENCES ReferencedTableWithUnique(id)
-        );
-        ",
+            FOREIGN KEY (referenced_table_id) REFERENCES ReferencedTableWithUnique (id)
+        );",
         Err(AlterError::ReferencingNonPKColumn {
             referenced_table: "ReferencedTableWithUnique".to_owned(),
             referenced_column: "id".to_owned(),
@@ -66,29 +58,27 @@ test_case!(foreign_key, {
     .await;
 
     g.run(
-        "
-        CREATE TABLE ReferencedTableWithPK (
+        "CREATE TABLE ReferencedTableWithPK (
             id INTEGER PRIMARY KEY,
             name TEXT,
-        );
-    ",
-    )
-    .await;
-
-    g.run(
-        "
-        CREATE TABLE ReferencingTable (
-            id INT,
-            name TEXT,
-            referenced_table_id INT,
-            FOREIGN KEY(referenced_table_id) REFERENCES ReferencedTableWithPK (id)
-        );
-    ",
+        );",
     )
     .await;
 
     g.named_test(
-        "If there is no referenced table, insert should fail",
+        "Creating table with foreign key should be succeeded if referenced table has primary key",
+        "CREATE TABLE ReferencingTable (
+            id INT,
+            name TEXT,
+            referenced_table_id INT,
+            FOREIGN KEY (referenced_table_id) REFERENCES ReferencedTableWithPK (id)
+        );",
+        Ok(Payload::Create),
+    )
+    .await;
+
+    g.named_test(
+        "If there is no referenced value, insert should fail",
         "INSERT INTO ReferencingTable VALUES (1, 'orphan', 1);",
         Err(InsertError::CannotFindReferencedValue {
             table_name: "ReferencedTableWithPK".to_owned(),
@@ -100,7 +90,7 @@ test_case!(foreign_key, {
     .await;
 
     g.named_test(
-        "Even If there is no referenced table, NULL should be inserted",
+        "Even If there is no referenced value, NULL should be inserted",
         "INSERT INTO ReferencingTable VALUES (1, 'Null is independent', NULL);",
         Ok(Payload::Insert(1)),
     )
@@ -110,14 +100,14 @@ test_case!(foreign_key, {
         .await;
 
     g.named_test(
-        "With valid referenced table, insert should succeed",
+        "With valid referenced value, insert should succeed",
         "INSERT INTO ReferencingTable VALUES (2, 'referencing_table with referenced_table', 1);",
         Ok(Payload::Insert(1)),
     )
     .await;
 
     g.named_test(
-        "If there is no referenced table, update should fail",
+        "If there is no referenced value, update should fail",
         "UPDATE ReferencingTable SET referenced_table_id = 2 WHERE id = 2;",
         Err(UpdateError::CannotFindReferencedValue {
             table_name: "ReferencedTableWithPK".to_owned(),
@@ -129,28 +119,28 @@ test_case!(foreign_key, {
     .await;
 
     g.named_test(
-        "Even If there is no referenced table, it should be able to update to NULL",
+        "Even If there is no referenced value, it should be able to update to NULL",
         "UPDATE ReferencingTable SET referenced_table_id = NULL WHERE id = 2;",
         Ok(Payload::Update(1)),
     )
     .await;
 
     g.named_test(
-        "With valid referenced table, update should succeed",
+        "With valid referenced value, update should succeed",
         "UPDATE ReferencingTable SET referenced_table_id = 1 WHERE id = 2;",
         Ok(Payload::Update(1)),
     )
     .await;
 
     g.named_test(
-        "Delete referenced table should fail if referencing table exists (by default: NO ACTION and gets error)",
+        "Deleting referenced row should fail if referencing value exists (by default: NO ACTION and gets error)",
         "DELETE FROM ReferencedTableWithPK WHERE id = 1;",
         Err(ExecuteError::ReferencingColumnExists("ReferencingTable.referenced_table_id".to_owned()).into()),
     )
     .await;
 
     g.named_test(
-        "Deleting referencing table does not care referenced tables",
+        "Deleting referencing table does not care referenced table",
         "DELETE FROM ReferencingTable WHERE id = 2;",
         Ok(Payload::Delete(1)),
     )
@@ -171,7 +161,7 @@ test_case!(foreign_key, {
     .await;
 
     g.named_test(
-        "Drop table with cascade should drop both table and constraint",
+        "Dropping table with cascade should drop both table and constraint",
         "DROP TABLE ReferencedTableWithPK CASCADE;",
         Ok(Payload::DropTable),
     )
