@@ -44,6 +44,7 @@ pub enum ArrayValue {
 }
 
 impl ArrayValue {
+    /// Returns the data type of the array.
     pub fn get_type(&self) -> DataType {
         match self {
             ArrayValue::Bool(_) => DataType::Boolean,
@@ -79,6 +80,39 @@ impl ArrayValue {
                 DataType::Array(Box::new(data_type), Some(array_length))
             }
             ArrayValue::Point(_) => DataType::Point,
+        }
+    }
+
+    /// Returns the length of the array.
+    /// Returns `None` if the array is empty.
+    pub fn get_length(&self) -> Option<usize> {
+        match self {
+            ArrayValue::Bool(v) => Some(v.len()),
+            ArrayValue::I8(v) => Some(v.len()),
+            ArrayValue::I16(v) => Some(v.len()),
+            ArrayValue::I32(v) => Some(v.len()),
+            ArrayValue::I64(v) => Some(v.len()),
+            ArrayValue::I128(v) => Some(v.len()),
+            ArrayValue::U8(v) => Some(v.len()),
+            ArrayValue::U16(v) => Some(v.len()),
+            ArrayValue::U32(v) => Some(v.len()),
+            ArrayValue::U64(v) => Some(v.len()),
+            ArrayValue::U128(v) => Some(v.len()),
+            ArrayValue::F32(v) => Some(v.len()),
+            ArrayValue::F64(v) => Some(v.len()),
+            ArrayValue::Decimal(v) => Some(v.len()),
+            ArrayValue::Str(v) => Some(v.len()),
+            ArrayValue::Bytea(v) => Some(v.len()),
+            ArrayValue::Inet(v) => Some(v.len()),
+            ArrayValue::Date(v) => Some(v.len()),
+            ArrayValue::Timestamp(v) => Some(v.len()),
+            ArrayValue::Time(v) => Some(v.len()),
+            ArrayValue::Interval(v) => Some(v.len()),
+            ArrayValue::Uuid(v) => Some(v.len()),
+            ArrayValue::Map(v) => Some(v.len()),
+            ArrayValue::List(v) => Some(v.len()),
+            ArrayValue::Array(v) => Some(v.len()),
+            ArrayValue::Point(v) => Some(v.len()),
         }
     }
 }

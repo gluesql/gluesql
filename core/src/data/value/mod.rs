@@ -169,11 +169,7 @@ impl Value {
             Value::Uuid(_) => Some(DataType::Uuid),
             Value::Map(_) => Some(DataType::Map),
             Value::List(_) => Some(DataType::List),
-            Value::Array(array_value) => {
-                let data_type = array_value.get_type();
-                // FIXME: implement ArrayValue::get_length
-                Some(DataType::Array(Box::new(data_type), None))
-            }
+            Value::Array(v) => Some(DataType::Array(Box::new(v.get_type()), v.get_length())),
             Value::Point(_) => Some(DataType::Point),
             Value::Null => None,
         }
