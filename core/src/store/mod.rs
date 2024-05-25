@@ -28,7 +28,6 @@ pub use {
 
 use {
     crate::{
-        ast::ForeignKey,
         data::{Key, Schema},
         executor::Referencing,
         result::{Error, Result},
@@ -57,21 +56,22 @@ pub trait Store {
         Ok(schemas
             .into_iter()
             .flat_map(|schema| {
-                schema
-                    .foreign_keys
-                    .into_iter()
-                    .filter(
-                        |ForeignKey {
-                             referenced_table_name,
-                             ..
-                         }| referenced_table_name == table_name,
-                    )
-                    .map(move |fk| Referencing {
-                        table_name: schema.table_name.clone(),
-                        foreign_key: fk,
-                    })
+                let Schema {
+                    table_name: referencing_table_name,
+                    foreign_keys,
+                    ..
+                } = schema;
+
+                foreign_keys.into_iter().filter_map(move |foreign_key| {
+                    (&foreign_key.referenced_table_name == table_name
+                        && &referencing_table_name != table_name)
+                        .then_some(Referencing {
+                            table_name: referencing_table_name.clone(),
+                            foreign_key,
+                        })
+                })
             })
-            .collect::<Vec<_>>())
+            .collect())
     }
 }
 

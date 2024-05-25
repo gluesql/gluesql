@@ -220,26 +220,7 @@ pub async fn drop_table<T: GStore + GStoreMut>(
             schema.ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
         }
 
-        let schemas = storage.fetch_all_schemas().await?;
-        let referencings: Vec<Referencing> = schemas
-            .into_iter()
-            .flat_map(|schema| {
-                let Schema {
-                    table_name: referencing_table_name,
-                    foreign_keys,
-                    ..
-                } = schema;
-
-                foreign_keys.into_iter().filter_map(move |foreign_key| {
-                    (&foreign_key.referenced_table_name == table_name
-                        && &referencing_table_name != table_name)
-                        .then_some(Referencing {
-                            table_name: referencing_table_name.clone(),
-                            foreign_key,
-                        })
-                })
-            })
-            .collect();
+        let referencings = storage.fetch_referencings(table_name).await?;
 
         if !referencings.is_empty() && !cascade {
             return Err(AlterError::CannotDropTableWitnReferencing {
