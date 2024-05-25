@@ -21,7 +21,7 @@ test_case!(foreign_key, {
     .await;
 
     g.named_test(
-        "Create table with foreign key should be failed if referenced table does not have primary key or unique",
+        "Create table with foreign key should be failed if referenced table does not have primary key",
         "
         CREATE TABLE ReferencingTable (
             id INT, name TEXT,
@@ -29,7 +29,7 @@ test_case!(foreign_key, {
             FOREIGN KEY(referenced_table_id) REFERENCES ReferencedTableWithoutPK(id)
         );
         ",
-        Err(AlterError::ReferencedColumnNotUnique {
+        Err(AlterError::ReferencingNonPKColumn {
             referenced_table: "ReferencedTableWithoutPK".to_owned(),
             referenced_column: "id".to_owned(),
         }
@@ -47,7 +47,8 @@ test_case!(foreign_key, {
     )
     .await;
 
-    g.run(
+    g.named_test(
+        "Create table with foreign key should be failed if referenced table has only Unique constraint",
         "
         CREATE TABLE ReferencingTableUnique (
             id INT,
@@ -55,7 +56,12 @@ test_case!(foreign_key, {
             referenced_table_id INT,
             FOREIGN KEY(referenced_table_id) REFERENCES ReferencedTableWithUnique(id)
         );
-    ",
+        ",
+        Err(AlterError::ReferencingNonPKColumn {
+            referenced_table: "ReferencedTableWithUnique".to_owned(),
+            referenced_column: "id".to_owned(),
+        }
+        .into()),
     )
     .await;
 

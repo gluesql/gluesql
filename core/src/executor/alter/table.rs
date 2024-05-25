@@ -162,8 +162,12 @@ pub async fn create_table<T: GStore + GStoreMut>(
             .into());
         }
 
-        if foreign_column_def.unique.is_none() {
-            return Err(AlterError::ReferencedColumnNotUnique {
+        if foreign_column_def
+            .unique
+            .map(|x| !x.is_primary)
+            .unwrap_or(true)
+        {
+            return Err(AlterError::ReferencingNonPKColumn {
                 referenced_table: referenced_table_name.to_owned(),
                 referenced_column: referenced_column_name.to_owned(),
             }

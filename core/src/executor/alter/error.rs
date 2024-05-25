@@ -64,7 +64,7 @@ pub enum AlterError {
     },
 
     #[error("referenced column '{referenced_table}.{referenced_column}' is not unique, cannot be used as foreign key")]
-    ReferencedColumnNotUnique {
+    ReferencingNonPKColumn {
         referenced_table: String,
         referenced_column: String,
     },
