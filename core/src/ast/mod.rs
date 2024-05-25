@@ -34,16 +34,13 @@ pub struct ForeignKey {
     pub referencing_column_name: String,
     pub referenced_table_name: String,
     pub referenced_column_name: String,
-    pub on_delete: Option<ReferentialAction>,
-    pub on_update: Option<ReferentialAction>,
+    pub on_delete: ReferentialAction,
+    pub on_update: ReferentialAction,
 }
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash, Serialize, Deserialize)]
 pub enum ReferentialAction {
-    Cascade,
-    SetNull,
     NoAction,
-    SetDefault,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

@@ -328,13 +328,16 @@ pub fn translate_idents(idents: &[SqlIdent]) -> Vec<String> {
     idents.iter().map(|v| v.value.to_owned()).collect()
 }
 
-pub fn translate_referential_action(action: SqlReferentialAction) -> ReferentialAction {
+pub fn translate_referential_action(
+    action: &Option<SqlReferentialAction>,
+) -> Result<ReferentialAction> {
     use SqlReferentialAction::*;
+
+    let action = action.unwrap_or(NoAction);
+
     match action {
-        NoAction | Restrict => ReferentialAction::NoAction,
-        Cascade => ReferentialAction::Cascade,
-        SetNull => ReferentialAction::SetNull,
-        SetDefault => ReferentialAction::SetDefault,
+        NoAction | Restrict => Ok(ReferentialAction::NoAction),
+        _ => Err(TranslateError::InvalidForeignKeyConstraint(action.to_string()).into()),
     }
 }
 
@@ -379,8 +382,8 @@ pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Fo
                 referencing_column_name: column,
                 referenced_table_name: referenced_table,
                 referenced_column_name: referenced_column,
-                on_delete: on_delete.map(translate_referential_action),
-                on_update: on_update.map(translate_referential_action),
+                on_delete: translate_referential_action(on_delete)?,
+                on_update: translate_referential_action(on_update)?,
             })
         }
         _ => Err(TranslateError::UnsupportedConstraint(table_constraint.to_string()).into()),

@@ -12,8 +12,9 @@ use {
     },
     crate::{
         ast::{
-            AstLiteral, BinaryOperator, DataType, Dictionary, Expr, ForeignKey, Query, SelectItem,
-            SetExpr, Statement, TableAlias, TableFactor, TableWithJoins, Variable,
+            AstLiteral, BinaryOperator, DataType, Dictionary, Expr, ForeignKey, Query,
+            ReferentialAction, SelectItem, SetExpr, Statement, TableAlias, TableFactor,
+            TableWithJoins, Variable,
         },
         data::{Key, Row, Schema, Value},
         result::{Error, Result},
@@ -294,6 +295,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
                         ForeignKey {
                             referencing_column_name,
                             referenced_column_name,
+                            on_delete,
                             ..
                         },
                         referencing_table_name,
@@ -314,7 +316,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
                             fetch(storage, referencing_table_name, columns, Some(expr)).await?;
 
                         let len = referencing_rows.count().await;
-                        if len > 0 {
+                        if len > 0 && on_delete == &ReferentialAction::NoAction {
                             return Err(ExecuteError::ReferencingColumnExists(format!(
                                 "{referencing_table_name}.{referencing_column_name}"
                             ))
