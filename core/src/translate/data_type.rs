@@ -37,7 +37,7 @@ pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
             ),
         },
         SqlDataType::Custom(name, _idents) => {
-            let name = name.0.get(0).map(|v| v.value.to_uppercase());
+            let name = name.0.first().map(|v| v.value.to_uppercase());
 
             match name.as_deref() {
                 Some("MAP") => Ok(DataType::Map),

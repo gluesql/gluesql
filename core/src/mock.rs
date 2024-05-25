@@ -90,6 +90,7 @@ impl AlterTable for MockStorage {}
 impl Index for MockStorage {}
 impl IndexMut for MockStorage {}
 impl Transaction for MockStorage {}
+impl Metadata for MockStorage {}
 
 #[cfg(test)]
 mod tests {
@@ -158,5 +159,3 @@ mod tests {
         assert!(matches!(block_on(storage.fetch_schema("Foo")), Ok(None)));
     }
 }
-
-impl Metadata for MockStorage {}

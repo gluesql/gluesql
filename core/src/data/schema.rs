@@ -101,7 +101,7 @@ impl Schema {
             })
             .collect::<Result<Vec<_>>>()?;
 
-        let create_table = statements.get(0).ok_or(SchemaParseError::CannotParseDDL)?;
+        let create_table = statements.first().ok_or(SchemaParseError::CannotParseDDL)?;
         let create_table = translate(create_table)?;
 
         match create_table {

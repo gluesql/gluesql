@@ -191,13 +191,8 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             expr,
             data_type,
             format,
-        } => {
-            if let Some(format) = format {
-                return Err(TranslateError::UnsupportedCastFormat(format.to_string()).into());
-            }
-
-            translate_cast(expr, data_type)
-        }
+            kind,
+        } => translate_cast(kind, expr, data_type, format.as_ref()),
 
         _ => Err(TranslateError::UnsupportedExpr(sql_expr.to_string()).into()),
     }

@@ -9,9 +9,10 @@ use {
         result::Result,
     },
     sqlparser::ast::{
-        DataType, DateTimeField as SqlDateTimeField, Expr as SqlExpr, Function as SqlFunction,
+        CastFormat as SqlCastFormat, CastKind as SqlCastKind, DataType as SqlDataType,
+        DateTimeField as SqlDateTimeField, Expr as SqlExpr, Function as SqlFunction,
         FunctionArg as SqlFunctionArg, FunctionArgExpr as SqlFunctionArgExpr,
-        TrimWhereField as SqlTrimWhereField,
+        FunctionArguments as SqlFunctionArguments, TrimWhereField as SqlTrimWhereField,
     },
 };
 
@@ -55,7 +56,20 @@ pub fn translate_position(sub_expr: &SqlExpr, from_expr: &SqlExpr) -> Result<Exp
     })))
 }
 
-pub fn translate_cast(expr: &SqlExpr, data_type: &DataType) -> Result<Expr> {
+pub fn translate_cast(
+    kind: &SqlCastKind,
+    expr: &SqlExpr,
+    data_type: &SqlDataType,
+    format: Option<&SqlCastFormat>,
+) -> Result<Expr> {
+    if kind == &SqlCastKind::TryCast {
+        return Err(TranslateError::TryCastNotSupported.into());
+    } else if kind == &SqlCastKind::SafeCast {
+        return Err(TranslateError::SafeCastNotSupported.into());
+    } else if let Some(format) = format {
+        return Err(TranslateError::UnsupportedCastFormat(format.to_string()).into());
+    }
+
     let expr = translate_expr(expr)?;
     let data_type = translate_data_type(data_type)?;
     Ok(Expr::Function(Box::new(Function::Cast { expr, data_type })))
@@ -180,6 +194,13 @@ pub fn translate_function_arg_exprs(
 pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
     let SqlFunction { name, args, .. } = sql_function;
     let name = translate_object_name(name)?.to_uppercase();
+    let args = match args {
+        SqlFunctionArguments::None => Vec::new(),
+        SqlFunctionArguments::Subquery(_) => {
+            return Err(TranslateError::UnreachableSubqueryFunctionArgNotSupported.into())
+        }
+        SqlFunctionArguments::List(list) => list.args.iter().collect(),
+    };
 
     let function_arg_exprs = args
         .iter()
@@ -673,5 +694,40 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 .collect::<Result<Vec<_>>>()?;
             Ok(Expr::Function(Box::new(Function::Custom { name, exprs })))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        crate::{ast::DataType, parse_sql::parse_expr},
+    };
+
+    #[test]
+    fn cast() {
+        let expr = |sql| parse_expr(sql).and_then(|parsed| translate_expr(&parsed));
+
+        let actual = expr("CAST(name AS TEXT)");
+        let expected = Ok(Expr::Function(Box::new(Function::Cast {
+            expr: Expr::Identifier("name".to_owned()),
+            data_type: DataType::Text,
+        })));
+        assert_eq!(actual, expected);
+
+        let actual = expr("name::TEXT");
+        let expected = Ok(Expr::Function(Box::new(Function::Cast {
+            expr: Expr::Identifier("name".to_owned()),
+            data_type: DataType::Text,
+        })));
+        assert_eq!(actual, expected);
+
+        let actual = expr("TRY_CAST(id AS BOOLEAN)");
+        let expected = Err(TranslateError::TryCastNotSupported.into());
+        assert_eq!(actual, expected);
+
+        let actual = expr("SAFE_CAST(id AS UINT8)");
+        let expected = Err(TranslateError::SafeCastNotSupported.into());
+        assert_eq!(actual, expected);
     }
 }

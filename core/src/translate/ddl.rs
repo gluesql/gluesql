@@ -68,7 +68,7 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> 
 
                     Ok((nullable, default, unique, comment))
                 }
-                SqlColumnOption::Unique { is_primary } => {
+                SqlColumnOption::Unique { is_primary, .. } => {
                     let nullable = if *is_primary { false } else { nullable };
                     let unique = Some(ColumnUniqueOption {
                         is_primary: *is_primary,

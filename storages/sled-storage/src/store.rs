@@ -11,7 +11,7 @@ use {
 };
 
 impl SledStorage {
-    const SCHEMA_PREFIX: &str = "schema/";
+    const SCHEMA_PREFIX: &'static str = "schema/";
 }
 
 #[async_trait(?Send)]

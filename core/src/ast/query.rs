@@ -254,10 +254,7 @@ impl Select {
         let group_by = if group_by.is_empty() {
             "".to_owned()
         } else {
-            format!(
-                "GROUP BY {}",
-                group_by.iter().map(|item| to_sql(item)).join(", ")
-            )
+            format!("GROUP BY {}", group_by.iter().map(to_sql).join(", "))
         };
 
         let having = match having {

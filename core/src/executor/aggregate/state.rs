@@ -222,30 +222,23 @@ impl<'a, T: GStore> State<'a, T> {
             values, contexts, ..
         } = self;
 
-        stream::iter(
-            values
-                .into_iter()
-                .map(|(k, v)| (k, v))
-                .chunks(size)
-                .into_iter()
-                .enumerate(),
-        )
-        .then(|(i, entries)| {
-            let next = contexts.get(i).map(Rc::clone);
+        stream::iter(values.into_iter().chunks(size).into_iter().enumerate())
+            .then(|(i, entries)| {
+                let next = contexts.get(i).map(Rc::clone);
 
-            async move {
-                let aggregated = stream::iter(entries)
-                    .then(|((_, aggr), (_, aggr_value))| async move {
-                        aggr_value.export().await.map(|value| (aggr, value))
-                    })
-                    .try_collect::<HashMap<&'a Aggregate, Value>>()
-                    .await?;
+                async move {
+                    let aggregated = stream::iter(entries)
+                        .then(|((_, aggr), (_, aggr_value))| async move {
+                            aggr_value.export().await.map(|value| (aggr, value))
+                        })
+                        .try_collect::<HashMap<&'a Aggregate, Value>>()
+                        .await?;
 
-                Ok((Some(aggregated), next))
-            }
-        })
-        .try_collect::<Vec<(Option<ValuesMap<'a>>, Option<Rc<RowContext<'a>>>)>>()
-        .await
+                    Ok((Some(aggregated), next))
+                }
+            })
+            .try_collect::<Vec<(Option<ValuesMap<'a>>, Option<Rc<RowContext<'a>>>)>>()
+            .await
     }
 
     pub async fn accumulate(
