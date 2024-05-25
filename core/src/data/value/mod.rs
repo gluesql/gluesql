@@ -180,43 +180,7 @@ impl Value {
     }
 
     pub fn validate_type(&self, data_type: &DataType) -> Result<()> {
-        let valid = match self {
-            Value::I8(_) => matches!(data_type, DataType::Int8),
-            Value::I16(_) => matches!(data_type, DataType::Int16),
-            Value::I32(_) => matches!(data_type, DataType::Int32),
-            Value::I64(_) => matches!(data_type, DataType::Int),
-            Value::I128(_) => matches!(data_type, DataType::Int128),
-            Value::U8(_) => matches!(data_type, DataType::Uint8),
-            Value::U16(_) => matches!(data_type, DataType::Uint16),
-            Value::U32(_) => matches!(data_type, DataType::Uint32),
-            Value::U64(_) => matches!(data_type, DataType::Uint64),
-            Value::U128(_) => matches!(data_type, DataType::Uint128),
-            Value::F32(_) => matches!(data_type, DataType::Float32),
-            Value::F64(_) => matches!(data_type, DataType::Float),
-            Value::Decimal(_) => matches!(data_type, DataType::Decimal),
-            Value::Bool(_) => matches!(data_type, DataType::Boolean),
-            Value::Str(_) => matches!(data_type, DataType::Text),
-            Value::Bytea(_) => matches!(data_type, DataType::Bytea),
-            Value::Inet(_) => matches!(data_type, DataType::Inet),
-            Value::Date(_) => matches!(data_type, DataType::Date),
-            Value::Timestamp(_) => matches!(data_type, DataType::Timestamp),
-            Value::Time(_) => matches!(data_type, DataType::Time),
-            Value::Interval(_) => matches!(data_type, DataType::Interval),
-            Value::Uuid(_) => matches!(data_type, DataType::Uuid),
-            Value::Map(_) => matches!(data_type, DataType::Map),
-            Value::List(_) => matches!(data_type, DataType::List),
-            Value::Point(_) => matches!(data_type, DataType::Point),
-            // First we check if the data type is an array,
-            // then we check if the inner data type of the array is the same as the data type of the value
-            Value::Array(array_value) => {
-                matches!(data_type, DataType::Array(..)) && {
-                    let array_data_type = array_value.get_type();
-                    // FIXME: implement ArrayValue::get_length
-                    data_type == &DataType::Array(Box::new(array_data_type), None)
-                }
-            }
-            Value::Null => true,
-        };
+        let valid = self.get_type().map_or(true, |t| t == *data_type);
 
         if !valid {
             return Err(ValueError::IncompatibleDataType {
