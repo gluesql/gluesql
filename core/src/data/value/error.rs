@@ -194,6 +194,21 @@ pub enum ValueError {
     #[error("invalid json string: {0}")]
     InvalidJsonString(String),
 
+    #[error("array type is required")]
+    ArrayTypeRequired,
+
+    #[error("the length of an input array is bigger than predefined array length - expected: {expected}, received: {received}")]
+    ArrayOverflow { expected: usize, received: usize },
+
+    #[error("invalid array string: {0}")]
+    InvalidArrayString(String),
+
+    #[error("array value should be surrounded by curly brackets: {0}")]
+    InvalidArrayBrackets(String),
+
+    #[error("NULL value is not allowed in array")]
+    NullValueInArray(String),
+
     #[error("json object type is required")]
     JsonObjectTypeRequired,
 

@@ -115,6 +115,58 @@ impl ArrayValue {
             ArrayValue::Point(v) => Some(v.len()),
         }
     }
+
+    pub fn from_values(data_type: &DataType, values: Vec<Value>) -> Result<ArrayValue> {
+        /// Macro to convert data type to array value.
+        macro_rules! dt_to_av {
+            ( $array_value_type:ident, $value:ident) => {
+                values
+                    .into_iter()
+                    .map(|value| {
+                        if let Value::$value(v) = value {
+                            Ok(v)
+                        } else {
+                            Err(ValueError::IncompatibleDataType {
+                                data_type: data_type.to_owned(),
+                                value,
+                            }
+                            .into())
+                        }
+                    })
+                    .collect::<Result<Vec<_>>>()
+                    .map(ArrayValue::$array_value_type)
+            };
+        }
+
+        match *data_type {
+            DataType::Boolean => dt_to_av!(Bool, Bool),
+            DataType::Int8 => dt_to_av!(I64, I64),
+            DataType::Int16 => dt_to_av!(I16, I16),
+            DataType::Int32 => dt_to_av!(I32, I32),
+            DataType::Int => dt_to_av!(I64, I64),
+            DataType::Int128 => dt_to_av!(I128, I128),
+            DataType::Uint8 => dt_to_av!(U8, U8),
+            DataType::Uint16 => dt_to_av!(U16, U16),
+            DataType::Uint32 => dt_to_av!(U32, U32),
+            DataType::Uint64 => dt_to_av!(U64, U64),
+            DataType::Uint128 => dt_to_av!(U128, U128),
+            DataType::Float32 => dt_to_av!(F32, F32),
+            DataType::Float => dt_to_av!(F64, F64),
+            DataType::Text => dt_to_av!(Str, Str),
+            DataType::Bytea => dt_to_av!(Bytea, Bytea),
+            DataType::Inet => dt_to_av!(Inet, Inet),
+            DataType::Date => dt_to_av!(Date, Date),
+            DataType::Timestamp => dt_to_av!(Timestamp, Timestamp),
+            DataType::Time => dt_to_av!(Time, Time),
+            DataType::Interval => dt_to_av!(Interval, Interval),
+            DataType::Uuid => dt_to_av!(Uuid, Uuid),
+            DataType::Map => dt_to_av!(Map, Map),
+            DataType::List => dt_to_av!(List, List),
+            DataType::Decimal => dt_to_av!(Decimal, Decimal),
+            DataType::Point => dt_to_av!(Point, Point),
+            DataType::Array(_, _) => dt_to_av!(Array, Array),
+        }
+    }
 }
 
 fn try_big_number_to_json<T>(big_number: T) -> Result<JsonValue>
@@ -223,6 +275,50 @@ impl TryFrom<ArrayValue> for JsonValue {
             ArrayValue::List(v) => try_list_vec_to_json(v),
             ArrayValue::Array(v) => v.into_iter().map(JsonValue::try_from).collect(),
             ArrayValue::Point(v) => try_to_string_vec_to_json(v),
+        }
+    }
+}
+
+impl Value {
+    pub fn parse_typed_array(
+        data_type: &DataType,
+        array_length: Option<usize>,
+        value: &str,
+    ) -> Result<Value> {
+        // Check if value is surrounded by curly brackets
+        if !value.starts_with('{') || !value.ends_with('}') {
+            return Err(ValueError::InvalidArrayBrackets(value.to_owned()).into());
+        }
+
+        let value = value.replace("{", "[").replace("}", "]");
+        let value = serde_json::from_str(&value)
+            .map_err(|_| ValueError::InvalidArrayString(value.to_owned()))?;
+
+        match value {
+            JsonValue::Array(json_array) => {
+                if let Some(array_length) = array_length {
+                    if json_array.len() > array_length {
+                        return Err(ValueError::ArrayOverflow {
+                            expected: array_length,
+                            received: json_array.len(),
+                        }
+                        .into());
+                    }
+                }
+
+                json_array
+                    .into_iter()
+                    .map(|value| match value {
+                        serde_json::Value::Null => {
+                            Err(ValueError::NullValueInArray(value.to_string()).into())
+                        }
+                        _ => value.try_into(),
+                    })
+                    .collect::<Result<Vec<Value>>>()
+                    .and_then(|values| ArrayValue::from_values(data_type, values))
+                    .map(Value::Array)
+            }
+            _ => Err(ValueError::ArrayTypeRequired.into()),
         }
     }
 }

@@ -1,4 +1,3 @@
-pub mod array;
 pub mod bytea;
 pub mod date;
 pub mod decimal;
@@ -16,6 +15,7 @@ pub mod point;
 pub mod sql_types;
 pub mod time;
 pub mod timestamp;
+pub mod typed_array;
 pub mod uint128;
 pub mod uint16;
 pub mod uint32;

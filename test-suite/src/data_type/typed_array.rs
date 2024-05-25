@@ -1,16 +1,19 @@
 use {
     crate::*,
-    gluesql_core::prelude::Value::{self, *},
+    gluesql_core::{
+        ast::DataType,
+        prelude::Value::{self, *},
+    },
 };
 
-test_case!(array, {
+test_case!(typed_array, {
     let g = get_tester!();
 
     g.run(
         "
 CREATE TABLE ArrayType (
     id INTEGER,
-    items []INT
+    items INT[]
 )",
     )
     .await;
@@ -20,12 +23,12 @@ CREATE TABLE ArrayType (
 INSERT INTO ArrayType VALUES
     (1, '{1, 2, 3}'),
     (2, '{4, 5, 6, 7}'),
-    (3, 'ARRAY[8, 9, 10]');
+    (3, '{8, 9, 10}');
 "#,
     )
     .await;
 
-    let l = |s: &str| Value::parse_json_list(s).unwrap();
+    let l = |s: &str| Value::parse_typed_array(&DataType::Int, None, s).unwrap();
 
     g.test(
         "SELECT id, items FROM ArrayType",
