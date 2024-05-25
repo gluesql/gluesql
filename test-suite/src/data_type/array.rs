@@ -1,9 +1,6 @@
 use {
     crate::*,
-    gluesql_core::{
-        error::{KeyError, ValueError},
-        prelude::Value::{self, *},
-    },
+    gluesql_core::prelude::Value::{self, *},
 };
 
 test_case!(array, {
@@ -29,7 +26,6 @@ INSERT INTO ArrayType VALUES
     .await;
 
     let l = |s: &str| Value::parse_json_list(s).unwrap();
-    let s = |v: &str| Str(v.to_owned());
 
     g.test(
         "SELECT id, items FROM ArrayType",

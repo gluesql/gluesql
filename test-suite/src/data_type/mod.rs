@@ -1,3 +1,4 @@
+pub mod array;
 pub mod bytea;
 pub mod date;
 pub mod decimal;
