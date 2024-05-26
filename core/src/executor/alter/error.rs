@@ -50,17 +50,17 @@ pub enum AlterError {
     NonDefaultArgumentFollowsDefaultArgument,
 
     #[error("foreign table not found: {0}")]
-    ForeignTableNotFound(String),
+    ReferencedTableNotFound(String),
 
     #[error("foreign key column not found: {0}")]
     ForeignKeyColumnNotFound(String),
 
-    #[error("foreign key column '{column}' of data type '{column_type}' does not match foreign column '{foreign_column}' of data type '{foreign_column_type}'")]
+    #[error("referencing column '{referencing_column}' of data type '{referencing_column_type}' does not match referenced column '{referenced_column}' of data type '{referenced_column_type}'")]
     ForeignKeyDataTypeMismatch {
-        column: String,
-        column_type: DataType,
-        foreign_column: String,
-        foreign_column_type: DataType,
+        referencing_column: String,
+        referencing_column_type: DataType,
+        referenced_column: String,
+        referenced_column_type: DataType,
     },
 
     #[error("referenced column '{referenced_table}.{referenced_column}' is not unique, cannot be used as foreign key")]

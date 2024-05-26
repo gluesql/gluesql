@@ -125,23 +125,44 @@ pub async fn create_table<T: GStore + GStoreMut>(
             referenced_column_name,
             ..
         } = foreign_key;
-        let foreign_schema = storage
-            .fetch_schema(referenced_table_name)
-            .await?
-            .ok_or_else(|| AlterError::ForeignTableNotFound(referenced_table_name.to_owned()))?;
 
-        let foreign_column_def = foreign_schema
-            .column_defs
-            .and_then(|foreign_column_defs| {
-                foreign_column_defs
-                    .into_iter()
-                    .find(|column_def| column_def.name == *referenced_column_name)
-            })
-            .ok_or_else(|| -> Error {
-                AlterError::ForeignKeyColumnNotFound(referenced_column_name.to_owned()).into()
-            })?;
+        // if refereced_table_name is equal to target_table_name, it is self-referencing
 
-        let target_column_def = target_columns_defs
+        let referenced_column_def = match referenced_table_name == target_table_name {
+            true => target_columns_defs
+                .as_deref()
+                .and_then(|column_defs| {
+                    column_defs
+                        .iter()
+                        .find(|column_def| column_def.name == *referenced_column_name)
+                })
+                .ok_or_else(|| -> Error {
+                    AlterError::ForeignKeyColumnNotFound(referenced_column_name.to_owned()).into()
+                })?
+                .to_owned(),
+            false => {
+                let referenced_schema = storage
+                    .fetch_schema(referenced_table_name)
+                    .await?
+                    .ok_or_else(|| {
+                        AlterError::ReferencedTableNotFound(referenced_table_name.to_owned())
+                    })?;
+
+                referenced_schema
+                    .column_defs
+                    .and_then(|foreign_column_defs| {
+                        foreign_column_defs
+                            .into_iter()
+                            .find(|column_def| column_def.name == *referenced_column_name)
+                    })
+                    .ok_or_else(|| -> Error {
+                        AlterError::ForeignKeyColumnNotFound(referenced_column_name.to_owned())
+                            .into()
+                    })?
+            }
+        };
+
+        let referencing_column_def = target_columns_defs
             .as_deref()
             .and_then(|column_defs| {
                 column_defs
@@ -152,17 +173,17 @@ pub async fn create_table<T: GStore + GStoreMut>(
                 AlterError::ForeignKeyColumnNotFound(referencing_column_name.to_owned()).into()
             })?;
 
-        if target_column_def.data_type != foreign_column_def.data_type {
+        if referencing_column_def.data_type != referenced_column_def.data_type {
             return Err(AlterError::ForeignKeyDataTypeMismatch {
-                column: referencing_column_name.to_owned(),
-                column_type: target_column_def.data_type.to_owned(),
-                foreign_column: referenced_column_name.to_owned(),
-                foreign_column_type: foreign_column_def.data_type.to_owned(),
+                referencing_column: referencing_column_name.to_owned(),
+                referencing_column_type: referencing_column_def.data_type.to_owned(),
+                referenced_column: referenced_column_name.to_owned(),
+                referenced_column_type: referenced_column_def.data_type.to_owned(),
             }
             .into());
         }
 
-        if foreign_column_def
+        if referenced_column_def
             .unique
             .map(|x| !x.is_primary)
             .unwrap_or(true)

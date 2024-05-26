@@ -174,4 +174,23 @@ test_case!(foreign_key, {
         Ok(Payload::DropTable),
     )
     .await;
+
+    g.named_test(
+        "Should create self referencing table",
+        "CREATE TABLE SelfReferencingTable (
+            id INTEGER PRIMARY KEY,
+            name TEXT,
+            referenced_id INTEGER,
+            FOREIGN KEY (referenced_id) REFERENCES SelfReferencingTable (id)
+        );",
+        Ok(Payload::Create),
+    )
+    .await;
+
+    g.named_test(
+        "Dropping self referencing table should succeed",
+        "DROP TABLE SelfReferencingTable;",
+        Ok(Payload::DropTable),
+    )
+    .await;
 });
