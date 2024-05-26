@@ -63,8 +63,8 @@ pub trait Store {
                 } = schema;
 
                 foreign_keys.into_iter().filter_map(move |foreign_key| {
-                    (&foreign_key.referenced_table_name == table_name
-                        && &referencing_table_name != table_name)
+                    (foreign_key.referenced_table_name == table_name
+                        && referencing_table_name != table_name)
                         .then_some(Referencing {
                             table_name: referencing_table_name.clone(),
                             foreign_key,
