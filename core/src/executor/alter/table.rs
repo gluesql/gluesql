@@ -127,40 +127,29 @@ pub async fn create_table<T: GStore + GStoreMut>(
         } = foreign_key;
 
         // if refereced_table_name is equal to target_table_name, it is self-referencing
+        let column_defs = if referenced_table_name == target_table_name {
+            target_columns_defs.clone() // TODO: remove clone
+        } else {
+            let referenced_schema = storage
+                .fetch_schema(referenced_table_name)
+                .await?
+                .ok_or_else(|| {
+                    AlterError::ReferencedTableNotFound(referenced_table_name.to_owned())
+                })?;
 
-        let referenced_column_def = match referenced_table_name == target_table_name {
-            true => target_columns_defs
-                .as_deref()
-                .and_then(|column_defs| {
-                    column_defs
-                        .iter()
-                        .find(|column_def| column_def.name == *referenced_column_name)
-                })
-                .ok_or_else(|| -> Error {
-                    AlterError::ForeignKeyColumnNotFound(referenced_column_name.to_owned()).into()
-                })?
-                .to_owned(),
-            false => {
-                let referenced_schema = storage
-                    .fetch_schema(referenced_table_name)
-                    .await?
-                    .ok_or_else(|| {
-                        AlterError::ReferencedTableNotFound(referenced_table_name.to_owned())
-                    })?;
-
-                referenced_schema
-                    .column_defs
-                    .and_then(|foreign_column_defs| {
-                        foreign_column_defs
-                            .into_iter()
-                            .find(|column_def| column_def.name == *referenced_column_name)
-                    })
-                    .ok_or_else(|| -> Error {
-                        AlterError::ForeignKeyColumnNotFound(referenced_column_name.to_owned())
-                            .into()
-                    })?
-            }
+            referenced_schema.column_defs
         };
+
+        let referenced_column_def = column_defs
+            .and_then(|column_defs| {
+                column_defs
+                    .into_iter()
+                    .find(|column_def| column_def.name == *referenced_column_name)
+            })
+            .ok_or_else(|| -> Error {
+                AlterError::ForeignKeyColumnNotFound(referenced_column_name.to_owned()).into()
+            })?
+            .to_owned();
 
         let referencing_column_def = target_columns_defs
             .as_deref()
