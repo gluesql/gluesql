@@ -150,7 +150,7 @@ test_case!(foreign_key, {
     g.named_test(
         "Cannot drop referenced table if referencing table exists",
         "DROP TABLE ReferencedTableWithPK;",
-        Err(AlterError::CannotDropTableWitnReferencing {
+        Err(AlterError::CannotDropTableWithReferencing {
             referenced_table_name: "ReferencedTableWithPK".to_owned(),
             referencings: vec![Referencing {
                 table_name: "ReferencingTable".to_owned(),

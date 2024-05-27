@@ -70,7 +70,7 @@ pub enum AlterError {
     },
 
     #[error("cannot drop table '{referenced_table_name}' due to referencing tables: '{}'", referencings.iter().map(ToString::to_string).collect::<Vec<_>>().join(", "))]
-    CannotDropTableWitnReferencing {
+    CannotDropTableWithReferencing {
         referenced_table_name: String,
         referencings: Vec<Referencing>,
     },
