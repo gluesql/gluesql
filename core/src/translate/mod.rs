@@ -352,7 +352,7 @@ pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Fo
             on_update,
             ..
         } => {
-            let column = columns.first().map(|i| i.value.clone()).ok_or(
+            let referencing_column_name = columns.first().map(|i| i.value.clone()).ok_or(
                 TranslateError::InvalidForeignKeyConstraint(
                     name.to_owned()
                         .map(|i| i.value.clone())
@@ -360,7 +360,7 @@ pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Fo
                 ),
             )?;
 
-            let referenced_column = referred_columns
+            let referenced_column_name = referred_columns
                 .first()
                 .ok_or(TranslateError::InvalidForeignKeyConstraint(
                     name.clone()
@@ -370,18 +370,22 @@ pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Fo
                 .value
                 .clone();
 
-            let referenced_table = translate_object_name(foreign_table)?;
+            let referenced_table_name = translate_object_name(foreign_table)?;
 
             let name = match name {
                 Some(name) => name.value.clone(),
-                None => format!("FK_{column}-{referenced_table}_{referenced_column}"),
+                None => {
+                    format!(
+                        "FK_{referencing_column_name}-{referenced_table_name}_{referenced_column_name}"
+                    )
+                }
             };
 
             Ok(ForeignKey {
                 name,
-                referencing_column_name: column,
-                referenced_table_name: referenced_table,
-                referenced_column_name: referenced_column,
+                referencing_column_name,
+                referenced_table_name,
+                referenced_column_name,
                 on_delete: translate_referential_action(on_delete)?,
                 on_update: translate_referential_action(on_update)?,
             })

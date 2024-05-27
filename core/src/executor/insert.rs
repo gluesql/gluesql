@@ -208,7 +208,7 @@ async fn validate_foreign_key<T: GStore>(
 ) -> Result<()> {
     for foreign_key in foreign_keys {
         let ForeignKey {
-            referencing_column_name: column,
+            referencing_column_name,
             referenced_table_name,
             referenced_column_name,
             ..
@@ -216,12 +216,12 @@ async fn validate_foreign_key<T: GStore>(
         if let Some(target_index) = column_defs
             .iter()
             .enumerate()
-            .find(|(_, c)| &c.name == column)
+            .find(|(_, c)| &c.name == referencing_column_name)
         {
             for row in rows.iter() {
-                let value = row
-                    .get(target_index.0)
-                    .ok_or(InsertError::WrongColumnName(column.to_owned()))?;
+                let value = row.get(target_index.0).ok_or(InsertError::WrongColumnName(
+                    referencing_column_name.to_owned(),
+                ))?;
 
                 if value == &Value::Null {
                     continue;

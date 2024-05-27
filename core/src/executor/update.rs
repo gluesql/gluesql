@@ -121,12 +121,12 @@ impl<'a, T: GStore> Update<'a, T> {
             .and_then(|(id, value)| async move {
                 for foreign_key in foreign_keys {
                     let ForeignKey {
-                        referencing_column_name: column,
+                        referencing_column_name,
                         referenced_table_name,
                         referenced_column_name,
                         ..
                     } = foreign_key;
-                    if column != id || value == Value::Null {
+                    if referencing_column_name != id || value == Value::Null {
                         return Ok((id, value));
                     }
 
