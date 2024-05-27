@@ -1,7 +1,10 @@
 use {
     crate::*,
     gluesql_core::{
-        ast::{ForeignKey, ReferentialAction},
+        ast::{
+            DataType::{Int, Text},
+            ForeignKey, ReferentialAction,
+        },
         error::{ExecuteError, InsertError, UpdateError},
         executor::{AlterError, Referencing},
         prelude::Payload,
@@ -63,6 +66,24 @@ test_case!(foreign_key, {
             id INTEGER PRIMARY KEY,
             name TEXT,
         );",
+    )
+    .await;
+
+    g.named_test(
+        "Creating table with foreign key on different data types should be failed",
+        "CREATE TABLE ReferencingTable (
+            id TEXT,
+            name TEXT,
+            referenced_table_id TEXT,
+            FOREIGN KEY (referenced_table_id) REFERENCES ReferencedTableWithPK (id)
+        );",
+        Err(AlterError::ForeignKeyDataTypeMismatch {
+            referencing_column: "referenced_table_id".to_owned(),
+            referencing_column_type: Text,
+            referenced_column: "id".to_owned(),
+            referenced_column_type: Int,
+        }
+        .into()),
     )
     .await;
 
