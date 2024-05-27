@@ -39,7 +39,6 @@ pub enum InsertError {
     #[error("map type required: {0}")]
     MapTypeValueRequired(String),
 
-    // TODO: merge with UpdateError::CannotFindReferencedValue
     #[error("cannot find referenced value on {table_name}.{column_name} with value {referenced_value:?}")]
     CannotFindReferencedValue {
         table_name: String,

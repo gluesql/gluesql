@@ -119,7 +119,6 @@ impl<'a, T: GStore> Update<'a, T> {
                 }
             })
             .and_then(|(id, value)| async move {
-                // TODO: extract `fn validate_referenceds`
                 for foreign_key in foreign_keys {
                     let ForeignKey {
                         referencing_column_name: column,
@@ -149,7 +148,6 @@ impl<'a, T: GStore> Update<'a, T> {
 
                 Ok((id, value))
             })
-            // TODO: impl validate_referencings
             .try_collect::<Vec<(&str, Value)>>()
             .await?;
 

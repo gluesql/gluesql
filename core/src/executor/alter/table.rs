@@ -126,9 +126,8 @@ pub async fn create_table<T: GStore + GStoreMut>(
             ..
         } = foreign_key;
 
-        // if refereced_table_name is equal to target_table_name, it is self-referencing
         let column_defs = if referenced_table_name == target_table_name {
-            target_columns_defs.clone() // TODO: remove clone
+            target_columns_defs.clone()
         } else {
             let referenced_schema = storage
                 .fetch_schema(referenced_table_name)

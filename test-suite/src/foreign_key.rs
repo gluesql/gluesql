@@ -70,7 +70,7 @@ test_case!(foreign_key, {
     .await;
 
     g.named_test(
-        "Creating table with foreign key on different data types should be failed",
+        "Creating table with foreign key on different data type should be failed",
         "CREATE TABLE ReferencingTable (
             id TEXT,
             name TEXT,
