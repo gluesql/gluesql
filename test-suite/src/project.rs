@@ -155,7 +155,7 @@ test_case!(project, {
         ),
         (
             "SELECT noname FROM ProjectUser",
-            EvaluateError::ValueNotFound("noname".to_owned()).into(),
+            EvaluateError::IdentifierNotFound("noname".to_owned()).into(),
         ),
         (
             "SELECT (SELECT id FROM ProjectItem) as id FROM ProjectItem",

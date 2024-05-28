@@ -106,7 +106,11 @@ test_case!(inline_view, {
             FROM OuterTable JOIN (
                 SELECT name FROM InnerTable
             ) AS InlineView ON OuterTable.id = InlineView.id",
-            Err(EvaluateError::ValueNotFound("id".to_owned()).into()),
+            Err(EvaluateError::CompoundIdentifierNotFound {
+                table_alias: "InlineView".to_owned(),
+                column_name: "id".to_owned(),
+            }
+            .into()),
         ),
         (
             // join - Expr with WHERE clause
