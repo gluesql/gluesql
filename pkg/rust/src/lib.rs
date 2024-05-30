@@ -21,6 +21,9 @@ pub use sled_storage;
 #[cfg(feature = "json-storage")]
 pub use json_storage;
 
+#[cfg(feature = "csv-storage")]
+pub use csv_storage;
+
 #[cfg(feature = "parquet-storage")]
 pub use parquet_storage;
 
@@ -50,6 +53,9 @@ pub mod prelude {
 
     #[cfg(feature = "json-storage")]
     pub use json_storage::JsonStorage;
+
+    #[cfg(feature = "csv-storage")]
+    pub use csv_storage::CsvStorage;
 
     #[cfg(feature = "parquet-storage")]
     pub use parquet_storage::ParquetStorage;
