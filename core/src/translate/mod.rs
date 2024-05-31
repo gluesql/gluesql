@@ -352,15 +352,11 @@ pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Fo
             on_update,
             ..
         } => {
-            let referencing_column_name = columns
-                .first()
-                .map(|i| {
-                    println!("i: {:?}", i);
-                    return i.value.clone();
-                })
-                .ok_or(TranslateError::UnreachableForeignKeyColumns(
+            let referencing_column_name = columns.first().map(|i| i.value.clone()).ok_or(
+                TranslateError::UnreachableForeignKeyColumns(
                     columns.iter().map(|i| i.to_string()).collect::<String>(),
-                ))?;
+                ),
+            )?;
 
             let referenced_column_name = referred_columns
                 .first()

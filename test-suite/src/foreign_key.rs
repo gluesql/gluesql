@@ -95,7 +95,7 @@ test_case!(foreign_key, {
             referenced_table_id INT,
             FOREIGN KEY (referenced_table_id) REFERENCES ReferencedTableWithPK (id) ON DELETE CASCADE
         );",
-        Err(TranslateError::UnsupportedConstraint("CASCADE".to_string()).into()),
+        Err(TranslateError::UnsupportedConstraint("CASCADE".to_owned()).into()),
     )
     .await;
 
@@ -107,7 +107,7 @@ test_case!(foreign_key, {
             referenced_table_id INT,
             FOREIGN KEY (referenced_table_id) REFERENCES ReferencedTableWithPK (id) ON DELETE SET DEFAULT
         );",
-        Err(TranslateError::UnsupportedConstraint("SET DEFAULT".to_string()).into()),
+        Err(TranslateError::UnsupportedConstraint("SET DEFAULT".to_owned()).into()),
     )
     .await;
 
@@ -119,7 +119,7 @@ test_case!(foreign_key, {
             referenced_table_id INT,
             FOREIGN KEY (referenced_table_id) REFERENCES ReferencedTableWithPK (id) ON DELETE SET NULL
         );",
-        Err(TranslateError::UnsupportedConstraint("SET NULL".to_string()).into()),
+        Err(TranslateError::UnsupportedConstraint("SET NULL".to_owned()).into()),
     )
     .await;
 
