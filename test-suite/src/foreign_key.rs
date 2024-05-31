@@ -131,7 +131,7 @@ test_case!(foreign_key, {
             referenced_table_id INT,
             FOREIGN KEY (wrong_referencing_column) REFERENCES ReferencedTableWithPK (id)
         );",
-        Err(AlterError::ForeignKeyColumnNotFound("wrong_referencing_column".to_owned()).into()),
+        Err(AlterError::ReferencingColumnNotFound("wrong_referencing_column".to_owned()).into()),
     )
     .await;
 
@@ -143,7 +143,7 @@ test_case!(foreign_key, {
             referenced_table_id INT,
             FOREIGN KEY (referenced_table_id) REFERENCES ReferencedTableWithPK (wrong_referenced_column)
         );",
-        Err(AlterError::ForeignKeyColumnNotFound("wrong_referenced_column".to_owned()).into()),
+        Err(AlterError::ReferencedColumnNotFound("wrong_referenced_column".to_owned()).into()),
     )
     .await;
 

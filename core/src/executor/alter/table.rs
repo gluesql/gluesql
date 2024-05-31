@@ -144,7 +144,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
                     .into_iter()
                     .find(|column_def| column_def.name == *referenced_column_name)
             })
-            .ok_or_else(|| AlterError::ForeignKeyColumnNotFound(referenced_column_name.to_owned()))?
+            .ok_or_else(|| AlterError::ReferencedColumnNotFound(referenced_column_name.to_owned()))?
             .to_owned();
 
         let referencing_column_def = target_columns_defs
@@ -155,7 +155,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
                     .find(|column_def| column_def.name == *referencing_column_name)
             })
             .ok_or_else(|| {
-                AlterError::ForeignKeyColumnNotFound(referencing_column_name.to_owned())
+                AlterError::ReferencingColumnNotFound(referencing_column_name.to_owned())
             })?;
 
         if referencing_column_def.data_type != referenced_column_def.data_type {

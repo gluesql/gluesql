@@ -52,8 +52,11 @@ pub enum AlterError {
     #[error("foreign table not found: {0}")]
     ReferencedTableNotFound(String),
 
-    #[error("foreign key column not found: {0}")]
-    ForeignKeyColumnNotFound(String),
+    #[error("referenced column not found: {0}")]
+    ReferencedColumnNotFound(String),
+
+    #[error("referencing column not found: {0}")]
+    ReferencingColumnNotFound(String),
 
     #[error("referencing column '{referencing_column}' of data type '{referencing_column_type}' does not match referenced column '{referenced_column}' of data type '{referenced_column_type}'")]
     ForeignKeyDataTypeMismatch {
