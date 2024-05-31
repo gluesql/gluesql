@@ -71,7 +71,7 @@ impl<'a, T: GStore> Update<'a, T> {
         })
     }
 
-    pub async fn apply(&self, row: Row, foreign_keys: &Vec<ForeignKey>) -> Result<Row> {
+    pub async fn apply(&self, row: Row, foreign_keys: &[ForeignKey]) -> Result<Row> {
         let context = RowContext::new(self.table_name, Cow::Borrowed(&row), None);
         let context = Some(Rc::new(context));
 
