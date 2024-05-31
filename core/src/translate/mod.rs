@@ -337,7 +337,7 @@ pub fn translate_referential_action(
 
     match action {
         NoAction | Restrict => Ok(ReferentialAction::NoAction),
-        _ => Err(TranslateError::InvalidForeignKeyConstraint(action.to_string()).into()),
+        _ => Err(TranslateError::UnsupportedConstraint(action.to_string()).into()),
     }
 }
 
@@ -352,20 +352,20 @@ pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Fo
             on_update,
             ..
         } => {
-            let referencing_column_name = columns.first().map(|i| i.value.clone()).ok_or(
-                TranslateError::InvalidForeignKeyConstraint(
-                    name.to_owned()
-                        .map(|i| i.value.clone())
-                        .unwrap_or("".to_owned()),
-                ),
-            )?;
+            let referencing_column_name = columns
+                .first()
+                .map(|i| {
+                    println!("i: {:?}", i);
+                    return i.value.clone();
+                })
+                .ok_or(TranslateError::UnreachableForeignKeyColumns(
+                    columns.iter().map(|i| i.to_string()).collect::<String>(),
+                ))?;
 
             let referenced_column_name = referred_columns
                 .first()
-                .ok_or(TranslateError::InvalidForeignKeyConstraint(
-                    name.clone()
-                        .map(|i| i.value.clone())
-                        .unwrap_or("".to_owned()),
+                .ok_or(TranslateError::UnreachableForeignKeyColumns(
+                    columns.iter().map(|i| i.to_string()).collect::<String>(),
                 ))?
                 .value
                 .clone();
@@ -375,9 +375,7 @@ pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Fo
             let name = match name {
                 Some(name) => name.value.clone(),
                 None => {
-                    format!(
-                        "FK_{referencing_column_name}-{referenced_table_name}_{referenced_column_name}"
-                    )
+                    format!("FK_{referencing_column_name}-{referenced_table_name}_{referenced_column_name}")
                 }
             };
 
