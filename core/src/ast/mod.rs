@@ -7,7 +7,6 @@ mod operator;
 mod query;
 
 pub use {
-    crate::error::Result,
     ast_literal::{AstLiteral, DateTimeField, TrimWhereField},
     data_type::DataType,
     ddl::*,
@@ -15,7 +14,6 @@ pub use {
     function::{Aggregate, CountArgExpr, Function},
     operator::*,
     query::*,
-    sqlparser::parser::Parser,
 };
 
 use serde::{Deserialize, Serialize};
