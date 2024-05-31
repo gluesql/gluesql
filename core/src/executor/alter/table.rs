@@ -43,9 +43,8 @@ pub async fn create_table<T: GStore + GStoreMut>(
                     let Schema {
                         column_defs: source_column_defs,
                         ..
-                    } = schema.ok_or_else(|| -> Error {
-                        AlterError::CtasSourceTableNotFound(name.to_owned()).into()
-                    })?;
+                    } = schema
+                        .ok_or_else(|| AlterError::CtasSourceTableNotFound(name.to_owned()))?;
 
                     source_column_defs
                 }
@@ -145,9 +144,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
                     .into_iter()
                     .find(|column_def| column_def.name == *referenced_column_name)
             })
-            .ok_or_else(|| -> Error {
-                AlterError::ForeignKeyColumnNotFound(referenced_column_name.to_owned()).into()
-            })?
+            .ok_or_else(|| AlterError::ForeignKeyColumnNotFound(referenced_column_name.to_owned()))?
             .to_owned();
 
         let referencing_column_def = target_columns_defs
