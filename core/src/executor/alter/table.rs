@@ -158,7 +158,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
                     .find(|column_def| column_def.name == *referencing_column_name)
             })
             .ok_or_else(|| {
-                AlterError::ForeignKeyColumnNotFound(referenced_column_name.to_owned())
+                AlterError::ForeignKeyColumnNotFound(referencing_column_name.to_owned())
             })?;
 
         if referencing_column_def.data_type != referenced_column_def.data_type {

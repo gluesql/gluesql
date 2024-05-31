@@ -5,7 +5,7 @@ use {
             DataType::{Int, Text},
             ForeignKey, ReferentialAction,
         },
-        error::{ExecuteError, InsertError, UpdateError},
+        error::{ExecuteError, InsertError, TranslateError, UpdateError},
         executor::{AlterError, Referencing},
         prelude::Payload,
     },
@@ -88,12 +88,72 @@ test_case!(foreign_key, {
     .await;
 
     g.named_test(
-        "Creating table with foreign key should be succeeded if referenced table has primary key",
+        "Unsupported foreign key option: CASCADE",
         "CREATE TABLE ReferencingTable (
             id INT,
             name TEXT,
             referenced_table_id INT,
-            FOREIGN KEY (referenced_table_id) REFERENCES ReferencedTableWithPK (id)
+            FOREIGN KEY (referenced_table_id) REFERENCES ReferencedTableWithPK (id) ON DELETE CASCADE
+        );",
+        Err(TranslateError::UnsupportedConstraint("CASCADE".to_string()).into()),
+    )
+    .await;
+
+    g.named_test(
+        "Unsupported foreign key option: SET DEFAULT",
+        "CREATE TABLE ReferencingTable (
+            id INT,
+            name TEXT,
+            referenced_table_id INT,
+            FOREIGN KEY (referenced_table_id) REFERENCES ReferencedTableWithPK (id) ON DELETE SET DEFAULT
+        );",
+        Err(TranslateError::UnsupportedConstraint("SET DEFAULT".to_string()).into()),
+    )
+    .await;
+
+    g.named_test(
+        "Unsupported foreign key option: SET NULL",
+        "CREATE TABLE ReferencingTable (
+            id INT,
+            name TEXT,
+            referenced_table_id INT,
+            FOREIGN KEY (referenced_table_id) REFERENCES ReferencedTableWithPK (id) ON DELETE SET NULL
+        );",
+        Err(TranslateError::UnsupportedConstraint("SET NULL".to_string()).into()),
+    )
+    .await;
+
+    g.named_test(
+        "Referencing column not found",
+        "CREATE TABLE ReferencingTable (
+            id INT,
+            name TEXT,
+            referenced_table_id INT,
+            FOREIGN KEY (wrong_referencing_column) REFERENCES ReferencedTableWithPK (id)
+        );",
+        Err(AlterError::ForeignKeyColumnNotFound("wrong_referencing_column".to_owned()).into()),
+    )
+    .await;
+
+    g.named_test(
+        "Referenced column not found",
+        "CREATE TABLE ReferencingTable (
+            id INT,
+            name TEXT,
+            referenced_table_id INT,
+            FOREIGN KEY (referenced_table_id) REFERENCES ReferencedTableWithPK (wrong_referenced_column)
+        );",
+        Err(AlterError::ForeignKeyColumnNotFound("wrong_referenced_column".to_owned()).into()),
+    )
+    .await;
+
+    g.named_test(
+        "Creating table with foreign key should be succeeded if referenced table has primary key. NO ACTION(=RESTRICT) is default",
+        "CREATE TABLE ReferencingTable (
+            id INT,
+            name TEXT,
+            referenced_table_id INT,
+            FOREIGN KEY (referenced_table_id) REFERENCES ReferencedTableWithPK (id) ON DELETE NO ACTION ON UPDATE RESTRICT
         );",
         Ok(Payload::Create),
     )
