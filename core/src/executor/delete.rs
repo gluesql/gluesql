@@ -1,7 +1,7 @@
 use {
     super::{
         fetch::{fetch, fetch_columns},
-        ExecuteError, Payload, Referencing,
+        Payload, Referencing,
     },
     crate::{
         ast::{BinaryOperator, Expr, ForeignKey, ReferentialAction},
@@ -9,8 +9,19 @@ use {
         store::{GStore, GStoreMut},
     },
     futures::stream::{StreamExt, TryStreamExt},
+    serde::Serialize,
     std::rc::Rc,
+    thiserror::Error as ThisError,
 };
+
+#[derive(ThisError, Serialize, Debug, PartialEq, Eq)]
+pub enum DeleteError {
+    #[error("referencing column exists: {0}")]
+    ReferencingColumnExists(String),
+
+    #[error("Value not found on column: {0}")]
+    ValueNotFound(String),
+}
 
 pub async fn delete<T: GStore + GStoreMut>(
     storage: &mut T,
@@ -19,51 +30,52 @@ pub async fn delete<T: GStore + GStoreMut>(
 ) -> Result<Payload> {
     let columns = fetch_columns(storage, table_name).await?.map(Rc::from);
     let referencings = storage.fetch_referencings(table_name).await?;
-    let keys =
-        fetch(storage, table_name, columns, selection.as_ref())
-            .await?
-            .into_stream()
-            .then(|item| async {
-                let (key, row) = item?;
+    let keys = fetch(storage, table_name, columns, selection.as_ref())
+        .await?
+        .into_stream()
+        .then(|item| async {
+            let (key, row) = item?;
 
-                for Referencing {
-                    table_name: referencing_table_name,
-                    foreign_key:
-                        ForeignKey {
-                            referencing_column_name,
-                            referenced_column_name,
-                            on_delete,
-                            ..
-                        },
-                } in &referencings
-                {
-                    let value = row.get_value(referenced_column_name).ok_or(
-                        ExecuteError::ValueNotFound(referenced_column_name.to_owned()),
-                    )?;
+            for Referencing {
+                table_name: referencing_table_name,
+                foreign_key:
+                    ForeignKey {
+                        referencing_column_name,
+                        referenced_column_name,
+                        on_delete,
+                        ..
+                    },
+            } in &referencings
+            {
+                let value =
+                    row.get_value(referenced_column_name)
+                        .ok_or(DeleteError::ValueNotFound(
+                            referenced_column_name.to_owned(),
+                        ))?;
 
-                    let expr = &Expr::BinaryOp {
-                        left: Box::new(Expr::Identifier(referencing_column_name.clone())),
-                        op: BinaryOperator::Eq,
-                        right: Box::new(value.to_owned().try_into()?),
-                    };
+                let expr = &Expr::BinaryOp {
+                    left: Box::new(Expr::Identifier(referencing_column_name.clone())),
+                    op: BinaryOperator::Eq,
+                    right: Box::new(value.to_owned().try_into()?),
+                };
 
-                    let columns = Some(vec![referencing_column_name.to_owned()]).map(Rc::from);
-                    let referencing_rows =
-                        fetch(storage, referencing_table_name, columns, Some(expr)).await?;
+                let columns = Some(vec![referencing_column_name.to_owned()]).map(Rc::from);
+                let referencing_rows =
+                    fetch(storage, referencing_table_name, columns, Some(expr)).await?;
 
-                    let len = referencing_rows.count().await;
-                    if len > 0 && on_delete == &ReferentialAction::NoAction {
-                        return Err(ExecuteError::ReferencingColumnExists(format!(
-                            "{referencing_table_name}.{referencing_column_name}"
-                        ))
-                        .into());
-                    }
+                let len = referencing_rows.count().await;
+                if len > 0 && on_delete == &ReferentialAction::NoAction {
+                    return Err(DeleteError::ReferencingColumnExists(format!(
+                        "{referencing_table_name}.{referencing_column_name}"
+                    ))
+                    .into());
                 }
+            }
 
-                Ok::<_, Error>(key)
-            })
-            .try_collect::<Vec<_>>()
-            .await?;
+            Ok::<_, Error>(key)
+        })
+        .try_collect::<Vec<_>>()
+        .await?;
     let num_keys = keys.len();
 
     storage

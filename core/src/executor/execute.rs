@@ -30,12 +30,6 @@ use {
 pub enum ExecuteError {
     #[error("table not found: {0}")]
     TableNotFound(String),
-
-    #[error("referencing column exists: {0}")]
-    ReferencingColumnExists(String),
-
-    #[error("Value not found on column: {0}")]
-    ValueNotFound(String),
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]

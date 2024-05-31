@@ -5,7 +5,7 @@ use {
             DataType::{Int, Text},
             ForeignKey, ReferentialAction,
         },
-        error::{ExecuteError, InsertError, TranslateError, UpdateError},
+        error::{DeleteError, InsertError, TranslateError, UpdateError},
         executor::{AlterError, Referencing},
         prelude::Payload,
     },
@@ -217,7 +217,7 @@ test_case!(foreign_key, {
     g.named_test(
         "Deleting referenced row should fail if referencing value exists (by default: NO ACTION and gets error)",
         "DELETE FROM ReferencedTableWithPK WHERE id = 1;",
-        Err(ExecuteError::ReferencingColumnExists("ReferencingTable.referenced_table_id".to_owned()).into()),
+        Err(DeleteError::ReferencingColumnExists("ReferencingTable.referenced_table_id".to_owned()).into()),
     )
     .await;
 
