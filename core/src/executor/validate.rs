@@ -26,15 +26,6 @@ pub enum ValidateError {
 
     #[error("duplicate entry '{0:?}' for primary_key field")]
     DuplicateEntryOnPrimaryKeyField(Key),
-
-    #[error("foreign key `{name}` violated - referencing: {table}.{column}, referenced: {referenced_table}.{referenced_column}")]
-    ForeignKeyViolation {
-        name: String,
-        table: String,
-        column: String,
-        referenced_table: String,
-        referenced_column: String,
-    },
 }
 
 pub enum ColumnValidation<'column_def> {
