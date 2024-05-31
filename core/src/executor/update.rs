@@ -5,8 +5,7 @@ use {
     },
     crate::{
         ast::{Assignment, ColumnDef, ColumnUniqueOption, ForeignKey},
-        data::{Row, Value},
-        prelude::Key,
+        data::{Key, Row, Value},
         result::{Error, Result},
         store::GStore,
     },
