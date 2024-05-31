@@ -179,7 +179,7 @@ async fn fetch_vec_rows<T: GStore>(
     )
     .await?;
 
-    validate_foreign_key(foreign_keys, &rows, storage, &column_defs).await?;
+    validate_foreign_key(storage, &column_defs, foreign_keys, &rows).await?;
 
     let primary_key = column_defs.iter().position(|ColumnDef { unique, .. }| {
         unique == &Some(ColumnUniqueOption { is_primary: true })
@@ -201,10 +201,10 @@ async fn fetch_vec_rows<T: GStore>(
 }
 
 async fn validate_foreign_key<T: GStore>(
-    foreign_keys: Vec<ForeignKey>,
-    rows: &[Vec<Value>],
     storage: &T,
     column_defs: &Rc<[ColumnDef]>,
+    foreign_keys: Vec<ForeignKey>,
+    rows: &[Vec<Value>],
 ) -> Result<()> {
     for foreign_key in foreign_keys {
         let ForeignKey {
