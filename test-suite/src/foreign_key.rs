@@ -274,4 +274,18 @@ test_case!(foreign_key, {
         Ok(Payload::DropTable),
     )
     .await;
+
+    g.run("CREATE TABLE Schemaless;").await;
+
+    g.named_test(
+        "Creating table with foreign key on schemaless table should fail",
+        "CREATE TABLE ReferencingSchemalessTable (
+            id INT,
+            name TEXT,
+            schemaless_id INT,
+            FOREIGN KEY (schemaless_id) REFERENCES Schemaless (id)
+        );",
+        Ok(Payload::DropTable),
+    )
+    .await;
 });

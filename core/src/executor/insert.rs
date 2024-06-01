@@ -45,6 +45,9 @@ pub enum InsertError {
         column_name: String,
         referenced_value: String,
     },
+
+    #[error("unreachable referencing column name: {0}")]
+    UnreachableReferencingColumnName(String),
 }
 
 enum RowsData {
@@ -219,9 +222,11 @@ async fn validate_foreign_key<T: GStore>(
             .find(|(_, c)| &c.name == referencing_column_name)
         {
             for row in rows.iter() {
-                let value = row.get(target_index.0).ok_or(InsertError::WrongColumnName(
-                    referencing_column_name.to_owned(),
-                ))?;
+                let value = row.get(target_index.0).ok_or(
+                    InsertError::UnreachableReferencingColumnName(
+                        referencing_column_name.to_owned(),
+                    ),
+                )?;
 
                 if value == &Value::Null {
                     continue;
@@ -241,6 +246,11 @@ async fn validate_foreign_key<T: GStore>(
                     .into());
                 }
             }
+        } else {
+            return Err(InsertError::UnreachableReferencingColumnName(
+                referencing_column_name.to_owned(),
+            )
+            .into());
         }
     }
 
