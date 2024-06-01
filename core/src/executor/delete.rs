@@ -63,8 +63,8 @@ pub async fn delete<T: GStore + GStoreMut>(
                 let referencing_rows =
                     fetch(storage, referencing_table_name, columns, Some(expr)).await?;
 
-                let len = referencing_rows.count().await;
-                if len > 0 && on_delete == &ReferentialAction::NoAction {
+                let referencing_row_exists = Box::pin(referencing_rows).next().await.is_some();
+                if referencing_row_exists && on_delete == &ReferentialAction::NoAction {
                     return Err(DeleteError::ReferencingColumnExists(format!(
                         "{referencing_table_name}.{referencing_column_name}"
                     ))
