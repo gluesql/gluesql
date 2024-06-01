@@ -59,7 +59,7 @@ pub async fn delete<T: GStore + GStoreMut>(
                     right: Box::new(value.to_owned().try_into()?),
                 };
 
-                let columns = Some(vec![referencing_column_name.to_owned()]).map(Rc::from);
+                let columns = Some(Rc::from(Vec::new()));
                 let referencing_rows =
                     fetch(storage, referencing_table_name, columns, Some(expr)).await?;
 
