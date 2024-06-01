@@ -47,16 +47,15 @@ pub async fn delete<T: GStore + GStoreMut>(
                     },
             } in &referencings
             {
-                let value =
-                    row.get_value(referenced_column_name)
-                        .ok_or(DeleteError::ValueNotFound(
-                            referenced_column_name.to_owned(),
-                        ))?;
+                let value = row
+                    .get_value(referenced_column_name)
+                    .ok_or(DeleteError::ValueNotFound(referenced_column_name.clone()))?
+                    .clone();
 
                 let expr = &Expr::BinaryOp {
                     left: Box::new(Expr::Identifier(referencing_column_name.clone())),
                     op: BinaryOperator::Eq,
-                    right: Box::new(value.to_owned().try_into()?),
+                    right: Box::new(Expr::try_from(value)?),
                 };
 
                 let columns = Some(Rc::from(Vec::new()));
