@@ -23,8 +23,7 @@ pub async fn alter_table<T: GStore + GStoreMut>(
             let referencing_exists = schema
                 .foreign_keys
                 .iter()
-                .find(|foreign_key| column_name == &foreign_key.referencing_column_name)
-                .is_some();
+                .any(|foreign_key| column_name == &foreign_key.referencing_column_name);
 
             if referencing_exists {
                 return Err(AlterError::CannotAlterReferencingColumn {
