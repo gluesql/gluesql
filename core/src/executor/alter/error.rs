@@ -83,4 +83,10 @@ pub enum AlterError {
         table_name: String,
         column_name: String,
     },
+
+    #[error("cannot drop referencing column '{table_name}.{column_name}'")]
+    CannotAlterReferencingColumn {
+        table_name: String,
+        column_name: String,
+    },
 }

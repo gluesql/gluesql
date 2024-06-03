@@ -196,10 +196,22 @@ test_case!(alter_table_add_drop, {
             }
             .into()),
         ),
-        // (
-        //     "ALTER TABLE Referencing DROP COLUMN referenced_id",
-        //     Ok(Payload::AlterTable),
-        // ),
+        (
+            "ALTER TABLE Referencing DROP COLUMN referenced_id",
+            Err(AlterError::CannotAlterReferencingColumn {
+                table_name: "Referencing".to_owned(),
+                column_name: "referenced_id".to_owned(),
+            }
+            .into()),
+        ),
+        (
+            "ALTER TABLE Referencing RENAME COLUMN referenced_id to new_id",
+            Err(AlterError::CannotAlterReferencingColumn {
+                table_name: "Referencing".to_owned(),
+                column_name: "referenced_id".to_owned(),
+            }
+            .into()),
+        ),
     ];
 
     for (sql, expected) in test_cases {
