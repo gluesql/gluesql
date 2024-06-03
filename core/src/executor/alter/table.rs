@@ -1,7 +1,7 @@
 use {
     super::{validate, validate_column_names, AlterError},
     crate::{
-        ast::{ColumnDef, ForeignKey, Query, SetExpr, TableFactor, Values},
+        ast::{ColumnDef, ColumnUniqueOption, ForeignKey, Query, SetExpr, TableFactor, Values},
         data::{Schema, TableError},
         executor::{evaluate_stateless, select::select},
         prelude::{DataType, Value},
@@ -168,11 +168,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
             .into());
         }
 
-        if referenced_column_def
-            .unique
-            .map(|x| !x.is_primary)
-            .unwrap_or(true)
-        {
+        if referenced_column_def.unique != Some(ColumnUniqueOption { is_primary: true }) {
             return Err(AlterError::ReferencingNonPKColumn {
                 referenced_table: referenced_table_name.to_owned(),
                 referenced_column: referenced_column_name.to_owned(),
