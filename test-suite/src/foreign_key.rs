@@ -228,22 +228,77 @@ test_case!(foreign_key, {
     )
     .await;
 
+    g.run(
+        "
+        CREATE TABLE ReferencedTableWithPK_2 (
+            id INTEGER PRIMARY KEY,
+            name TEXT,
+        );",
+    )
+    .await;
+
+    g.run("INSERT INTO ReferencedTableWithPK_2 VALUES (1, 'referenced_table2');")
+        .await;
+
+    g.named_test(
+        "Table with two foreign keys",
+        "CREATE TABLE ReferencingWithTwoFK (
+            id INTEGER PRIMARY KEY,
+            name TEXT,
+            referenced_id_1 INTEGER,
+            referenced_id_2 INTEGER,
+            FOREIGN KEY (referenced_id_1) REFERENCES ReferencedTableWithPK (id),
+            FOREIGN KEY (referenced_id_2) REFERENCES ReferencedTableWithPK_2 (id)
+        );",
+        Ok(Payload::Create),
+    )
+    .await;
+
+    g.run(
+        "INSERT INTO ReferencingWithTwoFK VALUES (1, 'referencing_table with two referenced_table', 1, 1);"
+    ).await;
+
+    g.named_test(
+        "Cannot update referenced_id_2 if there is no referenced value",
+        "UPDATE ReferencingWithTwoFK SET referenced_id_2 = 9 WHERE id = 1;",
+        Err(UpdateError::CannotFindReferencedValue {
+            table_name: "ReferencedTableWithPK_2".to_owned(),
+            column_name: "id".to_owned(),
+            referenced_value: "9".to_owned(),
+        }
+        .into()),
+    )
+    .await;
+
     g.named_test(
         "Cannot drop referenced table if referencing table exists",
         "DROP TABLE ReferencedTableWithPK;",
         Err(AlterError::CannotDropTableWithReferencing {
             referenced_table_name: "ReferencedTableWithPK".to_owned(),
-            referencings: vec![Referencing {
-                table_name: "ReferencingTable".to_owned(),
-                foreign_key: ForeignKey {
-                    name: "FK_referenced_table_id-ReferencedTableWithPK_id".to_owned(),
-                    referencing_column_name: "referenced_table_id".to_owned(),
-                    referenced_table_name: "ReferencedTableWithPK".to_owned(),
-                    referenced_column_name: "id".to_owned(),
-                    on_delete: ReferentialAction::NoAction,
-                    on_update: ReferentialAction::NoAction,
+            referencings: vec![
+                Referencing {
+                    table_name: "ReferencingTable".to_owned(),
+                    foreign_key: ForeignKey {
+                        name: "FK_referenced_table_id-ReferencedTableWithPK_id".to_owned(),
+                        referencing_column_name: "referenced_table_id".to_owned(),
+                        referenced_table_name: "ReferencedTableWithPK".to_owned(),
+                        referenced_column_name: "id".to_owned(),
+                        on_delete: ReferentialAction::NoAction,
+                        on_update: ReferentialAction::NoAction,
+                    },
                 },
-            }],
+                Referencing {
+                    table_name: "ReferencingWithTwoFK".to_owned(),
+                    foreign_key: ForeignKey {
+                        name: "FK_referenced_id_1-ReferencedTableWithPK_id".to_owned(),
+                        referencing_column_name: "referenced_id_1".to_owned(),
+                        referenced_table_name: "ReferencedTableWithPK".to_owned(),
+                        referenced_column_name: "id".to_owned(),
+                        on_delete: ReferentialAction::NoAction,
+                        on_update: ReferentialAction::NoAction,
+                    },
+                },
+            ],
         }
         .into()),
     )
