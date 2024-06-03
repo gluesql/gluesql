@@ -153,7 +153,7 @@ test_case!(foreign_key, {
             id INT,
             name TEXT,
             referenced_table_id INT,
-            FOREIGN KEY (referenced_table_id) REFERENCES ReferencedTableWithPK (id) ON DELETE NO ACTION ON UPDATE RESTRICT
+            CONSTRAINT MyFkConstraint FOREIGN KEY (referenced_table_id) REFERENCES ReferencedTableWithPK (id) ON DELETE NO ACTION ON UPDATE RESTRICT
         );",
         Ok(Payload::Create),
     )
@@ -279,7 +279,7 @@ test_case!(foreign_key, {
                 Referencing {
                     table_name: "ReferencingTable".to_owned(),
                     foreign_key: ForeignKey {
-                        name: "FK_referenced_table_id-ReferencedTableWithPK_id".to_owned(),
+                        name: "MyFkConstraint".to_owned(),
                         referencing_column_name: "referenced_table_id".to_owned(),
                         referenced_table_name: "ReferencedTableWithPK".to_owned(),
                         referenced_column_name: "id".to_owned(),

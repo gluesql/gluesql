@@ -1,7 +1,9 @@
 use {
     super::{validate, validate_column_names, AlterError},
     crate::{
-        ast::{ColumnDef, ColumnUniqueOption, ForeignKey, Query, SetExpr, TableFactor, Values},
+        ast::{
+            ColumnDef, ColumnUniqueOption, ForeignKey, Query, SetExpr, TableFactor, ToSql, Values,
+        },
         data::{Schema, TableError},
         executor::{evaluate_stateless, select::select},
         prelude::{DataType, Value},
@@ -263,8 +265,34 @@ impl fmt::Display for Referencing {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "constraint {} on referencing table {}",
-            self.foreign_key.name, self.table_name
+            r#"{} on table "{}""#,
+            self.foreign_key.to_sql(),
+            self.table_name
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {super::*, crate::ast::ReferentialAction};
+
+    #[test]
+    fn test_referencing_display() {
+        let referencing = Referencing {
+            table_name: "Referencing".to_owned(),
+            foreign_key: ForeignKey {
+                name: "FK_referenced_id-Referenced_id".to_owned(),
+                referencing_column_name: "referenced_id".to_owned(),
+                referenced_table_name: "Referenced".to_owned(),
+                referenced_column_name: "id".to_owned(),
+                on_delete: ReferentialAction::NoAction,
+                on_update: ReferentialAction::NoAction,
+            },
+        };
+
+        assert_eq!(
+            format!("{}", referencing),
+            r#"CONSTRAINT "FK_referenced_id-Referenced_id" FOREIGN KEY ("referenced_id") REFERENCES "Referenced" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION on table "Referencing""#
+        );
     }
 }
