@@ -20,32 +20,31 @@ pub async fn alter_table<T: GStore + GStoreMut>(
     | AlterTableOperation::DropColumn { column_name, .. } = operation
     {
         if let Some(schema) = storage.fetch_schema(table_name).await? {
-            let referencing_column_exists = schema
+            let referencing_foreign_key = schema
                 .foreign_keys
-                .iter()
-                .any(|foreign_key| column_name == &foreign_key.referencing_column_name);
+                .into_iter()
+                .find(|foreign_key| column_name == &foreign_key.referencing_column_name);
 
-            if referencing_column_exists {
+            if let Some(foreign_key) = referencing_foreign_key {
                 return Err(AlterError::CannotAlterReferencingColumn {
-                    table_name: table_name.to_owned(),
-                    column_name: column_name.to_owned(),
+                    referencing: Referencing {
+                        table_name: table_name.to_owned(),
+                        foreign_key,
+                    },
                 }
                 .into());
             }
         }
 
         let referencings = storage.fetch_referencings(table_name).await?;
-        let referenced_column_exists =
-            referencings.iter().any(|Referencing { foreign_key, .. }| {
+        let referencing = referencings
+            .into_iter()
+            .find(|Referencing { foreign_key, .. }| {
                 column_name == &foreign_key.referenced_column_name
             });
 
-        if referenced_column_exists {
-            return Err(AlterError::CannotAlterReferencedColumn {
-                table_name: table_name.to_owned(),
-                column_name: column_name.to_owned(),
-            }
-            .into());
+        if let Some(referencing) = referencing {
+            return Err(AlterError::CannotAlterReferencedColumn { referencing }.into());
         }
     }
 

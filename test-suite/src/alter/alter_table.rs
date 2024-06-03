@@ -4,6 +4,7 @@ use {
         ast::*,
         data::Value::*,
         error::{AlterError, AlterTableError, EvaluateError, TranslateError},
+        executor::Referencing,
         prelude::Payload,
     },
 };
@@ -183,32 +184,68 @@ test_case!(alter_table_add_drop, {
         (
             "ALTER TABLE Referenced DROP COLUMN id",
             Err(AlterError::CannotAlterReferencedColumn {
-                table_name: "Referencing".to_owned(),
-                column_name: "id".to_owned(),
+                referencing: Referencing {
+                    table_name: "Referencing".to_owned(),
+                    foreign_key: ForeignKey {
+                        name: "FK_referenced_id-Referenced_id".to_owned(),
+                        referencing_column_name: "referenced_id".to_owned(),
+                        referenced_table_name: "Referenced".to_owned(),
+                        referenced_column_name: "id".to_owned(),
+                        on_delete: ReferentialAction::NoAction,
+                        on_update: ReferentialAction::NoAction,
+                    },
+                },
             }
             .into()),
         ),
         (
             "ALTER TABLE Referenced RENAME COLUMN id to new_id",
             Err(AlterError::CannotAlterReferencedColumn {
-                table_name: "Referencing".to_owned(),
-                column_name: "id".to_owned(),
+                referencing: Referencing {
+                    table_name: "Referencing".to_owned(),
+                    foreign_key: ForeignKey {
+                        name: "FK_referenced_id-Referenced_id".to_owned(),
+                        referencing_column_name: "referenced_id".to_owned(),
+                        referenced_table_name: "Referenced".to_owned(),
+                        referenced_column_name: "id".to_owned(),
+                        on_delete: ReferentialAction::NoAction,
+                        on_update: ReferentialAction::NoAction,
+                    },
+                },
             }
             .into()),
         ),
         (
             "ALTER TABLE Referencing DROP COLUMN referenced_id",
             Err(AlterError::CannotAlterReferencingColumn {
-                table_name: "Referencing".to_owned(),
-                column_name: "referenced_id".to_owned(),
+                referencing: Referencing {
+                    table_name: "Referencing".to_owned(),
+                    foreign_key: ForeignKey {
+                        name: "FK_referenced_id-Referenced_id".to_owned(),
+                        referencing_column_name: "referenced_id".to_owned(),
+                        referenced_table_name: "Referenced".to_owned(),
+                        referenced_column_name: "id".to_owned(),
+                        on_delete: ReferentialAction::NoAction,
+                        on_update: ReferentialAction::NoAction,
+                    },
+                },
             }
             .into()),
         ),
         (
             "ALTER TABLE Referencing RENAME COLUMN referenced_id to new_id",
             Err(AlterError::CannotAlterReferencingColumn {
-                table_name: "Referencing".to_owned(),
-                column_name: "referenced_id".to_owned(),
+                referencing: Referencing {
+                    table_name: "Referencing".to_owned(),
+                    foreign_key: ForeignKey {
+                        name: "FK_referenced_id-Referenced_id".to_owned(),
+                        referencing_column_name: "referenced_id".to_owned(),
+                        referenced_table_name: "Referenced".to_owned(),
+                        referenced_column_name: "id".to_owned(),
+                        on_delete: ReferentialAction::NoAction,
+                        on_update: ReferentialAction::NoAction,
+                    },
+                },
             }
             .into()),
         ),
