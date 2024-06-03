@@ -168,6 +168,38 @@ test_case!(alter_table_add_drop, {
             )
             .into()),
         ),
+        (
+            "CREATE TABLE Referenced (id INTEGER PRIMARY KEY);",
+            Ok(Payload::Create),
+        ),
+        (
+            "CREATE TABLE Referencing (
+                id INTEGER,
+                referenced_id INTEGER,
+                FOREIGN KEY (referenced_id) REFERENCES Referenced (id)
+          );",
+            Ok(Payload::Create),
+        ),
+        (
+            "ALTER TABLE Referenced DROP COLUMN id",
+            Err(AlterError::CannotAlterReferencedColumn {
+                table_name: "Referencing".to_owned(),
+                column_name: "id".to_owned(),
+            }
+            .into()),
+        ),
+        (
+            "ALTER TABLE Referenced RENAME COLUMN id to new_id",
+            Err(AlterError::CannotAlterReferencedColumn {
+                table_name: "Referencing".to_owned(),
+                column_name: "id".to_owned(),
+            }
+            .into()),
+        ),
+        // (
+        //     "ALTER TABLE Referencing DROP COLUMN referenced_id",
+        //     Ok(Payload::AlterTable),
+        // ),
     ];
 
     for (sql, expected) in test_cases {

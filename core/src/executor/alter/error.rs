@@ -77,4 +77,10 @@ pub enum AlterError {
         referenced_table_name: String,
         referencings: Vec<Referencing>,
     },
+
+    #[error("cannot drop referenced column '{table_name}.{column_name}'")]
+    CannotAlterReferencedColumn {
+        table_name: String,
+        column_name: String,
+    },
 }

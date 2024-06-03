@@ -1,5 +1,5 @@
 use {
-    super::{validate, AlterError},
+    super::{validate, AlterError, Referencing},
     crate::{
         ast::{AlterTableOperation, Expr, Function},
         data::{Schema, SchemaIndex},
@@ -13,6 +13,26 @@ pub async fn alter_table<T: GStore + GStoreMut>(
     table_name: &str,
     operation: &AlterTableOperation,
 ) -> Result<()> {
+    if let AlterTableOperation::RenameColumn {
+        old_column_name: column_name,
+        ..
+    }
+    | AlterTableOperation::DropColumn { column_name, .. } = operation
+    {
+        let referencings = storage.fetch_referencings(table_name).await?;
+        let referencing = referencings.iter().find(|Referencing { foreign_key, .. }| {
+            column_name == &foreign_key.referenced_column_name
+        });
+
+        if let Some(Referencing { table_name, .. }) = referencing {
+            return Err(AlterError::CannotAlterReferencedColumn {
+                table_name: table_name.to_owned(),
+                column_name: column_name.to_owned(),
+            }
+            .into());
+        }
+    }
+
     match operation {
         AlterTableOperation::RenameTable {
             table_name: new_table_name,
