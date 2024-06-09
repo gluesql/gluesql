@@ -216,41 +216,39 @@ async fn validate_foreign_key<T: GStore>(
             referenced_column_name,
             ..
         } = &foreign_key;
-        if let Some(target_index) = column_defs
+
+        let target_index = column_defs
             .iter()
             .enumerate()
             .find(|(_, c)| &c.name == referencing_column_name)
-        {
-            for row in rows.iter() {
-                let value = row.get(target_index.0).ok_or(
-                    InsertError::UnreachableReferencingColumnName(
+            .ok_or_else(|| {
+                InsertError::UnreachableReferencingColumnName(referencing_column_name.to_owned())
+            })?;
+
+        for row in rows.iter() {
+            let value =
+                row.get(target_index.0)
+                    .ok_or(InsertError::UnreachableReferencingColumnName(
                         referencing_column_name.to_owned(),
-                    ),
-                )?;
+                    ))?;
 
-                if value == &Value::Null {
-                    continue;
-                }
-
-                let no_referenced = storage
-                    .fetch_data(referenced_table_name, &Key::try_from(value)?)
-                    .await?
-                    .is_none();
-
-                if no_referenced {
-                    return Err(InsertError::CannotFindReferencedValue {
-                        table_name: referenced_table_name.to_owned(),
-                        column_name: referenced_column_name.to_owned(),
-                        referenced_value: String::from(value),
-                    }
-                    .into());
-                }
+            if value == &Value::Null {
+                continue;
             }
-        } else {
-            return Err(InsertError::UnreachableReferencingColumnName(
-                referencing_column_name.to_owned(),
-            )
-            .into());
+
+            let no_referenced = storage
+                .fetch_data(referenced_table_name, &Key::try_from(value)?)
+                .await?
+                .is_none();
+
+            if no_referenced {
+                return Err(InsertError::CannotFindReferencedValue {
+                    table_name: referenced_table_name.to_owned(),
+                    column_name: referenced_column_name.to_owned(),
+                    referenced_value: String::from(value),
+                }
+                .into());
+            }
         }
     }
 
