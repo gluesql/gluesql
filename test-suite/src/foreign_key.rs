@@ -26,8 +26,8 @@ test_case!(foreign_key, {
         "Creating table with foreign key should be failed if referenced table does not have primary key",
         "CREATE TABLE ReferencingTable (
             id INT, name TEXT,
-            referenced_table_id INT,
-            FOREIGN KEY (referenced_table_id) REFERENCES ReferencedTableWithoutPK (id)
+            referenced_id INT,
+            FOREIGN KEY (referenced_id) REFERENCES ReferencedTableWithoutPK (id)
         );",
         Err(AlterError::ReferencingNonPKColumn {
             referenced_table: "ReferencedTableWithoutPK".to_owned(),
@@ -50,8 +50,8 @@ test_case!(foreign_key, {
         "CREATE TABLE ReferencingTable (
             id INT,
             name TEXT,
-            referenced_table_id INT,
-            FOREIGN KEY (referenced_table_id) REFERENCES ReferencedTableWithUnique (id)
+            referenced_id INT,
+            FOREIGN KEY (referenced_id) REFERENCES ReferencedTableWithUnique (id)
         );",
         Err(AlterError::ReferencingNonPKColumn {
             referenced_table: "ReferencedTableWithUnique".to_owned(),
@@ -74,11 +74,11 @@ test_case!(foreign_key, {
         "CREATE TABLE ReferencingTable (
             id TEXT,
             name TEXT,
-            referenced_table_id TEXT,
-            FOREIGN KEY (referenced_table_id) REFERENCES ReferencedTableWithPK (id)
+            referenced_id TEXT,
+            FOREIGN KEY (referenced_id) REFERENCES ReferencedTableWithPK (id)
         );",
         Err(AlterError::ForeignKeyDataTypeMismatch {
-            referencing_column: "referenced_table_id".to_owned(),
+            referencing_column: "referenced_id".to_owned(),
             referencing_column_type: Text,
             referenced_column: "id".to_owned(),
             referenced_column_type: Int,
@@ -92,8 +92,8 @@ test_case!(foreign_key, {
         "CREATE TABLE ReferencingTable (
             id INT,
             name TEXT,
-            referenced_table_id INT,
-            FOREIGN KEY (referenced_table_id) REFERENCES ReferencedTableWithPK (id) ON DELETE CASCADE
+            referenced_id INT,
+            FOREIGN KEY (referenced_id) REFERENCES ReferencedTableWithPK (id) ON DELETE CASCADE
         );",
         Err(TranslateError::UnsupportedConstraint("CASCADE".to_owned()).into()),
     )
@@ -104,8 +104,8 @@ test_case!(foreign_key, {
         "CREATE TABLE ReferencingTable (
             id INT,
             name TEXT,
-            referenced_table_id INT,
-            FOREIGN KEY (referenced_table_id) REFERENCES ReferencedTableWithPK (id) ON DELETE SET DEFAULT
+            referenced_id INT,
+            FOREIGN KEY (referenced_id) REFERENCES ReferencedTableWithPK (id) ON DELETE SET DEFAULT
         );",
         Err(TranslateError::UnsupportedConstraint("SET DEFAULT".to_owned()).into()),
     )
@@ -116,8 +116,8 @@ test_case!(foreign_key, {
         "CREATE TABLE ReferencingTable (
             id INT,
             name TEXT,
-            referenced_table_id INT,
-            FOREIGN KEY (referenced_table_id) REFERENCES ReferencedTableWithPK (id) ON DELETE SET NULL
+            referenced_id INT,
+            FOREIGN KEY (referenced_id) REFERENCES ReferencedTableWithPK (id) ON DELETE SET NULL
         );",
         Err(TranslateError::UnsupportedConstraint("SET NULL".to_owned()).into()),
     )
@@ -128,7 +128,7 @@ test_case!(foreign_key, {
         "CREATE TABLE ReferencingTable (
             id INT,
             name TEXT,
-            referenced_table_id INT,
+            referenced_id INT,
             FOREIGN KEY (wrong_referencing_column) REFERENCES ReferencedTableWithPK (id)
         );",
         Err(AlterError::ReferencingColumnNotFound("wrong_referencing_column".to_owned()).into()),
@@ -140,8 +140,8 @@ test_case!(foreign_key, {
         "CREATE TABLE ReferencingTable (
             id INT,
             name TEXT,
-            referenced_table_id INT,
-            FOREIGN KEY (referenced_table_id) REFERENCES ReferencedTableWithPK (wrong_referenced_column)
+            referenced_id INT,
+            FOREIGN KEY (referenced_id) REFERENCES ReferencedTableWithPK (wrong_referenced_column)
         );",
         Err(AlterError::ReferencedColumnNotFound("wrong_referenced_column".to_owned()).into()),
     )
@@ -152,8 +152,8 @@ test_case!(foreign_key, {
         "CREATE TABLE ReferencingTable (
             id INT,
             name TEXT,
-            referenced_table_id INT,
-            CONSTRAINT MyFkConstraint FOREIGN KEY (referenced_table_id) REFERENCES ReferencedTableWithPK (id) ON DELETE NO ACTION ON UPDATE RESTRICT
+            referenced_id INT,
+            CONSTRAINT MyFkConstraint FOREIGN KEY (referenced_id) REFERENCES ReferencedTableWithPK (id) ON DELETE NO ACTION ON UPDATE RESTRICT
         );",
         Ok(Payload::Create),
     )
@@ -190,7 +190,7 @@ test_case!(foreign_key, {
 
     g.named_test(
         "If there is no referenced value, update should fail",
-        "UPDATE ReferencingTable SET referenced_table_id = 2 WHERE id = 2;",
+        "UPDATE ReferencingTable SET referenced_id = 2 WHERE id = 2;",
         Err(UpdateError::CannotFindReferencedValue {
             table_name: "ReferencedTableWithPK".to_owned(),
             column_name: "id".to_owned(),
@@ -202,14 +202,14 @@ test_case!(foreign_key, {
 
     g.named_test(
         "Even If there is no referenced value, it should be able to update to NULL",
-        "UPDATE ReferencingTable SET referenced_table_id = NULL WHERE id = 2;",
+        "UPDATE ReferencingTable SET referenced_id = NULL WHERE id = 2;",
         Ok(Payload::Update(1)),
     )
     .await;
 
     g.named_test(
         "With valid referenced value, update should succeed",
-        "UPDATE ReferencingTable SET referenced_table_id = 1 WHERE id = 2;",
+        "UPDATE ReferencingTable SET referenced_id = 1 WHERE id = 2;",
         Ok(Payload::Update(1)),
     )
     .await;
@@ -217,7 +217,7 @@ test_case!(foreign_key, {
     g.named_test(
         "Deleting referenced row should fail if referencing value exists (by default: NO ACTION and gets error)",
         "DELETE FROM ReferencedTableWithPK WHERE id = 1;",
-        Err(DeleteError::ReferencingColumnExists("ReferencingTable.referenced_table_id".to_owned()).into()),
+        Err(DeleteError::ReferencingColumnExists("ReferencingTable.referenced_id".to_owned()).into()),
     )
     .await;
 
@@ -280,7 +280,7 @@ test_case!(foreign_key, {
                     table_name: "ReferencingTable".to_owned(),
                     foreign_key: ForeignKey {
                         name: "MyFkConstraint".to_owned(),
-                        referencing_column_name: "referenced_table_id".to_owned(),
+                        referencing_column_name: "referenced_id".to_owned(),
                         referenced_table_name: "ReferencedTableWithPK".to_owned(),
                         referenced_column_name: "id".to_owned(),
                         on_delete: ReferentialAction::NoAction,
