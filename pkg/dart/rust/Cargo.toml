@@ -7,7 +7,6 @@ edition = "2021"
 crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
-flutter_rust_bridge = "=2.0.0-dev.32"
 gluesql-core.workspace = true
 memory-storage.workspace = true
 serde = "1"
@@ -19,3 +18,4 @@ tokio = { version = "1", features = [
     "sync",
 ] }
 rust_decimal = { version = "1", features = ["serde-str"] }
+flutter_rust_bridge = "=2.0.0-dev.32"

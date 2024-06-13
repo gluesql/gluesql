@@ -5,7 +5,6 @@
 
 import 'api/payload.dart';
 import 'api/simple.dart';
-import 'api/value.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
@@ -19,54 +18,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     required super.portManager,
   });
 
-  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_DataTypePtr => wire
-      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDataType;
-
-  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_DecimalPtr => wire
-      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDecimal;
+  CrossPlatformFinalizerArg
+      get rust_arc_decrement_strong_count_DartPayloadPtr => wire
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDartPayload;
 
   CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_ErrorPtr => wire
       .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockError;
 
-  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_IntervalPtr => wire
-      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockInterval;
-
-  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_IpAddrPtr => wire
-      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockIpAddr;
-
-  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_NaiveDatePtr =>
-      wire.rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveDate;
-
-  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_NaiveTimePtr =>
-      wire.rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveTime;
-
-  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_PayloadPtr => wire
-      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayload;
-
-  CrossPlatformFinalizerArg
-      get rust_arc_decrement_strong_count_PayloadVariablePtr => wire
-          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayloadVariable;
-
-  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_PointPtr => wire
-      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPoint;
-
-  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_ValuePtr => wire
-      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue;
-
-  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_I128Ptr => wire
-      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocki128;
-
-  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_U128Ptr => wire
-      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocku128;
-
   @protected
-  DataType
-      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDataType(
-          dynamic raw);
-
-  @protected
-  Decimal
-      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDecimal(
+  DartPayload
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDartPayload(
           dynamic raw);
 
   @protected
@@ -75,74 +36,8 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
           dynamic raw);
 
   @protected
-  Interval
-      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockInterval(
-          dynamic raw);
-
-  @protected
-  IpAddr
-      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockIpAddr(
-          dynamic raw);
-
-  @protected
-  NaiveDate
-      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveDate(
-          dynamic raw);
-
-  @protected
-  NaiveTime
-      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveTime(
-          dynamic raw);
-
-  @protected
-  Payload
-      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayload(
-          dynamic raw);
-
-  @protected
-  PayloadVariable
-      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayloadVariable(
-          dynamic raw);
-
-  @protected
-  Point
-      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPoint(
-          dynamic raw);
-
-  @protected
-  Value
-      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
-          dynamic raw);
-
-  @protected
-  I128
-      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocki128(
-          dynamic raw);
-
-  @protected
-  U128
-      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocku128(
-          dynamic raw);
-
-  @protected
-  DateTime dco_decode_Chrono_Naive(dynamic raw);
-
-  @protected
-  Map<String, Value>
-      dco_decode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
-          dynamic raw);
-
-  @protected
-  Map<String, DartValue> dco_decode_Map_String_dart_value(dynamic raw);
-
-  @protected
-  DataType
-      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDataType(
-          dynamic raw);
-
-  @protected
-  Decimal
-      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDecimal(
+  DartPayload
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDartPayload(
           dynamic raw);
 
   @protected
@@ -151,148 +46,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
           dynamic raw);
 
   @protected
-  Interval
-      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockInterval(
-          dynamic raw);
-
-  @protected
-  IpAddr
-      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockIpAddr(
-          dynamic raw);
-
-  @protected
-  NaiveDate
-      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveDate(
-          dynamic raw);
-
-  @protected
-  NaiveTime
-      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveTime(
-          dynamic raw);
-
-  @protected
-  Payload
-      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayload(
-          dynamic raw);
-
-  @protected
-  PayloadVariable
-      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayloadVariable(
-          dynamic raw);
-
-  @protected
-  Point
-      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPoint(
-          dynamic raw);
-
-  @protected
-  Value
-      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
-          dynamic raw);
-
-  @protected
-  I128
-      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocki128(
-          dynamic raw);
-
-  @protected
-  U128
-      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocku128(
-          dynamic raw);
-
-  @protected
   String dco_decode_String(dynamic raw);
 
   @protected
-  bool dco_decode_bool(dynamic raw);
-
-  @protected
-  DartPayload dco_decode_dart_payload(dynamic raw);
-
-  @protected
-  DartValue dco_decode_dart_value(dynamic raw);
-
-  @protected
-  double dco_decode_f_32(dynamic raw);
-
-  @protected
-  double dco_decode_f_64(dynamic raw);
-
-  @protected
-  int dco_decode_i_16(dynamic raw);
-
-  @protected
-  int dco_decode_i_32(dynamic raw);
-
-  @protected
-  int dco_decode_i_64(dynamic raw);
-
-  @protected
-  int dco_decode_i_8(dynamic raw);
-
-  @protected
-  List<Value>
-      dco_decode_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
+  List<DartPayload>
+      dco_decode_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDartPayload(
           dynamic raw);
-
-  @protected
-  List<Map<String, DartValue>> dco_decode_list_Map_String_dart_value(
-      dynamic raw);
-
-  @protected
-  List<String> dco_decode_list_String(dynamic raw);
-
-  @protected
-  List<DartPayload> dco_decode_list_dart_payload(dynamic raw);
-
-  @protected
-  List<DartValue> dco_decode_list_dart_value(dynamic raw);
-
-  @protected
-  List<List<DartValue>> dco_decode_list_list_dart_value(dynamic raw);
 
   @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
-
-  @protected
-  List<(String, DataType)>
-      dco_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_data_type(
-          dynamic raw);
-
-  @protected
-  List<(String, Value)>
-      dco_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_value(
-          dynamic raw);
-
-  @protected
-  List<(String, DartValue)> dco_decode_list_record_string_dart_value(
-      dynamic raw);
-
-  @protected
-  (
-    String,
-    DataType
-  ) dco_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_data_type(
-      dynamic raw);
-
-  @protected
-  (
-    String,
-    Value
-  ) dco_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_value(
-      dynamic raw);
-
-  @protected
-  (String, DartValue) dco_decode_record_string_dart_value(dynamic raw);
-
-  @protected
-  int dco_decode_u_16(dynamic raw);
-
-  @protected
-  int dco_decode_u_32(dynamic raw);
-
-  @protected
-  int dco_decode_u_64(dynamic raw);
 
   @protected
   int dco_decode_u_8(dynamic raw);
@@ -304,13 +66,8 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int dco_decode_usize(dynamic raw);
 
   @protected
-  DataType
-      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDataType(
-          SseDeserializer deserializer);
-
-  @protected
-  Decimal
-      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDecimal(
+  DartPayload
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDartPayload(
           SseDeserializer deserializer);
 
   @protected
@@ -319,75 +76,8 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
           SseDeserializer deserializer);
 
   @protected
-  Interval
-      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockInterval(
-          SseDeserializer deserializer);
-
-  @protected
-  IpAddr
-      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockIpAddr(
-          SseDeserializer deserializer);
-
-  @protected
-  NaiveDate
-      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveDate(
-          SseDeserializer deserializer);
-
-  @protected
-  NaiveTime
-      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveTime(
-          SseDeserializer deserializer);
-
-  @protected
-  Payload
-      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayload(
-          SseDeserializer deserializer);
-
-  @protected
-  PayloadVariable
-      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayloadVariable(
-          SseDeserializer deserializer);
-
-  @protected
-  Point
-      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPoint(
-          SseDeserializer deserializer);
-
-  @protected
-  Value
-      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
-          SseDeserializer deserializer);
-
-  @protected
-  I128
-      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocki128(
-          SseDeserializer deserializer);
-
-  @protected
-  U128
-      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocku128(
-          SseDeserializer deserializer);
-
-  @protected
-  DateTime sse_decode_Chrono_Naive(SseDeserializer deserializer);
-
-  @protected
-  Map<String, Value>
-      sse_decode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
-          SseDeserializer deserializer);
-
-  @protected
-  Map<String, DartValue> sse_decode_Map_String_dart_value(
-      SseDeserializer deserializer);
-
-  @protected
-  DataType
-      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDataType(
-          SseDeserializer deserializer);
-
-  @protected
-  Decimal
-      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDecimal(
+  DartPayload
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDartPayload(
           SseDeserializer deserializer);
 
   @protected
@@ -396,150 +86,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
           SseDeserializer deserializer);
 
   @protected
-  Interval
-      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockInterval(
-          SseDeserializer deserializer);
-
-  @protected
-  IpAddr
-      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockIpAddr(
-          SseDeserializer deserializer);
-
-  @protected
-  NaiveDate
-      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveDate(
-          SseDeserializer deserializer);
-
-  @protected
-  NaiveTime
-      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveTime(
-          SseDeserializer deserializer);
-
-  @protected
-  Payload
-      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayload(
-          SseDeserializer deserializer);
-
-  @protected
-  PayloadVariable
-      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayloadVariable(
-          SseDeserializer deserializer);
-
-  @protected
-  Point
-      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPoint(
-          SseDeserializer deserializer);
-
-  @protected
-  Value
-      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
-          SseDeserializer deserializer);
-
-  @protected
-  I128
-      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocki128(
-          SseDeserializer deserializer);
-
-  @protected
-  U128
-      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocku128(
-          SseDeserializer deserializer);
-
-  @protected
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
-  bool sse_decode_bool(SseDeserializer deserializer);
-
-  @protected
-  DartPayload sse_decode_dart_payload(SseDeserializer deserializer);
-
-  @protected
-  DartValue sse_decode_dart_value(SseDeserializer deserializer);
-
-  @protected
-  double sse_decode_f_32(SseDeserializer deserializer);
-
-  @protected
-  double sse_decode_f_64(SseDeserializer deserializer);
-
-  @protected
-  int sse_decode_i_16(SseDeserializer deserializer);
-
-  @protected
-  int sse_decode_i_32(SseDeserializer deserializer);
-
-  @protected
-  int sse_decode_i_64(SseDeserializer deserializer);
-
-  @protected
-  int sse_decode_i_8(SseDeserializer deserializer);
-
-  @protected
-  List<Value>
-      sse_decode_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
+  List<DartPayload>
+      sse_decode_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDartPayload(
           SseDeserializer deserializer);
-
-  @protected
-  List<Map<String, DartValue>> sse_decode_list_Map_String_dart_value(
-      SseDeserializer deserializer);
-
-  @protected
-  List<String> sse_decode_list_String(SseDeserializer deserializer);
-
-  @protected
-  List<DartPayload> sse_decode_list_dart_payload(SseDeserializer deserializer);
-
-  @protected
-  List<DartValue> sse_decode_list_dart_value(SseDeserializer deserializer);
-
-  @protected
-  List<List<DartValue>> sse_decode_list_list_dart_value(
-      SseDeserializer deserializer);
 
   @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
-
-  @protected
-  List<(String, DataType)>
-      sse_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_data_type(
-          SseDeserializer deserializer);
-
-  @protected
-  List<(String, Value)>
-      sse_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_value(
-          SseDeserializer deserializer);
-
-  @protected
-  List<(String, DartValue)> sse_decode_list_record_string_dart_value(
-      SseDeserializer deserializer);
-
-  @protected
-  (
-    String,
-    DataType
-  ) sse_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_data_type(
-      SseDeserializer deserializer);
-
-  @protected
-  (
-    String,
-    Value
-  ) sse_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_value(
-      SseDeserializer deserializer);
-
-  @protected
-  (String, DartValue) sse_decode_record_string_dart_value(
-      SseDeserializer deserializer);
-
-  @protected
-  int sse_decode_u_16(SseDeserializer deserializer);
-
-  @protected
-  int sse_decode_u_32(SseDeserializer deserializer);
-
-  @protected
-  int sse_decode_u_64(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_8(SseDeserializer deserializer);
@@ -551,14 +106,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int sse_decode_usize(SseDeserializer deserializer);
 
   @protected
-  void
-      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDataType(
-          DataType self, SseSerializer serializer);
+  int sse_decode_i_32(SseDeserializer deserializer);
+
+  @protected
+  bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
   void
-      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDecimal(
-          Decimal self, SseSerializer serializer);
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDartPayload(
+          DartPayload self, SseSerializer serializer);
 
   @protected
   void
@@ -567,75 +123,8 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void
-      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockInterval(
-          Interval self, SseSerializer serializer);
-
-  @protected
-  void
-      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockIpAddr(
-          IpAddr self, SseSerializer serializer);
-
-  @protected
-  void
-      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveDate(
-          NaiveDate self, SseSerializer serializer);
-
-  @protected
-  void
-      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveTime(
-          NaiveTime self, SseSerializer serializer);
-
-  @protected
-  void
-      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayload(
-          Payload self, SseSerializer serializer);
-
-  @protected
-  void
-      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayloadVariable(
-          PayloadVariable self, SseSerializer serializer);
-
-  @protected
-  void
-      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPoint(
-          Point self, SseSerializer serializer);
-
-  @protected
-  void
-      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
-          Value self, SseSerializer serializer);
-
-  @protected
-  void
-      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocki128(
-          I128 self, SseSerializer serializer);
-
-  @protected
-  void
-      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocku128(
-          U128 self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_Chrono_Naive(DateTime self, SseSerializer serializer);
-
-  @protected
-  void
-      sse_encode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
-          Map<String, Value> self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_Map_String_dart_value(
-      Map<String, DartValue> self, SseSerializer serializer);
-
-  @protected
-  void
-      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDataType(
-          DataType self, SseSerializer serializer);
-
-  @protected
-  void
-      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDecimal(
-          Decimal self, SseSerializer serializer);
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDartPayload(
+          DartPayload self, SseSerializer serializer);
 
   @protected
   void
@@ -643,149 +132,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
           Error self, SseSerializer serializer);
 
   @protected
-  void
-      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockInterval(
-          Interval self, SseSerializer serializer);
-
-  @protected
-  void
-      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockIpAddr(
-          IpAddr self, SseSerializer serializer);
-
-  @protected
-  void
-      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveDate(
-          NaiveDate self, SseSerializer serializer);
-
-  @protected
-  void
-      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveTime(
-          NaiveTime self, SseSerializer serializer);
-
-  @protected
-  void
-      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayload(
-          Payload self, SseSerializer serializer);
-
-  @protected
-  void
-      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayloadVariable(
-          PayloadVariable self, SseSerializer serializer);
-
-  @protected
-  void
-      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPoint(
-          Point self, SseSerializer serializer);
-
-  @protected
-  void
-      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
-          Value self, SseSerializer serializer);
-
-  @protected
-  void
-      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocki128(
-          I128 self, SseSerializer serializer);
-
-  @protected
-  void
-      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocku128(
-          U128 self, SseSerializer serializer);
-
-  @protected
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
-  void sse_encode_bool(bool self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_dart_payload(DartPayload self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_dart_value(DartValue self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_f_32(double self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_f_64(double self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_i_16(int self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_i_32(int self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_i_64(int self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_i_8(int self, SseSerializer serializer);
-
-  @protected
   void
-      sse_encode_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
-          List<Value> self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_list_Map_String_dart_value(
-      List<Map<String, DartValue>> self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_list_String(List<String> self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_list_dart_payload(
-      List<DartPayload> self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_list_dart_value(
-      List<DartValue> self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_list_list_dart_value(
-      List<List<DartValue>> self, SseSerializer serializer);
+      sse_encode_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDartPayload(
+          List<DartPayload> self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_prim_u_8_strict(
       Uint8List self, SseSerializer serializer);
-
-  @protected
-  void
-      sse_encode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_data_type(
-          List<(String, DataType)> self, SseSerializer serializer);
-
-  @protected
-  void
-      sse_encode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_value(
-          List<(String, Value)> self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_list_record_string_dart_value(
-      List<(String, DartValue)> self, SseSerializer serializer);
-
-  @protected
-  void
-      sse_encode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_data_type(
-          (String, DataType) self, SseSerializer serializer);
-
-  @protected
-  void
-      sse_encode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generatedrust_async_rw_lock_value(
-          (String, Value) self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_record_string_dart_value(
-      (String, DartValue) self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_u_16(int self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_u_32(int self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_u_64(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_8(int self, SseSerializer serializer);
@@ -795,6 +151,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_usize(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_i_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_bool(bool self, SseSerializer serializer);
 }
 
 // Section: wire_class
@@ -802,28 +164,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 class RustLibWire implements BaseWire {
   RustLibWire.fromExternalLibrary(ExternalLibrary lib);
 
-  void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDataType(
+  void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDartPayload(
           dynamic ptr) =>
       wasmModule
-          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDataType(
+          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDartPayload(
               ptr);
 
-  void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDataType(
+  void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDartPayload(
           dynamic ptr) =>
       wasmModule
-          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDataType(
-              ptr);
-
-  void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDecimal(
-          dynamic ptr) =>
-      wasmModule
-          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDecimal(
-              ptr);
-
-  void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDecimal(
-          dynamic ptr) =>
-      wasmModule
-          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDecimal(
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDartPayload(
               ptr);
 
   void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockError(
@@ -836,126 +186,6 @@ class RustLibWire implements BaseWire {
           dynamic ptr) =>
       wasmModule
           .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockError(
-              ptr);
-
-  void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockInterval(
-          dynamic ptr) =>
-      wasmModule
-          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockInterval(
-              ptr);
-
-  void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockInterval(
-          dynamic ptr) =>
-      wasmModule
-          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockInterval(
-              ptr);
-
-  void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockIpAddr(
-          dynamic ptr) =>
-      wasmModule
-          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockIpAddr(
-              ptr);
-
-  void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockIpAddr(
-          dynamic ptr) =>
-      wasmModule
-          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockIpAddr(
-              ptr);
-
-  void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveDate(
-          dynamic ptr) =>
-      wasmModule
-          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveDate(
-              ptr);
-
-  void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveDate(
-          dynamic ptr) =>
-      wasmModule
-          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveDate(
-              ptr);
-
-  void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveTime(
-          dynamic ptr) =>
-      wasmModule
-          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveTime(
-              ptr);
-
-  void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveTime(
-          dynamic ptr) =>
-      wasmModule
-          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveTime(
-              ptr);
-
-  void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayload(
-          dynamic ptr) =>
-      wasmModule
-          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayload(
-              ptr);
-
-  void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayload(
-          dynamic ptr) =>
-      wasmModule
-          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayload(
-              ptr);
-
-  void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayloadVariable(
-          dynamic ptr) =>
-      wasmModule
-          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayloadVariable(
-              ptr);
-
-  void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayloadVariable(
-          dynamic ptr) =>
-      wasmModule
-          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayloadVariable(
-              ptr);
-
-  void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPoint(
-          dynamic ptr) =>
-      wasmModule
-          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPoint(
-              ptr);
-
-  void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPoint(
-          dynamic ptr) =>
-      wasmModule
-          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPoint(
-              ptr);
-
-  void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
-          dynamic ptr) =>
-      wasmModule
-          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
-              ptr);
-
-  void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
-          dynamic ptr) =>
-      wasmModule
-          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
-              ptr);
-
-  void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocki128(
-          dynamic ptr) =>
-      wasmModule
-          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocki128(
-              ptr);
-
-  void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocki128(
-          dynamic ptr) =>
-      wasmModule
-          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocki128(
-              ptr);
-
-  void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocku128(
-          dynamic ptr) =>
-      wasmModule
-          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocku128(
-              ptr);
-
-  void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocku128(
-          dynamic ptr) =>
-      wasmModule
-          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocku128(
               ptr);
 }
 
@@ -972,19 +202,11 @@ class RustLibWasmModule implements WasmModule {
   external RustLibWasmModule bind(dynamic thisArg, String moduleName);
 
   external void
-      rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDataType(
+      rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDartPayload(
           dynamic ptr);
 
   external void
-      rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDataType(
-          dynamic ptr);
-
-  external void
-      rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDecimal(
-          dynamic ptr);
-
-  external void
-      rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDecimal(
+      rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockDartPayload(
           dynamic ptr);
 
   external void
@@ -993,85 +215,5 @@ class RustLibWasmModule implements WasmModule {
 
   external void
       rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockError(
-          dynamic ptr);
-
-  external void
-      rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockInterval(
-          dynamic ptr);
-
-  external void
-      rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockInterval(
-          dynamic ptr);
-
-  external void
-      rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockIpAddr(
-          dynamic ptr);
-
-  external void
-      rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockIpAddr(
-          dynamic ptr);
-
-  external void
-      rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveDate(
-          dynamic ptr);
-
-  external void
-      rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveDate(
-          dynamic ptr);
-
-  external void
-      rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveTime(
-          dynamic ptr);
-
-  external void
-      rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockNaiveTime(
-          dynamic ptr);
-
-  external void
-      rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayload(
-          dynamic ptr);
-
-  external void
-      rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayload(
-          dynamic ptr);
-
-  external void
-      rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayloadVariable(
-          dynamic ptr);
-
-  external void
-      rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPayloadVariable(
-          dynamic ptr);
-
-  external void
-      rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPoint(
-          dynamic ptr);
-
-  external void
-      rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockPoint(
-          dynamic ptr);
-
-  external void
-      rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
-          dynamic ptr);
-
-  external void
-      rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLockValue(
-          dynamic ptr);
-
-  external void
-      rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocki128(
-          dynamic ptr);
-
-  external void
-      rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocki128(
-          dynamic ptr);
-
-  external void
-      rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocku128(
-          dynamic ptr);
-
-  external void
-      rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedrust_asyncRwLocku128(
           dynamic ptr);
 }

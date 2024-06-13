@@ -1,11 +1,12 @@
-use std::{collections::HashMap, net::IpAddr};
-
-use flutter_rust_bridge::frb;
-use gluesql_core::{
+use flutter_rust_bridge::{frb, IntoDart, IntoIntoDart};
+pub use gluesql_core::{
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     data::{Interval, Point, Value},
 };
-use rust_decimal::Decimal;
+pub use rust_decimal::Decimal;
+use std::{collections::HashMap, net::IpAddr};
+
+use crate::frb_generated::FrbWrapper;
 
 #[frb(non_opaque)]
 pub enum DartValue {
@@ -69,3 +70,21 @@ impl From<Value> for DartValue {
         }
     }
 }
+
+// impl IntoIntoDart<DartValue> for DartValue {
+//     fn into_into_dart(self) -> DartValue {
+//         self
+//     }
+// }
+
+// impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<NaiveDateTime>> for NaiveDateTime {
+//     fn into_into_dart(self) -> FrbWrapper<NaiveDateTime> {
+//         self.into()
+//     }
+// }
+
+// impl From<FrbWrapper<NaiveDateTime>> for allo_isolate::ffi::DartCObject {
+//     fn from(item: FrbWrapper<NaiveDateTime>) -> Self {
+//         // Your conversion code here
+//     }
+// }

@@ -5,44 +5,22 @@
 
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
-import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
-import 'simple.dart';
-import 'value.dart';
-part 'payload.freezed.dart';
 
-@freezed
-sealed class DartPayload with _$DartPayload {
-  const DartPayload._();
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::rust_async::RwLock<DartPayload>>
+@sealed
+class DartPayload extends RustOpaque {
+  DartPayload.dcoDecode(List<dynamic> wire)
+      : super.dcoDecode(wire, _kStaticData);
 
-  const factory DartPayload.showColumns(
-    List<(String, DataType)> field0,
-  ) = DartPayload_ShowColumns;
-  const factory DartPayload.create() = DartPayload_Create;
-  const factory DartPayload.insert(
-    int field0,
-  ) = DartPayload_Insert;
-  const factory DartPayload.select({
-    required List<String> labels,
-    required List<List<DartValue>> rows,
-  }) = DartPayload_Select;
-  const factory DartPayload.selectMap(
-    List<Map<String, DartValue>> field0,
-  ) = DartPayload_SelectMap;
-  const factory DartPayload.delete(
-    int field0,
-  ) = DartPayload_Delete;
-  const factory DartPayload.update(
-    int field0,
-  ) = DartPayload_Update;
-  const factory DartPayload.dropTable() = DartPayload_DropTable;
-  const factory DartPayload.dropFunction() = DartPayload_DropFunction;
-  const factory DartPayload.alterTable() = DartPayload_AlterTable;
-  const factory DartPayload.createIndex() = DartPayload_CreateIndex;
-  const factory DartPayload.dropIndex() = DartPayload_DropIndex;
-  const factory DartPayload.startTransaction() = DartPayload_StartTransaction;
-  const factory DartPayload.commit() = DartPayload_Commit;
-  const factory DartPayload.rollback() = DartPayload_Rollback;
-  const factory DartPayload.showVariable(
-    PayloadVariable field0,
-  ) = DartPayload_ShowVariable;
+  DartPayload.sseDecode(int ptr, int externalSizeOnNative)
+      : super.sseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_DartPayload,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_DartPayload,
+    rustArcDecrementStrongCountPtr:
+        RustLib.instance.api.rust_arc_decrement_strong_count_DartPayloadPtr,
+  );
 }
