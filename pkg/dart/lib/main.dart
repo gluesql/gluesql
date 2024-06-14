@@ -86,7 +86,7 @@ class _MyAppState extends State<MyApp> {
                     DartPayload_Insert(field0: BigInt count) =>
                       Center(child: Text("$count rows inserted")),
                     _ => const Text("Not implemented")
-                  }
+                  },
               ],
             ),
           ),
