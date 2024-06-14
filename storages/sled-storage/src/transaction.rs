@@ -97,7 +97,7 @@ impl Transaction for SledStorage {
             }
         };
 
-        lock::fetch(&self.tree, txid, created_at, self.tx_timeout)?;
+        lock::fetch(&self.tree, txid, created_at as i64, self.tx_timeout)?;
 
         self.tree
             .transaction(move |tree| lock::release(tree, txid))
