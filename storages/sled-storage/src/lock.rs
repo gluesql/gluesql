@@ -61,7 +61,7 @@ pub fn register(tree: &Db, id_offset: u64) -> Result<(u64, u128)> {
 pub fn fetch(
     tree: &Db,
     txid: u64,
-    created_at: i64,
+    created_at: u128,
     tx_timeout: Option<u128>,
 ) -> Result<Option<u64>> {
     let Lock {
@@ -77,9 +77,9 @@ pub fn fetch(
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_err(err_into)?
-        .as_millis() as i64;
+        .as_millis();
 
-    if tx_timeout.map(|tx_timeout| now - created_at >= tx_timeout as i64) == Some(true) {
+    if tx_timeout.map(|tx_timeout| now >= tx_timeout + created_at) == Some(true) {
         return Err(Error::StorageMsg(
             "fetch failed - expired transaction has used (timeout)".to_owned(),
         ));
@@ -131,9 +131,9 @@ pub fn acquire(
         .duration_since(UNIX_EPOCH)
         .map_err(err_into)
         .map_err(ConflictableTransactionError::Abort)?
-        .as_millis() as i64;
+        .as_millis();
 
-    if tx_timeout.map(|tx_timeout| now - created_at as i64 >= tx_timeout as i64) == Some(true) {
+    if tx_timeout.map(|tx_timeout| now >= tx_timeout + created_at) == Some(true) {
         return Err(ConflictableTransactionError::Abort(Error::StorageMsg(
             "acquire failed - expired transaction has used (timeout)".to_owned(),
         )));
@@ -145,9 +145,7 @@ pub fn acquire(
 
     let txid = match lock_txid {
         Some(lock_txid) => {
-            if tx_timeout.map(|tx_timeout| now - lock_created_at as i64 >= tx_timeout as i64)
-                == Some(true)
-            {
+            if tx_timeout.map(|tx_timeout| now >= tx_timeout + lock_created_at) == Some(true) {
                 return Ok(LockAcquired::RollbackAndRetry { lock_txid });
             } else if txid != lock_txid {
                 return Err(ConflictableTransactionError::Abort(Error::StorageMsg(

@@ -93,7 +93,7 @@ impl Index for SledStorage {
                 ));
             }
         };
-        let lock_txid = lock::fetch(&self.tree, txid, created_at as i64, self.tx_timeout)?;
+        let lock_txid = lock::fetch(&self.tree, txid, created_at, self.tx_timeout)?;
 
         let prefix_len = build_index_key_prefix(table_name, index_name).len();
         let tree = self.tree.clone();

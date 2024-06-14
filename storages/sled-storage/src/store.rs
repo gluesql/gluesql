@@ -23,7 +23,7 @@ impl Store for SledStorage {
             } => (txid, created_at),
             State::Idle => lock::register(&self.tree, self.id_offset)?,
         };
-        let lock_txid = lock::fetch(&self.tree, txid, created_at as i64, self.tx_timeout)?;
+        let lock_txid = lock::fetch(&self.tree, txid, created_at, self.tx_timeout)?;
 
         self.tree
             .scan_prefix(SledStorage::SCHEMA_PREFIX)
@@ -46,7 +46,7 @@ impl Store for SledStorage {
             State::Idle => lock::register(&self.tree, self.id_offset)
                 .map(|(txid, created_at)| (txid, created_at, true))?,
         };
-        let lock_txid = lock::fetch(&self.tree, txid, created_at as i64, self.tx_timeout)?;
+        let lock_txid = lock::fetch(&self.tree, txid, created_at, self.tx_timeout)?;
 
         let key = format!("schema/{}", table_name);
         let schema = self
@@ -76,7 +76,7 @@ impl Store for SledStorage {
                 ));
             }
         };
-        let lock_txid = lock::fetch(&self.tree, txid, created_at as i64, self.tx_timeout)?;
+        let lock_txid = lock::fetch(&self.tree, txid, created_at, self.tx_timeout)?;
 
         let key = key
             .to_cmp_be_bytes()
@@ -104,7 +104,7 @@ impl Store for SledStorage {
                 ));
             }
         };
-        let lock_txid = lock::fetch(&self.tree, txid, created_at as i64, self.tx_timeout)?;
+        let lock_txid = lock::fetch(&self.tree, txid, created_at, self.tx_timeout)?;
 
         let prefix = key::data_prefix(table_name);
         let prefix_len = prefix.len();
