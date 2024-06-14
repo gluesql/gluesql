@@ -17,17 +17,24 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  String sql = '';
+  final TextEditingController _controller = TextEditingController();
   List<DartPayload>? data;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.text =
+        "CREATE TABLE User (\n  id INT PRIMARY KEY,\n  name TEXT\n);\nINSERT INTO User VALUES (1, 'Alice');\nINSERT INTO User VALUES (2, 'Bob');\nSELECT * FROM User;\nSELECT COUNT(*) FROM User;";
+  }
 
   void fetchData() async {
     try {
-      List<DartPayload> result = await execute(sql: sql);
+      List<DartPayload> result = await execute(sql: _controller.text);
       setState(() {
         data = result;
       });
     } catch (e) {
-      print(e);
+      print("here $e");
     }
   }
 
@@ -37,47 +44,50 @@ class _MyAppState extends State<MyApp> {
       home: Scaffold(
         appBar: AppBar(title: const Text('GlueSQL')),
         body: SingleChildScrollView(
-          child: Center(
-            // Use FutureBuilder to handle asynchronous operation
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  SizedBox(
-                    height: 200,
-                    child: TextField(
-                      keyboardType: TextInputType.multiline,
-                      maxLines: null,
-                      expands: true,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        hintText: 'Enter SQL',
-                      ),
-                      onChanged: (String value) {
-                        setState(() {
-                          sql = value;
-                        });
-                      },
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  height: 220,
+                  child: TextField(
+                    controller: _controller,
+                    keyboardType: TextInputType.multiline,
+                    maxLines: null,
+                    expands: true,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      hintText: 'Enter SQL',
                     ),
+                    onChanged: (String value) {
+                      _controller.text = value;
+                    },
                   ),
-                  ElevatedButton(
+                ),
+                Center(
+                  child: ElevatedButton(
                     onPressed: fetchData,
                     child: const Text('Execute'),
                   ),
-                  for (DartPayload payload in data ?? [])
-                    switch (payload) {
-                      DartPayload_Select(
-                        labels: List<String> labels,
-                        rows: List<List<DartValue>> rows
-                      ) =>
-                        DataGrid(
-                          labels,
-                          rows,
-                        ),
-                      _ => const Text("Not implemented")
-                    }
-                ],
-              ),
+                ),
+                for (DartPayload payload in data ?? [])
+                  switch (payload) {
+                    DartPayload_Select(
+                      labels: List<String> labels,
+                      rows: List<List<DartValue>> rows
+                    ) =>
+                      DataGrid(
+                        labels,
+                        rows,
+                      ),
+                    DartPayload_Create() =>
+                      const Center(child: Text("Table created")),
+                    DartPayload_Insert(field0: BigInt count) =>
+                      Center(child: Text("$count rows inserted")),
+                    _ => const Text("Not implemented")
+                  }
+              ],
             ),
           ),
         ),
@@ -94,31 +104,28 @@ class DataGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 300,
+    return SingleChildScrollView(
+      scrollDirection: Axis.vertical,
       child: SingleChildScrollView(
-        scrollDirection: Axis.vertical,
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: DataTable(
-            columns: [
-              for (String label in labels)
-                DataColumn(
-                  label: Text(label),
-                ),
-            ],
-            rows: [
-              for (List<DartValue> row in rows)
-                DataRow(
-                  cells: [
-                    for (DartValue value in row)
-                      DataCell(
-                        Text(value.toString()),
-                      ),
-                  ],
-                ),
-            ],
-          ),
+        scrollDirection: Axis.horizontal,
+        child: DataTable(
+          columns: [
+            for (String label in labels)
+              DataColumn(
+                label: Text(label),
+              ),
+          ],
+          rows: [
+            for (List<DartValue> row in rows)
+              DataRow(
+                cells: [
+                  for (DartValue value in row)
+                    DataCell(
+                      Text(value.toString()),
+                    ),
+                ],
+              ),
+          ],
         ),
       ),
     );
