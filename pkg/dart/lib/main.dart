@@ -20,7 +20,7 @@ class MyApp extends StatelessWidget {
     var sql = "SELECT 'Hello', 42, 'World'";
     return MaterialApp(
       home: Scaffold(
-        appBar: AppBar(title: const Text('flutter_rust_bridge quickstart')),
+        appBar: AppBar(title: const Text('GlueSQL')),
         body: Center(
           // Use FutureBuilder to handle asynchronous operation
 
@@ -36,7 +36,7 @@ class MyApp extends StatelessWidget {
                 } else {
                   // Display your data when available
                   return Text(
-                      'Action: $sql\nResult: `${snapshot.data.toString()}`');
+                      'SQL: $sql\nResult: `${snapshot.data.toString()}`');
                 }
               },
             ),
