@@ -20,12 +20,12 @@ mixin _$DartPayload {
   TResult when<TResult extends Object?>({
     required TResult Function(List<(String, DataType)> field0) showColumns,
     required TResult Function() create,
-    required TResult Function(int field0) insert,
+    required TResult Function(BigInt field0) insert,
     required TResult Function(List<String> labels, List<List<DartValue>> rows)
         select,
     required TResult Function(List<Map<String, DartValue>> field0) selectMap,
-    required TResult Function(int field0) delete,
-    required TResult Function(int field0) update,
+    required TResult Function(BigInt field0) delete,
+    required TResult Function(BigInt field0) update,
     required TResult Function() dropTable,
     required TResult Function() dropFunction,
     required TResult Function() alterTable,
@@ -41,11 +41,11 @@ mixin _$DartPayload {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(List<(String, DataType)> field0)? showColumns,
     TResult? Function()? create,
-    TResult? Function(int field0)? insert,
+    TResult? Function(BigInt field0)? insert,
     TResult? Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult? Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult? Function(int field0)? delete,
-    TResult? Function(int field0)? update,
+    TResult? Function(BigInt field0)? delete,
+    TResult? Function(BigInt field0)? update,
     TResult? Function()? dropTable,
     TResult? Function()? dropFunction,
     TResult? Function()? alterTable,
@@ -61,11 +61,11 @@ mixin _$DartPayload {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(List<(String, DataType)> field0)? showColumns,
     TResult Function()? create,
-    TResult Function(int field0)? insert,
+    TResult Function(BigInt field0)? insert,
     TResult Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult Function(int field0)? delete,
-    TResult Function(int field0)? update,
+    TResult Function(BigInt field0)? delete,
+    TResult Function(BigInt field0)? update,
     TResult Function()? dropTable,
     TResult Function()? dropFunction,
     TResult Function()? alterTable,
@@ -237,12 +237,12 @@ class _$DartPayload_ShowColumnsImpl extends DartPayload_ShowColumns {
   TResult when<TResult extends Object?>({
     required TResult Function(List<(String, DataType)> field0) showColumns,
     required TResult Function() create,
-    required TResult Function(int field0) insert,
+    required TResult Function(BigInt field0) insert,
     required TResult Function(List<String> labels, List<List<DartValue>> rows)
         select,
     required TResult Function(List<Map<String, DartValue>> field0) selectMap,
-    required TResult Function(int field0) delete,
-    required TResult Function(int field0) update,
+    required TResult Function(BigInt field0) delete,
+    required TResult Function(BigInt field0) update,
     required TResult Function() dropTable,
     required TResult Function() dropFunction,
     required TResult Function() alterTable,
@@ -261,11 +261,11 @@ class _$DartPayload_ShowColumnsImpl extends DartPayload_ShowColumns {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(List<(String, DataType)> field0)? showColumns,
     TResult? Function()? create,
-    TResult? Function(int field0)? insert,
+    TResult? Function(BigInt field0)? insert,
     TResult? Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult? Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult? Function(int field0)? delete,
-    TResult? Function(int field0)? update,
+    TResult? Function(BigInt field0)? delete,
+    TResult? Function(BigInt field0)? update,
     TResult? Function()? dropTable,
     TResult? Function()? dropFunction,
     TResult? Function()? alterTable,
@@ -284,11 +284,11 @@ class _$DartPayload_ShowColumnsImpl extends DartPayload_ShowColumns {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(List<(String, DataType)> field0)? showColumns,
     TResult Function()? create,
-    TResult Function(int field0)? insert,
+    TResult Function(BigInt field0)? insert,
     TResult Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult Function(int field0)? delete,
-    TResult Function(int field0)? update,
+    TResult Function(BigInt field0)? delete,
+    TResult Function(BigInt field0)? update,
     TResult Function()? dropTable,
     TResult Function()? dropFunction,
     TResult Function()? alterTable,
@@ -432,12 +432,12 @@ class _$DartPayload_CreateImpl extends DartPayload_Create {
   TResult when<TResult extends Object?>({
     required TResult Function(List<(String, DataType)> field0) showColumns,
     required TResult Function() create,
-    required TResult Function(int field0) insert,
+    required TResult Function(BigInt field0) insert,
     required TResult Function(List<String> labels, List<List<DartValue>> rows)
         select,
     required TResult Function(List<Map<String, DartValue>> field0) selectMap,
-    required TResult Function(int field0) delete,
-    required TResult Function(int field0) update,
+    required TResult Function(BigInt field0) delete,
+    required TResult Function(BigInt field0) update,
     required TResult Function() dropTable,
     required TResult Function() dropFunction,
     required TResult Function() alterTable,
@@ -456,11 +456,11 @@ class _$DartPayload_CreateImpl extends DartPayload_Create {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(List<(String, DataType)> field0)? showColumns,
     TResult? Function()? create,
-    TResult? Function(int field0)? insert,
+    TResult? Function(BigInt field0)? insert,
     TResult? Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult? Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult? Function(int field0)? delete,
-    TResult? Function(int field0)? update,
+    TResult? Function(BigInt field0)? delete,
+    TResult? Function(BigInt field0)? update,
     TResult? Function()? dropTable,
     TResult? Function()? dropFunction,
     TResult? Function()? alterTable,
@@ -479,11 +479,11 @@ class _$DartPayload_CreateImpl extends DartPayload_Create {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(List<(String, DataType)> field0)? showColumns,
     TResult Function()? create,
-    TResult Function(int field0)? insert,
+    TResult Function(BigInt field0)? insert,
     TResult Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult Function(int field0)? delete,
-    TResult Function(int field0)? update,
+    TResult Function(BigInt field0)? delete,
+    TResult Function(BigInt field0)? update,
     TResult Function()? dropTable,
     TResult Function()? dropFunction,
     TResult Function()? alterTable,
@@ -587,7 +587,7 @@ abstract class _$$DartPayload_InsertImplCopyWith<$Res> {
           $Res Function(_$DartPayload_InsertImpl) then) =
       __$$DartPayload_InsertImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({int field0});
+  $Res call({BigInt field0});
 }
 
 /// @nodoc
@@ -607,7 +607,7 @@ class __$$DartPayload_InsertImplCopyWithImpl<$Res>
       null == field0
           ? _value.field0
           : field0 // ignore: cast_nullable_to_non_nullable
-              as int,
+              as BigInt,
     ));
   }
 }
@@ -618,7 +618,7 @@ class _$DartPayload_InsertImpl extends DartPayload_Insert {
   const _$DartPayload_InsertImpl(this.field0) : super._();
 
   @override
-  final int field0;
+  final BigInt field0;
 
   @override
   String toString() {
@@ -648,12 +648,12 @@ class _$DartPayload_InsertImpl extends DartPayload_Insert {
   TResult when<TResult extends Object?>({
     required TResult Function(List<(String, DataType)> field0) showColumns,
     required TResult Function() create,
-    required TResult Function(int field0) insert,
+    required TResult Function(BigInt field0) insert,
     required TResult Function(List<String> labels, List<List<DartValue>> rows)
         select,
     required TResult Function(List<Map<String, DartValue>> field0) selectMap,
-    required TResult Function(int field0) delete,
-    required TResult Function(int field0) update,
+    required TResult Function(BigInt field0) delete,
+    required TResult Function(BigInt field0) update,
     required TResult Function() dropTable,
     required TResult Function() dropFunction,
     required TResult Function() alterTable,
@@ -672,11 +672,11 @@ class _$DartPayload_InsertImpl extends DartPayload_Insert {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(List<(String, DataType)> field0)? showColumns,
     TResult? Function()? create,
-    TResult? Function(int field0)? insert,
+    TResult? Function(BigInt field0)? insert,
     TResult? Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult? Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult? Function(int field0)? delete,
-    TResult? Function(int field0)? update,
+    TResult? Function(BigInt field0)? delete,
+    TResult? Function(BigInt field0)? update,
     TResult? Function()? dropTable,
     TResult? Function()? dropFunction,
     TResult? Function()? alterTable,
@@ -695,11 +695,11 @@ class _$DartPayload_InsertImpl extends DartPayload_Insert {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(List<(String, DataType)> field0)? showColumns,
     TResult Function()? create,
-    TResult Function(int field0)? insert,
+    TResult Function(BigInt field0)? insert,
     TResult Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult Function(int field0)? delete,
-    TResult Function(int field0)? update,
+    TResult Function(BigInt field0)? delete,
+    TResult Function(BigInt field0)? update,
     TResult Function()? dropTable,
     TResult Function()? dropFunction,
     TResult Function()? alterTable,
@@ -793,10 +793,11 @@ class _$DartPayload_InsertImpl extends DartPayload_Insert {
 }
 
 abstract class DartPayload_Insert extends DartPayload {
-  const factory DartPayload_Insert(final int field0) = _$DartPayload_InsertImpl;
+  const factory DartPayload_Insert(final BigInt field0) =
+      _$DartPayload_InsertImpl;
   const DartPayload_Insert._() : super._();
 
-  int get field0;
+  BigInt get field0;
   @JsonKey(ignore: true)
   _$$DartPayload_InsertImplCopyWith<_$DartPayload_InsertImpl> get copyWith =>
       throw _privateConstructorUsedError;
@@ -896,12 +897,12 @@ class _$DartPayload_SelectImpl extends DartPayload_Select {
   TResult when<TResult extends Object?>({
     required TResult Function(List<(String, DataType)> field0) showColumns,
     required TResult Function() create,
-    required TResult Function(int field0) insert,
+    required TResult Function(BigInt field0) insert,
     required TResult Function(List<String> labels, List<List<DartValue>> rows)
         select,
     required TResult Function(List<Map<String, DartValue>> field0) selectMap,
-    required TResult Function(int field0) delete,
-    required TResult Function(int field0) update,
+    required TResult Function(BigInt field0) delete,
+    required TResult Function(BigInt field0) update,
     required TResult Function() dropTable,
     required TResult Function() dropFunction,
     required TResult Function() alterTable,
@@ -920,11 +921,11 @@ class _$DartPayload_SelectImpl extends DartPayload_Select {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(List<(String, DataType)> field0)? showColumns,
     TResult? Function()? create,
-    TResult? Function(int field0)? insert,
+    TResult? Function(BigInt field0)? insert,
     TResult? Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult? Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult? Function(int field0)? delete,
-    TResult? Function(int field0)? update,
+    TResult? Function(BigInt field0)? delete,
+    TResult? Function(BigInt field0)? update,
     TResult? Function()? dropTable,
     TResult? Function()? dropFunction,
     TResult? Function()? alterTable,
@@ -943,11 +944,11 @@ class _$DartPayload_SelectImpl extends DartPayload_Select {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(List<(String, DataType)> field0)? showColumns,
     TResult Function()? create,
-    TResult Function(int field0)? insert,
+    TResult Function(BigInt field0)? insert,
     TResult Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult Function(int field0)? delete,
-    TResult Function(int field0)? update,
+    TResult Function(BigInt field0)? delete,
+    TResult Function(BigInt field0)? update,
     TResult Function()? dropTable,
     TResult Function()? dropFunction,
     TResult Function()? alterTable,
@@ -1129,12 +1130,12 @@ class _$DartPayload_SelectMapImpl extends DartPayload_SelectMap {
   TResult when<TResult extends Object?>({
     required TResult Function(List<(String, DataType)> field0) showColumns,
     required TResult Function() create,
-    required TResult Function(int field0) insert,
+    required TResult Function(BigInt field0) insert,
     required TResult Function(List<String> labels, List<List<DartValue>> rows)
         select,
     required TResult Function(List<Map<String, DartValue>> field0) selectMap,
-    required TResult Function(int field0) delete,
-    required TResult Function(int field0) update,
+    required TResult Function(BigInt field0) delete,
+    required TResult Function(BigInt field0) update,
     required TResult Function() dropTable,
     required TResult Function() dropFunction,
     required TResult Function() alterTable,
@@ -1153,11 +1154,11 @@ class _$DartPayload_SelectMapImpl extends DartPayload_SelectMap {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(List<(String, DataType)> field0)? showColumns,
     TResult? Function()? create,
-    TResult? Function(int field0)? insert,
+    TResult? Function(BigInt field0)? insert,
     TResult? Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult? Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult? Function(int field0)? delete,
-    TResult? Function(int field0)? update,
+    TResult? Function(BigInt field0)? delete,
+    TResult? Function(BigInt field0)? update,
     TResult? Function()? dropTable,
     TResult? Function()? dropFunction,
     TResult? Function()? alterTable,
@@ -1176,11 +1177,11 @@ class _$DartPayload_SelectMapImpl extends DartPayload_SelectMap {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(List<(String, DataType)> field0)? showColumns,
     TResult Function()? create,
-    TResult Function(int field0)? insert,
+    TResult Function(BigInt field0)? insert,
     TResult Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult Function(int field0)? delete,
-    TResult Function(int field0)? update,
+    TResult Function(BigInt field0)? delete,
+    TResult Function(BigInt field0)? update,
     TResult Function()? dropTable,
     TResult Function()? dropFunction,
     TResult Function()? alterTable,
@@ -1290,7 +1291,7 @@ abstract class _$$DartPayload_DeleteImplCopyWith<$Res> {
           $Res Function(_$DartPayload_DeleteImpl) then) =
       __$$DartPayload_DeleteImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({int field0});
+  $Res call({BigInt field0});
 }
 
 /// @nodoc
@@ -1310,7 +1311,7 @@ class __$$DartPayload_DeleteImplCopyWithImpl<$Res>
       null == field0
           ? _value.field0
           : field0 // ignore: cast_nullable_to_non_nullable
-              as int,
+              as BigInt,
     ));
   }
 }
@@ -1321,7 +1322,7 @@ class _$DartPayload_DeleteImpl extends DartPayload_Delete {
   const _$DartPayload_DeleteImpl(this.field0) : super._();
 
   @override
-  final int field0;
+  final BigInt field0;
 
   @override
   String toString() {
@@ -1351,12 +1352,12 @@ class _$DartPayload_DeleteImpl extends DartPayload_Delete {
   TResult when<TResult extends Object?>({
     required TResult Function(List<(String, DataType)> field0) showColumns,
     required TResult Function() create,
-    required TResult Function(int field0) insert,
+    required TResult Function(BigInt field0) insert,
     required TResult Function(List<String> labels, List<List<DartValue>> rows)
         select,
     required TResult Function(List<Map<String, DartValue>> field0) selectMap,
-    required TResult Function(int field0) delete,
-    required TResult Function(int field0) update,
+    required TResult Function(BigInt field0) delete,
+    required TResult Function(BigInt field0) update,
     required TResult Function() dropTable,
     required TResult Function() dropFunction,
     required TResult Function() alterTable,
@@ -1375,11 +1376,11 @@ class _$DartPayload_DeleteImpl extends DartPayload_Delete {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(List<(String, DataType)> field0)? showColumns,
     TResult? Function()? create,
-    TResult? Function(int field0)? insert,
+    TResult? Function(BigInt field0)? insert,
     TResult? Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult? Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult? Function(int field0)? delete,
-    TResult? Function(int field0)? update,
+    TResult? Function(BigInt field0)? delete,
+    TResult? Function(BigInt field0)? update,
     TResult? Function()? dropTable,
     TResult? Function()? dropFunction,
     TResult? Function()? alterTable,
@@ -1398,11 +1399,11 @@ class _$DartPayload_DeleteImpl extends DartPayload_Delete {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(List<(String, DataType)> field0)? showColumns,
     TResult Function()? create,
-    TResult Function(int field0)? insert,
+    TResult Function(BigInt field0)? insert,
     TResult Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult Function(int field0)? delete,
-    TResult Function(int field0)? update,
+    TResult Function(BigInt field0)? delete,
+    TResult Function(BigInt field0)? update,
     TResult Function()? dropTable,
     TResult Function()? dropFunction,
     TResult Function()? alterTable,
@@ -1496,10 +1497,11 @@ class _$DartPayload_DeleteImpl extends DartPayload_Delete {
 }
 
 abstract class DartPayload_Delete extends DartPayload {
-  const factory DartPayload_Delete(final int field0) = _$DartPayload_DeleteImpl;
+  const factory DartPayload_Delete(final BigInt field0) =
+      _$DartPayload_DeleteImpl;
   const DartPayload_Delete._() : super._();
 
-  int get field0;
+  BigInt get field0;
   @JsonKey(ignore: true)
   _$$DartPayload_DeleteImplCopyWith<_$DartPayload_DeleteImpl> get copyWith =>
       throw _privateConstructorUsedError;
@@ -1511,7 +1513,7 @@ abstract class _$$DartPayload_UpdateImplCopyWith<$Res> {
           $Res Function(_$DartPayload_UpdateImpl) then) =
       __$$DartPayload_UpdateImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({int field0});
+  $Res call({BigInt field0});
 }
 
 /// @nodoc
@@ -1531,7 +1533,7 @@ class __$$DartPayload_UpdateImplCopyWithImpl<$Res>
       null == field0
           ? _value.field0
           : field0 // ignore: cast_nullable_to_non_nullable
-              as int,
+              as BigInt,
     ));
   }
 }
@@ -1542,7 +1544,7 @@ class _$DartPayload_UpdateImpl extends DartPayload_Update {
   const _$DartPayload_UpdateImpl(this.field0) : super._();
 
   @override
-  final int field0;
+  final BigInt field0;
 
   @override
   String toString() {
@@ -1572,12 +1574,12 @@ class _$DartPayload_UpdateImpl extends DartPayload_Update {
   TResult when<TResult extends Object?>({
     required TResult Function(List<(String, DataType)> field0) showColumns,
     required TResult Function() create,
-    required TResult Function(int field0) insert,
+    required TResult Function(BigInt field0) insert,
     required TResult Function(List<String> labels, List<List<DartValue>> rows)
         select,
     required TResult Function(List<Map<String, DartValue>> field0) selectMap,
-    required TResult Function(int field0) delete,
-    required TResult Function(int field0) update,
+    required TResult Function(BigInt field0) delete,
+    required TResult Function(BigInt field0) update,
     required TResult Function() dropTable,
     required TResult Function() dropFunction,
     required TResult Function() alterTable,
@@ -1596,11 +1598,11 @@ class _$DartPayload_UpdateImpl extends DartPayload_Update {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(List<(String, DataType)> field0)? showColumns,
     TResult? Function()? create,
-    TResult? Function(int field0)? insert,
+    TResult? Function(BigInt field0)? insert,
     TResult? Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult? Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult? Function(int field0)? delete,
-    TResult? Function(int field0)? update,
+    TResult? Function(BigInt field0)? delete,
+    TResult? Function(BigInt field0)? update,
     TResult? Function()? dropTable,
     TResult? Function()? dropFunction,
     TResult? Function()? alterTable,
@@ -1619,11 +1621,11 @@ class _$DartPayload_UpdateImpl extends DartPayload_Update {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(List<(String, DataType)> field0)? showColumns,
     TResult Function()? create,
-    TResult Function(int field0)? insert,
+    TResult Function(BigInt field0)? insert,
     TResult Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult Function(int field0)? delete,
-    TResult Function(int field0)? update,
+    TResult Function(BigInt field0)? delete,
+    TResult Function(BigInt field0)? update,
     TResult Function()? dropTable,
     TResult Function()? dropFunction,
     TResult Function()? alterTable,
@@ -1717,10 +1719,11 @@ class _$DartPayload_UpdateImpl extends DartPayload_Update {
 }
 
 abstract class DartPayload_Update extends DartPayload {
-  const factory DartPayload_Update(final int field0) = _$DartPayload_UpdateImpl;
+  const factory DartPayload_Update(final BigInt field0) =
+      _$DartPayload_UpdateImpl;
   const DartPayload_Update._() : super._();
 
-  int get field0;
+  BigInt get field0;
   @JsonKey(ignore: true)
   _$$DartPayload_UpdateImplCopyWith<_$DartPayload_UpdateImpl> get copyWith =>
       throw _privateConstructorUsedError;
@@ -1768,12 +1771,12 @@ class _$DartPayload_DropTableImpl extends DartPayload_DropTable {
   TResult when<TResult extends Object?>({
     required TResult Function(List<(String, DataType)> field0) showColumns,
     required TResult Function() create,
-    required TResult Function(int field0) insert,
+    required TResult Function(BigInt field0) insert,
     required TResult Function(List<String> labels, List<List<DartValue>> rows)
         select,
     required TResult Function(List<Map<String, DartValue>> field0) selectMap,
-    required TResult Function(int field0) delete,
-    required TResult Function(int field0) update,
+    required TResult Function(BigInt field0) delete,
+    required TResult Function(BigInt field0) update,
     required TResult Function() dropTable,
     required TResult Function() dropFunction,
     required TResult Function() alterTable,
@@ -1792,11 +1795,11 @@ class _$DartPayload_DropTableImpl extends DartPayload_DropTable {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(List<(String, DataType)> field0)? showColumns,
     TResult? Function()? create,
-    TResult? Function(int field0)? insert,
+    TResult? Function(BigInt field0)? insert,
     TResult? Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult? Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult? Function(int field0)? delete,
-    TResult? Function(int field0)? update,
+    TResult? Function(BigInt field0)? delete,
+    TResult? Function(BigInt field0)? update,
     TResult? Function()? dropTable,
     TResult? Function()? dropFunction,
     TResult? Function()? alterTable,
@@ -1815,11 +1818,11 @@ class _$DartPayload_DropTableImpl extends DartPayload_DropTable {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(List<(String, DataType)> field0)? showColumns,
     TResult Function()? create,
-    TResult Function(int field0)? insert,
+    TResult Function(BigInt field0)? insert,
     TResult Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult Function(int field0)? delete,
-    TResult Function(int field0)? update,
+    TResult Function(BigInt field0)? delete,
+    TResult Function(BigInt field0)? update,
     TResult Function()? dropTable,
     TResult Function()? dropFunction,
     TResult Function()? alterTable,
@@ -1960,12 +1963,12 @@ class _$DartPayload_DropFunctionImpl extends DartPayload_DropFunction {
   TResult when<TResult extends Object?>({
     required TResult Function(List<(String, DataType)> field0) showColumns,
     required TResult Function() create,
-    required TResult Function(int field0) insert,
+    required TResult Function(BigInt field0) insert,
     required TResult Function(List<String> labels, List<List<DartValue>> rows)
         select,
     required TResult Function(List<Map<String, DartValue>> field0) selectMap,
-    required TResult Function(int field0) delete,
-    required TResult Function(int field0) update,
+    required TResult Function(BigInt field0) delete,
+    required TResult Function(BigInt field0) update,
     required TResult Function() dropTable,
     required TResult Function() dropFunction,
     required TResult Function() alterTable,
@@ -1984,11 +1987,11 @@ class _$DartPayload_DropFunctionImpl extends DartPayload_DropFunction {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(List<(String, DataType)> field0)? showColumns,
     TResult? Function()? create,
-    TResult? Function(int field0)? insert,
+    TResult? Function(BigInt field0)? insert,
     TResult? Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult? Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult? Function(int field0)? delete,
-    TResult? Function(int field0)? update,
+    TResult? Function(BigInt field0)? delete,
+    TResult? Function(BigInt field0)? update,
     TResult? Function()? dropTable,
     TResult? Function()? dropFunction,
     TResult? Function()? alterTable,
@@ -2007,11 +2010,11 @@ class _$DartPayload_DropFunctionImpl extends DartPayload_DropFunction {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(List<(String, DataType)> field0)? showColumns,
     TResult Function()? create,
-    TResult Function(int field0)? insert,
+    TResult Function(BigInt field0)? insert,
     TResult Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult Function(int field0)? delete,
-    TResult Function(int field0)? update,
+    TResult Function(BigInt field0)? delete,
+    TResult Function(BigInt field0)? update,
     TResult Function()? dropTable,
     TResult Function()? dropFunction,
     TResult Function()? alterTable,
@@ -2152,12 +2155,12 @@ class _$DartPayload_AlterTableImpl extends DartPayload_AlterTable {
   TResult when<TResult extends Object?>({
     required TResult Function(List<(String, DataType)> field0) showColumns,
     required TResult Function() create,
-    required TResult Function(int field0) insert,
+    required TResult Function(BigInt field0) insert,
     required TResult Function(List<String> labels, List<List<DartValue>> rows)
         select,
     required TResult Function(List<Map<String, DartValue>> field0) selectMap,
-    required TResult Function(int field0) delete,
-    required TResult Function(int field0) update,
+    required TResult Function(BigInt field0) delete,
+    required TResult Function(BigInt field0) update,
     required TResult Function() dropTable,
     required TResult Function() dropFunction,
     required TResult Function() alterTable,
@@ -2176,11 +2179,11 @@ class _$DartPayload_AlterTableImpl extends DartPayload_AlterTable {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(List<(String, DataType)> field0)? showColumns,
     TResult? Function()? create,
-    TResult? Function(int field0)? insert,
+    TResult? Function(BigInt field0)? insert,
     TResult? Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult? Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult? Function(int field0)? delete,
-    TResult? Function(int field0)? update,
+    TResult? Function(BigInt field0)? delete,
+    TResult? Function(BigInt field0)? update,
     TResult? Function()? dropTable,
     TResult? Function()? dropFunction,
     TResult? Function()? alterTable,
@@ -2199,11 +2202,11 @@ class _$DartPayload_AlterTableImpl extends DartPayload_AlterTable {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(List<(String, DataType)> field0)? showColumns,
     TResult Function()? create,
-    TResult Function(int field0)? insert,
+    TResult Function(BigInt field0)? insert,
     TResult Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult Function(int field0)? delete,
-    TResult Function(int field0)? update,
+    TResult Function(BigInt field0)? delete,
+    TResult Function(BigInt field0)? update,
     TResult Function()? dropTable,
     TResult Function()? dropFunction,
     TResult Function()? alterTable,
@@ -2344,12 +2347,12 @@ class _$DartPayload_CreateIndexImpl extends DartPayload_CreateIndex {
   TResult when<TResult extends Object?>({
     required TResult Function(List<(String, DataType)> field0) showColumns,
     required TResult Function() create,
-    required TResult Function(int field0) insert,
+    required TResult Function(BigInt field0) insert,
     required TResult Function(List<String> labels, List<List<DartValue>> rows)
         select,
     required TResult Function(List<Map<String, DartValue>> field0) selectMap,
-    required TResult Function(int field0) delete,
-    required TResult Function(int field0) update,
+    required TResult Function(BigInt field0) delete,
+    required TResult Function(BigInt field0) update,
     required TResult Function() dropTable,
     required TResult Function() dropFunction,
     required TResult Function() alterTable,
@@ -2368,11 +2371,11 @@ class _$DartPayload_CreateIndexImpl extends DartPayload_CreateIndex {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(List<(String, DataType)> field0)? showColumns,
     TResult? Function()? create,
-    TResult? Function(int field0)? insert,
+    TResult? Function(BigInt field0)? insert,
     TResult? Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult? Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult? Function(int field0)? delete,
-    TResult? Function(int field0)? update,
+    TResult? Function(BigInt field0)? delete,
+    TResult? Function(BigInt field0)? update,
     TResult? Function()? dropTable,
     TResult? Function()? dropFunction,
     TResult? Function()? alterTable,
@@ -2391,11 +2394,11 @@ class _$DartPayload_CreateIndexImpl extends DartPayload_CreateIndex {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(List<(String, DataType)> field0)? showColumns,
     TResult Function()? create,
-    TResult Function(int field0)? insert,
+    TResult Function(BigInt field0)? insert,
     TResult Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult Function(int field0)? delete,
-    TResult Function(int field0)? update,
+    TResult Function(BigInt field0)? delete,
+    TResult Function(BigInt field0)? update,
     TResult Function()? dropTable,
     TResult Function()? dropFunction,
     TResult Function()? alterTable,
@@ -2535,12 +2538,12 @@ class _$DartPayload_DropIndexImpl extends DartPayload_DropIndex {
   TResult when<TResult extends Object?>({
     required TResult Function(List<(String, DataType)> field0) showColumns,
     required TResult Function() create,
-    required TResult Function(int field0) insert,
+    required TResult Function(BigInt field0) insert,
     required TResult Function(List<String> labels, List<List<DartValue>> rows)
         select,
     required TResult Function(List<Map<String, DartValue>> field0) selectMap,
-    required TResult Function(int field0) delete,
-    required TResult Function(int field0) update,
+    required TResult Function(BigInt field0) delete,
+    required TResult Function(BigInt field0) update,
     required TResult Function() dropTable,
     required TResult Function() dropFunction,
     required TResult Function() alterTable,
@@ -2559,11 +2562,11 @@ class _$DartPayload_DropIndexImpl extends DartPayload_DropIndex {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(List<(String, DataType)> field0)? showColumns,
     TResult? Function()? create,
-    TResult? Function(int field0)? insert,
+    TResult? Function(BigInt field0)? insert,
     TResult? Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult? Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult? Function(int field0)? delete,
-    TResult? Function(int field0)? update,
+    TResult? Function(BigInt field0)? delete,
+    TResult? Function(BigInt field0)? update,
     TResult? Function()? dropTable,
     TResult? Function()? dropFunction,
     TResult? Function()? alterTable,
@@ -2582,11 +2585,11 @@ class _$DartPayload_DropIndexImpl extends DartPayload_DropIndex {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(List<(String, DataType)> field0)? showColumns,
     TResult Function()? create,
-    TResult Function(int field0)? insert,
+    TResult Function(BigInt field0)? insert,
     TResult Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult Function(int field0)? delete,
-    TResult Function(int field0)? update,
+    TResult Function(BigInt field0)? delete,
+    TResult Function(BigInt field0)? update,
     TResult Function()? dropTable,
     TResult Function()? dropFunction,
     TResult Function()? alterTable,
@@ -2727,12 +2730,12 @@ class _$DartPayload_StartTransactionImpl extends DartPayload_StartTransaction {
   TResult when<TResult extends Object?>({
     required TResult Function(List<(String, DataType)> field0) showColumns,
     required TResult Function() create,
-    required TResult Function(int field0) insert,
+    required TResult Function(BigInt field0) insert,
     required TResult Function(List<String> labels, List<List<DartValue>> rows)
         select,
     required TResult Function(List<Map<String, DartValue>> field0) selectMap,
-    required TResult Function(int field0) delete,
-    required TResult Function(int field0) update,
+    required TResult Function(BigInt field0) delete,
+    required TResult Function(BigInt field0) update,
     required TResult Function() dropTable,
     required TResult Function() dropFunction,
     required TResult Function() alterTable,
@@ -2751,11 +2754,11 @@ class _$DartPayload_StartTransactionImpl extends DartPayload_StartTransaction {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(List<(String, DataType)> field0)? showColumns,
     TResult? Function()? create,
-    TResult? Function(int field0)? insert,
+    TResult? Function(BigInt field0)? insert,
     TResult? Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult? Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult? Function(int field0)? delete,
-    TResult? Function(int field0)? update,
+    TResult? Function(BigInt field0)? delete,
+    TResult? Function(BigInt field0)? update,
     TResult? Function()? dropTable,
     TResult? Function()? dropFunction,
     TResult? Function()? alterTable,
@@ -2774,11 +2777,11 @@ class _$DartPayload_StartTransactionImpl extends DartPayload_StartTransaction {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(List<(String, DataType)> field0)? showColumns,
     TResult Function()? create,
-    TResult Function(int field0)? insert,
+    TResult Function(BigInt field0)? insert,
     TResult Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult Function(int field0)? delete,
-    TResult Function(int field0)? update,
+    TResult Function(BigInt field0)? delete,
+    TResult Function(BigInt field0)? update,
     TResult Function()? dropTable,
     TResult Function()? dropFunction,
     TResult Function()? alterTable,
@@ -2917,12 +2920,12 @@ class _$DartPayload_CommitImpl extends DartPayload_Commit {
   TResult when<TResult extends Object?>({
     required TResult Function(List<(String, DataType)> field0) showColumns,
     required TResult Function() create,
-    required TResult Function(int field0) insert,
+    required TResult Function(BigInt field0) insert,
     required TResult Function(List<String> labels, List<List<DartValue>> rows)
         select,
     required TResult Function(List<Map<String, DartValue>> field0) selectMap,
-    required TResult Function(int field0) delete,
-    required TResult Function(int field0) update,
+    required TResult Function(BigInt field0) delete,
+    required TResult Function(BigInt field0) update,
     required TResult Function() dropTable,
     required TResult Function() dropFunction,
     required TResult Function() alterTable,
@@ -2941,11 +2944,11 @@ class _$DartPayload_CommitImpl extends DartPayload_Commit {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(List<(String, DataType)> field0)? showColumns,
     TResult? Function()? create,
-    TResult? Function(int field0)? insert,
+    TResult? Function(BigInt field0)? insert,
     TResult? Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult? Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult? Function(int field0)? delete,
-    TResult? Function(int field0)? update,
+    TResult? Function(BigInt field0)? delete,
+    TResult? Function(BigInt field0)? update,
     TResult? Function()? dropTable,
     TResult? Function()? dropFunction,
     TResult? Function()? alterTable,
@@ -2964,11 +2967,11 @@ class _$DartPayload_CommitImpl extends DartPayload_Commit {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(List<(String, DataType)> field0)? showColumns,
     TResult Function()? create,
-    TResult Function(int field0)? insert,
+    TResult Function(BigInt field0)? insert,
     TResult Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult Function(int field0)? delete,
-    TResult Function(int field0)? update,
+    TResult Function(BigInt field0)? delete,
+    TResult Function(BigInt field0)? update,
     TResult Function()? dropTable,
     TResult Function()? dropFunction,
     TResult Function()? alterTable,
@@ -3107,12 +3110,12 @@ class _$DartPayload_RollbackImpl extends DartPayload_Rollback {
   TResult when<TResult extends Object?>({
     required TResult Function(List<(String, DataType)> field0) showColumns,
     required TResult Function() create,
-    required TResult Function(int field0) insert,
+    required TResult Function(BigInt field0) insert,
     required TResult Function(List<String> labels, List<List<DartValue>> rows)
         select,
     required TResult Function(List<Map<String, DartValue>> field0) selectMap,
-    required TResult Function(int field0) delete,
-    required TResult Function(int field0) update,
+    required TResult Function(BigInt field0) delete,
+    required TResult Function(BigInt field0) update,
     required TResult Function() dropTable,
     required TResult Function() dropFunction,
     required TResult Function() alterTable,
@@ -3131,11 +3134,11 @@ class _$DartPayload_RollbackImpl extends DartPayload_Rollback {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(List<(String, DataType)> field0)? showColumns,
     TResult? Function()? create,
-    TResult? Function(int field0)? insert,
+    TResult? Function(BigInt field0)? insert,
     TResult? Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult? Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult? Function(int field0)? delete,
-    TResult? Function(int field0)? update,
+    TResult? Function(BigInt field0)? delete,
+    TResult? Function(BigInt field0)? update,
     TResult? Function()? dropTable,
     TResult? Function()? dropFunction,
     TResult? Function()? alterTable,
@@ -3154,11 +3157,11 @@ class _$DartPayload_RollbackImpl extends DartPayload_Rollback {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(List<(String, DataType)> field0)? showColumns,
     TResult Function()? create,
-    TResult Function(int field0)? insert,
+    TResult Function(BigInt field0)? insert,
     TResult Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult Function(int field0)? delete,
-    TResult Function(int field0)? update,
+    TResult Function(BigInt field0)? delete,
+    TResult Function(BigInt field0)? update,
     TResult Function()? dropTable,
     TResult Function()? dropFunction,
     TResult Function()? alterTable,
@@ -3325,12 +3328,12 @@ class _$DartPayload_ShowVariableImpl extends DartPayload_ShowVariable {
   TResult when<TResult extends Object?>({
     required TResult Function(List<(String, DataType)> field0) showColumns,
     required TResult Function() create,
-    required TResult Function(int field0) insert,
+    required TResult Function(BigInt field0) insert,
     required TResult Function(List<String> labels, List<List<DartValue>> rows)
         select,
     required TResult Function(List<Map<String, DartValue>> field0) selectMap,
-    required TResult Function(int field0) delete,
-    required TResult Function(int field0) update,
+    required TResult Function(BigInt field0) delete,
+    required TResult Function(BigInt field0) update,
     required TResult Function() dropTable,
     required TResult Function() dropFunction,
     required TResult Function() alterTable,
@@ -3349,11 +3352,11 @@ class _$DartPayload_ShowVariableImpl extends DartPayload_ShowVariable {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(List<(String, DataType)> field0)? showColumns,
     TResult? Function()? create,
-    TResult? Function(int field0)? insert,
+    TResult? Function(BigInt field0)? insert,
     TResult? Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult? Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult? Function(int field0)? delete,
-    TResult? Function(int field0)? update,
+    TResult? Function(BigInt field0)? delete,
+    TResult? Function(BigInt field0)? update,
     TResult? Function()? dropTable,
     TResult? Function()? dropFunction,
     TResult? Function()? alterTable,
@@ -3372,11 +3375,11 @@ class _$DartPayload_ShowVariableImpl extends DartPayload_ShowVariable {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(List<(String, DataType)> field0)? showColumns,
     TResult Function()? create,
-    TResult Function(int field0)? insert,
+    TResult Function(BigInt field0)? insert,
     TResult Function(List<String> labels, List<List<DartValue>> rows)? select,
     TResult Function(List<Map<String, DartValue>> field0)? selectMap,
-    TResult Function(int field0)? delete,
-    TResult Function(int field0)? update,
+    TResult Function(BigInt field0)? delete,
+    TResult Function(BigInt field0)? update,
     TResult Function()? dropTable,
     TResult Function()? dropFunction,
     TResult Function()? alterTable,

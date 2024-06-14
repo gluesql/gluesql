@@ -14,7 +14,6 @@ pub use {
     std::net::IpAddr,
 };
 
-#[frb(non_opaque)] // Asynchronous mode for simplicity of the demo
 pub fn execute(sql: String) -> Result<Vec<DartPayload>, Error> {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     runtime.block_on(async {

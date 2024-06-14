@@ -18,4 +18,4 @@ tokio = { version = "1", features = [
     "sync",
 ] }
 rust_decimal = { version = "1", features = ["serde-str"] }
-flutter_rust_bridge = "=2.0.0-dev.32"
+flutter_rust_bridge = "=2.0.0-dev.39"

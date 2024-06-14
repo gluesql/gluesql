@@ -1,3 +1,8 @@
+import 'package:dart/src/rust/api/payload.dart';
+import 'package:flutter/material.dart';
+import 'package:dart/src/rust/api/simple.dart';
+import 'package:dart/src/rust/frb_generated.dart';
+
 import 'package:flutter/material.dart';
 import 'package:dart/src/rust/api/simple.dart';
 import 'package:dart/src/rust/frb_generated.dart';
@@ -12,13 +17,30 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var payload = execute(sql: "SELECT 12");
-    debugPrint("result: $payload");
+    var sql = "SELECT 'Hello', 42, 'World'";
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(title: const Text('flutter_rust_bridge quickstart')),
         body: Center(
-          child: Text('Action: Call Rust `greet("Tom")`\nResult: `$payload`'),
+          // Use FutureBuilder to handle asynchronous operation
+
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: FutureBuilder<List<DartPayload>>(
+              future: execute(sql: sql), // Your async function call
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const CircularProgressIndicator(); // Show loading indicator while waiting
+                } else if (snapshot.hasError) {
+                  return Text('Error: ${snapshot.error}'); // Show error if any
+                } else {
+                  // Display your data when available
+                  return Text(
+                      'Action: $sql\nResult: `${snapshot.data.toString()}`');
+                }
+              },
+            ),
+          ),
         ),
       ),
     );
