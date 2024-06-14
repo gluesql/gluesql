@@ -25,6 +25,7 @@ jobs:
       - name: Run build and format check
         run: |
           cd pkg/dart
-          flutter pub get
           flutter analyze
           dart format --set-exit-if-changed .
+          cd rust_builder/cargokit/build_tool
+          flutter analyze
