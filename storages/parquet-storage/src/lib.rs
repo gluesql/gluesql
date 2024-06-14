@@ -2,9 +2,9 @@ use {
     column_def::ParquetSchemaType,
     error::{OptionExt, ParquetStorageError, ResultExt},
     gluesql_core::{
-        ast::{ColumnDef, ColumnUniqueOption},
+        ast::{ColumnDef, ColumnUniqueOption, ForeignKey},
         data::Schema,
-        error::Result,
+        error::{Error, Result},
         prelude::{DataType, Key, Value},
         store::{DataRow, Metadata},
     },
@@ -12,6 +12,7 @@ use {
         file::{reader::FileReader, serialized_reader::SerializedFileReader},
         record::Row,
     },
+    serde_json::from_str,
     std::{
         collections::HashMap,
         fs::{self, File},
@@ -58,6 +59,7 @@ impl ParquetStorage {
         let key_value_file_metadata = file_metadata.key_value_metadata();
 
         let mut is_schemaless = false;
+        let mut foreign_keys = Vec::new();
         let mut comment = None;
         if let Some(metadata) = key_value_file_metadata {
             for kv in metadata.iter() {
@@ -65,7 +67,17 @@ impl ParquetStorage {
                     is_schemaless = matches!(kv.value.as_deref(), Some("true"));
                 } else if kv.key == "comment" {
                     comment = kv.value.clone();
-                    break;
+                } else if kv.key.starts_with("foreign_key") {
+                    let fk = kv
+                        .value
+                        .as_ref()
+                        .map(|x| from_str::<ForeignKey>(x))
+                        .map_storage_err(Error::StorageMsg(
+                            "No value found on metadata".to_owned(),
+                        ))?
+                        .map_storage_err()?;
+
+                    foreign_keys.push(fk);
                 }
             }
         }
@@ -92,6 +104,7 @@ impl ParquetStorage {
             column_defs,
             indexes: vec![],
             engine: None,
+            foreign_keys,
             comment,
         }))
     }
@@ -177,6 +190,7 @@ impl ParquetStorage {
             }]),
             indexes: vec![],
             engine: None,
+            foreign_keys: Vec::new(),
             comment: None,
         }
     }

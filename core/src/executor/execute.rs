@@ -2,8 +2,10 @@ use {
     super::{
         alter::{
             alter_table, create_index, create_table, delete_function, drop_table, insert_function,
+            CreateTableOptions,
         },
-        fetch::{fetch, fetch_columns},
+        delete::delete,
+        fetch::fetch,
         insert::insert,
         select::{select, select_with_labels},
         update::Update,
@@ -134,21 +136,29 @@ async fn execute_inner<T: GStore + GStoreMut>(
             if_not_exists,
             source,
             engine,
+            foreign_keys,
             comment,
-        } => create_table(
-            storage,
-            name,
-            columns.as_ref().map(Vec::as_slice),
-            *if_not_exists,
-            source,
-            engine,
-            comment,
-        )
-        .await
-        .map(|_| Payload::Create),
+        } => {
+            let options = CreateTableOptions {
+                target_table_name: name,
+                column_defs: columns.as_ref().map(Vec::as_slice),
+                if_not_exists: *if_not_exists,
+                source,
+                engine,
+                foreign_keys,
+                comment,
+            };
+
+            create_table(storage, options)
+                .await
+                .map(|_| Payload::Create)
+        }
         Statement::DropTable {
-            names, if_exists, ..
-        } => drop_table(storage, names, *if_exists)
+            names,
+            if_exists,
+            cascade,
+            ..
+        } => drop_table(storage, names, *if_exists, *cascade)
             .await
             .map(|_| Payload::DropTable),
         Statement::AlterTable { name, operation } => alter_table(storage, name, operation)
@@ -185,7 +195,11 @@ async fn execute_inner<T: GStore + GStoreMut>(
             selection,
             assignments,
         } => {
-            let Schema { column_defs, .. } = storage
+            let Schema {
+                column_defs,
+                foreign_keys,
+                ..
+            } = storage
                 .fetch_schema(table_name)
                 .await?
                 .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
@@ -196,12 +210,14 @@ async fn execute_inner<T: GStore + GStoreMut>(
                     .map(|col_def| col_def.name.to_owned())
                     .collect()
             });
-            let columns_to_update = assignments
+            let columns_to_update: Vec<String> = assignments
                 .iter()
                 .map(|assignment| assignment.id.to_owned())
                 .collect();
 
             let update = Update::new(storage, table_name, assignments, column_defs.as_deref())?;
+
+            let foreign_keys = Rc::new(foreign_keys);
 
             let rows = fetch(storage, table_name, all_columns, selection.as_ref())
                 .await?
@@ -209,8 +225,9 @@ async fn execute_inner<T: GStore + GStoreMut>(
                     let update = &update;
                     let (key, row) = item;
 
+                    let foreign_keys = Rc::clone(&foreign_keys);
                     async move {
-                        let row = update.apply(row).await?;
+                        let row = update.apply(row, foreign_keys.as_ref()).await?;
 
                         Ok((key, row))
                     }
@@ -243,21 +260,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
         Statement::Delete {
             table_name,
             selection,
-        } => {
-            let columns = fetch_columns(storage, table_name).await?.map(Rc::from);
-            let keys = fetch(storage, table_name, columns, selection.as_ref())
-                .await?
-                .map_ok(|(key, _)| key)
-                .try_collect::<Vec<_>>()
-                .await?;
-
-            let num_keys = keys.len();
-
-            storage
-                .delete_data(table_name, keys)
-                .await
-                .map(|_| Payload::Delete(num_keys))
-        }
+        } => delete(storage, table_name, selection).await,
 
         //- Selection
         Statement::Query(query) => {

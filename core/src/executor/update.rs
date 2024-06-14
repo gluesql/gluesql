@@ -4,8 +4,8 @@ use {
         evaluate::{evaluate, Evaluated},
     },
     crate::{
-        ast::{Assignment, ColumnDef, ColumnUniqueOption},
-        data::{Row, Value},
+        ast::{Assignment, ColumnDef, ColumnUniqueOption, ForeignKey},
+        data::{Key, Row, Value},
         result::{Error, Result},
         store::GStore,
     },
@@ -26,6 +26,13 @@ pub enum UpdateError {
 
     #[error("conflict on schema, row data does not fit to schema")]
     ConflictOnSchema,
+
+    #[error("cannot find referenced value on {table_name}.{column_name} with value {referenced_value:?}")]
+    CannotFindReferencedValue {
+        table_name: String,
+        column_name: String,
+        referenced_value: String,
+    },
 }
 
 pub struct Update<'a, T: GStore> {
@@ -64,7 +71,7 @@ impl<'a, T: GStore> Update<'a, T> {
         })
     }
 
-    pub async fn apply(&self, row: Row) -> Result<Row> {
+    pub async fn apply(&self, row: Row, foreign_keys: &[ForeignKey]) -> Result<Row> {
         let context = RowContext::new(self.table_name, Cow::Borrowed(&row), None);
         let context = Some(Rc::new(context));
 
@@ -109,6 +116,41 @@ impl<'a, T: GStore> Update<'a, T> {
 
                     Ok::<_, Error>((id.as_ref(), value))
                 }
+            })
+            .and_then(|(id, value)| async move {
+                if value == Value::Null {
+                    return Ok((id, value));
+                }
+
+                for foreign_key in foreign_keys {
+                    let ForeignKey {
+                        referencing_column_name,
+                        referenced_table_name,
+                        referenced_column_name,
+                        ..
+                    } = foreign_key;
+
+                    if referencing_column_name != id {
+                        continue;
+                    }
+
+                    let no_referenced = self
+                        .storage
+                        .fetch_data(referenced_table_name, &Key::try_from(&value)?)
+                        .await?
+                        .is_none();
+
+                    if no_referenced {
+                        return Err(UpdateError::CannotFindReferencedValue {
+                            table_name: referenced_table_name.to_owned(),
+                            column_name: referenced_column_name.to_owned(),
+                            referenced_value: String::from(value),
+                        }
+                        .into());
+                    }
+                }
+
+                Ok((id, value))
             })
             .try_collect::<Vec<(&str, Value)>>()
             .await?;

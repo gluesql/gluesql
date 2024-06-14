@@ -1,6 +1,6 @@
 use {
     crate::{
-        column_description::ColumnDescription,
+        description::{ColumnDescription, TableDescription},
         error::{MongoStorageError, OptionExt, ResultExt},
         row::{key::KeyIntoBson, value::IntoValue, IntoRow},
         utils::get_primary_key,
@@ -22,6 +22,7 @@ use {
         options::{FindOptions, ListIndexesOptions},
         IndexModel,
     },
+    serde_json::from_str,
     std::{collections::HashMap, future},
 };
 
@@ -175,13 +176,6 @@ impl MongoStorage {
                 .and_then(|doc| doc.get_document("validator"))
                 .and_then(|doc| doc.get_document("$jsonSchema"))
                 .map_storage_err()?;
-            let collection_comment = match validator.get_str("description") {
-                Ok(comment) => serde_json::from_str(comment).map_storage_err()?,
-                Err(ValueAccessError::NotPresent) => None,
-                Err(e) => {
-                    return Err(Error::StorageMsg(e.to_string()));
-                }
-            };
 
             let collection = self.db.collection::<Document>(collection_name);
             let options = ListIndexesOptions::builder().build();
@@ -273,12 +267,19 @@ impl MongoStorage {
                 _ => Some(column_defs),
             };
 
+            let table_description = validator.get_str("description").map_storage_err()?;
+            let TableDescription {
+                foreign_keys,
+                comment,
+            } = from_str::<TableDescription>(table_description).map_storage_err()?;
+
             let schema = Schema {
                 table_name: collection_name.to_owned(),
                 column_defs,
                 indexes: Vec::new(),
                 engine: None,
-                comment: collection_comment,
+                foreign_keys,
+                comment,
             };
 
             Ok::<_, Error>(schema)

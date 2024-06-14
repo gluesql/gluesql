@@ -52,6 +52,7 @@ impl Build for CreateTableNode {
             columns,
             source: None,
             engine: None,
+            foreign_keys: Vec::new(),
             comment: None,
         })
     }
