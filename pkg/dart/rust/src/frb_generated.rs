@@ -137,6 +137,9 @@ flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
 flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
     flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Value>
 );
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NaiveDateTime>
+);
 
 // Section: dart2rust
 
@@ -240,13 +243,13 @@ impl SseDecode for Value {
     }
 }
 
-impl SseDecode for chrono::NaiveDateTime {
+impl SseDecode for NaiveDateTime {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut inner = <i64>::sse_decode(deserializer);
-        return chrono::DateTime::from_timestamp_micros(inner)
-            .expect("invalid or out-of-range datetime")
-            .naive_utc();
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NaiveDateTime>,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
     }
 }
 
@@ -1132,6 +1135,21 @@ impl flutter_rust_bridge::IntoDart for crate::api::value::DartValue {
         }
     }
 }
+
+impl flutter_rust_bridge::IntoDart for FrbWrapper<NaiveDateTime> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for FrbWrapper<NaiveDateTime> {}
+
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<NaiveDateTime>> for NaiveDateTime {
+    fn into_into_dart(self) -> FrbWrapper<NaiveDateTime> {
+        self.into()
+    }
+}
+
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::value::DartValue {}
 impl flutter_rust_bridge::IntoIntoDart<crate::api::value::DartValue>
     for crate::api::value::DartValue
@@ -1348,6 +1366,16 @@ impl SseEncode for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpa
         let (ptr, size) = self.sse_encode_raw();
         <usize>::sse_encode(ptr, serializer);
         <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseDecode
+    for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NaiveDateTime>>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
     }
 }
 
