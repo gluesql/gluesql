@@ -79,7 +79,7 @@ pub fn fetch(
         .map_err(err_into)?
         .as_millis();
 
-    if tx_timeout.map(|tx_timeout| now - created_at >= tx_timeout) == Some(true) {
+    if tx_timeout.map(|tx_timeout| now >= tx_timeout + created_at) == Some(true) {
         return Err(Error::StorageMsg(
             "fetch failed - expired transaction has used (timeout)".to_owned(),
         ));
@@ -133,7 +133,7 @@ pub fn acquire(
         .map_err(ConflictableTransactionError::Abort)?
         .as_millis();
 
-    if tx_timeout.map(|tx_timeout| now - created_at >= tx_timeout) == Some(true) {
+    if tx_timeout.map(|tx_timeout| now >= tx_timeout + created_at) == Some(true) {
         return Err(ConflictableTransactionError::Abort(Error::StorageMsg(
             "acquire failed - expired transaction has used (timeout)".to_owned(),
         )));
@@ -145,7 +145,7 @@ pub fn acquire(
 
     let txid = match lock_txid {
         Some(lock_txid) => {
-            if tx_timeout.map(|tx_timeout| now - lock_created_at >= tx_timeout) == Some(true) {
+            if tx_timeout.map(|tx_timeout| now >= tx_timeout + lock_created_at) == Some(true) {
                 return Ok(LockAcquired::RollbackAndRetry { lock_txid });
             } else if txid != lock_txid {
                 return Err(ConflictableTransactionError::Abort(Error::StorageMsg(
