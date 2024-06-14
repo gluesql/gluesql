@@ -1,0 +1,29 @@
+name: Dart
+
+on:
+  push:
+    branches: [main, release-*]
+    paths-ignore:
+      - "docs/**"
+  pull_request:
+    branches: [main, release-*]
+    paths-ignore:
+      - "docs/**"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Flutter actions
+        uses: subosito/flutter-action@v1
+        with:
+          flutter-version: "3.22.2"
+
+      - name: Run build and format check
+        run: |
+          cd pkg/dart
+          flutter analyze
+          dart format --set-exit-if-changed .
