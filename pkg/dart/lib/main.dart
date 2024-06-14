@@ -34,7 +34,7 @@ class _MyAppState extends State<MyApp> {
         data = result;
       });
     } catch (e) {
-      print("here $e");
+      debugPrint("fetchData: ${e.toString()}");
     }
   }
 
