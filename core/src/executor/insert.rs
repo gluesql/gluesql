@@ -47,7 +47,7 @@ pub enum InsertError {
     },
 
     #[error("unreachable referencing column name: {0}")]
-    UnreachableReferencingColumnName(String),
+    ConflictReferencingColumnName(String),
 }
 
 enum RowsData {
@@ -222,13 +222,13 @@ async fn validate_foreign_key<T: GStore>(
             .enumerate()
             .find(|(_, c)| &c.name == referencing_column_name)
             .ok_or_else(|| {
-                InsertError::UnreachableReferencingColumnName(referencing_column_name.to_owned())
+                InsertError::ConflictReferencingColumnName(referencing_column_name.to_owned())
             })?;
 
         for row in rows.iter() {
             let value =
                 row.get(target_index.0)
-                    .ok_or(InsertError::UnreachableReferencingColumnName(
+                    .ok_or(InsertError::ConflictReferencingColumnName(
                         referencing_column_name.to_owned(),
                     ))?;
 
