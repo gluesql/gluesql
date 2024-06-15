@@ -26,7 +26,7 @@ jobs:
         run: |
           cd pkg/dart/rust_builder/cargokit/build_tool
           flutter pub get
-          cd ../../
+          cd ../../../
           flutter analyze
           dart format --set-exit-if-changed .
           flutter test integration_test -d macOS
