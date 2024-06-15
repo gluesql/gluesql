@@ -172,7 +172,7 @@ if (isBlog) {
             },
             {
               label: 'Discord',
-              href: 'https://discord.gg/C6TDEgzDzY',
+              href: 'https://discord.gg/a5gybTUe35',
             },
           ],
         },

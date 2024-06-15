@@ -9,7 +9,7 @@ sidebar_position: 1
 [![LICENSE](https://img.shields.io/crates/l/gluesql.svg)](https://github.com/gluesql/gluesql/blob/main/LICENSE)
 ![Rust](https://github.com/gluesql/gluesql/workflows/Rust/badge.svg)
 [![docs.rs](https://docs.rs/gluesql/badge.svg)](https://docs.rs/gluesql)
-[![Chat](https://img.shields.io/discord/780298017940176946?logo=discord&logoColor=white)](https://discord.gg/C6TDEgzDzY)
+[![Chat](https://img.shields.io/discord/780298017940176946?logo=discord&logoColor=white)](https://discord.gg/a5gybTUe35)
 [![Coverage Status](https://coveralls.io/repos/github/gluesql/gluesql/badge.svg?branch=main)](https://coveralls.io/github/gluesql/gluesql?branch=main)
 
 ## Multi-Model Database Engine as a Library
