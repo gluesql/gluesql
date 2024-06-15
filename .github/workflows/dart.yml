@@ -11,14 +11,20 @@ on:
       - "docs/**"
 
 jobs:
-  build:
+  test:
     runs-on: macOS-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
+      - uses: futureware-tech/simulator-action@v3
+        with:
+          model: "iPhone 14"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
 
       - name: Set up Flutter actions
-        uses: subosito/flutter-action@v1
+        uses: subosito/flutter-action@v2
         with:
           channel: "stable"
 
@@ -27,21 +33,6 @@ jobs:
           cd pkg/dart
           flutter analyze
           dart format --set-exit-if-changed .
+          flutter test integration_test
           cd rust_builder/cargokit/build_tool
           flutter analyze
-  test:
-    runs-on: macOS-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: futureware-tech/simulator-action@v3
-        with:
-          model: "iPhone 14"
-
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: "stable"
-
-      - name: Run build and format check
-        run: flutter test integration_test
