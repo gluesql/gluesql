@@ -57,7 +57,7 @@ pub struct SledStorage {
 type ExportData<T> = (u64, Vec<(Vec<u8>, Vec<u8>, T)>);
 
 impl SledStorage {
-    pub fn new(filename: &str) -> Result<Self> {
+    pub fn new<P: AsRef<std::path::Path>>(filename: P) -> Result<Self> {
         let tree = sled::open(filename).map_err(err_into)?;
         let id_offset = get_id_offset(&tree)?;
         let state = State::Idle;
