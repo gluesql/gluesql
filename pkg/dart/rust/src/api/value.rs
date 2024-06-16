@@ -1,12 +1,10 @@
-use flutter_rust_bridge::{frb, IntoDart, IntoIntoDart};
+use flutter_rust_bridge::frb;
 pub use gluesql_core::{
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     data::{Interval, Point, Value},
 };
 pub use rust_decimal::Decimal;
 use std::{collections::HashMap, net::IpAddr};
-
-use crate::frb_generated::FrbWrapper;
 
 #[frb(non_opaque)]
 pub enum DartValue {

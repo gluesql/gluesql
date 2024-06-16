@@ -157,28 +157,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @override
   Future<List<DartPayload>> crateApiSimpleExecute({required String sql}) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(sql, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 1,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_dart_payload,
-          decodeErrorData:
-              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError,
-        ),
-        constMeta: kCrateApiSimpleExecuteConstMeta,
-        argValues: [sql],
-        apiImpl: this,
+    return handler.executeNormal(NormalTask(
+      callFfi: (port_) {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        sse_encode_String(sql, serializer);
+        pdeCallFfi(generalizedFrbRustBinding, serializer,
+            funcId: 1, port: port_);
+      },
+      codec: SseCodec(
+        decodeSuccessData: sse_decode_list_dart_payload,
+        decodeErrorData:
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError,
       ),
-    );
+      constMeta: kCrateApiSimpleExecuteConstMeta,
+      argValues: [sql],
+      apiImpl: this,
+    ));
   }
 
   TaskConstMeta get kCrateApiSimpleExecuteConstMeta => const TaskConstMeta(
@@ -188,26 +182,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @override
   Future<void> crateApiSimpleInitApp() {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 2,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: null,
-        ),
-        constMeta: kCrateApiSimpleInitAppConstMeta,
-        argValues: [],
-        apiImpl: this,
+    return handler.executeNormal(NormalTask(
+      callFfi: (port_) {
+        final serializer = SseSerializer(generalizedFrbRustBinding);
+        pdeCallFfi(generalizedFrbRustBinding, serializer,
+            funcId: 2, port: port_);
+      },
+      codec: SseCodec(
+        decodeSuccessData: sse_decode_unit,
+        decodeErrorData: null,
       ),
-    );
+      constMeta: kCrateApiSimpleInitAppConstMeta,
+      argValues: [],
+      apiImpl: this,
+    ));
   }
 
   TaskConstMeta get kCrateApiSimpleInitAppConstMeta => const TaskConstMeta(
@@ -292,8 +280,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   DataType
       dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
-    dynamic raw,
-  ) {
+          dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return DataTypeImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
@@ -301,8 +288,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   Decimal
       dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDecimal(
-    dynamic raw,
-  ) {
+          dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return DecimalImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
@@ -310,8 +296,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   Error
       dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError(
-    dynamic raw,
-  ) {
+          dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return ErrorImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
@@ -319,8 +304,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   Interval
       dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerInterval(
-    dynamic raw,
-  ) {
+          dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return IntervalImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
@@ -328,8 +312,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   IpAddr
       dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIpAddr(
-    dynamic raw,
-  ) {
+          dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return IpAddrImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
@@ -337,8 +320,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   NaiveDate
       dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
-    dynamic raw,
-  ) {
+          dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return NaiveDateImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
@@ -346,8 +328,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   NaiveTime
       dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
-    dynamic raw,
-  ) {
+          dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return NaiveTimeImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
@@ -355,8 +336,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   PayloadVariable
       dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
-    dynamic raw,
-  ) {
+          dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return PayloadVariableImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
@@ -364,8 +344,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   Point
       dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPoint(
-    dynamic raw,
-  ) {
+          dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return PointImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
@@ -373,8 +352,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   Value
       dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-    dynamic raw,
-  ) {
+          dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return ValueImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
@@ -394,30 +372,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   Map<String, Value>
       dco_decode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-    dynamic raw,
-  ) {
+          dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return Map.fromEntries(
-      dco_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
-        raw,
-      ).map((e) => MapEntry(e.$1, e.$2)),
-    );
+        dco_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
+                raw)
+            .map((e) => MapEntry(e.$1, e.$2)));
   }
 
   @protected
   Map<String, DartValue> dco_decode_Map_String_dart_value(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return Map.fromEntries(
-      dco_decode_list_record_string_dart_value(raw)
-          .map((e) => MapEntry(e.$1, e.$2)),
-    );
+    return Map.fromEntries(dco_decode_list_record_string_dart_value(raw)
+        .map((e) => MapEntry(e.$1, e.$2)));
   }
 
   @protected
   DataType
       dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
-    dynamic raw,
-  ) {
+          dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return DataTypeImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
@@ -425,8 +398,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   Decimal
       dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDecimal(
-    dynamic raw,
-  ) {
+          dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return DecimalImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
@@ -434,8 +406,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   Error
       dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError(
-    dynamic raw,
-  ) {
+          dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return ErrorImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
@@ -443,8 +414,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   Interval
       dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerInterval(
-    dynamic raw,
-  ) {
+          dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return IntervalImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
@@ -452,8 +422,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   IpAddr
       dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIpAddr(
-    dynamic raw,
-  ) {
+          dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return IpAddrImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
@@ -461,8 +430,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   NaiveDate
       dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
-    dynamic raw,
-  ) {
+          dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return NaiveDateImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
@@ -470,8 +438,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   NaiveTime
       dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
-    dynamic raw,
-  ) {
+          dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return NaiveTimeImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
@@ -479,8 +446,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   PayloadVariable
       dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
-    dynamic raw,
-  ) {
+          dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return PayloadVariableImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
@@ -488,8 +454,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   Point
       dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPoint(
-    dynamic raw,
-  ) {
+          dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return PointImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
@@ -497,8 +462,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   Value
       dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-    dynamic raw,
-  ) {
+          dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return ValueImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
@@ -528,11 +492,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case 0:
         return DartPayload_ShowColumns(
           dco_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_data_type(
-            raw[1],
-          ),
+              raw[1]),
         );
       case 1:
-        return const DartPayload_Create();
+        return DartPayload_Create();
       case 2:
         return DartPayload_Insert(
           dco_decode_usize(raw[1]),
@@ -555,26 +518,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           dco_decode_usize(raw[1]),
         );
       case 7:
-        return const DartPayload_DropTable();
+        return DartPayload_DropTable();
       case 8:
-        return const DartPayload_DropFunction();
+        return DartPayload_DropFunction();
       case 9:
-        return const DartPayload_AlterTable();
+        return DartPayload_AlterTable();
       case 10:
-        return const DartPayload_CreateIndex();
+        return DartPayload_CreateIndex();
       case 11:
-        return const DartPayload_DropIndex();
+        return DartPayload_DropIndex();
       case 12:
-        return const DartPayload_StartTransaction();
+        return DartPayload_StartTransaction();
       case 13:
-        return const DartPayload_Commit();
+        return DartPayload_Commit();
       case 14:
-        return const DartPayload_Rollback();
+        return DartPayload_Rollback();
       case 15:
         return DartPayload_ShowVariable(
           dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
-            raw[1],
-          ),
+              raw[1]),
         );
       default:
         throw Exception("unreachable");
@@ -640,8 +602,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case 13:
         return DartValue_Decimal(
           dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDecimal(
-            raw[1],
-          ),
+              raw[1]),
         );
       case 14:
         return DartValue_Str(
@@ -654,14 +615,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case 16:
         return DartValue_Inet(
           dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIpAddr(
-            raw[1],
-          ),
+              raw[1]),
         );
       case 17:
         return DartValue_Date(
           dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
-            raw[1],
-          ),
+              raw[1]),
         );
       case 18:
         return DartValue_Timestamp(
@@ -670,14 +629,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case 19:
         return DartValue_Time(
           dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
-            raw[1],
-          ),
+              raw[1]),
         );
       case 20:
         return DartValue_Interval(
           dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerInterval(
-            raw[1],
-          ),
+              raw[1]),
         );
       case 21:
         return DartValue_Uuid(
@@ -686,23 +643,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case 22:
         return DartValue_Map(
           dco_decode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-            raw[1],
-          ),
+              raw[1]),
         );
       case 23:
         return DartValue_List(
           dco_decode_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-            raw[1],
-          ),
+              raw[1]),
         );
       case 24:
         return DartValue_Point(
           dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPoint(
-            raw[1],
-          ),
+              raw[1]),
         );
       case 25:
-        return const DartValue_NullData();
+        return DartValue_NullData();
       default:
         throw Exception("unreachable");
     }
@@ -747,20 +701,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   List<Value>
       dco_decode_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-    dynamic raw,
-  ) {
+          dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>)
         .map(
-          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue,
-        )
+            dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue)
         .toList();
   }
 
   @protected
   List<Map<String, DartValue>> dco_decode_list_Map_String_dart_value(
-    dynamic raw,
-  ) {
+      dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>)
         .map(dco_decode_Map_String_dart_value)
@@ -800,33 +751,28 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   List<(String, DataType)>
       dco_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_data_type(
-    dynamic raw,
-  ) {
+          dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>)
         .map(
-          dco_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_data_type,
-        )
+            dco_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_data_type)
         .toList();
   }
 
   @protected
   List<(String, Value)>
       dco_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
-    dynamic raw,
-  ) {
+          dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>)
         .map(
-          dco_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value,
-        )
+            dco_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value)
         .toList();
   }
 
   @protected
   List<(String, DartValue)> dco_decode_list_record_string_dart_value(
-    dynamic raw,
-  ) {
+      dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>)
         .map(dco_decode_record_string_dart_value)
@@ -838,8 +784,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     String,
     DataType
   ) dco_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_data_type(
-    dynamic raw,
-  ) {
+      dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
     if (arr.length != 2) {
@@ -848,8 +793,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return (
       dco_decode_String(arr[0]),
       dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
-        arr[1],
-      ),
+          arr[1]),
     );
   }
 
@@ -858,8 +802,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     String,
     Value
   ) dco_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
-    dynamic raw,
-  ) {
+      dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
     if (arr.length != 2) {
@@ -868,8 +811,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return (
       dco_decode_String(arr[0]),
       dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-        arr[1],
-      ),
+          arr[1]),
     );
   }
 
@@ -925,121 +867,91 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   DataType
       sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
-    SseDeserializer deserializer,
-  ) {
+          SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return DataTypeImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
   }
 
   @protected
   Decimal
       sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDecimal(
-    SseDeserializer deserializer,
-  ) {
+          SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return DecimalImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
   }
 
   @protected
   Error
       sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError(
-    SseDeserializer deserializer,
-  ) {
+          SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return ErrorImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
   }
 
   @protected
   Interval
       sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerInterval(
-    SseDeserializer deserializer,
-  ) {
+          SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return IntervalImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
   }
 
   @protected
   IpAddr
       sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIpAddr(
-    SseDeserializer deserializer,
-  ) {
+          SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return IpAddrImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
   }
 
   @protected
   NaiveDate
       sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
-    SseDeserializer deserializer,
-  ) {
+          SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return NaiveDateImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
   }
 
   @protected
   NaiveTime
       sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
-    SseDeserializer deserializer,
-  ) {
+          SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return NaiveTimeImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
   }
 
   @protected
   PayloadVariable
       sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
-    SseDeserializer deserializer,
-  ) {
+          SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return PayloadVariableImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
   }
 
   @protected
   Point
       sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPoint(
-    SseDeserializer deserializer,
-  ) {
+          SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return PointImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
   }
 
   @protected
   Value
       sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-    SseDeserializer deserializer,
-  ) {
+          SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return ValueImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
   }
 
   @protected
@@ -1059,20 +971,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   Map<String, Value>
       sse_decode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-    SseDeserializer deserializer,
-  ) {
+          SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner =
         sse_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
-      deserializer,
-    );
+            deserializer);
     return Map.fromEntries(inner.map((e) => MapEntry(e.$1, e.$2)));
   }
 
   @protected
   Map<String, DartValue> sse_decode_Map_String_dart_value(
-    SseDeserializer deserializer,
-  ) {
+      SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_list_record_string_dart_value(deserializer);
     return Map.fromEntries(inner.map((e) => MapEntry(e.$1, e.$2)));
@@ -1081,121 +990,91 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   DataType
       sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
-    SseDeserializer deserializer,
-  ) {
+          SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return DataTypeImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
   }
 
   @protected
   Decimal
       sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDecimal(
-    SseDeserializer deserializer,
-  ) {
+          SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return DecimalImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
   }
 
   @protected
   Error
       sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError(
-    SseDeserializer deserializer,
-  ) {
+          SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return ErrorImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
   }
 
   @protected
   Interval
       sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerInterval(
-    SseDeserializer deserializer,
-  ) {
+          SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return IntervalImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
   }
 
   @protected
   IpAddr
       sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIpAddr(
-    SseDeserializer deserializer,
-  ) {
+          SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return IpAddrImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
   }
 
   @protected
   NaiveDate
       sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
-    SseDeserializer deserializer,
-  ) {
+          SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return NaiveDateImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
   }
 
   @protected
   NaiveTime
       sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
-    SseDeserializer deserializer,
-  ) {
+          SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return NaiveTimeImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
   }
 
   @protected
   PayloadVariable
       sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
-    SseDeserializer deserializer,
-  ) {
+          SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return PayloadVariableImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
   }
 
   @protected
   Point
       sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPoint(
-    SseDeserializer deserializer,
-  ) {
+          SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return PointImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
   }
 
   @protected
   Value
       sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-    SseDeserializer deserializer,
-  ) {
+          SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return ValueImpl.frbInternalSseDecode(
-      sse_decode_usize(deserializer),
-      sse_decode_i_32(deserializer),
-    );
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
   }
 
   @protected
@@ -1227,11 +1106,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case 0:
         var var_field0 =
             sse_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_data_type(
-          deserializer,
-        );
+                deserializer);
         return DartPayload_ShowColumns(var_field0);
       case 1:
-        return const DartPayload_Create();
+        return DartPayload_Create();
       case 2:
         var var_field0 = sse_decode_usize(deserializer);
         return DartPayload_Insert(var_field0);
@@ -1249,26 +1127,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         var var_field0 = sse_decode_usize(deserializer);
         return DartPayload_Update(var_field0);
       case 7:
-        return const DartPayload_DropTable();
+        return DartPayload_DropTable();
       case 8:
-        return const DartPayload_DropFunction();
+        return DartPayload_DropFunction();
       case 9:
-        return const DartPayload_AlterTable();
+        return DartPayload_AlterTable();
       case 10:
-        return const DartPayload_CreateIndex();
+        return DartPayload_CreateIndex();
       case 11:
-        return const DartPayload_DropIndex();
+        return DartPayload_DropIndex();
       case 12:
-        return const DartPayload_StartTransaction();
+        return DartPayload_StartTransaction();
       case 13:
-        return const DartPayload_Commit();
+        return DartPayload_Commit();
       case 14:
-        return const DartPayload_Rollback();
+        return DartPayload_Rollback();
       case 15:
         var var_field0 =
             sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
-          deserializer,
-        );
+                deserializer);
         return DartPayload_ShowVariable(var_field0);
       default:
         throw UnimplementedError('');
@@ -1323,8 +1200,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case 13:
         var var_field0 =
             sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDecimal(
-          deserializer,
-        );
+                deserializer);
         return DartValue_Decimal(var_field0);
       case 14:
         var var_field0 = sse_decode_String(deserializer);
@@ -1335,14 +1211,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case 16:
         var var_field0 =
             sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIpAddr(
-          deserializer,
-        );
+                deserializer);
         return DartValue_Inet(var_field0);
       case 17:
         var var_field0 =
             sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
-          deserializer,
-        );
+                deserializer);
         return DartValue_Date(var_field0);
       case 18:
         var var_field0 = sse_decode_Chrono_Naive(deserializer);
@@ -1350,14 +1224,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case 19:
         var var_field0 =
             sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
-          deserializer,
-        );
+                deserializer);
         return DartValue_Time(var_field0);
       case 20:
         var var_field0 =
             sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerInterval(
-          deserializer,
-        );
+                deserializer);
         return DartValue_Interval(var_field0);
       case 21:
         var var_field0 = sse_decode_U128(deserializer);
@@ -1365,23 +1237,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case 22:
         var var_field0 =
             sse_decode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          deserializer,
-        );
+                deserializer);
         return DartValue_Map(var_field0);
       case 23:
         var var_field0 =
             sse_decode_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          deserializer,
-        );
+                deserializer);
         return DartValue_List(var_field0);
       case 24:
         var var_field0 =
             sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPoint(
-          deserializer,
-        );
+                deserializer);
         return DartValue_Point(var_field0);
       case 25:
-        return const DartValue_NullData();
+        return DartValue_NullData();
       default:
         throw UnimplementedError('');
     }
@@ -1426,26 +1295,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   List<Value>
       sse_decode_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-    SseDeserializer deserializer,
-  ) {
+          SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     var len_ = sse_decode_i_32(deserializer);
     var ans_ = <Value>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(
-        sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          deserializer,
-        ),
-      );
+          sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+              deserializer));
     }
     return ans_;
   }
 
   @protected
   List<Map<String, DartValue>> sse_decode_list_Map_String_dart_value(
-    SseDeserializer deserializer,
-  ) {
+      SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     var len_ = sse_decode_i_32(deserializer);
@@ -1494,8 +1359,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   List<List<DartValue>> sse_decode_list_list_dart_value(
-    SseDeserializer deserializer,
-  ) {
+      SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     var len_ = sse_decode_i_32(deserializer);
@@ -1516,18 +1380,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   List<(String, DataType)>
       sse_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_data_type(
-    SseDeserializer deserializer,
-  ) {
+          SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     var len_ = sse_decode_i_32(deserializer);
     var ans_ = <(String, DataType)>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(
-        sse_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_data_type(
-          deserializer,
-        ),
-      );
+          sse_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_data_type(
+              deserializer));
     }
     return ans_;
   }
@@ -1535,26 +1396,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   List<(String, Value)>
       sse_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
-    SseDeserializer deserializer,
-  ) {
+          SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     var len_ = sse_decode_i_32(deserializer);
     var ans_ = <(String, Value)>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(
-        sse_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
-          deserializer,
-        ),
-      );
+          sse_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
+              deserializer));
     }
     return ans_;
   }
 
   @protected
   List<(String, DartValue)> sse_decode_list_record_string_dart_value(
-    SseDeserializer deserializer,
-  ) {
+      SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     var len_ = sse_decode_i_32(deserializer);
@@ -1570,14 +1427,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     String,
     DataType
   ) sse_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_data_type(
-    SseDeserializer deserializer,
-  ) {
+      SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_field0 = sse_decode_String(deserializer);
     var var_field1 =
         sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
-      deserializer,
-    );
+            deserializer);
     return (var_field0, var_field1);
   }
 
@@ -1586,21 +1441,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     String,
     Value
   ) sse_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
-    SseDeserializer deserializer,
-  ) {
+      SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_field0 = sse_decode_String(deserializer);
     var var_field1 =
         sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-      deserializer,
-    );
+            deserializer);
     return (var_field0, var_field1);
   }
 
   @protected
   (String, DartValue) sse_decode_record_string_dart_value(
-    SseDeserializer deserializer,
-  ) {
+      SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_field0 = sse_decode_String(deserializer);
     var var_field1 = sse_decode_dart_value(deserializer);
@@ -1645,140 +1497,99 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void
       sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
-    DataType self,
-    SseSerializer serializer,
-  ) {
+          DataType self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
-      (self as DataTypeImpl).frbInternalSseEncode(move: true),
-      serializer,
-    );
+        (self as DataTypeImpl).frbInternalSseEncode(move: true), serializer);
   }
 
   @protected
   void
       sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDecimal(
-    Decimal self,
-    SseSerializer serializer,
-  ) {
+          Decimal self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
-      (self as DecimalImpl).frbInternalSseEncode(move: true),
-      serializer,
-    );
+        (self as DecimalImpl).frbInternalSseEncode(move: true), serializer);
   }
 
   @protected
   void
       sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError(
-    Error self,
-    SseSerializer serializer,
-  ) {
+          Error self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
-      (self as ErrorImpl).frbInternalSseEncode(move: true),
-      serializer,
-    );
+        (self as ErrorImpl).frbInternalSseEncode(move: true), serializer);
   }
 
   @protected
   void
       sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerInterval(
-    Interval self,
-    SseSerializer serializer,
-  ) {
+          Interval self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
-      (self as IntervalImpl).frbInternalSseEncode(move: true),
-      serializer,
-    );
+        (self as IntervalImpl).frbInternalSseEncode(move: true), serializer);
   }
 
   @protected
   void
       sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIpAddr(
-    IpAddr self,
-    SseSerializer serializer,
-  ) {
+          IpAddr self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
-      (self as IpAddrImpl).frbInternalSseEncode(move: true),
-      serializer,
-    );
+        (self as IpAddrImpl).frbInternalSseEncode(move: true), serializer);
   }
 
   @protected
   void
       sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
-    NaiveDate self,
-    SseSerializer serializer,
-  ) {
+          NaiveDate self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
-      (self as NaiveDateImpl).frbInternalSseEncode(move: true),
-      serializer,
-    );
+        (self as NaiveDateImpl).frbInternalSseEncode(move: true), serializer);
   }
 
   @protected
   void
       sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
-    NaiveTime self,
-    SseSerializer serializer,
-  ) {
+          NaiveTime self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
-      (self as NaiveTimeImpl).frbInternalSseEncode(move: true),
-      serializer,
-    );
+        (self as NaiveTimeImpl).frbInternalSseEncode(move: true), serializer);
   }
 
   @protected
   void
       sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
-    PayloadVariable self,
-    SseSerializer serializer,
-  ) {
+          PayloadVariable self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
-      (self as PayloadVariableImpl).frbInternalSseEncode(move: true),
-      serializer,
-    );
+        (self as PayloadVariableImpl).frbInternalSseEncode(move: true),
+        serializer);
   }
 
   @protected
   void
       sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPoint(
-    Point self,
-    SseSerializer serializer,
-  ) {
+          Point self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
-      (self as PointImpl).frbInternalSseEncode(move: true),
-      serializer,
-    );
+        (self as PointImpl).frbInternalSseEncode(move: true), serializer);
   }
 
   @protected
   void
       sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-    Value self,
-    SseSerializer serializer,
-  ) {
+          Value self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
-      (self as ValueImpl).frbInternalSseEncode(move: true),
-      serializer,
-    );
+        (self as ValueImpl).frbInternalSseEncode(move: true), serializer);
   }
 
   @protected
   void sse_encode_Chrono_Naive(DateTime self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_64(
-      PlatformInt64Util.from(self.microsecondsSinceEpoch),
-      serializer,
-    );
+        PlatformInt64Util.from(self.microsecondsSinceEpoch), serializer);
   }
 
   @protected
@@ -1790,156 +1601,109 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void
       sse_encode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-    Map<String, Value> self,
-    SseSerializer serializer,
-  ) {
+          Map<String, Value> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
-      self.entries.map((e) => (e.key, e.value)).toList(),
-      serializer,
-    );
+        self.entries.map((e) => (e.key, e.value)).toList(), serializer);
   }
 
   @protected
   void sse_encode_Map_String_dart_value(
-    Map<String, DartValue> self,
-    SseSerializer serializer,
-  ) {
+      Map<String, DartValue> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_record_string_dart_value(
-      self.entries.map((e) => (e.key, e.value)).toList(),
-      serializer,
-    );
+        self.entries.map((e) => (e.key, e.value)).toList(), serializer);
   }
 
   @protected
   void
       sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
-    DataType self,
-    SseSerializer serializer,
-  ) {
+          DataType self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
-      (self as DataTypeImpl).frbInternalSseEncode(move: null),
-      serializer,
-    );
+        (self as DataTypeImpl).frbInternalSseEncode(move: null), serializer);
   }
 
   @protected
   void
       sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDecimal(
-    Decimal self,
-    SseSerializer serializer,
-  ) {
+          Decimal self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
-      (self as DecimalImpl).frbInternalSseEncode(move: null),
-      serializer,
-    );
+        (self as DecimalImpl).frbInternalSseEncode(move: null), serializer);
   }
 
   @protected
   void
       sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError(
-    Error self,
-    SseSerializer serializer,
-  ) {
+          Error self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
-      (self as ErrorImpl).frbInternalSseEncode(move: null),
-      serializer,
-    );
+        (self as ErrorImpl).frbInternalSseEncode(move: null), serializer);
   }
 
   @protected
   void
       sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerInterval(
-    Interval self,
-    SseSerializer serializer,
-  ) {
+          Interval self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
-      (self as IntervalImpl).frbInternalSseEncode(move: null),
-      serializer,
-    );
+        (self as IntervalImpl).frbInternalSseEncode(move: null), serializer);
   }
 
   @protected
   void
       sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIpAddr(
-    IpAddr self,
-    SseSerializer serializer,
-  ) {
+          IpAddr self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
-      (self as IpAddrImpl).frbInternalSseEncode(move: null),
-      serializer,
-    );
+        (self as IpAddrImpl).frbInternalSseEncode(move: null), serializer);
   }
 
   @protected
   void
       sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
-    NaiveDate self,
-    SseSerializer serializer,
-  ) {
+          NaiveDate self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
-      (self as NaiveDateImpl).frbInternalSseEncode(move: null),
-      serializer,
-    );
+        (self as NaiveDateImpl).frbInternalSseEncode(move: null), serializer);
   }
 
   @protected
   void
       sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
-    NaiveTime self,
-    SseSerializer serializer,
-  ) {
+          NaiveTime self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
-      (self as NaiveTimeImpl).frbInternalSseEncode(move: null),
-      serializer,
-    );
+        (self as NaiveTimeImpl).frbInternalSseEncode(move: null), serializer);
   }
 
   @protected
   void
       sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
-    PayloadVariable self,
-    SseSerializer serializer,
-  ) {
+          PayloadVariable self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
-      (self as PayloadVariableImpl).frbInternalSseEncode(move: null),
-      serializer,
-    );
+        (self as PayloadVariableImpl).frbInternalSseEncode(move: null),
+        serializer);
   }
 
   @protected
   void
       sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPoint(
-    Point self,
-    SseSerializer serializer,
-  ) {
+          Point self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
-      (self as PointImpl).frbInternalSseEncode(move: null),
-      serializer,
-    );
+        (self as PointImpl).frbInternalSseEncode(move: null), serializer);
   }
 
   @protected
   void
       sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-    Value self,
-    SseSerializer serializer,
-  ) {
+          Value self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
-      (self as ValueImpl).frbInternalSseEncode(move: null),
-      serializer,
-    );
+        (self as ValueImpl).frbInternalSseEncode(move: null), serializer);
   }
 
   @protected
@@ -1967,9 +1731,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case DartPayload_ShowColumns(field0: final field0):
         sse_encode_i_32(0, serializer);
         sse_encode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_data_type(
-          field0,
-          serializer,
-        );
+            field0, serializer);
       case DartPayload_Create():
         sse_encode_i_32(1, serializer);
       case DartPayload_Insert(field0: final field0):
@@ -2007,9 +1769,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case DartPayload_ShowVariable(field0: final field0):
         sse_encode_i_32(15, serializer);
         sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
-          field0,
-          serializer,
-        );
+            field0, serializer);
       default:
         throw UnimplementedError('');
     }
@@ -2061,9 +1821,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case DartValue_Decimal(field0: final field0):
         sse_encode_i_32(13, serializer);
         sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDecimal(
-          field0,
-          serializer,
-        );
+            field0, serializer);
       case DartValue_Str(field0: final field0):
         sse_encode_i_32(14, serializer);
         sse_encode_String(field0, serializer);
@@ -2073,51 +1831,37 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case DartValue_Inet(field0: final field0):
         sse_encode_i_32(16, serializer);
         sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIpAddr(
-          field0,
-          serializer,
-        );
+            field0, serializer);
       case DartValue_Date(field0: final field0):
         sse_encode_i_32(17, serializer);
         sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
-          field0,
-          serializer,
-        );
+            field0, serializer);
       case DartValue_Timestamp(field0: final field0):
         sse_encode_i_32(18, serializer);
         sse_encode_Chrono_Naive(field0, serializer);
       case DartValue_Time(field0: final field0):
         sse_encode_i_32(19, serializer);
         sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
-          field0,
-          serializer,
-        );
+            field0, serializer);
       case DartValue_Interval(field0: final field0):
         sse_encode_i_32(20, serializer);
         sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerInterval(
-          field0,
-          serializer,
-        );
+            field0, serializer);
       case DartValue_Uuid(field0: final field0):
         sse_encode_i_32(21, serializer);
         sse_encode_U128(field0, serializer);
       case DartValue_Map(field0: final field0):
         sse_encode_i_32(22, serializer);
         sse_encode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          field0,
-          serializer,
-        );
+            field0, serializer);
       case DartValue_List(field0: final field0):
         sse_encode_i_32(23, serializer);
         sse_encode_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          field0,
-          serializer,
-        );
+            field0, serializer);
       case DartValue_Point(field0: final field0):
         sse_encode_i_32(24, serializer);
         sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPoint(
-          field0,
-          serializer,
-        );
+            field0, serializer);
       case DartValue_NullData():
         sse_encode_i_32(25, serializer);
       default:
@@ -2164,24 +1908,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void
       sse_encode_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-    List<Value> self,
-    SseSerializer serializer,
-  ) {
+          List<Value> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-        item,
-        serializer,
-      );
+          item, serializer);
     }
   }
 
   @protected
   void sse_encode_list_Map_String_dart_value(
-    List<Map<String, DartValue>> self,
-    SseSerializer serializer,
-  ) {
+      List<Map<String, DartValue>> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
@@ -2200,9 +1938,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void sse_encode_list_dart_payload(
-    List<DartPayload> self,
-    SseSerializer serializer,
-  ) {
+      List<DartPayload> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
@@ -2212,9 +1948,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void sse_encode_list_dart_value(
-    List<DartValue> self,
-    SseSerializer serializer,
-  ) {
+      List<DartValue> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
@@ -2224,9 +1958,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void sse_encode_list_list_dart_value(
-    List<List<DartValue>> self,
-    SseSerializer serializer,
-  ) {
+      List<List<DartValue>> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
@@ -2236,9 +1968,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void sse_encode_list_prim_u_8_strict(
-    Uint8List self,
-    SseSerializer serializer,
-  ) {
+      Uint8List self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     serializer.buffer.putUint8List(self);
@@ -2247,40 +1977,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void
       sse_encode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_data_type(
-    List<(String, DataType)> self,
-    SseSerializer serializer,
-  ) {
+          List<(String, DataType)> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_data_type(
-        item,
-        serializer,
-      );
+          item, serializer);
     }
   }
 
   @protected
   void
       sse_encode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
-    List<(String, Value)> self,
-    SseSerializer serializer,
-  ) {
+          List<(String, Value)> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
-        item,
-        serializer,
-      );
+          item, serializer);
     }
   }
 
   @protected
   void sse_encode_list_record_string_dart_value(
-    List<(String, DartValue)> self,
-    SseSerializer serializer,
-  ) {
+      List<(String, DartValue)> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
@@ -2291,36 +2011,26 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   void
       sse_encode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_data_type(
-    (String, DataType) self,
-    SseSerializer serializer,
-  ) {
+          (String, DataType) self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.$1, serializer);
     sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
-      self.$2,
-      serializer,
-    );
+        self.$2, serializer);
   }
 
   @protected
   void
       sse_encode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
-    (String, Value) self,
-    SseSerializer serializer,
-  ) {
+          (String, Value) self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.$1, serializer);
     sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-      self.$2,
-      serializer,
-    );
+        self.$2, serializer);
   }
 
   @protected
   void sse_encode_record_string_dart_value(
-    (String, DartValue) self,
-    SseSerializer serializer,
-  ) {
+      (String, DartValue) self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.$1, serializer);
     sse_encode_dart_value(self.$2, serializer);
