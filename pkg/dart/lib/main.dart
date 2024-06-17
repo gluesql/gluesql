@@ -18,7 +18,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   final TextEditingController _controller = TextEditingController();
-  List<DartPayload>? data;
+  List<Payload>? data;
 
   @override
   void initState() {
@@ -29,7 +29,7 @@ class _MyAppState extends State<MyApp> {
 
   void fetchData() async {
     try {
-      List<DartPayload> result = await execute(sql: _controller.text);
+      List<Payload> result = await execute(sql: _controller.text);
       setState(() {
         data = result;
       });
@@ -71,19 +71,19 @@ class _MyAppState extends State<MyApp> {
                     child: const Text('Execute'),
                   ),
                 ),
-                for (DartPayload payload in data ?? [])
+                for (Payload payload in data ?? [])
                   switch (payload) {
-                    DartPayload_Select(
+                    Payload_Select(
                       labels: List<String> labels,
-                      rows: List<List<DartValue>> rows
+                      rows: List<List<Value>> rows
                     ) =>
                       DataGrid(
                         labels,
                         rows,
                       ),
-                    DartPayload_Create() =>
+                    Payload_Create() =>
                       const Center(child: Text("Table created")),
-                    DartPayload_Insert(field0: BigInt count) =>
+                    Payload_Insert(field0: BigInt count) =>
                       Center(child: Text("$count rows inserted")),
                     _ => const Text("Not implemented")
                   },
@@ -98,7 +98,7 @@ class _MyAppState extends State<MyApp> {
 
 class DataGrid extends StatelessWidget {
   final List<String> labels;
-  final List<List<DartValue>> rows;
+  final List<List<Value>> rows;
 
   const DataGrid(this.labels, this.rows, {super.key});
 
@@ -116,10 +116,10 @@ class DataGrid extends StatelessWidget {
               ),
           ],
           rows: [
-            for (List<DartValue> row in rows)
+            for (List<Value> row in rows)
               DataRow(
                 cells: [
-                  for (DartValue value in row)
+                  for (Value value in row)
                     DataCell(
                       Text(value.toString()),
                     ),

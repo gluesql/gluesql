@@ -4,89 +4,89 @@
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
 import '../frb_generated.dart';
-import '../lib.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
+import 'simple.dart';
 part 'value.freezed.dart';
 
 @freezed
-sealed class DartValue with _$DartValue {
-  const DartValue._();
+sealed class Value with _$Value {
+  const Value._();
 
-  const factory DartValue.bool(
+  const factory Value.bool(
     bool field0,
-  ) = DartValue_Bool;
-  const factory DartValue.i8(
+  ) = Value_Bool;
+  const factory Value.i8(
     int field0,
-  ) = DartValue_I8;
-  const factory DartValue.i16(
+  ) = Value_I8;
+  const factory Value.i16(
     int field0,
-  ) = DartValue_I16;
-  const factory DartValue.i32(
+  ) = Value_I16;
+  const factory Value.i32(
     int field0,
-  ) = DartValue_I32;
-  const factory DartValue.i64(
+  ) = Value_I32;
+  const factory Value.i64(
     PlatformInt64 field0,
-  ) = DartValue_I64;
-  const factory DartValue.i128(
+  ) = Value_I64;
+  const factory Value.i128(
     BigInt field0,
-  ) = DartValue_I128;
-  const factory DartValue.u8(
+  ) = Value_I128;
+  const factory Value.u8(
     int field0,
-  ) = DartValue_U8;
-  const factory DartValue.u16(
+  ) = Value_U8;
+  const factory Value.u16(
     int field0,
-  ) = DartValue_U16;
-  const factory DartValue.u32(
+  ) = Value_U16;
+  const factory Value.u32(
     int field0,
-  ) = DartValue_U32;
-  const factory DartValue.u64(
+  ) = Value_U32;
+  const factory Value.u64(
     BigInt field0,
-  ) = DartValue_U64;
-  const factory DartValue.u128(
+  ) = Value_U64;
+  const factory Value.u128(
     BigInt field0,
-  ) = DartValue_U128;
-  const factory DartValue.f32(
+  ) = Value_U128;
+  const factory Value.f32(
     double field0,
-  ) = DartValue_F32;
-  const factory DartValue.f64(
+  ) = Value_F32;
+  const factory Value.f64(
     double field0,
-  ) = DartValue_F64;
-  const factory DartValue.decimal(
+  ) = Value_F64;
+  const factory Value.decimal(
     Decimal field0,
-  ) = DartValue_Decimal;
-  const factory DartValue.str(
+  ) = Value_Decimal;
+  const factory Value.str(
     String field0,
-  ) = DartValue_Str;
-  const factory DartValue.bytea(
+  ) = Value_Str;
+  const factory Value.bytea(
     Uint8List field0,
-  ) = DartValue_Bytea;
-  const factory DartValue.inet(
+  ) = Value_Bytea;
+  const factory Value.inet(
     IpAddr field0,
-  ) = DartValue_Inet;
-  const factory DartValue.date(
+  ) = Value_Inet;
+  const factory Value.date(
     NaiveDate field0,
-  ) = DartValue_Date;
-  const factory DartValue.timestamp(
+  ) = Value_Date;
+  const factory Value.timestamp(
     DateTime field0,
-  ) = DartValue_Timestamp;
-  const factory DartValue.time(
+  ) = Value_Timestamp;
+  const factory Value.time(
     NaiveTime field0,
-  ) = DartValue_Time;
-  const factory DartValue.interval(
+  ) = Value_Time;
+  const factory Value.interval(
     Interval field0,
-  ) = DartValue_Interval;
-  const factory DartValue.uuid(
+  ) = Value_Interval;
+  const factory Value.uuid(
     BigInt field0,
-  ) = DartValue_Uuid;
-  const factory DartValue.map(
+  ) = Value_Uuid;
+  const factory Value.map(
     Map<String, Value> field0,
-  ) = DartValue_Map;
-  const factory DartValue.list(
+  ) = Value_Map;
+  const factory Value.list(
     List<Value> field0,
-  ) = DartValue_List;
-  const factory DartValue.point(
+  ) = Value_List;
+  const factory Value.point(
     Point field0,
-  ) = DartValue_Point;
-  const factory DartValue.nullData() = DartValue_NullData;
+  ) = Value_Point;
+  const factory Value.null_() = Value_Null;
 }

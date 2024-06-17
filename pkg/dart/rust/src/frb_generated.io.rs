@@ -5,7 +5,6 @@
 
 use super::*;
 use crate::api::simple::*;
-use crate::*;
 use flutter_rust_bridge::for_generated::byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
 use flutter_rust_bridge::for_generated::{transform_result_dco, Lockable};
 use flutter_rust_bridge::{Handler, IntoIntoDart};
@@ -13,6 +12,34 @@ use flutter_rust_bridge::{Handler, IntoIntoDart};
 // Section: boilerplate
 
 flutter_rust_bridge::frb_generated_boilerplate_io!();
+
+#[no_mangle]
+pub extern "C" fn frbgen_dart_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAggregate(
+    ptr: *const std::ffi::c_void,
+) {
+    MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Aggregate>>::increment_strong_count(ptr as _);
+}
+
+#[no_mangle]
+pub extern "C" fn frbgen_dart_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAggregate(
+    ptr: *const std::ffi::c_void,
+) {
+    MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Aggregate>>::decrement_strong_count(ptr as _);
+}
+
+#[no_mangle]
+pub extern "C" fn frbgen_dart_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerColumnDef(
+    ptr: *const std::ffi::c_void,
+) {
+    MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ColumnDef>>::increment_strong_count(ptr as _);
+}
+
+#[no_mangle]
+pub extern "C" fn frbgen_dart_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerColumnDef(
+    ptr: *const std::ffi::c_void,
+) {
+    MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ColumnDef>>::decrement_strong_count(ptr as _);
+}
 
 #[no_mangle]
 pub extern "C" fn frbgen_dart_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
@@ -43,17 +70,21 @@ pub extern "C" fn frbgen_dart_rust_arc_decrement_strong_count_RustOpaque_flutter
 }
 
 #[no_mangle]
-pub extern "C" fn frbgen_dart_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError(
+pub extern "C" fn frbgen_dart_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
     ptr: *const std::ffi::c_void,
 ) {
-    MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Error>>::increment_strong_count(ptr as _);
+    MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Expr>>::increment_strong_count(
+        ptr as _,
+    );
 }
 
 #[no_mangle]
-pub extern "C" fn frbgen_dart_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError(
+pub extern "C" fn frbgen_dart_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
     ptr: *const std::ffi::c_void,
 ) {
-    MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Error>>::decrement_strong_count(ptr as _);
+    MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Expr>>::decrement_strong_count(
+        ptr as _,
+    );
 }
 
 #[no_mangle]
@@ -113,6 +144,48 @@ pub extern "C" fn frbgen_dart_rust_arc_decrement_strong_count_RustOpaque_flutter
 }
 
 #[no_mangle]
+pub extern "C" fn frbgen_dart_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf32(
+    ptr: *const std::ffi::c_void,
+) {
+    MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<OrderedFloat < f32 >>>::increment_strong_count(ptr as _);
+}
+
+#[no_mangle]
+pub extern "C" fn frbgen_dart_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf32(
+    ptr: *const std::ffi::c_void,
+) {
+    MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<OrderedFloat < f32 >>>::decrement_strong_count(ptr as _);
+}
+
+#[no_mangle]
+pub extern "C" fn frbgen_dart_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf64(
+    ptr: *const std::ffi::c_void,
+) {
+    MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<OrderedFloat < f64 >>>::increment_strong_count(ptr as _);
+}
+
+#[no_mangle]
+pub extern "C" fn frbgen_dart_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf64(
+    ptr: *const std::ffi::c_void,
+) {
+    MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<OrderedFloat < f64 >>>::decrement_strong_count(ptr as _);
+}
+
+#[no_mangle]
+pub extern "C" fn frbgen_dart_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerParseError(
+    ptr: *const std::ffi::c_void,
+) {
+    MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ParseError>>::increment_strong_count(ptr as _);
+}
+
+#[no_mangle]
+pub extern "C" fn frbgen_dart_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerParseError(
+    ptr: *const std::ffi::c_void,
+) {
+    MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ParseError>>::decrement_strong_count(ptr as _);
+}
+
+#[no_mangle]
 pub extern "C" fn frbgen_dart_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
     ptr: *const std::ffi::c_void,
 ) {
@@ -138,18 +211,4 @@ pub extern "C" fn frbgen_dart_rust_arc_decrement_strong_count_RustOpaque_flutter
     ptr: *const std::ffi::c_void,
 ) {
     MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Point>>::decrement_strong_count(ptr as _);
-}
-
-#[no_mangle]
-pub extern "C" fn frbgen_dart_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-    ptr: *const std::ffi::c_void,
-) {
-    MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Value>>::increment_strong_count(ptr as _);
-}
-
-#[no_mangle]
-pub extern "C" fn frbgen_dart_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-    ptr: *const std::ffi::c_void,
-) {
-    MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Value>>::decrement_strong_count(ptr as _);
 }

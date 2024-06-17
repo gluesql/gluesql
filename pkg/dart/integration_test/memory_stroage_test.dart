@@ -33,11 +33,9 @@ CREATE TABLE AllTypes (
 ''',
       ))
           .first,
-      const DartPayload.create(),
+      const Payload.create(),
     );
-  });
 
-  test("insert", () async {
     expect(
       (await execute(
         sql: '''
@@ -60,11 +58,11 @@ INSERT INTO AllTypes
  '550e8400-e29b-41d4-a716-446655440000',
  '{"a": {"red": "apple", "blue": 1}, "b": 10}',
  '[{ "foo": 100, "bar": [true, 0, [10.5, false] ] }, 10, 20]'
- );,
+ );
 ''',
       ))
           .first,
-      DartPayload.insert(BigInt.from(10)),
+      Payload.insert(BigInt.from(10)),
     );
   });
 

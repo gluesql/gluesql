@@ -4,45 +4,45 @@
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
 import '../frb_generated.dart';
-import '../lib.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
+import 'simple.dart';
 import 'value.dart';
 part 'payload.freezed.dart';
 
 @freezed
-sealed class DartPayload with _$DartPayload {
-  const DartPayload._();
+sealed class Payload with _$Payload {
+  const Payload._();
 
-  const factory DartPayload.showColumns(
+  const factory Payload.showColumns(
     List<(String, DataType)> field0,
-  ) = DartPayload_ShowColumns;
-  const factory DartPayload.create() = DartPayload_Create;
-  const factory DartPayload.insert(
+  ) = Payload_ShowColumns;
+  const factory Payload.create() = Payload_Create;
+  const factory Payload.insert(
     BigInt field0,
-  ) = DartPayload_Insert;
-  const factory DartPayload.select({
+  ) = Payload_Insert;
+  const factory Payload.select({
     required List<String> labels,
-    required List<List<DartValue>> rows,
-  }) = DartPayload_Select;
-  const factory DartPayload.selectMap(
-    List<Map<String, DartValue>> field0,
-  ) = DartPayload_SelectMap;
-  const factory DartPayload.delete(
+    required List<List<Value>> rows,
+  }) = Payload_Select;
+  const factory Payload.selectMap(
+    List<Map<String, Value>> field0,
+  ) = Payload_SelectMap;
+  const factory Payload.delete(
     BigInt field0,
-  ) = DartPayload_Delete;
-  const factory DartPayload.update(
+  ) = Payload_Delete;
+  const factory Payload.update(
     BigInt field0,
-  ) = DartPayload_Update;
-  const factory DartPayload.dropTable() = DartPayload_DropTable;
-  const factory DartPayload.dropFunction() = DartPayload_DropFunction;
-  const factory DartPayload.alterTable() = DartPayload_AlterTable;
-  const factory DartPayload.createIndex() = DartPayload_CreateIndex;
-  const factory DartPayload.dropIndex() = DartPayload_DropIndex;
-  const factory DartPayload.startTransaction() = DartPayload_StartTransaction;
-  const factory DartPayload.commit() = DartPayload_Commit;
-  const factory DartPayload.rollback() = DartPayload_Rollback;
-  const factory DartPayload.showVariable(
+  ) = Payload_Update;
+  const factory Payload.dropTable() = Payload_DropTable;
+  const factory Payload.dropFunction() = Payload_DropFunction;
+  const factory Payload.alterTable() = Payload_AlterTable;
+  const factory Payload.createIndex() = Payload_CreateIndex;
+  const factory Payload.dropIndex() = Payload_DropIndex;
+  const factory Payload.startTransaction() = Payload_StartTransaction;
+  const factory Payload.commit() = Payload_Commit;
+  const factory Payload.rollback() = Payload_Rollback;
+  const factory Payload.showVariable(
     PayloadVariable field0,
-  ) = DartPayload_ShowVariable;
+  ) = Payload_ShowVariable;
 }

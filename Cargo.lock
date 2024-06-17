@@ -3013,9 +3013,11 @@ dependencies = [
  "flutter_rust_bridge",
  "gluesql-core",
  "gluesql_memory_storage",
+ "ordered-float 4.2.0",
  "rust_decimal",
  "serde",
  "serde_json",
+ "thiserror",
  "tokio",
 ]
 

@@ -22,7 +22,6 @@
 // Section: imports
 
 use crate::api::simple::*;
-use crate::*;
 use flutter_rust_bridge::for_generated::byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
 use flutter_rust_bridge::for_generated::{transform_result_dco, Lockable};
 use flutter_rust_bridge::{Handler, IntoIntoDart};
@@ -105,8 +104,939 @@ fn wire__crate__api__simple__init_app_impl(
     )
 }
 
+// Section: static_checks
+
+#[allow(clippy::unnecessary_literal_unwrap)]
+const _: fn() = || {
+    match None::<crate::api::error::AlterError>.unwrap() {
+        crate::api::error::AlterError::TableAlreadyExists(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::AlterError::FunctionAlreadyExists(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::AlterError::FunctionNotFound(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::AlterError::TableNotFound(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::AlterError::CtasSourceTableNotFound(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::AlterError::UnsupportedDataTypeForUniqueColumn(field0, field1) => {
+            let _: String = field0;
+            let _: DataType = field1;
+        }
+        crate::api::error::AlterError::UnsupportedIndexExpr(field0) => {
+            let _: Expr = field0;
+        }
+        crate::api::error::AlterError::UnsupportedUnnamedArg => {}
+        crate::api::error::AlterError::IdentifierNotFound(field0) => {
+            let _: Expr = field0;
+        }
+        crate::api::error::AlterError::DuplicateColumnName(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::AlterError::DuplicateArgName(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::AlterError::NonDefaultArgumentFollowsDefaultArgument => {}
+    }
+    match None::<crate::api::error::AlterTableError>.unwrap() {
+        crate::api::error::AlterTableError::TableNotFound(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::AlterTableError::RenamingColumnNotFound => {}
+        crate::api::error::AlterTableError::DefaultValueRequired(field0) => {
+            let _: ColumnDef = field0;
+        }
+        crate::api::error::AlterTableError::AlreadyExistingColumn(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::AlterTableError::DroppingColumnNotFound(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::AlterTableError::SchemalessTableFound(field0) => {
+            let _: String = field0;
+        }
+    }
+    match None::<crate::api::error::AstBuilderError>.unwrap() {
+        crate::api::error::AstBuilderError::FailedToParseNumeric(field0) => {
+            let _: String = field0;
+        }
+    }
+    {
+        let ConvertError = None::<crate::api::error::ConvertError>.unwrap();
+        let _: crate::api::value::Value = ConvertError.value;
+        let _: DataType = ConvertError.data_type;
+    }
+    match None::<crate::api::error::Error>.unwrap() {
+        crate::api::error::Error::StorageMsg(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::Error::Parser(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::Error::Translate(field0) => {
+            let _: crate::api::error::TranslateError = field0;
+        }
+        crate::api::error::Error::AstBuilder(field0) => {
+            let _: crate::api::error::AstBuilderError = field0;
+        }
+        crate::api::error::Error::AlterTable(field0) => {
+            let _: crate::api::error::AlterTableError = field0;
+        }
+        crate::api::error::Error::Index(field0) => {
+            let _: crate::api::error::IndexError = field0;
+        }
+        crate::api::error::Error::Execute(field0) => {
+            let _: crate::api::error::ExecuteError = field0;
+        }
+        crate::api::error::Error::Alter(field0) => {
+            let _: crate::api::error::AlterError = field0;
+        }
+        crate::api::error::Error::Fetch(field0) => {
+            let _: crate::api::error::FetchError = field0;
+        }
+        crate::api::error::Error::Select(field0) => {
+            let _: crate::api::error::SelectError = field0;
+        }
+        crate::api::error::Error::Evaluate(field0) => {
+            let _: crate::api::error::EvaluateError = field0;
+        }
+        crate::api::error::Error::Aggregate(field0) => {
+            let _: crate::api::error::AggregateError = field0;
+        }
+        crate::api::error::Error::Sort(field0) => {
+            let _: crate::api::error::SortError = field0;
+        }
+        crate::api::error::Error::Insert(field0) => {
+            let _: crate::api::error::InsertError = field0;
+        }
+        crate::api::error::Error::Update(field0) => {
+            let _: crate::api::error::UpdateError = field0;
+        }
+        crate::api::error::Error::Table(field0) => {
+            let _: crate::api::error::TableError = field0;
+        }
+        crate::api::error::Error::Validate(field0) => {
+            let _: crate::api::error::ValidateError = field0;
+        }
+        crate::api::error::Error::Row(field0) => {
+            let _: crate::api::error::RowError = field0;
+        }
+        crate::api::error::Error::Key(field0) => {
+            let _: crate::api::error::KeyError = field0;
+        }
+        crate::api::error::Error::Value(field0) => {
+            let _: crate::api::error::ValueError = field0;
+        }
+        crate::api::error::Error::Convert(field0) => {
+            let _: crate::api::error::ConvertError = field0;
+        }
+        crate::api::error::Error::Literal(field0) => {
+            let _: crate::api::error::LiteralError = field0;
+        }
+        crate::api::error::Error::Interval(field0) => {
+            let _: crate::api::error::IntervalError = field0;
+        }
+        crate::api::error::Error::StringExt(field0) => {
+            let _: crate::api::error::StringExtError = field0;
+        }
+        crate::api::error::Error::Plan(field0) => {
+            let _: crate::api::error::PlanError = field0;
+        }
+        crate::api::error::Error::Schema(field0) => {
+            let _: crate::api::error::SchemaParseError = field0;
+        }
+    }
+    match None::<crate::api::error::EvaluateError>.unwrap() {
+        crate::api::error::EvaluateError::FormatParseError(field0) => {
+            let _: ParseError = field0;
+        }
+        crate::api::error::EvaluateError::LiteralAddOnNonNumeric => {}
+        crate::api::error::EvaluateError::FunctionRequiresStringValue(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::EvaluateError::FunctionRequiresIntegerValue(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::EvaluateError::FunctionRequiresFloatOrIntegerValue(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::EvaluateError::FunctionRequiresUSizeValue(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::EvaluateError::FunctionRequiresFloatValue(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::EvaluateError::ExtractFormatNotMatched(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::EvaluateError::FunctionRequiresMapValue(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::EvaluateError::FunctionRequiresPointValue(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::EvaluateError::FunctionRequiresDateOrDateTimeValue(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::EvaluateError::FunctionRequiresStrOrListOrMapValue(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::EvaluateError::ValueNotFound(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::EvaluateError::BooleanTypeRequired(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::EvaluateError::MapOrListTypeRequired => {}
+        crate::api::error::EvaluateError::MapTypeRequired => {}
+        crate::api::error::EvaluateError::ListTypeRequired => {}
+        crate::api::error::EvaluateError::InvalidSortType => {}
+        crate::api::error::EvaluateError::InvalidSortOrder => {}
+        crate::api::error::EvaluateError::MapOrStringValueRequired(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::EvaluateError::TextLiteralRequired(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::EvaluateError::UnsupportedStatelessExpr(field0) => {
+            let _: Expr = field0;
+        }
+        crate::api::error::EvaluateError::ContextRequiredForIdentEvaluation(field0) => {
+            let _: Expr = field0;
+        }
+        crate::api::error::EvaluateError::UnreachableEmptyAggregateValue(field0) => {
+            let _: Aggregate = field0;
+        }
+        crate::api::error::EvaluateError::IncompatibleBitOperation(field0, field1) => {
+            let _: String = field0;
+            let _: String = field1;
+        }
+        crate::api::error::EvaluateError::DivisorShouldNotBeZero => {}
+        crate::api::error::EvaluateError::NegativeSubstrLenNotAllowed => {}
+        crate::api::error::EvaluateError::MoreThanOneRowReturned => {}
+        crate::api::error::EvaluateError::MoreThanOneColumnReturned => {}
+        crate::api::error::EvaluateError::SchemalessProjectionForInSubQuery => {}
+        crate::api::error::EvaluateError::SchemalessProjectionForSubQuery => {}
+        crate::api::error::EvaluateError::UnsupportedExprForFormatFunction(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::EvaluateError::AsciiFunctionRequiresSingleCharacterValue => {}
+        crate::api::error::EvaluateError::NonAsciiCharacterNotAllowed => {}
+        crate::api::error::EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255 => {}
+        crate::api::error::EvaluateError::UnsupportedBinaryOperation { left, op, right } => {
+            let _: String = left;
+            let _: crate::api::ast::BinaryOperator = op;
+            let _: String = right;
+        }
+        crate::api::error::EvaluateError::UnsupportedUnaryPlus(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::EvaluateError::UnsupportedUnaryMinus(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::EvaluateError::UnsupportedUnaryFactorial(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::EvaluateError::IncompatibleUnaryBitwiseNotOperation(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::EvaluateError::UnsupportedCustomFunction => {}
+        crate::api::error::EvaluateError::FunctionRequiresMoreArguments {
+            function_name,
+            required_minimum,
+            found,
+        } => {
+            let _: String = function_name;
+            let _: usize = required_minimum;
+            let _: usize = found;
+        }
+        crate::api::error::EvaluateError::FunctionArgsLengthNotWithinRange {
+            name,
+            expected_minimum,
+            expected_maximum,
+            found,
+        } => {
+            let _: String = name;
+            let _: usize = expected_minimum;
+            let _: usize = expected_maximum;
+            let _: usize = found;
+        }
+        crate::api::error::EvaluateError::UnsupportedFunction(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::EvaluateError::NonComparableArgumentError(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::EvaluateError::FunctionRequiresAtLeastOneArgument(field0) => {
+            let _: String = field0;
+        }
+    }
+    match None::<crate::api::error::ExecuteError>.unwrap() {
+        crate::api::error::ExecuteError::TableNotFound(field0) => {
+            let _: String = field0;
+        }
+    }
+    match None::<crate::api::error::FetchError>.unwrap() {
+        crate::api::error::FetchError::TableNotFound(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::FetchError::TableAliasNotFound(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::FetchError::SeriesSizeWrong(field0) => {
+            let _: i64 = field0;
+        }
+        crate::api::error::FetchError::TooManyColumnAliases(field0, field1, field2) => {
+            let _: String = field0;
+            let _: usize = field1;
+            let _: usize = field2;
+        }
+    }
+    match None::<crate::api::error::IndexError>.unwrap() {
+        crate::api::error::IndexError::TableNotFound(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::IndexError::IndexNameAlreadyExists(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::IndexError::IndexNameDoesNotExist(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::IndexError::ConflictTableNotFound(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::IndexError::ConflictOnEmptyIndexValueUpdate => {}
+        crate::api::error::IndexError::ConflictOnEmptyIndexValueDelete => {}
+        crate::api::error::IndexError::ConflictOnEmptyIndexValueScan => {}
+        crate::api::error::IndexError::ConflictOnIndexDataDeleteSync => {}
+    }
+    match None::<crate::api::error::InsertError>.unwrap() {
+        crate::api::error::InsertError::TableNotFound(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::InsertError::LackOfRequiredColumn(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::InsertError::WrongColumnName(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::InsertError::ColumnAndValuesNotMatched => {}
+        crate::api::error::InsertError::TooManyValues => {}
+        crate::api::error::InsertError::OnlySingleValueAcceptedForSchemalessRow => {}
+        crate::api::error::InsertError::MapTypeValueRequired(field0) => {
+            let _: String = field0;
+        }
+    }
+    match None::<crate::api::error::IntervalError>.unwrap() {
+        crate::api::error::IntervalError::UnsupportedRange(field0, field1) => {
+            let _: String = field0;
+            let _: String = field1;
+        }
+        crate::api::error::IntervalError::AddBetweenYearToMonthAndHourToSecond => {}
+        crate::api::error::IntervalError::SubtractBetweenYearToMonthAndHourToSecond => {}
+        crate::api::error::IntervalError::AddYearOrMonthToTime { time, interval } => {
+            let _: NaiveTime = time;
+            let _: Interval = interval;
+        }
+        crate::api::error::IntervalError::SubtractYearOrMonthToTime { time, interval } => {
+            let _: NaiveTime = time;
+            let _: Interval = interval;
+        }
+        crate::api::error::IntervalError::FailedToParseInteger(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::IntervalError::FailedToParseDecimal(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::IntervalError::FailedToParseTime(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::IntervalError::FailedToParseYearToMonth(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::IntervalError::FailedToParseDayToHour(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::IntervalError::FailedToParseDayToMinute(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::IntervalError::FailedToParseDayToSecond(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::IntervalError::DateOverflow { year, month } => {
+            let _: i32 = year;
+            let _: i32 = month;
+        }
+        crate::api::error::IntervalError::FailedToExtract => {}
+        crate::api::error::IntervalError::ParseSupportedOnlyLiteral { expr } => {
+            let _: Expr = expr;
+        }
+        crate::api::error::IntervalError::Unreachable => {}
+    }
+    match None::<crate::api::key::Key>.unwrap() {
+        crate::api::key::Key::I8(field0) => {
+            let _: i8 = field0;
+        }
+        crate::api::key::Key::I16(field0) => {
+            let _: i16 = field0;
+        }
+        crate::api::key::Key::I32(field0) => {
+            let _: i32 = field0;
+        }
+        crate::api::key::Key::I64(field0) => {
+            let _: i64 = field0;
+        }
+        crate::api::key::Key::I128(field0) => {
+            let _: i128 = field0;
+        }
+        crate::api::key::Key::U8(field0) => {
+            let _: u8 = field0;
+        }
+        crate::api::key::Key::U16(field0) => {
+            let _: u16 = field0;
+        }
+        crate::api::key::Key::U32(field0) => {
+            let _: u32 = field0;
+        }
+        crate::api::key::Key::U64(field0) => {
+            let _: u64 = field0;
+        }
+        crate::api::key::Key::U128(field0) => {
+            let _: u128 = field0;
+        }
+        crate::api::key::Key::F32(field0) => {
+            let _: OrderedFloat<f32> = field0;
+        }
+        crate::api::key::Key::F64(field0) => {
+            let _: OrderedFloat<f64> = field0;
+        }
+        crate::api::key::Key::Decimal(field0) => {
+            let _: Decimal = field0;
+        }
+        crate::api::key::Key::Bool(field0) => {
+            let _: bool = field0;
+        }
+        crate::api::key::Key::Str(field0) => {
+            let _: String = field0;
+        }
+        crate::api::key::Key::Bytea(field0) => {
+            let _: Vec<u8> = field0;
+        }
+        crate::api::key::Key::Date(field0) => {
+            let _: NaiveDate = field0;
+        }
+        crate::api::key::Key::Timestamp(field0) => {
+            let _: chrono::NaiveDateTime = field0;
+        }
+        crate::api::key::Key::Time(field0) => {
+            let _: NaiveTime = field0;
+        }
+        crate::api::key::Key::Interval(field0) => {
+            let _: Interval = field0;
+        }
+        crate::api::key::Key::Uuid(field0) => {
+            let _: u128 = field0;
+        }
+        crate::api::key::Key::Inet(field0) => {
+            let _: IpAddr = field0;
+        }
+        crate::api::key::Key::None => {}
+    }
+    match None::<crate::api::error::LiteralError>.unwrap() {
+        crate::api::error::LiteralError::UnsupportedBinaryOperation { left, op, right } => {
+            let _: String = left;
+            let _: crate::api::ast::BinaryOperator = op;
+            let _: String = right;
+        }
+        crate::api::error::LiteralError::BitwiseNonIntegerOperand(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::LiteralError::BitwiseNonNumberLiteral => {}
+        crate::api::error::LiteralError::BitwiseOperationOverflow => {}
+        crate::api::error::LiteralError::ImpossibleConversion(field0, field1) => {
+            let _: String = field0;
+            let _: String = field1;
+        }
+        crate::api::error::LiteralError::DivisorShouldNotBeZero => {}
+        crate::api::error::LiteralError::UnaryOperationOnNonNumeric => {}
+        crate::api::error::LiteralError::UnreachableBinaryArithmetic => {}
+        crate::api::error::LiteralError::UnreachableUnaryOperation => {}
+        crate::api::error::LiteralError::FailedToDecodeHexString(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::LiteralError::LikeOnNonString {
+            base,
+            pattern,
+            case_sensitive,
+        } => {
+            let _: String = base;
+            let _: String = pattern;
+            let _: bool = case_sensitive;
+        }
+    }
+    match None::<crate::api::payload::Payload>.unwrap() {
+        crate::api::payload::Payload::ShowColumns(field0) => {
+            let _: Vec<(String, DataType)> = field0;
+        }
+        crate::api::payload::Payload::Create => {}
+        crate::api::payload::Payload::Insert(field0) => {
+            let _: usize = field0;
+        }
+        crate::api::payload::Payload::Select { labels, rows } => {
+            let _: Vec<String> = labels;
+            let _: Vec<Vec<crate::api::value::Value>> = rows;
+        }
+        crate::api::payload::Payload::SelectMap(field0) => {
+            let _: Vec<std::collections::HashMap<String, crate::api::value::Value>> = field0;
+        }
+        crate::api::payload::Payload::Delete(field0) => {
+            let _: usize = field0;
+        }
+        crate::api::payload::Payload::Update(field0) => {
+            let _: usize = field0;
+        }
+        crate::api::payload::Payload::DropTable => {}
+        crate::api::payload::Payload::DropFunction => {}
+        crate::api::payload::Payload::AlterTable => {}
+        crate::api::payload::Payload::CreateIndex => {}
+        crate::api::payload::Payload::DropIndex => {}
+        crate::api::payload::Payload::StartTransaction => {}
+        crate::api::payload::Payload::Commit => {}
+        crate::api::payload::Payload::Rollback => {}
+        crate::api::payload::Payload::ShowVariable(field0) => {
+            let _: PayloadVariable = field0;
+        }
+    }
+    match None::<crate::api::error::PlanError>.unwrap() {
+        crate::api::error::PlanError::ColumnReferenceAmbiguous(field0) => {
+            let _: String = field0;
+        }
+    }
+    match None::<crate::api::error::SortError>.unwrap() {
+        crate::api::error::SortError::ColumnIndexOutOfRange(field0) => {
+            let _: usize = field0;
+        }
+        crate::api::error::SortError::Unreachable => {}
+    }
+    match None::<crate::api::error::TranslateError>.unwrap() {
+        crate::api::error::TranslateError::TooManyTables => {}
+        crate::api::error::TranslateError::SelectDistinctNotSupported => {}
+        crate::api::error::TranslateError::CompositeIndexNotSupported => {}
+        crate::api::error::TranslateError::JoinOnUpdateNotSupported => {}
+        crate::api::error::TranslateError::CompoundIdentOnUpdateNotSupported(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::TranslateError::TooManyParamsInDropIndex => {}
+        crate::api::error::TranslateError::InvalidParamsInDropIndex => {}
+        crate::api::error::TranslateError::FunctionArgsLengthNotMatching {
+            name,
+            expected,
+            found,
+        } => {
+            let _: String = name;
+            let _: usize = expected;
+            let _: usize = found;
+        }
+        crate::api::error::TranslateError::FunctionArgsLengthNotMatchingMin {
+            name,
+            expected_minimum,
+            found,
+        } => {
+            let _: String = name;
+            let _: usize = expected_minimum;
+            let _: usize = found;
+        }
+        crate::api::error::TranslateError::FunctionArgsLengthNotWithinRange {
+            name,
+            expected_minimum,
+            expected_maximum,
+            found,
+        } => {
+            let _: String = name;
+            let _: usize = expected_minimum;
+            let _: usize = expected_maximum;
+            let _: usize = found;
+        }
+        crate::api::error::TranslateError::NamedFunctionArgNotSupported => {}
+        crate::api::error::TranslateError::UnNamedFunctionArgNotSupported => {}
+        crate::api::error::TranslateError::DefaultValuesOnInsertNotSupported(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::TranslateError::UnsupportedEmptyFunctionBody => {}
+        crate::api::error::TranslateError::UnsupportedUnnamedIndex => {}
+        crate::api::error::TranslateError::UnsupportedTrimChars => {}
+        crate::api::error::TranslateError::UnsupportedCastFormat(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::TranslateError::UnsupportedMultipleAlterTableOperations => {}
+        crate::api::error::TranslateError::UnreachableEmptyAlterTableOperation => {}
+        crate::api::error::TranslateError::UnsupportedGroupByAll => {}
+        crate::api::error::TranslateError::WildcardFunctionArgNotAccepted => {}
+        crate::api::error::TranslateError::QualifiedWildcardInCountNotSupported(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::TranslateError::OrderByNullsFirstOrLastNotSupported => {}
+        crate::api::error::TranslateError::UnsupportedShowVariableKeyword(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::TranslateError::UnsupportedShowVariableStatement(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::TranslateError::UnsupportedStatement(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::TranslateError::UnsupportedExpr(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::TranslateError::UnsupportedDataType(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::TranslateError::UnsupportedDateTimeField(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::TranslateError::UnsupportedAstLiteral(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::TranslateError::UnreachableUnaryOperator(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::TranslateError::UnreachableEmptyIdent => {}
+        crate::api::error::TranslateError::UnsupportedBinaryOperator(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::TranslateError::UnsupportedQuerySetExpr(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::TranslateError::UnsupportedQueryTableFactor(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::TranslateError::UnsupportedJoinConstraint(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::TranslateError::UnsupportedJoinOperator(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::TranslateError::UnsupportedColumnOption(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::TranslateError::UnsupportedAlterTableOperation(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::TranslateError::UnsupportedTableFactor(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::TranslateError::LackOfAlias => {}
+        crate::api::error::TranslateError::LackOfArgs => {}
+        crate::api::error::TranslateError::UnreachableEmptyObject => {}
+        crate::api::error::TranslateError::UnreachableEmptyTable => {}
+        crate::api::error::TranslateError::CompoundObjectNotSupported(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::TranslateError::ReservedIndexName(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::TranslateError::CannotDropPrimary => {}
+    }
+    match None::<crate::api::error::UpdateError>.unwrap() {
+        crate::api::error::UpdateError::ColumnNotFound(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::UpdateError::UpdateOnPrimaryKeyNotSupported(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::UpdateError::ConflictOnSchema => {}
+    }
+    match None::<crate::api::error::ValidateError>.unwrap() {
+        crate::api::error::ValidateError::ConflictOnStorageColumnIndex(field0) => {
+            let _: usize = field0;
+        }
+        crate::api::error::ValidateError::ConflictOnUnexpectedSchemalessRowFound => {}
+        crate::api::error::ValidateError::DuplicateEntryOnUniqueField(field0, field1) => {
+            let _: crate::api::value::Value = field0;
+            let _: String = field1;
+        }
+        crate::api::error::ValidateError::DuplicateEntryOnPrimaryKeyField(field0) => {
+            let _: crate::api::key::Key = field0;
+        }
+    }
+    match None::<crate::api::value::Value>.unwrap() {
+        crate::api::value::Value::Bool(field0) => {
+            let _: bool = field0;
+        }
+        crate::api::value::Value::I8(field0) => {
+            let _: i8 = field0;
+        }
+        crate::api::value::Value::I16(field0) => {
+            let _: i16 = field0;
+        }
+        crate::api::value::Value::I32(field0) => {
+            let _: i32 = field0;
+        }
+        crate::api::value::Value::I64(field0) => {
+            let _: i64 = field0;
+        }
+        crate::api::value::Value::I128(field0) => {
+            let _: i128 = field0;
+        }
+        crate::api::value::Value::U8(field0) => {
+            let _: u8 = field0;
+        }
+        crate::api::value::Value::U16(field0) => {
+            let _: u16 = field0;
+        }
+        crate::api::value::Value::U32(field0) => {
+            let _: u32 = field0;
+        }
+        crate::api::value::Value::U64(field0) => {
+            let _: u64 = field0;
+        }
+        crate::api::value::Value::U128(field0) => {
+            let _: u128 = field0;
+        }
+        crate::api::value::Value::F32(field0) => {
+            let _: f32 = field0;
+        }
+        crate::api::value::Value::F64(field0) => {
+            let _: f64 = field0;
+        }
+        crate::api::value::Value::Decimal(field0) => {
+            let _: Decimal = field0;
+        }
+        crate::api::value::Value::Str(field0) => {
+            let _: String = field0;
+        }
+        crate::api::value::Value::Bytea(field0) => {
+            let _: Vec<u8> = field0;
+        }
+        crate::api::value::Value::Inet(field0) => {
+            let _: IpAddr = field0;
+        }
+        crate::api::value::Value::Date(field0) => {
+            let _: NaiveDate = field0;
+        }
+        crate::api::value::Value::Timestamp(field0) => {
+            let _: chrono::NaiveDateTime = field0;
+        }
+        crate::api::value::Value::Time(field0) => {
+            let _: NaiveTime = field0;
+        }
+        crate::api::value::Value::Interval(field0) => {
+            let _: Interval = field0;
+        }
+        crate::api::value::Value::Uuid(field0) => {
+            let _: u128 = field0;
+        }
+        crate::api::value::Value::Map(field0) => {
+            let _: std::collections::HashMap<String, crate::api::value::Value> = field0;
+        }
+        crate::api::value::Value::List(field0) => {
+            let _: Vec<crate::api::value::Value> = field0;
+        }
+        crate::api::value::Value::Point(field0) => {
+            let _: Point = field0;
+        }
+        crate::api::value::Value::Null => {}
+    }
+    match None::<crate::api::error::ValueError>.unwrap() {
+        crate::api::error::ValueError::IncompatibleLiteralForDataType { data_type, literal } => {
+            let _: DataType = data_type;
+            let _: String = literal;
+        }
+        crate::api::error::ValueError::IncompatibleDataType { data_type, value } => {
+            let _: DataType = data_type;
+            let _: crate::api::value::Value = value;
+        }
+        crate::api::error::ValueError::NullValueOnNotNullField => {}
+        crate::api::error::ValueError::FailedToParseNumber => {}
+        crate::api::error::ValueError::FloatToDecimalConversionFailure(field0) => {
+            let _: f64 = field0;
+        }
+        crate::api::error::ValueError::FailedToParseDate(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::FailedToParseTimestamp(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::FailedToParseTime(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::FailedToParseUUID(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::FailedToParsePoint(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::FailedToParseDecimal(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::FailedToParseHexString(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::FailedToParseInetString(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::NonNumericMathOperation { lhs, rhs, operator } => {
+            let _: crate::api::value::Value = lhs;
+            let _: crate::api::value::Value = rhs;
+            let _: crate::api::error::NumericBinaryOperator = operator;
+        }
+        crate::api::error::ValueError::DivisorShouldNotBeZero => {}
+        crate::api::error::ValueError::UnaryPlusOnNonNumeric => {}
+        crate::api::error::ValueError::UnaryMinusOnNonNumeric => {}
+        crate::api::error::ValueError::FactorialOnNonNumeric => {}
+        crate::api::error::ValueError::FactorialOnNonInteger => {}
+        crate::api::error::ValueError::FactorialOnNegativeNumeric => {}
+        crate::api::error::ValueError::FactorialOverflow => {}
+        crate::api::error::ValueError::GcdLcmOverflow(field0) => {
+            let _: i64 = field0;
+        }
+        crate::api::error::ValueError::LcmResultOutOfRange => {}
+        crate::api::error::ValueError::UnaryBitwiseNotOnNonNumeric => {}
+        crate::api::error::ValueError::UnaryBitwiseNotOnNonInteger => {}
+        crate::api::error::ValueError::UnreachableNumberParsing => {}
+        crate::api::error::ValueError::UnimplementedCast { value, data_type } => {
+            let _: crate::api::value::Value = value;
+            let _: DataType = data_type;
+        }
+        crate::api::error::ValueError::CastFromHexToByteaFailed(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::EmptyArgNotAllowedInConcat => {}
+        crate::api::error::ValueError::LiteralCastFromTextToIntegerFailed(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::LiteralCastFromTextToUnsignedInt8Failed(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::LiteralCastFromTextToUint16Failed(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::LiteralCastFromTextToUint32Failed(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::LiteralCastFromTextToUint64Failed(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::LiteralCastFromTextToUint128Failed(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::LiteralCastFromTextToFloatFailed(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::LiteralCastFromTextToDecimalFailed(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::LiteralCastToBooleanFailed(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::LiteralCastToDateFailed(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::LiteralCastToDataTypeFailed(field0, field1) => {
+            let _: DataType = field0;
+            let _: String = field1;
+        }
+        crate::api::error::ValueError::LiteralCastToInt8Failed(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::LiteralCastToUnsignedInt8Failed(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::LiteralCastToUint16Failed(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::LiteralCastToUint32Failed(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::LiteralCastToUint64Failed(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::LiteralCastToUint128Failed(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::LiteralCastToTimeFailed(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::LiteralCastToTimestampFailed(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::UnreachableLiteralCastFromNumberToInteger(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::UnreachableLiteralCastFromNumberToFloat(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::UnimplementedLiteralCast { data_type, literal } => {
+            let _: DataType = data_type;
+            let _: String = literal;
+        }
+        crate::api::error::ValueError::UnreachableIntegerOverflow(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::LikeOnNonString {
+            base,
+            pattern,
+            case_sensitive,
+        } => {
+            let _: crate::api::value::Value = base;
+            let _: crate::api::value::Value = pattern;
+            let _: bool = case_sensitive;
+        }
+        crate::api::error::ValueError::ExtractFormatNotMatched { value, field } => {
+            let _: crate::api::value::Value = value;
+            let _: crate::api::ast::DateTimeField = field;
+        }
+        crate::api::error::ValueError::BigEndianExportNotSupported(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::InvalidJsonString(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::JsonObjectTypeRequired => {}
+        crate::api::error::ValueError::JsonArrayTypeRequired => {}
+        crate::api::error::ValueError::UnreachableJsonNumberParseFailure(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::SelectorRequiresMapOrListTypes => {}
+        crate::api::error::ValueError::BinaryOperationOverflow { lhs, rhs, operator } => {
+            let _: crate::api::value::Value = lhs;
+            let _: crate::api::value::Value = rhs;
+            let _: crate::api::error::NumericBinaryOperator = operator;
+        }
+        crate::api::error::ValueError::SqrtOnNonNumeric(field0) => {
+            let _: crate::api::value::Value = field0;
+        }
+        crate::api::error::ValueError::NonStringParameterInPosition { from, sub } => {
+            let _: crate::api::value::Value = from;
+            let _: crate::api::value::Value = sub;
+        }
+        crate::api::error::ValueError::NonStringParameterInFindIdx { sub, from } => {
+            let _: crate::api::value::Value = sub;
+            let _: crate::api::value::Value = from;
+        }
+        crate::api::error::ValueError::NonPositiveIntegerOffsetInFindIdx(field0) => {
+            let _: String = field0;
+        }
+        crate::api::error::ValueError::ValueToExprConversionFailure => {}
+        crate::api::error::ValueError::I64ToU32ConversionFailure(field0) => {
+            let _: String = field0;
+        }
+    }
+};
+
 // Section: related_funcs
 
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Aggregate>
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ColumnDef>
+);
 flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
     flutter_rust_bridge::for_generated::RustAutoOpaqueInner<DataType>
 );
@@ -114,7 +1044,7 @@ flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
     flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Decimal>
 );
 flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
-    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Error>
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Expr>
 );
 flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
     flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Interval>
@@ -129,16 +1059,42 @@ flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
     flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NaiveTime>
 );
 flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<OrderedFloat<f32>>
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<OrderedFloat<f64>>
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ParseError>
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
     flutter_rust_bridge::for_generated::RustAutoOpaqueInner<PayloadVariable>
 );
 flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
     flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Point>
 );
-flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
-    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Value>
-);
 
 // Section: dart2rust
+
+impl SseDecode for Aggregate {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Aggregate>,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
+impl SseDecode for ColumnDef {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ColumnDef>,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
 
 impl SseDecode for DataType {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -160,11 +1116,11 @@ impl SseDecode for Decimal {
     }
 }
 
-impl SseDecode for Error {
+impl SseDecode for Expr {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut inner = <RustOpaqueMoi<
-            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Error>,
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Expr>,
         >>::sse_decode(deserializer);
         return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
     }
@@ -210,6 +1166,36 @@ impl SseDecode for NaiveTime {
     }
 }
 
+impl SseDecode for OrderedFloat<f32> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<OrderedFloat<f32>>,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
+impl SseDecode for OrderedFloat<f64> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<OrderedFloat<f64>>,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
+impl SseDecode for ParseError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ParseError>,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+    }
+}
+
 impl SseDecode for PayloadVariable {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -225,16 +1211,6 @@ impl SseDecode for Point {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut inner = <RustOpaqueMoi<
             flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Point>,
-        >>::sse_decode(deserializer);
-        return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
-    }
-}
-
-impl SseDecode for Value {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut inner = <RustOpaqueMoi<
-            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Value>,
         >>::sse_decode(deserializer);
         return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
     }
@@ -258,19 +1234,31 @@ impl SseDecode for i128 {
     }
 }
 
-impl SseDecode for std::collections::HashMap<String, Value> {
+impl SseDecode for std::collections::HashMap<String, crate::api::value::Value> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut inner = <Vec<(String, Value)>>::sse_decode(deserializer);
+        let mut inner = <Vec<(String, crate::api::value::Value)>>::sse_decode(deserializer);
         return inner.into_iter().collect();
     }
 }
 
-impl SseDecode for std::collections::HashMap<String, crate::api::value::DartValue> {
+impl SseDecode
+    for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Aggregate>>
+{
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut inner = <Vec<(String, crate::api::value::DartValue)>>::sse_decode(deserializer);
-        return inner.into_iter().collect();
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode
+    for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ColumnDef>>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
     }
 }
 
@@ -292,7 +1280,7 @@ impl SseDecode for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpa
     }
 }
 
-impl SseDecode for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Error>> {
+impl SseDecode for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Expr>> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut inner = <usize>::sse_decode(deserializer);
@@ -339,6 +1327,36 @@ impl SseDecode
 }
 
 impl SseDecode
+    for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<OrderedFloat<f32>>>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode
+    for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<OrderedFloat<f64>>>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode
+    for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ParseError>>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode
     for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<PayloadVariable>>
 {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -349,14 +1367,6 @@ impl SseDecode
 }
 
 impl SseDecode for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Point>> {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut inner = <usize>::sse_decode(deserializer);
-        return decode_rust_opaque_moi(inner);
-    }
-}
-
-impl SseDecode for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Value>> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut inner = <usize>::sse_decode(deserializer);
@@ -380,79 +1390,70 @@ impl SseDecode for u128 {
     }
 }
 
-impl SseDecode for bool {
+impl SseDecode for crate::api::error::AggregateError {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        deserializer.cursor.read_u8().unwrap() != 0
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::error::AggregateError::UnreachableRcUnwrapFailure,
+            _ => unreachable!("Invalid variant for AggregateError: {}", inner),
+        };
     }
 }
 
-impl SseDecode for crate::api::payload::DartPayload {
+impl SseDecode for crate::api::error::AlterError {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut tag_ = <i32>::sse_decode(deserializer);
         match tag_ {
             0 => {
-                let mut var_field0 = <Vec<(String, DataType)>>::sse_decode(deserializer);
-                return crate::api::payload::DartPayload::ShowColumns(var_field0);
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::AlterError::TableAlreadyExists(var_field0);
             }
             1 => {
-                return crate::api::payload::DartPayload::Create;
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::AlterError::FunctionAlreadyExists(var_field0);
             }
             2 => {
-                let mut var_field0 = <usize>::sse_decode(deserializer);
-                return crate::api::payload::DartPayload::Insert(var_field0);
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::AlterError::FunctionNotFound(var_field0);
             }
             3 => {
-                let mut var_labels = <Vec<String>>::sse_decode(deserializer);
-                let mut var_rows =
-                    <Vec<Vec<crate::api::value::DartValue>>>::sse_decode(deserializer);
-                return crate::api::payload::DartPayload::Select {
-                    labels: var_labels,
-                    rows: var_rows,
-                };
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::AlterError::TableNotFound(var_field0);
             }
             4 => {
-                let mut var_field0 = <Vec<
-                    std::collections::HashMap<String, crate::api::value::DartValue>,
-                >>::sse_decode(deserializer);
-                return crate::api::payload::DartPayload::SelectMap(var_field0);
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::AlterError::CtasSourceTableNotFound(var_field0);
             }
             5 => {
-                let mut var_field0 = <usize>::sse_decode(deserializer);
-                return crate::api::payload::DartPayload::Delete(var_field0);
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                let mut var_field1 = <DataType>::sse_decode(deserializer);
+                return crate::api::error::AlterError::UnsupportedDataTypeForUniqueColumn(
+                    var_field0, var_field1,
+                );
             }
             6 => {
-                let mut var_field0 = <usize>::sse_decode(deserializer);
-                return crate::api::payload::DartPayload::Update(var_field0);
+                let mut var_field0 = <Expr>::sse_decode(deserializer);
+                return crate::api::error::AlterError::UnsupportedIndexExpr(var_field0);
             }
             7 => {
-                return crate::api::payload::DartPayload::DropTable;
+                return crate::api::error::AlterError::UnsupportedUnnamedArg;
             }
             8 => {
-                return crate::api::payload::DartPayload::DropFunction;
+                let mut var_field0 = <Expr>::sse_decode(deserializer);
+                return crate::api::error::AlterError::IdentifierNotFound(var_field0);
             }
             9 => {
-                return crate::api::payload::DartPayload::AlterTable;
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::AlterError::DuplicateColumnName(var_field0);
             }
             10 => {
-                return crate::api::payload::DartPayload::CreateIndex;
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::AlterError::DuplicateArgName(var_field0);
             }
             11 => {
-                return crate::api::payload::DartPayload::DropIndex;
-            }
-            12 => {
-                return crate::api::payload::DartPayload::StartTransaction;
-            }
-            13 => {
-                return crate::api::payload::DartPayload::Commit;
-            }
-            14 => {
-                return crate::api::payload::DartPayload::Rollback;
-            }
-            15 => {
-                let mut var_field0 = <PayloadVariable>::sse_decode(deserializer);
-                return crate::api::payload::DartPayload::ShowVariable(var_field0);
+                return crate::api::error::AlterError::NonDefaultArgumentFollowsDefaultArgument;
             }
             _ => {
                 unimplemented!("");
@@ -461,114 +1462,464 @@ impl SseDecode for crate::api::payload::DartPayload {
     }
 }
 
-impl SseDecode for crate::api::value::DartValue {
+impl SseDecode for crate::api::error::AlterTableError {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut tag_ = <i32>::sse_decode(deserializer);
         match tag_ {
             0 => {
-                let mut var_field0 = <bool>::sse_decode(deserializer);
-                return crate::api::value::DartValue::Bool(var_field0);
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::AlterTableError::TableNotFound(var_field0);
             }
             1 => {
-                let mut var_field0 = <i8>::sse_decode(deserializer);
-                return crate::api::value::DartValue::I8(var_field0);
+                return crate::api::error::AlterTableError::RenamingColumnNotFound;
             }
             2 => {
-                let mut var_field0 = <i16>::sse_decode(deserializer);
-                return crate::api::value::DartValue::I16(var_field0);
+                let mut var_field0 = <ColumnDef>::sse_decode(deserializer);
+                return crate::api::error::AlterTableError::DefaultValueRequired(var_field0);
             }
             3 => {
-                let mut var_field0 = <i32>::sse_decode(deserializer);
-                return crate::api::value::DartValue::I32(var_field0);
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::AlterTableError::AlreadyExistingColumn(var_field0);
             }
             4 => {
-                let mut var_field0 = <i64>::sse_decode(deserializer);
-                return crate::api::value::DartValue::I64(var_field0);
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::AlterTableError::DroppingColumnNotFound(var_field0);
             }
             5 => {
-                let mut var_field0 = <i128>::sse_decode(deserializer);
-                return crate::api::value::DartValue::I128(var_field0);
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::AlterTableError::SchemalessTableFound(var_field0);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseDecode for crate::api::error::AstBuilderError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::AstBuilderError::FailedToParseNumeric(var_field0);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseDecode for crate::api::ast::BinaryOperator {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::ast::BinaryOperator::Plus,
+            1 => crate::api::ast::BinaryOperator::Minus,
+            2 => crate::api::ast::BinaryOperator::Multiply,
+            3 => crate::api::ast::BinaryOperator::Divide,
+            4 => crate::api::ast::BinaryOperator::Modulo,
+            5 => crate::api::ast::BinaryOperator::StringConcat,
+            6 => crate::api::ast::BinaryOperator::Gt,
+            7 => crate::api::ast::BinaryOperator::Lt,
+            8 => crate::api::ast::BinaryOperator::GtEq,
+            9 => crate::api::ast::BinaryOperator::LtEq,
+            10 => crate::api::ast::BinaryOperator::Eq,
+            11 => crate::api::ast::BinaryOperator::NotEq,
+            12 => crate::api::ast::BinaryOperator::And,
+            13 => crate::api::ast::BinaryOperator::Or,
+            14 => crate::api::ast::BinaryOperator::Xor,
+            15 => crate::api::ast::BinaryOperator::BitwiseAnd,
+            16 => crate::api::ast::BinaryOperator::BitwiseShiftLeft,
+            17 => crate::api::ast::BinaryOperator::BitwiseShiftRight,
+            _ => unreachable!("Invalid variant for BinaryOperator: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for bool {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_u8().unwrap() != 0
+    }
+}
+
+impl SseDecode for crate::api::error::ConvertError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_value = <crate::api::value::Value>::sse_decode(deserializer);
+        let mut var_dataType = <DataType>::sse_decode(deserializer);
+        return crate::api::error::ConvertError {
+            value: var_value,
+            data_type: var_dataType,
+        };
+    }
+}
+
+impl SseDecode for crate::api::ast::DateTimeField {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::ast::DateTimeField::Year,
+            1 => crate::api::ast::DateTimeField::Month,
+            2 => crate::api::ast::DateTimeField::Day,
+            3 => crate::api::ast::DateTimeField::Hour,
+            4 => crate::api::ast::DateTimeField::Minute,
+            5 => crate::api::ast::DateTimeField::Second,
+            _ => unreachable!("Invalid variant for DateTimeField: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for crate::api::error::Error {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::Error::StorageMsg(var_field0);
+            }
+            1 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::Error::Parser(var_field0);
+            }
+            2 => {
+                let mut var_field0 = <crate::api::error::TranslateError>::sse_decode(deserializer);
+                return crate::api::error::Error::Translate(var_field0);
+            }
+            3 => {
+                let mut var_field0 = <crate::api::error::AstBuilderError>::sse_decode(deserializer);
+                return crate::api::error::Error::AstBuilder(var_field0);
+            }
+            4 => {
+                let mut var_field0 = <crate::api::error::AlterTableError>::sse_decode(deserializer);
+                return crate::api::error::Error::AlterTable(var_field0);
+            }
+            5 => {
+                let mut var_field0 = <crate::api::error::IndexError>::sse_decode(deserializer);
+                return crate::api::error::Error::Index(var_field0);
             }
             6 => {
-                let mut var_field0 = <u8>::sse_decode(deserializer);
-                return crate::api::value::DartValue::U8(var_field0);
+                let mut var_field0 = <crate::api::error::ExecuteError>::sse_decode(deserializer);
+                return crate::api::error::Error::Execute(var_field0);
             }
             7 => {
-                let mut var_field0 = <u16>::sse_decode(deserializer);
-                return crate::api::value::DartValue::U16(var_field0);
+                let mut var_field0 = <crate::api::error::AlterError>::sse_decode(deserializer);
+                return crate::api::error::Error::Alter(var_field0);
             }
             8 => {
-                let mut var_field0 = <u32>::sse_decode(deserializer);
-                return crate::api::value::DartValue::U32(var_field0);
+                let mut var_field0 = <crate::api::error::FetchError>::sse_decode(deserializer);
+                return crate::api::error::Error::Fetch(var_field0);
             }
             9 => {
-                let mut var_field0 = <u64>::sse_decode(deserializer);
-                return crate::api::value::DartValue::U64(var_field0);
+                let mut var_field0 = <crate::api::error::SelectError>::sse_decode(deserializer);
+                return crate::api::error::Error::Select(var_field0);
             }
             10 => {
-                let mut var_field0 = <u128>::sse_decode(deserializer);
-                return crate::api::value::DartValue::U128(var_field0);
+                let mut var_field0 = <crate::api::error::EvaluateError>::sse_decode(deserializer);
+                return crate::api::error::Error::Evaluate(var_field0);
             }
             11 => {
-                let mut var_field0 = <f32>::sse_decode(deserializer);
-                return crate::api::value::DartValue::F32(var_field0);
+                let mut var_field0 = <crate::api::error::AggregateError>::sse_decode(deserializer);
+                return crate::api::error::Error::Aggregate(var_field0);
             }
             12 => {
-                let mut var_field0 = <f64>::sse_decode(deserializer);
-                return crate::api::value::DartValue::F64(var_field0);
+                let mut var_field0 = <crate::api::error::SortError>::sse_decode(deserializer);
+                return crate::api::error::Error::Sort(var_field0);
             }
             13 => {
-                let mut var_field0 = <Decimal>::sse_decode(deserializer);
-                return crate::api::value::DartValue::Decimal(var_field0);
+                let mut var_field0 = <crate::api::error::InsertError>::sse_decode(deserializer);
+                return crate::api::error::Error::Insert(var_field0);
             }
             14 => {
-                let mut var_field0 = <String>::sse_decode(deserializer);
-                return crate::api::value::DartValue::Str(var_field0);
+                let mut var_field0 = <crate::api::error::UpdateError>::sse_decode(deserializer);
+                return crate::api::error::Error::Update(var_field0);
             }
             15 => {
-                let mut var_field0 = <Vec<u8>>::sse_decode(deserializer);
-                return crate::api::value::DartValue::Bytea(var_field0);
+                let mut var_field0 = <crate::api::error::TableError>::sse_decode(deserializer);
+                return crate::api::error::Error::Table(var_field0);
             }
             16 => {
-                let mut var_field0 = <IpAddr>::sse_decode(deserializer);
-                return crate::api::value::DartValue::Inet(var_field0);
+                let mut var_field0 = <crate::api::error::ValidateError>::sse_decode(deserializer);
+                return crate::api::error::Error::Validate(var_field0);
             }
             17 => {
-                let mut var_field0 = <NaiveDate>::sse_decode(deserializer);
-                return crate::api::value::DartValue::Date(var_field0);
+                let mut var_field0 = <crate::api::error::RowError>::sse_decode(deserializer);
+                return crate::api::error::Error::Row(var_field0);
             }
             18 => {
-                let mut var_field0 = <chrono::NaiveDateTime>::sse_decode(deserializer);
-                return crate::api::value::DartValue::Timestamp(var_field0);
+                let mut var_field0 = <crate::api::error::KeyError>::sse_decode(deserializer);
+                return crate::api::error::Error::Key(var_field0);
             }
             19 => {
-                let mut var_field0 = <NaiveTime>::sse_decode(deserializer);
-                return crate::api::value::DartValue::Time(var_field0);
+                let mut var_field0 = <crate::api::error::ValueError>::sse_decode(deserializer);
+                return crate::api::error::Error::Value(var_field0);
             }
             20 => {
-                let mut var_field0 = <Interval>::sse_decode(deserializer);
-                return crate::api::value::DartValue::Interval(var_field0);
+                let mut var_field0 = <crate::api::error::ConvertError>::sse_decode(deserializer);
+                return crate::api::error::Error::Convert(var_field0);
             }
             21 => {
-                let mut var_field0 = <u128>::sse_decode(deserializer);
-                return crate::api::value::DartValue::Uuid(var_field0);
+                let mut var_field0 = <crate::api::error::LiteralError>::sse_decode(deserializer);
+                return crate::api::error::Error::Literal(var_field0);
             }
             22 => {
-                let mut var_field0 =
-                    <std::collections::HashMap<String, Value>>::sse_decode(deserializer);
-                return crate::api::value::DartValue::Map(var_field0);
+                let mut var_field0 = <crate::api::error::IntervalError>::sse_decode(deserializer);
+                return crate::api::error::Error::Interval(var_field0);
             }
             23 => {
-                let mut var_field0 = <Vec<Value>>::sse_decode(deserializer);
-                return crate::api::value::DartValue::List(var_field0);
+                let mut var_field0 = <crate::api::error::StringExtError>::sse_decode(deserializer);
+                return crate::api::error::Error::StringExt(var_field0);
             }
             24 => {
-                let mut var_field0 = <Point>::sse_decode(deserializer);
-                return crate::api::value::DartValue::Point(var_field0);
+                let mut var_field0 = <crate::api::error::PlanError>::sse_decode(deserializer);
+                return crate::api::error::Error::Plan(var_field0);
             }
             25 => {
-                return crate::api::value::DartValue::NullData;
+                let mut var_field0 =
+                    <crate::api::error::SchemaParseError>::sse_decode(deserializer);
+                return crate::api::error::Error::Schema(var_field0);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseDecode for crate::api::error::EvaluateError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_field0 = <ParseError>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::FormatParseError(var_field0);
+            }
+            1 => {
+                return crate::api::error::EvaluateError::LiteralAddOnNonNumeric;
+            }
+            2 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::FunctionRequiresStringValue(var_field0);
+            }
+            3 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::FunctionRequiresIntegerValue(var_field0);
+            }
+            4 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::FunctionRequiresFloatOrIntegerValue(
+                    var_field0,
+                );
+            }
+            5 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::FunctionRequiresUSizeValue(var_field0);
+            }
+            6 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::FunctionRequiresFloatValue(var_field0);
+            }
+            7 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::ExtractFormatNotMatched(var_field0);
+            }
+            8 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::FunctionRequiresMapValue(var_field0);
+            }
+            9 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::FunctionRequiresPointValue(var_field0);
+            }
+            10 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::FunctionRequiresDateOrDateTimeValue(
+                    var_field0,
+                );
+            }
+            11 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::FunctionRequiresStrOrListOrMapValue(
+                    var_field0,
+                );
+            }
+            12 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::ValueNotFound(var_field0);
+            }
+            13 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::BooleanTypeRequired(var_field0);
+            }
+            14 => {
+                return crate::api::error::EvaluateError::MapOrListTypeRequired;
+            }
+            15 => {
+                return crate::api::error::EvaluateError::MapTypeRequired;
+            }
+            16 => {
+                return crate::api::error::EvaluateError::ListTypeRequired;
+            }
+            17 => {
+                return crate::api::error::EvaluateError::InvalidSortType;
+            }
+            18 => {
+                return crate::api::error::EvaluateError::InvalidSortOrder;
+            }
+            19 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::MapOrStringValueRequired(var_field0);
+            }
+            20 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::TextLiteralRequired(var_field0);
+            }
+            21 => {
+                let mut var_field0 = <Expr>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::UnsupportedStatelessExpr(var_field0);
+            }
+            22 => {
+                let mut var_field0 = <Expr>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::ContextRequiredForIdentEvaluation(
+                    var_field0,
+                );
+            }
+            23 => {
+                let mut var_field0 = <Aggregate>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::UnreachableEmptyAggregateValue(
+                    var_field0,
+                );
+            }
+            24 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                let mut var_field1 = <String>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::IncompatibleBitOperation(
+                    var_field0, var_field1,
+                );
+            }
+            25 => {
+                return crate::api::error::EvaluateError::DivisorShouldNotBeZero;
+            }
+            26 => {
+                return crate::api::error::EvaluateError::NegativeSubstrLenNotAllowed;
+            }
+            27 => {
+                return crate::api::error::EvaluateError::MoreThanOneRowReturned;
+            }
+            28 => {
+                return crate::api::error::EvaluateError::MoreThanOneColumnReturned;
+            }
+            29 => {
+                return crate::api::error::EvaluateError::SchemalessProjectionForInSubQuery;
+            }
+            30 => {
+                return crate::api::error::EvaluateError::SchemalessProjectionForSubQuery;
+            }
+            31 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::UnsupportedExprForFormatFunction(
+                    var_field0,
+                );
+            }
+            32 => {
+                return crate::api::error::EvaluateError::AsciiFunctionRequiresSingleCharacterValue;
+            }
+            33 => {
+                return crate::api::error::EvaluateError::NonAsciiCharacterNotAllowed;
+            }
+            34 => {
+                return crate::api::error::EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255;
+            }
+            35 => {
+                let mut var_left = <String>::sse_decode(deserializer);
+                let mut var_op = <crate::api::ast::BinaryOperator>::sse_decode(deserializer);
+                let mut var_right = <String>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::UnsupportedBinaryOperation {
+                    left: var_left,
+                    op: var_op,
+                    right: var_right,
+                };
+            }
+            36 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::UnsupportedUnaryPlus(var_field0);
+            }
+            37 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::UnsupportedUnaryMinus(var_field0);
+            }
+            38 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::UnsupportedUnaryFactorial(var_field0);
+            }
+            39 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::IncompatibleUnaryBitwiseNotOperation(
+                    var_field0,
+                );
+            }
+            40 => {
+                return crate::api::error::EvaluateError::UnsupportedCustomFunction;
+            }
+            41 => {
+                let mut var_functionName = <String>::sse_decode(deserializer);
+                let mut var_requiredMinimum = <usize>::sse_decode(deserializer);
+                let mut var_found = <usize>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::FunctionRequiresMoreArguments {
+                    function_name: var_functionName,
+                    required_minimum: var_requiredMinimum,
+                    found: var_found,
+                };
+            }
+            42 => {
+                let mut var_name = <String>::sse_decode(deserializer);
+                let mut var_expectedMinimum = <usize>::sse_decode(deserializer);
+                let mut var_expectedMaximum = <usize>::sse_decode(deserializer);
+                let mut var_found = <usize>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::FunctionArgsLengthNotWithinRange {
+                    name: var_name,
+                    expected_minimum: var_expectedMinimum,
+                    expected_maximum: var_expectedMaximum,
+                    found: var_found,
+                };
+            }
+            43 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::UnsupportedFunction(var_field0);
+            }
+            44 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::NonComparableArgumentError(var_field0);
+            }
+            45 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::EvaluateError::FunctionRequiresAtLeastOneArgument(
+                    var_field0,
+                );
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseDecode for crate::api::error::ExecuteError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ExecuteError::TableNotFound(var_field0);
             }
             _ => {
                 unimplemented!("");
@@ -588,6 +1939,38 @@ impl SseDecode for f64 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         deserializer.cursor.read_f64::<NativeEndian>().unwrap()
+    }
+}
+
+impl SseDecode for crate::api::error::FetchError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::FetchError::TableNotFound(var_field0);
+            }
+            1 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::FetchError::TableAliasNotFound(var_field0);
+            }
+            2 => {
+                let mut var_field0 = <i64>::sse_decode(deserializer);
+                return crate::api::error::FetchError::SeriesSizeWrong(var_field0);
+            }
+            3 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                let mut var_field1 = <usize>::sse_decode(deserializer);
+                let mut var_field2 = <usize>::sse_decode(deserializer);
+                return crate::api::error::FetchError::TooManyColumnAliases(
+                    var_field0, var_field1, var_field2,
+                );
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
     }
 }
 
@@ -619,28 +2002,298 @@ impl SseDecode for i8 {
     }
 }
 
-impl SseDecode for Vec<Value> {
+impl SseDecode for crate::api::error::IndexError {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut len_ = <i32>::sse_decode(deserializer);
-        let mut ans_ = vec![];
-        for idx_ in 0..len_ {
-            ans_.push(<Value>::sse_decode(deserializer));
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::IndexError::TableNotFound(var_field0);
+            }
+            1 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::IndexError::IndexNameAlreadyExists(var_field0);
+            }
+            2 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::IndexError::IndexNameDoesNotExist(var_field0);
+            }
+            3 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::IndexError::ConflictTableNotFound(var_field0);
+            }
+            4 => {
+                return crate::api::error::IndexError::ConflictOnEmptyIndexValueUpdate;
+            }
+            5 => {
+                return crate::api::error::IndexError::ConflictOnEmptyIndexValueDelete;
+            }
+            6 => {
+                return crate::api::error::IndexError::ConflictOnEmptyIndexValueScan;
+            }
+            7 => {
+                return crate::api::error::IndexError::ConflictOnIndexDataDeleteSync;
+            }
+            _ => {
+                unimplemented!("");
+            }
         }
-        return ans_;
     }
 }
 
-impl SseDecode for Vec<std::collections::HashMap<String, crate::api::value::DartValue>> {
+impl SseDecode for crate::api::error::InsertError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::InsertError::TableNotFound(var_field0);
+            }
+            1 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::InsertError::LackOfRequiredColumn(var_field0);
+            }
+            2 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::InsertError::WrongColumnName(var_field0);
+            }
+            3 => {
+                return crate::api::error::InsertError::ColumnAndValuesNotMatched;
+            }
+            4 => {
+                return crate::api::error::InsertError::TooManyValues;
+            }
+            5 => {
+                return crate::api::error::InsertError::OnlySingleValueAcceptedForSchemalessRow;
+            }
+            6 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::InsertError::MapTypeValueRequired(var_field0);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseDecode for crate::api::error::IntervalError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                let mut var_field1 = <String>::sse_decode(deserializer);
+                return crate::api::error::IntervalError::UnsupportedRange(var_field0, var_field1);
+            }
+            1 => {
+                return crate::api::error::IntervalError::AddBetweenYearToMonthAndHourToSecond;
+            }
+            2 => {
+                return crate::api::error::IntervalError::SubtractBetweenYearToMonthAndHourToSecond;
+            }
+            3 => {
+                let mut var_time = <NaiveTime>::sse_decode(deserializer);
+                let mut var_interval = <Interval>::sse_decode(deserializer);
+                return crate::api::error::IntervalError::AddYearOrMonthToTime {
+                    time: var_time,
+                    interval: var_interval,
+                };
+            }
+            4 => {
+                let mut var_time = <NaiveTime>::sse_decode(deserializer);
+                let mut var_interval = <Interval>::sse_decode(deserializer);
+                return crate::api::error::IntervalError::SubtractYearOrMonthToTime {
+                    time: var_time,
+                    interval: var_interval,
+                };
+            }
+            5 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::IntervalError::FailedToParseInteger(var_field0);
+            }
+            6 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::IntervalError::FailedToParseDecimal(var_field0);
+            }
+            7 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::IntervalError::FailedToParseTime(var_field0);
+            }
+            8 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::IntervalError::FailedToParseYearToMonth(var_field0);
+            }
+            9 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::IntervalError::FailedToParseDayToHour(var_field0);
+            }
+            10 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::IntervalError::FailedToParseDayToMinute(var_field0);
+            }
+            11 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::IntervalError::FailedToParseDayToSecond(var_field0);
+            }
+            12 => {
+                let mut var_year = <i32>::sse_decode(deserializer);
+                let mut var_month = <i32>::sse_decode(deserializer);
+                return crate::api::error::IntervalError::DateOverflow {
+                    year: var_year,
+                    month: var_month,
+                };
+            }
+            13 => {
+                return crate::api::error::IntervalError::FailedToExtract;
+            }
+            14 => {
+                let mut var_expr = <Expr>::sse_decode(deserializer);
+                return crate::api::error::IntervalError::ParseSupportedOnlyLiteral {
+                    expr: var_expr,
+                };
+            }
+            15 => {
+                return crate::api::error::IntervalError::Unreachable;
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseDecode for crate::api::key::Key {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_field0 = <i8>::sse_decode(deserializer);
+                return crate::api::key::Key::I8(var_field0);
+            }
+            1 => {
+                let mut var_field0 = <i16>::sse_decode(deserializer);
+                return crate::api::key::Key::I16(var_field0);
+            }
+            2 => {
+                let mut var_field0 = <i32>::sse_decode(deserializer);
+                return crate::api::key::Key::I32(var_field0);
+            }
+            3 => {
+                let mut var_field0 = <i64>::sse_decode(deserializer);
+                return crate::api::key::Key::I64(var_field0);
+            }
+            4 => {
+                let mut var_field0 = <i128>::sse_decode(deserializer);
+                return crate::api::key::Key::I128(var_field0);
+            }
+            5 => {
+                let mut var_field0 = <u8>::sse_decode(deserializer);
+                return crate::api::key::Key::U8(var_field0);
+            }
+            6 => {
+                let mut var_field0 = <u16>::sse_decode(deserializer);
+                return crate::api::key::Key::U16(var_field0);
+            }
+            7 => {
+                let mut var_field0 = <u32>::sse_decode(deserializer);
+                return crate::api::key::Key::U32(var_field0);
+            }
+            8 => {
+                let mut var_field0 = <u64>::sse_decode(deserializer);
+                return crate::api::key::Key::U64(var_field0);
+            }
+            9 => {
+                let mut var_field0 = <u128>::sse_decode(deserializer);
+                return crate::api::key::Key::U128(var_field0);
+            }
+            10 => {
+                let mut var_field0 = <OrderedFloat<f32>>::sse_decode(deserializer);
+                return crate::api::key::Key::F32(var_field0);
+            }
+            11 => {
+                let mut var_field0 = <OrderedFloat<f64>>::sse_decode(deserializer);
+                return crate::api::key::Key::F64(var_field0);
+            }
+            12 => {
+                let mut var_field0 = <Decimal>::sse_decode(deserializer);
+                return crate::api::key::Key::Decimal(var_field0);
+            }
+            13 => {
+                let mut var_field0 = <bool>::sse_decode(deserializer);
+                return crate::api::key::Key::Bool(var_field0);
+            }
+            14 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::key::Key::Str(var_field0);
+            }
+            15 => {
+                let mut var_field0 = <Vec<u8>>::sse_decode(deserializer);
+                return crate::api::key::Key::Bytea(var_field0);
+            }
+            16 => {
+                let mut var_field0 = <NaiveDate>::sse_decode(deserializer);
+                return crate::api::key::Key::Date(var_field0);
+            }
+            17 => {
+                let mut var_field0 = <chrono::NaiveDateTime>::sse_decode(deserializer);
+                return crate::api::key::Key::Timestamp(var_field0);
+            }
+            18 => {
+                let mut var_field0 = <NaiveTime>::sse_decode(deserializer);
+                return crate::api::key::Key::Time(var_field0);
+            }
+            19 => {
+                let mut var_field0 = <Interval>::sse_decode(deserializer);
+                return crate::api::key::Key::Interval(var_field0);
+            }
+            20 => {
+                let mut var_field0 = <u128>::sse_decode(deserializer);
+                return crate::api::key::Key::Uuid(var_field0);
+            }
+            21 => {
+                let mut var_field0 = <IpAddr>::sse_decode(deserializer);
+                return crate::api::key::Key::Inet(var_field0);
+            }
+            22 => {
+                return crate::api::key::Key::None;
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseDecode for crate::api::error::KeyError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::error::KeyError::FloatToCmpBigEndianNotSupported,
+            1 => crate::api::error::KeyError::MapTypeKeyNotSupported,
+            2 => crate::api::error::KeyError::ListTypeKeyNotSupported,
+            3 => crate::api::error::KeyError::PointTypeKeyNotSupported,
+            _ => unreachable!("Invalid variant for KeyError: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for Vec<std::collections::HashMap<String, crate::api::value::Value>> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut len_ = <i32>::sse_decode(deserializer);
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
-            ans_.push(<std::collections::HashMap<
-                String,
-                crate::api::value::DartValue,
-            >>::sse_decode(deserializer));
+            ans_.push(
+                <std::collections::HashMap<String, crate::api::value::Value>>::sse_decode(
+                    deserializer,
+                ),
+            );
         }
         return ans_;
     }
@@ -658,39 +2311,25 @@ impl SseDecode for Vec<String> {
     }
 }
 
-impl SseDecode for Vec<crate::api::payload::DartPayload> {
+impl SseDecode for Vec<Vec<crate::api::value::Value>> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut len_ = <i32>::sse_decode(deserializer);
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
-            ans_.push(<crate::api::payload::DartPayload>::sse_decode(deserializer));
+            ans_.push(<Vec<crate::api::value::Value>>::sse_decode(deserializer));
         }
         return ans_;
     }
 }
 
-impl SseDecode for Vec<crate::api::value::DartValue> {
+impl SseDecode for Vec<crate::api::payload::Payload> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut len_ = <i32>::sse_decode(deserializer);
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
-            ans_.push(<crate::api::value::DartValue>::sse_decode(deserializer));
-        }
-        return ans_;
-    }
-}
-
-impl SseDecode for Vec<Vec<crate::api::value::DartValue>> {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut len_ = <i32>::sse_decode(deserializer);
-        let mut ans_ = vec![];
-        for idx_ in 0..len_ {
-            ans_.push(<Vec<crate::api::value::DartValue>>::sse_decode(
-                deserializer,
-            ));
+            ans_.push(<crate::api::payload::Payload>::sse_decode(deserializer));
         }
         return ans_;
     }
@@ -720,29 +2359,201 @@ impl SseDecode for Vec<(String, DataType)> {
     }
 }
 
-impl SseDecode for Vec<(String, Value)> {
+impl SseDecode for Vec<(String, crate::api::value::Value)> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut len_ = <i32>::sse_decode(deserializer);
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
-            ans_.push(<(String, Value)>::sse_decode(deserializer));
+            ans_.push(<(String, crate::api::value::Value)>::sse_decode(
+                deserializer,
+            ));
         }
         return ans_;
     }
 }
 
-impl SseDecode for Vec<(String, crate::api::value::DartValue)> {
+impl SseDecode for Vec<crate::api::value::Value> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut len_ = <i32>::sse_decode(deserializer);
         let mut ans_ = vec![];
         for idx_ in 0..len_ {
-            ans_.push(<(String, crate::api::value::DartValue)>::sse_decode(
-                deserializer,
-            ));
+            ans_.push(<crate::api::value::Value>::sse_decode(deserializer));
         }
         return ans_;
+    }
+}
+
+impl SseDecode for crate::api::error::LiteralError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_left = <String>::sse_decode(deserializer);
+                let mut var_op = <crate::api::ast::BinaryOperator>::sse_decode(deserializer);
+                let mut var_right = <String>::sse_decode(deserializer);
+                return crate::api::error::LiteralError::UnsupportedBinaryOperation {
+                    left: var_left,
+                    op: var_op,
+                    right: var_right,
+                };
+            }
+            1 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::LiteralError::BitwiseNonIntegerOperand(var_field0);
+            }
+            2 => {
+                return crate::api::error::LiteralError::BitwiseNonNumberLiteral;
+            }
+            3 => {
+                return crate::api::error::LiteralError::BitwiseOperationOverflow;
+            }
+            4 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                let mut var_field1 = <String>::sse_decode(deserializer);
+                return crate::api::error::LiteralError::ImpossibleConversion(
+                    var_field0, var_field1,
+                );
+            }
+            5 => {
+                return crate::api::error::LiteralError::DivisorShouldNotBeZero;
+            }
+            6 => {
+                return crate::api::error::LiteralError::UnaryOperationOnNonNumeric;
+            }
+            7 => {
+                return crate::api::error::LiteralError::UnreachableBinaryArithmetic;
+            }
+            8 => {
+                return crate::api::error::LiteralError::UnreachableUnaryOperation;
+            }
+            9 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::LiteralError::FailedToDecodeHexString(var_field0);
+            }
+            10 => {
+                let mut var_base = <String>::sse_decode(deserializer);
+                let mut var_pattern = <String>::sse_decode(deserializer);
+                let mut var_caseSensitive = <bool>::sse_decode(deserializer);
+                return crate::api::error::LiteralError::LikeOnNonString {
+                    base: var_base,
+                    pattern: var_pattern,
+                    case_sensitive: var_caseSensitive,
+                };
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseDecode for crate::api::error::NumericBinaryOperator {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::error::NumericBinaryOperator::Add,
+            1 => crate::api::error::NumericBinaryOperator::Subtract,
+            2 => crate::api::error::NumericBinaryOperator::Multiply,
+            3 => crate::api::error::NumericBinaryOperator::Divide,
+            4 => crate::api::error::NumericBinaryOperator::Modulo,
+            5 => crate::api::error::NumericBinaryOperator::BitwiseAnd,
+            6 => crate::api::error::NumericBinaryOperator::BitwiseShiftLeft,
+            7 => crate::api::error::NumericBinaryOperator::BitwiseShiftRight,
+            _ => unreachable!("Invalid variant for NumericBinaryOperator: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for crate::api::payload::Payload {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_field0 = <Vec<(String, DataType)>>::sse_decode(deserializer);
+                return crate::api::payload::Payload::ShowColumns(var_field0);
+            }
+            1 => {
+                return crate::api::payload::Payload::Create;
+            }
+            2 => {
+                let mut var_field0 = <usize>::sse_decode(deserializer);
+                return crate::api::payload::Payload::Insert(var_field0);
+            }
+            3 => {
+                let mut var_labels = <Vec<String>>::sse_decode(deserializer);
+                let mut var_rows = <Vec<Vec<crate::api::value::Value>>>::sse_decode(deserializer);
+                return crate::api::payload::Payload::Select {
+                    labels: var_labels,
+                    rows: var_rows,
+                };
+            }
+            4 => {
+                let mut var_field0 = <Vec<
+                    std::collections::HashMap<String, crate::api::value::Value>,
+                >>::sse_decode(deserializer);
+                return crate::api::payload::Payload::SelectMap(var_field0);
+            }
+            5 => {
+                let mut var_field0 = <usize>::sse_decode(deserializer);
+                return crate::api::payload::Payload::Delete(var_field0);
+            }
+            6 => {
+                let mut var_field0 = <usize>::sse_decode(deserializer);
+                return crate::api::payload::Payload::Update(var_field0);
+            }
+            7 => {
+                return crate::api::payload::Payload::DropTable;
+            }
+            8 => {
+                return crate::api::payload::Payload::DropFunction;
+            }
+            9 => {
+                return crate::api::payload::Payload::AlterTable;
+            }
+            10 => {
+                return crate::api::payload::Payload::CreateIndex;
+            }
+            11 => {
+                return crate::api::payload::Payload::DropIndex;
+            }
+            12 => {
+                return crate::api::payload::Payload::StartTransaction;
+            }
+            13 => {
+                return crate::api::payload::Payload::Commit;
+            }
+            14 => {
+                return crate::api::payload::Payload::Rollback;
+            }
+            15 => {
+                let mut var_field0 = <PayloadVariable>::sse_decode(deserializer);
+                return crate::api::payload::Payload::ShowVariable(var_field0);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseDecode for crate::api::error::PlanError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::PlanError::ColumnReferenceAmbiguous(var_field0);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
     }
 }
 
@@ -755,21 +2566,297 @@ impl SseDecode for (String, DataType) {
     }
 }
 
-impl SseDecode for (String, Value) {
+impl SseDecode for (String, crate::api::value::Value) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_field0 = <String>::sse_decode(deserializer);
-        let mut var_field1 = <Value>::sse_decode(deserializer);
+        let mut var_field1 = <crate::api::value::Value>::sse_decode(deserializer);
         return (var_field0, var_field1);
     }
 }
 
-impl SseDecode for (String, crate::api::value::DartValue) {
+impl SseDecode for crate::api::error::RowError {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_field0 = <String>::sse_decode(deserializer);
-        let mut var_field1 = <crate::api::value::DartValue>::sse_decode(deserializer);
-        return (var_field0, var_field1);
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::error::RowError::ConflictOnUnexpectedMapRowFound,
+            1 => crate::api::error::RowError::ConflictOnUnexpectedVecRowFound,
+            _ => unreachable!("Invalid variant for RowError: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for crate::api::error::SchemaParseError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::error::SchemaParseError::CannotParseDDL,
+            _ => unreachable!("Invalid variant for SchemaParseError: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for crate::api::error::SelectError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::error::SelectError::NumberOfValuesDifferent,
+            _ => unreachable!("Invalid variant for SelectError: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for crate::api::error::SortError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_field0 = <usize>::sse_decode(deserializer);
+                return crate::api::error::SortError::ColumnIndexOutOfRange(var_field0);
+            }
+            1 => {
+                return crate::api::error::SortError::Unreachable;
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseDecode for crate::api::error::StringExtError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::error::StringExtError::UnreachablePatternParsing,
+            _ => unreachable!("Invalid variant for StringExtError: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for crate::api::error::TableError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::error::TableError::Unreachable,
+            _ => unreachable!("Invalid variant for TableError: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for crate::api::error::TranslateError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                return crate::api::error::TranslateError::TooManyTables;
+            }
+            1 => {
+                return crate::api::error::TranslateError::SelectDistinctNotSupported;
+            }
+            2 => {
+                return crate::api::error::TranslateError::CompositeIndexNotSupported;
+            }
+            3 => {
+                return crate::api::error::TranslateError::JoinOnUpdateNotSupported;
+            }
+            4 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::TranslateError::CompoundIdentOnUpdateNotSupported(
+                    var_field0,
+                );
+            }
+            5 => {
+                return crate::api::error::TranslateError::TooManyParamsInDropIndex;
+            }
+            6 => {
+                return crate::api::error::TranslateError::InvalidParamsInDropIndex;
+            }
+            7 => {
+                let mut var_name = <String>::sse_decode(deserializer);
+                let mut var_expected = <usize>::sse_decode(deserializer);
+                let mut var_found = <usize>::sse_decode(deserializer);
+                return crate::api::error::TranslateError::FunctionArgsLengthNotMatching {
+                    name: var_name,
+                    expected: var_expected,
+                    found: var_found,
+                };
+            }
+            8 => {
+                let mut var_name = <String>::sse_decode(deserializer);
+                let mut var_expectedMinimum = <usize>::sse_decode(deserializer);
+                let mut var_found = <usize>::sse_decode(deserializer);
+                return crate::api::error::TranslateError::FunctionArgsLengthNotMatchingMin {
+                    name: var_name,
+                    expected_minimum: var_expectedMinimum,
+                    found: var_found,
+                };
+            }
+            9 => {
+                let mut var_name = <String>::sse_decode(deserializer);
+                let mut var_expectedMinimum = <usize>::sse_decode(deserializer);
+                let mut var_expectedMaximum = <usize>::sse_decode(deserializer);
+                let mut var_found = <usize>::sse_decode(deserializer);
+                return crate::api::error::TranslateError::FunctionArgsLengthNotWithinRange {
+                    name: var_name,
+                    expected_minimum: var_expectedMinimum,
+                    expected_maximum: var_expectedMaximum,
+                    found: var_found,
+                };
+            }
+            10 => {
+                return crate::api::error::TranslateError::NamedFunctionArgNotSupported;
+            }
+            11 => {
+                return crate::api::error::TranslateError::UnNamedFunctionArgNotSupported;
+            }
+            12 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::TranslateError::DefaultValuesOnInsertNotSupported(
+                    var_field0,
+                );
+            }
+            13 => {
+                return crate::api::error::TranslateError::UnsupportedEmptyFunctionBody;
+            }
+            14 => {
+                return crate::api::error::TranslateError::UnsupportedUnnamedIndex;
+            }
+            15 => {
+                return crate::api::error::TranslateError::UnsupportedTrimChars;
+            }
+            16 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::TranslateError::UnsupportedCastFormat(var_field0);
+            }
+            17 => {
+                return crate::api::error::TranslateError::UnsupportedMultipleAlterTableOperations;
+            }
+            18 => {
+                return crate::api::error::TranslateError::UnreachableEmptyAlterTableOperation;
+            }
+            19 => {
+                return crate::api::error::TranslateError::UnsupportedGroupByAll;
+            }
+            20 => {
+                return crate::api::error::TranslateError::WildcardFunctionArgNotAccepted;
+            }
+            21 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::TranslateError::QualifiedWildcardInCountNotSupported(
+                    var_field0,
+                );
+            }
+            22 => {
+                return crate::api::error::TranslateError::OrderByNullsFirstOrLastNotSupported;
+            }
+            23 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::TranslateError::UnsupportedShowVariableKeyword(
+                    var_field0,
+                );
+            }
+            24 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::TranslateError::UnsupportedShowVariableStatement(
+                    var_field0,
+                );
+            }
+            25 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::TranslateError::UnsupportedStatement(var_field0);
+            }
+            26 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::TranslateError::UnsupportedExpr(var_field0);
+            }
+            27 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::TranslateError::UnsupportedDataType(var_field0);
+            }
+            28 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::TranslateError::UnsupportedDateTimeField(var_field0);
+            }
+            29 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::TranslateError::UnsupportedAstLiteral(var_field0);
+            }
+            30 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::TranslateError::UnreachableUnaryOperator(var_field0);
+            }
+            31 => {
+                return crate::api::error::TranslateError::UnreachableEmptyIdent;
+            }
+            32 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::TranslateError::UnsupportedBinaryOperator(var_field0);
+            }
+            33 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::TranslateError::UnsupportedQuerySetExpr(var_field0);
+            }
+            34 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::TranslateError::UnsupportedQueryTableFactor(var_field0);
+            }
+            35 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::TranslateError::UnsupportedJoinConstraint(var_field0);
+            }
+            36 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::TranslateError::UnsupportedJoinOperator(var_field0);
+            }
+            37 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::TranslateError::UnsupportedColumnOption(var_field0);
+            }
+            38 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::TranslateError::UnsupportedAlterTableOperation(
+                    var_field0,
+                );
+            }
+            39 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::TranslateError::UnsupportedTableFactor(var_field0);
+            }
+            40 => {
+                return crate::api::error::TranslateError::LackOfAlias;
+            }
+            41 => {
+                return crate::api::error::TranslateError::LackOfArgs;
+            }
+            42 => {
+                return crate::api::error::TranslateError::UnreachableEmptyObject;
+            }
+            43 => {
+                return crate::api::error::TranslateError::UnreachableEmptyTable;
+            }
+            44 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::TranslateError::CompoundObjectNotSupported(var_field0);
+            }
+            45 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::TranslateError::ReservedIndexName(var_field0);
+            }
+            46 => {
+                return crate::api::error::TranslateError::CannotDropPrimary;
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
     }
 }
 
@@ -806,10 +2893,518 @@ impl SseDecode for () {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {}
 }
 
+impl SseDecode for crate::api::error::UpdateError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::UpdateError::ColumnNotFound(var_field0);
+            }
+            1 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::UpdateError::UpdateOnPrimaryKeyNotSupported(var_field0);
+            }
+            2 => {
+                return crate::api::error::UpdateError::ConflictOnSchema;
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
 impl SseDecode for usize {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         deserializer.cursor.read_u64::<NativeEndian>().unwrap() as _
+    }
+}
+
+impl SseDecode for crate::api::error::ValidateError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_field0 = <usize>::sse_decode(deserializer);
+                return crate::api::error::ValidateError::ConflictOnStorageColumnIndex(var_field0);
+            }
+            1 => {
+                return crate::api::error::ValidateError::ConflictOnUnexpectedSchemalessRowFound;
+            }
+            2 => {
+                let mut var_field0 = <crate::api::value::Value>::sse_decode(deserializer);
+                let mut var_field1 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValidateError::DuplicateEntryOnUniqueField(
+                    var_field0, var_field1,
+                );
+            }
+            3 => {
+                let mut var_field0 = <crate::api::key::Key>::sse_decode(deserializer);
+                return crate::api::error::ValidateError::DuplicateEntryOnPrimaryKeyField(
+                    var_field0,
+                );
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseDecode for crate::api::value::Value {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_field0 = <bool>::sse_decode(deserializer);
+                return crate::api::value::Value::Bool(var_field0);
+            }
+            1 => {
+                let mut var_field0 = <i8>::sse_decode(deserializer);
+                return crate::api::value::Value::I8(var_field0);
+            }
+            2 => {
+                let mut var_field0 = <i16>::sse_decode(deserializer);
+                return crate::api::value::Value::I16(var_field0);
+            }
+            3 => {
+                let mut var_field0 = <i32>::sse_decode(deserializer);
+                return crate::api::value::Value::I32(var_field0);
+            }
+            4 => {
+                let mut var_field0 = <i64>::sse_decode(deserializer);
+                return crate::api::value::Value::I64(var_field0);
+            }
+            5 => {
+                let mut var_field0 = <i128>::sse_decode(deserializer);
+                return crate::api::value::Value::I128(var_field0);
+            }
+            6 => {
+                let mut var_field0 = <u8>::sse_decode(deserializer);
+                return crate::api::value::Value::U8(var_field0);
+            }
+            7 => {
+                let mut var_field0 = <u16>::sse_decode(deserializer);
+                return crate::api::value::Value::U16(var_field0);
+            }
+            8 => {
+                let mut var_field0 = <u32>::sse_decode(deserializer);
+                return crate::api::value::Value::U32(var_field0);
+            }
+            9 => {
+                let mut var_field0 = <u64>::sse_decode(deserializer);
+                return crate::api::value::Value::U64(var_field0);
+            }
+            10 => {
+                let mut var_field0 = <u128>::sse_decode(deserializer);
+                return crate::api::value::Value::U128(var_field0);
+            }
+            11 => {
+                let mut var_field0 = <f32>::sse_decode(deserializer);
+                return crate::api::value::Value::F32(var_field0);
+            }
+            12 => {
+                let mut var_field0 = <f64>::sse_decode(deserializer);
+                return crate::api::value::Value::F64(var_field0);
+            }
+            13 => {
+                let mut var_field0 = <Decimal>::sse_decode(deserializer);
+                return crate::api::value::Value::Decimal(var_field0);
+            }
+            14 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::value::Value::Str(var_field0);
+            }
+            15 => {
+                let mut var_field0 = <Vec<u8>>::sse_decode(deserializer);
+                return crate::api::value::Value::Bytea(var_field0);
+            }
+            16 => {
+                let mut var_field0 = <IpAddr>::sse_decode(deserializer);
+                return crate::api::value::Value::Inet(var_field0);
+            }
+            17 => {
+                let mut var_field0 = <NaiveDate>::sse_decode(deserializer);
+                return crate::api::value::Value::Date(var_field0);
+            }
+            18 => {
+                let mut var_field0 = <chrono::NaiveDateTime>::sse_decode(deserializer);
+                return crate::api::value::Value::Timestamp(var_field0);
+            }
+            19 => {
+                let mut var_field0 = <NaiveTime>::sse_decode(deserializer);
+                return crate::api::value::Value::Time(var_field0);
+            }
+            20 => {
+                let mut var_field0 = <Interval>::sse_decode(deserializer);
+                return crate::api::value::Value::Interval(var_field0);
+            }
+            21 => {
+                let mut var_field0 = <u128>::sse_decode(deserializer);
+                return crate::api::value::Value::Uuid(var_field0);
+            }
+            22 => {
+                let mut var_field0 =
+                    <std::collections::HashMap<String, crate::api::value::Value>>::sse_decode(
+                        deserializer,
+                    );
+                return crate::api::value::Value::Map(var_field0);
+            }
+            23 => {
+                let mut var_field0 = <Vec<crate::api::value::Value>>::sse_decode(deserializer);
+                return crate::api::value::Value::List(var_field0);
+            }
+            24 => {
+                let mut var_field0 = <Point>::sse_decode(deserializer);
+                return crate::api::value::Value::Point(var_field0);
+            }
+            25 => {
+                return crate::api::value::Value::Null;
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseDecode for crate::api::error::ValueError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_dataType = <DataType>::sse_decode(deserializer);
+                let mut var_literal = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::IncompatibleLiteralForDataType {
+                    data_type: var_dataType,
+                    literal: var_literal,
+                };
+            }
+            1 => {
+                let mut var_dataType = <DataType>::sse_decode(deserializer);
+                let mut var_value = <crate::api::value::Value>::sse_decode(deserializer);
+                return crate::api::error::ValueError::IncompatibleDataType {
+                    data_type: var_dataType,
+                    value: var_value,
+                };
+            }
+            2 => {
+                return crate::api::error::ValueError::NullValueOnNotNullField;
+            }
+            3 => {
+                return crate::api::error::ValueError::FailedToParseNumber;
+            }
+            4 => {
+                let mut var_field0 = <f64>::sse_decode(deserializer);
+                return crate::api::error::ValueError::FloatToDecimalConversionFailure(var_field0);
+            }
+            5 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::FailedToParseDate(var_field0);
+            }
+            6 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::FailedToParseTimestamp(var_field0);
+            }
+            7 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::FailedToParseTime(var_field0);
+            }
+            8 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::FailedToParseUUID(var_field0);
+            }
+            9 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::FailedToParsePoint(var_field0);
+            }
+            10 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::FailedToParseDecimal(var_field0);
+            }
+            11 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::FailedToParseHexString(var_field0);
+            }
+            12 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::FailedToParseInetString(var_field0);
+            }
+            13 => {
+                let mut var_lhs = <crate::api::value::Value>::sse_decode(deserializer);
+                let mut var_rhs = <crate::api::value::Value>::sse_decode(deserializer);
+                let mut var_operator_ =
+                    <crate::api::error::NumericBinaryOperator>::sse_decode(deserializer);
+                return crate::api::error::ValueError::NonNumericMathOperation {
+                    lhs: var_lhs,
+                    rhs: var_rhs,
+                    operator: var_operator_,
+                };
+            }
+            14 => {
+                return crate::api::error::ValueError::DivisorShouldNotBeZero;
+            }
+            15 => {
+                return crate::api::error::ValueError::UnaryPlusOnNonNumeric;
+            }
+            16 => {
+                return crate::api::error::ValueError::UnaryMinusOnNonNumeric;
+            }
+            17 => {
+                return crate::api::error::ValueError::FactorialOnNonNumeric;
+            }
+            18 => {
+                return crate::api::error::ValueError::FactorialOnNonInteger;
+            }
+            19 => {
+                return crate::api::error::ValueError::FactorialOnNegativeNumeric;
+            }
+            20 => {
+                return crate::api::error::ValueError::FactorialOverflow;
+            }
+            21 => {
+                let mut var_field0 = <i64>::sse_decode(deserializer);
+                return crate::api::error::ValueError::GcdLcmOverflow(var_field0);
+            }
+            22 => {
+                return crate::api::error::ValueError::LcmResultOutOfRange;
+            }
+            23 => {
+                return crate::api::error::ValueError::UnaryBitwiseNotOnNonNumeric;
+            }
+            24 => {
+                return crate::api::error::ValueError::UnaryBitwiseNotOnNonInteger;
+            }
+            25 => {
+                return crate::api::error::ValueError::UnreachableNumberParsing;
+            }
+            26 => {
+                let mut var_value = <crate::api::value::Value>::sse_decode(deserializer);
+                let mut var_dataType = <DataType>::sse_decode(deserializer);
+                return crate::api::error::ValueError::UnimplementedCast {
+                    value: var_value,
+                    data_type: var_dataType,
+                };
+            }
+            27 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::CastFromHexToByteaFailed(var_field0);
+            }
+            28 => {
+                return crate::api::error::ValueError::EmptyArgNotAllowedInConcat;
+            }
+            29 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::LiteralCastFromTextToIntegerFailed(
+                    var_field0,
+                );
+            }
+            30 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::LiteralCastFromTextToUnsignedInt8Failed(
+                    var_field0,
+                );
+            }
+            31 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::LiteralCastFromTextToUint16Failed(
+                    var_field0,
+                );
+            }
+            32 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::LiteralCastFromTextToUint32Failed(
+                    var_field0,
+                );
+            }
+            33 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::LiteralCastFromTextToUint64Failed(
+                    var_field0,
+                );
+            }
+            34 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::LiteralCastFromTextToUint128Failed(
+                    var_field0,
+                );
+            }
+            35 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::LiteralCastFromTextToFloatFailed(var_field0);
+            }
+            36 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::LiteralCastFromTextToDecimalFailed(
+                    var_field0,
+                );
+            }
+            37 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::LiteralCastToBooleanFailed(var_field0);
+            }
+            38 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::LiteralCastToDateFailed(var_field0);
+            }
+            39 => {
+                let mut var_field0 = <DataType>::sse_decode(deserializer);
+                let mut var_field1 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::LiteralCastToDataTypeFailed(
+                    var_field0, var_field1,
+                );
+            }
+            40 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::LiteralCastToInt8Failed(var_field0);
+            }
+            41 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::LiteralCastToUnsignedInt8Failed(var_field0);
+            }
+            42 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::LiteralCastToUint16Failed(var_field0);
+            }
+            43 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::LiteralCastToUint32Failed(var_field0);
+            }
+            44 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::LiteralCastToUint64Failed(var_field0);
+            }
+            45 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::LiteralCastToUint128Failed(var_field0);
+            }
+            46 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::LiteralCastToTimeFailed(var_field0);
+            }
+            47 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::LiteralCastToTimestampFailed(var_field0);
+            }
+            48 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::UnreachableLiteralCastFromNumberToInteger(
+                    var_field0,
+                );
+            }
+            49 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::UnreachableLiteralCastFromNumberToFloat(
+                    var_field0,
+                );
+            }
+            50 => {
+                let mut var_dataType = <DataType>::sse_decode(deserializer);
+                let mut var_literal = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::UnimplementedLiteralCast {
+                    data_type: var_dataType,
+                    literal: var_literal,
+                };
+            }
+            51 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::UnreachableIntegerOverflow(var_field0);
+            }
+            52 => {
+                let mut var_base = <crate::api::value::Value>::sse_decode(deserializer);
+                let mut var_pattern = <crate::api::value::Value>::sse_decode(deserializer);
+                let mut var_caseSensitive = <bool>::sse_decode(deserializer);
+                return crate::api::error::ValueError::LikeOnNonString {
+                    base: var_base,
+                    pattern: var_pattern,
+                    case_sensitive: var_caseSensitive,
+                };
+            }
+            53 => {
+                let mut var_value = <crate::api::value::Value>::sse_decode(deserializer);
+                let mut var_field = <crate::api::ast::DateTimeField>::sse_decode(deserializer);
+                return crate::api::error::ValueError::ExtractFormatNotMatched {
+                    value: var_value,
+                    field: var_field,
+                };
+            }
+            54 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::BigEndianExportNotSupported(var_field0);
+            }
+            55 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::InvalidJsonString(var_field0);
+            }
+            56 => {
+                return crate::api::error::ValueError::JsonObjectTypeRequired;
+            }
+            57 => {
+                return crate::api::error::ValueError::JsonArrayTypeRequired;
+            }
+            58 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::UnreachableJsonNumberParseFailure(
+                    var_field0,
+                );
+            }
+            59 => {
+                return crate::api::error::ValueError::SelectorRequiresMapOrListTypes;
+            }
+            60 => {
+                let mut var_lhs = <crate::api::value::Value>::sse_decode(deserializer);
+                let mut var_rhs = <crate::api::value::Value>::sse_decode(deserializer);
+                let mut var_operator_ =
+                    <crate::api::error::NumericBinaryOperator>::sse_decode(deserializer);
+                return crate::api::error::ValueError::BinaryOperationOverflow {
+                    lhs: var_lhs,
+                    rhs: var_rhs,
+                    operator: var_operator_,
+                };
+            }
+            61 => {
+                let mut var_field0 = <crate::api::value::Value>::sse_decode(deserializer);
+                return crate::api::error::ValueError::SqrtOnNonNumeric(var_field0);
+            }
+            62 => {
+                let mut var_from = <crate::api::value::Value>::sse_decode(deserializer);
+                let mut var_sub = <crate::api::value::Value>::sse_decode(deserializer);
+                return crate::api::error::ValueError::NonStringParameterInPosition {
+                    from: var_from,
+                    sub: var_sub,
+                };
+            }
+            63 => {
+                let mut var_sub = <crate::api::value::Value>::sse_decode(deserializer);
+                let mut var_from = <crate::api::value::Value>::sse_decode(deserializer);
+                return crate::api::error::ValueError::NonStringParameterInFindIdx {
+                    sub: var_sub,
+                    from: var_from,
+                };
+            }
+            64 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::NonPositiveIntegerOffsetInFindIdx(
+                    var_field0,
+                );
+            }
+            65 => {
+                return crate::api::error::ValueError::ValueToExprConversionFailure;
+            }
+            66 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::error::ValueError::I64ToU32ConversionFailure(var_field0);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
     }
 }
 
@@ -843,6 +3438,36 @@ fn pde_ffi_dispatcher_sync_impl(
 // Section: rust2dart
 
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<Aggregate> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for FrbWrapper<Aggregate> {}
+
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<Aggregate>> for Aggregate {
+    fn into_into_dart(self) -> FrbWrapper<Aggregate> {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<ColumnDef> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for FrbWrapper<ColumnDef> {}
+
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<ColumnDef>> for ColumnDef {
+    fn into_into_dart(self) -> FrbWrapper<ColumnDef> {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for FrbWrapper<DataType> {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
@@ -873,16 +3498,16 @@ impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<Decimal>> for Decimal {
 }
 
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for FrbWrapper<Error> {
+impl flutter_rust_bridge::IntoDart for FrbWrapper<Expr> {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
             .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for FrbWrapper<Error> {}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for FrbWrapper<Expr> {}
 
-impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<Error>> for Error {
-    fn into_into_dart(self) -> FrbWrapper<Error> {
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<Expr>> for Expr {
+    fn into_into_dart(self) -> FrbWrapper<Expr> {
         self.into()
     }
 }
@@ -948,6 +3573,51 @@ impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<NaiveTime>> for NaiveTime {
 }
 
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<OrderedFloat<f32>> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for FrbWrapper<OrderedFloat<f32>> {}
+
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<OrderedFloat<f32>>> for OrderedFloat<f32> {
+    fn into_into_dart(self) -> FrbWrapper<OrderedFloat<f32>> {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<OrderedFloat<f64>> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for FrbWrapper<OrderedFloat<f64>> {}
+
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<OrderedFloat<f64>>> for OrderedFloat<f64> {
+    fn into_into_dart(self) -> FrbWrapper<OrderedFloat<f64>> {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<ParseError> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+            .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for FrbWrapper<ParseError> {}
+
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<ParseError>> for ParseError {
+    fn into_into_dart(self) -> FrbWrapper<ParseError> {
+        self.into()
+    }
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for FrbWrapper<PayloadVariable> {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
@@ -978,55 +3648,959 @@ impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<Point>> for Point {
 }
 
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for FrbWrapper<Value> {
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::error::AggregateError> {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
-            .into_dart()
+        match self.0 {
+            crate::api::error::AggregateError::UnreachableRcUnwrapFailure => 0.into_dart(),
+            _ => unreachable!(),
+        }
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for FrbWrapper<Value> {}
-
-impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<Value>> for Value {
-    fn into_into_dart(self) -> FrbWrapper<Value> {
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::error::AggregateError>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::error::AggregateError>>
+    for crate::api::error::AggregateError
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::error::AggregateError> {
         self.into()
     }
 }
-
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::payload::DartPayload {
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::error::AlterError> {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        match self {
-            crate::api::payload::DartPayload::ShowColumns(field0) => {
+        match self.0 {
+            crate::api::error::AlterError::TableAlreadyExists(field0) => {
                 [0.into_dart(), field0.into_into_dart().into_dart()].into_dart()
             }
-            crate::api::payload::DartPayload::Create => [1.into_dart()].into_dart(),
-            crate::api::payload::DartPayload::Insert(field0) => {
+            crate::api::error::AlterError::FunctionAlreadyExists(field0) => {
+                [1.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::AlterError::FunctionNotFound(field0) => {
                 [2.into_dart(), field0.into_into_dart().into_dart()].into_dart()
             }
-            crate::api::payload::DartPayload::Select { labels, rows } => [
+            crate::api::error::AlterError::TableNotFound(field0) => {
+                [3.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::AlterError::CtasSourceTableNotFound(field0) => {
+                [4.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::AlterError::UnsupportedDataTypeForUniqueColumn(field0, field1) => [
+                5.into_dart(),
+                field0.into_into_dart().into_dart(),
+                field1.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::AlterError::UnsupportedIndexExpr(field0) => {
+                [6.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::AlterError::UnsupportedUnnamedArg => [7.into_dart()].into_dart(),
+            crate::api::error::AlterError::IdentifierNotFound(field0) => {
+                [8.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::AlterError::DuplicateColumnName(field0) => {
+                [9.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::AlterError::DuplicateArgName(field0) => {
+                [10.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::AlterError::NonDefaultArgumentFollowsDefaultArgument => {
+                [11.into_dart()].into_dart()
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::error::AlterError>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::error::AlterError>>
+    for crate::api::error::AlterError
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::error::AlterError> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::error::AlterTableError> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            crate::api::error::AlterTableError::TableNotFound(field0) => {
+                [0.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::AlterTableError::RenamingColumnNotFound => {
+                [1.into_dart()].into_dart()
+            }
+            crate::api::error::AlterTableError::DefaultValueRequired(field0) => {
+                [2.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::AlterTableError::AlreadyExistingColumn(field0) => {
+                [3.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::AlterTableError::DroppingColumnNotFound(field0) => {
+                [4.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::AlterTableError::SchemalessTableFound(field0) => {
+                [5.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::error::AlterTableError>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::error::AlterTableError>>
+    for crate::api::error::AlterTableError
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::error::AlterTableError> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::error::AstBuilderError> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            crate::api::error::AstBuilderError::FailedToParseNumeric(field0) => {
+                [0.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::error::AstBuilderError>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::error::AstBuilderError>>
+    for crate::api::error::AstBuilderError
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::error::AstBuilderError> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::ast::BinaryOperator> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            crate::api::ast::BinaryOperator::Plus => 0.into_dart(),
+            crate::api::ast::BinaryOperator::Minus => 1.into_dart(),
+            crate::api::ast::BinaryOperator::Multiply => 2.into_dart(),
+            crate::api::ast::BinaryOperator::Divide => 3.into_dart(),
+            crate::api::ast::BinaryOperator::Modulo => 4.into_dart(),
+            crate::api::ast::BinaryOperator::StringConcat => 5.into_dart(),
+            crate::api::ast::BinaryOperator::Gt => 6.into_dart(),
+            crate::api::ast::BinaryOperator::Lt => 7.into_dart(),
+            crate::api::ast::BinaryOperator::GtEq => 8.into_dart(),
+            crate::api::ast::BinaryOperator::LtEq => 9.into_dart(),
+            crate::api::ast::BinaryOperator::Eq => 10.into_dart(),
+            crate::api::ast::BinaryOperator::NotEq => 11.into_dart(),
+            crate::api::ast::BinaryOperator::And => 12.into_dart(),
+            crate::api::ast::BinaryOperator::Or => 13.into_dart(),
+            crate::api::ast::BinaryOperator::Xor => 14.into_dart(),
+            crate::api::ast::BinaryOperator::BitwiseAnd => 15.into_dart(),
+            crate::api::ast::BinaryOperator::BitwiseShiftLeft => 16.into_dart(),
+            crate::api::ast::BinaryOperator::BitwiseShiftRight => 17.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::ast::BinaryOperator>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::ast::BinaryOperator>>
+    for crate::api::ast::BinaryOperator
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::ast::BinaryOperator> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::error::ConvertError> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.0.value.into_into_dart().into_dart(),
+            self.0.data_type.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::error::ConvertError>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::error::ConvertError>>
+    for crate::api::error::ConvertError
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::error::ConvertError> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::ast::DateTimeField> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            crate::api::ast::DateTimeField::Year => 0.into_dart(),
+            crate::api::ast::DateTimeField::Month => 1.into_dart(),
+            crate::api::ast::DateTimeField::Day => 2.into_dart(),
+            crate::api::ast::DateTimeField::Hour => 3.into_dart(),
+            crate::api::ast::DateTimeField::Minute => 4.into_dart(),
+            crate::api::ast::DateTimeField::Second => 5.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::ast::DateTimeField>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::ast::DateTimeField>>
+    for crate::api::ast::DateTimeField
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::ast::DateTimeField> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::error::Error> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            crate::api::error::Error::StorageMsg(field0) => {
+                [0.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::Error::Parser(field0) => {
+                [1.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::Error::Translate(field0) => {
+                [2.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::Error::AstBuilder(field0) => {
+                [3.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::Error::AlterTable(field0) => {
+                [4.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::Error::Index(field0) => {
+                [5.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::Error::Execute(field0) => {
+                [6.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::Error::Alter(field0) => {
+                [7.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::Error::Fetch(field0) => {
+                [8.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::Error::Select(field0) => {
+                [9.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::Error::Evaluate(field0) => {
+                [10.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::Error::Aggregate(field0) => {
+                [11.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::Error::Sort(field0) => {
+                [12.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::Error::Insert(field0) => {
+                [13.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::Error::Update(field0) => {
+                [14.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::Error::Table(field0) => {
+                [15.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::Error::Validate(field0) => {
+                [16.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::Error::Row(field0) => {
+                [17.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::Error::Key(field0) => {
+                [18.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::Error::Value(field0) => {
+                [19.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::Error::Convert(field0) => {
+                [20.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::Error::Literal(field0) => {
+                [21.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::Error::Interval(field0) => {
+                [22.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::Error::StringExt(field0) => {
+                [23.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::Error::Plan(field0) => {
+                [24.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::Error::Schema(field0) => {
+                [25.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::error::Error>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::error::Error>>
+    for crate::api::error::Error
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::error::Error> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::error::EvaluateError> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            crate::api::error::EvaluateError::FormatParseError(field0) => {
+                [0.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::LiteralAddOnNonNumeric => [1.into_dart()].into_dart(),
+            crate::api::error::EvaluateError::FunctionRequiresStringValue(field0) => {
+                [2.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::FunctionRequiresIntegerValue(field0) => {
+                [3.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::FunctionRequiresFloatOrIntegerValue(field0) => {
+                [4.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::FunctionRequiresUSizeValue(field0) => {
+                [5.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::FunctionRequiresFloatValue(field0) => {
+                [6.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::ExtractFormatNotMatched(field0) => {
+                [7.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::FunctionRequiresMapValue(field0) => {
+                [8.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::FunctionRequiresPointValue(field0) => {
+                [9.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::FunctionRequiresDateOrDateTimeValue(field0) => {
+                [10.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::FunctionRequiresStrOrListOrMapValue(field0) => {
+                [11.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::ValueNotFound(field0) => {
+                [12.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::BooleanTypeRequired(field0) => {
+                [13.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::MapOrListTypeRequired => [14.into_dart()].into_dart(),
+            crate::api::error::EvaluateError::MapTypeRequired => [15.into_dart()].into_dart(),
+            crate::api::error::EvaluateError::ListTypeRequired => [16.into_dart()].into_dart(),
+            crate::api::error::EvaluateError::InvalidSortType => [17.into_dart()].into_dart(),
+            crate::api::error::EvaluateError::InvalidSortOrder => [18.into_dart()].into_dart(),
+            crate::api::error::EvaluateError::MapOrStringValueRequired(field0) => {
+                [19.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::TextLiteralRequired(field0) => {
+                [20.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::UnsupportedStatelessExpr(field0) => {
+                [21.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::ContextRequiredForIdentEvaluation(field0) => {
+                [22.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::UnreachableEmptyAggregateValue(field0) => {
+                [23.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::IncompatibleBitOperation(field0, field1) => [
+                24.into_dart(),
+                field0.into_into_dart().into_dart(),
+                field1.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::EvaluateError::DivisorShouldNotBeZero => {
+                [25.into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::NegativeSubstrLenNotAllowed => {
+                [26.into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::MoreThanOneRowReturned => {
+                [27.into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::MoreThanOneColumnReturned => {
+                [28.into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::SchemalessProjectionForInSubQuery => {
+                [29.into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::SchemalessProjectionForSubQuery => {
+                [30.into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::UnsupportedExprForFormatFunction(field0) => {
+                [31.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::AsciiFunctionRequiresSingleCharacterValue => {
+                [32.into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::NonAsciiCharacterNotAllowed => {
+                [33.into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255 => {
+                [34.into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::UnsupportedBinaryOperation { left, op, right } => [
+                35.into_dart(),
+                left.into_into_dart().into_dart(),
+                op.into_into_dart().into_dart(),
+                right.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::EvaluateError::UnsupportedUnaryPlus(field0) => {
+                [36.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::UnsupportedUnaryMinus(field0) => {
+                [37.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::UnsupportedUnaryFactorial(field0) => {
+                [38.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::IncompatibleUnaryBitwiseNotOperation(field0) => {
+                [39.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::UnsupportedCustomFunction => {
+                [40.into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::FunctionRequiresMoreArguments {
+                function_name,
+                required_minimum,
+                found,
+            } => [
+                41.into_dart(),
+                function_name.into_into_dart().into_dart(),
+                required_minimum.into_into_dart().into_dart(),
+                found.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::EvaluateError::FunctionArgsLengthNotWithinRange {
+                name,
+                expected_minimum,
+                expected_maximum,
+                found,
+            } => [
+                42.into_dart(),
+                name.into_into_dart().into_dart(),
+                expected_minimum.into_into_dart().into_dart(),
+                expected_maximum.into_into_dart().into_dart(),
+                found.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::EvaluateError::UnsupportedFunction(field0) => {
+                [43.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::NonComparableArgumentError(field0) => {
+                [44.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::EvaluateError::FunctionRequiresAtLeastOneArgument(field0) => {
+                [45.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::error::EvaluateError>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::error::EvaluateError>>
+    for crate::api::error::EvaluateError
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::error::EvaluateError> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::error::ExecuteError> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            crate::api::error::ExecuteError::TableNotFound(field0) => {
+                [0.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::error::ExecuteError>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::error::ExecuteError>>
+    for crate::api::error::ExecuteError
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::error::ExecuteError> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::error::FetchError> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            crate::api::error::FetchError::TableNotFound(field0) => {
+                [0.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::FetchError::TableAliasNotFound(field0) => {
+                [1.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::FetchError::SeriesSizeWrong(field0) => {
+                [2.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::FetchError::TooManyColumnAliases(field0, field1, field2) => [
+                3.into_dart(),
+                field0.into_into_dart().into_dart(),
+                field1.into_into_dart().into_dart(),
+                field2.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::error::FetchError>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::error::FetchError>>
+    for crate::api::error::FetchError
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::error::FetchError> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::error::IndexError> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            crate::api::error::IndexError::TableNotFound(field0) => {
+                [0.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::IndexError::IndexNameAlreadyExists(field0) => {
+                [1.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::IndexError::IndexNameDoesNotExist(field0) => {
+                [2.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::IndexError::ConflictTableNotFound(field0) => {
+                [3.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::IndexError::ConflictOnEmptyIndexValueUpdate => {
+                [4.into_dart()].into_dart()
+            }
+            crate::api::error::IndexError::ConflictOnEmptyIndexValueDelete => {
+                [5.into_dart()].into_dart()
+            }
+            crate::api::error::IndexError::ConflictOnEmptyIndexValueScan => {
+                [6.into_dart()].into_dart()
+            }
+            crate::api::error::IndexError::ConflictOnIndexDataDeleteSync => {
+                [7.into_dart()].into_dart()
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::error::IndexError>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::error::IndexError>>
+    for crate::api::error::IndexError
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::error::IndexError> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::error::InsertError> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            crate::api::error::InsertError::TableNotFound(field0) => {
+                [0.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::InsertError::LackOfRequiredColumn(field0) => {
+                [1.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::InsertError::WrongColumnName(field0) => {
+                [2.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::InsertError::ColumnAndValuesNotMatched => {
+                [3.into_dart()].into_dart()
+            }
+            crate::api::error::InsertError::TooManyValues => [4.into_dart()].into_dart(),
+            crate::api::error::InsertError::OnlySingleValueAcceptedForSchemalessRow => {
+                [5.into_dart()].into_dart()
+            }
+            crate::api::error::InsertError::MapTypeValueRequired(field0) => {
+                [6.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::error::InsertError>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::error::InsertError>>
+    for crate::api::error::InsertError
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::error::InsertError> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::error::IntervalError> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            crate::api::error::IntervalError::UnsupportedRange(field0, field1) => [
+                0.into_dart(),
+                field0.into_into_dart().into_dart(),
+                field1.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::IntervalError::AddBetweenYearToMonthAndHourToSecond => {
+                [1.into_dart()].into_dart()
+            }
+            crate::api::error::IntervalError::SubtractBetweenYearToMonthAndHourToSecond => {
+                [2.into_dart()].into_dart()
+            }
+            crate::api::error::IntervalError::AddYearOrMonthToTime { time, interval } => [
+                3.into_dart(),
+                time.into_into_dart().into_dart(),
+                interval.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::IntervalError::SubtractYearOrMonthToTime { time, interval } => [
+                4.into_dart(),
+                time.into_into_dart().into_dart(),
+                interval.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::IntervalError::FailedToParseInteger(field0) => {
+                [5.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::IntervalError::FailedToParseDecimal(field0) => {
+                [6.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::IntervalError::FailedToParseTime(field0) => {
+                [7.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::IntervalError::FailedToParseYearToMonth(field0) => {
+                [8.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::IntervalError::FailedToParseDayToHour(field0) => {
+                [9.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::IntervalError::FailedToParseDayToMinute(field0) => {
+                [10.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::IntervalError::FailedToParseDayToSecond(field0) => {
+                [11.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::IntervalError::DateOverflow { year, month } => [
+                12.into_dart(),
+                year.into_into_dart().into_dart(),
+                month.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::IntervalError::FailedToExtract => [13.into_dart()].into_dart(),
+            crate::api::error::IntervalError::ParseSupportedOnlyLiteral { expr } => {
+                [14.into_dart(), expr.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::IntervalError::Unreachable => [15.into_dart()].into_dart(),
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::error::IntervalError>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::error::IntervalError>>
+    for crate::api::error::IntervalError
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::error::IntervalError> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::key::Key> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            crate::api::key::Key::I8(field0) => {
+                [0.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::key::Key::I16(field0) => {
+                [1.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::key::Key::I32(field0) => {
+                [2.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::key::Key::I64(field0) => {
+                [3.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::key::Key::I128(field0) => {
+                [4.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::key::Key::U8(field0) => {
+                [5.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::key::Key::U16(field0) => {
+                [6.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::key::Key::U32(field0) => {
+                [7.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::key::Key::U64(field0) => {
+                [8.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::key::Key::U128(field0) => {
+                [9.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::key::Key::F32(field0) => {
+                [10.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::key::Key::F64(field0) => {
+                [11.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::key::Key::Decimal(field0) => {
+                [12.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::key::Key::Bool(field0) => {
+                [13.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::key::Key::Str(field0) => {
+                [14.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::key::Key::Bytea(field0) => {
+                [15.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::key::Key::Date(field0) => {
+                [16.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::key::Key::Timestamp(field0) => {
+                [17.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::key::Key::Time(field0) => {
+                [18.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::key::Key::Interval(field0) => {
+                [19.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::key::Key::Uuid(field0) => {
+                [20.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::key::Key::Inet(field0) => {
+                [21.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::key::Key::None => [22.into_dart()].into_dart(),
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::key::Key>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::key::Key>> for crate::api::key::Key {
+    fn into_into_dart(self) -> FrbWrapper<crate::api::key::Key> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::error::KeyError> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            crate::api::error::KeyError::FloatToCmpBigEndianNotSupported => 0.into_dart(),
+            crate::api::error::KeyError::MapTypeKeyNotSupported => 1.into_dart(),
+            crate::api::error::KeyError::ListTypeKeyNotSupported => 2.into_dart(),
+            crate::api::error::KeyError::PointTypeKeyNotSupported => 3.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::error::KeyError>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::error::KeyError>>
+    for crate::api::error::KeyError
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::error::KeyError> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::error::LiteralError> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            crate::api::error::LiteralError::UnsupportedBinaryOperation { left, op, right } => [
+                0.into_dart(),
+                left.into_into_dart().into_dart(),
+                op.into_into_dart().into_dart(),
+                right.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::LiteralError::BitwiseNonIntegerOperand(field0) => {
+                [1.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::LiteralError::BitwiseNonNumberLiteral => [2.into_dart()].into_dart(),
+            crate::api::error::LiteralError::BitwiseOperationOverflow => {
+                [3.into_dart()].into_dart()
+            }
+            crate::api::error::LiteralError::ImpossibleConversion(field0, field1) => [
+                4.into_dart(),
+                field0.into_into_dart().into_dart(),
+                field1.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::LiteralError::DivisorShouldNotBeZero => [5.into_dart()].into_dart(),
+            crate::api::error::LiteralError::UnaryOperationOnNonNumeric => {
+                [6.into_dart()].into_dart()
+            }
+            crate::api::error::LiteralError::UnreachableBinaryArithmetic => {
+                [7.into_dart()].into_dart()
+            }
+            crate::api::error::LiteralError::UnreachableUnaryOperation => {
+                [8.into_dart()].into_dart()
+            }
+            crate::api::error::LiteralError::FailedToDecodeHexString(field0) => {
+                [9.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::LiteralError::LikeOnNonString {
+                base,
+                pattern,
+                case_sensitive,
+            } => [
+                10.into_dart(),
+                base.into_into_dart().into_dart(),
+                pattern.into_into_dart().into_dart(),
+                case_sensitive.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::error::LiteralError>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::error::LiteralError>>
+    for crate::api::error::LiteralError
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::error::LiteralError> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::error::NumericBinaryOperator> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            crate::api::error::NumericBinaryOperator::Add => 0.into_dart(),
+            crate::api::error::NumericBinaryOperator::Subtract => 1.into_dart(),
+            crate::api::error::NumericBinaryOperator::Multiply => 2.into_dart(),
+            crate::api::error::NumericBinaryOperator::Divide => 3.into_dart(),
+            crate::api::error::NumericBinaryOperator::Modulo => 4.into_dart(),
+            crate::api::error::NumericBinaryOperator::BitwiseAnd => 5.into_dart(),
+            crate::api::error::NumericBinaryOperator::BitwiseShiftLeft => 6.into_dart(),
+            crate::api::error::NumericBinaryOperator::BitwiseShiftRight => 7.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::error::NumericBinaryOperator>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::error::NumericBinaryOperator>>
+    for crate::api::error::NumericBinaryOperator
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::error::NumericBinaryOperator> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::payload::Payload> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            crate::api::payload::Payload::ShowColumns(field0) => {
+                [0.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::payload::Payload::Create => [1.into_dart()].into_dart(),
+            crate::api::payload::Payload::Insert(field0) => {
+                [2.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::payload::Payload::Select { labels, rows } => [
                 3.into_dart(),
                 labels.into_into_dart().into_dart(),
                 rows.into_into_dart().into_dart(),
             ]
             .into_dart(),
-            crate::api::payload::DartPayload::SelectMap(field0) => {
+            crate::api::payload::Payload::SelectMap(field0) => {
                 [4.into_dart(), field0.into_into_dart().into_dart()].into_dart()
             }
-            crate::api::payload::DartPayload::Delete(field0) => {
+            crate::api::payload::Payload::Delete(field0) => {
                 [5.into_dart(), field0.into_into_dart().into_dart()].into_dart()
             }
-            crate::api::payload::DartPayload::Update(field0) => {
+            crate::api::payload::Payload::Update(field0) => {
                 [6.into_dart(), field0.into_into_dart().into_dart()].into_dart()
             }
-            crate::api::payload::DartPayload::DropTable => [7.into_dart()].into_dart(),
-            crate::api::payload::DartPayload::DropFunction => [8.into_dart()].into_dart(),
-            crate::api::payload::DartPayload::AlterTable => [9.into_dart()].into_dart(),
-            crate::api::payload::DartPayload::CreateIndex => [10.into_dart()].into_dart(),
-            crate::api::payload::DartPayload::DropIndex => [11.into_dart()].into_dart(),
-            crate::api::payload::DartPayload::StartTransaction => [12.into_dart()].into_dart(),
-            crate::api::payload::DartPayload::Commit => [13.into_dart()].into_dart(),
-            crate::api::payload::DartPayload::Rollback => [14.into_dart()].into_dart(),
-            crate::api::payload::DartPayload::ShowVariable(field0) => {
+            crate::api::payload::Payload::DropTable => [7.into_dart()].into_dart(),
+            crate::api::payload::Payload::DropFunction => [8.into_dart()].into_dart(),
+            crate::api::payload::Payload::AlterTable => [9.into_dart()].into_dart(),
+            crate::api::payload::Payload::CreateIndex => [10.into_dart()].into_dart(),
+            crate::api::payload::Payload::DropIndex => [11.into_dart()].into_dart(),
+            crate::api::payload::Payload::StartTransaction => [12.into_dart()].into_dart(),
+            crate::api::payload::Payload::Commit => [13.into_dart()].into_dart(),
+            crate::api::payload::Payload::Rollback => [14.into_dart()].into_dart(),
+            crate::api::payload::Payload::ShowVariable(field0) => {
                 [15.into_dart(), field0.into_into_dart().into_dart()].into_dart()
             }
             _ => {
@@ -1036,108 +4610,758 @@ impl flutter_rust_bridge::IntoDart for crate::api::payload::DartPayload {
     }
 }
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::api::payload::DartPayload
+    for FrbWrapper<crate::api::payload::Payload>
 {
 }
-impl flutter_rust_bridge::IntoIntoDart<crate::api::payload::DartPayload>
-    for crate::api::payload::DartPayload
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::payload::Payload>>
+    for crate::api::payload::Payload
 {
-    fn into_into_dart(self) -> crate::api::payload::DartPayload {
-        self
+    fn into_into_dart(self) -> FrbWrapper<crate::api::payload::Payload> {
+        self.into()
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::value::DartValue {
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::error::PlanError> {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        match self {
-            crate::api::value::DartValue::Bool(field0) => {
+        match self.0 {
+            crate::api::error::PlanError::ColumnReferenceAmbiguous(field0) => {
                 [0.into_dart(), field0.into_into_dart().into_dart()].into_dart()
             }
-            crate::api::value::DartValue::I8(field0) => {
-                [1.into_dart(), field0.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::value::DartValue::I16(field0) => {
-                [2.into_dart(), field0.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::value::DartValue::I32(field0) => {
-                [3.into_dart(), field0.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::value::DartValue::I64(field0) => {
-                [4.into_dart(), field0.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::value::DartValue::I128(field0) => {
-                [5.into_dart(), field0.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::value::DartValue::U8(field0) => {
-                [6.into_dart(), field0.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::value::DartValue::U16(field0) => {
-                [7.into_dart(), field0.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::value::DartValue::U32(field0) => {
-                [8.into_dart(), field0.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::value::DartValue::U64(field0) => {
-                [9.into_dart(), field0.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::value::DartValue::U128(field0) => {
-                [10.into_dart(), field0.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::value::DartValue::F32(field0) => {
-                [11.into_dart(), field0.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::value::DartValue::F64(field0) => {
-                [12.into_dart(), field0.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::value::DartValue::Decimal(field0) => {
-                [13.into_dart(), field0.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::value::DartValue::Str(field0) => {
-                [14.into_dart(), field0.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::value::DartValue::Bytea(field0) => {
-                [15.into_dart(), field0.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::value::DartValue::Inet(field0) => {
-                [16.into_dart(), field0.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::value::DartValue::Date(field0) => {
-                [17.into_dart(), field0.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::value::DartValue::Timestamp(field0) => {
-                [18.into_dart(), field0.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::value::DartValue::Time(field0) => {
-                [19.into_dart(), field0.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::value::DartValue::Interval(field0) => {
-                [20.into_dart(), field0.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::value::DartValue::Uuid(field0) => {
-                [21.into_dart(), field0.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::value::DartValue::Map(field0) => {
-                [22.into_dart(), field0.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::value::DartValue::List(field0) => {
-                [23.into_dart(), field0.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::value::DartValue::Point(field0) => {
-                [24.into_dart(), field0.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::value::DartValue::NullData => [25.into_dart()].into_dart(),
             _ => {
                 unimplemented!("");
             }
         }
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::value::DartValue {}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::value::DartValue>
-    for crate::api::value::DartValue
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::error::PlanError>
 {
-    fn into_into_dart(self) -> crate::api::value::DartValue {
-        self
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::error::PlanError>>
+    for crate::api::error::PlanError
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::error::PlanError> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::error::RowError> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            crate::api::error::RowError::ConflictOnUnexpectedMapRowFound => 0.into_dart(),
+            crate::api::error::RowError::ConflictOnUnexpectedVecRowFound => 1.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::error::RowError>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::error::RowError>>
+    for crate::api::error::RowError
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::error::RowError> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::error::SchemaParseError> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            crate::api::error::SchemaParseError::CannotParseDDL => 0.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::error::SchemaParseError>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::error::SchemaParseError>>
+    for crate::api::error::SchemaParseError
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::error::SchemaParseError> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::error::SelectError> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            crate::api::error::SelectError::NumberOfValuesDifferent => 0.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::error::SelectError>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::error::SelectError>>
+    for crate::api::error::SelectError
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::error::SelectError> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::error::SortError> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            crate::api::error::SortError::ColumnIndexOutOfRange(field0) => {
+                [0.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::SortError::Unreachable => [1.into_dart()].into_dart(),
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::error::SortError>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::error::SortError>>
+    for crate::api::error::SortError
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::error::SortError> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::error::StringExtError> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            crate::api::error::StringExtError::UnreachablePatternParsing => 0.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::error::StringExtError>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::error::StringExtError>>
+    for crate::api::error::StringExtError
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::error::StringExtError> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::error::TableError> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            crate::api::error::TableError::Unreachable => 0.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::error::TableError>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::error::TableError>>
+    for crate::api::error::TableError
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::error::TableError> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::error::TranslateError> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            crate::api::error::TranslateError::TooManyTables => [0.into_dart()].into_dart(),
+            crate::api::error::TranslateError::SelectDistinctNotSupported => {
+                [1.into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::CompositeIndexNotSupported => {
+                [2.into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::JoinOnUpdateNotSupported => {
+                [3.into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::CompoundIdentOnUpdateNotSupported(field0) => {
+                [4.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::TooManyParamsInDropIndex => {
+                [5.into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::InvalidParamsInDropIndex => {
+                [6.into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::FunctionArgsLengthNotMatching {
+                name,
+                expected,
+                found,
+            } => [
+                7.into_dart(),
+                name.into_into_dart().into_dart(),
+                expected.into_into_dart().into_dart(),
+                found.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::TranslateError::FunctionArgsLengthNotMatchingMin {
+                name,
+                expected_minimum,
+                found,
+            } => [
+                8.into_dart(),
+                name.into_into_dart().into_dart(),
+                expected_minimum.into_into_dart().into_dart(),
+                found.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::TranslateError::FunctionArgsLengthNotWithinRange {
+                name,
+                expected_minimum,
+                expected_maximum,
+                found,
+            } => [
+                9.into_dart(),
+                name.into_into_dart().into_dart(),
+                expected_minimum.into_into_dart().into_dart(),
+                expected_maximum.into_into_dart().into_dart(),
+                found.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::TranslateError::NamedFunctionArgNotSupported => {
+                [10.into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::UnNamedFunctionArgNotSupported => {
+                [11.into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::DefaultValuesOnInsertNotSupported(field0) => {
+                [12.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::UnsupportedEmptyFunctionBody => {
+                [13.into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::UnsupportedUnnamedIndex => {
+                [14.into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::UnsupportedTrimChars => [15.into_dart()].into_dart(),
+            crate::api::error::TranslateError::UnsupportedCastFormat(field0) => {
+                [16.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::UnsupportedMultipleAlterTableOperations => {
+                [17.into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::UnreachableEmptyAlterTableOperation => {
+                [18.into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::UnsupportedGroupByAll => {
+                [19.into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::WildcardFunctionArgNotAccepted => {
+                [20.into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::QualifiedWildcardInCountNotSupported(field0) => {
+                [21.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::OrderByNullsFirstOrLastNotSupported => {
+                [22.into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::UnsupportedShowVariableKeyword(field0) => {
+                [23.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::UnsupportedShowVariableStatement(field0) => {
+                [24.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::UnsupportedStatement(field0) => {
+                [25.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::UnsupportedExpr(field0) => {
+                [26.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::UnsupportedDataType(field0) => {
+                [27.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::UnsupportedDateTimeField(field0) => {
+                [28.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::UnsupportedAstLiteral(field0) => {
+                [29.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::UnreachableUnaryOperator(field0) => {
+                [30.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::UnreachableEmptyIdent => {
+                [31.into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::UnsupportedBinaryOperator(field0) => {
+                [32.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::UnsupportedQuerySetExpr(field0) => {
+                [33.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::UnsupportedQueryTableFactor(field0) => {
+                [34.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::UnsupportedJoinConstraint(field0) => {
+                [35.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::UnsupportedJoinOperator(field0) => {
+                [36.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::UnsupportedColumnOption(field0) => {
+                [37.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::UnsupportedAlterTableOperation(field0) => {
+                [38.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::UnsupportedTableFactor(field0) => {
+                [39.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::LackOfAlias => [40.into_dart()].into_dart(),
+            crate::api::error::TranslateError::LackOfArgs => [41.into_dart()].into_dart(),
+            crate::api::error::TranslateError::UnreachableEmptyObject => {
+                [42.into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::UnreachableEmptyTable => {
+                [43.into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::CompoundObjectNotSupported(field0) => {
+                [44.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::ReservedIndexName(field0) => {
+                [45.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::TranslateError::CannotDropPrimary => [46.into_dart()].into_dart(),
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::error::TranslateError>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::error::TranslateError>>
+    for crate::api::error::TranslateError
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::error::TranslateError> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::error::UpdateError> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            crate::api::error::UpdateError::ColumnNotFound(field0) => {
+                [0.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::UpdateError::UpdateOnPrimaryKeyNotSupported(field0) => {
+                [1.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::UpdateError::ConflictOnSchema => [2.into_dart()].into_dart(),
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::error::UpdateError>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::error::UpdateError>>
+    for crate::api::error::UpdateError
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::error::UpdateError> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::error::ValidateError> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            crate::api::error::ValidateError::ConflictOnStorageColumnIndex(field0) => {
+                [0.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValidateError::ConflictOnUnexpectedSchemalessRowFound => {
+                [1.into_dart()].into_dart()
+            }
+            crate::api::error::ValidateError::DuplicateEntryOnUniqueField(field0, field1) => [
+                2.into_dart(),
+                field0.into_into_dart().into_dart(),
+                field1.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::ValidateError::DuplicateEntryOnPrimaryKeyField(field0) => {
+                [3.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::error::ValidateError>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::error::ValidateError>>
+    for crate::api::error::ValidateError
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::error::ValidateError> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::value::Value> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            crate::api::value::Value::Bool(field0) => {
+                [0.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::value::Value::I8(field0) => {
+                [1.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::value::Value::I16(field0) => {
+                [2.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::value::Value::I32(field0) => {
+                [3.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::value::Value::I64(field0) => {
+                [4.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::value::Value::I128(field0) => {
+                [5.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::value::Value::U8(field0) => {
+                [6.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::value::Value::U16(field0) => {
+                [7.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::value::Value::U32(field0) => {
+                [8.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::value::Value::U64(field0) => {
+                [9.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::value::Value::U128(field0) => {
+                [10.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::value::Value::F32(field0) => {
+                [11.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::value::Value::F64(field0) => {
+                [12.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::value::Value::Decimal(field0) => {
+                [13.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::value::Value::Str(field0) => {
+                [14.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::value::Value::Bytea(field0) => {
+                [15.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::value::Value::Inet(field0) => {
+                [16.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::value::Value::Date(field0) => {
+                [17.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::value::Value::Timestamp(field0) => {
+                [18.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::value::Value::Time(field0) => {
+                [19.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::value::Value::Interval(field0) => {
+                [20.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::value::Value::Uuid(field0) => {
+                [21.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::value::Value::Map(field0) => {
+                [22.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::value::Value::List(field0) => {
+                [23.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::value::Value::Point(field0) => {
+                [24.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::value::Value::Null => [25.into_dart()].into_dart(),
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::value::Value>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::value::Value>>
+    for crate::api::value::Value
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::value::Value> {
+        self.into()
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<crate::api::error::ValueError> {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self.0 {
+            crate::api::error::ValueError::IncompatibleLiteralForDataType {
+                data_type,
+                literal,
+            } => [
+                0.into_dart(),
+                data_type.into_into_dart().into_dart(),
+                literal.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::ValueError::IncompatibleDataType { data_type, value } => [
+                1.into_dart(),
+                data_type.into_into_dart().into_dart(),
+                value.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::ValueError::NullValueOnNotNullField => [2.into_dart()].into_dart(),
+            crate::api::error::ValueError::FailedToParseNumber => [3.into_dart()].into_dart(),
+            crate::api::error::ValueError::FloatToDecimalConversionFailure(field0) => {
+                [4.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::FailedToParseDate(field0) => {
+                [5.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::FailedToParseTimestamp(field0) => {
+                [6.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::FailedToParseTime(field0) => {
+                [7.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::FailedToParseUUID(field0) => {
+                [8.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::FailedToParsePoint(field0) => {
+                [9.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::FailedToParseDecimal(field0) => {
+                [10.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::FailedToParseHexString(field0) => {
+                [11.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::FailedToParseInetString(field0) => {
+                [12.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::NonNumericMathOperation { lhs, rhs, operator } => [
+                13.into_dart(),
+                lhs.into_into_dart().into_dart(),
+                rhs.into_into_dart().into_dart(),
+                operator.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::ValueError::DivisorShouldNotBeZero => [14.into_dart()].into_dart(),
+            crate::api::error::ValueError::UnaryPlusOnNonNumeric => [15.into_dart()].into_dart(),
+            crate::api::error::ValueError::UnaryMinusOnNonNumeric => [16.into_dart()].into_dart(),
+            crate::api::error::ValueError::FactorialOnNonNumeric => [17.into_dart()].into_dart(),
+            crate::api::error::ValueError::FactorialOnNonInteger => [18.into_dart()].into_dart(),
+            crate::api::error::ValueError::FactorialOnNegativeNumeric => {
+                [19.into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::FactorialOverflow => [20.into_dart()].into_dart(),
+            crate::api::error::ValueError::GcdLcmOverflow(field0) => {
+                [21.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::LcmResultOutOfRange => [22.into_dart()].into_dart(),
+            crate::api::error::ValueError::UnaryBitwiseNotOnNonNumeric => {
+                [23.into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::UnaryBitwiseNotOnNonInteger => {
+                [24.into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::UnreachableNumberParsing => [25.into_dart()].into_dart(),
+            crate::api::error::ValueError::UnimplementedCast { value, data_type } => [
+                26.into_dart(),
+                value.into_into_dart().into_dart(),
+                data_type.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::ValueError::CastFromHexToByteaFailed(field0) => {
+                [27.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::EmptyArgNotAllowedInConcat => {
+                [28.into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::LiteralCastFromTextToIntegerFailed(field0) => {
+                [29.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::LiteralCastFromTextToUnsignedInt8Failed(field0) => {
+                [30.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::LiteralCastFromTextToUint16Failed(field0) => {
+                [31.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::LiteralCastFromTextToUint32Failed(field0) => {
+                [32.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::LiteralCastFromTextToUint64Failed(field0) => {
+                [33.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::LiteralCastFromTextToUint128Failed(field0) => {
+                [34.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::LiteralCastFromTextToFloatFailed(field0) => {
+                [35.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::LiteralCastFromTextToDecimalFailed(field0) => {
+                [36.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::LiteralCastToBooleanFailed(field0) => {
+                [37.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::LiteralCastToDateFailed(field0) => {
+                [38.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::LiteralCastToDataTypeFailed(field0, field1) => [
+                39.into_dart(),
+                field0.into_into_dart().into_dart(),
+                field1.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::ValueError::LiteralCastToInt8Failed(field0) => {
+                [40.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::LiteralCastToUnsignedInt8Failed(field0) => {
+                [41.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::LiteralCastToUint16Failed(field0) => {
+                [42.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::LiteralCastToUint32Failed(field0) => {
+                [43.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::LiteralCastToUint64Failed(field0) => {
+                [44.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::LiteralCastToUint128Failed(field0) => {
+                [45.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::LiteralCastToTimeFailed(field0) => {
+                [46.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::LiteralCastToTimestampFailed(field0) => {
+                [47.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::UnreachableLiteralCastFromNumberToInteger(field0) => {
+                [48.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::UnreachableLiteralCastFromNumberToFloat(field0) => {
+                [49.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::UnimplementedLiteralCast { data_type, literal } => [
+                50.into_dart(),
+                data_type.into_into_dart().into_dart(),
+                literal.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::ValueError::UnreachableIntegerOverflow(field0) => {
+                [51.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::LikeOnNonString {
+                base,
+                pattern,
+                case_sensitive,
+            } => [
+                52.into_dart(),
+                base.into_into_dart().into_dart(),
+                pattern.into_into_dart().into_dart(),
+                case_sensitive.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::ValueError::ExtractFormatNotMatched { value, field } => [
+                53.into_dart(),
+                value.into_into_dart().into_dart(),
+                field.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::ValueError::BigEndianExportNotSupported(field0) => {
+                [54.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::InvalidJsonString(field0) => {
+                [55.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::JsonObjectTypeRequired => [56.into_dart()].into_dart(),
+            crate::api::error::ValueError::JsonArrayTypeRequired => [57.into_dart()].into_dart(),
+            crate::api::error::ValueError::UnreachableJsonNumberParseFailure(field0) => {
+                [58.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::SelectorRequiresMapOrListTypes => {
+                [59.into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::BinaryOperationOverflow { lhs, rhs, operator } => [
+                60.into_dart(),
+                lhs.into_into_dart().into_dart(),
+                rhs.into_into_dart().into_dart(),
+                operator.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::ValueError::SqrtOnNonNumeric(field0) => {
+                [61.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::NonStringParameterInPosition { from, sub } => [
+                62.into_dart(),
+                from.into_into_dart().into_dart(),
+                sub.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::ValueError::NonStringParameterInFindIdx { sub, from } => [
+                63.into_dart(),
+                sub.into_into_dart().into_dart(),
+                from.into_into_dart().into_dart(),
+            ]
+            .into_dart(),
+            crate::api::error::ValueError::NonPositiveIntegerOffsetInFindIdx(field0) => {
+                [64.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::ValueToExprConversionFailure => {
+                [65.into_dart()].into_dart()
+            }
+            crate::api::error::ValueError::I64ToU32ConversionFailure(field0) => {
+                [66.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for FrbWrapper<crate::api::error::ValueError>
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<crate::api::error::ValueError>>
+    for crate::api::error::ValueError
+{
+    fn into_into_dart(self) -> FrbWrapper<crate::api::error::ValueError> {
+        self.into()
+    }
+}
+
+impl SseEncode for Aggregate {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Aggregate>>>::sse_encode(flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self), serializer);
+    }
+}
+
+impl SseEncode for ColumnDef {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ColumnDef>>>::sse_encode(flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self), serializer);
     }
 }
 
@@ -1155,10 +5379,10 @@ impl SseEncode for Decimal {
     }
 }
 
-impl SseEncode for Error {
+impl SseEncode for Expr {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Error>>>::sse_encode(
+        <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Expr>>>::sse_encode(
             flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self),
             serializer,
         );
@@ -1193,6 +5417,27 @@ impl SseEncode for NaiveTime {
     }
 }
 
+impl SseEncode for OrderedFloat<f32> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<OrderedFloat < f32 >>>>::sse_encode(flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self), serializer);
+    }
+}
+
+impl SseEncode for OrderedFloat<f64> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<OrderedFloat < f64 >>>>::sse_encode(flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self), serializer);
+    }
+}
+
+impl SseEncode for ParseError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ParseError>>>::sse_encode(flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self), serializer);
+    }
+}
+
 impl SseEncode for PayloadVariable {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1204,16 +5449,6 @@ impl SseEncode for Point {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Point>>>::sse_encode(
-            flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self),
-            serializer,
-        );
-    }
-}
-
-impl SseEncode for Value {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Value>>>::sse_encode(
             flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self),
             serializer,
         );
@@ -1234,20 +5469,35 @@ impl SseEncode for i128 {
     }
 }
 
-impl SseEncode for std::collections::HashMap<String, Value> {
+impl SseEncode for std::collections::HashMap<String, crate::api::value::Value> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <Vec<(String, Value)>>::sse_encode(self.into_iter().collect(), serializer);
-    }
-}
-
-impl SseEncode for std::collections::HashMap<String, crate::api::value::DartValue> {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <Vec<(String, crate::api::value::DartValue)>>::sse_encode(
+        <Vec<(String, crate::api::value::Value)>>::sse_encode(
             self.into_iter().collect(),
             serializer,
         );
+    }
+}
+
+impl SseEncode
+    for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Aggregate>>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode
+    for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ColumnDef>>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
     }
 }
 
@@ -1271,7 +5521,7 @@ impl SseEncode for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpa
     }
 }
 
-impl SseEncode for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Error>> {
+impl SseEncode for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Expr>> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         let (ptr, size) = self.sse_encode_raw();
@@ -1323,6 +5573,39 @@ impl SseEncode
 }
 
 impl SseEncode
+    for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<OrderedFloat<f32>>>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode
+    for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<OrderedFloat<f64>>>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode
+    for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ParseError>>
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode
     for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<PayloadVariable>>
 {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -1334,15 +5617,6 @@ impl SseEncode
 }
 
 impl SseEncode for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Point>> {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        let (ptr, size) = self.sse_encode_raw();
-        <usize>::sse_encode(ptr, serializer);
-        <i32>::sse_encode(size, serializer);
-    }
-}
-
-impl SseEncode for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Value>> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         let (ptr, size) = self.sse_encode_raw();
@@ -1365,74 +5639,71 @@ impl SseEncode for u128 {
     }
 }
 
-impl SseEncode for bool {
+impl SseEncode for crate::api::error::AggregateError {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        serializer.cursor.write_u8(self as _).unwrap();
+        <i32>::sse_encode(
+            match self {
+                crate::api::error::AggregateError::UnreachableRcUnwrapFailure => 0,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
     }
 }
 
-impl SseEncode for crate::api::payload::DartPayload {
+impl SseEncode for crate::api::error::AlterError {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         match self {
-            crate::api::payload::DartPayload::ShowColumns(field0) => {
+            crate::api::error::AlterError::TableAlreadyExists(field0) => {
                 <i32>::sse_encode(0, serializer);
-                <Vec<(String, DataType)>>::sse_encode(field0, serializer);
+                <String>::sse_encode(field0, serializer);
             }
-            crate::api::payload::DartPayload::Create => {
+            crate::api::error::AlterError::FunctionAlreadyExists(field0) => {
                 <i32>::sse_encode(1, serializer);
+                <String>::sse_encode(field0, serializer);
             }
-            crate::api::payload::DartPayload::Insert(field0) => {
+            crate::api::error::AlterError::FunctionNotFound(field0) => {
                 <i32>::sse_encode(2, serializer);
-                <usize>::sse_encode(field0, serializer);
+                <String>::sse_encode(field0, serializer);
             }
-            crate::api::payload::DartPayload::Select { labels, rows } => {
+            crate::api::error::AlterError::TableNotFound(field0) => {
                 <i32>::sse_encode(3, serializer);
-                <Vec<String>>::sse_encode(labels, serializer);
-                <Vec<Vec<crate::api::value::DartValue>>>::sse_encode(rows, serializer);
+                <String>::sse_encode(field0, serializer);
             }
-            crate::api::payload::DartPayload::SelectMap(field0) => {
+            crate::api::error::AlterError::CtasSourceTableNotFound(field0) => {
                 <i32>::sse_encode(4, serializer);
-                <Vec<std::collections::HashMap<String, crate::api::value::DartValue>>>::sse_encode(
-                    field0, serializer,
-                );
+                <String>::sse_encode(field0, serializer);
             }
-            crate::api::payload::DartPayload::Delete(field0) => {
+            crate::api::error::AlterError::UnsupportedDataTypeForUniqueColumn(field0, field1) => {
                 <i32>::sse_encode(5, serializer);
-                <usize>::sse_encode(field0, serializer);
+                <String>::sse_encode(field0, serializer);
+                <DataType>::sse_encode(field1, serializer);
             }
-            crate::api::payload::DartPayload::Update(field0) => {
+            crate::api::error::AlterError::UnsupportedIndexExpr(field0) => {
                 <i32>::sse_encode(6, serializer);
-                <usize>::sse_encode(field0, serializer);
+                <Expr>::sse_encode(field0, serializer);
             }
-            crate::api::payload::DartPayload::DropTable => {
+            crate::api::error::AlterError::UnsupportedUnnamedArg => {
                 <i32>::sse_encode(7, serializer);
             }
-            crate::api::payload::DartPayload::DropFunction => {
+            crate::api::error::AlterError::IdentifierNotFound(field0) => {
                 <i32>::sse_encode(8, serializer);
+                <Expr>::sse_encode(field0, serializer);
             }
-            crate::api::payload::DartPayload::AlterTable => {
+            crate::api::error::AlterError::DuplicateColumnName(field0) => {
                 <i32>::sse_encode(9, serializer);
+                <String>::sse_encode(field0, serializer);
             }
-            crate::api::payload::DartPayload::CreateIndex => {
+            crate::api::error::AlterError::DuplicateArgName(field0) => {
                 <i32>::sse_encode(10, serializer);
+                <String>::sse_encode(field0, serializer);
             }
-            crate::api::payload::DartPayload::DropIndex => {
+            crate::api::error::AlterError::NonDefaultArgumentFollowsDefaultArgument => {
                 <i32>::sse_encode(11, serializer);
-            }
-            crate::api::payload::DartPayload::StartTransaction => {
-                <i32>::sse_encode(12, serializer);
-            }
-            crate::api::payload::DartPayload::Commit => {
-                <i32>::sse_encode(13, serializer);
-            }
-            crate::api::payload::DartPayload::Rollback => {
-                <i32>::sse_encode(14, serializer);
-            }
-            crate::api::payload::DartPayload::ShowVariable(field0) => {
-                <i32>::sse_encode(15, serializer);
-                <PayloadVariable>::sse_encode(field0, serializer);
             }
             _ => {
                 unimplemented!("");
@@ -1441,112 +5712,440 @@ impl SseEncode for crate::api::payload::DartPayload {
     }
 }
 
-impl SseEncode for crate::api::value::DartValue {
+impl SseEncode for crate::api::error::AlterTableError {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         match self {
-            crate::api::value::DartValue::Bool(field0) => {
+            crate::api::error::AlterTableError::TableNotFound(field0) => {
                 <i32>::sse_encode(0, serializer);
-                <bool>::sse_encode(field0, serializer);
-            }
-            crate::api::value::DartValue::I8(field0) => {
-                <i32>::sse_encode(1, serializer);
-                <i8>::sse_encode(field0, serializer);
-            }
-            crate::api::value::DartValue::I16(field0) => {
-                <i32>::sse_encode(2, serializer);
-                <i16>::sse_encode(field0, serializer);
-            }
-            crate::api::value::DartValue::I32(field0) => {
-                <i32>::sse_encode(3, serializer);
-                <i32>::sse_encode(field0, serializer);
-            }
-            crate::api::value::DartValue::I64(field0) => {
-                <i32>::sse_encode(4, serializer);
-                <i64>::sse_encode(field0, serializer);
-            }
-            crate::api::value::DartValue::I128(field0) => {
-                <i32>::sse_encode(5, serializer);
-                <i128>::sse_encode(field0, serializer);
-            }
-            crate::api::value::DartValue::U8(field0) => {
-                <i32>::sse_encode(6, serializer);
-                <u8>::sse_encode(field0, serializer);
-            }
-            crate::api::value::DartValue::U16(field0) => {
-                <i32>::sse_encode(7, serializer);
-                <u16>::sse_encode(field0, serializer);
-            }
-            crate::api::value::DartValue::U32(field0) => {
-                <i32>::sse_encode(8, serializer);
-                <u32>::sse_encode(field0, serializer);
-            }
-            crate::api::value::DartValue::U64(field0) => {
-                <i32>::sse_encode(9, serializer);
-                <u64>::sse_encode(field0, serializer);
-            }
-            crate::api::value::DartValue::U128(field0) => {
-                <i32>::sse_encode(10, serializer);
-                <u128>::sse_encode(field0, serializer);
-            }
-            crate::api::value::DartValue::F32(field0) => {
-                <i32>::sse_encode(11, serializer);
-                <f32>::sse_encode(field0, serializer);
-            }
-            crate::api::value::DartValue::F64(field0) => {
-                <i32>::sse_encode(12, serializer);
-                <f64>::sse_encode(field0, serializer);
-            }
-            crate::api::value::DartValue::Decimal(field0) => {
-                <i32>::sse_encode(13, serializer);
-                <Decimal>::sse_encode(field0, serializer);
-            }
-            crate::api::value::DartValue::Str(field0) => {
-                <i32>::sse_encode(14, serializer);
                 <String>::sse_encode(field0, serializer);
             }
-            crate::api::value::DartValue::Bytea(field0) => {
+            crate::api::error::AlterTableError::RenamingColumnNotFound => {
+                <i32>::sse_encode(1, serializer);
+            }
+            crate::api::error::AlterTableError::DefaultValueRequired(field0) => {
+                <i32>::sse_encode(2, serializer);
+                <ColumnDef>::sse_encode(field0, serializer);
+            }
+            crate::api::error::AlterTableError::AlreadyExistingColumn(field0) => {
+                <i32>::sse_encode(3, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::AlterTableError::DroppingColumnNotFound(field0) => {
+                <i32>::sse_encode(4, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::AlterTableError::SchemalessTableFound(field0) => {
+                <i32>::sse_encode(5, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseEncode for crate::api::error::AstBuilderError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            crate::api::error::AstBuilderError::FailedToParseNumeric(field0) => {
+                <i32>::sse_encode(0, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseEncode for crate::api::ast::BinaryOperator {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::ast::BinaryOperator::Plus => 0,
+                crate::api::ast::BinaryOperator::Minus => 1,
+                crate::api::ast::BinaryOperator::Multiply => 2,
+                crate::api::ast::BinaryOperator::Divide => 3,
+                crate::api::ast::BinaryOperator::Modulo => 4,
+                crate::api::ast::BinaryOperator::StringConcat => 5,
+                crate::api::ast::BinaryOperator::Gt => 6,
+                crate::api::ast::BinaryOperator::Lt => 7,
+                crate::api::ast::BinaryOperator::GtEq => 8,
+                crate::api::ast::BinaryOperator::LtEq => 9,
+                crate::api::ast::BinaryOperator::Eq => 10,
+                crate::api::ast::BinaryOperator::NotEq => 11,
+                crate::api::ast::BinaryOperator::And => 12,
+                crate::api::ast::BinaryOperator::Or => 13,
+                crate::api::ast::BinaryOperator::Xor => 14,
+                crate::api::ast::BinaryOperator::BitwiseAnd => 15,
+                crate::api::ast::BinaryOperator::BitwiseShiftLeft => 16,
+                crate::api::ast::BinaryOperator::BitwiseShiftRight => 17,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for bool {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_u8(self as _).unwrap();
+    }
+}
+
+impl SseEncode for crate::api::error::ConvertError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <crate::api::value::Value>::sse_encode(self.value, serializer);
+        <DataType>::sse_encode(self.data_type, serializer);
+    }
+}
+
+impl SseEncode for crate::api::ast::DateTimeField {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::ast::DateTimeField::Year => 0,
+                crate::api::ast::DateTimeField::Month => 1,
+                crate::api::ast::DateTimeField::Day => 2,
+                crate::api::ast::DateTimeField::Hour => 3,
+                crate::api::ast::DateTimeField::Minute => 4,
+                crate::api::ast::DateTimeField::Second => 5,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for crate::api::error::Error {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            crate::api::error::Error::StorageMsg(field0) => {
+                <i32>::sse_encode(0, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::Error::Parser(field0) => {
+                <i32>::sse_encode(1, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::Error::Translate(field0) => {
+                <i32>::sse_encode(2, serializer);
+                <crate::api::error::TranslateError>::sse_encode(field0, serializer);
+            }
+            crate::api::error::Error::AstBuilder(field0) => {
+                <i32>::sse_encode(3, serializer);
+                <crate::api::error::AstBuilderError>::sse_encode(field0, serializer);
+            }
+            crate::api::error::Error::AlterTable(field0) => {
+                <i32>::sse_encode(4, serializer);
+                <crate::api::error::AlterTableError>::sse_encode(field0, serializer);
+            }
+            crate::api::error::Error::Index(field0) => {
+                <i32>::sse_encode(5, serializer);
+                <crate::api::error::IndexError>::sse_encode(field0, serializer);
+            }
+            crate::api::error::Error::Execute(field0) => {
+                <i32>::sse_encode(6, serializer);
+                <crate::api::error::ExecuteError>::sse_encode(field0, serializer);
+            }
+            crate::api::error::Error::Alter(field0) => {
+                <i32>::sse_encode(7, serializer);
+                <crate::api::error::AlterError>::sse_encode(field0, serializer);
+            }
+            crate::api::error::Error::Fetch(field0) => {
+                <i32>::sse_encode(8, serializer);
+                <crate::api::error::FetchError>::sse_encode(field0, serializer);
+            }
+            crate::api::error::Error::Select(field0) => {
+                <i32>::sse_encode(9, serializer);
+                <crate::api::error::SelectError>::sse_encode(field0, serializer);
+            }
+            crate::api::error::Error::Evaluate(field0) => {
+                <i32>::sse_encode(10, serializer);
+                <crate::api::error::EvaluateError>::sse_encode(field0, serializer);
+            }
+            crate::api::error::Error::Aggregate(field0) => {
+                <i32>::sse_encode(11, serializer);
+                <crate::api::error::AggregateError>::sse_encode(field0, serializer);
+            }
+            crate::api::error::Error::Sort(field0) => {
+                <i32>::sse_encode(12, serializer);
+                <crate::api::error::SortError>::sse_encode(field0, serializer);
+            }
+            crate::api::error::Error::Insert(field0) => {
+                <i32>::sse_encode(13, serializer);
+                <crate::api::error::InsertError>::sse_encode(field0, serializer);
+            }
+            crate::api::error::Error::Update(field0) => {
+                <i32>::sse_encode(14, serializer);
+                <crate::api::error::UpdateError>::sse_encode(field0, serializer);
+            }
+            crate::api::error::Error::Table(field0) => {
                 <i32>::sse_encode(15, serializer);
-                <Vec<u8>>::sse_encode(field0, serializer);
+                <crate::api::error::TableError>::sse_encode(field0, serializer);
             }
-            crate::api::value::DartValue::Inet(field0) => {
+            crate::api::error::Error::Validate(field0) => {
                 <i32>::sse_encode(16, serializer);
-                <IpAddr>::sse_encode(field0, serializer);
+                <crate::api::error::ValidateError>::sse_encode(field0, serializer);
             }
-            crate::api::value::DartValue::Date(field0) => {
+            crate::api::error::Error::Row(field0) => {
                 <i32>::sse_encode(17, serializer);
-                <NaiveDate>::sse_encode(field0, serializer);
+                <crate::api::error::RowError>::sse_encode(field0, serializer);
             }
-            crate::api::value::DartValue::Timestamp(field0) => {
+            crate::api::error::Error::Key(field0) => {
                 <i32>::sse_encode(18, serializer);
-                <chrono::NaiveDateTime>::sse_encode(field0, serializer);
+                <crate::api::error::KeyError>::sse_encode(field0, serializer);
             }
-            crate::api::value::DartValue::Time(field0) => {
+            crate::api::error::Error::Value(field0) => {
                 <i32>::sse_encode(19, serializer);
-                <NaiveTime>::sse_encode(field0, serializer);
+                <crate::api::error::ValueError>::sse_encode(field0, serializer);
             }
-            crate::api::value::DartValue::Interval(field0) => {
+            crate::api::error::Error::Convert(field0) => {
                 <i32>::sse_encode(20, serializer);
-                <Interval>::sse_encode(field0, serializer);
+                <crate::api::error::ConvertError>::sse_encode(field0, serializer);
             }
-            crate::api::value::DartValue::Uuid(field0) => {
+            crate::api::error::Error::Literal(field0) => {
                 <i32>::sse_encode(21, serializer);
-                <u128>::sse_encode(field0, serializer);
+                <crate::api::error::LiteralError>::sse_encode(field0, serializer);
             }
-            crate::api::value::DartValue::Map(field0) => {
+            crate::api::error::Error::Interval(field0) => {
                 <i32>::sse_encode(22, serializer);
-                <std::collections::HashMap<String, Value>>::sse_encode(field0, serializer);
+                <crate::api::error::IntervalError>::sse_encode(field0, serializer);
             }
-            crate::api::value::DartValue::List(field0) => {
+            crate::api::error::Error::StringExt(field0) => {
                 <i32>::sse_encode(23, serializer);
-                <Vec<Value>>::sse_encode(field0, serializer);
+                <crate::api::error::StringExtError>::sse_encode(field0, serializer);
             }
-            crate::api::value::DartValue::Point(field0) => {
+            crate::api::error::Error::Plan(field0) => {
                 <i32>::sse_encode(24, serializer);
-                <Point>::sse_encode(field0, serializer);
+                <crate::api::error::PlanError>::sse_encode(field0, serializer);
             }
-            crate::api::value::DartValue::NullData => {
+            crate::api::error::Error::Schema(field0) => {
                 <i32>::sse_encode(25, serializer);
+                <crate::api::error::SchemaParseError>::sse_encode(field0, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseEncode for crate::api::error::EvaluateError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            crate::api::error::EvaluateError::FormatParseError(field0) => {
+                <i32>::sse_encode(0, serializer);
+                <ParseError>::sse_encode(field0, serializer);
+            }
+            crate::api::error::EvaluateError::LiteralAddOnNonNumeric => {
+                <i32>::sse_encode(1, serializer);
+            }
+            crate::api::error::EvaluateError::FunctionRequiresStringValue(field0) => {
+                <i32>::sse_encode(2, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::EvaluateError::FunctionRequiresIntegerValue(field0) => {
+                <i32>::sse_encode(3, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::EvaluateError::FunctionRequiresFloatOrIntegerValue(field0) => {
+                <i32>::sse_encode(4, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::EvaluateError::FunctionRequiresUSizeValue(field0) => {
+                <i32>::sse_encode(5, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::EvaluateError::FunctionRequiresFloatValue(field0) => {
+                <i32>::sse_encode(6, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::EvaluateError::ExtractFormatNotMatched(field0) => {
+                <i32>::sse_encode(7, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::EvaluateError::FunctionRequiresMapValue(field0) => {
+                <i32>::sse_encode(8, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::EvaluateError::FunctionRequiresPointValue(field0) => {
+                <i32>::sse_encode(9, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::EvaluateError::FunctionRequiresDateOrDateTimeValue(field0) => {
+                <i32>::sse_encode(10, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::EvaluateError::FunctionRequiresStrOrListOrMapValue(field0) => {
+                <i32>::sse_encode(11, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::EvaluateError::ValueNotFound(field0) => {
+                <i32>::sse_encode(12, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::EvaluateError::BooleanTypeRequired(field0) => {
+                <i32>::sse_encode(13, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::EvaluateError::MapOrListTypeRequired => {
+                <i32>::sse_encode(14, serializer);
+            }
+            crate::api::error::EvaluateError::MapTypeRequired => {
+                <i32>::sse_encode(15, serializer);
+            }
+            crate::api::error::EvaluateError::ListTypeRequired => {
+                <i32>::sse_encode(16, serializer);
+            }
+            crate::api::error::EvaluateError::InvalidSortType => {
+                <i32>::sse_encode(17, serializer);
+            }
+            crate::api::error::EvaluateError::InvalidSortOrder => {
+                <i32>::sse_encode(18, serializer);
+            }
+            crate::api::error::EvaluateError::MapOrStringValueRequired(field0) => {
+                <i32>::sse_encode(19, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::EvaluateError::TextLiteralRequired(field0) => {
+                <i32>::sse_encode(20, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::EvaluateError::UnsupportedStatelessExpr(field0) => {
+                <i32>::sse_encode(21, serializer);
+                <Expr>::sse_encode(field0, serializer);
+            }
+            crate::api::error::EvaluateError::ContextRequiredForIdentEvaluation(field0) => {
+                <i32>::sse_encode(22, serializer);
+                <Expr>::sse_encode(field0, serializer);
+            }
+            crate::api::error::EvaluateError::UnreachableEmptyAggregateValue(field0) => {
+                <i32>::sse_encode(23, serializer);
+                <Aggregate>::sse_encode(field0, serializer);
+            }
+            crate::api::error::EvaluateError::IncompatibleBitOperation(field0, field1) => {
+                <i32>::sse_encode(24, serializer);
+                <String>::sse_encode(field0, serializer);
+                <String>::sse_encode(field1, serializer);
+            }
+            crate::api::error::EvaluateError::DivisorShouldNotBeZero => {
+                <i32>::sse_encode(25, serializer);
+            }
+            crate::api::error::EvaluateError::NegativeSubstrLenNotAllowed => {
+                <i32>::sse_encode(26, serializer);
+            }
+            crate::api::error::EvaluateError::MoreThanOneRowReturned => {
+                <i32>::sse_encode(27, serializer);
+            }
+            crate::api::error::EvaluateError::MoreThanOneColumnReturned => {
+                <i32>::sse_encode(28, serializer);
+            }
+            crate::api::error::EvaluateError::SchemalessProjectionForInSubQuery => {
+                <i32>::sse_encode(29, serializer);
+            }
+            crate::api::error::EvaluateError::SchemalessProjectionForSubQuery => {
+                <i32>::sse_encode(30, serializer);
+            }
+            crate::api::error::EvaluateError::UnsupportedExprForFormatFunction(field0) => {
+                <i32>::sse_encode(31, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::EvaluateError::AsciiFunctionRequiresSingleCharacterValue => {
+                <i32>::sse_encode(32, serializer);
+            }
+            crate::api::error::EvaluateError::NonAsciiCharacterNotAllowed => {
+                <i32>::sse_encode(33, serializer);
+            }
+            crate::api::error::EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255 => {
+                <i32>::sse_encode(34, serializer);
+            }
+            crate::api::error::EvaluateError::UnsupportedBinaryOperation { left, op, right } => {
+                <i32>::sse_encode(35, serializer);
+                <String>::sse_encode(left, serializer);
+                <crate::api::ast::BinaryOperator>::sse_encode(op, serializer);
+                <String>::sse_encode(right, serializer);
+            }
+            crate::api::error::EvaluateError::UnsupportedUnaryPlus(field0) => {
+                <i32>::sse_encode(36, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::EvaluateError::UnsupportedUnaryMinus(field0) => {
+                <i32>::sse_encode(37, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::EvaluateError::UnsupportedUnaryFactorial(field0) => {
+                <i32>::sse_encode(38, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::EvaluateError::IncompatibleUnaryBitwiseNotOperation(field0) => {
+                <i32>::sse_encode(39, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::EvaluateError::UnsupportedCustomFunction => {
+                <i32>::sse_encode(40, serializer);
+            }
+            crate::api::error::EvaluateError::FunctionRequiresMoreArguments {
+                function_name,
+                required_minimum,
+                found,
+            } => {
+                <i32>::sse_encode(41, serializer);
+                <String>::sse_encode(function_name, serializer);
+                <usize>::sse_encode(required_minimum, serializer);
+                <usize>::sse_encode(found, serializer);
+            }
+            crate::api::error::EvaluateError::FunctionArgsLengthNotWithinRange {
+                name,
+                expected_minimum,
+                expected_maximum,
+                found,
+            } => {
+                <i32>::sse_encode(42, serializer);
+                <String>::sse_encode(name, serializer);
+                <usize>::sse_encode(expected_minimum, serializer);
+                <usize>::sse_encode(expected_maximum, serializer);
+                <usize>::sse_encode(found, serializer);
+            }
+            crate::api::error::EvaluateError::UnsupportedFunction(field0) => {
+                <i32>::sse_encode(43, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::EvaluateError::NonComparableArgumentError(field0) => {
+                <i32>::sse_encode(44, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::EvaluateError::FunctionRequiresAtLeastOneArgument(field0) => {
+                <i32>::sse_encode(45, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseEncode for crate::api::error::ExecuteError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            crate::api::error::ExecuteError::TableNotFound(field0) => {
+                <i32>::sse_encode(0, serializer);
+                <String>::sse_encode(field0, serializer);
             }
             _ => {
                 unimplemented!("");
@@ -1566,6 +6165,35 @@ impl SseEncode for f64 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         serializer.cursor.write_f64::<NativeEndian>(self).unwrap();
+    }
+}
+
+impl SseEncode for crate::api::error::FetchError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            crate::api::error::FetchError::TableNotFound(field0) => {
+                <i32>::sse_encode(0, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::FetchError::TableAliasNotFound(field0) => {
+                <i32>::sse_encode(1, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::FetchError::SeriesSizeWrong(field0) => {
+                <i32>::sse_encode(2, serializer);
+                <i64>::sse_encode(field0, serializer);
+            }
+            crate::api::error::FetchError::TooManyColumnAliases(field0, field1, field2) => {
+                <i32>::sse_encode(3, serializer);
+                <String>::sse_encode(field0, serializer);
+                <usize>::sse_encode(field1, serializer);
+                <usize>::sse_encode(field2, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
     }
 }
 
@@ -1597,22 +6225,282 @@ impl SseEncode for i8 {
     }
 }
 
-impl SseEncode for Vec<Value> {
+impl SseEncode for crate::api::error::IndexError {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <i32>::sse_encode(self.len() as _, serializer);
-        for item in self {
-            <Value>::sse_encode(item, serializer);
+        match self {
+            crate::api::error::IndexError::TableNotFound(field0) => {
+                <i32>::sse_encode(0, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::IndexError::IndexNameAlreadyExists(field0) => {
+                <i32>::sse_encode(1, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::IndexError::IndexNameDoesNotExist(field0) => {
+                <i32>::sse_encode(2, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::IndexError::ConflictTableNotFound(field0) => {
+                <i32>::sse_encode(3, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::IndexError::ConflictOnEmptyIndexValueUpdate => {
+                <i32>::sse_encode(4, serializer);
+            }
+            crate::api::error::IndexError::ConflictOnEmptyIndexValueDelete => {
+                <i32>::sse_encode(5, serializer);
+            }
+            crate::api::error::IndexError::ConflictOnEmptyIndexValueScan => {
+                <i32>::sse_encode(6, serializer);
+            }
+            crate::api::error::IndexError::ConflictOnIndexDataDeleteSync => {
+                <i32>::sse_encode(7, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
         }
     }
 }
 
-impl SseEncode for Vec<std::collections::HashMap<String, crate::api::value::DartValue>> {
+impl SseEncode for crate::api::error::InsertError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            crate::api::error::InsertError::TableNotFound(field0) => {
+                <i32>::sse_encode(0, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::InsertError::LackOfRequiredColumn(field0) => {
+                <i32>::sse_encode(1, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::InsertError::WrongColumnName(field0) => {
+                <i32>::sse_encode(2, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::InsertError::ColumnAndValuesNotMatched => {
+                <i32>::sse_encode(3, serializer);
+            }
+            crate::api::error::InsertError::TooManyValues => {
+                <i32>::sse_encode(4, serializer);
+            }
+            crate::api::error::InsertError::OnlySingleValueAcceptedForSchemalessRow => {
+                <i32>::sse_encode(5, serializer);
+            }
+            crate::api::error::InsertError::MapTypeValueRequired(field0) => {
+                <i32>::sse_encode(6, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseEncode for crate::api::error::IntervalError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            crate::api::error::IntervalError::UnsupportedRange(field0, field1) => {
+                <i32>::sse_encode(0, serializer);
+                <String>::sse_encode(field0, serializer);
+                <String>::sse_encode(field1, serializer);
+            }
+            crate::api::error::IntervalError::AddBetweenYearToMonthAndHourToSecond => {
+                <i32>::sse_encode(1, serializer);
+            }
+            crate::api::error::IntervalError::SubtractBetweenYearToMonthAndHourToSecond => {
+                <i32>::sse_encode(2, serializer);
+            }
+            crate::api::error::IntervalError::AddYearOrMonthToTime { time, interval } => {
+                <i32>::sse_encode(3, serializer);
+                <NaiveTime>::sse_encode(time, serializer);
+                <Interval>::sse_encode(interval, serializer);
+            }
+            crate::api::error::IntervalError::SubtractYearOrMonthToTime { time, interval } => {
+                <i32>::sse_encode(4, serializer);
+                <NaiveTime>::sse_encode(time, serializer);
+                <Interval>::sse_encode(interval, serializer);
+            }
+            crate::api::error::IntervalError::FailedToParseInteger(field0) => {
+                <i32>::sse_encode(5, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::IntervalError::FailedToParseDecimal(field0) => {
+                <i32>::sse_encode(6, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::IntervalError::FailedToParseTime(field0) => {
+                <i32>::sse_encode(7, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::IntervalError::FailedToParseYearToMonth(field0) => {
+                <i32>::sse_encode(8, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::IntervalError::FailedToParseDayToHour(field0) => {
+                <i32>::sse_encode(9, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::IntervalError::FailedToParseDayToMinute(field0) => {
+                <i32>::sse_encode(10, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::IntervalError::FailedToParseDayToSecond(field0) => {
+                <i32>::sse_encode(11, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::IntervalError::DateOverflow { year, month } => {
+                <i32>::sse_encode(12, serializer);
+                <i32>::sse_encode(year, serializer);
+                <i32>::sse_encode(month, serializer);
+            }
+            crate::api::error::IntervalError::FailedToExtract => {
+                <i32>::sse_encode(13, serializer);
+            }
+            crate::api::error::IntervalError::ParseSupportedOnlyLiteral { expr } => {
+                <i32>::sse_encode(14, serializer);
+                <Expr>::sse_encode(expr, serializer);
+            }
+            crate::api::error::IntervalError::Unreachable => {
+                <i32>::sse_encode(15, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseEncode for crate::api::key::Key {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            crate::api::key::Key::I8(field0) => {
+                <i32>::sse_encode(0, serializer);
+                <i8>::sse_encode(field0, serializer);
+            }
+            crate::api::key::Key::I16(field0) => {
+                <i32>::sse_encode(1, serializer);
+                <i16>::sse_encode(field0, serializer);
+            }
+            crate::api::key::Key::I32(field0) => {
+                <i32>::sse_encode(2, serializer);
+                <i32>::sse_encode(field0, serializer);
+            }
+            crate::api::key::Key::I64(field0) => {
+                <i32>::sse_encode(3, serializer);
+                <i64>::sse_encode(field0, serializer);
+            }
+            crate::api::key::Key::I128(field0) => {
+                <i32>::sse_encode(4, serializer);
+                <i128>::sse_encode(field0, serializer);
+            }
+            crate::api::key::Key::U8(field0) => {
+                <i32>::sse_encode(5, serializer);
+                <u8>::sse_encode(field0, serializer);
+            }
+            crate::api::key::Key::U16(field0) => {
+                <i32>::sse_encode(6, serializer);
+                <u16>::sse_encode(field0, serializer);
+            }
+            crate::api::key::Key::U32(field0) => {
+                <i32>::sse_encode(7, serializer);
+                <u32>::sse_encode(field0, serializer);
+            }
+            crate::api::key::Key::U64(field0) => {
+                <i32>::sse_encode(8, serializer);
+                <u64>::sse_encode(field0, serializer);
+            }
+            crate::api::key::Key::U128(field0) => {
+                <i32>::sse_encode(9, serializer);
+                <u128>::sse_encode(field0, serializer);
+            }
+            crate::api::key::Key::F32(field0) => {
+                <i32>::sse_encode(10, serializer);
+                <OrderedFloat<f32>>::sse_encode(field0, serializer);
+            }
+            crate::api::key::Key::F64(field0) => {
+                <i32>::sse_encode(11, serializer);
+                <OrderedFloat<f64>>::sse_encode(field0, serializer);
+            }
+            crate::api::key::Key::Decimal(field0) => {
+                <i32>::sse_encode(12, serializer);
+                <Decimal>::sse_encode(field0, serializer);
+            }
+            crate::api::key::Key::Bool(field0) => {
+                <i32>::sse_encode(13, serializer);
+                <bool>::sse_encode(field0, serializer);
+            }
+            crate::api::key::Key::Str(field0) => {
+                <i32>::sse_encode(14, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::key::Key::Bytea(field0) => {
+                <i32>::sse_encode(15, serializer);
+                <Vec<u8>>::sse_encode(field0, serializer);
+            }
+            crate::api::key::Key::Date(field0) => {
+                <i32>::sse_encode(16, serializer);
+                <NaiveDate>::sse_encode(field0, serializer);
+            }
+            crate::api::key::Key::Timestamp(field0) => {
+                <i32>::sse_encode(17, serializer);
+                <chrono::NaiveDateTime>::sse_encode(field0, serializer);
+            }
+            crate::api::key::Key::Time(field0) => {
+                <i32>::sse_encode(18, serializer);
+                <NaiveTime>::sse_encode(field0, serializer);
+            }
+            crate::api::key::Key::Interval(field0) => {
+                <i32>::sse_encode(19, serializer);
+                <Interval>::sse_encode(field0, serializer);
+            }
+            crate::api::key::Key::Uuid(field0) => {
+                <i32>::sse_encode(20, serializer);
+                <u128>::sse_encode(field0, serializer);
+            }
+            crate::api::key::Key::Inet(field0) => {
+                <i32>::sse_encode(21, serializer);
+                <IpAddr>::sse_encode(field0, serializer);
+            }
+            crate::api::key::Key::None => {
+                <i32>::sse_encode(22, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseEncode for crate::api::error::KeyError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::error::KeyError::FloatToCmpBigEndianNotSupported => 0,
+                crate::api::error::KeyError::MapTypeKeyNotSupported => 1,
+                crate::api::error::KeyError::ListTypeKeyNotSupported => 2,
+                crate::api::error::KeyError::PointTypeKeyNotSupported => 3,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for Vec<std::collections::HashMap<String, crate::api::value::Value>> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
-            <std::collections::HashMap<String, crate::api::value::DartValue>>::sse_encode(
+            <std::collections::HashMap<String, crate::api::value::Value>>::sse_encode(
                 item, serializer,
             );
         }
@@ -1629,32 +6517,22 @@ impl SseEncode for Vec<String> {
     }
 }
 
-impl SseEncode for Vec<crate::api::payload::DartPayload> {
+impl SseEncode for Vec<Vec<crate::api::value::Value>> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
-            <crate::api::payload::DartPayload>::sse_encode(item, serializer);
+            <Vec<crate::api::value::Value>>::sse_encode(item, serializer);
         }
     }
 }
 
-impl SseEncode for Vec<crate::api::value::DartValue> {
+impl SseEncode for Vec<crate::api::payload::Payload> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
-            <crate::api::value::DartValue>::sse_encode(item, serializer);
-        }
-    }
-}
-
-impl SseEncode for Vec<Vec<crate::api::value::DartValue>> {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <i32>::sse_encode(self.len() as _, serializer);
-        for item in self {
-            <Vec<crate::api::value::DartValue>>::sse_encode(item, serializer);
+            <crate::api::payload::Payload>::sse_encode(item, serializer);
         }
     }
 }
@@ -1679,22 +6557,186 @@ impl SseEncode for Vec<(String, DataType)> {
     }
 }
 
-impl SseEncode for Vec<(String, Value)> {
+impl SseEncode for Vec<(String, crate::api::value::Value)> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
-            <(String, Value)>::sse_encode(item, serializer);
+            <(String, crate::api::value::Value)>::sse_encode(item, serializer);
         }
     }
 }
 
-impl SseEncode for Vec<(String, crate::api::value::DartValue)> {
+impl SseEncode for Vec<crate::api::value::Value> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
-            <(String, crate::api::value::DartValue)>::sse_encode(item, serializer);
+            <crate::api::value::Value>::sse_encode(item, serializer);
+        }
+    }
+}
+
+impl SseEncode for crate::api::error::LiteralError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            crate::api::error::LiteralError::UnsupportedBinaryOperation { left, op, right } => {
+                <i32>::sse_encode(0, serializer);
+                <String>::sse_encode(left, serializer);
+                <crate::api::ast::BinaryOperator>::sse_encode(op, serializer);
+                <String>::sse_encode(right, serializer);
+            }
+            crate::api::error::LiteralError::BitwiseNonIntegerOperand(field0) => {
+                <i32>::sse_encode(1, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::LiteralError::BitwiseNonNumberLiteral => {
+                <i32>::sse_encode(2, serializer);
+            }
+            crate::api::error::LiteralError::BitwiseOperationOverflow => {
+                <i32>::sse_encode(3, serializer);
+            }
+            crate::api::error::LiteralError::ImpossibleConversion(field0, field1) => {
+                <i32>::sse_encode(4, serializer);
+                <String>::sse_encode(field0, serializer);
+                <String>::sse_encode(field1, serializer);
+            }
+            crate::api::error::LiteralError::DivisorShouldNotBeZero => {
+                <i32>::sse_encode(5, serializer);
+            }
+            crate::api::error::LiteralError::UnaryOperationOnNonNumeric => {
+                <i32>::sse_encode(6, serializer);
+            }
+            crate::api::error::LiteralError::UnreachableBinaryArithmetic => {
+                <i32>::sse_encode(7, serializer);
+            }
+            crate::api::error::LiteralError::UnreachableUnaryOperation => {
+                <i32>::sse_encode(8, serializer);
+            }
+            crate::api::error::LiteralError::FailedToDecodeHexString(field0) => {
+                <i32>::sse_encode(9, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::LiteralError::LikeOnNonString {
+                base,
+                pattern,
+                case_sensitive,
+            } => {
+                <i32>::sse_encode(10, serializer);
+                <String>::sse_encode(base, serializer);
+                <String>::sse_encode(pattern, serializer);
+                <bool>::sse_encode(case_sensitive, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseEncode for crate::api::error::NumericBinaryOperator {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::error::NumericBinaryOperator::Add => 0,
+                crate::api::error::NumericBinaryOperator::Subtract => 1,
+                crate::api::error::NumericBinaryOperator::Multiply => 2,
+                crate::api::error::NumericBinaryOperator::Divide => 3,
+                crate::api::error::NumericBinaryOperator::Modulo => 4,
+                crate::api::error::NumericBinaryOperator::BitwiseAnd => 5,
+                crate::api::error::NumericBinaryOperator::BitwiseShiftLeft => 6,
+                crate::api::error::NumericBinaryOperator::BitwiseShiftRight => 7,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for crate::api::payload::Payload {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            crate::api::payload::Payload::ShowColumns(field0) => {
+                <i32>::sse_encode(0, serializer);
+                <Vec<(String, DataType)>>::sse_encode(field0, serializer);
+            }
+            crate::api::payload::Payload::Create => {
+                <i32>::sse_encode(1, serializer);
+            }
+            crate::api::payload::Payload::Insert(field0) => {
+                <i32>::sse_encode(2, serializer);
+                <usize>::sse_encode(field0, serializer);
+            }
+            crate::api::payload::Payload::Select { labels, rows } => {
+                <i32>::sse_encode(3, serializer);
+                <Vec<String>>::sse_encode(labels, serializer);
+                <Vec<Vec<crate::api::value::Value>>>::sse_encode(rows, serializer);
+            }
+            crate::api::payload::Payload::SelectMap(field0) => {
+                <i32>::sse_encode(4, serializer);
+                <Vec<std::collections::HashMap<String, crate::api::value::Value>>>::sse_encode(
+                    field0, serializer,
+                );
+            }
+            crate::api::payload::Payload::Delete(field0) => {
+                <i32>::sse_encode(5, serializer);
+                <usize>::sse_encode(field0, serializer);
+            }
+            crate::api::payload::Payload::Update(field0) => {
+                <i32>::sse_encode(6, serializer);
+                <usize>::sse_encode(field0, serializer);
+            }
+            crate::api::payload::Payload::DropTable => {
+                <i32>::sse_encode(7, serializer);
+            }
+            crate::api::payload::Payload::DropFunction => {
+                <i32>::sse_encode(8, serializer);
+            }
+            crate::api::payload::Payload::AlterTable => {
+                <i32>::sse_encode(9, serializer);
+            }
+            crate::api::payload::Payload::CreateIndex => {
+                <i32>::sse_encode(10, serializer);
+            }
+            crate::api::payload::Payload::DropIndex => {
+                <i32>::sse_encode(11, serializer);
+            }
+            crate::api::payload::Payload::StartTransaction => {
+                <i32>::sse_encode(12, serializer);
+            }
+            crate::api::payload::Payload::Commit => {
+                <i32>::sse_encode(13, serializer);
+            }
+            crate::api::payload::Payload::Rollback => {
+                <i32>::sse_encode(14, serializer);
+            }
+            crate::api::payload::Payload::ShowVariable(field0) => {
+                <i32>::sse_encode(15, serializer);
+                <PayloadVariable>::sse_encode(field0, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseEncode for crate::api::error::PlanError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            crate::api::error::PlanError::ColumnReferenceAmbiguous(field0) => {
+                <i32>::sse_encode(0, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
         }
     }
 }
@@ -1707,19 +6749,302 @@ impl SseEncode for (String, DataType) {
     }
 }
 
-impl SseEncode for (String, Value) {
+impl SseEncode for (String, crate::api::value::Value) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.0, serializer);
-        <Value>::sse_encode(self.1, serializer);
+        <crate::api::value::Value>::sse_encode(self.1, serializer);
     }
 }
 
-impl SseEncode for (String, crate::api::value::DartValue) {
+impl SseEncode for crate::api::error::RowError {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <String>::sse_encode(self.0, serializer);
-        <crate::api::value::DartValue>::sse_encode(self.1, serializer);
+        <i32>::sse_encode(
+            match self {
+                crate::api::error::RowError::ConflictOnUnexpectedMapRowFound => 0,
+                crate::api::error::RowError::ConflictOnUnexpectedVecRowFound => 1,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for crate::api::error::SchemaParseError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::error::SchemaParseError::CannotParseDDL => 0,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for crate::api::error::SelectError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::error::SelectError::NumberOfValuesDifferent => 0,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for crate::api::error::SortError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            crate::api::error::SortError::ColumnIndexOutOfRange(field0) => {
+                <i32>::sse_encode(0, serializer);
+                <usize>::sse_encode(field0, serializer);
+            }
+            crate::api::error::SortError::Unreachable => {
+                <i32>::sse_encode(1, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseEncode for crate::api::error::StringExtError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::error::StringExtError::UnreachablePatternParsing => 0,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for crate::api::error::TableError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::error::TableError::Unreachable => 0,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for crate::api::error::TranslateError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            crate::api::error::TranslateError::TooManyTables => {
+                <i32>::sse_encode(0, serializer);
+            }
+            crate::api::error::TranslateError::SelectDistinctNotSupported => {
+                <i32>::sse_encode(1, serializer);
+            }
+            crate::api::error::TranslateError::CompositeIndexNotSupported => {
+                <i32>::sse_encode(2, serializer);
+            }
+            crate::api::error::TranslateError::JoinOnUpdateNotSupported => {
+                <i32>::sse_encode(3, serializer);
+            }
+            crate::api::error::TranslateError::CompoundIdentOnUpdateNotSupported(field0) => {
+                <i32>::sse_encode(4, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::TranslateError::TooManyParamsInDropIndex => {
+                <i32>::sse_encode(5, serializer);
+            }
+            crate::api::error::TranslateError::InvalidParamsInDropIndex => {
+                <i32>::sse_encode(6, serializer);
+            }
+            crate::api::error::TranslateError::FunctionArgsLengthNotMatching {
+                name,
+                expected,
+                found,
+            } => {
+                <i32>::sse_encode(7, serializer);
+                <String>::sse_encode(name, serializer);
+                <usize>::sse_encode(expected, serializer);
+                <usize>::sse_encode(found, serializer);
+            }
+            crate::api::error::TranslateError::FunctionArgsLengthNotMatchingMin {
+                name,
+                expected_minimum,
+                found,
+            } => {
+                <i32>::sse_encode(8, serializer);
+                <String>::sse_encode(name, serializer);
+                <usize>::sse_encode(expected_minimum, serializer);
+                <usize>::sse_encode(found, serializer);
+            }
+            crate::api::error::TranslateError::FunctionArgsLengthNotWithinRange {
+                name,
+                expected_minimum,
+                expected_maximum,
+                found,
+            } => {
+                <i32>::sse_encode(9, serializer);
+                <String>::sse_encode(name, serializer);
+                <usize>::sse_encode(expected_minimum, serializer);
+                <usize>::sse_encode(expected_maximum, serializer);
+                <usize>::sse_encode(found, serializer);
+            }
+            crate::api::error::TranslateError::NamedFunctionArgNotSupported => {
+                <i32>::sse_encode(10, serializer);
+            }
+            crate::api::error::TranslateError::UnNamedFunctionArgNotSupported => {
+                <i32>::sse_encode(11, serializer);
+            }
+            crate::api::error::TranslateError::DefaultValuesOnInsertNotSupported(field0) => {
+                <i32>::sse_encode(12, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::TranslateError::UnsupportedEmptyFunctionBody => {
+                <i32>::sse_encode(13, serializer);
+            }
+            crate::api::error::TranslateError::UnsupportedUnnamedIndex => {
+                <i32>::sse_encode(14, serializer);
+            }
+            crate::api::error::TranslateError::UnsupportedTrimChars => {
+                <i32>::sse_encode(15, serializer);
+            }
+            crate::api::error::TranslateError::UnsupportedCastFormat(field0) => {
+                <i32>::sse_encode(16, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::TranslateError::UnsupportedMultipleAlterTableOperations => {
+                <i32>::sse_encode(17, serializer);
+            }
+            crate::api::error::TranslateError::UnreachableEmptyAlterTableOperation => {
+                <i32>::sse_encode(18, serializer);
+            }
+            crate::api::error::TranslateError::UnsupportedGroupByAll => {
+                <i32>::sse_encode(19, serializer);
+            }
+            crate::api::error::TranslateError::WildcardFunctionArgNotAccepted => {
+                <i32>::sse_encode(20, serializer);
+            }
+            crate::api::error::TranslateError::QualifiedWildcardInCountNotSupported(field0) => {
+                <i32>::sse_encode(21, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::TranslateError::OrderByNullsFirstOrLastNotSupported => {
+                <i32>::sse_encode(22, serializer);
+            }
+            crate::api::error::TranslateError::UnsupportedShowVariableKeyword(field0) => {
+                <i32>::sse_encode(23, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::TranslateError::UnsupportedShowVariableStatement(field0) => {
+                <i32>::sse_encode(24, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::TranslateError::UnsupportedStatement(field0) => {
+                <i32>::sse_encode(25, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::TranslateError::UnsupportedExpr(field0) => {
+                <i32>::sse_encode(26, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::TranslateError::UnsupportedDataType(field0) => {
+                <i32>::sse_encode(27, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::TranslateError::UnsupportedDateTimeField(field0) => {
+                <i32>::sse_encode(28, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::TranslateError::UnsupportedAstLiteral(field0) => {
+                <i32>::sse_encode(29, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::TranslateError::UnreachableUnaryOperator(field0) => {
+                <i32>::sse_encode(30, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::TranslateError::UnreachableEmptyIdent => {
+                <i32>::sse_encode(31, serializer);
+            }
+            crate::api::error::TranslateError::UnsupportedBinaryOperator(field0) => {
+                <i32>::sse_encode(32, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::TranslateError::UnsupportedQuerySetExpr(field0) => {
+                <i32>::sse_encode(33, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::TranslateError::UnsupportedQueryTableFactor(field0) => {
+                <i32>::sse_encode(34, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::TranslateError::UnsupportedJoinConstraint(field0) => {
+                <i32>::sse_encode(35, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::TranslateError::UnsupportedJoinOperator(field0) => {
+                <i32>::sse_encode(36, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::TranslateError::UnsupportedColumnOption(field0) => {
+                <i32>::sse_encode(37, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::TranslateError::UnsupportedAlterTableOperation(field0) => {
+                <i32>::sse_encode(38, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::TranslateError::UnsupportedTableFactor(field0) => {
+                <i32>::sse_encode(39, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::TranslateError::LackOfAlias => {
+                <i32>::sse_encode(40, serializer);
+            }
+            crate::api::error::TranslateError::LackOfArgs => {
+                <i32>::sse_encode(41, serializer);
+            }
+            crate::api::error::TranslateError::UnreachableEmptyObject => {
+                <i32>::sse_encode(42, serializer);
+            }
+            crate::api::error::TranslateError::UnreachableEmptyTable => {
+                <i32>::sse_encode(43, serializer);
+            }
+            crate::api::error::TranslateError::CompoundObjectNotSupported(field0) => {
+                <i32>::sse_encode(44, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::TranslateError::ReservedIndexName(field0) => {
+                <i32>::sse_encode(45, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::TranslateError::CannotDropPrimary => {
+                <i32>::sse_encode(46, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
     }
 }
 
@@ -1756,6 +7081,28 @@ impl SseEncode for () {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {}
 }
 
+impl SseEncode for crate::api::error::UpdateError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            crate::api::error::UpdateError::ColumnNotFound(field0) => {
+                <i32>::sse_encode(0, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::UpdateError::UpdateOnPrimaryKeyNotSupported(field0) => {
+                <i32>::sse_encode(1, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::UpdateError::ConflictOnSchema => {
+                <i32>::sse_encode(2, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
 impl SseEncode for usize {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1763,6 +7110,431 @@ impl SseEncode for usize {
             .cursor
             .write_u64::<NativeEndian>(self as _)
             .unwrap();
+    }
+}
+
+impl SseEncode for crate::api::error::ValidateError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            crate::api::error::ValidateError::ConflictOnStorageColumnIndex(field0) => {
+                <i32>::sse_encode(0, serializer);
+                <usize>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValidateError::ConflictOnUnexpectedSchemalessRowFound => {
+                <i32>::sse_encode(1, serializer);
+            }
+            crate::api::error::ValidateError::DuplicateEntryOnUniqueField(field0, field1) => {
+                <i32>::sse_encode(2, serializer);
+                <crate::api::value::Value>::sse_encode(field0, serializer);
+                <String>::sse_encode(field1, serializer);
+            }
+            crate::api::error::ValidateError::DuplicateEntryOnPrimaryKeyField(field0) => {
+                <i32>::sse_encode(3, serializer);
+                <crate::api::key::Key>::sse_encode(field0, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseEncode for crate::api::value::Value {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            crate::api::value::Value::Bool(field0) => {
+                <i32>::sse_encode(0, serializer);
+                <bool>::sse_encode(field0, serializer);
+            }
+            crate::api::value::Value::I8(field0) => {
+                <i32>::sse_encode(1, serializer);
+                <i8>::sse_encode(field0, serializer);
+            }
+            crate::api::value::Value::I16(field0) => {
+                <i32>::sse_encode(2, serializer);
+                <i16>::sse_encode(field0, serializer);
+            }
+            crate::api::value::Value::I32(field0) => {
+                <i32>::sse_encode(3, serializer);
+                <i32>::sse_encode(field0, serializer);
+            }
+            crate::api::value::Value::I64(field0) => {
+                <i32>::sse_encode(4, serializer);
+                <i64>::sse_encode(field0, serializer);
+            }
+            crate::api::value::Value::I128(field0) => {
+                <i32>::sse_encode(5, serializer);
+                <i128>::sse_encode(field0, serializer);
+            }
+            crate::api::value::Value::U8(field0) => {
+                <i32>::sse_encode(6, serializer);
+                <u8>::sse_encode(field0, serializer);
+            }
+            crate::api::value::Value::U16(field0) => {
+                <i32>::sse_encode(7, serializer);
+                <u16>::sse_encode(field0, serializer);
+            }
+            crate::api::value::Value::U32(field0) => {
+                <i32>::sse_encode(8, serializer);
+                <u32>::sse_encode(field0, serializer);
+            }
+            crate::api::value::Value::U64(field0) => {
+                <i32>::sse_encode(9, serializer);
+                <u64>::sse_encode(field0, serializer);
+            }
+            crate::api::value::Value::U128(field0) => {
+                <i32>::sse_encode(10, serializer);
+                <u128>::sse_encode(field0, serializer);
+            }
+            crate::api::value::Value::F32(field0) => {
+                <i32>::sse_encode(11, serializer);
+                <f32>::sse_encode(field0, serializer);
+            }
+            crate::api::value::Value::F64(field0) => {
+                <i32>::sse_encode(12, serializer);
+                <f64>::sse_encode(field0, serializer);
+            }
+            crate::api::value::Value::Decimal(field0) => {
+                <i32>::sse_encode(13, serializer);
+                <Decimal>::sse_encode(field0, serializer);
+            }
+            crate::api::value::Value::Str(field0) => {
+                <i32>::sse_encode(14, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::value::Value::Bytea(field0) => {
+                <i32>::sse_encode(15, serializer);
+                <Vec<u8>>::sse_encode(field0, serializer);
+            }
+            crate::api::value::Value::Inet(field0) => {
+                <i32>::sse_encode(16, serializer);
+                <IpAddr>::sse_encode(field0, serializer);
+            }
+            crate::api::value::Value::Date(field0) => {
+                <i32>::sse_encode(17, serializer);
+                <NaiveDate>::sse_encode(field0, serializer);
+            }
+            crate::api::value::Value::Timestamp(field0) => {
+                <i32>::sse_encode(18, serializer);
+                <chrono::NaiveDateTime>::sse_encode(field0, serializer);
+            }
+            crate::api::value::Value::Time(field0) => {
+                <i32>::sse_encode(19, serializer);
+                <NaiveTime>::sse_encode(field0, serializer);
+            }
+            crate::api::value::Value::Interval(field0) => {
+                <i32>::sse_encode(20, serializer);
+                <Interval>::sse_encode(field0, serializer);
+            }
+            crate::api::value::Value::Uuid(field0) => {
+                <i32>::sse_encode(21, serializer);
+                <u128>::sse_encode(field0, serializer);
+            }
+            crate::api::value::Value::Map(field0) => {
+                <i32>::sse_encode(22, serializer);
+                <std::collections::HashMap<String, crate::api::value::Value>>::sse_encode(
+                    field0, serializer,
+                );
+            }
+            crate::api::value::Value::List(field0) => {
+                <i32>::sse_encode(23, serializer);
+                <Vec<crate::api::value::Value>>::sse_encode(field0, serializer);
+            }
+            crate::api::value::Value::Point(field0) => {
+                <i32>::sse_encode(24, serializer);
+                <Point>::sse_encode(field0, serializer);
+            }
+            crate::api::value::Value::Null => {
+                <i32>::sse_encode(25, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
+impl SseEncode for crate::api::error::ValueError {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            crate::api::error::ValueError::IncompatibleLiteralForDataType {
+                data_type,
+                literal,
+            } => {
+                <i32>::sse_encode(0, serializer);
+                <DataType>::sse_encode(data_type, serializer);
+                <String>::sse_encode(literal, serializer);
+            }
+            crate::api::error::ValueError::IncompatibleDataType { data_type, value } => {
+                <i32>::sse_encode(1, serializer);
+                <DataType>::sse_encode(data_type, serializer);
+                <crate::api::value::Value>::sse_encode(value, serializer);
+            }
+            crate::api::error::ValueError::NullValueOnNotNullField => {
+                <i32>::sse_encode(2, serializer);
+            }
+            crate::api::error::ValueError::FailedToParseNumber => {
+                <i32>::sse_encode(3, serializer);
+            }
+            crate::api::error::ValueError::FloatToDecimalConversionFailure(field0) => {
+                <i32>::sse_encode(4, serializer);
+                <f64>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::FailedToParseDate(field0) => {
+                <i32>::sse_encode(5, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::FailedToParseTimestamp(field0) => {
+                <i32>::sse_encode(6, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::FailedToParseTime(field0) => {
+                <i32>::sse_encode(7, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::FailedToParseUUID(field0) => {
+                <i32>::sse_encode(8, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::FailedToParsePoint(field0) => {
+                <i32>::sse_encode(9, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::FailedToParseDecimal(field0) => {
+                <i32>::sse_encode(10, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::FailedToParseHexString(field0) => {
+                <i32>::sse_encode(11, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::FailedToParseInetString(field0) => {
+                <i32>::sse_encode(12, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::NonNumericMathOperation { lhs, rhs, operator } => {
+                <i32>::sse_encode(13, serializer);
+                <crate::api::value::Value>::sse_encode(lhs, serializer);
+                <crate::api::value::Value>::sse_encode(rhs, serializer);
+                <crate::api::error::NumericBinaryOperator>::sse_encode(operator, serializer);
+            }
+            crate::api::error::ValueError::DivisorShouldNotBeZero => {
+                <i32>::sse_encode(14, serializer);
+            }
+            crate::api::error::ValueError::UnaryPlusOnNonNumeric => {
+                <i32>::sse_encode(15, serializer);
+            }
+            crate::api::error::ValueError::UnaryMinusOnNonNumeric => {
+                <i32>::sse_encode(16, serializer);
+            }
+            crate::api::error::ValueError::FactorialOnNonNumeric => {
+                <i32>::sse_encode(17, serializer);
+            }
+            crate::api::error::ValueError::FactorialOnNonInteger => {
+                <i32>::sse_encode(18, serializer);
+            }
+            crate::api::error::ValueError::FactorialOnNegativeNumeric => {
+                <i32>::sse_encode(19, serializer);
+            }
+            crate::api::error::ValueError::FactorialOverflow => {
+                <i32>::sse_encode(20, serializer);
+            }
+            crate::api::error::ValueError::GcdLcmOverflow(field0) => {
+                <i32>::sse_encode(21, serializer);
+                <i64>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::LcmResultOutOfRange => {
+                <i32>::sse_encode(22, serializer);
+            }
+            crate::api::error::ValueError::UnaryBitwiseNotOnNonNumeric => {
+                <i32>::sse_encode(23, serializer);
+            }
+            crate::api::error::ValueError::UnaryBitwiseNotOnNonInteger => {
+                <i32>::sse_encode(24, serializer);
+            }
+            crate::api::error::ValueError::UnreachableNumberParsing => {
+                <i32>::sse_encode(25, serializer);
+            }
+            crate::api::error::ValueError::UnimplementedCast { value, data_type } => {
+                <i32>::sse_encode(26, serializer);
+                <crate::api::value::Value>::sse_encode(value, serializer);
+                <DataType>::sse_encode(data_type, serializer);
+            }
+            crate::api::error::ValueError::CastFromHexToByteaFailed(field0) => {
+                <i32>::sse_encode(27, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::EmptyArgNotAllowedInConcat => {
+                <i32>::sse_encode(28, serializer);
+            }
+            crate::api::error::ValueError::LiteralCastFromTextToIntegerFailed(field0) => {
+                <i32>::sse_encode(29, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::LiteralCastFromTextToUnsignedInt8Failed(field0) => {
+                <i32>::sse_encode(30, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::LiteralCastFromTextToUint16Failed(field0) => {
+                <i32>::sse_encode(31, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::LiteralCastFromTextToUint32Failed(field0) => {
+                <i32>::sse_encode(32, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::LiteralCastFromTextToUint64Failed(field0) => {
+                <i32>::sse_encode(33, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::LiteralCastFromTextToUint128Failed(field0) => {
+                <i32>::sse_encode(34, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::LiteralCastFromTextToFloatFailed(field0) => {
+                <i32>::sse_encode(35, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::LiteralCastFromTextToDecimalFailed(field0) => {
+                <i32>::sse_encode(36, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::LiteralCastToBooleanFailed(field0) => {
+                <i32>::sse_encode(37, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::LiteralCastToDateFailed(field0) => {
+                <i32>::sse_encode(38, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::LiteralCastToDataTypeFailed(field0, field1) => {
+                <i32>::sse_encode(39, serializer);
+                <DataType>::sse_encode(field0, serializer);
+                <String>::sse_encode(field1, serializer);
+            }
+            crate::api::error::ValueError::LiteralCastToInt8Failed(field0) => {
+                <i32>::sse_encode(40, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::LiteralCastToUnsignedInt8Failed(field0) => {
+                <i32>::sse_encode(41, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::LiteralCastToUint16Failed(field0) => {
+                <i32>::sse_encode(42, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::LiteralCastToUint32Failed(field0) => {
+                <i32>::sse_encode(43, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::LiteralCastToUint64Failed(field0) => {
+                <i32>::sse_encode(44, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::LiteralCastToUint128Failed(field0) => {
+                <i32>::sse_encode(45, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::LiteralCastToTimeFailed(field0) => {
+                <i32>::sse_encode(46, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::LiteralCastToTimestampFailed(field0) => {
+                <i32>::sse_encode(47, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::UnreachableLiteralCastFromNumberToInteger(field0) => {
+                <i32>::sse_encode(48, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::UnreachableLiteralCastFromNumberToFloat(field0) => {
+                <i32>::sse_encode(49, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::UnimplementedLiteralCast { data_type, literal } => {
+                <i32>::sse_encode(50, serializer);
+                <DataType>::sse_encode(data_type, serializer);
+                <String>::sse_encode(literal, serializer);
+            }
+            crate::api::error::ValueError::UnreachableIntegerOverflow(field0) => {
+                <i32>::sse_encode(51, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::LikeOnNonString {
+                base,
+                pattern,
+                case_sensitive,
+            } => {
+                <i32>::sse_encode(52, serializer);
+                <crate::api::value::Value>::sse_encode(base, serializer);
+                <crate::api::value::Value>::sse_encode(pattern, serializer);
+                <bool>::sse_encode(case_sensitive, serializer);
+            }
+            crate::api::error::ValueError::ExtractFormatNotMatched { value, field } => {
+                <i32>::sse_encode(53, serializer);
+                <crate::api::value::Value>::sse_encode(value, serializer);
+                <crate::api::ast::DateTimeField>::sse_encode(field, serializer);
+            }
+            crate::api::error::ValueError::BigEndianExportNotSupported(field0) => {
+                <i32>::sse_encode(54, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::InvalidJsonString(field0) => {
+                <i32>::sse_encode(55, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::JsonObjectTypeRequired => {
+                <i32>::sse_encode(56, serializer);
+            }
+            crate::api::error::ValueError::JsonArrayTypeRequired => {
+                <i32>::sse_encode(57, serializer);
+            }
+            crate::api::error::ValueError::UnreachableJsonNumberParseFailure(field0) => {
+                <i32>::sse_encode(58, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::SelectorRequiresMapOrListTypes => {
+                <i32>::sse_encode(59, serializer);
+            }
+            crate::api::error::ValueError::BinaryOperationOverflow { lhs, rhs, operator } => {
+                <i32>::sse_encode(60, serializer);
+                <crate::api::value::Value>::sse_encode(lhs, serializer);
+                <crate::api::value::Value>::sse_encode(rhs, serializer);
+                <crate::api::error::NumericBinaryOperator>::sse_encode(operator, serializer);
+            }
+            crate::api::error::ValueError::SqrtOnNonNumeric(field0) => {
+                <i32>::sse_encode(61, serializer);
+                <crate::api::value::Value>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::NonStringParameterInPosition { from, sub } => {
+                <i32>::sse_encode(62, serializer);
+                <crate::api::value::Value>::sse_encode(from, serializer);
+                <crate::api::value::Value>::sse_encode(sub, serializer);
+            }
+            crate::api::error::ValueError::NonStringParameterInFindIdx { sub, from } => {
+                <i32>::sse_encode(63, serializer);
+                <crate::api::value::Value>::sse_encode(sub, serializer);
+                <crate::api::value::Value>::sse_encode(from, serializer);
+            }
+            crate::api::error::ValueError::NonPositiveIntegerOffsetInFindIdx(field0) => {
+                <i32>::sse_encode(64, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::error::ValueError::ValueToExprConversionFailure => {
+                <i32>::sse_encode(65, serializer);
+            }
+            crate::api::error::ValueError::I64ToU32ConversionFailure(field0) => {
+                <i32>::sse_encode(66, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
     }
 }
 

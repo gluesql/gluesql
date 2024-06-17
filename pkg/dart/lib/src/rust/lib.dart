@@ -6,29 +6,5 @@
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<DataType>>
-abstract class DataType implements RustOpaqueInterface {}
-
-// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Decimal>>
-abstract class Decimal implements RustOpaqueInterface {}
-
-// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Interval>>
-abstract class Interval implements RustOpaqueInterface {}
-
-// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<IpAddr>>
-abstract class IpAddr implements RustOpaqueInterface {}
-
-// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NaiveDate>>
-abstract class NaiveDate implements RustOpaqueInterface {}
-
-// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<NaiveTime>>
-abstract class NaiveTime implements RustOpaqueInterface {}
-
-// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<PayloadVariable>>
-abstract class PayloadVariable implements RustOpaqueInterface {}
-
-// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Point>>
-abstract class Point implements RustOpaqueInterface {}
-
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Value>>
 abstract class Value implements RustOpaqueInterface {}

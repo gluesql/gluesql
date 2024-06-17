@@ -3,6 +3,9 @@
 
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
+import 'api/ast.dart';
+import 'api/error.dart';
+import 'api/key.dart';
 import 'api/payload.dart';
 import 'api/simple.dart';
 import 'api/value.dart';
@@ -10,7 +13,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
 import 'frb_generated.io.dart' if (dart.library.html) 'frb_generated.web.dart';
-import 'lib.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 /// Main entrypoint of the Rust API
@@ -71,9 +73,25 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
-  Future<List<DartPayload>> crateApiSimpleExecute({required String sql});
+  Future<List<Payload>> crateApiSimpleExecute({required String sql});
 
   Future<void> crateApiSimpleInitApp();
+
+  RustArcIncrementStrongCountFnType
+      get rust_arc_increment_strong_count_Aggregate;
+
+  RustArcDecrementStrongCountFnType
+      get rust_arc_decrement_strong_count_Aggregate;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_AggregatePtr;
+
+  RustArcIncrementStrongCountFnType
+      get rust_arc_increment_strong_count_ColumnDef;
+
+  RustArcDecrementStrongCountFnType
+      get rust_arc_decrement_strong_count_ColumnDef;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_ColumnDefPtr;
 
   RustArcIncrementStrongCountFnType
       get rust_arc_increment_strong_count_DataType;
@@ -89,11 +107,11 @@ abstract class RustLibApi extends BaseApi {
 
   CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_DecimalPtr;
 
-  RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_Error;
+  RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_Expr;
 
-  RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_Error;
+  RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_Expr;
 
-  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_ErrorPtr;
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_ExprPtr;
 
   RustArcIncrementStrongCountFnType
       get rust_arc_increment_strong_count_Interval;
@@ -126,6 +144,32 @@ abstract class RustLibApi extends BaseApi {
   CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_NaiveTimePtr;
 
   RustArcIncrementStrongCountFnType
+      get rust_arc_increment_strong_count_OrderedFloatF32;
+
+  RustArcDecrementStrongCountFnType
+      get rust_arc_decrement_strong_count_OrderedFloatF32;
+
+  CrossPlatformFinalizerArg
+      get rust_arc_decrement_strong_count_OrderedFloatF32Ptr;
+
+  RustArcIncrementStrongCountFnType
+      get rust_arc_increment_strong_count_OrderedFloatF64;
+
+  RustArcDecrementStrongCountFnType
+      get rust_arc_decrement_strong_count_OrderedFloatF64;
+
+  CrossPlatformFinalizerArg
+      get rust_arc_decrement_strong_count_OrderedFloatF64Ptr;
+
+  RustArcIncrementStrongCountFnType
+      get rust_arc_increment_strong_count_ParseError;
+
+  RustArcDecrementStrongCountFnType
+      get rust_arc_decrement_strong_count_ParseError;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_ParseErrorPtr;
+
+  RustArcIncrementStrongCountFnType
       get rust_arc_increment_strong_count_PayloadVariable;
 
   RustArcDecrementStrongCountFnType
@@ -139,12 +183,6 @@ abstract class RustLibApi extends BaseApi {
   RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_Point;
 
   CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_PointPtr;
-
-  RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_Value;
-
-  RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_Value;
-
-  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_ValuePtr;
 }
 
 class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
@@ -156,7 +194,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
-  Future<List<DartPayload>> crateApiSimpleExecute({required String sql}) {
+  Future<List<Payload>> crateApiSimpleExecute({required String sql}) {
     return handler.executeNormal(NormalTask(
       callFfi: (port_) {
         final serializer = SseSerializer(generalizedFrbRustBinding);
@@ -165,9 +203,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             funcId: 1, port: port_);
       },
       codec: SseCodec(
-        decodeSuccessData: sse_decode_list_dart_payload,
-        decodeErrorData:
-            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError,
+        decodeSuccessData: sse_decode_list_payload,
+        decodeErrorData: sse_decode_error,
       ),
       constMeta: kCrateApiSimpleExecuteConstMeta,
       argValues: [sql],
@@ -204,6 +241,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   RustArcIncrementStrongCountFnType
+      get rust_arc_increment_strong_count_Aggregate => wire
+          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAggregate;
+
+  RustArcDecrementStrongCountFnType
+      get rust_arc_decrement_strong_count_Aggregate => wire
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAggregate;
+
+  RustArcIncrementStrongCountFnType
+      get rust_arc_increment_strong_count_ColumnDef => wire
+          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerColumnDef;
+
+  RustArcDecrementStrongCountFnType
+      get rust_arc_decrement_strong_count_ColumnDef => wire
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerColumnDef;
+
+  RustArcIncrementStrongCountFnType
       get rust_arc_increment_strong_count_DataType => wire
           .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType;
 
@@ -219,11 +272,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       get rust_arc_decrement_strong_count_Decimal => wire
           .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDecimal;
 
-  RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_Error =>
-      wire.rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError;
+  RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_Expr =>
+      wire.rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr;
 
-  RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_Error =>
-      wire.rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError;
+  RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_Expr =>
+      wire.rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr;
 
   RustArcIncrementStrongCountFnType
       get rust_arc_increment_strong_count_Interval => wire
@@ -258,6 +311,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime;
 
   RustArcIncrementStrongCountFnType
+      get rust_arc_increment_strong_count_OrderedFloatF32 => wire
+          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf32;
+
+  RustArcDecrementStrongCountFnType
+      get rust_arc_decrement_strong_count_OrderedFloatF32 => wire
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf32;
+
+  RustArcIncrementStrongCountFnType
+      get rust_arc_increment_strong_count_OrderedFloatF64 => wire
+          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf64;
+
+  RustArcDecrementStrongCountFnType
+      get rust_arc_decrement_strong_count_OrderedFloatF64 => wire
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf64;
+
+  RustArcIncrementStrongCountFnType
+      get rust_arc_increment_strong_count_ParseError => wire
+          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerParseError;
+
+  RustArcDecrementStrongCountFnType
+      get rust_arc_decrement_strong_count_ParseError => wire
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerParseError;
+
+  RustArcIncrementStrongCountFnType
       get rust_arc_increment_strong_count_PayloadVariable => wire
           .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable;
 
@@ -271,11 +348,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_Point =>
       wire.rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPoint;
 
-  RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_Value =>
-      wire.rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue;
+  @protected
+  Aggregate
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAggregate(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return AggregateImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
 
-  RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_Value =>
-      wire.rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue;
+  @protected
+  ColumnDef
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerColumnDef(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return ColumnDefImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
 
   @protected
   DataType
@@ -294,11 +381,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  Error
-      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError(
+  Expr
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
           dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return ErrorImpl.frbInternalDcoDecode(raw as List<dynamic>);
+    return ExprImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
 
   @protected
@@ -334,6 +421,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  OrderedFloatF32
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf32(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return OrderedFloatF32Impl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  OrderedFloatF64
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf64(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return OrderedFloatF64Impl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  ParseError
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerParseError(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return ParseErrorImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
   PayloadVariable
       dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
           dynamic raw) {
@@ -350,14 +461,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  Value
-      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return ValueImpl.frbInternalDcoDecode(raw as List<dynamic>);
-  }
-
-  @protected
   DateTime dco_decode_Chrono_Naive(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dcoDecodeTimestamp(ts: dco_decode_i_64(raw).toInt(), isUtc: true);
@@ -370,21 +473,26 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  Map<String, Value>
-      dco_decode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          dynamic raw) {
+  Map<String, Value> dco_decode_Map_String_value(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return Map.fromEntries(
-        dco_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
-                raw)
-            .map((e) => MapEntry(e.$1, e.$2)));
+    return Map.fromEntries(dco_decode_list_record_string_value(raw)
+        .map((e) => MapEntry(e.$1, e.$2)));
   }
 
   @protected
-  Map<String, DartValue> dco_decode_Map_String_dart_value(dynamic raw) {
+  Aggregate
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAggregate(
+          dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return Map.fromEntries(dco_decode_list_record_string_dart_value(raw)
-        .map((e) => MapEntry(e.$1, e.$2)));
+    return AggregateImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  ColumnDef
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerColumnDef(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return ColumnDefImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
 
   @protected
@@ -404,11 +512,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  Error
-      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError(
+  Expr
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
           dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return ErrorImpl.frbInternalDcoDecode(raw as List<dynamic>);
+    return ExprImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
 
   @protected
@@ -444,6 +552,30 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  OrderedFloatF32
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf32(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return OrderedFloatF32Impl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  OrderedFloatF64
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf64(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return OrderedFloatF64Impl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  ParseError
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerParseError(
+          dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return ParseErrorImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
   PayloadVariable
       dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
           dynamic raw) {
@@ -460,14 +592,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  Value
-      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return ValueImpl.frbInternalDcoDecode(raw as List<dynamic>);
-  }
-
-  @protected
   String dco_decode_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as String;
@@ -480,63 +604,94 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  bool dco_decode_bool(dynamic raw) {
+  AggregateError dco_decode_aggregate_error(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw as bool;
+    return AggregateError.values[raw as int];
   }
 
   @protected
-  DartPayload dco_decode_dart_payload(dynamic raw) {
+  AlterError dco_decode_alter_error(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     switch (raw[0]) {
       case 0:
-        return DartPayload_ShowColumns(
-          dco_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_data_type(
-              raw[1]),
+        return AlterError_TableAlreadyExists(
+          dco_decode_String(raw[1]),
         );
       case 1:
-        return DartPayload_Create();
+        return AlterError_FunctionAlreadyExists(
+          dco_decode_String(raw[1]),
+        );
       case 2:
-        return DartPayload_Insert(
-          dco_decode_usize(raw[1]),
+        return AlterError_FunctionNotFound(
+          dco_decode_String(raw[1]),
         );
       case 3:
-        return DartPayload_Select(
-          labels: dco_decode_list_String(raw[1]),
-          rows: dco_decode_list_list_dart_value(raw[2]),
+        return AlterError_TableNotFound(
+          dco_decode_String(raw[1]),
         );
       case 4:
-        return DartPayload_SelectMap(
-          dco_decode_list_Map_String_dart_value(raw[1]),
+        return AlterError_CtasSourceTableNotFound(
+          dco_decode_String(raw[1]),
         );
       case 5:
-        return DartPayload_Delete(
-          dco_decode_usize(raw[1]),
+        return AlterError_UnsupportedDataTypeForUniqueColumn(
+          dco_decode_String(raw[1]),
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
+              raw[2]),
         );
       case 6:
-        return DartPayload_Update(
-          dco_decode_usize(raw[1]),
+        return AlterError_UnsupportedIndexExpr(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
+              raw[1]),
         );
       case 7:
-        return DartPayload_DropTable();
+        return AlterError_UnsupportedUnnamedArg();
       case 8:
-        return DartPayload_DropFunction();
-      case 9:
-        return DartPayload_AlterTable();
-      case 10:
-        return DartPayload_CreateIndex();
-      case 11:
-        return DartPayload_DropIndex();
-      case 12:
-        return DartPayload_StartTransaction();
-      case 13:
-        return DartPayload_Commit();
-      case 14:
-        return DartPayload_Rollback();
-      case 15:
-        return DartPayload_ShowVariable(
-          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
+        return AlterError_IdentifierNotFound(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
               raw[1]),
+        );
+      case 9:
+        return AlterError_DuplicateColumnName(
+          dco_decode_String(raw[1]),
+        );
+      case 10:
+        return AlterError_DuplicateArgName(
+          dco_decode_String(raw[1]),
+        );
+      case 11:
+        return AlterError_NonDefaultArgumentFollowsDefaultArgument();
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  AlterTableError dco_decode_alter_table_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return AlterTableError_TableNotFound(
+          dco_decode_String(raw[1]),
+        );
+      case 1:
+        return AlterTableError_RenamingColumnNotFound();
+      case 2:
+        return AlterTableError_DefaultValueRequired(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerColumnDef(
+              raw[1]),
+        );
+      case 3:
+        return AlterTableError_AlreadyExistingColumn(
+          dco_decode_String(raw[1]),
+        );
+      case 4:
+        return AlterTableError_DroppingColumnNotFound(
+          dco_decode_String(raw[1]),
+        );
+      case 5:
+        return AlterTableError_SchemalessTableFound(
+          dco_decode_String(raw[1]),
         );
       default:
         throw Exception("unreachable");
@@ -544,119 +699,458 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  DartValue dco_decode_dart_value(dynamic raw) {
+  AstBuilderError dco_decode_ast_builder_error(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     switch (raw[0]) {
       case 0:
-        return DartValue_Bool(
-          dco_decode_bool(raw[1]),
-        );
-      case 1:
-        return DartValue_I8(
-          dco_decode_i_8(raw[1]),
-        );
-      case 2:
-        return DartValue_I16(
-          dco_decode_i_16(raw[1]),
-        );
-      case 3:
-        return DartValue_I32(
-          dco_decode_i_32(raw[1]),
-        );
-      case 4:
-        return DartValue_I64(
-          dco_decode_i_64(raw[1]),
-        );
-      case 5:
-        return DartValue_I128(
-          dco_decode_I128(raw[1]),
-        );
-      case 6:
-        return DartValue_U8(
-          dco_decode_u_8(raw[1]),
-        );
-      case 7:
-        return DartValue_U16(
-          dco_decode_u_16(raw[1]),
-        );
-      case 8:
-        return DartValue_U32(
-          dco_decode_u_32(raw[1]),
-        );
-      case 9:
-        return DartValue_U64(
-          dco_decode_u_64(raw[1]),
-        );
-      case 10:
-        return DartValue_U128(
-          dco_decode_U128(raw[1]),
-        );
-      case 11:
-        return DartValue_F32(
-          dco_decode_f_32(raw[1]),
-        );
-      case 12:
-        return DartValue_F64(
-          dco_decode_f_64(raw[1]),
-        );
-      case 13:
-        return DartValue_Decimal(
-          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDecimal(
-              raw[1]),
-        );
-      case 14:
-        return DartValue_Str(
+        return AstBuilderError_FailedToParseNumeric(
           dco_decode_String(raw[1]),
         );
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  BinaryOperator dco_decode_binary_operator(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BinaryOperator.values[raw as int];
+  }
+
+  @protected
+  bool dco_decode_bool(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as bool;
+  }
+
+  @protected
+  AlterError dco_decode_box_autoadd_alter_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_alter_error(raw);
+  }
+
+  @protected
+  AlterTableError dco_decode_box_autoadd_alter_table_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_alter_table_error(raw);
+  }
+
+  @protected
+  AstBuilderError dco_decode_box_autoadd_ast_builder_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_ast_builder_error(raw);
+  }
+
+  @protected
+  ConvertError dco_decode_box_autoadd_convert_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_convert_error(raw);
+  }
+
+  @protected
+  EvaluateError dco_decode_box_autoadd_evaluate_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_evaluate_error(raw);
+  }
+
+  @protected
+  ExecuteError dco_decode_box_autoadd_execute_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_execute_error(raw);
+  }
+
+  @protected
+  FetchError dco_decode_box_autoadd_fetch_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_fetch_error(raw);
+  }
+
+  @protected
+  IndexError dco_decode_box_autoadd_index_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_index_error(raw);
+  }
+
+  @protected
+  InsertError dco_decode_box_autoadd_insert_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_insert_error(raw);
+  }
+
+  @protected
+  IntervalError dco_decode_box_autoadd_interval_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_interval_error(raw);
+  }
+
+  @protected
+  Key dco_decode_box_autoadd_key(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_key(raw);
+  }
+
+  @protected
+  LiteralError dco_decode_box_autoadd_literal_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_literal_error(raw);
+  }
+
+  @protected
+  PlanError dco_decode_box_autoadd_plan_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_plan_error(raw);
+  }
+
+  @protected
+  SortError dco_decode_box_autoadd_sort_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_sort_error(raw);
+  }
+
+  @protected
+  TranslateError dco_decode_box_autoadd_translate_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_translate_error(raw);
+  }
+
+  @protected
+  UpdateError dco_decode_box_autoadd_update_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_update_error(raw);
+  }
+
+  @protected
+  ValidateError dco_decode_box_autoadd_validate_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_validate_error(raw);
+  }
+
+  @protected
+  Value dco_decode_box_autoadd_value(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_value(raw);
+  }
+
+  @protected
+  ValueError dco_decode_box_autoadd_value_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_value_error(raw);
+  }
+
+  @protected
+  ConvertError dco_decode_convert_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return ConvertError(
+      value: dco_decode_value(arr[0]),
+      dataType:
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
+              arr[1]),
+    );
+  }
+
+  @protected
+  DateTimeField dco_decode_date_time_field(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return DateTimeField.values[raw as int];
+  }
+
+  @protected
+  Error dco_decode_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return Error_StorageMsg(
+          dco_decode_String(raw[1]),
+        );
+      case 1:
+        return Error_Parser(
+          dco_decode_String(raw[1]),
+        );
+      case 2:
+        return Error_Translate(
+          dco_decode_box_autoadd_translate_error(raw[1]),
+        );
+      case 3:
+        return Error_AstBuilder(
+          dco_decode_box_autoadd_ast_builder_error(raw[1]),
+        );
+      case 4:
+        return Error_AlterTable(
+          dco_decode_box_autoadd_alter_table_error(raw[1]),
+        );
+      case 5:
+        return Error_Index(
+          dco_decode_box_autoadd_index_error(raw[1]),
+        );
+      case 6:
+        return Error_Execute(
+          dco_decode_box_autoadd_execute_error(raw[1]),
+        );
+      case 7:
+        return Error_Alter(
+          dco_decode_box_autoadd_alter_error(raw[1]),
+        );
+      case 8:
+        return Error_Fetch(
+          dco_decode_box_autoadd_fetch_error(raw[1]),
+        );
+      case 9:
+        return Error_Select(
+          dco_decode_select_error(raw[1]),
+        );
+      case 10:
+        return Error_Evaluate(
+          dco_decode_box_autoadd_evaluate_error(raw[1]),
+        );
+      case 11:
+        return Error_Aggregate(
+          dco_decode_aggregate_error(raw[1]),
+        );
+      case 12:
+        return Error_Sort(
+          dco_decode_box_autoadd_sort_error(raw[1]),
+        );
+      case 13:
+        return Error_Insert(
+          dco_decode_box_autoadd_insert_error(raw[1]),
+        );
+      case 14:
+        return Error_Update(
+          dco_decode_box_autoadd_update_error(raw[1]),
+        );
       case 15:
-        return DartValue_Bytea(
-          dco_decode_list_prim_u_8_strict(raw[1]),
+        return Error_Table(
+          dco_decode_table_error(raw[1]),
         );
       case 16:
-        return DartValue_Inet(
-          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIpAddr(
-              raw[1]),
+        return Error_Validate(
+          dco_decode_box_autoadd_validate_error(raw[1]),
         );
       case 17:
-        return DartValue_Date(
-          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
-              raw[1]),
+        return Error_Row(
+          dco_decode_row_error(raw[1]),
         );
       case 18:
-        return DartValue_Timestamp(
-          dco_decode_Chrono_Naive(raw[1]),
+        return Error_Key(
+          dco_decode_key_error(raw[1]),
         );
       case 19:
-        return DartValue_Time(
-          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
-              raw[1]),
+        return Error_Value(
+          dco_decode_box_autoadd_value_error(raw[1]),
         );
       case 20:
-        return DartValue_Interval(
-          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerInterval(
-              raw[1]),
+        return Error_Convert(
+          dco_decode_box_autoadd_convert_error(raw[1]),
         );
       case 21:
-        return DartValue_Uuid(
-          dco_decode_U128(raw[1]),
+        return Error_Literal(
+          dco_decode_box_autoadd_literal_error(raw[1]),
         );
       case 22:
-        return DartValue_Map(
-          dco_decode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+        return Error_Interval(
+          dco_decode_box_autoadd_interval_error(raw[1]),
+        );
+      case 23:
+        return Error_StringExt(
+          dco_decode_string_ext_error(raw[1]),
+        );
+      case 24:
+        return Error_Plan(
+          dco_decode_box_autoadd_plan_error(raw[1]),
+        );
+      case 25:
+        return Error_Schema(
+          dco_decode_schema_parse_error(raw[1]),
+        );
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  EvaluateError dco_decode_evaluate_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return EvaluateError_FormatParseError(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerParseError(
+              raw[1]),
+        );
+      case 1:
+        return EvaluateError_LiteralAddOnNonNumeric();
+      case 2:
+        return EvaluateError_FunctionRequiresStringValue(
+          dco_decode_String(raw[1]),
+        );
+      case 3:
+        return EvaluateError_FunctionRequiresIntegerValue(
+          dco_decode_String(raw[1]),
+        );
+      case 4:
+        return EvaluateError_FunctionRequiresFloatOrIntegerValue(
+          dco_decode_String(raw[1]),
+        );
+      case 5:
+        return EvaluateError_FunctionRequiresUSizeValue(
+          dco_decode_String(raw[1]),
+        );
+      case 6:
+        return EvaluateError_FunctionRequiresFloatValue(
+          dco_decode_String(raw[1]),
+        );
+      case 7:
+        return EvaluateError_ExtractFormatNotMatched(
+          dco_decode_String(raw[1]),
+        );
+      case 8:
+        return EvaluateError_FunctionRequiresMapValue(
+          dco_decode_String(raw[1]),
+        );
+      case 9:
+        return EvaluateError_FunctionRequiresPointValue(
+          dco_decode_String(raw[1]),
+        );
+      case 10:
+        return EvaluateError_FunctionRequiresDateOrDateTimeValue(
+          dco_decode_String(raw[1]),
+        );
+      case 11:
+        return EvaluateError_FunctionRequiresStrOrListOrMapValue(
+          dco_decode_String(raw[1]),
+        );
+      case 12:
+        return EvaluateError_ValueNotFound(
+          dco_decode_String(raw[1]),
+        );
+      case 13:
+        return EvaluateError_BooleanTypeRequired(
+          dco_decode_String(raw[1]),
+        );
+      case 14:
+        return EvaluateError_MapOrListTypeRequired();
+      case 15:
+        return EvaluateError_MapTypeRequired();
+      case 16:
+        return EvaluateError_ListTypeRequired();
+      case 17:
+        return EvaluateError_InvalidSortType();
+      case 18:
+        return EvaluateError_InvalidSortOrder();
+      case 19:
+        return EvaluateError_MapOrStringValueRequired(
+          dco_decode_String(raw[1]),
+        );
+      case 20:
+        return EvaluateError_TextLiteralRequired(
+          dco_decode_String(raw[1]),
+        );
+      case 21:
+        return EvaluateError_UnsupportedStatelessExpr(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
+              raw[1]),
+        );
+      case 22:
+        return EvaluateError_ContextRequiredForIdentEvaluation(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
               raw[1]),
         );
       case 23:
-        return DartValue_List(
-          dco_decode_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+        return EvaluateError_UnreachableEmptyAggregateValue(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAggregate(
               raw[1]),
         );
       case 24:
-        return DartValue_Point(
-          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPoint(
-              raw[1]),
+        return EvaluateError_IncompatibleBitOperation(
+          dco_decode_String(raw[1]),
+          dco_decode_String(raw[2]),
         );
       case 25:
-        return DartValue_NullData();
+        return EvaluateError_DivisorShouldNotBeZero();
+      case 26:
+        return EvaluateError_NegativeSubstrLenNotAllowed();
+      case 27:
+        return EvaluateError_MoreThanOneRowReturned();
+      case 28:
+        return EvaluateError_MoreThanOneColumnReturned();
+      case 29:
+        return EvaluateError_SchemalessProjectionForInSubQuery();
+      case 30:
+        return EvaluateError_SchemalessProjectionForSubQuery();
+      case 31:
+        return EvaluateError_UnsupportedExprForFormatFunction(
+          dco_decode_String(raw[1]),
+        );
+      case 32:
+        return EvaluateError_AsciiFunctionRequiresSingleCharacterValue();
+      case 33:
+        return EvaluateError_NonAsciiCharacterNotAllowed();
+      case 34:
+        return EvaluateError_ChrFunctionRequiresIntegerValueInRange0To255();
+      case 35:
+        return EvaluateError_UnsupportedBinaryOperation(
+          left: dco_decode_String(raw[1]),
+          op: dco_decode_binary_operator(raw[2]),
+          right: dco_decode_String(raw[3]),
+        );
+      case 36:
+        return EvaluateError_UnsupportedUnaryPlus(
+          dco_decode_String(raw[1]),
+        );
+      case 37:
+        return EvaluateError_UnsupportedUnaryMinus(
+          dco_decode_String(raw[1]),
+        );
+      case 38:
+        return EvaluateError_UnsupportedUnaryFactorial(
+          dco_decode_String(raw[1]),
+        );
+      case 39:
+        return EvaluateError_IncompatibleUnaryBitwiseNotOperation(
+          dco_decode_String(raw[1]),
+        );
+      case 40:
+        return EvaluateError_UnsupportedCustomFunction();
+      case 41:
+        return EvaluateError_FunctionRequiresMoreArguments(
+          functionName: dco_decode_String(raw[1]),
+          requiredMinimum: dco_decode_usize(raw[2]),
+          found: dco_decode_usize(raw[3]),
+        );
+      case 42:
+        return EvaluateError_FunctionArgsLengthNotWithinRange(
+          name: dco_decode_String(raw[1]),
+          expectedMinimum: dco_decode_usize(raw[2]),
+          expectedMaximum: dco_decode_usize(raw[3]),
+          found: dco_decode_usize(raw[4]),
+        );
+      case 43:
+        return EvaluateError_UnsupportedFunction(
+          dco_decode_String(raw[1]),
+        );
+      case 44:
+        return EvaluateError_NonComparableArgumentError(
+          dco_decode_String(raw[1]),
+        );
+      case 45:
+        return EvaluateError_FunctionRequiresAtLeastOneArgument(
+          dco_decode_String(raw[1]),
+        );
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  ExecuteError dco_decode_execute_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return ExecuteError_TableNotFound(
+          dco_decode_String(raw[1]),
+        );
       default:
         throw Exception("unreachable");
     }
@@ -672,6 +1166,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   double dco_decode_f_64(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as double;
+  }
+
+  @protected
+  FetchError dco_decode_fetch_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return FetchError_TableNotFound(
+          dco_decode_String(raw[1]),
+        );
+      case 1:
+        return FetchError_TableAliasNotFound(
+          dco_decode_String(raw[1]),
+        );
+      case 2:
+        return FetchError_SeriesSizeWrong(
+          dco_decode_i_64(raw[1]),
+        );
+      case 3:
+        return FetchError_TooManyColumnAliases(
+          dco_decode_String(raw[1]),
+          dco_decode_usize(raw[2]),
+          dco_decode_usize(raw[3]),
+        );
+      default:
+        throw Exception("unreachable");
+    }
   }
 
   @protected
@@ -699,23 +1220,264 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<Value>
-      dco_decode_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          dynamic raw) {
+  IndexError dco_decode_index_error(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>)
-        .map(
-            dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue)
-        .toList();
+    switch (raw[0]) {
+      case 0:
+        return IndexError_TableNotFound(
+          dco_decode_String(raw[1]),
+        );
+      case 1:
+        return IndexError_IndexNameAlreadyExists(
+          dco_decode_String(raw[1]),
+        );
+      case 2:
+        return IndexError_IndexNameDoesNotExist(
+          dco_decode_String(raw[1]),
+        );
+      case 3:
+        return IndexError_ConflictTableNotFound(
+          dco_decode_String(raw[1]),
+        );
+      case 4:
+        return IndexError_ConflictOnEmptyIndexValueUpdate();
+      case 5:
+        return IndexError_ConflictOnEmptyIndexValueDelete();
+      case 6:
+        return IndexError_ConflictOnEmptyIndexValueScan();
+      case 7:
+        return IndexError_ConflictOnIndexDataDeleteSync();
+      default:
+        throw Exception("unreachable");
+    }
   }
 
   @protected
-  List<Map<String, DartValue>> dco_decode_list_Map_String_dart_value(
-      dynamic raw) {
+  InsertError dco_decode_insert_error(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>)
-        .map(dco_decode_Map_String_dart_value)
-        .toList();
+    switch (raw[0]) {
+      case 0:
+        return InsertError_TableNotFound(
+          dco_decode_String(raw[1]),
+        );
+      case 1:
+        return InsertError_LackOfRequiredColumn(
+          dco_decode_String(raw[1]),
+        );
+      case 2:
+        return InsertError_WrongColumnName(
+          dco_decode_String(raw[1]),
+        );
+      case 3:
+        return InsertError_ColumnAndValuesNotMatched();
+      case 4:
+        return InsertError_TooManyValues();
+      case 5:
+        return InsertError_OnlySingleValueAcceptedForSchemalessRow();
+      case 6:
+        return InsertError_MapTypeValueRequired(
+          dco_decode_String(raw[1]),
+        );
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  IntervalError dco_decode_interval_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return IntervalError_UnsupportedRange(
+          dco_decode_String(raw[1]),
+          dco_decode_String(raw[2]),
+        );
+      case 1:
+        return IntervalError_AddBetweenYearToMonthAndHourToSecond();
+      case 2:
+        return IntervalError_SubtractBetweenYearToMonthAndHourToSecond();
+      case 3:
+        return IntervalError_AddYearOrMonthToTime(
+          time:
+              dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+                  raw[1]),
+          interval:
+              dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerInterval(
+                  raw[2]),
+        );
+      case 4:
+        return IntervalError_SubtractYearOrMonthToTime(
+          time:
+              dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+                  raw[1]),
+          interval:
+              dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerInterval(
+                  raw[2]),
+        );
+      case 5:
+        return IntervalError_FailedToParseInteger(
+          dco_decode_String(raw[1]),
+        );
+      case 6:
+        return IntervalError_FailedToParseDecimal(
+          dco_decode_String(raw[1]),
+        );
+      case 7:
+        return IntervalError_FailedToParseTime(
+          dco_decode_String(raw[1]),
+        );
+      case 8:
+        return IntervalError_FailedToParseYearToMonth(
+          dco_decode_String(raw[1]),
+        );
+      case 9:
+        return IntervalError_FailedToParseDayToHour(
+          dco_decode_String(raw[1]),
+        );
+      case 10:
+        return IntervalError_FailedToParseDayToMinute(
+          dco_decode_String(raw[1]),
+        );
+      case 11:
+        return IntervalError_FailedToParseDayToSecond(
+          dco_decode_String(raw[1]),
+        );
+      case 12:
+        return IntervalError_DateOverflow(
+          year: dco_decode_i_32(raw[1]),
+          month: dco_decode_i_32(raw[2]),
+        );
+      case 13:
+        return IntervalError_FailedToExtract();
+      case 14:
+        return IntervalError_ParseSupportedOnlyLiteral(
+          expr:
+              dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
+                  raw[1]),
+        );
+      case 15:
+        return IntervalError_Unreachable();
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  Key dco_decode_key(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return Key_I8(
+          dco_decode_i_8(raw[1]),
+        );
+      case 1:
+        return Key_I16(
+          dco_decode_i_16(raw[1]),
+        );
+      case 2:
+        return Key_I32(
+          dco_decode_i_32(raw[1]),
+        );
+      case 3:
+        return Key_I64(
+          dco_decode_i_64(raw[1]),
+        );
+      case 4:
+        return Key_I128(
+          dco_decode_I128(raw[1]),
+        );
+      case 5:
+        return Key_U8(
+          dco_decode_u_8(raw[1]),
+        );
+      case 6:
+        return Key_U16(
+          dco_decode_u_16(raw[1]),
+        );
+      case 7:
+        return Key_U32(
+          dco_decode_u_32(raw[1]),
+        );
+      case 8:
+        return Key_U64(
+          dco_decode_u_64(raw[1]),
+        );
+      case 9:
+        return Key_U128(
+          dco_decode_U128(raw[1]),
+        );
+      case 10:
+        return Key_F32(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf32(
+              raw[1]),
+        );
+      case 11:
+        return Key_F64(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf64(
+              raw[1]),
+        );
+      case 12:
+        return Key_Decimal(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDecimal(
+              raw[1]),
+        );
+      case 13:
+        return Key_Bool(
+          dco_decode_bool(raw[1]),
+        );
+      case 14:
+        return Key_Str(
+          dco_decode_String(raw[1]),
+        );
+      case 15:
+        return Key_Bytea(
+          dco_decode_list_prim_u_8_strict(raw[1]),
+        );
+      case 16:
+        return Key_Date(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
+              raw[1]),
+        );
+      case 17:
+        return Key_Timestamp(
+          dco_decode_Chrono_Naive(raw[1]),
+        );
+      case 18:
+        return Key_Time(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+              raw[1]),
+        );
+      case 19:
+        return Key_Interval(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerInterval(
+              raw[1]),
+        );
+      case 20:
+        return Key_Uuid(
+          dco_decode_U128(raw[1]),
+        );
+      case 21:
+        return Key_Inet(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIpAddr(
+              raw[1]),
+        );
+      case 22:
+        return Key_None();
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  KeyError dco_decode_key_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return KeyError.values[raw as int];
+  }
+
+  @protected
+  List<Map<String, Value>> dco_decode_list_Map_String_value(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_Map_String_value).toList();
   }
 
   @protected
@@ -725,21 +1487,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<DartPayload> dco_decode_list_dart_payload(dynamic raw) {
+  List<List<Value>> dco_decode_list_list_value(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>).map(dco_decode_dart_payload).toList();
+    return (raw as List<dynamic>).map(dco_decode_list_value).toList();
   }
 
   @protected
-  List<DartValue> dco_decode_list_dart_value(dynamic raw) {
+  List<Payload> dco_decode_list_payload(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>).map(dco_decode_dart_value).toList();
-  }
-
-  @protected
-  List<List<DartValue>> dco_decode_list_list_dart_value(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>).map(dco_decode_list_dart_value).toList();
+    return (raw as List<dynamic>).map(dco_decode_payload).toList();
   }
 
   @protected
@@ -760,23 +1516,138 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<(String, Value)>
-      dco_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
-          dynamic raw) {
+  List<(String, Value)> dco_decode_list_record_string_value(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>)
-        .map(
-            dco_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value)
-        .toList();
+    return (raw as List<dynamic>).map(dco_decode_record_string_value).toList();
   }
 
   @protected
-  List<(String, DartValue)> dco_decode_list_record_string_dart_value(
-      dynamic raw) {
+  List<Value> dco_decode_list_value(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>)
-        .map(dco_decode_record_string_dart_value)
-        .toList();
+    return (raw as List<dynamic>).map(dco_decode_value).toList();
+  }
+
+  @protected
+  LiteralError dco_decode_literal_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return LiteralError_UnsupportedBinaryOperation(
+          left: dco_decode_String(raw[1]),
+          op: dco_decode_binary_operator(raw[2]),
+          right: dco_decode_String(raw[3]),
+        );
+      case 1:
+        return LiteralError_BitwiseNonIntegerOperand(
+          dco_decode_String(raw[1]),
+        );
+      case 2:
+        return LiteralError_BitwiseNonNumberLiteral();
+      case 3:
+        return LiteralError_BitwiseOperationOverflow();
+      case 4:
+        return LiteralError_ImpossibleConversion(
+          dco_decode_String(raw[1]),
+          dco_decode_String(raw[2]),
+        );
+      case 5:
+        return LiteralError_DivisorShouldNotBeZero();
+      case 6:
+        return LiteralError_UnaryOperationOnNonNumeric();
+      case 7:
+        return LiteralError_UnreachableBinaryArithmetic();
+      case 8:
+        return LiteralError_UnreachableUnaryOperation();
+      case 9:
+        return LiteralError_FailedToDecodeHexString(
+          dco_decode_String(raw[1]),
+        );
+      case 10:
+        return LiteralError_LikeOnNonString(
+          base: dco_decode_String(raw[1]),
+          pattern: dco_decode_String(raw[2]),
+          caseSensitive: dco_decode_bool(raw[3]),
+        );
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  NumericBinaryOperator dco_decode_numeric_binary_operator(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return NumericBinaryOperator.values[raw as int];
+  }
+
+  @protected
+  Payload dco_decode_payload(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return Payload_ShowColumns(
+          dco_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_data_type(
+              raw[1]),
+        );
+      case 1:
+        return Payload_Create();
+      case 2:
+        return Payload_Insert(
+          dco_decode_usize(raw[1]),
+        );
+      case 3:
+        return Payload_Select(
+          labels: dco_decode_list_String(raw[1]),
+          rows: dco_decode_list_list_value(raw[2]),
+        );
+      case 4:
+        return Payload_SelectMap(
+          dco_decode_list_Map_String_value(raw[1]),
+        );
+      case 5:
+        return Payload_Delete(
+          dco_decode_usize(raw[1]),
+        );
+      case 6:
+        return Payload_Update(
+          dco_decode_usize(raw[1]),
+        );
+      case 7:
+        return Payload_DropTable();
+      case 8:
+        return Payload_DropFunction();
+      case 9:
+        return Payload_AlterTable();
+      case 10:
+        return Payload_CreateIndex();
+      case 11:
+        return Payload_DropIndex();
+      case 12:
+        return Payload_StartTransaction();
+      case 13:
+        return Payload_Commit();
+      case 14:
+        return Payload_Rollback();
+      case 15:
+        return Payload_ShowVariable(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
+              raw[1]),
+        );
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  PlanError dco_decode_plan_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return PlanError_ColumnReferenceAmbiguous(
+          dco_decode_String(raw[1]),
+        );
+      default:
+        throw Exception("unreachable");
+    }
   }
 
   @protected
@@ -798,11 +1669,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  (
-    String,
-    Value
-  ) dco_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
-      dynamic raw) {
+  (String, Value) dco_decode_record_string_value(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
     if (arr.length != 2) {
@@ -810,22 +1677,213 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     }
     return (
       dco_decode_String(arr[0]),
-      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          arr[1]),
+      dco_decode_value(arr[1]),
     );
   }
 
   @protected
-  (String, DartValue) dco_decode_record_string_dart_value(dynamic raw) {
+  RowError dco_decode_row_error(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 2) {
-      throw Exception('Expected 2 elements, got ${arr.length}');
+    return RowError.values[raw as int];
+  }
+
+  @protected
+  SchemaParseError dco_decode_schema_parse_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return SchemaParseError.values[raw as int];
+  }
+
+  @protected
+  SelectError dco_decode_select_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return SelectError.values[raw as int];
+  }
+
+  @protected
+  SortError dco_decode_sort_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return SortError_ColumnIndexOutOfRange(
+          dco_decode_usize(raw[1]),
+        );
+      case 1:
+        return SortError_Unreachable();
+      default:
+        throw Exception("unreachable");
     }
-    return (
-      dco_decode_String(arr[0]),
-      dco_decode_dart_value(arr[1]),
-    );
+  }
+
+  @protected
+  StringExtError dco_decode_string_ext_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return StringExtError.values[raw as int];
+  }
+
+  @protected
+  TableError dco_decode_table_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return TableError.values[raw as int];
+  }
+
+  @protected
+  TranslateError dco_decode_translate_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return TranslateError_TooManyTables();
+      case 1:
+        return TranslateError_SelectDistinctNotSupported();
+      case 2:
+        return TranslateError_CompositeIndexNotSupported();
+      case 3:
+        return TranslateError_JoinOnUpdateNotSupported();
+      case 4:
+        return TranslateError_CompoundIdentOnUpdateNotSupported(
+          dco_decode_String(raw[1]),
+        );
+      case 5:
+        return TranslateError_TooManyParamsInDropIndex();
+      case 6:
+        return TranslateError_InvalidParamsInDropIndex();
+      case 7:
+        return TranslateError_FunctionArgsLengthNotMatching(
+          name: dco_decode_String(raw[1]),
+          expected: dco_decode_usize(raw[2]),
+          found: dco_decode_usize(raw[3]),
+        );
+      case 8:
+        return TranslateError_FunctionArgsLengthNotMatchingMin(
+          name: dco_decode_String(raw[1]),
+          expectedMinimum: dco_decode_usize(raw[2]),
+          found: dco_decode_usize(raw[3]),
+        );
+      case 9:
+        return TranslateError_FunctionArgsLengthNotWithinRange(
+          name: dco_decode_String(raw[1]),
+          expectedMinimum: dco_decode_usize(raw[2]),
+          expectedMaximum: dco_decode_usize(raw[3]),
+          found: dco_decode_usize(raw[4]),
+        );
+      case 10:
+        return TranslateError_NamedFunctionArgNotSupported();
+      case 11:
+        return TranslateError_UnNamedFunctionArgNotSupported();
+      case 12:
+        return TranslateError_DefaultValuesOnInsertNotSupported(
+          dco_decode_String(raw[1]),
+        );
+      case 13:
+        return TranslateError_UnsupportedEmptyFunctionBody();
+      case 14:
+        return TranslateError_UnsupportedUnnamedIndex();
+      case 15:
+        return TranslateError_UnsupportedTrimChars();
+      case 16:
+        return TranslateError_UnsupportedCastFormat(
+          dco_decode_String(raw[1]),
+        );
+      case 17:
+        return TranslateError_UnsupportedMultipleAlterTableOperations();
+      case 18:
+        return TranslateError_UnreachableEmptyAlterTableOperation();
+      case 19:
+        return TranslateError_UnsupportedGroupByAll();
+      case 20:
+        return TranslateError_WildcardFunctionArgNotAccepted();
+      case 21:
+        return TranslateError_QualifiedWildcardInCountNotSupported(
+          dco_decode_String(raw[1]),
+        );
+      case 22:
+        return TranslateError_OrderByNullsFirstOrLastNotSupported();
+      case 23:
+        return TranslateError_UnsupportedShowVariableKeyword(
+          dco_decode_String(raw[1]),
+        );
+      case 24:
+        return TranslateError_UnsupportedShowVariableStatement(
+          dco_decode_String(raw[1]),
+        );
+      case 25:
+        return TranslateError_UnsupportedStatement(
+          dco_decode_String(raw[1]),
+        );
+      case 26:
+        return TranslateError_UnsupportedExpr(
+          dco_decode_String(raw[1]),
+        );
+      case 27:
+        return TranslateError_UnsupportedDataType(
+          dco_decode_String(raw[1]),
+        );
+      case 28:
+        return TranslateError_UnsupportedDateTimeField(
+          dco_decode_String(raw[1]),
+        );
+      case 29:
+        return TranslateError_UnsupportedAstLiteral(
+          dco_decode_String(raw[1]),
+        );
+      case 30:
+        return TranslateError_UnreachableUnaryOperator(
+          dco_decode_String(raw[1]),
+        );
+      case 31:
+        return TranslateError_UnreachableEmptyIdent();
+      case 32:
+        return TranslateError_UnsupportedBinaryOperator(
+          dco_decode_String(raw[1]),
+        );
+      case 33:
+        return TranslateError_UnsupportedQuerySetExpr(
+          dco_decode_String(raw[1]),
+        );
+      case 34:
+        return TranslateError_UnsupportedQueryTableFactor(
+          dco_decode_String(raw[1]),
+        );
+      case 35:
+        return TranslateError_UnsupportedJoinConstraint(
+          dco_decode_String(raw[1]),
+        );
+      case 36:
+        return TranslateError_UnsupportedJoinOperator(
+          dco_decode_String(raw[1]),
+        );
+      case 37:
+        return TranslateError_UnsupportedColumnOption(
+          dco_decode_String(raw[1]),
+        );
+      case 38:
+        return TranslateError_UnsupportedAlterTableOperation(
+          dco_decode_String(raw[1]),
+        );
+      case 39:
+        return TranslateError_UnsupportedTableFactor(
+          dco_decode_String(raw[1]),
+        );
+      case 40:
+        return TranslateError_LackOfAlias();
+      case 41:
+        return TranslateError_LackOfArgs();
+      case 42:
+        return TranslateError_UnreachableEmptyObject();
+      case 43:
+        return TranslateError_UnreachableEmptyTable();
+      case 44:
+        return TranslateError_CompoundObjectNotSupported(
+          dco_decode_String(raw[1]),
+        );
+      case 45:
+        return TranslateError_ReservedIndexName(
+          dco_decode_String(raw[1]),
+        );
+      case 46:
+        return TranslateError_CannotDropPrimary();
+      default:
+        throw Exception("unreachable");
+    }
   }
 
   @protected
@@ -859,9 +1917,451 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  UpdateError dco_decode_update_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return UpdateError_ColumnNotFound(
+          dco_decode_String(raw[1]),
+        );
+      case 1:
+        return UpdateError_UpdateOnPrimaryKeyNotSupported(
+          dco_decode_String(raw[1]),
+        );
+      case 2:
+        return UpdateError_ConflictOnSchema();
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
   BigInt dco_decode_usize(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dcoDecodeU64(raw);
+  }
+
+  @protected
+  ValidateError dco_decode_validate_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return ValidateError_ConflictOnStorageColumnIndex(
+          dco_decode_usize(raw[1]),
+        );
+      case 1:
+        return ValidateError_ConflictOnUnexpectedSchemalessRowFound();
+      case 2:
+        return ValidateError_DuplicateEntryOnUniqueField(
+          dco_decode_box_autoadd_value(raw[1]),
+          dco_decode_String(raw[2]),
+        );
+      case 3:
+        return ValidateError_DuplicateEntryOnPrimaryKeyField(
+          dco_decode_box_autoadd_key(raw[1]),
+        );
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  Value dco_decode_value(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return Value_Bool(
+          dco_decode_bool(raw[1]),
+        );
+      case 1:
+        return Value_I8(
+          dco_decode_i_8(raw[1]),
+        );
+      case 2:
+        return Value_I16(
+          dco_decode_i_16(raw[1]),
+        );
+      case 3:
+        return Value_I32(
+          dco_decode_i_32(raw[1]),
+        );
+      case 4:
+        return Value_I64(
+          dco_decode_i_64(raw[1]),
+        );
+      case 5:
+        return Value_I128(
+          dco_decode_I128(raw[1]),
+        );
+      case 6:
+        return Value_U8(
+          dco_decode_u_8(raw[1]),
+        );
+      case 7:
+        return Value_U16(
+          dco_decode_u_16(raw[1]),
+        );
+      case 8:
+        return Value_U32(
+          dco_decode_u_32(raw[1]),
+        );
+      case 9:
+        return Value_U64(
+          dco_decode_u_64(raw[1]),
+        );
+      case 10:
+        return Value_U128(
+          dco_decode_U128(raw[1]),
+        );
+      case 11:
+        return Value_F32(
+          dco_decode_f_32(raw[1]),
+        );
+      case 12:
+        return Value_F64(
+          dco_decode_f_64(raw[1]),
+        );
+      case 13:
+        return Value_Decimal(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDecimal(
+              raw[1]),
+        );
+      case 14:
+        return Value_Str(
+          dco_decode_String(raw[1]),
+        );
+      case 15:
+        return Value_Bytea(
+          dco_decode_list_prim_u_8_strict(raw[1]),
+        );
+      case 16:
+        return Value_Inet(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIpAddr(
+              raw[1]),
+        );
+      case 17:
+        return Value_Date(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
+              raw[1]),
+        );
+      case 18:
+        return Value_Timestamp(
+          dco_decode_Chrono_Naive(raw[1]),
+        );
+      case 19:
+        return Value_Time(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+              raw[1]),
+        );
+      case 20:
+        return Value_Interval(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerInterval(
+              raw[1]),
+        );
+      case 21:
+        return Value_Uuid(
+          dco_decode_U128(raw[1]),
+        );
+      case 22:
+        return Value_Map(
+          dco_decode_Map_String_value(raw[1]),
+        );
+      case 23:
+        return Value_List(
+          dco_decode_list_value(raw[1]),
+        );
+      case 24:
+        return Value_Point(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPoint(
+              raw[1]),
+        );
+      case 25:
+        return Value_Null();
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  ValueError dco_decode_value_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return ValueError_IncompatibleLiteralForDataType(
+          dataType:
+              dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
+                  raw[1]),
+          literal: dco_decode_String(raw[2]),
+        );
+      case 1:
+        return ValueError_IncompatibleDataType(
+          dataType:
+              dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
+                  raw[1]),
+          value: dco_decode_box_autoadd_value(raw[2]),
+        );
+      case 2:
+        return ValueError_NullValueOnNotNullField();
+      case 3:
+        return ValueError_FailedToParseNumber();
+      case 4:
+        return ValueError_FloatToDecimalConversionFailure(
+          dco_decode_f_64(raw[1]),
+        );
+      case 5:
+        return ValueError_FailedToParseDate(
+          dco_decode_String(raw[1]),
+        );
+      case 6:
+        return ValueError_FailedToParseTimestamp(
+          dco_decode_String(raw[1]),
+        );
+      case 7:
+        return ValueError_FailedToParseTime(
+          dco_decode_String(raw[1]),
+        );
+      case 8:
+        return ValueError_FailedToParseUUID(
+          dco_decode_String(raw[1]),
+        );
+      case 9:
+        return ValueError_FailedToParsePoint(
+          dco_decode_String(raw[1]),
+        );
+      case 10:
+        return ValueError_FailedToParseDecimal(
+          dco_decode_String(raw[1]),
+        );
+      case 11:
+        return ValueError_FailedToParseHexString(
+          dco_decode_String(raw[1]),
+        );
+      case 12:
+        return ValueError_FailedToParseInetString(
+          dco_decode_String(raw[1]),
+        );
+      case 13:
+        return ValueError_NonNumericMathOperation(
+          lhs: dco_decode_box_autoadd_value(raw[1]),
+          rhs: dco_decode_box_autoadd_value(raw[2]),
+          operator_: dco_decode_numeric_binary_operator(raw[3]),
+        );
+      case 14:
+        return ValueError_DivisorShouldNotBeZero();
+      case 15:
+        return ValueError_UnaryPlusOnNonNumeric();
+      case 16:
+        return ValueError_UnaryMinusOnNonNumeric();
+      case 17:
+        return ValueError_FactorialOnNonNumeric();
+      case 18:
+        return ValueError_FactorialOnNonInteger();
+      case 19:
+        return ValueError_FactorialOnNegativeNumeric();
+      case 20:
+        return ValueError_FactorialOverflow();
+      case 21:
+        return ValueError_GcdLcmOverflow(
+          dco_decode_i_64(raw[1]),
+        );
+      case 22:
+        return ValueError_LcmResultOutOfRange();
+      case 23:
+        return ValueError_UnaryBitwiseNotOnNonNumeric();
+      case 24:
+        return ValueError_UnaryBitwiseNotOnNonInteger();
+      case 25:
+        return ValueError_UnreachableNumberParsing();
+      case 26:
+        return ValueError_UnimplementedCast(
+          value: dco_decode_box_autoadd_value(raw[1]),
+          dataType:
+              dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
+                  raw[2]),
+        );
+      case 27:
+        return ValueError_CastFromHexToByteaFailed(
+          dco_decode_String(raw[1]),
+        );
+      case 28:
+        return ValueError_EmptyArgNotAllowedInConcat();
+      case 29:
+        return ValueError_LiteralCastFromTextToIntegerFailed(
+          dco_decode_String(raw[1]),
+        );
+      case 30:
+        return ValueError_LiteralCastFromTextToUnsignedInt8Failed(
+          dco_decode_String(raw[1]),
+        );
+      case 31:
+        return ValueError_LiteralCastFromTextToUint16Failed(
+          dco_decode_String(raw[1]),
+        );
+      case 32:
+        return ValueError_LiteralCastFromTextToUint32Failed(
+          dco_decode_String(raw[1]),
+        );
+      case 33:
+        return ValueError_LiteralCastFromTextToUint64Failed(
+          dco_decode_String(raw[1]),
+        );
+      case 34:
+        return ValueError_LiteralCastFromTextToUint128Failed(
+          dco_decode_String(raw[1]),
+        );
+      case 35:
+        return ValueError_LiteralCastFromTextToFloatFailed(
+          dco_decode_String(raw[1]),
+        );
+      case 36:
+        return ValueError_LiteralCastFromTextToDecimalFailed(
+          dco_decode_String(raw[1]),
+        );
+      case 37:
+        return ValueError_LiteralCastToBooleanFailed(
+          dco_decode_String(raw[1]),
+        );
+      case 38:
+        return ValueError_LiteralCastToDateFailed(
+          dco_decode_String(raw[1]),
+        );
+      case 39:
+        return ValueError_LiteralCastToDataTypeFailed(
+          dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
+              raw[1]),
+          dco_decode_String(raw[2]),
+        );
+      case 40:
+        return ValueError_LiteralCastToInt8Failed(
+          dco_decode_String(raw[1]),
+        );
+      case 41:
+        return ValueError_LiteralCastToUnsignedInt8Failed(
+          dco_decode_String(raw[1]),
+        );
+      case 42:
+        return ValueError_LiteralCastToUint16Failed(
+          dco_decode_String(raw[1]),
+        );
+      case 43:
+        return ValueError_LiteralCastToUint32Failed(
+          dco_decode_String(raw[1]),
+        );
+      case 44:
+        return ValueError_LiteralCastToUint64Failed(
+          dco_decode_String(raw[1]),
+        );
+      case 45:
+        return ValueError_LiteralCastToUint128Failed(
+          dco_decode_String(raw[1]),
+        );
+      case 46:
+        return ValueError_LiteralCastToTimeFailed(
+          dco_decode_String(raw[1]),
+        );
+      case 47:
+        return ValueError_LiteralCastToTimestampFailed(
+          dco_decode_String(raw[1]),
+        );
+      case 48:
+        return ValueError_UnreachableLiteralCastFromNumberToInteger(
+          dco_decode_String(raw[1]),
+        );
+      case 49:
+        return ValueError_UnreachableLiteralCastFromNumberToFloat(
+          dco_decode_String(raw[1]),
+        );
+      case 50:
+        return ValueError_UnimplementedLiteralCast(
+          dataType:
+              dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
+                  raw[1]),
+          literal: dco_decode_String(raw[2]),
+        );
+      case 51:
+        return ValueError_UnreachableIntegerOverflow(
+          dco_decode_String(raw[1]),
+        );
+      case 52:
+        return ValueError_LikeOnNonString(
+          base: dco_decode_box_autoadd_value(raw[1]),
+          pattern: dco_decode_box_autoadd_value(raw[2]),
+          caseSensitive: dco_decode_bool(raw[3]),
+        );
+      case 53:
+        return ValueError_ExtractFormatNotMatched(
+          value: dco_decode_box_autoadd_value(raw[1]),
+          field: dco_decode_date_time_field(raw[2]),
+        );
+      case 54:
+        return ValueError_BigEndianExportNotSupported(
+          dco_decode_String(raw[1]),
+        );
+      case 55:
+        return ValueError_InvalidJsonString(
+          dco_decode_String(raw[1]),
+        );
+      case 56:
+        return ValueError_JsonObjectTypeRequired();
+      case 57:
+        return ValueError_JsonArrayTypeRequired();
+      case 58:
+        return ValueError_UnreachableJsonNumberParseFailure(
+          dco_decode_String(raw[1]),
+        );
+      case 59:
+        return ValueError_SelectorRequiresMapOrListTypes();
+      case 60:
+        return ValueError_BinaryOperationOverflow(
+          lhs: dco_decode_box_autoadd_value(raw[1]),
+          rhs: dco_decode_box_autoadd_value(raw[2]),
+          operator_: dco_decode_numeric_binary_operator(raw[3]),
+        );
+      case 61:
+        return ValueError_SqrtOnNonNumeric(
+          dco_decode_box_autoadd_value(raw[1]),
+        );
+      case 62:
+        return ValueError_NonStringParameterInPosition(
+          from: dco_decode_box_autoadd_value(raw[1]),
+          sub: dco_decode_box_autoadd_value(raw[2]),
+        );
+      case 63:
+        return ValueError_NonStringParameterInFindIdx(
+          sub: dco_decode_box_autoadd_value(raw[1]),
+          from: dco_decode_box_autoadd_value(raw[2]),
+        );
+      case 64:
+        return ValueError_NonPositiveIntegerOffsetInFindIdx(
+          dco_decode_String(raw[1]),
+        );
+      case 65:
+        return ValueError_ValueToExprConversionFailure();
+      case 66:
+        return ValueError_I64ToU32ConversionFailure(
+          dco_decode_String(raw[1]),
+        );
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  Aggregate
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAggregate(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return AggregateImpl.frbInternalSseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  ColumnDef
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerColumnDef(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return ColumnDefImpl.frbInternalSseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
   }
 
   @protected
@@ -883,11 +2383,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  Error
-      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError(
+  Expr
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
           SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    return ErrorImpl.frbInternalSseDecode(
+    return ExprImpl.frbInternalSseDecode(
         sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
   }
 
@@ -928,6 +2428,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  OrderedFloatF32
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf32(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return OrderedFloatF32Impl.frbInternalSseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  OrderedFloatF64
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf64(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return OrderedFloatF64Impl.frbInternalSseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  ParseError
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerParseError(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return ParseErrorImpl.frbInternalSseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
   PayloadVariable
       sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
           SseDeserializer deserializer) {
@@ -946,15 +2473,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  Value
-      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return ValueImpl.frbInternalSseDecode(
-        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
-  }
-
-  @protected
   DateTime sse_decode_Chrono_Naive(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_i_64(deserializer);
@@ -969,22 +2487,28 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  Map<String, Value>
-      sse_decode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          SseDeserializer deserializer) {
+  Map<String, Value> sse_decode_Map_String_value(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    var inner =
-        sse_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
-            deserializer);
+    var inner = sse_decode_list_record_string_value(deserializer);
     return Map.fromEntries(inner.map((e) => MapEntry(e.$1, e.$2)));
   }
 
   @protected
-  Map<String, DartValue> sse_decode_Map_String_dart_value(
-      SseDeserializer deserializer) {
+  Aggregate
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAggregate(
+          SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    var inner = sse_decode_list_record_string_dart_value(deserializer);
-    return Map.fromEntries(inner.map((e) => MapEntry(e.$1, e.$2)));
+    return AggregateImpl.frbInternalSseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  ColumnDef
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerColumnDef(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return ColumnDefImpl.frbInternalSseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
   }
 
   @protected
@@ -1006,11 +2530,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  Error
-      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError(
+  Expr
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
           SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    return ErrorImpl.frbInternalSseDecode(
+    return ExprImpl.frbInternalSseDecode(
         sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
   }
 
@@ -1051,6 +2575,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  OrderedFloatF32
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf32(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return OrderedFloatF32Impl.frbInternalSseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  OrderedFloatF64
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf64(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return OrderedFloatF64Impl.frbInternalSseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
+  ParseError
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerParseError(
+          SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return ParseErrorImpl.frbInternalSseDecode(
+        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
+  }
+
+  @protected
   PayloadVariable
       sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
           SseDeserializer deserializer) {
@@ -1069,15 +2620,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  Value
-      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return ValueImpl.frbInternalSseDecode(
-        sse_decode_usize(deserializer), sse_decode_i_32(deserializer));
-  }
-
-  @protected
   String sse_decode_String(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_list_prim_u_8_strict(deserializer);
@@ -1092,165 +2634,519 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  bool sse_decode_bool(SseDeserializer deserializer) {
+  AggregateError sse_decode_aggregate_error(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getUint8() != 0;
+    var inner = sse_decode_i_32(deserializer);
+    return AggregateError.values[inner];
   }
 
   @protected
-  DartPayload sse_decode_dart_payload(SseDeserializer deserializer) {
+  AlterError sse_decode_alter_error(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     var tag_ = sse_decode_i_32(deserializer);
     switch (tag_) {
       case 0:
-        var var_field0 =
-            sse_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_data_type(
-                deserializer);
-        return DartPayload_ShowColumns(var_field0);
+        var var_field0 = sse_decode_String(deserializer);
+        return AlterError_TableAlreadyExists(var_field0);
       case 1:
-        return DartPayload_Create();
+        var var_field0 = sse_decode_String(deserializer);
+        return AlterError_FunctionAlreadyExists(var_field0);
       case 2:
-        var var_field0 = sse_decode_usize(deserializer);
-        return DartPayload_Insert(var_field0);
+        var var_field0 = sse_decode_String(deserializer);
+        return AlterError_FunctionNotFound(var_field0);
       case 3:
-        var var_labels = sse_decode_list_String(deserializer);
-        var var_rows = sse_decode_list_list_dart_value(deserializer);
-        return DartPayload_Select(labels: var_labels, rows: var_rows);
+        var var_field0 = sse_decode_String(deserializer);
+        return AlterError_TableNotFound(var_field0);
       case 4:
-        var var_field0 = sse_decode_list_Map_String_dart_value(deserializer);
-        return DartPayload_SelectMap(var_field0);
+        var var_field0 = sse_decode_String(deserializer);
+        return AlterError_CtasSourceTableNotFound(var_field0);
       case 5:
-        var var_field0 = sse_decode_usize(deserializer);
-        return DartPayload_Delete(var_field0);
-      case 6:
-        var var_field0 = sse_decode_usize(deserializer);
-        return DartPayload_Update(var_field0);
-      case 7:
-        return DartPayload_DropTable();
-      case 8:
-        return DartPayload_DropFunction();
-      case 9:
-        return DartPayload_AlterTable();
-      case 10:
-        return DartPayload_CreateIndex();
-      case 11:
-        return DartPayload_DropIndex();
-      case 12:
-        return DartPayload_StartTransaction();
-      case 13:
-        return DartPayload_Commit();
-      case 14:
-        return DartPayload_Rollback();
-      case 15:
-        var var_field0 =
-            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
+        var var_field0 = sse_decode_String(deserializer);
+        var var_field1 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
                 deserializer);
-        return DartPayload_ShowVariable(var_field0);
+        return AlterError_UnsupportedDataTypeForUniqueColumn(
+            var_field0, var_field1);
+      case 6:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
+                deserializer);
+        return AlterError_UnsupportedIndexExpr(var_field0);
+      case 7:
+        return AlterError_UnsupportedUnnamedArg();
+      case 8:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
+                deserializer);
+        return AlterError_IdentifierNotFound(var_field0);
+      case 9:
+        var var_field0 = sse_decode_String(deserializer);
+        return AlterError_DuplicateColumnName(var_field0);
+      case 10:
+        var var_field0 = sse_decode_String(deserializer);
+        return AlterError_DuplicateArgName(var_field0);
+      case 11:
+        return AlterError_NonDefaultArgumentFollowsDefaultArgument();
       default:
         throw UnimplementedError('');
     }
   }
 
   @protected
-  DartValue sse_decode_dart_value(SseDeserializer deserializer) {
+  AlterTableError sse_decode_alter_table_error(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     var tag_ = sse_decode_i_32(deserializer);
     switch (tag_) {
       case 0:
-        var var_field0 = sse_decode_bool(deserializer);
-        return DartValue_Bool(var_field0);
-      case 1:
-        var var_field0 = sse_decode_i_8(deserializer);
-        return DartValue_I8(var_field0);
-      case 2:
-        var var_field0 = sse_decode_i_16(deserializer);
-        return DartValue_I16(var_field0);
-      case 3:
-        var var_field0 = sse_decode_i_32(deserializer);
-        return DartValue_I32(var_field0);
-      case 4:
-        var var_field0 = sse_decode_i_64(deserializer);
-        return DartValue_I64(var_field0);
-      case 5:
-        var var_field0 = sse_decode_I128(deserializer);
-        return DartValue_I128(var_field0);
-      case 6:
-        var var_field0 = sse_decode_u_8(deserializer);
-        return DartValue_U8(var_field0);
-      case 7:
-        var var_field0 = sse_decode_u_16(deserializer);
-        return DartValue_U16(var_field0);
-      case 8:
-        var var_field0 = sse_decode_u_32(deserializer);
-        return DartValue_U32(var_field0);
-      case 9:
-        var var_field0 = sse_decode_u_64(deserializer);
-        return DartValue_U64(var_field0);
-      case 10:
-        var var_field0 = sse_decode_U128(deserializer);
-        return DartValue_U128(var_field0);
-      case 11:
-        var var_field0 = sse_decode_f_32(deserializer);
-        return DartValue_F32(var_field0);
-      case 12:
-        var var_field0 = sse_decode_f_64(deserializer);
-        return DartValue_F64(var_field0);
-      case 13:
-        var var_field0 =
-            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDecimal(
-                deserializer);
-        return DartValue_Decimal(var_field0);
-      case 14:
         var var_field0 = sse_decode_String(deserializer);
-        return DartValue_Str(var_field0);
+        return AlterTableError_TableNotFound(var_field0);
+      case 1:
+        return AlterTableError_RenamingColumnNotFound();
+      case 2:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerColumnDef(
+                deserializer);
+        return AlterTableError_DefaultValueRequired(var_field0);
+      case 3:
+        var var_field0 = sse_decode_String(deserializer);
+        return AlterTableError_AlreadyExistingColumn(var_field0);
+      case 4:
+        var var_field0 = sse_decode_String(deserializer);
+        return AlterTableError_DroppingColumnNotFound(var_field0);
+      case 5:
+        var var_field0 = sse_decode_String(deserializer);
+        return AlterTableError_SchemalessTableFound(var_field0);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  AstBuilderError sse_decode_ast_builder_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_field0 = sse_decode_String(deserializer);
+        return AstBuilderError_FailedToParseNumeric(var_field0);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  BinaryOperator sse_decode_binary_operator(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return BinaryOperator.values[inner];
+  }
+
+  @protected
+  bool sse_decode_bool(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint8() != 0;
+  }
+
+  @protected
+  AlterError sse_decode_box_autoadd_alter_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_alter_error(deserializer));
+  }
+
+  @protected
+  AlterTableError sse_decode_box_autoadd_alter_table_error(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_alter_table_error(deserializer));
+  }
+
+  @protected
+  AstBuilderError sse_decode_box_autoadd_ast_builder_error(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_ast_builder_error(deserializer));
+  }
+
+  @protected
+  ConvertError sse_decode_box_autoadd_convert_error(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_convert_error(deserializer));
+  }
+
+  @protected
+  EvaluateError sse_decode_box_autoadd_evaluate_error(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_evaluate_error(deserializer));
+  }
+
+  @protected
+  ExecuteError sse_decode_box_autoadd_execute_error(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_execute_error(deserializer));
+  }
+
+  @protected
+  FetchError sse_decode_box_autoadd_fetch_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_fetch_error(deserializer));
+  }
+
+  @protected
+  IndexError sse_decode_box_autoadd_index_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_index_error(deserializer));
+  }
+
+  @protected
+  InsertError sse_decode_box_autoadd_insert_error(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_insert_error(deserializer));
+  }
+
+  @protected
+  IntervalError sse_decode_box_autoadd_interval_error(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_interval_error(deserializer));
+  }
+
+  @protected
+  Key sse_decode_box_autoadd_key(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_key(deserializer));
+  }
+
+  @protected
+  LiteralError sse_decode_box_autoadd_literal_error(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_literal_error(deserializer));
+  }
+
+  @protected
+  PlanError sse_decode_box_autoadd_plan_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_plan_error(deserializer));
+  }
+
+  @protected
+  SortError sse_decode_box_autoadd_sort_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_sort_error(deserializer));
+  }
+
+  @protected
+  TranslateError sse_decode_box_autoadd_translate_error(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_translate_error(deserializer));
+  }
+
+  @protected
+  UpdateError sse_decode_box_autoadd_update_error(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_update_error(deserializer));
+  }
+
+  @protected
+  ValidateError sse_decode_box_autoadd_validate_error(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_validate_error(deserializer));
+  }
+
+  @protected
+  Value sse_decode_box_autoadd_value(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_value(deserializer));
+  }
+
+  @protected
+  ValueError sse_decode_box_autoadd_value_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_value_error(deserializer));
+  }
+
+  @protected
+  ConvertError sse_decode_convert_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_value = sse_decode_value(deserializer);
+    var var_dataType =
+        sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
+            deserializer);
+    return ConvertError(value: var_value, dataType: var_dataType);
+  }
+
+  @protected
+  DateTimeField sse_decode_date_time_field(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return DateTimeField.values[inner];
+  }
+
+  @protected
+  Error sse_decode_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_field0 = sse_decode_String(deserializer);
+        return Error_StorageMsg(var_field0);
+      case 1:
+        var var_field0 = sse_decode_String(deserializer);
+        return Error_Parser(var_field0);
+      case 2:
+        var var_field0 = sse_decode_box_autoadd_translate_error(deserializer);
+        return Error_Translate(var_field0);
+      case 3:
+        var var_field0 = sse_decode_box_autoadd_ast_builder_error(deserializer);
+        return Error_AstBuilder(var_field0);
+      case 4:
+        var var_field0 = sse_decode_box_autoadd_alter_table_error(deserializer);
+        return Error_AlterTable(var_field0);
+      case 5:
+        var var_field0 = sse_decode_box_autoadd_index_error(deserializer);
+        return Error_Index(var_field0);
+      case 6:
+        var var_field0 = sse_decode_box_autoadd_execute_error(deserializer);
+        return Error_Execute(var_field0);
+      case 7:
+        var var_field0 = sse_decode_box_autoadd_alter_error(deserializer);
+        return Error_Alter(var_field0);
+      case 8:
+        var var_field0 = sse_decode_box_autoadd_fetch_error(deserializer);
+        return Error_Fetch(var_field0);
+      case 9:
+        var var_field0 = sse_decode_select_error(deserializer);
+        return Error_Select(var_field0);
+      case 10:
+        var var_field0 = sse_decode_box_autoadd_evaluate_error(deserializer);
+        return Error_Evaluate(var_field0);
+      case 11:
+        var var_field0 = sse_decode_aggregate_error(deserializer);
+        return Error_Aggregate(var_field0);
+      case 12:
+        var var_field0 = sse_decode_box_autoadd_sort_error(deserializer);
+        return Error_Sort(var_field0);
+      case 13:
+        var var_field0 = sse_decode_box_autoadd_insert_error(deserializer);
+        return Error_Insert(var_field0);
+      case 14:
+        var var_field0 = sse_decode_box_autoadd_update_error(deserializer);
+        return Error_Update(var_field0);
       case 15:
-        var var_field0 = sse_decode_list_prim_u_8_strict(deserializer);
-        return DartValue_Bytea(var_field0);
+        var var_field0 = sse_decode_table_error(deserializer);
+        return Error_Table(var_field0);
       case 16:
-        var var_field0 =
-            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIpAddr(
-                deserializer);
-        return DartValue_Inet(var_field0);
+        var var_field0 = sse_decode_box_autoadd_validate_error(deserializer);
+        return Error_Validate(var_field0);
       case 17:
-        var var_field0 =
-            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
-                deserializer);
-        return DartValue_Date(var_field0);
+        var var_field0 = sse_decode_row_error(deserializer);
+        return Error_Row(var_field0);
       case 18:
-        var var_field0 = sse_decode_Chrono_Naive(deserializer);
-        return DartValue_Timestamp(var_field0);
+        var var_field0 = sse_decode_key_error(deserializer);
+        return Error_Key(var_field0);
       case 19:
-        var var_field0 =
-            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
-                deserializer);
-        return DartValue_Time(var_field0);
+        var var_field0 = sse_decode_box_autoadd_value_error(deserializer);
+        return Error_Value(var_field0);
       case 20:
-        var var_field0 =
-            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerInterval(
-                deserializer);
-        return DartValue_Interval(var_field0);
+        var var_field0 = sse_decode_box_autoadd_convert_error(deserializer);
+        return Error_Convert(var_field0);
       case 21:
-        var var_field0 = sse_decode_U128(deserializer);
-        return DartValue_Uuid(var_field0);
+        var var_field0 = sse_decode_box_autoadd_literal_error(deserializer);
+        return Error_Literal(var_field0);
+      case 22:
+        var var_field0 = sse_decode_box_autoadd_interval_error(deserializer);
+        return Error_Interval(var_field0);
+      case 23:
+        var var_field0 = sse_decode_string_ext_error(deserializer);
+        return Error_StringExt(var_field0);
+      case 24:
+        var var_field0 = sse_decode_box_autoadd_plan_error(deserializer);
+        return Error_Plan(var_field0);
+      case 25:
+        var var_field0 = sse_decode_schema_parse_error(deserializer);
+        return Error_Schema(var_field0);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  EvaluateError sse_decode_evaluate_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerParseError(
+                deserializer);
+        return EvaluateError_FormatParseError(var_field0);
+      case 1:
+        return EvaluateError_LiteralAddOnNonNumeric();
+      case 2:
+        var var_field0 = sse_decode_String(deserializer);
+        return EvaluateError_FunctionRequiresStringValue(var_field0);
+      case 3:
+        var var_field0 = sse_decode_String(deserializer);
+        return EvaluateError_FunctionRequiresIntegerValue(var_field0);
+      case 4:
+        var var_field0 = sse_decode_String(deserializer);
+        return EvaluateError_FunctionRequiresFloatOrIntegerValue(var_field0);
+      case 5:
+        var var_field0 = sse_decode_String(deserializer);
+        return EvaluateError_FunctionRequiresUSizeValue(var_field0);
+      case 6:
+        var var_field0 = sse_decode_String(deserializer);
+        return EvaluateError_FunctionRequiresFloatValue(var_field0);
+      case 7:
+        var var_field0 = sse_decode_String(deserializer);
+        return EvaluateError_ExtractFormatNotMatched(var_field0);
+      case 8:
+        var var_field0 = sse_decode_String(deserializer);
+        return EvaluateError_FunctionRequiresMapValue(var_field0);
+      case 9:
+        var var_field0 = sse_decode_String(deserializer);
+        return EvaluateError_FunctionRequiresPointValue(var_field0);
+      case 10:
+        var var_field0 = sse_decode_String(deserializer);
+        return EvaluateError_FunctionRequiresDateOrDateTimeValue(var_field0);
+      case 11:
+        var var_field0 = sse_decode_String(deserializer);
+        return EvaluateError_FunctionRequiresStrOrListOrMapValue(var_field0);
+      case 12:
+        var var_field0 = sse_decode_String(deserializer);
+        return EvaluateError_ValueNotFound(var_field0);
+      case 13:
+        var var_field0 = sse_decode_String(deserializer);
+        return EvaluateError_BooleanTypeRequired(var_field0);
+      case 14:
+        return EvaluateError_MapOrListTypeRequired();
+      case 15:
+        return EvaluateError_MapTypeRequired();
+      case 16:
+        return EvaluateError_ListTypeRequired();
+      case 17:
+        return EvaluateError_InvalidSortType();
+      case 18:
+        return EvaluateError_InvalidSortOrder();
+      case 19:
+        var var_field0 = sse_decode_String(deserializer);
+        return EvaluateError_MapOrStringValueRequired(var_field0);
+      case 20:
+        var var_field0 = sse_decode_String(deserializer);
+        return EvaluateError_TextLiteralRequired(var_field0);
+      case 21:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
+                deserializer);
+        return EvaluateError_UnsupportedStatelessExpr(var_field0);
       case 22:
         var var_field0 =
-            sse_decode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
                 deserializer);
-        return DartValue_Map(var_field0);
+        return EvaluateError_ContextRequiredForIdentEvaluation(var_field0);
       case 23:
         var var_field0 =
-            sse_decode_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAggregate(
                 deserializer);
-        return DartValue_List(var_field0);
+        return EvaluateError_UnreachableEmptyAggregateValue(var_field0);
       case 24:
-        var var_field0 =
-            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPoint(
-                deserializer);
-        return DartValue_Point(var_field0);
+        var var_field0 = sse_decode_String(deserializer);
+        var var_field1 = sse_decode_String(deserializer);
+        return EvaluateError_IncompatibleBitOperation(var_field0, var_field1);
       case 25:
-        return DartValue_NullData();
+        return EvaluateError_DivisorShouldNotBeZero();
+      case 26:
+        return EvaluateError_NegativeSubstrLenNotAllowed();
+      case 27:
+        return EvaluateError_MoreThanOneRowReturned();
+      case 28:
+        return EvaluateError_MoreThanOneColumnReturned();
+      case 29:
+        return EvaluateError_SchemalessProjectionForInSubQuery();
+      case 30:
+        return EvaluateError_SchemalessProjectionForSubQuery();
+      case 31:
+        var var_field0 = sse_decode_String(deserializer);
+        return EvaluateError_UnsupportedExprForFormatFunction(var_field0);
+      case 32:
+        return EvaluateError_AsciiFunctionRequiresSingleCharacterValue();
+      case 33:
+        return EvaluateError_NonAsciiCharacterNotAllowed();
+      case 34:
+        return EvaluateError_ChrFunctionRequiresIntegerValueInRange0To255();
+      case 35:
+        var var_left = sse_decode_String(deserializer);
+        var var_op = sse_decode_binary_operator(deserializer);
+        var var_right = sse_decode_String(deserializer);
+        return EvaluateError_UnsupportedBinaryOperation(
+            left: var_left, op: var_op, right: var_right);
+      case 36:
+        var var_field0 = sse_decode_String(deserializer);
+        return EvaluateError_UnsupportedUnaryPlus(var_field0);
+      case 37:
+        var var_field0 = sse_decode_String(deserializer);
+        return EvaluateError_UnsupportedUnaryMinus(var_field0);
+      case 38:
+        var var_field0 = sse_decode_String(deserializer);
+        return EvaluateError_UnsupportedUnaryFactorial(var_field0);
+      case 39:
+        var var_field0 = sse_decode_String(deserializer);
+        return EvaluateError_IncompatibleUnaryBitwiseNotOperation(var_field0);
+      case 40:
+        return EvaluateError_UnsupportedCustomFunction();
+      case 41:
+        var var_functionName = sse_decode_String(deserializer);
+        var var_requiredMinimum = sse_decode_usize(deserializer);
+        var var_found = sse_decode_usize(deserializer);
+        return EvaluateError_FunctionRequiresMoreArguments(
+            functionName: var_functionName,
+            requiredMinimum: var_requiredMinimum,
+            found: var_found);
+      case 42:
+        var var_name = sse_decode_String(deserializer);
+        var var_expectedMinimum = sse_decode_usize(deserializer);
+        var var_expectedMaximum = sse_decode_usize(deserializer);
+        var var_found = sse_decode_usize(deserializer);
+        return EvaluateError_FunctionArgsLengthNotWithinRange(
+            name: var_name,
+            expectedMinimum: var_expectedMinimum,
+            expectedMaximum: var_expectedMaximum,
+            found: var_found);
+      case 43:
+        var var_field0 = sse_decode_String(deserializer);
+        return EvaluateError_UnsupportedFunction(var_field0);
+      case 44:
+        var var_field0 = sse_decode_String(deserializer);
+        return EvaluateError_NonComparableArgumentError(var_field0);
+      case 45:
+        var var_field0 = sse_decode_String(deserializer);
+        return EvaluateError_FunctionRequiresAtLeastOneArgument(var_field0);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  ExecuteError sse_decode_execute_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_field0 = sse_decode_String(deserializer);
+        return ExecuteError_TableNotFound(var_field0);
       default:
         throw UnimplementedError('');
     }
@@ -1266,6 +3162,32 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   double sse_decode_f_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getFloat64();
+  }
+
+  @protected
+  FetchError sse_decode_fetch_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_field0 = sse_decode_String(deserializer);
+        return FetchError_TableNotFound(var_field0);
+      case 1:
+        var var_field0 = sse_decode_String(deserializer);
+        return FetchError_TableAliasNotFound(var_field0);
+      case 2:
+        var var_field0 = sse_decode_i_64(deserializer);
+        return FetchError_SeriesSizeWrong(var_field0);
+      case 3:
+        var var_field0 = sse_decode_String(deserializer);
+        var var_field1 = sse_decode_usize(deserializer);
+        var var_field2 = sse_decode_usize(deserializer);
+        return FetchError_TooManyColumnAliases(
+            var_field0, var_field1, var_field2);
+      default:
+        throw UnimplementedError('');
+    }
   }
 
   @protected
@@ -1293,30 +3215,245 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<Value>
-      sse_decode_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          SseDeserializer deserializer) {
+  IndexError sse_decode_index_error(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
-    var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <Value>[];
-    for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(
-          sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-              deserializer));
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_field0 = sse_decode_String(deserializer);
+        return IndexError_TableNotFound(var_field0);
+      case 1:
+        var var_field0 = sse_decode_String(deserializer);
+        return IndexError_IndexNameAlreadyExists(var_field0);
+      case 2:
+        var var_field0 = sse_decode_String(deserializer);
+        return IndexError_IndexNameDoesNotExist(var_field0);
+      case 3:
+        var var_field0 = sse_decode_String(deserializer);
+        return IndexError_ConflictTableNotFound(var_field0);
+      case 4:
+        return IndexError_ConflictOnEmptyIndexValueUpdate();
+      case 5:
+        return IndexError_ConflictOnEmptyIndexValueDelete();
+      case 6:
+        return IndexError_ConflictOnEmptyIndexValueScan();
+      case 7:
+        return IndexError_ConflictOnIndexDataDeleteSync();
+      default:
+        throw UnimplementedError('');
     }
-    return ans_;
   }
 
   @protected
-  List<Map<String, DartValue>> sse_decode_list_Map_String_dart_value(
+  InsertError sse_decode_insert_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_field0 = sse_decode_String(deserializer);
+        return InsertError_TableNotFound(var_field0);
+      case 1:
+        var var_field0 = sse_decode_String(deserializer);
+        return InsertError_LackOfRequiredColumn(var_field0);
+      case 2:
+        var var_field0 = sse_decode_String(deserializer);
+        return InsertError_WrongColumnName(var_field0);
+      case 3:
+        return InsertError_ColumnAndValuesNotMatched();
+      case 4:
+        return InsertError_TooManyValues();
+      case 5:
+        return InsertError_OnlySingleValueAcceptedForSchemalessRow();
+      case 6:
+        var var_field0 = sse_decode_String(deserializer);
+        return InsertError_MapTypeValueRequired(var_field0);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  IntervalError sse_decode_interval_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_field0 = sse_decode_String(deserializer);
+        var var_field1 = sse_decode_String(deserializer);
+        return IntervalError_UnsupportedRange(var_field0, var_field1);
+      case 1:
+        return IntervalError_AddBetweenYearToMonthAndHourToSecond();
+      case 2:
+        return IntervalError_SubtractBetweenYearToMonthAndHourToSecond();
+      case 3:
+        var var_time =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+                deserializer);
+        var var_interval =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerInterval(
+                deserializer);
+        return IntervalError_AddYearOrMonthToTime(
+            time: var_time, interval: var_interval);
+      case 4:
+        var var_time =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+                deserializer);
+        var var_interval =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerInterval(
+                deserializer);
+        return IntervalError_SubtractYearOrMonthToTime(
+            time: var_time, interval: var_interval);
+      case 5:
+        var var_field0 = sse_decode_String(deserializer);
+        return IntervalError_FailedToParseInteger(var_field0);
+      case 6:
+        var var_field0 = sse_decode_String(deserializer);
+        return IntervalError_FailedToParseDecimal(var_field0);
+      case 7:
+        var var_field0 = sse_decode_String(deserializer);
+        return IntervalError_FailedToParseTime(var_field0);
+      case 8:
+        var var_field0 = sse_decode_String(deserializer);
+        return IntervalError_FailedToParseYearToMonth(var_field0);
+      case 9:
+        var var_field0 = sse_decode_String(deserializer);
+        return IntervalError_FailedToParseDayToHour(var_field0);
+      case 10:
+        var var_field0 = sse_decode_String(deserializer);
+        return IntervalError_FailedToParseDayToMinute(var_field0);
+      case 11:
+        var var_field0 = sse_decode_String(deserializer);
+        return IntervalError_FailedToParseDayToSecond(var_field0);
+      case 12:
+        var var_year = sse_decode_i_32(deserializer);
+        var var_month = sse_decode_i_32(deserializer);
+        return IntervalError_DateOverflow(year: var_year, month: var_month);
+      case 13:
+        return IntervalError_FailedToExtract();
+      case 14:
+        var var_expr =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
+                deserializer);
+        return IntervalError_ParseSupportedOnlyLiteral(expr: var_expr);
+      case 15:
+        return IntervalError_Unreachable();
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  Key sse_decode_key(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_field0 = sse_decode_i_8(deserializer);
+        return Key_I8(var_field0);
+      case 1:
+        var var_field0 = sse_decode_i_16(deserializer);
+        return Key_I16(var_field0);
+      case 2:
+        var var_field0 = sse_decode_i_32(deserializer);
+        return Key_I32(var_field0);
+      case 3:
+        var var_field0 = sse_decode_i_64(deserializer);
+        return Key_I64(var_field0);
+      case 4:
+        var var_field0 = sse_decode_I128(deserializer);
+        return Key_I128(var_field0);
+      case 5:
+        var var_field0 = sse_decode_u_8(deserializer);
+        return Key_U8(var_field0);
+      case 6:
+        var var_field0 = sse_decode_u_16(deserializer);
+        return Key_U16(var_field0);
+      case 7:
+        var var_field0 = sse_decode_u_32(deserializer);
+        return Key_U32(var_field0);
+      case 8:
+        var var_field0 = sse_decode_u_64(deserializer);
+        return Key_U64(var_field0);
+      case 9:
+        var var_field0 = sse_decode_U128(deserializer);
+        return Key_U128(var_field0);
+      case 10:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf32(
+                deserializer);
+        return Key_F32(var_field0);
+      case 11:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf64(
+                deserializer);
+        return Key_F64(var_field0);
+      case 12:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDecimal(
+                deserializer);
+        return Key_Decimal(var_field0);
+      case 13:
+        var var_field0 = sse_decode_bool(deserializer);
+        return Key_Bool(var_field0);
+      case 14:
+        var var_field0 = sse_decode_String(deserializer);
+        return Key_Str(var_field0);
+      case 15:
+        var var_field0 = sse_decode_list_prim_u_8_strict(deserializer);
+        return Key_Bytea(var_field0);
+      case 16:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
+                deserializer);
+        return Key_Date(var_field0);
+      case 17:
+        var var_field0 = sse_decode_Chrono_Naive(deserializer);
+        return Key_Timestamp(var_field0);
+      case 18:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+                deserializer);
+        return Key_Time(var_field0);
+      case 19:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerInterval(
+                deserializer);
+        return Key_Interval(var_field0);
+      case 20:
+        var var_field0 = sse_decode_U128(deserializer);
+        return Key_Uuid(var_field0);
+      case 21:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIpAddr(
+                deserializer);
+        return Key_Inet(var_field0);
+      case 22:
+        return Key_None();
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  KeyError sse_decode_key_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return KeyError.values[inner];
+  }
+
+  @protected
+  List<Map<String, Value>> sse_decode_list_Map_String_value(
       SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <Map<String, DartValue>>[];
+    var ans_ = <Map<String, Value>>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_Map_String_dart_value(deserializer));
+      ans_.add(sse_decode_Map_String_value(deserializer));
     }
     return ans_;
   }
@@ -1334,38 +3471,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<DartPayload> sse_decode_list_dart_payload(SseDeserializer deserializer) {
+  List<List<Value>> sse_decode_list_list_value(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <DartPayload>[];
+    var ans_ = <List<Value>>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_dart_payload(deserializer));
+      ans_.add(sse_decode_list_value(deserializer));
     }
     return ans_;
   }
 
   @protected
-  List<DartValue> sse_decode_list_dart_value(SseDeserializer deserializer) {
+  List<Payload> sse_decode_list_payload(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <DartValue>[];
+    var ans_ = <Payload>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_dart_value(deserializer));
-    }
-    return ans_;
-  }
-
-  @protected
-  List<List<DartValue>> sse_decode_list_list_dart_value(
-      SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <List<DartValue>>[];
-    for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_list_dart_value(deserializer));
+      ans_.add(sse_decode_payload(deserializer));
     }
     return ans_;
   }
@@ -1394,32 +3518,152 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<(String, Value)>
-      sse_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
-          SseDeserializer deserializer) {
+  List<(String, Value)> sse_decode_list_record_string_value(
+      SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     var len_ = sse_decode_i_32(deserializer);
     var ans_ = <(String, Value)>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(
-          sse_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
-              deserializer));
+      ans_.add(sse_decode_record_string_value(deserializer));
     }
     return ans_;
   }
 
   @protected
-  List<(String, DartValue)> sse_decode_list_record_string_dart_value(
-      SseDeserializer deserializer) {
+  List<Value> sse_decode_list_value(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <(String, DartValue)>[];
+    var ans_ = <Value>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_record_string_dart_value(deserializer));
+      ans_.add(sse_decode_value(deserializer));
     }
     return ans_;
+  }
+
+  @protected
+  LiteralError sse_decode_literal_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_left = sse_decode_String(deserializer);
+        var var_op = sse_decode_binary_operator(deserializer);
+        var var_right = sse_decode_String(deserializer);
+        return LiteralError_UnsupportedBinaryOperation(
+            left: var_left, op: var_op, right: var_right);
+      case 1:
+        var var_field0 = sse_decode_String(deserializer);
+        return LiteralError_BitwiseNonIntegerOperand(var_field0);
+      case 2:
+        return LiteralError_BitwiseNonNumberLiteral();
+      case 3:
+        return LiteralError_BitwiseOperationOverflow();
+      case 4:
+        var var_field0 = sse_decode_String(deserializer);
+        var var_field1 = sse_decode_String(deserializer);
+        return LiteralError_ImpossibleConversion(var_field0, var_field1);
+      case 5:
+        return LiteralError_DivisorShouldNotBeZero();
+      case 6:
+        return LiteralError_UnaryOperationOnNonNumeric();
+      case 7:
+        return LiteralError_UnreachableBinaryArithmetic();
+      case 8:
+        return LiteralError_UnreachableUnaryOperation();
+      case 9:
+        var var_field0 = sse_decode_String(deserializer);
+        return LiteralError_FailedToDecodeHexString(var_field0);
+      case 10:
+        var var_base = sse_decode_String(deserializer);
+        var var_pattern = sse_decode_String(deserializer);
+        var var_caseSensitive = sse_decode_bool(deserializer);
+        return LiteralError_LikeOnNonString(
+            base: var_base,
+            pattern: var_pattern,
+            caseSensitive: var_caseSensitive);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  NumericBinaryOperator sse_decode_numeric_binary_operator(
+      SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return NumericBinaryOperator.values[inner];
+  }
+
+  @protected
+  Payload sse_decode_payload(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_field0 =
+            sse_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_data_type(
+                deserializer);
+        return Payload_ShowColumns(var_field0);
+      case 1:
+        return Payload_Create();
+      case 2:
+        var var_field0 = sse_decode_usize(deserializer);
+        return Payload_Insert(var_field0);
+      case 3:
+        var var_labels = sse_decode_list_String(deserializer);
+        var var_rows = sse_decode_list_list_value(deserializer);
+        return Payload_Select(labels: var_labels, rows: var_rows);
+      case 4:
+        var var_field0 = sse_decode_list_Map_String_value(deserializer);
+        return Payload_SelectMap(var_field0);
+      case 5:
+        var var_field0 = sse_decode_usize(deserializer);
+        return Payload_Delete(var_field0);
+      case 6:
+        var var_field0 = sse_decode_usize(deserializer);
+        return Payload_Update(var_field0);
+      case 7:
+        return Payload_DropTable();
+      case 8:
+        return Payload_DropFunction();
+      case 9:
+        return Payload_AlterTable();
+      case 10:
+        return Payload_CreateIndex();
+      case 11:
+        return Payload_DropIndex();
+      case 12:
+        return Payload_StartTransaction();
+      case 13:
+        return Payload_Commit();
+      case 14:
+        return Payload_Rollback();
+      case 15:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
+                deserializer);
+        return Payload_ShowVariable(var_field0);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  PlanError sse_decode_plan_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_field0 = sse_decode_String(deserializer);
+        return PlanError_ColumnReferenceAmbiguous(var_field0);
+      default:
+        throw UnimplementedError('');
+    }
   }
 
   @protected
@@ -1437,26 +3681,207 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  (
-    String,
-    Value
-  ) sse_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
-      SseDeserializer deserializer) {
+  (String, Value) sse_decode_record_string_value(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_field0 = sse_decode_String(deserializer);
-    var var_field1 =
-        sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-            deserializer);
+    var var_field1 = sse_decode_value(deserializer);
     return (var_field0, var_field1);
   }
 
   @protected
-  (String, DartValue) sse_decode_record_string_dart_value(
-      SseDeserializer deserializer) {
+  RowError sse_decode_row_error(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_field0 = sse_decode_String(deserializer);
-    var var_field1 = sse_decode_dart_value(deserializer);
-    return (var_field0, var_field1);
+    var inner = sse_decode_i_32(deserializer);
+    return RowError.values[inner];
+  }
+
+  @protected
+  SchemaParseError sse_decode_schema_parse_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return SchemaParseError.values[inner];
+  }
+
+  @protected
+  SelectError sse_decode_select_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return SelectError.values[inner];
+  }
+
+  @protected
+  SortError sse_decode_sort_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_field0 = sse_decode_usize(deserializer);
+        return SortError_ColumnIndexOutOfRange(var_field0);
+      case 1:
+        return SortError_Unreachable();
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  StringExtError sse_decode_string_ext_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return StringExtError.values[inner];
+  }
+
+  @protected
+  TableError sse_decode_table_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return TableError.values[inner];
+  }
+
+  @protected
+  TranslateError sse_decode_translate_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        return TranslateError_TooManyTables();
+      case 1:
+        return TranslateError_SelectDistinctNotSupported();
+      case 2:
+        return TranslateError_CompositeIndexNotSupported();
+      case 3:
+        return TranslateError_JoinOnUpdateNotSupported();
+      case 4:
+        var var_field0 = sse_decode_String(deserializer);
+        return TranslateError_CompoundIdentOnUpdateNotSupported(var_field0);
+      case 5:
+        return TranslateError_TooManyParamsInDropIndex();
+      case 6:
+        return TranslateError_InvalidParamsInDropIndex();
+      case 7:
+        var var_name = sse_decode_String(deserializer);
+        var var_expected = sse_decode_usize(deserializer);
+        var var_found = sse_decode_usize(deserializer);
+        return TranslateError_FunctionArgsLengthNotMatching(
+            name: var_name, expected: var_expected, found: var_found);
+      case 8:
+        var var_name = sse_decode_String(deserializer);
+        var var_expectedMinimum = sse_decode_usize(deserializer);
+        var var_found = sse_decode_usize(deserializer);
+        return TranslateError_FunctionArgsLengthNotMatchingMin(
+            name: var_name,
+            expectedMinimum: var_expectedMinimum,
+            found: var_found);
+      case 9:
+        var var_name = sse_decode_String(deserializer);
+        var var_expectedMinimum = sse_decode_usize(deserializer);
+        var var_expectedMaximum = sse_decode_usize(deserializer);
+        var var_found = sse_decode_usize(deserializer);
+        return TranslateError_FunctionArgsLengthNotWithinRange(
+            name: var_name,
+            expectedMinimum: var_expectedMinimum,
+            expectedMaximum: var_expectedMaximum,
+            found: var_found);
+      case 10:
+        return TranslateError_NamedFunctionArgNotSupported();
+      case 11:
+        return TranslateError_UnNamedFunctionArgNotSupported();
+      case 12:
+        var var_field0 = sse_decode_String(deserializer);
+        return TranslateError_DefaultValuesOnInsertNotSupported(var_field0);
+      case 13:
+        return TranslateError_UnsupportedEmptyFunctionBody();
+      case 14:
+        return TranslateError_UnsupportedUnnamedIndex();
+      case 15:
+        return TranslateError_UnsupportedTrimChars();
+      case 16:
+        var var_field0 = sse_decode_String(deserializer);
+        return TranslateError_UnsupportedCastFormat(var_field0);
+      case 17:
+        return TranslateError_UnsupportedMultipleAlterTableOperations();
+      case 18:
+        return TranslateError_UnreachableEmptyAlterTableOperation();
+      case 19:
+        return TranslateError_UnsupportedGroupByAll();
+      case 20:
+        return TranslateError_WildcardFunctionArgNotAccepted();
+      case 21:
+        var var_field0 = sse_decode_String(deserializer);
+        return TranslateError_QualifiedWildcardInCountNotSupported(var_field0);
+      case 22:
+        return TranslateError_OrderByNullsFirstOrLastNotSupported();
+      case 23:
+        var var_field0 = sse_decode_String(deserializer);
+        return TranslateError_UnsupportedShowVariableKeyword(var_field0);
+      case 24:
+        var var_field0 = sse_decode_String(deserializer);
+        return TranslateError_UnsupportedShowVariableStatement(var_field0);
+      case 25:
+        var var_field0 = sse_decode_String(deserializer);
+        return TranslateError_UnsupportedStatement(var_field0);
+      case 26:
+        var var_field0 = sse_decode_String(deserializer);
+        return TranslateError_UnsupportedExpr(var_field0);
+      case 27:
+        var var_field0 = sse_decode_String(deserializer);
+        return TranslateError_UnsupportedDataType(var_field0);
+      case 28:
+        var var_field0 = sse_decode_String(deserializer);
+        return TranslateError_UnsupportedDateTimeField(var_field0);
+      case 29:
+        var var_field0 = sse_decode_String(deserializer);
+        return TranslateError_UnsupportedAstLiteral(var_field0);
+      case 30:
+        var var_field0 = sse_decode_String(deserializer);
+        return TranslateError_UnreachableUnaryOperator(var_field0);
+      case 31:
+        return TranslateError_UnreachableEmptyIdent();
+      case 32:
+        var var_field0 = sse_decode_String(deserializer);
+        return TranslateError_UnsupportedBinaryOperator(var_field0);
+      case 33:
+        var var_field0 = sse_decode_String(deserializer);
+        return TranslateError_UnsupportedQuerySetExpr(var_field0);
+      case 34:
+        var var_field0 = sse_decode_String(deserializer);
+        return TranslateError_UnsupportedQueryTableFactor(var_field0);
+      case 35:
+        var var_field0 = sse_decode_String(deserializer);
+        return TranslateError_UnsupportedJoinConstraint(var_field0);
+      case 36:
+        var var_field0 = sse_decode_String(deserializer);
+        return TranslateError_UnsupportedJoinOperator(var_field0);
+      case 37:
+        var var_field0 = sse_decode_String(deserializer);
+        return TranslateError_UnsupportedColumnOption(var_field0);
+      case 38:
+        var var_field0 = sse_decode_String(deserializer);
+        return TranslateError_UnsupportedAlterTableOperation(var_field0);
+      case 39:
+        var var_field0 = sse_decode_String(deserializer);
+        return TranslateError_UnsupportedTableFactor(var_field0);
+      case 40:
+        return TranslateError_LackOfAlias();
+      case 41:
+        return TranslateError_LackOfArgs();
+      case 42:
+        return TranslateError_UnreachableEmptyObject();
+      case 43:
+        return TranslateError_UnreachableEmptyTable();
+      case 44:
+        var var_field0 = sse_decode_String(deserializer);
+        return TranslateError_CompoundObjectNotSupported(var_field0);
+      case 45:
+        var var_field0 = sse_decode_String(deserializer);
+        return TranslateError_ReservedIndexName(var_field0);
+      case 46:
+        return TranslateError_CannotDropPrimary();
+      default:
+        throw UnimplementedError('');
+    }
   }
 
   @protected
@@ -1489,9 +3914,400 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  UpdateError sse_decode_update_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_field0 = sse_decode_String(deserializer);
+        return UpdateError_ColumnNotFound(var_field0);
+      case 1:
+        var var_field0 = sse_decode_String(deserializer);
+        return UpdateError_UpdateOnPrimaryKeyNotSupported(var_field0);
+      case 2:
+        return UpdateError_ConflictOnSchema();
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
   BigInt sse_decode_usize(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getBigUint64();
+  }
+
+  @protected
+  ValidateError sse_decode_validate_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_field0 = sse_decode_usize(deserializer);
+        return ValidateError_ConflictOnStorageColumnIndex(var_field0);
+      case 1:
+        return ValidateError_ConflictOnUnexpectedSchemalessRowFound();
+      case 2:
+        var var_field0 = sse_decode_box_autoadd_value(deserializer);
+        var var_field1 = sse_decode_String(deserializer);
+        return ValidateError_DuplicateEntryOnUniqueField(
+            var_field0, var_field1);
+      case 3:
+        var var_field0 = sse_decode_box_autoadd_key(deserializer);
+        return ValidateError_DuplicateEntryOnPrimaryKeyField(var_field0);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  Value sse_decode_value(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_field0 = sse_decode_bool(deserializer);
+        return Value_Bool(var_field0);
+      case 1:
+        var var_field0 = sse_decode_i_8(deserializer);
+        return Value_I8(var_field0);
+      case 2:
+        var var_field0 = sse_decode_i_16(deserializer);
+        return Value_I16(var_field0);
+      case 3:
+        var var_field0 = sse_decode_i_32(deserializer);
+        return Value_I32(var_field0);
+      case 4:
+        var var_field0 = sse_decode_i_64(deserializer);
+        return Value_I64(var_field0);
+      case 5:
+        var var_field0 = sse_decode_I128(deserializer);
+        return Value_I128(var_field0);
+      case 6:
+        var var_field0 = sse_decode_u_8(deserializer);
+        return Value_U8(var_field0);
+      case 7:
+        var var_field0 = sse_decode_u_16(deserializer);
+        return Value_U16(var_field0);
+      case 8:
+        var var_field0 = sse_decode_u_32(deserializer);
+        return Value_U32(var_field0);
+      case 9:
+        var var_field0 = sse_decode_u_64(deserializer);
+        return Value_U64(var_field0);
+      case 10:
+        var var_field0 = sse_decode_U128(deserializer);
+        return Value_U128(var_field0);
+      case 11:
+        var var_field0 = sse_decode_f_32(deserializer);
+        return Value_F32(var_field0);
+      case 12:
+        var var_field0 = sse_decode_f_64(deserializer);
+        return Value_F64(var_field0);
+      case 13:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDecimal(
+                deserializer);
+        return Value_Decimal(var_field0);
+      case 14:
+        var var_field0 = sse_decode_String(deserializer);
+        return Value_Str(var_field0);
+      case 15:
+        var var_field0 = sse_decode_list_prim_u_8_strict(deserializer);
+        return Value_Bytea(var_field0);
+      case 16:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIpAddr(
+                deserializer);
+        return Value_Inet(var_field0);
+      case 17:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
+                deserializer);
+        return Value_Date(var_field0);
+      case 18:
+        var var_field0 = sse_decode_Chrono_Naive(deserializer);
+        return Value_Timestamp(var_field0);
+      case 19:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+                deserializer);
+        return Value_Time(var_field0);
+      case 20:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerInterval(
+                deserializer);
+        return Value_Interval(var_field0);
+      case 21:
+        var var_field0 = sse_decode_U128(deserializer);
+        return Value_Uuid(var_field0);
+      case 22:
+        var var_field0 = sse_decode_Map_String_value(deserializer);
+        return Value_Map(var_field0);
+      case 23:
+        var var_field0 = sse_decode_list_value(deserializer);
+        return Value_List(var_field0);
+      case 24:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPoint(
+                deserializer);
+        return Value_Point(var_field0);
+      case 25:
+        return Value_Null();
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  ValueError sse_decode_value_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_dataType =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
+                deserializer);
+        var var_literal = sse_decode_String(deserializer);
+        return ValueError_IncompatibleLiteralForDataType(
+            dataType: var_dataType, literal: var_literal);
+      case 1:
+        var var_dataType =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
+                deserializer);
+        var var_value = sse_decode_box_autoadd_value(deserializer);
+        return ValueError_IncompatibleDataType(
+            dataType: var_dataType, value: var_value);
+      case 2:
+        return ValueError_NullValueOnNotNullField();
+      case 3:
+        return ValueError_FailedToParseNumber();
+      case 4:
+        var var_field0 = sse_decode_f_64(deserializer);
+        return ValueError_FloatToDecimalConversionFailure(var_field0);
+      case 5:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_FailedToParseDate(var_field0);
+      case 6:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_FailedToParseTimestamp(var_field0);
+      case 7:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_FailedToParseTime(var_field0);
+      case 8:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_FailedToParseUUID(var_field0);
+      case 9:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_FailedToParsePoint(var_field0);
+      case 10:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_FailedToParseDecimal(var_field0);
+      case 11:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_FailedToParseHexString(var_field0);
+      case 12:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_FailedToParseInetString(var_field0);
+      case 13:
+        var var_lhs = sse_decode_box_autoadd_value(deserializer);
+        var var_rhs = sse_decode_box_autoadd_value(deserializer);
+        var var_operator_ = sse_decode_numeric_binary_operator(deserializer);
+        return ValueError_NonNumericMathOperation(
+            lhs: var_lhs, rhs: var_rhs, operator_: var_operator_);
+      case 14:
+        return ValueError_DivisorShouldNotBeZero();
+      case 15:
+        return ValueError_UnaryPlusOnNonNumeric();
+      case 16:
+        return ValueError_UnaryMinusOnNonNumeric();
+      case 17:
+        return ValueError_FactorialOnNonNumeric();
+      case 18:
+        return ValueError_FactorialOnNonInteger();
+      case 19:
+        return ValueError_FactorialOnNegativeNumeric();
+      case 20:
+        return ValueError_FactorialOverflow();
+      case 21:
+        var var_field0 = sse_decode_i_64(deserializer);
+        return ValueError_GcdLcmOverflow(var_field0);
+      case 22:
+        return ValueError_LcmResultOutOfRange();
+      case 23:
+        return ValueError_UnaryBitwiseNotOnNonNumeric();
+      case 24:
+        return ValueError_UnaryBitwiseNotOnNonInteger();
+      case 25:
+        return ValueError_UnreachableNumberParsing();
+      case 26:
+        var var_value = sse_decode_box_autoadd_value(deserializer);
+        var var_dataType =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
+                deserializer);
+        return ValueError_UnimplementedCast(
+            value: var_value, dataType: var_dataType);
+      case 27:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_CastFromHexToByteaFailed(var_field0);
+      case 28:
+        return ValueError_EmptyArgNotAllowedInConcat();
+      case 29:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_LiteralCastFromTextToIntegerFailed(var_field0);
+      case 30:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_LiteralCastFromTextToUnsignedInt8Failed(var_field0);
+      case 31:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_LiteralCastFromTextToUint16Failed(var_field0);
+      case 32:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_LiteralCastFromTextToUint32Failed(var_field0);
+      case 33:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_LiteralCastFromTextToUint64Failed(var_field0);
+      case 34:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_LiteralCastFromTextToUint128Failed(var_field0);
+      case 35:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_LiteralCastFromTextToFloatFailed(var_field0);
+      case 36:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_LiteralCastFromTextToDecimalFailed(var_field0);
+      case 37:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_LiteralCastToBooleanFailed(var_field0);
+      case 38:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_LiteralCastToDateFailed(var_field0);
+      case 39:
+        var var_field0 =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
+                deserializer);
+        var var_field1 = sse_decode_String(deserializer);
+        return ValueError_LiteralCastToDataTypeFailed(var_field0, var_field1);
+      case 40:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_LiteralCastToInt8Failed(var_field0);
+      case 41:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_LiteralCastToUnsignedInt8Failed(var_field0);
+      case 42:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_LiteralCastToUint16Failed(var_field0);
+      case 43:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_LiteralCastToUint32Failed(var_field0);
+      case 44:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_LiteralCastToUint64Failed(var_field0);
+      case 45:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_LiteralCastToUint128Failed(var_field0);
+      case 46:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_LiteralCastToTimeFailed(var_field0);
+      case 47:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_LiteralCastToTimestampFailed(var_field0);
+      case 48:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_UnreachableLiteralCastFromNumberToInteger(var_field0);
+      case 49:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_UnreachableLiteralCastFromNumberToFloat(var_field0);
+      case 50:
+        var var_dataType =
+            sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
+                deserializer);
+        var var_literal = sse_decode_String(deserializer);
+        return ValueError_UnimplementedLiteralCast(
+            dataType: var_dataType, literal: var_literal);
+      case 51:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_UnreachableIntegerOverflow(var_field0);
+      case 52:
+        var var_base = sse_decode_box_autoadd_value(deserializer);
+        var var_pattern = sse_decode_box_autoadd_value(deserializer);
+        var var_caseSensitive = sse_decode_bool(deserializer);
+        return ValueError_LikeOnNonString(
+            base: var_base,
+            pattern: var_pattern,
+            caseSensitive: var_caseSensitive);
+      case 53:
+        var var_value = sse_decode_box_autoadd_value(deserializer);
+        var var_field = sse_decode_date_time_field(deserializer);
+        return ValueError_ExtractFormatNotMatched(
+            value: var_value, field: var_field);
+      case 54:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_BigEndianExportNotSupported(var_field0);
+      case 55:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_InvalidJsonString(var_field0);
+      case 56:
+        return ValueError_JsonObjectTypeRequired();
+      case 57:
+        return ValueError_JsonArrayTypeRequired();
+      case 58:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_UnreachableJsonNumberParseFailure(var_field0);
+      case 59:
+        return ValueError_SelectorRequiresMapOrListTypes();
+      case 60:
+        var var_lhs = sse_decode_box_autoadd_value(deserializer);
+        var var_rhs = sse_decode_box_autoadd_value(deserializer);
+        var var_operator_ = sse_decode_numeric_binary_operator(deserializer);
+        return ValueError_BinaryOperationOverflow(
+            lhs: var_lhs, rhs: var_rhs, operator_: var_operator_);
+      case 61:
+        var var_field0 = sse_decode_box_autoadd_value(deserializer);
+        return ValueError_SqrtOnNonNumeric(var_field0);
+      case 62:
+        var var_from = sse_decode_box_autoadd_value(deserializer);
+        var var_sub = sse_decode_box_autoadd_value(deserializer);
+        return ValueError_NonStringParameterInPosition(
+            from: var_from, sub: var_sub);
+      case 63:
+        var var_sub = sse_decode_box_autoadd_value(deserializer);
+        var var_from = sse_decode_box_autoadd_value(deserializer);
+        return ValueError_NonStringParameterInFindIdx(
+            sub: var_sub, from: var_from);
+      case 64:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_NonPositiveIntegerOffsetInFindIdx(var_field0);
+      case 65:
+        return ValueError_ValueToExprConversionFailure();
+      case 66:
+        var var_field0 = sse_decode_String(deserializer);
+        return ValueError_I64ToU32ConversionFailure(var_field0);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAggregate(
+          Aggregate self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+        (self as AggregateImpl).frbInternalSseEncode(move: true), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerColumnDef(
+          ColumnDef self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+        (self as ColumnDefImpl).frbInternalSseEncode(move: true), serializer);
   }
 
   @protected
@@ -1514,11 +4330,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void
-      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError(
-          Error self, SseSerializer serializer) {
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
+          Expr self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
-        (self as ErrorImpl).frbInternalSseEncode(move: true), serializer);
+        (self as ExprImpl).frbInternalSseEncode(move: true), serializer);
   }
 
   @protected
@@ -1559,6 +4375,35 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf32(
+          OrderedFloatF32 self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+        (self as OrderedFloatF32Impl).frbInternalSseEncode(move: true),
+        serializer);
+  }
+
+  @protected
+  void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf64(
+          OrderedFloatF64 self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+        (self as OrderedFloatF64Impl).frbInternalSseEncode(move: true),
+        serializer);
+  }
+
+  @protected
+  void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerParseError(
+          ParseError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+        (self as ParseErrorImpl).frbInternalSseEncode(move: true), serializer);
+  }
+
+  @protected
+  void
       sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
           PayloadVariable self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -1577,15 +4422,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void
-      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          Value self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-        (self as ValueImpl).frbInternalSseEncode(move: true), serializer);
-  }
-
-  @protected
   void sse_encode_Chrono_Naive(DateTime self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_64(
@@ -1599,20 +4435,29 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void
-      sse_encode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          Map<String, Value> self, SseSerializer serializer) {
+  void sse_encode_Map_String_value(
+      Map<String, Value> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
+    sse_encode_list_record_string_value(
         self.entries.map((e) => (e.key, e.value)).toList(), serializer);
   }
 
   @protected
-  void sse_encode_Map_String_dart_value(
-      Map<String, DartValue> self, SseSerializer serializer) {
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAggregate(
+          Aggregate self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_list_record_string_dart_value(
-        self.entries.map((e) => (e.key, e.value)).toList(), serializer);
+    sse_encode_usize(
+        (self as AggregateImpl).frbInternalSseEncode(move: null), serializer);
+  }
+
+  @protected
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerColumnDef(
+          ColumnDef self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+        (self as ColumnDefImpl).frbInternalSseEncode(move: null), serializer);
   }
 
   @protected
@@ -1635,11 +4480,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void
-      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError(
-          Error self, SseSerializer serializer) {
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
+          Expr self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
-        (self as ErrorImpl).frbInternalSseEncode(move: null), serializer);
+        (self as ExprImpl).frbInternalSseEncode(move: null), serializer);
   }
 
   @protected
@@ -1680,6 +4525,35 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf32(
+          OrderedFloatF32 self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+        (self as OrderedFloatF32Impl).frbInternalSseEncode(move: null),
+        serializer);
+  }
+
+  @protected
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf64(
+          OrderedFloatF64 self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+        (self as OrderedFloatF64Impl).frbInternalSseEncode(move: null),
+        serializer);
+  }
+
+  @protected
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerParseError(
+          ParseError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+        (self as ParseErrorImpl).frbInternalSseEncode(move: null), serializer);
+  }
+
+  @protected
+  void
       sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
           PayloadVariable self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -1698,15 +4572,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void
-      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          Value self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_usize(
-        (self as ValueImpl).frbInternalSseEncode(move: null), serializer);
-  }
-
-  @protected
   void sse_encode_String(String self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer);
@@ -1719,151 +4584,527 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_bool(bool self, SseSerializer serializer) {
+  void sse_encode_aggregate_error(
+      AggregateError self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putUint8(self ? 1 : 0);
+    sse_encode_i_32(self.index, serializer);
   }
 
   @protected
-  void sse_encode_dart_payload(DartPayload self, SseSerializer serializer) {
+  void sse_encode_alter_error(AlterError self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     switch (self) {
-      case DartPayload_ShowColumns(field0: final field0):
+      case AlterError_TableAlreadyExists(field0: final field0):
         sse_encode_i_32(0, serializer);
-        sse_encode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_data_type(
-            field0, serializer);
-      case DartPayload_Create():
+        sse_encode_String(field0, serializer);
+      case AlterError_FunctionAlreadyExists(field0: final field0):
         sse_encode_i_32(1, serializer);
-      case DartPayload_Insert(field0: final field0):
+        sse_encode_String(field0, serializer);
+      case AlterError_FunctionNotFound(field0: final field0):
         sse_encode_i_32(2, serializer);
-        sse_encode_usize(field0, serializer);
-      case DartPayload_Select(labels: final labels, rows: final rows):
+        sse_encode_String(field0, serializer);
+      case AlterError_TableNotFound(field0: final field0):
         sse_encode_i_32(3, serializer);
-        sse_encode_list_String(labels, serializer);
-        sse_encode_list_list_dart_value(rows, serializer);
-      case DartPayload_SelectMap(field0: final field0):
+        sse_encode_String(field0, serializer);
+      case AlterError_CtasSourceTableNotFound(field0: final field0):
         sse_encode_i_32(4, serializer);
-        sse_encode_list_Map_String_dart_value(field0, serializer);
-      case DartPayload_Delete(field0: final field0):
+        sse_encode_String(field0, serializer);
+      case AlterError_UnsupportedDataTypeForUniqueColumn(
+          field0: final field0,
+          field1: final field1
+        ):
         sse_encode_i_32(5, serializer);
-        sse_encode_usize(field0, serializer);
-      case DartPayload_Update(field0: final field0):
+        sse_encode_String(field0, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
+            field1, serializer);
+      case AlterError_UnsupportedIndexExpr(field0: final field0):
         sse_encode_i_32(6, serializer);
-        sse_encode_usize(field0, serializer);
-      case DartPayload_DropTable():
-        sse_encode_i_32(7, serializer);
-      case DartPayload_DropFunction():
-        sse_encode_i_32(8, serializer);
-      case DartPayload_AlterTable():
-        sse_encode_i_32(9, serializer);
-      case DartPayload_CreateIndex():
-        sse_encode_i_32(10, serializer);
-      case DartPayload_DropIndex():
-        sse_encode_i_32(11, serializer);
-      case DartPayload_StartTransaction():
-        sse_encode_i_32(12, serializer);
-      case DartPayload_Commit():
-        sse_encode_i_32(13, serializer);
-      case DartPayload_Rollback():
-        sse_encode_i_32(14, serializer);
-      case DartPayload_ShowVariable(field0: final field0):
-        sse_encode_i_32(15, serializer);
-        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
             field0, serializer);
+      case AlterError_UnsupportedUnnamedArg():
+        sse_encode_i_32(7, serializer);
+      case AlterError_IdentifierNotFound(field0: final field0):
+        sse_encode_i_32(8, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
+            field0, serializer);
+      case AlterError_DuplicateColumnName(field0: final field0):
+        sse_encode_i_32(9, serializer);
+        sse_encode_String(field0, serializer);
+      case AlterError_DuplicateArgName(field0: final field0):
+        sse_encode_i_32(10, serializer);
+        sse_encode_String(field0, serializer);
+      case AlterError_NonDefaultArgumentFollowsDefaultArgument():
+        sse_encode_i_32(11, serializer);
       default:
         throw UnimplementedError('');
     }
   }
 
   @protected
-  void sse_encode_dart_value(DartValue self, SseSerializer serializer) {
+  void sse_encode_alter_table_error(
+      AlterTableError self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     switch (self) {
-      case DartValue_Bool(field0: final field0):
+      case AlterTableError_TableNotFound(field0: final field0):
         sse_encode_i_32(0, serializer);
-        sse_encode_bool(field0, serializer);
-      case DartValue_I8(field0: final field0):
-        sse_encode_i_32(1, serializer);
-        sse_encode_i_8(field0, serializer);
-      case DartValue_I16(field0: final field0):
-        sse_encode_i_32(2, serializer);
-        sse_encode_i_16(field0, serializer);
-      case DartValue_I32(field0: final field0):
-        sse_encode_i_32(3, serializer);
-        sse_encode_i_32(field0, serializer);
-      case DartValue_I64(field0: final field0):
-        sse_encode_i_32(4, serializer);
-        sse_encode_i_64(field0, serializer);
-      case DartValue_I128(field0: final field0):
-        sse_encode_i_32(5, serializer);
-        sse_encode_I128(field0, serializer);
-      case DartValue_U8(field0: final field0):
-        sse_encode_i_32(6, serializer);
-        sse_encode_u_8(field0, serializer);
-      case DartValue_U16(field0: final field0):
-        sse_encode_i_32(7, serializer);
-        sse_encode_u_16(field0, serializer);
-      case DartValue_U32(field0: final field0):
-        sse_encode_i_32(8, serializer);
-        sse_encode_u_32(field0, serializer);
-      case DartValue_U64(field0: final field0):
-        sse_encode_i_32(9, serializer);
-        sse_encode_u_64(field0, serializer);
-      case DartValue_U128(field0: final field0):
-        sse_encode_i_32(10, serializer);
-        sse_encode_U128(field0, serializer);
-      case DartValue_F32(field0: final field0):
-        sse_encode_i_32(11, serializer);
-        sse_encode_f_32(field0, serializer);
-      case DartValue_F64(field0: final field0):
-        sse_encode_i_32(12, serializer);
-        sse_encode_f_64(field0, serializer);
-      case DartValue_Decimal(field0: final field0):
-        sse_encode_i_32(13, serializer);
-        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDecimal(
-            field0, serializer);
-      case DartValue_Str(field0: final field0):
-        sse_encode_i_32(14, serializer);
         sse_encode_String(field0, serializer);
-      case DartValue_Bytea(field0: final field0):
+      case AlterTableError_RenamingColumnNotFound():
+        sse_encode_i_32(1, serializer);
+      case AlterTableError_DefaultValueRequired(field0: final field0):
+        sse_encode_i_32(2, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerColumnDef(
+            field0, serializer);
+      case AlterTableError_AlreadyExistingColumn(field0: final field0):
+        sse_encode_i_32(3, serializer);
+        sse_encode_String(field0, serializer);
+      case AlterTableError_DroppingColumnNotFound(field0: final field0):
+        sse_encode_i_32(4, serializer);
+        sse_encode_String(field0, serializer);
+      case AlterTableError_SchemalessTableFound(field0: final field0):
+        sse_encode_i_32(5, serializer);
+        sse_encode_String(field0, serializer);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  void sse_encode_ast_builder_error(
+      AstBuilderError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case AstBuilderError_FailedToParseNumeric(field0: final field0):
+        sse_encode_i_32(0, serializer);
+        sse_encode_String(field0, serializer);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  void sse_encode_binary_operator(
+      BinaryOperator self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_bool(bool self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint8(self ? 1 : 0);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_alter_error(
+      AlterError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_alter_error(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_alter_table_error(
+      AlterTableError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_alter_table_error(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_ast_builder_error(
+      AstBuilderError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_ast_builder_error(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_convert_error(
+      ConvertError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_convert_error(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_evaluate_error(
+      EvaluateError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_evaluate_error(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_execute_error(
+      ExecuteError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_execute_error(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_fetch_error(
+      FetchError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_fetch_error(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_index_error(
+      IndexError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_index_error(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_insert_error(
+      InsertError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_insert_error(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_interval_error(
+      IntervalError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_interval_error(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_key(Key self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_key(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_literal_error(
+      LiteralError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_literal_error(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_plan_error(
+      PlanError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_plan_error(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_sort_error(
+      SortError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_sort_error(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_translate_error(
+      TranslateError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_translate_error(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_update_error(
+      UpdateError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_update_error(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_validate_error(
+      ValidateError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_validate_error(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_value(Value self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_value(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_value_error(
+      ValueError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_value_error(self, serializer);
+  }
+
+  @protected
+  void sse_encode_convert_error(ConvertError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_value(self.value, serializer);
+    sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
+        self.dataType, serializer);
+  }
+
+  @protected
+  void sse_encode_date_time_field(
+      DateTimeField self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_error(Error self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case Error_StorageMsg(field0: final field0):
+        sse_encode_i_32(0, serializer);
+        sse_encode_String(field0, serializer);
+      case Error_Parser(field0: final field0):
+        sse_encode_i_32(1, serializer);
+        sse_encode_String(field0, serializer);
+      case Error_Translate(field0: final field0):
+        sse_encode_i_32(2, serializer);
+        sse_encode_box_autoadd_translate_error(field0, serializer);
+      case Error_AstBuilder(field0: final field0):
+        sse_encode_i_32(3, serializer);
+        sse_encode_box_autoadd_ast_builder_error(field0, serializer);
+      case Error_AlterTable(field0: final field0):
+        sse_encode_i_32(4, serializer);
+        sse_encode_box_autoadd_alter_table_error(field0, serializer);
+      case Error_Index(field0: final field0):
+        sse_encode_i_32(5, serializer);
+        sse_encode_box_autoadd_index_error(field0, serializer);
+      case Error_Execute(field0: final field0):
+        sse_encode_i_32(6, serializer);
+        sse_encode_box_autoadd_execute_error(field0, serializer);
+      case Error_Alter(field0: final field0):
+        sse_encode_i_32(7, serializer);
+        sse_encode_box_autoadd_alter_error(field0, serializer);
+      case Error_Fetch(field0: final field0):
+        sse_encode_i_32(8, serializer);
+        sse_encode_box_autoadd_fetch_error(field0, serializer);
+      case Error_Select(field0: final field0):
+        sse_encode_i_32(9, serializer);
+        sse_encode_select_error(field0, serializer);
+      case Error_Evaluate(field0: final field0):
+        sse_encode_i_32(10, serializer);
+        sse_encode_box_autoadd_evaluate_error(field0, serializer);
+      case Error_Aggregate(field0: final field0):
+        sse_encode_i_32(11, serializer);
+        sse_encode_aggregate_error(field0, serializer);
+      case Error_Sort(field0: final field0):
+        sse_encode_i_32(12, serializer);
+        sse_encode_box_autoadd_sort_error(field0, serializer);
+      case Error_Insert(field0: final field0):
+        sse_encode_i_32(13, serializer);
+        sse_encode_box_autoadd_insert_error(field0, serializer);
+      case Error_Update(field0: final field0):
+        sse_encode_i_32(14, serializer);
+        sse_encode_box_autoadd_update_error(field0, serializer);
+      case Error_Table(field0: final field0):
         sse_encode_i_32(15, serializer);
-        sse_encode_list_prim_u_8_strict(field0, serializer);
-      case DartValue_Inet(field0: final field0):
+        sse_encode_table_error(field0, serializer);
+      case Error_Validate(field0: final field0):
         sse_encode_i_32(16, serializer);
-        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIpAddr(
-            field0, serializer);
-      case DartValue_Date(field0: final field0):
+        sse_encode_box_autoadd_validate_error(field0, serializer);
+      case Error_Row(field0: final field0):
         sse_encode_i_32(17, serializer);
-        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
-            field0, serializer);
-      case DartValue_Timestamp(field0: final field0):
+        sse_encode_row_error(field0, serializer);
+      case Error_Key(field0: final field0):
         sse_encode_i_32(18, serializer);
-        sse_encode_Chrono_Naive(field0, serializer);
-      case DartValue_Time(field0: final field0):
+        sse_encode_key_error(field0, serializer);
+      case Error_Value(field0: final field0):
         sse_encode_i_32(19, serializer);
-        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
-            field0, serializer);
-      case DartValue_Interval(field0: final field0):
+        sse_encode_box_autoadd_value_error(field0, serializer);
+      case Error_Convert(field0: final field0):
         sse_encode_i_32(20, serializer);
-        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerInterval(
-            field0, serializer);
-      case DartValue_Uuid(field0: final field0):
+        sse_encode_box_autoadd_convert_error(field0, serializer);
+      case Error_Literal(field0: final field0):
         sse_encode_i_32(21, serializer);
-        sse_encode_U128(field0, serializer);
-      case DartValue_Map(field0: final field0):
+        sse_encode_box_autoadd_literal_error(field0, serializer);
+      case Error_Interval(field0: final field0):
         sse_encode_i_32(22, serializer);
-        sse_encode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-            field0, serializer);
-      case DartValue_List(field0: final field0):
+        sse_encode_box_autoadd_interval_error(field0, serializer);
+      case Error_StringExt(field0: final field0):
         sse_encode_i_32(23, serializer);
-        sse_encode_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-            field0, serializer);
-      case DartValue_Point(field0: final field0):
+        sse_encode_string_ext_error(field0, serializer);
+      case Error_Plan(field0: final field0):
         sse_encode_i_32(24, serializer);
-        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPoint(
-            field0, serializer);
-      case DartValue_NullData():
+        sse_encode_box_autoadd_plan_error(field0, serializer);
+      case Error_Schema(field0: final field0):
         sse_encode_i_32(25, serializer);
+        sse_encode_schema_parse_error(field0, serializer);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  void sse_encode_evaluate_error(EvaluateError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case EvaluateError_FormatParseError(field0: final field0):
+        sse_encode_i_32(0, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerParseError(
+            field0, serializer);
+      case EvaluateError_LiteralAddOnNonNumeric():
+        sse_encode_i_32(1, serializer);
+      case EvaluateError_FunctionRequiresStringValue(field0: final field0):
+        sse_encode_i_32(2, serializer);
+        sse_encode_String(field0, serializer);
+      case EvaluateError_FunctionRequiresIntegerValue(field0: final field0):
+        sse_encode_i_32(3, serializer);
+        sse_encode_String(field0, serializer);
+      case EvaluateError_FunctionRequiresFloatOrIntegerValue(
+          field0: final field0
+        ):
+        sse_encode_i_32(4, serializer);
+        sse_encode_String(field0, serializer);
+      case EvaluateError_FunctionRequiresUSizeValue(field0: final field0):
+        sse_encode_i_32(5, serializer);
+        sse_encode_String(field0, serializer);
+      case EvaluateError_FunctionRequiresFloatValue(field0: final field0):
+        sse_encode_i_32(6, serializer);
+        sse_encode_String(field0, serializer);
+      case EvaluateError_ExtractFormatNotMatched(field0: final field0):
+        sse_encode_i_32(7, serializer);
+        sse_encode_String(field0, serializer);
+      case EvaluateError_FunctionRequiresMapValue(field0: final field0):
+        sse_encode_i_32(8, serializer);
+        sse_encode_String(field0, serializer);
+      case EvaluateError_FunctionRequiresPointValue(field0: final field0):
+        sse_encode_i_32(9, serializer);
+        sse_encode_String(field0, serializer);
+      case EvaluateError_FunctionRequiresDateOrDateTimeValue(
+          field0: final field0
+        ):
+        sse_encode_i_32(10, serializer);
+        sse_encode_String(field0, serializer);
+      case EvaluateError_FunctionRequiresStrOrListOrMapValue(
+          field0: final field0
+        ):
+        sse_encode_i_32(11, serializer);
+        sse_encode_String(field0, serializer);
+      case EvaluateError_ValueNotFound(field0: final field0):
+        sse_encode_i_32(12, serializer);
+        sse_encode_String(field0, serializer);
+      case EvaluateError_BooleanTypeRequired(field0: final field0):
+        sse_encode_i_32(13, serializer);
+        sse_encode_String(field0, serializer);
+      case EvaluateError_MapOrListTypeRequired():
+        sse_encode_i_32(14, serializer);
+      case EvaluateError_MapTypeRequired():
+        sse_encode_i_32(15, serializer);
+      case EvaluateError_ListTypeRequired():
+        sse_encode_i_32(16, serializer);
+      case EvaluateError_InvalidSortType():
+        sse_encode_i_32(17, serializer);
+      case EvaluateError_InvalidSortOrder():
+        sse_encode_i_32(18, serializer);
+      case EvaluateError_MapOrStringValueRequired(field0: final field0):
+        sse_encode_i_32(19, serializer);
+        sse_encode_String(field0, serializer);
+      case EvaluateError_TextLiteralRequired(field0: final field0):
+        sse_encode_i_32(20, serializer);
+        sse_encode_String(field0, serializer);
+      case EvaluateError_UnsupportedStatelessExpr(field0: final field0):
+        sse_encode_i_32(21, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
+            field0, serializer);
+      case EvaluateError_ContextRequiredForIdentEvaluation(
+          field0: final field0
+        ):
+        sse_encode_i_32(22, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
+            field0, serializer);
+      case EvaluateError_UnreachableEmptyAggregateValue(field0: final field0):
+        sse_encode_i_32(23, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAggregate(
+            field0, serializer);
+      case EvaluateError_IncompatibleBitOperation(
+          field0: final field0,
+          field1: final field1
+        ):
+        sse_encode_i_32(24, serializer);
+        sse_encode_String(field0, serializer);
+        sse_encode_String(field1, serializer);
+      case EvaluateError_DivisorShouldNotBeZero():
+        sse_encode_i_32(25, serializer);
+      case EvaluateError_NegativeSubstrLenNotAllowed():
+        sse_encode_i_32(26, serializer);
+      case EvaluateError_MoreThanOneRowReturned():
+        sse_encode_i_32(27, serializer);
+      case EvaluateError_MoreThanOneColumnReturned():
+        sse_encode_i_32(28, serializer);
+      case EvaluateError_SchemalessProjectionForInSubQuery():
+        sse_encode_i_32(29, serializer);
+      case EvaluateError_SchemalessProjectionForSubQuery():
+        sse_encode_i_32(30, serializer);
+      case EvaluateError_UnsupportedExprForFormatFunction(field0: final field0):
+        sse_encode_i_32(31, serializer);
+        sse_encode_String(field0, serializer);
+      case EvaluateError_AsciiFunctionRequiresSingleCharacterValue():
+        sse_encode_i_32(32, serializer);
+      case EvaluateError_NonAsciiCharacterNotAllowed():
+        sse_encode_i_32(33, serializer);
+      case EvaluateError_ChrFunctionRequiresIntegerValueInRange0To255():
+        sse_encode_i_32(34, serializer);
+      case EvaluateError_UnsupportedBinaryOperation(
+          left: final left,
+          op: final op,
+          right: final right
+        ):
+        sse_encode_i_32(35, serializer);
+        sse_encode_String(left, serializer);
+        sse_encode_binary_operator(op, serializer);
+        sse_encode_String(right, serializer);
+      case EvaluateError_UnsupportedUnaryPlus(field0: final field0):
+        sse_encode_i_32(36, serializer);
+        sse_encode_String(field0, serializer);
+      case EvaluateError_UnsupportedUnaryMinus(field0: final field0):
+        sse_encode_i_32(37, serializer);
+        sse_encode_String(field0, serializer);
+      case EvaluateError_UnsupportedUnaryFactorial(field0: final field0):
+        sse_encode_i_32(38, serializer);
+        sse_encode_String(field0, serializer);
+      case EvaluateError_IncompatibleUnaryBitwiseNotOperation(
+          field0: final field0
+        ):
+        sse_encode_i_32(39, serializer);
+        sse_encode_String(field0, serializer);
+      case EvaluateError_UnsupportedCustomFunction():
+        sse_encode_i_32(40, serializer);
+      case EvaluateError_FunctionRequiresMoreArguments(
+          functionName: final functionName,
+          requiredMinimum: final requiredMinimum,
+          found: final found
+        ):
+        sse_encode_i_32(41, serializer);
+        sse_encode_String(functionName, serializer);
+        sse_encode_usize(requiredMinimum, serializer);
+        sse_encode_usize(found, serializer);
+      case EvaluateError_FunctionArgsLengthNotWithinRange(
+          name: final name,
+          expectedMinimum: final expectedMinimum,
+          expectedMaximum: final expectedMaximum,
+          found: final found
+        ):
+        sse_encode_i_32(42, serializer);
+        sse_encode_String(name, serializer);
+        sse_encode_usize(expectedMinimum, serializer);
+        sse_encode_usize(expectedMaximum, serializer);
+        sse_encode_usize(found, serializer);
+      case EvaluateError_UnsupportedFunction(field0: final field0):
+        sse_encode_i_32(43, serializer);
+        sse_encode_String(field0, serializer);
+      case EvaluateError_NonComparableArgumentError(field0: final field0):
+        sse_encode_i_32(44, serializer);
+        sse_encode_String(field0, serializer);
+      case EvaluateError_FunctionRequiresAtLeastOneArgument(
+          field0: final field0
+        ):
+        sse_encode_i_32(45, serializer);
+        sse_encode_String(field0, serializer);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  void sse_encode_execute_error(ExecuteError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case ExecuteError_TableNotFound(field0: final field0):
+        sse_encode_i_32(0, serializer);
+        sse_encode_String(field0, serializer);
       default:
         throw UnimplementedError('');
     }
@@ -1879,6 +5120,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_f_64(double self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putFloat64(self);
+  }
+
+  @protected
+  void sse_encode_fetch_error(FetchError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case FetchError_TableNotFound(field0: final field0):
+        sse_encode_i_32(0, serializer);
+        sse_encode_String(field0, serializer);
+      case FetchError_TableAliasNotFound(field0: final field0):
+        sse_encode_i_32(1, serializer);
+        sse_encode_String(field0, serializer);
+      case FetchError_SeriesSizeWrong(field0: final field0):
+        sse_encode_i_32(2, serializer);
+        sse_encode_i_64(field0, serializer);
+      case FetchError_TooManyColumnAliases(
+          field0: final field0,
+          field1: final field1,
+          field2: final field2
+        ):
+        sse_encode_i_32(3, serializer);
+        sse_encode_String(field0, serializer);
+        sse_encode_usize(field1, serializer);
+        sse_encode_usize(field2, serializer);
+      default:
+        throw UnimplementedError('');
+    }
   }
 
   @protected
@@ -1906,24 +5174,229 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void
-      sse_encode_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          List<Value> self, SseSerializer serializer) {
+  void sse_encode_index_error(IndexError self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    for (final item in self) {
-      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          item, serializer);
+    switch (self) {
+      case IndexError_TableNotFound(field0: final field0):
+        sse_encode_i_32(0, serializer);
+        sse_encode_String(field0, serializer);
+      case IndexError_IndexNameAlreadyExists(field0: final field0):
+        sse_encode_i_32(1, serializer);
+        sse_encode_String(field0, serializer);
+      case IndexError_IndexNameDoesNotExist(field0: final field0):
+        sse_encode_i_32(2, serializer);
+        sse_encode_String(field0, serializer);
+      case IndexError_ConflictTableNotFound(field0: final field0):
+        sse_encode_i_32(3, serializer);
+        sse_encode_String(field0, serializer);
+      case IndexError_ConflictOnEmptyIndexValueUpdate():
+        sse_encode_i_32(4, serializer);
+      case IndexError_ConflictOnEmptyIndexValueDelete():
+        sse_encode_i_32(5, serializer);
+      case IndexError_ConflictOnEmptyIndexValueScan():
+        sse_encode_i_32(6, serializer);
+      case IndexError_ConflictOnIndexDataDeleteSync():
+        sse_encode_i_32(7, serializer);
+      default:
+        throw UnimplementedError('');
     }
   }
 
   @protected
-  void sse_encode_list_Map_String_dart_value(
-      List<Map<String, DartValue>> self, SseSerializer serializer) {
+  void sse_encode_insert_error(InsertError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case InsertError_TableNotFound(field0: final field0):
+        sse_encode_i_32(0, serializer);
+        sse_encode_String(field0, serializer);
+      case InsertError_LackOfRequiredColumn(field0: final field0):
+        sse_encode_i_32(1, serializer);
+        sse_encode_String(field0, serializer);
+      case InsertError_WrongColumnName(field0: final field0):
+        sse_encode_i_32(2, serializer);
+        sse_encode_String(field0, serializer);
+      case InsertError_ColumnAndValuesNotMatched():
+        sse_encode_i_32(3, serializer);
+      case InsertError_TooManyValues():
+        sse_encode_i_32(4, serializer);
+      case InsertError_OnlySingleValueAcceptedForSchemalessRow():
+        sse_encode_i_32(5, serializer);
+      case InsertError_MapTypeValueRequired(field0: final field0):
+        sse_encode_i_32(6, serializer);
+        sse_encode_String(field0, serializer);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  void sse_encode_interval_error(IntervalError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case IntervalError_UnsupportedRange(
+          field0: final field0,
+          field1: final field1
+        ):
+        sse_encode_i_32(0, serializer);
+        sse_encode_String(field0, serializer);
+        sse_encode_String(field1, serializer);
+      case IntervalError_AddBetweenYearToMonthAndHourToSecond():
+        sse_encode_i_32(1, serializer);
+      case IntervalError_SubtractBetweenYearToMonthAndHourToSecond():
+        sse_encode_i_32(2, serializer);
+      case IntervalError_AddYearOrMonthToTime(
+          time: final time,
+          interval: final interval
+        ):
+        sse_encode_i_32(3, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+            time, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerInterval(
+            interval, serializer);
+      case IntervalError_SubtractYearOrMonthToTime(
+          time: final time,
+          interval: final interval
+        ):
+        sse_encode_i_32(4, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+            time, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerInterval(
+            interval, serializer);
+      case IntervalError_FailedToParseInteger(field0: final field0):
+        sse_encode_i_32(5, serializer);
+        sse_encode_String(field0, serializer);
+      case IntervalError_FailedToParseDecimal(field0: final field0):
+        sse_encode_i_32(6, serializer);
+        sse_encode_String(field0, serializer);
+      case IntervalError_FailedToParseTime(field0: final field0):
+        sse_encode_i_32(7, serializer);
+        sse_encode_String(field0, serializer);
+      case IntervalError_FailedToParseYearToMonth(field0: final field0):
+        sse_encode_i_32(8, serializer);
+        sse_encode_String(field0, serializer);
+      case IntervalError_FailedToParseDayToHour(field0: final field0):
+        sse_encode_i_32(9, serializer);
+        sse_encode_String(field0, serializer);
+      case IntervalError_FailedToParseDayToMinute(field0: final field0):
+        sse_encode_i_32(10, serializer);
+        sse_encode_String(field0, serializer);
+      case IntervalError_FailedToParseDayToSecond(field0: final field0):
+        sse_encode_i_32(11, serializer);
+        sse_encode_String(field0, serializer);
+      case IntervalError_DateOverflow(year: final year, month: final month):
+        sse_encode_i_32(12, serializer);
+        sse_encode_i_32(year, serializer);
+        sse_encode_i_32(month, serializer);
+      case IntervalError_FailedToExtract():
+        sse_encode_i_32(13, serializer);
+      case IntervalError_ParseSupportedOnlyLiteral(expr: final expr):
+        sse_encode_i_32(14, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
+            expr, serializer);
+      case IntervalError_Unreachable():
+        sse_encode_i_32(15, serializer);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  void sse_encode_key(Key self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case Key_I8(field0: final field0):
+        sse_encode_i_32(0, serializer);
+        sse_encode_i_8(field0, serializer);
+      case Key_I16(field0: final field0):
+        sse_encode_i_32(1, serializer);
+        sse_encode_i_16(field0, serializer);
+      case Key_I32(field0: final field0):
+        sse_encode_i_32(2, serializer);
+        sse_encode_i_32(field0, serializer);
+      case Key_I64(field0: final field0):
+        sse_encode_i_32(3, serializer);
+        sse_encode_i_64(field0, serializer);
+      case Key_I128(field0: final field0):
+        sse_encode_i_32(4, serializer);
+        sse_encode_I128(field0, serializer);
+      case Key_U8(field0: final field0):
+        sse_encode_i_32(5, serializer);
+        sse_encode_u_8(field0, serializer);
+      case Key_U16(field0: final field0):
+        sse_encode_i_32(6, serializer);
+        sse_encode_u_16(field0, serializer);
+      case Key_U32(field0: final field0):
+        sse_encode_i_32(7, serializer);
+        sse_encode_u_32(field0, serializer);
+      case Key_U64(field0: final field0):
+        sse_encode_i_32(8, serializer);
+        sse_encode_u_64(field0, serializer);
+      case Key_U128(field0: final field0):
+        sse_encode_i_32(9, serializer);
+        sse_encode_U128(field0, serializer);
+      case Key_F32(field0: final field0):
+        sse_encode_i_32(10, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf32(
+            field0, serializer);
+      case Key_F64(field0: final field0):
+        sse_encode_i_32(11, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf64(
+            field0, serializer);
+      case Key_Decimal(field0: final field0):
+        sse_encode_i_32(12, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDecimal(
+            field0, serializer);
+      case Key_Bool(field0: final field0):
+        sse_encode_i_32(13, serializer);
+        sse_encode_bool(field0, serializer);
+      case Key_Str(field0: final field0):
+        sse_encode_i_32(14, serializer);
+        sse_encode_String(field0, serializer);
+      case Key_Bytea(field0: final field0):
+        sse_encode_i_32(15, serializer);
+        sse_encode_list_prim_u_8_strict(field0, serializer);
+      case Key_Date(field0: final field0):
+        sse_encode_i_32(16, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
+            field0, serializer);
+      case Key_Timestamp(field0: final field0):
+        sse_encode_i_32(17, serializer);
+        sse_encode_Chrono_Naive(field0, serializer);
+      case Key_Time(field0: final field0):
+        sse_encode_i_32(18, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+            field0, serializer);
+      case Key_Interval(field0: final field0):
+        sse_encode_i_32(19, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerInterval(
+            field0, serializer);
+      case Key_Uuid(field0: final field0):
+        sse_encode_i_32(20, serializer);
+        sse_encode_U128(field0, serializer);
+      case Key_Inet(field0: final field0):
+        sse_encode_i_32(21, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIpAddr(
+            field0, serializer);
+      case Key_None():
+        sse_encode_i_32(22, serializer);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  void sse_encode_key_error(KeyError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_list_Map_String_value(
+      List<Map<String, Value>> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
-      sse_encode_Map_String_dart_value(item, serializer);
+      sse_encode_Map_String_value(item, serializer);
     }
   }
 
@@ -1937,32 +5410,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_list_dart_payload(
-      List<DartPayload> self, SseSerializer serializer) {
+  void sse_encode_list_list_value(
+      List<List<Value>> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
-      sse_encode_dart_payload(item, serializer);
+      sse_encode_list_value(item, serializer);
     }
   }
 
   @protected
-  void sse_encode_list_dart_value(
-      List<DartValue> self, SseSerializer serializer) {
+  void sse_encode_list_payload(List<Payload> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
-      sse_encode_dart_value(item, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_list_list_dart_value(
-      List<List<DartValue>> self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    for (final item in self) {
-      sse_encode_list_dart_value(item, serializer);
+      sse_encode_payload(item, serializer);
     }
   }
 
@@ -1987,24 +5449,143 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void
-      sse_encode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
-          List<(String, Value)> self, SseSerializer serializer) {
+  void sse_encode_list_record_string_value(
+      List<(String, Value)> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
-      sse_encode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
-          item, serializer);
+      sse_encode_record_string_value(item, serializer);
     }
   }
 
   @protected
-  void sse_encode_list_record_string_dart_value(
-      List<(String, DartValue)> self, SseSerializer serializer) {
+  void sse_encode_list_value(List<Value> self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
-      sse_encode_record_string_dart_value(item, serializer);
+      sse_encode_value(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_literal_error(LiteralError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case LiteralError_UnsupportedBinaryOperation(
+          left: final left,
+          op: final op,
+          right: final right
+        ):
+        sse_encode_i_32(0, serializer);
+        sse_encode_String(left, serializer);
+        sse_encode_binary_operator(op, serializer);
+        sse_encode_String(right, serializer);
+      case LiteralError_BitwiseNonIntegerOperand(field0: final field0):
+        sse_encode_i_32(1, serializer);
+        sse_encode_String(field0, serializer);
+      case LiteralError_BitwiseNonNumberLiteral():
+        sse_encode_i_32(2, serializer);
+      case LiteralError_BitwiseOperationOverflow():
+        sse_encode_i_32(3, serializer);
+      case LiteralError_ImpossibleConversion(
+          field0: final field0,
+          field1: final field1
+        ):
+        sse_encode_i_32(4, serializer);
+        sse_encode_String(field0, serializer);
+        sse_encode_String(field1, serializer);
+      case LiteralError_DivisorShouldNotBeZero():
+        sse_encode_i_32(5, serializer);
+      case LiteralError_UnaryOperationOnNonNumeric():
+        sse_encode_i_32(6, serializer);
+      case LiteralError_UnreachableBinaryArithmetic():
+        sse_encode_i_32(7, serializer);
+      case LiteralError_UnreachableUnaryOperation():
+        sse_encode_i_32(8, serializer);
+      case LiteralError_FailedToDecodeHexString(field0: final field0):
+        sse_encode_i_32(9, serializer);
+        sse_encode_String(field0, serializer);
+      case LiteralError_LikeOnNonString(
+          base: final base,
+          pattern: final pattern,
+          caseSensitive: final caseSensitive
+        ):
+        sse_encode_i_32(10, serializer);
+        sse_encode_String(base, serializer);
+        sse_encode_String(pattern, serializer);
+        sse_encode_bool(caseSensitive, serializer);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  void sse_encode_numeric_binary_operator(
+      NumericBinaryOperator self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_payload(Payload self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case Payload_ShowColumns(field0: final field0):
+        sse_encode_i_32(0, serializer);
+        sse_encode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_data_type(
+            field0, serializer);
+      case Payload_Create():
+        sse_encode_i_32(1, serializer);
+      case Payload_Insert(field0: final field0):
+        sse_encode_i_32(2, serializer);
+        sse_encode_usize(field0, serializer);
+      case Payload_Select(labels: final labels, rows: final rows):
+        sse_encode_i_32(3, serializer);
+        sse_encode_list_String(labels, serializer);
+        sse_encode_list_list_value(rows, serializer);
+      case Payload_SelectMap(field0: final field0):
+        sse_encode_i_32(4, serializer);
+        sse_encode_list_Map_String_value(field0, serializer);
+      case Payload_Delete(field0: final field0):
+        sse_encode_i_32(5, serializer);
+        sse_encode_usize(field0, serializer);
+      case Payload_Update(field0: final field0):
+        sse_encode_i_32(6, serializer);
+        sse_encode_usize(field0, serializer);
+      case Payload_DropTable():
+        sse_encode_i_32(7, serializer);
+      case Payload_DropFunction():
+        sse_encode_i_32(8, serializer);
+      case Payload_AlterTable():
+        sse_encode_i_32(9, serializer);
+      case Payload_CreateIndex():
+        sse_encode_i_32(10, serializer);
+      case Payload_DropIndex():
+        sse_encode_i_32(11, serializer);
+      case Payload_StartTransaction():
+        sse_encode_i_32(12, serializer);
+      case Payload_Commit():
+        sse_encode_i_32(13, serializer);
+      case Payload_Rollback():
+        sse_encode_i_32(14, serializer);
+      case Payload_ShowVariable(field0: final field0):
+        sse_encode_i_32(15, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
+            field0, serializer);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  void sse_encode_plan_error(PlanError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case PlanError_ColumnReferenceAmbiguous(field0: final field0):
+        sse_encode_i_32(0, serializer);
+        sse_encode_String(field0, serializer);
+      default:
+        throw UnimplementedError('');
     }
   }
 
@@ -2019,21 +5600,214 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void
-      sse_encode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
-          (String, Value) self, SseSerializer serializer) {
+  void sse_encode_record_string_value(
+      (String, Value) self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.$1, serializer);
-    sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-        self.$2, serializer);
+    sse_encode_value(self.$2, serializer);
   }
 
   @protected
-  void sse_encode_record_string_dart_value(
-      (String, DartValue) self, SseSerializer serializer) {
+  void sse_encode_row_error(RowError self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_String(self.$1, serializer);
-    sse_encode_dart_value(self.$2, serializer);
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_schema_parse_error(
+      SchemaParseError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_select_error(SelectError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_sort_error(SortError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case SortError_ColumnIndexOutOfRange(field0: final field0):
+        sse_encode_i_32(0, serializer);
+        sse_encode_usize(field0, serializer);
+      case SortError_Unreachable():
+        sse_encode_i_32(1, serializer);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  void sse_encode_string_ext_error(
+      StringExtError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_table_error(TableError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_translate_error(
+      TranslateError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case TranslateError_TooManyTables():
+        sse_encode_i_32(0, serializer);
+      case TranslateError_SelectDistinctNotSupported():
+        sse_encode_i_32(1, serializer);
+      case TranslateError_CompositeIndexNotSupported():
+        sse_encode_i_32(2, serializer);
+      case TranslateError_JoinOnUpdateNotSupported():
+        sse_encode_i_32(3, serializer);
+      case TranslateError_CompoundIdentOnUpdateNotSupported(
+          field0: final field0
+        ):
+        sse_encode_i_32(4, serializer);
+        sse_encode_String(field0, serializer);
+      case TranslateError_TooManyParamsInDropIndex():
+        sse_encode_i_32(5, serializer);
+      case TranslateError_InvalidParamsInDropIndex():
+        sse_encode_i_32(6, serializer);
+      case TranslateError_FunctionArgsLengthNotMatching(
+          name: final name,
+          expected: final expected,
+          found: final found
+        ):
+        sse_encode_i_32(7, serializer);
+        sse_encode_String(name, serializer);
+        sse_encode_usize(expected, serializer);
+        sse_encode_usize(found, serializer);
+      case TranslateError_FunctionArgsLengthNotMatchingMin(
+          name: final name,
+          expectedMinimum: final expectedMinimum,
+          found: final found
+        ):
+        sse_encode_i_32(8, serializer);
+        sse_encode_String(name, serializer);
+        sse_encode_usize(expectedMinimum, serializer);
+        sse_encode_usize(found, serializer);
+      case TranslateError_FunctionArgsLengthNotWithinRange(
+          name: final name,
+          expectedMinimum: final expectedMinimum,
+          expectedMaximum: final expectedMaximum,
+          found: final found
+        ):
+        sse_encode_i_32(9, serializer);
+        sse_encode_String(name, serializer);
+        sse_encode_usize(expectedMinimum, serializer);
+        sse_encode_usize(expectedMaximum, serializer);
+        sse_encode_usize(found, serializer);
+      case TranslateError_NamedFunctionArgNotSupported():
+        sse_encode_i_32(10, serializer);
+      case TranslateError_UnNamedFunctionArgNotSupported():
+        sse_encode_i_32(11, serializer);
+      case TranslateError_DefaultValuesOnInsertNotSupported(
+          field0: final field0
+        ):
+        sse_encode_i_32(12, serializer);
+        sse_encode_String(field0, serializer);
+      case TranslateError_UnsupportedEmptyFunctionBody():
+        sse_encode_i_32(13, serializer);
+      case TranslateError_UnsupportedUnnamedIndex():
+        sse_encode_i_32(14, serializer);
+      case TranslateError_UnsupportedTrimChars():
+        sse_encode_i_32(15, serializer);
+      case TranslateError_UnsupportedCastFormat(field0: final field0):
+        sse_encode_i_32(16, serializer);
+        sse_encode_String(field0, serializer);
+      case TranslateError_UnsupportedMultipleAlterTableOperations():
+        sse_encode_i_32(17, serializer);
+      case TranslateError_UnreachableEmptyAlterTableOperation():
+        sse_encode_i_32(18, serializer);
+      case TranslateError_UnsupportedGroupByAll():
+        sse_encode_i_32(19, serializer);
+      case TranslateError_WildcardFunctionArgNotAccepted():
+        sse_encode_i_32(20, serializer);
+      case TranslateError_QualifiedWildcardInCountNotSupported(
+          field0: final field0
+        ):
+        sse_encode_i_32(21, serializer);
+        sse_encode_String(field0, serializer);
+      case TranslateError_OrderByNullsFirstOrLastNotSupported():
+        sse_encode_i_32(22, serializer);
+      case TranslateError_UnsupportedShowVariableKeyword(field0: final field0):
+        sse_encode_i_32(23, serializer);
+        sse_encode_String(field0, serializer);
+      case TranslateError_UnsupportedShowVariableStatement(
+          field0: final field0
+        ):
+        sse_encode_i_32(24, serializer);
+        sse_encode_String(field0, serializer);
+      case TranslateError_UnsupportedStatement(field0: final field0):
+        sse_encode_i_32(25, serializer);
+        sse_encode_String(field0, serializer);
+      case TranslateError_UnsupportedExpr(field0: final field0):
+        sse_encode_i_32(26, serializer);
+        sse_encode_String(field0, serializer);
+      case TranslateError_UnsupportedDataType(field0: final field0):
+        sse_encode_i_32(27, serializer);
+        sse_encode_String(field0, serializer);
+      case TranslateError_UnsupportedDateTimeField(field0: final field0):
+        sse_encode_i_32(28, serializer);
+        sse_encode_String(field0, serializer);
+      case TranslateError_UnsupportedAstLiteral(field0: final field0):
+        sse_encode_i_32(29, serializer);
+        sse_encode_String(field0, serializer);
+      case TranslateError_UnreachableUnaryOperator(field0: final field0):
+        sse_encode_i_32(30, serializer);
+        sse_encode_String(field0, serializer);
+      case TranslateError_UnreachableEmptyIdent():
+        sse_encode_i_32(31, serializer);
+      case TranslateError_UnsupportedBinaryOperator(field0: final field0):
+        sse_encode_i_32(32, serializer);
+        sse_encode_String(field0, serializer);
+      case TranslateError_UnsupportedQuerySetExpr(field0: final field0):
+        sse_encode_i_32(33, serializer);
+        sse_encode_String(field0, serializer);
+      case TranslateError_UnsupportedQueryTableFactor(field0: final field0):
+        sse_encode_i_32(34, serializer);
+        sse_encode_String(field0, serializer);
+      case TranslateError_UnsupportedJoinConstraint(field0: final field0):
+        sse_encode_i_32(35, serializer);
+        sse_encode_String(field0, serializer);
+      case TranslateError_UnsupportedJoinOperator(field0: final field0):
+        sse_encode_i_32(36, serializer);
+        sse_encode_String(field0, serializer);
+      case TranslateError_UnsupportedColumnOption(field0: final field0):
+        sse_encode_i_32(37, serializer);
+        sse_encode_String(field0, serializer);
+      case TranslateError_UnsupportedAlterTableOperation(field0: final field0):
+        sse_encode_i_32(38, serializer);
+        sse_encode_String(field0, serializer);
+      case TranslateError_UnsupportedTableFactor(field0: final field0):
+        sse_encode_i_32(39, serializer);
+        sse_encode_String(field0, serializer);
+      case TranslateError_LackOfAlias():
+        sse_encode_i_32(40, serializer);
+      case TranslateError_LackOfArgs():
+        sse_encode_i_32(41, serializer);
+      case TranslateError_UnreachableEmptyObject():
+        sse_encode_i_32(42, serializer);
+      case TranslateError_UnreachableEmptyTable():
+        sse_encode_i_32(43, serializer);
+      case TranslateError_CompoundObjectNotSupported(field0: final field0):
+        sse_encode_i_32(44, serializer);
+        sse_encode_String(field0, serializer);
+      case TranslateError_ReservedIndexName(field0: final field0):
+        sse_encode_i_32(45, serializer);
+        sse_encode_String(field0, serializer);
+      case TranslateError_CannotDropPrimary():
+        sse_encode_i_32(46, serializer);
+      default:
+        throw UnimplementedError('');
+    }
   }
 
   @protected
@@ -2066,10 +5840,436 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_update_error(UpdateError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case UpdateError_ColumnNotFound(field0: final field0):
+        sse_encode_i_32(0, serializer);
+        sse_encode_String(field0, serializer);
+      case UpdateError_UpdateOnPrimaryKeyNotSupported(field0: final field0):
+        sse_encode_i_32(1, serializer);
+        sse_encode_String(field0, serializer);
+      case UpdateError_ConflictOnSchema():
+        sse_encode_i_32(2, serializer);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
   void sse_encode_usize(BigInt self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putBigUint64(self);
   }
+
+  @protected
+  void sse_encode_validate_error(ValidateError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case ValidateError_ConflictOnStorageColumnIndex(field0: final field0):
+        sse_encode_i_32(0, serializer);
+        sse_encode_usize(field0, serializer);
+      case ValidateError_ConflictOnUnexpectedSchemalessRowFound():
+        sse_encode_i_32(1, serializer);
+      case ValidateError_DuplicateEntryOnUniqueField(
+          field0: final field0,
+          field1: final field1
+        ):
+        sse_encode_i_32(2, serializer);
+        sse_encode_box_autoadd_value(field0, serializer);
+        sse_encode_String(field1, serializer);
+      case ValidateError_DuplicateEntryOnPrimaryKeyField(field0: final field0):
+        sse_encode_i_32(3, serializer);
+        sse_encode_box_autoadd_key(field0, serializer);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  void sse_encode_value(Value self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case Value_Bool(field0: final field0):
+        sse_encode_i_32(0, serializer);
+        sse_encode_bool(field0, serializer);
+      case Value_I8(field0: final field0):
+        sse_encode_i_32(1, serializer);
+        sse_encode_i_8(field0, serializer);
+      case Value_I16(field0: final field0):
+        sse_encode_i_32(2, serializer);
+        sse_encode_i_16(field0, serializer);
+      case Value_I32(field0: final field0):
+        sse_encode_i_32(3, serializer);
+        sse_encode_i_32(field0, serializer);
+      case Value_I64(field0: final field0):
+        sse_encode_i_32(4, serializer);
+        sse_encode_i_64(field0, serializer);
+      case Value_I128(field0: final field0):
+        sse_encode_i_32(5, serializer);
+        sse_encode_I128(field0, serializer);
+      case Value_U8(field0: final field0):
+        sse_encode_i_32(6, serializer);
+        sse_encode_u_8(field0, serializer);
+      case Value_U16(field0: final field0):
+        sse_encode_i_32(7, serializer);
+        sse_encode_u_16(field0, serializer);
+      case Value_U32(field0: final field0):
+        sse_encode_i_32(8, serializer);
+        sse_encode_u_32(field0, serializer);
+      case Value_U64(field0: final field0):
+        sse_encode_i_32(9, serializer);
+        sse_encode_u_64(field0, serializer);
+      case Value_U128(field0: final field0):
+        sse_encode_i_32(10, serializer);
+        sse_encode_U128(field0, serializer);
+      case Value_F32(field0: final field0):
+        sse_encode_i_32(11, serializer);
+        sse_encode_f_32(field0, serializer);
+      case Value_F64(field0: final field0):
+        sse_encode_i_32(12, serializer);
+        sse_encode_f_64(field0, serializer);
+      case Value_Decimal(field0: final field0):
+        sse_encode_i_32(13, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDecimal(
+            field0, serializer);
+      case Value_Str(field0: final field0):
+        sse_encode_i_32(14, serializer);
+        sse_encode_String(field0, serializer);
+      case Value_Bytea(field0: final field0):
+        sse_encode_i_32(15, serializer);
+        sse_encode_list_prim_u_8_strict(field0, serializer);
+      case Value_Inet(field0: final field0):
+        sse_encode_i_32(16, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerIpAddr(
+            field0, serializer);
+      case Value_Date(field0: final field0):
+        sse_encode_i_32(17, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveDate(
+            field0, serializer);
+      case Value_Timestamp(field0: final field0):
+        sse_encode_i_32(18, serializer);
+        sse_encode_Chrono_Naive(field0, serializer);
+      case Value_Time(field0: final field0):
+        sse_encode_i_32(19, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
+            field0, serializer);
+      case Value_Interval(field0: final field0):
+        sse_encode_i_32(20, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerInterval(
+            field0, serializer);
+      case Value_Uuid(field0: final field0):
+        sse_encode_i_32(21, serializer);
+        sse_encode_U128(field0, serializer);
+      case Value_Map(field0: final field0):
+        sse_encode_i_32(22, serializer);
+        sse_encode_Map_String_value(field0, serializer);
+      case Value_List(field0: final field0):
+        sse_encode_i_32(23, serializer);
+        sse_encode_list_value(field0, serializer);
+      case Value_Point(field0: final field0):
+        sse_encode_i_32(24, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPoint(
+            field0, serializer);
+      case Value_Null():
+        sse_encode_i_32(25, serializer);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  void sse_encode_value_error(ValueError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case ValueError_IncompatibleLiteralForDataType(
+          dataType: final dataType,
+          literal: final literal
+        ):
+        sse_encode_i_32(0, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
+            dataType, serializer);
+        sse_encode_String(literal, serializer);
+      case ValueError_IncompatibleDataType(
+          dataType: final dataType,
+          value: final value
+        ):
+        sse_encode_i_32(1, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
+            dataType, serializer);
+        sse_encode_box_autoadd_value(value, serializer);
+      case ValueError_NullValueOnNotNullField():
+        sse_encode_i_32(2, serializer);
+      case ValueError_FailedToParseNumber():
+        sse_encode_i_32(3, serializer);
+      case ValueError_FloatToDecimalConversionFailure(field0: final field0):
+        sse_encode_i_32(4, serializer);
+        sse_encode_f_64(field0, serializer);
+      case ValueError_FailedToParseDate(field0: final field0):
+        sse_encode_i_32(5, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_FailedToParseTimestamp(field0: final field0):
+        sse_encode_i_32(6, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_FailedToParseTime(field0: final field0):
+        sse_encode_i_32(7, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_FailedToParseUUID(field0: final field0):
+        sse_encode_i_32(8, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_FailedToParsePoint(field0: final field0):
+        sse_encode_i_32(9, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_FailedToParseDecimal(field0: final field0):
+        sse_encode_i_32(10, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_FailedToParseHexString(field0: final field0):
+        sse_encode_i_32(11, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_FailedToParseInetString(field0: final field0):
+        sse_encode_i_32(12, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_NonNumericMathOperation(
+          lhs: final lhs,
+          rhs: final rhs,
+          operator_: final operator_
+        ):
+        sse_encode_i_32(13, serializer);
+        sse_encode_box_autoadd_value(lhs, serializer);
+        sse_encode_box_autoadd_value(rhs, serializer);
+        sse_encode_numeric_binary_operator(operator_, serializer);
+      case ValueError_DivisorShouldNotBeZero():
+        sse_encode_i_32(14, serializer);
+      case ValueError_UnaryPlusOnNonNumeric():
+        sse_encode_i_32(15, serializer);
+      case ValueError_UnaryMinusOnNonNumeric():
+        sse_encode_i_32(16, serializer);
+      case ValueError_FactorialOnNonNumeric():
+        sse_encode_i_32(17, serializer);
+      case ValueError_FactorialOnNonInteger():
+        sse_encode_i_32(18, serializer);
+      case ValueError_FactorialOnNegativeNumeric():
+        sse_encode_i_32(19, serializer);
+      case ValueError_FactorialOverflow():
+        sse_encode_i_32(20, serializer);
+      case ValueError_GcdLcmOverflow(field0: final field0):
+        sse_encode_i_32(21, serializer);
+        sse_encode_i_64(field0, serializer);
+      case ValueError_LcmResultOutOfRange():
+        sse_encode_i_32(22, serializer);
+      case ValueError_UnaryBitwiseNotOnNonNumeric():
+        sse_encode_i_32(23, serializer);
+      case ValueError_UnaryBitwiseNotOnNonInteger():
+        sse_encode_i_32(24, serializer);
+      case ValueError_UnreachableNumberParsing():
+        sse_encode_i_32(25, serializer);
+      case ValueError_UnimplementedCast(
+          value: final value,
+          dataType: final dataType
+        ):
+        sse_encode_i_32(26, serializer);
+        sse_encode_box_autoadd_value(value, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
+            dataType, serializer);
+      case ValueError_CastFromHexToByteaFailed(field0: final field0):
+        sse_encode_i_32(27, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_EmptyArgNotAllowedInConcat():
+        sse_encode_i_32(28, serializer);
+      case ValueError_LiteralCastFromTextToIntegerFailed(field0: final field0):
+        sse_encode_i_32(29, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_LiteralCastFromTextToUnsignedInt8Failed(
+          field0: final field0
+        ):
+        sse_encode_i_32(30, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_LiteralCastFromTextToUint16Failed(field0: final field0):
+        sse_encode_i_32(31, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_LiteralCastFromTextToUint32Failed(field0: final field0):
+        sse_encode_i_32(32, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_LiteralCastFromTextToUint64Failed(field0: final field0):
+        sse_encode_i_32(33, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_LiteralCastFromTextToUint128Failed(field0: final field0):
+        sse_encode_i_32(34, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_LiteralCastFromTextToFloatFailed(field0: final field0):
+        sse_encode_i_32(35, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_LiteralCastFromTextToDecimalFailed(field0: final field0):
+        sse_encode_i_32(36, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_LiteralCastToBooleanFailed(field0: final field0):
+        sse_encode_i_32(37, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_LiteralCastToDateFailed(field0: final field0):
+        sse_encode_i_32(38, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_LiteralCastToDataTypeFailed(
+          field0: final field0,
+          field1: final field1
+        ):
+        sse_encode_i_32(39, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
+            field0, serializer);
+        sse_encode_String(field1, serializer);
+      case ValueError_LiteralCastToInt8Failed(field0: final field0):
+        sse_encode_i_32(40, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_LiteralCastToUnsignedInt8Failed(field0: final field0):
+        sse_encode_i_32(41, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_LiteralCastToUint16Failed(field0: final field0):
+        sse_encode_i_32(42, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_LiteralCastToUint32Failed(field0: final field0):
+        sse_encode_i_32(43, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_LiteralCastToUint64Failed(field0: final field0):
+        sse_encode_i_32(44, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_LiteralCastToUint128Failed(field0: final field0):
+        sse_encode_i_32(45, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_LiteralCastToTimeFailed(field0: final field0):
+        sse_encode_i_32(46, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_LiteralCastToTimestampFailed(field0: final field0):
+        sse_encode_i_32(47, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_UnreachableLiteralCastFromNumberToInteger(
+          field0: final field0
+        ):
+        sse_encode_i_32(48, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_UnreachableLiteralCastFromNumberToFloat(
+          field0: final field0
+        ):
+        sse_encode_i_32(49, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_UnimplementedLiteralCast(
+          dataType: final dataType,
+          literal: final literal
+        ):
+        sse_encode_i_32(50, serializer);
+        sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
+            dataType, serializer);
+        sse_encode_String(literal, serializer);
+      case ValueError_UnreachableIntegerOverflow(field0: final field0):
+        sse_encode_i_32(51, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_LikeOnNonString(
+          base: final base,
+          pattern: final pattern,
+          caseSensitive: final caseSensitive
+        ):
+        sse_encode_i_32(52, serializer);
+        sse_encode_box_autoadd_value(base, serializer);
+        sse_encode_box_autoadd_value(pattern, serializer);
+        sse_encode_bool(caseSensitive, serializer);
+      case ValueError_ExtractFormatNotMatched(
+          value: final value,
+          field: final field
+        ):
+        sse_encode_i_32(53, serializer);
+        sse_encode_box_autoadd_value(value, serializer);
+        sse_encode_date_time_field(field, serializer);
+      case ValueError_BigEndianExportNotSupported(field0: final field0):
+        sse_encode_i_32(54, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_InvalidJsonString(field0: final field0):
+        sse_encode_i_32(55, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_JsonObjectTypeRequired():
+        sse_encode_i_32(56, serializer);
+      case ValueError_JsonArrayTypeRequired():
+        sse_encode_i_32(57, serializer);
+      case ValueError_UnreachableJsonNumberParseFailure(field0: final field0):
+        sse_encode_i_32(58, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_SelectorRequiresMapOrListTypes():
+        sse_encode_i_32(59, serializer);
+      case ValueError_BinaryOperationOverflow(
+          lhs: final lhs,
+          rhs: final rhs,
+          operator_: final operator_
+        ):
+        sse_encode_i_32(60, serializer);
+        sse_encode_box_autoadd_value(lhs, serializer);
+        sse_encode_box_autoadd_value(rhs, serializer);
+        sse_encode_numeric_binary_operator(operator_, serializer);
+      case ValueError_SqrtOnNonNumeric(field0: final field0):
+        sse_encode_i_32(61, serializer);
+        sse_encode_box_autoadd_value(field0, serializer);
+      case ValueError_NonStringParameterInPosition(
+          from: final from,
+          sub: final sub
+        ):
+        sse_encode_i_32(62, serializer);
+        sse_encode_box_autoadd_value(from, serializer);
+        sse_encode_box_autoadd_value(sub, serializer);
+      case ValueError_NonStringParameterInFindIdx(
+          sub: final sub,
+          from: final from
+        ):
+        sse_encode_i_32(63, serializer);
+        sse_encode_box_autoadd_value(sub, serializer);
+        sse_encode_box_autoadd_value(from, serializer);
+      case ValueError_NonPositiveIntegerOffsetInFindIdx(field0: final field0):
+        sse_encode_i_32(64, serializer);
+        sse_encode_String(field0, serializer);
+      case ValueError_ValueToExprConversionFailure():
+        sse_encode_i_32(65, serializer);
+      case ValueError_I64ToU32ConversionFailure(field0: final field0):
+        sse_encode_i_32(66, serializer);
+        sse_encode_String(field0, serializer);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+}
+
+@sealed
+class AggregateImpl extends RustOpaque implements Aggregate {
+  // Not to be used by end users
+  AggregateImpl.frbInternalDcoDecode(List<dynamic> wire)
+      : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  AggregateImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
+      : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_Aggregate,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_Aggregate,
+    rustArcDecrementStrongCountPtr:
+        RustLib.instance.api.rust_arc_decrement_strong_count_AggregatePtr,
+  );
+}
+
+@sealed
+class ColumnDefImpl extends RustOpaque implements ColumnDef {
+  // Not to be used by end users
+  ColumnDefImpl.frbInternalDcoDecode(List<dynamic> wire)
+      : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  ColumnDefImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
+      : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_ColumnDef,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_ColumnDef,
+    rustArcDecrementStrongCountPtr:
+        RustLib.instance.api.rust_arc_decrement_strong_count_ColumnDefPtr,
+  );
 }
 
 @sealed
@@ -2113,22 +6313,22 @@ class DecimalImpl extends RustOpaque implements Decimal {
 }
 
 @sealed
-class ErrorImpl extends RustOpaque implements Error {
+class ExprImpl extends RustOpaque implements Expr {
   // Not to be used by end users
-  ErrorImpl.frbInternalDcoDecode(List<dynamic> wire)
+  ExprImpl.frbInternalDcoDecode(List<dynamic> wire)
       : super.frbInternalDcoDecode(wire, _kStaticData);
 
   // Not to be used by end users
-  ErrorImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
+  ExprImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
       : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
 
   static final _kStaticData = RustArcStaticData(
     rustArcIncrementStrongCount:
-        RustLib.instance.api.rust_arc_increment_strong_count_Error,
+        RustLib.instance.api.rust_arc_increment_strong_count_Expr,
     rustArcDecrementStrongCount:
-        RustLib.instance.api.rust_arc_decrement_strong_count_Error,
+        RustLib.instance.api.rust_arc_decrement_strong_count_Expr,
     rustArcDecrementStrongCountPtr:
-        RustLib.instance.api.rust_arc_decrement_strong_count_ErrorPtr,
+        RustLib.instance.api.rust_arc_decrement_strong_count_ExprPtr,
   );
 }
 
@@ -2213,6 +6413,66 @@ class NaiveTimeImpl extends RustOpaque implements NaiveTime {
 }
 
 @sealed
+class OrderedFloatF32Impl extends RustOpaque implements OrderedFloatF32 {
+  // Not to be used by end users
+  OrderedFloatF32Impl.frbInternalDcoDecode(List<dynamic> wire)
+      : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  OrderedFloatF32Impl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
+      : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_OrderedFloatF32,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_OrderedFloatF32,
+    rustArcDecrementStrongCountPtr:
+        RustLib.instance.api.rust_arc_decrement_strong_count_OrderedFloatF32Ptr,
+  );
+}
+
+@sealed
+class OrderedFloatF64Impl extends RustOpaque implements OrderedFloatF64 {
+  // Not to be used by end users
+  OrderedFloatF64Impl.frbInternalDcoDecode(List<dynamic> wire)
+      : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  OrderedFloatF64Impl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
+      : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_OrderedFloatF64,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_OrderedFloatF64,
+    rustArcDecrementStrongCountPtr:
+        RustLib.instance.api.rust_arc_decrement_strong_count_OrderedFloatF64Ptr,
+  );
+}
+
+@sealed
+class ParseErrorImpl extends RustOpaque implements ParseError {
+  // Not to be used by end users
+  ParseErrorImpl.frbInternalDcoDecode(List<dynamic> wire)
+      : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  ParseErrorImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
+      : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_ParseError,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_ParseError,
+    rustArcDecrementStrongCountPtr:
+        RustLib.instance.api.rust_arc_decrement_strong_count_ParseErrorPtr,
+  );
+}
+
+@sealed
 class PayloadVariableImpl extends RustOpaque implements PayloadVariable {
   // Not to be used by end users
   PayloadVariableImpl.frbInternalDcoDecode(List<dynamic> wire)
@@ -2249,25 +6509,5 @@ class PointImpl extends RustOpaque implements Point {
         RustLib.instance.api.rust_arc_decrement_strong_count_Point,
     rustArcDecrementStrongCountPtr:
         RustLib.instance.api.rust_arc_decrement_strong_count_PointPtr,
-  );
-}
-
-@sealed
-class ValueImpl extends RustOpaque implements Value {
-  // Not to be used by end users
-  ValueImpl.frbInternalDcoDecode(List<dynamic> wire)
-      : super.frbInternalDcoDecode(wire, _kStaticData);
-
-  // Not to be used by end users
-  ValueImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
-      : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
-
-  static final _kStaticData = RustArcStaticData(
-    rustArcIncrementStrongCount:
-        RustLib.instance.api.rust_arc_increment_strong_count_Value,
-    rustArcDecrementStrongCount:
-        RustLib.instance.api.rust_arc_decrement_strong_count_Value,
-    rustArcDecrementStrongCountPtr:
-        RustLib.instance.api.rust_arc_decrement_strong_count_ValuePtr,
   );
 }

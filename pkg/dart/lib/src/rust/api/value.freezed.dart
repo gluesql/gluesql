@@ -15,7 +15,7 @@ final _privateConstructorUsedError = UnsupportedError(
     'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
 /// @nodoc
-mixin _$DartValue {
+mixin _$Value {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(bool field0) bool,
@@ -43,7 +43,7 @@ mixin _$DartValue {
     required TResult Function(Map<String, Value> field0) map,
     required TResult Function(List<Value> field0) list,
     required TResult Function(Point field0) point,
-    required TResult Function() nullData,
+    required TResult Function() null_,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -73,7 +73,7 @@ mixin _$DartValue {
     TResult? Function(Map<String, Value> field0)? map,
     TResult? Function(List<Value> field0)? list,
     TResult? Function(Point field0)? point,
-    TResult? Function()? nullData,
+    TResult? Function()? null_,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -103,113 +103,113 @@ mixin _$DartValue {
     TResult Function(Map<String, Value> field0)? map,
     TResult Function(List<Value> field0)? list,
     TResult Function(Point field0)? point,
-    TResult Function()? nullData,
+    TResult Function()? null_,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DartValue_Bool value) bool,
-    required TResult Function(DartValue_I8 value) i8,
-    required TResult Function(DartValue_I16 value) i16,
-    required TResult Function(DartValue_I32 value) i32,
-    required TResult Function(DartValue_I64 value) i64,
-    required TResult Function(DartValue_I128 value) i128,
-    required TResult Function(DartValue_U8 value) u8,
-    required TResult Function(DartValue_U16 value) u16,
-    required TResult Function(DartValue_U32 value) u32,
-    required TResult Function(DartValue_U64 value) u64,
-    required TResult Function(DartValue_U128 value) u128,
-    required TResult Function(DartValue_F32 value) f32,
-    required TResult Function(DartValue_F64 value) f64,
-    required TResult Function(DartValue_Decimal value) decimal,
-    required TResult Function(DartValue_Str value) str,
-    required TResult Function(DartValue_Bytea value) bytea,
-    required TResult Function(DartValue_Inet value) inet,
-    required TResult Function(DartValue_Date value) date,
-    required TResult Function(DartValue_Timestamp value) timestamp,
-    required TResult Function(DartValue_Time value) time,
-    required TResult Function(DartValue_Interval value) interval,
-    required TResult Function(DartValue_Uuid value) uuid,
-    required TResult Function(DartValue_Map value) map,
-    required TResult Function(DartValue_List value) list,
-    required TResult Function(DartValue_Point value) point,
-    required TResult Function(DartValue_NullData value) nullData,
+    required TResult Function(Value_Bool value) bool,
+    required TResult Function(Value_I8 value) i8,
+    required TResult Function(Value_I16 value) i16,
+    required TResult Function(Value_I32 value) i32,
+    required TResult Function(Value_I64 value) i64,
+    required TResult Function(Value_I128 value) i128,
+    required TResult Function(Value_U8 value) u8,
+    required TResult Function(Value_U16 value) u16,
+    required TResult Function(Value_U32 value) u32,
+    required TResult Function(Value_U64 value) u64,
+    required TResult Function(Value_U128 value) u128,
+    required TResult Function(Value_F32 value) f32,
+    required TResult Function(Value_F64 value) f64,
+    required TResult Function(Value_Decimal value) decimal,
+    required TResult Function(Value_Str value) str,
+    required TResult Function(Value_Bytea value) bytea,
+    required TResult Function(Value_Inet value) inet,
+    required TResult Function(Value_Date value) date,
+    required TResult Function(Value_Timestamp value) timestamp,
+    required TResult Function(Value_Time value) time,
+    required TResult Function(Value_Interval value) interval,
+    required TResult Function(Value_Uuid value) uuid,
+    required TResult Function(Value_Map value) map,
+    required TResult Function(Value_List value) list,
+    required TResult Function(Value_Point value) point,
+    required TResult Function(Value_Null value) null_,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DartValue_Bool value)? bool,
-    TResult? Function(DartValue_I8 value)? i8,
-    TResult? Function(DartValue_I16 value)? i16,
-    TResult? Function(DartValue_I32 value)? i32,
-    TResult? Function(DartValue_I64 value)? i64,
-    TResult? Function(DartValue_I128 value)? i128,
-    TResult? Function(DartValue_U8 value)? u8,
-    TResult? Function(DartValue_U16 value)? u16,
-    TResult? Function(DartValue_U32 value)? u32,
-    TResult? Function(DartValue_U64 value)? u64,
-    TResult? Function(DartValue_U128 value)? u128,
-    TResult? Function(DartValue_F32 value)? f32,
-    TResult? Function(DartValue_F64 value)? f64,
-    TResult? Function(DartValue_Decimal value)? decimal,
-    TResult? Function(DartValue_Str value)? str,
-    TResult? Function(DartValue_Bytea value)? bytea,
-    TResult? Function(DartValue_Inet value)? inet,
-    TResult? Function(DartValue_Date value)? date,
-    TResult? Function(DartValue_Timestamp value)? timestamp,
-    TResult? Function(DartValue_Time value)? time,
-    TResult? Function(DartValue_Interval value)? interval,
-    TResult? Function(DartValue_Uuid value)? uuid,
-    TResult? Function(DartValue_Map value)? map,
-    TResult? Function(DartValue_List value)? list,
-    TResult? Function(DartValue_Point value)? point,
-    TResult? Function(DartValue_NullData value)? nullData,
+    TResult? Function(Value_Bool value)? bool,
+    TResult? Function(Value_I8 value)? i8,
+    TResult? Function(Value_I16 value)? i16,
+    TResult? Function(Value_I32 value)? i32,
+    TResult? Function(Value_I64 value)? i64,
+    TResult? Function(Value_I128 value)? i128,
+    TResult? Function(Value_U8 value)? u8,
+    TResult? Function(Value_U16 value)? u16,
+    TResult? Function(Value_U32 value)? u32,
+    TResult? Function(Value_U64 value)? u64,
+    TResult? Function(Value_U128 value)? u128,
+    TResult? Function(Value_F32 value)? f32,
+    TResult? Function(Value_F64 value)? f64,
+    TResult? Function(Value_Decimal value)? decimal,
+    TResult? Function(Value_Str value)? str,
+    TResult? Function(Value_Bytea value)? bytea,
+    TResult? Function(Value_Inet value)? inet,
+    TResult? Function(Value_Date value)? date,
+    TResult? Function(Value_Timestamp value)? timestamp,
+    TResult? Function(Value_Time value)? time,
+    TResult? Function(Value_Interval value)? interval,
+    TResult? Function(Value_Uuid value)? uuid,
+    TResult? Function(Value_Map value)? map,
+    TResult? Function(Value_List value)? list,
+    TResult? Function(Value_Point value)? point,
+    TResult? Function(Value_Null value)? null_,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DartValue_Bool value)? bool,
-    TResult Function(DartValue_I8 value)? i8,
-    TResult Function(DartValue_I16 value)? i16,
-    TResult Function(DartValue_I32 value)? i32,
-    TResult Function(DartValue_I64 value)? i64,
-    TResult Function(DartValue_I128 value)? i128,
-    TResult Function(DartValue_U8 value)? u8,
-    TResult Function(DartValue_U16 value)? u16,
-    TResult Function(DartValue_U32 value)? u32,
-    TResult Function(DartValue_U64 value)? u64,
-    TResult Function(DartValue_U128 value)? u128,
-    TResult Function(DartValue_F32 value)? f32,
-    TResult Function(DartValue_F64 value)? f64,
-    TResult Function(DartValue_Decimal value)? decimal,
-    TResult Function(DartValue_Str value)? str,
-    TResult Function(DartValue_Bytea value)? bytea,
-    TResult Function(DartValue_Inet value)? inet,
-    TResult Function(DartValue_Date value)? date,
-    TResult Function(DartValue_Timestamp value)? timestamp,
-    TResult Function(DartValue_Time value)? time,
-    TResult Function(DartValue_Interval value)? interval,
-    TResult Function(DartValue_Uuid value)? uuid,
-    TResult Function(DartValue_Map value)? map,
-    TResult Function(DartValue_List value)? list,
-    TResult Function(DartValue_Point value)? point,
-    TResult Function(DartValue_NullData value)? nullData,
+    TResult Function(Value_Bool value)? bool,
+    TResult Function(Value_I8 value)? i8,
+    TResult Function(Value_I16 value)? i16,
+    TResult Function(Value_I32 value)? i32,
+    TResult Function(Value_I64 value)? i64,
+    TResult Function(Value_I128 value)? i128,
+    TResult Function(Value_U8 value)? u8,
+    TResult Function(Value_U16 value)? u16,
+    TResult Function(Value_U32 value)? u32,
+    TResult Function(Value_U64 value)? u64,
+    TResult Function(Value_U128 value)? u128,
+    TResult Function(Value_F32 value)? f32,
+    TResult Function(Value_F64 value)? f64,
+    TResult Function(Value_Decimal value)? decimal,
+    TResult Function(Value_Str value)? str,
+    TResult Function(Value_Bytea value)? bytea,
+    TResult Function(Value_Inet value)? inet,
+    TResult Function(Value_Date value)? date,
+    TResult Function(Value_Timestamp value)? timestamp,
+    TResult Function(Value_Time value)? time,
+    TResult Function(Value_Interval value)? interval,
+    TResult Function(Value_Uuid value)? uuid,
+    TResult Function(Value_Map value)? map,
+    TResult Function(Value_List value)? list,
+    TResult Function(Value_Point value)? point,
+    TResult Function(Value_Null value)? null_,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class $DartValueCopyWith<$Res> {
-  factory $DartValueCopyWith(DartValue value, $Res Function(DartValue) then) =
-      _$DartValueCopyWithImpl<$Res, DartValue>;
+abstract class $ValueCopyWith<$Res> {
+  factory $ValueCopyWith(Value value, $Res Function(Value) then) =
+      _$ValueCopyWithImpl<$Res, Value>;
 }
 
 /// @nodoc
-class _$DartValueCopyWithImpl<$Res, $Val extends DartValue>
-    implements $DartValueCopyWith<$Res> {
-  _$DartValueCopyWithImpl(this._value, this._then);
+class _$ValueCopyWithImpl<$Res, $Val extends Value>
+    implements $ValueCopyWith<$Res> {
+  _$ValueCopyWithImpl(this._value, this._then);
 
   // ignore: unused_field
   final $Val _value;
@@ -218,20 +218,20 @@ class _$DartValueCopyWithImpl<$Res, $Val extends DartValue>
 }
 
 /// @nodoc
-abstract class _$$DartValue_BoolImplCopyWith<$Res> {
-  factory _$$DartValue_BoolImplCopyWith(_$DartValue_BoolImpl value,
-          $Res Function(_$DartValue_BoolImpl) then) =
-      __$$DartValue_BoolImplCopyWithImpl<$Res>;
+abstract class _$$Value_BoolImplCopyWith<$Res> {
+  factory _$$Value_BoolImplCopyWith(
+          _$Value_BoolImpl value, $Res Function(_$Value_BoolImpl) then) =
+      __$$Value_BoolImplCopyWithImpl<$Res>;
   @useResult
   $Res call({bool field0});
 }
 
 /// @nodoc
-class __$$DartValue_BoolImplCopyWithImpl<$Res>
-    extends _$DartValueCopyWithImpl<$Res, _$DartValue_BoolImpl>
-    implements _$$DartValue_BoolImplCopyWith<$Res> {
-  __$$DartValue_BoolImplCopyWithImpl(
-      _$DartValue_BoolImpl _value, $Res Function(_$DartValue_BoolImpl) _then)
+class __$$Value_BoolImplCopyWithImpl<$Res>
+    extends _$ValueCopyWithImpl<$Res, _$Value_BoolImpl>
+    implements _$$Value_BoolImplCopyWith<$Res> {
+  __$$Value_BoolImplCopyWithImpl(
+      _$Value_BoolImpl _value, $Res Function(_$Value_BoolImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -239,7 +239,7 @@ class __$$DartValue_BoolImplCopyWithImpl<$Res>
   $Res call({
     Object? field0 = null,
   }) {
-    return _then(_$DartValue_BoolImpl(
+    return _then(_$Value_BoolImpl(
       null == field0
           ? _value.field0
           : field0 // ignore: cast_nullable_to_non_nullable
@@ -250,22 +250,22 @@ class __$$DartValue_BoolImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$DartValue_BoolImpl extends DartValue_Bool {
-  const _$DartValue_BoolImpl(this.field0) : super._();
+class _$Value_BoolImpl extends Value_Bool {
+  const _$Value_BoolImpl(this.field0) : super._();
 
   @override
   final bool field0;
 
   @override
   String toString() {
-    return 'DartValue.bool(field0: $field0)';
+    return 'Value.bool(field0: $field0)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DartValue_BoolImpl &&
+            other is _$Value_BoolImpl &&
             (identical(other.field0, field0) || other.field0 == field0));
   }
 
@@ -275,9 +275,8 @@ class _$DartValue_BoolImpl extends DartValue_Bool {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$DartValue_BoolImplCopyWith<_$DartValue_BoolImpl> get copyWith =>
-      __$$DartValue_BoolImplCopyWithImpl<_$DartValue_BoolImpl>(
-          this, _$identity);
+  _$$Value_BoolImplCopyWith<_$Value_BoolImpl> get copyWith =>
+      __$$Value_BoolImplCopyWithImpl<_$Value_BoolImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -307,7 +306,7 @@ class _$DartValue_BoolImpl extends DartValue_Bool {
     required TResult Function(Map<String, Value> field0) map,
     required TResult Function(List<Value> field0) list,
     required TResult Function(Point field0) point,
-    required TResult Function() nullData,
+    required TResult Function() null_,
   }) {
     return bool(field0);
   }
@@ -340,7 +339,7 @@ class _$DartValue_BoolImpl extends DartValue_Bool {
     TResult? Function(Map<String, Value> field0)? map,
     TResult? Function(List<Value> field0)? list,
     TResult? Function(Point field0)? point,
-    TResult? Function()? nullData,
+    TResult? Function()? null_,
   }) {
     return bool?.call(field0);
   }
@@ -373,7 +372,7 @@ class _$DartValue_BoolImpl extends DartValue_Bool {
     TResult Function(Map<String, Value> field0)? map,
     TResult Function(List<Value> field0)? list,
     TResult Function(Point field0)? point,
-    TResult Function()? nullData,
+    TResult Function()? null_,
     required TResult orElse(),
   }) {
     if (bool != null) {
@@ -385,32 +384,32 @@ class _$DartValue_BoolImpl extends DartValue_Bool {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DartValue_Bool value) bool,
-    required TResult Function(DartValue_I8 value) i8,
-    required TResult Function(DartValue_I16 value) i16,
-    required TResult Function(DartValue_I32 value) i32,
-    required TResult Function(DartValue_I64 value) i64,
-    required TResult Function(DartValue_I128 value) i128,
-    required TResult Function(DartValue_U8 value) u8,
-    required TResult Function(DartValue_U16 value) u16,
-    required TResult Function(DartValue_U32 value) u32,
-    required TResult Function(DartValue_U64 value) u64,
-    required TResult Function(DartValue_U128 value) u128,
-    required TResult Function(DartValue_F32 value) f32,
-    required TResult Function(DartValue_F64 value) f64,
-    required TResult Function(DartValue_Decimal value) decimal,
-    required TResult Function(DartValue_Str value) str,
-    required TResult Function(DartValue_Bytea value) bytea,
-    required TResult Function(DartValue_Inet value) inet,
-    required TResult Function(DartValue_Date value) date,
-    required TResult Function(DartValue_Timestamp value) timestamp,
-    required TResult Function(DartValue_Time value) time,
-    required TResult Function(DartValue_Interval value) interval,
-    required TResult Function(DartValue_Uuid value) uuid,
-    required TResult Function(DartValue_Map value) map,
-    required TResult Function(DartValue_List value) list,
-    required TResult Function(DartValue_Point value) point,
-    required TResult Function(DartValue_NullData value) nullData,
+    required TResult Function(Value_Bool value) bool,
+    required TResult Function(Value_I8 value) i8,
+    required TResult Function(Value_I16 value) i16,
+    required TResult Function(Value_I32 value) i32,
+    required TResult Function(Value_I64 value) i64,
+    required TResult Function(Value_I128 value) i128,
+    required TResult Function(Value_U8 value) u8,
+    required TResult Function(Value_U16 value) u16,
+    required TResult Function(Value_U32 value) u32,
+    required TResult Function(Value_U64 value) u64,
+    required TResult Function(Value_U128 value) u128,
+    required TResult Function(Value_F32 value) f32,
+    required TResult Function(Value_F64 value) f64,
+    required TResult Function(Value_Decimal value) decimal,
+    required TResult Function(Value_Str value) str,
+    required TResult Function(Value_Bytea value) bytea,
+    required TResult Function(Value_Inet value) inet,
+    required TResult Function(Value_Date value) date,
+    required TResult Function(Value_Timestamp value) timestamp,
+    required TResult Function(Value_Time value) time,
+    required TResult Function(Value_Interval value) interval,
+    required TResult Function(Value_Uuid value) uuid,
+    required TResult Function(Value_Map value) map,
+    required TResult Function(Value_List value) list,
+    required TResult Function(Value_Point value) point,
+    required TResult Function(Value_Null value) null_,
   }) {
     return bool(this);
   }
@@ -418,32 +417,32 @@ class _$DartValue_BoolImpl extends DartValue_Bool {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DartValue_Bool value)? bool,
-    TResult? Function(DartValue_I8 value)? i8,
-    TResult? Function(DartValue_I16 value)? i16,
-    TResult? Function(DartValue_I32 value)? i32,
-    TResult? Function(DartValue_I64 value)? i64,
-    TResult? Function(DartValue_I128 value)? i128,
-    TResult? Function(DartValue_U8 value)? u8,
-    TResult? Function(DartValue_U16 value)? u16,
-    TResult? Function(DartValue_U32 value)? u32,
-    TResult? Function(DartValue_U64 value)? u64,
-    TResult? Function(DartValue_U128 value)? u128,
-    TResult? Function(DartValue_F32 value)? f32,
-    TResult? Function(DartValue_F64 value)? f64,
-    TResult? Function(DartValue_Decimal value)? decimal,
-    TResult? Function(DartValue_Str value)? str,
-    TResult? Function(DartValue_Bytea value)? bytea,
-    TResult? Function(DartValue_Inet value)? inet,
-    TResult? Function(DartValue_Date value)? date,
-    TResult? Function(DartValue_Timestamp value)? timestamp,
-    TResult? Function(DartValue_Time value)? time,
-    TResult? Function(DartValue_Interval value)? interval,
-    TResult? Function(DartValue_Uuid value)? uuid,
-    TResult? Function(DartValue_Map value)? map,
-    TResult? Function(DartValue_List value)? list,
-    TResult? Function(DartValue_Point value)? point,
-    TResult? Function(DartValue_NullData value)? nullData,
+    TResult? Function(Value_Bool value)? bool,
+    TResult? Function(Value_I8 value)? i8,
+    TResult? Function(Value_I16 value)? i16,
+    TResult? Function(Value_I32 value)? i32,
+    TResult? Function(Value_I64 value)? i64,
+    TResult? Function(Value_I128 value)? i128,
+    TResult? Function(Value_U8 value)? u8,
+    TResult? Function(Value_U16 value)? u16,
+    TResult? Function(Value_U32 value)? u32,
+    TResult? Function(Value_U64 value)? u64,
+    TResult? Function(Value_U128 value)? u128,
+    TResult? Function(Value_F32 value)? f32,
+    TResult? Function(Value_F64 value)? f64,
+    TResult? Function(Value_Decimal value)? decimal,
+    TResult? Function(Value_Str value)? str,
+    TResult? Function(Value_Bytea value)? bytea,
+    TResult? Function(Value_Inet value)? inet,
+    TResult? Function(Value_Date value)? date,
+    TResult? Function(Value_Timestamp value)? timestamp,
+    TResult? Function(Value_Time value)? time,
+    TResult? Function(Value_Interval value)? interval,
+    TResult? Function(Value_Uuid value)? uuid,
+    TResult? Function(Value_Map value)? map,
+    TResult? Function(Value_List value)? list,
+    TResult? Function(Value_Point value)? point,
+    TResult? Function(Value_Null value)? null_,
   }) {
     return bool?.call(this);
   }
@@ -451,32 +450,32 @@ class _$DartValue_BoolImpl extends DartValue_Bool {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DartValue_Bool value)? bool,
-    TResult Function(DartValue_I8 value)? i8,
-    TResult Function(DartValue_I16 value)? i16,
-    TResult Function(DartValue_I32 value)? i32,
-    TResult Function(DartValue_I64 value)? i64,
-    TResult Function(DartValue_I128 value)? i128,
-    TResult Function(DartValue_U8 value)? u8,
-    TResult Function(DartValue_U16 value)? u16,
-    TResult Function(DartValue_U32 value)? u32,
-    TResult Function(DartValue_U64 value)? u64,
-    TResult Function(DartValue_U128 value)? u128,
-    TResult Function(DartValue_F32 value)? f32,
-    TResult Function(DartValue_F64 value)? f64,
-    TResult Function(DartValue_Decimal value)? decimal,
-    TResult Function(DartValue_Str value)? str,
-    TResult Function(DartValue_Bytea value)? bytea,
-    TResult Function(DartValue_Inet value)? inet,
-    TResult Function(DartValue_Date value)? date,
-    TResult Function(DartValue_Timestamp value)? timestamp,
-    TResult Function(DartValue_Time value)? time,
-    TResult Function(DartValue_Interval value)? interval,
-    TResult Function(DartValue_Uuid value)? uuid,
-    TResult Function(DartValue_Map value)? map,
-    TResult Function(DartValue_List value)? list,
-    TResult Function(DartValue_Point value)? point,
-    TResult Function(DartValue_NullData value)? nullData,
+    TResult Function(Value_Bool value)? bool,
+    TResult Function(Value_I8 value)? i8,
+    TResult Function(Value_I16 value)? i16,
+    TResult Function(Value_I32 value)? i32,
+    TResult Function(Value_I64 value)? i64,
+    TResult Function(Value_I128 value)? i128,
+    TResult Function(Value_U8 value)? u8,
+    TResult Function(Value_U16 value)? u16,
+    TResult Function(Value_U32 value)? u32,
+    TResult Function(Value_U64 value)? u64,
+    TResult Function(Value_U128 value)? u128,
+    TResult Function(Value_F32 value)? f32,
+    TResult Function(Value_F64 value)? f64,
+    TResult Function(Value_Decimal value)? decimal,
+    TResult Function(Value_Str value)? str,
+    TResult Function(Value_Bytea value)? bytea,
+    TResult Function(Value_Inet value)? inet,
+    TResult Function(Value_Date value)? date,
+    TResult Function(Value_Timestamp value)? timestamp,
+    TResult Function(Value_Time value)? time,
+    TResult Function(Value_Interval value)? interval,
+    TResult Function(Value_Uuid value)? uuid,
+    TResult Function(Value_Map value)? map,
+    TResult Function(Value_List value)? list,
+    TResult Function(Value_Point value)? point,
+    TResult Function(Value_Null value)? null_,
     required TResult orElse(),
   }) {
     if (bool != null) {
@@ -486,31 +485,31 @@ class _$DartValue_BoolImpl extends DartValue_Bool {
   }
 }
 
-abstract class DartValue_Bool extends DartValue {
-  const factory DartValue_Bool(final bool field0) = _$DartValue_BoolImpl;
-  const DartValue_Bool._() : super._();
+abstract class Value_Bool extends Value {
+  const factory Value_Bool(final bool field0) = _$Value_BoolImpl;
+  const Value_Bool._() : super._();
 
   bool get field0;
   @JsonKey(ignore: true)
-  _$$DartValue_BoolImplCopyWith<_$DartValue_BoolImpl> get copyWith =>
+  _$$Value_BoolImplCopyWith<_$Value_BoolImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DartValue_I8ImplCopyWith<$Res> {
-  factory _$$DartValue_I8ImplCopyWith(
-          _$DartValue_I8Impl value, $Res Function(_$DartValue_I8Impl) then) =
-      __$$DartValue_I8ImplCopyWithImpl<$Res>;
+abstract class _$$Value_I8ImplCopyWith<$Res> {
+  factory _$$Value_I8ImplCopyWith(
+          _$Value_I8Impl value, $Res Function(_$Value_I8Impl) then) =
+      __$$Value_I8ImplCopyWithImpl<$Res>;
   @useResult
   $Res call({int field0});
 }
 
 /// @nodoc
-class __$$DartValue_I8ImplCopyWithImpl<$Res>
-    extends _$DartValueCopyWithImpl<$Res, _$DartValue_I8Impl>
-    implements _$$DartValue_I8ImplCopyWith<$Res> {
-  __$$DartValue_I8ImplCopyWithImpl(
-      _$DartValue_I8Impl _value, $Res Function(_$DartValue_I8Impl) _then)
+class __$$Value_I8ImplCopyWithImpl<$Res>
+    extends _$ValueCopyWithImpl<$Res, _$Value_I8Impl>
+    implements _$$Value_I8ImplCopyWith<$Res> {
+  __$$Value_I8ImplCopyWithImpl(
+      _$Value_I8Impl _value, $Res Function(_$Value_I8Impl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -518,7 +517,7 @@ class __$$DartValue_I8ImplCopyWithImpl<$Res>
   $Res call({
     Object? field0 = null,
   }) {
-    return _then(_$DartValue_I8Impl(
+    return _then(_$Value_I8Impl(
       null == field0
           ? _value.field0
           : field0 // ignore: cast_nullable_to_non_nullable
@@ -529,22 +528,22 @@ class __$$DartValue_I8ImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$DartValue_I8Impl extends DartValue_I8 {
-  const _$DartValue_I8Impl(this.field0) : super._();
+class _$Value_I8Impl extends Value_I8 {
+  const _$Value_I8Impl(this.field0) : super._();
 
   @override
   final int field0;
 
   @override
   String toString() {
-    return 'DartValue.i8(field0: $field0)';
+    return 'Value.i8(field0: $field0)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DartValue_I8Impl &&
+            other is _$Value_I8Impl &&
             (identical(other.field0, field0) || other.field0 == field0));
   }
 
@@ -554,8 +553,8 @@ class _$DartValue_I8Impl extends DartValue_I8 {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$DartValue_I8ImplCopyWith<_$DartValue_I8Impl> get copyWith =>
-      __$$DartValue_I8ImplCopyWithImpl<_$DartValue_I8Impl>(this, _$identity);
+  _$$Value_I8ImplCopyWith<_$Value_I8Impl> get copyWith =>
+      __$$Value_I8ImplCopyWithImpl<_$Value_I8Impl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -585,7 +584,7 @@ class _$DartValue_I8Impl extends DartValue_I8 {
     required TResult Function(Map<String, Value> field0) map,
     required TResult Function(List<Value> field0) list,
     required TResult Function(Point field0) point,
-    required TResult Function() nullData,
+    required TResult Function() null_,
   }) {
     return i8(field0);
   }
@@ -618,7 +617,7 @@ class _$DartValue_I8Impl extends DartValue_I8 {
     TResult? Function(Map<String, Value> field0)? map,
     TResult? Function(List<Value> field0)? list,
     TResult? Function(Point field0)? point,
-    TResult? Function()? nullData,
+    TResult? Function()? null_,
   }) {
     return i8?.call(field0);
   }
@@ -651,7 +650,7 @@ class _$DartValue_I8Impl extends DartValue_I8 {
     TResult Function(Map<String, Value> field0)? map,
     TResult Function(List<Value> field0)? list,
     TResult Function(Point field0)? point,
-    TResult Function()? nullData,
+    TResult Function()? null_,
     required TResult orElse(),
   }) {
     if (i8 != null) {
@@ -663,32 +662,32 @@ class _$DartValue_I8Impl extends DartValue_I8 {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DartValue_Bool value) bool,
-    required TResult Function(DartValue_I8 value) i8,
-    required TResult Function(DartValue_I16 value) i16,
-    required TResult Function(DartValue_I32 value) i32,
-    required TResult Function(DartValue_I64 value) i64,
-    required TResult Function(DartValue_I128 value) i128,
-    required TResult Function(DartValue_U8 value) u8,
-    required TResult Function(DartValue_U16 value) u16,
-    required TResult Function(DartValue_U32 value) u32,
-    required TResult Function(DartValue_U64 value) u64,
-    required TResult Function(DartValue_U128 value) u128,
-    required TResult Function(DartValue_F32 value) f32,
-    required TResult Function(DartValue_F64 value) f64,
-    required TResult Function(DartValue_Decimal value) decimal,
-    required TResult Function(DartValue_Str value) str,
-    required TResult Function(DartValue_Bytea value) bytea,
-    required TResult Function(DartValue_Inet value) inet,
-    required TResult Function(DartValue_Date value) date,
-    required TResult Function(DartValue_Timestamp value) timestamp,
-    required TResult Function(DartValue_Time value) time,
-    required TResult Function(DartValue_Interval value) interval,
-    required TResult Function(DartValue_Uuid value) uuid,
-    required TResult Function(DartValue_Map value) map,
-    required TResult Function(DartValue_List value) list,
-    required TResult Function(DartValue_Point value) point,
-    required TResult Function(DartValue_NullData value) nullData,
+    required TResult Function(Value_Bool value) bool,
+    required TResult Function(Value_I8 value) i8,
+    required TResult Function(Value_I16 value) i16,
+    required TResult Function(Value_I32 value) i32,
+    required TResult Function(Value_I64 value) i64,
+    required TResult Function(Value_I128 value) i128,
+    required TResult Function(Value_U8 value) u8,
+    required TResult Function(Value_U16 value) u16,
+    required TResult Function(Value_U32 value) u32,
+    required TResult Function(Value_U64 value) u64,
+    required TResult Function(Value_U128 value) u128,
+    required TResult Function(Value_F32 value) f32,
+    required TResult Function(Value_F64 value) f64,
+    required TResult Function(Value_Decimal value) decimal,
+    required TResult Function(Value_Str value) str,
+    required TResult Function(Value_Bytea value) bytea,
+    required TResult Function(Value_Inet value) inet,
+    required TResult Function(Value_Date value) date,
+    required TResult Function(Value_Timestamp value) timestamp,
+    required TResult Function(Value_Time value) time,
+    required TResult Function(Value_Interval value) interval,
+    required TResult Function(Value_Uuid value) uuid,
+    required TResult Function(Value_Map value) map,
+    required TResult Function(Value_List value) list,
+    required TResult Function(Value_Point value) point,
+    required TResult Function(Value_Null value) null_,
   }) {
     return i8(this);
   }
@@ -696,32 +695,32 @@ class _$DartValue_I8Impl extends DartValue_I8 {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DartValue_Bool value)? bool,
-    TResult? Function(DartValue_I8 value)? i8,
-    TResult? Function(DartValue_I16 value)? i16,
-    TResult? Function(DartValue_I32 value)? i32,
-    TResult? Function(DartValue_I64 value)? i64,
-    TResult? Function(DartValue_I128 value)? i128,
-    TResult? Function(DartValue_U8 value)? u8,
-    TResult? Function(DartValue_U16 value)? u16,
-    TResult? Function(DartValue_U32 value)? u32,
-    TResult? Function(DartValue_U64 value)? u64,
-    TResult? Function(DartValue_U128 value)? u128,
-    TResult? Function(DartValue_F32 value)? f32,
-    TResult? Function(DartValue_F64 value)? f64,
-    TResult? Function(DartValue_Decimal value)? decimal,
-    TResult? Function(DartValue_Str value)? str,
-    TResult? Function(DartValue_Bytea value)? bytea,
-    TResult? Function(DartValue_Inet value)? inet,
-    TResult? Function(DartValue_Date value)? date,
-    TResult? Function(DartValue_Timestamp value)? timestamp,
-    TResult? Function(DartValue_Time value)? time,
-    TResult? Function(DartValue_Interval value)? interval,
-    TResult? Function(DartValue_Uuid value)? uuid,
-    TResult? Function(DartValue_Map value)? map,
-    TResult? Function(DartValue_List value)? list,
-    TResult? Function(DartValue_Point value)? point,
-    TResult? Function(DartValue_NullData value)? nullData,
+    TResult? Function(Value_Bool value)? bool,
+    TResult? Function(Value_I8 value)? i8,
+    TResult? Function(Value_I16 value)? i16,
+    TResult? Function(Value_I32 value)? i32,
+    TResult? Function(Value_I64 value)? i64,
+    TResult? Function(Value_I128 value)? i128,
+    TResult? Function(Value_U8 value)? u8,
+    TResult? Function(Value_U16 value)? u16,
+    TResult? Function(Value_U32 value)? u32,
+    TResult? Function(Value_U64 value)? u64,
+    TResult? Function(Value_U128 value)? u128,
+    TResult? Function(Value_F32 value)? f32,
+    TResult? Function(Value_F64 value)? f64,
+    TResult? Function(Value_Decimal value)? decimal,
+    TResult? Function(Value_Str value)? str,
+    TResult? Function(Value_Bytea value)? bytea,
+    TResult? Function(Value_Inet value)? inet,
+    TResult? Function(Value_Date value)? date,
+    TResult? Function(Value_Timestamp value)? timestamp,
+    TResult? Function(Value_Time value)? time,
+    TResult? Function(Value_Interval value)? interval,
+    TResult? Function(Value_Uuid value)? uuid,
+    TResult? Function(Value_Map value)? map,
+    TResult? Function(Value_List value)? list,
+    TResult? Function(Value_Point value)? point,
+    TResult? Function(Value_Null value)? null_,
   }) {
     return i8?.call(this);
   }
@@ -729,32 +728,32 @@ class _$DartValue_I8Impl extends DartValue_I8 {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DartValue_Bool value)? bool,
-    TResult Function(DartValue_I8 value)? i8,
-    TResult Function(DartValue_I16 value)? i16,
-    TResult Function(DartValue_I32 value)? i32,
-    TResult Function(DartValue_I64 value)? i64,
-    TResult Function(DartValue_I128 value)? i128,
-    TResult Function(DartValue_U8 value)? u8,
-    TResult Function(DartValue_U16 value)? u16,
-    TResult Function(DartValue_U32 value)? u32,
-    TResult Function(DartValue_U64 value)? u64,
-    TResult Function(DartValue_U128 value)? u128,
-    TResult Function(DartValue_F32 value)? f32,
-    TResult Function(DartValue_F64 value)? f64,
-    TResult Function(DartValue_Decimal value)? decimal,
-    TResult Function(DartValue_Str value)? str,
-    TResult Function(DartValue_Bytea value)? bytea,
-    TResult Function(DartValue_Inet value)? inet,
-    TResult Function(DartValue_Date value)? date,
-    TResult Function(DartValue_Timestamp value)? timestamp,
-    TResult Function(DartValue_Time value)? time,
-    TResult Function(DartValue_Interval value)? interval,
-    TResult Function(DartValue_Uuid value)? uuid,
-    TResult Function(DartValue_Map value)? map,
-    TResult Function(DartValue_List value)? list,
-    TResult Function(DartValue_Point value)? point,
-    TResult Function(DartValue_NullData value)? nullData,
+    TResult Function(Value_Bool value)? bool,
+    TResult Function(Value_I8 value)? i8,
+    TResult Function(Value_I16 value)? i16,
+    TResult Function(Value_I32 value)? i32,
+    TResult Function(Value_I64 value)? i64,
+    TResult Function(Value_I128 value)? i128,
+    TResult Function(Value_U8 value)? u8,
+    TResult Function(Value_U16 value)? u16,
+    TResult Function(Value_U32 value)? u32,
+    TResult Function(Value_U64 value)? u64,
+    TResult Function(Value_U128 value)? u128,
+    TResult Function(Value_F32 value)? f32,
+    TResult Function(Value_F64 value)? f64,
+    TResult Function(Value_Decimal value)? decimal,
+    TResult Function(Value_Str value)? str,
+    TResult Function(Value_Bytea value)? bytea,
+    TResult Function(Value_Inet value)? inet,
+    TResult Function(Value_Date value)? date,
+    TResult Function(Value_Timestamp value)? timestamp,
+    TResult Function(Value_Time value)? time,
+    TResult Function(Value_Interval value)? interval,
+    TResult Function(Value_Uuid value)? uuid,
+    TResult Function(Value_Map value)? map,
+    TResult Function(Value_List value)? list,
+    TResult Function(Value_Point value)? point,
+    TResult Function(Value_Null value)? null_,
     required TResult orElse(),
   }) {
     if (i8 != null) {
@@ -764,31 +763,31 @@ class _$DartValue_I8Impl extends DartValue_I8 {
   }
 }
 
-abstract class DartValue_I8 extends DartValue {
-  const factory DartValue_I8(final int field0) = _$DartValue_I8Impl;
-  const DartValue_I8._() : super._();
+abstract class Value_I8 extends Value {
+  const factory Value_I8(final int field0) = _$Value_I8Impl;
+  const Value_I8._() : super._();
 
   int get field0;
   @JsonKey(ignore: true)
-  _$$DartValue_I8ImplCopyWith<_$DartValue_I8Impl> get copyWith =>
+  _$$Value_I8ImplCopyWith<_$Value_I8Impl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DartValue_I16ImplCopyWith<$Res> {
-  factory _$$DartValue_I16ImplCopyWith(
-          _$DartValue_I16Impl value, $Res Function(_$DartValue_I16Impl) then) =
-      __$$DartValue_I16ImplCopyWithImpl<$Res>;
+abstract class _$$Value_I16ImplCopyWith<$Res> {
+  factory _$$Value_I16ImplCopyWith(
+          _$Value_I16Impl value, $Res Function(_$Value_I16Impl) then) =
+      __$$Value_I16ImplCopyWithImpl<$Res>;
   @useResult
   $Res call({int field0});
 }
 
 /// @nodoc
-class __$$DartValue_I16ImplCopyWithImpl<$Res>
-    extends _$DartValueCopyWithImpl<$Res, _$DartValue_I16Impl>
-    implements _$$DartValue_I16ImplCopyWith<$Res> {
-  __$$DartValue_I16ImplCopyWithImpl(
-      _$DartValue_I16Impl _value, $Res Function(_$DartValue_I16Impl) _then)
+class __$$Value_I16ImplCopyWithImpl<$Res>
+    extends _$ValueCopyWithImpl<$Res, _$Value_I16Impl>
+    implements _$$Value_I16ImplCopyWith<$Res> {
+  __$$Value_I16ImplCopyWithImpl(
+      _$Value_I16Impl _value, $Res Function(_$Value_I16Impl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -796,7 +795,7 @@ class __$$DartValue_I16ImplCopyWithImpl<$Res>
   $Res call({
     Object? field0 = null,
   }) {
-    return _then(_$DartValue_I16Impl(
+    return _then(_$Value_I16Impl(
       null == field0
           ? _value.field0
           : field0 // ignore: cast_nullable_to_non_nullable
@@ -807,22 +806,22 @@ class __$$DartValue_I16ImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$DartValue_I16Impl extends DartValue_I16 {
-  const _$DartValue_I16Impl(this.field0) : super._();
+class _$Value_I16Impl extends Value_I16 {
+  const _$Value_I16Impl(this.field0) : super._();
 
   @override
   final int field0;
 
   @override
   String toString() {
-    return 'DartValue.i16(field0: $field0)';
+    return 'Value.i16(field0: $field0)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DartValue_I16Impl &&
+            other is _$Value_I16Impl &&
             (identical(other.field0, field0) || other.field0 == field0));
   }
 
@@ -832,8 +831,8 @@ class _$DartValue_I16Impl extends DartValue_I16 {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$DartValue_I16ImplCopyWith<_$DartValue_I16Impl> get copyWith =>
-      __$$DartValue_I16ImplCopyWithImpl<_$DartValue_I16Impl>(this, _$identity);
+  _$$Value_I16ImplCopyWith<_$Value_I16Impl> get copyWith =>
+      __$$Value_I16ImplCopyWithImpl<_$Value_I16Impl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -863,7 +862,7 @@ class _$DartValue_I16Impl extends DartValue_I16 {
     required TResult Function(Map<String, Value> field0) map,
     required TResult Function(List<Value> field0) list,
     required TResult Function(Point field0) point,
-    required TResult Function() nullData,
+    required TResult Function() null_,
   }) {
     return i16(field0);
   }
@@ -896,7 +895,7 @@ class _$DartValue_I16Impl extends DartValue_I16 {
     TResult? Function(Map<String, Value> field0)? map,
     TResult? Function(List<Value> field0)? list,
     TResult? Function(Point field0)? point,
-    TResult? Function()? nullData,
+    TResult? Function()? null_,
   }) {
     return i16?.call(field0);
   }
@@ -929,7 +928,7 @@ class _$DartValue_I16Impl extends DartValue_I16 {
     TResult Function(Map<String, Value> field0)? map,
     TResult Function(List<Value> field0)? list,
     TResult Function(Point field0)? point,
-    TResult Function()? nullData,
+    TResult Function()? null_,
     required TResult orElse(),
   }) {
     if (i16 != null) {
@@ -941,32 +940,32 @@ class _$DartValue_I16Impl extends DartValue_I16 {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DartValue_Bool value) bool,
-    required TResult Function(DartValue_I8 value) i8,
-    required TResult Function(DartValue_I16 value) i16,
-    required TResult Function(DartValue_I32 value) i32,
-    required TResult Function(DartValue_I64 value) i64,
-    required TResult Function(DartValue_I128 value) i128,
-    required TResult Function(DartValue_U8 value) u8,
-    required TResult Function(DartValue_U16 value) u16,
-    required TResult Function(DartValue_U32 value) u32,
-    required TResult Function(DartValue_U64 value) u64,
-    required TResult Function(DartValue_U128 value) u128,
-    required TResult Function(DartValue_F32 value) f32,
-    required TResult Function(DartValue_F64 value) f64,
-    required TResult Function(DartValue_Decimal value) decimal,
-    required TResult Function(DartValue_Str value) str,
-    required TResult Function(DartValue_Bytea value) bytea,
-    required TResult Function(DartValue_Inet value) inet,
-    required TResult Function(DartValue_Date value) date,
-    required TResult Function(DartValue_Timestamp value) timestamp,
-    required TResult Function(DartValue_Time value) time,
-    required TResult Function(DartValue_Interval value) interval,
-    required TResult Function(DartValue_Uuid value) uuid,
-    required TResult Function(DartValue_Map value) map,
-    required TResult Function(DartValue_List value) list,
-    required TResult Function(DartValue_Point value) point,
-    required TResult Function(DartValue_NullData value) nullData,
+    required TResult Function(Value_Bool value) bool,
+    required TResult Function(Value_I8 value) i8,
+    required TResult Function(Value_I16 value) i16,
+    required TResult Function(Value_I32 value) i32,
+    required TResult Function(Value_I64 value) i64,
+    required TResult Function(Value_I128 value) i128,
+    required TResult Function(Value_U8 value) u8,
+    required TResult Function(Value_U16 value) u16,
+    required TResult Function(Value_U32 value) u32,
+    required TResult Function(Value_U64 value) u64,
+    required TResult Function(Value_U128 value) u128,
+    required TResult Function(Value_F32 value) f32,
+    required TResult Function(Value_F64 value) f64,
+    required TResult Function(Value_Decimal value) decimal,
+    required TResult Function(Value_Str value) str,
+    required TResult Function(Value_Bytea value) bytea,
+    required TResult Function(Value_Inet value) inet,
+    required TResult Function(Value_Date value) date,
+    required TResult Function(Value_Timestamp value) timestamp,
+    required TResult Function(Value_Time value) time,
+    required TResult Function(Value_Interval value) interval,
+    required TResult Function(Value_Uuid value) uuid,
+    required TResult Function(Value_Map value) map,
+    required TResult Function(Value_List value) list,
+    required TResult Function(Value_Point value) point,
+    required TResult Function(Value_Null value) null_,
   }) {
     return i16(this);
   }
@@ -974,32 +973,32 @@ class _$DartValue_I16Impl extends DartValue_I16 {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DartValue_Bool value)? bool,
-    TResult? Function(DartValue_I8 value)? i8,
-    TResult? Function(DartValue_I16 value)? i16,
-    TResult? Function(DartValue_I32 value)? i32,
-    TResult? Function(DartValue_I64 value)? i64,
-    TResult? Function(DartValue_I128 value)? i128,
-    TResult? Function(DartValue_U8 value)? u8,
-    TResult? Function(DartValue_U16 value)? u16,
-    TResult? Function(DartValue_U32 value)? u32,
-    TResult? Function(DartValue_U64 value)? u64,
-    TResult? Function(DartValue_U128 value)? u128,
-    TResult? Function(DartValue_F32 value)? f32,
-    TResult? Function(DartValue_F64 value)? f64,
-    TResult? Function(DartValue_Decimal value)? decimal,
-    TResult? Function(DartValue_Str value)? str,
-    TResult? Function(DartValue_Bytea value)? bytea,
-    TResult? Function(DartValue_Inet value)? inet,
-    TResult? Function(DartValue_Date value)? date,
-    TResult? Function(DartValue_Timestamp value)? timestamp,
-    TResult? Function(DartValue_Time value)? time,
-    TResult? Function(DartValue_Interval value)? interval,
-    TResult? Function(DartValue_Uuid value)? uuid,
-    TResult? Function(DartValue_Map value)? map,
-    TResult? Function(DartValue_List value)? list,
-    TResult? Function(DartValue_Point value)? point,
-    TResult? Function(DartValue_NullData value)? nullData,
+    TResult? Function(Value_Bool value)? bool,
+    TResult? Function(Value_I8 value)? i8,
+    TResult? Function(Value_I16 value)? i16,
+    TResult? Function(Value_I32 value)? i32,
+    TResult? Function(Value_I64 value)? i64,
+    TResult? Function(Value_I128 value)? i128,
+    TResult? Function(Value_U8 value)? u8,
+    TResult? Function(Value_U16 value)? u16,
+    TResult? Function(Value_U32 value)? u32,
+    TResult? Function(Value_U64 value)? u64,
+    TResult? Function(Value_U128 value)? u128,
+    TResult? Function(Value_F32 value)? f32,
+    TResult? Function(Value_F64 value)? f64,
+    TResult? Function(Value_Decimal value)? decimal,
+    TResult? Function(Value_Str value)? str,
+    TResult? Function(Value_Bytea value)? bytea,
+    TResult? Function(Value_Inet value)? inet,
+    TResult? Function(Value_Date value)? date,
+    TResult? Function(Value_Timestamp value)? timestamp,
+    TResult? Function(Value_Time value)? time,
+    TResult? Function(Value_Interval value)? interval,
+    TResult? Function(Value_Uuid value)? uuid,
+    TResult? Function(Value_Map value)? map,
+    TResult? Function(Value_List value)? list,
+    TResult? Function(Value_Point value)? point,
+    TResult? Function(Value_Null value)? null_,
   }) {
     return i16?.call(this);
   }
@@ -1007,32 +1006,32 @@ class _$DartValue_I16Impl extends DartValue_I16 {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DartValue_Bool value)? bool,
-    TResult Function(DartValue_I8 value)? i8,
-    TResult Function(DartValue_I16 value)? i16,
-    TResult Function(DartValue_I32 value)? i32,
-    TResult Function(DartValue_I64 value)? i64,
-    TResult Function(DartValue_I128 value)? i128,
-    TResult Function(DartValue_U8 value)? u8,
-    TResult Function(DartValue_U16 value)? u16,
-    TResult Function(DartValue_U32 value)? u32,
-    TResult Function(DartValue_U64 value)? u64,
-    TResult Function(DartValue_U128 value)? u128,
-    TResult Function(DartValue_F32 value)? f32,
-    TResult Function(DartValue_F64 value)? f64,
-    TResult Function(DartValue_Decimal value)? decimal,
-    TResult Function(DartValue_Str value)? str,
-    TResult Function(DartValue_Bytea value)? bytea,
-    TResult Function(DartValue_Inet value)? inet,
-    TResult Function(DartValue_Date value)? date,
-    TResult Function(DartValue_Timestamp value)? timestamp,
-    TResult Function(DartValue_Time value)? time,
-    TResult Function(DartValue_Interval value)? interval,
-    TResult Function(DartValue_Uuid value)? uuid,
-    TResult Function(DartValue_Map value)? map,
-    TResult Function(DartValue_List value)? list,
-    TResult Function(DartValue_Point value)? point,
-    TResult Function(DartValue_NullData value)? nullData,
+    TResult Function(Value_Bool value)? bool,
+    TResult Function(Value_I8 value)? i8,
+    TResult Function(Value_I16 value)? i16,
+    TResult Function(Value_I32 value)? i32,
+    TResult Function(Value_I64 value)? i64,
+    TResult Function(Value_I128 value)? i128,
+    TResult Function(Value_U8 value)? u8,
+    TResult Function(Value_U16 value)? u16,
+    TResult Function(Value_U32 value)? u32,
+    TResult Function(Value_U64 value)? u64,
+    TResult Function(Value_U128 value)? u128,
+    TResult Function(Value_F32 value)? f32,
+    TResult Function(Value_F64 value)? f64,
+    TResult Function(Value_Decimal value)? decimal,
+    TResult Function(Value_Str value)? str,
+    TResult Function(Value_Bytea value)? bytea,
+    TResult Function(Value_Inet value)? inet,
+    TResult Function(Value_Date value)? date,
+    TResult Function(Value_Timestamp value)? timestamp,
+    TResult Function(Value_Time value)? time,
+    TResult Function(Value_Interval value)? interval,
+    TResult Function(Value_Uuid value)? uuid,
+    TResult Function(Value_Map value)? map,
+    TResult Function(Value_List value)? list,
+    TResult Function(Value_Point value)? point,
+    TResult Function(Value_Null value)? null_,
     required TResult orElse(),
   }) {
     if (i16 != null) {
@@ -1042,31 +1041,31 @@ class _$DartValue_I16Impl extends DartValue_I16 {
   }
 }
 
-abstract class DartValue_I16 extends DartValue {
-  const factory DartValue_I16(final int field0) = _$DartValue_I16Impl;
-  const DartValue_I16._() : super._();
+abstract class Value_I16 extends Value {
+  const factory Value_I16(final int field0) = _$Value_I16Impl;
+  const Value_I16._() : super._();
 
   int get field0;
   @JsonKey(ignore: true)
-  _$$DartValue_I16ImplCopyWith<_$DartValue_I16Impl> get copyWith =>
+  _$$Value_I16ImplCopyWith<_$Value_I16Impl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DartValue_I32ImplCopyWith<$Res> {
-  factory _$$DartValue_I32ImplCopyWith(
-          _$DartValue_I32Impl value, $Res Function(_$DartValue_I32Impl) then) =
-      __$$DartValue_I32ImplCopyWithImpl<$Res>;
+abstract class _$$Value_I32ImplCopyWith<$Res> {
+  factory _$$Value_I32ImplCopyWith(
+          _$Value_I32Impl value, $Res Function(_$Value_I32Impl) then) =
+      __$$Value_I32ImplCopyWithImpl<$Res>;
   @useResult
   $Res call({int field0});
 }
 
 /// @nodoc
-class __$$DartValue_I32ImplCopyWithImpl<$Res>
-    extends _$DartValueCopyWithImpl<$Res, _$DartValue_I32Impl>
-    implements _$$DartValue_I32ImplCopyWith<$Res> {
-  __$$DartValue_I32ImplCopyWithImpl(
-      _$DartValue_I32Impl _value, $Res Function(_$DartValue_I32Impl) _then)
+class __$$Value_I32ImplCopyWithImpl<$Res>
+    extends _$ValueCopyWithImpl<$Res, _$Value_I32Impl>
+    implements _$$Value_I32ImplCopyWith<$Res> {
+  __$$Value_I32ImplCopyWithImpl(
+      _$Value_I32Impl _value, $Res Function(_$Value_I32Impl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -1074,7 +1073,7 @@ class __$$DartValue_I32ImplCopyWithImpl<$Res>
   $Res call({
     Object? field0 = null,
   }) {
-    return _then(_$DartValue_I32Impl(
+    return _then(_$Value_I32Impl(
       null == field0
           ? _value.field0
           : field0 // ignore: cast_nullable_to_non_nullable
@@ -1085,22 +1084,22 @@ class __$$DartValue_I32ImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$DartValue_I32Impl extends DartValue_I32 {
-  const _$DartValue_I32Impl(this.field0) : super._();
+class _$Value_I32Impl extends Value_I32 {
+  const _$Value_I32Impl(this.field0) : super._();
 
   @override
   final int field0;
 
   @override
   String toString() {
-    return 'DartValue.i32(field0: $field0)';
+    return 'Value.i32(field0: $field0)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DartValue_I32Impl &&
+            other is _$Value_I32Impl &&
             (identical(other.field0, field0) || other.field0 == field0));
   }
 
@@ -1110,8 +1109,8 @@ class _$DartValue_I32Impl extends DartValue_I32 {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$DartValue_I32ImplCopyWith<_$DartValue_I32Impl> get copyWith =>
-      __$$DartValue_I32ImplCopyWithImpl<_$DartValue_I32Impl>(this, _$identity);
+  _$$Value_I32ImplCopyWith<_$Value_I32Impl> get copyWith =>
+      __$$Value_I32ImplCopyWithImpl<_$Value_I32Impl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -1141,7 +1140,7 @@ class _$DartValue_I32Impl extends DartValue_I32 {
     required TResult Function(Map<String, Value> field0) map,
     required TResult Function(List<Value> field0) list,
     required TResult Function(Point field0) point,
-    required TResult Function() nullData,
+    required TResult Function() null_,
   }) {
     return i32(field0);
   }
@@ -1174,7 +1173,7 @@ class _$DartValue_I32Impl extends DartValue_I32 {
     TResult? Function(Map<String, Value> field0)? map,
     TResult? Function(List<Value> field0)? list,
     TResult? Function(Point field0)? point,
-    TResult? Function()? nullData,
+    TResult? Function()? null_,
   }) {
     return i32?.call(field0);
   }
@@ -1207,7 +1206,7 @@ class _$DartValue_I32Impl extends DartValue_I32 {
     TResult Function(Map<String, Value> field0)? map,
     TResult Function(List<Value> field0)? list,
     TResult Function(Point field0)? point,
-    TResult Function()? nullData,
+    TResult Function()? null_,
     required TResult orElse(),
   }) {
     if (i32 != null) {
@@ -1219,32 +1218,32 @@ class _$DartValue_I32Impl extends DartValue_I32 {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DartValue_Bool value) bool,
-    required TResult Function(DartValue_I8 value) i8,
-    required TResult Function(DartValue_I16 value) i16,
-    required TResult Function(DartValue_I32 value) i32,
-    required TResult Function(DartValue_I64 value) i64,
-    required TResult Function(DartValue_I128 value) i128,
-    required TResult Function(DartValue_U8 value) u8,
-    required TResult Function(DartValue_U16 value) u16,
-    required TResult Function(DartValue_U32 value) u32,
-    required TResult Function(DartValue_U64 value) u64,
-    required TResult Function(DartValue_U128 value) u128,
-    required TResult Function(DartValue_F32 value) f32,
-    required TResult Function(DartValue_F64 value) f64,
-    required TResult Function(DartValue_Decimal value) decimal,
-    required TResult Function(DartValue_Str value) str,
-    required TResult Function(DartValue_Bytea value) bytea,
-    required TResult Function(DartValue_Inet value) inet,
-    required TResult Function(DartValue_Date value) date,
-    required TResult Function(DartValue_Timestamp value) timestamp,
-    required TResult Function(DartValue_Time value) time,
-    required TResult Function(DartValue_Interval value) interval,
-    required TResult Function(DartValue_Uuid value) uuid,
-    required TResult Function(DartValue_Map value) map,
-    required TResult Function(DartValue_List value) list,
-    required TResult Function(DartValue_Point value) point,
-    required TResult Function(DartValue_NullData value) nullData,
+    required TResult Function(Value_Bool value) bool,
+    required TResult Function(Value_I8 value) i8,
+    required TResult Function(Value_I16 value) i16,
+    required TResult Function(Value_I32 value) i32,
+    required TResult Function(Value_I64 value) i64,
+    required TResult Function(Value_I128 value) i128,
+    required TResult Function(Value_U8 value) u8,
+    required TResult Function(Value_U16 value) u16,
+    required TResult Function(Value_U32 value) u32,
+    required TResult Function(Value_U64 value) u64,
+    required TResult Function(Value_U128 value) u128,
+    required TResult Function(Value_F32 value) f32,
+    required TResult Function(Value_F64 value) f64,
+    required TResult Function(Value_Decimal value) decimal,
+    required TResult Function(Value_Str value) str,
+    required TResult Function(Value_Bytea value) bytea,
+    required TResult Function(Value_Inet value) inet,
+    required TResult Function(Value_Date value) date,
+    required TResult Function(Value_Timestamp value) timestamp,
+    required TResult Function(Value_Time value) time,
+    required TResult Function(Value_Interval value) interval,
+    required TResult Function(Value_Uuid value) uuid,
+    required TResult Function(Value_Map value) map,
+    required TResult Function(Value_List value) list,
+    required TResult Function(Value_Point value) point,
+    required TResult Function(Value_Null value) null_,
   }) {
     return i32(this);
   }
@@ -1252,32 +1251,32 @@ class _$DartValue_I32Impl extends DartValue_I32 {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DartValue_Bool value)? bool,
-    TResult? Function(DartValue_I8 value)? i8,
-    TResult? Function(DartValue_I16 value)? i16,
-    TResult? Function(DartValue_I32 value)? i32,
-    TResult? Function(DartValue_I64 value)? i64,
-    TResult? Function(DartValue_I128 value)? i128,
-    TResult? Function(DartValue_U8 value)? u8,
-    TResult? Function(DartValue_U16 value)? u16,
-    TResult? Function(DartValue_U32 value)? u32,
-    TResult? Function(DartValue_U64 value)? u64,
-    TResult? Function(DartValue_U128 value)? u128,
-    TResult? Function(DartValue_F32 value)? f32,
-    TResult? Function(DartValue_F64 value)? f64,
-    TResult? Function(DartValue_Decimal value)? decimal,
-    TResult? Function(DartValue_Str value)? str,
-    TResult? Function(DartValue_Bytea value)? bytea,
-    TResult? Function(DartValue_Inet value)? inet,
-    TResult? Function(DartValue_Date value)? date,
-    TResult? Function(DartValue_Timestamp value)? timestamp,
-    TResult? Function(DartValue_Time value)? time,
-    TResult? Function(DartValue_Interval value)? interval,
-    TResult? Function(DartValue_Uuid value)? uuid,
-    TResult? Function(DartValue_Map value)? map,
-    TResult? Function(DartValue_List value)? list,
-    TResult? Function(DartValue_Point value)? point,
-    TResult? Function(DartValue_NullData value)? nullData,
+    TResult? Function(Value_Bool value)? bool,
+    TResult? Function(Value_I8 value)? i8,
+    TResult? Function(Value_I16 value)? i16,
+    TResult? Function(Value_I32 value)? i32,
+    TResult? Function(Value_I64 value)? i64,
+    TResult? Function(Value_I128 value)? i128,
+    TResult? Function(Value_U8 value)? u8,
+    TResult? Function(Value_U16 value)? u16,
+    TResult? Function(Value_U32 value)? u32,
+    TResult? Function(Value_U64 value)? u64,
+    TResult? Function(Value_U128 value)? u128,
+    TResult? Function(Value_F32 value)? f32,
+    TResult? Function(Value_F64 value)? f64,
+    TResult? Function(Value_Decimal value)? decimal,
+    TResult? Function(Value_Str value)? str,
+    TResult? Function(Value_Bytea value)? bytea,
+    TResult? Function(Value_Inet value)? inet,
+    TResult? Function(Value_Date value)? date,
+    TResult? Function(Value_Timestamp value)? timestamp,
+    TResult? Function(Value_Time value)? time,
+    TResult? Function(Value_Interval value)? interval,
+    TResult? Function(Value_Uuid value)? uuid,
+    TResult? Function(Value_Map value)? map,
+    TResult? Function(Value_List value)? list,
+    TResult? Function(Value_Point value)? point,
+    TResult? Function(Value_Null value)? null_,
   }) {
     return i32?.call(this);
   }
@@ -1285,32 +1284,32 @@ class _$DartValue_I32Impl extends DartValue_I32 {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DartValue_Bool value)? bool,
-    TResult Function(DartValue_I8 value)? i8,
-    TResult Function(DartValue_I16 value)? i16,
-    TResult Function(DartValue_I32 value)? i32,
-    TResult Function(DartValue_I64 value)? i64,
-    TResult Function(DartValue_I128 value)? i128,
-    TResult Function(DartValue_U8 value)? u8,
-    TResult Function(DartValue_U16 value)? u16,
-    TResult Function(DartValue_U32 value)? u32,
-    TResult Function(DartValue_U64 value)? u64,
-    TResult Function(DartValue_U128 value)? u128,
-    TResult Function(DartValue_F32 value)? f32,
-    TResult Function(DartValue_F64 value)? f64,
-    TResult Function(DartValue_Decimal value)? decimal,
-    TResult Function(DartValue_Str value)? str,
-    TResult Function(DartValue_Bytea value)? bytea,
-    TResult Function(DartValue_Inet value)? inet,
-    TResult Function(DartValue_Date value)? date,
-    TResult Function(DartValue_Timestamp value)? timestamp,
-    TResult Function(DartValue_Time value)? time,
-    TResult Function(DartValue_Interval value)? interval,
-    TResult Function(DartValue_Uuid value)? uuid,
-    TResult Function(DartValue_Map value)? map,
-    TResult Function(DartValue_List value)? list,
-    TResult Function(DartValue_Point value)? point,
-    TResult Function(DartValue_NullData value)? nullData,
+    TResult Function(Value_Bool value)? bool,
+    TResult Function(Value_I8 value)? i8,
+    TResult Function(Value_I16 value)? i16,
+    TResult Function(Value_I32 value)? i32,
+    TResult Function(Value_I64 value)? i64,
+    TResult Function(Value_I128 value)? i128,
+    TResult Function(Value_U8 value)? u8,
+    TResult Function(Value_U16 value)? u16,
+    TResult Function(Value_U32 value)? u32,
+    TResult Function(Value_U64 value)? u64,
+    TResult Function(Value_U128 value)? u128,
+    TResult Function(Value_F32 value)? f32,
+    TResult Function(Value_F64 value)? f64,
+    TResult Function(Value_Decimal value)? decimal,
+    TResult Function(Value_Str value)? str,
+    TResult Function(Value_Bytea value)? bytea,
+    TResult Function(Value_Inet value)? inet,
+    TResult Function(Value_Date value)? date,
+    TResult Function(Value_Timestamp value)? timestamp,
+    TResult Function(Value_Time value)? time,
+    TResult Function(Value_Interval value)? interval,
+    TResult Function(Value_Uuid value)? uuid,
+    TResult Function(Value_Map value)? map,
+    TResult Function(Value_List value)? list,
+    TResult Function(Value_Point value)? point,
+    TResult Function(Value_Null value)? null_,
     required TResult orElse(),
   }) {
     if (i32 != null) {
@@ -1320,31 +1319,31 @@ class _$DartValue_I32Impl extends DartValue_I32 {
   }
 }
 
-abstract class DartValue_I32 extends DartValue {
-  const factory DartValue_I32(final int field0) = _$DartValue_I32Impl;
-  const DartValue_I32._() : super._();
+abstract class Value_I32 extends Value {
+  const factory Value_I32(final int field0) = _$Value_I32Impl;
+  const Value_I32._() : super._();
 
   int get field0;
   @JsonKey(ignore: true)
-  _$$DartValue_I32ImplCopyWith<_$DartValue_I32Impl> get copyWith =>
+  _$$Value_I32ImplCopyWith<_$Value_I32Impl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DartValue_I64ImplCopyWith<$Res> {
-  factory _$$DartValue_I64ImplCopyWith(
-          _$DartValue_I64Impl value, $Res Function(_$DartValue_I64Impl) then) =
-      __$$DartValue_I64ImplCopyWithImpl<$Res>;
+abstract class _$$Value_I64ImplCopyWith<$Res> {
+  factory _$$Value_I64ImplCopyWith(
+          _$Value_I64Impl value, $Res Function(_$Value_I64Impl) then) =
+      __$$Value_I64ImplCopyWithImpl<$Res>;
   @useResult
   $Res call({int field0});
 }
 
 /// @nodoc
-class __$$DartValue_I64ImplCopyWithImpl<$Res>
-    extends _$DartValueCopyWithImpl<$Res, _$DartValue_I64Impl>
-    implements _$$DartValue_I64ImplCopyWith<$Res> {
-  __$$DartValue_I64ImplCopyWithImpl(
-      _$DartValue_I64Impl _value, $Res Function(_$DartValue_I64Impl) _then)
+class __$$Value_I64ImplCopyWithImpl<$Res>
+    extends _$ValueCopyWithImpl<$Res, _$Value_I64Impl>
+    implements _$$Value_I64ImplCopyWith<$Res> {
+  __$$Value_I64ImplCopyWithImpl(
+      _$Value_I64Impl _value, $Res Function(_$Value_I64Impl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -1352,7 +1351,7 @@ class __$$DartValue_I64ImplCopyWithImpl<$Res>
   $Res call({
     Object? field0 = null,
   }) {
-    return _then(_$DartValue_I64Impl(
+    return _then(_$Value_I64Impl(
       null == field0
           ? _value.field0
           : field0 // ignore: cast_nullable_to_non_nullable
@@ -1363,22 +1362,22 @@ class __$$DartValue_I64ImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$DartValue_I64Impl extends DartValue_I64 {
-  const _$DartValue_I64Impl(this.field0) : super._();
+class _$Value_I64Impl extends Value_I64 {
+  const _$Value_I64Impl(this.field0) : super._();
 
   @override
   final int field0;
 
   @override
   String toString() {
-    return 'DartValue.i64(field0: $field0)';
+    return 'Value.i64(field0: $field0)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DartValue_I64Impl &&
+            other is _$Value_I64Impl &&
             (identical(other.field0, field0) || other.field0 == field0));
   }
 
@@ -1388,8 +1387,8 @@ class _$DartValue_I64Impl extends DartValue_I64 {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$DartValue_I64ImplCopyWith<_$DartValue_I64Impl> get copyWith =>
-      __$$DartValue_I64ImplCopyWithImpl<_$DartValue_I64Impl>(this, _$identity);
+  _$$Value_I64ImplCopyWith<_$Value_I64Impl> get copyWith =>
+      __$$Value_I64ImplCopyWithImpl<_$Value_I64Impl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -1419,7 +1418,7 @@ class _$DartValue_I64Impl extends DartValue_I64 {
     required TResult Function(Map<String, Value> field0) map,
     required TResult Function(List<Value> field0) list,
     required TResult Function(Point field0) point,
-    required TResult Function() nullData,
+    required TResult Function() null_,
   }) {
     return i64(field0);
   }
@@ -1452,7 +1451,7 @@ class _$DartValue_I64Impl extends DartValue_I64 {
     TResult? Function(Map<String, Value> field0)? map,
     TResult? Function(List<Value> field0)? list,
     TResult? Function(Point field0)? point,
-    TResult? Function()? nullData,
+    TResult? Function()? null_,
   }) {
     return i64?.call(field0);
   }
@@ -1485,7 +1484,7 @@ class _$DartValue_I64Impl extends DartValue_I64 {
     TResult Function(Map<String, Value> field0)? map,
     TResult Function(List<Value> field0)? list,
     TResult Function(Point field0)? point,
-    TResult Function()? nullData,
+    TResult Function()? null_,
     required TResult orElse(),
   }) {
     if (i64 != null) {
@@ -1497,32 +1496,32 @@ class _$DartValue_I64Impl extends DartValue_I64 {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DartValue_Bool value) bool,
-    required TResult Function(DartValue_I8 value) i8,
-    required TResult Function(DartValue_I16 value) i16,
-    required TResult Function(DartValue_I32 value) i32,
-    required TResult Function(DartValue_I64 value) i64,
-    required TResult Function(DartValue_I128 value) i128,
-    required TResult Function(DartValue_U8 value) u8,
-    required TResult Function(DartValue_U16 value) u16,
-    required TResult Function(DartValue_U32 value) u32,
-    required TResult Function(DartValue_U64 value) u64,
-    required TResult Function(DartValue_U128 value) u128,
-    required TResult Function(DartValue_F32 value) f32,
-    required TResult Function(DartValue_F64 value) f64,
-    required TResult Function(DartValue_Decimal value) decimal,
-    required TResult Function(DartValue_Str value) str,
-    required TResult Function(DartValue_Bytea value) bytea,
-    required TResult Function(DartValue_Inet value) inet,
-    required TResult Function(DartValue_Date value) date,
-    required TResult Function(DartValue_Timestamp value) timestamp,
-    required TResult Function(DartValue_Time value) time,
-    required TResult Function(DartValue_Interval value) interval,
-    required TResult Function(DartValue_Uuid value) uuid,
-    required TResult Function(DartValue_Map value) map,
-    required TResult Function(DartValue_List value) list,
-    required TResult Function(DartValue_Point value) point,
-    required TResult Function(DartValue_NullData value) nullData,
+    required TResult Function(Value_Bool value) bool,
+    required TResult Function(Value_I8 value) i8,
+    required TResult Function(Value_I16 value) i16,
+    required TResult Function(Value_I32 value) i32,
+    required TResult Function(Value_I64 value) i64,
+    required TResult Function(Value_I128 value) i128,
+    required TResult Function(Value_U8 value) u8,
+    required TResult Function(Value_U16 value) u16,
+    required TResult Function(Value_U32 value) u32,
+    required TResult Function(Value_U64 value) u64,
+    required TResult Function(Value_U128 value) u128,
+    required TResult Function(Value_F32 value) f32,
+    required TResult Function(Value_F64 value) f64,
+    required TResult Function(Value_Decimal value) decimal,
+    required TResult Function(Value_Str value) str,
+    required TResult Function(Value_Bytea value) bytea,
+    required TResult Function(Value_Inet value) inet,
+    required TResult Function(Value_Date value) date,
+    required TResult Function(Value_Timestamp value) timestamp,
+    required TResult Function(Value_Time value) time,
+    required TResult Function(Value_Interval value) interval,
+    required TResult Function(Value_Uuid value) uuid,
+    required TResult Function(Value_Map value) map,
+    required TResult Function(Value_List value) list,
+    required TResult Function(Value_Point value) point,
+    required TResult Function(Value_Null value) null_,
   }) {
     return i64(this);
   }
@@ -1530,32 +1529,32 @@ class _$DartValue_I64Impl extends DartValue_I64 {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DartValue_Bool value)? bool,
-    TResult? Function(DartValue_I8 value)? i8,
-    TResult? Function(DartValue_I16 value)? i16,
-    TResult? Function(DartValue_I32 value)? i32,
-    TResult? Function(DartValue_I64 value)? i64,
-    TResult? Function(DartValue_I128 value)? i128,
-    TResult? Function(DartValue_U8 value)? u8,
-    TResult? Function(DartValue_U16 value)? u16,
-    TResult? Function(DartValue_U32 value)? u32,
-    TResult? Function(DartValue_U64 value)? u64,
-    TResult? Function(DartValue_U128 value)? u128,
-    TResult? Function(DartValue_F32 value)? f32,
-    TResult? Function(DartValue_F64 value)? f64,
-    TResult? Function(DartValue_Decimal value)? decimal,
-    TResult? Function(DartValue_Str value)? str,
-    TResult? Function(DartValue_Bytea value)? bytea,
-    TResult? Function(DartValue_Inet value)? inet,
-    TResult? Function(DartValue_Date value)? date,
-    TResult? Function(DartValue_Timestamp value)? timestamp,
-    TResult? Function(DartValue_Time value)? time,
-    TResult? Function(DartValue_Interval value)? interval,
-    TResult? Function(DartValue_Uuid value)? uuid,
-    TResult? Function(DartValue_Map value)? map,
-    TResult? Function(DartValue_List value)? list,
-    TResult? Function(DartValue_Point value)? point,
-    TResult? Function(DartValue_NullData value)? nullData,
+    TResult? Function(Value_Bool value)? bool,
+    TResult? Function(Value_I8 value)? i8,
+    TResult? Function(Value_I16 value)? i16,
+    TResult? Function(Value_I32 value)? i32,
+    TResult? Function(Value_I64 value)? i64,
+    TResult? Function(Value_I128 value)? i128,
+    TResult? Function(Value_U8 value)? u8,
+    TResult? Function(Value_U16 value)? u16,
+    TResult? Function(Value_U32 value)? u32,
+    TResult? Function(Value_U64 value)? u64,
+    TResult? Function(Value_U128 value)? u128,
+    TResult? Function(Value_F32 value)? f32,
+    TResult? Function(Value_F64 value)? f64,
+    TResult? Function(Value_Decimal value)? decimal,
+    TResult? Function(Value_Str value)? str,
+    TResult? Function(Value_Bytea value)? bytea,
+    TResult? Function(Value_Inet value)? inet,
+    TResult? Function(Value_Date value)? date,
+    TResult? Function(Value_Timestamp value)? timestamp,
+    TResult? Function(Value_Time value)? time,
+    TResult? Function(Value_Interval value)? interval,
+    TResult? Function(Value_Uuid value)? uuid,
+    TResult? Function(Value_Map value)? map,
+    TResult? Function(Value_List value)? list,
+    TResult? Function(Value_Point value)? point,
+    TResult? Function(Value_Null value)? null_,
   }) {
     return i64?.call(this);
   }
@@ -1563,32 +1562,32 @@ class _$DartValue_I64Impl extends DartValue_I64 {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DartValue_Bool value)? bool,
-    TResult Function(DartValue_I8 value)? i8,
-    TResult Function(DartValue_I16 value)? i16,
-    TResult Function(DartValue_I32 value)? i32,
-    TResult Function(DartValue_I64 value)? i64,
-    TResult Function(DartValue_I128 value)? i128,
-    TResult Function(DartValue_U8 value)? u8,
-    TResult Function(DartValue_U16 value)? u16,
-    TResult Function(DartValue_U32 value)? u32,
-    TResult Function(DartValue_U64 value)? u64,
-    TResult Function(DartValue_U128 value)? u128,
-    TResult Function(DartValue_F32 value)? f32,
-    TResult Function(DartValue_F64 value)? f64,
-    TResult Function(DartValue_Decimal value)? decimal,
-    TResult Function(DartValue_Str value)? str,
-    TResult Function(DartValue_Bytea value)? bytea,
-    TResult Function(DartValue_Inet value)? inet,
-    TResult Function(DartValue_Date value)? date,
-    TResult Function(DartValue_Timestamp value)? timestamp,
-    TResult Function(DartValue_Time value)? time,
-    TResult Function(DartValue_Interval value)? interval,
-    TResult Function(DartValue_Uuid value)? uuid,
-    TResult Function(DartValue_Map value)? map,
-    TResult Function(DartValue_List value)? list,
-    TResult Function(DartValue_Point value)? point,
-    TResult Function(DartValue_NullData value)? nullData,
+    TResult Function(Value_Bool value)? bool,
+    TResult Function(Value_I8 value)? i8,
+    TResult Function(Value_I16 value)? i16,
+    TResult Function(Value_I32 value)? i32,
+    TResult Function(Value_I64 value)? i64,
+    TResult Function(Value_I128 value)? i128,
+    TResult Function(Value_U8 value)? u8,
+    TResult Function(Value_U16 value)? u16,
+    TResult Function(Value_U32 value)? u32,
+    TResult Function(Value_U64 value)? u64,
+    TResult Function(Value_U128 value)? u128,
+    TResult Function(Value_F32 value)? f32,
+    TResult Function(Value_F64 value)? f64,
+    TResult Function(Value_Decimal value)? decimal,
+    TResult Function(Value_Str value)? str,
+    TResult Function(Value_Bytea value)? bytea,
+    TResult Function(Value_Inet value)? inet,
+    TResult Function(Value_Date value)? date,
+    TResult Function(Value_Timestamp value)? timestamp,
+    TResult Function(Value_Time value)? time,
+    TResult Function(Value_Interval value)? interval,
+    TResult Function(Value_Uuid value)? uuid,
+    TResult Function(Value_Map value)? map,
+    TResult Function(Value_List value)? list,
+    TResult Function(Value_Point value)? point,
+    TResult Function(Value_Null value)? null_,
     required TResult orElse(),
   }) {
     if (i64 != null) {
@@ -1598,31 +1597,31 @@ class _$DartValue_I64Impl extends DartValue_I64 {
   }
 }
 
-abstract class DartValue_I64 extends DartValue {
-  const factory DartValue_I64(final int field0) = _$DartValue_I64Impl;
-  const DartValue_I64._() : super._();
+abstract class Value_I64 extends Value {
+  const factory Value_I64(final int field0) = _$Value_I64Impl;
+  const Value_I64._() : super._();
 
   int get field0;
   @JsonKey(ignore: true)
-  _$$DartValue_I64ImplCopyWith<_$DartValue_I64Impl> get copyWith =>
+  _$$Value_I64ImplCopyWith<_$Value_I64Impl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DartValue_I128ImplCopyWith<$Res> {
-  factory _$$DartValue_I128ImplCopyWith(_$DartValue_I128Impl value,
-          $Res Function(_$DartValue_I128Impl) then) =
-      __$$DartValue_I128ImplCopyWithImpl<$Res>;
+abstract class _$$Value_I128ImplCopyWith<$Res> {
+  factory _$$Value_I128ImplCopyWith(
+          _$Value_I128Impl value, $Res Function(_$Value_I128Impl) then) =
+      __$$Value_I128ImplCopyWithImpl<$Res>;
   @useResult
   $Res call({BigInt field0});
 }
 
 /// @nodoc
-class __$$DartValue_I128ImplCopyWithImpl<$Res>
-    extends _$DartValueCopyWithImpl<$Res, _$DartValue_I128Impl>
-    implements _$$DartValue_I128ImplCopyWith<$Res> {
-  __$$DartValue_I128ImplCopyWithImpl(
-      _$DartValue_I128Impl _value, $Res Function(_$DartValue_I128Impl) _then)
+class __$$Value_I128ImplCopyWithImpl<$Res>
+    extends _$ValueCopyWithImpl<$Res, _$Value_I128Impl>
+    implements _$$Value_I128ImplCopyWith<$Res> {
+  __$$Value_I128ImplCopyWithImpl(
+      _$Value_I128Impl _value, $Res Function(_$Value_I128Impl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -1630,7 +1629,7 @@ class __$$DartValue_I128ImplCopyWithImpl<$Res>
   $Res call({
     Object? field0 = null,
   }) {
-    return _then(_$DartValue_I128Impl(
+    return _then(_$Value_I128Impl(
       null == field0
           ? _value.field0
           : field0 // ignore: cast_nullable_to_non_nullable
@@ -1641,22 +1640,22 @@ class __$$DartValue_I128ImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$DartValue_I128Impl extends DartValue_I128 {
-  const _$DartValue_I128Impl(this.field0) : super._();
+class _$Value_I128Impl extends Value_I128 {
+  const _$Value_I128Impl(this.field0) : super._();
 
   @override
   final BigInt field0;
 
   @override
   String toString() {
-    return 'DartValue.i128(field0: $field0)';
+    return 'Value.i128(field0: $field0)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DartValue_I128Impl &&
+            other is _$Value_I128Impl &&
             (identical(other.field0, field0) || other.field0 == field0));
   }
 
@@ -1666,9 +1665,8 @@ class _$DartValue_I128Impl extends DartValue_I128 {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$DartValue_I128ImplCopyWith<_$DartValue_I128Impl> get copyWith =>
-      __$$DartValue_I128ImplCopyWithImpl<_$DartValue_I128Impl>(
-          this, _$identity);
+  _$$Value_I128ImplCopyWith<_$Value_I128Impl> get copyWith =>
+      __$$Value_I128ImplCopyWithImpl<_$Value_I128Impl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -1698,7 +1696,7 @@ class _$DartValue_I128Impl extends DartValue_I128 {
     required TResult Function(Map<String, Value> field0) map,
     required TResult Function(List<Value> field0) list,
     required TResult Function(Point field0) point,
-    required TResult Function() nullData,
+    required TResult Function() null_,
   }) {
     return i128(field0);
   }
@@ -1731,7 +1729,7 @@ class _$DartValue_I128Impl extends DartValue_I128 {
     TResult? Function(Map<String, Value> field0)? map,
     TResult? Function(List<Value> field0)? list,
     TResult? Function(Point field0)? point,
-    TResult? Function()? nullData,
+    TResult? Function()? null_,
   }) {
     return i128?.call(field0);
   }
@@ -1764,7 +1762,7 @@ class _$DartValue_I128Impl extends DartValue_I128 {
     TResult Function(Map<String, Value> field0)? map,
     TResult Function(List<Value> field0)? list,
     TResult Function(Point field0)? point,
-    TResult Function()? nullData,
+    TResult Function()? null_,
     required TResult orElse(),
   }) {
     if (i128 != null) {
@@ -1776,32 +1774,32 @@ class _$DartValue_I128Impl extends DartValue_I128 {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DartValue_Bool value) bool,
-    required TResult Function(DartValue_I8 value) i8,
-    required TResult Function(DartValue_I16 value) i16,
-    required TResult Function(DartValue_I32 value) i32,
-    required TResult Function(DartValue_I64 value) i64,
-    required TResult Function(DartValue_I128 value) i128,
-    required TResult Function(DartValue_U8 value) u8,
-    required TResult Function(DartValue_U16 value) u16,
-    required TResult Function(DartValue_U32 value) u32,
-    required TResult Function(DartValue_U64 value) u64,
-    required TResult Function(DartValue_U128 value) u128,
-    required TResult Function(DartValue_F32 value) f32,
-    required TResult Function(DartValue_F64 value) f64,
-    required TResult Function(DartValue_Decimal value) decimal,
-    required TResult Function(DartValue_Str value) str,
-    required TResult Function(DartValue_Bytea value) bytea,
-    required TResult Function(DartValue_Inet value) inet,
-    required TResult Function(DartValue_Date value) date,
-    required TResult Function(DartValue_Timestamp value) timestamp,
-    required TResult Function(DartValue_Time value) time,
-    required TResult Function(DartValue_Interval value) interval,
-    required TResult Function(DartValue_Uuid value) uuid,
-    required TResult Function(DartValue_Map value) map,
-    required TResult Function(DartValue_List value) list,
-    required TResult Function(DartValue_Point value) point,
-    required TResult Function(DartValue_NullData value) nullData,
+    required TResult Function(Value_Bool value) bool,
+    required TResult Function(Value_I8 value) i8,
+    required TResult Function(Value_I16 value) i16,
+    required TResult Function(Value_I32 value) i32,
+    required TResult Function(Value_I64 value) i64,
+    required TResult Function(Value_I128 value) i128,
+    required TResult Function(Value_U8 value) u8,
+    required TResult Function(Value_U16 value) u16,
+    required TResult Function(Value_U32 value) u32,
+    required TResult Function(Value_U64 value) u64,
+    required TResult Function(Value_U128 value) u128,
+    required TResult Function(Value_F32 value) f32,
+    required TResult Function(Value_F64 value) f64,
+    required TResult Function(Value_Decimal value) decimal,
+    required TResult Function(Value_Str value) str,
+    required TResult Function(Value_Bytea value) bytea,
+    required TResult Function(Value_Inet value) inet,
+    required TResult Function(Value_Date value) date,
+    required TResult Function(Value_Timestamp value) timestamp,
+    required TResult Function(Value_Time value) time,
+    required TResult Function(Value_Interval value) interval,
+    required TResult Function(Value_Uuid value) uuid,
+    required TResult Function(Value_Map value) map,
+    required TResult Function(Value_List value) list,
+    required TResult Function(Value_Point value) point,
+    required TResult Function(Value_Null value) null_,
   }) {
     return i128(this);
   }
@@ -1809,32 +1807,32 @@ class _$DartValue_I128Impl extends DartValue_I128 {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DartValue_Bool value)? bool,
-    TResult? Function(DartValue_I8 value)? i8,
-    TResult? Function(DartValue_I16 value)? i16,
-    TResult? Function(DartValue_I32 value)? i32,
-    TResult? Function(DartValue_I64 value)? i64,
-    TResult? Function(DartValue_I128 value)? i128,
-    TResult? Function(DartValue_U8 value)? u8,
-    TResult? Function(DartValue_U16 value)? u16,
-    TResult? Function(DartValue_U32 value)? u32,
-    TResult? Function(DartValue_U64 value)? u64,
-    TResult? Function(DartValue_U128 value)? u128,
-    TResult? Function(DartValue_F32 value)? f32,
-    TResult? Function(DartValue_F64 value)? f64,
-    TResult? Function(DartValue_Decimal value)? decimal,
-    TResult? Function(DartValue_Str value)? str,
-    TResult? Function(DartValue_Bytea value)? bytea,
-    TResult? Function(DartValue_Inet value)? inet,
-    TResult? Function(DartValue_Date value)? date,
-    TResult? Function(DartValue_Timestamp value)? timestamp,
-    TResult? Function(DartValue_Time value)? time,
-    TResult? Function(DartValue_Interval value)? interval,
-    TResult? Function(DartValue_Uuid value)? uuid,
-    TResult? Function(DartValue_Map value)? map,
-    TResult? Function(DartValue_List value)? list,
-    TResult? Function(DartValue_Point value)? point,
-    TResult? Function(DartValue_NullData value)? nullData,
+    TResult? Function(Value_Bool value)? bool,
+    TResult? Function(Value_I8 value)? i8,
+    TResult? Function(Value_I16 value)? i16,
+    TResult? Function(Value_I32 value)? i32,
+    TResult? Function(Value_I64 value)? i64,
+    TResult? Function(Value_I128 value)? i128,
+    TResult? Function(Value_U8 value)? u8,
+    TResult? Function(Value_U16 value)? u16,
+    TResult? Function(Value_U32 value)? u32,
+    TResult? Function(Value_U64 value)? u64,
+    TResult? Function(Value_U128 value)? u128,
+    TResult? Function(Value_F32 value)? f32,
+    TResult? Function(Value_F64 value)? f64,
+    TResult? Function(Value_Decimal value)? decimal,
+    TResult? Function(Value_Str value)? str,
+    TResult? Function(Value_Bytea value)? bytea,
+    TResult? Function(Value_Inet value)? inet,
+    TResult? Function(Value_Date value)? date,
+    TResult? Function(Value_Timestamp value)? timestamp,
+    TResult? Function(Value_Time value)? time,
+    TResult? Function(Value_Interval value)? interval,
+    TResult? Function(Value_Uuid value)? uuid,
+    TResult? Function(Value_Map value)? map,
+    TResult? Function(Value_List value)? list,
+    TResult? Function(Value_Point value)? point,
+    TResult? Function(Value_Null value)? null_,
   }) {
     return i128?.call(this);
   }
@@ -1842,32 +1840,32 @@ class _$DartValue_I128Impl extends DartValue_I128 {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DartValue_Bool value)? bool,
-    TResult Function(DartValue_I8 value)? i8,
-    TResult Function(DartValue_I16 value)? i16,
-    TResult Function(DartValue_I32 value)? i32,
-    TResult Function(DartValue_I64 value)? i64,
-    TResult Function(DartValue_I128 value)? i128,
-    TResult Function(DartValue_U8 value)? u8,
-    TResult Function(DartValue_U16 value)? u16,
-    TResult Function(DartValue_U32 value)? u32,
-    TResult Function(DartValue_U64 value)? u64,
-    TResult Function(DartValue_U128 value)? u128,
-    TResult Function(DartValue_F32 value)? f32,
-    TResult Function(DartValue_F64 value)? f64,
-    TResult Function(DartValue_Decimal value)? decimal,
-    TResult Function(DartValue_Str value)? str,
-    TResult Function(DartValue_Bytea value)? bytea,
-    TResult Function(DartValue_Inet value)? inet,
-    TResult Function(DartValue_Date value)? date,
-    TResult Function(DartValue_Timestamp value)? timestamp,
-    TResult Function(DartValue_Time value)? time,
-    TResult Function(DartValue_Interval value)? interval,
-    TResult Function(DartValue_Uuid value)? uuid,
-    TResult Function(DartValue_Map value)? map,
-    TResult Function(DartValue_List value)? list,
-    TResult Function(DartValue_Point value)? point,
-    TResult Function(DartValue_NullData value)? nullData,
+    TResult Function(Value_Bool value)? bool,
+    TResult Function(Value_I8 value)? i8,
+    TResult Function(Value_I16 value)? i16,
+    TResult Function(Value_I32 value)? i32,
+    TResult Function(Value_I64 value)? i64,
+    TResult Function(Value_I128 value)? i128,
+    TResult Function(Value_U8 value)? u8,
+    TResult Function(Value_U16 value)? u16,
+    TResult Function(Value_U32 value)? u32,
+    TResult Function(Value_U64 value)? u64,
+    TResult Function(Value_U128 value)? u128,
+    TResult Function(Value_F32 value)? f32,
+    TResult Function(Value_F64 value)? f64,
+    TResult Function(Value_Decimal value)? decimal,
+    TResult Function(Value_Str value)? str,
+    TResult Function(Value_Bytea value)? bytea,
+    TResult Function(Value_Inet value)? inet,
+    TResult Function(Value_Date value)? date,
+    TResult Function(Value_Timestamp value)? timestamp,
+    TResult Function(Value_Time value)? time,
+    TResult Function(Value_Interval value)? interval,
+    TResult Function(Value_Uuid value)? uuid,
+    TResult Function(Value_Map value)? map,
+    TResult Function(Value_List value)? list,
+    TResult Function(Value_Point value)? point,
+    TResult Function(Value_Null value)? null_,
     required TResult orElse(),
   }) {
     if (i128 != null) {
@@ -1877,31 +1875,31 @@ class _$DartValue_I128Impl extends DartValue_I128 {
   }
 }
 
-abstract class DartValue_I128 extends DartValue {
-  const factory DartValue_I128(final BigInt field0) = _$DartValue_I128Impl;
-  const DartValue_I128._() : super._();
+abstract class Value_I128 extends Value {
+  const factory Value_I128(final BigInt field0) = _$Value_I128Impl;
+  const Value_I128._() : super._();
 
   BigInt get field0;
   @JsonKey(ignore: true)
-  _$$DartValue_I128ImplCopyWith<_$DartValue_I128Impl> get copyWith =>
+  _$$Value_I128ImplCopyWith<_$Value_I128Impl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DartValue_U8ImplCopyWith<$Res> {
-  factory _$$DartValue_U8ImplCopyWith(
-          _$DartValue_U8Impl value, $Res Function(_$DartValue_U8Impl) then) =
-      __$$DartValue_U8ImplCopyWithImpl<$Res>;
+abstract class _$$Value_U8ImplCopyWith<$Res> {
+  factory _$$Value_U8ImplCopyWith(
+          _$Value_U8Impl value, $Res Function(_$Value_U8Impl) then) =
+      __$$Value_U8ImplCopyWithImpl<$Res>;
   @useResult
   $Res call({int field0});
 }
 
 /// @nodoc
-class __$$DartValue_U8ImplCopyWithImpl<$Res>
-    extends _$DartValueCopyWithImpl<$Res, _$DartValue_U8Impl>
-    implements _$$DartValue_U8ImplCopyWith<$Res> {
-  __$$DartValue_U8ImplCopyWithImpl(
-      _$DartValue_U8Impl _value, $Res Function(_$DartValue_U8Impl) _then)
+class __$$Value_U8ImplCopyWithImpl<$Res>
+    extends _$ValueCopyWithImpl<$Res, _$Value_U8Impl>
+    implements _$$Value_U8ImplCopyWith<$Res> {
+  __$$Value_U8ImplCopyWithImpl(
+      _$Value_U8Impl _value, $Res Function(_$Value_U8Impl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -1909,7 +1907,7 @@ class __$$DartValue_U8ImplCopyWithImpl<$Res>
   $Res call({
     Object? field0 = null,
   }) {
-    return _then(_$DartValue_U8Impl(
+    return _then(_$Value_U8Impl(
       null == field0
           ? _value.field0
           : field0 // ignore: cast_nullable_to_non_nullable
@@ -1920,22 +1918,22 @@ class __$$DartValue_U8ImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$DartValue_U8Impl extends DartValue_U8 {
-  const _$DartValue_U8Impl(this.field0) : super._();
+class _$Value_U8Impl extends Value_U8 {
+  const _$Value_U8Impl(this.field0) : super._();
 
   @override
   final int field0;
 
   @override
   String toString() {
-    return 'DartValue.u8(field0: $field0)';
+    return 'Value.u8(field0: $field0)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DartValue_U8Impl &&
+            other is _$Value_U8Impl &&
             (identical(other.field0, field0) || other.field0 == field0));
   }
 
@@ -1945,8 +1943,8 @@ class _$DartValue_U8Impl extends DartValue_U8 {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$DartValue_U8ImplCopyWith<_$DartValue_U8Impl> get copyWith =>
-      __$$DartValue_U8ImplCopyWithImpl<_$DartValue_U8Impl>(this, _$identity);
+  _$$Value_U8ImplCopyWith<_$Value_U8Impl> get copyWith =>
+      __$$Value_U8ImplCopyWithImpl<_$Value_U8Impl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -1976,7 +1974,7 @@ class _$DartValue_U8Impl extends DartValue_U8 {
     required TResult Function(Map<String, Value> field0) map,
     required TResult Function(List<Value> field0) list,
     required TResult Function(Point field0) point,
-    required TResult Function() nullData,
+    required TResult Function() null_,
   }) {
     return u8(field0);
   }
@@ -2009,7 +2007,7 @@ class _$DartValue_U8Impl extends DartValue_U8 {
     TResult? Function(Map<String, Value> field0)? map,
     TResult? Function(List<Value> field0)? list,
     TResult? Function(Point field0)? point,
-    TResult? Function()? nullData,
+    TResult? Function()? null_,
   }) {
     return u8?.call(field0);
   }
@@ -2042,7 +2040,7 @@ class _$DartValue_U8Impl extends DartValue_U8 {
     TResult Function(Map<String, Value> field0)? map,
     TResult Function(List<Value> field0)? list,
     TResult Function(Point field0)? point,
-    TResult Function()? nullData,
+    TResult Function()? null_,
     required TResult orElse(),
   }) {
     if (u8 != null) {
@@ -2054,32 +2052,32 @@ class _$DartValue_U8Impl extends DartValue_U8 {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DartValue_Bool value) bool,
-    required TResult Function(DartValue_I8 value) i8,
-    required TResult Function(DartValue_I16 value) i16,
-    required TResult Function(DartValue_I32 value) i32,
-    required TResult Function(DartValue_I64 value) i64,
-    required TResult Function(DartValue_I128 value) i128,
-    required TResult Function(DartValue_U8 value) u8,
-    required TResult Function(DartValue_U16 value) u16,
-    required TResult Function(DartValue_U32 value) u32,
-    required TResult Function(DartValue_U64 value) u64,
-    required TResult Function(DartValue_U128 value) u128,
-    required TResult Function(DartValue_F32 value) f32,
-    required TResult Function(DartValue_F64 value) f64,
-    required TResult Function(DartValue_Decimal value) decimal,
-    required TResult Function(DartValue_Str value) str,
-    required TResult Function(DartValue_Bytea value) bytea,
-    required TResult Function(DartValue_Inet value) inet,
-    required TResult Function(DartValue_Date value) date,
-    required TResult Function(DartValue_Timestamp value) timestamp,
-    required TResult Function(DartValue_Time value) time,
-    required TResult Function(DartValue_Interval value) interval,
-    required TResult Function(DartValue_Uuid value) uuid,
-    required TResult Function(DartValue_Map value) map,
-    required TResult Function(DartValue_List value) list,
-    required TResult Function(DartValue_Point value) point,
-    required TResult Function(DartValue_NullData value) nullData,
+    required TResult Function(Value_Bool value) bool,
+    required TResult Function(Value_I8 value) i8,
+    required TResult Function(Value_I16 value) i16,
+    required TResult Function(Value_I32 value) i32,
+    required TResult Function(Value_I64 value) i64,
+    required TResult Function(Value_I128 value) i128,
+    required TResult Function(Value_U8 value) u8,
+    required TResult Function(Value_U16 value) u16,
+    required TResult Function(Value_U32 value) u32,
+    required TResult Function(Value_U64 value) u64,
+    required TResult Function(Value_U128 value) u128,
+    required TResult Function(Value_F32 value) f32,
+    required TResult Function(Value_F64 value) f64,
+    required TResult Function(Value_Decimal value) decimal,
+    required TResult Function(Value_Str value) str,
+    required TResult Function(Value_Bytea value) bytea,
+    required TResult Function(Value_Inet value) inet,
+    required TResult Function(Value_Date value) date,
+    required TResult Function(Value_Timestamp value) timestamp,
+    required TResult Function(Value_Time value) time,
+    required TResult Function(Value_Interval value) interval,
+    required TResult Function(Value_Uuid value) uuid,
+    required TResult Function(Value_Map value) map,
+    required TResult Function(Value_List value) list,
+    required TResult Function(Value_Point value) point,
+    required TResult Function(Value_Null value) null_,
   }) {
     return u8(this);
   }
@@ -2087,32 +2085,32 @@ class _$DartValue_U8Impl extends DartValue_U8 {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DartValue_Bool value)? bool,
-    TResult? Function(DartValue_I8 value)? i8,
-    TResult? Function(DartValue_I16 value)? i16,
-    TResult? Function(DartValue_I32 value)? i32,
-    TResult? Function(DartValue_I64 value)? i64,
-    TResult? Function(DartValue_I128 value)? i128,
-    TResult? Function(DartValue_U8 value)? u8,
-    TResult? Function(DartValue_U16 value)? u16,
-    TResult? Function(DartValue_U32 value)? u32,
-    TResult? Function(DartValue_U64 value)? u64,
-    TResult? Function(DartValue_U128 value)? u128,
-    TResult? Function(DartValue_F32 value)? f32,
-    TResult? Function(DartValue_F64 value)? f64,
-    TResult? Function(DartValue_Decimal value)? decimal,
-    TResult? Function(DartValue_Str value)? str,
-    TResult? Function(DartValue_Bytea value)? bytea,
-    TResult? Function(DartValue_Inet value)? inet,
-    TResult? Function(DartValue_Date value)? date,
-    TResult? Function(DartValue_Timestamp value)? timestamp,
-    TResult? Function(DartValue_Time value)? time,
-    TResult? Function(DartValue_Interval value)? interval,
-    TResult? Function(DartValue_Uuid value)? uuid,
-    TResult? Function(DartValue_Map value)? map,
-    TResult? Function(DartValue_List value)? list,
-    TResult? Function(DartValue_Point value)? point,
-    TResult? Function(DartValue_NullData value)? nullData,
+    TResult? Function(Value_Bool value)? bool,
+    TResult? Function(Value_I8 value)? i8,
+    TResult? Function(Value_I16 value)? i16,
+    TResult? Function(Value_I32 value)? i32,
+    TResult? Function(Value_I64 value)? i64,
+    TResult? Function(Value_I128 value)? i128,
+    TResult? Function(Value_U8 value)? u8,
+    TResult? Function(Value_U16 value)? u16,
+    TResult? Function(Value_U32 value)? u32,
+    TResult? Function(Value_U64 value)? u64,
+    TResult? Function(Value_U128 value)? u128,
+    TResult? Function(Value_F32 value)? f32,
+    TResult? Function(Value_F64 value)? f64,
+    TResult? Function(Value_Decimal value)? decimal,
+    TResult? Function(Value_Str value)? str,
+    TResult? Function(Value_Bytea value)? bytea,
+    TResult? Function(Value_Inet value)? inet,
+    TResult? Function(Value_Date value)? date,
+    TResult? Function(Value_Timestamp value)? timestamp,
+    TResult? Function(Value_Time value)? time,
+    TResult? Function(Value_Interval value)? interval,
+    TResult? Function(Value_Uuid value)? uuid,
+    TResult? Function(Value_Map value)? map,
+    TResult? Function(Value_List value)? list,
+    TResult? Function(Value_Point value)? point,
+    TResult? Function(Value_Null value)? null_,
   }) {
     return u8?.call(this);
   }
@@ -2120,32 +2118,32 @@ class _$DartValue_U8Impl extends DartValue_U8 {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DartValue_Bool value)? bool,
-    TResult Function(DartValue_I8 value)? i8,
-    TResult Function(DartValue_I16 value)? i16,
-    TResult Function(DartValue_I32 value)? i32,
-    TResult Function(DartValue_I64 value)? i64,
-    TResult Function(DartValue_I128 value)? i128,
-    TResult Function(DartValue_U8 value)? u8,
-    TResult Function(DartValue_U16 value)? u16,
-    TResult Function(DartValue_U32 value)? u32,
-    TResult Function(DartValue_U64 value)? u64,
-    TResult Function(DartValue_U128 value)? u128,
-    TResult Function(DartValue_F32 value)? f32,
-    TResult Function(DartValue_F64 value)? f64,
-    TResult Function(DartValue_Decimal value)? decimal,
-    TResult Function(DartValue_Str value)? str,
-    TResult Function(DartValue_Bytea value)? bytea,
-    TResult Function(DartValue_Inet value)? inet,
-    TResult Function(DartValue_Date value)? date,
-    TResult Function(DartValue_Timestamp value)? timestamp,
-    TResult Function(DartValue_Time value)? time,
-    TResult Function(DartValue_Interval value)? interval,
-    TResult Function(DartValue_Uuid value)? uuid,
-    TResult Function(DartValue_Map value)? map,
-    TResult Function(DartValue_List value)? list,
-    TResult Function(DartValue_Point value)? point,
-    TResult Function(DartValue_NullData value)? nullData,
+    TResult Function(Value_Bool value)? bool,
+    TResult Function(Value_I8 value)? i8,
+    TResult Function(Value_I16 value)? i16,
+    TResult Function(Value_I32 value)? i32,
+    TResult Function(Value_I64 value)? i64,
+    TResult Function(Value_I128 value)? i128,
+    TResult Function(Value_U8 value)? u8,
+    TResult Function(Value_U16 value)? u16,
+    TResult Function(Value_U32 value)? u32,
+    TResult Function(Value_U64 value)? u64,
+    TResult Function(Value_U128 value)? u128,
+    TResult Function(Value_F32 value)? f32,
+    TResult Function(Value_F64 value)? f64,
+    TResult Function(Value_Decimal value)? decimal,
+    TResult Function(Value_Str value)? str,
+    TResult Function(Value_Bytea value)? bytea,
+    TResult Function(Value_Inet value)? inet,
+    TResult Function(Value_Date value)? date,
+    TResult Function(Value_Timestamp value)? timestamp,
+    TResult Function(Value_Time value)? time,
+    TResult Function(Value_Interval value)? interval,
+    TResult Function(Value_Uuid value)? uuid,
+    TResult Function(Value_Map value)? map,
+    TResult Function(Value_List value)? list,
+    TResult Function(Value_Point value)? point,
+    TResult Function(Value_Null value)? null_,
     required TResult orElse(),
   }) {
     if (u8 != null) {
@@ -2155,31 +2153,31 @@ class _$DartValue_U8Impl extends DartValue_U8 {
   }
 }
 
-abstract class DartValue_U8 extends DartValue {
-  const factory DartValue_U8(final int field0) = _$DartValue_U8Impl;
-  const DartValue_U8._() : super._();
+abstract class Value_U8 extends Value {
+  const factory Value_U8(final int field0) = _$Value_U8Impl;
+  const Value_U8._() : super._();
 
   int get field0;
   @JsonKey(ignore: true)
-  _$$DartValue_U8ImplCopyWith<_$DartValue_U8Impl> get copyWith =>
+  _$$Value_U8ImplCopyWith<_$Value_U8Impl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DartValue_U16ImplCopyWith<$Res> {
-  factory _$$DartValue_U16ImplCopyWith(
-          _$DartValue_U16Impl value, $Res Function(_$DartValue_U16Impl) then) =
-      __$$DartValue_U16ImplCopyWithImpl<$Res>;
+abstract class _$$Value_U16ImplCopyWith<$Res> {
+  factory _$$Value_U16ImplCopyWith(
+          _$Value_U16Impl value, $Res Function(_$Value_U16Impl) then) =
+      __$$Value_U16ImplCopyWithImpl<$Res>;
   @useResult
   $Res call({int field0});
 }
 
 /// @nodoc
-class __$$DartValue_U16ImplCopyWithImpl<$Res>
-    extends _$DartValueCopyWithImpl<$Res, _$DartValue_U16Impl>
-    implements _$$DartValue_U16ImplCopyWith<$Res> {
-  __$$DartValue_U16ImplCopyWithImpl(
-      _$DartValue_U16Impl _value, $Res Function(_$DartValue_U16Impl) _then)
+class __$$Value_U16ImplCopyWithImpl<$Res>
+    extends _$ValueCopyWithImpl<$Res, _$Value_U16Impl>
+    implements _$$Value_U16ImplCopyWith<$Res> {
+  __$$Value_U16ImplCopyWithImpl(
+      _$Value_U16Impl _value, $Res Function(_$Value_U16Impl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -2187,7 +2185,7 @@ class __$$DartValue_U16ImplCopyWithImpl<$Res>
   $Res call({
     Object? field0 = null,
   }) {
-    return _then(_$DartValue_U16Impl(
+    return _then(_$Value_U16Impl(
       null == field0
           ? _value.field0
           : field0 // ignore: cast_nullable_to_non_nullable
@@ -2198,22 +2196,22 @@ class __$$DartValue_U16ImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$DartValue_U16Impl extends DartValue_U16 {
-  const _$DartValue_U16Impl(this.field0) : super._();
+class _$Value_U16Impl extends Value_U16 {
+  const _$Value_U16Impl(this.field0) : super._();
 
   @override
   final int field0;
 
   @override
   String toString() {
-    return 'DartValue.u16(field0: $field0)';
+    return 'Value.u16(field0: $field0)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DartValue_U16Impl &&
+            other is _$Value_U16Impl &&
             (identical(other.field0, field0) || other.field0 == field0));
   }
 
@@ -2223,8 +2221,8 @@ class _$DartValue_U16Impl extends DartValue_U16 {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$DartValue_U16ImplCopyWith<_$DartValue_U16Impl> get copyWith =>
-      __$$DartValue_U16ImplCopyWithImpl<_$DartValue_U16Impl>(this, _$identity);
+  _$$Value_U16ImplCopyWith<_$Value_U16Impl> get copyWith =>
+      __$$Value_U16ImplCopyWithImpl<_$Value_U16Impl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -2254,7 +2252,7 @@ class _$DartValue_U16Impl extends DartValue_U16 {
     required TResult Function(Map<String, Value> field0) map,
     required TResult Function(List<Value> field0) list,
     required TResult Function(Point field0) point,
-    required TResult Function() nullData,
+    required TResult Function() null_,
   }) {
     return u16(field0);
   }
@@ -2287,7 +2285,7 @@ class _$DartValue_U16Impl extends DartValue_U16 {
     TResult? Function(Map<String, Value> field0)? map,
     TResult? Function(List<Value> field0)? list,
     TResult? Function(Point field0)? point,
-    TResult? Function()? nullData,
+    TResult? Function()? null_,
   }) {
     return u16?.call(field0);
   }
@@ -2320,7 +2318,7 @@ class _$DartValue_U16Impl extends DartValue_U16 {
     TResult Function(Map<String, Value> field0)? map,
     TResult Function(List<Value> field0)? list,
     TResult Function(Point field0)? point,
-    TResult Function()? nullData,
+    TResult Function()? null_,
     required TResult orElse(),
   }) {
     if (u16 != null) {
@@ -2332,32 +2330,32 @@ class _$DartValue_U16Impl extends DartValue_U16 {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DartValue_Bool value) bool,
-    required TResult Function(DartValue_I8 value) i8,
-    required TResult Function(DartValue_I16 value) i16,
-    required TResult Function(DartValue_I32 value) i32,
-    required TResult Function(DartValue_I64 value) i64,
-    required TResult Function(DartValue_I128 value) i128,
-    required TResult Function(DartValue_U8 value) u8,
-    required TResult Function(DartValue_U16 value) u16,
-    required TResult Function(DartValue_U32 value) u32,
-    required TResult Function(DartValue_U64 value) u64,
-    required TResult Function(DartValue_U128 value) u128,
-    required TResult Function(DartValue_F32 value) f32,
-    required TResult Function(DartValue_F64 value) f64,
-    required TResult Function(DartValue_Decimal value) decimal,
-    required TResult Function(DartValue_Str value) str,
-    required TResult Function(DartValue_Bytea value) bytea,
-    required TResult Function(DartValue_Inet value) inet,
-    required TResult Function(DartValue_Date value) date,
-    required TResult Function(DartValue_Timestamp value) timestamp,
-    required TResult Function(DartValue_Time value) time,
-    required TResult Function(DartValue_Interval value) interval,
-    required TResult Function(DartValue_Uuid value) uuid,
-    required TResult Function(DartValue_Map value) map,
-    required TResult Function(DartValue_List value) list,
-    required TResult Function(DartValue_Point value) point,
-    required TResult Function(DartValue_NullData value) nullData,
+    required TResult Function(Value_Bool value) bool,
+    required TResult Function(Value_I8 value) i8,
+    required TResult Function(Value_I16 value) i16,
+    required TResult Function(Value_I32 value) i32,
+    required TResult Function(Value_I64 value) i64,
+    required TResult Function(Value_I128 value) i128,
+    required TResult Function(Value_U8 value) u8,
+    required TResult Function(Value_U16 value) u16,
+    required TResult Function(Value_U32 value) u32,
+    required TResult Function(Value_U64 value) u64,
+    required TResult Function(Value_U128 value) u128,
+    required TResult Function(Value_F32 value) f32,
+    required TResult Function(Value_F64 value) f64,
+    required TResult Function(Value_Decimal value) decimal,
+    required TResult Function(Value_Str value) str,
+    required TResult Function(Value_Bytea value) bytea,
+    required TResult Function(Value_Inet value) inet,
+    required TResult Function(Value_Date value) date,
+    required TResult Function(Value_Timestamp value) timestamp,
+    required TResult Function(Value_Time value) time,
+    required TResult Function(Value_Interval value) interval,
+    required TResult Function(Value_Uuid value) uuid,
+    required TResult Function(Value_Map value) map,
+    required TResult Function(Value_List value) list,
+    required TResult Function(Value_Point value) point,
+    required TResult Function(Value_Null value) null_,
   }) {
     return u16(this);
   }
@@ -2365,32 +2363,32 @@ class _$DartValue_U16Impl extends DartValue_U16 {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DartValue_Bool value)? bool,
-    TResult? Function(DartValue_I8 value)? i8,
-    TResult? Function(DartValue_I16 value)? i16,
-    TResult? Function(DartValue_I32 value)? i32,
-    TResult? Function(DartValue_I64 value)? i64,
-    TResult? Function(DartValue_I128 value)? i128,
-    TResult? Function(DartValue_U8 value)? u8,
-    TResult? Function(DartValue_U16 value)? u16,
-    TResult? Function(DartValue_U32 value)? u32,
-    TResult? Function(DartValue_U64 value)? u64,
-    TResult? Function(DartValue_U128 value)? u128,
-    TResult? Function(DartValue_F32 value)? f32,
-    TResult? Function(DartValue_F64 value)? f64,
-    TResult? Function(DartValue_Decimal value)? decimal,
-    TResult? Function(DartValue_Str value)? str,
-    TResult? Function(DartValue_Bytea value)? bytea,
-    TResult? Function(DartValue_Inet value)? inet,
-    TResult? Function(DartValue_Date value)? date,
-    TResult? Function(DartValue_Timestamp value)? timestamp,
-    TResult? Function(DartValue_Time value)? time,
-    TResult? Function(DartValue_Interval value)? interval,
-    TResult? Function(DartValue_Uuid value)? uuid,
-    TResult? Function(DartValue_Map value)? map,
-    TResult? Function(DartValue_List value)? list,
-    TResult? Function(DartValue_Point value)? point,
-    TResult? Function(DartValue_NullData value)? nullData,
+    TResult? Function(Value_Bool value)? bool,
+    TResult? Function(Value_I8 value)? i8,
+    TResult? Function(Value_I16 value)? i16,
+    TResult? Function(Value_I32 value)? i32,
+    TResult? Function(Value_I64 value)? i64,
+    TResult? Function(Value_I128 value)? i128,
+    TResult? Function(Value_U8 value)? u8,
+    TResult? Function(Value_U16 value)? u16,
+    TResult? Function(Value_U32 value)? u32,
+    TResult? Function(Value_U64 value)? u64,
+    TResult? Function(Value_U128 value)? u128,
+    TResult? Function(Value_F32 value)? f32,
+    TResult? Function(Value_F64 value)? f64,
+    TResult? Function(Value_Decimal value)? decimal,
+    TResult? Function(Value_Str value)? str,
+    TResult? Function(Value_Bytea value)? bytea,
+    TResult? Function(Value_Inet value)? inet,
+    TResult? Function(Value_Date value)? date,
+    TResult? Function(Value_Timestamp value)? timestamp,
+    TResult? Function(Value_Time value)? time,
+    TResult? Function(Value_Interval value)? interval,
+    TResult? Function(Value_Uuid value)? uuid,
+    TResult? Function(Value_Map value)? map,
+    TResult? Function(Value_List value)? list,
+    TResult? Function(Value_Point value)? point,
+    TResult? Function(Value_Null value)? null_,
   }) {
     return u16?.call(this);
   }
@@ -2398,32 +2396,32 @@ class _$DartValue_U16Impl extends DartValue_U16 {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DartValue_Bool value)? bool,
-    TResult Function(DartValue_I8 value)? i8,
-    TResult Function(DartValue_I16 value)? i16,
-    TResult Function(DartValue_I32 value)? i32,
-    TResult Function(DartValue_I64 value)? i64,
-    TResult Function(DartValue_I128 value)? i128,
-    TResult Function(DartValue_U8 value)? u8,
-    TResult Function(DartValue_U16 value)? u16,
-    TResult Function(DartValue_U32 value)? u32,
-    TResult Function(DartValue_U64 value)? u64,
-    TResult Function(DartValue_U128 value)? u128,
-    TResult Function(DartValue_F32 value)? f32,
-    TResult Function(DartValue_F64 value)? f64,
-    TResult Function(DartValue_Decimal value)? decimal,
-    TResult Function(DartValue_Str value)? str,
-    TResult Function(DartValue_Bytea value)? bytea,
-    TResult Function(DartValue_Inet value)? inet,
-    TResult Function(DartValue_Date value)? date,
-    TResult Function(DartValue_Timestamp value)? timestamp,
-    TResult Function(DartValue_Time value)? time,
-    TResult Function(DartValue_Interval value)? interval,
-    TResult Function(DartValue_Uuid value)? uuid,
-    TResult Function(DartValue_Map value)? map,
-    TResult Function(DartValue_List value)? list,
-    TResult Function(DartValue_Point value)? point,
-    TResult Function(DartValue_NullData value)? nullData,
+    TResult Function(Value_Bool value)? bool,
+    TResult Function(Value_I8 value)? i8,
+    TResult Function(Value_I16 value)? i16,
+    TResult Function(Value_I32 value)? i32,
+    TResult Function(Value_I64 value)? i64,
+    TResult Function(Value_I128 value)? i128,
+    TResult Function(Value_U8 value)? u8,
+    TResult Function(Value_U16 value)? u16,
+    TResult Function(Value_U32 value)? u32,
+    TResult Function(Value_U64 value)? u64,
+    TResult Function(Value_U128 value)? u128,
+    TResult Function(Value_F32 value)? f32,
+    TResult Function(Value_F64 value)? f64,
+    TResult Function(Value_Decimal value)? decimal,
+    TResult Function(Value_Str value)? str,
+    TResult Function(Value_Bytea value)? bytea,
+    TResult Function(Value_Inet value)? inet,
+    TResult Function(Value_Date value)? date,
+    TResult Function(Value_Timestamp value)? timestamp,
+    TResult Function(Value_Time value)? time,
+    TResult Function(Value_Interval value)? interval,
+    TResult Function(Value_Uuid value)? uuid,
+    TResult Function(Value_Map value)? map,
+    TResult Function(Value_List value)? list,
+    TResult Function(Value_Point value)? point,
+    TResult Function(Value_Null value)? null_,
     required TResult orElse(),
   }) {
     if (u16 != null) {
@@ -2433,31 +2431,31 @@ class _$DartValue_U16Impl extends DartValue_U16 {
   }
 }
 
-abstract class DartValue_U16 extends DartValue {
-  const factory DartValue_U16(final int field0) = _$DartValue_U16Impl;
-  const DartValue_U16._() : super._();
+abstract class Value_U16 extends Value {
+  const factory Value_U16(final int field0) = _$Value_U16Impl;
+  const Value_U16._() : super._();
 
   int get field0;
   @JsonKey(ignore: true)
-  _$$DartValue_U16ImplCopyWith<_$DartValue_U16Impl> get copyWith =>
+  _$$Value_U16ImplCopyWith<_$Value_U16Impl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DartValue_U32ImplCopyWith<$Res> {
-  factory _$$DartValue_U32ImplCopyWith(
-          _$DartValue_U32Impl value, $Res Function(_$DartValue_U32Impl) then) =
-      __$$DartValue_U32ImplCopyWithImpl<$Res>;
+abstract class _$$Value_U32ImplCopyWith<$Res> {
+  factory _$$Value_U32ImplCopyWith(
+          _$Value_U32Impl value, $Res Function(_$Value_U32Impl) then) =
+      __$$Value_U32ImplCopyWithImpl<$Res>;
   @useResult
   $Res call({int field0});
 }
 
 /// @nodoc
-class __$$DartValue_U32ImplCopyWithImpl<$Res>
-    extends _$DartValueCopyWithImpl<$Res, _$DartValue_U32Impl>
-    implements _$$DartValue_U32ImplCopyWith<$Res> {
-  __$$DartValue_U32ImplCopyWithImpl(
-      _$DartValue_U32Impl _value, $Res Function(_$DartValue_U32Impl) _then)
+class __$$Value_U32ImplCopyWithImpl<$Res>
+    extends _$ValueCopyWithImpl<$Res, _$Value_U32Impl>
+    implements _$$Value_U32ImplCopyWith<$Res> {
+  __$$Value_U32ImplCopyWithImpl(
+      _$Value_U32Impl _value, $Res Function(_$Value_U32Impl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -2465,7 +2463,7 @@ class __$$DartValue_U32ImplCopyWithImpl<$Res>
   $Res call({
     Object? field0 = null,
   }) {
-    return _then(_$DartValue_U32Impl(
+    return _then(_$Value_U32Impl(
       null == field0
           ? _value.field0
           : field0 // ignore: cast_nullable_to_non_nullable
@@ -2476,22 +2474,22 @@ class __$$DartValue_U32ImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$DartValue_U32Impl extends DartValue_U32 {
-  const _$DartValue_U32Impl(this.field0) : super._();
+class _$Value_U32Impl extends Value_U32 {
+  const _$Value_U32Impl(this.field0) : super._();
 
   @override
   final int field0;
 
   @override
   String toString() {
-    return 'DartValue.u32(field0: $field0)';
+    return 'Value.u32(field0: $field0)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DartValue_U32Impl &&
+            other is _$Value_U32Impl &&
             (identical(other.field0, field0) || other.field0 == field0));
   }
 
@@ -2501,8 +2499,8 @@ class _$DartValue_U32Impl extends DartValue_U32 {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$DartValue_U32ImplCopyWith<_$DartValue_U32Impl> get copyWith =>
-      __$$DartValue_U32ImplCopyWithImpl<_$DartValue_U32Impl>(this, _$identity);
+  _$$Value_U32ImplCopyWith<_$Value_U32Impl> get copyWith =>
+      __$$Value_U32ImplCopyWithImpl<_$Value_U32Impl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -2532,7 +2530,7 @@ class _$DartValue_U32Impl extends DartValue_U32 {
     required TResult Function(Map<String, Value> field0) map,
     required TResult Function(List<Value> field0) list,
     required TResult Function(Point field0) point,
-    required TResult Function() nullData,
+    required TResult Function() null_,
   }) {
     return u32(field0);
   }
@@ -2565,7 +2563,7 @@ class _$DartValue_U32Impl extends DartValue_U32 {
     TResult? Function(Map<String, Value> field0)? map,
     TResult? Function(List<Value> field0)? list,
     TResult? Function(Point field0)? point,
-    TResult? Function()? nullData,
+    TResult? Function()? null_,
   }) {
     return u32?.call(field0);
   }
@@ -2598,7 +2596,7 @@ class _$DartValue_U32Impl extends DartValue_U32 {
     TResult Function(Map<String, Value> field0)? map,
     TResult Function(List<Value> field0)? list,
     TResult Function(Point field0)? point,
-    TResult Function()? nullData,
+    TResult Function()? null_,
     required TResult orElse(),
   }) {
     if (u32 != null) {
@@ -2610,32 +2608,32 @@ class _$DartValue_U32Impl extends DartValue_U32 {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DartValue_Bool value) bool,
-    required TResult Function(DartValue_I8 value) i8,
-    required TResult Function(DartValue_I16 value) i16,
-    required TResult Function(DartValue_I32 value) i32,
-    required TResult Function(DartValue_I64 value) i64,
-    required TResult Function(DartValue_I128 value) i128,
-    required TResult Function(DartValue_U8 value) u8,
-    required TResult Function(DartValue_U16 value) u16,
-    required TResult Function(DartValue_U32 value) u32,
-    required TResult Function(DartValue_U64 value) u64,
-    required TResult Function(DartValue_U128 value) u128,
-    required TResult Function(DartValue_F32 value) f32,
-    required TResult Function(DartValue_F64 value) f64,
-    required TResult Function(DartValue_Decimal value) decimal,
-    required TResult Function(DartValue_Str value) str,
-    required TResult Function(DartValue_Bytea value) bytea,
-    required TResult Function(DartValue_Inet value) inet,
-    required TResult Function(DartValue_Date value) date,
-    required TResult Function(DartValue_Timestamp value) timestamp,
-    required TResult Function(DartValue_Time value) time,
-    required TResult Function(DartValue_Interval value) interval,
-    required TResult Function(DartValue_Uuid value) uuid,
-    required TResult Function(DartValue_Map value) map,
-    required TResult Function(DartValue_List value) list,
-    required TResult Function(DartValue_Point value) point,
-    required TResult Function(DartValue_NullData value) nullData,
+    required TResult Function(Value_Bool value) bool,
+    required TResult Function(Value_I8 value) i8,
+    required TResult Function(Value_I16 value) i16,
+    required TResult Function(Value_I32 value) i32,
+    required TResult Function(Value_I64 value) i64,
+    required TResult Function(Value_I128 value) i128,
+    required TResult Function(Value_U8 value) u8,
+    required TResult Function(Value_U16 value) u16,
+    required TResult Function(Value_U32 value) u32,
+    required TResult Function(Value_U64 value) u64,
+    required TResult Function(Value_U128 value) u128,
+    required TResult Function(Value_F32 value) f32,
+    required TResult Function(Value_F64 value) f64,
+    required TResult Function(Value_Decimal value) decimal,
+    required TResult Function(Value_Str value) str,
+    required TResult Function(Value_Bytea value) bytea,
+    required TResult Function(Value_Inet value) inet,
+    required TResult Function(Value_Date value) date,
+    required TResult Function(Value_Timestamp value) timestamp,
+    required TResult Function(Value_Time value) time,
+    required TResult Function(Value_Interval value) interval,
+    required TResult Function(Value_Uuid value) uuid,
+    required TResult Function(Value_Map value) map,
+    required TResult Function(Value_List value) list,
+    required TResult Function(Value_Point value) point,
+    required TResult Function(Value_Null value) null_,
   }) {
     return u32(this);
   }
@@ -2643,32 +2641,32 @@ class _$DartValue_U32Impl extends DartValue_U32 {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DartValue_Bool value)? bool,
-    TResult? Function(DartValue_I8 value)? i8,
-    TResult? Function(DartValue_I16 value)? i16,
-    TResult? Function(DartValue_I32 value)? i32,
-    TResult? Function(DartValue_I64 value)? i64,
-    TResult? Function(DartValue_I128 value)? i128,
-    TResult? Function(DartValue_U8 value)? u8,
-    TResult? Function(DartValue_U16 value)? u16,
-    TResult? Function(DartValue_U32 value)? u32,
-    TResult? Function(DartValue_U64 value)? u64,
-    TResult? Function(DartValue_U128 value)? u128,
-    TResult? Function(DartValue_F32 value)? f32,
-    TResult? Function(DartValue_F64 value)? f64,
-    TResult? Function(DartValue_Decimal value)? decimal,
-    TResult? Function(DartValue_Str value)? str,
-    TResult? Function(DartValue_Bytea value)? bytea,
-    TResult? Function(DartValue_Inet value)? inet,
-    TResult? Function(DartValue_Date value)? date,
-    TResult? Function(DartValue_Timestamp value)? timestamp,
-    TResult? Function(DartValue_Time value)? time,
-    TResult? Function(DartValue_Interval value)? interval,
-    TResult? Function(DartValue_Uuid value)? uuid,
-    TResult? Function(DartValue_Map value)? map,
-    TResult? Function(DartValue_List value)? list,
-    TResult? Function(DartValue_Point value)? point,
-    TResult? Function(DartValue_NullData value)? nullData,
+    TResult? Function(Value_Bool value)? bool,
+    TResult? Function(Value_I8 value)? i8,
+    TResult? Function(Value_I16 value)? i16,
+    TResult? Function(Value_I32 value)? i32,
+    TResult? Function(Value_I64 value)? i64,
+    TResult? Function(Value_I128 value)? i128,
+    TResult? Function(Value_U8 value)? u8,
+    TResult? Function(Value_U16 value)? u16,
+    TResult? Function(Value_U32 value)? u32,
+    TResult? Function(Value_U64 value)? u64,
+    TResult? Function(Value_U128 value)? u128,
+    TResult? Function(Value_F32 value)? f32,
+    TResult? Function(Value_F64 value)? f64,
+    TResult? Function(Value_Decimal value)? decimal,
+    TResult? Function(Value_Str value)? str,
+    TResult? Function(Value_Bytea value)? bytea,
+    TResult? Function(Value_Inet value)? inet,
+    TResult? Function(Value_Date value)? date,
+    TResult? Function(Value_Timestamp value)? timestamp,
+    TResult? Function(Value_Time value)? time,
+    TResult? Function(Value_Interval value)? interval,
+    TResult? Function(Value_Uuid value)? uuid,
+    TResult? Function(Value_Map value)? map,
+    TResult? Function(Value_List value)? list,
+    TResult? Function(Value_Point value)? point,
+    TResult? Function(Value_Null value)? null_,
   }) {
     return u32?.call(this);
   }
@@ -2676,32 +2674,32 @@ class _$DartValue_U32Impl extends DartValue_U32 {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DartValue_Bool value)? bool,
-    TResult Function(DartValue_I8 value)? i8,
-    TResult Function(DartValue_I16 value)? i16,
-    TResult Function(DartValue_I32 value)? i32,
-    TResult Function(DartValue_I64 value)? i64,
-    TResult Function(DartValue_I128 value)? i128,
-    TResult Function(DartValue_U8 value)? u8,
-    TResult Function(DartValue_U16 value)? u16,
-    TResult Function(DartValue_U32 value)? u32,
-    TResult Function(DartValue_U64 value)? u64,
-    TResult Function(DartValue_U128 value)? u128,
-    TResult Function(DartValue_F32 value)? f32,
-    TResult Function(DartValue_F64 value)? f64,
-    TResult Function(DartValue_Decimal value)? decimal,
-    TResult Function(DartValue_Str value)? str,
-    TResult Function(DartValue_Bytea value)? bytea,
-    TResult Function(DartValue_Inet value)? inet,
-    TResult Function(DartValue_Date value)? date,
-    TResult Function(DartValue_Timestamp value)? timestamp,
-    TResult Function(DartValue_Time value)? time,
-    TResult Function(DartValue_Interval value)? interval,
-    TResult Function(DartValue_Uuid value)? uuid,
-    TResult Function(DartValue_Map value)? map,
-    TResult Function(DartValue_List value)? list,
-    TResult Function(DartValue_Point value)? point,
-    TResult Function(DartValue_NullData value)? nullData,
+    TResult Function(Value_Bool value)? bool,
+    TResult Function(Value_I8 value)? i8,
+    TResult Function(Value_I16 value)? i16,
+    TResult Function(Value_I32 value)? i32,
+    TResult Function(Value_I64 value)? i64,
+    TResult Function(Value_I128 value)? i128,
+    TResult Function(Value_U8 value)? u8,
+    TResult Function(Value_U16 value)? u16,
+    TResult Function(Value_U32 value)? u32,
+    TResult Function(Value_U64 value)? u64,
+    TResult Function(Value_U128 value)? u128,
+    TResult Function(Value_F32 value)? f32,
+    TResult Function(Value_F64 value)? f64,
+    TResult Function(Value_Decimal value)? decimal,
+    TResult Function(Value_Str value)? str,
+    TResult Function(Value_Bytea value)? bytea,
+    TResult Function(Value_Inet value)? inet,
+    TResult Function(Value_Date value)? date,
+    TResult Function(Value_Timestamp value)? timestamp,
+    TResult Function(Value_Time value)? time,
+    TResult Function(Value_Interval value)? interval,
+    TResult Function(Value_Uuid value)? uuid,
+    TResult Function(Value_Map value)? map,
+    TResult Function(Value_List value)? list,
+    TResult Function(Value_Point value)? point,
+    TResult Function(Value_Null value)? null_,
     required TResult orElse(),
   }) {
     if (u32 != null) {
@@ -2711,31 +2709,31 @@ class _$DartValue_U32Impl extends DartValue_U32 {
   }
 }
 
-abstract class DartValue_U32 extends DartValue {
-  const factory DartValue_U32(final int field0) = _$DartValue_U32Impl;
-  const DartValue_U32._() : super._();
+abstract class Value_U32 extends Value {
+  const factory Value_U32(final int field0) = _$Value_U32Impl;
+  const Value_U32._() : super._();
 
   int get field0;
   @JsonKey(ignore: true)
-  _$$DartValue_U32ImplCopyWith<_$DartValue_U32Impl> get copyWith =>
+  _$$Value_U32ImplCopyWith<_$Value_U32Impl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DartValue_U64ImplCopyWith<$Res> {
-  factory _$$DartValue_U64ImplCopyWith(
-          _$DartValue_U64Impl value, $Res Function(_$DartValue_U64Impl) then) =
-      __$$DartValue_U64ImplCopyWithImpl<$Res>;
+abstract class _$$Value_U64ImplCopyWith<$Res> {
+  factory _$$Value_U64ImplCopyWith(
+          _$Value_U64Impl value, $Res Function(_$Value_U64Impl) then) =
+      __$$Value_U64ImplCopyWithImpl<$Res>;
   @useResult
   $Res call({BigInt field0});
 }
 
 /// @nodoc
-class __$$DartValue_U64ImplCopyWithImpl<$Res>
-    extends _$DartValueCopyWithImpl<$Res, _$DartValue_U64Impl>
-    implements _$$DartValue_U64ImplCopyWith<$Res> {
-  __$$DartValue_U64ImplCopyWithImpl(
-      _$DartValue_U64Impl _value, $Res Function(_$DartValue_U64Impl) _then)
+class __$$Value_U64ImplCopyWithImpl<$Res>
+    extends _$ValueCopyWithImpl<$Res, _$Value_U64Impl>
+    implements _$$Value_U64ImplCopyWith<$Res> {
+  __$$Value_U64ImplCopyWithImpl(
+      _$Value_U64Impl _value, $Res Function(_$Value_U64Impl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -2743,7 +2741,7 @@ class __$$DartValue_U64ImplCopyWithImpl<$Res>
   $Res call({
     Object? field0 = null,
   }) {
-    return _then(_$DartValue_U64Impl(
+    return _then(_$Value_U64Impl(
       null == field0
           ? _value.field0
           : field0 // ignore: cast_nullable_to_non_nullable
@@ -2754,22 +2752,22 @@ class __$$DartValue_U64ImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$DartValue_U64Impl extends DartValue_U64 {
-  const _$DartValue_U64Impl(this.field0) : super._();
+class _$Value_U64Impl extends Value_U64 {
+  const _$Value_U64Impl(this.field0) : super._();
 
   @override
   final BigInt field0;
 
   @override
   String toString() {
-    return 'DartValue.u64(field0: $field0)';
+    return 'Value.u64(field0: $field0)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DartValue_U64Impl &&
+            other is _$Value_U64Impl &&
             (identical(other.field0, field0) || other.field0 == field0));
   }
 
@@ -2779,8 +2777,8 @@ class _$DartValue_U64Impl extends DartValue_U64 {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$DartValue_U64ImplCopyWith<_$DartValue_U64Impl> get copyWith =>
-      __$$DartValue_U64ImplCopyWithImpl<_$DartValue_U64Impl>(this, _$identity);
+  _$$Value_U64ImplCopyWith<_$Value_U64Impl> get copyWith =>
+      __$$Value_U64ImplCopyWithImpl<_$Value_U64Impl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -2810,7 +2808,7 @@ class _$DartValue_U64Impl extends DartValue_U64 {
     required TResult Function(Map<String, Value> field0) map,
     required TResult Function(List<Value> field0) list,
     required TResult Function(Point field0) point,
-    required TResult Function() nullData,
+    required TResult Function() null_,
   }) {
     return u64(field0);
   }
@@ -2843,7 +2841,7 @@ class _$DartValue_U64Impl extends DartValue_U64 {
     TResult? Function(Map<String, Value> field0)? map,
     TResult? Function(List<Value> field0)? list,
     TResult? Function(Point field0)? point,
-    TResult? Function()? nullData,
+    TResult? Function()? null_,
   }) {
     return u64?.call(field0);
   }
@@ -2876,7 +2874,7 @@ class _$DartValue_U64Impl extends DartValue_U64 {
     TResult Function(Map<String, Value> field0)? map,
     TResult Function(List<Value> field0)? list,
     TResult Function(Point field0)? point,
-    TResult Function()? nullData,
+    TResult Function()? null_,
     required TResult orElse(),
   }) {
     if (u64 != null) {
@@ -2888,32 +2886,32 @@ class _$DartValue_U64Impl extends DartValue_U64 {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DartValue_Bool value) bool,
-    required TResult Function(DartValue_I8 value) i8,
-    required TResult Function(DartValue_I16 value) i16,
-    required TResult Function(DartValue_I32 value) i32,
-    required TResult Function(DartValue_I64 value) i64,
-    required TResult Function(DartValue_I128 value) i128,
-    required TResult Function(DartValue_U8 value) u8,
-    required TResult Function(DartValue_U16 value) u16,
-    required TResult Function(DartValue_U32 value) u32,
-    required TResult Function(DartValue_U64 value) u64,
-    required TResult Function(DartValue_U128 value) u128,
-    required TResult Function(DartValue_F32 value) f32,
-    required TResult Function(DartValue_F64 value) f64,
-    required TResult Function(DartValue_Decimal value) decimal,
-    required TResult Function(DartValue_Str value) str,
-    required TResult Function(DartValue_Bytea value) bytea,
-    required TResult Function(DartValue_Inet value) inet,
-    required TResult Function(DartValue_Date value) date,
-    required TResult Function(DartValue_Timestamp value) timestamp,
-    required TResult Function(DartValue_Time value) time,
-    required TResult Function(DartValue_Interval value) interval,
-    required TResult Function(DartValue_Uuid value) uuid,
-    required TResult Function(DartValue_Map value) map,
-    required TResult Function(DartValue_List value) list,
-    required TResult Function(DartValue_Point value) point,
-    required TResult Function(DartValue_NullData value) nullData,
+    required TResult Function(Value_Bool value) bool,
+    required TResult Function(Value_I8 value) i8,
+    required TResult Function(Value_I16 value) i16,
+    required TResult Function(Value_I32 value) i32,
+    required TResult Function(Value_I64 value) i64,
+    required TResult Function(Value_I128 value) i128,
+    required TResult Function(Value_U8 value) u8,
+    required TResult Function(Value_U16 value) u16,
+    required TResult Function(Value_U32 value) u32,
+    required TResult Function(Value_U64 value) u64,
+    required TResult Function(Value_U128 value) u128,
+    required TResult Function(Value_F32 value) f32,
+    required TResult Function(Value_F64 value) f64,
+    required TResult Function(Value_Decimal value) decimal,
+    required TResult Function(Value_Str value) str,
+    required TResult Function(Value_Bytea value) bytea,
+    required TResult Function(Value_Inet value) inet,
+    required TResult Function(Value_Date value) date,
+    required TResult Function(Value_Timestamp value) timestamp,
+    required TResult Function(Value_Time value) time,
+    required TResult Function(Value_Interval value) interval,
+    required TResult Function(Value_Uuid value) uuid,
+    required TResult Function(Value_Map value) map,
+    required TResult Function(Value_List value) list,
+    required TResult Function(Value_Point value) point,
+    required TResult Function(Value_Null value) null_,
   }) {
     return u64(this);
   }
@@ -2921,32 +2919,32 @@ class _$DartValue_U64Impl extends DartValue_U64 {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DartValue_Bool value)? bool,
-    TResult? Function(DartValue_I8 value)? i8,
-    TResult? Function(DartValue_I16 value)? i16,
-    TResult? Function(DartValue_I32 value)? i32,
-    TResult? Function(DartValue_I64 value)? i64,
-    TResult? Function(DartValue_I128 value)? i128,
-    TResult? Function(DartValue_U8 value)? u8,
-    TResult? Function(DartValue_U16 value)? u16,
-    TResult? Function(DartValue_U32 value)? u32,
-    TResult? Function(DartValue_U64 value)? u64,
-    TResult? Function(DartValue_U128 value)? u128,
-    TResult? Function(DartValue_F32 value)? f32,
-    TResult? Function(DartValue_F64 value)? f64,
-    TResult? Function(DartValue_Decimal value)? decimal,
-    TResult? Function(DartValue_Str value)? str,
-    TResult? Function(DartValue_Bytea value)? bytea,
-    TResult? Function(DartValue_Inet value)? inet,
-    TResult? Function(DartValue_Date value)? date,
-    TResult? Function(DartValue_Timestamp value)? timestamp,
-    TResult? Function(DartValue_Time value)? time,
-    TResult? Function(DartValue_Interval value)? interval,
-    TResult? Function(DartValue_Uuid value)? uuid,
-    TResult? Function(DartValue_Map value)? map,
-    TResult? Function(DartValue_List value)? list,
-    TResult? Function(DartValue_Point value)? point,
-    TResult? Function(DartValue_NullData value)? nullData,
+    TResult? Function(Value_Bool value)? bool,
+    TResult? Function(Value_I8 value)? i8,
+    TResult? Function(Value_I16 value)? i16,
+    TResult? Function(Value_I32 value)? i32,
+    TResult? Function(Value_I64 value)? i64,
+    TResult? Function(Value_I128 value)? i128,
+    TResult? Function(Value_U8 value)? u8,
+    TResult? Function(Value_U16 value)? u16,
+    TResult? Function(Value_U32 value)? u32,
+    TResult? Function(Value_U64 value)? u64,
+    TResult? Function(Value_U128 value)? u128,
+    TResult? Function(Value_F32 value)? f32,
+    TResult? Function(Value_F64 value)? f64,
+    TResult? Function(Value_Decimal value)? decimal,
+    TResult? Function(Value_Str value)? str,
+    TResult? Function(Value_Bytea value)? bytea,
+    TResult? Function(Value_Inet value)? inet,
+    TResult? Function(Value_Date value)? date,
+    TResult? Function(Value_Timestamp value)? timestamp,
+    TResult? Function(Value_Time value)? time,
+    TResult? Function(Value_Interval value)? interval,
+    TResult? Function(Value_Uuid value)? uuid,
+    TResult? Function(Value_Map value)? map,
+    TResult? Function(Value_List value)? list,
+    TResult? Function(Value_Point value)? point,
+    TResult? Function(Value_Null value)? null_,
   }) {
     return u64?.call(this);
   }
@@ -2954,32 +2952,32 @@ class _$DartValue_U64Impl extends DartValue_U64 {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DartValue_Bool value)? bool,
-    TResult Function(DartValue_I8 value)? i8,
-    TResult Function(DartValue_I16 value)? i16,
-    TResult Function(DartValue_I32 value)? i32,
-    TResult Function(DartValue_I64 value)? i64,
-    TResult Function(DartValue_I128 value)? i128,
-    TResult Function(DartValue_U8 value)? u8,
-    TResult Function(DartValue_U16 value)? u16,
-    TResult Function(DartValue_U32 value)? u32,
-    TResult Function(DartValue_U64 value)? u64,
-    TResult Function(DartValue_U128 value)? u128,
-    TResult Function(DartValue_F32 value)? f32,
-    TResult Function(DartValue_F64 value)? f64,
-    TResult Function(DartValue_Decimal value)? decimal,
-    TResult Function(DartValue_Str value)? str,
-    TResult Function(DartValue_Bytea value)? bytea,
-    TResult Function(DartValue_Inet value)? inet,
-    TResult Function(DartValue_Date value)? date,
-    TResult Function(DartValue_Timestamp value)? timestamp,
-    TResult Function(DartValue_Time value)? time,
-    TResult Function(DartValue_Interval value)? interval,
-    TResult Function(DartValue_Uuid value)? uuid,
-    TResult Function(DartValue_Map value)? map,
-    TResult Function(DartValue_List value)? list,
-    TResult Function(DartValue_Point value)? point,
-    TResult Function(DartValue_NullData value)? nullData,
+    TResult Function(Value_Bool value)? bool,
+    TResult Function(Value_I8 value)? i8,
+    TResult Function(Value_I16 value)? i16,
+    TResult Function(Value_I32 value)? i32,
+    TResult Function(Value_I64 value)? i64,
+    TResult Function(Value_I128 value)? i128,
+    TResult Function(Value_U8 value)? u8,
+    TResult Function(Value_U16 value)? u16,
+    TResult Function(Value_U32 value)? u32,
+    TResult Function(Value_U64 value)? u64,
+    TResult Function(Value_U128 value)? u128,
+    TResult Function(Value_F32 value)? f32,
+    TResult Function(Value_F64 value)? f64,
+    TResult Function(Value_Decimal value)? decimal,
+    TResult Function(Value_Str value)? str,
+    TResult Function(Value_Bytea value)? bytea,
+    TResult Function(Value_Inet value)? inet,
+    TResult Function(Value_Date value)? date,
+    TResult Function(Value_Timestamp value)? timestamp,
+    TResult Function(Value_Time value)? time,
+    TResult Function(Value_Interval value)? interval,
+    TResult Function(Value_Uuid value)? uuid,
+    TResult Function(Value_Map value)? map,
+    TResult Function(Value_List value)? list,
+    TResult Function(Value_Point value)? point,
+    TResult Function(Value_Null value)? null_,
     required TResult orElse(),
   }) {
     if (u64 != null) {
@@ -2989,31 +2987,31 @@ class _$DartValue_U64Impl extends DartValue_U64 {
   }
 }
 
-abstract class DartValue_U64 extends DartValue {
-  const factory DartValue_U64(final BigInt field0) = _$DartValue_U64Impl;
-  const DartValue_U64._() : super._();
+abstract class Value_U64 extends Value {
+  const factory Value_U64(final BigInt field0) = _$Value_U64Impl;
+  const Value_U64._() : super._();
 
   BigInt get field0;
   @JsonKey(ignore: true)
-  _$$DartValue_U64ImplCopyWith<_$DartValue_U64Impl> get copyWith =>
+  _$$Value_U64ImplCopyWith<_$Value_U64Impl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DartValue_U128ImplCopyWith<$Res> {
-  factory _$$DartValue_U128ImplCopyWith(_$DartValue_U128Impl value,
-          $Res Function(_$DartValue_U128Impl) then) =
-      __$$DartValue_U128ImplCopyWithImpl<$Res>;
+abstract class _$$Value_U128ImplCopyWith<$Res> {
+  factory _$$Value_U128ImplCopyWith(
+          _$Value_U128Impl value, $Res Function(_$Value_U128Impl) then) =
+      __$$Value_U128ImplCopyWithImpl<$Res>;
   @useResult
   $Res call({BigInt field0});
 }
 
 /// @nodoc
-class __$$DartValue_U128ImplCopyWithImpl<$Res>
-    extends _$DartValueCopyWithImpl<$Res, _$DartValue_U128Impl>
-    implements _$$DartValue_U128ImplCopyWith<$Res> {
-  __$$DartValue_U128ImplCopyWithImpl(
-      _$DartValue_U128Impl _value, $Res Function(_$DartValue_U128Impl) _then)
+class __$$Value_U128ImplCopyWithImpl<$Res>
+    extends _$ValueCopyWithImpl<$Res, _$Value_U128Impl>
+    implements _$$Value_U128ImplCopyWith<$Res> {
+  __$$Value_U128ImplCopyWithImpl(
+      _$Value_U128Impl _value, $Res Function(_$Value_U128Impl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -3021,7 +3019,7 @@ class __$$DartValue_U128ImplCopyWithImpl<$Res>
   $Res call({
     Object? field0 = null,
   }) {
-    return _then(_$DartValue_U128Impl(
+    return _then(_$Value_U128Impl(
       null == field0
           ? _value.field0
           : field0 // ignore: cast_nullable_to_non_nullable
@@ -3032,22 +3030,22 @@ class __$$DartValue_U128ImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$DartValue_U128Impl extends DartValue_U128 {
-  const _$DartValue_U128Impl(this.field0) : super._();
+class _$Value_U128Impl extends Value_U128 {
+  const _$Value_U128Impl(this.field0) : super._();
 
   @override
   final BigInt field0;
 
   @override
   String toString() {
-    return 'DartValue.u128(field0: $field0)';
+    return 'Value.u128(field0: $field0)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DartValue_U128Impl &&
+            other is _$Value_U128Impl &&
             (identical(other.field0, field0) || other.field0 == field0));
   }
 
@@ -3057,9 +3055,8 @@ class _$DartValue_U128Impl extends DartValue_U128 {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$DartValue_U128ImplCopyWith<_$DartValue_U128Impl> get copyWith =>
-      __$$DartValue_U128ImplCopyWithImpl<_$DartValue_U128Impl>(
-          this, _$identity);
+  _$$Value_U128ImplCopyWith<_$Value_U128Impl> get copyWith =>
+      __$$Value_U128ImplCopyWithImpl<_$Value_U128Impl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -3089,7 +3086,7 @@ class _$DartValue_U128Impl extends DartValue_U128 {
     required TResult Function(Map<String, Value> field0) map,
     required TResult Function(List<Value> field0) list,
     required TResult Function(Point field0) point,
-    required TResult Function() nullData,
+    required TResult Function() null_,
   }) {
     return u128(field0);
   }
@@ -3122,7 +3119,7 @@ class _$DartValue_U128Impl extends DartValue_U128 {
     TResult? Function(Map<String, Value> field0)? map,
     TResult? Function(List<Value> field0)? list,
     TResult? Function(Point field0)? point,
-    TResult? Function()? nullData,
+    TResult? Function()? null_,
   }) {
     return u128?.call(field0);
   }
@@ -3155,7 +3152,7 @@ class _$DartValue_U128Impl extends DartValue_U128 {
     TResult Function(Map<String, Value> field0)? map,
     TResult Function(List<Value> field0)? list,
     TResult Function(Point field0)? point,
-    TResult Function()? nullData,
+    TResult Function()? null_,
     required TResult orElse(),
   }) {
     if (u128 != null) {
@@ -3167,32 +3164,32 @@ class _$DartValue_U128Impl extends DartValue_U128 {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DartValue_Bool value) bool,
-    required TResult Function(DartValue_I8 value) i8,
-    required TResult Function(DartValue_I16 value) i16,
-    required TResult Function(DartValue_I32 value) i32,
-    required TResult Function(DartValue_I64 value) i64,
-    required TResult Function(DartValue_I128 value) i128,
-    required TResult Function(DartValue_U8 value) u8,
-    required TResult Function(DartValue_U16 value) u16,
-    required TResult Function(DartValue_U32 value) u32,
-    required TResult Function(DartValue_U64 value) u64,
-    required TResult Function(DartValue_U128 value) u128,
-    required TResult Function(DartValue_F32 value) f32,
-    required TResult Function(DartValue_F64 value) f64,
-    required TResult Function(DartValue_Decimal value) decimal,
-    required TResult Function(DartValue_Str value) str,
-    required TResult Function(DartValue_Bytea value) bytea,
-    required TResult Function(DartValue_Inet value) inet,
-    required TResult Function(DartValue_Date value) date,
-    required TResult Function(DartValue_Timestamp value) timestamp,
-    required TResult Function(DartValue_Time value) time,
-    required TResult Function(DartValue_Interval value) interval,
-    required TResult Function(DartValue_Uuid value) uuid,
-    required TResult Function(DartValue_Map value) map,
-    required TResult Function(DartValue_List value) list,
-    required TResult Function(DartValue_Point value) point,
-    required TResult Function(DartValue_NullData value) nullData,
+    required TResult Function(Value_Bool value) bool,
+    required TResult Function(Value_I8 value) i8,
+    required TResult Function(Value_I16 value) i16,
+    required TResult Function(Value_I32 value) i32,
+    required TResult Function(Value_I64 value) i64,
+    required TResult Function(Value_I128 value) i128,
+    required TResult Function(Value_U8 value) u8,
+    required TResult Function(Value_U16 value) u16,
+    required TResult Function(Value_U32 value) u32,
+    required TResult Function(Value_U64 value) u64,
+    required TResult Function(Value_U128 value) u128,
+    required TResult Function(Value_F32 value) f32,
+    required TResult Function(Value_F64 value) f64,
+    required TResult Function(Value_Decimal value) decimal,
+    required TResult Function(Value_Str value) str,
+    required TResult Function(Value_Bytea value) bytea,
+    required TResult Function(Value_Inet value) inet,
+    required TResult Function(Value_Date value) date,
+    required TResult Function(Value_Timestamp value) timestamp,
+    required TResult Function(Value_Time value) time,
+    required TResult Function(Value_Interval value) interval,
+    required TResult Function(Value_Uuid value) uuid,
+    required TResult Function(Value_Map value) map,
+    required TResult Function(Value_List value) list,
+    required TResult Function(Value_Point value) point,
+    required TResult Function(Value_Null value) null_,
   }) {
     return u128(this);
   }
@@ -3200,32 +3197,32 @@ class _$DartValue_U128Impl extends DartValue_U128 {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DartValue_Bool value)? bool,
-    TResult? Function(DartValue_I8 value)? i8,
-    TResult? Function(DartValue_I16 value)? i16,
-    TResult? Function(DartValue_I32 value)? i32,
-    TResult? Function(DartValue_I64 value)? i64,
-    TResult? Function(DartValue_I128 value)? i128,
-    TResult? Function(DartValue_U8 value)? u8,
-    TResult? Function(DartValue_U16 value)? u16,
-    TResult? Function(DartValue_U32 value)? u32,
-    TResult? Function(DartValue_U64 value)? u64,
-    TResult? Function(DartValue_U128 value)? u128,
-    TResult? Function(DartValue_F32 value)? f32,
-    TResult? Function(DartValue_F64 value)? f64,
-    TResult? Function(DartValue_Decimal value)? decimal,
-    TResult? Function(DartValue_Str value)? str,
-    TResult? Function(DartValue_Bytea value)? bytea,
-    TResult? Function(DartValue_Inet value)? inet,
-    TResult? Function(DartValue_Date value)? date,
-    TResult? Function(DartValue_Timestamp value)? timestamp,
-    TResult? Function(DartValue_Time value)? time,
-    TResult? Function(DartValue_Interval value)? interval,
-    TResult? Function(DartValue_Uuid value)? uuid,
-    TResult? Function(DartValue_Map value)? map,
-    TResult? Function(DartValue_List value)? list,
-    TResult? Function(DartValue_Point value)? point,
-    TResult? Function(DartValue_NullData value)? nullData,
+    TResult? Function(Value_Bool value)? bool,
+    TResult? Function(Value_I8 value)? i8,
+    TResult? Function(Value_I16 value)? i16,
+    TResult? Function(Value_I32 value)? i32,
+    TResult? Function(Value_I64 value)? i64,
+    TResult? Function(Value_I128 value)? i128,
+    TResult? Function(Value_U8 value)? u8,
+    TResult? Function(Value_U16 value)? u16,
+    TResult? Function(Value_U32 value)? u32,
+    TResult? Function(Value_U64 value)? u64,
+    TResult? Function(Value_U128 value)? u128,
+    TResult? Function(Value_F32 value)? f32,
+    TResult? Function(Value_F64 value)? f64,
+    TResult? Function(Value_Decimal value)? decimal,
+    TResult? Function(Value_Str value)? str,
+    TResult? Function(Value_Bytea value)? bytea,
+    TResult? Function(Value_Inet value)? inet,
+    TResult? Function(Value_Date value)? date,
+    TResult? Function(Value_Timestamp value)? timestamp,
+    TResult? Function(Value_Time value)? time,
+    TResult? Function(Value_Interval value)? interval,
+    TResult? Function(Value_Uuid value)? uuid,
+    TResult? Function(Value_Map value)? map,
+    TResult? Function(Value_List value)? list,
+    TResult? Function(Value_Point value)? point,
+    TResult? Function(Value_Null value)? null_,
   }) {
     return u128?.call(this);
   }
@@ -3233,32 +3230,32 @@ class _$DartValue_U128Impl extends DartValue_U128 {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DartValue_Bool value)? bool,
-    TResult Function(DartValue_I8 value)? i8,
-    TResult Function(DartValue_I16 value)? i16,
-    TResult Function(DartValue_I32 value)? i32,
-    TResult Function(DartValue_I64 value)? i64,
-    TResult Function(DartValue_I128 value)? i128,
-    TResult Function(DartValue_U8 value)? u8,
-    TResult Function(DartValue_U16 value)? u16,
-    TResult Function(DartValue_U32 value)? u32,
-    TResult Function(DartValue_U64 value)? u64,
-    TResult Function(DartValue_U128 value)? u128,
-    TResult Function(DartValue_F32 value)? f32,
-    TResult Function(DartValue_F64 value)? f64,
-    TResult Function(DartValue_Decimal value)? decimal,
-    TResult Function(DartValue_Str value)? str,
-    TResult Function(DartValue_Bytea value)? bytea,
-    TResult Function(DartValue_Inet value)? inet,
-    TResult Function(DartValue_Date value)? date,
-    TResult Function(DartValue_Timestamp value)? timestamp,
-    TResult Function(DartValue_Time value)? time,
-    TResult Function(DartValue_Interval value)? interval,
-    TResult Function(DartValue_Uuid value)? uuid,
-    TResult Function(DartValue_Map value)? map,
-    TResult Function(DartValue_List value)? list,
-    TResult Function(DartValue_Point value)? point,
-    TResult Function(DartValue_NullData value)? nullData,
+    TResult Function(Value_Bool value)? bool,
+    TResult Function(Value_I8 value)? i8,
+    TResult Function(Value_I16 value)? i16,
+    TResult Function(Value_I32 value)? i32,
+    TResult Function(Value_I64 value)? i64,
+    TResult Function(Value_I128 value)? i128,
+    TResult Function(Value_U8 value)? u8,
+    TResult Function(Value_U16 value)? u16,
+    TResult Function(Value_U32 value)? u32,
+    TResult Function(Value_U64 value)? u64,
+    TResult Function(Value_U128 value)? u128,
+    TResult Function(Value_F32 value)? f32,
+    TResult Function(Value_F64 value)? f64,
+    TResult Function(Value_Decimal value)? decimal,
+    TResult Function(Value_Str value)? str,
+    TResult Function(Value_Bytea value)? bytea,
+    TResult Function(Value_Inet value)? inet,
+    TResult Function(Value_Date value)? date,
+    TResult Function(Value_Timestamp value)? timestamp,
+    TResult Function(Value_Time value)? time,
+    TResult Function(Value_Interval value)? interval,
+    TResult Function(Value_Uuid value)? uuid,
+    TResult Function(Value_Map value)? map,
+    TResult Function(Value_List value)? list,
+    TResult Function(Value_Point value)? point,
+    TResult Function(Value_Null value)? null_,
     required TResult orElse(),
   }) {
     if (u128 != null) {
@@ -3268,31 +3265,31 @@ class _$DartValue_U128Impl extends DartValue_U128 {
   }
 }
 
-abstract class DartValue_U128 extends DartValue {
-  const factory DartValue_U128(final BigInt field0) = _$DartValue_U128Impl;
-  const DartValue_U128._() : super._();
+abstract class Value_U128 extends Value {
+  const factory Value_U128(final BigInt field0) = _$Value_U128Impl;
+  const Value_U128._() : super._();
 
   BigInt get field0;
   @JsonKey(ignore: true)
-  _$$DartValue_U128ImplCopyWith<_$DartValue_U128Impl> get copyWith =>
+  _$$Value_U128ImplCopyWith<_$Value_U128Impl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DartValue_F32ImplCopyWith<$Res> {
-  factory _$$DartValue_F32ImplCopyWith(
-          _$DartValue_F32Impl value, $Res Function(_$DartValue_F32Impl) then) =
-      __$$DartValue_F32ImplCopyWithImpl<$Res>;
+abstract class _$$Value_F32ImplCopyWith<$Res> {
+  factory _$$Value_F32ImplCopyWith(
+          _$Value_F32Impl value, $Res Function(_$Value_F32Impl) then) =
+      __$$Value_F32ImplCopyWithImpl<$Res>;
   @useResult
   $Res call({double field0});
 }
 
 /// @nodoc
-class __$$DartValue_F32ImplCopyWithImpl<$Res>
-    extends _$DartValueCopyWithImpl<$Res, _$DartValue_F32Impl>
-    implements _$$DartValue_F32ImplCopyWith<$Res> {
-  __$$DartValue_F32ImplCopyWithImpl(
-      _$DartValue_F32Impl _value, $Res Function(_$DartValue_F32Impl) _then)
+class __$$Value_F32ImplCopyWithImpl<$Res>
+    extends _$ValueCopyWithImpl<$Res, _$Value_F32Impl>
+    implements _$$Value_F32ImplCopyWith<$Res> {
+  __$$Value_F32ImplCopyWithImpl(
+      _$Value_F32Impl _value, $Res Function(_$Value_F32Impl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -3300,7 +3297,7 @@ class __$$DartValue_F32ImplCopyWithImpl<$Res>
   $Res call({
     Object? field0 = null,
   }) {
-    return _then(_$DartValue_F32Impl(
+    return _then(_$Value_F32Impl(
       null == field0
           ? _value.field0
           : field0 // ignore: cast_nullable_to_non_nullable
@@ -3311,22 +3308,22 @@ class __$$DartValue_F32ImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$DartValue_F32Impl extends DartValue_F32 {
-  const _$DartValue_F32Impl(this.field0) : super._();
+class _$Value_F32Impl extends Value_F32 {
+  const _$Value_F32Impl(this.field0) : super._();
 
   @override
   final double field0;
 
   @override
   String toString() {
-    return 'DartValue.f32(field0: $field0)';
+    return 'Value.f32(field0: $field0)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DartValue_F32Impl &&
+            other is _$Value_F32Impl &&
             (identical(other.field0, field0) || other.field0 == field0));
   }
 
@@ -3336,8 +3333,8 @@ class _$DartValue_F32Impl extends DartValue_F32 {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$DartValue_F32ImplCopyWith<_$DartValue_F32Impl> get copyWith =>
-      __$$DartValue_F32ImplCopyWithImpl<_$DartValue_F32Impl>(this, _$identity);
+  _$$Value_F32ImplCopyWith<_$Value_F32Impl> get copyWith =>
+      __$$Value_F32ImplCopyWithImpl<_$Value_F32Impl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -3367,7 +3364,7 @@ class _$DartValue_F32Impl extends DartValue_F32 {
     required TResult Function(Map<String, Value> field0) map,
     required TResult Function(List<Value> field0) list,
     required TResult Function(Point field0) point,
-    required TResult Function() nullData,
+    required TResult Function() null_,
   }) {
     return f32(field0);
   }
@@ -3400,7 +3397,7 @@ class _$DartValue_F32Impl extends DartValue_F32 {
     TResult? Function(Map<String, Value> field0)? map,
     TResult? Function(List<Value> field0)? list,
     TResult? Function(Point field0)? point,
-    TResult? Function()? nullData,
+    TResult? Function()? null_,
   }) {
     return f32?.call(field0);
   }
@@ -3433,7 +3430,7 @@ class _$DartValue_F32Impl extends DartValue_F32 {
     TResult Function(Map<String, Value> field0)? map,
     TResult Function(List<Value> field0)? list,
     TResult Function(Point field0)? point,
-    TResult Function()? nullData,
+    TResult Function()? null_,
     required TResult orElse(),
   }) {
     if (f32 != null) {
@@ -3445,32 +3442,32 @@ class _$DartValue_F32Impl extends DartValue_F32 {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DartValue_Bool value) bool,
-    required TResult Function(DartValue_I8 value) i8,
-    required TResult Function(DartValue_I16 value) i16,
-    required TResult Function(DartValue_I32 value) i32,
-    required TResult Function(DartValue_I64 value) i64,
-    required TResult Function(DartValue_I128 value) i128,
-    required TResult Function(DartValue_U8 value) u8,
-    required TResult Function(DartValue_U16 value) u16,
-    required TResult Function(DartValue_U32 value) u32,
-    required TResult Function(DartValue_U64 value) u64,
-    required TResult Function(DartValue_U128 value) u128,
-    required TResult Function(DartValue_F32 value) f32,
-    required TResult Function(DartValue_F64 value) f64,
-    required TResult Function(DartValue_Decimal value) decimal,
-    required TResult Function(DartValue_Str value) str,
-    required TResult Function(DartValue_Bytea value) bytea,
-    required TResult Function(DartValue_Inet value) inet,
-    required TResult Function(DartValue_Date value) date,
-    required TResult Function(DartValue_Timestamp value) timestamp,
-    required TResult Function(DartValue_Time value) time,
-    required TResult Function(DartValue_Interval value) interval,
-    required TResult Function(DartValue_Uuid value) uuid,
-    required TResult Function(DartValue_Map value) map,
-    required TResult Function(DartValue_List value) list,
-    required TResult Function(DartValue_Point value) point,
-    required TResult Function(DartValue_NullData value) nullData,
+    required TResult Function(Value_Bool value) bool,
+    required TResult Function(Value_I8 value) i8,
+    required TResult Function(Value_I16 value) i16,
+    required TResult Function(Value_I32 value) i32,
+    required TResult Function(Value_I64 value) i64,
+    required TResult Function(Value_I128 value) i128,
+    required TResult Function(Value_U8 value) u8,
+    required TResult Function(Value_U16 value) u16,
+    required TResult Function(Value_U32 value) u32,
+    required TResult Function(Value_U64 value) u64,
+    required TResult Function(Value_U128 value) u128,
+    required TResult Function(Value_F32 value) f32,
+    required TResult Function(Value_F64 value) f64,
+    required TResult Function(Value_Decimal value) decimal,
+    required TResult Function(Value_Str value) str,
+    required TResult Function(Value_Bytea value) bytea,
+    required TResult Function(Value_Inet value) inet,
+    required TResult Function(Value_Date value) date,
+    required TResult Function(Value_Timestamp value) timestamp,
+    required TResult Function(Value_Time value) time,
+    required TResult Function(Value_Interval value) interval,
+    required TResult Function(Value_Uuid value) uuid,
+    required TResult Function(Value_Map value) map,
+    required TResult Function(Value_List value) list,
+    required TResult Function(Value_Point value) point,
+    required TResult Function(Value_Null value) null_,
   }) {
     return f32(this);
   }
@@ -3478,32 +3475,32 @@ class _$DartValue_F32Impl extends DartValue_F32 {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DartValue_Bool value)? bool,
-    TResult? Function(DartValue_I8 value)? i8,
-    TResult? Function(DartValue_I16 value)? i16,
-    TResult? Function(DartValue_I32 value)? i32,
-    TResult? Function(DartValue_I64 value)? i64,
-    TResult? Function(DartValue_I128 value)? i128,
-    TResult? Function(DartValue_U8 value)? u8,
-    TResult? Function(DartValue_U16 value)? u16,
-    TResult? Function(DartValue_U32 value)? u32,
-    TResult? Function(DartValue_U64 value)? u64,
-    TResult? Function(DartValue_U128 value)? u128,
-    TResult? Function(DartValue_F32 value)? f32,
-    TResult? Function(DartValue_F64 value)? f64,
-    TResult? Function(DartValue_Decimal value)? decimal,
-    TResult? Function(DartValue_Str value)? str,
-    TResult? Function(DartValue_Bytea value)? bytea,
-    TResult? Function(DartValue_Inet value)? inet,
-    TResult? Function(DartValue_Date value)? date,
-    TResult? Function(DartValue_Timestamp value)? timestamp,
-    TResult? Function(DartValue_Time value)? time,
-    TResult? Function(DartValue_Interval value)? interval,
-    TResult? Function(DartValue_Uuid value)? uuid,
-    TResult? Function(DartValue_Map value)? map,
-    TResult? Function(DartValue_List value)? list,
-    TResult? Function(DartValue_Point value)? point,
-    TResult? Function(DartValue_NullData value)? nullData,
+    TResult? Function(Value_Bool value)? bool,
+    TResult? Function(Value_I8 value)? i8,
+    TResult? Function(Value_I16 value)? i16,
+    TResult? Function(Value_I32 value)? i32,
+    TResult? Function(Value_I64 value)? i64,
+    TResult? Function(Value_I128 value)? i128,
+    TResult? Function(Value_U8 value)? u8,
+    TResult? Function(Value_U16 value)? u16,
+    TResult? Function(Value_U32 value)? u32,
+    TResult? Function(Value_U64 value)? u64,
+    TResult? Function(Value_U128 value)? u128,
+    TResult? Function(Value_F32 value)? f32,
+    TResult? Function(Value_F64 value)? f64,
+    TResult? Function(Value_Decimal value)? decimal,
+    TResult? Function(Value_Str value)? str,
+    TResult? Function(Value_Bytea value)? bytea,
+    TResult? Function(Value_Inet value)? inet,
+    TResult? Function(Value_Date value)? date,
+    TResult? Function(Value_Timestamp value)? timestamp,
+    TResult? Function(Value_Time value)? time,
+    TResult? Function(Value_Interval value)? interval,
+    TResult? Function(Value_Uuid value)? uuid,
+    TResult? Function(Value_Map value)? map,
+    TResult? Function(Value_List value)? list,
+    TResult? Function(Value_Point value)? point,
+    TResult? Function(Value_Null value)? null_,
   }) {
     return f32?.call(this);
   }
@@ -3511,32 +3508,32 @@ class _$DartValue_F32Impl extends DartValue_F32 {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DartValue_Bool value)? bool,
-    TResult Function(DartValue_I8 value)? i8,
-    TResult Function(DartValue_I16 value)? i16,
-    TResult Function(DartValue_I32 value)? i32,
-    TResult Function(DartValue_I64 value)? i64,
-    TResult Function(DartValue_I128 value)? i128,
-    TResult Function(DartValue_U8 value)? u8,
-    TResult Function(DartValue_U16 value)? u16,
-    TResult Function(DartValue_U32 value)? u32,
-    TResult Function(DartValue_U64 value)? u64,
-    TResult Function(DartValue_U128 value)? u128,
-    TResult Function(DartValue_F32 value)? f32,
-    TResult Function(DartValue_F64 value)? f64,
-    TResult Function(DartValue_Decimal value)? decimal,
-    TResult Function(DartValue_Str value)? str,
-    TResult Function(DartValue_Bytea value)? bytea,
-    TResult Function(DartValue_Inet value)? inet,
-    TResult Function(DartValue_Date value)? date,
-    TResult Function(DartValue_Timestamp value)? timestamp,
-    TResult Function(DartValue_Time value)? time,
-    TResult Function(DartValue_Interval value)? interval,
-    TResult Function(DartValue_Uuid value)? uuid,
-    TResult Function(DartValue_Map value)? map,
-    TResult Function(DartValue_List value)? list,
-    TResult Function(DartValue_Point value)? point,
-    TResult Function(DartValue_NullData value)? nullData,
+    TResult Function(Value_Bool value)? bool,
+    TResult Function(Value_I8 value)? i8,
+    TResult Function(Value_I16 value)? i16,
+    TResult Function(Value_I32 value)? i32,
+    TResult Function(Value_I64 value)? i64,
+    TResult Function(Value_I128 value)? i128,
+    TResult Function(Value_U8 value)? u8,
+    TResult Function(Value_U16 value)? u16,
+    TResult Function(Value_U32 value)? u32,
+    TResult Function(Value_U64 value)? u64,
+    TResult Function(Value_U128 value)? u128,
+    TResult Function(Value_F32 value)? f32,
+    TResult Function(Value_F64 value)? f64,
+    TResult Function(Value_Decimal value)? decimal,
+    TResult Function(Value_Str value)? str,
+    TResult Function(Value_Bytea value)? bytea,
+    TResult Function(Value_Inet value)? inet,
+    TResult Function(Value_Date value)? date,
+    TResult Function(Value_Timestamp value)? timestamp,
+    TResult Function(Value_Time value)? time,
+    TResult Function(Value_Interval value)? interval,
+    TResult Function(Value_Uuid value)? uuid,
+    TResult Function(Value_Map value)? map,
+    TResult Function(Value_List value)? list,
+    TResult Function(Value_Point value)? point,
+    TResult Function(Value_Null value)? null_,
     required TResult orElse(),
   }) {
     if (f32 != null) {
@@ -3546,31 +3543,31 @@ class _$DartValue_F32Impl extends DartValue_F32 {
   }
 }
 
-abstract class DartValue_F32 extends DartValue {
-  const factory DartValue_F32(final double field0) = _$DartValue_F32Impl;
-  const DartValue_F32._() : super._();
+abstract class Value_F32 extends Value {
+  const factory Value_F32(final double field0) = _$Value_F32Impl;
+  const Value_F32._() : super._();
 
   double get field0;
   @JsonKey(ignore: true)
-  _$$DartValue_F32ImplCopyWith<_$DartValue_F32Impl> get copyWith =>
+  _$$Value_F32ImplCopyWith<_$Value_F32Impl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DartValue_F64ImplCopyWith<$Res> {
-  factory _$$DartValue_F64ImplCopyWith(
-          _$DartValue_F64Impl value, $Res Function(_$DartValue_F64Impl) then) =
-      __$$DartValue_F64ImplCopyWithImpl<$Res>;
+abstract class _$$Value_F64ImplCopyWith<$Res> {
+  factory _$$Value_F64ImplCopyWith(
+          _$Value_F64Impl value, $Res Function(_$Value_F64Impl) then) =
+      __$$Value_F64ImplCopyWithImpl<$Res>;
   @useResult
   $Res call({double field0});
 }
 
 /// @nodoc
-class __$$DartValue_F64ImplCopyWithImpl<$Res>
-    extends _$DartValueCopyWithImpl<$Res, _$DartValue_F64Impl>
-    implements _$$DartValue_F64ImplCopyWith<$Res> {
-  __$$DartValue_F64ImplCopyWithImpl(
-      _$DartValue_F64Impl _value, $Res Function(_$DartValue_F64Impl) _then)
+class __$$Value_F64ImplCopyWithImpl<$Res>
+    extends _$ValueCopyWithImpl<$Res, _$Value_F64Impl>
+    implements _$$Value_F64ImplCopyWith<$Res> {
+  __$$Value_F64ImplCopyWithImpl(
+      _$Value_F64Impl _value, $Res Function(_$Value_F64Impl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -3578,7 +3575,7 @@ class __$$DartValue_F64ImplCopyWithImpl<$Res>
   $Res call({
     Object? field0 = null,
   }) {
-    return _then(_$DartValue_F64Impl(
+    return _then(_$Value_F64Impl(
       null == field0
           ? _value.field0
           : field0 // ignore: cast_nullable_to_non_nullable
@@ -3589,22 +3586,22 @@ class __$$DartValue_F64ImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$DartValue_F64Impl extends DartValue_F64 {
-  const _$DartValue_F64Impl(this.field0) : super._();
+class _$Value_F64Impl extends Value_F64 {
+  const _$Value_F64Impl(this.field0) : super._();
 
   @override
   final double field0;
 
   @override
   String toString() {
-    return 'DartValue.f64(field0: $field0)';
+    return 'Value.f64(field0: $field0)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DartValue_F64Impl &&
+            other is _$Value_F64Impl &&
             (identical(other.field0, field0) || other.field0 == field0));
   }
 
@@ -3614,8 +3611,8 @@ class _$DartValue_F64Impl extends DartValue_F64 {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$DartValue_F64ImplCopyWith<_$DartValue_F64Impl> get copyWith =>
-      __$$DartValue_F64ImplCopyWithImpl<_$DartValue_F64Impl>(this, _$identity);
+  _$$Value_F64ImplCopyWith<_$Value_F64Impl> get copyWith =>
+      __$$Value_F64ImplCopyWithImpl<_$Value_F64Impl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -3645,7 +3642,7 @@ class _$DartValue_F64Impl extends DartValue_F64 {
     required TResult Function(Map<String, Value> field0) map,
     required TResult Function(List<Value> field0) list,
     required TResult Function(Point field0) point,
-    required TResult Function() nullData,
+    required TResult Function() null_,
   }) {
     return f64(field0);
   }
@@ -3678,7 +3675,7 @@ class _$DartValue_F64Impl extends DartValue_F64 {
     TResult? Function(Map<String, Value> field0)? map,
     TResult? Function(List<Value> field0)? list,
     TResult? Function(Point field0)? point,
-    TResult? Function()? nullData,
+    TResult? Function()? null_,
   }) {
     return f64?.call(field0);
   }
@@ -3711,7 +3708,7 @@ class _$DartValue_F64Impl extends DartValue_F64 {
     TResult Function(Map<String, Value> field0)? map,
     TResult Function(List<Value> field0)? list,
     TResult Function(Point field0)? point,
-    TResult Function()? nullData,
+    TResult Function()? null_,
     required TResult orElse(),
   }) {
     if (f64 != null) {
@@ -3723,32 +3720,32 @@ class _$DartValue_F64Impl extends DartValue_F64 {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DartValue_Bool value) bool,
-    required TResult Function(DartValue_I8 value) i8,
-    required TResult Function(DartValue_I16 value) i16,
-    required TResult Function(DartValue_I32 value) i32,
-    required TResult Function(DartValue_I64 value) i64,
-    required TResult Function(DartValue_I128 value) i128,
-    required TResult Function(DartValue_U8 value) u8,
-    required TResult Function(DartValue_U16 value) u16,
-    required TResult Function(DartValue_U32 value) u32,
-    required TResult Function(DartValue_U64 value) u64,
-    required TResult Function(DartValue_U128 value) u128,
-    required TResult Function(DartValue_F32 value) f32,
-    required TResult Function(DartValue_F64 value) f64,
-    required TResult Function(DartValue_Decimal value) decimal,
-    required TResult Function(DartValue_Str value) str,
-    required TResult Function(DartValue_Bytea value) bytea,
-    required TResult Function(DartValue_Inet value) inet,
-    required TResult Function(DartValue_Date value) date,
-    required TResult Function(DartValue_Timestamp value) timestamp,
-    required TResult Function(DartValue_Time value) time,
-    required TResult Function(DartValue_Interval value) interval,
-    required TResult Function(DartValue_Uuid value) uuid,
-    required TResult Function(DartValue_Map value) map,
-    required TResult Function(DartValue_List value) list,
-    required TResult Function(DartValue_Point value) point,
-    required TResult Function(DartValue_NullData value) nullData,
+    required TResult Function(Value_Bool value) bool,
+    required TResult Function(Value_I8 value) i8,
+    required TResult Function(Value_I16 value) i16,
+    required TResult Function(Value_I32 value) i32,
+    required TResult Function(Value_I64 value) i64,
+    required TResult Function(Value_I128 value) i128,
+    required TResult Function(Value_U8 value) u8,
+    required TResult Function(Value_U16 value) u16,
+    required TResult Function(Value_U32 value) u32,
+    required TResult Function(Value_U64 value) u64,
+    required TResult Function(Value_U128 value) u128,
+    required TResult Function(Value_F32 value) f32,
+    required TResult Function(Value_F64 value) f64,
+    required TResult Function(Value_Decimal value) decimal,
+    required TResult Function(Value_Str value) str,
+    required TResult Function(Value_Bytea value) bytea,
+    required TResult Function(Value_Inet value) inet,
+    required TResult Function(Value_Date value) date,
+    required TResult Function(Value_Timestamp value) timestamp,
+    required TResult Function(Value_Time value) time,
+    required TResult Function(Value_Interval value) interval,
+    required TResult Function(Value_Uuid value) uuid,
+    required TResult Function(Value_Map value) map,
+    required TResult Function(Value_List value) list,
+    required TResult Function(Value_Point value) point,
+    required TResult Function(Value_Null value) null_,
   }) {
     return f64(this);
   }
@@ -3756,32 +3753,32 @@ class _$DartValue_F64Impl extends DartValue_F64 {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DartValue_Bool value)? bool,
-    TResult? Function(DartValue_I8 value)? i8,
-    TResult? Function(DartValue_I16 value)? i16,
-    TResult? Function(DartValue_I32 value)? i32,
-    TResult? Function(DartValue_I64 value)? i64,
-    TResult? Function(DartValue_I128 value)? i128,
-    TResult? Function(DartValue_U8 value)? u8,
-    TResult? Function(DartValue_U16 value)? u16,
-    TResult? Function(DartValue_U32 value)? u32,
-    TResult? Function(DartValue_U64 value)? u64,
-    TResult? Function(DartValue_U128 value)? u128,
-    TResult? Function(DartValue_F32 value)? f32,
-    TResult? Function(DartValue_F64 value)? f64,
-    TResult? Function(DartValue_Decimal value)? decimal,
-    TResult? Function(DartValue_Str value)? str,
-    TResult? Function(DartValue_Bytea value)? bytea,
-    TResult? Function(DartValue_Inet value)? inet,
-    TResult? Function(DartValue_Date value)? date,
-    TResult? Function(DartValue_Timestamp value)? timestamp,
-    TResult? Function(DartValue_Time value)? time,
-    TResult? Function(DartValue_Interval value)? interval,
-    TResult? Function(DartValue_Uuid value)? uuid,
-    TResult? Function(DartValue_Map value)? map,
-    TResult? Function(DartValue_List value)? list,
-    TResult? Function(DartValue_Point value)? point,
-    TResult? Function(DartValue_NullData value)? nullData,
+    TResult? Function(Value_Bool value)? bool,
+    TResult? Function(Value_I8 value)? i8,
+    TResult? Function(Value_I16 value)? i16,
+    TResult? Function(Value_I32 value)? i32,
+    TResult? Function(Value_I64 value)? i64,
+    TResult? Function(Value_I128 value)? i128,
+    TResult? Function(Value_U8 value)? u8,
+    TResult? Function(Value_U16 value)? u16,
+    TResult? Function(Value_U32 value)? u32,
+    TResult? Function(Value_U64 value)? u64,
+    TResult? Function(Value_U128 value)? u128,
+    TResult? Function(Value_F32 value)? f32,
+    TResult? Function(Value_F64 value)? f64,
+    TResult? Function(Value_Decimal value)? decimal,
+    TResult? Function(Value_Str value)? str,
+    TResult? Function(Value_Bytea value)? bytea,
+    TResult? Function(Value_Inet value)? inet,
+    TResult? Function(Value_Date value)? date,
+    TResult? Function(Value_Timestamp value)? timestamp,
+    TResult? Function(Value_Time value)? time,
+    TResult? Function(Value_Interval value)? interval,
+    TResult? Function(Value_Uuid value)? uuid,
+    TResult? Function(Value_Map value)? map,
+    TResult? Function(Value_List value)? list,
+    TResult? Function(Value_Point value)? point,
+    TResult? Function(Value_Null value)? null_,
   }) {
     return f64?.call(this);
   }
@@ -3789,32 +3786,32 @@ class _$DartValue_F64Impl extends DartValue_F64 {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DartValue_Bool value)? bool,
-    TResult Function(DartValue_I8 value)? i8,
-    TResult Function(DartValue_I16 value)? i16,
-    TResult Function(DartValue_I32 value)? i32,
-    TResult Function(DartValue_I64 value)? i64,
-    TResult Function(DartValue_I128 value)? i128,
-    TResult Function(DartValue_U8 value)? u8,
-    TResult Function(DartValue_U16 value)? u16,
-    TResult Function(DartValue_U32 value)? u32,
-    TResult Function(DartValue_U64 value)? u64,
-    TResult Function(DartValue_U128 value)? u128,
-    TResult Function(DartValue_F32 value)? f32,
-    TResult Function(DartValue_F64 value)? f64,
-    TResult Function(DartValue_Decimal value)? decimal,
-    TResult Function(DartValue_Str value)? str,
-    TResult Function(DartValue_Bytea value)? bytea,
-    TResult Function(DartValue_Inet value)? inet,
-    TResult Function(DartValue_Date value)? date,
-    TResult Function(DartValue_Timestamp value)? timestamp,
-    TResult Function(DartValue_Time value)? time,
-    TResult Function(DartValue_Interval value)? interval,
-    TResult Function(DartValue_Uuid value)? uuid,
-    TResult Function(DartValue_Map value)? map,
-    TResult Function(DartValue_List value)? list,
-    TResult Function(DartValue_Point value)? point,
-    TResult Function(DartValue_NullData value)? nullData,
+    TResult Function(Value_Bool value)? bool,
+    TResult Function(Value_I8 value)? i8,
+    TResult Function(Value_I16 value)? i16,
+    TResult Function(Value_I32 value)? i32,
+    TResult Function(Value_I64 value)? i64,
+    TResult Function(Value_I128 value)? i128,
+    TResult Function(Value_U8 value)? u8,
+    TResult Function(Value_U16 value)? u16,
+    TResult Function(Value_U32 value)? u32,
+    TResult Function(Value_U64 value)? u64,
+    TResult Function(Value_U128 value)? u128,
+    TResult Function(Value_F32 value)? f32,
+    TResult Function(Value_F64 value)? f64,
+    TResult Function(Value_Decimal value)? decimal,
+    TResult Function(Value_Str value)? str,
+    TResult Function(Value_Bytea value)? bytea,
+    TResult Function(Value_Inet value)? inet,
+    TResult Function(Value_Date value)? date,
+    TResult Function(Value_Timestamp value)? timestamp,
+    TResult Function(Value_Time value)? time,
+    TResult Function(Value_Interval value)? interval,
+    TResult Function(Value_Uuid value)? uuid,
+    TResult Function(Value_Map value)? map,
+    TResult Function(Value_List value)? list,
+    TResult Function(Value_Point value)? point,
+    TResult Function(Value_Null value)? null_,
     required TResult orElse(),
   }) {
     if (f64 != null) {
@@ -3824,31 +3821,31 @@ class _$DartValue_F64Impl extends DartValue_F64 {
   }
 }
 
-abstract class DartValue_F64 extends DartValue {
-  const factory DartValue_F64(final double field0) = _$DartValue_F64Impl;
-  const DartValue_F64._() : super._();
+abstract class Value_F64 extends Value {
+  const factory Value_F64(final double field0) = _$Value_F64Impl;
+  const Value_F64._() : super._();
 
   double get field0;
   @JsonKey(ignore: true)
-  _$$DartValue_F64ImplCopyWith<_$DartValue_F64Impl> get copyWith =>
+  _$$Value_F64ImplCopyWith<_$Value_F64Impl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DartValue_DecimalImplCopyWith<$Res> {
-  factory _$$DartValue_DecimalImplCopyWith(_$DartValue_DecimalImpl value,
-          $Res Function(_$DartValue_DecimalImpl) then) =
-      __$$DartValue_DecimalImplCopyWithImpl<$Res>;
+abstract class _$$Value_DecimalImplCopyWith<$Res> {
+  factory _$$Value_DecimalImplCopyWith(
+          _$Value_DecimalImpl value, $Res Function(_$Value_DecimalImpl) then) =
+      __$$Value_DecimalImplCopyWithImpl<$Res>;
   @useResult
   $Res call({Decimal field0});
 }
 
 /// @nodoc
-class __$$DartValue_DecimalImplCopyWithImpl<$Res>
-    extends _$DartValueCopyWithImpl<$Res, _$DartValue_DecimalImpl>
-    implements _$$DartValue_DecimalImplCopyWith<$Res> {
-  __$$DartValue_DecimalImplCopyWithImpl(_$DartValue_DecimalImpl _value,
-      $Res Function(_$DartValue_DecimalImpl) _then)
+class __$$Value_DecimalImplCopyWithImpl<$Res>
+    extends _$ValueCopyWithImpl<$Res, _$Value_DecimalImpl>
+    implements _$$Value_DecimalImplCopyWith<$Res> {
+  __$$Value_DecimalImplCopyWithImpl(
+      _$Value_DecimalImpl _value, $Res Function(_$Value_DecimalImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -3856,7 +3853,7 @@ class __$$DartValue_DecimalImplCopyWithImpl<$Res>
   $Res call({
     Object? field0 = null,
   }) {
-    return _then(_$DartValue_DecimalImpl(
+    return _then(_$Value_DecimalImpl(
       null == field0
           ? _value.field0
           : field0 // ignore: cast_nullable_to_non_nullable
@@ -3867,22 +3864,22 @@ class __$$DartValue_DecimalImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$DartValue_DecimalImpl extends DartValue_Decimal {
-  const _$DartValue_DecimalImpl(this.field0) : super._();
+class _$Value_DecimalImpl extends Value_Decimal {
+  const _$Value_DecimalImpl(this.field0) : super._();
 
   @override
   final Decimal field0;
 
   @override
   String toString() {
-    return 'DartValue.decimal(field0: $field0)';
+    return 'Value.decimal(field0: $field0)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DartValue_DecimalImpl &&
+            other is _$Value_DecimalImpl &&
             (identical(other.field0, field0) || other.field0 == field0));
   }
 
@@ -3892,9 +3889,8 @@ class _$DartValue_DecimalImpl extends DartValue_Decimal {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$DartValue_DecimalImplCopyWith<_$DartValue_DecimalImpl> get copyWith =>
-      __$$DartValue_DecimalImplCopyWithImpl<_$DartValue_DecimalImpl>(
-          this, _$identity);
+  _$$Value_DecimalImplCopyWith<_$Value_DecimalImpl> get copyWith =>
+      __$$Value_DecimalImplCopyWithImpl<_$Value_DecimalImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -3924,7 +3920,7 @@ class _$DartValue_DecimalImpl extends DartValue_Decimal {
     required TResult Function(Map<String, Value> field0) map,
     required TResult Function(List<Value> field0) list,
     required TResult Function(Point field0) point,
-    required TResult Function() nullData,
+    required TResult Function() null_,
   }) {
     return decimal(field0);
   }
@@ -3957,7 +3953,7 @@ class _$DartValue_DecimalImpl extends DartValue_Decimal {
     TResult? Function(Map<String, Value> field0)? map,
     TResult? Function(List<Value> field0)? list,
     TResult? Function(Point field0)? point,
-    TResult? Function()? nullData,
+    TResult? Function()? null_,
   }) {
     return decimal?.call(field0);
   }
@@ -3990,7 +3986,7 @@ class _$DartValue_DecimalImpl extends DartValue_Decimal {
     TResult Function(Map<String, Value> field0)? map,
     TResult Function(List<Value> field0)? list,
     TResult Function(Point field0)? point,
-    TResult Function()? nullData,
+    TResult Function()? null_,
     required TResult orElse(),
   }) {
     if (decimal != null) {
@@ -4002,32 +3998,32 @@ class _$DartValue_DecimalImpl extends DartValue_Decimal {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DartValue_Bool value) bool,
-    required TResult Function(DartValue_I8 value) i8,
-    required TResult Function(DartValue_I16 value) i16,
-    required TResult Function(DartValue_I32 value) i32,
-    required TResult Function(DartValue_I64 value) i64,
-    required TResult Function(DartValue_I128 value) i128,
-    required TResult Function(DartValue_U8 value) u8,
-    required TResult Function(DartValue_U16 value) u16,
-    required TResult Function(DartValue_U32 value) u32,
-    required TResult Function(DartValue_U64 value) u64,
-    required TResult Function(DartValue_U128 value) u128,
-    required TResult Function(DartValue_F32 value) f32,
-    required TResult Function(DartValue_F64 value) f64,
-    required TResult Function(DartValue_Decimal value) decimal,
-    required TResult Function(DartValue_Str value) str,
-    required TResult Function(DartValue_Bytea value) bytea,
-    required TResult Function(DartValue_Inet value) inet,
-    required TResult Function(DartValue_Date value) date,
-    required TResult Function(DartValue_Timestamp value) timestamp,
-    required TResult Function(DartValue_Time value) time,
-    required TResult Function(DartValue_Interval value) interval,
-    required TResult Function(DartValue_Uuid value) uuid,
-    required TResult Function(DartValue_Map value) map,
-    required TResult Function(DartValue_List value) list,
-    required TResult Function(DartValue_Point value) point,
-    required TResult Function(DartValue_NullData value) nullData,
+    required TResult Function(Value_Bool value) bool,
+    required TResult Function(Value_I8 value) i8,
+    required TResult Function(Value_I16 value) i16,
+    required TResult Function(Value_I32 value) i32,
+    required TResult Function(Value_I64 value) i64,
+    required TResult Function(Value_I128 value) i128,
+    required TResult Function(Value_U8 value) u8,
+    required TResult Function(Value_U16 value) u16,
+    required TResult Function(Value_U32 value) u32,
+    required TResult Function(Value_U64 value) u64,
+    required TResult Function(Value_U128 value) u128,
+    required TResult Function(Value_F32 value) f32,
+    required TResult Function(Value_F64 value) f64,
+    required TResult Function(Value_Decimal value) decimal,
+    required TResult Function(Value_Str value) str,
+    required TResult Function(Value_Bytea value) bytea,
+    required TResult Function(Value_Inet value) inet,
+    required TResult Function(Value_Date value) date,
+    required TResult Function(Value_Timestamp value) timestamp,
+    required TResult Function(Value_Time value) time,
+    required TResult Function(Value_Interval value) interval,
+    required TResult Function(Value_Uuid value) uuid,
+    required TResult Function(Value_Map value) map,
+    required TResult Function(Value_List value) list,
+    required TResult Function(Value_Point value) point,
+    required TResult Function(Value_Null value) null_,
   }) {
     return decimal(this);
   }
@@ -4035,32 +4031,32 @@ class _$DartValue_DecimalImpl extends DartValue_Decimal {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DartValue_Bool value)? bool,
-    TResult? Function(DartValue_I8 value)? i8,
-    TResult? Function(DartValue_I16 value)? i16,
-    TResult? Function(DartValue_I32 value)? i32,
-    TResult? Function(DartValue_I64 value)? i64,
-    TResult? Function(DartValue_I128 value)? i128,
-    TResult? Function(DartValue_U8 value)? u8,
-    TResult? Function(DartValue_U16 value)? u16,
-    TResult? Function(DartValue_U32 value)? u32,
-    TResult? Function(DartValue_U64 value)? u64,
-    TResult? Function(DartValue_U128 value)? u128,
-    TResult? Function(DartValue_F32 value)? f32,
-    TResult? Function(DartValue_F64 value)? f64,
-    TResult? Function(DartValue_Decimal value)? decimal,
-    TResult? Function(DartValue_Str value)? str,
-    TResult? Function(DartValue_Bytea value)? bytea,
-    TResult? Function(DartValue_Inet value)? inet,
-    TResult? Function(DartValue_Date value)? date,
-    TResult? Function(DartValue_Timestamp value)? timestamp,
-    TResult? Function(DartValue_Time value)? time,
-    TResult? Function(DartValue_Interval value)? interval,
-    TResult? Function(DartValue_Uuid value)? uuid,
-    TResult? Function(DartValue_Map value)? map,
-    TResult? Function(DartValue_List value)? list,
-    TResult? Function(DartValue_Point value)? point,
-    TResult? Function(DartValue_NullData value)? nullData,
+    TResult? Function(Value_Bool value)? bool,
+    TResult? Function(Value_I8 value)? i8,
+    TResult? Function(Value_I16 value)? i16,
+    TResult? Function(Value_I32 value)? i32,
+    TResult? Function(Value_I64 value)? i64,
+    TResult? Function(Value_I128 value)? i128,
+    TResult? Function(Value_U8 value)? u8,
+    TResult? Function(Value_U16 value)? u16,
+    TResult? Function(Value_U32 value)? u32,
+    TResult? Function(Value_U64 value)? u64,
+    TResult? Function(Value_U128 value)? u128,
+    TResult? Function(Value_F32 value)? f32,
+    TResult? Function(Value_F64 value)? f64,
+    TResult? Function(Value_Decimal value)? decimal,
+    TResult? Function(Value_Str value)? str,
+    TResult? Function(Value_Bytea value)? bytea,
+    TResult? Function(Value_Inet value)? inet,
+    TResult? Function(Value_Date value)? date,
+    TResult? Function(Value_Timestamp value)? timestamp,
+    TResult? Function(Value_Time value)? time,
+    TResult? Function(Value_Interval value)? interval,
+    TResult? Function(Value_Uuid value)? uuid,
+    TResult? Function(Value_Map value)? map,
+    TResult? Function(Value_List value)? list,
+    TResult? Function(Value_Point value)? point,
+    TResult? Function(Value_Null value)? null_,
   }) {
     return decimal?.call(this);
   }
@@ -4068,32 +4064,32 @@ class _$DartValue_DecimalImpl extends DartValue_Decimal {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DartValue_Bool value)? bool,
-    TResult Function(DartValue_I8 value)? i8,
-    TResult Function(DartValue_I16 value)? i16,
-    TResult Function(DartValue_I32 value)? i32,
-    TResult Function(DartValue_I64 value)? i64,
-    TResult Function(DartValue_I128 value)? i128,
-    TResult Function(DartValue_U8 value)? u8,
-    TResult Function(DartValue_U16 value)? u16,
-    TResult Function(DartValue_U32 value)? u32,
-    TResult Function(DartValue_U64 value)? u64,
-    TResult Function(DartValue_U128 value)? u128,
-    TResult Function(DartValue_F32 value)? f32,
-    TResult Function(DartValue_F64 value)? f64,
-    TResult Function(DartValue_Decimal value)? decimal,
-    TResult Function(DartValue_Str value)? str,
-    TResult Function(DartValue_Bytea value)? bytea,
-    TResult Function(DartValue_Inet value)? inet,
-    TResult Function(DartValue_Date value)? date,
-    TResult Function(DartValue_Timestamp value)? timestamp,
-    TResult Function(DartValue_Time value)? time,
-    TResult Function(DartValue_Interval value)? interval,
-    TResult Function(DartValue_Uuid value)? uuid,
-    TResult Function(DartValue_Map value)? map,
-    TResult Function(DartValue_List value)? list,
-    TResult Function(DartValue_Point value)? point,
-    TResult Function(DartValue_NullData value)? nullData,
+    TResult Function(Value_Bool value)? bool,
+    TResult Function(Value_I8 value)? i8,
+    TResult Function(Value_I16 value)? i16,
+    TResult Function(Value_I32 value)? i32,
+    TResult Function(Value_I64 value)? i64,
+    TResult Function(Value_I128 value)? i128,
+    TResult Function(Value_U8 value)? u8,
+    TResult Function(Value_U16 value)? u16,
+    TResult Function(Value_U32 value)? u32,
+    TResult Function(Value_U64 value)? u64,
+    TResult Function(Value_U128 value)? u128,
+    TResult Function(Value_F32 value)? f32,
+    TResult Function(Value_F64 value)? f64,
+    TResult Function(Value_Decimal value)? decimal,
+    TResult Function(Value_Str value)? str,
+    TResult Function(Value_Bytea value)? bytea,
+    TResult Function(Value_Inet value)? inet,
+    TResult Function(Value_Date value)? date,
+    TResult Function(Value_Timestamp value)? timestamp,
+    TResult Function(Value_Time value)? time,
+    TResult Function(Value_Interval value)? interval,
+    TResult Function(Value_Uuid value)? uuid,
+    TResult Function(Value_Map value)? map,
+    TResult Function(Value_List value)? list,
+    TResult Function(Value_Point value)? point,
+    TResult Function(Value_Null value)? null_,
     required TResult orElse(),
   }) {
     if (decimal != null) {
@@ -4103,32 +4099,31 @@ class _$DartValue_DecimalImpl extends DartValue_Decimal {
   }
 }
 
-abstract class DartValue_Decimal extends DartValue {
-  const factory DartValue_Decimal(final Decimal field0) =
-      _$DartValue_DecimalImpl;
-  const DartValue_Decimal._() : super._();
+abstract class Value_Decimal extends Value {
+  const factory Value_Decimal(final Decimal field0) = _$Value_DecimalImpl;
+  const Value_Decimal._() : super._();
 
   Decimal get field0;
   @JsonKey(ignore: true)
-  _$$DartValue_DecimalImplCopyWith<_$DartValue_DecimalImpl> get copyWith =>
+  _$$Value_DecimalImplCopyWith<_$Value_DecimalImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DartValue_StrImplCopyWith<$Res> {
-  factory _$$DartValue_StrImplCopyWith(
-          _$DartValue_StrImpl value, $Res Function(_$DartValue_StrImpl) then) =
-      __$$DartValue_StrImplCopyWithImpl<$Res>;
+abstract class _$$Value_StrImplCopyWith<$Res> {
+  factory _$$Value_StrImplCopyWith(
+          _$Value_StrImpl value, $Res Function(_$Value_StrImpl) then) =
+      __$$Value_StrImplCopyWithImpl<$Res>;
   @useResult
   $Res call({String field0});
 }
 
 /// @nodoc
-class __$$DartValue_StrImplCopyWithImpl<$Res>
-    extends _$DartValueCopyWithImpl<$Res, _$DartValue_StrImpl>
-    implements _$$DartValue_StrImplCopyWith<$Res> {
-  __$$DartValue_StrImplCopyWithImpl(
-      _$DartValue_StrImpl _value, $Res Function(_$DartValue_StrImpl) _then)
+class __$$Value_StrImplCopyWithImpl<$Res>
+    extends _$ValueCopyWithImpl<$Res, _$Value_StrImpl>
+    implements _$$Value_StrImplCopyWith<$Res> {
+  __$$Value_StrImplCopyWithImpl(
+      _$Value_StrImpl _value, $Res Function(_$Value_StrImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -4136,7 +4131,7 @@ class __$$DartValue_StrImplCopyWithImpl<$Res>
   $Res call({
     Object? field0 = null,
   }) {
-    return _then(_$DartValue_StrImpl(
+    return _then(_$Value_StrImpl(
       null == field0
           ? _value.field0
           : field0 // ignore: cast_nullable_to_non_nullable
@@ -4147,22 +4142,22 @@ class __$$DartValue_StrImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$DartValue_StrImpl extends DartValue_Str {
-  const _$DartValue_StrImpl(this.field0) : super._();
+class _$Value_StrImpl extends Value_Str {
+  const _$Value_StrImpl(this.field0) : super._();
 
   @override
   final String field0;
 
   @override
   String toString() {
-    return 'DartValue.str(field0: $field0)';
+    return 'Value.str(field0: $field0)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DartValue_StrImpl &&
+            other is _$Value_StrImpl &&
             (identical(other.field0, field0) || other.field0 == field0));
   }
 
@@ -4172,8 +4167,8 @@ class _$DartValue_StrImpl extends DartValue_Str {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$DartValue_StrImplCopyWith<_$DartValue_StrImpl> get copyWith =>
-      __$$DartValue_StrImplCopyWithImpl<_$DartValue_StrImpl>(this, _$identity);
+  _$$Value_StrImplCopyWith<_$Value_StrImpl> get copyWith =>
+      __$$Value_StrImplCopyWithImpl<_$Value_StrImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -4203,7 +4198,7 @@ class _$DartValue_StrImpl extends DartValue_Str {
     required TResult Function(Map<String, Value> field0) map,
     required TResult Function(List<Value> field0) list,
     required TResult Function(Point field0) point,
-    required TResult Function() nullData,
+    required TResult Function() null_,
   }) {
     return str(field0);
   }
@@ -4236,7 +4231,7 @@ class _$DartValue_StrImpl extends DartValue_Str {
     TResult? Function(Map<String, Value> field0)? map,
     TResult? Function(List<Value> field0)? list,
     TResult? Function(Point field0)? point,
-    TResult? Function()? nullData,
+    TResult? Function()? null_,
   }) {
     return str?.call(field0);
   }
@@ -4269,7 +4264,7 @@ class _$DartValue_StrImpl extends DartValue_Str {
     TResult Function(Map<String, Value> field0)? map,
     TResult Function(List<Value> field0)? list,
     TResult Function(Point field0)? point,
-    TResult Function()? nullData,
+    TResult Function()? null_,
     required TResult orElse(),
   }) {
     if (str != null) {
@@ -4281,32 +4276,32 @@ class _$DartValue_StrImpl extends DartValue_Str {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DartValue_Bool value) bool,
-    required TResult Function(DartValue_I8 value) i8,
-    required TResult Function(DartValue_I16 value) i16,
-    required TResult Function(DartValue_I32 value) i32,
-    required TResult Function(DartValue_I64 value) i64,
-    required TResult Function(DartValue_I128 value) i128,
-    required TResult Function(DartValue_U8 value) u8,
-    required TResult Function(DartValue_U16 value) u16,
-    required TResult Function(DartValue_U32 value) u32,
-    required TResult Function(DartValue_U64 value) u64,
-    required TResult Function(DartValue_U128 value) u128,
-    required TResult Function(DartValue_F32 value) f32,
-    required TResult Function(DartValue_F64 value) f64,
-    required TResult Function(DartValue_Decimal value) decimal,
-    required TResult Function(DartValue_Str value) str,
-    required TResult Function(DartValue_Bytea value) bytea,
-    required TResult Function(DartValue_Inet value) inet,
-    required TResult Function(DartValue_Date value) date,
-    required TResult Function(DartValue_Timestamp value) timestamp,
-    required TResult Function(DartValue_Time value) time,
-    required TResult Function(DartValue_Interval value) interval,
-    required TResult Function(DartValue_Uuid value) uuid,
-    required TResult Function(DartValue_Map value) map,
-    required TResult Function(DartValue_List value) list,
-    required TResult Function(DartValue_Point value) point,
-    required TResult Function(DartValue_NullData value) nullData,
+    required TResult Function(Value_Bool value) bool,
+    required TResult Function(Value_I8 value) i8,
+    required TResult Function(Value_I16 value) i16,
+    required TResult Function(Value_I32 value) i32,
+    required TResult Function(Value_I64 value) i64,
+    required TResult Function(Value_I128 value) i128,
+    required TResult Function(Value_U8 value) u8,
+    required TResult Function(Value_U16 value) u16,
+    required TResult Function(Value_U32 value) u32,
+    required TResult Function(Value_U64 value) u64,
+    required TResult Function(Value_U128 value) u128,
+    required TResult Function(Value_F32 value) f32,
+    required TResult Function(Value_F64 value) f64,
+    required TResult Function(Value_Decimal value) decimal,
+    required TResult Function(Value_Str value) str,
+    required TResult Function(Value_Bytea value) bytea,
+    required TResult Function(Value_Inet value) inet,
+    required TResult Function(Value_Date value) date,
+    required TResult Function(Value_Timestamp value) timestamp,
+    required TResult Function(Value_Time value) time,
+    required TResult Function(Value_Interval value) interval,
+    required TResult Function(Value_Uuid value) uuid,
+    required TResult Function(Value_Map value) map,
+    required TResult Function(Value_List value) list,
+    required TResult Function(Value_Point value) point,
+    required TResult Function(Value_Null value) null_,
   }) {
     return str(this);
   }
@@ -4314,32 +4309,32 @@ class _$DartValue_StrImpl extends DartValue_Str {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DartValue_Bool value)? bool,
-    TResult? Function(DartValue_I8 value)? i8,
-    TResult? Function(DartValue_I16 value)? i16,
-    TResult? Function(DartValue_I32 value)? i32,
-    TResult? Function(DartValue_I64 value)? i64,
-    TResult? Function(DartValue_I128 value)? i128,
-    TResult? Function(DartValue_U8 value)? u8,
-    TResult? Function(DartValue_U16 value)? u16,
-    TResult? Function(DartValue_U32 value)? u32,
-    TResult? Function(DartValue_U64 value)? u64,
-    TResult? Function(DartValue_U128 value)? u128,
-    TResult? Function(DartValue_F32 value)? f32,
-    TResult? Function(DartValue_F64 value)? f64,
-    TResult? Function(DartValue_Decimal value)? decimal,
-    TResult? Function(DartValue_Str value)? str,
-    TResult? Function(DartValue_Bytea value)? bytea,
-    TResult? Function(DartValue_Inet value)? inet,
-    TResult? Function(DartValue_Date value)? date,
-    TResult? Function(DartValue_Timestamp value)? timestamp,
-    TResult? Function(DartValue_Time value)? time,
-    TResult? Function(DartValue_Interval value)? interval,
-    TResult? Function(DartValue_Uuid value)? uuid,
-    TResult? Function(DartValue_Map value)? map,
-    TResult? Function(DartValue_List value)? list,
-    TResult? Function(DartValue_Point value)? point,
-    TResult? Function(DartValue_NullData value)? nullData,
+    TResult? Function(Value_Bool value)? bool,
+    TResult? Function(Value_I8 value)? i8,
+    TResult? Function(Value_I16 value)? i16,
+    TResult? Function(Value_I32 value)? i32,
+    TResult? Function(Value_I64 value)? i64,
+    TResult? Function(Value_I128 value)? i128,
+    TResult? Function(Value_U8 value)? u8,
+    TResult? Function(Value_U16 value)? u16,
+    TResult? Function(Value_U32 value)? u32,
+    TResult? Function(Value_U64 value)? u64,
+    TResult? Function(Value_U128 value)? u128,
+    TResult? Function(Value_F32 value)? f32,
+    TResult? Function(Value_F64 value)? f64,
+    TResult? Function(Value_Decimal value)? decimal,
+    TResult? Function(Value_Str value)? str,
+    TResult? Function(Value_Bytea value)? bytea,
+    TResult? Function(Value_Inet value)? inet,
+    TResult? Function(Value_Date value)? date,
+    TResult? Function(Value_Timestamp value)? timestamp,
+    TResult? Function(Value_Time value)? time,
+    TResult? Function(Value_Interval value)? interval,
+    TResult? Function(Value_Uuid value)? uuid,
+    TResult? Function(Value_Map value)? map,
+    TResult? Function(Value_List value)? list,
+    TResult? Function(Value_Point value)? point,
+    TResult? Function(Value_Null value)? null_,
   }) {
     return str?.call(this);
   }
@@ -4347,32 +4342,32 @@ class _$DartValue_StrImpl extends DartValue_Str {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DartValue_Bool value)? bool,
-    TResult Function(DartValue_I8 value)? i8,
-    TResult Function(DartValue_I16 value)? i16,
-    TResult Function(DartValue_I32 value)? i32,
-    TResult Function(DartValue_I64 value)? i64,
-    TResult Function(DartValue_I128 value)? i128,
-    TResult Function(DartValue_U8 value)? u8,
-    TResult Function(DartValue_U16 value)? u16,
-    TResult Function(DartValue_U32 value)? u32,
-    TResult Function(DartValue_U64 value)? u64,
-    TResult Function(DartValue_U128 value)? u128,
-    TResult Function(DartValue_F32 value)? f32,
-    TResult Function(DartValue_F64 value)? f64,
-    TResult Function(DartValue_Decimal value)? decimal,
-    TResult Function(DartValue_Str value)? str,
-    TResult Function(DartValue_Bytea value)? bytea,
-    TResult Function(DartValue_Inet value)? inet,
-    TResult Function(DartValue_Date value)? date,
-    TResult Function(DartValue_Timestamp value)? timestamp,
-    TResult Function(DartValue_Time value)? time,
-    TResult Function(DartValue_Interval value)? interval,
-    TResult Function(DartValue_Uuid value)? uuid,
-    TResult Function(DartValue_Map value)? map,
-    TResult Function(DartValue_List value)? list,
-    TResult Function(DartValue_Point value)? point,
-    TResult Function(DartValue_NullData value)? nullData,
+    TResult Function(Value_Bool value)? bool,
+    TResult Function(Value_I8 value)? i8,
+    TResult Function(Value_I16 value)? i16,
+    TResult Function(Value_I32 value)? i32,
+    TResult Function(Value_I64 value)? i64,
+    TResult Function(Value_I128 value)? i128,
+    TResult Function(Value_U8 value)? u8,
+    TResult Function(Value_U16 value)? u16,
+    TResult Function(Value_U32 value)? u32,
+    TResult Function(Value_U64 value)? u64,
+    TResult Function(Value_U128 value)? u128,
+    TResult Function(Value_F32 value)? f32,
+    TResult Function(Value_F64 value)? f64,
+    TResult Function(Value_Decimal value)? decimal,
+    TResult Function(Value_Str value)? str,
+    TResult Function(Value_Bytea value)? bytea,
+    TResult Function(Value_Inet value)? inet,
+    TResult Function(Value_Date value)? date,
+    TResult Function(Value_Timestamp value)? timestamp,
+    TResult Function(Value_Time value)? time,
+    TResult Function(Value_Interval value)? interval,
+    TResult Function(Value_Uuid value)? uuid,
+    TResult Function(Value_Map value)? map,
+    TResult Function(Value_List value)? list,
+    TResult Function(Value_Point value)? point,
+    TResult Function(Value_Null value)? null_,
     required TResult orElse(),
   }) {
     if (str != null) {
@@ -4382,31 +4377,31 @@ class _$DartValue_StrImpl extends DartValue_Str {
   }
 }
 
-abstract class DartValue_Str extends DartValue {
-  const factory DartValue_Str(final String field0) = _$DartValue_StrImpl;
-  const DartValue_Str._() : super._();
+abstract class Value_Str extends Value {
+  const factory Value_Str(final String field0) = _$Value_StrImpl;
+  const Value_Str._() : super._();
 
   String get field0;
   @JsonKey(ignore: true)
-  _$$DartValue_StrImplCopyWith<_$DartValue_StrImpl> get copyWith =>
+  _$$Value_StrImplCopyWith<_$Value_StrImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DartValue_ByteaImplCopyWith<$Res> {
-  factory _$$DartValue_ByteaImplCopyWith(_$DartValue_ByteaImpl value,
-          $Res Function(_$DartValue_ByteaImpl) then) =
-      __$$DartValue_ByteaImplCopyWithImpl<$Res>;
+abstract class _$$Value_ByteaImplCopyWith<$Res> {
+  factory _$$Value_ByteaImplCopyWith(
+          _$Value_ByteaImpl value, $Res Function(_$Value_ByteaImpl) then) =
+      __$$Value_ByteaImplCopyWithImpl<$Res>;
   @useResult
   $Res call({Uint8List field0});
 }
 
 /// @nodoc
-class __$$DartValue_ByteaImplCopyWithImpl<$Res>
-    extends _$DartValueCopyWithImpl<$Res, _$DartValue_ByteaImpl>
-    implements _$$DartValue_ByteaImplCopyWith<$Res> {
-  __$$DartValue_ByteaImplCopyWithImpl(
-      _$DartValue_ByteaImpl _value, $Res Function(_$DartValue_ByteaImpl) _then)
+class __$$Value_ByteaImplCopyWithImpl<$Res>
+    extends _$ValueCopyWithImpl<$Res, _$Value_ByteaImpl>
+    implements _$$Value_ByteaImplCopyWith<$Res> {
+  __$$Value_ByteaImplCopyWithImpl(
+      _$Value_ByteaImpl _value, $Res Function(_$Value_ByteaImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -4414,7 +4409,7 @@ class __$$DartValue_ByteaImplCopyWithImpl<$Res>
   $Res call({
     Object? field0 = null,
   }) {
-    return _then(_$DartValue_ByteaImpl(
+    return _then(_$Value_ByteaImpl(
       null == field0
           ? _value.field0
           : field0 // ignore: cast_nullable_to_non_nullable
@@ -4425,22 +4420,22 @@ class __$$DartValue_ByteaImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$DartValue_ByteaImpl extends DartValue_Bytea {
-  const _$DartValue_ByteaImpl(this.field0) : super._();
+class _$Value_ByteaImpl extends Value_Bytea {
+  const _$Value_ByteaImpl(this.field0) : super._();
 
   @override
   final Uint8List field0;
 
   @override
   String toString() {
-    return 'DartValue.bytea(field0: $field0)';
+    return 'Value.bytea(field0: $field0)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DartValue_ByteaImpl &&
+            other is _$Value_ByteaImpl &&
             const DeepCollectionEquality().equals(other.field0, field0));
   }
 
@@ -4451,9 +4446,8 @@ class _$DartValue_ByteaImpl extends DartValue_Bytea {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$DartValue_ByteaImplCopyWith<_$DartValue_ByteaImpl> get copyWith =>
-      __$$DartValue_ByteaImplCopyWithImpl<_$DartValue_ByteaImpl>(
-          this, _$identity);
+  _$$Value_ByteaImplCopyWith<_$Value_ByteaImpl> get copyWith =>
+      __$$Value_ByteaImplCopyWithImpl<_$Value_ByteaImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -4483,7 +4477,7 @@ class _$DartValue_ByteaImpl extends DartValue_Bytea {
     required TResult Function(Map<String, Value> field0) map,
     required TResult Function(List<Value> field0) list,
     required TResult Function(Point field0) point,
-    required TResult Function() nullData,
+    required TResult Function() null_,
   }) {
     return bytea(field0);
   }
@@ -4516,7 +4510,7 @@ class _$DartValue_ByteaImpl extends DartValue_Bytea {
     TResult? Function(Map<String, Value> field0)? map,
     TResult? Function(List<Value> field0)? list,
     TResult? Function(Point field0)? point,
-    TResult? Function()? nullData,
+    TResult? Function()? null_,
   }) {
     return bytea?.call(field0);
   }
@@ -4549,7 +4543,7 @@ class _$DartValue_ByteaImpl extends DartValue_Bytea {
     TResult Function(Map<String, Value> field0)? map,
     TResult Function(List<Value> field0)? list,
     TResult Function(Point field0)? point,
-    TResult Function()? nullData,
+    TResult Function()? null_,
     required TResult orElse(),
   }) {
     if (bytea != null) {
@@ -4561,32 +4555,32 @@ class _$DartValue_ByteaImpl extends DartValue_Bytea {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DartValue_Bool value) bool,
-    required TResult Function(DartValue_I8 value) i8,
-    required TResult Function(DartValue_I16 value) i16,
-    required TResult Function(DartValue_I32 value) i32,
-    required TResult Function(DartValue_I64 value) i64,
-    required TResult Function(DartValue_I128 value) i128,
-    required TResult Function(DartValue_U8 value) u8,
-    required TResult Function(DartValue_U16 value) u16,
-    required TResult Function(DartValue_U32 value) u32,
-    required TResult Function(DartValue_U64 value) u64,
-    required TResult Function(DartValue_U128 value) u128,
-    required TResult Function(DartValue_F32 value) f32,
-    required TResult Function(DartValue_F64 value) f64,
-    required TResult Function(DartValue_Decimal value) decimal,
-    required TResult Function(DartValue_Str value) str,
-    required TResult Function(DartValue_Bytea value) bytea,
-    required TResult Function(DartValue_Inet value) inet,
-    required TResult Function(DartValue_Date value) date,
-    required TResult Function(DartValue_Timestamp value) timestamp,
-    required TResult Function(DartValue_Time value) time,
-    required TResult Function(DartValue_Interval value) interval,
-    required TResult Function(DartValue_Uuid value) uuid,
-    required TResult Function(DartValue_Map value) map,
-    required TResult Function(DartValue_List value) list,
-    required TResult Function(DartValue_Point value) point,
-    required TResult Function(DartValue_NullData value) nullData,
+    required TResult Function(Value_Bool value) bool,
+    required TResult Function(Value_I8 value) i8,
+    required TResult Function(Value_I16 value) i16,
+    required TResult Function(Value_I32 value) i32,
+    required TResult Function(Value_I64 value) i64,
+    required TResult Function(Value_I128 value) i128,
+    required TResult Function(Value_U8 value) u8,
+    required TResult Function(Value_U16 value) u16,
+    required TResult Function(Value_U32 value) u32,
+    required TResult Function(Value_U64 value) u64,
+    required TResult Function(Value_U128 value) u128,
+    required TResult Function(Value_F32 value) f32,
+    required TResult Function(Value_F64 value) f64,
+    required TResult Function(Value_Decimal value) decimal,
+    required TResult Function(Value_Str value) str,
+    required TResult Function(Value_Bytea value) bytea,
+    required TResult Function(Value_Inet value) inet,
+    required TResult Function(Value_Date value) date,
+    required TResult Function(Value_Timestamp value) timestamp,
+    required TResult Function(Value_Time value) time,
+    required TResult Function(Value_Interval value) interval,
+    required TResult Function(Value_Uuid value) uuid,
+    required TResult Function(Value_Map value) map,
+    required TResult Function(Value_List value) list,
+    required TResult Function(Value_Point value) point,
+    required TResult Function(Value_Null value) null_,
   }) {
     return bytea(this);
   }
@@ -4594,32 +4588,32 @@ class _$DartValue_ByteaImpl extends DartValue_Bytea {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DartValue_Bool value)? bool,
-    TResult? Function(DartValue_I8 value)? i8,
-    TResult? Function(DartValue_I16 value)? i16,
-    TResult? Function(DartValue_I32 value)? i32,
-    TResult? Function(DartValue_I64 value)? i64,
-    TResult? Function(DartValue_I128 value)? i128,
-    TResult? Function(DartValue_U8 value)? u8,
-    TResult? Function(DartValue_U16 value)? u16,
-    TResult? Function(DartValue_U32 value)? u32,
-    TResult? Function(DartValue_U64 value)? u64,
-    TResult? Function(DartValue_U128 value)? u128,
-    TResult? Function(DartValue_F32 value)? f32,
-    TResult? Function(DartValue_F64 value)? f64,
-    TResult? Function(DartValue_Decimal value)? decimal,
-    TResult? Function(DartValue_Str value)? str,
-    TResult? Function(DartValue_Bytea value)? bytea,
-    TResult? Function(DartValue_Inet value)? inet,
-    TResult? Function(DartValue_Date value)? date,
-    TResult? Function(DartValue_Timestamp value)? timestamp,
-    TResult? Function(DartValue_Time value)? time,
-    TResult? Function(DartValue_Interval value)? interval,
-    TResult? Function(DartValue_Uuid value)? uuid,
-    TResult? Function(DartValue_Map value)? map,
-    TResult? Function(DartValue_List value)? list,
-    TResult? Function(DartValue_Point value)? point,
-    TResult? Function(DartValue_NullData value)? nullData,
+    TResult? Function(Value_Bool value)? bool,
+    TResult? Function(Value_I8 value)? i8,
+    TResult? Function(Value_I16 value)? i16,
+    TResult? Function(Value_I32 value)? i32,
+    TResult? Function(Value_I64 value)? i64,
+    TResult? Function(Value_I128 value)? i128,
+    TResult? Function(Value_U8 value)? u8,
+    TResult? Function(Value_U16 value)? u16,
+    TResult? Function(Value_U32 value)? u32,
+    TResult? Function(Value_U64 value)? u64,
+    TResult? Function(Value_U128 value)? u128,
+    TResult? Function(Value_F32 value)? f32,
+    TResult? Function(Value_F64 value)? f64,
+    TResult? Function(Value_Decimal value)? decimal,
+    TResult? Function(Value_Str value)? str,
+    TResult? Function(Value_Bytea value)? bytea,
+    TResult? Function(Value_Inet value)? inet,
+    TResult? Function(Value_Date value)? date,
+    TResult? Function(Value_Timestamp value)? timestamp,
+    TResult? Function(Value_Time value)? time,
+    TResult? Function(Value_Interval value)? interval,
+    TResult? Function(Value_Uuid value)? uuid,
+    TResult? Function(Value_Map value)? map,
+    TResult? Function(Value_List value)? list,
+    TResult? Function(Value_Point value)? point,
+    TResult? Function(Value_Null value)? null_,
   }) {
     return bytea?.call(this);
   }
@@ -4627,32 +4621,32 @@ class _$DartValue_ByteaImpl extends DartValue_Bytea {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DartValue_Bool value)? bool,
-    TResult Function(DartValue_I8 value)? i8,
-    TResult Function(DartValue_I16 value)? i16,
-    TResult Function(DartValue_I32 value)? i32,
-    TResult Function(DartValue_I64 value)? i64,
-    TResult Function(DartValue_I128 value)? i128,
-    TResult Function(DartValue_U8 value)? u8,
-    TResult Function(DartValue_U16 value)? u16,
-    TResult Function(DartValue_U32 value)? u32,
-    TResult Function(DartValue_U64 value)? u64,
-    TResult Function(DartValue_U128 value)? u128,
-    TResult Function(DartValue_F32 value)? f32,
-    TResult Function(DartValue_F64 value)? f64,
-    TResult Function(DartValue_Decimal value)? decimal,
-    TResult Function(DartValue_Str value)? str,
-    TResult Function(DartValue_Bytea value)? bytea,
-    TResult Function(DartValue_Inet value)? inet,
-    TResult Function(DartValue_Date value)? date,
-    TResult Function(DartValue_Timestamp value)? timestamp,
-    TResult Function(DartValue_Time value)? time,
-    TResult Function(DartValue_Interval value)? interval,
-    TResult Function(DartValue_Uuid value)? uuid,
-    TResult Function(DartValue_Map value)? map,
-    TResult Function(DartValue_List value)? list,
-    TResult Function(DartValue_Point value)? point,
-    TResult Function(DartValue_NullData value)? nullData,
+    TResult Function(Value_Bool value)? bool,
+    TResult Function(Value_I8 value)? i8,
+    TResult Function(Value_I16 value)? i16,
+    TResult Function(Value_I32 value)? i32,
+    TResult Function(Value_I64 value)? i64,
+    TResult Function(Value_I128 value)? i128,
+    TResult Function(Value_U8 value)? u8,
+    TResult Function(Value_U16 value)? u16,
+    TResult Function(Value_U32 value)? u32,
+    TResult Function(Value_U64 value)? u64,
+    TResult Function(Value_U128 value)? u128,
+    TResult Function(Value_F32 value)? f32,
+    TResult Function(Value_F64 value)? f64,
+    TResult Function(Value_Decimal value)? decimal,
+    TResult Function(Value_Str value)? str,
+    TResult Function(Value_Bytea value)? bytea,
+    TResult Function(Value_Inet value)? inet,
+    TResult Function(Value_Date value)? date,
+    TResult Function(Value_Timestamp value)? timestamp,
+    TResult Function(Value_Time value)? time,
+    TResult Function(Value_Interval value)? interval,
+    TResult Function(Value_Uuid value)? uuid,
+    TResult Function(Value_Map value)? map,
+    TResult Function(Value_List value)? list,
+    TResult Function(Value_Point value)? point,
+    TResult Function(Value_Null value)? null_,
     required TResult orElse(),
   }) {
     if (bytea != null) {
@@ -4662,31 +4656,31 @@ class _$DartValue_ByteaImpl extends DartValue_Bytea {
   }
 }
 
-abstract class DartValue_Bytea extends DartValue {
-  const factory DartValue_Bytea(final Uint8List field0) = _$DartValue_ByteaImpl;
-  const DartValue_Bytea._() : super._();
+abstract class Value_Bytea extends Value {
+  const factory Value_Bytea(final Uint8List field0) = _$Value_ByteaImpl;
+  const Value_Bytea._() : super._();
 
   Uint8List get field0;
   @JsonKey(ignore: true)
-  _$$DartValue_ByteaImplCopyWith<_$DartValue_ByteaImpl> get copyWith =>
+  _$$Value_ByteaImplCopyWith<_$Value_ByteaImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DartValue_InetImplCopyWith<$Res> {
-  factory _$$DartValue_InetImplCopyWith(_$DartValue_InetImpl value,
-          $Res Function(_$DartValue_InetImpl) then) =
-      __$$DartValue_InetImplCopyWithImpl<$Res>;
+abstract class _$$Value_InetImplCopyWith<$Res> {
+  factory _$$Value_InetImplCopyWith(
+          _$Value_InetImpl value, $Res Function(_$Value_InetImpl) then) =
+      __$$Value_InetImplCopyWithImpl<$Res>;
   @useResult
   $Res call({IpAddr field0});
 }
 
 /// @nodoc
-class __$$DartValue_InetImplCopyWithImpl<$Res>
-    extends _$DartValueCopyWithImpl<$Res, _$DartValue_InetImpl>
-    implements _$$DartValue_InetImplCopyWith<$Res> {
-  __$$DartValue_InetImplCopyWithImpl(
-      _$DartValue_InetImpl _value, $Res Function(_$DartValue_InetImpl) _then)
+class __$$Value_InetImplCopyWithImpl<$Res>
+    extends _$ValueCopyWithImpl<$Res, _$Value_InetImpl>
+    implements _$$Value_InetImplCopyWith<$Res> {
+  __$$Value_InetImplCopyWithImpl(
+      _$Value_InetImpl _value, $Res Function(_$Value_InetImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -4694,7 +4688,7 @@ class __$$DartValue_InetImplCopyWithImpl<$Res>
   $Res call({
     Object? field0 = null,
   }) {
-    return _then(_$DartValue_InetImpl(
+    return _then(_$Value_InetImpl(
       null == field0
           ? _value.field0
           : field0 // ignore: cast_nullable_to_non_nullable
@@ -4705,22 +4699,22 @@ class __$$DartValue_InetImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$DartValue_InetImpl extends DartValue_Inet {
-  const _$DartValue_InetImpl(this.field0) : super._();
+class _$Value_InetImpl extends Value_Inet {
+  const _$Value_InetImpl(this.field0) : super._();
 
   @override
   final IpAddr field0;
 
   @override
   String toString() {
-    return 'DartValue.inet(field0: $field0)';
+    return 'Value.inet(field0: $field0)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DartValue_InetImpl &&
+            other is _$Value_InetImpl &&
             (identical(other.field0, field0) || other.field0 == field0));
   }
 
@@ -4730,9 +4724,8 @@ class _$DartValue_InetImpl extends DartValue_Inet {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$DartValue_InetImplCopyWith<_$DartValue_InetImpl> get copyWith =>
-      __$$DartValue_InetImplCopyWithImpl<_$DartValue_InetImpl>(
-          this, _$identity);
+  _$$Value_InetImplCopyWith<_$Value_InetImpl> get copyWith =>
+      __$$Value_InetImplCopyWithImpl<_$Value_InetImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -4762,7 +4755,7 @@ class _$DartValue_InetImpl extends DartValue_Inet {
     required TResult Function(Map<String, Value> field0) map,
     required TResult Function(List<Value> field0) list,
     required TResult Function(Point field0) point,
-    required TResult Function() nullData,
+    required TResult Function() null_,
   }) {
     return inet(field0);
   }
@@ -4795,7 +4788,7 @@ class _$DartValue_InetImpl extends DartValue_Inet {
     TResult? Function(Map<String, Value> field0)? map,
     TResult? Function(List<Value> field0)? list,
     TResult? Function(Point field0)? point,
-    TResult? Function()? nullData,
+    TResult? Function()? null_,
   }) {
     return inet?.call(field0);
   }
@@ -4828,7 +4821,7 @@ class _$DartValue_InetImpl extends DartValue_Inet {
     TResult Function(Map<String, Value> field0)? map,
     TResult Function(List<Value> field0)? list,
     TResult Function(Point field0)? point,
-    TResult Function()? nullData,
+    TResult Function()? null_,
     required TResult orElse(),
   }) {
     if (inet != null) {
@@ -4840,32 +4833,32 @@ class _$DartValue_InetImpl extends DartValue_Inet {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DartValue_Bool value) bool,
-    required TResult Function(DartValue_I8 value) i8,
-    required TResult Function(DartValue_I16 value) i16,
-    required TResult Function(DartValue_I32 value) i32,
-    required TResult Function(DartValue_I64 value) i64,
-    required TResult Function(DartValue_I128 value) i128,
-    required TResult Function(DartValue_U8 value) u8,
-    required TResult Function(DartValue_U16 value) u16,
-    required TResult Function(DartValue_U32 value) u32,
-    required TResult Function(DartValue_U64 value) u64,
-    required TResult Function(DartValue_U128 value) u128,
-    required TResult Function(DartValue_F32 value) f32,
-    required TResult Function(DartValue_F64 value) f64,
-    required TResult Function(DartValue_Decimal value) decimal,
-    required TResult Function(DartValue_Str value) str,
-    required TResult Function(DartValue_Bytea value) bytea,
-    required TResult Function(DartValue_Inet value) inet,
-    required TResult Function(DartValue_Date value) date,
-    required TResult Function(DartValue_Timestamp value) timestamp,
-    required TResult Function(DartValue_Time value) time,
-    required TResult Function(DartValue_Interval value) interval,
-    required TResult Function(DartValue_Uuid value) uuid,
-    required TResult Function(DartValue_Map value) map,
-    required TResult Function(DartValue_List value) list,
-    required TResult Function(DartValue_Point value) point,
-    required TResult Function(DartValue_NullData value) nullData,
+    required TResult Function(Value_Bool value) bool,
+    required TResult Function(Value_I8 value) i8,
+    required TResult Function(Value_I16 value) i16,
+    required TResult Function(Value_I32 value) i32,
+    required TResult Function(Value_I64 value) i64,
+    required TResult Function(Value_I128 value) i128,
+    required TResult Function(Value_U8 value) u8,
+    required TResult Function(Value_U16 value) u16,
+    required TResult Function(Value_U32 value) u32,
+    required TResult Function(Value_U64 value) u64,
+    required TResult Function(Value_U128 value) u128,
+    required TResult Function(Value_F32 value) f32,
+    required TResult Function(Value_F64 value) f64,
+    required TResult Function(Value_Decimal value) decimal,
+    required TResult Function(Value_Str value) str,
+    required TResult Function(Value_Bytea value) bytea,
+    required TResult Function(Value_Inet value) inet,
+    required TResult Function(Value_Date value) date,
+    required TResult Function(Value_Timestamp value) timestamp,
+    required TResult Function(Value_Time value) time,
+    required TResult Function(Value_Interval value) interval,
+    required TResult Function(Value_Uuid value) uuid,
+    required TResult Function(Value_Map value) map,
+    required TResult Function(Value_List value) list,
+    required TResult Function(Value_Point value) point,
+    required TResult Function(Value_Null value) null_,
   }) {
     return inet(this);
   }
@@ -4873,32 +4866,32 @@ class _$DartValue_InetImpl extends DartValue_Inet {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DartValue_Bool value)? bool,
-    TResult? Function(DartValue_I8 value)? i8,
-    TResult? Function(DartValue_I16 value)? i16,
-    TResult? Function(DartValue_I32 value)? i32,
-    TResult? Function(DartValue_I64 value)? i64,
-    TResult? Function(DartValue_I128 value)? i128,
-    TResult? Function(DartValue_U8 value)? u8,
-    TResult? Function(DartValue_U16 value)? u16,
-    TResult? Function(DartValue_U32 value)? u32,
-    TResult? Function(DartValue_U64 value)? u64,
-    TResult? Function(DartValue_U128 value)? u128,
-    TResult? Function(DartValue_F32 value)? f32,
-    TResult? Function(DartValue_F64 value)? f64,
-    TResult? Function(DartValue_Decimal value)? decimal,
-    TResult? Function(DartValue_Str value)? str,
-    TResult? Function(DartValue_Bytea value)? bytea,
-    TResult? Function(DartValue_Inet value)? inet,
-    TResult? Function(DartValue_Date value)? date,
-    TResult? Function(DartValue_Timestamp value)? timestamp,
-    TResult? Function(DartValue_Time value)? time,
-    TResult? Function(DartValue_Interval value)? interval,
-    TResult? Function(DartValue_Uuid value)? uuid,
-    TResult? Function(DartValue_Map value)? map,
-    TResult? Function(DartValue_List value)? list,
-    TResult? Function(DartValue_Point value)? point,
-    TResult? Function(DartValue_NullData value)? nullData,
+    TResult? Function(Value_Bool value)? bool,
+    TResult? Function(Value_I8 value)? i8,
+    TResult? Function(Value_I16 value)? i16,
+    TResult? Function(Value_I32 value)? i32,
+    TResult? Function(Value_I64 value)? i64,
+    TResult? Function(Value_I128 value)? i128,
+    TResult? Function(Value_U8 value)? u8,
+    TResult? Function(Value_U16 value)? u16,
+    TResult? Function(Value_U32 value)? u32,
+    TResult? Function(Value_U64 value)? u64,
+    TResult? Function(Value_U128 value)? u128,
+    TResult? Function(Value_F32 value)? f32,
+    TResult? Function(Value_F64 value)? f64,
+    TResult? Function(Value_Decimal value)? decimal,
+    TResult? Function(Value_Str value)? str,
+    TResult? Function(Value_Bytea value)? bytea,
+    TResult? Function(Value_Inet value)? inet,
+    TResult? Function(Value_Date value)? date,
+    TResult? Function(Value_Timestamp value)? timestamp,
+    TResult? Function(Value_Time value)? time,
+    TResult? Function(Value_Interval value)? interval,
+    TResult? Function(Value_Uuid value)? uuid,
+    TResult? Function(Value_Map value)? map,
+    TResult? Function(Value_List value)? list,
+    TResult? Function(Value_Point value)? point,
+    TResult? Function(Value_Null value)? null_,
   }) {
     return inet?.call(this);
   }
@@ -4906,32 +4899,32 @@ class _$DartValue_InetImpl extends DartValue_Inet {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DartValue_Bool value)? bool,
-    TResult Function(DartValue_I8 value)? i8,
-    TResult Function(DartValue_I16 value)? i16,
-    TResult Function(DartValue_I32 value)? i32,
-    TResult Function(DartValue_I64 value)? i64,
-    TResult Function(DartValue_I128 value)? i128,
-    TResult Function(DartValue_U8 value)? u8,
-    TResult Function(DartValue_U16 value)? u16,
-    TResult Function(DartValue_U32 value)? u32,
-    TResult Function(DartValue_U64 value)? u64,
-    TResult Function(DartValue_U128 value)? u128,
-    TResult Function(DartValue_F32 value)? f32,
-    TResult Function(DartValue_F64 value)? f64,
-    TResult Function(DartValue_Decimal value)? decimal,
-    TResult Function(DartValue_Str value)? str,
-    TResult Function(DartValue_Bytea value)? bytea,
-    TResult Function(DartValue_Inet value)? inet,
-    TResult Function(DartValue_Date value)? date,
-    TResult Function(DartValue_Timestamp value)? timestamp,
-    TResult Function(DartValue_Time value)? time,
-    TResult Function(DartValue_Interval value)? interval,
-    TResult Function(DartValue_Uuid value)? uuid,
-    TResult Function(DartValue_Map value)? map,
-    TResult Function(DartValue_List value)? list,
-    TResult Function(DartValue_Point value)? point,
-    TResult Function(DartValue_NullData value)? nullData,
+    TResult Function(Value_Bool value)? bool,
+    TResult Function(Value_I8 value)? i8,
+    TResult Function(Value_I16 value)? i16,
+    TResult Function(Value_I32 value)? i32,
+    TResult Function(Value_I64 value)? i64,
+    TResult Function(Value_I128 value)? i128,
+    TResult Function(Value_U8 value)? u8,
+    TResult Function(Value_U16 value)? u16,
+    TResult Function(Value_U32 value)? u32,
+    TResult Function(Value_U64 value)? u64,
+    TResult Function(Value_U128 value)? u128,
+    TResult Function(Value_F32 value)? f32,
+    TResult Function(Value_F64 value)? f64,
+    TResult Function(Value_Decimal value)? decimal,
+    TResult Function(Value_Str value)? str,
+    TResult Function(Value_Bytea value)? bytea,
+    TResult Function(Value_Inet value)? inet,
+    TResult Function(Value_Date value)? date,
+    TResult Function(Value_Timestamp value)? timestamp,
+    TResult Function(Value_Time value)? time,
+    TResult Function(Value_Interval value)? interval,
+    TResult Function(Value_Uuid value)? uuid,
+    TResult Function(Value_Map value)? map,
+    TResult Function(Value_List value)? list,
+    TResult Function(Value_Point value)? point,
+    TResult Function(Value_Null value)? null_,
     required TResult orElse(),
   }) {
     if (inet != null) {
@@ -4941,31 +4934,31 @@ class _$DartValue_InetImpl extends DartValue_Inet {
   }
 }
 
-abstract class DartValue_Inet extends DartValue {
-  const factory DartValue_Inet(final IpAddr field0) = _$DartValue_InetImpl;
-  const DartValue_Inet._() : super._();
+abstract class Value_Inet extends Value {
+  const factory Value_Inet(final IpAddr field0) = _$Value_InetImpl;
+  const Value_Inet._() : super._();
 
   IpAddr get field0;
   @JsonKey(ignore: true)
-  _$$DartValue_InetImplCopyWith<_$DartValue_InetImpl> get copyWith =>
+  _$$Value_InetImplCopyWith<_$Value_InetImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DartValue_DateImplCopyWith<$Res> {
-  factory _$$DartValue_DateImplCopyWith(_$DartValue_DateImpl value,
-          $Res Function(_$DartValue_DateImpl) then) =
-      __$$DartValue_DateImplCopyWithImpl<$Res>;
+abstract class _$$Value_DateImplCopyWith<$Res> {
+  factory _$$Value_DateImplCopyWith(
+          _$Value_DateImpl value, $Res Function(_$Value_DateImpl) then) =
+      __$$Value_DateImplCopyWithImpl<$Res>;
   @useResult
   $Res call({NaiveDate field0});
 }
 
 /// @nodoc
-class __$$DartValue_DateImplCopyWithImpl<$Res>
-    extends _$DartValueCopyWithImpl<$Res, _$DartValue_DateImpl>
-    implements _$$DartValue_DateImplCopyWith<$Res> {
-  __$$DartValue_DateImplCopyWithImpl(
-      _$DartValue_DateImpl _value, $Res Function(_$DartValue_DateImpl) _then)
+class __$$Value_DateImplCopyWithImpl<$Res>
+    extends _$ValueCopyWithImpl<$Res, _$Value_DateImpl>
+    implements _$$Value_DateImplCopyWith<$Res> {
+  __$$Value_DateImplCopyWithImpl(
+      _$Value_DateImpl _value, $Res Function(_$Value_DateImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -4973,7 +4966,7 @@ class __$$DartValue_DateImplCopyWithImpl<$Res>
   $Res call({
     Object? field0 = null,
   }) {
-    return _then(_$DartValue_DateImpl(
+    return _then(_$Value_DateImpl(
       null == field0
           ? _value.field0
           : field0 // ignore: cast_nullable_to_non_nullable
@@ -4984,22 +4977,22 @@ class __$$DartValue_DateImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$DartValue_DateImpl extends DartValue_Date {
-  const _$DartValue_DateImpl(this.field0) : super._();
+class _$Value_DateImpl extends Value_Date {
+  const _$Value_DateImpl(this.field0) : super._();
 
   @override
   final NaiveDate field0;
 
   @override
   String toString() {
-    return 'DartValue.date(field0: $field0)';
+    return 'Value.date(field0: $field0)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DartValue_DateImpl &&
+            other is _$Value_DateImpl &&
             (identical(other.field0, field0) || other.field0 == field0));
   }
 
@@ -5009,9 +5002,8 @@ class _$DartValue_DateImpl extends DartValue_Date {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$DartValue_DateImplCopyWith<_$DartValue_DateImpl> get copyWith =>
-      __$$DartValue_DateImplCopyWithImpl<_$DartValue_DateImpl>(
-          this, _$identity);
+  _$$Value_DateImplCopyWith<_$Value_DateImpl> get copyWith =>
+      __$$Value_DateImplCopyWithImpl<_$Value_DateImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -5041,7 +5033,7 @@ class _$DartValue_DateImpl extends DartValue_Date {
     required TResult Function(Map<String, Value> field0) map,
     required TResult Function(List<Value> field0) list,
     required TResult Function(Point field0) point,
-    required TResult Function() nullData,
+    required TResult Function() null_,
   }) {
     return date(field0);
   }
@@ -5074,7 +5066,7 @@ class _$DartValue_DateImpl extends DartValue_Date {
     TResult? Function(Map<String, Value> field0)? map,
     TResult? Function(List<Value> field0)? list,
     TResult? Function(Point field0)? point,
-    TResult? Function()? nullData,
+    TResult? Function()? null_,
   }) {
     return date?.call(field0);
   }
@@ -5107,7 +5099,7 @@ class _$DartValue_DateImpl extends DartValue_Date {
     TResult Function(Map<String, Value> field0)? map,
     TResult Function(List<Value> field0)? list,
     TResult Function(Point field0)? point,
-    TResult Function()? nullData,
+    TResult Function()? null_,
     required TResult orElse(),
   }) {
     if (date != null) {
@@ -5119,32 +5111,32 @@ class _$DartValue_DateImpl extends DartValue_Date {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DartValue_Bool value) bool,
-    required TResult Function(DartValue_I8 value) i8,
-    required TResult Function(DartValue_I16 value) i16,
-    required TResult Function(DartValue_I32 value) i32,
-    required TResult Function(DartValue_I64 value) i64,
-    required TResult Function(DartValue_I128 value) i128,
-    required TResult Function(DartValue_U8 value) u8,
-    required TResult Function(DartValue_U16 value) u16,
-    required TResult Function(DartValue_U32 value) u32,
-    required TResult Function(DartValue_U64 value) u64,
-    required TResult Function(DartValue_U128 value) u128,
-    required TResult Function(DartValue_F32 value) f32,
-    required TResult Function(DartValue_F64 value) f64,
-    required TResult Function(DartValue_Decimal value) decimal,
-    required TResult Function(DartValue_Str value) str,
-    required TResult Function(DartValue_Bytea value) bytea,
-    required TResult Function(DartValue_Inet value) inet,
-    required TResult Function(DartValue_Date value) date,
-    required TResult Function(DartValue_Timestamp value) timestamp,
-    required TResult Function(DartValue_Time value) time,
-    required TResult Function(DartValue_Interval value) interval,
-    required TResult Function(DartValue_Uuid value) uuid,
-    required TResult Function(DartValue_Map value) map,
-    required TResult Function(DartValue_List value) list,
-    required TResult Function(DartValue_Point value) point,
-    required TResult Function(DartValue_NullData value) nullData,
+    required TResult Function(Value_Bool value) bool,
+    required TResult Function(Value_I8 value) i8,
+    required TResult Function(Value_I16 value) i16,
+    required TResult Function(Value_I32 value) i32,
+    required TResult Function(Value_I64 value) i64,
+    required TResult Function(Value_I128 value) i128,
+    required TResult Function(Value_U8 value) u8,
+    required TResult Function(Value_U16 value) u16,
+    required TResult Function(Value_U32 value) u32,
+    required TResult Function(Value_U64 value) u64,
+    required TResult Function(Value_U128 value) u128,
+    required TResult Function(Value_F32 value) f32,
+    required TResult Function(Value_F64 value) f64,
+    required TResult Function(Value_Decimal value) decimal,
+    required TResult Function(Value_Str value) str,
+    required TResult Function(Value_Bytea value) bytea,
+    required TResult Function(Value_Inet value) inet,
+    required TResult Function(Value_Date value) date,
+    required TResult Function(Value_Timestamp value) timestamp,
+    required TResult Function(Value_Time value) time,
+    required TResult Function(Value_Interval value) interval,
+    required TResult Function(Value_Uuid value) uuid,
+    required TResult Function(Value_Map value) map,
+    required TResult Function(Value_List value) list,
+    required TResult Function(Value_Point value) point,
+    required TResult Function(Value_Null value) null_,
   }) {
     return date(this);
   }
@@ -5152,32 +5144,32 @@ class _$DartValue_DateImpl extends DartValue_Date {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DartValue_Bool value)? bool,
-    TResult? Function(DartValue_I8 value)? i8,
-    TResult? Function(DartValue_I16 value)? i16,
-    TResult? Function(DartValue_I32 value)? i32,
-    TResult? Function(DartValue_I64 value)? i64,
-    TResult? Function(DartValue_I128 value)? i128,
-    TResult? Function(DartValue_U8 value)? u8,
-    TResult? Function(DartValue_U16 value)? u16,
-    TResult? Function(DartValue_U32 value)? u32,
-    TResult? Function(DartValue_U64 value)? u64,
-    TResult? Function(DartValue_U128 value)? u128,
-    TResult? Function(DartValue_F32 value)? f32,
-    TResult? Function(DartValue_F64 value)? f64,
-    TResult? Function(DartValue_Decimal value)? decimal,
-    TResult? Function(DartValue_Str value)? str,
-    TResult? Function(DartValue_Bytea value)? bytea,
-    TResult? Function(DartValue_Inet value)? inet,
-    TResult? Function(DartValue_Date value)? date,
-    TResult? Function(DartValue_Timestamp value)? timestamp,
-    TResult? Function(DartValue_Time value)? time,
-    TResult? Function(DartValue_Interval value)? interval,
-    TResult? Function(DartValue_Uuid value)? uuid,
-    TResult? Function(DartValue_Map value)? map,
-    TResult? Function(DartValue_List value)? list,
-    TResult? Function(DartValue_Point value)? point,
-    TResult? Function(DartValue_NullData value)? nullData,
+    TResult? Function(Value_Bool value)? bool,
+    TResult? Function(Value_I8 value)? i8,
+    TResult? Function(Value_I16 value)? i16,
+    TResult? Function(Value_I32 value)? i32,
+    TResult? Function(Value_I64 value)? i64,
+    TResult? Function(Value_I128 value)? i128,
+    TResult? Function(Value_U8 value)? u8,
+    TResult? Function(Value_U16 value)? u16,
+    TResult? Function(Value_U32 value)? u32,
+    TResult? Function(Value_U64 value)? u64,
+    TResult? Function(Value_U128 value)? u128,
+    TResult? Function(Value_F32 value)? f32,
+    TResult? Function(Value_F64 value)? f64,
+    TResult? Function(Value_Decimal value)? decimal,
+    TResult? Function(Value_Str value)? str,
+    TResult? Function(Value_Bytea value)? bytea,
+    TResult? Function(Value_Inet value)? inet,
+    TResult? Function(Value_Date value)? date,
+    TResult? Function(Value_Timestamp value)? timestamp,
+    TResult? Function(Value_Time value)? time,
+    TResult? Function(Value_Interval value)? interval,
+    TResult? Function(Value_Uuid value)? uuid,
+    TResult? Function(Value_Map value)? map,
+    TResult? Function(Value_List value)? list,
+    TResult? Function(Value_Point value)? point,
+    TResult? Function(Value_Null value)? null_,
   }) {
     return date?.call(this);
   }
@@ -5185,32 +5177,32 @@ class _$DartValue_DateImpl extends DartValue_Date {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DartValue_Bool value)? bool,
-    TResult Function(DartValue_I8 value)? i8,
-    TResult Function(DartValue_I16 value)? i16,
-    TResult Function(DartValue_I32 value)? i32,
-    TResult Function(DartValue_I64 value)? i64,
-    TResult Function(DartValue_I128 value)? i128,
-    TResult Function(DartValue_U8 value)? u8,
-    TResult Function(DartValue_U16 value)? u16,
-    TResult Function(DartValue_U32 value)? u32,
-    TResult Function(DartValue_U64 value)? u64,
-    TResult Function(DartValue_U128 value)? u128,
-    TResult Function(DartValue_F32 value)? f32,
-    TResult Function(DartValue_F64 value)? f64,
-    TResult Function(DartValue_Decimal value)? decimal,
-    TResult Function(DartValue_Str value)? str,
-    TResult Function(DartValue_Bytea value)? bytea,
-    TResult Function(DartValue_Inet value)? inet,
-    TResult Function(DartValue_Date value)? date,
-    TResult Function(DartValue_Timestamp value)? timestamp,
-    TResult Function(DartValue_Time value)? time,
-    TResult Function(DartValue_Interval value)? interval,
-    TResult Function(DartValue_Uuid value)? uuid,
-    TResult Function(DartValue_Map value)? map,
-    TResult Function(DartValue_List value)? list,
-    TResult Function(DartValue_Point value)? point,
-    TResult Function(DartValue_NullData value)? nullData,
+    TResult Function(Value_Bool value)? bool,
+    TResult Function(Value_I8 value)? i8,
+    TResult Function(Value_I16 value)? i16,
+    TResult Function(Value_I32 value)? i32,
+    TResult Function(Value_I64 value)? i64,
+    TResult Function(Value_I128 value)? i128,
+    TResult Function(Value_U8 value)? u8,
+    TResult Function(Value_U16 value)? u16,
+    TResult Function(Value_U32 value)? u32,
+    TResult Function(Value_U64 value)? u64,
+    TResult Function(Value_U128 value)? u128,
+    TResult Function(Value_F32 value)? f32,
+    TResult Function(Value_F64 value)? f64,
+    TResult Function(Value_Decimal value)? decimal,
+    TResult Function(Value_Str value)? str,
+    TResult Function(Value_Bytea value)? bytea,
+    TResult Function(Value_Inet value)? inet,
+    TResult Function(Value_Date value)? date,
+    TResult Function(Value_Timestamp value)? timestamp,
+    TResult Function(Value_Time value)? time,
+    TResult Function(Value_Interval value)? interval,
+    TResult Function(Value_Uuid value)? uuid,
+    TResult Function(Value_Map value)? map,
+    TResult Function(Value_List value)? list,
+    TResult Function(Value_Point value)? point,
+    TResult Function(Value_Null value)? null_,
     required TResult orElse(),
   }) {
     if (date != null) {
@@ -5220,31 +5212,31 @@ class _$DartValue_DateImpl extends DartValue_Date {
   }
 }
 
-abstract class DartValue_Date extends DartValue {
-  const factory DartValue_Date(final NaiveDate field0) = _$DartValue_DateImpl;
-  const DartValue_Date._() : super._();
+abstract class Value_Date extends Value {
+  const factory Value_Date(final NaiveDate field0) = _$Value_DateImpl;
+  const Value_Date._() : super._();
 
   NaiveDate get field0;
   @JsonKey(ignore: true)
-  _$$DartValue_DateImplCopyWith<_$DartValue_DateImpl> get copyWith =>
+  _$$Value_DateImplCopyWith<_$Value_DateImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DartValue_TimestampImplCopyWith<$Res> {
-  factory _$$DartValue_TimestampImplCopyWith(_$DartValue_TimestampImpl value,
-          $Res Function(_$DartValue_TimestampImpl) then) =
-      __$$DartValue_TimestampImplCopyWithImpl<$Res>;
+abstract class _$$Value_TimestampImplCopyWith<$Res> {
+  factory _$$Value_TimestampImplCopyWith(_$Value_TimestampImpl value,
+          $Res Function(_$Value_TimestampImpl) then) =
+      __$$Value_TimestampImplCopyWithImpl<$Res>;
   @useResult
   $Res call({DateTime field0});
 }
 
 /// @nodoc
-class __$$DartValue_TimestampImplCopyWithImpl<$Res>
-    extends _$DartValueCopyWithImpl<$Res, _$DartValue_TimestampImpl>
-    implements _$$DartValue_TimestampImplCopyWith<$Res> {
-  __$$DartValue_TimestampImplCopyWithImpl(_$DartValue_TimestampImpl _value,
-      $Res Function(_$DartValue_TimestampImpl) _then)
+class __$$Value_TimestampImplCopyWithImpl<$Res>
+    extends _$ValueCopyWithImpl<$Res, _$Value_TimestampImpl>
+    implements _$$Value_TimestampImplCopyWith<$Res> {
+  __$$Value_TimestampImplCopyWithImpl(
+      _$Value_TimestampImpl _value, $Res Function(_$Value_TimestampImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -5252,7 +5244,7 @@ class __$$DartValue_TimestampImplCopyWithImpl<$Res>
   $Res call({
     Object? field0 = null,
   }) {
-    return _then(_$DartValue_TimestampImpl(
+    return _then(_$Value_TimestampImpl(
       null == field0
           ? _value.field0
           : field0 // ignore: cast_nullable_to_non_nullable
@@ -5263,22 +5255,22 @@ class __$$DartValue_TimestampImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$DartValue_TimestampImpl extends DartValue_Timestamp {
-  const _$DartValue_TimestampImpl(this.field0) : super._();
+class _$Value_TimestampImpl extends Value_Timestamp {
+  const _$Value_TimestampImpl(this.field0) : super._();
 
   @override
   final DateTime field0;
 
   @override
   String toString() {
-    return 'DartValue.timestamp(field0: $field0)';
+    return 'Value.timestamp(field0: $field0)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DartValue_TimestampImpl &&
+            other is _$Value_TimestampImpl &&
             (identical(other.field0, field0) || other.field0 == field0));
   }
 
@@ -5288,8 +5280,8 @@ class _$DartValue_TimestampImpl extends DartValue_Timestamp {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$DartValue_TimestampImplCopyWith<_$DartValue_TimestampImpl> get copyWith =>
-      __$$DartValue_TimestampImplCopyWithImpl<_$DartValue_TimestampImpl>(
+  _$$Value_TimestampImplCopyWith<_$Value_TimestampImpl> get copyWith =>
+      __$$Value_TimestampImplCopyWithImpl<_$Value_TimestampImpl>(
           this, _$identity);
 
   @override
@@ -5320,7 +5312,7 @@ class _$DartValue_TimestampImpl extends DartValue_Timestamp {
     required TResult Function(Map<String, Value> field0) map,
     required TResult Function(List<Value> field0) list,
     required TResult Function(Point field0) point,
-    required TResult Function() nullData,
+    required TResult Function() null_,
   }) {
     return timestamp(field0);
   }
@@ -5353,7 +5345,7 @@ class _$DartValue_TimestampImpl extends DartValue_Timestamp {
     TResult? Function(Map<String, Value> field0)? map,
     TResult? Function(List<Value> field0)? list,
     TResult? Function(Point field0)? point,
-    TResult? Function()? nullData,
+    TResult? Function()? null_,
   }) {
     return timestamp?.call(field0);
   }
@@ -5386,7 +5378,7 @@ class _$DartValue_TimestampImpl extends DartValue_Timestamp {
     TResult Function(Map<String, Value> field0)? map,
     TResult Function(List<Value> field0)? list,
     TResult Function(Point field0)? point,
-    TResult Function()? nullData,
+    TResult Function()? null_,
     required TResult orElse(),
   }) {
     if (timestamp != null) {
@@ -5398,32 +5390,32 @@ class _$DartValue_TimestampImpl extends DartValue_Timestamp {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DartValue_Bool value) bool,
-    required TResult Function(DartValue_I8 value) i8,
-    required TResult Function(DartValue_I16 value) i16,
-    required TResult Function(DartValue_I32 value) i32,
-    required TResult Function(DartValue_I64 value) i64,
-    required TResult Function(DartValue_I128 value) i128,
-    required TResult Function(DartValue_U8 value) u8,
-    required TResult Function(DartValue_U16 value) u16,
-    required TResult Function(DartValue_U32 value) u32,
-    required TResult Function(DartValue_U64 value) u64,
-    required TResult Function(DartValue_U128 value) u128,
-    required TResult Function(DartValue_F32 value) f32,
-    required TResult Function(DartValue_F64 value) f64,
-    required TResult Function(DartValue_Decimal value) decimal,
-    required TResult Function(DartValue_Str value) str,
-    required TResult Function(DartValue_Bytea value) bytea,
-    required TResult Function(DartValue_Inet value) inet,
-    required TResult Function(DartValue_Date value) date,
-    required TResult Function(DartValue_Timestamp value) timestamp,
-    required TResult Function(DartValue_Time value) time,
-    required TResult Function(DartValue_Interval value) interval,
-    required TResult Function(DartValue_Uuid value) uuid,
-    required TResult Function(DartValue_Map value) map,
-    required TResult Function(DartValue_List value) list,
-    required TResult Function(DartValue_Point value) point,
-    required TResult Function(DartValue_NullData value) nullData,
+    required TResult Function(Value_Bool value) bool,
+    required TResult Function(Value_I8 value) i8,
+    required TResult Function(Value_I16 value) i16,
+    required TResult Function(Value_I32 value) i32,
+    required TResult Function(Value_I64 value) i64,
+    required TResult Function(Value_I128 value) i128,
+    required TResult Function(Value_U8 value) u8,
+    required TResult Function(Value_U16 value) u16,
+    required TResult Function(Value_U32 value) u32,
+    required TResult Function(Value_U64 value) u64,
+    required TResult Function(Value_U128 value) u128,
+    required TResult Function(Value_F32 value) f32,
+    required TResult Function(Value_F64 value) f64,
+    required TResult Function(Value_Decimal value) decimal,
+    required TResult Function(Value_Str value) str,
+    required TResult Function(Value_Bytea value) bytea,
+    required TResult Function(Value_Inet value) inet,
+    required TResult Function(Value_Date value) date,
+    required TResult Function(Value_Timestamp value) timestamp,
+    required TResult Function(Value_Time value) time,
+    required TResult Function(Value_Interval value) interval,
+    required TResult Function(Value_Uuid value) uuid,
+    required TResult Function(Value_Map value) map,
+    required TResult Function(Value_List value) list,
+    required TResult Function(Value_Point value) point,
+    required TResult Function(Value_Null value) null_,
   }) {
     return timestamp(this);
   }
@@ -5431,32 +5423,32 @@ class _$DartValue_TimestampImpl extends DartValue_Timestamp {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DartValue_Bool value)? bool,
-    TResult? Function(DartValue_I8 value)? i8,
-    TResult? Function(DartValue_I16 value)? i16,
-    TResult? Function(DartValue_I32 value)? i32,
-    TResult? Function(DartValue_I64 value)? i64,
-    TResult? Function(DartValue_I128 value)? i128,
-    TResult? Function(DartValue_U8 value)? u8,
-    TResult? Function(DartValue_U16 value)? u16,
-    TResult? Function(DartValue_U32 value)? u32,
-    TResult? Function(DartValue_U64 value)? u64,
-    TResult? Function(DartValue_U128 value)? u128,
-    TResult? Function(DartValue_F32 value)? f32,
-    TResult? Function(DartValue_F64 value)? f64,
-    TResult? Function(DartValue_Decimal value)? decimal,
-    TResult? Function(DartValue_Str value)? str,
-    TResult? Function(DartValue_Bytea value)? bytea,
-    TResult? Function(DartValue_Inet value)? inet,
-    TResult? Function(DartValue_Date value)? date,
-    TResult? Function(DartValue_Timestamp value)? timestamp,
-    TResult? Function(DartValue_Time value)? time,
-    TResult? Function(DartValue_Interval value)? interval,
-    TResult? Function(DartValue_Uuid value)? uuid,
-    TResult? Function(DartValue_Map value)? map,
-    TResult? Function(DartValue_List value)? list,
-    TResult? Function(DartValue_Point value)? point,
-    TResult? Function(DartValue_NullData value)? nullData,
+    TResult? Function(Value_Bool value)? bool,
+    TResult? Function(Value_I8 value)? i8,
+    TResult? Function(Value_I16 value)? i16,
+    TResult? Function(Value_I32 value)? i32,
+    TResult? Function(Value_I64 value)? i64,
+    TResult? Function(Value_I128 value)? i128,
+    TResult? Function(Value_U8 value)? u8,
+    TResult? Function(Value_U16 value)? u16,
+    TResult? Function(Value_U32 value)? u32,
+    TResult? Function(Value_U64 value)? u64,
+    TResult? Function(Value_U128 value)? u128,
+    TResult? Function(Value_F32 value)? f32,
+    TResult? Function(Value_F64 value)? f64,
+    TResult? Function(Value_Decimal value)? decimal,
+    TResult? Function(Value_Str value)? str,
+    TResult? Function(Value_Bytea value)? bytea,
+    TResult? Function(Value_Inet value)? inet,
+    TResult? Function(Value_Date value)? date,
+    TResult? Function(Value_Timestamp value)? timestamp,
+    TResult? Function(Value_Time value)? time,
+    TResult? Function(Value_Interval value)? interval,
+    TResult? Function(Value_Uuid value)? uuid,
+    TResult? Function(Value_Map value)? map,
+    TResult? Function(Value_List value)? list,
+    TResult? Function(Value_Point value)? point,
+    TResult? Function(Value_Null value)? null_,
   }) {
     return timestamp?.call(this);
   }
@@ -5464,32 +5456,32 @@ class _$DartValue_TimestampImpl extends DartValue_Timestamp {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DartValue_Bool value)? bool,
-    TResult Function(DartValue_I8 value)? i8,
-    TResult Function(DartValue_I16 value)? i16,
-    TResult Function(DartValue_I32 value)? i32,
-    TResult Function(DartValue_I64 value)? i64,
-    TResult Function(DartValue_I128 value)? i128,
-    TResult Function(DartValue_U8 value)? u8,
-    TResult Function(DartValue_U16 value)? u16,
-    TResult Function(DartValue_U32 value)? u32,
-    TResult Function(DartValue_U64 value)? u64,
-    TResult Function(DartValue_U128 value)? u128,
-    TResult Function(DartValue_F32 value)? f32,
-    TResult Function(DartValue_F64 value)? f64,
-    TResult Function(DartValue_Decimal value)? decimal,
-    TResult Function(DartValue_Str value)? str,
-    TResult Function(DartValue_Bytea value)? bytea,
-    TResult Function(DartValue_Inet value)? inet,
-    TResult Function(DartValue_Date value)? date,
-    TResult Function(DartValue_Timestamp value)? timestamp,
-    TResult Function(DartValue_Time value)? time,
-    TResult Function(DartValue_Interval value)? interval,
-    TResult Function(DartValue_Uuid value)? uuid,
-    TResult Function(DartValue_Map value)? map,
-    TResult Function(DartValue_List value)? list,
-    TResult Function(DartValue_Point value)? point,
-    TResult Function(DartValue_NullData value)? nullData,
+    TResult Function(Value_Bool value)? bool,
+    TResult Function(Value_I8 value)? i8,
+    TResult Function(Value_I16 value)? i16,
+    TResult Function(Value_I32 value)? i32,
+    TResult Function(Value_I64 value)? i64,
+    TResult Function(Value_I128 value)? i128,
+    TResult Function(Value_U8 value)? u8,
+    TResult Function(Value_U16 value)? u16,
+    TResult Function(Value_U32 value)? u32,
+    TResult Function(Value_U64 value)? u64,
+    TResult Function(Value_U128 value)? u128,
+    TResult Function(Value_F32 value)? f32,
+    TResult Function(Value_F64 value)? f64,
+    TResult Function(Value_Decimal value)? decimal,
+    TResult Function(Value_Str value)? str,
+    TResult Function(Value_Bytea value)? bytea,
+    TResult Function(Value_Inet value)? inet,
+    TResult Function(Value_Date value)? date,
+    TResult Function(Value_Timestamp value)? timestamp,
+    TResult Function(Value_Time value)? time,
+    TResult Function(Value_Interval value)? interval,
+    TResult Function(Value_Uuid value)? uuid,
+    TResult Function(Value_Map value)? map,
+    TResult Function(Value_List value)? list,
+    TResult Function(Value_Point value)? point,
+    TResult Function(Value_Null value)? null_,
     required TResult orElse(),
   }) {
     if (timestamp != null) {
@@ -5499,32 +5491,31 @@ class _$DartValue_TimestampImpl extends DartValue_Timestamp {
   }
 }
 
-abstract class DartValue_Timestamp extends DartValue {
-  const factory DartValue_Timestamp(final DateTime field0) =
-      _$DartValue_TimestampImpl;
-  const DartValue_Timestamp._() : super._();
+abstract class Value_Timestamp extends Value {
+  const factory Value_Timestamp(final DateTime field0) = _$Value_TimestampImpl;
+  const Value_Timestamp._() : super._();
 
   DateTime get field0;
   @JsonKey(ignore: true)
-  _$$DartValue_TimestampImplCopyWith<_$DartValue_TimestampImpl> get copyWith =>
+  _$$Value_TimestampImplCopyWith<_$Value_TimestampImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DartValue_TimeImplCopyWith<$Res> {
-  factory _$$DartValue_TimeImplCopyWith(_$DartValue_TimeImpl value,
-          $Res Function(_$DartValue_TimeImpl) then) =
-      __$$DartValue_TimeImplCopyWithImpl<$Res>;
+abstract class _$$Value_TimeImplCopyWith<$Res> {
+  factory _$$Value_TimeImplCopyWith(
+          _$Value_TimeImpl value, $Res Function(_$Value_TimeImpl) then) =
+      __$$Value_TimeImplCopyWithImpl<$Res>;
   @useResult
   $Res call({NaiveTime field0});
 }
 
 /// @nodoc
-class __$$DartValue_TimeImplCopyWithImpl<$Res>
-    extends _$DartValueCopyWithImpl<$Res, _$DartValue_TimeImpl>
-    implements _$$DartValue_TimeImplCopyWith<$Res> {
-  __$$DartValue_TimeImplCopyWithImpl(
-      _$DartValue_TimeImpl _value, $Res Function(_$DartValue_TimeImpl) _then)
+class __$$Value_TimeImplCopyWithImpl<$Res>
+    extends _$ValueCopyWithImpl<$Res, _$Value_TimeImpl>
+    implements _$$Value_TimeImplCopyWith<$Res> {
+  __$$Value_TimeImplCopyWithImpl(
+      _$Value_TimeImpl _value, $Res Function(_$Value_TimeImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -5532,7 +5523,7 @@ class __$$DartValue_TimeImplCopyWithImpl<$Res>
   $Res call({
     Object? field0 = null,
   }) {
-    return _then(_$DartValue_TimeImpl(
+    return _then(_$Value_TimeImpl(
       null == field0
           ? _value.field0
           : field0 // ignore: cast_nullable_to_non_nullable
@@ -5543,22 +5534,22 @@ class __$$DartValue_TimeImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$DartValue_TimeImpl extends DartValue_Time {
-  const _$DartValue_TimeImpl(this.field0) : super._();
+class _$Value_TimeImpl extends Value_Time {
+  const _$Value_TimeImpl(this.field0) : super._();
 
   @override
   final NaiveTime field0;
 
   @override
   String toString() {
-    return 'DartValue.time(field0: $field0)';
+    return 'Value.time(field0: $field0)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DartValue_TimeImpl &&
+            other is _$Value_TimeImpl &&
             (identical(other.field0, field0) || other.field0 == field0));
   }
 
@@ -5568,9 +5559,8 @@ class _$DartValue_TimeImpl extends DartValue_Time {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$DartValue_TimeImplCopyWith<_$DartValue_TimeImpl> get copyWith =>
-      __$$DartValue_TimeImplCopyWithImpl<_$DartValue_TimeImpl>(
-          this, _$identity);
+  _$$Value_TimeImplCopyWith<_$Value_TimeImpl> get copyWith =>
+      __$$Value_TimeImplCopyWithImpl<_$Value_TimeImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -5600,7 +5590,7 @@ class _$DartValue_TimeImpl extends DartValue_Time {
     required TResult Function(Map<String, Value> field0) map,
     required TResult Function(List<Value> field0) list,
     required TResult Function(Point field0) point,
-    required TResult Function() nullData,
+    required TResult Function() null_,
   }) {
     return time(field0);
   }
@@ -5633,7 +5623,7 @@ class _$DartValue_TimeImpl extends DartValue_Time {
     TResult? Function(Map<String, Value> field0)? map,
     TResult? Function(List<Value> field0)? list,
     TResult? Function(Point field0)? point,
-    TResult? Function()? nullData,
+    TResult? Function()? null_,
   }) {
     return time?.call(field0);
   }
@@ -5666,7 +5656,7 @@ class _$DartValue_TimeImpl extends DartValue_Time {
     TResult Function(Map<String, Value> field0)? map,
     TResult Function(List<Value> field0)? list,
     TResult Function(Point field0)? point,
-    TResult Function()? nullData,
+    TResult Function()? null_,
     required TResult orElse(),
   }) {
     if (time != null) {
@@ -5678,32 +5668,32 @@ class _$DartValue_TimeImpl extends DartValue_Time {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DartValue_Bool value) bool,
-    required TResult Function(DartValue_I8 value) i8,
-    required TResult Function(DartValue_I16 value) i16,
-    required TResult Function(DartValue_I32 value) i32,
-    required TResult Function(DartValue_I64 value) i64,
-    required TResult Function(DartValue_I128 value) i128,
-    required TResult Function(DartValue_U8 value) u8,
-    required TResult Function(DartValue_U16 value) u16,
-    required TResult Function(DartValue_U32 value) u32,
-    required TResult Function(DartValue_U64 value) u64,
-    required TResult Function(DartValue_U128 value) u128,
-    required TResult Function(DartValue_F32 value) f32,
-    required TResult Function(DartValue_F64 value) f64,
-    required TResult Function(DartValue_Decimal value) decimal,
-    required TResult Function(DartValue_Str value) str,
-    required TResult Function(DartValue_Bytea value) bytea,
-    required TResult Function(DartValue_Inet value) inet,
-    required TResult Function(DartValue_Date value) date,
-    required TResult Function(DartValue_Timestamp value) timestamp,
-    required TResult Function(DartValue_Time value) time,
-    required TResult Function(DartValue_Interval value) interval,
-    required TResult Function(DartValue_Uuid value) uuid,
-    required TResult Function(DartValue_Map value) map,
-    required TResult Function(DartValue_List value) list,
-    required TResult Function(DartValue_Point value) point,
-    required TResult Function(DartValue_NullData value) nullData,
+    required TResult Function(Value_Bool value) bool,
+    required TResult Function(Value_I8 value) i8,
+    required TResult Function(Value_I16 value) i16,
+    required TResult Function(Value_I32 value) i32,
+    required TResult Function(Value_I64 value) i64,
+    required TResult Function(Value_I128 value) i128,
+    required TResult Function(Value_U8 value) u8,
+    required TResult Function(Value_U16 value) u16,
+    required TResult Function(Value_U32 value) u32,
+    required TResult Function(Value_U64 value) u64,
+    required TResult Function(Value_U128 value) u128,
+    required TResult Function(Value_F32 value) f32,
+    required TResult Function(Value_F64 value) f64,
+    required TResult Function(Value_Decimal value) decimal,
+    required TResult Function(Value_Str value) str,
+    required TResult Function(Value_Bytea value) bytea,
+    required TResult Function(Value_Inet value) inet,
+    required TResult Function(Value_Date value) date,
+    required TResult Function(Value_Timestamp value) timestamp,
+    required TResult Function(Value_Time value) time,
+    required TResult Function(Value_Interval value) interval,
+    required TResult Function(Value_Uuid value) uuid,
+    required TResult Function(Value_Map value) map,
+    required TResult Function(Value_List value) list,
+    required TResult Function(Value_Point value) point,
+    required TResult Function(Value_Null value) null_,
   }) {
     return time(this);
   }
@@ -5711,32 +5701,32 @@ class _$DartValue_TimeImpl extends DartValue_Time {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DartValue_Bool value)? bool,
-    TResult? Function(DartValue_I8 value)? i8,
-    TResult? Function(DartValue_I16 value)? i16,
-    TResult? Function(DartValue_I32 value)? i32,
-    TResult? Function(DartValue_I64 value)? i64,
-    TResult? Function(DartValue_I128 value)? i128,
-    TResult? Function(DartValue_U8 value)? u8,
-    TResult? Function(DartValue_U16 value)? u16,
-    TResult? Function(DartValue_U32 value)? u32,
-    TResult? Function(DartValue_U64 value)? u64,
-    TResult? Function(DartValue_U128 value)? u128,
-    TResult? Function(DartValue_F32 value)? f32,
-    TResult? Function(DartValue_F64 value)? f64,
-    TResult? Function(DartValue_Decimal value)? decimal,
-    TResult? Function(DartValue_Str value)? str,
-    TResult? Function(DartValue_Bytea value)? bytea,
-    TResult? Function(DartValue_Inet value)? inet,
-    TResult? Function(DartValue_Date value)? date,
-    TResult? Function(DartValue_Timestamp value)? timestamp,
-    TResult? Function(DartValue_Time value)? time,
-    TResult? Function(DartValue_Interval value)? interval,
-    TResult? Function(DartValue_Uuid value)? uuid,
-    TResult? Function(DartValue_Map value)? map,
-    TResult? Function(DartValue_List value)? list,
-    TResult? Function(DartValue_Point value)? point,
-    TResult? Function(DartValue_NullData value)? nullData,
+    TResult? Function(Value_Bool value)? bool,
+    TResult? Function(Value_I8 value)? i8,
+    TResult? Function(Value_I16 value)? i16,
+    TResult? Function(Value_I32 value)? i32,
+    TResult? Function(Value_I64 value)? i64,
+    TResult? Function(Value_I128 value)? i128,
+    TResult? Function(Value_U8 value)? u8,
+    TResult? Function(Value_U16 value)? u16,
+    TResult? Function(Value_U32 value)? u32,
+    TResult? Function(Value_U64 value)? u64,
+    TResult? Function(Value_U128 value)? u128,
+    TResult? Function(Value_F32 value)? f32,
+    TResult? Function(Value_F64 value)? f64,
+    TResult? Function(Value_Decimal value)? decimal,
+    TResult? Function(Value_Str value)? str,
+    TResult? Function(Value_Bytea value)? bytea,
+    TResult? Function(Value_Inet value)? inet,
+    TResult? Function(Value_Date value)? date,
+    TResult? Function(Value_Timestamp value)? timestamp,
+    TResult? Function(Value_Time value)? time,
+    TResult? Function(Value_Interval value)? interval,
+    TResult? Function(Value_Uuid value)? uuid,
+    TResult? Function(Value_Map value)? map,
+    TResult? Function(Value_List value)? list,
+    TResult? Function(Value_Point value)? point,
+    TResult? Function(Value_Null value)? null_,
   }) {
     return time?.call(this);
   }
@@ -5744,32 +5734,32 @@ class _$DartValue_TimeImpl extends DartValue_Time {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DartValue_Bool value)? bool,
-    TResult Function(DartValue_I8 value)? i8,
-    TResult Function(DartValue_I16 value)? i16,
-    TResult Function(DartValue_I32 value)? i32,
-    TResult Function(DartValue_I64 value)? i64,
-    TResult Function(DartValue_I128 value)? i128,
-    TResult Function(DartValue_U8 value)? u8,
-    TResult Function(DartValue_U16 value)? u16,
-    TResult Function(DartValue_U32 value)? u32,
-    TResult Function(DartValue_U64 value)? u64,
-    TResult Function(DartValue_U128 value)? u128,
-    TResult Function(DartValue_F32 value)? f32,
-    TResult Function(DartValue_F64 value)? f64,
-    TResult Function(DartValue_Decimal value)? decimal,
-    TResult Function(DartValue_Str value)? str,
-    TResult Function(DartValue_Bytea value)? bytea,
-    TResult Function(DartValue_Inet value)? inet,
-    TResult Function(DartValue_Date value)? date,
-    TResult Function(DartValue_Timestamp value)? timestamp,
-    TResult Function(DartValue_Time value)? time,
-    TResult Function(DartValue_Interval value)? interval,
-    TResult Function(DartValue_Uuid value)? uuid,
-    TResult Function(DartValue_Map value)? map,
-    TResult Function(DartValue_List value)? list,
-    TResult Function(DartValue_Point value)? point,
-    TResult Function(DartValue_NullData value)? nullData,
+    TResult Function(Value_Bool value)? bool,
+    TResult Function(Value_I8 value)? i8,
+    TResult Function(Value_I16 value)? i16,
+    TResult Function(Value_I32 value)? i32,
+    TResult Function(Value_I64 value)? i64,
+    TResult Function(Value_I128 value)? i128,
+    TResult Function(Value_U8 value)? u8,
+    TResult Function(Value_U16 value)? u16,
+    TResult Function(Value_U32 value)? u32,
+    TResult Function(Value_U64 value)? u64,
+    TResult Function(Value_U128 value)? u128,
+    TResult Function(Value_F32 value)? f32,
+    TResult Function(Value_F64 value)? f64,
+    TResult Function(Value_Decimal value)? decimal,
+    TResult Function(Value_Str value)? str,
+    TResult Function(Value_Bytea value)? bytea,
+    TResult Function(Value_Inet value)? inet,
+    TResult Function(Value_Date value)? date,
+    TResult Function(Value_Timestamp value)? timestamp,
+    TResult Function(Value_Time value)? time,
+    TResult Function(Value_Interval value)? interval,
+    TResult Function(Value_Uuid value)? uuid,
+    TResult Function(Value_Map value)? map,
+    TResult Function(Value_List value)? list,
+    TResult Function(Value_Point value)? point,
+    TResult Function(Value_Null value)? null_,
     required TResult orElse(),
   }) {
     if (time != null) {
@@ -5779,31 +5769,31 @@ class _$DartValue_TimeImpl extends DartValue_Time {
   }
 }
 
-abstract class DartValue_Time extends DartValue {
-  const factory DartValue_Time(final NaiveTime field0) = _$DartValue_TimeImpl;
-  const DartValue_Time._() : super._();
+abstract class Value_Time extends Value {
+  const factory Value_Time(final NaiveTime field0) = _$Value_TimeImpl;
+  const Value_Time._() : super._();
 
   NaiveTime get field0;
   @JsonKey(ignore: true)
-  _$$DartValue_TimeImplCopyWith<_$DartValue_TimeImpl> get copyWith =>
+  _$$Value_TimeImplCopyWith<_$Value_TimeImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DartValue_IntervalImplCopyWith<$Res> {
-  factory _$$DartValue_IntervalImplCopyWith(_$DartValue_IntervalImpl value,
-          $Res Function(_$DartValue_IntervalImpl) then) =
-      __$$DartValue_IntervalImplCopyWithImpl<$Res>;
+abstract class _$$Value_IntervalImplCopyWith<$Res> {
+  factory _$$Value_IntervalImplCopyWith(_$Value_IntervalImpl value,
+          $Res Function(_$Value_IntervalImpl) then) =
+      __$$Value_IntervalImplCopyWithImpl<$Res>;
   @useResult
   $Res call({Interval field0});
 }
 
 /// @nodoc
-class __$$DartValue_IntervalImplCopyWithImpl<$Res>
-    extends _$DartValueCopyWithImpl<$Res, _$DartValue_IntervalImpl>
-    implements _$$DartValue_IntervalImplCopyWith<$Res> {
-  __$$DartValue_IntervalImplCopyWithImpl(_$DartValue_IntervalImpl _value,
-      $Res Function(_$DartValue_IntervalImpl) _then)
+class __$$Value_IntervalImplCopyWithImpl<$Res>
+    extends _$ValueCopyWithImpl<$Res, _$Value_IntervalImpl>
+    implements _$$Value_IntervalImplCopyWith<$Res> {
+  __$$Value_IntervalImplCopyWithImpl(
+      _$Value_IntervalImpl _value, $Res Function(_$Value_IntervalImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -5811,7 +5801,7 @@ class __$$DartValue_IntervalImplCopyWithImpl<$Res>
   $Res call({
     Object? field0 = null,
   }) {
-    return _then(_$DartValue_IntervalImpl(
+    return _then(_$Value_IntervalImpl(
       null == field0
           ? _value.field0
           : field0 // ignore: cast_nullable_to_non_nullable
@@ -5822,22 +5812,22 @@ class __$$DartValue_IntervalImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$DartValue_IntervalImpl extends DartValue_Interval {
-  const _$DartValue_IntervalImpl(this.field0) : super._();
+class _$Value_IntervalImpl extends Value_Interval {
+  const _$Value_IntervalImpl(this.field0) : super._();
 
   @override
   final Interval field0;
 
   @override
   String toString() {
-    return 'DartValue.interval(field0: $field0)';
+    return 'Value.interval(field0: $field0)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DartValue_IntervalImpl &&
+            other is _$Value_IntervalImpl &&
             (identical(other.field0, field0) || other.field0 == field0));
   }
 
@@ -5847,8 +5837,8 @@ class _$DartValue_IntervalImpl extends DartValue_Interval {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$DartValue_IntervalImplCopyWith<_$DartValue_IntervalImpl> get copyWith =>
-      __$$DartValue_IntervalImplCopyWithImpl<_$DartValue_IntervalImpl>(
+  _$$Value_IntervalImplCopyWith<_$Value_IntervalImpl> get copyWith =>
+      __$$Value_IntervalImplCopyWithImpl<_$Value_IntervalImpl>(
           this, _$identity);
 
   @override
@@ -5879,7 +5869,7 @@ class _$DartValue_IntervalImpl extends DartValue_Interval {
     required TResult Function(Map<String, Value> field0) map,
     required TResult Function(List<Value> field0) list,
     required TResult Function(Point field0) point,
-    required TResult Function() nullData,
+    required TResult Function() null_,
   }) {
     return interval(field0);
   }
@@ -5912,7 +5902,7 @@ class _$DartValue_IntervalImpl extends DartValue_Interval {
     TResult? Function(Map<String, Value> field0)? map,
     TResult? Function(List<Value> field0)? list,
     TResult? Function(Point field0)? point,
-    TResult? Function()? nullData,
+    TResult? Function()? null_,
   }) {
     return interval?.call(field0);
   }
@@ -5945,7 +5935,7 @@ class _$DartValue_IntervalImpl extends DartValue_Interval {
     TResult Function(Map<String, Value> field0)? map,
     TResult Function(List<Value> field0)? list,
     TResult Function(Point field0)? point,
-    TResult Function()? nullData,
+    TResult Function()? null_,
     required TResult orElse(),
   }) {
     if (interval != null) {
@@ -5957,32 +5947,32 @@ class _$DartValue_IntervalImpl extends DartValue_Interval {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DartValue_Bool value) bool,
-    required TResult Function(DartValue_I8 value) i8,
-    required TResult Function(DartValue_I16 value) i16,
-    required TResult Function(DartValue_I32 value) i32,
-    required TResult Function(DartValue_I64 value) i64,
-    required TResult Function(DartValue_I128 value) i128,
-    required TResult Function(DartValue_U8 value) u8,
-    required TResult Function(DartValue_U16 value) u16,
-    required TResult Function(DartValue_U32 value) u32,
-    required TResult Function(DartValue_U64 value) u64,
-    required TResult Function(DartValue_U128 value) u128,
-    required TResult Function(DartValue_F32 value) f32,
-    required TResult Function(DartValue_F64 value) f64,
-    required TResult Function(DartValue_Decimal value) decimal,
-    required TResult Function(DartValue_Str value) str,
-    required TResult Function(DartValue_Bytea value) bytea,
-    required TResult Function(DartValue_Inet value) inet,
-    required TResult Function(DartValue_Date value) date,
-    required TResult Function(DartValue_Timestamp value) timestamp,
-    required TResult Function(DartValue_Time value) time,
-    required TResult Function(DartValue_Interval value) interval,
-    required TResult Function(DartValue_Uuid value) uuid,
-    required TResult Function(DartValue_Map value) map,
-    required TResult Function(DartValue_List value) list,
-    required TResult Function(DartValue_Point value) point,
-    required TResult Function(DartValue_NullData value) nullData,
+    required TResult Function(Value_Bool value) bool,
+    required TResult Function(Value_I8 value) i8,
+    required TResult Function(Value_I16 value) i16,
+    required TResult Function(Value_I32 value) i32,
+    required TResult Function(Value_I64 value) i64,
+    required TResult Function(Value_I128 value) i128,
+    required TResult Function(Value_U8 value) u8,
+    required TResult Function(Value_U16 value) u16,
+    required TResult Function(Value_U32 value) u32,
+    required TResult Function(Value_U64 value) u64,
+    required TResult Function(Value_U128 value) u128,
+    required TResult Function(Value_F32 value) f32,
+    required TResult Function(Value_F64 value) f64,
+    required TResult Function(Value_Decimal value) decimal,
+    required TResult Function(Value_Str value) str,
+    required TResult Function(Value_Bytea value) bytea,
+    required TResult Function(Value_Inet value) inet,
+    required TResult Function(Value_Date value) date,
+    required TResult Function(Value_Timestamp value) timestamp,
+    required TResult Function(Value_Time value) time,
+    required TResult Function(Value_Interval value) interval,
+    required TResult Function(Value_Uuid value) uuid,
+    required TResult Function(Value_Map value) map,
+    required TResult Function(Value_List value) list,
+    required TResult Function(Value_Point value) point,
+    required TResult Function(Value_Null value) null_,
   }) {
     return interval(this);
   }
@@ -5990,32 +5980,32 @@ class _$DartValue_IntervalImpl extends DartValue_Interval {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DartValue_Bool value)? bool,
-    TResult? Function(DartValue_I8 value)? i8,
-    TResult? Function(DartValue_I16 value)? i16,
-    TResult? Function(DartValue_I32 value)? i32,
-    TResult? Function(DartValue_I64 value)? i64,
-    TResult? Function(DartValue_I128 value)? i128,
-    TResult? Function(DartValue_U8 value)? u8,
-    TResult? Function(DartValue_U16 value)? u16,
-    TResult? Function(DartValue_U32 value)? u32,
-    TResult? Function(DartValue_U64 value)? u64,
-    TResult? Function(DartValue_U128 value)? u128,
-    TResult? Function(DartValue_F32 value)? f32,
-    TResult? Function(DartValue_F64 value)? f64,
-    TResult? Function(DartValue_Decimal value)? decimal,
-    TResult? Function(DartValue_Str value)? str,
-    TResult? Function(DartValue_Bytea value)? bytea,
-    TResult? Function(DartValue_Inet value)? inet,
-    TResult? Function(DartValue_Date value)? date,
-    TResult? Function(DartValue_Timestamp value)? timestamp,
-    TResult? Function(DartValue_Time value)? time,
-    TResult? Function(DartValue_Interval value)? interval,
-    TResult? Function(DartValue_Uuid value)? uuid,
-    TResult? Function(DartValue_Map value)? map,
-    TResult? Function(DartValue_List value)? list,
-    TResult? Function(DartValue_Point value)? point,
-    TResult? Function(DartValue_NullData value)? nullData,
+    TResult? Function(Value_Bool value)? bool,
+    TResult? Function(Value_I8 value)? i8,
+    TResult? Function(Value_I16 value)? i16,
+    TResult? Function(Value_I32 value)? i32,
+    TResult? Function(Value_I64 value)? i64,
+    TResult? Function(Value_I128 value)? i128,
+    TResult? Function(Value_U8 value)? u8,
+    TResult? Function(Value_U16 value)? u16,
+    TResult? Function(Value_U32 value)? u32,
+    TResult? Function(Value_U64 value)? u64,
+    TResult? Function(Value_U128 value)? u128,
+    TResult? Function(Value_F32 value)? f32,
+    TResult? Function(Value_F64 value)? f64,
+    TResult? Function(Value_Decimal value)? decimal,
+    TResult? Function(Value_Str value)? str,
+    TResult? Function(Value_Bytea value)? bytea,
+    TResult? Function(Value_Inet value)? inet,
+    TResult? Function(Value_Date value)? date,
+    TResult? Function(Value_Timestamp value)? timestamp,
+    TResult? Function(Value_Time value)? time,
+    TResult? Function(Value_Interval value)? interval,
+    TResult? Function(Value_Uuid value)? uuid,
+    TResult? Function(Value_Map value)? map,
+    TResult? Function(Value_List value)? list,
+    TResult? Function(Value_Point value)? point,
+    TResult? Function(Value_Null value)? null_,
   }) {
     return interval?.call(this);
   }
@@ -6023,32 +6013,32 @@ class _$DartValue_IntervalImpl extends DartValue_Interval {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DartValue_Bool value)? bool,
-    TResult Function(DartValue_I8 value)? i8,
-    TResult Function(DartValue_I16 value)? i16,
-    TResult Function(DartValue_I32 value)? i32,
-    TResult Function(DartValue_I64 value)? i64,
-    TResult Function(DartValue_I128 value)? i128,
-    TResult Function(DartValue_U8 value)? u8,
-    TResult Function(DartValue_U16 value)? u16,
-    TResult Function(DartValue_U32 value)? u32,
-    TResult Function(DartValue_U64 value)? u64,
-    TResult Function(DartValue_U128 value)? u128,
-    TResult Function(DartValue_F32 value)? f32,
-    TResult Function(DartValue_F64 value)? f64,
-    TResult Function(DartValue_Decimal value)? decimal,
-    TResult Function(DartValue_Str value)? str,
-    TResult Function(DartValue_Bytea value)? bytea,
-    TResult Function(DartValue_Inet value)? inet,
-    TResult Function(DartValue_Date value)? date,
-    TResult Function(DartValue_Timestamp value)? timestamp,
-    TResult Function(DartValue_Time value)? time,
-    TResult Function(DartValue_Interval value)? interval,
-    TResult Function(DartValue_Uuid value)? uuid,
-    TResult Function(DartValue_Map value)? map,
-    TResult Function(DartValue_List value)? list,
-    TResult Function(DartValue_Point value)? point,
-    TResult Function(DartValue_NullData value)? nullData,
+    TResult Function(Value_Bool value)? bool,
+    TResult Function(Value_I8 value)? i8,
+    TResult Function(Value_I16 value)? i16,
+    TResult Function(Value_I32 value)? i32,
+    TResult Function(Value_I64 value)? i64,
+    TResult Function(Value_I128 value)? i128,
+    TResult Function(Value_U8 value)? u8,
+    TResult Function(Value_U16 value)? u16,
+    TResult Function(Value_U32 value)? u32,
+    TResult Function(Value_U64 value)? u64,
+    TResult Function(Value_U128 value)? u128,
+    TResult Function(Value_F32 value)? f32,
+    TResult Function(Value_F64 value)? f64,
+    TResult Function(Value_Decimal value)? decimal,
+    TResult Function(Value_Str value)? str,
+    TResult Function(Value_Bytea value)? bytea,
+    TResult Function(Value_Inet value)? inet,
+    TResult Function(Value_Date value)? date,
+    TResult Function(Value_Timestamp value)? timestamp,
+    TResult Function(Value_Time value)? time,
+    TResult Function(Value_Interval value)? interval,
+    TResult Function(Value_Uuid value)? uuid,
+    TResult Function(Value_Map value)? map,
+    TResult Function(Value_List value)? list,
+    TResult Function(Value_Point value)? point,
+    TResult Function(Value_Null value)? null_,
     required TResult orElse(),
   }) {
     if (interval != null) {
@@ -6058,32 +6048,31 @@ class _$DartValue_IntervalImpl extends DartValue_Interval {
   }
 }
 
-abstract class DartValue_Interval extends DartValue {
-  const factory DartValue_Interval(final Interval field0) =
-      _$DartValue_IntervalImpl;
-  const DartValue_Interval._() : super._();
+abstract class Value_Interval extends Value {
+  const factory Value_Interval(final Interval field0) = _$Value_IntervalImpl;
+  const Value_Interval._() : super._();
 
   Interval get field0;
   @JsonKey(ignore: true)
-  _$$DartValue_IntervalImplCopyWith<_$DartValue_IntervalImpl> get copyWith =>
+  _$$Value_IntervalImplCopyWith<_$Value_IntervalImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DartValue_UuidImplCopyWith<$Res> {
-  factory _$$DartValue_UuidImplCopyWith(_$DartValue_UuidImpl value,
-          $Res Function(_$DartValue_UuidImpl) then) =
-      __$$DartValue_UuidImplCopyWithImpl<$Res>;
+abstract class _$$Value_UuidImplCopyWith<$Res> {
+  factory _$$Value_UuidImplCopyWith(
+          _$Value_UuidImpl value, $Res Function(_$Value_UuidImpl) then) =
+      __$$Value_UuidImplCopyWithImpl<$Res>;
   @useResult
   $Res call({BigInt field0});
 }
 
 /// @nodoc
-class __$$DartValue_UuidImplCopyWithImpl<$Res>
-    extends _$DartValueCopyWithImpl<$Res, _$DartValue_UuidImpl>
-    implements _$$DartValue_UuidImplCopyWith<$Res> {
-  __$$DartValue_UuidImplCopyWithImpl(
-      _$DartValue_UuidImpl _value, $Res Function(_$DartValue_UuidImpl) _then)
+class __$$Value_UuidImplCopyWithImpl<$Res>
+    extends _$ValueCopyWithImpl<$Res, _$Value_UuidImpl>
+    implements _$$Value_UuidImplCopyWith<$Res> {
+  __$$Value_UuidImplCopyWithImpl(
+      _$Value_UuidImpl _value, $Res Function(_$Value_UuidImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -6091,7 +6080,7 @@ class __$$DartValue_UuidImplCopyWithImpl<$Res>
   $Res call({
     Object? field0 = null,
   }) {
-    return _then(_$DartValue_UuidImpl(
+    return _then(_$Value_UuidImpl(
       null == field0
           ? _value.field0
           : field0 // ignore: cast_nullable_to_non_nullable
@@ -6102,22 +6091,22 @@ class __$$DartValue_UuidImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$DartValue_UuidImpl extends DartValue_Uuid {
-  const _$DartValue_UuidImpl(this.field0) : super._();
+class _$Value_UuidImpl extends Value_Uuid {
+  const _$Value_UuidImpl(this.field0) : super._();
 
   @override
   final BigInt field0;
 
   @override
   String toString() {
-    return 'DartValue.uuid(field0: $field0)';
+    return 'Value.uuid(field0: $field0)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DartValue_UuidImpl &&
+            other is _$Value_UuidImpl &&
             (identical(other.field0, field0) || other.field0 == field0));
   }
 
@@ -6127,9 +6116,8 @@ class _$DartValue_UuidImpl extends DartValue_Uuid {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$DartValue_UuidImplCopyWith<_$DartValue_UuidImpl> get copyWith =>
-      __$$DartValue_UuidImplCopyWithImpl<_$DartValue_UuidImpl>(
-          this, _$identity);
+  _$$Value_UuidImplCopyWith<_$Value_UuidImpl> get copyWith =>
+      __$$Value_UuidImplCopyWithImpl<_$Value_UuidImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -6159,7 +6147,7 @@ class _$DartValue_UuidImpl extends DartValue_Uuid {
     required TResult Function(Map<String, Value> field0) map,
     required TResult Function(List<Value> field0) list,
     required TResult Function(Point field0) point,
-    required TResult Function() nullData,
+    required TResult Function() null_,
   }) {
     return uuid(field0);
   }
@@ -6192,7 +6180,7 @@ class _$DartValue_UuidImpl extends DartValue_Uuid {
     TResult? Function(Map<String, Value> field0)? map,
     TResult? Function(List<Value> field0)? list,
     TResult? Function(Point field0)? point,
-    TResult? Function()? nullData,
+    TResult? Function()? null_,
   }) {
     return uuid?.call(field0);
   }
@@ -6225,7 +6213,7 @@ class _$DartValue_UuidImpl extends DartValue_Uuid {
     TResult Function(Map<String, Value> field0)? map,
     TResult Function(List<Value> field0)? list,
     TResult Function(Point field0)? point,
-    TResult Function()? nullData,
+    TResult Function()? null_,
     required TResult orElse(),
   }) {
     if (uuid != null) {
@@ -6237,32 +6225,32 @@ class _$DartValue_UuidImpl extends DartValue_Uuid {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DartValue_Bool value) bool,
-    required TResult Function(DartValue_I8 value) i8,
-    required TResult Function(DartValue_I16 value) i16,
-    required TResult Function(DartValue_I32 value) i32,
-    required TResult Function(DartValue_I64 value) i64,
-    required TResult Function(DartValue_I128 value) i128,
-    required TResult Function(DartValue_U8 value) u8,
-    required TResult Function(DartValue_U16 value) u16,
-    required TResult Function(DartValue_U32 value) u32,
-    required TResult Function(DartValue_U64 value) u64,
-    required TResult Function(DartValue_U128 value) u128,
-    required TResult Function(DartValue_F32 value) f32,
-    required TResult Function(DartValue_F64 value) f64,
-    required TResult Function(DartValue_Decimal value) decimal,
-    required TResult Function(DartValue_Str value) str,
-    required TResult Function(DartValue_Bytea value) bytea,
-    required TResult Function(DartValue_Inet value) inet,
-    required TResult Function(DartValue_Date value) date,
-    required TResult Function(DartValue_Timestamp value) timestamp,
-    required TResult Function(DartValue_Time value) time,
-    required TResult Function(DartValue_Interval value) interval,
-    required TResult Function(DartValue_Uuid value) uuid,
-    required TResult Function(DartValue_Map value) map,
-    required TResult Function(DartValue_List value) list,
-    required TResult Function(DartValue_Point value) point,
-    required TResult Function(DartValue_NullData value) nullData,
+    required TResult Function(Value_Bool value) bool,
+    required TResult Function(Value_I8 value) i8,
+    required TResult Function(Value_I16 value) i16,
+    required TResult Function(Value_I32 value) i32,
+    required TResult Function(Value_I64 value) i64,
+    required TResult Function(Value_I128 value) i128,
+    required TResult Function(Value_U8 value) u8,
+    required TResult Function(Value_U16 value) u16,
+    required TResult Function(Value_U32 value) u32,
+    required TResult Function(Value_U64 value) u64,
+    required TResult Function(Value_U128 value) u128,
+    required TResult Function(Value_F32 value) f32,
+    required TResult Function(Value_F64 value) f64,
+    required TResult Function(Value_Decimal value) decimal,
+    required TResult Function(Value_Str value) str,
+    required TResult Function(Value_Bytea value) bytea,
+    required TResult Function(Value_Inet value) inet,
+    required TResult Function(Value_Date value) date,
+    required TResult Function(Value_Timestamp value) timestamp,
+    required TResult Function(Value_Time value) time,
+    required TResult Function(Value_Interval value) interval,
+    required TResult Function(Value_Uuid value) uuid,
+    required TResult Function(Value_Map value) map,
+    required TResult Function(Value_List value) list,
+    required TResult Function(Value_Point value) point,
+    required TResult Function(Value_Null value) null_,
   }) {
     return uuid(this);
   }
@@ -6270,32 +6258,32 @@ class _$DartValue_UuidImpl extends DartValue_Uuid {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DartValue_Bool value)? bool,
-    TResult? Function(DartValue_I8 value)? i8,
-    TResult? Function(DartValue_I16 value)? i16,
-    TResult? Function(DartValue_I32 value)? i32,
-    TResult? Function(DartValue_I64 value)? i64,
-    TResult? Function(DartValue_I128 value)? i128,
-    TResult? Function(DartValue_U8 value)? u8,
-    TResult? Function(DartValue_U16 value)? u16,
-    TResult? Function(DartValue_U32 value)? u32,
-    TResult? Function(DartValue_U64 value)? u64,
-    TResult? Function(DartValue_U128 value)? u128,
-    TResult? Function(DartValue_F32 value)? f32,
-    TResult? Function(DartValue_F64 value)? f64,
-    TResult? Function(DartValue_Decimal value)? decimal,
-    TResult? Function(DartValue_Str value)? str,
-    TResult? Function(DartValue_Bytea value)? bytea,
-    TResult? Function(DartValue_Inet value)? inet,
-    TResult? Function(DartValue_Date value)? date,
-    TResult? Function(DartValue_Timestamp value)? timestamp,
-    TResult? Function(DartValue_Time value)? time,
-    TResult? Function(DartValue_Interval value)? interval,
-    TResult? Function(DartValue_Uuid value)? uuid,
-    TResult? Function(DartValue_Map value)? map,
-    TResult? Function(DartValue_List value)? list,
-    TResult? Function(DartValue_Point value)? point,
-    TResult? Function(DartValue_NullData value)? nullData,
+    TResult? Function(Value_Bool value)? bool,
+    TResult? Function(Value_I8 value)? i8,
+    TResult? Function(Value_I16 value)? i16,
+    TResult? Function(Value_I32 value)? i32,
+    TResult? Function(Value_I64 value)? i64,
+    TResult? Function(Value_I128 value)? i128,
+    TResult? Function(Value_U8 value)? u8,
+    TResult? Function(Value_U16 value)? u16,
+    TResult? Function(Value_U32 value)? u32,
+    TResult? Function(Value_U64 value)? u64,
+    TResult? Function(Value_U128 value)? u128,
+    TResult? Function(Value_F32 value)? f32,
+    TResult? Function(Value_F64 value)? f64,
+    TResult? Function(Value_Decimal value)? decimal,
+    TResult? Function(Value_Str value)? str,
+    TResult? Function(Value_Bytea value)? bytea,
+    TResult? Function(Value_Inet value)? inet,
+    TResult? Function(Value_Date value)? date,
+    TResult? Function(Value_Timestamp value)? timestamp,
+    TResult? Function(Value_Time value)? time,
+    TResult? Function(Value_Interval value)? interval,
+    TResult? Function(Value_Uuid value)? uuid,
+    TResult? Function(Value_Map value)? map,
+    TResult? Function(Value_List value)? list,
+    TResult? Function(Value_Point value)? point,
+    TResult? Function(Value_Null value)? null_,
   }) {
     return uuid?.call(this);
   }
@@ -6303,32 +6291,32 @@ class _$DartValue_UuidImpl extends DartValue_Uuid {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DartValue_Bool value)? bool,
-    TResult Function(DartValue_I8 value)? i8,
-    TResult Function(DartValue_I16 value)? i16,
-    TResult Function(DartValue_I32 value)? i32,
-    TResult Function(DartValue_I64 value)? i64,
-    TResult Function(DartValue_I128 value)? i128,
-    TResult Function(DartValue_U8 value)? u8,
-    TResult Function(DartValue_U16 value)? u16,
-    TResult Function(DartValue_U32 value)? u32,
-    TResult Function(DartValue_U64 value)? u64,
-    TResult Function(DartValue_U128 value)? u128,
-    TResult Function(DartValue_F32 value)? f32,
-    TResult Function(DartValue_F64 value)? f64,
-    TResult Function(DartValue_Decimal value)? decimal,
-    TResult Function(DartValue_Str value)? str,
-    TResult Function(DartValue_Bytea value)? bytea,
-    TResult Function(DartValue_Inet value)? inet,
-    TResult Function(DartValue_Date value)? date,
-    TResult Function(DartValue_Timestamp value)? timestamp,
-    TResult Function(DartValue_Time value)? time,
-    TResult Function(DartValue_Interval value)? interval,
-    TResult Function(DartValue_Uuid value)? uuid,
-    TResult Function(DartValue_Map value)? map,
-    TResult Function(DartValue_List value)? list,
-    TResult Function(DartValue_Point value)? point,
-    TResult Function(DartValue_NullData value)? nullData,
+    TResult Function(Value_Bool value)? bool,
+    TResult Function(Value_I8 value)? i8,
+    TResult Function(Value_I16 value)? i16,
+    TResult Function(Value_I32 value)? i32,
+    TResult Function(Value_I64 value)? i64,
+    TResult Function(Value_I128 value)? i128,
+    TResult Function(Value_U8 value)? u8,
+    TResult Function(Value_U16 value)? u16,
+    TResult Function(Value_U32 value)? u32,
+    TResult Function(Value_U64 value)? u64,
+    TResult Function(Value_U128 value)? u128,
+    TResult Function(Value_F32 value)? f32,
+    TResult Function(Value_F64 value)? f64,
+    TResult Function(Value_Decimal value)? decimal,
+    TResult Function(Value_Str value)? str,
+    TResult Function(Value_Bytea value)? bytea,
+    TResult Function(Value_Inet value)? inet,
+    TResult Function(Value_Date value)? date,
+    TResult Function(Value_Timestamp value)? timestamp,
+    TResult Function(Value_Time value)? time,
+    TResult Function(Value_Interval value)? interval,
+    TResult Function(Value_Uuid value)? uuid,
+    TResult Function(Value_Map value)? map,
+    TResult Function(Value_List value)? list,
+    TResult Function(Value_Point value)? point,
+    TResult Function(Value_Null value)? null_,
     required TResult orElse(),
   }) {
     if (uuid != null) {
@@ -6338,31 +6326,31 @@ class _$DartValue_UuidImpl extends DartValue_Uuid {
   }
 }
 
-abstract class DartValue_Uuid extends DartValue {
-  const factory DartValue_Uuid(final BigInt field0) = _$DartValue_UuidImpl;
-  const DartValue_Uuid._() : super._();
+abstract class Value_Uuid extends Value {
+  const factory Value_Uuid(final BigInt field0) = _$Value_UuidImpl;
+  const Value_Uuid._() : super._();
 
   BigInt get field0;
   @JsonKey(ignore: true)
-  _$$DartValue_UuidImplCopyWith<_$DartValue_UuidImpl> get copyWith =>
+  _$$Value_UuidImplCopyWith<_$Value_UuidImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DartValue_MapImplCopyWith<$Res> {
-  factory _$$DartValue_MapImplCopyWith(
-          _$DartValue_MapImpl value, $Res Function(_$DartValue_MapImpl) then) =
-      __$$DartValue_MapImplCopyWithImpl<$Res>;
+abstract class _$$Value_MapImplCopyWith<$Res> {
+  factory _$$Value_MapImplCopyWith(
+          _$Value_MapImpl value, $Res Function(_$Value_MapImpl) then) =
+      __$$Value_MapImplCopyWithImpl<$Res>;
   @useResult
   $Res call({Map<String, Value> field0});
 }
 
 /// @nodoc
-class __$$DartValue_MapImplCopyWithImpl<$Res>
-    extends _$DartValueCopyWithImpl<$Res, _$DartValue_MapImpl>
-    implements _$$DartValue_MapImplCopyWith<$Res> {
-  __$$DartValue_MapImplCopyWithImpl(
-      _$DartValue_MapImpl _value, $Res Function(_$DartValue_MapImpl) _then)
+class __$$Value_MapImplCopyWithImpl<$Res>
+    extends _$ValueCopyWithImpl<$Res, _$Value_MapImpl>
+    implements _$$Value_MapImplCopyWith<$Res> {
+  __$$Value_MapImplCopyWithImpl(
+      _$Value_MapImpl _value, $Res Function(_$Value_MapImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -6370,7 +6358,7 @@ class __$$DartValue_MapImplCopyWithImpl<$Res>
   $Res call({
     Object? field0 = null,
   }) {
-    return _then(_$DartValue_MapImpl(
+    return _then(_$Value_MapImpl(
       null == field0
           ? _value._field0
           : field0 // ignore: cast_nullable_to_non_nullable
@@ -6381,8 +6369,8 @@ class __$$DartValue_MapImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$DartValue_MapImpl extends DartValue_Map {
-  const _$DartValue_MapImpl(final Map<String, Value> field0)
+class _$Value_MapImpl extends Value_Map {
+  const _$Value_MapImpl(final Map<String, Value> field0)
       : _field0 = field0,
         super._();
 
@@ -6396,14 +6384,14 @@ class _$DartValue_MapImpl extends DartValue_Map {
 
   @override
   String toString() {
-    return 'DartValue.map(field0: $field0)';
+    return 'Value.map(field0: $field0)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DartValue_MapImpl &&
+            other is _$Value_MapImpl &&
             const DeepCollectionEquality().equals(other._field0, _field0));
   }
 
@@ -6414,8 +6402,8 @@ class _$DartValue_MapImpl extends DartValue_Map {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$DartValue_MapImplCopyWith<_$DartValue_MapImpl> get copyWith =>
-      __$$DartValue_MapImplCopyWithImpl<_$DartValue_MapImpl>(this, _$identity);
+  _$$Value_MapImplCopyWith<_$Value_MapImpl> get copyWith =>
+      __$$Value_MapImplCopyWithImpl<_$Value_MapImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -6445,7 +6433,7 @@ class _$DartValue_MapImpl extends DartValue_Map {
     required TResult Function(Map<String, Value> field0) map,
     required TResult Function(List<Value> field0) list,
     required TResult Function(Point field0) point,
-    required TResult Function() nullData,
+    required TResult Function() null_,
   }) {
     return map(field0);
   }
@@ -6478,7 +6466,7 @@ class _$DartValue_MapImpl extends DartValue_Map {
     TResult? Function(Map<String, Value> field0)? map,
     TResult? Function(List<Value> field0)? list,
     TResult? Function(Point field0)? point,
-    TResult? Function()? nullData,
+    TResult? Function()? null_,
   }) {
     return map?.call(field0);
   }
@@ -6511,7 +6499,7 @@ class _$DartValue_MapImpl extends DartValue_Map {
     TResult Function(Map<String, Value> field0)? map,
     TResult Function(List<Value> field0)? list,
     TResult Function(Point field0)? point,
-    TResult Function()? nullData,
+    TResult Function()? null_,
     required TResult orElse(),
   }) {
     if (map != null) {
@@ -6523,32 +6511,32 @@ class _$DartValue_MapImpl extends DartValue_Map {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DartValue_Bool value) bool,
-    required TResult Function(DartValue_I8 value) i8,
-    required TResult Function(DartValue_I16 value) i16,
-    required TResult Function(DartValue_I32 value) i32,
-    required TResult Function(DartValue_I64 value) i64,
-    required TResult Function(DartValue_I128 value) i128,
-    required TResult Function(DartValue_U8 value) u8,
-    required TResult Function(DartValue_U16 value) u16,
-    required TResult Function(DartValue_U32 value) u32,
-    required TResult Function(DartValue_U64 value) u64,
-    required TResult Function(DartValue_U128 value) u128,
-    required TResult Function(DartValue_F32 value) f32,
-    required TResult Function(DartValue_F64 value) f64,
-    required TResult Function(DartValue_Decimal value) decimal,
-    required TResult Function(DartValue_Str value) str,
-    required TResult Function(DartValue_Bytea value) bytea,
-    required TResult Function(DartValue_Inet value) inet,
-    required TResult Function(DartValue_Date value) date,
-    required TResult Function(DartValue_Timestamp value) timestamp,
-    required TResult Function(DartValue_Time value) time,
-    required TResult Function(DartValue_Interval value) interval,
-    required TResult Function(DartValue_Uuid value) uuid,
-    required TResult Function(DartValue_Map value) map,
-    required TResult Function(DartValue_List value) list,
-    required TResult Function(DartValue_Point value) point,
-    required TResult Function(DartValue_NullData value) nullData,
+    required TResult Function(Value_Bool value) bool,
+    required TResult Function(Value_I8 value) i8,
+    required TResult Function(Value_I16 value) i16,
+    required TResult Function(Value_I32 value) i32,
+    required TResult Function(Value_I64 value) i64,
+    required TResult Function(Value_I128 value) i128,
+    required TResult Function(Value_U8 value) u8,
+    required TResult Function(Value_U16 value) u16,
+    required TResult Function(Value_U32 value) u32,
+    required TResult Function(Value_U64 value) u64,
+    required TResult Function(Value_U128 value) u128,
+    required TResult Function(Value_F32 value) f32,
+    required TResult Function(Value_F64 value) f64,
+    required TResult Function(Value_Decimal value) decimal,
+    required TResult Function(Value_Str value) str,
+    required TResult Function(Value_Bytea value) bytea,
+    required TResult Function(Value_Inet value) inet,
+    required TResult Function(Value_Date value) date,
+    required TResult Function(Value_Timestamp value) timestamp,
+    required TResult Function(Value_Time value) time,
+    required TResult Function(Value_Interval value) interval,
+    required TResult Function(Value_Uuid value) uuid,
+    required TResult Function(Value_Map value) map,
+    required TResult Function(Value_List value) list,
+    required TResult Function(Value_Point value) point,
+    required TResult Function(Value_Null value) null_,
   }) {
     return map(this);
   }
@@ -6556,32 +6544,32 @@ class _$DartValue_MapImpl extends DartValue_Map {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DartValue_Bool value)? bool,
-    TResult? Function(DartValue_I8 value)? i8,
-    TResult? Function(DartValue_I16 value)? i16,
-    TResult? Function(DartValue_I32 value)? i32,
-    TResult? Function(DartValue_I64 value)? i64,
-    TResult? Function(DartValue_I128 value)? i128,
-    TResult? Function(DartValue_U8 value)? u8,
-    TResult? Function(DartValue_U16 value)? u16,
-    TResult? Function(DartValue_U32 value)? u32,
-    TResult? Function(DartValue_U64 value)? u64,
-    TResult? Function(DartValue_U128 value)? u128,
-    TResult? Function(DartValue_F32 value)? f32,
-    TResult? Function(DartValue_F64 value)? f64,
-    TResult? Function(DartValue_Decimal value)? decimal,
-    TResult? Function(DartValue_Str value)? str,
-    TResult? Function(DartValue_Bytea value)? bytea,
-    TResult? Function(DartValue_Inet value)? inet,
-    TResult? Function(DartValue_Date value)? date,
-    TResult? Function(DartValue_Timestamp value)? timestamp,
-    TResult? Function(DartValue_Time value)? time,
-    TResult? Function(DartValue_Interval value)? interval,
-    TResult? Function(DartValue_Uuid value)? uuid,
-    TResult? Function(DartValue_Map value)? map,
-    TResult? Function(DartValue_List value)? list,
-    TResult? Function(DartValue_Point value)? point,
-    TResult? Function(DartValue_NullData value)? nullData,
+    TResult? Function(Value_Bool value)? bool,
+    TResult? Function(Value_I8 value)? i8,
+    TResult? Function(Value_I16 value)? i16,
+    TResult? Function(Value_I32 value)? i32,
+    TResult? Function(Value_I64 value)? i64,
+    TResult? Function(Value_I128 value)? i128,
+    TResult? Function(Value_U8 value)? u8,
+    TResult? Function(Value_U16 value)? u16,
+    TResult? Function(Value_U32 value)? u32,
+    TResult? Function(Value_U64 value)? u64,
+    TResult? Function(Value_U128 value)? u128,
+    TResult? Function(Value_F32 value)? f32,
+    TResult? Function(Value_F64 value)? f64,
+    TResult? Function(Value_Decimal value)? decimal,
+    TResult? Function(Value_Str value)? str,
+    TResult? Function(Value_Bytea value)? bytea,
+    TResult? Function(Value_Inet value)? inet,
+    TResult? Function(Value_Date value)? date,
+    TResult? Function(Value_Timestamp value)? timestamp,
+    TResult? Function(Value_Time value)? time,
+    TResult? Function(Value_Interval value)? interval,
+    TResult? Function(Value_Uuid value)? uuid,
+    TResult? Function(Value_Map value)? map,
+    TResult? Function(Value_List value)? list,
+    TResult? Function(Value_Point value)? point,
+    TResult? Function(Value_Null value)? null_,
   }) {
     return map?.call(this);
   }
@@ -6589,32 +6577,32 @@ class _$DartValue_MapImpl extends DartValue_Map {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DartValue_Bool value)? bool,
-    TResult Function(DartValue_I8 value)? i8,
-    TResult Function(DartValue_I16 value)? i16,
-    TResult Function(DartValue_I32 value)? i32,
-    TResult Function(DartValue_I64 value)? i64,
-    TResult Function(DartValue_I128 value)? i128,
-    TResult Function(DartValue_U8 value)? u8,
-    TResult Function(DartValue_U16 value)? u16,
-    TResult Function(DartValue_U32 value)? u32,
-    TResult Function(DartValue_U64 value)? u64,
-    TResult Function(DartValue_U128 value)? u128,
-    TResult Function(DartValue_F32 value)? f32,
-    TResult Function(DartValue_F64 value)? f64,
-    TResult Function(DartValue_Decimal value)? decimal,
-    TResult Function(DartValue_Str value)? str,
-    TResult Function(DartValue_Bytea value)? bytea,
-    TResult Function(DartValue_Inet value)? inet,
-    TResult Function(DartValue_Date value)? date,
-    TResult Function(DartValue_Timestamp value)? timestamp,
-    TResult Function(DartValue_Time value)? time,
-    TResult Function(DartValue_Interval value)? interval,
-    TResult Function(DartValue_Uuid value)? uuid,
-    TResult Function(DartValue_Map value)? map,
-    TResult Function(DartValue_List value)? list,
-    TResult Function(DartValue_Point value)? point,
-    TResult Function(DartValue_NullData value)? nullData,
+    TResult Function(Value_Bool value)? bool,
+    TResult Function(Value_I8 value)? i8,
+    TResult Function(Value_I16 value)? i16,
+    TResult Function(Value_I32 value)? i32,
+    TResult Function(Value_I64 value)? i64,
+    TResult Function(Value_I128 value)? i128,
+    TResult Function(Value_U8 value)? u8,
+    TResult Function(Value_U16 value)? u16,
+    TResult Function(Value_U32 value)? u32,
+    TResult Function(Value_U64 value)? u64,
+    TResult Function(Value_U128 value)? u128,
+    TResult Function(Value_F32 value)? f32,
+    TResult Function(Value_F64 value)? f64,
+    TResult Function(Value_Decimal value)? decimal,
+    TResult Function(Value_Str value)? str,
+    TResult Function(Value_Bytea value)? bytea,
+    TResult Function(Value_Inet value)? inet,
+    TResult Function(Value_Date value)? date,
+    TResult Function(Value_Timestamp value)? timestamp,
+    TResult Function(Value_Time value)? time,
+    TResult Function(Value_Interval value)? interval,
+    TResult Function(Value_Uuid value)? uuid,
+    TResult Function(Value_Map value)? map,
+    TResult Function(Value_List value)? list,
+    TResult Function(Value_Point value)? point,
+    TResult Function(Value_Null value)? null_,
     required TResult orElse(),
   }) {
     if (map != null) {
@@ -6624,32 +6612,31 @@ class _$DartValue_MapImpl extends DartValue_Map {
   }
 }
 
-abstract class DartValue_Map extends DartValue {
-  const factory DartValue_Map(final Map<String, Value> field0) =
-      _$DartValue_MapImpl;
-  const DartValue_Map._() : super._();
+abstract class Value_Map extends Value {
+  const factory Value_Map(final Map<String, Value> field0) = _$Value_MapImpl;
+  const Value_Map._() : super._();
 
   Map<String, Value> get field0;
   @JsonKey(ignore: true)
-  _$$DartValue_MapImplCopyWith<_$DartValue_MapImpl> get copyWith =>
+  _$$Value_MapImplCopyWith<_$Value_MapImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DartValue_ListImplCopyWith<$Res> {
-  factory _$$DartValue_ListImplCopyWith(_$DartValue_ListImpl value,
-          $Res Function(_$DartValue_ListImpl) then) =
-      __$$DartValue_ListImplCopyWithImpl<$Res>;
+abstract class _$$Value_ListImplCopyWith<$Res> {
+  factory _$$Value_ListImplCopyWith(
+          _$Value_ListImpl value, $Res Function(_$Value_ListImpl) then) =
+      __$$Value_ListImplCopyWithImpl<$Res>;
   @useResult
   $Res call({List<Value> field0});
 }
 
 /// @nodoc
-class __$$DartValue_ListImplCopyWithImpl<$Res>
-    extends _$DartValueCopyWithImpl<$Res, _$DartValue_ListImpl>
-    implements _$$DartValue_ListImplCopyWith<$Res> {
-  __$$DartValue_ListImplCopyWithImpl(
-      _$DartValue_ListImpl _value, $Res Function(_$DartValue_ListImpl) _then)
+class __$$Value_ListImplCopyWithImpl<$Res>
+    extends _$ValueCopyWithImpl<$Res, _$Value_ListImpl>
+    implements _$$Value_ListImplCopyWith<$Res> {
+  __$$Value_ListImplCopyWithImpl(
+      _$Value_ListImpl _value, $Res Function(_$Value_ListImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -6657,7 +6644,7 @@ class __$$DartValue_ListImplCopyWithImpl<$Res>
   $Res call({
     Object? field0 = null,
   }) {
-    return _then(_$DartValue_ListImpl(
+    return _then(_$Value_ListImpl(
       null == field0
           ? _value._field0
           : field0 // ignore: cast_nullable_to_non_nullable
@@ -6668,8 +6655,8 @@ class __$$DartValue_ListImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$DartValue_ListImpl extends DartValue_List {
-  const _$DartValue_ListImpl(final List<Value> field0)
+class _$Value_ListImpl extends Value_List {
+  const _$Value_ListImpl(final List<Value> field0)
       : _field0 = field0,
         super._();
 
@@ -6683,14 +6670,14 @@ class _$DartValue_ListImpl extends DartValue_List {
 
   @override
   String toString() {
-    return 'DartValue.list(field0: $field0)';
+    return 'Value.list(field0: $field0)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DartValue_ListImpl &&
+            other is _$Value_ListImpl &&
             const DeepCollectionEquality().equals(other._field0, _field0));
   }
 
@@ -6701,9 +6688,8 @@ class _$DartValue_ListImpl extends DartValue_List {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$DartValue_ListImplCopyWith<_$DartValue_ListImpl> get copyWith =>
-      __$$DartValue_ListImplCopyWithImpl<_$DartValue_ListImpl>(
-          this, _$identity);
+  _$$Value_ListImplCopyWith<_$Value_ListImpl> get copyWith =>
+      __$$Value_ListImplCopyWithImpl<_$Value_ListImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -6733,7 +6719,7 @@ class _$DartValue_ListImpl extends DartValue_List {
     required TResult Function(Map<String, Value> field0) map,
     required TResult Function(List<Value> field0) list,
     required TResult Function(Point field0) point,
-    required TResult Function() nullData,
+    required TResult Function() null_,
   }) {
     return list(field0);
   }
@@ -6766,7 +6752,7 @@ class _$DartValue_ListImpl extends DartValue_List {
     TResult? Function(Map<String, Value> field0)? map,
     TResult? Function(List<Value> field0)? list,
     TResult? Function(Point field0)? point,
-    TResult? Function()? nullData,
+    TResult? Function()? null_,
   }) {
     return list?.call(field0);
   }
@@ -6799,7 +6785,7 @@ class _$DartValue_ListImpl extends DartValue_List {
     TResult Function(Map<String, Value> field0)? map,
     TResult Function(List<Value> field0)? list,
     TResult Function(Point field0)? point,
-    TResult Function()? nullData,
+    TResult Function()? null_,
     required TResult orElse(),
   }) {
     if (list != null) {
@@ -6811,32 +6797,32 @@ class _$DartValue_ListImpl extends DartValue_List {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DartValue_Bool value) bool,
-    required TResult Function(DartValue_I8 value) i8,
-    required TResult Function(DartValue_I16 value) i16,
-    required TResult Function(DartValue_I32 value) i32,
-    required TResult Function(DartValue_I64 value) i64,
-    required TResult Function(DartValue_I128 value) i128,
-    required TResult Function(DartValue_U8 value) u8,
-    required TResult Function(DartValue_U16 value) u16,
-    required TResult Function(DartValue_U32 value) u32,
-    required TResult Function(DartValue_U64 value) u64,
-    required TResult Function(DartValue_U128 value) u128,
-    required TResult Function(DartValue_F32 value) f32,
-    required TResult Function(DartValue_F64 value) f64,
-    required TResult Function(DartValue_Decimal value) decimal,
-    required TResult Function(DartValue_Str value) str,
-    required TResult Function(DartValue_Bytea value) bytea,
-    required TResult Function(DartValue_Inet value) inet,
-    required TResult Function(DartValue_Date value) date,
-    required TResult Function(DartValue_Timestamp value) timestamp,
-    required TResult Function(DartValue_Time value) time,
-    required TResult Function(DartValue_Interval value) interval,
-    required TResult Function(DartValue_Uuid value) uuid,
-    required TResult Function(DartValue_Map value) map,
-    required TResult Function(DartValue_List value) list,
-    required TResult Function(DartValue_Point value) point,
-    required TResult Function(DartValue_NullData value) nullData,
+    required TResult Function(Value_Bool value) bool,
+    required TResult Function(Value_I8 value) i8,
+    required TResult Function(Value_I16 value) i16,
+    required TResult Function(Value_I32 value) i32,
+    required TResult Function(Value_I64 value) i64,
+    required TResult Function(Value_I128 value) i128,
+    required TResult Function(Value_U8 value) u8,
+    required TResult Function(Value_U16 value) u16,
+    required TResult Function(Value_U32 value) u32,
+    required TResult Function(Value_U64 value) u64,
+    required TResult Function(Value_U128 value) u128,
+    required TResult Function(Value_F32 value) f32,
+    required TResult Function(Value_F64 value) f64,
+    required TResult Function(Value_Decimal value) decimal,
+    required TResult Function(Value_Str value) str,
+    required TResult Function(Value_Bytea value) bytea,
+    required TResult Function(Value_Inet value) inet,
+    required TResult Function(Value_Date value) date,
+    required TResult Function(Value_Timestamp value) timestamp,
+    required TResult Function(Value_Time value) time,
+    required TResult Function(Value_Interval value) interval,
+    required TResult Function(Value_Uuid value) uuid,
+    required TResult Function(Value_Map value) map,
+    required TResult Function(Value_List value) list,
+    required TResult Function(Value_Point value) point,
+    required TResult Function(Value_Null value) null_,
   }) {
     return list(this);
   }
@@ -6844,32 +6830,32 @@ class _$DartValue_ListImpl extends DartValue_List {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DartValue_Bool value)? bool,
-    TResult? Function(DartValue_I8 value)? i8,
-    TResult? Function(DartValue_I16 value)? i16,
-    TResult? Function(DartValue_I32 value)? i32,
-    TResult? Function(DartValue_I64 value)? i64,
-    TResult? Function(DartValue_I128 value)? i128,
-    TResult? Function(DartValue_U8 value)? u8,
-    TResult? Function(DartValue_U16 value)? u16,
-    TResult? Function(DartValue_U32 value)? u32,
-    TResult? Function(DartValue_U64 value)? u64,
-    TResult? Function(DartValue_U128 value)? u128,
-    TResult? Function(DartValue_F32 value)? f32,
-    TResult? Function(DartValue_F64 value)? f64,
-    TResult? Function(DartValue_Decimal value)? decimal,
-    TResult? Function(DartValue_Str value)? str,
-    TResult? Function(DartValue_Bytea value)? bytea,
-    TResult? Function(DartValue_Inet value)? inet,
-    TResult? Function(DartValue_Date value)? date,
-    TResult? Function(DartValue_Timestamp value)? timestamp,
-    TResult? Function(DartValue_Time value)? time,
-    TResult? Function(DartValue_Interval value)? interval,
-    TResult? Function(DartValue_Uuid value)? uuid,
-    TResult? Function(DartValue_Map value)? map,
-    TResult? Function(DartValue_List value)? list,
-    TResult? Function(DartValue_Point value)? point,
-    TResult? Function(DartValue_NullData value)? nullData,
+    TResult? Function(Value_Bool value)? bool,
+    TResult? Function(Value_I8 value)? i8,
+    TResult? Function(Value_I16 value)? i16,
+    TResult? Function(Value_I32 value)? i32,
+    TResult? Function(Value_I64 value)? i64,
+    TResult? Function(Value_I128 value)? i128,
+    TResult? Function(Value_U8 value)? u8,
+    TResult? Function(Value_U16 value)? u16,
+    TResult? Function(Value_U32 value)? u32,
+    TResult? Function(Value_U64 value)? u64,
+    TResult? Function(Value_U128 value)? u128,
+    TResult? Function(Value_F32 value)? f32,
+    TResult? Function(Value_F64 value)? f64,
+    TResult? Function(Value_Decimal value)? decimal,
+    TResult? Function(Value_Str value)? str,
+    TResult? Function(Value_Bytea value)? bytea,
+    TResult? Function(Value_Inet value)? inet,
+    TResult? Function(Value_Date value)? date,
+    TResult? Function(Value_Timestamp value)? timestamp,
+    TResult? Function(Value_Time value)? time,
+    TResult? Function(Value_Interval value)? interval,
+    TResult? Function(Value_Uuid value)? uuid,
+    TResult? Function(Value_Map value)? map,
+    TResult? Function(Value_List value)? list,
+    TResult? Function(Value_Point value)? point,
+    TResult? Function(Value_Null value)? null_,
   }) {
     return list?.call(this);
   }
@@ -6877,32 +6863,32 @@ class _$DartValue_ListImpl extends DartValue_List {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DartValue_Bool value)? bool,
-    TResult Function(DartValue_I8 value)? i8,
-    TResult Function(DartValue_I16 value)? i16,
-    TResult Function(DartValue_I32 value)? i32,
-    TResult Function(DartValue_I64 value)? i64,
-    TResult Function(DartValue_I128 value)? i128,
-    TResult Function(DartValue_U8 value)? u8,
-    TResult Function(DartValue_U16 value)? u16,
-    TResult Function(DartValue_U32 value)? u32,
-    TResult Function(DartValue_U64 value)? u64,
-    TResult Function(DartValue_U128 value)? u128,
-    TResult Function(DartValue_F32 value)? f32,
-    TResult Function(DartValue_F64 value)? f64,
-    TResult Function(DartValue_Decimal value)? decimal,
-    TResult Function(DartValue_Str value)? str,
-    TResult Function(DartValue_Bytea value)? bytea,
-    TResult Function(DartValue_Inet value)? inet,
-    TResult Function(DartValue_Date value)? date,
-    TResult Function(DartValue_Timestamp value)? timestamp,
-    TResult Function(DartValue_Time value)? time,
-    TResult Function(DartValue_Interval value)? interval,
-    TResult Function(DartValue_Uuid value)? uuid,
-    TResult Function(DartValue_Map value)? map,
-    TResult Function(DartValue_List value)? list,
-    TResult Function(DartValue_Point value)? point,
-    TResult Function(DartValue_NullData value)? nullData,
+    TResult Function(Value_Bool value)? bool,
+    TResult Function(Value_I8 value)? i8,
+    TResult Function(Value_I16 value)? i16,
+    TResult Function(Value_I32 value)? i32,
+    TResult Function(Value_I64 value)? i64,
+    TResult Function(Value_I128 value)? i128,
+    TResult Function(Value_U8 value)? u8,
+    TResult Function(Value_U16 value)? u16,
+    TResult Function(Value_U32 value)? u32,
+    TResult Function(Value_U64 value)? u64,
+    TResult Function(Value_U128 value)? u128,
+    TResult Function(Value_F32 value)? f32,
+    TResult Function(Value_F64 value)? f64,
+    TResult Function(Value_Decimal value)? decimal,
+    TResult Function(Value_Str value)? str,
+    TResult Function(Value_Bytea value)? bytea,
+    TResult Function(Value_Inet value)? inet,
+    TResult Function(Value_Date value)? date,
+    TResult Function(Value_Timestamp value)? timestamp,
+    TResult Function(Value_Time value)? time,
+    TResult Function(Value_Interval value)? interval,
+    TResult Function(Value_Uuid value)? uuid,
+    TResult Function(Value_Map value)? map,
+    TResult Function(Value_List value)? list,
+    TResult Function(Value_Point value)? point,
+    TResult Function(Value_Null value)? null_,
     required TResult orElse(),
   }) {
     if (list != null) {
@@ -6912,31 +6898,31 @@ class _$DartValue_ListImpl extends DartValue_List {
   }
 }
 
-abstract class DartValue_List extends DartValue {
-  const factory DartValue_List(final List<Value> field0) = _$DartValue_ListImpl;
-  const DartValue_List._() : super._();
+abstract class Value_List extends Value {
+  const factory Value_List(final List<Value> field0) = _$Value_ListImpl;
+  const Value_List._() : super._();
 
   List<Value> get field0;
   @JsonKey(ignore: true)
-  _$$DartValue_ListImplCopyWith<_$DartValue_ListImpl> get copyWith =>
+  _$$Value_ListImplCopyWith<_$Value_ListImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DartValue_PointImplCopyWith<$Res> {
-  factory _$$DartValue_PointImplCopyWith(_$DartValue_PointImpl value,
-          $Res Function(_$DartValue_PointImpl) then) =
-      __$$DartValue_PointImplCopyWithImpl<$Res>;
+abstract class _$$Value_PointImplCopyWith<$Res> {
+  factory _$$Value_PointImplCopyWith(
+          _$Value_PointImpl value, $Res Function(_$Value_PointImpl) then) =
+      __$$Value_PointImplCopyWithImpl<$Res>;
   @useResult
   $Res call({Point field0});
 }
 
 /// @nodoc
-class __$$DartValue_PointImplCopyWithImpl<$Res>
-    extends _$DartValueCopyWithImpl<$Res, _$DartValue_PointImpl>
-    implements _$$DartValue_PointImplCopyWith<$Res> {
-  __$$DartValue_PointImplCopyWithImpl(
-      _$DartValue_PointImpl _value, $Res Function(_$DartValue_PointImpl) _then)
+class __$$Value_PointImplCopyWithImpl<$Res>
+    extends _$ValueCopyWithImpl<$Res, _$Value_PointImpl>
+    implements _$$Value_PointImplCopyWith<$Res> {
+  __$$Value_PointImplCopyWithImpl(
+      _$Value_PointImpl _value, $Res Function(_$Value_PointImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -6944,7 +6930,7 @@ class __$$DartValue_PointImplCopyWithImpl<$Res>
   $Res call({
     Object? field0 = null,
   }) {
-    return _then(_$DartValue_PointImpl(
+    return _then(_$Value_PointImpl(
       null == field0
           ? _value.field0
           : field0 // ignore: cast_nullable_to_non_nullable
@@ -6955,22 +6941,22 @@ class __$$DartValue_PointImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$DartValue_PointImpl extends DartValue_Point {
-  const _$DartValue_PointImpl(this.field0) : super._();
+class _$Value_PointImpl extends Value_Point {
+  const _$Value_PointImpl(this.field0) : super._();
 
   @override
   final Point field0;
 
   @override
   String toString() {
-    return 'DartValue.point(field0: $field0)';
+    return 'Value.point(field0: $field0)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DartValue_PointImpl &&
+            other is _$Value_PointImpl &&
             (identical(other.field0, field0) || other.field0 == field0));
   }
 
@@ -6980,9 +6966,8 @@ class _$DartValue_PointImpl extends DartValue_Point {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$DartValue_PointImplCopyWith<_$DartValue_PointImpl> get copyWith =>
-      __$$DartValue_PointImplCopyWithImpl<_$DartValue_PointImpl>(
-          this, _$identity);
+  _$$Value_PointImplCopyWith<_$Value_PointImpl> get copyWith =>
+      __$$Value_PointImplCopyWithImpl<_$Value_PointImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -7012,7 +6997,7 @@ class _$DartValue_PointImpl extends DartValue_Point {
     required TResult Function(Map<String, Value> field0) map,
     required TResult Function(List<Value> field0) list,
     required TResult Function(Point field0) point,
-    required TResult Function() nullData,
+    required TResult Function() null_,
   }) {
     return point(field0);
   }
@@ -7045,7 +7030,7 @@ class _$DartValue_PointImpl extends DartValue_Point {
     TResult? Function(Map<String, Value> field0)? map,
     TResult? Function(List<Value> field0)? list,
     TResult? Function(Point field0)? point,
-    TResult? Function()? nullData,
+    TResult? Function()? null_,
   }) {
     return point?.call(field0);
   }
@@ -7078,7 +7063,7 @@ class _$DartValue_PointImpl extends DartValue_Point {
     TResult Function(Map<String, Value> field0)? map,
     TResult Function(List<Value> field0)? list,
     TResult Function(Point field0)? point,
-    TResult Function()? nullData,
+    TResult Function()? null_,
     required TResult orElse(),
   }) {
     if (point != null) {
@@ -7090,32 +7075,32 @@ class _$DartValue_PointImpl extends DartValue_Point {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DartValue_Bool value) bool,
-    required TResult Function(DartValue_I8 value) i8,
-    required TResult Function(DartValue_I16 value) i16,
-    required TResult Function(DartValue_I32 value) i32,
-    required TResult Function(DartValue_I64 value) i64,
-    required TResult Function(DartValue_I128 value) i128,
-    required TResult Function(DartValue_U8 value) u8,
-    required TResult Function(DartValue_U16 value) u16,
-    required TResult Function(DartValue_U32 value) u32,
-    required TResult Function(DartValue_U64 value) u64,
-    required TResult Function(DartValue_U128 value) u128,
-    required TResult Function(DartValue_F32 value) f32,
-    required TResult Function(DartValue_F64 value) f64,
-    required TResult Function(DartValue_Decimal value) decimal,
-    required TResult Function(DartValue_Str value) str,
-    required TResult Function(DartValue_Bytea value) bytea,
-    required TResult Function(DartValue_Inet value) inet,
-    required TResult Function(DartValue_Date value) date,
-    required TResult Function(DartValue_Timestamp value) timestamp,
-    required TResult Function(DartValue_Time value) time,
-    required TResult Function(DartValue_Interval value) interval,
-    required TResult Function(DartValue_Uuid value) uuid,
-    required TResult Function(DartValue_Map value) map,
-    required TResult Function(DartValue_List value) list,
-    required TResult Function(DartValue_Point value) point,
-    required TResult Function(DartValue_NullData value) nullData,
+    required TResult Function(Value_Bool value) bool,
+    required TResult Function(Value_I8 value) i8,
+    required TResult Function(Value_I16 value) i16,
+    required TResult Function(Value_I32 value) i32,
+    required TResult Function(Value_I64 value) i64,
+    required TResult Function(Value_I128 value) i128,
+    required TResult Function(Value_U8 value) u8,
+    required TResult Function(Value_U16 value) u16,
+    required TResult Function(Value_U32 value) u32,
+    required TResult Function(Value_U64 value) u64,
+    required TResult Function(Value_U128 value) u128,
+    required TResult Function(Value_F32 value) f32,
+    required TResult Function(Value_F64 value) f64,
+    required TResult Function(Value_Decimal value) decimal,
+    required TResult Function(Value_Str value) str,
+    required TResult Function(Value_Bytea value) bytea,
+    required TResult Function(Value_Inet value) inet,
+    required TResult Function(Value_Date value) date,
+    required TResult Function(Value_Timestamp value) timestamp,
+    required TResult Function(Value_Time value) time,
+    required TResult Function(Value_Interval value) interval,
+    required TResult Function(Value_Uuid value) uuid,
+    required TResult Function(Value_Map value) map,
+    required TResult Function(Value_List value) list,
+    required TResult Function(Value_Point value) point,
+    required TResult Function(Value_Null value) null_,
   }) {
     return point(this);
   }
@@ -7123,32 +7108,32 @@ class _$DartValue_PointImpl extends DartValue_Point {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DartValue_Bool value)? bool,
-    TResult? Function(DartValue_I8 value)? i8,
-    TResult? Function(DartValue_I16 value)? i16,
-    TResult? Function(DartValue_I32 value)? i32,
-    TResult? Function(DartValue_I64 value)? i64,
-    TResult? Function(DartValue_I128 value)? i128,
-    TResult? Function(DartValue_U8 value)? u8,
-    TResult? Function(DartValue_U16 value)? u16,
-    TResult? Function(DartValue_U32 value)? u32,
-    TResult? Function(DartValue_U64 value)? u64,
-    TResult? Function(DartValue_U128 value)? u128,
-    TResult? Function(DartValue_F32 value)? f32,
-    TResult? Function(DartValue_F64 value)? f64,
-    TResult? Function(DartValue_Decimal value)? decimal,
-    TResult? Function(DartValue_Str value)? str,
-    TResult? Function(DartValue_Bytea value)? bytea,
-    TResult? Function(DartValue_Inet value)? inet,
-    TResult? Function(DartValue_Date value)? date,
-    TResult? Function(DartValue_Timestamp value)? timestamp,
-    TResult? Function(DartValue_Time value)? time,
-    TResult? Function(DartValue_Interval value)? interval,
-    TResult? Function(DartValue_Uuid value)? uuid,
-    TResult? Function(DartValue_Map value)? map,
-    TResult? Function(DartValue_List value)? list,
-    TResult? Function(DartValue_Point value)? point,
-    TResult? Function(DartValue_NullData value)? nullData,
+    TResult? Function(Value_Bool value)? bool,
+    TResult? Function(Value_I8 value)? i8,
+    TResult? Function(Value_I16 value)? i16,
+    TResult? Function(Value_I32 value)? i32,
+    TResult? Function(Value_I64 value)? i64,
+    TResult? Function(Value_I128 value)? i128,
+    TResult? Function(Value_U8 value)? u8,
+    TResult? Function(Value_U16 value)? u16,
+    TResult? Function(Value_U32 value)? u32,
+    TResult? Function(Value_U64 value)? u64,
+    TResult? Function(Value_U128 value)? u128,
+    TResult? Function(Value_F32 value)? f32,
+    TResult? Function(Value_F64 value)? f64,
+    TResult? Function(Value_Decimal value)? decimal,
+    TResult? Function(Value_Str value)? str,
+    TResult? Function(Value_Bytea value)? bytea,
+    TResult? Function(Value_Inet value)? inet,
+    TResult? Function(Value_Date value)? date,
+    TResult? Function(Value_Timestamp value)? timestamp,
+    TResult? Function(Value_Time value)? time,
+    TResult? Function(Value_Interval value)? interval,
+    TResult? Function(Value_Uuid value)? uuid,
+    TResult? Function(Value_Map value)? map,
+    TResult? Function(Value_List value)? list,
+    TResult? Function(Value_Point value)? point,
+    TResult? Function(Value_Null value)? null_,
   }) {
     return point?.call(this);
   }
@@ -7156,32 +7141,32 @@ class _$DartValue_PointImpl extends DartValue_Point {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DartValue_Bool value)? bool,
-    TResult Function(DartValue_I8 value)? i8,
-    TResult Function(DartValue_I16 value)? i16,
-    TResult Function(DartValue_I32 value)? i32,
-    TResult Function(DartValue_I64 value)? i64,
-    TResult Function(DartValue_I128 value)? i128,
-    TResult Function(DartValue_U8 value)? u8,
-    TResult Function(DartValue_U16 value)? u16,
-    TResult Function(DartValue_U32 value)? u32,
-    TResult Function(DartValue_U64 value)? u64,
-    TResult Function(DartValue_U128 value)? u128,
-    TResult Function(DartValue_F32 value)? f32,
-    TResult Function(DartValue_F64 value)? f64,
-    TResult Function(DartValue_Decimal value)? decimal,
-    TResult Function(DartValue_Str value)? str,
-    TResult Function(DartValue_Bytea value)? bytea,
-    TResult Function(DartValue_Inet value)? inet,
-    TResult Function(DartValue_Date value)? date,
-    TResult Function(DartValue_Timestamp value)? timestamp,
-    TResult Function(DartValue_Time value)? time,
-    TResult Function(DartValue_Interval value)? interval,
-    TResult Function(DartValue_Uuid value)? uuid,
-    TResult Function(DartValue_Map value)? map,
-    TResult Function(DartValue_List value)? list,
-    TResult Function(DartValue_Point value)? point,
-    TResult Function(DartValue_NullData value)? nullData,
+    TResult Function(Value_Bool value)? bool,
+    TResult Function(Value_I8 value)? i8,
+    TResult Function(Value_I16 value)? i16,
+    TResult Function(Value_I32 value)? i32,
+    TResult Function(Value_I64 value)? i64,
+    TResult Function(Value_I128 value)? i128,
+    TResult Function(Value_U8 value)? u8,
+    TResult Function(Value_U16 value)? u16,
+    TResult Function(Value_U32 value)? u32,
+    TResult Function(Value_U64 value)? u64,
+    TResult Function(Value_U128 value)? u128,
+    TResult Function(Value_F32 value)? f32,
+    TResult Function(Value_F64 value)? f64,
+    TResult Function(Value_Decimal value)? decimal,
+    TResult Function(Value_Str value)? str,
+    TResult Function(Value_Bytea value)? bytea,
+    TResult Function(Value_Inet value)? inet,
+    TResult Function(Value_Date value)? date,
+    TResult Function(Value_Timestamp value)? timestamp,
+    TResult Function(Value_Time value)? time,
+    TResult Function(Value_Interval value)? interval,
+    TResult Function(Value_Uuid value)? uuid,
+    TResult Function(Value_Map value)? map,
+    TResult Function(Value_List value)? list,
+    TResult Function(Value_Point value)? point,
+    TResult Function(Value_Null value)? null_,
     required TResult orElse(),
   }) {
     if (point != null) {
@@ -7191,46 +7176,46 @@ class _$DartValue_PointImpl extends DartValue_Point {
   }
 }
 
-abstract class DartValue_Point extends DartValue {
-  const factory DartValue_Point(final Point field0) = _$DartValue_PointImpl;
-  const DartValue_Point._() : super._();
+abstract class Value_Point extends Value {
+  const factory Value_Point(final Point field0) = _$Value_PointImpl;
+  const Value_Point._() : super._();
 
   Point get field0;
   @JsonKey(ignore: true)
-  _$$DartValue_PointImplCopyWith<_$DartValue_PointImpl> get copyWith =>
+  _$$Value_PointImplCopyWith<_$Value_PointImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DartValue_NullDataImplCopyWith<$Res> {
-  factory _$$DartValue_NullDataImplCopyWith(_$DartValue_NullDataImpl value,
-          $Res Function(_$DartValue_NullDataImpl) then) =
-      __$$DartValue_NullDataImplCopyWithImpl<$Res>;
+abstract class _$$Value_NullImplCopyWith<$Res> {
+  factory _$$Value_NullImplCopyWith(
+          _$Value_NullImpl value, $Res Function(_$Value_NullImpl) then) =
+      __$$Value_NullImplCopyWithImpl<$Res>;
 }
 
 /// @nodoc
-class __$$DartValue_NullDataImplCopyWithImpl<$Res>
-    extends _$DartValueCopyWithImpl<$Res, _$DartValue_NullDataImpl>
-    implements _$$DartValue_NullDataImplCopyWith<$Res> {
-  __$$DartValue_NullDataImplCopyWithImpl(_$DartValue_NullDataImpl _value,
-      $Res Function(_$DartValue_NullDataImpl) _then)
+class __$$Value_NullImplCopyWithImpl<$Res>
+    extends _$ValueCopyWithImpl<$Res, _$Value_NullImpl>
+    implements _$$Value_NullImplCopyWith<$Res> {
+  __$$Value_NullImplCopyWithImpl(
+      _$Value_NullImpl _value, $Res Function(_$Value_NullImpl) _then)
       : super(_value, _then);
 }
 
 /// @nodoc
 
-class _$DartValue_NullDataImpl extends DartValue_NullData {
-  const _$DartValue_NullDataImpl() : super._();
+class _$Value_NullImpl extends Value_Null {
+  const _$Value_NullImpl() : super._();
 
   @override
   String toString() {
-    return 'DartValue.nullData()';
+    return 'Value.null_()';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
-        (other.runtimeType == runtimeType && other is _$DartValue_NullDataImpl);
+        (other.runtimeType == runtimeType && other is _$Value_NullImpl);
   }
 
   @override
@@ -7264,9 +7249,9 @@ class _$DartValue_NullDataImpl extends DartValue_NullData {
     required TResult Function(Map<String, Value> field0) map,
     required TResult Function(List<Value> field0) list,
     required TResult Function(Point field0) point,
-    required TResult Function() nullData,
+    required TResult Function() null_,
   }) {
-    return nullData();
+    return null_();
   }
 
   @override
@@ -7297,9 +7282,9 @@ class _$DartValue_NullDataImpl extends DartValue_NullData {
     TResult? Function(Map<String, Value> field0)? map,
     TResult? Function(List<Value> field0)? list,
     TResult? Function(Point field0)? point,
-    TResult? Function()? nullData,
+    TResult? Function()? null_,
   }) {
-    return nullData?.call();
+    return null_?.call();
   }
 
   @override
@@ -7330,11 +7315,11 @@ class _$DartValue_NullDataImpl extends DartValue_NullData {
     TResult Function(Map<String, Value> field0)? map,
     TResult Function(List<Value> field0)? list,
     TResult Function(Point field0)? point,
-    TResult Function()? nullData,
+    TResult Function()? null_,
     required TResult orElse(),
   }) {
-    if (nullData != null) {
-      return nullData();
+    if (null_ != null) {
+      return null_();
     }
     return orElse();
   }
@@ -7342,108 +7327,108 @@ class _$DartValue_NullDataImpl extends DartValue_NullData {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(DartValue_Bool value) bool,
-    required TResult Function(DartValue_I8 value) i8,
-    required TResult Function(DartValue_I16 value) i16,
-    required TResult Function(DartValue_I32 value) i32,
-    required TResult Function(DartValue_I64 value) i64,
-    required TResult Function(DartValue_I128 value) i128,
-    required TResult Function(DartValue_U8 value) u8,
-    required TResult Function(DartValue_U16 value) u16,
-    required TResult Function(DartValue_U32 value) u32,
-    required TResult Function(DartValue_U64 value) u64,
-    required TResult Function(DartValue_U128 value) u128,
-    required TResult Function(DartValue_F32 value) f32,
-    required TResult Function(DartValue_F64 value) f64,
-    required TResult Function(DartValue_Decimal value) decimal,
-    required TResult Function(DartValue_Str value) str,
-    required TResult Function(DartValue_Bytea value) bytea,
-    required TResult Function(DartValue_Inet value) inet,
-    required TResult Function(DartValue_Date value) date,
-    required TResult Function(DartValue_Timestamp value) timestamp,
-    required TResult Function(DartValue_Time value) time,
-    required TResult Function(DartValue_Interval value) interval,
-    required TResult Function(DartValue_Uuid value) uuid,
-    required TResult Function(DartValue_Map value) map,
-    required TResult Function(DartValue_List value) list,
-    required TResult Function(DartValue_Point value) point,
-    required TResult Function(DartValue_NullData value) nullData,
+    required TResult Function(Value_Bool value) bool,
+    required TResult Function(Value_I8 value) i8,
+    required TResult Function(Value_I16 value) i16,
+    required TResult Function(Value_I32 value) i32,
+    required TResult Function(Value_I64 value) i64,
+    required TResult Function(Value_I128 value) i128,
+    required TResult Function(Value_U8 value) u8,
+    required TResult Function(Value_U16 value) u16,
+    required TResult Function(Value_U32 value) u32,
+    required TResult Function(Value_U64 value) u64,
+    required TResult Function(Value_U128 value) u128,
+    required TResult Function(Value_F32 value) f32,
+    required TResult Function(Value_F64 value) f64,
+    required TResult Function(Value_Decimal value) decimal,
+    required TResult Function(Value_Str value) str,
+    required TResult Function(Value_Bytea value) bytea,
+    required TResult Function(Value_Inet value) inet,
+    required TResult Function(Value_Date value) date,
+    required TResult Function(Value_Timestamp value) timestamp,
+    required TResult Function(Value_Time value) time,
+    required TResult Function(Value_Interval value) interval,
+    required TResult Function(Value_Uuid value) uuid,
+    required TResult Function(Value_Map value) map,
+    required TResult Function(Value_List value) list,
+    required TResult Function(Value_Point value) point,
+    required TResult Function(Value_Null value) null_,
   }) {
-    return nullData(this);
+    return null_(this);
   }
 
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(DartValue_Bool value)? bool,
-    TResult? Function(DartValue_I8 value)? i8,
-    TResult? Function(DartValue_I16 value)? i16,
-    TResult? Function(DartValue_I32 value)? i32,
-    TResult? Function(DartValue_I64 value)? i64,
-    TResult? Function(DartValue_I128 value)? i128,
-    TResult? Function(DartValue_U8 value)? u8,
-    TResult? Function(DartValue_U16 value)? u16,
-    TResult? Function(DartValue_U32 value)? u32,
-    TResult? Function(DartValue_U64 value)? u64,
-    TResult? Function(DartValue_U128 value)? u128,
-    TResult? Function(DartValue_F32 value)? f32,
-    TResult? Function(DartValue_F64 value)? f64,
-    TResult? Function(DartValue_Decimal value)? decimal,
-    TResult? Function(DartValue_Str value)? str,
-    TResult? Function(DartValue_Bytea value)? bytea,
-    TResult? Function(DartValue_Inet value)? inet,
-    TResult? Function(DartValue_Date value)? date,
-    TResult? Function(DartValue_Timestamp value)? timestamp,
-    TResult? Function(DartValue_Time value)? time,
-    TResult? Function(DartValue_Interval value)? interval,
-    TResult? Function(DartValue_Uuid value)? uuid,
-    TResult? Function(DartValue_Map value)? map,
-    TResult? Function(DartValue_List value)? list,
-    TResult? Function(DartValue_Point value)? point,
-    TResult? Function(DartValue_NullData value)? nullData,
+    TResult? Function(Value_Bool value)? bool,
+    TResult? Function(Value_I8 value)? i8,
+    TResult? Function(Value_I16 value)? i16,
+    TResult? Function(Value_I32 value)? i32,
+    TResult? Function(Value_I64 value)? i64,
+    TResult? Function(Value_I128 value)? i128,
+    TResult? Function(Value_U8 value)? u8,
+    TResult? Function(Value_U16 value)? u16,
+    TResult? Function(Value_U32 value)? u32,
+    TResult? Function(Value_U64 value)? u64,
+    TResult? Function(Value_U128 value)? u128,
+    TResult? Function(Value_F32 value)? f32,
+    TResult? Function(Value_F64 value)? f64,
+    TResult? Function(Value_Decimal value)? decimal,
+    TResult? Function(Value_Str value)? str,
+    TResult? Function(Value_Bytea value)? bytea,
+    TResult? Function(Value_Inet value)? inet,
+    TResult? Function(Value_Date value)? date,
+    TResult? Function(Value_Timestamp value)? timestamp,
+    TResult? Function(Value_Time value)? time,
+    TResult? Function(Value_Interval value)? interval,
+    TResult? Function(Value_Uuid value)? uuid,
+    TResult? Function(Value_Map value)? map,
+    TResult? Function(Value_List value)? list,
+    TResult? Function(Value_Point value)? point,
+    TResult? Function(Value_Null value)? null_,
   }) {
-    return nullData?.call(this);
+    return null_?.call(this);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(DartValue_Bool value)? bool,
-    TResult Function(DartValue_I8 value)? i8,
-    TResult Function(DartValue_I16 value)? i16,
-    TResult Function(DartValue_I32 value)? i32,
-    TResult Function(DartValue_I64 value)? i64,
-    TResult Function(DartValue_I128 value)? i128,
-    TResult Function(DartValue_U8 value)? u8,
-    TResult Function(DartValue_U16 value)? u16,
-    TResult Function(DartValue_U32 value)? u32,
-    TResult Function(DartValue_U64 value)? u64,
-    TResult Function(DartValue_U128 value)? u128,
-    TResult Function(DartValue_F32 value)? f32,
-    TResult Function(DartValue_F64 value)? f64,
-    TResult Function(DartValue_Decimal value)? decimal,
-    TResult Function(DartValue_Str value)? str,
-    TResult Function(DartValue_Bytea value)? bytea,
-    TResult Function(DartValue_Inet value)? inet,
-    TResult Function(DartValue_Date value)? date,
-    TResult Function(DartValue_Timestamp value)? timestamp,
-    TResult Function(DartValue_Time value)? time,
-    TResult Function(DartValue_Interval value)? interval,
-    TResult Function(DartValue_Uuid value)? uuid,
-    TResult Function(DartValue_Map value)? map,
-    TResult Function(DartValue_List value)? list,
-    TResult Function(DartValue_Point value)? point,
-    TResult Function(DartValue_NullData value)? nullData,
+    TResult Function(Value_Bool value)? bool,
+    TResult Function(Value_I8 value)? i8,
+    TResult Function(Value_I16 value)? i16,
+    TResult Function(Value_I32 value)? i32,
+    TResult Function(Value_I64 value)? i64,
+    TResult Function(Value_I128 value)? i128,
+    TResult Function(Value_U8 value)? u8,
+    TResult Function(Value_U16 value)? u16,
+    TResult Function(Value_U32 value)? u32,
+    TResult Function(Value_U64 value)? u64,
+    TResult Function(Value_U128 value)? u128,
+    TResult Function(Value_F32 value)? f32,
+    TResult Function(Value_F64 value)? f64,
+    TResult Function(Value_Decimal value)? decimal,
+    TResult Function(Value_Str value)? str,
+    TResult Function(Value_Bytea value)? bytea,
+    TResult Function(Value_Inet value)? inet,
+    TResult Function(Value_Date value)? date,
+    TResult Function(Value_Timestamp value)? timestamp,
+    TResult Function(Value_Time value)? time,
+    TResult Function(Value_Interval value)? interval,
+    TResult Function(Value_Uuid value)? uuid,
+    TResult Function(Value_Map value)? map,
+    TResult Function(Value_List value)? list,
+    TResult Function(Value_Point value)? point,
+    TResult Function(Value_Null value)? null_,
     required TResult orElse(),
   }) {
-    if (nullData != null) {
-      return nullData(this);
+    if (null_ != null) {
+      return null_(this);
     }
     return orElse();
   }
 }
 
-abstract class DartValue_NullData extends DartValue {
-  const factory DartValue_NullData() = _$DartValue_NullDataImpl;
-  const DartValue_NullData._() : super._();
+abstract class Value_Null extends Value {
+  const factory Value_Null() = _$Value_NullImpl;
+  const Value_Null._() : super._();
 }

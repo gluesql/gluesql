@@ -6,13 +6,15 @@
 // Static analysis wrongly picks the IO variant, thus ignore this
 // ignore_for_file: argument_type_not_assignable
 
+import 'api/ast.dart';
+import 'api/error.dart';
+import 'api/key.dart';
 import 'api/payload.dart';
 import 'api/simple.dart';
 import 'api/value.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
-import 'lib.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_web.dart';
 
 abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
@@ -23,14 +25,20 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     required super.portManager,
   });
 
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_AggregatePtr =>
+      wire.rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAggregate;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_ColumnDefPtr =>
+      wire.rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerColumnDef;
+
   CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_DataTypePtr => wire
       .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType;
 
   CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_DecimalPtr => wire
       .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDecimal;
 
-  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_ErrorPtr => wire
-      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError;
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_ExprPtr => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr;
 
   CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_IntervalPtr => wire
       .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerInterval;
@@ -45,14 +53,32 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
       wire.rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime;
 
   CrossPlatformFinalizerArg
+      get rust_arc_decrement_strong_count_OrderedFloatF32Ptr => wire
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf32;
+
+  CrossPlatformFinalizerArg
+      get rust_arc_decrement_strong_count_OrderedFloatF64Ptr => wire
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf64;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_ParseErrorPtr =>
+      wire.rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerParseError;
+
+  CrossPlatformFinalizerArg
       get rust_arc_decrement_strong_count_PayloadVariablePtr => wire
           .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable;
 
   CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_PointPtr => wire
       .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPoint;
 
-  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_ValuePtr => wire
-      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue;
+  @protected
+  Aggregate
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAggregate(
+          dynamic raw);
+
+  @protected
+  ColumnDef
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerColumnDef(
+          dynamic raw);
 
   @protected
   DataType
@@ -65,8 +91,8 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
           dynamic raw);
 
   @protected
-  Error
-      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError(
+  Expr
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
           dynamic raw);
 
   @protected
@@ -90,6 +116,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
           dynamic raw);
 
   @protected
+  OrderedFloatF32
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf32(
+          dynamic raw);
+
+  @protected
+  OrderedFloatF64
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf64(
+          dynamic raw);
+
+  @protected
+  ParseError
+      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerParseError(
+          dynamic raw);
+
+  @protected
   PayloadVariable
       dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
           dynamic raw);
@@ -100,23 +141,23 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
           dynamic raw);
 
   @protected
-  Value
-      dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          dynamic raw);
-
-  @protected
   DateTime dco_decode_Chrono_Naive(dynamic raw);
 
   @protected
   BigInt dco_decode_I128(dynamic raw);
 
   @protected
-  Map<String, Value>
-      dco_decode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+  Map<String, Value> dco_decode_Map_String_value(dynamic raw);
+
+  @protected
+  Aggregate
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAggregate(
           dynamic raw);
 
   @protected
-  Map<String, DartValue> dco_decode_Map_String_dart_value(dynamic raw);
+  ColumnDef
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerColumnDef(
+          dynamic raw);
 
   @protected
   DataType
@@ -129,8 +170,8 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
           dynamic raw);
 
   @protected
-  Error
-      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError(
+  Expr
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
           dynamic raw);
 
   @protected
@@ -154,6 +195,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
           dynamic raw);
 
   @protected
+  OrderedFloatF32
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf32(
+          dynamic raw);
+
+  @protected
+  OrderedFloatF64
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf64(
+          dynamic raw);
+
+  @protected
+  ParseError
+      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerParseError(
+          dynamic raw);
+
+  @protected
   PayloadVariable
       dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
           dynamic raw);
@@ -164,30 +220,109 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
           dynamic raw);
 
   @protected
-  Value
-      dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          dynamic raw);
-
-  @protected
   String dco_decode_String(dynamic raw);
 
   @protected
   BigInt dco_decode_U128(dynamic raw);
 
   @protected
+  AggregateError dco_decode_aggregate_error(dynamic raw);
+
+  @protected
+  AlterError dco_decode_alter_error(dynamic raw);
+
+  @protected
+  AlterTableError dco_decode_alter_table_error(dynamic raw);
+
+  @protected
+  AstBuilderError dco_decode_ast_builder_error(dynamic raw);
+
+  @protected
+  BinaryOperator dco_decode_binary_operator(dynamic raw);
+
+  @protected
   bool dco_decode_bool(dynamic raw);
 
   @protected
-  DartPayload dco_decode_dart_payload(dynamic raw);
+  AlterError dco_decode_box_autoadd_alter_error(dynamic raw);
 
   @protected
-  DartValue dco_decode_dart_value(dynamic raw);
+  AlterTableError dco_decode_box_autoadd_alter_table_error(dynamic raw);
+
+  @protected
+  AstBuilderError dco_decode_box_autoadd_ast_builder_error(dynamic raw);
+
+  @protected
+  ConvertError dco_decode_box_autoadd_convert_error(dynamic raw);
+
+  @protected
+  EvaluateError dco_decode_box_autoadd_evaluate_error(dynamic raw);
+
+  @protected
+  ExecuteError dco_decode_box_autoadd_execute_error(dynamic raw);
+
+  @protected
+  FetchError dco_decode_box_autoadd_fetch_error(dynamic raw);
+
+  @protected
+  IndexError dco_decode_box_autoadd_index_error(dynamic raw);
+
+  @protected
+  InsertError dco_decode_box_autoadd_insert_error(dynamic raw);
+
+  @protected
+  IntervalError dco_decode_box_autoadd_interval_error(dynamic raw);
+
+  @protected
+  Key dco_decode_box_autoadd_key(dynamic raw);
+
+  @protected
+  LiteralError dco_decode_box_autoadd_literal_error(dynamic raw);
+
+  @protected
+  PlanError dco_decode_box_autoadd_plan_error(dynamic raw);
+
+  @protected
+  SortError dco_decode_box_autoadd_sort_error(dynamic raw);
+
+  @protected
+  TranslateError dco_decode_box_autoadd_translate_error(dynamic raw);
+
+  @protected
+  UpdateError dco_decode_box_autoadd_update_error(dynamic raw);
+
+  @protected
+  ValidateError dco_decode_box_autoadd_validate_error(dynamic raw);
+
+  @protected
+  Value dco_decode_box_autoadd_value(dynamic raw);
+
+  @protected
+  ValueError dco_decode_box_autoadd_value_error(dynamic raw);
+
+  @protected
+  ConvertError dco_decode_convert_error(dynamic raw);
+
+  @protected
+  DateTimeField dco_decode_date_time_field(dynamic raw);
+
+  @protected
+  Error dco_decode_error(dynamic raw);
+
+  @protected
+  EvaluateError dco_decode_evaluate_error(dynamic raw);
+
+  @protected
+  ExecuteError dco_decode_execute_error(dynamic raw);
 
   @protected
   double dco_decode_f_32(dynamic raw);
 
   @protected
   double dco_decode_f_64(dynamic raw);
+
+  @protected
+  FetchError dco_decode_fetch_error(dynamic raw);
 
   @protected
   int dco_decode_i_16(dynamic raw);
@@ -202,25 +337,31 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int dco_decode_i_8(dynamic raw);
 
   @protected
-  List<Value>
-      dco_decode_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          dynamic raw);
+  IndexError dco_decode_index_error(dynamic raw);
 
   @protected
-  List<Map<String, DartValue>> dco_decode_list_Map_String_dart_value(
-      dynamic raw);
+  InsertError dco_decode_insert_error(dynamic raw);
+
+  @protected
+  IntervalError dco_decode_interval_error(dynamic raw);
+
+  @protected
+  Key dco_decode_key(dynamic raw);
+
+  @protected
+  KeyError dco_decode_key_error(dynamic raw);
+
+  @protected
+  List<Map<String, Value>> dco_decode_list_Map_String_value(dynamic raw);
 
   @protected
   List<String> dco_decode_list_String(dynamic raw);
 
   @protected
-  List<DartPayload> dco_decode_list_dart_payload(dynamic raw);
+  List<List<Value>> dco_decode_list_list_value(dynamic raw);
 
   @protected
-  List<DartValue> dco_decode_list_dart_value(dynamic raw);
-
-  @protected
-  List<List<DartValue>> dco_decode_list_list_dart_value(dynamic raw);
+  List<Payload> dco_decode_list_payload(dynamic raw);
 
   @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
@@ -231,13 +372,22 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
           dynamic raw);
 
   @protected
-  List<(String, Value)>
-      dco_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
-          dynamic raw);
+  List<(String, Value)> dco_decode_list_record_string_value(dynamic raw);
 
   @protected
-  List<(String, DartValue)> dco_decode_list_record_string_dart_value(
-      dynamic raw);
+  List<Value> dco_decode_list_value(dynamic raw);
+
+  @protected
+  LiteralError dco_decode_literal_error(dynamic raw);
+
+  @protected
+  NumericBinaryOperator dco_decode_numeric_binary_operator(dynamic raw);
+
+  @protected
+  Payload dco_decode_payload(dynamic raw);
+
+  @protected
+  PlanError dco_decode_plan_error(dynamic raw);
 
   @protected
   (
@@ -247,14 +397,28 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
       dynamic raw);
 
   @protected
-  (
-    String,
-    Value
-  ) dco_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
-      dynamic raw);
+  (String, Value) dco_decode_record_string_value(dynamic raw);
 
   @protected
-  (String, DartValue) dco_decode_record_string_dart_value(dynamic raw);
+  RowError dco_decode_row_error(dynamic raw);
+
+  @protected
+  SchemaParseError dco_decode_schema_parse_error(dynamic raw);
+
+  @protected
+  SelectError dco_decode_select_error(dynamic raw);
+
+  @protected
+  SortError dco_decode_sort_error(dynamic raw);
+
+  @protected
+  StringExtError dco_decode_string_ext_error(dynamic raw);
+
+  @protected
+  TableError dco_decode_table_error(dynamic raw);
+
+  @protected
+  TranslateError dco_decode_translate_error(dynamic raw);
 
   @protected
   int dco_decode_u_16(dynamic raw);
@@ -272,7 +436,29 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void dco_decode_unit(dynamic raw);
 
   @protected
+  UpdateError dco_decode_update_error(dynamic raw);
+
+  @protected
   BigInt dco_decode_usize(dynamic raw);
+
+  @protected
+  ValidateError dco_decode_validate_error(dynamic raw);
+
+  @protected
+  Value dco_decode_value(dynamic raw);
+
+  @protected
+  ValueError dco_decode_value_error(dynamic raw);
+
+  @protected
+  Aggregate
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAggregate(
+          SseDeserializer deserializer);
+
+  @protected
+  ColumnDef
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerColumnDef(
+          SseDeserializer deserializer);
 
   @protected
   DataType
@@ -285,8 +471,8 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
           SseDeserializer deserializer);
 
   @protected
-  Error
-      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError(
+  Expr
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
           SseDeserializer deserializer);
 
   @protected
@@ -310,6 +496,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
           SseDeserializer deserializer);
 
   @protected
+  OrderedFloatF32
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf32(
+          SseDeserializer deserializer);
+
+  @protected
+  OrderedFloatF64
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf64(
+          SseDeserializer deserializer);
+
+  @protected
+  ParseError
+      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerParseError(
+          SseDeserializer deserializer);
+
+  @protected
   PayloadVariable
       sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
           SseDeserializer deserializer);
@@ -320,24 +521,23 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
           SseDeserializer deserializer);
 
   @protected
-  Value
-      sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          SseDeserializer deserializer);
-
-  @protected
   DateTime sse_decode_Chrono_Naive(SseDeserializer deserializer);
 
   @protected
   BigInt sse_decode_I128(SseDeserializer deserializer);
 
   @protected
-  Map<String, Value>
-      sse_decode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
+  Map<String, Value> sse_decode_Map_String_value(SseDeserializer deserializer);
+
+  @protected
+  Aggregate
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAggregate(
           SseDeserializer deserializer);
 
   @protected
-  Map<String, DartValue> sse_decode_Map_String_dart_value(
-      SseDeserializer deserializer);
+  ColumnDef
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerColumnDef(
+          SseDeserializer deserializer);
 
   @protected
   DataType
@@ -350,8 +550,8 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
           SseDeserializer deserializer);
 
   @protected
-  Error
-      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError(
+  Expr
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
           SseDeserializer deserializer);
 
   @protected
@@ -375,6 +575,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
           SseDeserializer deserializer);
 
   @protected
+  OrderedFloatF32
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf32(
+          SseDeserializer deserializer);
+
+  @protected
+  OrderedFloatF64
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf64(
+          SseDeserializer deserializer);
+
+  @protected
+  ParseError
+      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerParseError(
+          SseDeserializer deserializer);
+
+  @protected
   PayloadVariable
       sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
           SseDeserializer deserializer);
@@ -385,30 +600,118 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
           SseDeserializer deserializer);
 
   @protected
-  Value
-      sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          SseDeserializer deserializer);
-
-  @protected
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
   BigInt sse_decode_U128(SseDeserializer deserializer);
 
   @protected
+  AggregateError sse_decode_aggregate_error(SseDeserializer deserializer);
+
+  @protected
+  AlterError sse_decode_alter_error(SseDeserializer deserializer);
+
+  @protected
+  AlterTableError sse_decode_alter_table_error(SseDeserializer deserializer);
+
+  @protected
+  AstBuilderError sse_decode_ast_builder_error(SseDeserializer deserializer);
+
+  @protected
+  BinaryOperator sse_decode_binary_operator(SseDeserializer deserializer);
+
+  @protected
   bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
-  DartPayload sse_decode_dart_payload(SseDeserializer deserializer);
+  AlterError sse_decode_box_autoadd_alter_error(SseDeserializer deserializer);
 
   @protected
-  DartValue sse_decode_dart_value(SseDeserializer deserializer);
+  AlterTableError sse_decode_box_autoadd_alter_table_error(
+      SseDeserializer deserializer);
+
+  @protected
+  AstBuilderError sse_decode_box_autoadd_ast_builder_error(
+      SseDeserializer deserializer);
+
+  @protected
+  ConvertError sse_decode_box_autoadd_convert_error(
+      SseDeserializer deserializer);
+
+  @protected
+  EvaluateError sse_decode_box_autoadd_evaluate_error(
+      SseDeserializer deserializer);
+
+  @protected
+  ExecuteError sse_decode_box_autoadd_execute_error(
+      SseDeserializer deserializer);
+
+  @protected
+  FetchError sse_decode_box_autoadd_fetch_error(SseDeserializer deserializer);
+
+  @protected
+  IndexError sse_decode_box_autoadd_index_error(SseDeserializer deserializer);
+
+  @protected
+  InsertError sse_decode_box_autoadd_insert_error(SseDeserializer deserializer);
+
+  @protected
+  IntervalError sse_decode_box_autoadd_interval_error(
+      SseDeserializer deserializer);
+
+  @protected
+  Key sse_decode_box_autoadd_key(SseDeserializer deserializer);
+
+  @protected
+  LiteralError sse_decode_box_autoadd_literal_error(
+      SseDeserializer deserializer);
+
+  @protected
+  PlanError sse_decode_box_autoadd_plan_error(SseDeserializer deserializer);
+
+  @protected
+  SortError sse_decode_box_autoadd_sort_error(SseDeserializer deserializer);
+
+  @protected
+  TranslateError sse_decode_box_autoadd_translate_error(
+      SseDeserializer deserializer);
+
+  @protected
+  UpdateError sse_decode_box_autoadd_update_error(SseDeserializer deserializer);
+
+  @protected
+  ValidateError sse_decode_box_autoadd_validate_error(
+      SseDeserializer deserializer);
+
+  @protected
+  Value sse_decode_box_autoadd_value(SseDeserializer deserializer);
+
+  @protected
+  ValueError sse_decode_box_autoadd_value_error(SseDeserializer deserializer);
+
+  @protected
+  ConvertError sse_decode_convert_error(SseDeserializer deserializer);
+
+  @protected
+  DateTimeField sse_decode_date_time_field(SseDeserializer deserializer);
+
+  @protected
+  Error sse_decode_error(SseDeserializer deserializer);
+
+  @protected
+  EvaluateError sse_decode_evaluate_error(SseDeserializer deserializer);
+
+  @protected
+  ExecuteError sse_decode_execute_error(SseDeserializer deserializer);
 
   @protected
   double sse_decode_f_32(SseDeserializer deserializer);
 
   @protected
   double sse_decode_f_64(SseDeserializer deserializer);
+
+  @protected
+  FetchError sse_decode_fetch_error(SseDeserializer deserializer);
 
   @protected
   int sse_decode_i_16(SseDeserializer deserializer);
@@ -423,26 +726,32 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int sse_decode_i_8(SseDeserializer deserializer);
 
   @protected
-  List<Value>
-      sse_decode_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          SseDeserializer deserializer);
+  IndexError sse_decode_index_error(SseDeserializer deserializer);
 
   @protected
-  List<Map<String, DartValue>> sse_decode_list_Map_String_dart_value(
+  InsertError sse_decode_insert_error(SseDeserializer deserializer);
+
+  @protected
+  IntervalError sse_decode_interval_error(SseDeserializer deserializer);
+
+  @protected
+  Key sse_decode_key(SseDeserializer deserializer);
+
+  @protected
+  KeyError sse_decode_key_error(SseDeserializer deserializer);
+
+  @protected
+  List<Map<String, Value>> sse_decode_list_Map_String_value(
       SseDeserializer deserializer);
 
   @protected
   List<String> sse_decode_list_String(SseDeserializer deserializer);
 
   @protected
-  List<DartPayload> sse_decode_list_dart_payload(SseDeserializer deserializer);
+  List<List<Value>> sse_decode_list_list_value(SseDeserializer deserializer);
 
   @protected
-  List<DartValue> sse_decode_list_dart_value(SseDeserializer deserializer);
-
-  @protected
-  List<List<DartValue>> sse_decode_list_list_dart_value(
-      SseDeserializer deserializer);
+  List<Payload> sse_decode_list_payload(SseDeserializer deserializer);
 
   @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
@@ -453,13 +762,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
           SseDeserializer deserializer);
 
   @protected
-  List<(String, Value)>
-      sse_decode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
-          SseDeserializer deserializer);
+  List<(String, Value)> sse_decode_list_record_string_value(
+      SseDeserializer deserializer);
 
   @protected
-  List<(String, DartValue)> sse_decode_list_record_string_dart_value(
+  List<Value> sse_decode_list_value(SseDeserializer deserializer);
+
+  @protected
+  LiteralError sse_decode_literal_error(SseDeserializer deserializer);
+
+  @protected
+  NumericBinaryOperator sse_decode_numeric_binary_operator(
       SseDeserializer deserializer);
+
+  @protected
+  Payload sse_decode_payload(SseDeserializer deserializer);
+
+  @protected
+  PlanError sse_decode_plan_error(SseDeserializer deserializer);
 
   @protected
   (
@@ -469,15 +789,28 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
       SseDeserializer deserializer);
 
   @protected
-  (
-    String,
-    Value
-  ) sse_decode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
-      SseDeserializer deserializer);
+  (String, Value) sse_decode_record_string_value(SseDeserializer deserializer);
 
   @protected
-  (String, DartValue) sse_decode_record_string_dart_value(
-      SseDeserializer deserializer);
+  RowError sse_decode_row_error(SseDeserializer deserializer);
+
+  @protected
+  SchemaParseError sse_decode_schema_parse_error(SseDeserializer deserializer);
+
+  @protected
+  SelectError sse_decode_select_error(SseDeserializer deserializer);
+
+  @protected
+  SortError sse_decode_sort_error(SseDeserializer deserializer);
+
+  @protected
+  StringExtError sse_decode_string_ext_error(SseDeserializer deserializer);
+
+  @protected
+  TableError sse_decode_table_error(SseDeserializer deserializer);
+
+  @protected
+  TranslateError sse_decode_translate_error(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_16(SseDeserializer deserializer);
@@ -495,7 +828,29 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_decode_unit(SseDeserializer deserializer);
 
   @protected
+  UpdateError sse_decode_update_error(SseDeserializer deserializer);
+
+  @protected
   BigInt sse_decode_usize(SseDeserializer deserializer);
+
+  @protected
+  ValidateError sse_decode_validate_error(SseDeserializer deserializer);
+
+  @protected
+  Value sse_decode_value(SseDeserializer deserializer);
+
+  @protected
+  ValueError sse_decode_value_error(SseDeserializer deserializer);
+
+  @protected
+  void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAggregate(
+          Aggregate self, SseSerializer serializer);
+
+  @protected
+  void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerColumnDef(
+          ColumnDef self, SseSerializer serializer);
 
   @protected
   void
@@ -509,8 +864,8 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void
-      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError(
-          Error self, SseSerializer serializer);
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
+          Expr self, SseSerializer serializer);
 
   @protected
   void
@@ -534,6 +889,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf32(
+          OrderedFloatF32 self, SseSerializer serializer);
+
+  @protected
+  void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf64(
+          OrderedFloatF64 self, SseSerializer serializer);
+
+  @protected
+  void
+      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerParseError(
+          ParseError self, SseSerializer serializer);
+
+  @protected
+  void
       sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
           PayloadVariable self, SseSerializer serializer);
 
@@ -543,24 +913,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
           Point self, SseSerializer serializer);
 
   @protected
-  void
-      sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          Value self, SseSerializer serializer);
-
-  @protected
   void sse_encode_Chrono_Naive(DateTime self, SseSerializer serializer);
 
   @protected
   void sse_encode_I128(BigInt self, SseSerializer serializer);
 
   @protected
-  void
-      sse_encode_Map_String_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          Map<String, Value> self, SseSerializer serializer);
+  void sse_encode_Map_String_value(
+      Map<String, Value> self, SseSerializer serializer);
 
   @protected
-  void sse_encode_Map_String_dart_value(
-      Map<String, DartValue> self, SseSerializer serializer);
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAggregate(
+          Aggregate self, SseSerializer serializer);
+
+  @protected
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerColumnDef(
+          ColumnDef self, SseSerializer serializer);
 
   @protected
   void
@@ -574,8 +944,8 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void
-      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError(
-          Error self, SseSerializer serializer);
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
+          Expr self, SseSerializer serializer);
 
   @protected
   void
@@ -599,6 +969,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf32(
+          OrderedFloatF32 self, SseSerializer serializer);
+
+  @protected
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf64(
+          OrderedFloatF64 self, SseSerializer serializer);
+
+  @protected
+  void
+      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerParseError(
+          ParseError self, SseSerializer serializer);
+
+  @protected
+  void
       sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
           PayloadVariable self, SseSerializer serializer);
 
@@ -608,30 +993,130 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
           Point self, SseSerializer serializer);
 
   @protected
-  void
-      sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          Value self, SseSerializer serializer);
-
-  @protected
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
   void sse_encode_U128(BigInt self, SseSerializer serializer);
 
   @protected
+  void sse_encode_aggregate_error(
+      AggregateError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_alter_error(AlterError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_alter_table_error(
+      AlterTableError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_ast_builder_error(
+      AstBuilderError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_binary_operator(
+      BinaryOperator self, SseSerializer serializer);
+
+  @protected
   void sse_encode_bool(bool self, SseSerializer serializer);
 
   @protected
-  void sse_encode_dart_payload(DartPayload self, SseSerializer serializer);
+  void sse_encode_box_autoadd_alter_error(
+      AlterError self, SseSerializer serializer);
 
   @protected
-  void sse_encode_dart_value(DartValue self, SseSerializer serializer);
+  void sse_encode_box_autoadd_alter_table_error(
+      AlterTableError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_ast_builder_error(
+      AstBuilderError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_convert_error(
+      ConvertError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_evaluate_error(
+      EvaluateError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_execute_error(
+      ExecuteError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_fetch_error(
+      FetchError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_index_error(
+      IndexError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_insert_error(
+      InsertError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_interval_error(
+      IntervalError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_key(Key self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_literal_error(
+      LiteralError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_plan_error(
+      PlanError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_sort_error(
+      SortError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_translate_error(
+      TranslateError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_update_error(
+      UpdateError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_validate_error(
+      ValidateError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_value(Value self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_value_error(
+      ValueError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_convert_error(ConvertError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_date_time_field(DateTimeField self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_error(Error self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_evaluate_error(EvaluateError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_execute_error(ExecuteError self, SseSerializer serializer);
 
   @protected
   void sse_encode_f_32(double self, SseSerializer serializer);
 
   @protected
   void sse_encode_f_64(double self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_fetch_error(FetchError self, SseSerializer serializer);
 
   @protected
   void sse_encode_i_16(int self, SseSerializer serializer);
@@ -646,28 +1131,33 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_i_8(int self, SseSerializer serializer);
 
   @protected
-  void
-      sse_encode_list_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          List<Value> self, SseSerializer serializer);
+  void sse_encode_index_error(IndexError self, SseSerializer serializer);
 
   @protected
-  void sse_encode_list_Map_String_dart_value(
-      List<Map<String, DartValue>> self, SseSerializer serializer);
+  void sse_encode_insert_error(InsertError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_interval_error(IntervalError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_key(Key self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_key_error(KeyError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_Map_String_value(
+      List<Map<String, Value>> self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_String(List<String> self, SseSerializer serializer);
 
   @protected
-  void sse_encode_list_dart_payload(
-      List<DartPayload> self, SseSerializer serializer);
+  void sse_encode_list_list_value(
+      List<List<Value>> self, SseSerializer serializer);
 
   @protected
-  void sse_encode_list_dart_value(
-      List<DartValue> self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_list_list_dart_value(
-      List<List<DartValue>> self, SseSerializer serializer);
+  void sse_encode_list_payload(List<Payload> self, SseSerializer serializer);
 
   @protected
   void sse_encode_list_prim_u_8_strict(
@@ -679,13 +1169,24 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
           List<(String, DataType)> self, SseSerializer serializer);
 
   @protected
-  void
-      sse_encode_list_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
-          List<(String, Value)> self, SseSerializer serializer);
+  void sse_encode_list_record_string_value(
+      List<(String, Value)> self, SseSerializer serializer);
 
   @protected
-  void sse_encode_list_record_string_dart_value(
-      List<(String, DartValue)> self, SseSerializer serializer);
+  void sse_encode_list_value(List<Value> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_literal_error(LiteralError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_numeric_binary_operator(
+      NumericBinaryOperator self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_payload(Payload self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_plan_error(PlanError self, SseSerializer serializer);
 
   @protected
   void
@@ -693,13 +1194,32 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
           (String, DataType) self, SseSerializer serializer);
 
   @protected
-  void
-      sse_encode_record_string_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_value(
-          (String, Value) self, SseSerializer serializer);
+  void sse_encode_record_string_value(
+      (String, Value) self, SseSerializer serializer);
 
   @protected
-  void sse_encode_record_string_dart_value(
-      (String, DartValue) self, SseSerializer serializer);
+  void sse_encode_row_error(RowError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_schema_parse_error(
+      SchemaParseError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_select_error(SelectError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_sort_error(SortError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_string_ext_error(
+      StringExtError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_table_error(TableError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_translate_error(
+      TranslateError self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_16(int self, SseSerializer serializer);
@@ -717,13 +1237,49 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_unit(void self, SseSerializer serializer);
 
   @protected
+  void sse_encode_update_error(UpdateError self, SseSerializer serializer);
+
+  @protected
   void sse_encode_usize(BigInt self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_validate_error(ValidateError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_value(Value self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_value_error(ValueError self, SseSerializer serializer);
 }
 
 // Section: wire_class
 
 class RustLibWire implements BaseWire {
   RustLibWire.fromExternalLibrary(ExternalLibrary lib);
+
+  void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAggregate(
+          int ptr) =>
+      wasmModule
+          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAggregate(
+              ptr);
+
+  void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAggregate(
+          int ptr) =>
+      wasmModule
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAggregate(
+              ptr);
+
+  void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerColumnDef(
+          int ptr) =>
+      wasmModule
+          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerColumnDef(
+              ptr);
+
+  void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerColumnDef(
+          int ptr) =>
+      wasmModule
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerColumnDef(
+              ptr);
 
   void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
           int ptr) =>
@@ -749,16 +1305,16 @@ class RustLibWire implements BaseWire {
           .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDecimal(
               ptr);
 
-  void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError(
+  void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
           int ptr) =>
       wasmModule
-          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError(
+          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
               ptr);
 
-  void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError(
+  void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
           int ptr) =>
       wasmModule
-          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError(
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
               ptr);
 
   void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerInterval(
@@ -809,6 +1365,42 @@ class RustLibWire implements BaseWire {
           .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerNaiveTime(
               ptr);
 
+  void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf32(
+          int ptr) =>
+      wasmModule
+          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf32(
+              ptr);
+
+  void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf32(
+          int ptr) =>
+      wasmModule
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf32(
+              ptr);
+
+  void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf64(
+          int ptr) =>
+      wasmModule
+          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf64(
+              ptr);
+
+  void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf64(
+          int ptr) =>
+      wasmModule
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf64(
+              ptr);
+
+  void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerParseError(
+          int ptr) =>
+      wasmModule
+          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerParseError(
+              ptr);
+
+  void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerParseError(
+          int ptr) =>
+      wasmModule
+          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerParseError(
+              ptr);
+
   void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
           int ptr) =>
       wasmModule
@@ -832,18 +1424,6 @@ class RustLibWire implements BaseWire {
       wasmModule
           .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPoint(
               ptr);
-
-  void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          int ptr) =>
-      wasmModule
-          .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-              ptr);
-
-  void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          int ptr) =>
-      wasmModule
-          .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-              ptr);
 }
 
 @JS('wasm_bindgen')
@@ -852,6 +1432,22 @@ external RustLibWasmModule get wasmModule;
 @JS()
 @anonymous
 extension type RustLibWasmModule._(JSObject _) implements JSObject {
+  external void
+      rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAggregate(
+          int ptr);
+
+  external void
+      rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAggregate(
+          int ptr);
+
+  external void
+      rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerColumnDef(
+          int ptr);
+
+  external void
+      rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerColumnDef(
+          int ptr);
+
   external void
       rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerDataType(
           int ptr);
@@ -869,11 +1465,11 @@ extension type RustLibWasmModule._(JSObject _) implements JSObject {
           int ptr);
 
   external void
-      rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError(
+      rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
           int ptr);
 
   external void
-      rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerError(
+      rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerExpr(
           int ptr);
 
   external void
@@ -909,6 +1505,30 @@ extension type RustLibWasmModule._(JSObject _) implements JSObject {
           int ptr);
 
   external void
+      rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf32(
+          int ptr);
+
+  external void
+      rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf32(
+          int ptr);
+
+  external void
+      rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf64(
+          int ptr);
+
+  external void
+      rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerOrderedFloatf64(
+          int ptr);
+
+  external void
+      rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerParseError(
+          int ptr);
+
+  external void
+      rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerParseError(
+          int ptr);
+
+  external void
       rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPayloadVariable(
           int ptr);
 
@@ -922,13 +1542,5 @@ extension type RustLibWasmModule._(JSObject _) implements JSObject {
 
   external void
       rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPoint(
-          int ptr);
-
-  external void
-      rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
-          int ptr);
-
-  external void
-      rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerValue(
           int ptr);
 }
