@@ -5,7 +5,7 @@ use {
         prelude::{Error, Glue},
         store::{Store, StoreMut},
     },
-    memory_storage::MemoryStorage,
+    gluesql_memory_storage::MemoryStorage,
 };
 
 #[tokio::test]
@@ -73,7 +73,7 @@ macro_rules! test {
 
 #[tokio::test]
 async fn composite_storage_index() {
-    use {gluesql_core::store::Index, memory_storage::MemoryStorage};
+    use {gluesql_core::store::Index, gluesql_memory_storage::MemoryStorage};
 
     let mut storage = CompositeStorage::default();
     storage.push("mem", MemoryStorage::default());

@@ -2,7 +2,7 @@
 
 use {
     async_trait::async_trait, composite_storage::CompositeStorage, gluesql_core::prelude::Glue,
-    memory_storage::MemoryStorage, test_suite::*, wasm_bindgen_test::*,
+    gluesql_memory_storage::MemoryStorage, test_suite::*, wasm_bindgen_test::*,
 };
 
 wasm_bindgen_test_configure!(run_in_browser);

@@ -1,6 +1,6 @@
 use {
+    gluesql_memory_storage::MemoryStorage,
     json_storage::JsonStorage,
-    memory_storage::MemoryStorage,
     pyo3::{prelude::*, types::PyString},
     shared_memory_storage::SharedMemoryStorage,
     sled_storage::{sled, SledStorage},

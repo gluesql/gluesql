@@ -5,8 +5,8 @@ mod utils;
 
 use {
     gluesql_core::prelude::{execute, parse, plan, translate},
+    gluesql_memory_storage::MemoryStorage,
     js_sys::Promise,
-    memory_storage::MemoryStorage,
     payload::convert,
     std::{cell::RefCell, rc::Rc},
     wasm_bindgen::prelude::*,

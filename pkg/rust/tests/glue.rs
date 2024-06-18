@@ -73,7 +73,7 @@ fn sled_basic() {
 #[cfg(feature = "memory-storage")]
 #[test]
 fn memory_basic() {
-    use memory_storage::MemoryStorage;
+    use gluesql_memory_storage::MemoryStorage;
 
     let storage = MemoryStorage::default();
     let glue = Glue::new(storage);

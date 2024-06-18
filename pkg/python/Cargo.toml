@@ -2,7 +2,7 @@
 name = "gluesql-py"
 authors = [
     "Gyubong Lee <jopemachine@naver.com>",
-    "Taehoon Moon <taehoon.moon@outlook.com>"
+    "Taehoon Moon <taehoon.moon@outlook.com>",
 ]
 version.workspace = true
 edition.workspace = true
@@ -21,7 +21,7 @@ include-python-workspace = []
 
 [dependencies]
 gluesql-core.workspace = true
-memory-storage.workspace = true
+gluesql-memory-storage.workspace = true
 web-storage.workspace = true
 idb-storage.workspace = true
 composite-storage.workspace = true

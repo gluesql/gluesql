@@ -9,12 +9,7 @@ license.workspace = true
 repository.workspace = true
 documentation.workspace = true
 readme = "../../README.md"
-keywords = [
-	"sql-database",
-	"sql",
-	"websql",
-	"webassembly",
-]
+keywords = ["sql-database", "sql", "websql", "webassembly"]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -23,7 +18,7 @@ all-features = true
 gluesql-core.workspace = true
 cli = { workspace = true, optional = true }
 test-suite = { workspace = true, optional = true }
-memory-storage = { workspace = true, optional = true }
+gluesql-memory-storage = { workspace = true, optional = true }
 shared-memory-storage = { workspace = true, optional = true }
 sled-storage = { workspace = true, optional = true }
 json-storage = { workspace = true, optional = true }
@@ -42,7 +37,7 @@ futures = "0.3"
 default = [
 	"cli",
 	"test-suite",
-	"memory-storage",
+	"gluesql-memory-storage",
 	"shared-memory-storage",
 	"sled-storage",
 	"json-storage",
