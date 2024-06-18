@@ -26,7 +26,7 @@ web-storage.workspace = true
 idb-storage.workspace = true
 composite-storage.workspace = true
 gluesql_sled_storage.workspace = true
-json-storage.workspace = true
+gluesql-json-storage.workspace = true
 gluesql-shared-memory-storage.workspace = true
 
 pyo3 = { version = "0.19.2", features = ["extension-module"] }

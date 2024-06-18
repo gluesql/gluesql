@@ -19,9 +19,9 @@ use {
         data::Value,
         store::{DataRow, GStore, GStoreMut, Store, Transaction},
     },
+    gluesql_json_storage::JsonStorage,
     gluesql_memory_storage::MemoryStorage,
     gluesql_sled_storage::SledStorage,
-    json_storage::JsonStorage,
     parquet_storage::ParquetStorage,
     std::{
         fmt::Debug,
