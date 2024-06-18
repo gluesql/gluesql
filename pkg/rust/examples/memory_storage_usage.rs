@@ -1,6 +1,6 @@
 #[cfg(feature = "gluesql_memory_storage")]
 mod api_usage {
-    use gluesql::{memory_storage::MemoryStorage, prelude::Glue};
+    use gluesql::{gluesql_memory_storage::MemoryStorage, prelude::Glue};
 
     pub async fn run() {
         let storage = MemoryStorage::default();
