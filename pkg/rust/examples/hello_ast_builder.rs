@@ -1,10 +1,10 @@
-#[cfg(feature = "sled-storage")]
+#[cfg(feature = "gluesql_sled_storage")]
 mod hello_ast_builder {
     use {
         gluesql::{
             core::ast_builder::{self, Execute},
             prelude::{Glue, Payload, Value},
-            sled_storage::SledStorage,
+            gluesql_sled_storage::SledStorage,
         },
         std::fs,
     };
@@ -78,6 +78,6 @@ mod hello_ast_builder {
 }
 
 fn main() {
-    #[cfg(feature = "sled-storage")]
+    #[cfg(feature = "gluesql_sled_storage")]
     futures::executor::block_on(hello_ast_builder::run());
 }

@@ -25,7 +25,7 @@ gluesql_memory_storage.workspace = true
 web-storage.workspace = true
 idb-storage.workspace = true
 composite-storage.workspace = true
-sled-storage.workspace = true
+gluesql_sled_storage.workspace = true
 json-storage.workspace = true
 gluesql-shared-memory-storage.workspace = true
 
