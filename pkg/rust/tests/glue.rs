@@ -1,4 +1,4 @@
-#![cfg(any(feature = "memory-storage", feature = "sled-storage"))]
+#![cfg(any(feature = "gluesql_memory_storage", feature = "sled-storage"))]
 use {
     futures::executor::block_on,
     gluesql_core::{
@@ -70,7 +70,7 @@ fn sled_basic() {
     block_on(basic(glue));
 }
 
-#[cfg(feature = "memory-storage")]
+#[cfg(feature = "gluesql_memory_storage")]
 #[test]
 fn memory_basic() {
     use gluesql_memory_storage::MemoryStorage;

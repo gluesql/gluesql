@@ -1,4 +1,4 @@
-#[cfg(feature = "memory-storage")]
+#[cfg(feature = "gluesql_memory_storage")]
 mod api_usage {
     use gluesql::{memory_storage::MemoryStorage, prelude::Glue};
 
@@ -35,6 +35,6 @@ mod api_usage {
 }
 
 fn main() {
-    #[cfg(feature = "memory-storage")]
+    #[cfg(feature = "gluesql_memory_storage")]
     futures::executor::block_on(api_usage::run());
 }

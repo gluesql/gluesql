@@ -21,7 +21,7 @@ include-python-workspace = []
 
 [dependencies]
 gluesql-core.workspace = true
-gluesql-memory-storage.workspace = true
+gluesql_memory_storage.workspace = true
 web-storage.workspace = true
 idb-storage.workspace = true
 composite-storage.workspace = true

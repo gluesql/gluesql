@@ -50,7 +50,7 @@ jobs:
           cd utils && cargo test --verbose && cd ..
           cd cli && cargo test --verbose && cd ..
           cd pkg/rust
-          cargo test --lib --bins --tests --examples --verbose --no-default-features --features "memory-storage sled-storage"
+          cargo test --lib --bins --tests --examples --verbose --no-default-features --features "gluesql_memory_storage sled-storage"
           cd ../../
 
   run_storage_tests:
