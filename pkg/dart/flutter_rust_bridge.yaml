@@ -1,2 +1,2 @@
-rust_input: rust/src/api/**/*.rs
+rust_input: crate::api,gluesql-core,gluesql_memory_storage
 dart_output: lib/src/rust

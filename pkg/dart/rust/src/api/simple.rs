@@ -3,6 +3,10 @@ use std::collections::HashMap;
 // use super::error::DartError;
 use flutter_rust_bridge::frb;
 pub use gluesql_core::prelude::Glue;
+use gluesql_core::{
+    ast::Statement,
+    store::{GStore, GStoreMut},
+};
 use memory_storage::MemoryStorage;
 
 pub use {
@@ -25,6 +29,7 @@ pub use {
         executor::Payload,
         executor::PayloadVariable,
         plan::PlanError,
+        prelude::Result,
         store::{AlterTableError, IndexError},
     },
     ordered_float::OrderedFloat,
@@ -49,3 +54,11 @@ pub fn init_app() {
     // Default utilities - feel free to customize
     flutter_rust_bridge::setup_default_user_utils();
 }
+
+// #[frb(external)]
+// impl<T: GStore + GStoreMut> Glue<T> {
+//     pub fn new(storage: T) -> Self {}
+//     pub async fn plan<Sql: AsRef<str>>(&mut self, sql: Sql) -> Result<Vec<Statement>> {}
+//     pub async fn execute_stmt(&mut self, statement: &Statement) -> Result<Payload> {}
+//     pub async fn execute<Sql: AsRef<str>>(&mut self, sql: Sql) -> Result<Vec<Payload>> {}
+// }
