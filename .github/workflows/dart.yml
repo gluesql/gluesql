@@ -1,0 +1,32 @@
+name: Dart
+
+on:
+  push:
+    branches: [main, release-*]
+    paths-ignore:
+      - "docs/**"
+  pull_request:
+    branches: [main, release-*]
+    paths-ignore:
+      - "docs/**"
+
+jobs:
+  dart_test:
+    runs-on: macOS-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter actions
+        uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+
+      - name: Run build, analyze, format, and test
+        run: |
+          cd pkg/dart/rust_builder/cargokit/build_tool
+          flutter pub get
+          cd ../../../
+          flutter analyze
+          dart format --set-exit-if-changed .
+          flutter test integration_test -d macOS
