@@ -215,6 +215,9 @@ impl Value {
             (DataType::Uuid, Literal::Bytea(v)) => parse_uuid(&hex::encode(v)).map(Value::Uuid),
             (DataType::Map, Literal::Text(v)) => Value::parse_json_map(v),
             (DataType::List, Literal::Text(v)) => Value::parse_json_list(v),
+            (DataType::Array(data_type, array_length), Literal::Text(v)) => {
+                Value::parse_typed_array(data_type.as_ref(), *array_length, v)
+            }
             (DataType::Decimal, Literal::Number(v)) => v
                 .to_string()
                 .parse::<Decimal>()

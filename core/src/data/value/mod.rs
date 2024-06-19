@@ -13,6 +13,7 @@ use {
     std::{cmp::Ordering, collections::HashMap, fmt::Debug, net::IpAddr},
 };
 
+mod array_value;
 mod binary_op;
 mod convert;
 mod date;
@@ -24,6 +25,7 @@ mod selector;
 mod uuid;
 
 pub use {
+    array_value::ArrayValue,
     convert::ConvertError,
     error::{NumericBinaryOperator, ValueError},
     json::HashMapJsonExt,
@@ -55,6 +57,7 @@ pub enum Value {
     Uuid(u128),
     Map(HashMap<String, Value>),
     List(Vec<Value>),
+    Array(ArrayValue),
     Point(Point),
     Null,
 }
@@ -166,6 +169,7 @@ impl Value {
             Value::Uuid(_) => Some(DataType::Uuid),
             Value::Map(_) => Some(DataType::Map),
             Value::List(_) => Some(DataType::List),
+            Value::Array(v) => Some(DataType::Array(Box::new(v.get_type()), v.get_length())),
             Value::Point(_) => Some(DataType::Point),
             Value::Null => None,
         }
