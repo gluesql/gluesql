@@ -1,8 +1,9 @@
 #![cfg(target_arch = "wasm32")]
 
 use {
-    async_trait::async_trait, composite_storage::CompositeStorage, gluesql_core::prelude::Glue,
-    gluesql_memory_storage::MemoryStorage, test_suite::*, wasm_bindgen_test::*,
+    async_trait::async_trait, gluesql_composite_storage::CompositeStorage,
+    gluesql_core::prelude::Glue, gluesql_memory_storage::MemoryStorage, test_suite::*,
+    wasm_bindgen_test::*,
 };
 
 wasm_bindgen_test_configure!(run_in_browser);
