@@ -21,8 +21,8 @@ use {
     gluesql_csv_storage::CsvStorage,
     gluesql_json_storage::JsonStorage,
     gluesql_memory_storage::MemoryStorage,
+    gluesql_parquet_storage::ParquetStorage,
     gluesql_sled_storage::SledStorage,
-    parquet_storage::ParquetStorage,
     std::{
         fmt::Debug,
         fs::File,
