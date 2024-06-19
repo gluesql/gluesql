@@ -21,8 +21,8 @@ pub use gluesql_sled_storage;
 #[cfg(feature = "gluesql-json-storage")]
 pub use gluesql_json_storage;
 
-#[cfg(feature = "csv-storage")]
-pub use csv_storage;
+#[cfg(feature = "gluesql-csv-storage")]
+pub use gluesql_csv_storage;
 
 #[cfg(feature = "parquet-storage")]
 pub use parquet_storage;
@@ -54,8 +54,8 @@ pub mod prelude {
     #[cfg(feature = "gluesql-json-storage")]
     pub use gluesql_json_storage::JsonStorage;
 
-    #[cfg(feature = "csv-storage")]
-    pub use csv_storage::CsvStorage;
+    #[cfg(feature = "gluesql-csv-storage")]
+    pub use gluesql_csv_storage::CsvStorage;
 
     #[cfg(feature = "parquet-storage")]
     pub use parquet_storage::ParquetStorage;

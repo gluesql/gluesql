@@ -13,7 +13,7 @@ gluesql-core.workspace = true
 gluesql_sled_storage.workspace = true
 gluesql_memory_storage.workspace = true
 gluesql-json-storage.workspace = true
-csv-storage.workspace = true
+gluesql-csv-storage.workspace = true
 parquet-storage.workspace = true
 
 clap = { version = "3.2.2", features = ["derive"] }

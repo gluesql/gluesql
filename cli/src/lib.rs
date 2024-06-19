@@ -9,7 +9,6 @@ use {
     crate::cli::Cli,
     anyhow::Result,
     clap::Parser,
-    csv_storage::CsvStorage,
     futures::{
         executor::block_on,
         stream::{StreamExt, TryStreamExt},
@@ -19,6 +18,7 @@ use {
         data::Value,
         store::{DataRow, GStore, GStoreMut, Store, Transaction},
     },
+    gluesql_csv_storage::CsvStorage,
     gluesql_json_storage::JsonStorage,
     gluesql_memory_storage::MemoryStorage,
     gluesql_sled_storage::SledStorage,
