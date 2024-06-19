@@ -2,7 +2,7 @@
 name = "gluesql-py"
 authors = [
     "Gyubong Lee <jopemachine@naver.com>",
-    "Taehoon Moon <taehoon.moon@outlook.com>"
+    "Taehoon Moon <taehoon.moon@outlook.com>",
 ]
 version.workspace = true
 edition.workspace = true
@@ -21,13 +21,13 @@ include-python-workspace = []
 
 [dependencies]
 gluesql-core.workspace = true
-memory-storage.workspace = true
-web-storage.workspace = true
-idb-storage.workspace = true
-composite-storage.workspace = true
-sled-storage.workspace = true
-json-storage.workspace = true
-shared-memory-storage.workspace = true
+gluesql_memory_storage.workspace = true
+gluesql-web-storage.workspace = true
+gluesql-idb-storage.workspace = true
+gluesql-composite-storage.workspace = true
+gluesql_sled_storage.workspace = true
+gluesql-json-storage.workspace = true
+gluesql-shared-memory-storage.workspace = true
 
 pyo3 = { version = "0.19.2", features = ["extension-module"] }
 pythonize = "0.19.0"

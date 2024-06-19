@@ -1,13 +1,13 @@
-#[cfg(feature = "sled-storage")]
+#[cfg(feature = "gluesql_sled_storage")]
 use {
     futures::executor::block_on,
-    gluesql::{prelude::Glue, sled_storage::SledStorage},
-    sled_storage::sled,
+    gluesql::{gluesql_sled_storage::SledStorage, prelude::Glue},
+    gluesql_sled_storage::sled,
     std::convert::TryFrom,
 };
 
 fn main() {
-    #[cfg(feature = "sled-storage")]
+    #[cfg(feature = "gluesql_sled_storage")]
     {
         let config = sled::Config::default()
             .path("data/using_config")

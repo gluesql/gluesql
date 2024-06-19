@@ -9,12 +9,7 @@ license.workspace = true
 repository.workspace = true
 documentation.workspace = true
 readme = "../../README.md"
-keywords = [
-	"sql-database",
-	"sql",
-	"websql",
-	"webassembly",
-]
+keywords = ["sql-database", "sql", "websql", "webassembly"]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -23,16 +18,16 @@ all-features = true
 gluesql-core.workspace = true
 cli = { workspace = true, optional = true }
 test-suite = { workspace = true, optional = true }
-memory-storage = { workspace = true, optional = true }
-shared-memory-storage = { workspace = true, optional = true }
-sled-storage = { workspace = true, optional = true }
-json-storage = { workspace = true, optional = true }
-csv-storage = { workspace = true, optional = true }
-composite-storage = { workspace = true, optional = true }
-web-storage = { workspace = true, optional = true }
-idb-storage = { workspace = true, optional = true }
-redis-storage = { workspace = true, optional = true }
-parquet-storage = { workspace = true, optional = true }
+gluesql_memory_storage = { workspace = true, optional = true }
+gluesql-shared-memory-storage = { workspace = true, optional = true }
+gluesql_sled_storage = { workspace = true, optional = true }
+gluesql-json-storage = { workspace = true, optional = true }
+gluesql-csv-storage = { workspace = true, optional = true }
+gluesql-composite-storage = { workspace = true, optional = true }
+gluesql-web-storage = { workspace = true, optional = true }
+gluesql-idb-storage = { workspace = true, optional = true }
+gluesql-redis-storage = { workspace = true, optional = true }
+gluesql-parquet-storage = { workspace = true, optional = true }
 
 [dev-dependencies]
 futures = "0.3"
@@ -42,12 +37,12 @@ futures = "0.3"
 default = [
 	"cli",
 	"test-suite",
-	"memory-storage",
-	"shared-memory-storage",
-	"sled-storage",
-	"json-storage",
-	"parquet-storage",
-	"csv-storage",
-	"composite-storage",
-	"redis-storage",
+	"gluesql_memory_storage",
+	"gluesql-shared-memory-storage",
+	"gluesql_sled_storage",
+	"gluesql-json-storage",
+	"gluesql-parquet-storage",
+	"gluesql-csv-storage",
+	"gluesql-composite-storage",
+	"gluesql-redis-storage",
 ]

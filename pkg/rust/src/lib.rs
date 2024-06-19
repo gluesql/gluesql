@@ -9,32 +9,32 @@ pub mod core {
     pub use gluesql_core::*;
 }
 
-#[cfg(feature = "memory-storage")]
-pub use memory_storage;
+#[cfg(feature = "gluesql_memory_storage")]
+pub use gluesql_memory_storage;
 
 #[cfg(feature = "shared-memory-storage")]
 pub use shared_memory_storage;
 
-#[cfg(feature = "sled-storage")]
-pub use sled_storage;
+#[cfg(feature = "gluesql_sled_storage")]
+pub use gluesql_sled_storage;
 
-#[cfg(feature = "json-storage")]
-pub use json_storage;
+#[cfg(feature = "gluesql-json-storage")]
+pub use gluesql_json_storage;
 
-#[cfg(feature = "csv-storage")]
-pub use csv_storage;
+#[cfg(feature = "gluesql-csv-storage")]
+pub use gluesql_csv_storage;
 
-#[cfg(feature = "parquet-storage")]
-pub use parquet_storage;
+#[cfg(feature = "gluesql-parquet-storage")]
+pub use gluesql_parquet_storage;
 
-#[cfg(feature = "composite-storage")]
-pub use composite_storage;
+#[cfg(feature = "gluesql-composite-storage")]
+pub use gluesql_composite_storage;
 
-#[cfg(all(feature = "web-storage", target_arch = "wasm32"))]
-pub use web_storage;
+#[cfg(all(feature = "gluesql-web-storage", target_arch = "wasm32"))]
+pub use gluesql_web_storage;
 
-#[cfg(all(feature = "idb-storage", target_arch = "wasm32"))]
-pub use idb_storage;
+#[cfg(all(feature = "gluesql-idb-storage", target_arch = "wasm32"))]
+pub use gluesql_idb_storage;
 
 #[cfg(feature = "test-suite")]
 pub use test_suite;
@@ -42,30 +42,30 @@ pub use test_suite;
 pub mod prelude {
     pub use gluesql_core::prelude::*;
 
-    #[cfg(feature = "memory-storage")]
-    pub use memory_storage::MemoryStorage;
+    #[cfg(feature = "gluesql_memory_storage")]
+    pub use gluesql_memory_storage::MemoryStorage;
 
     #[cfg(feature = "shared-memory-storage")]
     pub use shared_memory_storage::SharedMemoryStorage;
 
-    #[cfg(feature = "sled-storage")]
-    pub use sled_storage::SledStorage;
+    #[cfg(feature = "gluesql_sled_storage")]
+    pub use gluesql_sled_storage::SledStorage;
 
-    #[cfg(feature = "json-storage")]
-    pub use json_storage::JsonStorage;
+    #[cfg(feature = "gluesql-json-storage")]
+    pub use gluesql_json_storage::JsonStorage;
 
-    #[cfg(feature = "csv-storage")]
-    pub use csv_storage::CsvStorage;
+    #[cfg(feature = "gluesql-csv-storage")]
+    pub use gluesql_csv_storage::CsvStorage;
 
-    #[cfg(feature = "parquet-storage")]
-    pub use parquet_storage::ParquetStorage;
+    #[cfg(feature = "gluesql-parquet-storage")]
+    pub use gluesql_parquet_storage::ParquetStorage;
 
-    #[cfg(feature = "composite-storage")]
-    pub use composite_storage::CompositeStorage;
+    #[cfg(feature = "gluesql-composite-storage")]
+    pub use gluesql_composite_storage::CompositeStorage;
 
-    #[cfg(all(feature = "web-storage", target_arch = "wasm32"))]
-    pub use web_storage::WebStorage;
+    #[cfg(all(feature = "gluesql-web-storage", target_arch = "wasm32"))]
+    pub use gluesql_web_storage::WebStorage;
 
-    #[cfg(all(feature = "idb-storage", target_arch = "wasm32"))]
-    pub use idb_storage::IdbStorage;
+    #[cfg(all(feature = "gluesql-idb-storage", target_arch = "wasm32"))]
+    pub use gluesql_idb_storage::IdbStorage;
 }

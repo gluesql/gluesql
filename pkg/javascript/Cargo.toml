@@ -19,10 +19,10 @@ nodejs = ["console_error_panic_hook"]
 
 [dependencies]
 gluesql-core.workspace = true
-memory-storage .workspace = true
-web-storage.workspace = true
-idb-storage.workspace = true
-composite-storage.workspace = true
+gluesql_memory_storage.workspace = true
+gluesql-web-storage.workspace = true
+gluesql-idb-storage.workspace = true
+gluesql-composite-storage.workspace = true
 
 wasm-bindgen = { version = "0.2.79" }
 wasm-bindgen-futures = "0.4.29"

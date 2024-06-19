@@ -4,7 +4,7 @@ use {
         error::FetchError,
         prelude::{Error, Glue, Value::I64},
     },
-    memory_storage::MemoryStorage,
+    gluesql_memory_storage::MemoryStorage,
     test_suite::*,
 };
 

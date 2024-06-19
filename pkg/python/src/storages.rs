@@ -1,9 +1,9 @@
 use {
-    json_storage::JsonStorage,
-    memory_storage::MemoryStorage,
+    gluesql_json_storage::JsonStorage,
+    gluesql_memory_storage::MemoryStorage,
+    gluesql_shared_memory_storage::SharedMemoryStorage,
+    gluesql_sled_storage::{sled, SledStorage},
     pyo3::{prelude::*, types::PyString},
-    shared_memory_storage::SharedMemoryStorage,
-    sled_storage::{sled, SledStorage},
     std::path::PathBuf,
 };
 
