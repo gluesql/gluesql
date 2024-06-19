@@ -25,7 +25,7 @@ gluesql-json-storage = { workspace = true, optional = true }
 gluesql-csv-storage = { workspace = true, optional = true }
 gluesql-composite-storage = { workspace = true, optional = true }
 gluesql-web-storage = { workspace = true, optional = true }
-idb-storage = { workspace = true, optional = true }
+gluesql-idb-storage = { workspace = true, optional = true }
 redis-storage = { workspace = true, optional = true }
 parquet-storage = { workspace = true, optional = true }
 

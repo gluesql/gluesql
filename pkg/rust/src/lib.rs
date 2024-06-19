@@ -33,8 +33,8 @@ pub use gluesql_composite_storage;
 #[cfg(all(feature = "gluesql-web-storage", target_arch = "wasm32"))]
 pub use gluesql_web_storage;
 
-#[cfg(all(feature = "idb-storage", target_arch = "wasm32"))]
-pub use idb_storage;
+#[cfg(all(feature = "gluesql-idb-storage", target_arch = "wasm32"))]
+pub use gluesql_idb_storage;
 
 #[cfg(feature = "test-suite")]
 pub use test_suite;
@@ -66,6 +66,6 @@ pub mod prelude {
     #[cfg(all(feature = "gluesql-web-storage", target_arch = "wasm32"))]
     pub use gluesql_web_storage::WebStorage;
 
-    #[cfg(all(feature = "idb-storage", target_arch = "wasm32"))]
-    pub use idb_storage::IdbStorage;
+    #[cfg(all(feature = "gluesql-idb-storage", target_arch = "wasm32"))]
+    pub use gluesql_idb_storage::IdbStorage;
 }
