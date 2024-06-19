@@ -4,9 +4,12 @@
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
 import '../frb_generated.dart';
+import '../lib.dart';
+import '../third_party/gluesql_core/data/value.dart';
+import '../third_party/gluesql_core/data/value/literal.dart';
+import 'ast.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
-import 'simple.dart';
 part 'value.freezed.dart';
 
 @freezed
@@ -89,4 +92,158 @@ sealed class Value with _$Value {
     Point field0,
   ) = Value_Point;
   const factory Value.null_() = Value_Null;
+
+  Future<Value> add({required Value other}) =>
+      RustLib.instance.api.crateApiValueValueAdd(that: this, other: other);
+
+  Future<Value> bitwiseAnd({required Value other}) => RustLib.instance.api
+      .crateApiValueValueBitwiseAnd(that: this, other: other);
+
+  Future<Value> bitwiseShiftLeft({required Value rhs}) => RustLib.instance.api
+      .crateApiValueValueBitwiseShiftLeft(that: this, rhs: rhs);
+
+  Future<Value> bitwiseShiftRight({required Value rhs}) => RustLib.instance.api
+      .crateApiValueValueBitwiseShiftRight(that: this, rhs: rhs);
+
+  Future<Value> cast({required DataType dataType}) => RustLib.instance.api
+      .crateApiValueValueCast(that: this, dataType: dataType);
+
+  Future<Value> concat({required Value other}) =>
+      RustLib.instance.api.crateApiValueValueConcat(that: this, other: other);
+
+  Future<Value> divide({required Value other}) =>
+      RustLib.instance.api.crateApiValueValueDivide(that: this, other: other);
+
+  Future<Ordering?> evaluateCmp({required Value other}) => RustLib.instance.api
+      .crateApiValueValueEvaluateCmp(that: this, other: other);
+
+  Future<Ordering?> evaluateCmpWithLiteral({required Literal other}) =>
+      RustLib.instance.api
+          .crateApiValueValueEvaluateCmpWithLiteral(that: this, other: other);
+
+  Future<bool> evaluateEq({required Value other}) => RustLib.instance.api
+      .crateApiValueValueEvaluateEq(that: this, other: other);
+
+  Future<bool> evaluateEqWithLiteral({required Literal other}) =>
+      RustLib.instance.api
+          .crateApiValueValueEvaluateEqWithLiteral(that: this, other: other);
+
+  Future<Value> extract({required DateTimeField dateType}) =>
+      RustLib.instance.api
+          .crateApiValueValueExtract(that: this, dateType: dateType);
+
+  Future<Value> findIdx({required Value subVal, required Value start}) =>
+      RustLib.instance.api
+          .crateApiValueValueFindIdx(that: this, subVal: subVal, start: start);
+
+  Future<DataType?> getType() => RustLib.instance.api.crateApiValueValueGetType(
+        that: this,
+      );
+
+  Future<bool> isNull() => RustLib.instance.api.crateApiValueValueIsNull(
+        that: this,
+      );
+
+  Future<bool> isZero() => RustLib.instance.api.crateApiValueValueIsZero(
+        that: this,
+      );
+
+  Future<Value> like({required Value other, required bool caseSensitive}) =>
+      RustLib.instance.api.crateApiValueValueLike(
+          that: this, other: other, caseSensitive: caseSensitive);
+
+  Future<Value> modulo({required Value other}) =>
+      RustLib.instance.api.crateApiValueValueModulo(that: this, other: other);
+
+  Future<Value> multiply({required Value other}) =>
+      RustLib.instance.api.crateApiValueValueMultiply(that: this, other: other);
+
+  static Future<Value> parseJsonList({required String value}) =>
+      RustLib.instance.api.crateApiValueValueParseJsonList(value: value);
+
+  static Future<Value> parseJsonMap({required String value}) =>
+      RustLib.instance.api.crateApiValueValueParseJsonMap(value: value);
+
+  /// # Description
+  /// The operation method differs depending on the argument.
+  /// 1. If both arguments are String
+  ///     - Support only [`Value::Str`] variant
+  ///     - Returns the position where the first letter of the substring starts if the string contains a substring.
+  ///     - Returns [`Value::I64`] 0 if the string to be found is not found.
+  ///     - Returns minimum value [`Value::I64`] 1 when the string is found.
+  ///     - Returns [`Value::Null`] if NULL parameter found.
+  ///
+  /// 2. Other arguments
+  ///     - Not Supported Yet.
+  ///
+  /// # Examples
+  /// ```
+  /// use gluesql_core::prelude::Value;
+  ///
+  /// let str1 = Value::Str("ramen".to_owned());
+  /// let str2 = Value::Str("men".to_owned());
+  ///
+  /// assert_eq!(str1.position(&str2), Ok(Value::I64(3)));
+  /// assert_eq!(str2.position(&str1), Ok(Value::I64(0)));
+  /// assert!(Value::Null.position(&str2).unwrap().is_null());
+  /// assert!(str1.position(&Value::Null).unwrap().is_null());
+  /// ```
+  Future<Value> position({required Value other}) =>
+      RustLib.instance.api.crateApiValueValuePosition(that: this, other: other);
+
+  Future<Value> selector({required String selector}) => RustLib.instance.api
+      .crateApiValueValueSelector(that: this, selector: selector);
+
+  Future<Value> selectorByIndex({required List<Value> selector}) =>
+      RustLib.instance.api
+          .crateApiValueValueSelectorByIndex(that: this, selector: selector);
+
+  Future<Value> sqrt() => RustLib.instance.api.crateApiValueValueSqrt(
+        that: this,
+      );
+
+  Future<Value> subtract({required Value other}) =>
+      RustLib.instance.api.crateApiValueValueSubtract(that: this, other: other);
+
+  /// Value to Big-Endian for comparison purpose
+  Future<Uint8List> toCmpBeBytes() =>
+      RustLib.instance.api.crateApiValueValueToCmpBeBytes(
+        that: this,
+      );
+
+  static Future<Value> tryCastFromLiteral(
+          {required DataType dataType, required Literal literal}) =>
+      RustLib.instance.api.crateApiValueValueTryCastFromLiteral(
+          dataType: dataType, literal: literal);
+
+  static Future<Value> tryFromLiteral(
+          {required DataType dataType, required Literal literal}) =>
+      RustLib.instance.api.crateApiValueValueTryFromLiteral(
+          dataType: dataType, literal: literal);
+
+  Future<Value> unaryBitwiseNot() =>
+      RustLib.instance.api.crateApiValueValueUnaryBitwiseNot(
+        that: this,
+      );
+
+  Future<Value> unaryFactorial() =>
+      RustLib.instance.api.crateApiValueValueUnaryFactorial(
+        that: this,
+      );
+
+  Future<Value> unaryMinus() =>
+      RustLib.instance.api.crateApiValueValueUnaryMinus(
+        that: this,
+      );
+
+  Future<Value> unaryPlus() => RustLib.instance.api.crateApiValueValueUnaryPlus(
+        that: this,
+      );
+
+  Future<void> validateNull({required bool nullable}) => RustLib.instance.api
+      .crateApiValueValueValidateNull(that: this, nullable: nullable);
+
+  Future<void> validateType({required DataType dataType}) =>
+      RustLib.instance.api
+          .crateApiValueValueValidateType(that: this, dataType: dataType);
 }

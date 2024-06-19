@@ -6,35 +6,35 @@ pub use gluesql_core::{
 pub use rust_decimal::Decimal;
 use std::{collections::HashMap, net::IpAddr};
 
-#[frb(mirror(Value), non_opaque)]
-enum _Value {
-    Bool(bool),
-    I8(i8),
-    I16(i16),
-    I32(i32),
-    I64(i64),
-    I128(i128),
-    U8(u8),
-    U16(u16),
-    U32(u32),
-    U64(u64),
-    U128(u128),
-    F32(f32),
-    F64(f64),
-    Decimal(Decimal),
-    Str(String),
-    Bytea(Vec<u8>),
-    Inet(IpAddr),
-    Date(NaiveDate),
-    Timestamp(NaiveDateTime),
-    Time(NaiveTime),
-    Interval(Interval),
-    Uuid(u128),
-    Map(HashMap<String, Value>),
-    List(Vec<Value>),
-    Point(Point),
-    Null,
-}
+// #[frb(mirror(Value), non_opaque)]
+// enum _Value {
+//     Bool(bool),
+//     I8(i8),
+//     I16(i16),
+//     I32(i32),
+//     I64(i64),
+//     I128(i128),
+//     U8(u8),
+//     U16(u16),
+//     U32(u32),
+//     U64(u64),
+//     U128(u128),
+//     F32(f32),
+//     F64(f64),
+//     Decimal(Decimal),
+//     Str(String),
+//     Bytea(Vec<u8>),
+//     Inet(IpAddr),
+//     Date(NaiveDate),
+//     Timestamp(NaiveDateTime),
+//     Time(NaiveTime),
+//     Interval(Interval),
+//     Uuid(u128),
+//     Map(HashMap<String, Value>),
+//     List(Vec<Value>),
+//     Point(Point),
+//     Null,
+// }
 
 // #[frb(non_opaque)]
 // pub enum DartValue {

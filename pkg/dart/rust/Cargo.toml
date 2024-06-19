@@ -8,7 +8,7 @@ crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 gluesql-core.workspace = true
-memory-storage.workspace = true
+gluesql_memory_storage.workspace = true
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = [
@@ -18,7 +18,7 @@ tokio = { version = "1", features = [
     "sync",
 ] }
 rust_decimal = { version = "1", features = ["serde-str"] }
-flutter_rust_bridge = { version = "=2.0.0-dev.39", features = ["chrono"] }
+flutter_rust_bridge = { version = "=2.0.0-dev.40", features = ["chrono"] }
 thiserror = "1.0"
 ordered-float = { version = "4", features = ["serde"] }
 # gluesql-core = "0.15.0"

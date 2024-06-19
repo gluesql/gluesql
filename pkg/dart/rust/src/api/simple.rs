@@ -7,7 +7,7 @@ use gluesql_core::{
     ast::Statement,
     store::{GStore, GStoreMut},
 };
-use memory_storage::MemoryStorage;
+use gluesql_memory_storage::MemoryStorage;
 
 pub use {
     gluesql_core::{
@@ -37,7 +37,7 @@ pub use {
     std::net::IpAddr,
 };
 
-// #[frb(non_opaque, mirror(Payload))]
+#[frb(non_opaque)]
 pub fn execute(sql: String) -> Result<Vec<Payload>, Error> {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     runtime.block_on(async {

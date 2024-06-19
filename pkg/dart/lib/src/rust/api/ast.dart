@@ -26,6 +26,10 @@ enum BinaryOperator {
   bitwiseShiftLeft,
   bitwiseShiftRight,
   ;
+
+  Future<String> toSql() => RustLib.instance.api.crateApiAstBinaryOperatorToSql(
+        that: this,
+      );
 }
 
 enum DateTimeField {

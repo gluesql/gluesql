@@ -36,7 +36,7 @@ dependencies:
   cupertino_icons: ^1.0.6
   rust_lib_dart:
     path: rust_builder
-  flutter_rust_bridge: 2.0.0-dev.39
+  flutter_rust_bridge: 2.0.0-dev.40
   freezed_annotation: ^2.4.1
 
 dev_dependencies:

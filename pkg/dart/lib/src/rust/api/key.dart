@@ -4,9 +4,9 @@
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
 import '../frb_generated.dart';
+import '../lib.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
-import 'simple.dart';
 part 'key.freezed.dart';
 
 @freezed
@@ -80,4 +80,10 @@ sealed class Key with _$Key {
     IpAddr field0,
   ) = Key_Inet;
   const factory Key.none() = Key_None;
+
+  /// Key to Big-Endian for comparison purpose
+  Future<Uint8List> toCmpBeBytes() =>
+      RustLib.instance.api.crateApiKeyKeyToCmpBeBytes(
+        that: this,
+      );
 }

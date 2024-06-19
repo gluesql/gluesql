@@ -6,28 +6,28 @@ pub use gluesql_core::{
 };
 use std::collections::HashMap;
 
-#[frb(mirror(Payload), non_opaque)]
-pub enum _Payload {
-    ShowColumns(Vec<(String, DataType)>),
-    Create,
-    Insert(usize),
-    Select {
-        labels: Vec<String>,
-        rows: Vec<Vec<Value>>,
-    },
-    SelectMap(Vec<HashMap<String, Value>>),
-    Delete(usize),
-    Update(usize),
-    DropTable,
-    DropFunction,
-    AlterTable,
-    CreateIndex,
-    DropIndex,
-    StartTransaction,
-    Commit,
-    Rollback,
-    ShowVariable(PayloadVariable),
-}
+// #[frb(mirror(Payload), non_opaque)]
+// pub enum _Payload {
+//     ShowColumns(Vec<(String, DataType)>),
+//     Create,
+//     Insert(usize),
+//     Select {
+//         labels: Vec<String>,
+//         rows: Vec<Vec<Value>>,
+//     },
+//     SelectMap(Vec<HashMap<String, Value>>),
+//     Delete(usize),
+//     Update(usize),
+//     DropTable,
+//     DropFunction,
+//     AlterTable,
+//     CreateIndex,
+//     DropIndex,
+//     StartTransaction,
+//     Commit,
+//     Rollback,
+//     ShowVariable(PayloadVariable),
+// }
 
 // #[frb(non_opaque)]
 // pub enum DartPayload {

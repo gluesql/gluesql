@@ -4,27 +4,27 @@ pub use gluesql_core::ast::{
     UnaryOperator,
 };
 
-#[frb(mirror(BinaryOperator), non_opaque)]
-pub enum _BinaryOperator {
-    Plus,
-    Minus,
-    Multiply,
-    Divide,
-    Modulo,
-    StringConcat,
-    Gt,
-    Lt,
-    GtEq,
-    LtEq,
-    Eq,
-    NotEq,
-    And,
-    Or,
-    Xor,
-    BitwiseAnd,
-    BitwiseShiftLeft,
-    BitwiseShiftRight,
-}
+// #[frb(mirror(BinaryOperator), non_opaque)]
+// pub enum _BinaryOperator {
+//     Plus,
+//     Minus,
+//     Multiply,
+//     Divide,
+//     Modulo,
+//     StringConcat,
+//     Gt,
+//     Lt,
+//     GtEq,
+//     LtEq,
+//     Eq,
+//     NotEq,
+//     And,
+//     Or,
+//     Xor,
+//     BitwiseAnd,
+//     BitwiseShiftLeft,
+//     BitwiseShiftRight,
+// }
 
 // #[frb(mirror(Expr), non_opaque)]
 // pub enum _Expr {
@@ -102,14 +102,14 @@ pub enum _BinaryOperator {
 //     },
 // }
 
-#[frb(mirror(DateTimeField), non_opaque)]
-// #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Display)]
-// #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
-pub enum _DateTimeField {
-    Year,
-    Month,
-    Day,
-    Hour,
-    Minute,
-    Second,
-}
+// #[frb(mirror(DateTimeField), non_opaque)]
+// // #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Display)]
+// // #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
+// pub enum _DateTimeField {
+//     Year,
+//     Month,
+//     Day,
+//     Hour,
+//     Minute,
+//     Second,
+// }
