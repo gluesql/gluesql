@@ -1,9 +1,12 @@
 #![deny(clippy::str_to_string)]
 
+use gluesql_core::ast::ColumnDef;
+
 mod alter_table;
 mod index;
 mod metadata;
 mod transaction;
+mod undo;
 
 use {
     async_trait::async_trait,
@@ -18,18 +21,68 @@ use {
     std::collections::{BTreeMap, HashMap},
 };
 
+type Metadata = HashMap<String, Value>;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum StorageState {
+    Idle,
+    Transaction { autocommit: bool },
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum Log {
+    InsertSchema(String),
+    RenameSchema(String, String),
+    DeleteSchema(String, Item, Metadata),
+    RenameColumn(String, String, String),
+    AddColumn(String, String),
+    DropColumn(String, ColumnDef, usize, HashMap<Key, Value>),
+    InsertData(String, Vec<Key>),
+    UpdateData(String, Vec<(Key, DataRow)>),
+    DeleteData(String, Vec<(Key, DataRow)>),
+    AppendData(String, Vec<Key>),
+}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Item {
     pub schema: Schema,
     pub rows: BTreeMap<Key, DataRow>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryStorage {
     pub id_counter: i64,
     pub items: HashMap<String, Item>,
-    pub metadata: HashMap<String, HashMap<String, Value>>,
+    pub metadata: HashMap<String, Metadata>,
     pub functions: HashMap<String, StructCustomFunction>,
+    pub state: StorageState,
+    pub log_buffer: Vec<Log>,
+}
+
+impl Default for MemoryStorage {
+    fn default() -> MemoryStorage {
+        Self {
+            id_counter: 0,
+            items: HashMap::new(),
+            metadata: HashMap::new(),
+            functions: HashMap::new(),
+            state: StorageState::Idle,
+            log_buffer: Vec::new(),
+        }
+    }
+}
+
+impl MemoryStorage {
+    pub fn push_log(&mut self, stmt: Log) {
+        self.log_buffer.push(stmt);
+    }
+
+    pub fn pop_log(&mut self) -> Option<Log> {
+        self.log_buffer.pop()
+    }
+
+    pub fn clear_buffer(&mut self) {
+        self.log_buffer.clear();
+    }
 }
 
 impl MemoryStorage {
@@ -59,7 +112,9 @@ impl CustomFunctionMut for MemoryStorage {
     }
 
     async fn delete_function(&mut self, func_name: &str) -> Result<()> {
-        self.functions.remove(&func_name.to_uppercase());
+        if self.functions.get(&func_name.to_uppercase()).is_some() {
+            self.functions.remove(&func_name.to_uppercase());
+        }
         Ok(())
     }
 }
@@ -116,25 +171,39 @@ impl StoreMut for MemoryStorage {
             schema: schema.clone(),
             rows: BTreeMap::new(),
         };
+        self.push_log(Log::InsertSchema(table_name.clone()));
         self.items.insert(table_name, item);
 
         Ok(())
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
-        self.items.remove(table_name);
-        self.metadata.remove(table_name);
+        if let (Some(item), Some(metadata)) =
+            (self.items.get(table_name), self.metadata.get(table_name))
+        {
+            self.push_log(Log::DeleteSchema(
+                table_name.to_owned(),
+                item.to_owned(),
+                metadata.to_owned(),
+            ));
 
+            self.items.remove(table_name);
+            self.metadata.remove(table_name);
+        }
         Ok(())
     }
 
     async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
         if let Some(item) = self.items.get_mut(table_name) {
+            let mut key_vec: Vec<Key> = Vec::new();
             for row in rows {
                 self.id_counter += 1;
+                let id = self.id_counter;
 
-                item.rows.insert(Key::I64(self.id_counter), row);
+                item.rows.insert(Key::I64(id), row);
+                key_vec.push(Key::I64(id));
             }
+            self.push_log(Log::AppendData(table_name.to_owned(), key_vec));
         }
 
         Ok(())
@@ -142,8 +211,20 @@ impl StoreMut for MemoryStorage {
 
     async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
         if let Some(item) = self.items.get_mut(table_name) {
+            let mut keys: Vec<Key> = Vec::new();
+            let mut history: Vec<(Key, DataRow)> = Vec::new();
+
             for (key, row) in rows {
-                item.rows.insert(key, row);
+                if let Some(old_row) = item.rows.insert(key.clone(), row) {
+                    history.push((key, old_row));
+                } else {
+                    keys.push(key.clone());
+                }
+            }
+
+            match keys.is_empty() {
+                true => self.push_log(Log::UpdateData(table_name.to_owned(), history)),
+                false => self.push_log(Log::InsertData(table_name.to_owned(), keys)),
             }
         }
 
@@ -152,9 +233,14 @@ impl StoreMut for MemoryStorage {
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         if let Some(item) = self.items.get_mut(table_name) {
+            let mut data_rows: Vec<(Key, DataRow)> = Vec::new();
             for key in keys {
+                if let Some(row) = item.rows.get(&key) {
+                    data_rows.push((key.clone(), row.clone()));
+                }
                 item.rows.remove(&key);
             }
+            self.push_log(Log::DeleteData(table_name.to_owned(), data_rows));
         }
 
         Ok(())

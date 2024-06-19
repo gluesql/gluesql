@@ -1,12 +1,13 @@
 use {
-    super::MemoryStorage,
+    super::{Log, MemoryStorage},
     async_trait::async_trait,
     gluesql_core::{
         ast::ColumnDef,
-        data::Value,
+        data::{Key, Value},
         error::{AlterTableError, Error, Result},
         store::{AlterTable, DataRow},
     },
+    std::collections::HashMap,
 };
 
 #[async_trait(?Send)]
@@ -19,6 +20,10 @@ impl AlterTable for MemoryStorage {
 
         item.schema.table_name = new_table_name.to_owned();
         self.items.insert(new_table_name.to_owned(), item);
+        self.push_log(Log::RenameSchema(
+            new_table_name.to_owned(),
+            table_name.to_owned(),
+        ));
 
         Ok(())
     }
@@ -53,7 +58,11 @@ impl AlterTable for MemoryStorage {
             .ok_or(AlterTableError::RenamingColumnNotFound)?;
 
         column_def.name = new_column_name.to_owned();
-
+        self.push_log(Log::RenameColumn(
+            table_name.to_owned(),
+            new_column_name.to_owned(),
+            old_column_name.to_owned(),
+        ));
         Ok(())
     }
 
@@ -111,6 +120,10 @@ impl AlterTable for MemoryStorage {
         }
 
         column_defs.push(column_def.clone());
+        self.push_log(Log::AddColumn(
+            table_name.to_owned(),
+            column_def.name.clone(),
+        ));
 
         Ok(())
     }
@@ -138,16 +151,20 @@ impl AlterTable for MemoryStorage {
 
         match column_index {
             Some(column_index) => {
+                let column_def = column_defs.get(column_index).unwrap().clone();
                 column_defs.remove(column_index);
+                let mut key_value_pair: HashMap<Key, Value> = HashMap::new();
 
-                for (_, row) in item.rows.iter_mut() {
+                for (key, row) in item.rows.iter_mut() {
                     if row.len() <= column_index {
                         continue;
                     }
 
                     match row {
                         DataRow::Vec(values) => {
+                            let value = values.get(column_index).unwrap().clone();
                             values.remove(column_index);
+                            key_value_pair.insert(key.clone(), value);
                         }
                         DataRow::Map(_) => {
                             return Err(Error::StorageMsg(
@@ -156,6 +173,13 @@ impl AlterTable for MemoryStorage {
                         }
                     }
                 }
+
+                self.push_log(Log::DropColumn(
+                    table_name.to_owned(),
+                    column_def,
+                    column_index,
+                    key_value_pair,
+                ));
             }
             None if if_exists => {}
             None => {
