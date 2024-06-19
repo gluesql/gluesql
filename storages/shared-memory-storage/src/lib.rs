@@ -12,7 +12,7 @@ use {
         error::Result,
         store::{DataRow, Metadata, RowIter, Store, StoreMut},
     },
-    memory_storage::MemoryStorage,
+    gluesql_memory_storage::MemoryStorage,
     std::sync::Arc,
     tokio::sync::RwLock,
 };

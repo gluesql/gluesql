@@ -63,8 +63,8 @@ pub use {
 
 /// Available expression builder functions
 pub use expr::{
-    bitwise_not, case, col, date, exists, expr, factorial, minus, nested, not, not_exists, null,
-    num, numeric::NumericNode, plus, subquery, text, time, timestamp, uuid, ExprNode,
+    bitwise_not, bytea, case, col, date, exists, expr, factorial, minus, nested, not, not_exists,
+    null, num, numeric::NumericNode, plus, subquery, text, time, timestamp, uuid, ExprNode,
 };
 
 pub use alter_table::{

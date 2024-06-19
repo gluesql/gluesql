@@ -17,25 +17,28 @@ pub use self::{
 
 use {
     crate::{
-        ast::{Assignment, Statement, Variable},
+        ast::{Assignment, ForeignKey, ReferentialAction, Statement, Variable},
         result::Result,
     },
     ddl::translate_alter_table_operation,
     sqlparser::ast::{
-        Assignment as SqlAssignment, Ident as SqlIdent, ObjectName as SqlObjectName,
-        ObjectType as SqlObjectType, Statement as SqlStatement, TableFactor, TableWithJoins,
+        Assignment as SqlAssignment, Delete as SqlDelete, FromTable as SqlFromTable,
+        Ident as SqlIdent, Insert as SqlInsert, ObjectName as SqlObjectName,
+        ObjectType as SqlObjectType, ReferentialAction as SqlReferentialAction,
+        Statement as SqlStatement, TableConstraint as SqlTableConstraint, TableFactor,
+        TableWithJoins,
     },
 };
 
 pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
     match sql_statement {
         SqlStatement::Query(query) => translate_query(query).map(Statement::Query),
-        SqlStatement::Insert {
+        SqlStatement::Insert(SqlInsert {
             table_name,
             columns,
             source,
             ..
-        } => {
+        }) => {
             let table_name = translate_object_name(table_name)?;
             let columns = translate_idents(columns);
             let source = source
@@ -64,9 +67,15 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 .collect::<Result<_>>()?,
             selection: selection.as_ref().map(translate_expr).transpose()?,
         }),
-        SqlStatement::Delete {
+        SqlStatement::Delete(SqlDelete {
             from, selection, ..
-        } => {
+        }) => {
+            let from = match from {
+                SqlFromTable::WithFromKeyword(from) => from,
+                SqlFromTable::WithoutKeyword(_) => {
+                    return Err(TranslateError::UnreachableOmittingFromInDelete.into())
+                }
+            };
             let table_name = from
                 .iter()
                 .map(translate_table_with_join)
@@ -84,6 +93,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             columns,
             query,
             engine,
+            constraints,
             comment,
             ..
         } => {
@@ -94,15 +104,23 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
 
             let columns = (!columns.is_empty()).then_some(columns);
 
+            let name = translate_object_name(name)?;
+
+            let foreign_keys = constraints
+                .iter()
+                .map(translate_foreign_key)
+                .collect::<Result<Vec<_>>>()?;
+
             Ok(Statement::CreateTable {
                 if_not_exists: *if_not_exists,
-                name: translate_object_name(name)?,
+                name,
                 columns,
                 source: match query {
                     Some(v) => Some(translate_query(v).map(Box::new)?),
                     None => None,
                 },
                 engine: engine.clone(),
+                foreign_keys,
                 comment: comment.clone(),
             })
         }
@@ -127,6 +145,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             object_type: SqlObjectType::Table,
             if_exists,
             names,
+            cascade,
             ..
         } => Ok(Statement::DropTable {
             if_exists: *if_exists,
@@ -134,6 +153,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 .iter()
                 .map(translate_object_name)
                 .collect::<Result<Vec<_>>>()?,
+            cascade: *cascade,
         }),
         SqlStatement::DropFunction {
             if_exists,
@@ -206,7 +226,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
         SqlStatement::ShowFunctions { filter: None } => {
             Ok(Statement::ShowVariable(Variable::Functions))
         }
-        SqlStatement::ShowVariable { variable } => match (variable.len(), variable.get(0)) {
+        SqlStatement::ShowVariable { variable } => match (variable.len(), variable.first()) {
             (1, Some(keyword)) => match keyword.value.to_uppercase().as_str() {
                 "VERSION" => Ok(Statement::ShowVariable(Variable::Version)),
                 v => Err(TranslateError::UnsupportedShowVariableKeyword(v.to_owned()).into()),
@@ -273,7 +293,7 @@ pub fn translate_assignment(sql_assignment: &SqlAssignment) -> Result<Assignment
 
     Ok(Assignment {
         id: id
-            .get(0)
+            .first()
             .ok_or(TranslateError::UnreachableEmptyIdent)?
             .value
             .to_owned(),
@@ -299,13 +319,73 @@ fn translate_object_name(sql_object_name: &SqlObjectName) -> Result<String> {
     }
 
     sql_object_name
-        .get(0)
+        .first()
         .map(|v| v.value.to_owned())
         .ok_or_else(|| TranslateError::UnreachableEmptyObject.into())
 }
 
 pub fn translate_idents(idents: &[SqlIdent]) -> Vec<String> {
     idents.iter().map(|v| v.value.to_owned()).collect()
+}
+
+pub fn translate_referential_action(
+    action: &Option<SqlReferentialAction>,
+) -> Result<ReferentialAction> {
+    use SqlReferentialAction::*;
+
+    let action = action.unwrap_or(NoAction);
+
+    match action {
+        NoAction | Restrict => Ok(ReferentialAction::NoAction),
+        _ => Err(TranslateError::UnsupportedConstraint(action.to_string()).into()),
+    }
+}
+
+pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<ForeignKey> {
+    match table_constraint {
+        SqlTableConstraint::ForeignKey {
+            name,
+            columns,
+            foreign_table,
+            referred_columns,
+            on_delete,
+            on_update,
+            ..
+        } => {
+            let referencing_column_name = columns.first().map(|i| i.value.clone()).ok_or(
+                TranslateError::UnreachableForeignKeyColumns(
+                    columns.iter().map(|i| i.to_string()).collect::<String>(),
+                ),
+            )?;
+
+            let referenced_column_name = referred_columns
+                .first()
+                .ok_or(TranslateError::UnreachableForeignKeyColumns(
+                    columns.iter().map(|i| i.to_string()).collect::<String>(),
+                ))?
+                .value
+                .clone();
+
+            let referenced_table_name = translate_object_name(foreign_table)?;
+
+            let name = match name {
+                Some(name) => name.value.clone(),
+                None => {
+                    format!("FK_{referencing_column_name}-{referenced_table_name}_{referenced_column_name}")
+                }
+            };
+
+            Ok(ForeignKey {
+                name,
+                referencing_column_name,
+                referenced_table_name,
+                referenced_column_name,
+                on_delete: translate_referential_action(on_delete)?,
+                on_update: translate_referential_action(on_update)?,
+            })
+        }
+        _ => Err(TranslateError::UnsupportedConstraint(table_constraint.to_string()).into()),
+    }
 }
 
 #[cfg(test)]

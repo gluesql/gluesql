@@ -70,20 +70,22 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
 
             match context.get_value(ident) {
                 Some(value) => Ok(value.clone()),
-                None => Err(EvaluateError::ValueNotFound(ident.to_owned()).into()),
+                None => Err(EvaluateError::IdentifierNotFound(ident.to_owned()).into()),
             }
             .map(Evaluated::Value)
         }
         Expr::Nested(expr) => eval(expr).await,
         Expr::CompoundIdentifier { alias, ident } => {
-            let table_alias = &alias;
-            let column = &ident;
             let context = context
                 .ok_or_else(|| EvaluateError::ContextRequiredForIdentEvaluation(expr.clone()))?;
 
-            match context.get_alias_value(table_alias, column) {
+            match context.get_alias_value(alias, ident) {
                 Some(value) => Ok(value.clone()),
-                None => Err(EvaluateError::ValueNotFound(column.to_string()).into()),
+                None => Err(EvaluateError::CompoundIdentifierNotFound {
+                    table_alias: alias.to_owned(),
+                    column_name: ident.to_owned(),
+                }
+                .into()),
             }
             .map(Evaluated::Value)
         }

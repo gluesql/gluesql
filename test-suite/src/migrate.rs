@@ -64,7 +64,7 @@ test_case!(migrate, {
         ),
         (
             "SELECT * FROM Test WHERE noname = 1;",
-            EvaluateError::ValueNotFound("noname".to_owned()).into(),
+            EvaluateError::IdentifierNotFound("noname".to_owned()).into(),
         ),
         (
             "SELECT * FROM Nothing;",

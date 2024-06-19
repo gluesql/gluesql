@@ -41,6 +41,10 @@ test_case!(cast_literal, {
             Ok(select!(cast Bool; true)),
         ),
         (
+            "SELECT 1::BOOLEAN AS cast",
+            Ok(select!(cast Bool; true)),
+        ),
+        (
             "SELECT CAST(1 AS BOOLEAN) AS cast FROM Item",
             Ok(select!(cast Bool; true)),
         ),

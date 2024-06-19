@@ -7,8 +7,8 @@ pub use crate::{
         StringExtError, TableError, ValueError,
     },
     executor::{
-        AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, InsertError,
-        SelectError, SortError, UpdateError, ValidateError,
+        AggregateError, AlterError, DeleteError, EvaluateError, ExecuteError, FetchError,
+        InsertError, SelectError, SortError, UpdateError, ValidateError,
     },
     plan::PlanError,
     store::{AlterTableError, IndexError},
@@ -50,6 +50,8 @@ pub enum Error {
     #[error("insert: {0}")]
     Insert(#[from] InsertError),
     #[error("update: {0}")]
+    Delete(#[from] DeleteError),
+    #[error("delete: {0}")]
     Update(#[from] UpdateError),
     #[error("table: {0}")]
     Table(#[from] TableError),

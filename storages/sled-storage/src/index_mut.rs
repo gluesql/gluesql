@@ -74,6 +74,7 @@ impl IndexMut for SledStorage {
                 column_defs,
                 indexes,
                 engine,
+                foreign_keys,
                 comment,
                 ..
             } = schema
@@ -81,8 +82,9 @@ impl IndexMut for SledStorage {
                 .map_err(ConflictableTransactionError::Abort)?;
 
             if indexes.iter().any(|index| index.name == index_name) {
-                return Err(IndexError::IndexNameAlreadyExists(index_name.to_owned()).into())
-                    .map_err(ConflictableTransactionError::Abort);
+                return Err(ConflictableTransactionError::Abort(
+                    IndexError::IndexNameAlreadyExists(index_name.to_owned()).into(),
+                ));
             }
 
             let index = SchemaIndex {
@@ -102,6 +104,7 @@ impl IndexMut for SledStorage {
                 column_defs,
                 indexes,
                 engine,
+                foreign_keys,
                 comment,
             };
 
@@ -167,6 +170,7 @@ impl IndexMut for SledStorage {
                 column_defs,
                 indexes,
                 engine,
+                foreign_keys,
                 comment,
                 ..
             } = schema
@@ -180,8 +184,9 @@ impl IndexMut for SledStorage {
             let index = match index.into_iter().next() {
                 Some(index) => index,
                 None => {
-                    return Err(IndexError::IndexNameDoesNotExist(index_name.to_owned()).into())
-                        .map_err(ConflictableTransactionError::Abort);
+                    return Err(ConflictableTransactionError::Abort(
+                        IndexError::IndexNameDoesNotExist(index_name.to_owned()).into(),
+                    ));
                 }
             };
 
@@ -190,6 +195,7 @@ impl IndexMut for SledStorage {
                 column_defs,
                 indexes,
                 engine,
+                foreign_keys,
                 comment,
             };
 

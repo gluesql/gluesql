@@ -4,7 +4,7 @@ use {
         validate::{validate_unique, ColumnValidation},
     },
     crate::{
-        ast::{ColumnDef, ColumnUniqueOption, Expr, Query, SetExpr, Values},
+        ast::{ColumnDef, ColumnUniqueOption, Expr, ForeignKey, Query, SetExpr, Values},
         data::{Key, Row, Schema, Value},
         executor::{evaluate::evaluate_stateless, limit::Limit},
         result::Result,
@@ -38,6 +38,16 @@ pub enum InsertError {
 
     #[error("map type required: {0}")]
     MapTypeValueRequired(String),
+
+    #[error("cannot find referenced value on {table_name}.{column_name} with value {referenced_value:?}")]
+    CannotFindReferencedValue {
+        table_name: String,
+        column_name: String,
+        referenced_value: String,
+    },
+
+    #[error("unreachable referencing column name: {0}")]
+    ConflictReferencingColumnName(String),
 }
 
 enum RowsData {
@@ -51,14 +61,26 @@ pub async fn insert<T: GStore + GStoreMut>(
     columns: &[String],
     source: &Query,
 ) -> Result<usize> {
-    let Schema { column_defs, .. } = storage
+    let Schema {
+        column_defs,
+        foreign_keys,
+        ..
+    } = storage
         .fetch_schema(table_name)
         .await?
         .ok_or_else(|| InsertError::TableNotFound(table_name.to_owned()))?;
 
     let rows = match column_defs {
         Some(column_defs) => {
-            fetch_vec_rows(storage, table_name, column_defs, columns, source).await
+            fetch_vec_rows(
+                storage,
+                table_name,
+                column_defs,
+                columns,
+                source,
+                foreign_keys,
+            )
+            .await
         }
         None => fetch_map_rows(storage, source).await.map(RowsData::Append),
     }?;
@@ -89,6 +111,7 @@ async fn fetch_vec_rows<T: GStore>(
     column_defs: Vec<ColumnDef>,
     columns: &[String],
     source: &Query,
+    foreign_keys: Vec<ForeignKey>,
 ) -> Result<RowsData> {
     let labels = Rc::from(
         column_defs
@@ -159,6 +182,8 @@ async fn fetch_vec_rows<T: GStore>(
     )
     .await?;
 
+    validate_foreign_key(storage, &column_defs, foreign_keys, &rows).await?;
+
     let primary_key = column_defs.iter().position(|ColumnDef { unique, .. }| {
         unique == &Some(ColumnUniqueOption { is_primary: true })
     });
@@ -176,6 +201,58 @@ async fn fetch_vec_rows<T: GStore>(
             .map(RowsData::Insert),
         None => Ok(RowsData::Append(rows.into_iter().map(Into::into).collect())),
     }
+}
+
+async fn validate_foreign_key<T: GStore>(
+    storage: &T,
+    column_defs: &Rc<[ColumnDef]>,
+    foreign_keys: Vec<ForeignKey>,
+    rows: &[Vec<Value>],
+) -> Result<()> {
+    for foreign_key in foreign_keys {
+        let ForeignKey {
+            referencing_column_name,
+            referenced_table_name,
+            referenced_column_name,
+            ..
+        } = &foreign_key;
+
+        let target_index = column_defs
+            .iter()
+            .enumerate()
+            .find(|(_, c)| &c.name == referencing_column_name)
+            .ok_or_else(|| {
+                InsertError::ConflictReferencingColumnName(referencing_column_name.to_owned())
+            })?;
+
+        for row in rows.iter() {
+            let value =
+                row.get(target_index.0)
+                    .ok_or(InsertError::ConflictReferencingColumnName(
+                        referencing_column_name.to_owned(),
+                    ))?;
+
+            if value == &Value::Null {
+                continue;
+            }
+
+            let no_referenced = storage
+                .fetch_data(referenced_table_name, &Key::try_from(value)?)
+                .await?
+                .is_none();
+
+            if no_referenced {
+                return Err(InsertError::CannotFindReferencedValue {
+                    table_name: referenced_table_name.to_owned(),
+                    column_name: referenced_column_name.to_owned(),
+                    referenced_value: String::from(value),
+                }
+                .into());
+            }
+        }
+    }
+
+    Ok(())
 }
 
 async fn fetch_map_rows<T: GStore>(storage: &T, source: &Query) -> Result<Vec<DataRow>> {

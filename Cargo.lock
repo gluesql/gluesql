@@ -1546,6 +1546,7 @@ dependencies = [
  "parquet",
  "rust_decimal",
  "serde",
+ "serde_json",
  "thiserror",
  "tokio",
  "uuid",
@@ -3434,9 +3435,9 @@ checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
 
 [[package]]
 name = "sqlparser"
-version = "0.40.0"
+version = "0.46.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c80afe31cdb649e56c0d9bb5503be9166600d68a852c38dd445636d126858e5"
+checksum = "11a81a8cad9befe4cf1b9d2d4b9c6841c76f0882a3fec00d95133953c13b3d3d"
 dependencies = [
  "bigdecimal",
  "log",

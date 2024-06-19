@@ -51,6 +51,9 @@ pub enum TranslateError {
     #[error("unnamed function arg is not supported")]
     UnNamedFunctionArgNotSupported,
 
+    #[error("subquery function arg is not supported")]
+    UnreachableSubqueryFunctionArgNotSupported,
+
     #[error("INSERT INTO {0} DEFAULT VALUES is not supported")]
     DefaultValuesOnInsertNotSupported(String),
 
@@ -65,6 +68,12 @@ pub enum TranslateError {
 
     #[error("unsupported CAST format: {0}")]
     UnsupportedCastFormat(String),
+
+    #[error("TRY_CAST(..) is not supported")]
+    TryCastNotSupported,
+
+    #[error("SAFE_CAST(..) is not supported")]
+    SafeCastNotSupported,
 
     #[error("unsupported multiple alter table operations, expected: `ALTER TABLE <table> <operation>`, got: `ALTER TABLE <table> <operation>, <operation>, ..`")]
     UnsupportedMultipleAlterTableOperations,
@@ -147,6 +156,9 @@ pub enum TranslateError {
     #[error("unreachable empty table")]
     UnreachableEmptyTable,
 
+    #[error("unreachable - FROM cannot be ommitted in DELETE statement")]
+    UnreachableOmittingFromInDelete,
+
     #[error("unimplemented - compound object is supported: {0}")]
     CompoundObjectNotSupported(String),
 
@@ -155,4 +167,10 @@ pub enum TranslateError {
 
     #[error("cannot drop primary index")]
     CannotDropPrimary,
+
+    #[error("unreachable - empty columns")]
+    UnreachableForeignKeyColumns(String),
+
+    #[error("unsupported constraint: {0}")]
+    UnsupportedConstraint(String),
 }

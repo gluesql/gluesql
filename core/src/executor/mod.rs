@@ -1,6 +1,7 @@
 mod aggregate;
 mod alter;
 mod context;
+mod delete;
 mod evaluate;
 mod execute;
 mod fetch;
@@ -15,8 +16,9 @@ mod validate;
 
 pub use {
     aggregate::AggregateError,
-    alter::AlterError,
+    alter::{AlterError, Referencing},
     context::RowContext,
+    delete::DeleteError,
     evaluate::{evaluate_stateless, EvaluateError},
     execute::{execute, ExecuteError, Payload, PayloadVariable},
     fetch::FetchError,

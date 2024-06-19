@@ -1,10 +1,10 @@
-#[cfg(feature = "sled-storage")]
+#[cfg(feature = "gluesql_sled_storage")]
 mod sled_multi_threaded {
     use {
         futures::executor::block_on,
         gluesql::{
+            gluesql_sled_storage::SledStorage,
             prelude::{Glue, Payload, Value},
-            sled_storage::SledStorage,
         },
         std::thread,
     };
@@ -70,6 +70,6 @@ mod sled_multi_threaded {
 }
 
 fn main() {
-    #[cfg(feature = "sled-storage")]
+    #[cfg(feature = "gluesql_sled_storage")]
     futures::executor::block_on(sled_multi_threaded::run());
 }

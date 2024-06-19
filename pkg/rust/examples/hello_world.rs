@@ -1,7 +1,7 @@
-#[cfg(feature = "sled-storage")]
+#[cfg(feature = "gluesql_sled_storage")]
 mod hello_world {
     use {
-        gluesql::{prelude::Glue, sled_storage::SledStorage},
+        gluesql::{gluesql_sled_storage::SledStorage, prelude::Glue},
         std::fs,
     };
 
@@ -71,6 +71,6 @@ mod hello_world {
 }
 
 fn main() {
-    #[cfg(feature = "sled-storage")]
+    #[cfg(feature = "gluesql_sled_storage")]
     futures::executor::block_on(hello_world::run());
 }

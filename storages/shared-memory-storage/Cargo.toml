@@ -13,7 +13,7 @@ documentation.workspace = true
 
 [dependencies]
 gluesql-core.workspace = true
-memory-storage.workspace = true
+gluesql_memory_storage.workspace = true
 
 async-trait = "0.1"
 serde = { version = "1", features = ["derive"] }

@@ -1,4 +1,5 @@
 use {
+    super::table::Referencing,
     crate::ast::{DataType, Expr},
     serde::Serialize,
     std::fmt::Debug,
@@ -47,4 +48,39 @@ pub enum AlterError {
 
     #[error("non-default argument should not follow the default argument")]
     NonDefaultArgumentFollowsDefaultArgument,
+
+    #[error("foreign table not found: {0}")]
+    ReferencedTableNotFound(String),
+
+    #[error("referenced column not found: {0}")]
+    ReferencedColumnNotFound(String),
+
+    #[error("referencing column not found: {0}")]
+    ReferencingColumnNotFound(String),
+
+    #[error("referencing column '{referencing_column}' of data type '{referencing_column_type}' does not match referenced column '{referenced_column}' of data type '{referenced_column_type}'")]
+    ForeignKeyDataTypeMismatch {
+        referencing_column: String,
+        referencing_column_type: DataType,
+        referenced_column: String,
+        referenced_column_type: DataType,
+    },
+
+    #[error("referenced column '{referenced_table}.{referenced_column}' is not unique, cannot be used as foreign key")]
+    ReferencingNonPKColumn {
+        referenced_table: String,
+        referenced_column: String,
+    },
+
+    #[error("cannot drop table '{referenced_table_name}' due to referencing tables: '{}'", referencings.iter().map(ToString::to_string).collect::<Vec<_>>().join(", "))]
+    CannotDropTableWithReferencing {
+        referenced_table_name: String,
+        referencings: Vec<Referencing>,
+    },
+
+    #[error("cannot drop column '{}.{}' referenced by '{}'", referencing.foreign_key.referenced_table_name, referencing.foreign_key.referenced_column_name, referencing)]
+    CannotAlterReferencedColumn { referencing: Referencing },
+
+    #[error("cannot drop column '{}.{}' referencing with '{}'", referencing.table_name, referencing.foreign_key.referencing_column_name, referencing)]
+    CannotAlterReferencingColumn { referencing: Referencing },
 }

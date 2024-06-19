@@ -5,8 +5,8 @@ mod utils;
 
 use {
     gluesql_core::prelude::{execute, parse, plan, translate},
+    gluesql_memory_storage::MemoryStorage,
     js_sys::Promise,
-    memory_storage::MemoryStorage,
     payload::convert,
     std::{cell::RefCell, rc::Rc},
     wasm_bindgen::prelude::*,
@@ -15,9 +15,9 @@ use {
 
 #[cfg(not(feature = "nodejs"))]
 use {
-    composite_storage::CompositeStorage,
-    idb_storage::IdbStorage,
-    web_storage::{WebStorage, WebStorageType},
+    gluesql_composite_storage::CompositeStorage,
+    gluesql_idb_storage::IdbStorage,
+    gluesql_web_storage::{WebStorage, WebStorageType},
 };
 
 #[wasm_bindgen]

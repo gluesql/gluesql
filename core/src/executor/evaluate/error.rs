@@ -44,8 +44,14 @@ pub enum EvaluateError {
     #[error("function requires one of string, list, map types: {0}")]
     FunctionRequiresStrOrListOrMapValue(String),
 
-    #[error("value not found: {0}")]
-    ValueNotFound(String),
+    #[error("identifier not found: {0}")]
+    IdentifierNotFound(String),
+
+    #[error("identifier not found: {table_alias}.{column_name}")]
+    CompoundIdentifierNotFound {
+        table_alias: String,
+        column_name: String,
+    },
 
     #[error("only boolean value is accepted: {0}")]
     BooleanTypeRequired(String),

@@ -1,4 +1,4 @@
-#[cfg(feature = "sled-storage")]
+#[cfg(feature = "gluesql_sled_storage")]
 mod api_usage {
     use gluesql::prelude::{Glue, SledStorage};
 
@@ -20,6 +20,6 @@ mod api_usage {
 }
 
 fn main() {
-    #[cfg(feature = "sled-storage")]
+    #[cfg(feature = "gluesql_sled_storage")]
     futures::executor::block_on(api_usage::run());
 }

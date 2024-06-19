@@ -32,7 +32,7 @@ test_case!(error, {
     let test_cases = [
         (
             "SELECT SUM(num) FROM Item;",
-            EvaluateError::ValueNotFound("num".to_owned()).into(),
+            EvaluateError::IdentifierNotFound("num".to_owned()).into(),
         ),
         (
             "SELECT COUNT(Foo.*) FROM Item;",
