@@ -44,7 +44,7 @@ gluesql-shared-memory-storage = { package = "gluesql-shared-memory-storage", pat
 gluesql_sled_storage = { package = "gluesql_sled_storage", path = "./storages/sled-storage", version = "0.15.0" }
 gluesql-json-storage = { package = "gluesql-json-storage", path = "./storages/json-storage", version = "0.15.0" }
 gluesql-csv-storage = { package = "gluesql-csv-storage", path = "./storages/csv-storage", version = "0.15.0" }
-composite-storage = { package = "gluesql-composite-storage", path = "./storages/composite-storage", version = "0.15.0" }
+gluesql-composite-storage = { package = "gluesql-composite-storage", path = "./storages/composite-storage", version = "0.15.0" }
 web-storage = { package = "gluesql-web-storage", path = "./storages/web-storage", version = "0.15.0" }
 idb-storage = { package = "gluesql-idb-storage", path = "./storages/idb-storage", version = "0.15.0" }
 redis-storage = { package = "gluesql-redis-storage", path = "./storages/redis-storage", version = "0.15.0" }

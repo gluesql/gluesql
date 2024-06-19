@@ -27,8 +27,8 @@ pub use gluesql_csv_storage;
 #[cfg(feature = "parquet-storage")]
 pub use parquet_storage;
 
-#[cfg(feature = "composite-storage")]
-pub use composite_storage;
+#[cfg(feature = "gluesql-composite-storage")]
+pub use gluesql_composite_storage;
 
 #[cfg(all(feature = "web-storage", target_arch = "wasm32"))]
 pub use web_storage;
@@ -60,8 +60,8 @@ pub mod prelude {
     #[cfg(feature = "parquet-storage")]
     pub use parquet_storage::ParquetStorage;
 
-    #[cfg(feature = "composite-storage")]
-    pub use composite_storage::CompositeStorage;
+    #[cfg(feature = "gluesql-composite-storage")]
+    pub use gluesql_composite_storage::CompositeStorage;
 
     #[cfg(all(feature = "web-storage", target_arch = "wasm32"))]
     pub use web_storage::WebStorage;
