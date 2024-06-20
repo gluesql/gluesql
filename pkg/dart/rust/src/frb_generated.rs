@@ -31,16 +31,32 @@ use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Loc
 use flutter_rust_bridge::{Handler, IntoIntoDart};
 use gluesql_core::ast::ToSql;
 use gluesql_core::ast::*;
-use gluesql_core::ast_builder::expr::function::*;
+// use gluesql_core::ast_builder::expr::function::*;
 use gluesql_core::data::schema::*;
-use gluesql_core::data::value::literal::*;
+// use gluesql_core::data::value::literal::*;
 use gluesql_core::data::value::*;
 use gluesql_core::translate::*;
 use gluesql_memory_storage::*;
 
 // Section: boilerplate
 
-use gluesql_core::{ast_builder::ExprNode, chrono};
+use {
+    gluesql_core::{
+        ast_builder::ExprNode,
+        chrono,
+        data::{CustomFunction as StructCustomFunction, Key, Literal},
+        executor::Payload,
+        sqlparser::ast::{
+            Assignment as SqlAssignment, Delete as SqlDelete, FromTable as SqlFromTable,
+            Ident as SqlIdent, Insert as SqlInsert, ObjectName as SqlObjectName,
+            ObjectType as SqlObjectType, ReferentialAction as SqlReferentialAction,
+            Statement as SqlStatement, TableConstraint as SqlTableConstraint, TableFactor,
+            TableWithJoins,
+        },
+        store::DataRow,
+    },
+    std::{cmp::Ordering, collections::BTreeMap},
+};
 
 flutter_rust_bridge::frb_generated_boilerplate!(
     default_stream_sink_codec = SseCodec,
@@ -481,9 +497,8 @@ fn wire__gluesql_core__ast_builder__expr__function__rand_impl(
             deserializer.end();
             move |context| {
                 transform_result_sse::<_, ()>((move || {
-                    let output_ok = Result::<_, ()>::Ok(
-                        gluesql_core::ast_builder::expr::function::rand(api_expr),
-                    )?;
+                    let output_ok =
+                        Result::<_, ()>::Ok(gluesql_core::ast_builder::function::rand(api_expr))?;
                     Ok(output_ok)
                 })())
             }
@@ -3672,7 +3687,7 @@ impl SseDecode for Expr {
     }
 }
 
-impl SseDecode for ExprNode {
+impl<'a> SseDecode for ExprNode<'a> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut inner = <RustOpaqueMoi<
@@ -3891,8 +3906,8 @@ impl SseDecode for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpa
     }
 }
 
-impl SseDecode
-    for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ExprNode>>
+impl<'a> SseDecode
+    for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ExprNode<'a>>>
 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -4282,7 +4297,7 @@ impl SseDecode for Option<DataType> {
     }
 }
 
-impl SseDecode for Option<ExprNode> {
+impl<'a> SseDecode for Option<ExprNode<'a>> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         if (<bool>::sse_decode(deserializer)) {
@@ -4833,16 +4848,16 @@ impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<Expr>> for Expr {
 }
 
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for FrbWrapper<ExprNode> {
+impl<'a> flutter_rust_bridge::IntoDart for FrbWrapper<ExprNode<'a>> {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
             .into_dart()
     }
 }
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for FrbWrapper<ExprNode> {}
+impl<'a> flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for FrbWrapper<ExprNode<'a>> {}
 
-impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<ExprNode>> for ExprNode {
-    fn into_into_dart(self) -> FrbWrapper<ExprNode> {
+impl<'a> flutter_rust_bridge::IntoIntoDart<FrbWrapper<ExprNode<'a>>> for ExprNode<'a> {
+    fn into_into_dart(self) -> FrbWrapper<ExprNode<'a>> {
         self.into()
     }
 }
@@ -5176,7 +5191,7 @@ impl SseEncode for Expr {
     }
 }
 
-impl SseEncode for ExprNode {
+impl<'a> SseEncode for ExprNode<'a> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ExprNode>>>::sse_encode(flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self), serializer);
@@ -5385,8 +5400,8 @@ impl SseEncode for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpa
     }
 }
 
-impl SseEncode
-    for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ExprNode>>
+impl<'a> SseEncode
+    for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<ExprNode<'a>>>
 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -5748,7 +5763,7 @@ impl SseEncode for Option<DataType> {
     }
 }
 
-impl SseEncode for Option<ExprNode> {
+impl<'a> SseEncode for Option<ExprNode<'a>> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <bool>::sse_encode(self.is_some(), serializer);
