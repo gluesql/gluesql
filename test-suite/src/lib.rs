@@ -168,6 +168,7 @@ macro_rules! generate_store_tests {
         glue!(migrate, migrate::migrate);
         glue!(nested_select, nested_select::nested_select);
         glue!(primary_key, primary_key::primary_key);
+        glue!(multiple_primary_keys, primary_key::multiple_primary_keys);
         glue!(foreign_key, foreign_key::foreign_key);
         glue!(series, series::series);
         glue!(nullable, nullable::nullable);
