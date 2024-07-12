@@ -194,4 +194,32 @@ test_case!(multiple_primary_keys, {
         ),
     )
     .await;
+
+    // We attempt to insert a row with a different primary key
+    g.test("INSERT INTO Allegro VALUES (1, 2);", Ok(Payload::Insert(1)))
+        .await;
+
+    // We check that the row was inserted correctly
+    g.test(
+        "SELECT table_id, user_id FROM Allegro",
+        Ok(select!(
+            table_id | user_id
+            I64     | I64;
+            1       1;
+            1       2
+        )),
+    )
+    .await;
+
+    // We check that the previous row was not deleted
+    // g.named_test(
+    //     "Check previous row",
+    //     "SELECT table_id, user_id FROM Allegro WHERE table_id = 1 AND user_id = 1;",
+    //     Ok(select!(
+    //         table_id | user_id
+    //         I64     | I64;
+    //         1       1
+    //     )),
+    // )
+    // .await;
 });

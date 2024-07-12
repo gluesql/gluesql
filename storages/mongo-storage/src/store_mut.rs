@@ -7,7 +7,7 @@ use {
             key::{into_object_id, KeyIntoBson},
             value::IntoBson,
         },
-        utils::{get_primary_key, Validator},
+        utils::Validator,
         MongoStorage,
     },
     async_trait::async_trait,
@@ -240,9 +240,10 @@ impl StoreMut for MongoStorage {
     async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
         let column_defs = self.get_column_defs(table_name).await?;
 
-        let primary_key = column_defs
+        let has_primary_key = column_defs
             .as_ref()
-            .and_then(|column_defs| get_primary_key(column_defs));
+            .map(|column_defs| column_defs.iter().any(|column_def| column_def.is_primary()))
+            .unwrap_or(false);
 
         for (key, row) in rows {
             let doc = match row {
@@ -252,7 +253,7 @@ impl StoreMut for MongoStorage {
                     .iter()
                     .zip(values.into_iter())
                     .try_fold(
-                        doc! {"_id": key.clone().into_bson(primary_key.is_some())?},
+                        doc! {"_id": key.clone().into_bson(has_primary_key)?},
                         |mut acc, (column_def, value)| {
                             acc.extend(doc! {column_def.name.clone(): value.into_bson()?});
 
@@ -269,7 +270,7 @@ impl StoreMut for MongoStorage {
                 ),
             }?;
 
-            let query = doc! {"_id": key.into_bson(primary_key.is_some())?};
+            let query = doc! {"_id": key.into_bson(has_primary_key)?};
             let options = ReplaceOptions::builder().upsert(Some(true)).build();
 
             self.db
@@ -284,15 +285,16 @@ impl StoreMut for MongoStorage {
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let column_defs = self.get_column_defs(table_name).await?;
-        let primary_key = column_defs
+        let has_primary_key = column_defs
             .as_ref()
-            .and_then(|column_defs| get_primary_key(column_defs));
+            .map(|column_defs| column_defs.iter().any(|column_def| column_def.is_primary()))
+            .unwrap_or(false);
 
         self.db
             .collection::<Bson>(table_name)
             .delete_many(
                 doc! { "_id": {
-                    "$in": keys.into_iter().map(|key| key.into_bson(primary_key.is_some())).collect::<Result<Vec<_>>>()?
+                    "$in": keys.into_iter().map(|key| key.into_bson(has_primary_key)).collect::<Result<Vec<_>>>()?
                 }},
                 None,
             )
