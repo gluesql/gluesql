@@ -125,7 +125,7 @@ impl<'a> Context<'a> {
     ///
     /// # Arguments
     /// * `primary_key_columns` - The primary key columns to check for.
-    /// 
+    ///
     /// # Implementative details
     /// A primary key is considered to be present in the expression if all of its columns can
     /// be found in the expression tree.

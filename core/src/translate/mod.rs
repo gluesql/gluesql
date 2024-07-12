@@ -146,7 +146,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             // handling also the other constraints that are defined on the table.
 
             let mut foreign_keys = Vec::new();
-            
+
             for constraint in constraints.iter() {
                 if let sqlparser::ast::TableConstraint::PrimaryKey {
                     columns: primary_key_columns,

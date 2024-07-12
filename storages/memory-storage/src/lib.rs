@@ -91,7 +91,7 @@ impl Store for MemoryStorage {
             dbg!(table);
             return Ok(None);
         }
-        
+
         let table = table.unwrap();
 
         dbg!(key, &table.rows, table.rows.get(key));
