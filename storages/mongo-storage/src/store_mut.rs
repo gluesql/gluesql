@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use {
     crate::{
         description::ColumnDescription,
@@ -41,6 +42,22 @@ impl StoreMut for MongoStorage {
             .column_defs
             .as_ref()
             .map(|column_defs| {
+                let mut indexes = Vec::new();
+
+                if column_defs.iter().any(|column_def| column_def.is_primary()) {
+                    let composite_key_name = column_defs
+                        .iter()
+                        .filter(|column_def| column_def.is_primary())
+                        .map(|column_def| column_def.name.clone())
+                        .join("_");
+
+                    indexes.push(IndexInfo {
+                        name: format!("{composite_key_name}_PK"),
+                        key: composite_key_name.clone(),
+                        index_type: IndexType::Primary,
+                    });
+                }
+
                 column_defs.iter().try_fold(
                     (Vec::new(), Document::new(), Vec::new()),
                     |(mut labels, mut column_types, mut indexes), column_def| {
@@ -56,25 +73,13 @@ impl StoreMut for MongoStorage {
                             false => vec![data_type],
                         };
 
-                        match &column_def.unique {
-                            Some(ColumnUniqueOption { is_primary }) => match *is_primary {
-                                true => {
-                                    indexes.push(IndexInfo {
-                                        name: format!("{column_name}_PK"),
-                                        key: column_name.clone(),
-                                        index_type: IndexType::Primary,
-                                    });
-                                }
-                                false => {
-                                    bson_type = vec![data_type, "null"];
-                                    indexes.push(IndexInfo {
-                                        name: format!("{column_name}_UNIQUE"),
-                                        key: column_name.clone(),
-                                        index_type: IndexType::Unique,
-                                    });
-                                }
-                            },
-                            None => {}
+                        if column_def.is_unique_not_primary() {
+                            bson_type = vec![data_type, "null"];
+                            indexes.push(IndexInfo {
+                                name: format!("{column_name}_UNIQUE"),
+                                key: column_name.clone(),
+                                index_type: IndexType::Unique,
+                            });
                         }
 
                         let mut property = doc! {

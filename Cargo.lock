@@ -1392,6 +1392,7 @@ dependencies = [
  "futures",
  "gluesql-core",
  "gluesql-test-suite",
+ "itertools 0.12.1",
  "mongodb",
  "rust_decimal",
  "serde",
