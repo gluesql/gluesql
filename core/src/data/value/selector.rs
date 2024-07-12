@@ -52,8 +52,7 @@ impl Value {
             .map(String::from)
             .try_fold(self, |selectable, key| {
                 selectable.get_value_from_compound_type(&key)
-            })
-            .map(Clone::clone)
+            }).cloned()
     }
 
     fn get_value_from_compound_type(&self, key: &str) -> Result<&Value> {

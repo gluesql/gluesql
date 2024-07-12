@@ -113,11 +113,10 @@ pub fn get_primary_key_from_row(row: &[Value], primary_key_indices: &[usize]) ->
                 .map(|&index| {
                     Key::try_from(
                         row.get(index)
-                            .ok_or_else(|| ValidateError::ConflictOnStorageColumnIndex(index))?,
+                            .ok_or(ValidateError::ConflictOnStorageColumnIndex(index))?,
                     )
                 })
-                .collect::<Result<Vec<Key>>>()?
-                .into(),
+                .collect::<Result<Vec<Key>>>()?,
         ),
     })
 }
@@ -193,7 +192,11 @@ pub async fn validate_unique<T: Store>(
                 dbg!("Found primary key: {:?}", &primary_key);
                 return Err(ValidateError::DuplicateEntryOnPrimaryKeyField(primary_key).into());
             } else {
-                dbg!("Primary key not found: {:?}, table_name: {:?}", &primary_key, &table_name);
+                dbg!(
+                    "Primary key not found: {:?}, table_name: {:?}",
+                    &primary_key,
+                    &table_name
+                );
             }
         }
     }

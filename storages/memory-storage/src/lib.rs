@@ -96,7 +96,7 @@ impl Store for MemoryStorage {
 
         dbg!(key, &table.rows, table.rows.get(key));
 
-        let row = table.rows.get(key).map(Clone::clone);
+        let row = table.rows.get(key).cloned();
 
         dbg!(&row);
 

@@ -150,7 +150,7 @@ impl JsonStorage {
 
         let primary_key_indices = match &schema.column_defs {
             Some(column_defs) => {
-                gluesql_core::executor::get_primary_key_column_indices(&column_defs)
+                gluesql_core::executor::get_primary_key_column_indices(column_defs)
             }
             None => vec![],
         };

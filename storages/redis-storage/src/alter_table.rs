@@ -17,7 +17,7 @@ impl AlterTable for RedisStorage {
             // Which should be done first? deleting or storing?
             self.redis_delete_schema(table_name)?;
 
-            schema.table_name = new_table_name.to_owned();
+            new_table_name.clone_into(&mut schema.table_name);
             self.redis_store_schema(&schema)?;
 
             let redis_key_iter: Vec<String> = self.redis_execute_scan(table_name)?;
@@ -64,7 +64,7 @@ impl AlterTable for RedisStorage {
                 .find(|column_def| column_def.name == old_column_name)
                 .ok_or(AlterTableError::RenamingColumnNotFound)?;
 
-            column_def.name = new_column_name.to_owned();
+            new_column_name.clone_into(&mut column_def.name);
 
             self.redis_delete_schema(table_name)?;
             self.redis_store_schema(&schema)?;

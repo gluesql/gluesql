@@ -66,7 +66,7 @@ impl ParquetStorage {
                 if kv.key == "schemaless" {
                     is_schemaless = matches!(kv.value.as_deref(), Some("true"));
                 } else if kv.key == "comment" {
-                    comment = kv.value.clone();
+                    comment.clone_from(&kv.value);
                 } else if kv.key.starts_with("foreign_key") {
                     let fk = kv
                         .value
@@ -135,7 +135,7 @@ impl ParquetStorage {
 
         if let Some(column_defs) = &fetched_schema.column_defs {
             let primary_key_indices =
-                gluesql_core::executor::get_primary_key_column_indices(&column_defs);
+                gluesql_core::executor::get_primary_key_column_indices(column_defs);
             for record in row_iter {
                 let record: Row = record.map_storage_err()?;
                 let mut row = Vec::new();
