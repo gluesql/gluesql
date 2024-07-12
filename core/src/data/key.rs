@@ -50,6 +50,7 @@ pub enum Key {
     Interval(Interval),
     Uuid(u128),
     Inet(IpAddr),
+    Composite(Vec<Key>),
     None,
 }
 
@@ -81,6 +82,7 @@ impl Ord for Key {
             (Key::None, Key::None) => Ordering::Equal,
             (Key::None, _) => Ordering::Greater,
             (_, Key::None) => Ordering::Less,
+            (Key::Composite(l), Key::Composite(r)) => l.cmp(r),
 
             (left, right) => {
                 if left.to_order() <= right.to_order() {
@@ -136,6 +138,25 @@ impl TryFrom<Value> for Key {
     }
 }
 
+impl TryFrom<Vec<Value>> for Key {
+    type Error = Error;
+
+    fn try_from(values: Vec<Value>) -> Result<Self> {
+        Ok(Key::Composite(
+            values
+                .into_iter()
+                .map(Key::try_from)
+                .collect::<Result<Vec<_>>>()?,
+        ))
+    }
+}
+
+impl From<Vec<Key>> for Key {
+    fn from(keys: Vec<Key>) -> Self {
+        Key::Composite(keys)
+    }
+}
+
 impl TryFrom<&Value> for Key {
     type Error = Error;
 
@@ -169,6 +190,7 @@ impl From<Key> for Value {
             Key::Time(v) => Value::Time(v),
             Key::Interval(v) => Value::Interval(v),
             Key::Uuid(v) => Value::Uuid(v),
+            Key::Composite(v) => Value::List(v.into_iter().map(Value::from).collect()),
             Key::None => Value::Null,
         }
     }
@@ -337,6 +359,13 @@ impl Key {
                 .chain(v.to_be_bytes().iter())
                 .copied()
                 .collect::<Vec<_>>(),
+            Key::Composite(v) => v
+                .iter()
+                .map(|key| key.to_cmp_be_bytes())
+                .collect::<Result<Vec<_>>>()?
+                .into_iter()
+                .flatten()
+                .collect(),
             Key::None => vec![NONE],
         })
     }
@@ -366,6 +395,7 @@ impl Key {
             Key::Uuid(_) => 21,
             Key::Inet(_) => 22,
             Key::None => 23,
+            Key::Composite(_) => 24,
         }
     }
 }

@@ -4,7 +4,7 @@ use {
         validate::{validate_unique, ColumnValidation},
     },
     crate::{
-        ast::{ColumnDef, ColumnUniqueOption, Expr, ForeignKey, Query, SetExpr, Values},
+        ast::{ColumnDef, Expr, ForeignKey, Query, SetExpr, Values},
         data::{Key, Row, Schema, Value},
         executor::{evaluate::evaluate_stateless, limit::Limit},
         result::Result,
@@ -184,22 +184,18 @@ async fn fetch_vec_rows<T: GStore>(
 
     validate_foreign_key(storage, &column_defs, foreign_keys, &rows).await?;
 
-    let primary_key = column_defs.iter().position(|ColumnDef { unique, .. }| {
-        unique == &Some(ColumnUniqueOption { is_primary: true })
-    });
+    let primary_key_indices = super::validate::get_primary_key_column_indices(&column_defs);
 
-    match primary_key {
-        Some(i) => rows
-            .into_iter()
-            .filter_map(|values| {
-                values
-                    .get(i)
-                    .map(Key::try_from)
-                    .map(|result| result.map(|key| (key, values.into())))
+    if primary_key_indices.is_empty() {
+        Ok(RowsData::Append(rows.into_iter().map(Into::into).collect()))
+    } else {
+        rows.into_iter()
+            .map(|row| {
+                super::validate::get_primary_key_from_row(&row, &primary_key_indices)
+                    .map(|key| (key, row.into()))
             })
             .collect::<Result<Vec<_>>>()
-            .map(RowsData::Insert),
-        None => Ok(RowsData::Append(rows.into_iter().map(Into::into).collect())),
+            .map(RowsData::Insert)
     }
 }
 

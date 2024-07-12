@@ -9,7 +9,6 @@ mod transaction;
 use {
     error::{JsonStorageError, OptionExt, ResultExt},
     gluesql_core::{
-        ast::ColumnUniqueOption,
         data::{value::HashMapJsonExt, Key, Schema},
         error::{Error, Result},
         store::{DataRow, Metadata},
@@ -149,6 +148,13 @@ impl JsonStorage {
             }
         };
 
+        let primary_key_indices = match &schema.column_defs {
+            Some(column_defs) => {
+                gluesql_core::executor::get_primary_key_column_indices(&column_defs)
+            }
+            None => vec![],
+        };
+
         let schema2 = schema.clone();
         let rows = jsons.enumerate().map(move |(index, json)| -> Result<_> {
             let json = json?;
@@ -164,16 +170,11 @@ impl JsonStorage {
                 }
             };
 
-            let mut key: Option<Key> = None;
             let mut values = Vec::with_capacity(column_defs.len());
             for column_def in column_defs {
                 let value = json.get(&column_def.name).map_storage_err(
                     JsonStorageError::ColumnDoesNotExist(column_def.name.clone()),
                 )?;
-
-                if column_def.unique == Some(ColumnUniqueOption { is_primary: true }) {
-                    key = Some(value.clone().try_into().map_storage_err()?);
-                }
 
                 let value = match value.get_type() {
                     Some(data_type) if data_type != column_def.data_type => {
@@ -185,9 +186,10 @@ impl JsonStorage {
                 values.push(value);
             }
 
-            let key = match key {
-                Some(key) => key,
-                None => get_index_key()?,
+            let key = if primary_key_indices.is_empty() {
+                get_index_key()?
+            } else {
+                gluesql_core::executor::get_primary_key_from_row(&values, &primary_key_indices)?
             };
             let row = DataRow::Vec(values);
 

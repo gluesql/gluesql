@@ -2,7 +2,7 @@ use {
     column_def::ParquetSchemaType,
     error::{OptionExt, ParquetStorageError, ResultExt},
     gluesql_core::{
-        ast::{ColumnDef, ColumnUniqueOption, ForeignKey},
+        ast::{ColumnDef, ForeignKey},
         data::Schema,
         error::{Error, Result},
         prelude::{DataType, Key, Value},
@@ -134,25 +134,23 @@ impl ParquetStorage {
         let mut key_counter: u64 = 0;
 
         if let Some(column_defs) = &fetched_schema.column_defs {
+            let primary_key_indices =
+                gluesql_core::executor::get_primary_key_column_indices(&column_defs);
             for record in row_iter {
                 let record: Row = record.map_storage_err()?;
                 let mut row = Vec::new();
-                let mut key = None;
 
                 for (idx, (_, field)) in record.get_column_iter().enumerate() {
                     let value = ParquetField(field.clone()).to_value(&fetched_schema, idx)?;
                     row.push(value.clone());
-
-                    if column_defs[idx].unique == Some(ColumnUniqueOption { is_primary: true }) {
-                        key = Key::try_from(&value).ok();
-                    }
                 }
 
-                let generated_key = key.unwrap_or_else(|| {
-                    let generated = Key::U64(key_counter);
+                let generated_key = if primary_key_indices.is_empty() {
                     key_counter += 1;
-                    generated
-                });
+                    Key::U64(key_counter - 1)
+                } else {
+                    gluesql_core::executor::get_primary_key_from_row(&row, &primary_key_indices)?
+                };
                 rows.push(Ok((generated_key, DataRow::Vec(row))));
             }
         } else {

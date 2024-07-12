@@ -163,22 +163,35 @@ test_case!(multiple_primary_keys, {
         CREATE TABLE Allegro (
             table_id INTEGER,
             user_id INTEGER,
-            PRIMARY KEY (table_id, user_id),
+            PRIMARY KEY (table_id, user_id)
         );
     ",
     )
     .await;
 
     // We attempt to insert a row in this table
+    g.test("INSERT INTO Allegro VALUES (1, 1);", Ok(Payload::Insert(1)))
+        .await;
+
+    // We check that the row was inserted correctly
     g.test(
-        "INSERT INTO Allegro VALUES (1, 1);",
-        Ok(Payload::Insert(1)),
-    ).await;
+        "SELECT table_id, user_id FROM Allegro",
+        Ok(select!(
+            table_id | user_id
+            I64     | I64;
+            1       1
+        )),
+    )
+    .await;
 
     // We attempt to insert a row with the same primary keys
     g.named_test(
         "Duplicate primary keys",
         "INSERT INTO Allegro VALUES (1, 1);",
-        Err(ValidateError::DuplicateEntryOnPrimaryKeyField(Key::I64(1)).into()),
-    ).await;
+        Err(
+            ValidateError::DuplicateEntryOnPrimaryKeyField(vec![Key::I64(1), Key::I64(1)].into())
+                .into(),
+        ),
+    )
+    .await;
 });

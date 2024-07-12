@@ -102,14 +102,80 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 .map(translate_column_def)
                 .collect::<Result<Vec<_>>>()?;
 
-            let columns = (!columns.is_empty()).then_some(columns);
+            let mut columns = (!columns.is_empty()).then_some(columns);
 
             let name = translate_object_name(name)?;
 
-            let foreign_keys = constraints
-                .iter()
-                .map(translate_foreign_key)
-                .collect::<Result<Vec<_>>>()?;
+            // We parse the provided constraints that contain information regardin
+            // primary keys. This is essential to handle the cases where the primary
+            // key is not defined inline with the column definition, but rather as a
+            // separate constraint. Two examples are shown below:
+            //
+            // First, the following example illustrate the case where the primary key
+            // is defined inline with the column definition:
+            // ```sql
+            // CREATE TABLE Foo (
+            //     id INTEGER PRIMARY KEY
+            // );
+            // ```
+            //
+            // Second, the following example illustrate the case where the primary key
+            // is defined as a separate constraint:
+            // ```sql
+            // CREATE TABLE Foo (
+            //     id INTEGER,
+            //     PRIMARY KEY (id)
+            // );
+            // ```
+            //
+            // In the second example, the primary key is defined as a separate constraint
+            // and not inline with the column definition. This is why we need to parse the
+            // constraints to extract the primary key information. This case is made slightly
+            // more complex by the fact that the primary key can be a composite key, which
+            // means that it can be defined on multiple columns. This is illustrated in the
+            // following example:
+            // ```sql
+            // CREATE TABLE Foo (
+            //     id INTEGER,
+            //     name TEXT,
+            //     PRIMARY KEY (id, name)
+            // );
+            // ```
+
+            // We extend the definition of the columns to include the primary key flag,
+            // handling also the other constraints that are defined on the table.
+
+            let mut foreign_keys = Vec::new();
+            
+            for constraint in constraints.iter() {
+                if let sqlparser::ast::TableConstraint::PrimaryKey {
+                    columns: primary_key_columns,
+                    ..
+                } = constraint
+                {
+                    match columns.as_mut() {
+                        Some(columns) => {
+                            // We identify the columns that are part of the primary key
+                            // and update them to have the primary key flag set to true.
+                            for primary_key_column in primary_key_columns {
+                                if let Some(column) = columns
+                                    .iter_mut()
+                                    .find(|c| c.name == primary_key_column.value)
+                                {
+                                    column.set_primary();
+                                }
+                            }
+                        }
+                        None => {
+                            unreachable!(
+                                "There cannot be definitions of primary keys without columns."
+                            );
+                        }
+                    }
+                } else {
+                    foreign_keys.push(translate_foreign_key(constraint)?);
+                }
+            }
 
             Ok(Statement::CreateTable {
                 if_not_exists: *if_not_exists,

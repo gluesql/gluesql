@@ -105,15 +105,15 @@ impl<'a> PrimaryKeyPlanner<'a> {
         expr: Expr,
     ) -> PrimaryKey {
         let check_primary_key = |key: &Expr| {
-            let key = match key {
-                Expr::Identifier(ident) => ident,
-                Expr::CompoundIdentifier { ident, .. } => ident,
-                _ => return false,
+            let key: Vec<&str> = if let Ok(keys) = key.try_into() {
+                keys
+            } else {
+                return false;
             };
 
             current_context
                 .as_ref()
-                .map(|context| context.contains_primary_key(key))
+                .map(|context| context.contains_primary_key(&key))
                 .unwrap_or(false)
         };
 

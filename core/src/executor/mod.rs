@@ -27,4 +27,5 @@ pub use {
     sort::SortError,
     update::UpdateError,
     validate::ValidateError,
+    validate::{get_primary_key_from_row, get_primary_key_column_indices}
 };

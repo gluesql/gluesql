@@ -105,7 +105,7 @@ impl StoreMut for SharedMemoryStorage {
     async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
         let database = Arc::clone(&self.database);
         let mut database = database.write().await;
-
+        
         database.insert_data(table_name, rows).await
     }
 

@@ -34,9 +34,41 @@ pub struct ColumnDef {
     pub comment: Option<String>,
 }
 
+impl ColumnDef {
+    /// Returns whether the column is primary key.
+    pub fn is_primary(&self) -> bool {
+        self.unique
+            .as_ref()
+            .map(ColumnUniqueOption::is_primary)
+            .unwrap_or(false)
+    }
+
+    /// Returns whether the column must be unique.
+    pub fn is_unique(&self) -> bool {
+        self.unique.is_some()
+    }
+
+    /// Returns whether the column is unique but not primary key.
+    pub fn is_unique_not_primary(&self) -> bool {
+        self.is_unique() && !self.is_primary()
+    }
+
+    /// Sets the column as primary key.
+    pub fn set_primary(&mut self) {
+        self.unique = Some(ColumnUniqueOption { is_primary: true });
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ColumnUniqueOption {
     pub is_primary: bool,
+}
+
+impl ColumnUniqueOption {
+    /// Returns true if the unique option is primary key.
+    pub fn is_primary(&self) -> bool {
+        self.is_primary
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

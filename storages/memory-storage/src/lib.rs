@@ -84,10 +84,21 @@ impl Store for MemoryStorage {
     }
 
     async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {
-        let row = self
-            .items
-            .get(table_name)
-            .and_then(|item| item.rows.get(key).map(Clone::clone));
+        dbg!(table_name, key);
+        let table = self.items.get(table_name);
+
+        if table.is_none() {
+            dbg!(table);
+            return Ok(None);
+        }
+        
+        let table = table.unwrap();
+
+        dbg!(key, &table.rows, table.rows.get(key));
+
+        let row = table.rows.get(key).map(Clone::clone);
+
+        dbg!(&row);
 
         Ok(row)
     }

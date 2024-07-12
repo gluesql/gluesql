@@ -5,7 +5,7 @@ mod store_mut;
 use {
     error::{CsvStorageError, ResultExt},
     gluesql_core::{
-        ast::{ColumnDef, ColumnUniqueOption, DataType},
+        ast::{ColumnDef, DataType},
         data::{Key, Schema, Value},
         error::Result,
         parse_sql::parse_data_type,
@@ -143,13 +143,14 @@ impl CsvStorage {
                 .map(|column_def| column_def.name.to_owned())
                 .collect::<Vec<_>>();
 
+            let primary_key_indices =
+                gluesql_core::executor::get_primary_key_column_indices(&column_defs);
+
             let rows = data_rdr
                 .into_records()
                 .enumerate()
                 .map(move |(index, record)| {
-                    let mut key: Option<Key> = None;
-
-                    let values = record
+                    let row = record
                         .map_storage_err()?
                         .into_iter()
                         .zip(column_defs.iter())
@@ -164,16 +165,20 @@ impl CsvStorage {
                                 data_type => value.cast(data_type)?,
                             };
 
-                            if column_def.unique == Some(ColumnUniqueOption { is_primary: true }) {
-                                key = Key::try_from(&value).map(Some)?;
-                            }
-
                             Ok(value)
                         })
                         .collect::<Result<Vec<Value>>>()?;
 
-                    let key = key.unwrap_or(Key::U64(index as u64));
-                    let row = DataRow::Vec(values);
+                    let key = if primary_key_indices.is_empty() {
+                        Key::U64(index as u64)
+                    } else {
+                        gluesql_core::executor::get_primary_key_from_row(
+                            &row,
+                            &primary_key_indices,
+                        )?
+                    };
+
+                    let row = DataRow::Vec(row);
 
                     Ok((key, row))
                 });

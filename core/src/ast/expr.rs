@@ -94,6 +94,25 @@ impl ToSqlUnquoted for Expr {
     }
 }
 
+impl<'a> TryInto<Vec<&'a str>> for &'a Expr {
+    type Error = ();
+
+    fn try_into(self) -> Result<Vec<&'a str>, Self::Error> {
+        match self {
+            Expr::Identifier(s) => Ok(vec![&s]),
+            Expr::CompoundIdentifier { ident, .. } => Ok(vec![&ident]),
+            Expr::Array { elem } => {
+                let mut columns = Vec::new();
+                for e in elem {
+                    columns.extend(<&Expr as TryInto<Vec<&str>>>::try_into(e)?);
+                }
+                Ok(columns)
+            }
+            _ => Err(()),
+        }
+    }
+}
+
 impl Expr {
     fn to_sql_with(&self, quoted: bool) -> String {
         match self {
