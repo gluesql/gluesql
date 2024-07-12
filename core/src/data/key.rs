@@ -6,7 +6,7 @@ use {
     chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
     ordered_float::OrderedFloat,
     rust_decimal::Decimal,
-    serde::{de::value, Deserialize, Serialize},
+    serde::{Deserialize, Serialize},
     std::{cmp::Ordering, fmt::Debug, net::IpAddr},
     thiserror::Error as ThisError,
 };
