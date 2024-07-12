@@ -6,7 +6,7 @@ use {
     chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
     ordered_float::OrderedFloat,
     rust_decimal::Decimal,
-    serde::{Deserialize, Serialize},
+    serde::{de::value, Deserialize, Serialize},
     std::{cmp::Ordering, fmt::Debug, net::IpAddr},
     thiserror::Error as ThisError,
 };
@@ -132,7 +132,7 @@ impl TryFrom<Value> for Key {
             Uuid(v) => Ok(Key::Uuid(v)),
             Null => Ok(Key::None),
             Map(_) => Err(KeyError::MapTypeKeyNotSupported.into()),
-            List(_) => Err(KeyError::ListTypeKeyNotSupported.into()),
+            List(values) => Key::try_from(values),
             Point(_) => Err(KeyError::PointTypeKeyNotSupported.into()),
         }
     }
@@ -190,7 +190,7 @@ impl From<Key> for Value {
             Key::Time(v) => Value::Time(v),
             Key::Interval(v) => Value::Interval(v),
             Key::Uuid(v) => Value::Uuid(v),
-            Key::Composite(_) => unimplemented!(),
+            Key::Composite(v) => Value::List(v.into_iter().map(Value::from).collect()),
             Key::None => Value::Null,
         }
     }
@@ -475,10 +475,6 @@ mod tests {
         assert_eq!(
             Key::try_from(Value::Map(HashMap::default())),
             Err(KeyError::MapTypeKeyNotSupported.into())
-        );
-        assert_eq!(
-            Key::try_from(Value::List(Vec::default())),
-            Err(KeyError::ListTypeKeyNotSupported.into())
         );
         assert_eq!(
             convert("SUBSTR('BEEF', 2, 3)"),
