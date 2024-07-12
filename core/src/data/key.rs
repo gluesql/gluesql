@@ -190,7 +190,7 @@ impl From<Key> for Value {
             Key::Time(v) => Value::Time(v),
             Key::Interval(v) => Value::Interval(v),
             Key::Uuid(v) => Value::Uuid(v),
-            Key::Composite(v) => Value::List(v.into_iter().map(Value::from).collect()),
+            Key::Composite(_) => unimplemented!(),
             Key::None => Value::Null,
         }
     }
