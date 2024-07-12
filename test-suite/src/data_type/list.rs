@@ -133,7 +133,8 @@ INSERT INTO ListType2 VALUES
     )
     .await;
 
-    g.test(
+    g.named_test(
+        "LIST type key not supported",
         r#"SELECT id FROM ListType GROUP BY items"#,
         Err(KeyError::ListTypeKeyNotSupported.into()),
     )

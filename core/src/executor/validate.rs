@@ -189,14 +189,7 @@ pub async fn validate_unique<T: Store>(
                 .await?
                 .is_some()
             {
-                dbg!("Found primary key: {:?}", &primary_key);
                 return Err(ValidateError::DuplicateEntryOnPrimaryKeyField(primary_key).into());
-            } else {
-                dbg!(
-                    "Primary key not found: {:?}, table_name: {:?}",
-                    &primary_key,
-                    &table_name
-                );
             }
         }
     }
