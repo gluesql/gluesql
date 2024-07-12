@@ -13,7 +13,6 @@ use {
     },
     async_trait::async_trait,
     gluesql_core::{
-        ast::ColumnUniqueOption,
         data::{Key, Schema},
         error::{Error, Result},
         store::{DataRow, Store, StoreMut},
@@ -59,7 +58,7 @@ impl StoreMut for MongoStorage {
                 }
 
                 column_defs.iter().try_fold(
-                    (Vec::new(), Document::new(), Vec::new()),
+                    (Vec::new(), Document::new(), indexes),
                     |(mut labels, mut column_types, mut indexes), column_def| {
                         let column_name = &column_def.name;
                         labels.push(column_name.clone());
