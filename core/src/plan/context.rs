@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+#[derive(Debug)]
 pub enum Context<'a> {
     Data {
         alias: String,

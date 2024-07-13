@@ -121,6 +121,16 @@ test_case!(primary_key, {
         )),
     )
     .await;
+
+    g.test(
+        "SELECT id, name FROM Allegro WHERE id = 1",
+        Ok(select!(
+            id  | name
+            I64 | Str;
+            1     "hello".to_owned()
+        )),
+    ).await;
+
     g.run(
         "
         CREATE TABLE Strslice (
@@ -223,14 +233,38 @@ test_case!(multiple_primary_keys, {
     .await;
 
     // We check that the previous row was not deleted
-    // g.named_test(
-    //     "Check previous row",
-    //     "SELECT table_id, user_id FROM Allegro WHERE table_id = 1 AND user_id = 1;",
-    //     Ok(select!(
-    //         table_id | user_id
-    //         I64     | I64;
-    //         1       1
-    //     )),
-    // )
-    // .await;
+    g.named_test(
+        "Check row still exists",
+        "SELECT table_id, user_id FROM Allegro WHERE table_id = 1;",
+        Ok(select!(
+            table_id | user_id
+            I64     | I64;
+            1       1;
+            1       2
+        )),
+    )
+    .await;
+
+    // We query for the second component of the primary key
+    g.named_test(
+        "Check row still exists",
+        "SELECT table_id, user_id FROM Allegro WHERE user_id = 2;",
+        Ok(select!(
+            table_id | user_id
+            I64     | I64;
+            1       2
+        )),
+    ).await;
+
+    // We filter for both constraints at once
+    g.named_test(
+        "Check row still exists",
+        "SELECT table_id, user_id FROM Allegro WHERE table_id = 1 AND user_id = 2;",
+        Ok(select!(
+            table_id | user_id
+            I64     | I64;
+            1       2
+        )),
+    ).await;
+
 });

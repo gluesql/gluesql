@@ -56,6 +56,20 @@ enum PrimaryKey {
 
 impl<'a> PrimaryKeyPlanner<'a> {
     fn select(&self, outer_context: Option<Rc<Context<'a>>>, select: Select) -> Select {
+        if let TableFactor::Table { name, .. } = &select.from.relation {
+            if self
+                .get_schema(name)
+                .and_then(|schema| {
+                    schema.column_defs.as_ref().map(|columns| {
+                        columns.iter().filter(|column| column.is_primary()).count() > 1
+                    })
+                })
+                .unwrap_or(false)
+            {
+                return select;
+            }
+        }
+
         let current_context = self.update_context(None, &select.from.relation);
         let current_context = select
             .from
