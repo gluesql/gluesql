@@ -720,7 +720,7 @@ mod tests {
                         relation: TableFactor::Table {
                             name: "Player".to_owned(),
                             alias: None,
-                            index: None
+                            index: None,
                         },
                         joins: Vec::new(),
                     },
