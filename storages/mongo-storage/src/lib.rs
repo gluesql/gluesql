@@ -14,6 +14,9 @@ pub(crate) const UNIQUE_KEY_DESINENCE: &'static str = "UNIQUE_KEY_MONGO_GLUESQL"
 /// The symbol reserved for primary keys in MongoDB.
 pub(crate) const PRIMARY_KEY_SYMBOL: &'static str = "_id";
 
+/// The symbol reserved for nullable data type in MongoDB.
+pub(crate) const NULLABLE_SYMBOL: &'static str = "null";
+
 use {
     error::ResultExt,
     gluesql_core::{

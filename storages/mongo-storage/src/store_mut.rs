@@ -54,7 +54,7 @@ impl StoreMut for MongoStorage {
                         let minimum = column_def.data_type.get_min();
 
                         let mut bson_type = match column_def.nullable {
-                            true => vec![data_type, "null"],
+                            true => vec![data_type, crate::NULLABLE_SYMBOL],
                             false => vec![data_type],
                         };
 
@@ -68,7 +68,7 @@ impl StoreMut for MongoStorage {
                                     });
                                 }
                                 false => {
-                                    bson_type = vec![data_type, "null"];
+                                    bson_type = vec![data_type, crate::NULLABLE_SYMBOL];
                                     indexes.push(IndexInfo {
                                         name: format!("{column_name}_{UNIQUE_KEY_DESINENCE}"),
                                         key: column_name.clone(),

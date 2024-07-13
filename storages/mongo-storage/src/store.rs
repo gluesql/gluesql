@@ -214,7 +214,7 @@ impl MongoStorage {
                         .map_storage_err()?
                         .get(1)
                         .and_then(|x| x.as_str())
-                        .map(|x| x == "null")
+                        .map(|x| x == crate::NULLABLE_SYMBOL)
                         .unwrap_or(false);
 
                     let data_type = doc
