@@ -129,7 +129,8 @@ test_case!(primary_key, {
             I64 | Str;
             1     "hello".to_owned()
         )),
-    ).await;
+    )
+    .await;
 
     g.run(
         "
@@ -254,7 +255,8 @@ test_case!(multiple_primary_keys, {
             I64     | I64;
             1       2
         )),
-    ).await;
+    )
+    .await;
 
     // We filter for both constraints at once
     g.named_test(
@@ -265,6 +267,6 @@ test_case!(multiple_primary_keys, {
             I64     | I64;
             1       2
         )),
-    ).await;
-
+    )
+    .await;
 });
