@@ -9,10 +9,35 @@ use {
     serde_json::to_string,
 };
 
-pub fn get_primary_key(column_defs: &[ColumnDef]) -> Option<&ColumnDef> {
-    column_defs
+/// Returns the primary key of the table.
+///
+/// # Implementation details
+/// When the table has a primary key, it returns the primary key.
+/// When the primary key is a composite key, it returns all the columns in the primary key.
+/// When the table does not have a primary key, it returns a None.
+pub(crate) fn get_primary_key<'a>(column_defs: &'a [ColumnDef]) -> Option<Vec<&'a ColumnDef>> {
+    let primary_keys: Vec<&ColumnDef> = column_defs
         .iter()
-        .find(|column_def| column_def.unique.map(|x| x.is_primary).unwrap_or(false))
+        .filter(|column_def| column_def.is_primary())
+        .collect();
+
+    if primary_keys.is_empty() {
+        None
+    } else {
+        Some(primary_keys)
+    }
+}
+
+/// Returns the document object for the primary key.
+pub(crate) fn get_primary_key_sort_document<'a>(column_defs: &'a [ColumnDef]) -> Option<Document> {
+    get_primary_key(column_defs).map(|primary_keys| {
+        primary_keys
+            .iter()
+            .fold(Document::new(), |mut document, column_def| {
+                document.insert(column_def.name.clone(), 1);
+                document
+            })
+    })
 }
 
 pub struct Validator {

@@ -3,7 +3,7 @@ use {
         description::{ColumnDescription, TableDescription},
         error::{MongoStorageError, OptionExt, ResultExt},
         row::{key::KeyIntoBson, value::IntoValue, IntoRow},
-        utils::get_primary_key,
+        utils::get_primary_key_sort_document,
         MongoStorage, PRIMARY_KEY_DESINENCE, UNIQUE_KEY_DESINENCE,
     },
     async_trait::async_trait,
@@ -54,15 +54,11 @@ impl Store for MongoStorage {
             .await?
             .map_storage_err(MongoStorageError::Unreachable)?;
 
-        let primary_key = get_primary_key(&column_defs)
-            .ok_or(MongoStorageError::Unreachable)
-            .map_storage_err()?;
-
         let filter = doc! { crate::PRIMARY_KEY_SYMBOL: target.to_owned().into_bson(true)?};
         let projection = doc! {crate::PRIMARY_KEY_SYMBOL: 0};
         let options = FindOptions::builder()
             .projection(projection)
-            .sort(doc! { primary_key.name.clone(): 1 })
+            .sort(get_primary_key_sort_document(&column_defs))
             .build();
 
         let mut cursor = self
@@ -90,17 +86,13 @@ impl Store for MongoStorage {
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
         let column_defs = self.get_column_defs(table_name).await?;
 
-        let primary_key = column_defs
+        let primary_key_documnt = column_defs
             .as_ref()
-            .and_then(|column_defs| get_primary_key(column_defs));
+            .and_then(|column_defs| get_primary_key_sort_document(column_defs));
 
-        let has_primary = primary_key.is_some();
+        let has_primary = primary_key_documnt.is_some();
 
-        let options = FindOptions::builder();
-        let options = match primary_key {
-            Some(primary_key) => options.sort(doc! { primary_key.name.to_owned(): 1}).build(),
-            None => options.build(),
-        };
+        let options = FindOptions::builder().sort(primary_key_documnt).build();
 
         let cursor = self
             .db
