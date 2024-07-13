@@ -1,7 +1,5 @@
 use {
     crate::{
-        PRIMARY_KEY_DESINENCE,
-        UNIQUE_KEY_DESINENCE,
         description::ColumnDescription,
         error::{MongoStorageError, OptionExt, ResultExt},
         row::{
@@ -9,12 +7,11 @@ use {
             key::{into_object_id, KeyIntoBson},
             value::IntoBson,
         },
-        utils::{get_primary_key, Validator},
-        MongoStorage,
+        utils::{get_primary_key, get_primary_key_sort_document, has_primary_key, Validator},
+        MongoStorage, PRIMARY_KEY_DESINENCE, UNIQUE_KEY_DESINENCE,
     },
     async_trait::async_trait,
     gluesql_core::{
-        ast::ColumnUniqueOption,
         data::{Key, Schema},
         error::{Error, Result},
         store::{DataRow, Store, StoreMut},
@@ -25,58 +22,33 @@ use {
     },
 };
 
-struct IndexInfo {
-    name: String,
-    key: String,
-    index_type: IndexType,
-}
-
-enum IndexType {
-    Primary,
-    Unique,
-}
-
 #[async_trait(?Send)]
 impl StoreMut for MongoStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
-        let (labels, column_types, indexes) = schema
+        let (labels, column_types, unique_indexes, primary_indexes) = schema
             .column_defs
             .as_ref()
             .map(|column_defs| {
                 column_defs.iter().try_fold(
-                    (Vec::new(), Document::new(), Vec::new()),
-                    |(mut labels, mut column_types, mut indexes), column_def| {
-                        let column_name = &column_def.name;
-                        labels.push(column_name.clone());
+                    (Vec::new(), Document::new(), Vec::new(), Vec::new()),
+                    |(mut labels, mut column_types, mut unique_indexes, mut primary_indexes),
+                     column_def| {
+                        labels.push(column_def.name.clone());
 
                         let data_type = BsonType::from(&column_def.data_type).into();
                         let maximum = column_def.data_type.get_max();
                         let minimum = column_def.data_type.get_min();
 
-                        let mut bson_type = match column_def.nullable {
-                            true => vec![data_type, crate::NULLABLE_SYMBOL],
-                            false => vec![data_type],
-                        };
+                        let bson_type =
+                            match column_def.nullable || column_def.is_unique_not_primary() {
+                                true => vec![data_type, crate::NULLABLE_SYMBOL],
+                                false => vec![data_type],
+                            };
 
-                        match &column_def.unique {
-                            Some(ColumnUniqueOption { is_primary }) => match *is_primary {
-                                true => {
-                                    indexes.push(IndexInfo {
-                                        name: format!("{column_name}_{PRIMARY_KEY_DESINENCE}"),
-                                        key: column_name.clone(),
-                                        index_type: IndexType::Primary,
-                                    });
-                                }
-                                false => {
-                                    bson_type = vec![data_type, crate::NULLABLE_SYMBOL];
-                                    indexes.push(IndexInfo {
-                                        name: format!("{column_name}_{UNIQUE_KEY_DESINENCE}"),
-                                        key: column_name.clone(),
-                                        index_type: IndexType::Unique,
-                                    });
-                                }
-                            },
-                            None => {}
+                        if column_def.is_primary() {
+                            primary_indexes.push(column_def);
+                        } else if column_def.is_unique_not_primary() {
+                            unique_indexes.push(column_def);
                         }
 
                         let mut property = doc! {
@@ -111,13 +83,11 @@ impl StoreMut for MongoStorage {
                             "title": type_str
                         });
 
-                        let column_type = doc! {
-                            column_name: property,
-                        };
+                        column_types.extend(doc! {
+                            column_def.name.clone(): property,
+                        });
 
-                        column_types.extend(column_type);
-
-                        Ok::<_, Error>((labels, column_types, indexes))
+                        Ok::<_, Error>((labels, column_types, unique_indexes, primary_indexes))
                     },
                 )
             })
@@ -152,36 +122,44 @@ impl StoreMut for MongoStorage {
             .await
             .map_storage_err()?;
 
-        if indexes.is_empty() {
+        if primary_indexes.is_empty() && unique_indexes.is_empty() {
             return Ok(());
         }
 
-        let index_models = indexes
+        let mut index_models = unique_indexes
             .into_iter()
-            .map(
-                |IndexInfo {
-                     name,
-                     key,
-                     index_type,
-                 }| {
-                    let index_options = IndexOptions::builder().unique(true);
-                    let index_options = match index_type {
-                        IndexType::Primary => index_options.name(name).build(),
-                        IndexType::Unique => index_options
-                            .partial_filter_expression(
-                                doc! { "partialFilterExpression": { key.clone(): { "$ne": null } } }, 
-                            )
-                            .name(name)
-                            .build(),
-                    };
+            .map(|column_def| {
+                let index_options = IndexOptions::builder()
+                    .unique(true)
+                    .partial_filter_expression(
+                        doc! { "partialFilterExpression": { column_def.name.clone(): { "$ne": null } } },
+                    )
+                    .name(format!("{}_{}", column_def.name, UNIQUE_KEY_DESINENCE))
+                    .build();
 
-                    mongodb::IndexModel::builder()
-                        .keys(doc! {key: 1})
-                        .options(index_options)
-                        .build()
-                },
-            )
+                mongodb::IndexModel::builder()
+                    .keys(doc! {column_def.name.clone(): 1})
+                    .options(index_options)
+                    .build()
+            })
             .collect::<Vec<_>>();
+
+        // If there is a primary key, we create a composite unique index with the primary key
+        // where it is triggered solely when all of the columns in the primary key result
+        // to be non-unique.
+        if !primary_indexes.is_empty() {
+            let options = IndexOptions::builder()
+                .unique(true)
+                .name(format!("{}_{}", schema.table_name, PRIMARY_KEY_DESINENCE))
+                .build();
+
+            index_models.push(
+                mongodb::IndexModel::builder()
+                    .keys(get_primary_key_sort_document(primary_indexes).unwrap())
+                    .options(options)
+                    .build(),
+            );
+        }
 
         self.db
             .collection::<Document>(&schema.table_name)
@@ -242,9 +220,10 @@ impl StoreMut for MongoStorage {
     async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
         let column_defs = self.get_column_defs(table_name).await?;
 
-        let primary_key = column_defs
+        let has_primary_key = column_defs
             .as_ref()
-            .and_then(|column_defs| get_primary_key(column_defs));
+            .map(|column_defs| has_primary_key(column_defs))
+            .unwrap_or_default();
 
         for (key, row) in rows {
             let doc = match row {
@@ -254,7 +233,7 @@ impl StoreMut for MongoStorage {
                     .iter()
                     .zip(values.into_iter())
                     .try_fold(
-                        doc! {crate::PRIMARY_KEY_SYMBOL: key.clone().into_bson(primary_key.is_some())?},
+                        doc! {crate::PRIMARY_KEY_SYMBOL: key.clone().into_bson(has_primary_key)?},
                         |mut acc, (column_def, value)| {
                             acc.extend(doc! {column_def.name.clone(): value.into_bson()?});
 
@@ -271,7 +250,7 @@ impl StoreMut for MongoStorage {
                 ),
             }?;
 
-            let query = doc! {crate::PRIMARY_KEY_SYMBOL: key.into_bson(primary_key.is_some())?};
+            let query = doc! {crate::PRIMARY_KEY_SYMBOL: key.into_bson(has_primary_key)?};
             let options = ReplaceOptions::builder().upsert(Some(true)).build();
 
             self.db
