@@ -3,7 +3,8 @@ use {
         description::{ColumnDescription, TableDescription},
         error::{MongoStorageError, OptionExt, ResultExt},
         row::{key::KeyIntoBson, value::IntoValue, IntoRow},
-        MongoStorage,
+        utils::get_primary_key,
+        MongoStorage, PRIMARY_KEY_DESINENCE, UNIQUE_KEY_DESINENCE,
     },
     async_trait::async_trait,
     futures::{stream, Stream, StreamExt, TryStreamExt},
@@ -53,19 +54,15 @@ impl Store for MongoStorage {
             .await?
             .map_storage_err(MongoStorageError::Unreachable)?;
 
-        let mut document = bson::Document::new();
+        let primary_key = get_primary_key(&column_defs)
+            .ok_or(MongoStorageError::Unreachable)
+            .map_storage_err()?;
 
-        for (index, column_def) in column_defs.iter().enumerate() {
-            if column_def.is_primary() {
-                document.insert(column_def.name.clone(), (1 + index) as u32);
-            }
-        }
-
-        let filter = doc! { "_id": target.to_owned().into_bson(true)?};
-        let projection = doc! {"_id": 0};
+        let filter = doc! { crate::PRIMARY_KEY_SYMBOL: target.to_owned().into_bson(true)?};
+        let projection = doc! {crate::PRIMARY_KEY_SYMBOL: 0};
         let options = FindOptions::builder()
             .projection(projection)
-            .sort(document)
+            .sort(doc! { primary_key.name.clone(): 1 })
             .build();
 
         let mut cursor = self
@@ -93,19 +90,17 @@ impl Store for MongoStorage {
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
         let column_defs = self.get_column_defs(table_name).await?;
 
-        let mut document = bson::Document::new();
-        let mut has_primary_key = false;
+        let primary_key = column_defs
+            .as_ref()
+            .and_then(|column_defs| get_primary_key(column_defs));
 
-        if let Some(column_defs) = column_defs.as_ref() {
-            for (index, column_def) in column_defs.iter().enumerate() {
-                if column_def.is_primary() {
-                    document.insert(column_def.name.clone(), (1 + index) as u32);
-                    has_primary_key = true;
-                }
-            }
-        }
+        let has_primary = primary_key.is_some();
 
-        let options = FindOptions::builder().sort(document).build();
+        let options = FindOptions::builder();
+        let options = match primary_key {
+            Some(primary_key) => options.sort(doc! { primary_key.name.to_owned(): 1}).build(),
+            None => options.build(),
+        };
 
         let cursor = self
             .db
@@ -125,7 +120,7 @@ impl Store for MongoStorage {
             let doc = doc.map_storage_err()?;
 
             match &column_types {
-                Some(column_types) => doc.into_row(column_types.iter(), has_primary_key),
+                Some(column_types) => doc.into_row(column_types.iter(), has_primary),
                 None => {
                     let mut iter = doc.into_iter();
                     let (_, first_value) = iter
@@ -229,14 +224,15 @@ impl MongoStorage {
                         .and_then(parse_data_type)
                         .and_then(|s| translate_data_type(&s))?;
 
-                    let index_name = indexes.get(column_name).and_then(|i| i.split_once('_'));
-
-                    let unique = match index_name {
-                        Some((_, "PK")) => Some(true),
-                        Some((_, "UNIQUE")) => Some(false),
-                        _ => None,
-                    }
-                    .map(|is_primary| ColumnUniqueOption { is_primary });
+                    let unique = indexes.get(column_name).and_then(|index_name| {
+                        if index_name.ends_with(PRIMARY_KEY_DESINENCE) {
+                            Some(ColumnUniqueOption { is_primary: true })
+                        } else if index_name.ends_with(UNIQUE_KEY_DESINENCE) {
+                            Some(ColumnUniqueOption { is_primary: false })
+                        } else {
+                            None
+                        }
+                    });
 
                     let column_description = doc.get_str("description");
                     let ColumnDescription { default, comment } = match column_description {

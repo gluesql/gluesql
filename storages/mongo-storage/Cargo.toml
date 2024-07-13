@@ -25,7 +25,6 @@ strum = "0.24"
 rust_decimal = { version = "1", features = ["serde-str"] }
 serde_json = "1.0.115"
 serde = "1.0.197"
-itertools = "0.12"
 
 [dev-dependencies]
 test-suite.workspace = true

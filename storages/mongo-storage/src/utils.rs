@@ -1,10 +1,19 @@
 use {
     crate::{description::TableDescription, error::ResultExt},
     bson::{doc, Document},
-    gluesql_core::{ast::ForeignKey, error::Result},
+    gluesql_core::{
+        ast::{ColumnDef, ForeignKey},
+        error::Result,
+    },
     mongodb::options::CreateCollectionOptions,
     serde_json::to_string,
 };
+
+pub fn get_primary_key(column_defs: &[ColumnDef]) -> Option<&ColumnDef> {
+    column_defs
+        .iter()
+        .find(|column_def| column_def.unique.map(|x| x.is_primary).unwrap_or(false))
+}
 
 pub struct Validator {
     pub document: Document,
@@ -17,11 +26,11 @@ impl Validator {
         foreign_keys: Vec<ForeignKey>,
         comment: Option<String>,
     ) -> Result<Self> {
-        let mut required = vec!["_id".to_owned()];
+        let mut required = vec![crate::PRIMARY_KEY_SYMBOL.to_owned()];
         required.extend(labels);
 
         let mut properties = doc! {
-            "_id": { "bsonType": ["objectId", "binData"] }
+            crate::PRIMARY_KEY_SYMBOL: { "bsonType": ["objectId", "binData"] }
         };
         properties.extend(column_types);
 

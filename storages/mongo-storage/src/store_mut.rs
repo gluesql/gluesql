@@ -1,6 +1,7 @@
-use itertools::Itertools;
 use {
     crate::{
+        PRIMARY_KEY_DESINENCE,
+        UNIQUE_KEY_DESINENCE,
         description::ColumnDescription,
         error::{MongoStorageError, OptionExt, ResultExt},
         row::{
@@ -8,11 +9,12 @@ use {
             key::{into_object_id, KeyIntoBson},
             value::IntoBson,
         },
-        utils::Validator,
+        utils::{get_primary_key, Validator},
         MongoStorage,
     },
     async_trait::async_trait,
     gluesql_core::{
+        ast::ColumnUniqueOption,
         data::{Key, Schema},
         error::{Error, Result},
         store::{DataRow, Store, StoreMut},
@@ -41,24 +43,8 @@ impl StoreMut for MongoStorage {
             .column_defs
             .as_ref()
             .map(|column_defs| {
-                let mut indexes = Vec::new();
-
-                if column_defs.iter().any(|column_def| column_def.is_primary()) {
-                    let composite_key_name = column_defs
-                        .iter()
-                        .filter(|column_def| column_def.is_primary())
-                        .map(|column_def| column_def.name.clone())
-                        .join("_");
-
-                    indexes.push(IndexInfo {
-                        name: format!("{composite_key_name}_PK"),
-                        key: composite_key_name.clone(),
-                        index_type: IndexType::Primary,
-                    });
-                }
-
                 column_defs.iter().try_fold(
-                    (Vec::new(), Document::new(), indexes),
+                    (Vec::new(), Document::new(), Vec::new()),
                     |(mut labels, mut column_types, mut indexes), column_def| {
                         let column_name = &column_def.name;
                         labels.push(column_name.clone());
@@ -72,13 +58,25 @@ impl StoreMut for MongoStorage {
                             false => vec![data_type],
                         };
 
-                        if column_def.is_unique_not_primary() {
-                            bson_type = vec![data_type, "null"];
-                            indexes.push(IndexInfo {
-                                name: format!("{column_name}_UNIQUE"),
-                                key: column_name.clone(),
-                                index_type: IndexType::Unique,
-                            });
+                        match &column_def.unique {
+                            Some(ColumnUniqueOption { is_primary }) => match *is_primary {
+                                true => {
+                                    indexes.push(IndexInfo {
+                                        name: format!("{column_name}_{PRIMARY_KEY_DESINENCE}"),
+                                        key: column_name.clone(),
+                                        index_type: IndexType::Primary,
+                                    });
+                                }
+                                false => {
+                                    bson_type = vec![data_type, "null"];
+                                    indexes.push(IndexInfo {
+                                        name: format!("{column_name}_{UNIQUE_KEY_DESINENCE}"),
+                                        key: column_name.clone(),
+                                        index_type: IndexType::Unique,
+                                    });
+                                }
+                            },
+                            None => {}
                         }
 
                         let mut property = doc! {
@@ -244,10 +242,9 @@ impl StoreMut for MongoStorage {
     async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
         let column_defs = self.get_column_defs(table_name).await?;
 
-        let has_primary_key = column_defs
+        let primary_key = column_defs
             .as_ref()
-            .map(|column_defs| column_defs.iter().any(|column_def| column_def.is_primary()))
-            .unwrap_or(false);
+            .and_then(|column_defs| get_primary_key(column_defs));
 
         for (key, row) in rows {
             let doc = match row {
@@ -257,7 +254,7 @@ impl StoreMut for MongoStorage {
                     .iter()
                     .zip(values.into_iter())
                     .try_fold(
-                        doc! {"_id": key.clone().into_bson(has_primary_key)?},
+                        doc! {crate::PRIMARY_KEY_SYMBOL: key.clone().into_bson(primary_key.is_some())?},
                         |mut acc, (column_def, value)| {
                             acc.extend(doc! {column_def.name.clone(): value.into_bson()?});
 
@@ -265,7 +262,7 @@ impl StoreMut for MongoStorage {
                         },
                     ),
                 DataRow::Map(hash_map) => hash_map.into_iter().try_fold(
-                    doc! {"_id": into_object_id(key.clone())?},
+                    doc! {crate::PRIMARY_KEY_SYMBOL: into_object_id(key.clone())?},
                     |mut acc, (key, value)| {
                         acc.extend(doc! {key: value.into_bson()?});
 
@@ -274,7 +271,7 @@ impl StoreMut for MongoStorage {
                 ),
             }?;
 
-            let query = doc! {"_id": key.into_bson(has_primary_key)?};
+            let query = doc! {crate::PRIMARY_KEY_SYMBOL: key.into_bson(primary_key.is_some())?};
             let options = ReplaceOptions::builder().upsert(Some(true)).build();
 
             self.db
@@ -289,16 +286,15 @@ impl StoreMut for MongoStorage {
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let column_defs = self.get_column_defs(table_name).await?;
-        let has_primary_key = column_defs
+        let primary_key = column_defs
             .as_ref()
-            .map(|column_defs| column_defs.iter().any(|column_def| column_def.is_primary()))
-            .unwrap_or(false);
+            .and_then(|column_defs| get_primary_key(column_defs));
 
         self.db
             .collection::<Bson>(table_name)
             .delete_many(
-                doc! { "_id": {
-                    "$in": keys.into_iter().map(|key| key.into_bson(has_primary_key)).collect::<Result<Vec<_>>>()?
+                doc! { crate::PRIMARY_KEY_SYMBOL: {
+                    "$in": keys.into_iter().map(|key| key.into_bson(primary_key.is_some())).collect::<Result<Vec<_>>>()?
                 }},
                 None,
             )
