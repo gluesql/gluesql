@@ -25,8 +25,8 @@ pub enum ValidateError {
     #[error("duplicate entry '{}' for unique column '{1}'", String::from(.0))]
     DuplicateEntryOnUniqueField(Value, String),
 
-    #[error("duplicate entry '{0:?}' for primary_key field")]
-    DuplicateEntryOnPrimaryKeyField(Key),
+    #[error("duplicate entry for primary_key field, parsed key: '{0:?}', message: '{0:?}'")]
+    DuplicateEntryOnPrimaryKeyField(Option<Key>, Option<String>),
 }
 
 pub enum ColumnValidation<'column_def> {
@@ -189,7 +189,7 @@ pub async fn validate_unique<T: Store>(
                 .await?
                 .is_some()
             {
-                return Err(ValidateError::DuplicateEntryOnPrimaryKeyField(primary_key).into());
+                return Err(ValidateError::DuplicateEntryOnPrimaryKeyField(Some(primary_key), None).into());
             }
         }
     }

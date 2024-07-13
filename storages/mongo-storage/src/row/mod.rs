@@ -27,7 +27,10 @@ impl IntoRow for Document {
         has_primary: bool,
     ) -> Result<(Key, DataRow)> {
         let key = match has_primary {
-            true => self.get_binary_generic(crate::PRIMARY_KEY_SYMBOL).map_storage_err()?.to_owned(),
+            true => self
+                .get_binary_generic(crate::PRIMARY_KEY_SYMBOL)
+                .map_storage_err()?
+                .to_owned(),
             false => self
                 .get_object_id(crate::PRIMARY_KEY_SYMBOL)
                 .map_storage_err()?

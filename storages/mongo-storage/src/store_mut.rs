@@ -97,11 +97,7 @@ impl StoreMut for MongoStorage {
         let comment = schema.comment.as_ref().map(ToOwned::to_owned);
         let validator = Validator::new(labels, column_types, schema.foreign_keys.clone(), comment)?;
 
-        let schema_exists = self
-            .fetch_schema(&schema.table_name)
-            .await
-            .map_storage_err()?
-            .is_some();
+        let schema_exists = self.fetch_schema(&schema.table_name).await?.is_some();
 
         if schema_exists {
             let command = doc! {
