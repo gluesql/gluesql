@@ -189,7 +189,11 @@ pub async fn validate_unique<T: Store>(
                 .await?
                 .is_some()
             {
-                return Err(ValidateError::DuplicateEntryOnPrimaryKeyField(Some(primary_key), None).into());
+                return Err(ValidateError::DuplicateEntryOnPrimaryKeyField(
+                    Some(primary_key),
+                    None,
+                )
+                .into());
             }
         }
     }

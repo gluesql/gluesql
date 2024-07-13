@@ -120,7 +120,7 @@ impl<T> ResultExt<T, TryFromSliceError> for std::result::Result<T, TryFromSliceE
     }
 }
 
-impl<'a, T> ResultExt<T, MongoStorageError> for std::result::Result<T, MongoStorageError> {
+impl<T> ResultExt<T, MongoStorageError> for std::result::Result<T, MongoStorageError> {
     fn map_storage_err(self) -> Result<T, Error> {
         self.map_err(|e| e.to_string()).map_err(Error::StorageMsg)
     }

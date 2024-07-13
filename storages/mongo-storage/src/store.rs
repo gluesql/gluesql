@@ -86,9 +86,7 @@ impl Store for MongoStorage {
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
         let column_defs = self.get_column_defs(table_name).await?;
 
-        let primary_key_documnt = column_defs
-            .as_ref()
-            .and_then(|column_defs| get_primary_key_sort_document(column_defs));
+        let primary_key_documnt = column_defs.as_ref().and_then(get_primary_key_sort_document);
 
         let has_primary = primary_key_documnt.is_some();
 

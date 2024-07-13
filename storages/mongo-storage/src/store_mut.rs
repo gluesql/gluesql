@@ -261,9 +261,7 @@ impl StoreMut for MongoStorage {
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let column_defs = self.get_column_defs(table_name).await?;
-        let primary_key = column_defs
-            .as_ref()
-            .and_then(|column_defs| get_primary_key(column_defs));
+        let primary_key = column_defs.as_ref().and_then(get_primary_key);
 
         self.db
             .collection::<Bson>(table_name)
