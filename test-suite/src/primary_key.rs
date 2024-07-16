@@ -269,4 +269,39 @@ test_case!(multiple_primary_keys, {
         )),
     )
     .await;
+
+    // We try to delete a non-existing row
+    g.named_test(
+        "Attempt to delete non-existing row",
+        "DELETE FROM Allegro WHERE table_id = 2 AND user_id = 2;",
+        Ok(Payload::Delete(0)),
+    )
+    .await;
+
+    // We delete the row we inserted
+    g.named_test(
+        "Delete row",
+        "DELETE FROM Allegro WHERE table_id = 1 AND user_id = 2;",
+        Ok(Payload::Delete(1)),
+    )
+    .await;
+
+    // We check that the row was deleted
+    g.named_test(
+        "Check row was deleted",
+        "SELECT table_id, user_id FROM Allegro;",
+        Ok(select!(
+            table_id | user_id
+            I64     | I64;
+            1       1
+        )),
+    )
+    .await;
+
+    // We attempt to update a row with a different primary key
+    g.named_test(
+        "Attempt to update row with different primary key",
+        "UPDATE Allegro SET table_id = 2 WHERE table_id = 1 AND user_id = 1;",
+        Err(UpdateError::UpdateOnPrimaryKeyNotSupported("table_id".to_owned()).into()),
+    ).await;
 });
