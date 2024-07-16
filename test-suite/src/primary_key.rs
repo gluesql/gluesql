@@ -303,5 +303,6 @@ test_case!(multiple_primary_keys, {
         "Attempt to update row with different primary key",
         "UPDATE Allegro SET table_id = 2 WHERE table_id = 1 AND user_id = 1;",
         Err(UpdateError::UpdateOnPrimaryKeyNotSupported("table_id".to_owned()).into()),
-    ).await;
+    )
+    .await;
 });
