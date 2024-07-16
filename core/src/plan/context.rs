@@ -5,7 +5,9 @@ pub enum Context<'a> {
     Data {
         alias: String,
         columns: Vec<&'a str>,
-        primary_key: Option<&'a str>,
+        /// Optional vector containing the names of the primary key columns.
+        /// If the vector is empty, it means that the table associated to the context does not have a primary key.
+        primary_key: Option<Vec<&'a str>>,
         next: Option<Rc<Context<'a>>>,
     },
     Bridge {
@@ -18,7 +20,7 @@ impl<'a> Context<'a> {
     pub fn new(
         alias: String,
         columns: Vec<&'a str>,
-        primary_key: Option<&'a str>,
+        primary_key: Option<Vec<&'a str>>,
         next: Option<Rc<Context<'a>>>,
     ) -> Self {
         Context::Data {
@@ -82,57 +84,60 @@ impl<'a> Context<'a> {
         }
     }
 
-    /// Returns a mask of booleans representing which primary key columns are present in the current expression.
-    ///
-    /// # Arguments
-    /// * `primary_key_columns` - The primary key columns to check for.
-    ///
-    /// # Implementative details
-    /// The function is implemented as a recursive function that traverses the expression tree
-    /// and returns a mask of booleans representing which primary key columns are present in the current expression.
-    fn primary_key_mask(&self, primary_key_columns: &[&str]) -> Vec<bool> {
+    /// Returns the number of columns composing the primary key of the current context.
+    pub(super) fn number_of_primary_key_columns(&self) -> usize {
         match self {
             Self::Data {
                 primary_key, next, ..
             } => {
-                let mut mask = next
-                    .as_ref()
-                    .map(|next: &Rc<Context<'a>>| next.primary_key_mask(primary_key_columns))
-                    .unwrap_or(vec![false; primary_key_columns.len()]);
-
                 if let Some(primary_key) = primary_key {
-                    primary_key_columns
-                        .iter()
-                        .zip(mask.iter_mut())
-                        .for_each(|(column, mask)| {
-                            if column == primary_key {
-                                *mask = true;
-                            }
-                        });
+                    primary_key.len()
+                } else {
+                    next.as_ref()
+                        .map_or(0, |next| next.number_of_primary_key_columns())
                 }
-
-                mask
             }
-            Self::Bridge { left, right } => left
-                .primary_key_mask(primary_key_columns)
-                .into_iter()
-                .zip(right.primary_key_mask(primary_key_columns))
-                .map(|(left, right)| left || right)
-                .collect(),
+            Self::Bridge { left, right } => {
+                left.number_of_primary_key_columns() + right.number_of_primary_key_columns()
+            }
         }
     }
 
-    /// Returns whether the current expression contains all of the given primary key columns.
+    /// Returns the index curresponding to the primary key column in the given candidate column.
     ///
     /// # Arguments
-    /// * `primary_key_columns` - The primary key columns to check for.
+    /// * `candidate_column_name` - The name of the candidate column.
     ///
-    /// # Implementative details
-    /// A primary key is considered to be present in the expression if all of its columns can
-    /// be found in the expression tree.
-    pub fn contains_primary_key(&self, primary_key_columns: &[&str]) -> bool {
-        self.primary_key_mask(primary_key_columns)
-            .iter()
-            .all(|mask| *mask)
+    /// # Returns
+    /// The index of the primary key column in the candidate column, if the candidate column is a primary key column,
+    /// otherwise `None`.
+    ///
+    pub(super) fn get_primary_key_index_by_name(
+        &self,
+        candidate_column_name: &str,
+    ) -> Option<usize> {
+        match self {
+            Self::Data {
+                primary_key, next, ..
+            } => primary_key
+                .as_ref()
+                .and_then(|primary_key| {
+                    primary_key
+                        .iter()
+                        .position(|column| column == &candidate_column_name)
+                })
+                .or_else(|| {
+                    next.as_ref()
+                        .and_then(|next| next.get_primary_key_index_by_name(candidate_column_name))
+                }),
+            Self::Bridge { left, right } => left
+                .get_primary_key_index_by_name(candidate_column_name)
+                .or_else(|| right.get_primary_key_index_by_name(candidate_column_name)),
+        }
+    }
+
+    /// Returns whether the provided column is a primary key column in the current context.
+    pub(super) fn is_primary_key_column(&self, column: &str) -> bool {
+        self.get_primary_key_index_by_name(column).is_some()
     }
 }

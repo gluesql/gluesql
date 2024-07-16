@@ -1,7 +1,7 @@
 use {
     super::context::Context,
     crate::{
-        ast::{ColumnDef, ColumnUniqueOption, Expr, Function, Query, TableAlias, TableFactor},
+        ast::{ColumnDef, Expr, Function, Query, TableAlias, TableFactor},
         data::Schema,
     },
     std::rc::Rc,
@@ -217,14 +217,18 @@ pub trait Planner<'a> {
 
         let primary_key = column_defs
             .iter()
-            .find_map(|ColumnDef { name, unique, .. }| {
-                (unique == &Some(ColumnUniqueOption { is_primary: true })).then_some(name.as_str())
-            });
+            .filter(|column_def| column_def.is_primary())
+            .map(|column_def| column_def.name.as_str())
+            .collect::<Vec<_>>();
 
         let context = Context::new(
             alias.unwrap_or_else(|| name.to_owned()),
             columns,
-            primary_key,
+            if primary_key.is_empty() {
+                None
+            } else {
+                Some(primary_key)
+            },
             next,
         );
         Some(Rc::new(context))

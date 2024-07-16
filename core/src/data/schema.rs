@@ -38,6 +38,14 @@ pub struct Schema {
 }
 
 impl Schema {
+    /// Returns whether the schema has a primary key.
+    pub fn has_primary_key(&self) -> bool {
+        self.column_defs
+            .as_ref()
+            .map(|column_defs| column_defs.iter().any(|column_def| column_def.is_primary()))
+            .unwrap_or(false)
+    }
+
     pub fn to_ddl(&self) -> String {
         let Schema {
             table_name,
