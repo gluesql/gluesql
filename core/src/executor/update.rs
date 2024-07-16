@@ -4,7 +4,7 @@ use {
         evaluate::{evaluate, Evaluated},
     },
     crate::{
-        ast::{Assignment, ColumnDef, ColumnUniqueOption, ForeignKey},
+        ast::{Assignment, ColumnDef, ForeignKey},
         data::{Key, Row, Value},
         result::{Error, Result},
         store::GStore,
@@ -55,9 +55,10 @@ impl<'a, T: GStore> Update<'a, T> {
 
                 if column_defs.iter().all(|col_def| &col_def.name != id) {
                     return Err(UpdateError::ColumnNotFound(id.to_owned()).into());
-                } else if column_defs.iter().any(|ColumnDef { name, unique, .. }| {
-                    name == id && matches!(unique, Some(ColumnUniqueOption { is_primary: true }))
-                }) {
+                } else if column_defs
+                    .iter()
+                    .any(|column| &column.name == id && column.is_primary())
+                {
                     return Err(UpdateError::UpdateOnPrimaryKeyNotSupported(id.to_owned()).into());
                 }
             }
