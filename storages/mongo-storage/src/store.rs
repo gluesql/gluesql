@@ -170,23 +170,25 @@ impl MongoStorage {
             let collection = self.db.collection::<Document>(collection_name);
             let options = ListIndexesOptions::builder().build();
             let cursor = collection.list_indexes(options).await.map_storage_err()?;
-            let indexes = cursor
+            let reverse_indexes = cursor
                 .into_stream()
                 .map_err(|e| Error::StorageMsg(e.to_string()))
-                .try_filter_map(|index_model| {
-                    let IndexModel { keys, options, .. } = index_model;
-                    if keys.len() > 1 {
-                        return future::ready(Ok::<_, Error>(None));
-                    }
+                .try_filter_map(|IndexModel { keys, options, .. }| {
+                    let index_name = options.and_then(|options| options.name).unwrap_or_default();
+                    let keys = keys.into_iter().map(|(k, _)| k).collect::<Vec<_>>();
 
-                    let index_keys = &mut keys.into_iter().map(|(index_key, _)| index_key);
-                    let index_key = index_keys.next();
-                    let name = options.and_then(|options| options.name);
-
-                    future::ready(Ok::<_, Error>(index_key.zip(name)))
+                    future::ready(Ok::<_, Error>(Some((index_name, keys))))
                 })
-                .try_collect::<HashMap<String, String>>()
+                .try_collect::<HashMap<String, Vec<String>>>()
                 .await?;
+
+            // We revert the indexes to get the column names first mapping to the index names
+            let indexes = reverse_indexes
+                .into_iter()
+                .flat_map(|(index_name, keys)| {
+                    keys.into_iter().map(move |key| (key, index_name.clone()))
+                })
+                .collect::<HashMap<String, String>>();
 
             let column_defs = validator
                 .get_document("properties")

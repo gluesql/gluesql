@@ -171,7 +171,7 @@ test_case!(multiple_primary_keys, {
     // We create a table with multiple primary keys.
     g.run(
         "
-        CREATE TABLE Allegro (
+        CREATE TABLE Allegro2 (
             table_id INTEGER,
             user_id INTEGER,
             PRIMARY KEY (table_id, user_id)
@@ -181,12 +181,15 @@ test_case!(multiple_primary_keys, {
     .await;
 
     // We attempt to insert a row in this table
-    g.test("INSERT INTO Allegro VALUES (1, 1);", Ok(Payload::Insert(1)))
-        .await;
+    g.test(
+        "INSERT INTO Allegro2 VALUES (1, 1);",
+        Ok(Payload::Insert(1)),
+    )
+    .await;
 
     // We check that the row was inserted correctly
     g.test(
-        "SELECT table_id, user_id FROM Allegro",
+        "SELECT table_id, user_id FROM Allegro2",
         Ok(select!(
             table_id | user_id
             I64     | I64;
@@ -196,7 +199,7 @@ test_case!(multiple_primary_keys, {
     .await;
 
     // We attempt to insert a row with the same primary keys
-    let error = g.run_err("INSERT INTO Allegro VALUES (1, 1);").await;
+    let error = g.run_err("INSERT INTO Allegro2 VALUES (1, 1);").await;
 
     // We check that the result is an Err of the DuplicateEntryOnPrimaryKeyField, and that
     // if it was produced by a storage backend able to return the primary key, it is the
@@ -218,12 +221,15 @@ test_case!(multiple_primary_keys, {
     }
 
     // We attempt to insert a row with a different primary key
-    g.test("INSERT INTO Allegro VALUES (1, 2);", Ok(Payload::Insert(1)))
-        .await;
+    g.test(
+        "INSERT INTO Allegro2 VALUES (1, 2);",
+        Ok(Payload::Insert(1)),
+    )
+    .await;
 
     // We check that the row was inserted correctly
     g.test(
-        "SELECT table_id, user_id FROM Allegro",
+        "SELECT table_id, user_id FROM Allegro2",
         Ok(select!(
             table_id | user_id
             I64     | I64;
@@ -236,7 +242,7 @@ test_case!(multiple_primary_keys, {
     // We check that the previous row was not deleted
     g.named_test(
         "Check row still exists",
-        "SELECT table_id, user_id FROM Allegro WHERE table_id = 1;",
+        "SELECT table_id, user_id FROM Allegro2 WHERE table_id = 1;",
         Ok(select!(
             table_id | user_id
             I64     | I64;
@@ -249,7 +255,7 @@ test_case!(multiple_primary_keys, {
     // We query for the second component of the primary key
     g.named_test(
         "Check row still exists",
-        "SELECT table_id, user_id FROM Allegro WHERE user_id = 2;",
+        "SELECT table_id, user_id FROM Allegro2 WHERE user_id = 2;",
         Ok(select!(
             table_id | user_id
             I64     | I64;
@@ -261,7 +267,7 @@ test_case!(multiple_primary_keys, {
     // We filter for both constraints at once
     g.named_test(
         "Check row still exists",
-        "SELECT table_id, user_id FROM Allegro WHERE table_id = 1 AND user_id = 2;",
+        "SELECT table_id, user_id FROM Allegro2 WHERE table_id = 1 AND user_id = 2;",
         Ok(select!(
             table_id | user_id
             I64     | I64;
@@ -273,7 +279,7 @@ test_case!(multiple_primary_keys, {
     // We try to delete a non-existing row
     g.named_test(
         "Attempt to delete non-existing row",
-        "DELETE FROM Allegro WHERE table_id = 2 AND user_id = 2;",
+        "DELETE FROM Allegro2 WHERE table_id = 2 AND user_id = 2;",
         Ok(Payload::Delete(0)),
     )
     .await;
@@ -281,7 +287,7 @@ test_case!(multiple_primary_keys, {
     // We delete the row we inserted
     g.named_test(
         "Delete row",
-        "DELETE FROM Allegro WHERE table_id = 1 AND user_id = 2;",
+        "DELETE FROM Allegro2 WHERE table_id = 1 AND user_id = 2;",
         Ok(Payload::Delete(1)),
     )
     .await;
@@ -289,7 +295,7 @@ test_case!(multiple_primary_keys, {
     // We check that the row was deleted
     g.named_test(
         "Check row was deleted",
-        "SELECT table_id, user_id FROM Allegro;",
+        "SELECT table_id, user_id FROM Allegro2;",
         Ok(select!(
             table_id | user_id
             I64     | I64;
@@ -301,7 +307,7 @@ test_case!(multiple_primary_keys, {
     // We attempt to update a row with a different primary key
     g.named_test(
         "Attempt to update row with different primary key",
-        "UPDATE Allegro SET table_id = 2 WHERE table_id = 1 AND user_id = 1;",
+        "UPDATE Allegro2 SET table_id = 2 WHERE table_id = 1 AND user_id = 1;",
         Err(UpdateError::UpdateOnPrimaryKeyNotSupported("table_id".to_owned()).into()),
     )
     .await;
