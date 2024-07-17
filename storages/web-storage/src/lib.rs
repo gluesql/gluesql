@@ -122,10 +122,7 @@ impl Store for WebStorage {
                 column_defs: Some(column_defs),
                 ..
             }) if column_defs.iter().any(|column_def| {
-                matches!(
-                    column_def.unique,
-                    Some(ColumnUniqueOption { is_primary: true })
-                )
+                column_def.is_primary()
             }) =>
             {
                 rows.sort_by(|(key_a, _), (key_b, _)| key_a.cmp(key_b));
