@@ -926,7 +926,11 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "Player2".to_owned(),
                     alias: None,
-                    index: Some(IndexItem::PrimaryKey(vec![expr("1"), expr("'Merlin'"), expr("42")])),
+                    index: Some(IndexItem::PrimaryKey(vec![
+                        expr("1"),
+                        expr("'Merlin'"),
+                        expr("42"),
+                    ])),
                 },
                 joins: Vec::new(),
             },
@@ -936,7 +940,6 @@ mod tests {
         });
 
         assert_eq!(actual, expected, "AND binary op 3:\n{sql}");
-
     }
 
     #[test]
