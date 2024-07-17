@@ -153,23 +153,15 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                     ..
                 } = constraint
                 {
-                    match columns.as_mut() {
-                        Some(columns) => {
-                            // We identify the columns that are part of the primary key
-                            // and update them to have the primary key flag set to true.
-                            for primary_key_column in primary_key_columns {
-                                if let Some(column) = columns
-                                    .iter_mut()
-                                    .find(|c| c.name == primary_key_column.value)
-                                {
-                                    column.set_primary();
-                                }
-                            }
-                        }
-                        None => {
-                            unreachable!(
-                                "There cannot be definitions of primary keys without columns."
-                            );
+                    let columns = columns.as_mut().unwrap();
+                    // We identify the columns that are part of the primary key
+                    // and update them to have the primary key flag set to true.
+                    for primary_key_column in primary_key_columns {
+                        if let Some(column) = columns
+                            .iter_mut()
+                            .find(|c| c.name == primary_key_column.value)
+                        {
+                            column.set_primary();
                         }
                     }
                 } else {
