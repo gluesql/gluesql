@@ -118,7 +118,7 @@ impl PrimaryKey {
     /// Creates a new Found variant from the provided value.
     fn new_found(value: Expr) -> PrimaryKey {
         PrimaryKey::Found {
-            index_item: IndexItem::PrimaryKey(value),
+            index_item: IndexItem::PrimaryKey(vec![value]),
             refactored_expr: None,
         }
     }
@@ -190,7 +190,8 @@ impl<'a> PrimaryKeyPlanner<'a> {
 
         // Returns the primary key variant associated to the provided key and value, if any.
         let get_primary_key = |key: Box<Expr>, value: Box<Expr>| {
-            if !(check_evaluable(Some(current_context.clone()), &key) && check_evaluable(None, &value))
+            if !(check_evaluable(Some(current_context.clone()), &key)
+                && check_evaluable(None, &value))
             {
                 return PossibleResults::Retry(key, value);
             }
@@ -348,12 +349,9 @@ impl<'a> PrimaryKeyPlanner<'a> {
                                 // Partial primary key into a Found primary key.
                                 if index_items.iter().all(Option::is_some) {
                                     return PrimaryKey::Found {
-                                        index_item: IndexItem::PrimaryKey(Expr::Array {
-                                            elem: index_items
-                                                .into_iter()
-                                                .map(Option::unwrap)
-                                                .collect(),
-                                        }),
+                                        index_item: IndexItem::PrimaryKey(
+                                            index_items.into_iter().map(Option::unwrap).collect(),
+                                        ),
                                         refactored_expr: left_refactored_expr,
                                     };
                                 }
@@ -533,7 +531,7 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
+                    index: Some(IndexItem::PrimaryKey(vec![expr("1")])),
                 },
                 joins: Vec::new(),
             },
@@ -551,7 +549,7 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
+                    index: Some(IndexItem::PrimaryKey(vec![expr("1")])),
                 },
                 joins: Vec::new(),
             },
@@ -569,7 +567,7 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
+                    index: Some(IndexItem::PrimaryKey(vec![expr("1")])),
                 },
                 joins: Vec::new(),
             },
@@ -593,7 +591,7 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
+                    index: Some(IndexItem::PrimaryKey(vec![expr("1")])),
                 },
                 joins: Vec::new(),
             },
@@ -626,7 +624,7 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
+                    index: Some(IndexItem::PrimaryKey(vec![expr("1")])),
                 },
                 joins: Vec::new(),
             },
@@ -789,9 +787,7 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: Some(IndexItem::PrimaryKey(Expr::Array {
-                        elem: vec![expr("1"), expr("'Merlin'")],
-                    })),
+                    index: Some(IndexItem::PrimaryKey(vec![expr("1"), expr("'Merlin'")])),
                 },
                 joins: Vec::new(),
             },
@@ -846,7 +842,7 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
+                    index: Some(IndexItem::PrimaryKey(vec![expr("1")])),
                 },
                 joins: vec![Join {
                     relation: TableFactor::Table {
@@ -904,7 +900,7 @@ mod tests {
                         relation: TableFactor::Table {
                             name: "Player".to_owned(),
                             alias: None,
-                            index: Some(IndexItem::PrimaryKey(expr("1"))),
+                            index: Some(IndexItem::PrimaryKey(vec![expr("1")])),
                         },
                         joins: Vec::new(),
                     },
@@ -988,9 +984,7 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: Some(IndexItem::PrimaryKey(Expr::Array {
-                        elem: vec![expr("1"), expr("'Merlin'")],
-                    })),
+                    index: Some(IndexItem::PrimaryKey(vec![expr("1"), expr("'Merlin'")])),
                 },
                 joins: vec![Join {
                     relation: TableFactor::Table {

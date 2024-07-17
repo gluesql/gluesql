@@ -150,12 +150,26 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
 
                         Rows::Indexed(rows)
                     }
-                    Some(IndexItem::PrimaryKey(expr)) => {
-                        let filter_context = filter_context.as_ref().map(Rc::clone);
-                        let key = evaluate(storage, filter_context, None, expr)
-                            .await
-                            .and_then(Value::try_from)
-                            .and_then(Key::try_from)?;
+                    Some(IndexItem::PrimaryKey(primary_key_expressions)) => {
+                        let mut evaluated_primary_key_expressions = Vec::new();
+
+                        for expr in primary_key_expressions {
+                            evaluated_primary_key_expressions.push(Value::try_from(
+                                evaluate(
+                                    storage,
+                                    filter_context.as_ref().map(Rc::clone),
+                                    None,
+                                    expr,
+                                )
+                                .await?,
+                            )?);
+                        }
+
+                        let key = if evaluated_primary_key_expressions.len() == 1 {
+                            Key::try_from(evaluated_primary_key_expressions.pop().unwrap())?
+                        } else {
+                            Key::try_from(evaluated_primary_key_expressions)?
+                        };
 
                         match storage.fetch_data(name, &key).await? {
                             Some(data_row) => {
