@@ -209,8 +209,12 @@ impl ToSql for Statement {
                 comment,
             } => {
                 let if_not_exists = if_not_exists.then_some("IF NOT EXISTS");
+
                 let primary_key = columns.as_ref().and_then(|cols| {
+                    // If the columns are defined, we check whether there exists a primary key.
                     if cols.iter().any(|col| col.is_primary()) {
+                        // If there is, we format the primary key constraint as a string, which
+                        // will be placed at the end of the CREATE TABLE statement.
                         Some(format!(
                             "PRIMARY KEY ({})",
                             cols.iter()
@@ -234,6 +238,8 @@ impl ToSql for Statement {
                             .chain(foreign_keys)
                             .collect::<Vec<_>>();
 
+                        // If we identified earlier that there is a primary key, we add it
+                        // at the end of the CREATE TABLE statement.
                         if let Some(primary_key) = primary_key {
                             body.push(primary_key);
                         }

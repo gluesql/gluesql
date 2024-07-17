@@ -153,6 +153,10 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                     ..
                 } = constraint
                 {
+                    // We can unwrap here because we know that the columns are
+                    // certainly defined, otherwise the table constraints would not
+                    // contain a primary key constraint, as a primary key is composed
+                    // of one or more columns.
                     let columns = columns.as_mut().unwrap();
                     // We identify the columns that are part of the primary key
                     // and update them to have the primary key flag set to true.
