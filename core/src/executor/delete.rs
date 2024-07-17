@@ -14,6 +14,7 @@ use {
     thiserror::Error as ThisError,
 };
 
+use crate::prelude::Key;
 use futures::Future;
 use std::pin::Pin;
 
@@ -28,6 +29,15 @@ pub enum DeleteError {
     #[error("Column does not have a default value: {0}")]
     ColumnDoesNotHaveDefaultValue(String),
 }
+
+type DeleteRows = (
+    Vec<Key>,
+    Vec<(
+        Vec<(String, Expr)>,
+        Vec<(String, String, Expr)>,
+        Vec<(String, String, Expr)>,
+    )>,
+);
 
 pub async fn delete<T: GStore + GStoreMut>(
     storage: &mut T,
@@ -107,7 +117,7 @@ pub async fn delete<T: GStore + GStoreMut>(
         .try_collect::<Vec<_>>()
         .await?;
 
-    let (keys, ops): (Vec<_>, Vec<_>) = keys_and_ops
+    let (keys, ops): DeleteRows = keys_and_ops
         .into_iter()
         .map(|(key, delete_ops, update_null_ops, update_default_ops)| {
             (key, (delete_ops, update_null_ops, update_default_ops))

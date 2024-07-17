@@ -276,7 +276,8 @@ test_case!(foreign_key, {
         "Updating referenced row should set referencing row's foreign key to NULL on update",
         "UPDATE ReferencedTableWithPK SET name = 'referenced_table1 updated' WHERE id = 1;",
         Ok(Payload::Update(3)),
-    ).await;
+    )
+    .await;
 
     // We check that the foreign key of the rows in the referencing table has been set to NULL.
     g.named_test(
@@ -401,7 +402,8 @@ test_case!(foreign_key, {
         "Updating referenced row should set referencing row's foreign key to DEFAULT on update",
         "UPDATE ReferencedTableWithPK SET name = 'referenced_table3 updated' WHERE id = 2;",
         Ok(Payload::Update(2)),
-    ).await;
+    )
+    .await;
 
     // We check that the foreign key of the rows in the referencing table has been set to 1.
     g.named_test(
@@ -431,7 +433,8 @@ test_case!(foreign_key, {
                 ],
             ],
         }),
-    ).await;
+    )
+    .await;
 
     // We check that the row has been updated from the referenced table.
     g.named_test(
@@ -444,7 +447,8 @@ test_case!(foreign_key, {
                 Value::Str("referenced_table3 updated".to_owned()),
             ]],
         }),
-    ).await;
+    )
+    .await;
 
     // We truncate the referencing table content.
     g.run("DELETE FROM ReferencingTableSetDefault;").await;

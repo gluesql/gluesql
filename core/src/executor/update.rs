@@ -52,6 +52,15 @@ pub enum UpdateError {
     ColumnDoesNotHaveDefaultValue(String),
 }
 
+type UpdateRows = (
+    Vec<(Key, DataRow)>,
+    Vec<(
+        Vec<(String, Expr)>,
+        Vec<(String, String, Expr)>,
+        Vec<(String, String, Expr)>,
+    )>,
+);
+
 pub struct Update<'a, T: GStore> {
     storage: &'a T,
     table_name: &'a str,
@@ -322,10 +331,7 @@ pub async fn update<T: GStore + GStoreMut>(
     }
 
     let num_rows = rows.len();
-    let (rows, ops): (
-        Vec<(Key, DataRow)>,
-        Vec<(Vec<(String, Expr)>, Vec<(String, String, Expr)>, Vec<(String, String, Expr)>)>
-    ) = rows
+    let (rows, ops): UpdateRows = rows
         .into_iter()
         .map(
             |(key, row, delete_ops, update_null_ops, update_default_ops)| {
@@ -351,12 +357,8 @@ pub async fn update<T: GStore + GStoreMut>(
         for (referencing_table_name, referencing_column_name, expr) in update_null_ops {
             let expr = Some(expr);
             let assignment = vec![Assignment::new(referencing_column_name, Expr::null())];
-            let boxed_update: Pin<Box<dyn Future<Output = Result<Payload>>>> = Box::pin(update(
-                storage,
-                &referencing_table_name,
-                &expr,
-                &assignment,
-            ));
+            let boxed_update: Pin<Box<dyn Future<Output = Result<Payload>>>> =
+                Box::pin(update(storage, &referencing_table_name, &expr, &assignment));
             update_payload.accumulate(&boxed_update.await?);
         }
 

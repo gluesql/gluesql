@@ -97,7 +97,6 @@ impl From<sqlparser::ast::ReferentialAction> for ReferentialAction {
     }
 }
 
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Statement {
     ShowColumns {

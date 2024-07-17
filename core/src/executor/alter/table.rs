@@ -1,9 +1,7 @@
 use {
     super::{validate, validate_column_names, AlterError},
     crate::{
-        ast::{
-            ColumnDef, ForeignKey, Query, SetExpr, TableFactor, ToSql, Values,
-        },
+        ast::{ColumnDef, ForeignKey, Query, SetExpr, TableFactor, ToSql, Values},
         data::{Schema, TableError},
         executor::{evaluate_stateless, select::select},
         prelude::{DataType, Value},

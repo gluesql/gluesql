@@ -454,7 +454,7 @@ mod tests {
 
         assert_eq!(actual, expected);
     }
-    
+
     #[test]
     fn test_on_update_cascade() {
         let sql = "CREATE TABLE Foo (id INTEGER PRIMARY KEY, bar INTEGER, FOREIGN KEY (bar) REFERENCES Foo (id) ON UPDATE CASCADE)";
