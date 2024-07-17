@@ -454,6 +454,47 @@ mod tests {
 
         assert_eq!(actual, expected);
     }
+    
+    #[test]
+    fn test_on_update_cascade() {
+        let sql = "CREATE TABLE Foo (id INTEGER PRIMARY KEY, bar INTEGER, FOREIGN KEY (bar) REFERENCES Foo (id) ON UPDATE CASCADE)";
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+        let expected = Ok(Statement::CreateTable {
+            if_not_exists: false,
+            name: "Foo".to_owned(),
+            columns: Some(vec![
+                ColumnDef {
+                    name: "id".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: false,
+                    default: None,
+                    unique: Some(ColumnUniqueOption::primary()),
+                    comment: None,
+                },
+                ColumnDef {
+                    name: "bar".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: true,
+                    default: None,
+                    unique: None,
+                    comment: None,
+                },
+            ]),
+            source: None,
+            engine: None,
+            foreign_keys: vec![ForeignKey {
+                name: "FK_bar-Foo_id".to_owned(),
+                referencing_column_name: "bar".to_owned(),
+                referenced_table_name: "Foo".to_owned(),
+                referenced_column_name: "id".to_owned(),
+                on_delete: ReferentialAction::NoAction,
+                on_update: ReferentialAction::Cascade,
+            }],
+            comment: None,
+        });
+
+        assert_eq!(actual, expected);
+    }
 
     #[test]
     fn test_on_delete_cascade() {
@@ -489,6 +530,47 @@ mod tests {
                 referenced_column_name: "id".to_owned(),
                 on_delete: ReferentialAction::Cascade,
                 on_update: ReferentialAction::NoAction,
+            }],
+            comment: None,
+        });
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_on_delete_on_update_cascade_same_line() {
+        let sql = "CREATE TABLE Foo (id INTEGER PRIMARY KEY, bar INTEGER, FOREIGN KEY (bar) REFERENCES Foo (id) ON DELETE CASCADE ON UPDATE CASCADE)";
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+        let expected = Ok(Statement::CreateTable {
+            if_not_exists: false,
+            name: "Foo".to_owned(),
+            columns: Some(vec![
+                ColumnDef {
+                    name: "id".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: false,
+                    default: None,
+                    unique: Some(ColumnUniqueOption::primary()),
+                    comment: None,
+                },
+                ColumnDef {
+                    name: "bar".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: true,
+                    default: None,
+                    unique: None,
+                    comment: None,
+                },
+            ]),
+            source: None,
+            engine: None,
+            foreign_keys: vec![ForeignKey {
+                name: "FK_bar-Foo_id".to_owned(),
+                referencing_column_name: "bar".to_owned(),
+                referenced_table_name: "Foo".to_owned(),
+                referenced_column_name: "id".to_owned(),
+                on_delete: ReferentialAction::Cascade,
+                on_update: ReferentialAction::Cascade,
             }],
             comment: None,
         });

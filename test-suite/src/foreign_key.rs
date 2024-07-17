@@ -94,43 +94,32 @@ test_case!(foreign_key, {
             id INT,
             name TEXT,
             referenced_id INT,
-            FOREIGN KEY (referenced_id) REFERENCES ReferencedTableWithPK (id) ON DELETE CASCADE
+            FOREIGN KEY (referenced_id) REFERENCES ReferencedTableWithPK (id) ON UPDATE CASCADE ON DELETE CASCADE
         );",
     )
     .await;
 
     // We insert a row into the referenced table.
-    g.run("INSERT INTO ReferencedTableWithPK VALUES (1, 'referenced_table1');")
-        .await;
-
-    // We insert a second row in the referenced table.
-    g.run("INSERT INTO ReferencedTableWithPK VALUES (2, 'referenced_table2');")
+    g.run("INSERT INTO ReferencedTableWithPK VALUES (1, 'referenced_table1'), (2, 'referenced_table2');")
         .await;
 
     // We insert a row into the referencing table.
-    g.run("INSERT INTO ReferencingTableCascade VALUES (1, 'referencing_table with referenced_table', 1);")
+    g.run("INSERT INTO ReferencingTableCascade VALUES (1, 'referencing_table with referenced_table', 1), (2, 'referencing_table with referenced_table', 2), (3, 'referencing_table with referenced_table', 1);")
         .await;
 
-    // We insert a second row in the referencing table.
-    g.run("INSERT INTO ReferencingTableCascade VALUES (2, 'referencing_table with referenced_table', 2);")
-        .await;
-
-    // We insert a third row which references the first row in the referenced table.
-    g.run("INSERT INTO ReferencingTableCascade VALUES (3, 'referencing_table with referenced_table', 1);")
-        .await;
-
-    // We delete the row from the referenced table, which should yield a cascade delete
-    // with three rows being deleted.
+    // We update the row in the referenced table, which should yield a cascade update
+    // with the one row in the referencing table being updated, and the other rows from
+    // the referencing table being deleted.
     g.named_test(
-        "Deleting referenced row should delete referencing row as well",
-        "DELETE FROM ReferencedTableWithPK WHERE id = 1;",
-        Ok(Payload::Delete(3)),
+        "Updating referenced row should update referencing row as well",
+        "UPDATE ReferencedTableWithPK SET name = 'referenced_table1 updated' WHERE id = 1;",
+        Ok(Payload::Update(1)),
     )
     .await;
 
     // We check that the row from the referencing table has been deleted as well.
     g.named_test(
-        "Referencing row should be deleted",
+        "Referencing row should be deleted on update cascade",
         "SELECT * FROM ReferencingTableCascade WHERE id = 1;",
         Ok(Payload::Select {
             labels: vec![
@@ -145,7 +134,68 @@ test_case!(foreign_key, {
 
     // We check that the other row from the referencing table has NOT been deleted.
     g.named_test(
-        "Referencing row should NOT be deleted",
+        "Referencing row should NOT be deleted on update cascade",
+        "SELECT * FROM ReferencingTableCascade WHERE id = 2;",
+        Ok(Payload::Select {
+            labels: vec![
+                "id".to_owned(),
+                "name".to_owned(),
+                "referenced_id".to_owned(),
+            ],
+            rows: vec![vec![
+                Value::I64(2),
+                Value::Str("referencing_table with referenced_table".to_owned()),
+                Value::I64(2),
+            ]],
+        }),
+    )
+    .await;
+
+    // We check that the row in the referenced table has been updated.
+    g.named_test(
+        "Referenced row should be updated",
+        "SELECT * FROM ReferencedTableWithPK WHERE id = 1;",
+        Ok(Payload::Select {
+            labels: vec!["id".to_owned(), "name".to_owned()],
+            rows: vec![vec![
+                Value::I64(1),
+                Value::Str("referenced_table1 updated".to_owned()),
+            ]],
+        }),
+    )
+    .await;
+
+    // We re-insert the rows we just deleted in the referencing table.
+    g.run("INSERT INTO ReferencingTableCascade VALUES (1, 'referencing_table with referenced_table', 1), (3, 'referencing_table with referenced_table', 1);")
+        .await;
+
+    // We delete the row from the referenced table, which should yield a cascade delete
+    // with three rows being deleted.
+    g.named_test(
+        "Deleting referenced row should delete referencing row as well",
+        "DELETE FROM ReferencedTableWithPK WHERE id = 1;",
+        Ok(Payload::Delete(3)),
+    )
+    .await;
+
+    // We check that the row from the referencing table has been deleted as well.
+    g.named_test(
+        "Referencing row should be deleted on delete cascade",
+        "SELECT * FROM ReferencingTableCascade WHERE id = 1;",
+        Ok(Payload::Select {
+            labels: vec![
+                "id".to_owned(),
+                "name".to_owned(),
+                "referenced_id".to_owned(),
+            ],
+            rows: vec![],
+        }),
+    )
+    .await;
+
+    // We check that the other row from the referencing table has NOT been deleted.
+    g.named_test(
+        "Referencing row should NOT be deleted on delete cascade",
         "SELECT * FROM ReferencingTableCascade WHERE id = 2;",
         Ok(Payload::Select {
             labels: vec![
@@ -207,7 +257,7 @@ test_case!(foreign_key, {
             id INT,
             name TEXT,
             referenced_id INT,
-            FOREIGN KEY (referenced_id) REFERENCES ReferencedTableWithPK (id) ON DELETE SET NULL
+            FOREIGN KEY (referenced_id) REFERENCES ReferencedTableWithPK (id) ON DELETE SET NULL ON UPDATE SET NULL
         );",
     )
     .await;
@@ -217,11 +267,62 @@ test_case!(foreign_key, {
         .await;
 
     // We insert a row into the referencing table.
-    g.run("INSERT INTO ReferencingTableSetNull VALUES (1, 'referencing_table with referenced_table', 1);")
+    g.run("INSERT INTO ReferencingTableSetNull VALUES (1, 'referencing_table with referenced_table', 1), (2, 'referencing_table with referenced_table', 1);")
         .await;
 
-    // We insert a second row into the referencing table.
-    g.run("INSERT INTO ReferencingTableSetNull VALUES (2, 'referencing_table with referenced_table', 1);")
+    // We update the row in the referenced table, which should result in the
+    // referenced_id column of the rows in the referencing table being set to NULL.
+    g.named_test(
+        "Updating referenced row should set referencing row's foreign key to NULL on update",
+        "UPDATE ReferencedTableWithPK SET name = 'referenced_table1 updated' WHERE id = 1;",
+        Ok(Payload::Update(3)),
+    ).await;
+
+    // We check that the foreign key of the rows in the referencing table has been set to NULL.
+    g.named_test(
+        "Referencing row's foreign key should be set to NULL",
+        "SELECT * FROM ReferencingTableSetNull;",
+        Ok(Payload::Select {
+            labels: vec![
+                "id".to_owned(),
+                "name".to_owned(),
+                "referenced_id".to_owned(),
+            ],
+            rows: vec![
+                vec![
+                    Value::I64(1),
+                    Value::Str("referencing_table with referenced_table".to_owned()),
+                    Value::Null,
+                ],
+                vec![
+                    Value::I64(2),
+                    Value::Str("referencing_table with referenced_table".to_owned()),
+                    Value::Null,
+                ],
+            ],
+        }),
+    )
+    .await;
+
+    // We check that the row has been updated from the referenced table.
+    g.named_test(
+        "Referenced row should be updated",
+        "SELECT * FROM ReferencedTableWithPK WHERE id = 1;",
+        Ok(Payload::Select {
+            labels: vec!["id".to_owned(), "name".to_owned()],
+            rows: vec![vec![
+                Value::I64(1),
+                Value::Str("referenced_table1 updated".to_owned()),
+            ]],
+        }),
+    )
+    .await;
+
+    // We truncate the referencing table content.
+    g.run("DELETE FROM ReferencingTableSetNull;").await;
+
+    // We insert a row into the referencing table.
+    g.run("INSERT INTO ReferencingTableSetNull VALUES (1, 'referencing_table with referenced_table', 1), (2, 'referencing_table with referenced_table', 1);")
         .await;
 
     // We delete the row from the referenced table, which should result in the
@@ -281,9 +382,10 @@ test_case!(foreign_key, {
             id INT,
             name TEXT,
             referenced_id INT DEFAULT 1,
-            FOREIGN KEY (referenced_id) REFERENCES ReferencedTableWithPK (id) ON DELETE SET DEFAULT
+            FOREIGN KEY (referenced_id) REFERENCES ReferencedTableWithPK (id) ON DELETE SET DEFAULT ON UPDATE SET DEFAULT
         );",
-    ).await;
+    )
+    .await;
 
     // We insert a couple rows into the referenced table.
     g.run("INSERT INTO ReferencedTableWithPK VALUES (1, 'referenced_table1'), (2, 'referenced_table2'), (3, 'referenced_table3');")
@@ -293,18 +395,18 @@ test_case!(foreign_key, {
     g.run("INSERT INTO ReferencingTableSetDefault VALUES (1, 'referencing_table with referenced_table', 2), (2, 'referencing_table with referenced_table', 3), (3, 'referencing_table with referenced_table', 3);")
         .await;
 
-    // We delete the row from the referenced table with ID 2, which should result in the
+    // We update the row in the referenced table with ID 3, which should result in the
     // referenced_id column of the rows in the referencing table being set to 1.
     g.named_test(
-        "Deleting referenced row should set referencing row's foreign key to DEFAULT",
-        "DELETE FROM ReferencedTableWithPK WHERE id = 2;",
-        Ok(Payload::Delete(1)),
+        "Updating referenced row should set referencing row's foreign key to DEFAULT on update",
+        "UPDATE ReferencedTableWithPK SET name = 'referenced_table3 updated' WHERE id = 2;",
+        Ok(Payload::Update(2)),
     ).await;
 
     // We check that the foreign key of the rows in the referencing table has been set to 1.
     g.named_test(
-        "Referencing row's foreign key should be set to DEFAULT",
-        "SELECT * FROM ReferencingTableSetDefault;",
+        "Referencing row's foreign key should be set to DEFAULT on update cascade",
+        "SELECT * FROM ReferencingTableSetDefault ORDER BY id ASC;",
         Ok(Payload::Select {
             labels: vec![
                 "id".to_owned(),
@@ -330,6 +432,66 @@ test_case!(foreign_key, {
             ],
         }),
     ).await;
+
+    // We check that the row has been updated from the referenced table.
+    g.named_test(
+        "Referenced row should be updated",
+        "SELECT * FROM ReferencedTableWithPK WHERE id = 2;",
+        Ok(Payload::Select {
+            labels: vec!["id".to_owned(), "name".to_owned()],
+            rows: vec![vec![
+                Value::I64(2),
+                Value::Str("referenced_table3 updated".to_owned()),
+            ]],
+        }),
+    ).await;
+
+    // We truncate the referencing table content.
+    g.run("DELETE FROM ReferencingTableSetDefault;").await;
+
+    // We insert a row into the referencing table.
+    g.run("INSERT INTO ReferencingTableSetDefault VALUES (1, 'referencing_table with referenced_table', 2), (2, 'referencing_table with referenced_table', 3), (3, 'referencing_table with referenced_table', 3);")
+        .await;
+
+    // We delete the row from the referenced table with ID 2, which should result in the
+    // referenced_id column of the rows in the referencing table being set to 1.
+    g.named_test(
+        "Deleting referenced row should set referencing row's foreign key to DEFAULT",
+        "DELETE FROM ReferencedTableWithPK WHERE id = 2;",
+        Ok(Payload::Delete(1)),
+    )
+    .await;
+
+    // We check that the foreign key of the rows in the referencing table has been set to 1.
+    g.named_test(
+        "Referencing row's foreign key should be set to DEFAULT on delete cascade",
+        "SELECT * FROM ReferencingTableSetDefault ORDER BY id ASC;",
+        Ok(Payload::Select {
+            labels: vec![
+                "id".to_owned(),
+                "name".to_owned(),
+                "referenced_id".to_owned(),
+            ],
+            rows: vec![
+                vec![
+                    Value::I64(1),
+                    Value::Str("referencing_table with referenced_table".to_owned()),
+                    Value::I64(1),
+                ],
+                vec![
+                    Value::I64(2),
+                    Value::Str("referencing_table with referenced_table".to_owned()),
+                    Value::I64(3),
+                ],
+                vec![
+                    Value::I64(3),
+                    Value::Str("referencing_table with referenced_table".to_owned()),
+                    Value::I64(3),
+                ],
+            ],
+        }),
+    )
+    .await;
 
     // We drop the referencing table.
     g.run("DROP TABLE ReferencingTableSetDefault;").await;
@@ -431,7 +593,7 @@ test_case!(foreign_key, {
     g.named_test(
         "Deleting referenced row should fail if referencing value exists (by default: NO ACTION and gets error)",
         "DELETE FROM ReferencedTableWithPK WHERE id = 1;",
-        Err(DeleteError::ReferencingColumnExists("ReferencingTable.referenced_id".to_owned()).into()),
+        Err(DeleteError::RestrictingColumnExists("ReferencingTable.referenced_id".to_owned()).into()),
     )
     .await;
 

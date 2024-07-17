@@ -19,8 +19,8 @@ use std::pin::Pin;
 
 #[derive(ThisError, Serialize, Debug, PartialEq, Eq)]
 pub enum DeleteError {
-    #[error("referencing column exists: {0}")]
-    ReferencingColumnExists(String),
+    #[error("Restrict reference column exists: {0}")]
+    RestrictingColumnExists(String),
 
     #[error("Value not found on column: {0}")]
     ValueNotFound(String),
@@ -36,8 +36,8 @@ pub async fn delete<T: GStore + GStoreMut>(
 ) -> Result<Payload> {
     let columns = fetch_columns(storage, table_name).await?.map(Rc::from);
     let referencings = storage.fetch_referencings(table_name).await?;
-    let rows = fetch(storage, table_name, columns, selection.as_ref()).await?;
-    let keys_and_ops = rows
+    let keys_and_ops = fetch(storage, table_name, columns, selection.as_ref())
+        .await?
         .into_stream()
         .then(|item| async {
             let (key, row) = item?;
@@ -94,7 +94,7 @@ pub async fn delete<T: GStore + GStoreMut>(
                             ));
                         }
                         Restrict | NoAction => {
-                            return Err(DeleteError::ReferencingColumnExists(format!(
+                            return Err(DeleteError::RestrictingColumnExists(format!(
                                 "{referencing_table_name}.{referencing_column_name}"
                             ))
                             .into());
@@ -135,13 +135,15 @@ pub async fn delete<T: GStore + GStoreMut>(
                 referencing_column_name.clone(),
                 Expr::null(),
             )];
-            super::update::update(
-                storage,
-                &referencing_table_name,
-                &selection,
-                assignment.as_slice(),
-            )
-            .await?;
+            let boxed_future: Pin<Box<dyn Future<Output = Result<Payload>>>> =
+                Box::pin(super::update::update(
+                    storage,
+                    &referencing_table_name,
+                    &selection,
+                    assignment.as_slice(),
+                ));
+
+            boxed_future.await?;
         }
 
         for (referencing_table_name, referencing_column_name, expr) in update_default_ops {
