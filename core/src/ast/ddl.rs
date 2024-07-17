@@ -122,7 +122,13 @@ impl ToSql for ColumnDef {
             let default = default
                 .as_ref()
                 .map(|expr| format!("DEFAULT {}", expr.to_sql()));
-            let unique = unique.as_ref().map(ToSql::to_sql);
+            let unique = unique.as_ref().and_then(|unique| {
+                if unique.is_primary() {
+                    None
+                } else {
+                    Some(unique.to_sql())
+                }
+            });
             let comment = comment
                 .as_ref()
                 .map(|comment| format!("COMMENT '{}'", comment));
@@ -197,7 +203,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#""id" INT NOT NULL PRIMARY KEY"#,
+            r#""id" INT NOT NULL"#,
             ColumnDef {
                 name: "id".to_owned(),
                 data_type: DataType::Int,

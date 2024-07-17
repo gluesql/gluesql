@@ -209,17 +209,36 @@ impl ToSql for Statement {
                 comment,
             } => {
                 let if_not_exists = if_not_exists.then_some("IF NOT EXISTS");
+                let primary_key = columns.as_ref().and_then(|cols| {
+                    if cols.iter().any(|col| col.is_primary()) {
+                        Some(format!(
+                            "PRIMARY KEY ({})",
+                            cols.iter()
+                                .filter(|col| col.is_primary())
+                                .map(|col| col.name.clone())
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        ))
+                    } else {
+                        None
+                    }
+                });
                 let body = match (source, columns) {
                     (Some(query), _) => Some(format!("AS {}", query.to_sql())),
                     (None, None) => None,
                     (None, Some(columns)) => {
                         let foreign_keys = foreign_keys.iter().map(ToSql::to_sql);
-                        let body = columns
+                        let mut body = columns
                             .iter()
                             .map(ToSql::to_sql)
                             .chain(foreign_keys)
-                            .collect::<Vec<_>>()
-                            .join(", ");
+                            .collect::<Vec<_>>();
+
+                        if let Some(primary_key) = primary_key {
+                            body.push(primary_key);
+                        }
+
+                        let body = body.join(", ");
 
                         Some(format!("({body})"))
                     }

@@ -267,7 +267,50 @@ mod tests {
             comment: None,
         };
 
-        let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL PRIMARY KEY);"#;
+        let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, PRIMARY KEY (id));"#;
+        assert_eq!(schema.to_ddl(), ddl);
+
+        let actual = Schema::from_ddl(ddl).unwrap();
+        assert_schema(actual, schema);
+    }
+
+    #[test]
+    fn table_composite_primary() {
+        let schema = Schema {
+            table_name: "User".to_owned(),
+            column_defs: Some(vec![
+                ColumnDef {
+                    name: "id".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: false,
+                    default: None,
+                    unique: Some(ColumnUniqueOption { is_primary: true }),
+                    comment: None,
+                },
+                ColumnDef {
+                    name: "user_id".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: false,
+                    default: None,
+                    unique: Some(ColumnUniqueOption { is_primary: true }),
+                    comment: None,
+                },
+                ColumnDef {
+                    name: "image_id".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: false,
+                    default: None,
+                    unique: Some(ColumnUniqueOption { is_primary: false }),
+                    comment: None,
+                },
+            ]),
+            indexes: Vec::new(),
+            engine: None,
+            foreign_keys: Vec::new(),
+            comment: None,
+        };
+
+        let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, "user_id" INT NOT NULL, "image_id" INT NOT NULL UNIQUE, PRIMARY KEY (id, user_id));"#;
         assert_eq!(schema.to_ddl(), ddl);
 
         let actual = Schema::from_ddl(ddl).unwrap();
