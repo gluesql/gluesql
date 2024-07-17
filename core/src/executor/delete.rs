@@ -122,7 +122,7 @@ pub async fn delete<T: GStore + GStoreMut>(
         .map(|(key, delete_ops, update_null_ops, update_default_ops)| {
             (key, (delete_ops, update_null_ops, update_default_ops))
         })
-        .collect();
+        .unzip();
 
     let num_keys = keys.len();
 
