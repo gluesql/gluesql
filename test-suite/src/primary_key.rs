@@ -174,6 +174,7 @@ test_case!(multiple_primary_keys, {
         CREATE TABLE Allegro2 (
             table_id INTEGER,
             user_id INTEGER,
+            other INTEGER,
             PRIMARY KEY (table_id, user_id)
         );
     ",
@@ -182,7 +183,7 @@ test_case!(multiple_primary_keys, {
 
     // We attempt to insert a row in this table
     g.test(
-        "INSERT INTO Allegro2 VALUES (1, 1);",
+        "INSERT INTO Allegro2 VALUES (1, 1, 7);",
         Ok(Payload::Insert(1)),
     )
     .await;
@@ -199,7 +200,7 @@ test_case!(multiple_primary_keys, {
     .await;
 
     // We attempt to insert a row with the same primary keys
-    let error = g.run_err("INSERT INTO Allegro2 VALUES (1, 1);").await;
+    let error = g.run_err("INSERT INTO Allegro2 VALUES (1, 1, 89);").await;
 
     // We check that the result is an Err of the DuplicateEntryOnPrimaryKeyField, and that
     // if it was produced by a storage backend able to return the primary key, it is the
@@ -222,7 +223,7 @@ test_case!(multiple_primary_keys, {
 
     // We attempt to insert a row with a different primary key
     g.test(
-        "INSERT INTO Allegro2 VALUES (1, 2);",
+        "INSERT INTO Allegro2 VALUES (1, 2, 37);",
         Ok(Payload::Insert(1)),
     )
     .await;
@@ -311,4 +312,33 @@ test_case!(multiple_primary_keys, {
         Err(UpdateError::UpdateOnPrimaryKeyNotSupported("table_id".to_owned()).into()),
     )
     .await;
+
+    // We check that the value associated to the primary key (1, 1) is equal to 7.
+    g.named_test(
+        "Check row value",
+        "SELECT table_id, user_id, other FROM Allegro2 WHERE table_id = 1 AND user_id = 1;",
+        Ok(select!(
+            table_id | user_id | other
+            I64     | I64    | I64;
+            1       1       7
+        )),
+    ).await;
+
+    // We update the value of the other column for the primary key (1, 1).
+    g.named_test(
+        "Update row",
+        "UPDATE Allegro2 SET other = 3 WHERE table_id = 1 AND user_id = 1;",
+        Ok(Payload::Update(1)),
+    ).await;
+
+    // We check that the updated value has been set correctly
+    g.named_test(
+        "Check row was updated",
+        "SELECT table_id, user_id, other FROM Allegro2;",
+        Ok(select!(
+            table_id | user_id | other
+            I64     | I64    | I64;
+            1       1       3
+        )),
+    ).await;
 });
