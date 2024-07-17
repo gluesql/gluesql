@@ -4,7 +4,7 @@ use {
         ast::{
             ToSql,
             {
-                ColumnDef, ColumnUniqueOption, Dictionary, Expr, IndexItem, Join, Query, Select,
+                ColumnDef, Dictionary, Expr, IndexItem, Join, Query, Select,
                 SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, ToSqlUnquoted,
                 Values,
             },
@@ -327,7 +327,8 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                             let primary_column = column_defs.iter().find_map(|column_def| {
                                 let ColumnDef { name, unique, .. } = column_def;
 
-                                (unique == &Some(ColumnUniqueOption { is_primary: true }))
+                                unique
+                                    .map_or(false, |unique| unique.is_primary())
                                     .then_some(name)
                             });
 

@@ -83,9 +83,9 @@ impl<'a> TryFrom<ParquetSchemaType<'a>> for ColumnDef {
                 match kv.key.as_str() {
                     k if k == format!("unique_option{}", name) => match kv.value.as_deref() {
                         Some("primary_key") => {
-                            unique = Some(ColumnUniqueOption { is_primary: true });
+                            unique = Some(ColumnUniqueOption::primary());
                         }
-                        _ => unique = Some(ColumnUniqueOption { is_primary: false }),
+                        _ => unique = Some(ColumnUniqueOption::unique()),
                     },
                     k if k == format!("data_type{}", name) => {
                         if let Some(value) = kv.value.as_deref() {

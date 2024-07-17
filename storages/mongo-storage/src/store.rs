@@ -218,9 +218,9 @@ impl MongoStorage {
 
                     let unique = indexes.get(column_name).and_then(|index_name| {
                         if index_name.ends_with(PRIMARY_KEY_DESINENCE) {
-                            Some(ColumnUniqueOption { is_primary: true })
+                            Some(ColumnUniqueOption::primary())
                         } else if index_name.ends_with(UNIQUE_KEY_DESINENCE) {
-                            Some(ColumnUniqueOption { is_primary: false })
+                            Some(ColumnUniqueOption::unique())
                         } else {
                             None
                         }

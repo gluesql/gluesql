@@ -496,7 +496,7 @@ impl ParquetStorage {
             for column_def in column_defs {
                 if let Some(unique_option) = &column_def.unique {
                     let key = format!("unique_option{}", column_def.name);
-                    let value = if unique_option.is_primary {
+                    let value = if unique_option.is_primary() {
                         Some("primary_key".to_string())
                     } else {
                         Some("unique".to_string())

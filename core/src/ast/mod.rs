@@ -42,8 +42,61 @@ pub struct ForeignKey {
 #[derive(PartialEq, Debug, Clone, Eq, Hash, Serialize, Deserialize, Display)]
 pub enum ReferentialAction {
     #[strum(to_string = "NO ACTION")]
+    /// A NO ACTION constraint specifies that when a referenced row is deleted,
+    /// no action should be taken.
     NoAction,
+    #[strum(to_string = "CASCADE")]
+    /// A CASCADE constraint specifies that when a referenced row is deleted,
+    /// row(s) that reference it should also be deleted.
+    Cascade,
+    #[strum(to_string = "SET NULL")]
+    /// A SET NULL constraint specifies that when a referenced row is deleted,
+    /// row(s) that reference it should have their referencing column(s) set to NULL.
+    SetNull,
+    #[strum(to_string = "SET DEFAULT")]
+    /// A SET DEFAULT constraint specifies that when a referenced row is deleted,
+    /// row(s) that reference it should have their referencing column(s) set to the column's default value.
+    SetDefault,
+    #[strum(to_string = "RESTRICT")]
+    /// A RESTRICT constraint specifies that when a referenced row is attempted to be deleted,
+    /// the deletion should be restricted i.e. prevented.
+    Restrict,
 }
+
+impl ReferentialAction {
+    /// Returns whether the referential action is restricting the deletion of the referenced row.
+    pub fn is_restrict(&self) -> bool {
+        matches!(self, ReferentialAction::Restrict) || matches!(self, ReferentialAction::NoAction)
+    }
+
+    /// Returns whether the referential action is cascading the deletion of the referenced row.
+    pub fn is_cascade(&self) -> bool {
+        matches!(self, ReferentialAction::Cascade)
+    }
+
+    /// Returns whether the referential action is setting the referencing column to NULL.
+    pub fn is_set_null(&self) -> bool {
+        matches!(self, ReferentialAction::SetNull)
+    }
+
+    /// Returns whether the referential action is setting the referencing column to the column's default value.
+    pub fn is_set_default(&self) -> bool {
+        matches!(self, ReferentialAction::SetDefault)
+    }
+}
+
+impl From<sqlparser::ast::ReferentialAction> for ReferentialAction {
+    fn from(action: sqlparser::ast::ReferentialAction) -> Self {
+        match action {
+            sqlparser::ast::ReferentialAction::NoAction => ReferentialAction::NoAction,
+            sqlparser::ast::ReferentialAction::Cascade => ReferentialAction::Cascade,
+            sqlparser::ast::ReferentialAction::SetNull => ReferentialAction::SetNull,
+            sqlparser::ast::ReferentialAction::SetDefault => ReferentialAction::SetDefault,
+            sqlparser::ast::ReferentialAction::Restrict => ReferentialAction::Restrict,
+        }
+    }
+}
+
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Statement {
@@ -145,6 +198,12 @@ pub enum Statement {
 pub struct Assignment {
     pub id: String,
     pub value: Expr,
+}
+
+impl Assignment {
+    pub fn new(id: String, value: Expr) -> Self {
+        Self { id, value }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

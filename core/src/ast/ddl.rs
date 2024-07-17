@@ -61,13 +61,28 @@ impl ColumnDef {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ColumnUniqueOption {
-    pub is_primary: bool,
+    is_primary: bool,
 }
 
 impl ColumnUniqueOption {
     /// Returns true if the unique option is primary key.
     pub fn is_primary(&self) -> bool {
         self.is_primary
+    }
+
+    /// Returns a new unique option with the provided value.
+    pub fn new(is_primary: bool) -> Self {
+        Self { is_primary }
+    }
+
+    /// Returns a new unique option with primary as true.
+    pub fn primary() -> Self {
+        Self::new(true)
+    }
+
+    /// Returns a new unique option with primary as false.
+    pub fn unique() -> Self {
+        Self::new(false)
     }
 }
 
