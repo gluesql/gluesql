@@ -121,10 +121,7 @@ impl Store for WebStorage {
             Some(Schema {
                 column_defs: Some(column_defs),
                 ..
-            }) if column_defs.iter().any(|column_def| {
-                column_def.is_primary()
-            }) =>
-            {
+            }) if column_defs.iter().any(|column_def| column_def.is_primary()) => {
                 rows.sort_by(|(key_a, _), (key_b, _)| key_a.cmp(key_b));
             }
             _ => {}
