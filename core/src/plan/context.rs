@@ -135,9 +135,4 @@ impl<'a> Context<'a> {
                 .or_else(|| right.get_primary_key_index_by_name(candidate_column_name)),
         }
     }
-
-    /// Returns whether the provided column is a primary key column in the current context.
-    pub(super) fn is_primary_key_column(&self, column: &str) -> bool {
-        self.get_primary_key_index_by_name(column).is_some()
-    }
 }
