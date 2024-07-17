@@ -819,6 +819,124 @@ mod tests {
             having: None,
         });
         assert_eq!(actual, expected, "AND binary op 3:\n{sql}");
+
+        // Next, we test the case where the left branch yields a Partial, but the right branch
+        // yields a complete primary key, without need to merge with the left branch.
+        let sql = "
+            SELECT * FROM Player
+            WHERE
+                id = 1 And True
+                AND (name = 'Merlin' AND id = 2);
+        ";
+        let actual = plan(&storage, sql);
+        let expected = select(Select {
+            projection: vec![SelectItem::Wildcard],
+            from: TableWithJoins {
+                relation: TableFactor::Table {
+                    name: "Player".to_owned(),
+                    alias: None,
+                    index: Some(IndexItem::PrimaryKey(vec![expr("2"), expr("'Merlin'")])),
+                },
+                joins: Vec::new(),
+            },
+            selection: Some(expr("id = 1 AND True")),
+            group_by: Vec::new(),
+            having: None,
+        });
+        assert_eq!(actual, expected, "AND binary op 3:\n{sql}");
+
+        // Next, we test the case where the left branch yields a Partial, and the right branch
+        // also yields a Partial, with the two branches overlapping on the same primary key column.
+        let sql = "
+            SELECT * FROM Player
+            WHERE
+                id = 1 And True
+                AND id = 4;
+        ";
+
+        let actual = plan(&storage, sql);
+        let expected = select(Select {
+            projection: vec![SelectItem::Wildcard],
+            from: TableWithJoins {
+                relation: TableFactor::Table {
+                    name: "Player".to_owned(),
+                    alias: None,
+                    index: None,
+                },
+                joins: Vec::new(),
+            },
+            selection: Some(expr("id = 1 AND True AND id = 4")),
+            group_by: Vec::new(),
+            having: None,
+        });
+        assert_eq!(actual, expected, "AND binary op 3:\n{sql}");
+
+        // Next, we create a new table with a composite primary key, containing a triple
+        // of columns (id, name, age). We test two cases: one where the branches yield
+        // two non-overlapping partial primary keys, but that are not sufficient to complete
+        // the full primary key, and one where the branches yield three partial primary keys
+        // that together form the full primary key.
+        let storage = run("
+            CREATE TABLE Player2 (
+                id INTEGER,
+                name TEXT,
+                age INTEGER,
+                PRIMARY KEY (id, name, age)
+            );
+        ");
+
+        let sql = "
+            SELECT * FROM Player2
+            WHERE
+                id = 1
+                AND name = 'Merlin'
+                AND True;
+        ";
+        let actual = plan(&storage, sql);
+        let expected = select(Select {
+            projection: vec![SelectItem::Wildcard],
+            from: TableWithJoins {
+                relation: TableFactor::Table {
+                    name: "Player2".to_owned(),
+                    alias: None,
+                    index: None,
+                },
+                joins: Vec::new(),
+            },
+            selection: Some(expr("id = 1 AND name = 'Merlin' AND True")),
+            group_by: Vec::new(),
+            having: None,
+        });
+
+        assert_eq!(actual, expected, "AND binary op 3:\n{sql}");
+
+        let sql = "
+            SELECT * FROM Player2
+            WHERE
+                id = 1
+                AND name = 'Merlin'
+                AND age = 42;
+        ";
+
+        let actual = plan(&storage, sql);
+
+        let expected = select(Select {
+            projection: vec![SelectItem::Wildcard],
+            from: TableWithJoins {
+                relation: TableFactor::Table {
+                    name: "Player2".to_owned(),
+                    alias: None,
+                    index: Some(IndexItem::PrimaryKey(vec![expr("1"), expr("'Merlin'"), expr("42")])),
+                },
+                joins: Vec::new(),
+            },
+            selection: None,
+            group_by: Vec::new(),
+            having: None,
+        });
+
+        assert_eq!(actual, expected, "AND binary op 3:\n{sql}");
+
     }
 
     #[test]
