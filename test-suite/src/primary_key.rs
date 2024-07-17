@@ -322,14 +322,16 @@ test_case!(multiple_primary_keys, {
             I64     | I64    | I64;
             1       1       7
         )),
-    ).await;
+    )
+    .await;
 
     // We update the value of the other column for the primary key (1, 1).
     g.named_test(
         "Update row",
         "UPDATE Allegro2 SET other = 3 WHERE table_id = 1 AND user_id = 1;",
         Ok(Payload::Update(1)),
-    ).await;
+    )
+    .await;
 
     // We check that the updated value has been set correctly
     g.named_test(
@@ -340,5 +342,6 @@ test_case!(multiple_primary_keys, {
             I64     | I64    | I64;
             1       1       3
         )),
-    ).await;
+    )
+    .await;
 });
