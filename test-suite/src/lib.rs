@@ -200,6 +200,7 @@ macro_rules! generate_store_tests {
         glue!(point, data_type::point::point);
         glue!(synthesize, synthesize::synthesize);
         glue!(validate_unique, validate::unique::unique);
+        glue!(validate_unique_multi_key, validate::unique::unique_multi_key);
         glue!(validate_types, validate::types::types);
         glue!(function_extract, function::extract::extract);
         glue!(function_radians, function::radians::radians);
