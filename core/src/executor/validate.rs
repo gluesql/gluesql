@@ -146,6 +146,8 @@ pub fn get_primary_key_from_row(row: &[Value], primary_key_indices: &[usize]) ->
     })
 }
 
+type Constraints = (Option<Vec<usize>>, Vec<(Vec<usize>, Vec<String>)>);
+
 pub async fn validate_unique<T: Store>(
     storage: &T,
     table_name: &str,
@@ -156,10 +158,7 @@ pub async fn validate_unique<T: Store>(
     // First, we retrieve the primary key indices and the unique columns to validate.
     // Specifically, we only care about validating the primary key indices in the case of an UPDATE
     // if the primary key columns are specified in the set of the columns being updated.
-    let (primary_key_indices, unique_columns): (
-        Option<Vec<usize>>,
-        Vec<(Vec<usize>, Vec<String>)>,
-    ) = match &column_validation {
+    let (primary_key_indices, unique_columns): Constraints = match &column_validation {
         ColumnValidation::All(column_defs) => {
             let primary_keys: Vec<usize> = get_primary_key_column_indices(column_defs);
             (
