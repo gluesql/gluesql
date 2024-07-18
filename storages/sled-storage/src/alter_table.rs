@@ -52,6 +52,7 @@ impl AlterTable for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                unique_constraints,
                 comment,
                 ..
             } = old_schema
@@ -64,6 +65,7 @@ impl AlterTable for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                unique_constraints,
                 comment,
             };
 
@@ -164,6 +166,7 @@ impl AlterTable for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                unique_constraints,
                 comment: schema_comment,
                 ..
             } = snapshot
@@ -215,6 +218,7 @@ impl AlterTable for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                unique_constraints,
                 comment: schema_comment,
             };
             let (snapshot, _) = snapshot.update(txid, schema);
@@ -269,6 +273,7 @@ impl AlterTable for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                unique_constraints,
                 comment,
             } = schema_snapshot
                 .get(txid, None)
@@ -368,6 +373,7 @@ impl AlterTable for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                unique_constraints,
                 comment,
             };
             let (schema_snapshot, _) = schema_snapshot.update(txid, schema);
@@ -425,6 +431,7 @@ impl AlterTable for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                unique_constraints,
                 comment,
             } = schema_snapshot
                 .get(txid, None)
@@ -507,6 +514,7 @@ impl AlterTable for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                unique_constraints,
                 comment,
             };
             let (schema_snapshot, _) = schema_snapshot.update(txid, schema);

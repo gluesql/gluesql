@@ -1,6 +1,6 @@
 use {
     crate::{
-        ast::{ColumnDef, Expr, ForeignKey, OrderByExpr, Statement, ToSql},
+        ast::{ColumnDef, Expr, ForeignKey, OrderByExpr, Statement, ToSql, UniqueConstraint},
         prelude::{parse, translate},
         result::Result,
     },
@@ -34,6 +34,7 @@ pub struct Schema {
     pub indexes: Vec<SchemaIndex>,
     pub engine: Option<String>,
     pub foreign_keys: Vec<ForeignKey>,
+    pub unique_constraints: Vec<UniqueConstraint>,
     pub comment: Option<String>,
 }
 
@@ -53,6 +54,7 @@ impl Schema {
             indexes,
             engine,
             foreign_keys,
+            unique_constraints,
             comment,
         } = self;
 
@@ -64,6 +66,7 @@ impl Schema {
             comment: comment.to_owned(),
             source: None,
             foreign_keys: foreign_keys.to_owned(),
+            unique_constraints: unique_constraints.to_owned(),
         }
         .to_sql();
 
@@ -121,6 +124,7 @@ impl Schema {
                 columns,
                 engine,
                 foreign_keys,
+                unique_constraints,
                 comment,
                 ..
             } => Ok(Schema {
@@ -129,6 +133,7 @@ impl Schema {
                 indexes,
                 engine,
                 foreign_keys,
+                unique_constraints,
                 comment,
             }),
             _ => Err(SchemaParseError::CannotParseDDL.into()),
@@ -147,7 +152,7 @@ mod tests {
     use {
         super::SchemaParseError,
         crate::{
-            ast::{AstLiteral, ColumnDef, ColumnUniqueOption, Expr},
+            ast::{AstLiteral, ColumnDef, ColumnUniqueOption, Expr, UniqueConstraint},
             chrono::Utc,
             data::{Schema, SchemaIndex, SchemaIndexOrd},
             prelude::DataType,
@@ -161,6 +166,7 @@ mod tests {
             indexes,
             engine,
             foreign_keys,
+            unique_constraints,
             comment,
         } = actual;
 
@@ -170,6 +176,7 @@ mod tests {
             indexes: indexes_e,
             engine: engine_e,
             foreign_keys: foreign_keys_e,
+            unique_constraints: unique_constraints_e,
             comment: comment_e,
         } = expected;
 
@@ -177,6 +184,7 @@ mod tests {
         assert_eq!(column_defs, column_defs_e);
         assert_eq!(engine, engine_e);
         assert_eq!(foreign_keys, foreign_keys_e);
+        assert_eq!(unique_constraints, unique_constraints_e);
         assert_eq!(comment, comment_e);
         indexes
             .into_iter()
@@ -225,6 +233,7 @@ mod tests {
             indexes: Vec::new(),
             engine: None,
             foreign_keys: Vec::new(),
+            unique_constraints: Vec::new(),
             comment: None,
         };
 
@@ -240,6 +249,7 @@ mod tests {
             indexes: Vec::new(),
             engine: None,
             foreign_keys: Vec::new(),
+            unique_constraints: Vec::new(),
             comment: None,
         };
         let ddl = r#"CREATE TABLE "Test";"#;
@@ -264,6 +274,7 @@ mod tests {
             indexes: Vec::new(),
             engine: None,
             foreign_keys: Vec::new(),
+            unique_constraints: Vec::new(),
             comment: None,
         };
 
@@ -307,6 +318,7 @@ mod tests {
             indexes: Vec::new(),
             engine: None,
             foreign_keys: Vec::new(),
+            unique_constraints: Vec::new(),
             comment: None,
         };
 
@@ -363,6 +375,7 @@ mod tests {
             ],
             engine: None,
             foreign_keys: Vec::new(),
+            unique_constraints: Vec::new(),
             comment: None,
         };
         let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);
@@ -409,10 +422,54 @@ CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);"#;
             }],
             engine: None,
             foreign_keys: Vec::new(),
+            unique_constraints: Vec::new(),
             comment: None,
         };
         let ddl = r#"CREATE TABLE "1" ("2" INT NULL, ";" INT NULL);
 CREATE INDEX "." ON "1" (";");"#;
+        assert_eq!(schema.to_ddl(), ddl);
+
+        let actual = Schema::from_ddl(ddl).unwrap();
+        assert_schema(actual, schema);
+    }
+
+    #[test]
+    /// Test schema involving unique constraints.
+    fn unique_identifiers() {
+        let schema = Schema {
+            table_name: "User".to_owned(),
+            column_defs: Some(vec![
+                ColumnDef {
+                    name: "id".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: false,
+                    default: None,
+                    unique: None,
+                    comment: None,
+                },
+                ColumnDef {
+                    name: "name".to_owned(),
+                    data_type: DataType::Text,
+                    nullable: false,
+                    default: None,
+                    unique: None,
+                    comment: None,
+                },
+            ]),
+            indexes: Vec::new(),
+            engine: None,
+            foreign_keys: Vec::new(),
+            unique_constraints: vec![
+                UniqueConstraint::new(Some("unique_name".to_owned()), vec!["name".to_owned()]),
+                UniqueConstraint::new(
+                    Some("unique_id_and_name".to_owned()),
+                    vec!["id".to_owned(), "name".to_owned()],
+                ),
+            ],
+            comment: None,
+        };
+
+        let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL, CONSTRAINT "unique_name" UNIQUE ("name"), CONSTRAINT "unique_id_and_name" UNIQUE ("id", "name"));"#;
         assert_eq!(schema.to_ddl(), ddl);
 
         let actual = Schema::from_ddl(ddl).unwrap();

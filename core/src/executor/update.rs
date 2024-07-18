@@ -224,6 +224,7 @@ pub async fn update<T: GStore + GStoreMut>(
     let Schema {
         column_defs,
         foreign_keys,
+        unique_constraints,
         ..
     } = storage
         .fetch_schema(table_name)
@@ -327,7 +328,14 @@ pub async fn update<T: GStore + GStoreMut>(
             Row::Map(_) => None,
         });
 
-        validate_unique(storage, table_name, column_validation, rows).await?;
+        validate_unique(
+            storage,
+            table_name,
+            column_validation,
+            &unique_constraints,
+            rows,
+        )
+        .await?;
     }
 
     let num_rows = rows.len();

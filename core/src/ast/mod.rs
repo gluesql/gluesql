@@ -21,12 +21,100 @@ use {
     strum_macros::Display,
 };
 
+use itertools::Itertools;
+
 pub trait ToSql {
     fn to_sql(&self) -> String;
 }
 
 pub trait ToSqlUnquoted {
     fn to_sql_unquoted(&self) -> String;
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// Struct representing a UNIQUE constraint on a table.
+///
+/// A UNIQUE constraint is a single field or combination of fields that uniquely defines a record.
+/// No two records can have the same value(s) for the field(s) defined by the UNIQUE constraint.
+///
+/// # Example
+/// You can define a single-field UNIQUE constraint like this:
+///
+/// ```sql
+/// CREATE TABLE Test (
+///    id INTEGER,
+///    name TEXT,
+///    UNIQUE (id)
+/// );
+/// ```
+///
+/// Or, analogously, using explicit column constraints:
+/// ```sql
+/// CREATE TABLE Test (
+///    id INTEGER,
+///    name TEXT,
+///    CONSTRAINT unique_id UNIQUE (id)
+/// );
+/// ```
+///
+/// Or a multi-field UNIQUE constraint like this:
+/// ```sql
+/// CREATE TABLE Test (
+///     id INTEGER,
+///     name TEXT,
+///     UNIQUE (id, name)
+/// );
+/// ```
+///
+/// Or, analogously, using explicit column constraints:
+/// ```sql
+/// CREATE TABLE Test (
+///    id INTEGER,
+///    name TEXT,
+///    CONSTRAINT unique_id_name UNIQUE (id, name)
+/// );
+/// ```
+pub struct UniqueConstraint {
+    /// Optional name for the constraint.
+    name: Option<String>,
+    /// The fields that are part of the UNIQUE constraint.
+    columns: Vec<String>,
+}
+
+impl UniqueConstraint {
+    /// Creates a new UNIQUE constraint with the given name and columns.
+    pub fn new(name: Option<String>, columns: Vec<String>) -> Self {
+        assert!(
+            !columns.is_empty(),
+            "A UNIQUE constraint must have at least one column."
+        );
+        Self { name, columns }
+    }
+
+    /// Returns the name of the UNIQUE constraint.
+    pub fn name(&self) -> Option<&str> {
+        self.name.as_deref()
+    }
+
+    /// Returns the columns that are part of the UNIQUE constraint.
+    pub fn columns(&self) -> &[String] {
+        &self.columns
+    }
+}
+
+impl ToSql for UniqueConstraint {
+    fn to_sql(&self) -> String {
+        let columns = self
+            .columns
+            .iter()
+            .map(|column| format!(r#""{}""#, column))
+            .join(", ");
+        if let Some(name) = &self.name {
+            format!(r#"CONSTRAINT "{}" UNIQUE ({})"#, name, columns)
+        } else {
+            format!("UNIQUE ({})", columns)
+        }
+    }
 }
 
 #[derive(PartialEq, Debug, Clone, Eq, Hash, Serialize, Deserialize)]
@@ -139,6 +227,7 @@ pub enum Statement {
         source: Option<Box<Query>>,
         engine: Option<String>,
         foreign_keys: Vec<ForeignKey>,
+        unique_constraints: Vec<UniqueConstraint>,
         comment: Option<String>,
     },
     /// CREATE FUNCTION
@@ -264,6 +353,7 @@ impl ToSql for Statement {
                 source,
                 engine,
                 foreign_keys,
+                unique_constraints,
                 comment,
             } => {
                 let if_not_exists = if_not_exists.then_some("IF NOT EXISTS");
@@ -289,11 +379,11 @@ impl ToSql for Statement {
                     (Some(query), _) => Some(format!("AS {}", query.to_sql())),
                     (None, None) => None,
                     (None, Some(columns)) => {
-                        let foreign_keys = foreign_keys.iter().map(ToSql::to_sql);
                         let mut body = columns
                             .iter()
                             .map(ToSql::to_sql)
-                            .chain(foreign_keys)
+                            .chain(foreign_keys.iter().map(ToSql::to_sql))
+                            .chain(unique_constraints.iter().map(ToSql::to_sql))
                             .collect::<Vec<_>>();
 
                         // If we identified earlier that there is a primary key, we add it
@@ -442,7 +532,8 @@ mod tests {
         crate::ast::{
             AlterTableOperation, Assignment, AstLiteral, BinaryOperator, ColumnDef, DataType, Expr,
             ForeignKey, OperateFunctionArg, OrderByExpr, Query, ReferentialAction, Select,
-            SelectItem, SetExpr, Statement, TableFactor, TableWithJoins, ToSql, Values, Variable,
+            SelectItem, SetExpr, Statement, TableFactor, TableWithJoins, ToSql, UniqueConstraint,
+            Values, Variable,
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,
@@ -558,6 +649,7 @@ mod tests {
                 source: None,
                 engine: None,
                 foreign_keys: Vec::new(),
+                unique_constraints: Vec::new(),
                 comment: None,
             }
             .to_sql()
@@ -572,6 +664,7 @@ mod tests {
                 source: None,
                 engine: None,
                 foreign_keys: Vec::new(),
+                unique_constraints: Vec::new(),
                 comment: None,
             }
             .to_sql()
@@ -593,6 +686,7 @@ mod tests {
                 source: None,
                 engine: None,
                 foreign_keys: Vec::new(),
+                unique_constraints: Vec::new(),
                 comment: Some("this is comment".to_owned()),
             }
             .to_sql()
@@ -632,6 +726,155 @@ mod tests {
                 source: None,
                 engine: None,
                 foreign_keys: Vec::new(),
+                unique_constraints: Vec::new(),
+                comment: None,
+            }
+            .to_sql()
+        );
+    }
+
+    #[test]
+    /// Test to evaluate whether the `CREATE TABLE` statement involving UNIQUE constraints can be converted to SQL.
+    fn to_sql_create_table_with_unique() {
+        assert_eq!(
+            r#"CREATE TABLE "Foo" ("id" INT NOT NULL, "name" TEXT NOT NULL, UNIQUE ("id"));"#,
+            Statement::CreateTable {
+                if_not_exists: false,
+                name: "Foo".into(),
+                columns: Some(vec![
+                    ColumnDef {
+                        name: "id".to_owned(),
+                        data_type: DataType::Int,
+                        nullable: false,
+                        default: None,
+                        unique: None,
+                        comment: None,
+                    },
+                    ColumnDef {
+                        name: "name".to_owned(),
+                        data_type: DataType::Text,
+                        nullable: false,
+                        default: None,
+                        unique: None,
+                        comment: None,
+                    }
+                ]),
+                source: None,
+                engine: None,
+                foreign_keys: Vec::new(),
+                unique_constraints: vec![UniqueConstraint::new(None, vec!["id".to_owned()])],
+                comment: None,
+            }
+            .to_sql()
+        );
+
+        // Next, we try one with a named constraint.
+        assert_eq!(
+            r#"CREATE TABLE "Foo" ("id" INT NOT NULL, "name" TEXT NOT NULL, CONSTRAINT "unique_id" UNIQUE ("id"));"#,
+            Statement::CreateTable {
+                if_not_exists: false,
+                name: "Foo".into(),
+                columns: Some(vec![
+                    ColumnDef {
+                        name: "id".to_owned(),
+                        data_type: DataType::Int,
+                        nullable: false,
+                        default: None,
+                        unique: None,
+                        comment: None,
+                    },
+                    ColumnDef {
+                        name: "name".to_owned(),
+                        data_type: DataType::Text,
+                        nullable: false,
+                        default: None,
+                        unique: None,
+                        comment: None,
+                    }
+                ]),
+                source: None,
+                engine: None,
+                foreign_keys: Vec::new(),
+                unique_constraints: vec![UniqueConstraint::new(
+                    Some("unique_id".to_owned()),
+                    vec!["id".to_owned()]
+                )],
+                comment: None,
+            }
+            .to_sql()
+        );
+
+        // And one involving multiple columns, with no name.
+        assert_eq!(
+            r#"CREATE TABLE "Foo" ("id" INT NOT NULL, "name" TEXT NOT NULL, UNIQUE ("id", "name"));"#,
+            Statement::CreateTable {
+                if_not_exists: false,
+                name: "Foo".into(),
+                columns: Some(vec![
+                    ColumnDef {
+                        name: "id".to_owned(),
+                        data_type: DataType::Int,
+                        nullable: false,
+                        default: None,
+                        unique: None,
+                        comment: None,
+                    },
+                    ColumnDef {
+                        name: "name".to_owned(),
+                        data_type: DataType::Text,
+                        nullable: false,
+                        default: None,
+                        unique: None,
+                        comment: None,
+                    }
+                ]),
+                source: None,
+                engine: None,
+                foreign_keys: Vec::new(),
+                unique_constraints: vec![UniqueConstraint::new(
+                    None,
+                    vec!["id".to_owned(), "name".to_owned()]
+                )],
+                comment: None,
+            }
+            .to_sql()
+        );
+
+        // And multiple constraint at ones.
+        assert_eq!(
+            r#"CREATE TABLE "Foo" ("id" INT NOT NULL, "name" TEXT NOT NULL, UNIQUE ("id"), UNIQUE ("name"), CONSTRAINT "my_unique" UNIQUE ("id", "name"));"#,
+            Statement::CreateTable {
+                if_not_exists: false,
+                name: "Foo".into(),
+                columns: Some(vec![
+                    ColumnDef {
+                        name: "id".to_owned(),
+                        data_type: DataType::Int,
+                        nullable: false,
+                        default: None,
+                        unique: None,
+                        comment: None,
+                    },
+                    ColumnDef {
+                        name: "name".to_owned(),
+                        data_type: DataType::Text,
+                        nullable: false,
+                        default: None,
+                        unique: None,
+                        comment: None,
+                    }
+                ]),
+                source: None,
+                engine: None,
+                foreign_keys: Vec::new(),
+                unique_constraints: vec![
+                    UniqueConstraint::new(None, vec!["id".to_owned()]),
+                    UniqueConstraint::new(None, vec!["name".to_owned()]),
+                    UniqueConstraint::new(
+                        Some("my_unique".to_owned()),
+                        vec!["id".to_owned(), "name".to_owned()]
+                    ),
+                ],
                 comment: None,
             }
             .to_sql()
@@ -676,6 +919,7 @@ mod tests {
                 })),
                 engine: None,
                 foreign_keys: Vec::new(),
+                unique_constraints: Vec::new(),
                 comment: None,
             }
             .to_sql()
@@ -697,6 +941,7 @@ mod tests {
                 })),
                 engine: None,
                 foreign_keys: Vec::new(),
+                unique_constraints: Vec::new(),
                 comment: None,
             }
             .to_sql()
@@ -714,6 +959,7 @@ mod tests {
                 source: None,
                 engine: Some("MEMORY".to_owned()),
                 foreign_keys: Vec::new(),
+                unique_constraints: Vec::new(),
                 comment: None,
             }
             .to_sql()
@@ -735,6 +981,7 @@ mod tests {
                 source: None,
                 engine: Some("SLED".to_owned()),
                 foreign_keys: Vec::new(),
+                unique_constraints: Vec::new(),
                 comment: None,
             }
             .to_sql()
@@ -989,5 +1236,33 @@ mod tests {
             }
             .to_sql()
         )
+    }
+
+    #[test]
+    /// Test whether the UniqueConstraint struct can be converted to SQL.
+    fn to_sql_unique() {
+        assert_eq!(
+            r#"UNIQUE ("id")"#,
+            UniqueConstraint::new(None, vec!["id".to_owned()]).to_sql()
+        );
+
+        assert_eq!(
+            r#"CONSTRAINT "unique_id" UNIQUE ("id")"#,
+            UniqueConstraint::new(Some("unique_id".to_owned()), vec!["id".to_owned()]).to_sql()
+        );
+
+        assert_eq!(
+            r#"UNIQUE ("id", "name")"#,
+            UniqueConstraint::new(None, vec!["id".to_owned(), "name".to_owned()]).to_sql()
+        );
+
+        assert_eq!(
+            r#"CONSTRAINT "unique_id_name" UNIQUE ("id", "name")"#,
+            UniqueConstraint::new(
+                Some("unique_id_name".to_owned()),
+                vec!["id".to_owned(), "name".to_owned()]
+            )
+            .to_sql()
+        );
     }
 }

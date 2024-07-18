@@ -7,6 +7,8 @@ mod function;
 mod operator;
 mod query;
 
+use crate::ast::UniqueConstraint;
+
 pub use self::{
     data_type::translate_data_type,
     ddl::{translate_column_def, translate_operate_function_arg},
@@ -145,8 +147,9 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             // handling also the other constraints that are defined on the table.
 
             let mut foreign_keys = Vec::new();
+            let mut unique_constraints = Vec::new();
 
-            for constraint in constraints.iter() {
+            for constraint in constraints {
                 if let sqlparser::ast::TableConstraint::PrimaryKey {
                     columns: primary_key_columns,
                     ..
@@ -167,6 +170,20 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                             column.set_primary();
                         }
                     }
+                } else if let sqlparser::ast::TableConstraint::Unique {
+                    name,
+                    columns: unique_columns,
+                    ..
+                } = constraint
+                {
+                    let unique_columns = unique_columns
+                        .iter()
+                        .map(|c| c.value.clone())
+                        .collect::<Vec<_>>();
+                    unique_constraints.push(UniqueConstraint::new(
+                        name.clone().map(|n| n.value),
+                        unique_columns,
+                    ));
                 } else {
                     foreign_keys.push(translate_foreign_key(constraint)?);
                 }
@@ -182,6 +199,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 },
                 engine: engine.clone(),
                 foreign_keys,
+                unique_constraints,
                 comment: comment.clone(),
             })
         }
@@ -490,6 +508,7 @@ mod tests {
                 on_delete: ReferentialAction::NoAction,
                 on_update: ReferentialAction::Cascade,
             }],
+            unique_constraints: vec![],
             comment: None,
         });
 
@@ -531,6 +550,7 @@ mod tests {
                 on_delete: ReferentialAction::Cascade,
                 on_update: ReferentialAction::NoAction,
             }],
+            unique_constraints: vec![],
             comment: None,
         });
 
@@ -572,6 +592,7 @@ mod tests {
                 on_delete: ReferentialAction::Cascade,
                 on_update: ReferentialAction::Cascade,
             }],
+            unique_constraints: vec![],
             comment: None,
         });
 

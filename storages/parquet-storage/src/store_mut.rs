@@ -491,6 +491,18 @@ impl ParquetStorage {
                 value: Some(serde_json::to_string(&foreign_key).map_storage_err()?),
             });
         }
+        for (index, unique_constraint) in schema.unique_constraints.iter().enumerate() {
+            metadata.push(KeyValue {
+                key: format!(
+                    "unique_constraint_{}",
+                    unique_constraint
+                        .name()
+                        .map(|name| name.to_owned())
+                        .unwrap_or(index.to_string())
+                ),
+                value: Some(serde_json::to_string(&unique_constraint).map_storage_err()?),
+            });
+        }
 
         if let Some(column_defs) = &schema.column_defs {
             for column_def in column_defs {

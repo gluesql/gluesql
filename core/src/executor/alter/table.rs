@@ -1,7 +1,9 @@
 use {
     super::{validate, validate_column_names, AlterError},
     crate::{
-        ast::{ColumnDef, ForeignKey, Query, SetExpr, TableFactor, ToSql, Values},
+        ast::{
+            ColumnDef, ForeignKey, Query, SetExpr, TableFactor, ToSql, UniqueConstraint, Values,
+        },
         data::{Schema, TableError},
         executor::{evaluate_stateless, select::select},
         prelude::{DataType, Value},
@@ -20,6 +22,7 @@ pub struct CreateTableOptions<'a> {
     pub source: &'a Option<Box<Query>>,
     pub engine: &'a Option<String>,
     pub foreign_keys: &'a Vec<ForeignKey>,
+    pub unique_constraints: &'a Vec<UniqueConstraint>,
     pub comment: &'a Option<String>,
 }
 
@@ -32,6 +35,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
         source,
         engine,
         foreign_keys,
+        unique_constraints,
         comment,
     }: CreateTableOptions<'_>,
 ) -> Result<()> {
@@ -187,6 +191,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
             indexes: vec![],
             engine: engine.clone(),
             foreign_keys: foreign_keys.clone(),
+            unique_constraints: unique_constraints.clone(),
             comment: comment.clone(),
         };
 

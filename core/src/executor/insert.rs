@@ -4,7 +4,7 @@ use {
         validate::{validate_unique, ColumnValidation},
     },
     crate::{
-        ast::{ColumnDef, Expr, ForeignKey, Query, SetExpr, Values},
+        ast::{ColumnDef, Expr, ForeignKey, Query, SetExpr, UniqueConstraint, Values},
         data::{Key, Row, Schema, Value},
         executor::{evaluate::evaluate_stateless, limit::Limit},
         result::Result,
@@ -64,6 +64,7 @@ pub async fn insert<T: GStore + GStoreMut>(
     let Schema {
         column_defs,
         foreign_keys,
+        unique_constraints,
         ..
     } = storage
         .fetch_schema(table_name)
@@ -79,6 +80,7 @@ pub async fn insert<T: GStore + GStoreMut>(
                 columns,
                 source,
                 foreign_keys,
+                unique_constraints,
             )
             .await
         }
@@ -112,6 +114,7 @@ async fn fetch_vec_rows<T: GStore>(
     columns: &[String],
     source: &Query,
     foreign_keys: Vec<ForeignKey>,
+    unique_constraints: Vec<UniqueConstraint>,
 ) -> Result<RowsData> {
     let labels = Rc::from(
         column_defs
@@ -178,6 +181,7 @@ async fn fetch_vec_rows<T: GStore>(
         storage,
         table_name,
         column_validation,
+        &unique_constraints,
         rows.iter().map(|values| values.as_slice()),
     )
     .await?;

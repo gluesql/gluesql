@@ -2,7 +2,7 @@ use {
     column_def::ParquetSchemaType,
     error::{OptionExt, ParquetStorageError, ResultExt},
     gluesql_core::{
-        ast::{ColumnDef, ForeignKey},
+        ast::{ColumnDef, ForeignKey, UniqueConstraint},
         data::Schema,
         error::{Error, Result},
         prelude::{DataType, Key, Value},
@@ -60,6 +60,7 @@ impl ParquetStorage {
 
         let mut is_schemaless = false;
         let mut foreign_keys = Vec::new();
+        let mut unique_constraints = Vec::new();
         let mut comment = None;
         if let Some(metadata) = key_value_file_metadata {
             for kv in metadata.iter() {
@@ -78,6 +79,17 @@ impl ParquetStorage {
                         .map_storage_err()?;
 
                     foreign_keys.push(fk);
+                } else if kv.key.starts_with("unique_constraint") {
+                    let uc = kv
+                        .value
+                        .as_ref()
+                        .map(|x| from_str::<UniqueConstraint>(x))
+                        .map_storage_err(Error::StorageMsg(
+                            "No value found on metadata".to_owned(),
+                        ))?
+                        .map_storage_err()?;
+
+                    unique_constraints.push(uc);
                 }
             }
         }
@@ -105,6 +117,7 @@ impl ParquetStorage {
             indexes: vec![],
             engine: None,
             foreign_keys,
+            unique_constraints,
             comment,
         }))
     }
@@ -189,6 +202,7 @@ impl ParquetStorage {
             indexes: vec![],
             engine: None,
             foreign_keys: Vec::new(),
+            unique_constraints: Vec::new(),
             comment: None,
         }
     }
