@@ -91,7 +91,11 @@ impl ToSql for ColumnDef {
             let default = default
                 .as_ref()
                 .map(|expr| format!("DEFAULT {}", expr.to_sql()));
-            let unique = if *unique { Some("UNIQUE".to_owned()) } else { None };
+            let unique = if *unique {
+                Some("UNIQUE".to_owned())
+            } else {
+                None
+            };
             let comment = comment
                 .as_ref()
                 .map(|comment| format!("COMMENT '{}'", comment));
@@ -122,9 +126,7 @@ impl ToSql for OperateFunctionArg {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{
-        AstLiteral, ColumnDef, DataType, Expr, OperateFunctionArg, ToSql,
-    };
+    use crate::ast::{AstLiteral, ColumnDef, DataType, Expr, OperateFunctionArg, ToSql};
 
     #[test]
     fn to_sql_column_def() {

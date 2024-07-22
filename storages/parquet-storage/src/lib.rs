@@ -158,7 +158,8 @@ impl ParquetStorage {
                     row.push(value.clone());
                 }
 
-                let generated_key = if let Some(primary_key_indices) = primary_key_indices.as_ref() {
+                let generated_key = if let Some(primary_key_indices) = primary_key_indices.as_ref()
+                {
                     gluesql_core::executor::get_primary_key_from_row(&row, primary_key_indices)?
                 } else {
                     key_counter += 1;

@@ -91,7 +91,7 @@ impl Build for CreateTableNode {
                     }
                 }
             }
-            
+
             primary_key = Some(primary_key_constraint.into());
         };
 
@@ -110,7 +110,10 @@ impl Build for CreateTableNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::{ast_builder::{table, test, Build}, result::TranslateError};
+    use crate::{
+        ast_builder::{table, test, Build},
+        result::TranslateError,
+    };
 
     #[test]
     fn create_table() {

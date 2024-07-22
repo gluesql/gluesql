@@ -142,17 +142,15 @@ pub async fn validate_unique<T: Store>(
     // if the primary key columns are specified in the set of the columns being updated.
     let (primary_key_indices, unique_columns): (Option<Vec<usize>>, Vec<(usize, &str)>) =
         match &column_validation {
-            ColumnValidation::All(column_defs) => {
-                (
-                    primary_key.map(|pk| get_primary_key_column_indices(column_defs, pk)),
-                    column_defs
-                        .iter()
-                        .enumerate()
-                        .filter(|(_, column_def)| column_def.unique)
-                        .map(|(index, column_def)| (index, column_def.name.as_str()))
-                        .collect(),
-                )
-            }
+            ColumnValidation::All(column_defs) => (
+                primary_key.map(|pk| get_primary_key_column_indices(column_defs, pk)),
+                column_defs
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, column_def)| column_def.unique)
+                    .map(|(index, column_def)| (index, column_def.name.as_str()))
+                    .collect(),
+            ),
             ColumnValidation::SpecifiedColumns(column_defs, specified_columns) => {
                 (
                     primary_key.and_then(|pk| {
@@ -167,8 +165,7 @@ pub async fn validate_unique<T: Store>(
                         .iter()
                         .enumerate()
                         .filter(|(_, column_def)| {
-                            column_def.unique
-                                && specified_columns.contains(&column_def.name)
+                            column_def.unique && specified_columns.contains(&column_def.name)
                         })
                         .map(|(index, column_def)| (index, column_def.name.as_str()))
                         .collect(),

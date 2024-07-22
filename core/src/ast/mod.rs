@@ -212,8 +212,9 @@ impl ToSql for Statement {
             } => {
                 let if_not_exists = if_not_exists.then_some("IF NOT EXISTS");
 
-                let primary_key =
-                    primary_key.as_ref().map(|cols| format!("PRIMARY KEY ({})", cols.join(", ")));
+                let primary_key = primary_key
+                    .as_ref()
+                    .map(|cols| format!("PRIMARY KEY ({})", cols.join(", ")));
                 let body = match (source, columns) {
                     (Some(query), _) => Some(format!("AS {}", query.to_sql())),
                     (None, None) => None,

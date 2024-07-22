@@ -252,7 +252,14 @@ async fn execute_inner<T: GStore + GStoreMut>(
                     Row::Map(_) => None,
                 });
 
-                validate_unique(storage, table_name, primary_key.as_deref(), column_validation, rows).await?;
+                validate_unique(
+                    storage,
+                    table_name,
+                    primary_key.as_deref(),
+                    column_validation,
+                    rows,
+                )
+                .await?;
             }
 
             let num_rows = rows.len();

@@ -83,7 +83,7 @@ impl<'a> TryFrom<ParquetSchemaType<'a>> for ColumnDef {
                 match kv.key.as_str() {
                     k if k == format!("unique_option{}", name) => {
                         unique = true;
-                    },
+                    }
                     k if k == format!("data_type{}", name) => {
                         if let Some(value) = kv.value.as_deref() {
                             if let Some(mapped_data_type) = map_parquet_to_gluesql(value) {

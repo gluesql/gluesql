@@ -170,7 +170,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
             }
             .into());
         }
-        
+
         dbg!(&reference_table_primary_keys);
         dbg!(&referenced_column_def.name);
         if reference_table_primary_keys.map_or(true, |reference_table_primary_keys| {

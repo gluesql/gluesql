@@ -306,7 +306,9 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                                 .and_then(|keys| {
                                                     keys.iter()
                                                         .any(|key| key == &column_def.name)
-                                                        .then(|| Value::Str("PRIMARY KEY".to_owned()))
+                                                        .then(|| {
+                                                            Value::Str("PRIMARY KEY".to_owned())
+                                                        })
                                                 })
                                                 .unwrap_or(Value::Null),
                                         );
