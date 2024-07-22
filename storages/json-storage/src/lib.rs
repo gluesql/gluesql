@@ -188,7 +188,7 @@ impl JsonStorage {
             }
 
             let key = if let Some(primary_key_indices) = primary_key_indices.as_ref() {
-                gluesql_core::executor::get_primary_key_from_row(&values, &primary_key_indices)?
+                gluesql_core::executor::get_primary_key_from_row(&values, primary_key_indices)?
             } else {
                 get_index_key()?
             };
