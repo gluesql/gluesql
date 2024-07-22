@@ -1,13 +1,11 @@
 use {
     crate::{
-        ast::ColumnDef,
-        data::{Key, Value},
+        data::{Key, Schema, Value},
         result::Result,
         store::{DataRow, Store},
     },
     futures::stream::TryStreamExt,
     im_rc::HashSet,
-    itertools::Itertools,
     serde::Serialize,
     std::fmt::Debug,
     thiserror::Error as ThisError,
@@ -29,11 +27,11 @@ pub enum ValidateError {
     DuplicateEntryOnPrimaryKeyField(Option<Key>, Option<String>),
 }
 
-pub enum ColumnValidation<'column_def> {
+pub enum ColumnValidation {
     /// `INSERT`
-    All(&'column_def [ColumnDef]),
+    All,
     /// `UPDATE`
-    SpecifiedColumns(&'column_def [ColumnDef], Vec<String>),
+    SpecifiedColumns(Vec<String>),
 }
 
 #[derive(Debug)]
@@ -83,25 +81,6 @@ impl UniqueConstraint {
     }
 }
 
-/// Returns the indices of the primary key columns.
-///
-/// # Arguments
-/// * `column_defs` - The column definitions of the table.
-/// * `primary_key` - The primary key of the table.
-pub fn get_primary_key_column_indices<S: AsRef<str>>(
-    column_defs: &[ColumnDef],
-    primary_key: &[S],
-) -> Vec<usize> {
-    primary_key
-        .iter()
-        .positions(|pk| {
-            column_defs
-                .iter()
-                .any(|column_def| column_def.name == *pk.as_ref())
-        })
-        .collect()
-}
-
 /// Returns the key associated with the given row.
 ///
 /// # Arguments
@@ -132,8 +111,8 @@ pub fn get_primary_key_from_row(row: &[Value], primary_key_indices: &[usize]) ->
 pub async fn validate_unique<T: Store>(
     storage: &T,
     table_name: &str,
-    primary_key: Option<&[String]>,
-    column_validation: ColumnValidation<'_>,
+    schema: &Schema,
+    column_validation: ColumnValidation,
     row_iter: impl Iterator<Item = &[Value]> + Clone,
 ) -> Result<()> {
     // First, we retrieve the primary key indices and the unique columns to validate.
@@ -141,35 +120,35 @@ pub async fn validate_unique<T: Store>(
     // if the primary key columns are specified in the set of the columns being updated.
     let (primary_key_indices, unique_columns): (Option<Vec<usize>>, Vec<(usize, &str)>) =
         match &column_validation {
-            ColumnValidation::All(column_defs) => (
-                primary_key.map(|pk| get_primary_key_column_indices(column_defs, pk)),
-                column_defs
+            ColumnValidation::All => (
+                schema.get_primary_key_column_indices(),
+                schema
+                    .column_defs
+                    .as_ref()
+                    .unwrap()
                     .iter()
                     .enumerate()
                     .filter(|(_, column_def)| column_def.unique)
                     .map(|(index, column_def)| (index, column_def.name.as_str()))
                     .collect(),
             ),
-            ColumnValidation::SpecifiedColumns(column_defs, specified_columns) => {
-                (
-                    primary_key.and_then(|pk| {
-                        // First we check if the primary keys are among the specified columns.
-                        if pk.iter().any(|pk| specified_columns.contains(pk)) {
-                            Some(get_primary_key_column_indices(column_defs, pk))
-                        } else {
-                            None
-                        }
-                    }),
-                    column_defs
-                        .iter()
-                        .enumerate()
-                        .filter(|(_, column_def)| {
-                            column_def.unique && specified_columns.contains(&column_def.name)
-                        })
-                        .map(|(index, column_def)| (index, column_def.name.as_str()))
-                        .collect(),
-                )
-            }
+            ColumnValidation::SpecifiedColumns(specified_columns) => (
+                schema
+                    .has_primary_key_columns(specified_columns)
+                    .then(|| schema.get_primary_key_column_indices())
+                    .flatten(),
+                schema
+                    .column_defs
+                    .as_ref()
+                    .unwrap()
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, column_def)| {
+                        column_def.unique && specified_columns.contains(&column_def.name)
+                    })
+                    .map(|(index, column_def)| (index, column_def.name.as_str()))
+                    .collect(),
+            ),
         };
 
     // We then proceed to validate the primary keys.

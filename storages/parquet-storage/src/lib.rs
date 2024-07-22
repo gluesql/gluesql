@@ -145,10 +145,8 @@ impl ParquetStorage {
         let mut rows = Vec::new();
         let mut key_counter: u64 = 0;
 
-        if let Some(column_defs) = &fetched_schema.column_defs {
-            let primary_key_indices = fetched_schema.primary_key.as_ref().map(|primary_key| {
-                gluesql_core::executor::get_primary_key_column_indices(column_defs, primary_key)
-            });
+        if fetched_schema.has_column_defs() {
+            let primary_key_indices = fetched_schema.get_primary_key_column_indices();
             for record in row_iter {
                 let record: Row = record.map_storage_err()?;
                 let mut row = Vec::new();

@@ -134,20 +134,9 @@ impl CsvStorage {
                 .collect::<Vec<_>>())
         };
 
-        if let Schema {
-            column_defs: Some(column_defs),
-            primary_key,
-            ..
-        } = schema
-        {
-            let columns = column_defs
-                .iter()
-                .map(|column_def| column_def.name.to_owned())
-                .collect::<Vec<_>>();
-
-            let primary_key_indices = primary_key.map(|pk| {
-                gluesql_core::executor::get_primary_key_column_indices(&column_defs, &pk)
-            });
+        if schema.has_column_defs() {
+            let primary_key_indices = schema.get_primary_key_column_indices();
+            let columns = schema.get_column_names();
 
             let rows = data_rdr
                 .into_records()
@@ -156,7 +145,7 @@ impl CsvStorage {
                     let row = record
                         .map_storage_err()?
                         .into_iter()
-                        .zip(column_defs.iter())
+                        .zip(schema.column_defs.as_ref().unwrap().iter())
                         .map(|(value, column_def)| {
                             let value = match value {
                                 "NULL" => Value::Null,
@@ -187,7 +176,7 @@ impl CsvStorage {
                     Ok((key, row))
                 });
 
-            Ok((Some(columns), Box::new(rows)))
+            Ok((columns, Box::new(rows)))
         } else if self.types_path(table_name).exists() {
             let types_path = self.types_path(table_name);
             let types_rdr = csv::Reader::from_path(types_path)

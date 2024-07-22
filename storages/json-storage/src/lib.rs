@@ -154,12 +154,7 @@ impl JsonStorage {
             }
         };
 
-        let primary_key_indices = match (&schema.column_defs, &schema.primary_key) {
-            (Some(column_defs), Some(primary_key)) => {
-                gluesql_core::executor::get_primary_key_column_indices(column_defs, primary_key)
-            }
-            _ => vec![],
-        };
+        let primary_key_indices = schema.get_primary_key_column_indices();
 
         let schema2 = schema.clone();
         let rows = jsons.enumerate().map(move |(index, json)| -> Result<_> {
@@ -192,10 +187,10 @@ impl JsonStorage {
                 values.push(value);
             }
 
-            let key = if primary_key_indices.is_empty() {
-                get_index_key()?
-            } else {
+            let key = if let Some(primary_key_indices) = primary_key_indices.as_ref() {
                 gluesql_core::executor::get_primary_key_from_row(&values, &primary_key_indices)?
+            } else {
+                get_index_key()?
             };
             let row = DataRow::Vec(values);
 

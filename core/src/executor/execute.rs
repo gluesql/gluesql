@@ -197,17 +197,12 @@ async fn execute_inner<T: GStore + GStoreMut>(
             selection,
             assignments,
         } => {
-            let Schema {
-                column_defs,
-                foreign_keys,
-                primary_key,
-                ..
-            } = storage
+            let schema = storage
                 .fetch_schema(table_name)
                 .await?
                 .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
 
-            let all_columns = column_defs.as_deref().map(|columns| {
+            let all_columns = schema.column_defs.as_deref().map(|columns| {
                 columns
                     .iter()
                     .map(|col_def| col_def.name.to_owned())
@@ -222,11 +217,11 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 storage,
                 table_name,
                 assignments,
-                column_defs.as_deref(),
-                primary_key.as_deref(),
+                schema.column_defs.as_deref(),
+                schema.primary_key.as_deref(),
             )?;
 
-            let foreign_keys = Rc::new(foreign_keys);
+            let foreign_keys = Rc::new(&schema.foreign_keys);
 
             let rows = fetch(storage, table_name, all_columns, selection.as_ref())
                 .await?
@@ -244,22 +239,14 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 .try_collect::<Vec<(Key, Row)>>()
                 .await?;
 
-            if let Some(column_defs) = column_defs {
-                let column_validation =
-                    ColumnValidation::SpecifiedColumns(&column_defs, columns_to_update);
+            if schema.has_column_defs() {
+                let column_validation = ColumnValidation::SpecifiedColumns(columns_to_update);
                 let rows = rows.iter().filter_map(|(_, row)| match row {
                     Row::Vec { values, .. } => Some(values.as_slice()),
                     Row::Map(_) => None,
                 });
 
-                validate_unique(
-                    storage,
-                    table_name,
-                    primary_key.as_deref(),
-                    column_validation,
-                    rows,
-                )
-                .await?;
+                validate_unique(storage, table_name, &schema, column_validation, rows).await?;
             }
 
             let num_rows = rows.len();

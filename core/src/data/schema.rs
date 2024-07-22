@@ -44,6 +44,61 @@ impl Schema {
         self.primary_key.is_some()
     }
 
+    /// Returns whether the schema has column definitions.
+    pub fn has_column_defs(&self) -> bool {
+        self.column_defs.is_some()
+    }
+
+    /// Returns the names of the columns defined in the schema, if any.
+    pub fn get_column_names(&self) -> Option<Vec<String>> {
+        self.column_defs
+            .as_ref()
+            .map(|column_defs| column_defs.iter().map(|column_def| column_def.name.clone()).collect())
+    }
+
+    /// Returns the indices of the primary key columns.
+    ///
+    /// # Arguments
+    /// * `column_defs` - The column definitions of the table.
+    /// * `primary_key` - The primary key of the table.
+    pub fn get_primary_key_column_indices(&self) -> Option<Vec<usize>> {
+        match (&self.column_defs, &self.primary_key) {
+            (Some(column_defs), Some(primary_key)) => Some(
+                primary_key
+                    .iter()
+                    .map(|key| {
+                        column_defs
+                            .iter()
+                            .position(|column_def| column_def.name == *key)
+                            .unwrap()
+                    })
+                    .collect(),
+            ),
+            _ => None,
+        }
+    }
+
+    /// Returns whether the provided column is part of the primary key.
+    ///
+    /// # Arguments
+    /// * `column` - The column to check.
+    pub fn is_primary_key<S: AsRef<str>>(&self, column: S) -> bool {
+        self.primary_key
+            .as_ref()
+            .map(|primary_key| primary_key.iter().any(|key| key == column.as_ref()))
+            .unwrap_or(false)
+    }
+
+    /// Returns whether any of the columns in the provided iterator are part of the primary key.
+    pub fn has_primary_key_columns<I: IntoIterator<Item = S>, S: AsRef<str>>(
+        &self,
+        columns: I,
+    ) -> bool {
+        columns
+            .into_iter()
+            .any(|column| self.is_primary_key(column))
+    }
+
     pub fn to_ddl(&self) -> String {
         let Schema {
             table_name,
