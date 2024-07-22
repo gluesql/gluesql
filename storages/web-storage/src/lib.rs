@@ -116,7 +116,7 @@ impl Store for WebStorage {
         let path = format!("{}/{}", DATA_PATH, table_name);
         let mut rows = self.get::<Vec<(Key, DataRow)>>(path)?.unwrap_or_default();
 
-        match self.get(format!("{}/{}", SCHEMA_PATH, table_name))? {
+        match self.get::<Schema>(format!("{}/{}", SCHEMA_PATH, table_name))? {
             Some(schema) if schema.has_primary_key() => {
                 rows.sort_by(|(key_a, _), (key_b, _)| key_a.cmp(key_b));
             }
