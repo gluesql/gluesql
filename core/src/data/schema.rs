@@ -34,16 +34,14 @@ pub struct Schema {
     pub indexes: Vec<SchemaIndex>,
     pub engine: Option<String>,
     pub foreign_keys: Vec<ForeignKey>,
+    pub primary_key: Option<Vec<String>>,
     pub comment: Option<String>,
 }
 
 impl Schema {
     /// Returns whether the schema has a primary key.
     pub fn has_primary_key(&self) -> bool {
-        self.column_defs
-            .as_ref()
-            .map(|column_defs| column_defs.iter().any(|column_def| column_def.is_primary()))
-            .unwrap_or(false)
+        self.primary_key.is_some()
     }
 
     pub fn to_ddl(&self) -> String {
@@ -53,6 +51,7 @@ impl Schema {
             indexes,
             engine,
             foreign_keys,
+            primary_key,
             comment,
         } = self;
 
@@ -64,6 +63,7 @@ impl Schema {
             comment: comment.to_owned(),
             source: None,
             foreign_keys: foreign_keys.to_owned(),
+            primary_key: primary_key.to_owned(),
         }
         .to_sql();
 
@@ -121,6 +121,7 @@ impl Schema {
                 columns,
                 engine,
                 foreign_keys,
+                primary_key,
                 comment,
                 ..
             } => Ok(Schema {
@@ -129,6 +130,7 @@ impl Schema {
                 indexes,
                 engine,
                 foreign_keys,
+                primary_key,
                 comment,
             }),
             _ => Err(SchemaParseError::CannotParseDDL.into()),
@@ -147,7 +149,7 @@ mod tests {
     use {
         super::SchemaParseError,
         crate::{
-            ast::{AstLiteral, ColumnDef, ColumnUniqueOption, Expr},
+            ast::{AstLiteral, ColumnDef, Expr},
             chrono::Utc,
             data::{Schema, SchemaIndex, SchemaIndexOrd},
             prelude::DataType,
@@ -161,6 +163,7 @@ mod tests {
             indexes,
             engine,
             foreign_keys,
+            primary_key,
             comment,
         } = actual;
 
@@ -170,6 +173,7 @@ mod tests {
             indexes: indexes_e,
             engine: engine_e,
             foreign_keys: foreign_keys_e,
+            primary_key: primary_key_e,
             comment: comment_e,
         } = expected;
 
@@ -177,6 +181,7 @@ mod tests {
         assert_eq!(column_defs, column_defs_e);
         assert_eq!(engine, engine_e);
         assert_eq!(foreign_keys, foreign_keys_e);
+        assert_eq!(primary_key, primary_key_e);
         assert_eq!(comment, comment_e);
         indexes
             .into_iter()
@@ -210,7 +215,7 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: None,
+                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -218,13 +223,14 @@ mod tests {
                     data_type: DataType::Text,
                     nullable: true,
                     default: Some(Expr::Literal(AstLiteral::QuotedString("glue".to_owned()))),
-                    unique: None,
+                    unique: false,
                     comment: None,
                 },
             ]),
             indexes: Vec::new(),
             engine: None,
             foreign_keys: Vec::new(),
+            primary_key: None,
             comment: None,
         };
 
@@ -240,6 +246,7 @@ mod tests {
             indexes: Vec::new(),
             engine: None,
             foreign_keys: Vec::new(),
+            primary_key: None,
             comment: None,
         };
         let ddl = r#"CREATE TABLE "Test";"#;
@@ -258,12 +265,13 @@ mod tests {
                 data_type: DataType::Int,
                 nullable: false,
                 default: None,
-                unique: Some(ColumnUniqueOption { is_primary: true }),
+                unique: false,
                 comment: None,
             }]),
             indexes: Vec::new(),
             engine: None,
             foreign_keys: Vec::new(),
+            primary_key: Some(vec!["id".to_owned()]),
             comment: None,
         };
 
@@ -284,7 +292,7 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: Some(ColumnUniqueOption { is_primary: true }),
+                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -292,7 +300,7 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: Some(ColumnUniqueOption { is_primary: true }),
+                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -300,13 +308,14 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: Some(ColumnUniqueOption { is_primary: false }),
+                    unique: true,
                     comment: None,
                 },
             ]),
             indexes: Vec::new(),
             engine: None,
             foreign_keys: Vec::new(),
+            primary_key: Some(vec!["id".to_owned(), "user_id".to_owned()]),
             comment: None,
         };
 
@@ -335,7 +344,7 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: None,
+                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -343,7 +352,7 @@ mod tests {
                     data_type: DataType::Text,
                     nullable: false,
                     default: None,
-                    unique: None,
+                    unique: false,
                     comment: None,
                 },
             ]),
@@ -362,6 +371,7 @@ mod tests {
                 },
             ],
             engine: None,
+            primary_key: None,
             foreign_keys: Vec::new(),
             comment: None,
         };
@@ -389,7 +399,7 @@ CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);"#;
                     data_type: DataType::Int,
                     nullable: true,
                     default: None,
-                    unique: None,
+                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -397,7 +407,7 @@ CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);"#;
                     data_type: DataType::Int,
                     nullable: true,
                     default: None,
-                    unique: None,
+                    unique: false,
                     comment: None,
                 },
             ]),
@@ -409,6 +419,7 @@ CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);"#;
             }],
             engine: None,
             foreign_keys: Vec::new(),
+            primary_key: None,
             comment: None,
         };
         let ddl = r#"CREATE TABLE "1" ("2" INT NULL, ";" INT NULL);

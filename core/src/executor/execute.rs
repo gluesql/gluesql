@@ -137,6 +137,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
             source,
             engine,
             foreign_keys,
+            primary_key,
             comment,
         } => {
             let options = CreateTableOptions {
@@ -146,6 +147,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 source,
                 engine,
                 foreign_keys,
+                primary_key,
                 comment,
             };
 
@@ -198,6 +200,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
             let Schema {
                 column_defs,
                 foreign_keys,
+                primary_key,
                 ..
             } = storage
                 .fetch_schema(table_name)
@@ -215,7 +218,13 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 .map(|assignment| assignment.id.to_owned())
                 .collect();
 
-            let update = Update::new(storage, table_name, assignments, column_defs.as_deref())?;
+            let update = Update::new(
+                storage,
+                table_name,
+                assignments,
+                column_defs.as_deref(),
+                primary_key.as_deref(),
+            )?;
 
             let foreign_keys = Rc::new(foreign_keys);
 
@@ -243,7 +252,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
                     Row::Map(_) => None,
                 });
 
-                validate_unique(storage, table_name, column_validation, rows).await?;
+                validate_unique(storage, table_name, primary_key.as_deref(), column_validation, rows).await?;
             }
 
             let num_rows = rows.len();

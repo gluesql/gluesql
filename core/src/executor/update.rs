@@ -48,6 +48,7 @@ impl<'a, T: GStore> Update<'a, T> {
         table_name: &'a str,
         fields: &'a [Assignment],
         column_defs: Option<&'a [ColumnDef]>,
+        primary_key: Option<&'a [String]>,
     ) -> Result<Self> {
         if let Some(column_defs) = column_defs {
             for assignment in fields.iter() {
@@ -55,9 +56,9 @@ impl<'a, T: GStore> Update<'a, T> {
 
                 if column_defs.iter().all(|col_def| &col_def.name != id) {
                     return Err(UpdateError::ColumnNotFound(id.to_owned()).into());
-                } else if column_defs
-                    .iter()
-                    .any(|column| &column.name == id && column.is_primary())
+                } else if primary_key
+                    .as_ref()
+                    .map_or(false, |primary_key| primary_key.contains(&id))
                 {
                     return Err(UpdateError::UpdateOnPrimaryKeyNotSupported(id.to_owned()).into());
                 }

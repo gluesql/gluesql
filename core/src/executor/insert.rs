@@ -64,6 +64,7 @@ pub async fn insert<T: GStore + GStoreMut>(
     let Schema {
         column_defs,
         foreign_keys,
+        primary_key,
         ..
     } = storage
         .fetch_schema(table_name)
@@ -79,6 +80,7 @@ pub async fn insert<T: GStore + GStoreMut>(
                 columns,
                 source,
                 foreign_keys,
+                primary_key.as_deref(),
             )
             .await
         }
@@ -112,6 +114,7 @@ async fn fetch_vec_rows<T: GStore>(
     columns: &[String],
     source: &Query,
     foreign_keys: Vec<ForeignKey>,
+    primary_key: Option<&[String]>,
 ) -> Result<RowsData> {
     let labels = Rc::from(
         column_defs
@@ -177,6 +180,7 @@ async fn fetch_vec_rows<T: GStore>(
     validate_unique(
         storage,
         table_name,
+        primary_key,
         column_validation,
         rows.iter().map(|values| values.as_slice()),
     )
@@ -184,18 +188,21 @@ async fn fetch_vec_rows<T: GStore>(
 
     validate_foreign_key(storage, &column_defs, foreign_keys, &rows).await?;
 
-    let primary_key_indices = super::validate::get_primary_key_column_indices(&column_defs);
+    match primary_key {
+        Some(primary_key) => {
+            let primary_key_indices =
+                super::validate::get_primary_key_column_indices(&column_defs, primary_key);
+            let rows = rows
+                .into_iter()
+                .map(|row| {
+                    super::validate::get_primary_key_from_row(&row, &primary_key_indices)
+                        .map(|key| (key, row.into()))
+                })
+                .collect::<Result<Vec<_>>>()?;
 
-    if primary_key_indices.is_empty() {
-        Ok(RowsData::Append(rows.into_iter().map(Into::into).collect()))
-    } else {
-        rows.into_iter()
-            .map(|row| {
-                super::validate::get_primary_key_from_row(&row, &primary_key_indices)
-                    .map(|key| (key, row.into()))
-            })
-            .collect::<Result<Vec<_>>>()
-            .map(RowsData::Insert)
+            Ok(RowsData::Insert(rows))
+        }
+        None => Ok(RowsData::Append(rows.into_iter().map(Into::into).collect())),
     }
 }
 

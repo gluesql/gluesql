@@ -3,13 +3,12 @@ use {
         description::{ColumnDescription, TableDescription},
         error::{MongoStorageError, OptionExt, ResultExt},
         row::{key::KeyIntoBson, value::IntoValue, IntoRow},
-        utils::get_primary_key_sort_document,
         MongoStorage, PRIMARY_KEY_DESINENCE, UNIQUE_KEY_DESINENCE,
     },
     async_trait::async_trait,
     futures::{stream, Stream, StreamExt, TryStreamExt},
     gluesql_core::{
-        ast::{ColumnDef, ColumnUniqueOption},
+        ast::ColumnDef,
         data::{Key, Schema},
         error::Result,
         parse_sql::parse_data_type,
@@ -49,16 +48,27 @@ impl Store for MongoStorage {
     }
 
     async fn fetch_data(&self, table_name: &str, target: &Key) -> Result<Option<DataRow>> {
-        let column_defs = self
-            .get_column_defs(table_name)
+        let schema = self
+            .fetch_schema(table_name)
             .await?
+            .map_storage_err(MongoStorageError::Unreachable)?;
+
+        let column_defs = schema
+            .column_defs
+            .as_ref()
             .map_storage_err(MongoStorageError::Unreachable)?;
 
         let filter = doc! { crate::PRIMARY_KEY_SYMBOL: target.to_owned().into_bson(true)?};
         let projection = doc! {crate::PRIMARY_KEY_SYMBOL: 0};
         let options = FindOptions::builder()
             .projection(projection)
-            .sort(get_primary_key_sort_document(&column_defs))
+            .sort(schema.primary_key.map(|pk| {
+                pk.iter()
+                    .fold(Document::new(), |mut document, column_name| {
+                        document.insert(column_name.clone(), 1);
+                        document
+                    })
+            }))
             .build();
 
         let mut cursor = self
@@ -84,9 +94,18 @@ impl Store for MongoStorage {
     }
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
-        let column_defs = self.get_column_defs(table_name).await?;
+        let schema = self.fetch_schema(table_name).await?;
 
-        let primary_key_documnt = column_defs.as_ref().and_then(get_primary_key_sort_document);
+        let primary_key_documnt = schema.as_ref().and_then(|schema| {
+            schema.primary_key.as_ref().map(|primary_key| {
+                primary_key
+                    .iter()
+                    .fold(Document::new(), |mut document, column_name| {
+                        document.insert(column_name.clone(), 1);
+                        document
+                    })
+            })
+        });
 
         let has_primary = primary_key_documnt.is_some();
 
@@ -99,11 +118,13 @@ impl Store for MongoStorage {
             .await
             .map_storage_err()?;
 
-        let column_types = column_defs.as_ref().map(|column_defs| {
-            column_defs
-                .iter()
-                .map(|column_def| column_def.data_type.clone())
-                .collect::<Vec<_>>()
+        let column_types = schema.as_ref().and_then(|schema| {
+            schema.column_defs.as_ref().map(|column_defs| {
+                column_defs
+                    .iter()
+                    .map(|column_def| column_def.data_type.clone())
+                    .collect::<Vec<_>>()
+            })
         });
 
         let row_iter = cursor.map(move |doc| {
@@ -190,6 +211,8 @@ impl MongoStorage {
                 })
                 .collect::<HashMap<String, String>>();
 
+            let mut primary_key: Option<Vec<String>> = None;
+
             let column_defs = validator
                 .get_document("properties")
                 .map_storage_err()?
@@ -216,15 +239,21 @@ impl MongoStorage {
                         .and_then(parse_data_type)
                         .and_then(|s| translate_data_type(&s))?;
 
-                    let unique = indexes.get(column_name).and_then(|index_name| {
-                        if index_name.ends_with(PRIMARY_KEY_DESINENCE) {
-                            Some(ColumnUniqueOption { is_primary: true })
-                        } else if index_name.ends_with(UNIQUE_KEY_DESINENCE) {
-                            Some(ColumnUniqueOption { is_primary: false })
+                    let unique = if let Some(index_name) = indexes.get(column_name) {
+                        if index_name.ends_with(UNIQUE_KEY_DESINENCE) {
+                            true
                         } else {
-                            None
+                            if index_name.ends_with(PRIMARY_KEY_DESINENCE) {
+                                match primary_key.as_mut() {
+                                    Some(pk) => pk.push(column_name.to_owned()),
+                                    None => primary_key = Some(vec![column_name.to_owned()]),
+                                }
+                            }
+                            false
                         }
-                    });
+                    } else {
+                        false
+                    };
 
                     let column_description = doc.get_str("description");
                     let ColumnDescription { default, comment } = match column_description {
@@ -272,6 +301,7 @@ impl MongoStorage {
                 indexes: Vec::new(),
                 engine: None,
                 foreign_keys,
+                primary_key,
                 comment,
             };
 

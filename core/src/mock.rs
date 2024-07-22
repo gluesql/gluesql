@@ -128,7 +128,7 @@ mod tests {
                 data_type: DataType::Boolean,
                 nullable: false,
                 default: None,
-                unique: None,
+                unique: false,
                 comment: None,
             },
         ))

@@ -87,6 +87,7 @@ pub enum Statement {
         source: Option<Box<Query>>,
         engine: Option<String>,
         foreign_keys: Vec<ForeignKey>,
+        primary_key: Option<Vec<String>>,
         comment: Option<String>,
     },
     /// CREATE FUNCTION
@@ -206,27 +207,13 @@ impl ToSql for Statement {
                 source,
                 engine,
                 foreign_keys,
+                primary_key,
                 comment,
             } => {
                 let if_not_exists = if_not_exists.then_some("IF NOT EXISTS");
 
-                let primary_key = columns.as_ref().and_then(|cols| {
-                    // If the columns are defined, we check whether there exists a primary key.
-                    if cols.iter().any(|col| col.is_primary()) {
-                        // If there is, we format the primary key constraint as a string, which
-                        // will be placed at the end of the CREATE TABLE statement.
-                        Some(format!(
-                            "PRIMARY KEY ({})",
-                            cols.iter()
-                                .filter(|col| col.is_primary())
-                                .map(|col| col.name.clone())
-                                .collect::<Vec<_>>()
-                                .join(", ")
-                        ))
-                    } else {
-                        None
-                    }
-                });
+                let primary_key =
+                    primary_key.as_ref().map(|cols| format!("PRIMARY KEY ({})", cols.join(", ")));
                 let body = match (source, columns) {
                     (Some(query), _) => Some(format!("AS {}", query.to_sql())),
                     (None, None) => None,
@@ -500,6 +487,7 @@ mod tests {
                 source: None,
                 engine: None,
                 foreign_keys: Vec::new(),
+                primary_key: None,
                 comment: None,
             }
             .to_sql()
@@ -514,6 +502,7 @@ mod tests {
                 source: None,
                 engine: None,
                 foreign_keys: Vec::new(),
+                primary_key: None,
                 comment: None,
             }
             .to_sql()
@@ -529,12 +518,13 @@ mod tests {
                     data_type: DataType::Boolean,
                     nullable: false,
                     default: None,
-                    unique: None,
+                    unique: false,
                     comment: None,
                 },]),
                 source: None,
                 engine: None,
                 foreign_keys: Vec::new(),
+                primary_key: None,
                 comment: Some("this is comment".to_owned()),
             }
             .to_sql()
@@ -551,7 +541,7 @@ mod tests {
                         data_type: DataType::Int,
                         nullable: false,
                         default: None,
-                        unique: None,
+                        unique: false,
                         comment: None,
                     },
                     ColumnDef {
@@ -559,7 +549,7 @@ mod tests {
                         data_type: DataType::Int,
                         nullable: true,
                         default: None,
-                        unique: None,
+                        unique: false,
                         comment: None,
                     },
                     ColumnDef {
@@ -567,13 +557,14 @@ mod tests {
                         data_type: DataType::Text,
                         nullable: false,
                         default: None,
-                        unique: None,
+                        unique: false,
                         comment: None,
                     }
                 ]),
                 source: None,
                 engine: None,
                 foreign_keys: Vec::new(),
+                primary_key: None,
                 comment: None,
             }
             .to_sql()
@@ -618,6 +609,7 @@ mod tests {
                 })),
                 engine: None,
                 foreign_keys: Vec::new(),
+                primary_key: None,
                 comment: None,
             }
             .to_sql()
@@ -639,6 +631,7 @@ mod tests {
                 })),
                 engine: None,
                 foreign_keys: Vec::new(),
+                primary_key: None,
                 comment: None,
             }
             .to_sql()
@@ -656,6 +649,7 @@ mod tests {
                 source: None,
                 engine: Some("MEMORY".to_owned()),
                 foreign_keys: Vec::new(),
+                primary_key: None,
                 comment: None,
             }
             .to_sql()
@@ -671,12 +665,13 @@ mod tests {
                     data_type: DataType::Boolean,
                     nullable: false,
                     default: None,
-                    unique: None,
+                    unique: false,
                     comment: None,
                 },]),
                 source: None,
                 engine: Some("SLED".to_owned()),
                 foreign_keys: Vec::new(),
+                primary_key: None,
                 comment: None,
             }
             .to_sql()
@@ -727,7 +722,7 @@ mod tests {
                         default: Some(Expr::Literal(AstLiteral::Number(
                             BigDecimal::from_str("10").unwrap()
                         ))),
-                        unique: None,
+                        unique: false,
                         comment: None,
                     }
                 }

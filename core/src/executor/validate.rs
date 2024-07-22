@@ -87,10 +87,18 @@ impl UniqueConstraint {
 ///
 /// # Arguments
 /// * `column_defs` - The column definitions of the table.
-pub fn get_primary_key_column_indices(column_defs: &[ColumnDef]) -> Vec<usize> {
-    column_defs
+/// * `primary_key` - The primary key of the table.
+pub fn get_primary_key_column_indices<S: AsRef<str>>(
+    column_defs: &[ColumnDef],
+    primary_key: &[S],
+) -> Vec<usize> {
+    primary_key
         .iter()
-        .positions(|column_def| column_def.is_primary())
+        .positions(|pk| {
+            column_defs
+                .iter()
+                .any(|column_def| column_def.name == *pk.as_ref())
+        })
         .collect()
 }
 
@@ -124,53 +132,42 @@ pub fn get_primary_key_from_row(row: &[Value], primary_key_indices: &[usize]) ->
 pub async fn validate_unique<T: Store>(
     storage: &T,
     table_name: &str,
+    primary_key: Option<&[String]>,
     column_validation: ColumnValidation<'_>,
     row_iter: impl Iterator<Item = &[Value]> + Clone,
 ) -> Result<()> {
+    dbg!(table_name, primary_key);
     // First, we retrieve the primary key indices and the unique columns to validate.
     // Specifically, we only care about validating the primary key indices in the case of an UPDATE
     // if the primary key columns are specified in the set of the columns being updated.
     let (primary_key_indices, unique_columns): (Option<Vec<usize>>, Vec<(usize, &str)>) =
         match &column_validation {
             ColumnValidation::All(column_defs) => {
-                let primary_keys: Vec<usize> = get_primary_key_column_indices(column_defs);
                 (
-                    if primary_keys.is_empty() {
-                        None
-                    } else {
-                        Some(primary_keys)
-                    },
+                    primary_key.map(|pk| get_primary_key_column_indices(column_defs, pk)),
                     column_defs
                         .iter()
                         .enumerate()
-                        .filter(|(_, column_def)| column_def.is_unique_not_primary())
+                        .filter(|(_, column_def)| column_def.unique)
                         .map(|(index, column_def)| (index, column_def.name.as_str()))
                         .collect(),
                 )
             }
             ColumnValidation::SpecifiedColumns(column_defs, specified_columns) => {
-                // We only need to validate the primary keys if one of the columns composing the primary key is specified
-                // in the set of the specified columns, otherwise we can skip the validation for the primary keys.
-                let primary_keys_were_specified = column_defs.iter().any(|column_def| {
-                    column_def.is_primary() && specified_columns.contains(&column_def.name)
-                });
-
                 (
-                    if primary_keys_were_specified {
-                        Some(
-                            column_defs
-                                .iter()
-                                .positions(|column_def: &ColumnDef| column_def.is_primary())
-                                .collect(),
-                        )
-                    } else {
-                        None
-                    },
+                    primary_key.and_then(|pk| {
+                        // First we check if the primary keys are among the specified columns.
+                        if pk.iter().any(|pk| specified_columns.contains(pk)) {
+                            Some(get_primary_key_column_indices(column_defs, pk))
+                        } else {
+                            None
+                        }
+                    }),
                     column_defs
                         .iter()
                         .enumerate()
                         .filter(|(_, column_def)| {
-                            column_def.is_unique_not_primary()
+                            column_def.unique
                                 && specified_columns.contains(&column_def.name)
                         })
                         .map(|(index, column_def)| (index, column_def.name.as_str()))

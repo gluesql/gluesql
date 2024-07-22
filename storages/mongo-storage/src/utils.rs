@@ -1,55 +1,10 @@
 use {
     crate::{description::TableDescription, error::ResultExt},
     bson::{doc, Document},
-    gluesql_core::{
-        ast::{ColumnDef, ForeignKey},
-        error::Result,
-    },
+    gluesql_core::{ast::ForeignKey, error::Result},
     mongodb::options::CreateCollectionOptions,
     serde_json::to_string,
 };
-
-/// Returns the primary key of the table.
-///
-/// # Implementation details
-/// When the table has a primary key, it returns the primary key.
-/// When the primary key is a composite key, it returns all the columns in the primary key.
-/// When the table does not have a primary key, it returns a None.
-pub(crate) fn get_primary_key<'a, I>(column_defs: I) -> Option<Vec<&'a ColumnDef>>
-where
-    I: IntoIterator<Item = &'a ColumnDef>,
-{
-    let primary_keys: Vec<&ColumnDef> = column_defs
-        .into_iter()
-        .filter(|column_def| column_def.is_primary())
-        .collect();
-
-    if primary_keys.is_empty() {
-        None
-    } else {
-        Some(primary_keys)
-    }
-}
-
-/// Returns the document object for the primary key.
-pub(crate) fn get_primary_key_sort_document<'a, I>(column_defs: I) -> Option<Document>
-where
-    I: IntoIterator<Item = &'a ColumnDef>,
-{
-    get_primary_key(column_defs).map(|primary_keys| {
-        primary_keys
-            .iter()
-            .fold(Document::new(), |mut document, column_def| {
-                document.insert(column_def.name.clone(), 1);
-                document
-            })
-    })
-}
-
-/// Returns true if the table has a primary key.
-pub(crate) fn has_primary_key(column_defs: &[ColumnDef]) -> bool {
-    column_defs.iter().any(|column_def| column_def.is_primary())
-}
 
 pub struct Validator {
     pub document: Document,

@@ -53,7 +53,7 @@ impl JsonStorage {
         }
 
         let schema_path = self.schema_path(table_name);
-        let (column_defs, foreign_keys, comment) = match schema_path.exists() {
+        let (column_defs, foreign_keys, primary_key, comment) = match schema_path.exists() {
             true => {
                 let mut file = File::open(&schema_path).map_storage_err()?;
                 let mut ddl = String::new();
@@ -66,9 +66,14 @@ impl JsonStorage {
                     ));
                 }
 
-                (schema.column_defs, schema.foreign_keys, schema.comment)
+                (
+                    schema.column_defs,
+                    schema.foreign_keys,
+                    schema.primary_key,
+                    schema.comment,
+                )
             }
-            false => (None, Vec::new(), None),
+            false => (None, Vec::new(), None, None),
         };
 
         Ok(Some(Schema {
@@ -77,6 +82,7 @@ impl JsonStorage {
             indexes: vec![],
             engine: None,
             foreign_keys,
+            primary_key,
             comment,
         }))
     }
@@ -148,11 +154,11 @@ impl JsonStorage {
             }
         };
 
-        let primary_key_indices = match &schema.column_defs {
-            Some(column_defs) => {
-                gluesql_core::executor::get_primary_key_column_indices(column_defs)
+        let primary_key_indices = match (&schema.column_defs, &schema.primary_key) {
+            (Some(column_defs), Some(primary_key)) => {
+                gluesql_core::executor::get_primary_key_column_indices(column_defs, primary_key)
             }
-            None => vec![],
+            _ => vec![],
         };
 
         let schema2 = schema.clone();

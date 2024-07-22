@@ -1,6 +1,6 @@
 use {
     gluesql_core::{
-        ast::{ColumnDef, ColumnUniqueOption},
+        ast::ColumnDef,
         parse_sql::parse_expr,
         prelude::{DataType, Error},
         translate::translate_expr,
@@ -74,18 +74,15 @@ impl<'a> TryFrom<ParquetSchemaType<'a>> for ColumnDef {
             SchemaType::GroupType { .. } => DataType::Map,
         };
         let nullable = inner.is_optional();
-        let mut unique = None;
+        let mut unique: bool = false;
         let mut default = None;
         let mut comment = None;
 
         if let Some(metadata) = parquet_col_def.get_metadata().as_deref() {
             for kv in metadata.iter() {
                 match kv.key.as_str() {
-                    k if k == format!("unique_option{}", name) => match kv.value.as_deref() {
-                        Some("primary_key") => {
-                            unique = Some(ColumnUniqueOption { is_primary: true });
-                        }
-                        _ => unique = Some(ColumnUniqueOption { is_primary: false }),
+                    k if k == format!("unique_option{}", name) => {
+                        unique = true;
                     },
                     k if k == format!("data_type{}", name) => {
                         if let Some(value) = kv.value.as_deref() {

@@ -1,9 +1,7 @@
 use {
     super::{validate, validate_column_names, AlterError},
     crate::{
-        ast::{
-            ColumnDef, ColumnUniqueOption, ForeignKey, Query, SetExpr, TableFactor, ToSql, Values,
-        },
+        ast::{ColumnDef, ForeignKey, Query, SetExpr, TableFactor, ToSql, Values},
         data::{Schema, TableError},
         executor::{evaluate_stateless, select::select},
         prelude::{DataType, Value},
@@ -22,6 +20,7 @@ pub struct CreateTableOptions<'a> {
     pub source: &'a Option<Box<Query>>,
     pub engine: &'a Option<String>,
     pub foreign_keys: &'a Vec<ForeignKey>,
+    pub primary_key: &'a Option<Vec<String>>,
     pub comment: &'a Option<String>,
 }
 
@@ -34,6 +33,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
         source,
         engine,
         foreign_keys,
+        primary_key,
         comment,
     }: CreateTableOptions<'_>,
 ) -> Result<()> {
@@ -56,7 +56,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
                         data_type: DataType::Int,
                         nullable: false,
                         default: None,
-                        unique: None,
+                        unique: false,
                         comment: None,
                     };
 
@@ -99,7 +99,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
                         data_type,
                         nullable: true,
                         default: None,
-                        unique: None,
+                        unique: false,
                         comment: None,
                     })
                     .collect::<Vec<_>>();
@@ -127,18 +127,19 @@ pub async fn create_table<T: GStore + GStoreMut>(
             ..
         } = foreign_key;
 
-        let column_defs = if referenced_table_name == target_table_name {
-            target_columns_defs.clone()
-        } else {
-            let referenced_schema = storage
-                .fetch_schema(referenced_table_name)
-                .await?
-                .ok_or_else(|| {
-                    AlterError::ReferencedTableNotFound(referenced_table_name.to_owned())
-                })?;
+        let (column_defs, reference_table_primary_keys) =
+            if referenced_table_name == target_table_name {
+                (target_columns_defs.clone(), primary_key.clone())
+            } else {
+                let referenced_schema = storage
+                    .fetch_schema(referenced_table_name)
+                    .await?
+                    .ok_or_else(|| {
+                        AlterError::ReferencedTableNotFound(referenced_table_name.to_owned())
+                    })?;
 
-            referenced_schema.column_defs
-        };
+                (referenced_schema.column_defs, referenced_schema.primary_key)
+            };
 
         let referenced_column_def = column_defs
             .and_then(|column_defs| {
@@ -169,8 +170,12 @@ pub async fn create_table<T: GStore + GStoreMut>(
             }
             .into());
         }
-
-        if referenced_column_def.unique != Some(ColumnUniqueOption { is_primary: true }) {
+        
+        dbg!(&reference_table_primary_keys);
+        dbg!(&referenced_column_def.name);
+        if reference_table_primary_keys.map_or(true, |reference_table_primary_keys| {
+            !reference_table_primary_keys.contains(&referenced_column_def.name)
+        }) {
             return Err(AlterError::ReferencingNonPKColumn {
                 referenced_table: referenced_table_name.to_owned(),
                 referenced_column: referenced_column_name.to_owned(),
@@ -186,6 +191,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
             indexes: vec![],
             engine: engine.clone(),
             foreign_keys: foreign_keys.clone(),
+            primary_key: primary_key.clone(),
             comment: comment.clone(),
         };
 

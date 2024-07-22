@@ -77,7 +77,7 @@ test_case!(primary_key, {
         .await;
 
     g.test(
-        "SELECT id, name FROM Allegro",
+        "SELECT id, name FROM Allegro ORDER BY id ASC",
         Ok(select!(
             id  | name
             I64 | Str;
@@ -111,7 +111,7 @@ test_case!(primary_key, {
 
     g.run("DELETE FROM Allegro WHERE id > 3").await;
     g.test(
-        "SELECT id, name FROM Allegro",
+        "SELECT id, name FROM Allegro ORDER BY id ASC",
         Ok(select!(
             id  | name
             I64 | Str;

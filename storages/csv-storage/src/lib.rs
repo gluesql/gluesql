@@ -54,7 +54,7 @@ impl CsvStorage {
                         .map(|header| ColumnDef {
                             name: header.to_string(),
                             data_type: DataType::Text,
-                            unique: None,
+                            unique: false,
                             default: None,
                             nullable: true,
                             comment: None,
@@ -70,6 +70,7 @@ impl CsvStorage {
                 indexes: Vec::new(),
                 engine: None,
                 foreign_keys: Vec::new(),
+                primary_key: None,
                 comment: None,
             };
 
@@ -135,6 +136,7 @@ impl CsvStorage {
 
         if let Schema {
             column_defs: Some(column_defs),
+            primary_key,
             ..
         } = schema
         {
@@ -143,8 +145,9 @@ impl CsvStorage {
                 .map(|column_def| column_def.name.to_owned())
                 .collect::<Vec<_>>();
 
-            let primary_key_indices =
-                gluesql_core::executor::get_primary_key_column_indices(&column_defs);
+            let primary_key_indices = primary_key.map(|pk| {
+                gluesql_core::executor::get_primary_key_column_indices(&column_defs, &pk)
+            });
 
             let rows = data_rdr
                 .into_records()
@@ -169,13 +172,14 @@ impl CsvStorage {
                         })
                         .collect::<Result<Vec<Value>>>()?;
 
-                    let key = if primary_key_indices.is_empty() {
-                        Key::U64(index as u64)
-                    } else {
-                        gluesql_core::executor::get_primary_key_from_row(
-                            &row,
-                            &primary_key_indices,
-                        )?
+                    let key = match primary_key_indices.as_ref() {
+                        Some(primary_key_indices) => {
+                            gluesql_core::executor::get_primary_key_from_row(
+                                &row,
+                                &primary_key_indices,
+                            )?
+                        }
+                        None => Key::U64(index as u64),
                     };
 
                     let row = DataRow::Vec(row);
