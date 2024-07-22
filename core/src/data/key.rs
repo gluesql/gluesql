@@ -142,18 +142,11 @@ impl TryFrom<Vec<Value>> for Key {
     type Error = Error;
 
     fn try_from(values: Vec<Value>) -> Result<Self> {
-        Ok(Key::List(
-            values
-                .into_iter()
-                .map(Key::try_from)
-                .collect::<Result<Vec<_>>>()?,
-        ))
-    }
-}
-
-impl From<Vec<Key>> for Key {
-    fn from(keys: Vec<Key>) -> Self {
-        Key::List(keys)
+        values
+            .into_iter()
+            .map(Key::try_from)
+            .collect::<Result<Vec<_>>>()
+            .map(Key::List)
     }
 }
 
