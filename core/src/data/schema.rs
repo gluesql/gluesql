@@ -51,9 +51,12 @@ impl Schema {
 
     /// Returns the names of the columns defined in the schema, if any.
     pub fn get_column_names(&self) -> Option<Vec<String>> {
-        self.column_defs
-            .as_ref()
-            .map(|column_defs| column_defs.iter().map(|column_def| column_def.name.clone()).collect())
+        self.column_defs.as_ref().map(|column_defs| {
+            column_defs
+                .iter()
+                .map(|column_def| column_def.name.clone())
+                .collect()
+        })
     }
 
     /// Returns the indices of the primary key columns.
