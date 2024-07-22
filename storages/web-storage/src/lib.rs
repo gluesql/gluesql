@@ -6,7 +6,6 @@ use {
     futures::stream::iter,
     gloo_storage::{errors::StorageError, LocalStorage, SessionStorage, Storage},
     gluesql_core::{
-        ast::ColumnUniqueOption,
         data::{Key, Schema},
         error::{Error, Result},
         store::{DataRow, Metadata, RowIter, Store, StoreMut},

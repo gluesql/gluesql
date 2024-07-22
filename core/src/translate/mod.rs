@@ -150,14 +150,13 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 .iter()
                 .filter_map(|column| {
                     if column.options.iter().any(|option| {
-                        if let sqlparser::ast::ColumnOption::Unique {
-                            is_primary: true, ..
-                        } = option.option
-                        {
-                            true
-                        } else {
-                            false
-                        }
+                        matches!(
+                            option.option,
+                            sqlparser::ast::ColumnOption::Unique {
+                                is_primary: true,
+                                ..
+                            }
+                        )
                     }) {
                         Some(column.name.value.clone())
                     } else {

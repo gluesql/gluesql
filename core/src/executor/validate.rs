@@ -115,7 +115,7 @@ pub fn get_primary_key_from_row(row: &[Value], primary_key_indices: &[usize]) ->
                 ValidateError::ConflictOnStorageColumnIndex(primary_key_indices[0])
             })?)?
         }
-        _ => Key::Composite(
+        _ => Key::List(
             primary_key_indices
                 .iter()
                 .map(|&index| {

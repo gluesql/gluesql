@@ -58,7 +58,7 @@ impl<'a, T: GStore> Update<'a, T> {
                     return Err(UpdateError::ColumnNotFound(id.to_owned()).into());
                 } else if primary_key
                     .as_ref()
-                    .map_or(false, |primary_key| primary_key.contains(&id))
+                    .map_or(false, |primary_key| primary_key.contains(id))
                 {
                     return Err(UpdateError::UpdateOnPrimaryKeyNotSupported(id.to_owned()).into());
                 }

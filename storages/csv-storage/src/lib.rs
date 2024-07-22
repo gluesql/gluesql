@@ -176,7 +176,7 @@ impl CsvStorage {
                         Some(primary_key_indices) => {
                             gluesql_core::executor::get_primary_key_from_row(
                                 &row,
-                                &primary_key_indices,
+                                primary_key_indices,
                             )?
                         }
                         None => Key::U64(index as u64),

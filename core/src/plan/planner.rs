@@ -202,14 +202,15 @@ pub trait Planner<'a> {
 
         let schema = self.get_schema(name);
 
-        let columns = match schema.as_ref() {
-            Some(Schema { column_defs, .. }) => match column_defs {
-                Some(column_defs) => column_defs
+        let columns = match schema.as_ref().and_then(|Schema { column_defs, .. }| {
+            column_defs.as_ref().map(|column_defs| {
+                column_defs
                     .iter()
                     .map(|ColumnDef { name, .. }| name.as_str())
-                    .collect::<Vec<_>>(),
-                None => return next,
-            },
+                    .collect::<Vec<_>>()
+            })
+        }) {
+            Some(columns) => columns,
             None => return next,
         };
 
