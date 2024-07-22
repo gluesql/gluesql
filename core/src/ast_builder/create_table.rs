@@ -168,7 +168,7 @@ mod tests {
             .build();
         assert_eq!(
             actual.unwrap_err(),
-            TranslateError::ColumnNotFoundInTable("age".to_string()).into()
+            TranslateError::ColumnNotFoundInTable("age".to_owned()).into()
         );
     }
 
