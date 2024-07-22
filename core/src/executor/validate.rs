@@ -136,7 +136,6 @@ pub async fn validate_unique<T: Store>(
     column_validation: ColumnValidation<'_>,
     row_iter: impl Iterator<Item = &[Value]> + Clone,
 ) -> Result<()> {
-    dbg!(table_name, primary_key);
     // First, we retrieve the primary key indices and the unique columns to validate.
     // Specifically, we only care about validating the primary key indices in the case of an UPDATE
     // if the primary key columns are specified in the set of the columns being updated.

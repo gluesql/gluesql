@@ -289,8 +289,6 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                             let table_name = schema.table_name;
                             let primary_keys = schema.primary_key;
 
-                            dbg!(&primary_keys, &table_name);
-
                             schema
                                 .column_defs
                                 .unwrap_or_default()

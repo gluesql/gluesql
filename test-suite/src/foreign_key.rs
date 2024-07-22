@@ -148,7 +148,7 @@ test_case!(foreign_key, {
     .await;
 
     g.named_test(
-        "Creating table with foreign key should succeeded if referenced table has primary key. NO ACTION(=RESTRICT) is default",
+        "Creating table with foreign key should be succeeded if referenced table has primary key. NO ACTION(=RESTRICT) is default",
         "CREATE TABLE ReferencingTable (
             id INT,
             name TEXT,

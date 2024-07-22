@@ -97,9 +97,16 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             comment,
             ..
         } => {
+            let mut primary_key: Vec<String> = Vec::new();
             let translated_columns = columns
                 .iter()
-                .map(translate_column_def)
+                .map(|column|{
+                    let (translated_column, is_primary) = translate_column_def(column)?;
+                    if is_primary {
+                        primary_key.push(column.name.value.clone());
+                    }
+                    Ok(translated_column)
+                })
                 .collect::<Result<Vec<_>>>()?;
 
             let translated_columns = (!translated_columns.is_empty()).then_some(translated_columns);
@@ -146,25 +153,6 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             // handling also the other constraints that are defined on the table.
 
             let mut foreign_keys = Vec::new();
-            let primary_key: Vec<String> = columns
-                .iter()
-                .filter_map(|column| {
-                    if column.options.iter().any(|option| {
-                        matches!(
-                            option.option,
-                            sqlparser::ast::ColumnOption::Unique {
-                                is_primary: true,
-                                ..
-                            }
-                        )
-                    }) {
-                        Some(column.name.value.clone())
-                    } else {
-                        None
-                    }
-                })
-                .collect::<Vec<_>>();
-
             let mut primary_key = if primary_key.is_empty() {
                 None
             } else {
@@ -194,10 +182,6 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                     foreign_keys.push(translate_foreign_key(constraint)?);
                 }
             }
-
-            dbg!(&primary_key);
-            dbg!(&columns);
-            dbg!(&constraints);
 
             Ok(Statement::CreateTable {
                 if_not_exists: *if_not_exists,

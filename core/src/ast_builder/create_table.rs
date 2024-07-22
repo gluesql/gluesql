@@ -2,9 +2,9 @@ use {
     super::Build,
     crate::ast_builder::column_def::PrimaryKeyConstraintNode,
     crate::error::TranslateError,
+    crate::parse_sql::parse_column_def,
     crate::translate::translate_column_def,
     crate::{ast::Statement, ast_builder::ColumnDefNode, result::Result},
-    sqlparser::ast::ColumnDef as SqlColumnDef,
 };
 
 #[derive(Clone, Debug)]
@@ -53,11 +53,9 @@ impl Build for CreateTableNode {
                 columns
                     .into_iter()
                     .map(|column_statement: ColumnDefNode| {
-                        let sql_column_definition: SqlColumnDef = column_statement.try_into()?;
-                        for option in sql_column_definition.options.iter() {
-                            if let sqlparser::ast::ColumnOption::Unique {
-                                is_primary: true, ..
-                            } = option.option
+                        let (translated_column, is_primary) =
+                            translate_column_def(&parse_column_def(column_statement)?)?;
+                        if is_primary {
                             {
                                 match primary_key.as_mut() {
                                     Some(_) => {
@@ -67,12 +65,12 @@ impl Build for CreateTableNode {
                                     }
                                     None => {
                                         primary_key =
-                                            Some(vec![sql_column_definition.name.value.clone()]);
+                                            Some(vec![translated_column.name.clone()]);
                                     }
                                 }
                             }
                         }
-                        translate_column_def(&sql_column_definition)
+                        Ok(translated_column)
                     })
                     .collect::<Result<Vec<_>>>()?,
             ),

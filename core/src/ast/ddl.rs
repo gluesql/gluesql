@@ -33,13 +33,6 @@ pub struct ColumnDef {
     pub comment: Option<String>,
 }
 
-impl ColumnDef {
-    /// Returns whether the column must be unique.
-    pub fn is_unique(&self) -> bool {
-        self.unique
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct OperateFunctionArg {
     pub name: String,
