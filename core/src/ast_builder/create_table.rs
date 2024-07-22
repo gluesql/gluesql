@@ -64,8 +64,7 @@ impl Build for CreateTableNode {
                                         )
                                     }
                                     None => {
-                                        primary_key =
-                                            Some(vec![translated_column.name.clone()]);
+                                        primary_key = Some(vec![translated_column.name.clone()]);
                                     }
                                 }
                             }

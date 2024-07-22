@@ -100,7 +100,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             let mut primary_key: Vec<String> = Vec::new();
             let translated_columns = columns
                 .iter()
-                .map(|column|{
+                .map(|column| {
                     let (translated_column, is_primary) = translate_column_def(column)?;
                     if is_primary {
                         primary_key.push(column.name.value.clone());
