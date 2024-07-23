@@ -644,7 +644,6 @@ mod tests {
                     data_type: DataType::Boolean,
                     nullable: false,
                     default: None,
-                    unique: false,
                     comment: None,
                 },]),
                 source: None,
@@ -668,7 +667,6 @@ mod tests {
                         data_type: DataType::Int,
                         nullable: false,
                         default: None,
-                        unique: false,
                         comment: None,
                     },
                     ColumnDef {
@@ -676,7 +674,6 @@ mod tests {
                         data_type: DataType::Int,
                         nullable: true,
                         default: None,
-                        unique: false,
                         comment: None,
                     },
                     ColumnDef {
@@ -684,7 +681,6 @@ mod tests {
                         data_type: DataType::Text,
                         nullable: false,
                         default: None,
-                        unique: false,
                         comment: None,
                     }
                 ]),
@@ -703,6 +699,37 @@ mod tests {
     /// Test to evaluate whether the `CREATE TABLE` statement involving UNIQUE constraints can be converted to SQL.
     fn to_sql_create_table_with_unique() {
         assert_eq!(
+            r#"CREATE TABLE "Foo" ("id" INT NOT NULL UNIQUE, "name" TEXT NOT NULL);"#,
+            Statement::CreateTable {
+                if_not_exists: false,
+                name: "Foo".into(),
+                columns: Some(vec![
+                    ColumnDef {
+                        name: "id".to_owned(),
+                        data_type: DataType::Int,
+                        nullable: false,
+                        default: None,
+                        comment: None,
+                    },
+                    ColumnDef {
+                        name: "name".to_owned(),
+                        data_type: DataType::Text,
+                        nullable: false,
+                        default: None,
+                        comment: None,
+                    }
+                ]),
+                source: None,
+                engine: None,
+                foreign_keys: Vec::new(),
+                primary_key: None,
+                unique_constraints: vec![UniqueConstraint::new(None, vec!["id".to_owned()])],
+                comment: None,
+            }
+            .to_sql()
+        );
+        
+        assert_eq!(
             r#"CREATE TABLE "Foo" ("id" INT NOT NULL, "name" TEXT NOT NULL, UNIQUE ("id"));"#,
             Statement::CreateTable {
                 if_not_exists: false,
@@ -713,7 +740,6 @@ mod tests {
                         data_type: DataType::Int,
                         nullable: false,
                         default: None,
-                        unique: false,
                         comment: None,
                     },
                     ColumnDef {
@@ -721,7 +747,6 @@ mod tests {
                         data_type: DataType::Text,
                         nullable: false,
                         default: None,
-                        unique: false,
                         comment: None,
                     }
                 ]),
@@ -747,7 +772,6 @@ mod tests {
                         data_type: DataType::Int,
                         nullable: false,
                         default: None,
-                        unique: false,
                         comment: None,
                     },
                     ColumnDef {
@@ -755,7 +779,6 @@ mod tests {
                         data_type: DataType::Text,
                         nullable: false,
                         default: None,
-                        unique: false,
                         comment: None,
                     }
                 ]),
@@ -784,7 +807,6 @@ mod tests {
                         data_type: DataType::Int,
                         nullable: false,
                         default: None,
-                        unique: false,
                         comment: None,
                     },
                     ColumnDef {
@@ -792,7 +814,6 @@ mod tests {
                         data_type: DataType::Text,
                         nullable: false,
                         default: None,
-                        unique: false,
                         comment: None,
                     }
                 ]),
@@ -821,7 +842,6 @@ mod tests {
                         data_type: DataType::Int,
                         nullable: false,
                         default: None,
-                        unique: false,
                         comment: None,
                     },
                     ColumnDef {
@@ -829,7 +849,6 @@ mod tests {
                         data_type: DataType::Text,
                         nullable: false,
                         default: None,
-                        unique: false,
                         comment: None,
                     }
                 ]),
@@ -948,7 +967,6 @@ mod tests {
                     data_type: DataType::Boolean,
                     nullable: false,
                     default: None,
-                    unique: false,
                     comment: None,
                 },]),
                 source: None,
@@ -1006,7 +1024,6 @@ mod tests {
                         default: Some(Expr::Literal(AstLiteral::Number(
                             BigDecimal::from_str("10").unwrap()
                         ))),
-                        unique: false,
                         comment: None,
                     }
                 }

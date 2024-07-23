@@ -102,7 +102,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             let translated_columns = columns
                 .iter()
                 .map(|column| {
-                    let (translated_column, is_primary) = translate_column_def(column)?;
+                    let (translated_column, is_primary, is_unique) = translate_column_def(column)?;
                     if is_primary {
                         primary_key.push(column.name.value.clone());
                     }
@@ -497,7 +497,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -505,7 +504,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: true,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
             ]),
@@ -540,7 +538,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -548,7 +545,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: true,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
             ]),
@@ -583,7 +579,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -591,7 +586,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: true,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
             ]),

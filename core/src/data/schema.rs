@@ -281,7 +281,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -289,7 +288,6 @@ mod tests {
                     data_type: DataType::Text,
                     nullable: true,
                     default: Some(Expr::Literal(AstLiteral::QuotedString("glue".to_owned()))),
-                    unique: false,
                     comment: None,
                 },
             ]),
@@ -333,7 +331,6 @@ mod tests {
                 data_type: DataType::Int,
                 nullable: false,
                 default: None,
-                unique: false,
                 comment: None,
             }]),
             indexes: Vec::new(),
@@ -361,7 +358,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -369,7 +365,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -377,7 +372,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: true,
                     comment: None,
                 },
             ]),
@@ -385,7 +379,7 @@ mod tests {
             engine: None,
             foreign_keys: Vec::new(),
             primary_key: Some(vec!["id".to_owned(), "user_id".to_owned()]),
-            unique_constraints: Vec::new(),
+            unique_constraints: vec![UniqueConstraint::new(None, vec!["image_id".to_owned()])],
             comment: None,
         };
 
@@ -414,7 +408,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -422,7 +415,6 @@ mod tests {
                     data_type: DataType::Text,
                     nullable: false,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
             ]),
@@ -470,7 +462,6 @@ CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);"#;
                     data_type: DataType::Int,
                     nullable: true,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -478,7 +469,6 @@ CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);"#;
                     data_type: DataType::Int,
                     nullable: true,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
             ]),
@@ -513,7 +503,6 @@ CREATE INDEX "." ON "1" (";");"#;
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -521,7 +510,6 @@ CREATE INDEX "." ON "1" (";");"#;
                     data_type: DataType::Text,
                     nullable: false,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
             ]),

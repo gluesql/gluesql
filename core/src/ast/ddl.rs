@@ -29,7 +29,6 @@ pub struct ColumnDef {
     pub nullable: bool,
     /// `DEFAULT <restricted-expr>`
     pub default: Option<Expr>,
-    pub unique: bool,
     pub comment: Option<String>,
 }
 
@@ -72,7 +71,6 @@ impl ToSql for ColumnDef {
             data_type,
             nullable,
             default,
-            unique,
             comment,
         } = self;
         {
@@ -84,16 +82,11 @@ impl ToSql for ColumnDef {
             let default = default
                 .as_ref()
                 .map(|expr| format!("DEFAULT {}", expr.to_sql()));
-            let unique = if *unique {
-                Some("UNIQUE".to_owned())
-            } else {
-                None
-            };
             let comment = comment
                 .as_ref()
                 .map(|comment| format!("COMMENT '{}'", comment));
 
-            [Some(column_def), default, unique, comment]
+            [Some(column_def), default, comment]
                 .into_iter()
                 .flatten()
                 .collect::<Vec<_>>()
@@ -130,7 +123,6 @@ mod tests {
                 data_type: DataType::Text,
                 nullable: false,
                 default: None,
-                unique: true,
                 comment: None,
             }
             .to_sql()
@@ -143,7 +135,6 @@ mod tests {
                 data_type: DataType::Boolean,
                 nullable: true,
                 default: None,
-                unique: false,
                 comment: None,
             }
             .to_sql()
@@ -156,7 +147,6 @@ mod tests {
                 data_type: DataType::Int,
                 nullable: false,
                 default: None,
-                unique: false,
                 comment: None,
             }
             .to_sql()
@@ -169,7 +159,6 @@ mod tests {
                 data_type: DataType::Boolean,
                 nullable: false,
                 default: Some(Expr::Literal(AstLiteral::Boolean(false))),
-                unique: false,
                 comment: None,
             }
             .to_sql()
@@ -182,7 +171,6 @@ mod tests {
                 data_type: DataType::Boolean,
                 nullable: false,
                 default: Some(Expr::Literal(AstLiteral::Boolean(false))),
-                unique: true,
                 comment: None,
             }
             .to_sql()
@@ -195,7 +183,6 @@ mod tests {
                 data_type: DataType::Boolean,
                 nullable: false,
                 default: None,
-                unique: false,
                 comment: Some("this is comment".to_owned()),
             }
             .to_sql()

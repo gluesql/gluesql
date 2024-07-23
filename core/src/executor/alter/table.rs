@@ -60,7 +60,6 @@ pub async fn create_table<T: GStore + GStoreMut>(
                         data_type: DataType::Int,
                         nullable: false,
                         default: None,
-                        unique: false,
                         comment: None,
                     };
 
@@ -103,7 +102,6 @@ pub async fn create_table<T: GStore + GStoreMut>(
                         data_type,
                         nullable: true,
                         default: None,
-                        unique: false,
                         comment: None,
                     })
                     .collect::<Vec<_>>();

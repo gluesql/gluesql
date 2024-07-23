@@ -7,17 +7,21 @@ use {
     },
 };
 
-pub async fn validate(column_def: &ColumnDef) -> Result<()> {
+/// Validates whether the column definition is self-consistent.
+/// 
+/// # Arguments
+/// * `column_def` - The column definition to validate.
+/// * `unique` - Whether the column is unique.
+pub async fn validate(column_def: &ColumnDef, unique: bool) -> Result<()> {
     let ColumnDef {
         data_type,
         default,
-        unique,
         name,
         ..
     } = column_def;
 
     // unique + data type
-    if matches!(data_type, DataType::Float | DataType::Map) && *unique {
+    if matches!(data_type, DataType::Float | DataType::Map) && unique {
         return Err(AlterError::UnsupportedDataTypeForUniqueColumn(
             name.to_owned(),
             data_type.clone(),

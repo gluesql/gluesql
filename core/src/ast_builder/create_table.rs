@@ -53,7 +53,7 @@ impl Build for CreateTableNode {
                 columns
                     .into_iter()
                     .map(|column_statement: ColumnDefNode| {
-                        let (translated_column, is_primary) =
+                        let (translated_column, is_primary, is_unique) =
                             translate_column_def(&parse_column_def(column_statement)?)?;
                         if is_primary {
                             {
