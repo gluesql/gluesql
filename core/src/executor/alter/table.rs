@@ -143,10 +143,10 @@ pub async fn create_table<T: GStore + GStoreMut>(
         let referenced_column_def: ColumnDef = reference_schema
             .as_ref()
             .and_then(|reference_schema| reference_schema.column_defs.as_deref())
-            .or(column_defs.as_deref())
+            .or(column_defs)
             .and_then(|column_defs| {
                 column_defs
-                    .into_iter()
+                    .iter()
                     .find(|column_def| column_def.name == *referenced_column_name)
             })
             .ok_or_else(|| AlterError::ReferencedColumnNotFound(referenced_column_name.to_owned()))?
@@ -162,7 +162,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
             .ok_or_else(|| {
                 AlterError::ReferencingColumnNotFound(referencing_column_name.to_owned())
             })?;
-        
+
         if referencing_column_def.data_type != referenced_column_def.data_type {
             return Err(AlterError::ForeignKeyDataTypeMismatch {
                 referencing_column: referencing_column_name.to_owned(),
@@ -175,7 +175,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
         // Either the referenced column is the primary key of the referenced table
         if reference_schema
             .as_ref()
-            .map(|reference_schema| !reference_schema.is_primary_key(&referenced_column_name))
+            .map(|reference_schema| !reference_schema.is_primary_key(referenced_column_name))
             // or the referencing column is the primary key of the table we are creating now
             .or(primary_key.as_ref().and_then(|primary_key| {
                 column_defs.as_ref().and_then(|column_defs| {

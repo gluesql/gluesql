@@ -174,7 +174,12 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                             primary_key = Some(
                                 primary_key_columns
                                     .iter()
-                                    .map(|i| columns.iter().position(|c| c.name.value == i.value).unwrap())
+                                    .map(|i| {
+                                        columns
+                                            .iter()
+                                            .position(|c| c.name.value == i.value)
+                                            .unwrap()
+                                    })
                                     .collect::<Vec<_>>(),
                             );
                         }

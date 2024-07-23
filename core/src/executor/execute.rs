@@ -213,12 +213,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 .map(|assignment| assignment.id.to_owned())
                 .collect();
 
-            let update = Update::new(
-                storage,
-                table_name,
-                assignments,
-                &schema
-            )?;
+            let update = Update::new(storage, table_name, assignments, &schema)?;
 
             let foreign_keys = Rc::new(&schema.foreign_keys);
 

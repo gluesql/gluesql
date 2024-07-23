@@ -42,15 +42,18 @@ impl Schema {
     /// Returns an iterator over the ColumnDef instances in the schema that compose the primary key.
     pub fn primary_key_columns(&self) -> Option<impl Iterator<Item = &ColumnDef>> {
         self.primary_key.as_ref().map(|primary_key| {
-            primary_key
-                .iter()
-                .filter_map(move |index| self.column_defs.as_ref().and_then(|column_defs| column_defs.get(*index)))
+            primary_key.iter().filter_map(move |index| {
+                self.column_defs
+                    .as_ref()
+                    .and_then(|column_defs| column_defs.get(*index))
+            })
         })
     }
 
     /// Returns an iterator over the ColumnDef instances in the schema that compose the primary key.
     pub fn primary_key_column_names(&self) -> Option<impl Iterator<Item = &str>> {
-        self.primary_key_columns().map(|columns| columns.map(|column| column.name.as_str()))
+        self.primary_key_columns()
+            .map(|columns| columns.map(|column| column.name.as_str()))
     }
 
     /// Returns whether the schema has a primary key.
@@ -72,18 +75,24 @@ impl Schema {
     pub fn has_column<S: AsRef<str>>(&self, column: S) -> bool {
         self.column_defs
             .as_ref()
-            .map(|column_defs| column_defs.iter().any(|column_def| column_def.name == column.as_ref()))
+            .map(|column_defs| {
+                column_defs
+                    .iter()
+                    .any(|column_def| column_def.name == column.as_ref())
+            })
             .unwrap_or(false)
     }
 
     /// Returns reference to the column definition for the given column name.
-    /// 
+    ///
     /// # Arguments
     /// * `column` - The column name to look up.
     pub fn get_column_def<S: AsRef<str>>(&self, column: S) -> Option<&ColumnDef> {
-        self.column_defs
-            .as_ref()
-            .and_then(|column_defs| column_defs.iter().find(|column_def| column_def.name == column.as_ref()))
+        self.column_defs.as_ref().and_then(|column_defs| {
+            column_defs
+                .iter()
+                .find(|column_def| column_def.name == column.as_ref())
+        })
     }
 
     /// Returns the names of the columns defined in the schema, if any.
