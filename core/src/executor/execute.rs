@@ -217,8 +217,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 storage,
                 table_name,
                 assignments,
-                schema.column_defs.as_deref(),
-                schema.primary_key.as_deref(),
+                &schema
             )?;
 
             let foreign_keys = Rc::new(&schema.foreign_keys);

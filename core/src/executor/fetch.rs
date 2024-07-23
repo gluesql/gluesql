@@ -289,29 +289,21 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                     Dictionary::GlueTableColumns => {
                         let schemas = storage.fetch_all_schemas().await?;
                         let rows = schemas.into_iter().flat_map(move |schema| {
+                            let primary_key_columns = schema
+                                .primary_key_column_names()
+                                .map(|columns| columns.map(str::to_owned).collect::<Vec<String>>())
+                                .unwrap_or_default();
                             let columns = Rc::clone(&columns);
                             let table_name = schema.table_name;
-                            let primary_keys = schema.primary_key;
-
-                            schema
-                                .column_defs
-                                .unwrap_or_default()
-                                .into_iter()
-                                .enumerate()
-                                .map(move |(index, column_def)| {
+                            schema.column_defs.into_iter().flatten().enumerate().map(
+                                move |(index, column_def)| {
                                     let unique = column_def
                                         .unique
                                         .then(|| Value::Str("UNIQUE".to_owned()))
                                         .unwrap_or(
-                                            primary_keys
-                                                .as_ref()
-                                                .and_then(|keys| {
-                                                    keys.iter()
-                                                        .any(|key| key == &column_def.name)
-                                                        .then(|| {
-                                                            Value::Str("PRIMARY KEY".to_owned())
-                                                        })
-                                                })
+                                            primary_key_columns
+                                                .contains(&column_def.name)
+                                                .then(|| Value::Str("PRIMARY KEY".to_owned()))
                                                 .unwrap_or(Value::Null),
                                         );
                                     let values = vec![
@@ -331,7 +323,8 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                         columns: Rc::clone(&columns),
                                         values,
                                     })
-                                })
+                                },
+                            )
                         });
 
                         Rows::TableColumns(stream::iter(rows))
@@ -339,19 +332,22 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                     Dictionary::GlueIndexes => {
                         let schemas = storage.fetch_all_schemas().await?;
                         let rows = schemas.into_iter().flat_map(move |schema| {
-                            let primary_column = schema.primary_key;
-
-                            let clustered = match primary_column {
-                                Some(column_names) => {
+                            let clustered = match schema.primary_key_column_names() {
+                                Some(primary_key_columns) => {
+                                    let mut column_names = primary_key_columns.collect::<Vec<_>>();
                                     let values = vec![
                                         Value::Str(schema.table_name.clone()),
                                         Value::Str("PRIMARY".to_owned()),
                                         Value::Str("BOTH".to_owned()),
                                         if column_names.len() == 1 {
-                                            Value::Str(column_names[0].clone())
+                                            Value::Str(column_names.pop().unwrap().to_owned())
                                         } else {
                                             Value::List(
-                                                column_names.into_iter().map(Value::Str).collect(),
+                                                column_names
+                                                    .into_iter()
+                                                    .map(str::to_owned)
+                                                    .map(Value::Str)
+                                                    .collect(),
                                             )
                                         },
                                         Value::Bool(true),

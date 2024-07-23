@@ -135,7 +135,6 @@ impl CsvStorage {
         };
 
         if schema.has_column_defs() {
-            let primary_key_indices = schema.get_primary_key_column_indices();
             let columns = schema.get_column_names();
 
             let rows = data_rdr
@@ -161,7 +160,7 @@ impl CsvStorage {
                         })
                         .collect::<Result<Vec<Value>>>()?;
 
-                    let key = match primary_key_indices.as_ref() {
+                    let key = match schema.get_primary_key_column_indices() {
                         Some(primary_key_indices) => {
                             gluesql_core::executor::get_primary_key_from_row(
                                 &row,

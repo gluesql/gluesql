@@ -44,11 +44,7 @@ impl StoreMut for MongoStorage {
                             false => vec![data_type],
                         };
 
-                        if schema
-                            .primary_key
-                            .as_ref()
-                            .map_or(false, |pk| pk.contains(&column_def.name))
-                        {
+                        if schema.is_primary_key(&column_def.name) {
                             primary_indexes.push(column_def);
                         } else if column_def.unique {
                             unique_indexes.push(column_def);
@@ -146,7 +142,7 @@ impl StoreMut for MongoStorage {
         // If there is a primary key, we create a composite unique index with the primary key
         // where it is triggered solely when all of the columns in the primary key result
         // to be non-unique.
-        if let Some(primary_keys) = schema.primary_key.as_ref() {
+        if let Some(primary_keys) = schema.primary_key_column_names() {
             let options = IndexOptions::builder()
                 .unique(true)
                 .name(format!("{}_{}", schema.table_name, PRIMARY_KEY_DESINENCE))
@@ -155,12 +151,10 @@ impl StoreMut for MongoStorage {
             index_models.push(
                 mongodb::IndexModel::builder()
                     .keys(
-                        primary_keys
-                            .iter()
-                            .fold(Document::new(), |mut document, column_name| {
-                                document.insert(column_name.clone(), 1);
-                                document
-                            }),
+                        primary_keys.fold(Document::new(), |mut document, column_name| {
+                            document.insert(column_name, 1);
+                            document
+                        }),
                     )
                     .options(options)
                     .build(),
