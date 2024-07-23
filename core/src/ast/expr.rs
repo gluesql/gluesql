@@ -269,6 +269,11 @@ impl Expr {
             }
         }
     }
+
+    /// Create a new `Expr` representing a `NULL` literal.
+    pub fn null() -> Self {
+        Expr::Literal(AstLiteral::Null)
+    }
 }
 
 #[cfg(test)]
@@ -704,5 +709,8 @@ mod tests {
             }
             .to_sql()
         );
+
+        // We check that the NULL literal is correctly generated
+        assert_eq!("NULL", Expr::null().to_sql());
     }
 }

@@ -42,7 +42,33 @@ pub struct ForeignKey {
 #[derive(PartialEq, Debug, Clone, Eq, Hash, Serialize, Deserialize, Display)]
 pub enum ReferentialAction {
     #[strum(to_string = "NO ACTION")]
+    /// A NO ACTION constraint specifies that when a referenced row is deleted,
+    /// no action should be taken.
     NoAction,
+    #[strum(to_string = "CASCADE")]
+    /// A CASCADE constraint specifies that when a referenced row is deleted,
+    /// row(s) that reference it should also be deleted.
+    Cascade,
+    #[strum(to_string = "SET NULL")]
+    /// A SET NULL constraint specifies that when a referenced row is deleted,
+    /// row(s) that reference it should have their referencing column(s) set to NULL.
+    SetNull,
+    #[strum(to_string = "SET DEFAULT")]
+    /// A SET DEFAULT constraint specifies that when a referenced row is deleted,
+    /// row(s) that reference it should have their referencing column(s) set to the column's default value.
+    SetDefault,
+}
+
+impl From<sqlparser::ast::ReferentialAction> for ReferentialAction {
+    fn from(action: sqlparser::ast::ReferentialAction) -> Self {
+        match action {
+            sqlparser::ast::ReferentialAction::Restrict
+            | sqlparser::ast::ReferentialAction::NoAction => ReferentialAction::NoAction,
+            sqlparser::ast::ReferentialAction::Cascade => ReferentialAction::Cascade,
+            sqlparser::ast::ReferentialAction::SetNull => ReferentialAction::SetNull,
+            sqlparser::ast::ReferentialAction::SetDefault => ReferentialAction::SetDefault,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -146,6 +172,12 @@ pub enum Statement {
 pub struct Assignment {
     pub id: String,
     pub value: Expr,
+}
+
+impl Assignment {
+    pub fn new(id: String, value: Expr) -> Self {
+        Self { id, value }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

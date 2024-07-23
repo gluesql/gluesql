@@ -24,9 +24,8 @@ use {
     sqlparser::ast::{
         Assignment as SqlAssignment, Delete as SqlDelete, FromTable as SqlFromTable,
         Ident as SqlIdent, Insert as SqlInsert, ObjectName as SqlObjectName,
-        ObjectType as SqlObjectType, ReferentialAction as SqlReferentialAction,
-        Statement as SqlStatement, TableConstraint as SqlTableConstraint, TableFactor,
-        TableWithJoins,
+        ObjectType as SqlObjectType, Statement as SqlStatement,
+        TableConstraint as SqlTableConstraint, TableFactor, TableWithJoins,
     },
 };
 
@@ -407,19 +406,6 @@ pub fn translate_idents(idents: &[SqlIdent]) -> Vec<String> {
     idents.iter().map(|v| v.value.to_owned()).collect()
 }
 
-pub fn translate_referential_action(
-    action: &Option<SqlReferentialAction>,
-) -> Result<ReferentialAction> {
-    use SqlReferentialAction::*;
-
-    let action = action.unwrap_or(NoAction);
-
-    match action {
-        NoAction | Restrict => Ok(ReferentialAction::NoAction),
-        _ => Err(TranslateError::UnsupportedConstraint(action.to_string()).into()),
-    }
-}
-
 pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<ForeignKey> {
     match table_constraint {
         SqlTableConstraint::ForeignKey {
@@ -459,8 +445,12 @@ pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Fo
                 referencing_column_name,
                 referenced_table_name,
                 referenced_column_name,
-                on_delete: translate_referential_action(on_delete)?,
-                on_update: translate_referential_action(on_update)?,
+                on_delete: on_delete
+                    .map(ReferentialAction::from)
+                    .unwrap_or(ReferentialAction::NoAction),
+                on_update: on_update
+                    .map(ReferentialAction::from)
+                    .unwrap_or(ReferentialAction::NoAction),
             })
         }
         _ => Err(TranslateError::UnsupportedConstraint(table_constraint.to_string()).into()),
@@ -469,6 +459,7 @@ pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Fo
 
 #[cfg(test)]
 mod tests {
+    use crate::ast::{ColumnDef, DataType};
     use {super::*, crate::parse_sql::parse};
 
     #[test]
@@ -477,6 +468,132 @@ mod tests {
         let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
         let expected =
             Err(TranslateError::DefaultValuesOnInsertNotSupported("Foo".to_owned()).into());
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_on_update_cascade() {
+        let sql = "CREATE TABLE Foo (id INTEGER PRIMARY KEY, bar INTEGER, FOREIGN KEY (bar) REFERENCES Foo (id) ON UPDATE CASCADE)";
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+        let expected = Ok(Statement::CreateTable {
+            if_not_exists: false,
+            name: "Foo".to_owned(),
+            columns: Some(vec![
+                ColumnDef {
+                    name: "id".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: false,
+                    default: None,
+                    unique: false,
+                    comment: None,
+                },
+                ColumnDef {
+                    name: "bar".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: true,
+                    default: None,
+                    unique: false,
+                    comment: None,
+                },
+            ]),
+            source: None,
+            engine: None,
+            foreign_keys: vec![ForeignKey {
+                name: "FK_bar-Foo_id".to_owned(),
+                referencing_column_name: "bar".to_owned(),
+                referenced_table_name: "Foo".to_owned(),
+                referenced_column_name: "id".to_owned(),
+                on_delete: ReferentialAction::NoAction,
+                on_update: ReferentialAction::Cascade,
+            }],
+            primary_key: Some(vec![0]),
+            comment: None,
+        });
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_on_delete_cascade() {
+        let sql = "CREATE TABLE Foo (id INTEGER PRIMARY KEY, bar INTEGER, FOREIGN KEY (bar) REFERENCES Foo (id) ON DELETE CASCADE)";
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+        let expected = Ok(Statement::CreateTable {
+            if_not_exists: false,
+            name: "Foo".to_owned(),
+            columns: Some(vec![
+                ColumnDef {
+                    name: "id".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: false,
+                    default: None,
+                    unique: false,
+                    comment: None,
+                },
+                ColumnDef {
+                    name: "bar".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: true,
+                    default: None,
+                    unique: false,
+                    comment: None,
+                },
+            ]),
+            source: None,
+            engine: None,
+            foreign_keys: vec![ForeignKey {
+                name: "FK_bar-Foo_id".to_owned(),
+                referencing_column_name: "bar".to_owned(),
+                referenced_table_name: "Foo".to_owned(),
+                referenced_column_name: "id".to_owned(),
+                on_delete: ReferentialAction::Cascade,
+                on_update: ReferentialAction::NoAction,
+            }],
+            primary_key: Some(vec![0]),
+            comment: None,
+        });
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_on_delete_on_update_cascade_same_line() {
+        let sql = "CREATE TABLE Foo (id INTEGER PRIMARY KEY, bar INTEGER, FOREIGN KEY (bar) REFERENCES Foo (id) ON DELETE CASCADE ON UPDATE CASCADE)";
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+        let expected = Ok(Statement::CreateTable {
+            if_not_exists: false,
+            name: "Foo".to_owned(),
+            columns: Some(vec![
+                ColumnDef {
+                    name: "id".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: false,
+                    default: None,
+                    unique: false,
+                    comment: None,
+                },
+                ColumnDef {
+                    name: "bar".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: true,
+                    default: None,
+                    unique: false,
+                    comment: None,
+                },
+            ]),
+            source: None,
+            engine: None,
+            foreign_keys: vec![ForeignKey {
+                name: "FK_bar-Foo_id".to_owned(),
+                referencing_column_name: "bar".to_owned(),
+                referenced_table_name: "Foo".to_owned(),
+                referenced_column_name: "id".to_owned(),
+                on_delete: ReferentialAction::Cascade,
+                on_update: ReferentialAction::Cascade,
+            }],
+            primary_key: Some(vec![0]),
+            comment: None,
+        });
 
         assert_eq!(actual, expected);
     }
