@@ -664,7 +664,7 @@ test_case!(foreign_key, {
                         referenced_table_name: "ReferencedTableWithPK".to_owned(),
                         referenced_column_name: "id".to_owned(),
                         on_delete: ReferentialAction::NoAction,
-                        on_update: ReferentialAction::Restrict,
+                        on_update: ReferentialAction::NoAction,
                     },
                 },
                 Referencing {
