@@ -303,7 +303,7 @@ pub async fn update<T: GStore + GStoreMut>(
                                 expr.clone(),
                             ));
                         }
-                        Restrict | NoAction => {
+                        NoAction => {
                             return Err(UpdateError::RestrictingColumnExists(format!(
                                 "{referencing_table_name}.{referencing_column_name}"
                             ))

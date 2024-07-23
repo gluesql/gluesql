@@ -103,7 +103,7 @@ pub async fn delete<T: GStore + GStoreMut>(
                                 expr.clone(),
                             ));
                         }
-                        Restrict | NoAction => {
+                        NoAction => {
                             return Err(DeleteError::RestrictingColumnExists(format!(
                                 "{referencing_table_name}.{referencing_column_name}"
                             ))
