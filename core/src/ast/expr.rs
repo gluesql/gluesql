@@ -94,18 +94,6 @@ impl ToSqlUnquoted for Expr {
     }
 }
 
-impl<'a> TryInto<&'a str> for &'a Expr {
-    type Error = ();
-
-    fn try_into(self) -> Result<&'a str, Self::Error> {
-        match self {
-            Expr::Identifier(s) => Ok(s),
-            Expr::CompoundIdentifier { ident, .. } => Ok(ident),
-            _ => Err(()),
-        }
-    }
-}
-
 impl Expr {
     fn to_sql_with(&self, quoted: bool) -> String {
         match self {
