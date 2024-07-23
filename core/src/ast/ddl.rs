@@ -84,11 +84,7 @@ impl ToSql for ColumnDef {
             let default = default
                 .as_ref()
                 .map(|expr| format!("DEFAULT {}", expr.to_sql()));
-            let unique = if *unique {
-                Some("UNIQUE".to_owned())
-            } else {
-                None
-            };
+            let unique = unique.then_some("UNIQUE".to_owned());
             let comment = comment
                 .as_ref()
                 .map(|comment| format!("COMMENT '{}'", comment));

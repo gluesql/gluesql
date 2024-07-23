@@ -118,7 +118,7 @@ pub async fn validate_unique<T: Store>(
     // First, we retrieve the primary key indices and the unique columns to validate.
     // Specifically, we only care about validating the primary key indices in the case of an UPDATE
     // if the primary key columns are specified in the set of the columns being updated.
-    let (primary_key_indices, unique_columns): (Option<Vec<usize>>, Vec<(usize, &str)>) =
+    let (primary_key_indices, unique_columns): (Option<&[usize]>, Vec<(usize, &str)>) =
         match &column_validation {
             ColumnValidation::All => (
                 schema.get_primary_key_column_indices(),
@@ -154,7 +154,7 @@ pub async fn validate_unique<T: Store>(
     // We then proceed to validate the primary keys.
     if let Some(primary_key_indices) = primary_key_indices {
         for row in row_iter.clone() {
-            let primary_key = get_primary_key_from_row(row, &primary_key_indices)?;
+            let primary_key = get_primary_key_from_row(row, primary_key_indices)?;
 
             if storage
                 .fetch_data(table_name, &primary_key)

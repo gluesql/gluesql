@@ -62,12 +62,11 @@ impl Store for MongoStorage {
         let projection = doc! {crate::PRIMARY_KEY_SYMBOL: 0};
         let options = FindOptions::builder()
             .projection(projection)
-            .sort(schema.primary_key.map(|pk| {
-                pk.iter()
-                    .fold(Document::new(), |mut document, column_name| {
-                        document.insert(column_name.clone(), 1);
-                        document
-                    })
+            .sort(schema.primary_key_column_names().map(|pk| {
+                pk.fold(Document::new(), |mut document, column_name| {
+                    document.insert(column_name, 1);
+                    document
+                })
             }))
             .build();
 
@@ -97,13 +96,11 @@ impl Store for MongoStorage {
         let schema = self.fetch_schema(table_name).await?;
 
         let primary_key_documnt = schema.as_ref().and_then(|schema| {
-            schema.primary_key.as_ref().map(|primary_key| {
-                primary_key
-                    .iter()
-                    .fold(Document::new(), |mut document, column_name| {
-                        document.insert(column_name.clone(), 1);
-                        document
-                    })
+            schema.primary_key_column_names().map(|pk| {
+                pk.fold(Document::new(), |mut document, column_name| {
+                    document.insert(column_name, 1);
+                    document
+                })
             })
         });
 
@@ -211,14 +208,15 @@ impl MongoStorage {
                 })
                 .collect::<HashMap<String, String>>();
 
-            let mut primary_key: Option<Vec<String>> = None;
+            let mut primary_key: Option<Vec<usize>> = None;
 
             let column_defs = validator
                 .get_document("properties")
                 .map_storage_err()?
                 .into_iter()
                 .skip(1)
-                .map(|(column_name, doc)| {
+                .enumerate()
+                .map(|(index, (column_name, doc))| {
                     let doc = doc
                         .as_document()
                         .map_storage_err(MongoStorageError::InvalidDocument)?;
@@ -245,8 +243,8 @@ impl MongoStorage {
                         } else {
                             if index_name.ends_with(PRIMARY_KEY_DESINENCE) {
                                 match primary_key.as_mut() {
-                                    Some(pk) => pk.push(column_name.to_owned()),
-                                    None => primary_key = Some(vec![column_name.to_owned()]),
+                                    Some(pk) => pk.push(index),
+                                    None => primary_key = Some(vec![index]),
                                 }
                             }
                             false

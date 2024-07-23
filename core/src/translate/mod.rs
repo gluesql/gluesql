@@ -96,13 +96,14 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             comment,
             ..
         } => {
-            let mut primary_key: Vec<String> = Vec::new();
+            let mut primary_key: Vec<usize> = Vec::new();
             let translated_columns = columns
                 .iter()
-                .map(|column| {
+                .enumerate()
+                .map(|(index, column)| {
                     let (translated_column, is_primary) = translate_column_def(column)?;
                     if is_primary {
-                        primary_key.push(column.name.value.clone());
+                        primary_key.push(index);
                     }
                     Ok(translated_column)
                 })
@@ -172,8 +173,13 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                             primary_key = Some(
                                 primary_key_columns
                                     .iter()
-                                    .map(|i| i.value.clone())
-                                    .collect(),
+                                    .map(|i| {
+                                        columns
+                                            .iter()
+                                            .position(|c| c.name.value == i.value)
+                                            .unwrap()
+                                    })
+                                    .collect::<Vec<_>>(),
                             );
                         }
                     }
@@ -501,7 +507,7 @@ mod tests {
                 on_delete: ReferentialAction::NoAction,
                 on_update: ReferentialAction::Cascade,
             }],
-            primary_key: Some(vec!["id".to_owned()]),
+            primary_key: Some(vec![0]),
             comment: None,
         });
 
@@ -543,7 +549,7 @@ mod tests {
                 on_delete: ReferentialAction::Cascade,
                 on_update: ReferentialAction::NoAction,
             }],
-            primary_key: Some(vec!["id".to_owned()]),
+            primary_key: Some(vec![0]),
             comment: None,
         });
 
@@ -585,7 +591,7 @@ mod tests {
                 on_delete: ReferentialAction::Cascade,
                 on_update: ReferentialAction::Cascade,
             }],
-            primary_key: Some(vec!["id".to_owned()]),
+            primary_key: Some(vec![0]),
             comment: None,
         });
 

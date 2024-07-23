@@ -113,7 +113,7 @@ pub enum Statement {
         source: Option<Box<Query>>,
         engine: Option<String>,
         foreign_keys: Vec<ForeignKey>,
-        primary_key: Option<Vec<String>>,
+        primary_key: Option<Vec<usize>>,
         comment: Option<String>,
     },
     /// CREATE FUNCTION
@@ -244,27 +244,31 @@ impl ToSql for Statement {
             } => {
                 let if_not_exists = if_not_exists.then_some("IF NOT EXISTS");
 
-                let primary_key = primary_key
-                    .as_ref()
-                    .map(|cols| format!("PRIMARY KEY ({})", cols.join(", ")));
+                let primary_key = match (primary_key.as_ref(), columns.as_ref()) {
+                    (Some(indices), Some(columns)) => Some(format!(
+                        "PRIMARY KEY ({})",
+                        indices
+                            .iter()
+                            .copied()
+                            .map(|i| columns[i].name.clone())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    )),
+                    _ => None,
+                };
+
                 let body = match (source, columns) {
                     (Some(query), _) => Some(format!("AS {}", query.to_sql())),
                     (None, None) => None,
                     (None, Some(columns)) => {
                         let foreign_keys = foreign_keys.iter().map(ToSql::to_sql);
-                        let mut body = columns
+                        let body = columns
                             .iter()
                             .map(ToSql::to_sql)
                             .chain(foreign_keys)
-                            .collect::<Vec<_>>();
-
-                        // If we identified earlier that there is a primary key, we add it
-                        // at the end of the CREATE TABLE statement.
-                        if let Some(primary_key) = primary_key {
-                            body.push(primary_key);
-                        }
-
-                        let body = body.join(", ");
+                            .chain(primary_key)
+                            .collect::<Vec<_>>()
+                            .join(", ");
 
                         Some(format!("({body})"))
                     }

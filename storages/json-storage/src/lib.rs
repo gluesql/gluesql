@@ -154,8 +154,6 @@ impl JsonStorage {
             }
         };
 
-        let primary_key_indices = schema.get_primary_key_column_indices();
-
         let schema2 = schema.clone();
         let rows = jsons.enumerate().map(move |(index, json)| -> Result<_> {
             let json = json?;
@@ -187,7 +185,9 @@ impl JsonStorage {
                 values.push(value);
             }
 
-            let key = if let Some(primary_key_indices) = primary_key_indices.as_ref() {
+            let key = if let Some(primary_key_indices) =
+                schema2.get_primary_key_column_indices().as_ref()
+            {
                 gluesql_core::executor::get_primary_key_from_row(&values, primary_key_indices)?
             } else {
                 get_index_key()?

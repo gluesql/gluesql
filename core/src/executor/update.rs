@@ -1,4 +1,6 @@
 use super::delete::delete;
+use super::Referencing;
+use crate::ast::Expr;
 use crate::error::ExecuteError;
 use crate::executor::fetch::fetch;
 use crate::executor::validate::validate_unique;
@@ -14,9 +16,8 @@ use {
         evaluate::{evaluate, Evaluated},
     },
     crate::{
-        ast::{Assignment, BinaryOperator, ColumnDef, Expr, ForeignKey},
-        data::{Key, Row, Value},
-        executor::Referencing,
+        ast::{Assignment, ColumnDef, ForeignKey},
+        data::{Key, Row, Schema, Value},
         result::{Error, Result},
         store::{GStore, GStoreMut},
     },
@@ -65,7 +66,7 @@ pub struct Update<'a, T: GStore> {
     storage: &'a T,
     table_name: &'a str,
     fields: &'a [Assignment],
-    column_defs: Option<&'a [ColumnDef]>,
+    schema: &'a Schema,
 }
 
 impl<'a, T: GStore> Update<'a, T> {
@@ -73,19 +74,15 @@ impl<'a, T: GStore> Update<'a, T> {
         storage: &'a T,
         table_name: &'a str,
         fields: &'a [Assignment],
-        column_defs: Option<&'a [ColumnDef]>,
-        primary_key: Option<&'a [String]>,
+        schema: &'a Schema,
     ) -> Result<Self> {
-        if let Some(column_defs) = column_defs {
+        if schema.has_column_defs() {
             for assignment in fields.iter() {
                 let Assignment { id, .. } = assignment;
 
-                if column_defs.iter().all(|col_def| &col_def.name != id) {
+                if !schema.has_column(id) {
                     return Err(UpdateError::ColumnNotFound(id.to_owned()).into());
-                } else if primary_key
-                    .as_ref()
-                    .map_or(false, |primary_key| primary_key.contains(id))
-                {
+                } else if schema.is_primary_key(id) {
                     return Err(UpdateError::UpdateOnPrimaryKeyNotSupported(id.to_owned()).into());
                 }
             }
@@ -95,7 +92,7 @@ impl<'a, T: GStore> Update<'a, T> {
             storage,
             table_name,
             fields,
-            column_defs,
+            schema,
         })
     }
 
@@ -113,33 +110,32 @@ impl<'a, T: GStore> Update<'a, T> {
 
                 async move {
                     let evaluated = evaluate(self.storage, context, None, value_expr).await?;
-                    let value = match self.column_defs {
-                        Some(column_defs) => {
-                            let ColumnDef {
-                                data_type,
-                                nullable,
-                                ..
-                            } = column_defs
-                                .iter()
-                                .find(|column_def| id == &column_def.name)
-                                .ok_or(UpdateError::ConflictOnSchema)?;
+                    let value = if self.schema.has_column_defs() {
+                        let ColumnDef {
+                            data_type,
+                            nullable,
+                            ..
+                        } = self
+                            .schema
+                            .get_column_def(id)
+                            .ok_or(UpdateError::ConflictOnSchema)?;
 
-                            let value = match evaluated {
-                                Evaluated::Literal(v) => Value::try_from_literal(data_type, &v)?,
-                                Evaluated::Value(v) => {
-                                    v.validate_type(data_type)?;
-                                    v
-                                }
-                                Evaluated::StrSlice {
-                                    source: s,
-                                    range: r,
-                                } => Value::Str(s[r].to_owned()),
-                            };
+                        let value = match evaluated {
+                            Evaluated::Literal(v) => Value::try_from_literal(data_type, &v)?,
+                            Evaluated::Value(v) => {
+                                v.validate_type(data_type)?;
+                                v
+                            }
+                            Evaluated::StrSlice {
+                                source: s,
+                                range: r,
+                            } => Value::Str(s[r].to_owned()),
+                        };
 
-                            value.validate_null(*nullable)?;
-                            value
-                        }
-                        None => evaluated.try_into()?,
+                        value.validate_null(*nullable)?;
+                        value
+                    } else {
+                        evaluated.try_into()?
                     };
 
                     Ok::<_, Error>((id.as_ref(), value))
@@ -238,13 +234,7 @@ pub async fn update<T: GStore + GStoreMut>(
         .map(|assignment| assignment.id.to_owned())
         .collect();
 
-    let update_executor = Update::new(
-        storage,
-        table_name,
-        assignments,
-        schema.column_defs.as_deref(),
-        schema.primary_key.as_deref(),
-    )?;
+    let update_executor = Update::new(storage, table_name, assignments, &schema)?;
 
     let foreign_keys = Rc::new(&schema.foreign_keys);
     let referencings = storage.fetch_referencings(table_name).await?;
@@ -273,7 +263,7 @@ pub async fn update<T: GStore + GStoreMut>(
 
                 let expr = &Expr::BinaryOp {
                     left: Box::new(Expr::Identifier(referencing_column_name.clone())),
-                    op: BinaryOperator::Eq,
+                    op: crate::ast::BinaryOperator::Eq,
                     right: Box::new(Expr::try_from(value)?),
                 };
 

@@ -214,14 +214,9 @@ pub trait Planner<'a> {
             None => return next,
         };
 
-        let primary_key = schema.as_ref().and_then(|Schema { primary_key, .. }| {
-            primary_key.as_ref().map(|primary_key| {
-                primary_key
-                    .iter()
-                    .map(|name| name.as_str())
-                    .collect::<Vec<_>>()
-            })
-        });
+        let primary_key = schema
+            .as_ref()
+            .and_then(|schema| Some(schema.primary_key_column_names()?.collect()));
 
         let context = Context::new(
             alias.unwrap_or_else(|| name.to_owned()),

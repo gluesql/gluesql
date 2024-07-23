@@ -47,12 +47,13 @@ impl CreateTableNode {
 impl Build for CreateTableNode {
     fn build(self) -> Result<Statement> {
         let table_name = self.table_name;
-        let mut primary_key: Option<Vec<String>> = None;
+        let mut primary_key: Option<Vec<usize>> = None;
         let columns: Option<Vec<crate::ast::ColumnDef>> = match self.columns {
             Some(columns) => Some(
                 columns
                     .into_iter()
-                    .map(|column_statement: ColumnDefNode| {
+                    .enumerate()
+                    .map(|(index, column_statement)| {
                         let (translated_column, is_primary) =
                             translate_column_def(&parse_column_def(column_statement)?)?;
                         if is_primary {
@@ -64,7 +65,7 @@ impl Build for CreateTableNode {
                                         )
                                     }
                                     None => {
-                                        primary_key = Some(vec![translated_column.name.clone()]);
+                                        primary_key = Some(vec![index]);
                                     }
                                 }
                             }
@@ -81,15 +82,19 @@ impl Build for CreateTableNode {
                 return Err(TranslateError::MultiplePrimaryKeyNotSupported.into());
             }
 
+            let mut indices = Vec::new();
+
             if let Some(columns) = columns.as_ref() {
                 for column in primary_key_constraint.as_ref() {
-                    if columns.iter().all(|col| &col.name != column) {
+                    if let Some(index) = columns.iter().position(|c| &c.name == column) {
+                        indices.push(index);
+                    } else {
                         return Err(TranslateError::ColumnNotFoundInTable(column.clone()).into());
                     }
                 }
             }
 
-            primary_key = Some(primary_key_constraint.into());
+            primary_key = Some(indices);
         };
 
         Ok(Statement::CreateTable {

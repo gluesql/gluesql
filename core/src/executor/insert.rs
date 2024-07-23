@@ -179,7 +179,7 @@ async fn fetch_vec_rows<T: GStore>(
         let rows = rows
             .into_iter()
             .map(|row| {
-                super::validate::get_primary_key_from_row(&row, &primary_key_indices)
+                super::validate::get_primary_key_from_row(&row, primary_key_indices)
                     .map(|key| (key, row.into()))
             })
             .collect::<Result<Vec<_>>>()?;

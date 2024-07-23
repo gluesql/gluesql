@@ -60,7 +60,7 @@ impl ParquetStorage {
 
         let mut is_schemaless = false;
         let mut foreign_keys = Vec::new();
-        let mut primary_key: Option<Vec<String>> = None;
+        let mut primary_key: Option<Vec<usize>> = None;
         let mut comment = None;
         if let Some(metadata) = key_value_file_metadata {
             for kv in metadata.iter() {
@@ -83,7 +83,7 @@ impl ParquetStorage {
                     primary_key = Some(
                         kv.value
                             .as_ref()
-                            .map(|x| from_str::<Vec<String>>(x))
+                            .map(|x| from_str::<Vec<usize>>(x))
                             .map_storage_err(Error::StorageMsg(
                                 "No value found on metadata".to_owned(),
                             ))?

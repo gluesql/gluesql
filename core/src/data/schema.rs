@@ -34,19 +34,65 @@ pub struct Schema {
     pub indexes: Vec<SchemaIndex>,
     pub engine: Option<String>,
     pub foreign_keys: Vec<ForeignKey>,
-    pub primary_key: Option<Vec<String>>,
+    pub primary_key: Option<Vec<usize>>,
     pub comment: Option<String>,
 }
 
 impl Schema {
+    /// Returns an iterator over the ColumnDef instances in the schema that compose the primary key.
+    pub fn primary_key_columns(&self) -> Option<impl Iterator<Item = &ColumnDef>> {
+        self.primary_key.as_ref().map(|primary_key| {
+            primary_key.iter().filter_map(move |index| {
+                self.column_defs
+                    .as_ref()
+                    .and_then(|column_defs| column_defs.get(*index))
+            })
+        })
+    }
+
+    /// Returns an iterator over the ColumnDef instances in the schema that compose the primary key.
+    pub fn primary_key_column_names(&self) -> Option<impl Iterator<Item = &str>> {
+        self.primary_key_columns()
+            .map(|columns| columns.map(|column| column.name.as_str()))
+    }
+
     /// Returns whether the schema has a primary key.
     pub fn has_primary_key(&self) -> bool {
         self.primary_key.is_some()
     }
 
+    /// Returns the table name associated with the schema.
+    pub fn table_name(&self) -> &str {
+        &self.table_name
+    }
+
     /// Returns whether the schema has column definitions.
     pub fn has_column_defs(&self) -> bool {
         self.column_defs.is_some()
+    }
+
+    /// Returns whether the schema has a given column.
+    pub fn has_column<S: AsRef<str>>(&self, column: S) -> bool {
+        self.column_defs
+            .as_ref()
+            .map(|column_defs| {
+                column_defs
+                    .iter()
+                    .any(|column_def| column_def.name == column.as_ref())
+            })
+            .unwrap_or(false)
+    }
+
+    /// Returns reference to the column definition for the given column name.
+    ///
+    /// # Arguments
+    /// * `column` - The column name to look up.
+    pub fn get_column_def<S: AsRef<str>>(&self, column: S) -> Option<&ColumnDef> {
+        self.column_defs.as_ref().and_then(|column_defs| {
+            column_defs
+                .iter()
+                .find(|column_def| column_def.name == column.as_ref())
+        })
     }
 
     /// Returns the names of the columns defined in the schema, if any.
@@ -59,36 +105,13 @@ impl Schema {
         })
     }
 
-    /// Returns the indices of the primary key columns.
-    ///
-    /// # Arguments
-    /// * `column_defs` - The column definitions of the table.
-    /// * `primary_key` - The primary key of the table.
-    pub fn get_primary_key_column_indices(&self) -> Option<Vec<usize>> {
-        match (&self.column_defs, &self.primary_key) {
-            (Some(column_defs), Some(primary_key)) => Some(
-                primary_key
-                    .iter()
-                    .map(|key| {
-                        column_defs
-                            .iter()
-                            .position(|column_def| column_def.name == *key)
-                            .unwrap()
-                    })
-                    .collect(),
-            ),
-            _ => None,
-        }
-    }
-
     /// Returns whether the provided column is part of the primary key.
     ///
     /// # Arguments
     /// * `column` - The column to check.
     pub fn is_primary_key<S: AsRef<str>>(&self, column: S) -> bool {
-        self.primary_key
-            .as_ref()
-            .map(|primary_key| primary_key.iter().any(|key| key == column.as_ref()))
+        self.primary_key_columns()
+            .map(|mut columns| columns.any(|column_def| column_def.name == column.as_ref()))
             .unwrap_or(false)
     }
 
@@ -100,6 +123,11 @@ impl Schema {
         columns
             .into_iter()
             .any(|column| self.is_primary_key(column))
+    }
+
+    /// Returns the indices of the columns that compose the primary key.
+    pub fn get_primary_key_column_indices(&self) -> Option<&[usize]> {
+        self.primary_key.as_deref()
     }
 
     pub fn to_ddl(&self) -> String {
@@ -329,7 +357,7 @@ mod tests {
             indexes: Vec::new(),
             engine: None,
             foreign_keys: Vec::new(),
-            primary_key: Some(vec!["id".to_owned()]),
+            primary_key: Some(vec![0]),
             comment: None,
         };
 
@@ -373,7 +401,7 @@ mod tests {
             indexes: Vec::new(),
             engine: None,
             foreign_keys: Vec::new(),
-            primary_key: Some(vec!["id".to_owned(), "user_id".to_owned()]),
+            primary_key: Some(vec![0, 1]),
             comment: None,
         };
 

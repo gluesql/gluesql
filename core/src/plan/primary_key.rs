@@ -209,8 +209,10 @@ impl<'a> PrimaryKeyPlanner<'a> {
                 return PossibleResults::Retry(key, value);
             }
 
-            let key_column: &str = if let Ok(key_column) = key.as_ref().try_into() {
-                key_column
+            let key_column: &str = if let Expr::Identifier(ident)
+            | Expr::CompoundIdentifier { ident, .. } = key.as_ref()
+            {
+                ident
             } else {
                 return PossibleResults::Retry(key, value);
             };
