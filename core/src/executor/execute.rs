@@ -5,24 +5,22 @@ use {
             CreateTableOptions,
         },
         delete::delete,
-        fetch::fetch,
         insert::insert,
         select::{select, select_with_labels},
-        update::Update,
-        validate::{validate_unique, ColumnValidation},
+        update::{self},
     },
     crate::{
         ast::{
             AstLiteral, BinaryOperator, DataType, Dictionary, Expr, Query, SelectItem, SetExpr,
             Statement, TableAlias, TableFactor, TableWithJoins, Variable,
         },
-        data::{Key, Row, Schema, Value},
+        data::{Schema, Value},
         result::Result,
         store::{GStore, GStoreMut},
     },
     futures::stream::{StreamExt, TryStreamExt},
     serde::{Deserialize, Serialize},
-    std::{collections::HashMap, env::var, fmt::Debug, rc::Rc},
+    std::{collections::HashMap, env::var, fmt::Debug},
     thiserror::Error as ThisError,
 };
 
@@ -85,6 +83,43 @@ impl Payload {
             })),
             _ => return None,
         })
+    }
+
+    /// Comulates the number of affected rows in the payload, when the provided payload is of the same type.
+    ///
+    /// # Arguments
+    /// * `other` - The other payload to be added.
+    ///
+    /// # Example
+    /// ```
+    /// use gluesql_core::executor::Payload;
+    ///
+    /// let mut payload = Payload::Insert(1);
+    /// payload.accumulate(&Payload::Insert(2));
+    ///
+    /// assert_eq!(payload, Payload::Insert(3));
+    /// ```
+    ///
+    /// # Panics
+    /// Panics if the payloads are not of the same type.
+    ///
+    /// ```should_panic
+    /// use gluesql_core::executor::Payload;
+    ///
+    /// let mut payload = Payload::Insert(1);
+    ///
+    /// payload.accumulate(&Payload::Delete(2));
+    /// ```
+    ///
+    pub fn accumulate(&mut self, other: &Self) {
+        match (self, other) {
+            (Payload::Insert(a), Payload::Insert(b)) => *a += b,
+            (Payload::Delete(a), Payload::Delete(b)) => *a += b,
+            (Payload::Update(a), Payload::Update(b)) => *a += b,
+            _ => {
+                unreachable!("accumulate is only for Insert, Delete, and Update")
+            }
+        }
     }
 }
 
@@ -196,70 +231,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
             table_name,
             selection,
             assignments,
-        } => {
-            let schema = storage
-                .fetch_schema(table_name)
-                .await?
-                .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
-
-            let all_columns = schema.column_defs.as_deref().map(|columns| {
-                columns
-                    .iter()
-                    .map(|col_def| col_def.name.to_owned())
-                    .collect()
-            });
-            let columns_to_update: Vec<String> = assignments
-                .iter()
-                .map(|assignment| assignment.id.to_owned())
-                .collect();
-
-            let update = Update::new(
-                storage,
-                table_name,
-                assignments,
-                schema.column_defs.as_deref(),
-                schema.primary_key.as_deref(),
-            )?;
-
-            let foreign_keys = Rc::new(&schema.foreign_keys);
-
-            let rows = fetch(storage, table_name, all_columns, selection.as_ref())
-                .await?
-                .and_then(|item| {
-                    let update = &update;
-                    let (key, row) = item;
-
-                    let foreign_keys = Rc::clone(&foreign_keys);
-                    async move {
-                        let row = update.apply(row, foreign_keys.as_ref()).await?;
-
-                        Ok((key, row))
-                    }
-                })
-                .try_collect::<Vec<(Key, Row)>>()
-                .await?;
-
-            if schema.has_column_defs() {
-                let column_validation = ColumnValidation::SpecifiedColumns(columns_to_update);
-                let rows = rows.iter().filter_map(|(_, row)| match row {
-                    Row::Vec { values, .. } => Some(values.as_slice()),
-                    Row::Map(_) => None,
-                });
-
-                validate_unique(storage, table_name, &schema, column_validation, rows).await?;
-            }
-
-            let num_rows = rows.len();
-            let rows = rows
-                .into_iter()
-                .map(|(key, row)| (key, row.into()))
-                .collect();
-
-            storage
-                .insert_data(table_name, rows)
-                .await
-                .map(|_| Payload::Update(num_rows))
-        }
+        } => update::update(storage, table_name, selection, assignments).await,
         Statement::Delete {
             table_name,
             selection,
