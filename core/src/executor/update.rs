@@ -15,7 +15,7 @@ use {
     },
     crate::{
         ast::{Assignment, BinaryOperator, ColumnDef, Expr, ForeignKey},
-        data::{Key, Row, Schema, Value},
+        data::{Key, Row, Value},
         executor::Referencing,
         result::{Error, Result},
         store::{GStore, GStoreMut},
@@ -74,6 +74,7 @@ impl<'a, T: GStore> Update<'a, T> {
         table_name: &'a str,
         fields: &'a [Assignment],
         column_defs: Option<&'a [ColumnDef]>,
+        primary_key: Option<&'a [String]>,
     ) -> Result<Self> {
         if let Some(column_defs) = column_defs {
             for assignment in fields.iter() {
@@ -81,9 +82,9 @@ impl<'a, T: GStore> Update<'a, T> {
 
                 if column_defs.iter().all(|col_def| &col_def.name != id) {
                     return Err(UpdateError::ColumnNotFound(id.to_owned()).into());
-                } else if column_defs
-                    .iter()
-                    .any(|column| &column.name == id && column.is_primary())
+                } else if primary_key
+                    .as_ref()
+                    .map_or(false, |primary_key| primary_key.contains(id))
                 {
                     return Err(UpdateError::UpdateOnPrimaryKeyNotSupported(id.to_owned()).into());
                 }
@@ -221,16 +222,12 @@ pub async fn update<T: GStore + GStoreMut>(
     selection: &Option<Expr>,
     assignments: &[Assignment],
 ) -> Result<Payload> {
-    let Schema {
-        column_defs,
-        foreign_keys,
-        ..
-    } = storage
+    let schema = storage
         .fetch_schema(table_name)
         .await?
         .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
 
-    let all_columns = column_defs.as_deref().map(|columns| {
+    let all_columns = schema.column_defs.as_deref().map(|columns| {
         columns
             .iter()
             .map(|col_def| col_def.name.to_owned())
@@ -241,12 +238,16 @@ pub async fn update<T: GStore + GStoreMut>(
         .map(|assignment| assignment.id.to_owned())
         .collect();
 
-    let update_executor = Update::new(storage, table_name, assignments, column_defs.as_deref())?;
+    let update_executor = Update::new(
+        storage,
+        table_name,
+        assignments,
+        schema.column_defs.as_deref(),
+        schema.primary_key.as_deref(),
+    )?;
 
-    let foreign_keys = Rc::new(foreign_keys);
+    let foreign_keys = Rc::new(&schema.foreign_keys);
     let referencings = storage.fetch_referencings(table_name).await?;
-
-    dbg!(&referencings);
 
     let rows = fetch(storage, table_name, all_columns, selection.as_ref())
         .await?
@@ -312,7 +313,7 @@ pub async fn update<T: GStore + GStoreMut>(
                 }
             }
 
-            let foreign_keys: Rc<Vec<ForeignKey>> = Rc::clone(&foreign_keys);
+            let foreign_keys = Rc::clone(&foreign_keys);
             let row = update_executor.apply(row, foreign_keys.as_ref()).await?;
 
             Ok::<_, Error>((key, row, delete_ops, update_null_ops, update_default_ops))
@@ -320,14 +321,14 @@ pub async fn update<T: GStore + GStoreMut>(
         .try_collect::<Vec<_>>()
         .await?;
 
-    if let Some(column_defs) = column_defs {
-        let column_validation = ColumnValidation::SpecifiedColumns(&column_defs, columns_to_update);
+    if schema.has_column_defs() {
+        let column_validation = ColumnValidation::SpecifiedColumns(columns_to_update);
         let rows = rows.iter().filter_map(|(_, row, _, _, _)| match row {
             Row::Vec { values, .. } => Some(values.as_slice()),
             Row::Map(_) => None,
         });
 
-        validate_unique(storage, table_name, column_validation, rows).await?;
+        validate_unique(storage, table_name, &schema, column_validation, rows).await?;
     }
 
     let num_rows = rows.len();

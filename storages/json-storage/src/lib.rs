@@ -53,7 +53,7 @@ impl JsonStorage {
         }
 
         let schema_path = self.schema_path(table_name);
-        let (column_defs, foreign_keys, comment) = match schema_path.exists() {
+        let (column_defs, foreign_keys, primary_key, comment) = match schema_path.exists() {
             true => {
                 let mut file = File::open(&schema_path).map_storage_err()?;
                 let mut ddl = String::new();
@@ -66,9 +66,14 @@ impl JsonStorage {
                     ));
                 }
 
-                (schema.column_defs, schema.foreign_keys, schema.comment)
+                (
+                    schema.column_defs,
+                    schema.foreign_keys,
+                    schema.primary_key,
+                    schema.comment,
+                )
             }
-            false => (None, Vec::new(), None),
+            false => (None, Vec::new(), None, None),
         };
 
         Ok(Some(Schema {
@@ -77,6 +82,7 @@ impl JsonStorage {
             indexes: vec![],
             engine: None,
             foreign_keys,
+            primary_key,
             comment,
         }))
     }
@@ -148,12 +154,7 @@ impl JsonStorage {
             }
         };
 
-        let primary_key_indices = match &schema.column_defs {
-            Some(column_defs) => {
-                gluesql_core::executor::get_primary_key_column_indices(column_defs)
-            }
-            None => vec![],
-        };
+        let primary_key_indices = schema.get_primary_key_column_indices();
 
         let schema2 = schema.clone();
         let rows = jsons.enumerate().map(move |(index, json)| -> Result<_> {
@@ -186,10 +187,10 @@ impl JsonStorage {
                 values.push(value);
             }
 
-            let key = if primary_key_indices.is_empty() {
-                get_index_key()?
+            let key = if let Some(primary_key_indices) = primary_key_indices.as_ref() {
+                gluesql_core::executor::get_primary_key_from_row(&values, primary_key_indices)?
             } else {
-                gluesql_core::executor::get_primary_key_from_row(&values, &primary_key_indices)?
+                get_index_key()?
             };
             let row = DataRow::Vec(values);
 

@@ -6,7 +6,6 @@ use {
     futures::stream::iter,
     gloo_storage::{errors::StorageError, LocalStorage, SessionStorage, Storage},
     gluesql_core::{
-        ast::ColumnUniqueOption,
         data::{Key, Schema},
         error::{Error, Result},
         store::{DataRow, Metadata, RowIter, Store, StoreMut},
@@ -117,11 +116,8 @@ impl Store for WebStorage {
         let path = format!("{}/{}", DATA_PATH, table_name);
         let mut rows = self.get::<Vec<(Key, DataRow)>>(path)?.unwrap_or_default();
 
-        match self.get(format!("{}/{}", SCHEMA_PATH, table_name))? {
-            Some(Schema {
-                column_defs: Some(column_defs),
-                ..
-            }) if column_defs.iter().any(|column_def| column_def.is_primary()) => {
+        match self.get::<Schema>(format!("{}/{}", SCHEMA_PATH, table_name))? {
+            Some(schema) if schema.has_primary_key() => {
                 rows.sort_by(|(key_a, _), (key_b, _)| key_a.cmp(key_b));
             }
             _ => {}

@@ -77,7 +77,7 @@ test_case!(primary_key, {
         .await;
 
     g.test(
-        "SELECT id, name FROM Allegro",
+        "SELECT id, name FROM Allegro ORDER BY id ASC",
         Ok(select!(
             id  | name
             I64 | Str;
@@ -111,7 +111,7 @@ test_case!(primary_key, {
 
     g.run("DELETE FROM Allegro WHERE id > 3").await;
     g.test(
-        "SELECT id, name FROM Allegro",
+        "SELECT id, name FROM Allegro ORDER BY id ASC",
         Ok(select!(
             id  | name
             I64 | Str;
@@ -212,7 +212,7 @@ test_case!(multiple_primary_keys, {
         )) => {
             assert!(key.is_some() || message.is_some());
             if let Some(key) = key {
-                assert_eq!(key, vec![Key::I64(1), Key::I64(1)].into());
+                assert_eq!(key, Key::List(vec![Key::I64(1), Key::I64(1)]));
             }
             if let Some(message) = message {
                 assert!(!message.is_empty());

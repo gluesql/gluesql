@@ -96,12 +96,19 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             comment,
             ..
         } => {
-            let columns = columns
+            let mut primary_key: Vec<String> = Vec::new();
+            let translated_columns = columns
                 .iter()
-                .map(translate_column_def)
+                .map(|column| {
+                    let (translated_column, is_primary) = translate_column_def(column)?;
+                    if is_primary {
+                        primary_key.push(column.name.value.clone());
+                    }
+                    Ok(translated_column)
+                })
                 .collect::<Result<Vec<_>>>()?;
 
-            let mut columns = (!columns.is_empty()).then_some(columns);
+            let translated_columns = (!translated_columns.is_empty()).then_some(translated_columns);
 
             let name = translate_object_name(name)?;
 
@@ -145,6 +152,11 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             // handling also the other constraints that are defined on the table.
 
             let mut foreign_keys = Vec::new();
+            let mut primary_key = if primary_key.is_empty() {
+                None
+            } else {
+                Some(primary_key)
+            };
 
             for constraint in constraints.iter() {
                 if let sqlparser::ast::TableConstraint::PrimaryKey {
@@ -152,19 +164,17 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                     ..
                 } = constraint
                 {
-                    // We can unwrap here because we know that the columns are
-                    // certainly defined, otherwise the table constraints would not
-                    // contain a primary key constraint, as a primary key is composed
-                    // of one or more columns.
-                    let columns = columns.as_mut().unwrap();
-                    // We identify the columns that are part of the primary key
-                    // and update them to have the primary key flag set to true.
-                    for primary_key_column in primary_key_columns {
-                        if let Some(column) = columns
-                            .iter_mut()
-                            .find(|c| c.name == primary_key_column.value)
-                        {
-                            column.set_primary();
+                    match primary_key.as_mut() {
+                        Some(_) => {
+                            return Err(TranslateError::MultiplePrimaryKeyNotSupported.into())
+                        }
+                        None => {
+                            primary_key = Some(
+                                primary_key_columns
+                                    .iter()
+                                    .map(|i| i.value.clone())
+                                    .collect(),
+                            );
                         }
                     }
                 } else {
@@ -175,13 +185,14 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             Ok(Statement::CreateTable {
                 if_not_exists: *if_not_exists,
                 name,
-                columns,
+                columns: translated_columns,
                 source: match query {
                     Some(v) => Some(translate_query(v).map(Box::new)?),
                     None => None,
                 },
                 engine: engine.clone(),
                 foreign_keys,
+                primary_key,
                 comment: comment.clone(),
             })
         }
@@ -442,7 +453,7 @@ pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Fo
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{ColumnDef, ColumnUniqueOption, DataType};
+    use crate::ast::{ColumnDef, DataType};
     use {super::*, crate::parse_sql::parse};
 
     #[test]
@@ -468,7 +479,7 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: Some(ColumnUniqueOption::primary()),
+                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -476,7 +487,7 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: true,
                     default: None,
-                    unique: None,
+                    unique: false,
                     comment: None,
                 },
             ]),
@@ -490,6 +501,7 @@ mod tests {
                 on_delete: ReferentialAction::NoAction,
                 on_update: ReferentialAction::Cascade,
             }],
+            primary_key: Some(vec!["id".to_owned()]),
             comment: None,
         });
 
@@ -509,7 +521,7 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: Some(ColumnUniqueOption::primary()),
+                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -517,7 +529,7 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: true,
                     default: None,
-                    unique: None,
+                    unique: false,
                     comment: None,
                 },
             ]),
@@ -531,6 +543,7 @@ mod tests {
                 on_delete: ReferentialAction::Cascade,
                 on_update: ReferentialAction::NoAction,
             }],
+            primary_key: Some(vec!["id".to_owned()]),
             comment: None,
         });
 
@@ -550,7 +563,7 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: Some(ColumnUniqueOption::primary()),
+                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -558,7 +571,7 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: true,
                     default: None,
-                    unique: None,
+                    unique: false,
                     comment: None,
                 },
             ]),
@@ -572,6 +585,7 @@ mod tests {
                 on_delete: ReferentialAction::Cascade,
                 on_update: ReferentialAction::Cascade,
             }],
+            primary_key: Some(vec!["id".to_owned()]),
             comment: None,
         });
 

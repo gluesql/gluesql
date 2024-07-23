@@ -84,10 +84,12 @@ impl Store for MemoryStorage {
     }
 
     async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {
-        Ok(self
+        let row = self
             .items
             .get(table_name)
-            .and_then(|item| item.rows.get(key).cloned()))
+            .and_then(|item| item.rows.get(key).map(Clone::clone));
+
+        Ok(row)
     }
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
