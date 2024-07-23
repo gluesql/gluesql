@@ -36,6 +36,9 @@ pub enum FetchError {
 
     #[error("table '{0}' has {1} columns available but {2} column aliases specified")]
     TooManyColumnAliases(String, usize, usize),
+
+    #[error("unreachable - primary key vector is empty")]
+    UnreachableEmptyPrimaryKey,
 }
 
 pub async fn fetch<'a, T: GStore>(
@@ -150,25 +153,26 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                         Rows::Indexed(rows)
                     }
                     Some(IndexItem::PrimaryKey(primary_key_expressions)) => {
-                        let mut evaluated_primary_key_expressions = Vec::new();
+                        let key = stream::iter(primary_key_expressions)
+                            .then(move |expr| {
+                                let filter_context = filter_context.as_ref().map(Rc::clone);
 
-                        for expr in primary_key_expressions {
-                            evaluated_primary_key_expressions.push(Value::try_from(
-                                evaluate(
-                                    storage,
-                                    filter_context.as_ref().map(Rc::clone),
-                                    None,
-                                    expr,
-                                )
-                                .await?,
-                            )?);
-                        }
-
-                        let key = if evaluated_primary_key_expressions.len() == 1 {
-                            Key::try_from(evaluated_primary_key_expressions.pop().unwrap())?
-                        } else {
-                            Key::try_from(evaluated_primary_key_expressions)?
-                        };
+                                async move {
+                                    evaluate(storage, filter_context, None, expr)
+                                        .await
+                                        .and_then(Value::try_from)
+                                        .and_then(Key::try_from)
+                                }
+                            })
+                            .try_collect::<Vec<Key>>()
+                            .await
+                            .and_then(|keys| match keys.len() {
+                                1 => keys
+                                    .into_iter()
+                                    .next()
+                                    .ok_or(FetchError::UnreachableEmptyPrimaryKey.into()),
+                                _ => Ok(Key::List(keys)),
+                            })?;
 
                         match storage.fetch_data(name, &key).await? {
                             Some(data_row) => {
