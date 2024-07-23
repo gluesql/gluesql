@@ -234,12 +234,7 @@ pub async fn update<T: GStore + GStoreMut>(
         .map(|assignment| assignment.id.to_owned())
         .collect();
 
-    let update_executor = Update::new(
-        storage,
-        table_name,
-        assignments,
-        &schema
-    )?;
+    let update_executor = Update::new(storage, table_name, assignments, &schema)?;
 
     let foreign_keys = Rc::new(&schema.foreign_keys);
     let referencings = storage.fetch_referencings(table_name).await?;
