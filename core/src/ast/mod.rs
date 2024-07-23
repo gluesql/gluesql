@@ -220,19 +220,13 @@ impl ToSql for Statement {
                     (None, None) => None,
                     (None, Some(columns)) => {
                         let foreign_keys = foreign_keys.iter().map(ToSql::to_sql);
-                        let mut body = columns
+                        let body = columns
                             .iter()
                             .map(ToSql::to_sql)
                             .chain(foreign_keys)
-                            .collect::<Vec<_>>();
-
-                        // If we identified earlier that there is a primary key, we add it
-                        // at the end of the CREATE TABLE statement.
-                        if let Some(primary_key) = primary_key {
-                            body.push(primary_key);
-                        }
-
-                        let body = body.join(", ");
+                            .chain(primary_key)
+                            .collect::<Vec<_>>()
+                            .join(", ");
 
                         Some(format!("({body})"))
                     }
