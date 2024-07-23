@@ -7,6 +7,8 @@ mod function;
 mod operator;
 mod query;
 
+use crate::ast::UniqueConstraint;
+
 pub use self::{
     data_type::translate_data_type,
     ddl::{translate_column_def, translate_operate_function_arg},
@@ -157,8 +159,9 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             } else {
                 Some(primary_key)
             };
+            let mut unique_constraints = Vec::new();
 
-            for constraint in constraints.iter() {
+            for constraint in constraints {
                 if let sqlparser::ast::TableConstraint::PrimaryKey {
                     columns: primary_key_columns,
                     ..
@@ -177,6 +180,20 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                             );
                         }
                     }
+                } else if let sqlparser::ast::TableConstraint::Unique {
+                    name,
+                    columns: unique_columns,
+                    ..
+                } = constraint
+                {
+                    let unique_columns = unique_columns
+                        .iter()
+                        .map(|c| c.value.clone())
+                        .collect::<Vec<_>>();
+                    unique_constraints.push(UniqueConstraint::new(
+                        name.clone().map(|n| n.value),
+                        unique_columns,
+                    ));
                 } else {
                     foreign_keys.push(translate_foreign_key(constraint)?);
                 }
@@ -193,6 +210,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 engine: engine.clone(),
                 foreign_keys,
                 primary_key,
+                unique_constraints,
                 comment: comment.clone(),
             })
         }
@@ -502,6 +520,7 @@ mod tests {
                 on_update: ReferentialAction::Cascade,
             }],
             primary_key: Some(vec!["id".to_owned()]),
+            unique_constraints: vec![],
             comment: None,
         });
 
@@ -544,6 +563,7 @@ mod tests {
                 on_update: ReferentialAction::NoAction,
             }],
             primary_key: Some(vec!["id".to_owned()]),
+            unique_constraints: vec![],
             comment: None,
         });
 
@@ -586,6 +606,7 @@ mod tests {
                 on_update: ReferentialAction::Cascade,
             }],
             primary_key: Some(vec!["id".to_owned()]),
+            unique_constraints: vec![],
             comment: None,
         });
 

@@ -292,6 +292,7 @@ impl MongoStorage {
             let table_description = validator.get_str("description").map_storage_err()?;
             let TableDescription {
                 foreign_keys,
+                unique_constraints,
                 comment,
             } = from_str::<TableDescription>(table_description).map_storage_err()?;
 
@@ -302,6 +303,7 @@ impl MongoStorage {
                 engine: None,
                 foreign_keys,
                 primary_key,
+                unique_constraints,
                 comment,
             };
 

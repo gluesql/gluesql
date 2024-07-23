@@ -100,6 +100,7 @@ impl Build for CreateTableNode {
             engine: None,
             foreign_keys: Vec::new(),
             primary_key,
+            unique_constraints: Vec::new(),
             comment: None,
         })
     }
