@@ -447,4 +447,15 @@ mod tests {
 
         assert_eq!(actual, expected);
     }
+
+    #[test]
+    fn test_create_table_with_multiple_primary_key() {
+        let sql = "CREATE TABLE Foo (id INTEGER PRIMARY KEY, PRIMARY KEY (id, id2))";
+
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+
+        let expected = Err(TranslateError::MultiplePrimaryKeyNotSupported.into());
+
+        assert_eq!(actual, expected);
+    }
 }
