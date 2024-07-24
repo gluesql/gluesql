@@ -233,7 +233,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 .try_collect::<Vec<(Key, Row)>>()
                 .await?;
 
-            if schema.has_column_defs() {
+            if schema.column_defs.is_some() {
                 let column_validation = ColumnValidation::SpecifiedColumns(columns_to_update);
                 let rows = rows.iter().filter_map(|(_, row)| match row {
                     Row::Vec { values, .. } => Some(values.as_slice()),

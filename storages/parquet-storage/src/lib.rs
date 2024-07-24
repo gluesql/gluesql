@@ -145,7 +145,7 @@ impl ParquetStorage {
         let mut rows = Vec::new();
         let mut key_counter: u64 = 0;
 
-        if fetched_schema.has_column_defs() {
+        if fetched_schema.column_defs.is_some() {
             for record in row_iter {
                 let record: Row = record.map_storage_err()?;
                 let mut row = Vec::new();

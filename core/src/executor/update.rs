@@ -49,7 +49,7 @@ impl<'a, T: GStore> Update<'a, T> {
         fields: &'a [Assignment],
         schema: &'a Schema,
     ) -> Result<Self> {
-        if schema.has_column_defs() {
+        if schema.column_defs.is_some() {
             for assignment in fields.iter() {
                 let Assignment { id, .. } = assignment;
 
@@ -83,7 +83,7 @@ impl<'a, T: GStore> Update<'a, T> {
 
                 async move {
                     let evaluated = evaluate(self.storage, context, None, value_expr).await?;
-                    let value = if self.schema.has_column_defs() {
+                    let value = if self.schema.column_defs.is_some() {
                         let ColumnDef {
                             data_type,
                             nullable,

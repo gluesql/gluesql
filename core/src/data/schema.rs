@@ -75,16 +75,6 @@ impl Schema {
             .map(|columns| columns.map(|column| column.name.as_str()))
     }
 
-    /// Returns whether the schema has a primary key.
-    pub fn has_primary_key(&self) -> bool {
-        self.primary_key.is_some()
-    }
-
-    /// Returns whether the schema has column definitions.
-    pub fn has_column_defs(&self) -> bool {
-        self.column_defs.is_some()
-    }
-
     /// Returns whether the schema has a given column.
     pub fn has_column<S: AsRef<str>>(&self, column: S) -> bool {
         self.column_defs

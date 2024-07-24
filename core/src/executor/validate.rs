@@ -94,7 +94,7 @@ pub async fn validate_unique<T: Store>(
     let (validate_primary_key, unique_columns): (bool, Vec<(usize, &str)>) =
         match &column_validation {
             ColumnValidation::All => (
-                schema.has_primary_key(),
+                schema.primary_key.is_some(),
                 schema
                     .column_defs
                     .as_ref()
