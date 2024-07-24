@@ -160,7 +160,9 @@ impl CsvStorage {
                         })
                         .collect::<Result<Vec<Value>>>()?;
 
-                    let key = schema.get_primary_key(&row).unwrap_or(Key::U64(index as u64));
+                    let key = schema
+                        .get_primary_key(&row)
+                        .unwrap_or(Key::U64(index as u64));
 
                     let row = DataRow::Vec(row);
 
