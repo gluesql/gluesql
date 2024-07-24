@@ -81,33 +81,6 @@ impl UniqueConstraint {
     }
 }
 
-/// Returns the key associated with the given row.
-///
-/// # Arguments
-/// * `row` - The row to extract the key from.
-/// * `primary_key_indices` - The indices of the primary key columns.
-pub fn get_primary_key_from_row(row: &[Value], primary_key_indices: &[usize]) -> Result<Key> {
-    Ok(match primary_key_indices.len() {
-        0 => unreachable!("Primary key indices should not be empty"),
-        1 => {
-            Key::try_from(row.get(primary_key_indices[0]).ok_or_else(|| {
-                ValidateError::ConflictOnStorageColumnIndex(primary_key_indices[0])
-            })?)?
-        }
-        _ => Key::List(
-            primary_key_indices
-                .iter()
-                .map(|&index| {
-                    Key::try_from(
-                        row.get(index)
-                            .ok_or(ValidateError::ConflictOnStorageColumnIndex(index))?,
-                    )
-                })
-                .collect::<Result<Vec<Key>>>()?,
-        ),
-    })
-}
-
 pub async fn validate_unique<T: Store>(
     storage: &T,
     table_name: &str,
@@ -118,10 +91,10 @@ pub async fn validate_unique<T: Store>(
     // First, we retrieve the primary key indices and the unique columns to validate.
     // Specifically, we only care about validating the primary key indices in the case of an UPDATE
     // if the primary key columns are specified in the set of the columns being updated.
-    let (primary_key_indices, unique_columns): (Option<&[usize]>, Vec<(usize, &str)>) =
+    let (validate_primary_key, unique_columns): (bool, Vec<(usize, &str)>) =
         match &column_validation {
             ColumnValidation::All => (
-                schema.get_primary_key_column_indices(),
+                schema.has_primary_key(),
                 schema
                     .column_defs
                     .as_ref()
@@ -133,10 +106,7 @@ pub async fn validate_unique<T: Store>(
                     .collect(),
             ),
             ColumnValidation::SpecifiedColumns(specified_columns) => (
-                schema
-                    .has_primary_key_columns(specified_columns)
-                    .then(|| schema.get_primary_key_column_indices())
-                    .flatten(),
+                schema.has_primary_key_columns(specified_columns),
                 schema
                     .column_defs
                     .as_ref()
@@ -152,9 +122,9 @@ pub async fn validate_unique<T: Store>(
         };
 
     // We then proceed to validate the primary keys.
-    if let Some(primary_key_indices) = primary_key_indices {
+    if validate_primary_key {
         for row in row_iter.clone() {
-            let primary_key = get_primary_key_from_row(row, primary_key_indices)?;
+            let primary_key = schema.get_primary_key(row).unwrap();
 
             if storage
                 .fetch_data(table_name, &primary_key)

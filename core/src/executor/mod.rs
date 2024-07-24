@@ -26,6 +26,5 @@ pub use {
     select::SelectError,
     sort::SortError,
     update::UpdateError,
-    validate::get_primary_key_from_row,
     validate::ValidateError,
 };

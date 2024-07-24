@@ -175,14 +175,10 @@ async fn fetch_vec_rows<T: GStore>(
     validate_foreign_key(storage, &column_defs, &schema.foreign_keys, &rows).await?;
 
     Ok(if schema.has_primary_key() {
-        let primary_key_indices = schema.get_primary_key_column_indices().unwrap();
         let rows = rows
             .into_iter()
-            .map(|row| {
-                super::validate::get_primary_key_from_row(&row, primary_key_indices)
-                    .map(|key| (key, row.into()))
-            })
-            .collect::<Result<Vec<_>>>()?;
+            .map(|row: Vec<Value>| (schema.get_primary_key(&row).unwrap(), row.into()))
+            .collect::<Vec<_>>();
 
         RowsData::Insert(rows)
     } else {
