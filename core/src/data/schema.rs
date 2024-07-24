@@ -80,11 +80,6 @@ impl Schema {
         self.primary_key.is_some()
     }
 
-    /// Returns the table name associated with the schema.
-    pub fn table_name(&self) -> &str {
-        &self.table_name
-    }
-
     /// Returns whether the schema has column definitions.
     pub fn has_column_defs(&self) -> bool {
         self.column_defs.is_some()
@@ -142,11 +137,6 @@ impl Schema {
         columns
             .into_iter()
             .any(|column| self.is_primary_key(column))
-    }
-
-    /// Returns the indices of the columns that compose the primary key.
-    pub fn get_primary_key_column_indices(&self) -> Option<&[usize]> {
-        self.primary_key.as_deref()
     }
 
     pub fn to_ddl(&self) -> String {
