@@ -185,10 +185,9 @@ impl JsonStorage {
                 values.push(value);
             }
 
-            let key = match schema2.get_primary_key(&values) {
-                Some(key) => key,
-                None => get_index_key()?,
-            };
+            let key = schema2
+                .get_primary_key(&values)
+                .or_else(|_| get_index_key())?;
             let row = DataRow::Vec(values);
 
             Ok((key, row))

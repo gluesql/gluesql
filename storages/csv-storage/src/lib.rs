@@ -134,7 +134,7 @@ impl CsvStorage {
                 .collect::<Vec<_>>())
         };
 
-        if schema.has_column_defs() {
+        if schema.column_defs.is_some() {
             let columns = schema.get_column_names();
 
             let rows = data_rdr

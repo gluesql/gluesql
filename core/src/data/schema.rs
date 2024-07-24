@@ -12,6 +12,15 @@ use {
     thiserror::Error as ThisError,
 };
 
+#[derive(ThisError, Clone, Debug, PartialEq, Deserialize, Serialize, Eq)]
+pub enum SchemaError {
+    #[error("no primary key defined")]
+    NoPrimaryKeyDefined,
+
+    #[error("incompatible row length: {0}")]
+    IncompatibleRowLength(usize),
+}
+
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Display)]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 pub enum SchemaIndexOrd {
@@ -40,22 +49,39 @@ pub struct Schema {
 }
 
 impl Schema {
+    /// Returns the number of columns in the schema.
+    pub fn number_of_columns(&self) -> usize {
+        self.column_defs
+            .as_ref()
+            .map(|column_defs| column_defs.len())
+            .unwrap_or(0)
+    }
+
     /// Returns the key associates to the provided row.
     ///
     /// # Arguments
     /// * `row` - The row to get the key for.
-    pub fn get_primary_key<R: AsRef<[Value]>>(&self, row: R) -> Option<Key> {
-        self.primary_key.as_ref().map(|primary_key| {
-            let values = primary_key
-                .iter()
-                .map(|index| row.as_ref()[*index].clone())
-                .collect::<Vec<_>>();
-            if values.len() == 1 {
-                values.into_iter().next().unwrap().try_into().unwrap()
-            } else {
-                values.try_into().unwrap()
+    pub fn get_primary_key<R: AsRef<[Value]>>(&self, row: R) -> Result<Key> {
+        if row.as_ref().len() != self.number_of_columns() {
+            return Err(SchemaError::IncompatibleRowLength(row.as_ref().len()).into());
+        }
+
+        match self.primary_key {
+            Some(ref primary_key) => {
+                let mut key: Vec<Key> = Vec::with_capacity(primary_key.len());
+
+                for &index in primary_key.iter() {
+                    key.push(Key::try_from(row.as_ref()[index].clone())?);
+                }
+
+                Ok(if key.len() == 1 {
+                    key.pop().unwrap()
+                } else {
+                    Key::List(key)
+                })
             }
-        })
+            None => Err(SchemaError::NoPrimaryKeyDefined.into()),
+        }
     }
 
     /// Returns an iterator over the ColumnDef instances in the schema that compose the primary key.
@@ -73,21 +99,6 @@ impl Schema {
     pub fn primary_key_column_names(&self) -> Option<impl Iterator<Item = &str>> {
         self.primary_key_columns()
             .map(|columns| columns.map(|column| column.name.as_str()))
-    }
-
-    /// Returns whether the schema has a primary key.
-    pub fn has_primary_key(&self) -> bool {
-        self.primary_key.is_some()
-    }
-
-    /// Returns the table name associated with the schema.
-    pub fn table_name(&self) -> &str {
-        &self.table_name
-    }
-
-    /// Returns whether the schema has column definitions.
-    pub fn has_column_defs(&self) -> bool {
-        self.column_defs.is_some()
     }
 
     /// Returns whether the schema has a given column.
@@ -142,11 +153,6 @@ impl Schema {
         columns
             .into_iter()
             .any(|column| self.is_primary_key(column))
-    }
-
-    /// Returns the indices of the columns that compose the primary key.
-    pub fn get_primary_key_column_indices(&self) -> Option<&[usize]> {
-        self.primary_key.as_deref()
     }
 
     pub fn to_ddl(&self) -> String {
@@ -256,7 +262,7 @@ mod tests {
         crate::{
             ast::{AstLiteral, ColumnDef, Expr},
             chrono::Utc,
-            data::{Schema, SchemaIndex, SchemaIndexOrd},
+            data::{schema::SchemaError, Schema, SchemaIndex, SchemaIndexOrd, Value},
             prelude::DataType,
         },
     };
@@ -533,5 +539,75 @@ CREATE INDEX "." ON "1" (";");"#;
 
         let actual = Schema::from_ddl(ddl).unwrap();
         assert_schema(actual, schema);
+    }
+
+    #[test]
+    fn test_primary_key_short_row() {
+        let schema = Schema {
+            table_name: "User".to_owned(),
+            column_defs: Some(vec![
+                ColumnDef {
+                    name: "id".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: false,
+                    default: None,
+                    unique: false,
+                    comment: None,
+                },
+                ColumnDef {
+                    name: "name".to_owned(),
+                    data_type: DataType::Text,
+                    nullable: false,
+                    default: None,
+                    unique: false,
+                    comment: None,
+                },
+            ]),
+            indexes: Vec::new(),
+            engine: None,
+            primary_key: Some(vec![0, 1]),
+            foreign_keys: Vec::new(),
+            comment: None,
+        };
+
+        let error = SchemaError::IncompatibleRowLength(1);
+        let actual = schema.get_primary_key(vec![Value::U8(1)]);
+
+        assert_eq!(actual, Err(error.into()));
+    }
+
+    #[test]
+    fn test_primary_key_no_primary_key() {
+        let schema = Schema {
+            table_name: "User".to_owned(),
+            column_defs: Some(vec![
+                ColumnDef {
+                    name: "id".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: false,
+                    default: None,
+                    unique: false,
+                    comment: None,
+                },
+                ColumnDef {
+                    name: "name".to_owned(),
+                    data_type: DataType::Text,
+                    nullable: false,
+                    default: None,
+                    unique: false,
+                    comment: None,
+                },
+            ]),
+            indexes: Vec::new(),
+            engine: None,
+            primary_key: None,
+            foreign_keys: Vec::new(),
+            comment: None,
+        };
+
+        let error = SchemaError::NoPrimaryKeyDefined;
+        let actual = schema.get_primary_key(vec![Value::U8(1), Value::U8(2)]);
+
+        assert_eq!(actual, Err(error.into()));
     }
 }

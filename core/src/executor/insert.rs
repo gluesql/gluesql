@@ -66,7 +66,7 @@ pub async fn insert<T: GStore + GStoreMut>(
         .await?
         .ok_or_else(|| InsertError::TableNotFound(table_name.to_owned()))?;
 
-    let rows = if schema.has_column_defs() {
+    let rows = if schema.column_defs.is_some() {
         fetch_vec_rows(storage, table_name, &schema, columns, source).await
     } else {
         fetch_map_rows(storage, source).await.map(RowsData::Append)
@@ -99,15 +99,7 @@ async fn fetch_vec_rows<T: GStore>(
     columns: &[String],
     source: &Query,
 ) -> Result<RowsData> {
-    let labels = Rc::from(
-        schema
-            .column_defs
-            .as_ref()
-            .unwrap()
-            .iter()
-            .map(|column_def| column_def.name.to_owned())
-            .collect::<Vec<_>>(),
-    );
+    let labels = Rc::from(schema.get_column_names().unwrap());
     let column_defs = Rc::from(schema.column_defs.as_ref().unwrap());
     let column_validation = ColumnValidation::All;
 
@@ -174,7 +166,7 @@ async fn fetch_vec_rows<T: GStore>(
 
     validate_foreign_key(storage, &column_defs, &schema.foreign_keys, &rows).await?;
 
-    Ok(if schema.has_primary_key() {
+    Ok(if schema.primary_key.is_some() {
         let rows = rows
             .into_iter()
             .map(|row: Vec<Value>| (schema.get_primary_key(&row).unwrap(), row.into()))

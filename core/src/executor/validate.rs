@@ -94,37 +94,41 @@ pub async fn validate_unique<T: Store>(
     let (validate_primary_key, unique_columns): (bool, Vec<(usize, &str)>) =
         match &column_validation {
             ColumnValidation::All => (
-                schema.has_primary_key(),
+                schema.primary_key.is_some(),
                 schema
                     .column_defs
                     .as_ref()
-                    .unwrap()
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, column_def)| column_def.unique)
-                    .map(|(index, column_def)| (index, column_def.name.as_str()))
-                    .collect(),
+                    .map_or_else(Vec::new, |column_defs| {
+                        column_defs
+                            .iter()
+                            .enumerate()
+                            .filter(|(_, column_def)| column_def.unique)
+                            .map(|(index, column_def)| (index, column_def.name.as_str()))
+                            .collect()
+                    }),
             ),
             ColumnValidation::SpecifiedColumns(specified_columns) => (
                 schema.has_primary_key_columns(specified_columns),
                 schema
                     .column_defs
                     .as_ref()
-                    .unwrap()
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, column_def)| {
-                        column_def.unique && specified_columns.contains(&column_def.name)
-                    })
-                    .map(|(index, column_def)| (index, column_def.name.as_str()))
-                    .collect(),
+                    .map_or_else(Vec::new, |column_defs| {
+                        column_defs
+                            .iter()
+                            .enumerate()
+                            .filter(|(_, column_def)| {
+                                column_def.unique && specified_columns.contains(&column_def.name)
+                            })
+                            .map(|(index, column_def)| (index, column_def.name.as_str()))
+                            .collect()
+                    }),
             ),
         };
 
     // We then proceed to validate the primary keys.
     if validate_primary_key {
         for row in row_iter.clone() {
-            let primary_key = schema.get_primary_key(row).unwrap();
+            let primary_key = schema.get_primary_key(row)?;
 
             if storage
                 .fetch_data(table_name, &primary_key)
