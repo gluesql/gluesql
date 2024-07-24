@@ -155,12 +155,10 @@ impl ParquetStorage {
                     row.push(value.clone());
                 }
 
-                let generated_key = if let Some(key) = fetched_schema.get_primary_key(&row) {
-                    key
-                } else {
+                let generated_key = fetched_schema.get_primary_key(&row).unwrap_or({
                     key_counter += 1;
                     Key::U64(key_counter - 1)
-                };
+                });
                 rows.push(Ok((generated_key, DataRow::Vec(row))));
             }
         } else {
