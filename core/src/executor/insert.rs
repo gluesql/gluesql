@@ -99,10 +99,7 @@ async fn fetch_vec_rows<T: GStore>(
     columns: &[String],
     source: &Query,
 ) -> Result<RowsData> {
-    let labels = Rc::from(
-        schema
-            .get_column_names().unwrap()
-    );
+    let labels = Rc::from(schema.get_column_names().unwrap());
     let column_defs = Rc::from(schema.column_defs.as_ref().unwrap());
     let column_validation = ColumnValidation::All;
 

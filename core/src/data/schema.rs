@@ -569,7 +569,7 @@ CREATE INDEX "." ON "1" (";");"#;
             foreign_keys: Vec::new(),
             comment: None,
         };
-        
+
         let error = SchemaError::IncompatibleRowLength(1);
         let actual = schema.get_primary_key(vec![Value::U8(1)]);
 
@@ -604,7 +604,7 @@ CREATE INDEX "." ON "1" (";");"#;
             foreign_keys: Vec::new(),
             comment: None,
         };
-        
+
         let error = SchemaError::NoPrimaryKeyDefined;
         let actual = schema.get_primary_key(vec![Value::U8(1), Value::U8(2)]);
 

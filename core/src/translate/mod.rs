@@ -105,7 +105,14 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 .map(|(index, column)| {
                     let (translated_column, is_primary) = translate_column_def(column)?;
                     if is_primary {
-                        primary_key.get_or_insert_with(|| vec![]).push(index);
+                        match primary_key.as_mut() {
+                            Some(_) => {
+                                return Err(TranslateError::MultiplePrimaryKeyNotSupported.into())
+                            }
+                            None => {
+                                primary_key.get_or_insert_with(Vec::new).push(index);
+                            }
+                        }
                     }
                     Ok(translated_column)
                 })
@@ -125,7 +132,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                         }
                         None => {
                             for column in primary_key_columns {
-                                primary_key.get_or_insert_with(|| vec![]).push(
+                                primary_key.get_or_insert_with(Vec::new).push(
                                     translated_columns
                                         .iter()
                                         .position(|v| v.name == column.value)
@@ -151,7 +158,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 columns: translated_columns,
                 source: query
                     .as_ref()
-                    .map(|query| translate_query(&query).map(Box::new))
+                    .map(|query| translate_query(query).map(Box::new))
                     .transpose()?,
                 engine: engine.clone(),
                 foreign_keys,
@@ -451,6 +458,17 @@ mod tests {
     #[test]
     fn test_create_table_with_multiple_primary_key() {
         let sql = "CREATE TABLE Foo (id INTEGER PRIMARY KEY, PRIMARY KEY (id, id2))";
+
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+
+        let expected = Err(TranslateError::MultiplePrimaryKeyNotSupported.into());
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_create_table_with_multiple_primary_key_columns() {
+        let sql = "CREATE TABLE Foo (id INTEGER PRIMARY KEY, id2 INTEGER PRIMARY KEY)";
 
         let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
 
