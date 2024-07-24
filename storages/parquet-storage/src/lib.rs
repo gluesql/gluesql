@@ -159,7 +159,6 @@ impl ParquetStorage {
         let mut key_counter: u64 = 0;
 
         if fetched_schema.has_column_defs() {
-            let primary_key_indices = fetched_schema.get_primary_key_column_indices();
             for record in row_iter {
                 let record: Row = record.map_storage_err()?;
                 let mut row = Vec::new();
@@ -169,9 +168,8 @@ impl ParquetStorage {
                     row.push(value.clone());
                 }
 
-                let generated_key = if let Some(primary_key_indices) = primary_key_indices.as_ref()
-                {
-                    gluesql_core::executor::get_primary_key_from_row(&row, primary_key_indices)?
+                let generated_key = if let Some(key) = fetched_schema.get_primary_key(&row) {
+                    key
                 } else {
                     key_counter += 1;
                     Key::U64(key_counter - 1)

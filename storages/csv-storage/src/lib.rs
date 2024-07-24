@@ -54,7 +54,6 @@ impl CsvStorage {
                         .map(|header| ColumnDef {
                             name: header.to_string(),
                             data_type: DataType::Text,
-                            unique: false,
                             default: None,
                             nullable: true,
                             comment: None,
@@ -161,15 +160,9 @@ impl CsvStorage {
                         })
                         .collect::<Result<Vec<Value>>>()?;
 
-                    let key = match schema.get_primary_key_column_indices() {
-                        Some(primary_key_indices) => {
-                            gluesql_core::executor::get_primary_key_from_row(
-                                &row,
-                                primary_key_indices,
-                            )?
-                        }
-                        None => Key::U64(index as u64),
-                    };
+                    let key = schema
+                        .get_primary_key(&row)
+                        .unwrap_or(Key::U64(index as u64));
 
                     let row = DataRow::Vec(row);
 

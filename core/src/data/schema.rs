@@ -1,7 +1,8 @@
 use {
+    super::Value,
     crate::{
         ast::{ColumnDef, Expr, ForeignKey, OrderByExpr, Statement, ToSql, UniqueConstraint},
-        prelude::{parse, translate},
+        prelude::{parse, translate, Key},
         result::Result,
     },
     chrono::{NaiveDateTime, Utc},
@@ -41,6 +42,24 @@ pub struct Schema {
 }
 
 impl Schema {
+    /// Returns the key associates to the provided row.
+    ///
+    /// # Arguments
+    /// * `row` - The row to get the key for.
+    pub fn get_primary_key<R: AsRef<[Value]>>(&self, row: R) -> Option<Key> {
+        self.primary_key.as_ref().map(|primary_key| {
+            let values = primary_key
+                .iter()
+                .map(|index| row.as_ref()[*index].clone())
+                .collect::<Vec<_>>();
+            if values.len() == 1 {
+                values.into_iter().next().unwrap().try_into().unwrap()
+            } else {
+                values.try_into().unwrap()
+            }
+        })
+    }
+
     /// Returns an iterator over the ColumnDef instances in the schema that compose the primary key.
     pub fn primary_key_columns(&self) -> Option<impl Iterator<Item = &ColumnDef>> {
         self.primary_key.as_ref().map(|primary_key| {
