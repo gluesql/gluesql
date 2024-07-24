@@ -35,7 +35,9 @@ pub struct ForeignKey {
     pub referencing_column_name: String,
     pub referenced_table_name: String,
     pub referenced_column_name: String,
+    /// The action to perform when the referenced row is deleted.
     pub on_delete: ReferentialAction,
+    /// The action to perform when the referenced row is updated.
     pub on_update: ReferentialAction,
 }
 
