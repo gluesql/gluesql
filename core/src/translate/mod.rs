@@ -7,6 +7,8 @@ mod function;
 mod operator;
 mod query;
 
+use crate::ast::UniqueConstraint;
+
 pub use self::{
     data_type::translate_data_type,
     ddl::{translate_column_def, translate_operate_function_arg},
@@ -97,13 +99,21 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             ..
         } => {
             let mut primary_key: Vec<usize> = Vec::new();
+            let mut unique_constraints = Vec::new();
+
             let translated_columns = columns
                 .iter()
                 .enumerate()
                 .map(|(index, column)| {
-                    let (translated_column, is_primary) = translate_column_def(column)?;
+                    let (translated_column, is_primary, is_unique) = translate_column_def(column)?;
                     if is_primary {
                         primary_key.push(index);
+                    }
+                    if is_unique {
+                        unique_constraints.push(UniqueConstraint::new(
+                            None,
+                            vec![index],
+                        ));
                     }
                     Ok(translated_column)
                 })
@@ -159,7 +169,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 Some(primary_key)
             };
 
-            for constraint in constraints.iter() {
+            for constraint in constraints {
                 if let sqlparser::ast::TableConstraint::PrimaryKey {
                     columns: primary_key_columns,
                     ..
@@ -183,6 +193,24 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                             );
                         }
                     }
+                } else if let sqlparser::ast::TableConstraint::Unique {
+                    name,
+                    columns: unique_columns,
+                    ..
+                } = constraint
+                {
+                    let mut indices = Vec::new();
+                    for column in unique_columns {
+                        if let Some(index) = columns.iter().position(|c| c.name.value == column.value) {
+                            indices.push(index);
+                        } else {
+                            return Err(TranslateError::ColumnNotFoundInTable(column.value.clone()).into());
+                        }
+                    }
+                    unique_constraints.push(UniqueConstraint::new(
+                        name.clone().map(|n| n.value),
+                        indices,
+                    ));
                 } else {
                     foreign_keys.push(translate_foreign_key(constraint)?);
                 }
@@ -199,6 +227,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 engine: engine.clone(),
                 foreign_keys,
                 primary_key,
+                unique_constraints,
                 comment: comment.clone(),
             })
         }
@@ -485,7 +514,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -493,7 +521,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: true,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
             ]),
@@ -508,6 +535,7 @@ mod tests {
                 on_update: ReferentialAction::Cascade,
             }],
             primary_key: Some(vec![0]),
+            unique_constraints: vec![],
             comment: None,
         });
 
@@ -527,7 +555,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -535,7 +562,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: true,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
             ]),
@@ -550,6 +576,7 @@ mod tests {
                 on_update: ReferentialAction::NoAction,
             }],
             primary_key: Some(vec![0]),
+            unique_constraints: vec![],
             comment: None,
         });
 
@@ -569,7 +596,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -577,7 +603,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: true,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
             ]),
@@ -592,6 +617,7 @@ mod tests {
                 on_update: ReferentialAction::Cascade,
             }],
             primary_key: Some(vec![0]),
+            unique_constraints: vec![],
             comment: None,
         });
 

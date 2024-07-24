@@ -24,6 +24,7 @@ test_case!(insert_schema, {
         engine: None,
         foreign_keys: Vec::new(),
         primary_key: None,
+        unique_constraints: Vec::new(),
         comment: Some("this is comment for table".to_owned()),
     };
 
@@ -59,6 +60,7 @@ test_case!(insert_schema, {
         engine: None,
         foreign_keys: Vec::new(),
         primary_key: None,
+        unique_constraints: Vec::new(),
         comment: Some("this is comment for schemaless table".to_owned()),
     };
     storage.insert_schema(&schema).await.unwrap();

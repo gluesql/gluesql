@@ -1,6 +1,6 @@
 use {
     crate::{
-        ast::{ColumnDef, Expr, ForeignKey, OrderByExpr, Statement, ToSql},
+        ast::{ColumnDef, Expr, ForeignKey, OrderByExpr, Statement, ToSql, UniqueConstraint},
         prelude::{parse, translate},
         result::Result,
     },
@@ -10,6 +10,7 @@ use {
     strum_macros::Display,
     thiserror::Error as ThisError,
 };
+use itertools::Itertools;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Display)]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
@@ -35,6 +36,7 @@ pub struct Schema {
     pub engine: Option<String>,
     pub foreign_keys: Vec<ForeignKey>,
     pub primary_key: Option<Vec<usize>>,
+    pub unique_constraints: Vec<UniqueConstraint>,
     pub comment: Option<String>,
 }
 
@@ -50,10 +52,47 @@ impl Schema {
         })
     }
 
+    /// Returns an iterator over the unique constraint column indices and names.
+    pub fn unique_constraint_columns_and_indices(&self) -> impl Iterator<Item = (&[usize], Vec<&str>)> {
+        self.unique_constraints
+            .iter()
+            .map(move |constraint| {
+                let indices = constraint.column_indices();
+                let names = indices
+                    .iter()
+                    .filter_map(move |index| {
+                        self.column_defs
+                            .as_ref()
+                            .and_then(|column_defs| column_defs.get(*index))
+                            .map(|column_def| column_def.name.as_str())
+                    })
+                    .collect();
+
+                (indices, names)
+            })
+    }
+
     /// Returns an iterator over the ColumnDef instances in the schema that compose the primary key.
     pub fn primary_key_column_names(&self) -> Option<impl Iterator<Item = &str>> {
         self.primary_key_columns()
             .map(|columns| columns.map(|column| column.name.as_str()))
+    }
+
+    /// Returns an iterator over non-repeated column names taking part in the unique constraints.
+    pub fn unique_constraint_column_names(&self) -> impl Iterator<Item = &str> {
+        self.unique_constraints
+            .iter()
+            .flat_map(move |constraint| {
+                constraint
+                    .column_indices()
+                    .iter()
+                    .filter_map(move |index| {
+                        self.column_defs
+                            .as_ref()
+                            .and_then(|column_defs| column_defs.get(*index))
+                            .map(|column_def| column_def.name.as_str())
+                    })
+            }).unique()
     }
 
     /// Returns whether the schema has a primary key.
@@ -115,6 +154,15 @@ impl Schema {
             .unwrap_or(false)
     }
 
+    /// Returns the index of the given column.
+    pub fn get_column_index<S: AsRef<str>>(&self, column: S) -> Option<usize> {
+        self.column_defs.as_ref().and_then(|column_defs| {
+            column_defs
+                .iter()
+                .position(|column_def| column_def.name == column.as_ref())
+        })
+    }
+
     /// Returns whether any of the columns in the provided iterator are part of the primary key.
     pub fn has_primary_key_columns<I: IntoIterator<Item = S>, S: AsRef<str>>(
         &self,
@@ -138,6 +186,7 @@ impl Schema {
             engine,
             foreign_keys,
             primary_key,
+            unique_constraints,
             comment,
         } = self;
 
@@ -150,6 +199,7 @@ impl Schema {
             source: None,
             foreign_keys: foreign_keys.to_owned(),
             primary_key: primary_key.to_owned(),
+            unique_constraints: unique_constraints.to_owned(),
         }
         .to_sql();
 
@@ -208,6 +258,7 @@ impl Schema {
                 engine,
                 foreign_keys,
                 primary_key,
+                unique_constraints,
                 comment,
                 ..
             } => Ok(Schema {
@@ -217,6 +268,7 @@ impl Schema {
                 engine,
                 foreign_keys,
                 primary_key,
+                unique_constraints,
                 comment,
             }),
             _ => Err(SchemaParseError::CannotParseDDL.into()),
@@ -235,7 +287,7 @@ mod tests {
     use {
         super::SchemaParseError,
         crate::{
-            ast::{AstLiteral, ColumnDef, Expr},
+            ast::{AstLiteral, ColumnDef, Expr, UniqueConstraint},
             chrono::Utc,
             data::{Schema, SchemaIndex, SchemaIndexOrd},
             prelude::DataType,
@@ -250,6 +302,7 @@ mod tests {
             engine,
             foreign_keys,
             primary_key,
+            unique_constraints,
             comment,
         } = actual;
 
@@ -260,6 +313,7 @@ mod tests {
             engine: engine_e,
             foreign_keys: foreign_keys_e,
             primary_key: primary_key_e,
+            unique_constraints: unique_constraints_e,
             comment: comment_e,
         } = expected;
 
@@ -268,6 +322,7 @@ mod tests {
         assert_eq!(engine, engine_e);
         assert_eq!(foreign_keys, foreign_keys_e);
         assert_eq!(primary_key, primary_key_e);
+        assert_eq!(unique_constraints, unique_constraints_e);
         assert_eq!(comment, comment_e);
         indexes
             .into_iter()
@@ -301,7 +356,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -309,7 +363,6 @@ mod tests {
                     data_type: DataType::Text,
                     nullable: true,
                     default: Some(Expr::Literal(AstLiteral::QuotedString("glue".to_owned()))),
-                    unique: false,
                     comment: None,
                 },
             ]),
@@ -317,6 +370,7 @@ mod tests {
             engine: None,
             foreign_keys: Vec::new(),
             primary_key: None,
+            unique_constraints: Vec::new(),
             comment: None,
         };
 
@@ -333,6 +387,7 @@ mod tests {
             engine: None,
             foreign_keys: Vec::new(),
             primary_key: None,
+            unique_constraints: Vec::new(),
             comment: None,
         };
         let ddl = r#"CREATE TABLE "Test";"#;
@@ -351,13 +406,13 @@ mod tests {
                 data_type: DataType::Int,
                 nullable: false,
                 default: None,
-                unique: false,
                 comment: None,
             }]),
             indexes: Vec::new(),
             engine: None,
             foreign_keys: Vec::new(),
             primary_key: Some(vec![0]),
+            unique_constraints: Vec::new(),
             comment: None,
         };
 
@@ -378,7 +433,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -386,7 +440,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -394,7 +447,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: true,
                     comment: None,
                 },
             ]),
@@ -402,6 +454,7 @@ mod tests {
             engine: None,
             foreign_keys: Vec::new(),
             primary_key: Some(vec![0, 1]),
+            unique_constraints: vec![UniqueConstraint::new(None, vec![2])],
             comment: None,
         };
 
@@ -430,7 +483,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -438,7 +490,6 @@ mod tests {
                     data_type: DataType::Text,
                     nullable: false,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
             ]),
@@ -459,6 +510,7 @@ mod tests {
             engine: None,
             primary_key: None,
             foreign_keys: Vec::new(),
+            unique_constraints: Vec::new(),
             comment: None,
         };
         let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);
@@ -485,7 +537,6 @@ CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);"#;
                     data_type: DataType::Int,
                     nullable: true,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -493,7 +544,6 @@ CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);"#;
                     data_type: DataType::Int,
                     nullable: true,
                     default: None,
-                    unique: false,
                     comment: None,
                 },
             ]),
@@ -506,10 +556,50 @@ CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);"#;
             engine: None,
             foreign_keys: Vec::new(),
             primary_key: None,
+            unique_constraints: Vec::new(),
             comment: None,
         };
         let ddl = r#"CREATE TABLE "1" ("2" INT NULL, ";" INT NULL);
 CREATE INDEX "." ON "1" (";");"#;
+        assert_eq!(schema.to_ddl(), ddl);
+
+        let actual = Schema::from_ddl(ddl).unwrap();
+        assert_schema(actual, schema);
+    }
+
+    #[test]
+    /// Test schema involving unique constraints.
+    fn unique_identifiers() {
+        let schema = Schema {
+            table_name: "User".to_owned(),
+            column_defs: Some(vec![
+                ColumnDef {
+                    name: "id".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: false,
+                    default: None,
+                    comment: None,
+                },
+                ColumnDef {
+                    name: "name".to_owned(),
+                    data_type: DataType::Text,
+                    nullable: false,
+                    default: None,
+                    comment: None,
+                },
+            ]),
+            indexes: Vec::new(),
+            engine: None,
+            foreign_keys: Vec::new(),
+            primary_key: None,
+            unique_constraints: vec![
+                UniqueConstraint::new(Some("unique_name".to_owned()), vec![1]),
+                UniqueConstraint::new(Some("unique_id_and_name".to_owned()), vec![0, 1]),
+            ],
+            comment: None,
+        };
+
+        let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL, CONSTRAINT "unique_name" UNIQUE ("name"), CONSTRAINT "unique_id_and_name" UNIQUE ("id", "name"));"#;
         assert_eq!(schema.to_ddl(), ddl);
 
         let actual = Schema::from_ddl(ddl).unwrap();

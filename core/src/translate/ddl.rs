@@ -18,8 +18,10 @@ pub fn translate_alter_table_operation(
 ) -> Result<AlterTableOperation> {
     match sql_alter_table_operation {
         SqlAlterTableOperation::AddColumn { column_def, .. } => {
+            let (column_def, _, unique) = translate_column_def(column_def)?;
             Ok(AlterTableOperation::AddColumn {
-                column_def: translate_column_def(column_def)?.0,
+                column_def,
+                unique,
             })
         }
         SqlAlterTableOperation::DropColumn {
@@ -50,7 +52,7 @@ pub fn translate_alter_table_operation(
 }
 
 /// Returns the column definition and whether the column is a primary key.
-pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<(ColumnDef, bool)> {
+pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<(ColumnDef, bool, bool)> {
     let SqlColumnDef {
         name,
         data_type,
@@ -93,10 +95,10 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<(ColumnDef,
             data_type: translate_data_type(data_type)?,
             nullable,
             default,
-            unique,
             comment,
         },
         primary,
+        unique,
     ))
 }
 

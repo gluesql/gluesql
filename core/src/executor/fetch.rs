@@ -293,12 +293,16 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                 .primary_key_column_names()
                                 .map(|columns| columns.map(str::to_owned).collect::<Vec<String>>())
                                 .unwrap_or_default();
+                            let columns_involved_in_unique_constraints = schema
+                                .unique_constraint_column_names()
+                                .map(str::to_owned)
+                                .collect::<Vec<String>>();
                             let columns = Rc::clone(&columns);
                             let table_name = schema.table_name;
                             schema.column_defs.into_iter().flatten().enumerate().map(
                                 move |(index, column_def)| {
-                                    let unique = column_def
-                                        .unique
+                                    let unique = columns_involved_in_unique_constraints
+                                        .contains(&column_def.name)
                                         .then(|| Value::Str("UNIQUE".to_owned()))
                                         .unwrap_or(
                                             primary_key_columns

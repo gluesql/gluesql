@@ -1,10 +1,13 @@
 use {
     super::Build,
-    crate::ast_builder::column_def::PrimaryKeyConstraintNode,
-    crate::error::TranslateError,
-    crate::parse_sql::parse_column_def,
-    crate::translate::translate_column_def,
-    crate::{ast::Statement, ast_builder::ColumnDefNode, result::Result},
+    crate::{
+        ast::{Statement, UniqueConstraint},
+        ast_builder::{column_def::PrimaryKeyConstraintNode, ColumnDefNode},
+        error::TranslateError,
+        parse_sql::parse_column_def,
+        result::Result,
+        translate::translate_column_def,
+    },
 };
 
 #[derive(Clone, Debug)]
@@ -48,13 +51,14 @@ impl Build for CreateTableNode {
     fn build(self) -> Result<Statement> {
         let table_name = self.table_name;
         let mut primary_key: Option<Vec<usize>> = None;
+        let mut unique_constraints: Vec<UniqueConstraint> = Vec::new();
         let columns: Option<Vec<crate::ast::ColumnDef>> = match self.columns {
             Some(columns) => Some(
                 columns
                     .into_iter()
                     .enumerate()
                     .map(|(index, column_statement)| {
-                        let (translated_column, is_primary) =
+                        let (translated_column, is_primary, is_unique) =
                             translate_column_def(&parse_column_def(column_statement)?)?;
                         if is_primary {
                             {
@@ -69,6 +73,9 @@ impl Build for CreateTableNode {
                                     }
                                 }
                             }
+                        }
+                        if is_unique {
+                            unique_constraints.push(UniqueConstraint::new_anonimous(vec![index]));
                         }
                         Ok(translated_column)
                     })
@@ -105,6 +112,7 @@ impl Build for CreateTableNode {
             engine: None,
             foreign_keys: Vec::new(),
             primary_key,
+            unique_constraints,
             comment: None,
         })
     }
