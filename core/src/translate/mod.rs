@@ -528,7 +528,6 @@ mod tests {
         });
 
         assert_eq!(actual, expected);
-
     }
 
     #[test]
@@ -582,7 +581,6 @@ mod tests {
         });
 
         assert_eq!(actual, expected);
-
     }
 
     #[test]
