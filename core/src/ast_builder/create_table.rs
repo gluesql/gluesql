@@ -88,7 +88,10 @@ impl Build for CreateTableNode {
             let mut indices = Vec::new();
 
             for column in primary_key_constraint.as_ref() {
-                if let Some(index) = columns.as_ref().and_then(|columns| columns.iter().position(|c| &c.name == column)) {
+                if let Some(index) = columns
+                    .as_ref()
+                    .and_then(|columns| columns.iter().position(|c| &c.name == column))
+                {
                     indices.push(index);
                 } else {
                     return Err(TranslateError::ColumnNotFoundInTable(column.clone()).into());
@@ -155,7 +158,8 @@ mod tests {
             .create_table()
             .add_column("id INTEGER")
             .add_column("name TEXT")
-            .primary_key(["id", "name"]).unwrap()
+            .primary_key(["id", "name"])
+            .unwrap()
             .build();
         let expected = "CREATE TABLE Foo (id INTEGER, name TEXT, PRIMARY KEY (id, name))";
         test(actual, expected);
@@ -167,7 +171,8 @@ mod tests {
             .create_table()
             .add_column("id INTEGER")
             .add_column("name TEXT")
-            .primary_key(["id", "age"]).unwrap()
+            .primary_key(["id", "age"])
+            .unwrap()
             .build();
         assert_eq!(
             actual.unwrap_err(),
@@ -201,12 +206,11 @@ mod tests {
             .create_table()
             .add_column("id INTEGER")
             .add_column("name TEXT")
-            .primary_key(["id", "name"]).unwrap()
-            .primary_key(["id", "name"]).unwrap_err();
-        assert_eq!(
-            error,
-            TranslateError::MultiplePrimaryKeyNotSupported.into()
-        );
+            .primary_key(["id", "name"])
+            .unwrap()
+            .primary_key(["id", "name"])
+            .unwrap_err();
+        assert_eq!(error, TranslateError::MultiplePrimaryKeyNotSupported.into());
     }
 
     #[test]
@@ -215,7 +219,8 @@ mod tests {
             .create_table()
             .add_column("id INTEGER")
             .add_column("name TEXT")
-            .primary_key(["id", "name"]).unwrap()
+            .primary_key(["id", "name"])
+            .unwrap()
             .add_column("age INTEGER PRIMARY KEY")
             .build();
         assert_eq!(
@@ -230,7 +235,8 @@ mod tests {
             .create_table()
             .add_column("id INTEGER")
             .add_column("name TEXT")
-            .primary_key(["age"]).unwrap()
+            .primary_key(["age"])
+            .unwrap()
             .build();
         assert_eq!(
             actual.unwrap_err(),
@@ -242,7 +248,8 @@ mod tests {
     fn create_table_with_primary_key_constraint_and_no_columns() {
         let actual = table("Foo")
             .create_table()
-            .primary_key(["id"]).unwrap()
+            .primary_key(["id"])
+            .unwrap()
             .build();
 
         assert_eq!(
