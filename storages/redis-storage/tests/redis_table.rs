@@ -185,10 +185,12 @@ async fn redis_storage_drop_column() {
     match &ret[0] {
         Payload::Select { labels, rows } => {
             assert_eq!(labels[0], "id");
-            assert_eq!(rows[0].len(), 1);
-            assert_eq!(rows[1].len(), 1);
+            assert_eq!(rows[0].len(), 2);
+            assert_eq!(rows[1].len(), 2);
             assert_eq!(rows[0][0], Value::I64(1));
             assert_eq!(rows[1][0], Value::I64(11));
+            assert_eq!(rows[0][1], Value::Null);
+            assert_eq!(rows[1][1], Value::Null);
         }
         _ => unreachable!(),
     }
