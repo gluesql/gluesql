@@ -8,6 +8,7 @@ mod operator;
 mod query;
 
 use crate::ast::UniqueConstraint;
+use itertools::Itertools;
 
 pub use self::{
     data_type::translate_data_type,
@@ -98,56 +99,32 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             comment,
             ..
         } => {
-            let columns = columns
+            let mut unique_constraints = Vec::new();
+            let mut primary_key: Option<Vec<usize>> = None;
+
+            let translated_columns = columns
                 .iter()
-                .map(translate_column_def)
+                .enumerate()
+                .map(|(index, column)| {
+                    let (translated_column, is_primary, is_unique) = translate_column_def(column)?;
+                    if is_primary {
+                        match primary_key.as_mut() {
+                            Some(_) => {
+                                return Err(TranslateError::MultiplePrimaryKeyNotSupported.into())
+                            }
+                            None => {
+                                primary_key.get_or_insert_with(Vec::new).push(index);
+                            }
+                        }
+                    }
+                    if is_unique {
+                        unique_constraints.push(UniqueConstraint::new(None, vec![index]));
+                    }
+                    Ok(translated_column)
+                })
                 .collect::<Result<Vec<_>>>()?;
 
-            let mut columns = (!columns.is_empty()).then_some(columns);
-
-            let name = translate_object_name(name)?;
-
-            // We parse the provided constraints that contain information regardin
-            // primary keys. This is essential to handle the cases where the primary
-            // key is not defined inline with the column definition, but rather as a
-            // separate constraint. Two examples are shown below:
-            //
-            // First, the following example illustrate the case where the primary key
-            // is defined inline with the column definition:
-            // ```sql
-            // CREATE TABLE Foo (
-            //     id INTEGER PRIMARY KEY
-            // );
-            // ```
-            //
-            // Second, the following example illustrate the case where the primary key
-            // is defined as a separate constraint:
-            // ```sql
-            // CREATE TABLE Foo (
-            //     id INTEGER,
-            //     PRIMARY KEY (id)
-            // );
-            // ```
-            //
-            // In the second example, the primary key is defined as a separate constraint
-            // and not inline with the column definition. This is why we need to parse the
-            // constraints to extract the primary key information. This case is made slightly
-            // more complex by the fact that the primary key can be a composite key, which
-            // means that it can be defined on multiple columns. This is illustrated in the
-            // following example:
-            // ```sql
-            // CREATE TABLE Foo (
-            //     id INTEGER,
-            //     name TEXT,
-            //     PRIMARY KEY (id, name)
-            // );
-            // ```
-
-            // We extend the definition of the columns to include the primary key flag,
-            // handling also the other constraints that are defined on the table.
-
             let mut foreign_keys = Vec::new();
-            let mut unique_constraints = Vec::new();
 
             for constraint in constraints {
                 if let sqlparser::ast::TableConstraint::PrimaryKey {
@@ -155,19 +132,23 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                     ..
                 } = constraint
                 {
-                    // We can unwrap here because we know that the columns are
-                    // certainly defined, otherwise the table constraints would not
-                    // contain a primary key constraint, as a primary key is composed
-                    // of one or more columns.
-                    let columns = columns.as_mut().unwrap();
-                    // We identify the columns that are part of the primary key
-                    // and update them to have the primary key flag set to true.
-                    for primary_key_column in primary_key_columns {
-                        if let Some(column) = columns
-                            .iter_mut()
-                            .find(|c| c.name == primary_key_column.value)
-                        {
-                            column.set_primary();
+                    match primary_key.as_mut() {
+                        Some(_) => {
+                            return Err(TranslateError::MultiplePrimaryKeyNotSupported.into())
+                        }
+                        None => {
+                            for column in primary_key_columns {
+                                primary_key.get_or_insert_with(Vec::new).push(
+                                    translated_columns
+                                        .iter()
+                                        .position(|v| v.name == column.value)
+                                        .ok_or_else(|| {
+                                            TranslateError::ColumnNotFoundInTable(
+                                                column.to_string(),
+                                            )
+                                        })?,
+                                );
+                            }
                         }
                     }
                 } else if let sqlparser::ast::TableConstraint::Unique {
@@ -176,29 +157,108 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                     ..
                 } = constraint
                 {
-                    let unique_columns = unique_columns
-                        .iter()
-                        .map(|c| c.value.clone())
-                        .collect::<Vec<_>>();
+                    let mut indices = Vec::new();
+                    for column in unique_columns {
+                        if let Some(index) =
+                            columns.iter().position(|c| c.name.value == column.value)
+                        {
+                            indices.push(index);
+                        } else {
+                            return Err(TranslateError::ColumnNotFoundInTable(
+                                column.value.clone(),
+                            )
+                            .into());
+                        }
+                    }
                     unique_constraints.push(UniqueConstraint::new(
                         name.clone().map(|n| n.value),
-                        unique_columns,
+                        indices,
                     ));
                 } else {
                     foreign_keys.push(translate_foreign_key(constraint)?);
                 }
             }
 
+            if let Some(primary_key) = primary_key.as_ref() {
+                if primary_key.is_empty() {
+                    return Err(TranslateError::EmptyPrimaryKeyConstraint.into());
+                }
+
+                // Check whether there are repeated columns in primary key constraint
+                let primary_key_columns = primary_key.iter().map(|i| &translated_columns[*i].name);
+
+                if let Some(repeated_column) = primary_key_columns
+                    .clone()
+                    .find(|column| primary_key_columns.clone().filter(|c| c == column).count() > 1)
+                {
+                    return Err(TranslateError::RepeatedColumnsInPrimaryKeyConstraint(
+                        repeated_column.clone(),
+                    )
+                    .into());
+                }
+            }
+
+            for (index, unique_constraint) in unique_constraints.iter().enumerate() {
+                let unique_columns = unique_constraint
+                    .column_indices()
+                    .iter()
+                    .map(|i| &translated_columns[*i].name);
+
+                // Check whether there are repeated columns in unique constraints
+                if let Some(repeated_column) = unique_columns
+                    .clone()
+                    .find(|column| unique_columns.clone().filter(|c| c == column).count() > 1)
+                {
+                    return Err(TranslateError::RepeatedColumnsInUniqueConstraint(
+                        repeated_column.clone(),
+                    )
+                    .into());
+                }
+
+                // Check whether there are duplicated unique constraints
+                if unique_constraints
+                    .iter()
+                    .skip(index + 1)
+                    .any(|c| c.column_indices() == unique_constraint.column_indices())
+                {
+                    return Err(TranslateError::DuplicatedUniqueConstraint(
+                        unique_columns.clone().join(", "),
+                    )
+                    .into());
+                }
+
+                // Check whether there are empty unique constraints
+                if unique_constraint.column_indices().is_empty() {
+                    return Err(TranslateError::EmptyUniqueConstraintColumns.into());
+                }
+
+                // Check whether there are multiple named unique constraints
+                if unique_constraint.name().is_some()
+                    && unique_constraints
+                        .iter()
+                        .skip(index + 1)
+                        .any(|c| c.name() == unique_constraint.name())
+                {
+                    return Err(TranslateError::DuplicatedUniqueConstraintName(
+                        unique_constraint.name().unwrap().to_owned(),
+                    )
+                    .into());
+                }
+            }
+
+            let translated_columns = (!translated_columns.is_empty()).then_some(translated_columns);
+
             Ok(Statement::CreateTable {
                 if_not_exists: *if_not_exists,
-                name,
-                columns,
-                source: match query {
-                    Some(v) => Some(translate_query(v).map(Box::new)?),
-                    None => None,
-                },
+                name: translate_object_name(name)?,
+                columns: translated_columns,
+                source: query
+                    .as_ref()
+                    .map(|query| translate_query(query).map(Box::new))
+                    .transpose()?,
                 engine: engine.clone(),
                 foreign_keys,
+                primary_key,
                 unique_constraints,
                 comment: comment.clone(),
             })
@@ -460,7 +520,7 @@ pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Fo
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{ColumnDef, ColumnUniqueOption, DataType};
+    use crate::ast::{ColumnDef, DataType};
     use {super::*, crate::parse_sql::parse};
 
     #[test]
@@ -486,7 +546,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: Some(ColumnUniqueOption::primary()),
                     comment: None,
                 },
                 ColumnDef {
@@ -494,7 +553,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: true,
                     default: None,
-                    unique: None,
                     comment: None,
                 },
             ]),
@@ -508,9 +566,21 @@ mod tests {
                 on_delete: ReferentialAction::NoAction,
                 on_update: ReferentialAction::Cascade,
             }],
+            primary_key: Some(vec![0]),
             unique_constraints: vec![],
             comment: None,
         });
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_create_table_with_unknown_primary_key() {
+        let sql = "CREATE TABLE Foo (id INTEGER, PRIMARY KEY (unknown))";
+
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+
+        let expected = Err(TranslateError::ColumnNotFoundInTable("unknown".to_owned()).into());
 
         assert_eq!(actual, expected);
     }
@@ -528,7 +598,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: Some(ColumnUniqueOption::primary()),
                     comment: None,
                 },
                 ColumnDef {
@@ -536,7 +605,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: true,
                     default: None,
-                    unique: None,
                     comment: None,
                 },
             ]),
@@ -550,9 +618,21 @@ mod tests {
                 on_delete: ReferentialAction::Cascade,
                 on_update: ReferentialAction::NoAction,
             }],
+            primary_key: Some(vec![0]),
             unique_constraints: vec![],
             comment: None,
         });
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_create_table_with_multiple_primary_key() {
+        let sql = "CREATE TABLE Foo (id INTEGER PRIMARY KEY, PRIMARY KEY (id, id2))";
+
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+
+        let expected = Err(TranslateError::MultiplePrimaryKeyNotSupported.into());
 
         assert_eq!(actual, expected);
     }
@@ -570,7 +650,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: Some(ColumnUniqueOption::primary()),
                     comment: None,
                 },
                 ColumnDef {
@@ -578,7 +657,6 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: true,
                     default: None,
-                    unique: None,
                     comment: None,
                 },
             ]),
@@ -592,9 +670,40 @@ mod tests {
                 on_delete: ReferentialAction::Cascade,
                 on_update: ReferentialAction::Cascade,
             }],
+            primary_key: Some(vec![0]),
             unique_constraints: vec![],
             comment: None,
         });
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_create_table_with_multiple_primary_key_columns() {
+        let sql = "CREATE TABLE Foo (id INTEGER PRIMARY KEY, id2 INTEGER PRIMARY KEY)";
+
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+
+        let expected = Err(TranslateError::MultiplePrimaryKeyNotSupported.into());
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_create_table_with_repeated_unique_constraint_columns() {
+        let sql = "CREATE TABLE Foo (id INTEGER, id2 INTEGER, UNIQUE (id, id))";
+
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+
+        let expected =
+            Err(TranslateError::RepeatedColumnsInUniqueConstraint("id".to_owned()).into());
+
+        assert_eq!(actual, expected);
+
+        let sql = "CREATE TABLE Foo (id INTEGER UNIQUE, id2 INTEGER, UNIQUE (id))";
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+
+        let expected = Err(TranslateError::DuplicatedUniqueConstraint("id".to_owned()).into());
 
         assert_eq!(actual, expected);
     }

@@ -53,7 +53,7 @@ impl Value {
             .try_fold(self, |selectable, key| {
                 selectable.get_value_from_compound_type(&key)
             })
-            .cloned()
+            .map(Clone::clone)
     }
 
     fn get_value_from_compound_type(&self, key: &str) -> Result<&Value> {

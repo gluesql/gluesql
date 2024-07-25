@@ -50,7 +50,7 @@ pub enum Key {
     Interval(Interval),
     Uuid(u128),
     Inet(IpAddr),
-    Composite(Vec<Key>),
+    List(Vec<Key>),
     None,
 }
 
@@ -82,7 +82,7 @@ impl Ord for Key {
             (Key::None, Key::None) => Ordering::Equal,
             (Key::None, _) => Ordering::Greater,
             (_, Key::None) => Ordering::Less,
-            (Key::Composite(l), Key::Composite(r)) => l.cmp(r),
+            (Key::List(l), Key::List(r)) => l.cmp(r),
 
             (left, right) => {
                 if left.to_order() <= right.to_order() {
@@ -142,18 +142,11 @@ impl TryFrom<Vec<Value>> for Key {
     type Error = Error;
 
     fn try_from(values: Vec<Value>) -> Result<Self> {
-        Ok(Key::Composite(
-            values
-                .into_iter()
-                .map(Key::try_from)
-                .collect::<Result<Vec<_>>>()?,
-        ))
-    }
-}
-
-impl From<Vec<Key>> for Key {
-    fn from(keys: Vec<Key>) -> Self {
-        Key::Composite(keys)
+        values
+            .into_iter()
+            .map(Key::try_from)
+            .collect::<Result<Vec<_>>>()
+            .map(Key::List)
     }
 }
 
@@ -190,7 +183,7 @@ impl From<Key> for Value {
             Key::Time(v) => Value::Time(v),
             Key::Interval(v) => Value::Interval(v),
             Key::Uuid(v) => Value::Uuid(v),
-            Key::Composite(v) => Value::List(v.into_iter().map(Value::from).collect()),
+            Key::List(v) => Value::List(v.into_iter().map(Value::from).collect()),
             Key::None => Value::Null,
         }
     }
@@ -359,7 +352,7 @@ impl Key {
                 .chain(v.to_be_bytes().iter())
                 .copied()
                 .collect::<Vec<_>>(),
-            Key::Composite(v) => v
+            Key::List(v) => v
                 .iter()
                 .map(|key| key.to_cmp_be_bytes())
                 .collect::<Result<Vec<_>>>()?
@@ -395,7 +388,7 @@ impl Key {
             Key::Uuid(_) => 21,
             Key::Inet(_) => 22,
             Key::None => 23,
-            Key::Composite(_) => 24,
+            Key::List(_) => 24,
         }
     }
 }
@@ -913,5 +906,28 @@ mod tests {
             )
         );
         matches!(Value::from(Key::None), Value::Null);
+    }
+
+    #[test]
+    fn test_list_value_from_list_key() {
+        use crate::data::Key;
+        use crate::data::Value;
+
+        let key = Key::List(vec![Key::I32(1), Key::I32(2), Key::I32(3)]);
+        let value = Value::List(vec![Value::I32(1), Value::I32(2), Value::I32(3)]);
+
+        assert_eq!(Value::from(key), value);
+    }
+
+    #[test]
+    fn test_to_order() {
+        // None
+        assert_eq!(Key::None.to_order(), 23);
+
+        // List
+        assert_eq!(Key::List(vec![]).to_order(), 24);
+
+        // List, with elements
+        assert_eq!(Key::List(vec![Key::I32(1)]).to_order(), 24);
     }
 }

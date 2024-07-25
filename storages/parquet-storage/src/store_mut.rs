@@ -444,7 +444,6 @@ impl ParquetStorage {
                     data_type: DataType::Map,
                     nullable: true,
                     default: None,
-                    unique: None,
                     comment: None,
                 }]
             }
@@ -504,19 +503,15 @@ impl ParquetStorage {
             });
         }
 
+        if let Some(primary_key) = &schema.primary_key {
+            metadata.push(KeyValue {
+                key: "primary_key".to_string(),
+                value: Some(serde_json::to_string(primary_key).map_storage_err()?),
+            });
+        }
+
         if let Some(column_defs) = &schema.column_defs {
             for column_def in column_defs {
-                if let Some(unique_option) = &column_def.unique {
-                    let key = format!("unique_option{}", column_def.name);
-                    let value = if unique_option.is_primary() {
-                        Some("primary_key".to_string())
-                    } else {
-                        Some("unique".to_string())
-                    };
-
-                    metadata.push(KeyValue { key, value });
-                }
-
                 if let Some(default_value) = &column_def.default {
                     metadata.push(KeyValue {
                         key: format!("default_{}", column_def.name),

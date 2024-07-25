@@ -7,7 +7,7 @@ use {
             key::{into_object_id, KeyIntoBson},
             value::IntoBson,
         },
-        utils::{get_primary_key, get_primary_key_sort_document, has_primary_key, Validator},
+        utils::Validator,
         MongoStorage, PRIMARY_KEY_DESINENCE, UNIQUE_KEY_DESINENCE,
     },
     async_trait::async_trait,
@@ -25,31 +25,25 @@ use {
 #[async_trait(?Send)]
 impl StoreMut for MongoStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
-        let (labels, column_types, unique_indexes, primary_indexes) = schema
+        let (labels, column_types) = schema
             .column_defs
             .as_ref()
             .map(|column_defs| {
                 column_defs.iter().try_fold(
-                    (Vec::new(), Document::new(), Vec::new(), Vec::new()),
-                    |(mut labels, mut column_types, mut unique_indexes, mut primary_indexes),
-                     column_def| {
+                    (Vec::new(), Document::new()),
+                    |(mut labels, mut column_types), column_def| {
                         labels.push(column_def.name.clone());
 
                         let data_type = BsonType::from(&column_def.data_type).into();
                         let maximum = column_def.data_type.get_max();
                         let minimum = column_def.data_type.get_min();
 
-                        let bson_type =
-                            match column_def.nullable || column_def.is_unique_not_primary() {
-                                true => vec![data_type, crate::NULLABLE_SYMBOL],
-                                false => vec![data_type],
-                            };
-
-                        if column_def.is_primary() {
-                            primary_indexes.push(column_def);
-                        } else if column_def.is_unique_not_primary() {
-                            unique_indexes.push(column_def);
-                        }
+                        let bson_type = match column_def.nullable
+                            || schema.is_part_of_single_field_unique_constraint(&column_def.name)
+                        {
+                            true => vec![data_type, crate::NULLABLE_SYMBOL],
+                            false => vec![data_type],
+                        };
 
                         let mut property = doc! {
                             "bsonType": bson_type,
@@ -87,7 +81,7 @@ impl StoreMut for MongoStorage {
                             column_def.name.clone(): property,
                         });
 
-                        Ok::<_, Error>((labels, column_types, unique_indexes, primary_indexes))
+                        Ok::<_, Error>((labels, column_types))
                     },
                 )
             })
@@ -99,6 +93,7 @@ impl StoreMut for MongoStorage {
             labels,
             column_types,
             schema.foreign_keys.clone(),
+            schema.primary_key.clone(),
             schema.unique_constraints.clone(),
             comment,
         )?;
@@ -124,23 +119,42 @@ impl StoreMut for MongoStorage {
             .await
             .map_storage_err()?;
 
-        if primary_indexes.is_empty() && unique_indexes.is_empty() {
-            return Ok(());
-        }
+        let mut index = 0;
+        let mut index_models = schema
+            .unique_constraint_columns_and_indices()
+            .zip(schema.unique_constraints.iter())
+            .map(|((_, column_names), unique_constraint)| {
+                let constraint_name = unique_constraint
+                    .name()
+                    .map(|name| format!("{}_{}", schema.table_name, name))
+                    .unwrap_or_else(|| format!("{}_{}", schema.table_name, index));
 
-        let mut index_models = unique_indexes
-            .into_iter()
-            .map(|column_def| {
+                index += 1;
+
+                let partial_filter_expression = column_names.iter().map(ToOwned::to_owned).fold(
+                    Document::new(),
+                    |mut document, column_name| {
+                        document.insert(column_name, doc! { "$ne": null });
+                        document
+                    },
+                );
+
                 let index_options = IndexOptions::builder()
                     .unique(true)
                     .partial_filter_expression(
-                        doc! { "partialFilterExpression": { column_def.name.clone(): { "$ne": null } } },
+                        doc! { "partialFilterExpression": partial_filter_expression },
                     )
-                    .name(format!("{}_{}", column_def.name, UNIQUE_KEY_DESINENCE))
+                    .name(format!("{}_{}", &constraint_name, UNIQUE_KEY_DESINENCE))
                     .build();
 
                 mongodb::IndexModel::builder()
-                    .keys(doc! {column_def.name.clone(): 1})
+                    .keys(column_names.into_iter().fold(
+                        Document::new(),
+                        |mut document, column_name| {
+                            document.insert(column_name, 1);
+                            document
+                        },
+                    ))
                     .options(index_options)
                     .build()
             })
@@ -149,7 +163,7 @@ impl StoreMut for MongoStorage {
         // If there is a primary key, we create a composite unique index with the primary key
         // where it is triggered solely when all of the columns in the primary key result
         // to be non-unique.
-        if !primary_indexes.is_empty() {
+        if let Some(primary_keys) = schema.primary_key_column_names() {
             let options = IndexOptions::builder()
                 .unique(true)
                 .name(format!("{}_{}", schema.table_name, PRIMARY_KEY_DESINENCE))
@@ -157,18 +171,26 @@ impl StoreMut for MongoStorage {
 
             index_models.push(
                 mongodb::IndexModel::builder()
-                    .keys(get_primary_key_sort_document(primary_indexes).unwrap())
+                    .keys(
+                        primary_keys.fold(Document::new(), |mut document, column_name| {
+                            document.insert(column_name, 1);
+                            document
+                        }),
+                    )
                     .options(options)
                     .build(),
             );
         }
 
-        self.db
-            .collection::<Document>(&schema.table_name)
-            .create_indexes(index_models, None)
-            .await
-            .map(|_| ())
-            .map_storage_err()
+        if !index_models.is_empty() {
+            self.db
+                .collection::<Document>(&schema.table_name)
+                .create_indexes(index_models, None)
+                .await
+                .map_storage_err()?;
+        }
+
+        Ok(())
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
@@ -220,16 +242,18 @@ impl StoreMut for MongoStorage {
     }
 
     async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
-        let column_defs = self.get_column_defs(table_name).await?;
+        let schema = self.fetch_schema(table_name).await?;
 
-        let has_primary_key = column_defs
+        let has_primary_key = schema
             .as_ref()
-            .map(|column_defs| has_primary_key(column_defs))
-            .unwrap_or_default();
+            .map_or(false, |schema| schema.primary_key.is_some());
 
         for (key, row) in rows {
             let doc = match row {
-                DataRow::Vec(values) => column_defs
+                DataRow::Vec(values) => schema
+                    .as_ref()
+                    .map_storage_err(MongoStorageError::Unreachable)?
+                    .column_defs
                     .as_ref()
                     .map_storage_err(MongoStorageError::Unreachable)?
                     .iter()
@@ -266,14 +290,17 @@ impl StoreMut for MongoStorage {
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
-        let column_defs = self.get_column_defs(table_name).await?;
-        let primary_key = column_defs.as_ref().and_then(get_primary_key);
+        let has_primary_key = self
+            .fetch_schema(table_name)
+            .await?
+            .as_ref()
+            .map_or(false, |schema| schema.primary_key.is_some());
 
         self.db
             .collection::<Bson>(table_name)
             .delete_many(
                 doc! { crate::PRIMARY_KEY_SYMBOL: {
-                    "$in": keys.into_iter().map(|key| key.into_bson(primary_key.is_some())).collect::<Result<Vec<_>>>()?
+                    "$in": keys.into_iter().map(|key| key.into_bson(has_primary_key)).collect::<Result<Vec<_>>>()?
                 }},
                 None,
             )

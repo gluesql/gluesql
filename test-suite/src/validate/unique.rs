@@ -1,7 +1,9 @@
 use {
     crate::*,
-    gluesql_core::prelude::Payload,
-    gluesql_core::{error::ValidateError, prelude::Value},
+    gluesql_core::{
+        error::{TranslateError, ValidateError},
+        prelude::{Payload, Value},
+    },
 };
 
 test_case!(unique, {
@@ -104,7 +106,7 @@ test_case!(unique_multi_key, {
     let queries = [
         r#"
         CREATE TABLE TestA (
-            id INTEGER UNIQUE,
+            id INTEGER,
             num INT,
             CONSTRAINT pk UNIQUE (id)
         )
@@ -119,7 +121,7 @@ test_case!(unique_multi_key, {
         "#,
         r#"
         CREATE TABLE TestC (
-            id INTEGER NULL UNIQUE,
+            id INTEGER NULL,
             num INT,
             CONSTRAINT pk UNIQUE (id)
         )
@@ -255,6 +257,34 @@ test_case!(unique_multi_key, {
         "Null insert should not trigger UNIQUE error.",
         r#"INSERT INTO TestD VALUES (NULL, 4), (NULL, 4)"#,
         Ok(Payload::Insert(2)),
+    )
+    .await;
+
+    // We check that creating identical UNIQUE constraints at the column and later leads to an error
+    g.named_test(
+        "Creating identical UNIQUE constraints at the column and later leads to an error",
+        r#"
+        CREATE TABLE TestE (
+            id INTEGER UNIQUE,
+            num INT,
+            UNIQUE (id)
+        )
+        "#,
+        Err(TranslateError::DuplicatedUniqueConstraint("id".to_owned()).into()),
+    )
+    .await;
+
+    // We check that creating identical UNIQUE constraints at the column and later leads to an error
+    g.named_test(
+        "Creating identical UNIQUE constraints at the column and later leads to an error",
+        r#"
+        CREATE TABLE TestF (
+            id INTEGER,
+            num INT UNIQUE,
+            CONSTRAINT pk UNIQUE (num)
+        )
+        "#,
+        Err(TranslateError::DuplicatedUniqueConstraint("num".to_owned()).into()),
     )
     .await;
 });

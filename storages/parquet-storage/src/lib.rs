@@ -60,6 +60,7 @@ impl ParquetStorage {
 
         let mut is_schemaless = false;
         let mut foreign_keys = Vec::new();
+        let mut primary_key: Option<Vec<usize>> = None;
         let mut unique_constraints = Vec::new();
         let mut comment = None;
         if let Some(metadata) = key_value_file_metadata {
@@ -79,6 +80,16 @@ impl ParquetStorage {
                         .map_storage_err()?;
 
                     foreign_keys.push(fk);
+                } else if kv.key == "primary_key" {
+                    primary_key = Some(
+                        kv.value
+                            .as_ref()
+                            .map(|x| from_str::<Vec<usize>>(x))
+                            .map_storage_err(Error::StorageMsg(
+                                "No value found on metadata".to_owned(),
+                            ))?
+                            .map_storage_err()?,
+                    );
                 } else if kv.key.starts_with("unique_constraint") {
                     let uc = kv
                         .value
@@ -117,6 +128,7 @@ impl ParquetStorage {
             indexes: vec![],
             engine: None,
             foreign_keys,
+            primary_key,
             unique_constraints,
             comment,
         }))
@@ -146,9 +158,7 @@ impl ParquetStorage {
         let mut rows = Vec::new();
         let mut key_counter: u64 = 0;
 
-        if let Some(column_defs) = &fetched_schema.column_defs {
-            let primary_key_indices =
-                gluesql_core::executor::get_primary_key_column_indices(column_defs);
+        if fetched_schema.column_defs.is_some() {
             for record in row_iter {
                 let record: Row = record.map_storage_err()?;
                 let mut row = Vec::new();
@@ -158,12 +168,10 @@ impl ParquetStorage {
                     row.push(value.clone());
                 }
 
-                let generated_key = if primary_key_indices.is_empty() {
+                let generated_key = fetched_schema.get_primary_key(&row).unwrap_or({
                     key_counter += 1;
                     Key::U64(key_counter - 1)
-                } else {
-                    gluesql_core::executor::get_primary_key_from_row(&row, &primary_key_indices)?
-                };
+                });
                 rows.push(Ok((generated_key, DataRow::Vec(row))));
             }
         } else {
@@ -196,12 +204,12 @@ impl ParquetStorage {
                 data_type: DataType::Map,
                 nullable: true,
                 default: None,
-                unique: None,
                 comment: None,
             }]),
             indexes: vec![],
             engine: None,
             foreign_keys: Vec::new(),
+            primary_key: None,
             unique_constraints: Vec::new(),
             comment: None,
         }

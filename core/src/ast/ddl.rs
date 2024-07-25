@@ -7,7 +7,7 @@ use {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AlterTableOperation {
     /// `ADD [ COLUMN ] <column_def>`
-    AddColumn { column_def: ColumnDef },
+    AddColumn { column_def: ColumnDef, unique: bool },
     /// `DROP [ COLUMN ] [ IF EXISTS ] <column_name> [ CASCADE ]`
     DropColumn {
         column_name: String,
@@ -29,61 +29,7 @@ pub struct ColumnDef {
     pub nullable: bool,
     /// `DEFAULT <restricted-expr>`
     pub default: Option<Expr>,
-    /// `{ PRIMARY KEY | UNIQUE }`
-    pub unique: Option<ColumnUniqueOption>,
     pub comment: Option<String>,
-}
-
-impl ColumnDef {
-    /// Returns whether the column is primary key.
-    pub fn is_primary(&self) -> bool {
-        self.unique
-            .as_ref()
-            .map(ColumnUniqueOption::is_primary)
-            .unwrap_or(false)
-    }
-
-    /// Returns whether the column must be unique.
-    pub fn is_unique(&self) -> bool {
-        self.unique.is_some()
-    }
-
-    /// Returns whether the column is unique but not primary key.
-    pub fn is_unique_not_primary(&self) -> bool {
-        self.is_unique() && !self.is_primary()
-    }
-
-    /// Sets the column as primary key.
-    pub fn set_primary(&mut self) {
-        self.unique = Some(ColumnUniqueOption { is_primary: true });
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct ColumnUniqueOption {
-    is_primary: bool,
-}
-
-impl ColumnUniqueOption {
-    /// Returns true if the unique option is primary key.
-    pub fn is_primary(&self) -> bool {
-        self.is_primary
-    }
-
-    /// Returns a new unique option with the provided value.
-    pub fn new(is_primary: bool) -> Self {
-        Self { is_primary }
-    }
-
-    /// Returns a new unique option with primary as true.
-    pub fn primary() -> Self {
-        Self::new(true)
-    }
-
-    /// Returns a new unique option with primary as false.
-    pub fn unique() -> Self {
-        Self::new(false)
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -97,8 +43,12 @@ pub struct OperateFunctionArg {
 impl ToSql for AlterTableOperation {
     fn to_sql(&self) -> String {
         match self {
-            AlterTableOperation::AddColumn { column_def } => {
-                format!("ADD COLUMN {}", column_def.to_sql())
+            AlterTableOperation::AddColumn { column_def, unique } => {
+                format!(
+                    "ADD {}COLUMN {}",
+                    if *unique { "UNIQUE " } else { "" },
+                    column_def.to_sql()
+                )
             }
             AlterTableOperation::DropColumn {
                 column_name,
@@ -125,7 +75,6 @@ impl ToSql for ColumnDef {
             data_type,
             nullable,
             default,
-            unique,
             comment,
         } = self;
         {
@@ -137,34 +86,17 @@ impl ToSql for ColumnDef {
             let default = default
                 .as_ref()
                 .map(|expr| format!("DEFAULT {}", expr.to_sql()));
-            let unique = unique.as_ref().and_then(|unique| {
-                if unique.is_primary() {
-                    None
-                } else {
-                    Some(unique.to_sql())
-                }
-            });
+
             let comment = comment
                 .as_ref()
                 .map(|comment| format!("COMMENT '{}'", comment));
 
-            [Some(column_def), default, unique, comment]
+            [Some(column_def), default, comment]
                 .into_iter()
                 .flatten()
                 .collect::<Vec<_>>()
                 .join(" ")
         }
-    }
-}
-
-impl ToSql for ColumnUniqueOption {
-    fn to_sql(&self) -> String {
-        if self.is_primary {
-            "PRIMARY KEY"
-        } else {
-            "UNIQUE"
-        }
-        .to_owned()
     }
 }
 
@@ -185,20 +117,17 @@ impl ToSql for OperateFunctionArg {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{
-        AstLiteral, ColumnDef, ColumnUniqueOption, DataType, Expr, OperateFunctionArg, ToSql,
-    };
+    use crate::ast::{AstLiteral, ColumnDef, DataType, Expr, OperateFunctionArg, ToSql};
 
     #[test]
     fn to_sql_column_def() {
         assert_eq!(
-            r#""name" TEXT NOT NULL UNIQUE"#,
+            r#""name" TEXT NOT NULL"#,
             ColumnDef {
                 name: "name".to_owned(),
                 data_type: DataType::Text,
                 nullable: false,
                 default: None,
-                unique: Some(ColumnUniqueOption { is_primary: false }),
                 comment: None,
             }
             .to_sql()
@@ -211,7 +140,6 @@ mod tests {
                 data_type: DataType::Boolean,
                 nullable: true,
                 default: None,
-                unique: None,
                 comment: None,
             }
             .to_sql()
@@ -224,7 +152,6 @@ mod tests {
                 data_type: DataType::Int,
                 nullable: false,
                 default: None,
-                unique: Some(ColumnUniqueOption { is_primary: true }),
                 comment: None,
             }
             .to_sql()
@@ -237,20 +164,18 @@ mod tests {
                 data_type: DataType::Boolean,
                 nullable: false,
                 default: Some(Expr::Literal(AstLiteral::Boolean(false))),
-                unique: None,
                 comment: None,
             }
             .to_sql()
         );
 
         assert_eq!(
-            r#""accepted" BOOLEAN NOT NULL DEFAULT FALSE UNIQUE"#,
+            r#""accepted" BOOLEAN NOT NULL DEFAULT FALSE"#,
             ColumnDef {
                 name: "accepted".to_owned(),
                 data_type: DataType::Boolean,
                 nullable: false,
                 default: Some(Expr::Literal(AstLiteral::Boolean(false))),
-                unique: Some(ColumnUniqueOption { is_primary: false }),
                 comment: None,
             }
             .to_sql()
@@ -263,7 +188,6 @@ mod tests {
                 data_type: DataType::Boolean,
                 nullable: false,
                 default: None,
-                unique: None,
                 comment: Some("this is comment".to_owned()),
             }
             .to_sql()

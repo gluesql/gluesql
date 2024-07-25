@@ -9,7 +9,7 @@ use {
     async_io::block_on,
     async_trait::async_trait,
     gluesql_core::{
-        ast::ColumnDef,
+        ast::{ColumnDef, UniqueConstraint},
         data::{schema::Schema, Value},
         error::{AlterTableError, Error, Result},
         executor::evaluate_stateless,
@@ -52,6 +52,7 @@ impl AlterTable for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                primary_key,
                 unique_constraints,
                 comment,
                 ..
@@ -65,6 +66,7 @@ impl AlterTable for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                primary_key,
                 unique_constraints,
                 comment,
             };
@@ -166,6 +168,7 @@ impl AlterTable for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                primary_key,
                 unique_constraints,
                 comment: schema_comment,
                 ..
@@ -197,7 +200,6 @@ impl AlterTable for SledStorage {
                 data_type,
                 nullable,
                 default,
-                unique,
                 comment,
                 ..
             } = column_defs[i].clone();
@@ -207,7 +209,6 @@ impl AlterTable for SledStorage {
                 data_type,
                 nullable,
                 default,
-                unique,
                 comment,
             };
             let column_defs = Vector::from(column_defs).update(i, column_def).into();
@@ -218,6 +219,7 @@ impl AlterTable for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                primary_key,
                 unique_constraints,
                 comment: schema_comment,
             };
@@ -244,7 +246,12 @@ impl AlterTable for SledStorage {
         Ok(())
     }
 
-    async fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
+    async fn add_column(
+        &mut self,
+        table_name: &str,
+        column_def: &ColumnDef,
+        unique: bool,
+    ) -> Result<()> {
         let prefix = format!("data/{}/", table_name);
         let items = self
             .tree
@@ -273,7 +280,8 @@ impl AlterTable for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
-                unique_constraints,
+                primary_key,
+                mut unique_constraints,
                 comment,
             } = schema_snapshot
                 .get(txid, None)
@@ -367,12 +375,18 @@ impl AlterTable for SledStorage {
 
             let temp_key = key::temp_schema(txid, &table_name);
 
+            if unique {
+                unique_constraints
+                    .push(UniqueConstraint::new_anonimous(vec![column_defs.len() - 1]));
+            }
+
             let schema = Schema {
                 table_name,
                 column_defs: Some(column_defs),
                 indexes,
                 engine,
                 foreign_keys,
+                primary_key,
                 unique_constraints,
                 comment,
             };
@@ -391,7 +405,7 @@ impl AlterTable for SledStorage {
         });
 
         if self.check_retry(tx_result)? {
-            self.add_column(table_name, column_def).await?;
+            self.add_column(table_name, column_def, unique).await?;
         }
 
         Ok(())
@@ -431,6 +445,7 @@ impl AlterTable for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                primary_key,
                 unique_constraints,
                 comment,
             } = schema_snapshot
@@ -514,6 +529,7 @@ impl AlterTable for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                primary_key,
                 unique_constraints,
                 comment,
             };

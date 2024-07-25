@@ -200,35 +200,28 @@ pub trait Planner<'a> {
             | TableFactor::Dictionary { .. } => return next,
         };
 
-        let column_defs = match self.get_schema(name) {
-            Some(Schema { column_defs, .. }) => column_defs,
+        let schema = self.get_schema(name);
+
+        let columns = match schema.as_ref().and_then(|Schema { column_defs, .. }| {
+            column_defs.as_ref().map(|column_defs| {
+                column_defs
+                    .iter()
+                    .map(|ColumnDef { name, .. }| name.as_str())
+                    .collect::<Vec<_>>()
+            })
+        }) {
+            Some(columns) => columns,
             None => return next,
         };
 
-        let column_defs = match column_defs {
-            Some(column_defs) => column_defs,
-            None => return next,
-        };
-
-        let columns = column_defs
-            .iter()
-            .map(|ColumnDef { name, .. }| name.as_str())
-            .collect::<Vec<_>>();
-
-        let primary_key = column_defs
-            .iter()
-            .filter(|column_def| column_def.is_primary())
-            .map(|column_def| column_def.name.as_str())
-            .collect::<Vec<_>>();
+        let primary_key = schema
+            .as_ref()
+            .and_then(|schema| Some(schema.primary_key_column_names()?.collect()));
 
         let context = Context::new(
             alias.unwrap_or_else(|| name.to_owned()),
             columns,
-            if primary_key.is_empty() {
-                None
-            } else {
-                Some(primary_key)
-            },
+            primary_key,
             next,
         );
         Some(Rc::new(context))

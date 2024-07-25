@@ -602,6 +602,12 @@ test_case!(foreign_key, {
     .await;
 
     g.named_test(
+        "Updating referenced row should fail if referencing value exists (by default: NO ACTION and gets error)",
+        "UPDATE ReferencedTableWithPK SET name = 'referenced_table1 updated' WHERE id = 1;",
+        Err(UpdateError::RestrictingColumnExists("ReferencingTable.referenced_id".to_owned()).into()),
+    ).await;
+
+    g.named_test(
         "Deleting referencing table does not care referenced table",
         "DELETE FROM ReferencingTable WHERE id = 2;",
         Ok(Payload::Delete(1)),
@@ -664,7 +670,7 @@ test_case!(foreign_key, {
                         referenced_table_name: "ReferencedTableWithPK".to_owned(),
                         referenced_column_name: "id".to_owned(),
                         on_delete: ReferentialAction::NoAction,
-                        on_update: ReferentialAction::Restrict,
+                        on_update: ReferentialAction::NoAction,
                     },
                 },
                 Referencing {
