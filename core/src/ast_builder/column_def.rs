@@ -20,12 +20,6 @@ impl AsRef<[String]> for PrimaryKeyConstraintNode {
     }
 }
 
-impl From<PrimaryKeyConstraintNode> for Vec<String> {
-    fn from(primary_key_constraint: PrimaryKeyConstraintNode) -> Vec<String> {
-        primary_key_constraint.columns
-    }
-}
-
 #[derive(Clone, Debug)]
 pub enum ColumnDefNode {
     Text(String),
