@@ -42,12 +42,6 @@ impl<T> ResultExt<T, serde_json::Error> for std::result::Result<T, serde_json::E
     }
 }
 
-impl<T> ResultExt<T, bson::de::Error> for std::result::Result<T, bson::de::Error> {
-    fn map_storage_err(self) -> Result<T, Error> {
-        self.map_err(|e| e.to_string()).map_err(Error::StorageMsg)
-    }
-}
-
 impl<T> ResultExt<T, bson::ser::Error> for std::result::Result<T, bson::ser::Error> {
     fn map_storage_err(self) -> Result<T, Error> {
         self.map_err(|e| e.to_string()).map_err(Error::StorageMsg)
