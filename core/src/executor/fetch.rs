@@ -606,4 +606,3 @@ pub async fn fetch_labels<T: GStore>(
         .collect::<Result<_>>()
         .map(Some)
 }
-
