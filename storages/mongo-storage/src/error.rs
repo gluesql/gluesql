@@ -60,28 +60,6 @@ impl<T> ResultExt<T, chrono::ParseError> for std::result::Result<T, chrono::Pars
     }
 }
 
-impl<T> ResultExt<T, std::string::FromUtf8Error>
-    for std::result::Result<T, std::string::FromUtf8Error>
-{
-    fn map_storage_err(self) -> Result<T, Error> {
-        self.map_err(|e| e.to_string()).map_err(Error::StorageMsg)
-    }
-}
-
-impl<T> ResultExt<T, std::num::ParseIntError> for std::result::Result<T, std::num::ParseIntError> {
-    fn map_storage_err(self) -> Result<T, Error> {
-        self.map_err(|e| e.to_string()).map_err(Error::StorageMsg)
-    }
-}
-
-impl<T> ResultExt<T, std::num::ParseFloatError>
-    for std::result::Result<T, std::num::ParseFloatError>
-{
-    fn map_storage_err(self) -> Result<T, Error> {
-        self.map_err(|e| e.to_string()).map_err(Error::StorageMsg)
-    }
-}
-
 impl<T> ResultExt<T, ValueAccessError> for std::result::Result<T, ValueAccessError> {
     fn map_storage_err(self) -> Result<T, Error> {
         self.map_err(|e| e.to_string()).map_err(Error::StorageMsg)
@@ -91,18 +69,6 @@ impl<T> ResultExt<T, ValueAccessError> for std::result::Result<T, ValueAccessErr
 impl<T> ResultExt<T, std::net::AddrParseError>
     for std::result::Result<T, std::net::AddrParseError>
 {
-    fn map_storage_err(self) -> Result<T, Error> {
-        self.map_err(|e| e.to_string()).map_err(Error::StorageMsg)
-    }
-}
-
-impl<T> ResultExt<T, String> for std::result::Result<T, String> {
-    fn map_storage_err(self) -> Result<T, Error> {
-        self.map_err(|e| e.to_string()).map_err(Error::StorageMsg)
-    }
-}
-
-impl<'a, T> ResultExt<T, &'a str> for std::result::Result<T, &'a str> {
     fn map_storage_err(self) -> Result<T, Error> {
         self.map_err(|e| e.to_string()).map_err(Error::StorageMsg)
     }
