@@ -907,7 +907,7 @@ mod tests {
         );
         matches!(Value::from(Key::None), Value::Null);
     }
-    
+
     #[test]
     fn test_list_value_from_list_key() {
         use crate::data::Key;
