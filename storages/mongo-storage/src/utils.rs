@@ -1,7 +1,10 @@
 use {
     crate::{description::TableDescription, error::ResultExt},
     bson::{doc, Document},
-    gluesql_core::{ast::{ForeignKey, UniqueConstraint}, error::Result},
+    gluesql_core::{
+        ast::{ForeignKey, UniqueConstraint},
+        error::Result,
+    },
     mongodb::options::CreateCollectionOptions,
     serde_json::to_string,
 };
@@ -15,6 +18,7 @@ impl Validator {
         labels: Vec<String>,
         column_types: Document,
         foreign_keys: Vec<ForeignKey>,
+        primary_key: Option<Vec<usize>>,
         unique_constraints: Vec<UniqueConstraint>,
         comment: Option<String>,
     ) -> Result<Self> {
@@ -30,6 +34,7 @@ impl Validator {
         let table_description = to_string(
             &(TableDescription {
                 foreign_keys,
+                primary_key,
                 unique_constraints,
                 comment,
             }),

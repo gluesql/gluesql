@@ -444,7 +444,6 @@ impl ParquetStorage {
                     data_type: DataType::Map,
                     nullable: true,
                     default: None,
-                    unique: false,
                     comment: None,
                 }]
             }
@@ -513,13 +512,6 @@ impl ParquetStorage {
 
         if let Some(column_defs) = &schema.column_defs {
             for column_def in column_defs {
-                if column_def.unique {
-                    metadata.push(KeyValue {
-                        key: format!("unique_option{}", column_def.name.clone()),
-                        value: Some("unique".to_string()),
-                    });
-                }
-
                 if let Some(default_value) = &column_def.default {
                     metadata.push(KeyValue {
                         key: format!("default_{}", column_def.name),

@@ -63,7 +63,6 @@ test_case!(alter_table_add_drop, {
                 data_type: DataType::Int,
                 nullable: false,
                 default: None,
-                unique: false,
                 comment: None,
             })
             .into()),

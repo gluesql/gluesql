@@ -20,9 +20,42 @@ impl AsRef<[String]> for PrimaryKeyConstraintNode {
     }
 }
 
-impl From<PrimaryKeyConstraintNode> for Vec<String> {
-    fn from(primary_key_constraint: PrimaryKeyConstraintNode) -> Vec<String> {
-        primary_key_constraint.columns
+#[derive(Clone, Debug)]
+pub struct UniqueConstraintNode {
+    name: Option<String>,
+    columns: Vec<String>,
+}
+
+impl UniqueConstraintNode {
+    pub fn new<I: IntoIterator<Item = S>, S: AsRef<str>, S2: AsRef<str>>(
+        name: Option<S2>,
+        columns: I,
+    ) -> Self {
+        UniqueConstraintNode {
+            name: name.map(|name| name.as_ref().to_owned()),
+            columns: columns
+                .into_iter()
+                .map(|column| column.as_ref().to_owned())
+                .collect(),
+        }
+    }
+
+    pub fn is_named(&self) -> bool {
+        self.name.is_some()
+    }
+
+    pub fn name(&self) -> Option<&str> {
+        self.name.as_deref()
+    }
+
+    pub fn columns(&self) -> &[String] {
+        &self.columns
+    }
+}
+
+impl AsRef<[String]> for UniqueConstraintNode {
+    fn as_ref(&self) -> &[String] {
+        &self.columns
     }
 }
 

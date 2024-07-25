@@ -907,4 +907,27 @@ mod tests {
         );
         matches!(Value::from(Key::None), Value::Null);
     }
+
+    #[test]
+    fn test_list_value_from_list_key() {
+        use crate::data::Key;
+        use crate::data::Value;
+
+        let key = Key::List(vec![Key::I32(1), Key::I32(2), Key::I32(3)]);
+        let value = Value::List(vec![Value::I32(1), Value::I32(2), Value::I32(3)]);
+
+        assert_eq!(Value::from(key), value);
+    }
+
+    #[test]
+    fn test_to_order() {
+        // None
+        assert_eq!(Key::None.to_order(), 23);
+
+        // List
+        assert_eq!(Key::List(vec![]).to_order(), 24);
+
+        // List, with elements
+        assert_eq!(Key::List(vec![Key::I32(1)]).to_order(), 24);
+    }
 }

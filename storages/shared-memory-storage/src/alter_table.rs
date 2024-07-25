@@ -28,11 +28,16 @@ impl AlterTable for SharedMemoryStorage {
             .await
     }
 
-    async fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
+    async fn add_column(
+        &mut self,
+        table_name: &str,
+        column_def: &ColumnDef,
+        unique: bool,
+    ) -> Result<()> {
         let database = Arc::clone(&self.database);
         let mut database = database.write().await;
 
-        database.add_column(table_name, column_def).await
+        database.add_column(table_name, column_def, unique).await
     }
 
     async fn drop_column(

@@ -158,7 +158,7 @@ impl ParquetStorage {
         let mut rows = Vec::new();
         let mut key_counter: u64 = 0;
 
-        if fetched_schema.has_column_defs() {
+        if fetched_schema.column_defs.is_some() {
             for record in row_iter {
                 let record: Row = record.map_storage_err()?;
                 let mut row = Vec::new();
@@ -168,12 +168,10 @@ impl ParquetStorage {
                     row.push(value.clone());
                 }
 
-                let generated_key = if let Some(key) = fetched_schema.get_primary_key(&row) {
-                    key
-                } else {
+                let generated_key = fetched_schema.get_primary_key(&row).unwrap_or({
                     key_counter += 1;
                     Key::U64(key_counter - 1)
-                };
+                });
                 rows.push(Ok((generated_key, DataRow::Vec(row))));
             }
         } else {

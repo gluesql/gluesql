@@ -383,3 +383,54 @@ async fn execute_inner<T: GStore + GStoreMut>(
             .map(|_| Payload::DropFunction),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::data::Value;
+
+    #[test]
+    fn test_payload_select() {
+        let payload = Payload::Select {
+            labels: vec!["a".to_owned(), "b".to_owned()],
+            rows: vec![vec![Value::U8(1), Value::U8(2)]],
+        };
+
+        let mut iter = payload.select().unwrap();
+        let row = iter.next().unwrap();
+
+        assert_eq!(row.get("a"), Some(&&Value::U8(1)));
+        assert_eq!(row.get("b"), Some(&&Value::U8(2)));
+    }
+
+    #[test]
+    fn test_payload_select_map() {
+        let payload = Payload::SelectMap(vec![{
+            let mut map = HashMap::new();
+            map.insert("a".to_owned(), Value::U8(1));
+            map.insert("b".to_owned(), Value::U8(2));
+            map
+        }]);
+
+        let mut iter = payload.select().unwrap();
+        let row = iter.next().unwrap();
+
+        assert_eq!(row.get("a"), Some(&&Value::U8(1)));
+        assert_eq!(row.get("b"), Some(&&Value::U8(2)));
+    }
+
+    #[test]
+    fn test_payload_accumulate() {
+        let mut payload = Payload::Insert(1);
+        payload.accumulate(&Payload::Insert(2));
+
+        assert_eq!(payload, Payload::Insert(3));
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_payload_accumulate_panic() {
+        let mut payload = Payload::Insert(1);
+        payload.accumulate(&Payload::Delete(2));
+    }
+}

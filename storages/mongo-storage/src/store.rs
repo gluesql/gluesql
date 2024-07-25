@@ -3,7 +3,7 @@ use {
         description::{ColumnDescription, TableDescription},
         error::{MongoStorageError, OptionExt, ResultExt},
         row::{key::KeyIntoBson, value::IntoValue, IntoRow},
-        MongoStorage, PRIMARY_KEY_DESINENCE, UNIQUE_KEY_DESINENCE,
+        MongoStorage,
     },
     async_trait::async_trait,
     futures::{stream, Stream, StreamExt, TryStreamExt},
@@ -18,11 +18,10 @@ use {
     },
     mongodb::{
         bson::{doc, document::ValueAccessError, Document},
-        options::{FindOptions, ListIndexesOptions},
-        IndexModel,
+        options::FindOptions,
     },
     serde_json::from_str,
-    std::{collections::HashMap, future},
+    std::collections::HashMap,
 };
 
 #[async_trait(?Send)]
@@ -185,38 +184,12 @@ impl MongoStorage {
                 .and_then(|doc| doc.get_document("$jsonSchema"))
                 .map_storage_err()?;
 
-            let collection = self.db.collection::<Document>(collection_name);
-            let options = ListIndexesOptions::builder().build();
-            let cursor = collection.list_indexes(options).await.map_storage_err()?;
-            let reverse_indexes = cursor
-                .into_stream()
-                .map_err(|e| Error::StorageMsg(e.to_string()))
-                .try_filter_map(|IndexModel { keys, options, .. }| {
-                    let index_name = options.and_then(|options| options.name).unwrap_or_default();
-                    let keys = keys.into_iter().map(|(k, _)| k).collect::<Vec<_>>();
-
-                    future::ready(Ok::<_, Error>(Some((index_name, keys))))
-                })
-                .try_collect::<HashMap<String, Vec<String>>>()
-                .await?;
-
-            // We revert the indexes to get the column names first mapping to the index names
-            let indexes = reverse_indexes
-                .into_iter()
-                .flat_map(|(index_name, keys)| {
-                    keys.into_iter().map(move |key| (key, index_name.clone()))
-                })
-                .collect::<HashMap<String, String>>();
-
-            let mut primary_key: Option<Vec<usize>> = None;
-
             let column_defs = validator
                 .get_document("properties")
                 .map_storage_err()?
                 .into_iter()
                 .skip(1)
-                .enumerate()
-                .map(|(index, (column_name, doc))| {
+                .map(|(column_name, doc)| {
                     let doc = doc
                         .as_document()
                         .map_storage_err(MongoStorageError::InvalidDocument)?;
@@ -236,22 +209,6 @@ impl MongoStorage {
                         .map_storage_err()
                         .and_then(parse_data_type)
                         .and_then(|s| translate_data_type(&s))?;
-
-                    let unique = if let Some(index_name) = indexes.get(column_name) {
-                        if index_name.ends_with(UNIQUE_KEY_DESINENCE) {
-                            true
-                        } else {
-                            if index_name.ends_with(PRIMARY_KEY_DESINENCE) {
-                                match primary_key.as_mut() {
-                                    Some(pk) => pk.push(index),
-                                    None => primary_key = Some(vec![index]),
-                                }
-                            }
-                            false
-                        }
-                    } else {
-                        false
-                    };
 
                     let column_description = doc.get_str("description");
                     let ColumnDescription { default, comment } = match column_description {
@@ -274,7 +231,6 @@ impl MongoStorage {
                         data_type,
                         nullable,
                         default,
-                        unique,
                         comment,
                     };
 
@@ -290,6 +246,7 @@ impl MongoStorage {
             let table_description = validator.get_str("description").map_storage_err()?;
             let TableDescription {
                 foreign_keys,
+                primary_key,
                 unique_constraints,
                 comment,
             } = from_str::<TableDescription>(table_description).map_storage_err()?;

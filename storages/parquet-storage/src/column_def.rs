@@ -74,16 +74,12 @@ impl<'a> TryFrom<ParquetSchemaType<'a>> for ColumnDef {
             SchemaType::GroupType { .. } => DataType::Map,
         };
         let nullable = inner.is_optional();
-        let mut unique: bool = false;
         let mut default = None;
         let mut comment = None;
 
         if let Some(metadata) = parquet_col_def.get_metadata().as_deref() {
             for kv in metadata.iter() {
                 match kv.key.as_str() {
-                    k if k == format!("unique_option{}", name) => {
-                        unique = true;
-                    }
                     k if k == format!("data_type{}", name) => {
                         if let Some(value) = kv.value.as_deref() {
                             if let Some(mapped_data_type) = map_parquet_to_gluesql(value) {
@@ -113,7 +109,6 @@ impl<'a> TryFrom<ParquetSchemaType<'a>> for ColumnDef {
             data_type,
             nullable,
             default,
-            unique,
             comment,
         })
     }

@@ -76,7 +76,7 @@ impl<'a, T: GStore> Update<'a, T> {
         fields: &'a [Assignment],
         schema: &'a Schema,
     ) -> Result<Self> {
-        if schema.has_column_defs() {
+        if schema.column_defs.is_some() {
             for assignment in fields.iter() {
                 let Assignment { id, .. } = assignment;
 
@@ -110,7 +110,7 @@ impl<'a, T: GStore> Update<'a, T> {
 
                 async move {
                     let evaluated = evaluate(self.storage, context, None, value_expr).await?;
-                    let value = if self.schema.has_column_defs() {
+                    let value = if self.schema.column_defs.is_some() {
                         let ColumnDef {
                             data_type,
                             nullable,
@@ -311,7 +311,7 @@ pub async fn update<T: GStore + GStoreMut>(
         .try_collect::<Vec<_>>()
         .await?;
 
-    if schema.has_column_defs() {
+    if schema.column_defs.is_some() {
         let column_validation = ColumnValidation::SpecifiedColumns(columns_to_update);
         let rows = rows.iter().filter_map(|(_, row, _, _, _)| match row {
             Row::Vec { values, .. } => Some(values.as_slice()),

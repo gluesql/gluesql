@@ -23,7 +23,7 @@ async fn mongo_indexes() {
         "name": { "bsonType": ["string"], "title": "TEXT" },
     };
 
-    let options = Validator::new(labels, column_types, Vec::new(), Vec::new(), None)
+    let options = Validator::new(labels, column_types, Vec::new(), None, Vec::new(), None)
         .unwrap()
         .to_options();
 

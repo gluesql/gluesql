@@ -13,7 +13,6 @@ test_case!(insert_schema, {
         data_type: DataType::Int,
         nullable: false,
         default: Some(Expr::Literal(AstLiteral::Number(11.into()))),
-        unique: false,
         comment: Some("default value is lucky eleven".to_owned()),
     }]);
 
@@ -37,7 +36,6 @@ test_case!(insert_schema, {
             data_type: DataType::Text,
             nullable: false,
             default: None,
-            unique: false,
             comment: Some("this is comment for name column".to_owned()),
         });
 

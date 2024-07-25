@@ -146,7 +146,7 @@ test_case!(primary_key, {
     g.named_test(
         "PRIMARY KEY includes UNIQUE constraint",
         "INSERT INTO Allegro VALUES (1, 'another hello');",
-        Err(ValidateError::DuplicateEntryOnPrimaryKeyField(Some(Key::I64(1)), None).into()),
+        Err(ValidateError::DuplicateEntryOnPrimaryKeyField(Key::I64(1)).into()),
     )
     .await;
 
@@ -200,26 +200,18 @@ test_case!(multiple_primary_keys, {
     .await;
 
     // We attempt to insert a row with the same primary keys
-    let error = g.run_err("INSERT INTO Allegro2 VALUES (1, 1, 89);").await;
-
-    // We check that the result is an Err of the DuplicateEntryOnPrimaryKeyField, and that
-    // if it was produced by a storage backend able to return the primary key, it is the
-    // correct primary key.
-    match error {
-        gluesql_core::error::Error::Validate(ValidateError::DuplicateEntryOnPrimaryKeyField(
-            key,
-            message,
-        )) => {
-            assert!(key.is_some() || message.is_some());
-            if let Some(key) = key {
-                assert_eq!(key, Key::List(vec![Key::I64(1), Key::I64(1)]));
-            }
-            if let Some(message) = message {
-                assert!(!message.is_empty());
-            }
-        }
-        _ => panic!("Expected ValidateError::DuplicateEntryOnPrimaryKeyField"),
-    }
+    g.named_test(
+        "Attempt to insert row with same primary keys",
+        "INSERT INTO Allegro2 VALUES (1, 1, 89);",
+        Err(
+            ValidateError::DuplicateEntryOnPrimaryKeyField(Key::List(vec![
+                Key::I64(1),
+                Key::I64(1),
+            ]))
+            .into(),
+        ),
+    )
+    .await;
 
     // We attempt to insert a row with a different primary key
     g.test(

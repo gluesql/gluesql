@@ -75,7 +75,12 @@ impl AlterTable for RedisStorage {
         Ok(())
     }
 
-    async fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
+    async fn add_column(
+        &mut self,
+        table_name: &str,
+        column_def: &ColumnDef,
+        unique: bool,
+    ) -> Result<()> {
         if let Some(mut schema) = self.fetch_schema(table_name).await? {
             let column_defs = schema
                 .column_defs
@@ -176,6 +181,15 @@ impl AlterTable for RedisStorage {
             }
 
             column_defs.push(column_def.clone());
+
+            if unique {
+                schema
+                    .unique_constraints
+                    .push(gluesql_core::ast::UniqueConstraint::new_anonimous(vec![
+                        column_defs.len() - 1,
+                    ]));
+            }
+
             self.redis_delete_schema(table_name)?; // No problem yet, finally it's ok to delete the old schema
             self.redis_store_schema(&schema)?;
         } else {

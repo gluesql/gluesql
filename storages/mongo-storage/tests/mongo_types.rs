@@ -31,7 +31,7 @@ async fn mongo_types() {
         "col_maxKey": { "bsonType": ["maxKey"], "title": "TEXT" },
     };
 
-    let options = Validator::new(labels, column_types, Vec::new(), Vec::new(), None)
+    let options = Validator::new(labels, column_types, Vec::new(), None, Vec::new(), None)
         .unwrap()
         .to_options();
 

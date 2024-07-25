@@ -24,7 +24,10 @@ pub enum ValidateError {
     DuplicateEntryOnUniqueField(Vec<Value>, Vec<String>),
 
     #[error("duplicate entry for primary_key field, parsed key: '{0:?}', message: '{0:?}'")]
-    DuplicateEntryOnPrimaryKeyField(Option<Key>, Option<String>),
+    DuplicateEntryOnPrimaryKeyField(Key),
+
+    #[error("duplicated unique constraint found")]
+    DuplicatedUniqueConstraintFound,
 }
 
 impl ValidateError {
@@ -121,7 +124,7 @@ pub async fn validate_unique<T: Store>(
 
     let (validate_primary_key, unique_columns): Constraints = match &column_validation {
         ColumnValidation::All => (
-            schema.has_primary_key(),
+            schema.primary_key.is_some(),
             schema.unique_constraint_columns_and_indices().collect(),
         ),
         ColumnValidation::SpecifiedColumns(specified_columns) => (
@@ -142,18 +145,14 @@ pub async fn validate_unique<T: Store>(
     // We then proceed to validate the primary keys.
     if validate_primary_key {
         for row in row_iter.clone() {
-            let primary_key = schema.get_primary_key(row).unwrap();
+            let primary_key = schema.get_primary_key(row)?;
 
             if storage
                 .fetch_data(table_name, &primary_key)
                 .await?
                 .is_some()
             {
-                return Err(ValidateError::DuplicateEntryOnPrimaryKeyField(
-                    Some(primary_key),
-                    None,
-                )
-                .into());
+                return Err(ValidateError::DuplicateEntryOnPrimaryKeyField(primary_key).into());
             }
         }
     }

@@ -136,7 +136,9 @@ pub struct ForeignKey {
     pub referencing_column_name: String,
     pub referenced_table_name: String,
     pub referenced_column_name: String,
+    /// The action to perform when the referenced row is deleted.
     pub on_delete: ReferentialAction,
+    /// The action to perform when the referenced row is updated.
     pub on_update: ReferentialAction,
 }
 
@@ -353,7 +355,7 @@ impl ToSql for Statement {
                         indices
                             .iter()
                             .copied()
-                            .map(|i| columns[i].name.clone())
+                            .map(|i| format!(r#""{}""#, columns[i].name))
                             .collect::<Vec<_>>()
                             .join(", ")
                     )),
@@ -723,7 +725,7 @@ mod tests {
     /// Test to evaluate whether the `CREATE TABLE` statement involving UNIQUE constraints can be converted to SQL.
     fn to_sql_create_table_with_unique() {
         assert_eq!(
-            r#"CREATE TABLE "Foo" ("id" INT NOT NULL UNIQUE, "name" TEXT NOT NULL);"#,
+            r#"CREATE TABLE "Foo" ("id" INT NOT NULL, "name" TEXT NOT NULL, UNIQUE ("id"));"#,
             Statement::CreateTable {
                 if_not_exists: false,
                 name: "Foo".into(),

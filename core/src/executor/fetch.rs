@@ -338,13 +338,13 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                         let rows = schemas.into_iter().flat_map(move |schema| {
                             let clustered = match schema.primary_key_column_names() {
                                 Some(primary_key_columns) => {
-                                    let mut column_names = primary_key_columns.collect::<Vec<_>>();
+                                    let column_names = primary_key_columns.collect::<Vec<_>>();
                                     let values = vec![
                                         Value::Str(schema.table_name.clone()),
                                         Value::Str("PRIMARY".to_owned()),
                                         Value::Str("BOTH".to_owned()),
                                         if column_names.len() == 1 {
-                                            Value::Str(column_names.pop().unwrap().to_owned())
+                                            Value::Str(column_names[0].to_owned())
                                         } else {
                                             Value::List(
                                                 column_names
