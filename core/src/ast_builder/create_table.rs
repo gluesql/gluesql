@@ -38,9 +38,12 @@ impl CreateTableNode {
         self
     }
 
-    pub fn primary_key<T: Into<PrimaryKeyConstraintNode>>(mut self, columns: T) -> Self {
+    pub fn primary_key<T: Into<PrimaryKeyConstraintNode>>(mut self, columns: T) -> Result<Self> {
+        if self.primary_key_constraint.is_some() {
+            return Err(TranslateError::MultiplePrimaryKeyNotSupported.into());
+        }
         self.primary_key_constraint = Some(columns.into());
-        self
+        Ok(self)
     }
 }
 
@@ -84,13 +87,11 @@ impl Build for CreateTableNode {
 
             let mut indices = Vec::new();
 
-            if let Some(columns) = columns.as_ref() {
-                for column in primary_key_constraint.as_ref() {
-                    if let Some(index) = columns.iter().position(|c| &c.name == column) {
-                        indices.push(index);
-                    } else {
-                        return Err(TranslateError::ColumnNotFoundInTable(column.clone()).into());
-                    }
+            for column in primary_key_constraint.as_ref() {
+                if let Some(index) = columns.as_ref().and_then(|columns| columns.iter().position(|c| &c.name == column)) {
+                    indices.push(index);
+                } else {
+                    return Err(TranslateError::ColumnNotFoundInTable(column.clone()).into());
                 }
             }
 
@@ -154,7 +155,7 @@ mod tests {
             .create_table()
             .add_column("id INTEGER")
             .add_column("name TEXT")
-            .primary_key(["id", "name"])
+            .primary_key(["id", "name"]).unwrap()
             .build();
         let expected = "CREATE TABLE Foo (id INTEGER, name TEXT, PRIMARY KEY (id, name))";
         test(actual, expected);
@@ -166,7 +167,7 @@ mod tests {
             .create_table()
             .add_column("id INTEGER")
             .add_column("name TEXT")
-            .primary_key(["id", "age"])
+            .primary_key(["id", "age"]).unwrap()
             .build();
         assert_eq!(
             actual.unwrap_err(),
@@ -179,5 +180,74 @@ mod tests {
         let actual = table("Foo").create_table().build();
         let expected = "CREATE TABLE Foo";
         test(actual, expected);
+    }
+
+    #[test]
+    fn create_table_with_multiple_primary_key() {
+        let actual = table("Foo")
+            .create_table()
+            .add_column("id INTEGER PRIMARY KEY")
+            .add_column("name TEXT PRIMARY KEY")
+            .build();
+        assert_eq!(
+            actual.unwrap_err(),
+            TranslateError::MultiplePrimaryKeyNotSupported.into()
+        );
+    }
+
+    #[test]
+    fn create_table_with_multiple_primary_key_with_composite_primary_key() {
+        let error = table("Foo")
+            .create_table()
+            .add_column("id INTEGER")
+            .add_column("name TEXT")
+            .primary_key(["id", "name"]).unwrap()
+            .primary_key(["id", "name"]).unwrap_err();
+        assert_eq!(
+            error,
+            TranslateError::MultiplePrimaryKeyNotSupported.into()
+        );
+    }
+
+    #[test]
+    fn create_table_with_multiple_primary_key_with_primary_key() {
+        let actual = table("Foo")
+            .create_table()
+            .add_column("id INTEGER")
+            .add_column("name TEXT")
+            .primary_key(["id", "name"]).unwrap()
+            .add_column("age INTEGER PRIMARY KEY")
+            .build();
+        assert_eq!(
+            actual.unwrap_err(),
+            TranslateError::MultiplePrimaryKeyNotSupported.into()
+        );
+    }
+
+    #[test]
+    fn create_table_with_unknown_primary_key() {
+        let actual = table("Foo")
+            .create_table()
+            .add_column("id INTEGER")
+            .add_column("name TEXT")
+            .primary_key(["age"]).unwrap()
+            .build();
+        assert_eq!(
+            actual.unwrap_err(),
+            TranslateError::ColumnNotFoundInTable("age".to_owned()).into()
+        );
+    }
+
+    #[test]
+    fn create_table_with_primary_key_constraint_and_no_columns() {
+        let actual = table("Foo")
+            .create_table()
+            .primary_key(["id"]).unwrap()
+            .build();
+
+        assert_eq!(
+            actual.unwrap_err(),
+            TranslateError::ColumnNotFoundInTable("id".to_owned()).into()
+        );
     }
 }
