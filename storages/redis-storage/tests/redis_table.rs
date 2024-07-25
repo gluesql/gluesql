@@ -179,6 +179,7 @@ async fn redis_storage_drop_column() {
     exec!(glue r#"INSERT INTO dummy (id, name) values (1, 'Superman');"#);
     exec!(glue r#"INSERT INTO dummy (id, name) values (11, 'Batman');"#);
     exec!(glue "ALTER TABLE dummy DROP COLUMN name");
+    exec!(glue "ALTER TABLE dummy ADD COLUMN unique_id INTEGER UNIQUE");
 
     let ret: Vec<Payload> = glue.execute("SELECT * FROM dummy;").await.unwrap();
     match &ret[0] {
