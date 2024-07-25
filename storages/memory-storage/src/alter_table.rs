@@ -2,7 +2,7 @@ use {
     super::MemoryStorage,
     async_trait::async_trait,
     gluesql_core::{
-        ast::ColumnDef,
+        ast::{ColumnDef, UniqueConstraint},
         data::Value,
         error::{AlterTableError, Error, Result},
         store::{AlterTable, DataRow},
@@ -57,14 +57,20 @@ impl AlterTable for MemoryStorage {
         Ok(())
     }
 
-    async fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
+    async fn add_column(
+        &mut self,
+        table_name: &str,
+        column_def: &ColumnDef,
+        unique: bool,
+    ) -> Result<()> {
         let item = self
             .items
             .get_mut(table_name)
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
 
-        let column_defs = item
-            .schema
+        let schema = &mut item.schema;
+
+        let column_defs = schema
             .column_defs
             .as_mut()
             .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.to_owned()))?;
@@ -111,6 +117,13 @@ impl AlterTable for MemoryStorage {
         }
 
         column_defs.push(column_def.clone());
+
+        // If the column is unique, we need to add it to the unique constraints
+        if unique {
+            schema
+                .unique_constraints
+                .push(UniqueConstraint::new_anonimous(vec![column_defs.len() - 1]));
+        }
 
         Ok(())
     }

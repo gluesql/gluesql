@@ -17,7 +17,7 @@ impl AlterTable for RedisStorage {
             // Which should be done first? deleting or storing?
             self.redis_delete_schema(table_name)?;
 
-            schema.table_name = new_table_name.to_owned();
+            new_table_name.clone_into(&mut schema.table_name);
             self.redis_store_schema(&schema)?;
 
             let redis_key_iter: Vec<String> = self.redis_execute_scan(table_name)?;
@@ -64,7 +64,7 @@ impl AlterTable for RedisStorage {
                 .find(|column_def| column_def.name == old_column_name)
                 .ok_or(AlterTableError::RenamingColumnNotFound)?;
 
-            column_def.name = new_column_name.to_owned();
+            new_column_name.clone_into(&mut column_def.name);
 
             self.redis_delete_schema(table_name)?;
             self.redis_store_schema(&schema)?;
@@ -75,7 +75,12 @@ impl AlterTable for RedisStorage {
         Ok(())
     }
 
-    async fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
+    async fn add_column(
+        &mut self,
+        table_name: &str,
+        column_def: &ColumnDef,
+        unique: bool,
+    ) -> Result<()> {
         if let Some(mut schema) = self.fetch_schema(table_name).await? {
             let column_defs = schema
                 .column_defs
@@ -176,6 +181,15 @@ impl AlterTable for RedisStorage {
             }
 
             column_defs.push(column_def.clone());
+
+            if unique {
+                schema
+                    .unique_constraints
+                    .push(gluesql_core::ast::UniqueConstraint::new_anonimous(vec![
+                        column_defs.len() - 1,
+                    ]));
+            }
+
             self.redis_delete_schema(table_name)?; // No problem yet, finally it's ok to delete the old schema
             self.redis_store_schema(&schema)?;
         } else {

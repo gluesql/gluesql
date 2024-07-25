@@ -5,7 +5,7 @@ mod store_mut;
 use {
     error::{CsvStorageError, ResultExt},
     gluesql_core::{
-        ast::{ColumnDef, ColumnUniqueOption, DataType},
+        ast::{ColumnDef, DataType},
         data::{Key, Schema, Value},
         error::Result,
         parse_sql::parse_data_type,
@@ -54,7 +54,6 @@ impl CsvStorage {
                         .map(|header| ColumnDef {
                             name: header.to_string(),
                             data_type: DataType::Text,
-                            unique: None,
                             default: None,
                             nullable: true,
                             comment: None,
@@ -70,6 +69,8 @@ impl CsvStorage {
                 indexes: Vec::new(),
                 engine: None,
                 foreign_keys: Vec::new(),
+                primary_key: None,
+                unique_constraints: Vec::new(),
                 comment: None,
             };
 
@@ -133,26 +134,17 @@ impl CsvStorage {
                 .collect::<Vec<_>>())
         };
 
-        if let Schema {
-            column_defs: Some(column_defs),
-            ..
-        } = schema
-        {
-            let columns = column_defs
-                .iter()
-                .map(|column_def| column_def.name.to_owned())
-                .collect::<Vec<_>>();
+        if schema.column_defs.is_some() {
+            let columns = schema.get_column_names();
 
             let rows = data_rdr
                 .into_records()
                 .enumerate()
                 .map(move |(index, record)| {
-                    let mut key: Option<Key> = None;
-
-                    let values = record
+                    let row = record
                         .map_storage_err()?
                         .into_iter()
-                        .zip(column_defs.iter())
+                        .zip(schema.column_defs.as_ref().unwrap().iter())
                         .map(|(value, column_def)| {
                             let value = match value {
                                 "NULL" => Value::Null,
@@ -164,21 +156,20 @@ impl CsvStorage {
                                 data_type => value.cast(data_type)?,
                             };
 
-                            if column_def.unique == Some(ColumnUniqueOption { is_primary: true }) {
-                                key = Key::try_from(&value).map(Some)?;
-                            }
-
                             Ok(value)
                         })
                         .collect::<Result<Vec<Value>>>()?;
 
-                    let key = key.unwrap_or(Key::U64(index as u64));
-                    let row = DataRow::Vec(values);
+                    let key = schema
+                        .get_primary_key(&row)
+                        .unwrap_or(Key::U64(index as u64));
+
+                    let row = DataRow::Vec(row);
 
                     Ok((key, row))
                 });
 
-            Ok((Some(columns), Box::new(rows)))
+            Ok((columns, Box::new(rows)))
         } else if self.types_path(table_name).exists() {
             let types_path = self.types_path(table_name);
             let types_rdr = csv::Reader::from_path(types_path)

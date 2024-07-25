@@ -168,6 +168,7 @@ macro_rules! generate_store_tests {
         glue!(migrate, migrate::migrate);
         glue!(nested_select, nested_select::nested_select);
         glue!(primary_key, primary_key::primary_key);
+        glue!(multiple_primary_keys, primary_key::multiple_primary_keys);
         glue!(foreign_key, foreign_key::foreign_key);
         glue!(series, series::series);
         glue!(nullable, nullable::nullable);
@@ -199,6 +200,10 @@ macro_rules! generate_store_tests {
         glue!(point, data_type::point::point);
         glue!(synthesize, synthesize::synthesize);
         glue!(validate_unique, validate::unique::unique);
+        glue!(
+            validate_unique_multi_key,
+            validate::unique::unique_multi_key
+        );
         glue!(validate_types, validate::types::types);
         glue!(function_extract, function::extract::extract);
         glue!(function_radians, function::radians::radians);
