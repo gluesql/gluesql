@@ -34,7 +34,7 @@ The schema definition is saved in a file named `{TABLE_NAME}.sql` using standard
 --! User.sql
 CREATE TABLE User (
   id INT,
-  name TEXT,
+  name TEXT
 );
 ```
 

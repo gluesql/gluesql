@@ -14,7 +14,7 @@ test_case!(primary_key, {
         "
         CREATE TABLE Allegro (
             id INTEGER PRIMARY KEY,
-            name TEXT,
+            name TEXT
         );
     ",
     )

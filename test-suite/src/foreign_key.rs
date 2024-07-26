@@ -17,7 +17,7 @@ test_case!(foreign_key, {
     g.run(
         "CREATE TABLE ReferencedTableWithoutPK (
             id INTEGER,
-            name TEXT,
+            name TEXT
         );",
     )
     .await;
@@ -40,7 +40,7 @@ test_case!(foreign_key, {
     g.run(
         "CREATE TABLE ReferencedTableWithUnique (
             id INTEGER UNIQUE,
-            name TEXT,
+            name TEXT
         );",
     )
     .await;
@@ -64,7 +64,7 @@ test_case!(foreign_key, {
     g.run(
         "CREATE TABLE ReferencedTableWithPK (
             id INTEGER PRIMARY KEY,
-            name TEXT,
+            name TEXT
         );",
     )
     .await;
@@ -618,7 +618,7 @@ test_case!(foreign_key, {
         "
         CREATE TABLE ReferencedTableWithPK_2 (
             id INTEGER PRIMARY KEY,
-            name TEXT,
+            name TEXT
         );",
     )
     .await;

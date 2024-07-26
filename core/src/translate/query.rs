@@ -30,9 +30,16 @@ pub fn translate_query(sql_query: &SqlQuery) -> Result<Query> {
 
     let body = translate_set_expr(body)?;
     let order_by = order_by
-        .iter()
-        .map(translate_order_by_expr)
-        .collect::<Result<_>>()?;
+        .as_ref()
+        .map(|order_by| {
+            order_by
+                .exprs
+                .iter()
+                .map(translate_order_by_expr)
+                .collect::<Result<_>>()
+        })
+        .transpose()?
+        .unwrap_or_default();
 
     let limit = limit.as_ref().map(translate_expr).transpose()?;
     let offset = offset
@@ -95,8 +102,8 @@ fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
     };
 
     let group_by = match group_by {
-        SqlGroupByExpr::Expressions(group_by) => group_by,
-        SqlGroupByExpr::All => return Err(TranslateError::UnsupportedGroupByAll.into()),
+        SqlGroupByExpr::Expressions(group_by, _) => group_by,
+        SqlGroupByExpr::All(_) => return Err(TranslateError::UnsupportedGroupByAll.into()),
     };
 
     Ok(Select {
