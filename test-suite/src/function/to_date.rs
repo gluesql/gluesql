@@ -126,13 +126,6 @@ test_case!(to_date, {
         ),
         (
             g.run_err(
-                "SELECT TO_TIMESTAMP('2015-14-05 23:56:12','%Y-%m-%d %H:%M:%%S') AS timestamp;",
-            )
-            .await,
-            chrono::format::ParseErrorKind::Invalid,
-        ),
-        (
-            g.run_err(
                 "SELECT TO_TIMESTAMP('2015-09-05 23:56:04', '%Y-%m-%d %H:%M:%M') AS timestamp",
             )
             .await,

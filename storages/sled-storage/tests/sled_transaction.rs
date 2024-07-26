@@ -362,6 +362,7 @@ async fn sled_transaction_gc() {
     exec!(glue1 "INSERT INTO Garlic VALUES (1), (2);");
     exec!(glue1 "CREATE INDEX idx_gc ON Garlic (id + 2);");
     exec!(glue1 "ALTER TABLE Garlic ADD COLUMN num INTEGER NULL;");
+    exec!(glue1 "ALTER TABLE Garlic ADD COLUMN unique_id INTEGER UNIQUE;");
     assert_some!();
     exec!(glue1 "COMMIT;");
     assert_none!();

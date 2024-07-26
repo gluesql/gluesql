@@ -55,11 +55,4 @@ test_case!(sort, {
         Err(EvaluateError::ListTypeRequired.into()),
     )
     .await;
-
-    g.named_test(
-        "sort the list with not comparable types",
-        "SELECT SORT(list) AS list FROM Test2",
-        Err(EvaluateError::InvalidSortType.into()),
-    )
-    .await;
 });

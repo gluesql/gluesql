@@ -12,7 +12,7 @@ test_case!(initcap, {
     let test_cases = [
         (
             "CREATE TABLE Item (
-                name TEXT DEFAULT 'abcd',
+                name TEXT DEFAULT 'abcd'
             )",
             Ok(Payload::Create),
         ),

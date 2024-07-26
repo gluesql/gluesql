@@ -3,7 +3,9 @@ use {
     crate::{
         ast::{AlterTableOperation, Statement},
         ast_builder::ColumnDefNode,
+        parse_sql::parse_column_def,
         result::Result,
+        translate::translate_column_def,
     },
 };
 
@@ -64,9 +66,8 @@ pub struct AddColumnNode {
 impl Build for AddColumnNode {
     fn build(self) -> Result<Statement> {
         let table_name = self.table_node.table_name;
-        let operation = AlterTableOperation::AddColumn {
-            column_def: self.column_def.try_into()?,
-        };
+        let (column_def, _, unique) = translate_column_def(&parse_column_def(self.column_def)?)?;
+        let operation = AlterTableOperation::AddColumn { column_def, unique };
         Ok(Statement::AlterTable {
             name: table_name,
             operation,

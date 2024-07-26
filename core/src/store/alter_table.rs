@@ -49,7 +49,12 @@ pub trait AlterTable {
         Err(Error::StorageMsg(msg))
     }
 
-    async fn add_column(&mut self, _table_name: &str, _column_def: &ColumnDef) -> Result<()> {
+    async fn add_column(
+        &mut self,
+        _table_name: &str,
+        _column_def: &ColumnDef,
+        _unique: bool,
+    ) -> Result<()> {
         let msg = "[Storage] AlterTable::add_column is not supported".to_owned();
 
         Err(Error::StorageMsg(msg))

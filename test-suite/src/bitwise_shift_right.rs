@@ -10,7 +10,7 @@ test_case!(bitwise_shift_right, {
         r#"
 CREATE TABLE Test (
     id INTEGER,
-    num INTEGER,
+    num INTEGER
 )"#,
     )
     .await;
@@ -19,7 +19,7 @@ CREATE TABLE Test (
         r#"
 CREATE TABLE OverflowTest (
     id INTEGER,
-    num INTEGER,
+    num INTEGER
 )"#,
     )
     .await;
@@ -28,7 +28,7 @@ CREATE TABLE OverflowTest (
         r#"
 CREATE TABLE NullTest (
     id INTEGER,
-    num INTEGER,
+    num INTEGER
 )"#,
     )
     .await;

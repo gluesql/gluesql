@@ -444,7 +444,6 @@ impl ParquetStorage {
                     data_type: DataType::Map,
                     nullable: true,
                     default: None,
-                    unique: None,
                     comment: None,
                 }]
             }
@@ -491,20 +490,28 @@ impl ParquetStorage {
                 value: Some(serde_json::to_string(&foreign_key).map_storage_err()?),
             });
         }
+        for (index, unique_constraint) in schema.unique_constraints.iter().enumerate() {
+            metadata.push(KeyValue {
+                key: format!(
+                    "unique_constraint_{}",
+                    unique_constraint
+                        .name()
+                        .map(|name| name.to_owned())
+                        .unwrap_or(index.to_string())
+                ),
+                value: Some(serde_json::to_string(&unique_constraint).map_storage_err()?),
+            });
+        }
+
+        if let Some(primary_key) = &schema.primary_key {
+            metadata.push(KeyValue {
+                key: "primary_key".to_string(),
+                value: Some(serde_json::to_string(primary_key).map_storage_err()?),
+            });
+        }
 
         if let Some(column_defs) = &schema.column_defs {
             for column_def in column_defs {
-                if let Some(unique_option) = &column_def.unique {
-                    let key = format!("unique_option{}", column_def.name);
-                    let value = if unique_option.is_primary {
-                        Some("primary_key".to_string())
-                    } else {
-                        Some("unique".to_string())
-                    };
-
-                    metadata.push(KeyValue { key, value });
-                }
-
                 if let Some(default_value) = &column_def.default {
                     metadata.push(KeyValue {
                         key: format!("default_{}", column_def.name),

@@ -48,7 +48,7 @@ pub struct TableWithJoins {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum IndexItem {
-    PrimaryKey(Expr),
+    PrimaryKey(Vec<Expr>),
     NonClustered {
         name: String,
         asc: Option<bool>,

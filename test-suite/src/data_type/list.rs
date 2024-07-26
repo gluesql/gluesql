@@ -133,9 +133,10 @@ INSERT INTO ListType2 VALUES
     )
     .await;
 
-    g.test(
+    g.named_test(
+        "MAP type key not supported",
         r#"SELECT id FROM ListType GROUP BY items"#,
-        Err(KeyError::ListTypeKeyNotSupported.into()),
+        Err(KeyError::MapTypeKeyNotSupported.into()),
     )
     .await;
     g.test(

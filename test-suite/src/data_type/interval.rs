@@ -11,7 +11,7 @@ test_case!(interval, {
 CREATE TABLE IntervalLog (
     id INTEGER,
     interval1 INTERVAL,
-    interval2 INTERVAL,
+    interval2 INTERVAL
 )",
     )
     .await;

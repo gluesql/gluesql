@@ -21,7 +21,7 @@ pub enum IndexItemNode<'a> {
         asc: Option<bool>,
         cmp_expr: Option<(IndexOperator, ExprNode<'a>)>,
     },
-    PrimaryKey(ExprNode<'a>),
+    PrimaryKey(Vec<ExprNode<'a>>),
 }
 
 impl<'a> From<CmpExprNode<'a>> for IndexItemNode<'a> {
@@ -63,7 +63,12 @@ impl<'a> Prebuild<IndexItem> for IndexItemNode<'a> {
                     cmp_expr: cmp_expr_result,
                 })
             }
-            IndexItemNode::PrimaryKey(expr) => Ok(IndexItem::PrimaryKey(expr.try_into()?)),
+            IndexItemNode::PrimaryKey(primary_key_expression_nodes) => Ok(IndexItem::PrimaryKey(
+                primary_key_expression_nodes
+                    .into_iter()
+                    .map(ExprNode::try_into)
+                    .collect::<Result<_>>()?,
+            )),
         }
     }
 }

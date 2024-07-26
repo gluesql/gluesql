@@ -11,7 +11,7 @@ test_case!(date, {
 CREATE TABLE DateLog (
     id INTEGER,
     date1 DATE,
-    date2 DATE,
+    date2 DATE
 )",
     )
     .await;

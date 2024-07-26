@@ -1,7 +1,7 @@
-use {gluesql_core::prelude::Error, parquet::errors::ParquetError, thiserror::Error};
+use {gluesql_core::prelude::Error, thiserror::Error};
 
 #[derive(Debug)]
-pub struct GlueParquetError(ParquetError);
+pub struct GlueParquetError(());
 
 pub trait ResultExt<T, E: ToString> {
     fn map_storage_err(self) -> Result<T, Error>;

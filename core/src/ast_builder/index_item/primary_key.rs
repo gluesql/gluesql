@@ -4,8 +4,9 @@ use {super::IndexItemNode, crate::ast_builder::ExprNode};
 pub struct PrimaryKeyNode;
 
 impl<'a> PrimaryKeyNode {
-    pub fn eq<T: Into<ExprNode<'a>>>(self, expr: T) -> IndexItemNode<'a> {
-        IndexItemNode::PrimaryKey(expr.into())
+    /// Create a Primary Key IndexItem
+    pub fn into_primary_key<T: Into<ExprNode<'a>>>(self, expressions: Vec<T>) -> IndexItemNode<'a> {
+        IndexItemNode::PrimaryKey(expressions.into_iter().map(Into::into).collect())
     }
 }
 
@@ -23,8 +24,11 @@ mod tests {
 
     #[test]
     fn test() {
-        let actual = primary_key().eq("1").prebuild().unwrap();
-        let expected = IndexItem::PrimaryKey(Expr::Literal(AstLiteral::Number(1.into())));
+        let actual = primary_key()
+            .into_primary_key(vec!["1"])
+            .prebuild()
+            .unwrap();
+        let expected = IndexItem::PrimaryKey(vec![Expr::Literal(AstLiteral::Number(1.into()))]);
         assert_eq!(actual, expected);
     }
 }

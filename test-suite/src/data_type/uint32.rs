@@ -9,7 +9,7 @@ test_case!(uint32, {
     g.run(
         "CREATE TABLE Item (
             field_one UINT32,
-            field_two UINT32,
+            field_two UINT32
         );",
     )
     .await;

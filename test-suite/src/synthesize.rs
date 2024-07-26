@@ -7,7 +7,7 @@ test_case!(synthesize, {
         CREATE TABLE TableA (
             id INTEGER,
             test INTEGER,
-            target_id INTEGER,
+            target_id INTEGER
         );
     ";
 

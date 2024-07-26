@@ -25,7 +25,6 @@ async fn convert_schema() {
             data_type: DataType::Int8,
             nullable: false,
             default: None,
-            unique: None,
             comment: None,
         },
         ColumnDef {
@@ -33,7 +32,6 @@ async fn convert_schema() {
             data_type: DataType::Text,
             nullable: false,
             default: None,
-            unique: None,
             comment: None,
         },
         ColumnDef {
@@ -41,7 +39,6 @@ async fn convert_schema() {
             data_type: DataType::Boolean,
             nullable: true,
             default: None,
-            unique: None,
             comment: None,
         },
     ];

@@ -151,7 +151,8 @@ INSERT INTO MapType2 VALUES
         Err(ValueError::SelectorRequiresMapOrListTypes.into()),
     )
     .await;
-    g.test(
+    g.named_test(
+        "MapType key not supported",
         "SELECT id FROM MapType GROUP BY nested",
         Err(KeyError::MapTypeKeyNotSupported.into()),
     )

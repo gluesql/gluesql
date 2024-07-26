@@ -2,8 +2,8 @@ use {
     crate::*,
     gluesql_core::{
         ast::*,
-        data::Value::*,
-        error::{AlterError, AlterTableError, EvaluateError, TranslateError},
+        data::Value::{self, *},
+        error::{AlterError, AlterTableError, EvaluateError, TranslateError, ValidateError},
         executor::Referencing,
         prelude::Payload,
     },
@@ -63,7 +63,6 @@ test_case!(alter_table_add_drop, {
                 data_type: DataType::Int,
                 nullable: false,
                 default: None,
-                unique: None,
                 comment: None,
             })
             .into()),
@@ -247,6 +246,26 @@ test_case!(alter_table_add_drop, {
                     },
                 },
             }
+            .into()),
+        ),
+        (
+            "ALTER TABLE Referencing ADD COLUMN unique_id INTEGER UNIQUE",
+            Ok(Payload::AlterTable),
+        ),
+        (
+            "INSERT INTO Referenced (id) VALUES (13);",
+            Ok(Payload::Insert(1)),
+        ),
+        (
+            "INSERT INTO Referencing (id, referenced_id, unique_id) VALUES (12, 13, 1);",
+            Ok(Payload::Insert(1)),
+        ),
+        (
+            "INSERT INTO Referencing (id, referenced_id, unique_id) VALUES (13, 13, 1);",
+            Err(ValidateError::duplicate_entry_on_single_unique_field(
+                Value::I64(1),
+                "unique_id".to_owned(),
+            )
             .into()),
         ),
     ];

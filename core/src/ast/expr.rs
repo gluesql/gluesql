@@ -68,9 +68,9 @@ pub enum Expr {
         when_then: Vec<(Expr, Expr)>,
         else_result: Option<Box<Expr>>,
     },
-    ArrayIndex {
-        obj: Box<Expr>,
-        indexes: Vec<Expr>,
+    Subscript {
+        expr: Box<Expr>,
+        subscript: Box<Subscript>,
     },
     Interval {
         expr: Box<Expr>,
@@ -91,6 +91,46 @@ impl ToSql for Expr {
 impl ToSqlUnquoted for Expr {
     fn to_sql_unquoted(&self) -> String {
         self.to_sql_with(false)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Subscript {
+    Index {
+        index: Expr,
+    },
+    Slice {
+        lower_bound: Option<Expr>,
+        upper_bound: Option<Expr>,
+        stride: Option<Expr>,
+    },
+}
+
+impl Subscript {
+    fn to_sql_with(&self, quoted: bool) -> String {
+        match self {
+            Subscript::Index { index } => index.to_sql_with(quoted),
+            Subscript::Slice {
+                lower_bound,
+                upper_bound,
+                stride,
+            } => {
+                let lower_bound = lower_bound
+                    .as_ref()
+                    .map(|expr| expr.to_sql_with(quoted))
+                    .unwrap_or_else(|| "".to_owned());
+                let upper_bound = upper_bound
+                    .as_ref()
+                    .map(|expr| expr.to_sql_with(quoted))
+                    .unwrap_or_else(|| "".to_owned());
+                let stride = stride
+                    .as_ref()
+                    .map(|expr| expr.to_sql_with(quoted))
+                    .unwrap_or_else(|| "".to_owned());
+
+                format!("{}:{}:{}", lower_bound, upper_bound, stride)
+            }
+        }
     }
 }
 
@@ -233,14 +273,11 @@ impl Expr {
                 true => format!("NOT EXISTS({})", subquery.to_sql()),
                 false => format!("EXISTS({})", subquery.to_sql()),
             },
-            Expr::ArrayIndex { obj, indexes } => {
-                let obj = obj.to_sql_with(quoted);
-                let indexes = indexes
-                    .iter()
-                    .map(|index| format!("[{}]", index.to_sql_with(quoted)))
-                    .collect::<Vec<_>>()
-                    .join("");
-                format!("{obj}{indexes}")
+            Expr::Subscript { expr, subscript } => {
+                let expr = expr.to_sql_with(quoted);
+                let subscript = subscript.to_sql_with(quoted);
+
+                format!("{}[{}]", expr, subscript)
             }
             Expr::Array { elem } => {
                 let elem = elem
@@ -269,6 +306,11 @@ impl Expr {
             }
         }
     }
+
+    /// Create a new `Expr` representing a `NULL` literal.
+    pub fn null() -> Self {
+        Expr::Literal(AstLiteral::Null)
+    }
 }
 
 #[cfg(test)]
@@ -276,8 +318,9 @@ mod tests {
 
     use {
         crate::ast::{
-            AstLiteral, BinaryOperator, DataType, DateTimeField, Expr, Query, Select, SelectItem,
-            SetExpr, TableFactor, TableWithJoins, ToSql, ToSqlUnquoted, UnaryOperator,
+            expr::Subscript, AstLiteral, BinaryOperator, DataType, DateTimeField, Expr, Query,
+            Select, SelectItem, SetExpr, TableFactor, TableWithJoins, ToSql, ToSqlUnquoted,
+            UnaryOperator,
         },
         bigdecimal::BigDecimal,
         regex::Regex,
@@ -660,12 +703,16 @@ mod tests {
 
         assert_eq!(
             r#""choco"[1][2]"#,
-            Expr::ArrayIndex {
-                obj: Box::new(Expr::Identifier("choco".to_owned())),
-                indexes: vec![
-                    Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
-                    Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap()))
-                ]
+            Expr::Subscript {
+                expr: Box::new(Expr::Subscript {
+                    expr: Box::new(Expr::Identifier("choco".to_owned())),
+                    subscript: Box::new(Subscript::Index {
+                        index: Expr::Literal(AstLiteral::Number(BigDecimal::from(1)))
+                    })
+                }),
+                subscript: Box::new(Subscript::Index {
+                    index: Expr::Literal(AstLiteral::Number(BigDecimal::from(2)))
+                })
             }
             .to_sql()
         );
@@ -704,5 +751,8 @@ mod tests {
             }
             .to_sql()
         );
+
+        // We check that the NULL literal is correctly generated
+        assert_eq!("NULL", Expr::null().to_sql());
     }
 }

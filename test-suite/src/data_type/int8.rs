@@ -9,7 +9,7 @@ test_case!(int8, {
     g.run(
         "CREATE TABLE Item (
         field_one INT8,
-        field_two INT8,
+        field_two INT8
     );",
     )
     .await;

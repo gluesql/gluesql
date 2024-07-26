@@ -7,7 +7,7 @@ test_case!(ordering, {
         "
         CREATE TABLE Operator (
             id INTEGER,
-            name TEXT,
+            name TEXT
         );
     ",
     )

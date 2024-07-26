@@ -1,10 +1,13 @@
 use std::rc::Rc;
 
+#[derive(Debug)]
 pub enum Context<'a> {
     Data {
         alias: String,
         columns: Vec<&'a str>,
-        primary_key: Option<&'a str>,
+        /// Optional vector containing the names of the primary key columns.
+        /// If the vector is empty, it means that the table associated to the context does not have a primary key.
+        primary_key: Option<Vec<&'a str>>,
         next: Option<Rc<Context<'a>>>,
     },
     Bridge {
@@ -17,7 +20,7 @@ impl<'a> Context<'a> {
     pub fn new(
         alias: String,
         columns: Vec<&'a str>,
-        primary_key: Option<&'a str>,
+        primary_key: Option<Vec<&'a str>>,
         next: Option<Rc<Context<'a>>>,
     ) -> Self {
         Context::Data {
@@ -81,20 +84,55 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn contains_primary_key(&self, target_column: &str) -> bool {
+    /// Returns the number of columns composing the primary key of the current context.
+    pub(super) fn number_of_primary_key_columns(&self) -> usize {
         match self {
             Self::Data {
-                primary_key: Some(primary_key),
-                ..
-            } if primary_key == &target_column => true,
-            Self::Data { next, .. } => next
-                .as_ref()
-                .map(|next| next.contains_primary_key(target_column))
-                .unwrap_or(false),
-            Self::Bridge { left, right } => {
-                left.contains_primary_key(target_column)
-                    || right.contains_primary_key(target_column)
+                primary_key, next, ..
+            } => {
+                if let Some(primary_key) = primary_key {
+                    primary_key.len()
+                } else {
+                    next.as_ref()
+                        .map_or(0, |next| next.number_of_primary_key_columns())
+                }
             }
+            Self::Bridge { left, right } => {
+                left.number_of_primary_key_columns() + right.number_of_primary_key_columns()
+            }
+        }
+    }
+
+    /// Returns the index curresponding to the primary key column in the given candidate column.
+    ///
+    /// # Arguments
+    /// * `candidate_column_name` - The name of the candidate column.
+    ///
+    /// # Returns
+    /// The index of the primary key column in the candidate column, if the candidate column is a primary key column,
+    /// otherwise `None`.
+    ///
+    pub(super) fn get_primary_key_index_by_name(
+        &self,
+        candidate_column_name: &str,
+    ) -> Option<usize> {
+        match self {
+            Self::Data {
+                primary_key, next, ..
+            } => primary_key
+                .as_ref()
+                .and_then(|primary_key| {
+                    primary_key
+                        .iter()
+                        .position(|column| column == &candidate_column_name)
+                })
+                .or_else(|| {
+                    next.as_ref()
+                        .and_then(|next| next.get_primary_key_index_by_name(candidate_column_name))
+                }),
+            Self::Bridge { left, right } => left
+                .get_primary_key_index_by_name(candidate_column_name)
+                .or_else(|| right.get_primary_key_index_by_name(candidate_column_name)),
         }
     }
 }
