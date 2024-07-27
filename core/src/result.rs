@@ -12,7 +12,7 @@ pub use crate::{
         InsertError, SelectError, SortError, UpdateError, ValidateError,
     },
     plan::PlanError,
-    store::{AlterTableError, IndexError},
+    store::{AlterTableError, IndexError, TriggerError},
     translate::TranslateError,
 };
 
@@ -34,6 +34,8 @@ pub enum Error {
     AlterTable(#[from] AlterTableError),
     #[error("index: {0}")]
     Index(#[from] IndexError),
+    #[error("trigger: {0}")]
+    Trigger(#[from] TriggerError),
     #[error("execute: {0}")]
     Execute(#[from] ExecuteError),
     #[error("alter: {0}")]

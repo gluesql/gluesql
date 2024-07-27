@@ -62,6 +62,7 @@ impl ParquetStorage {
         let mut foreign_keys = Vec::new();
         let mut primary_key: Option<Vec<usize>> = None;
         let mut unique_constraints = Vec::new();
+        let mut triggers: HashMap<String, gluesql_core::data::Trigger> = HashMap::new();
         let mut comment = None;
         if let Some(metadata) = key_value_file_metadata {
             for kv in metadata.iter() {
@@ -101,6 +102,17 @@ impl ParquetStorage {
                         .map_storage_err()?;
 
                     unique_constraints.push(uc);
+                } else if kv.key.starts_with("trigger") {
+                    let (trigger_name, trigger) = kv
+                        .value
+                        .as_ref()
+                        .map(|x| from_str::<(String, gluesql_core::data::Trigger)>(x))
+                        .map_storage_err(Error::StorageMsg(
+                            "No value found on metadata".to_owned(),
+                        ))?
+                        .map_storage_err()?;
+
+                    triggers.insert(trigger_name, trigger);
                 }
             }
         }
@@ -130,6 +142,7 @@ impl ParquetStorage {
             foreign_keys,
             primary_key,
             unique_constraints,
+            triggers,
             comment,
         }))
     }
@@ -211,6 +224,7 @@ impl ParquetStorage {
             foreign_keys: Vec::new(),
             primary_key: None,
             unique_constraints: Vec::new(),
+            triggers: HashMap::new(),
             comment: None,
         }
     }

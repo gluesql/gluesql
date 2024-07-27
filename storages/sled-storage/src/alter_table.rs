@@ -48,14 +48,15 @@ impl AlterTable for SledStorage {
             // remove existing schema
             let (old_snapshot, old_schema) = schema_snapshot.delete(txid);
             let Schema {
+                table_name: _,
                 column_defs,
                 indexes,
                 engine,
                 foreign_keys,
                 primary_key,
                 unique_constraints,
+                triggers,
                 comment,
-                ..
             } = old_schema
                 .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
@@ -68,6 +69,7 @@ impl AlterTable for SledStorage {
                 foreign_keys,
                 primary_key,
                 unique_constraints,
+                triggers,
                 comment,
             };
 
@@ -164,14 +166,15 @@ impl AlterTable for SledStorage {
                 .map_err(ConflictableTransactionError::Abort)?;
 
             let Schema {
+                table_name: _,
                 column_defs,
                 indexes,
                 engine,
                 foreign_keys,
                 primary_key,
                 unique_constraints,
+                triggers,
                 comment: schema_comment,
-                ..
             } = snapshot
                 .get(txid, None)
                 .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())
@@ -221,6 +224,7 @@ impl AlterTable for SledStorage {
                 foreign_keys,
                 primary_key,
                 unique_constraints,
+                triggers,
                 comment: schema_comment,
             };
             let (snapshot, _) = snapshot.update(txid, schema);
@@ -282,6 +286,7 @@ impl AlterTable for SledStorage {
                 foreign_keys,
                 primary_key,
                 mut unique_constraints,
+                triggers,
                 comment,
             } = schema_snapshot
                 .get(txid, None)
@@ -388,6 +393,7 @@ impl AlterTable for SledStorage {
                 foreign_keys,
                 primary_key,
                 unique_constraints,
+                triggers,
                 comment,
             };
             let (schema_snapshot, _) = schema_snapshot.update(txid, schema);
@@ -447,6 +453,7 @@ impl AlterTable for SledStorage {
                 foreign_keys,
                 primary_key,
                 unique_constraints,
+                triggers,
                 comment,
             } = schema_snapshot
                 .get(txid, None)
@@ -460,6 +467,7 @@ impl AlterTable for SledStorage {
             let column_index = column_defs
                 .iter()
                 .position(|ColumnDef { name, .. }| name == column_name);
+
             let column_index = match (column_index, if_exists) {
                 (Some(index), _) => index,
                 (None, true) => {
@@ -471,6 +479,9 @@ impl AlterTable for SledStorage {
                     ));
                 }
             };
+
+            
+            // TODO! WHAT SHOULD HAPPEN TO TRIGGERS RELATED TO THIS COLUMN?
 
             // migrate data
             for (key, snapshot) in items.iter() {
@@ -531,6 +542,7 @@ impl AlterTable for SledStorage {
                 foreign_keys,
                 primary_key,
                 unique_constraints,
+                triggers,
                 comment,
             };
             let (schema_snapshot, _) = schema_snapshot.update(txid, schema);

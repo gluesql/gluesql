@@ -22,7 +22,7 @@ pub use {
     alter_table::{AlterTable, AlterTableError},
     data_row::DataRow,
     function::{CustomFunction, CustomFunctionMut},
-    trigger::{CustomTrigger, CustomTriggerMut},
+    trigger::{CustomTrigger, CustomTriggerMut, TriggerError},
     index::{Index, IndexError, IndexMut},
     metadata::{MetaIter, Metadata},
     transaction::Transaction,

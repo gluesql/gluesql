@@ -118,6 +118,7 @@ fn convert_payload(payload: Payload) -> Json {
             })
         }
         Payload::DropFunction => json!({ "type": "DROP FUNCTION" }),
+        Payload::DropTrigger => json!({ "type": "DROP TRIGGER" }),
         Payload::ShowVariable(PayloadVariable::Functions(function_names)) => {
             json!({
                 "type": "SHOW FUNCTIONS",

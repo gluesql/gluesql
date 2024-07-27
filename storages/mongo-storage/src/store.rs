@@ -249,6 +249,7 @@ impl MongoStorage {
                 primary_key,
                 unique_constraints,
                 comment,
+                triggers
             } = from_str::<TableDescription>(table_description).map_storage_err()?;
 
             let schema = Schema {
@@ -259,6 +260,7 @@ impl MongoStorage {
                 foreign_keys,
                 primary_key,
                 unique_constraints,
+                triggers,
                 comment,
             };
 

@@ -106,6 +106,7 @@ impl<'a, W: Write> Print<W> {
             Payload::Create => self.writeln("Table created")?,
             Payload::DropTable => self.writeln("Table dropped")?,
             Payload::DropFunction => self.writeln("Function dropped")?,
+            Payload::DropTrigger => self.writeln("Trigger dropped")?,
             Payload::AlterTable => self.writeln("Table altered")?,
             Payload::CreateIndex => self.writeln("Index created")?,
             Payload::DropIndex => self.writeln("Index dropped")?,

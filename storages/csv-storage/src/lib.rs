@@ -63,6 +63,7 @@ impl CsvStorage {
                 (true, _) => None,
             };
 
+            // The following is a default schema for a table that has no schema file.
             let schema = Schema {
                 table_name: table_name.to_owned(),
                 column_defs,
@@ -71,6 +72,7 @@ impl CsvStorage {
                 foreign_keys: Vec::new(),
                 primary_key: None,
                 unique_constraints: Vec::new(),
+                triggers: Default::default(),
                 comment: None,
             };
 

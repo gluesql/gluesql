@@ -53,7 +53,7 @@ impl JsonStorage {
         }
 
         let schema_path = self.schema_path(table_name);
-        let (column_defs, foreign_keys, primary_key, unique_constraints, comment) =
+        let (column_defs, indexes, foreign_keys, primary_key, unique_constraints, triggers, comment) =
             match schema_path.exists() {
                 true => {
                     let mut file = File::open(&schema_path).map_storage_err()?;
@@ -69,23 +69,34 @@ impl JsonStorage {
 
                     (
                         schema.column_defs,
+                        schema.indexes,
                         schema.foreign_keys,
                         schema.primary_key,
                         schema.unique_constraints,
+                        schema.triggers,
                         schema.comment,
                     )
                 }
-                false => (None, Vec::new(), None, Vec::new(), None),
+                false => (
+                    Default::default(),
+                    Default::default(),
+                    Default::default(),
+                    Default::default(),
+                    Default::default(),
+                    Default::default(),
+                    Default::default(),
+                ),
             };
 
         Ok(Some(Schema {
             table_name: table_name.to_owned(),
             column_defs,
-            indexes: vec![],
+            indexes,
             engine: None,
             foreign_keys,
             primary_key,
             unique_constraints,
+            triggers,
             comment,
         }))
     }

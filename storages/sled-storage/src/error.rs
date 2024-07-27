@@ -1,5 +1,5 @@
 use {
-    gluesql_core::error::{AlterTableError, Error, IndexError},
+    gluesql_core::error::{AlterTableError, Error, IndexError, TriggerError},
     sled::transaction::TransactionError as SledTransactionError,
     std::{str, time},
     thiserror::Error as ThisError,
@@ -11,6 +11,8 @@ pub enum StorageError {
     AlterTable(#[from] AlterTableError),
     #[error(transparent)]
     Index(#[from] IndexError),
+    #[error(transparent)]
+    Trigger(#[from] TriggerError),
 
     #[error(transparent)]
     Sled(#[from] sled::Error),
@@ -36,6 +38,7 @@ impl From<StorageError> for Error {
             TryFromSlice(e) => Error::StorageMsg(e.to_string()),
             AlterTable(e) => e.into(),
             Index(e) => e.into(),
+            Trigger(e) => e.into(),
         }
     }
 }

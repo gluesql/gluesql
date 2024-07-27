@@ -503,6 +503,13 @@ impl ParquetStorage {
             });
         }
 
+        for (trigger_name, trigger) in &schema.triggers {
+            metadata.push(KeyValue {
+                key: format!("trigger_{}", trigger_name),
+                value: Some(serde_json::to_string(trigger).map_storage_err()?),
+            });
+        }
+
         if let Some(primary_key) = &schema.primary_key {
             metadata.push(KeyValue {
                 key: "primary_key".to_string(),

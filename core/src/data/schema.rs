@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 
-use crate::ast::CreateTrigger;
-
 use super::trigger::Trigger;
 use itertools::Itertools;
 
@@ -269,54 +267,46 @@ impl Schema {
     }
 
     pub fn from_ddl(ddl: &str) -> Result<Schema> {
+        dbg!(&ddl);
+
         let created = Utc::now().naive_utc();
-        let statements = parse(ddl)?;
+        let mut statements = parse(ddl)?.into_iter();
 
-        let indexes = statements
-            .iter()
-            .skip(1)
-            .map(|create_index| {
-                let create_index = translate(create_index)?;
-                match create_index {
-                    Statement::CreateIndex {
-                        name,
-                        column: OrderByExpr { expr, asc },
-                        ..
-                    } => {
-                        let order = asc
-                            .and_then(|bool| bool.then_some(SchemaIndexOrd::Asc))
-                            .unwrap_or(SchemaIndexOrd::Both);
+        let create_table = statements.next().ok_or(SchemaParseError::CannotParseDDL)?;
+        let create_table = translate(&create_table)?;
+        let mut indexes = Vec::new();
+        let mut triggers = HashMap::new();
 
-                        let index = SchemaIndex {
-                            name,
-                            expr,
-                            order,
-                            created,
-                        };
-
-                        Ok(index)
-                    }
-                    _ => Err(SchemaParseError::CannotParseDDL.into()),
-                }
-            })
-            .collect::<Result<Vec<_>>>()?;
-
-        let triggers = statements
-            .iter()
-            .map(|create_trigger| match &create_trigger {
-                &sqlparser::ast::Statement::CreateTrigger {
+        statements
+            .map(|create_index| match translate(&create_index)? {
+                Statement::CreateIndex {
+                    name,
+                    column: OrderByExpr { expr, asc },
                     ..
                 } => {
-                    let create_trigger = CreateTrigger::from_sql_parser(create_trigger.clone())?;
+                    let order = asc
+                        .and_then(|bool| bool.then_some(SchemaIndexOrd::Asc))
+                        .unwrap_or(SchemaIndexOrd::Both);
+
+                    let index = SchemaIndex {
+                        name,
+                        expr,
+                        order,
+                        created,
+                    };
+
+                    indexes.push(index);
+
+                    Ok(())
+                }
+                Statement::CreateTrigger(create_trigger) => {
                     let trigger = Trigger::from(create_trigger);
-                    Ok((trigger.name.clone(), trigger))
+                    triggers.insert(trigger.name.clone(), trigger);
+                    Ok(())
                 }
                 _ => Err(SchemaParseError::CannotParseDDL.into()),
             })
-            .collect::<Result<HashMap<_, _>>>()?;
-
-        let create_table = statements.first().ok_or(SchemaParseError::CannotParseDDL)?;
-        let create_table = translate(create_table)?;
+            .collect::<Result<()>>()?;
 
         match create_table {
             Statement::CreateTable {
@@ -337,7 +327,7 @@ impl Schema {
                 primary_key,
                 unique_constraints,
                 comment,
-                triggers
+                triggers,
             }),
             _ => Err(SchemaParseError::CannotParseDDL.into()),
         }
@@ -372,7 +362,7 @@ mod tests {
             primary_key,
             unique_constraints,
             comment,
-            triggers
+            triggers,
         } = actual;
 
         let Schema {
@@ -384,7 +374,7 @@ mod tests {
             primary_key: primary_key_e,
             unique_constraints: unique_constraints_e,
             comment: comment_e,
-            triggers: triggers_e
+            triggers: triggers_e,
         } = expected;
 
         assert_eq!(table_name, table_name_e);
@@ -443,7 +433,7 @@ mod tests {
             primary_key: None,
             unique_constraints: Vec::new(),
             comment: None,
-            triggers: Default::default()
+            triggers: Default::default(),
         };
 
         let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NULL DEFAULT 'glue');"#;
@@ -461,7 +451,7 @@ mod tests {
             primary_key: None,
             unique_constraints: Vec::new(),
             comment: None,
-            triggers: Default::default()
+            triggers: Default::default(),
         };
         let ddl = r#"CREATE TABLE "Test";"#;
         assert_eq!(schema.to_ddl(), ddl);
@@ -487,7 +477,7 @@ mod tests {
             primary_key: Some(vec![0]),
             unique_constraints: Vec::new(),
             comment: None,
-            triggers: Default::default()
+            triggers: Default::default(),
         };
 
         let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, PRIMARY KEY ("id"));"#;
@@ -530,7 +520,7 @@ mod tests {
             primary_key: Some(vec![0, 1]),
             unique_constraints: vec![UniqueConstraint::new(None, vec![2])],
             comment: None,
-            triggers: Default::default()
+            triggers: Default::default(),
         };
 
         let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, "user_id" INT NOT NULL, "image_id" INT NOT NULL, UNIQUE ("image_id"), PRIMARY KEY ("id", "user_id"));"#;
@@ -587,7 +577,7 @@ mod tests {
             foreign_keys: Vec::new(),
             unique_constraints: Vec::new(),
             comment: None,
-            triggers: Default::default()
+            triggers: Default::default(),
         };
         let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);
 CREATE INDEX "User_id" ON "User" ("id");
@@ -634,12 +624,13 @@ CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);"#;
             primary_key: None,
             unique_constraints: Vec::new(),
             comment: None,
-            triggers: Default::default()
+            triggers: Default::default(),
         };
         let ddl = r#"CREATE TABLE "1" ("2" INT NULL, ";" INT NULL);
 CREATE INDEX "." ON "1" (";");"#;
         assert_eq!(schema.to_ddl(), ddl);
 
+        dbg!(&ddl);
         let actual = Schema::from_ddl(ddl).unwrap();
         assert_schema(actual, schema);
     }
@@ -670,7 +661,7 @@ CREATE INDEX "." ON "1" (";");"#;
             primary_key: Some(vec![0, 1]),
             unique_constraints: vec![],
             comment: None,
-            triggers: Default::default()
+            triggers: Default::default(),
         };
 
         let error = SchemaError::IncompatibleRowLength(1);
@@ -709,7 +700,7 @@ CREATE INDEX "." ON "1" (";");"#;
                 UniqueConstraint::new(Some("unique_id_and_name".to_owned()), vec![0, 1]),
             ],
             comment: None,
-            triggers: Default::default()
+            triggers: Default::default(),
         };
 
         let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL, CONSTRAINT "unique_name" UNIQUE ("name"), CONSTRAINT "unique_id_and_name" UNIQUE ("id", "name"));"#;
@@ -745,7 +736,7 @@ CREATE INDEX "." ON "1" (";");"#;
             foreign_keys: Vec::new(),
             unique_constraints: Vec::new(),
             comment: None,
-            triggers: Default::default()
+            triggers: Default::default(),
         };
 
         let error = SchemaError::NoPrimaryKeyDefined;

@@ -6,7 +6,7 @@ use {
         error::Result,
     },
     mongodb::options::CreateCollectionOptions,
-    serde_json::to_string,
+    serde_json::to_string, std::collections::HashMap,
 };
 
 pub struct Validator {
@@ -20,6 +20,7 @@ impl Validator {
         foreign_keys: Vec<ForeignKey>,
         primary_key: Option<Vec<usize>>,
         unique_constraints: Vec<UniqueConstraint>,
+        triggers: HashMap<String, gluesql_core::data::Trigger>,
         comment: Option<String>,
     ) -> Result<Self> {
         let mut required = vec![crate::PRIMARY_KEY_SYMBOL.to_owned()];
@@ -36,6 +37,7 @@ impl Validator {
                 foreign_keys,
                 primary_key,
                 unique_constraints,
+                triggers,
                 comment,
             }),
         )
