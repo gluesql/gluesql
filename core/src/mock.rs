@@ -3,8 +3,8 @@ use {
         data::{Key, Schema},
         result::{Error, Result},
         store::{
-            AlterTable, CustomFunction, CustomFunctionMut, DataRow, Index, IndexMut, Metadata,
-            RowIter, Store, StoreMut, Transaction,
+            AlterTable, CustomFunction, CustomFunctionMut, CustomTrigger, CustomTriggerMut,
+            DataRow, Index, IndexMut, Metadata, RowIter, Store, StoreMut, Transaction,
         },
     },
     async_trait::async_trait,
@@ -40,6 +40,12 @@ impl CustomFunction for MockStorage {}
 
 #[async_trait(?Send)]
 impl CustomFunctionMut for MockStorage {}
+
+#[async_trait(?Send)]
+impl CustomTrigger for MockStorage {}
+
+#[async_trait(?Send)]
+impl CustomTriggerMut for MockStorage {}
 
 #[async_trait(?Send)]
 impl Store for MockStorage {

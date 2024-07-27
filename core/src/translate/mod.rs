@@ -6,8 +6,9 @@ mod expr;
 mod function;
 mod operator;
 mod query;
+mod trigger;
 
-use crate::ast::UniqueConstraint;
+use crate::ast::{CreateTrigger, DropTrigger, UniqueConstraint};
 use itertools::Itertools;
 
 pub use self::{
@@ -271,6 +272,50 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 }),
             })
         }
+        SqlStatement::CreateTrigger {
+            or_replace,
+            name,
+            period,
+            events,
+            table_name,
+            referencing,
+            trigger_object,
+            include_each,
+            condition,
+            exec_body,
+            characteristics
+        } => {
+            Ok(Statement::CreateTrigger(
+                CreateTrigger::from_sql_parser(
+                    SqlStatement::CreateTrigger {
+                        or_replace: *or_replace,
+                        name: name.clone(),
+                        period: *period,
+                        events: events.clone(),
+                        table_name: table_name.clone(),
+                        referencing: referencing.clone(),
+                        trigger_object: trigger_object.clone(),
+                        include_each: *include_each,
+                        condition: condition.clone(),
+                        exec_body: exec_body.clone(),
+                        characteristics: characteristics.clone(),
+                    },
+                )?,
+            ))
+        }
+        SqlStatement::DropTrigger {
+            if_exists,
+            trigger_name,
+            table_name,
+            option,
+        } => Ok(Statement::DropTrigger(
+            DropTrigger::from_sql_parser(SqlStatement::DropTrigger {
+                if_exists: *if_exists,
+                trigger_name: trigger_name.clone(),
+                table_name: table_name.clone(),
+                option: option.clone(),
+            }),
+        )),
         SqlStatement::AlterTable {
             name, operations, ..
         } => {

@@ -239,6 +239,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
             primary_key: primary_key.clone(),
             unique_constraints: unique_constraints.clone(),
             comment: comment.clone(),
+            triggers: Default::default(),
         };
 
         storage.insert_schema(&schema).await?;

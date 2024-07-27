@@ -1,4 +1,10 @@
+use std::collections::HashMap;
+
+use crate::ast::CreateTrigger;
+
+use super::trigger::Trigger;
 use itertools::Itertools;
+
 use {
     super::Value,
     crate::{
@@ -48,6 +54,7 @@ pub struct Schema {
     pub primary_key: Option<Vec<usize>>,
     pub unique_constraints: Vec<UniqueConstraint>,
     pub comment: Option<String>,
+    pub triggers: HashMap<String, Trigger>,
 }
 
 impl Schema {
@@ -230,6 +237,7 @@ impl Schema {
             primary_key,
             unique_constraints,
             comment,
+            triggers,
         } = self;
 
         let create_table = Statement::CreateTable {
@@ -251,8 +259,11 @@ impl Schema {
             format!(r#"CREATE INDEX "{name}" ON "{table_name}" ({expr});"#)
         });
 
+        let create_triggers = triggers.values().map(|trigger| trigger.to_ddl());
+
         iter::once(create_table)
             .chain(create_indexes)
+            .chain(create_triggers)
             .collect::<Vec<_>>()
             .join("\n")
     }
@@ -290,6 +301,20 @@ impl Schema {
             })
             .collect::<Result<Vec<_>>>()?;
 
+        let triggers = statements
+            .iter()
+            .map(|create_trigger| match &create_trigger {
+                &sqlparser::ast::Statement::CreateTrigger {
+                    ..
+                } => {
+                    let create_trigger = CreateTrigger::from_sql_parser(create_trigger.clone())?;
+                    let trigger = Trigger::from(create_trigger);
+                    Ok((trigger.name.clone(), trigger))
+                }
+                _ => Err(SchemaParseError::CannotParseDDL.into()),
+            })
+            .collect::<Result<HashMap<_, _>>>()?;
+
         let create_table = statements.first().ok_or(SchemaParseError::CannotParseDDL)?;
         let create_table = translate(create_table)?;
 
@@ -312,6 +337,7 @@ impl Schema {
                 primary_key,
                 unique_constraints,
                 comment,
+                triggers
             }),
             _ => Err(SchemaParseError::CannotParseDDL.into()),
         }
@@ -346,6 +372,7 @@ mod tests {
             primary_key,
             unique_constraints,
             comment,
+            triggers
         } = actual;
 
         let Schema {
@@ -357,6 +384,7 @@ mod tests {
             primary_key: primary_key_e,
             unique_constraints: unique_constraints_e,
             comment: comment_e,
+            triggers: triggers_e
         } = expected;
 
         assert_eq!(table_name, table_name_e);
@@ -366,6 +394,7 @@ mod tests {
         assert_eq!(primary_key, primary_key_e);
         assert_eq!(unique_constraints, unique_constraints_e);
         assert_eq!(comment, comment_e);
+        assert_eq!(triggers, triggers_e);
         indexes
             .into_iter()
             .zip(indexes_e)
@@ -414,6 +443,7 @@ mod tests {
             primary_key: None,
             unique_constraints: Vec::new(),
             comment: None,
+            triggers: Default::default()
         };
 
         let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NULL DEFAULT 'glue');"#;
@@ -431,6 +461,7 @@ mod tests {
             primary_key: None,
             unique_constraints: Vec::new(),
             comment: None,
+            triggers: Default::default()
         };
         let ddl = r#"CREATE TABLE "Test";"#;
         assert_eq!(schema.to_ddl(), ddl);
@@ -456,6 +487,7 @@ mod tests {
             primary_key: Some(vec![0]),
             unique_constraints: Vec::new(),
             comment: None,
+            triggers: Default::default()
         };
 
         let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, PRIMARY KEY ("id"));"#;
@@ -498,6 +530,7 @@ mod tests {
             primary_key: Some(vec![0, 1]),
             unique_constraints: vec![UniqueConstraint::new(None, vec![2])],
             comment: None,
+            triggers: Default::default()
         };
 
         let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, "user_id" INT NOT NULL, "image_id" INT NOT NULL, UNIQUE ("image_id"), PRIMARY KEY ("id", "user_id"));"#;
@@ -554,6 +587,7 @@ mod tests {
             foreign_keys: Vec::new(),
             unique_constraints: Vec::new(),
             comment: None,
+            triggers: Default::default()
         };
         let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);
 CREATE INDEX "User_id" ON "User" ("id");
@@ -600,6 +634,7 @@ CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);"#;
             primary_key: None,
             unique_constraints: Vec::new(),
             comment: None,
+            triggers: Default::default()
         };
         let ddl = r#"CREATE TABLE "1" ("2" INT NULL, ";" INT NULL);
 CREATE INDEX "." ON "1" (";");"#;
@@ -635,6 +670,7 @@ CREATE INDEX "." ON "1" (";");"#;
             primary_key: Some(vec![0, 1]),
             unique_constraints: vec![],
             comment: None,
+            triggers: Default::default()
         };
 
         let error = SchemaError::IncompatibleRowLength(1);
@@ -673,6 +709,7 @@ CREATE INDEX "." ON "1" (";");"#;
                 UniqueConstraint::new(Some("unique_id_and_name".to_owned()), vec![0, 1]),
             ],
             comment: None,
+            triggers: Default::default()
         };
 
         let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL, CONSTRAINT "unique_name" UNIQUE ("name"), CONSTRAINT "unique_id_and_name" UNIQUE ("id", "name"));"#;
@@ -708,6 +745,7 @@ CREATE INDEX "." ON "1" (";");"#;
             foreign_keys: Vec::new(),
             unique_constraints: Vec::new(),
             comment: None,
+            triggers: Default::default()
         };
 
         let error = SchemaError::NoPrimaryKeyDefined;

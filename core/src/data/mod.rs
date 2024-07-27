@@ -1,5 +1,6 @@
 mod bigdecimal_ext;
 mod function;
+mod trigger;
 mod interval;
 mod key;
 mod literal;
@@ -14,6 +15,7 @@ pub mod value;
 pub use {
     bigdecimal_ext::BigDecimalExt,
     function::CustomFunction,
+    trigger::Trigger,
     interval::{Interval, IntervalError},
     key::{Key, KeyError},
     literal::{Literal, LiteralError},

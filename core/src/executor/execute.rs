@@ -2,7 +2,7 @@ use {
     super::{
         alter::{
             alter_table, create_index, create_table, delete_function, drop_table, insert_function,
-            CreateTableOptions,
+            CreateTableOptions, insert_trigger, delete_trigger,
         },
         delete::delete,
         insert::insert,
@@ -44,6 +44,7 @@ pub enum Payload {
     Update(usize),
     DropTable,
     DropFunction,
+    DropTrigger,
     AlterTable,
     CreateIndex,
     DropIndex,
@@ -381,6 +382,12 @@ async fn execute_inner<T: GStore + GStoreMut>(
         Statement::DropFunction { if_exists, names } => delete_function(storage, names, *if_exists)
             .await
             .map(|_| Payload::DropFunction),
+        Statement::CreateTrigger(create_trigger) => {
+            insert_trigger(storage, create_trigger).await.map(|_| Payload::Create)
+        }
+        Statement::DropTrigger(drop_trigger) => {
+            delete_trigger(storage, drop_trigger).await.map(|_| Payload::DropTrigger)
+        }
     }
 }
 

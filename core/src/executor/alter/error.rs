@@ -15,12 +15,18 @@ pub enum AlterError {
     #[error("function already exists: {0}")]
     FunctionAlreadyExists(String),
 
+    #[error("trigger already exists: {0}")]
+    TriggerAlreadyExists(String),
+
     #[error("function does not exist: {0}")]
     FunctionNotFound(String),
 
     // CREATE INDEX, DROP TABLE
     #[error("table does not exist: {0}")]
     TableNotFound(String),
+
+    #[error("trigger does not exist: {0}")]
+    TriggerNotFound(String),
 
     #[error("CTAS source table does not exist: {0}")]
     CtasSourceTableNotFound(String),
@@ -83,4 +89,5 @@ pub enum AlterError {
 
     #[error("cannot drop column '{}.{}' referencing with '{}'", referencing.table_name, referencing.foreign_key.referencing_column_name, referencing)]
     CannotAlterReferencingColumn { referencing: Referencing },
+
 }
