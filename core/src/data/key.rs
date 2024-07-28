@@ -132,21 +132,13 @@ impl TryFrom<Value> for Key {
             Uuid(v) => Ok(Key::Uuid(v)),
             Null => Ok(Key::None),
             Map(_) => Err(KeyError::MapTypeKeyNotSupported.into()),
-            List(values) => Key::try_from(values),
+            List(values) => values
+                .into_iter()
+                .map(Key::try_from)
+                .collect::<Result<Vec<_>>>()
+                .map(Key::List),
             Point(_) => Err(KeyError::PointTypeKeyNotSupported.into()),
         }
-    }
-}
-
-impl TryFrom<Vec<Value>> for Key {
-    type Error = Error;
-
-    fn try_from(values: Vec<Value>) -> Result<Self> {
-        values
-            .into_iter()
-            .map(Key::try_from)
-            .collect::<Result<Vec<_>>>()
-            .map(Key::List)
     }
 }
 
