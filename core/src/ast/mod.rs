@@ -218,7 +218,7 @@ impl ToSql for Statement {
                         indices
                             .iter()
                             .copied()
-                            .map(|i| columns[i].name.clone())
+                            .map(|i| columns[i].name.as_ref())
                             .collect::<Vec<_>>()
                             .join(", ")
                     )),
