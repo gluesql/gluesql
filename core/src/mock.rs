@@ -128,9 +128,10 @@ mod tests {
                 data_type: DataType::Boolean,
                 nullable: false,
                 default: None,
-                unique: None,
                 comment: None,
             },
+            false,
+            &None
         ))
         .is_err());
         assert!(block_on(storage.drop_column("Foo", "col", false)).is_err());

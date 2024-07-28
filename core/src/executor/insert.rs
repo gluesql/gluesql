@@ -4,9 +4,9 @@ use {
         validate::{validate_unique, ColumnValidation},
     },
     crate::{
-        ast::{ColumnDef, ColumnUniqueOption, Expr, ForeignKey, Query, SetExpr, Values},
+        ast::{ColumnDef, Expr, ForeignKey, Query, SetExpr, Values},
         data::{Key, Row, Schema, Value},
-        executor::{evaluate::evaluate_stateless, limit::Limit},
+        executor::{evaluate::evaluate_stateless, limit::Limit, validate::validate_check},
         result::Result,
         store::{DataRow, GStore, GStoreMut},
     },
@@ -61,28 +61,15 @@ pub async fn insert<T: GStore + GStoreMut>(
     columns: &[String],
     source: &Query,
 ) -> Result<usize> {
-    let Schema {
-        column_defs,
-        foreign_keys,
-        ..
-    } = storage
+    let schema = storage
         .fetch_schema(table_name)
         .await?
         .ok_or_else(|| InsertError::TableNotFound(table_name.to_owned()))?;
 
-    let rows = match column_defs {
-        Some(column_defs) => {
-            fetch_vec_rows(
-                storage,
-                table_name,
-                column_defs,
-                columns,
-                source,
-                foreign_keys,
-            )
-            .await
-        }
-        None => fetch_map_rows(storage, source).await.map(RowsData::Append),
+    let rows = if schema.column_defs.is_some() {
+        fetch_vec_rows(storage, table_name, &schema, columns, source).await
+    } else {
+        fetch_map_rows(storage, source).await.map(RowsData::Append)
     }?;
 
     match rows {
@@ -108,19 +95,13 @@ pub async fn insert<T: GStore + GStoreMut>(
 async fn fetch_vec_rows<T: GStore>(
     storage: &T,
     table_name: &str,
-    column_defs: Vec<ColumnDef>,
+    schema: &Schema,
     columns: &[String],
     source: &Query,
-    foreign_keys: Vec<ForeignKey>,
 ) -> Result<RowsData> {
-    let labels = Rc::from(
-        column_defs
-            .iter()
-            .map(|column_def| column_def.name.to_owned())
-            .collect::<Vec<_>>(),
-    );
-    let column_defs = Rc::from(column_defs);
-    let column_validation = ColumnValidation::All(&column_defs);
+    let column_names: Rc<Vec<String>> = Rc::from(schema.get_column_names().unwrap());
+    let column_defs = Rc::from(schema.column_defs.as_ref().unwrap());
+    let column_validation = ColumnValidation::All;
 
     #[derive(futures_enum::Stream)]
     enum Rows<I1, I2> {
@@ -133,11 +114,11 @@ async fn fetch_vec_rows<T: GStore>(
             let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref()).await?;
             let rows = stream::iter(values_list).then(|values| {
                 let column_defs = Rc::clone(&column_defs);
-                let labels = Rc::clone(&labels);
+                let column_names = Rc::clone(&column_names);
 
                 async move {
                     Ok(Row::Vec {
-                        columns: labels,
+                        columns: column_names.as_slice().into(),
                         values: fill_values(&column_defs, columns, values).await?,
                     })
                 }
@@ -177,36 +158,38 @@ async fn fetch_vec_rows<T: GStore>(
     validate_unique(
         storage,
         table_name,
+        schema,
         column_validation,
         rows.iter().map(|values| values.as_slice()),
     )
     .await?;
 
-    validate_foreign_key(storage, &column_defs, foreign_keys, &rows).await?;
+    validate_foreign_key(storage, &column_defs, &schema.foreign_keys, &rows).await?;
 
-    let primary_key = column_defs.iter().position(|ColumnDef { unique, .. }| {
-        unique == &Some(ColumnUniqueOption { is_primary: true })
-    });
+    validate_check(
+        storage,
+        schema,
+        &column_names,
+        rows.iter().map(|values| values.as_slice()),
+    )
+    .await?;
 
-    match primary_key {
-        Some(i) => rows
+    Ok(if schema.primary_key.is_some() {
+        let rows = rows
             .into_iter()
-            .filter_map(|values| {
-                values
-                    .get(i)
-                    .map(Key::try_from)
-                    .map(|result| result.map(|key| (key, values.into())))
-            })
-            .collect::<Result<Vec<_>>>()
-            .map(RowsData::Insert),
-        None => Ok(RowsData::Append(rows.into_iter().map(Into::into).collect())),
-    }
+            .map(|row: Vec<Value>| (schema.get_primary_key(&row).unwrap(), row.into()))
+            .collect::<Vec<_>>();
+
+        RowsData::Insert(rows)
+    } else {
+        RowsData::Append(rows.into_iter().map(Into::into).collect())
+    })
 }
 
-async fn validate_foreign_key<T: GStore>(
+async fn validate_foreign_key<T: GStore, V: AsRef<[ColumnDef]>>(
     storage: &T,
-    column_defs: &Rc<[ColumnDef]>,
-    foreign_keys: Vec<ForeignKey>,
+    column_defs: &Rc<V>,
+    foreign_keys: &[ForeignKey],
     rows: &[Vec<Value>],
 ) -> Result<()> {
     for foreign_key in foreign_keys {
@@ -218,6 +201,8 @@ async fn validate_foreign_key<T: GStore>(
         } = &foreign_key;
 
         let target_index = column_defs
+            .as_ref()
+            .as_ref()
             .iter()
             .enumerate()
             .find(|(_, c)| &c.name == referencing_column_name)

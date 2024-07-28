@@ -21,7 +21,7 @@ test_case!(show_columns, {
             tstamp Timestamp,
             uid    Uuid,
             hash   Map,
-            glist  List,
+            glist  List
         );
     ",
     )

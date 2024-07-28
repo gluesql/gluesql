@@ -75,7 +75,7 @@ impl PyGlue {
 
     pub fn query(&mut self, py: Python, sql: &PyString) -> PyResult<PyObject> {
         let sql = sql.to_string();
-        let queries = parse(&sql).map_err(|e| GlueSQLError::new_err(e.to_string()))?;
+        let queries = parse(sql).map_err(|e| GlueSQLError::new_err(e.to_string()))?;
 
         let mut payloads: Vec<PyPayload> = vec![];
         for query in queries.iter() {

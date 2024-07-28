@@ -17,7 +17,7 @@ test_case!(nested_select, {
         CREATE TABLE Request (
             id INTEGER,
             quantity INTEGER,
-            user_id INTEGER,
+            user_id INTEGER
         );
     ",
     ];

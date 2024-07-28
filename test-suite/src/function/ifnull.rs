@@ -1,6 +1,6 @@
 use {
     crate::*,
-    chrono::{NaiveDate, NaiveDateTime, NaiveTime},
+    chrono::{DateTime, NaiveDate, NaiveTime},
     gluesql_core::prelude::{Payload, Value::*},
     rust_decimal::Decimal,
 };
@@ -59,7 +59,7 @@ test_case!(ifnull, {
             "SELECT IFNULL(mytime, 'YES') AS mytime, IFNULL(mytimestamp, 'NO') AS mytimestamp
             FROM SingleItem WHERE id IS NOT NULL",
             select!("mytime" | "mytimestamp"; Time | Timestamp; 
-                    NaiveTime::from_hms_opt(1, 2, 3).unwrap() NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
+                    NaiveTime::from_hms_opt(1, 2, 3).unwrap() DateTime::from_timestamp(0, 0).unwrap().naive_utc()),
         ),
         (
             "SELECT IFNULL(mytime, 'YES') AS mytime, IFNULL(mytimestamp, 'NO') AS mytimestamp

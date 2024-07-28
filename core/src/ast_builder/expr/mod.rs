@@ -386,7 +386,7 @@ pub fn subquery<'a, T: Into<QueryNode<'a>>>(query_node: T) -> ExprNode<'a> {
 }
 
 pub fn null() -> ExprNode<'static> {
-    ExprNode::Expr(Cow::Owned(Expr::Literal(AstLiteral::Null)))
+    ExprNode::Expr(Cow::Owned(Expr::null()))
 }
 
 #[cfg(test)]

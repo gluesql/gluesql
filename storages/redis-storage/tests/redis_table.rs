@@ -179,15 +179,18 @@ async fn redis_storage_drop_column() {
     exec!(glue r#"INSERT INTO dummy (id, name) values (1, 'Superman');"#);
     exec!(glue r#"INSERT INTO dummy (id, name) values (11, 'Batman');"#);
     exec!(glue "ALTER TABLE dummy DROP COLUMN name");
+    exec!(glue "ALTER TABLE dummy ADD COLUMN unique_id INTEGER UNIQUE");
 
     let ret: Vec<Payload> = glue.execute("SELECT * FROM dummy;").await.unwrap();
     match &ret[0] {
         Payload::Select { labels, rows } => {
             assert_eq!(labels[0], "id");
-            assert_eq!(rows[0].len(), 1);
-            assert_eq!(rows[1].len(), 1);
+            assert_eq!(rows[0].len(), 2);
+            assert_eq!(rows[1].len(), 2);
             assert_eq!(rows[0][0], Value::I64(1));
             assert_eq!(rows[1][0], Value::I64(11));
+            assert_eq!(rows[0][1], Value::Null);
+            assert_eq!(rows[1][1], Value::Null);
         }
         _ => unreachable!(),
     }

@@ -1,5 +1,6 @@
 use {serde::Serialize, std::fmt::Debug, thiserror::Error as ThisError};
 
+use crate::data::schema::SchemaError;
 pub use crate::{
     ast_builder::AstBuilderError,
     data::{
@@ -75,6 +76,8 @@ pub enum Error {
     Plan(#[from] PlanError),
     #[error("schema-parse: {0}")]
     Schema(#[from] SchemaParseError),
+    #[error("schema: {0}")]
+    SchemaError(#[from] SchemaError),
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

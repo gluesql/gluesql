@@ -41,7 +41,7 @@ test_case!(create_table, {
         (
             "
         CREATE TABLE IF NOT EXISTS CreateTable2 (
-            id2 INTEGER NULL,
+            id2 INTEGER NULL
         )",
             Ok(Payload::Create),
         ),
@@ -60,10 +60,6 @@ test_case!(create_table, {
         (
             "CREATE TABLE Gluery (id GLOBE);",
             Err(TranslateError::UnsupportedDataType("GLOBE".to_owned()).into()),
-        ),
-        (
-            "CREATE TABLE Gluery (id INTEGER CHECK (true));",
-            Err(TranslateError::UnsupportedColumnOption("CHECK (true)".to_owned()).into()),
         ),
         (
             "

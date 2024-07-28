@@ -22,7 +22,7 @@ test_case!(concat_ws, {
             id INTEGER,
             flag BOOLEAN,
             text TEXT,
-            null_value TEXT NULL,
+            null_value TEXT NULL
         );
     ",
     )
