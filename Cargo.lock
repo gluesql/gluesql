@@ -3263,7 +3263,7 @@ checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
 [[package]]
 name = "sqlparser"
 version = "0.49.0"
-source = "git+https://github.com/LucaCappelletti94/sqlparser-rs.git#e81a58cd88a55db26f16c035aac04ed4e10c1c59"
+source = "git+https://github.com/LucaCappelletti94/sqlparser-rs.git#3887809b291adb691bb189708283f3b50ba76aae"
 dependencies = [
  "bigdecimal",
  "log",

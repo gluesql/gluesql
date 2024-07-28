@@ -9,6 +9,7 @@ mod query;
 mod trigger;
 
 use crate::ast::{CreateTrigger, DropTrigger, UniqueConstraint};
+use function::translate_create_function_body;
 use itertools::Itertools;
 
 pub use self::{
@@ -27,9 +28,8 @@ use {
     ddl::translate_alter_table_operation,
     sqlparser::ast::{
         Assignment as SqlAssignment, AssignmentTarget as SqlAssignmentTarget,
-        CommentDef as SqlCommentDef, CreateFunctionBody as SqlCreateFunctionBody,
-        CreateIndex as SqlCreateIndex, CreateTable as SqlCreateTable, Delete as SqlDelete,
-        FromTable as SqlFromTable, Ident as SqlIdent, Insert as SqlInsert,
+        CommentDef as SqlCommentDef, CreateIndex as SqlCreateIndex, CreateTable as SqlCreateTable,
+        Delete as SqlDelete, FromTable as SqlFromTable, Ident as SqlIdent, Insert as SqlInsert,
         ObjectName as SqlObjectName, ObjectType as SqlObjectType, Statement as SqlStatement,
         TableConstraint as SqlTableConstraint, TableFactor, TableWithJoins,
     },
@@ -283,39 +283,35 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             include_each,
             condition,
             exec_body,
-            characteristics
-        } => {
-            Ok(Statement::CreateTrigger(
-                CreateTrigger::from_sql_parser(
-                    SqlStatement::CreateTrigger {
-                        or_replace: *or_replace,
-                        name: name.clone(),
-                        period: *period,
-                        events: events.clone(),
-                        table_name: table_name.clone(),
-                        referencing: referencing.clone(),
-                        trigger_object: trigger_object.clone(),
-                        include_each: *include_each,
-                        condition: condition.clone(),
-                        exec_body: exec_body.clone(),
-                        characteristics: characteristics.clone(),
-                    },
-                )?,
-            ))
-        }
+            characteristics,
+        } => Ok(Statement::CreateTrigger(CreateTrigger::from_sql_parser(
+            SqlStatement::CreateTrigger {
+                or_replace: *or_replace,
+                name: name.clone(),
+                period: *period,
+                events: events.clone(),
+                table_name: table_name.clone(),
+                referencing: referencing.clone(),
+                trigger_object: trigger_object.clone(),
+                include_each: *include_each,
+                condition: condition.clone(),
+                exec_body: exec_body.clone(),
+                characteristics: characteristics.clone(),
+            },
+        )?)),
         SqlStatement::DropTrigger {
             if_exists,
             trigger_name,
             table_name,
             option,
-        } => Ok(Statement::DropTrigger(
-            DropTrigger::from_sql_parser(SqlStatement::DropTrigger {
+        } => Ok(Statement::DropTrigger(DropTrigger::from_sql_parser(
+            SqlStatement::DropTrigger {
                 if_exists: *if_exists,
                 trigger_name: trigger_name.clone(),
                 table_name: table_name.clone(),
                 option: option.clone(),
-            }),
-        )),
+            },
+        ))),
         SqlStatement::AlterTable {
             name, operations, ..
         } => {
@@ -462,11 +458,11 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 or_replace: *or_replace,
                 name: translate_object_name(name)?,
                 args: args.unwrap_or_default(),
-                return_: if let Some(SqlCreateFunctionBody::Return(return_)) = function_body {
-                    translate_expr(return_)?
-                } else {
-                    return Err(TranslateError::UnsupportedEmptyFunctionBody.into());
-                },
+                body: translate_create_function_body(
+                    function_body
+                        .as_ref()
+                        .ok_or(TranslateError::UnsupportedEmptyFunctionBody)?,
+                )?,
             })
         }
         _ => Err(TranslateError::UnsupportedStatement(sql_statement.to_string()).into()),

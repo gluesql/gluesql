@@ -12,7 +12,7 @@ pub use {
     data_type::DataType,
     ddl::*,
     expr::{Expr, Subscript},
-    function::{Aggregate, CountArgExpr, Function},
+    function::{Aggregate, CountArgExpr, Function, CreateFunctionBody},
     operator::*,
     query::*,
     trigger::*
@@ -231,7 +231,7 @@ pub enum Statement {
         name: String,
         /// Optional schema
         args: Vec<OperateFunctionArg>,
-        return_: Expr,
+        body: CreateFunctionBody
     },
     /// ALTER TABLE
     AlterTable {
@@ -413,8 +413,7 @@ impl ToSql for Statement {
                 or_replace,
                 name,
                 args,
-                return_,
-                ..
+                body,
             } => {
                 let or_replace = or_replace.then_some(" OR REPLACE").unwrap_or("");
                 let args = args
@@ -422,8 +421,8 @@ impl ToSql for Statement {
                     .map(ToSql::to_sql)
                     .collect::<Vec<_>>()
                     .join(", ");
-                let return_ = format!(" RETURN {}", return_.to_sql());
-                format!("CREATE{or_replace} FUNCTION {name}({args}){return_};")
+                let body = body.to_sql();
+                format!("CREATE{or_replace} FUNCTION {name}({args}){body};")
             }
             Statement::AlterTable { name, operation } => {
                 format!(r#"ALTER TABLE "{name}" {};"#, operation.to_sql())
@@ -523,10 +522,7 @@ pub struct Array {
 mod tests {
     use {
         crate::ast::{
-            AlterTableOperation, Assignment, AstLiteral, BinaryOperator, ColumnDef, DataType, Expr,
-            ForeignKey, OperateFunctionArg, OrderByExpr, Query, ReferentialAction, Select,
-            SelectItem, SetExpr, Statement, TableFactor, TableWithJoins, ToSql, UniqueConstraint,
-            Values, Variable,
+            AlterTableOperation, Assignment, AstLiteral, BinaryOperator, ColumnDef, CreateFunctionBody, DataType, Expr, ForeignKey, OperateFunctionArg, OrderByExpr, Query, ReferentialAction, Select, SelectItem, SetExpr, Statement, TableFactor, TableWithJoins, ToSql, UniqueConstraint, Values, Variable
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,
@@ -1019,7 +1015,7 @@ mod tests {
                         BigDecimal::from_str("0").unwrap()
                     ))),
                 }],
-                return_: Expr::Identifier("num".to_owned())
+                body: CreateFunctionBody::Return(Expr::Identifier("num".into()))
             }
             .to_sql()
         );
@@ -1029,7 +1025,7 @@ mod tests {
                 or_replace: true,
                 name: "add".into(),
                 args: vec![],
-                return_: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap()))
+                body: CreateFunctionBody::Return(Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())))
             }
             .to_sql()
         );

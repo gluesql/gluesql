@@ -375,8 +375,8 @@ async fn execute_inner<T: GStore + GStoreMut>(
             or_replace,
             name,
             args,
-            return_,
-        } => insert_function(storage, name, args, *or_replace, return_)
+            body,
+        } => insert_function(storage, name, args, *or_replace, body)
             .await
             .map(|_| Payload::Create),
         Statement::DropFunction { if_exists, names } => delete_function(storage, names, *if_exists)

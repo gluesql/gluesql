@@ -416,7 +416,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                     Some(Rc::new(context))
                 })?;
 
-            return evaluate_inner(storage, context, None, body).await;
+            return evaluate_inner(storage, context, None, body.as_ref()).await;
         }
         Function::ConcatWs { separator, exprs } => {
             let separator = eval(separator).await?;

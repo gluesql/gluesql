@@ -536,6 +536,33 @@ impl ToSql for CountArgExpr {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum CreateFunctionBody {
+    AsBeforeOptions(Expr),
+    AsAfterOptions(Expr),
+    Return(Expr),
+}
+
+impl AsRef<Expr> for CreateFunctionBody {
+    fn as_ref(&self) -> &Expr {
+        match self {
+            CreateFunctionBody::AsBeforeOptions(e) => e,
+            CreateFunctionBody::AsAfterOptions(e) => e,
+            CreateFunctionBody::Return(e) => e,
+        }
+    }
+}
+
+impl ToSql for CreateFunctionBody {
+    fn to_sql(&self) -> String {
+        match self {
+            CreateFunctionBody::AsBeforeOptions(e) => format!("AS BEFORE OPTIONS {}", e.to_sql()),
+            CreateFunctionBody::AsAfterOptions(e) => format!("AS AFTER OPTIONS {}", e.to_sql()),
+            CreateFunctionBody::Return(e) => format!("RETURN {}", e.to_sql()),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use {
