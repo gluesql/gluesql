@@ -873,12 +873,11 @@ fn str_position(from_str: &str, sub_str: &str) -> usize {
 #[cfg(test)]
 mod tests {
     use {
-        super::{Value, ValueError},
-        crate::{
-            ast::DataType as D,
-            data::{Interval as I, Point},
-        },
+        super::{Interval, Value::*},
+        crate::data::{point::Point, value::uuid::parse_uuid, NumericBinaryOperator, ValueError},
         chrono::{NaiveDate, NaiveTime},
+        rust_decimal::Decimal,
+        std::{net::IpAddr, str::FromStr},
     };
 
     fn time(hour: u32, min: u32, sec: u32) -> NaiveTime {
