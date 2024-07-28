@@ -25,8 +25,7 @@ use {
         Assignment as SqlAssignment, Delete as SqlDelete, FromTable as SqlFromTable,
         Ident as SqlIdent, Insert as SqlInsert, ObjectName as SqlObjectName,
         ObjectType as SqlObjectType, ReferentialAction as SqlReferentialAction,
-        Statement as SqlStatement, TableConstraint as SqlTableConstraint, TableFactor,
-        TableWithJoins,
+        Statement as SqlStatement, TableFactor, TableWithJoins,
     },
 };
 
@@ -121,12 +120,11 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             let mut foreign_keys = Vec::new();
 
             for constraint in constraints {
-                if let sqlparser::ast::TableConstraint::PrimaryKey {
-                    columns: primary_key_columns,
-                    ..
-                } = constraint
-                {
-                    match primary_key.as_mut() {
+                match constraint {
+                    sqlparser::ast::TableConstraint::PrimaryKey {
+                        columns: primary_key_columns,
+                        ..
+                    } => match primary_key.as_mut() {
                         Some(_) => {
                             return Err(TranslateError::MultiplePrimaryKeyNotSupported.into())
                         }
@@ -144,9 +142,31 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                                 );
                             }
                         }
+                    },
+                    sqlparser::ast::TableConstraint::ForeignKey {
+                        name,
+                        columns,
+                        foreign_table,
+                        referred_columns,
+                        on_delete,
+                        on_update,
+                        ..
+                    } => {
+                        foreign_keys.push(translate_foreign_key(
+                            name,
+                            columns,
+                            foreign_table,
+                            referred_columns,
+                            on_delete,
+                            on_update,
+                        )?);
                     }
-                } else {
-                    foreign_keys.push(translate_foreign_key(constraint)?);
+                    table_constraint => {
+                        return Err(TranslateError::UnsupportedConstraint(
+                            table_constraint.to_string(),
+                        )
+                        .into())
+                    }
                 }
             }
 
@@ -383,51 +403,45 @@ pub fn translate_referential_action(
     }
 }
 
-pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<ForeignKey> {
-    match table_constraint {
-        SqlTableConstraint::ForeignKey {
-            name,
-            columns,
-            foreign_table,
-            referred_columns,
-            on_delete,
-            on_update,
-            ..
-        } => {
-            let referencing_column_name = columns.first().map(|i| i.value.clone()).ok_or(
-                TranslateError::UnreachableForeignKeyColumns(
-                    columns.iter().map(|i| i.to_string()).collect::<String>(),
-                ),
-            )?;
+pub fn translate_foreign_key(
+    name: &Option<SqlIdent>,
+    columns: &[SqlIdent],
+    foreign_table: &SqlObjectName,
+    referred_columns: &[SqlIdent],
+    on_delete: &Option<SqlReferentialAction>,
+    on_update: &Option<SqlReferentialAction>,
+) -> Result<ForeignKey> {
+    let referencing_column_name = columns.first().map(|i| i.value.clone()).ok_or(
+        TranslateError::UnreachableForeignKeyColumns(
+            columns.iter().map(|i| i.to_string()).collect::<String>(),
+        ),
+    )?;
 
-            let referenced_column_name = referred_columns
-                .first()
-                .ok_or(TranslateError::UnreachableForeignKeyColumns(
-                    columns.iter().map(|i| i.to_string()).collect::<String>(),
-                ))?
-                .value
-                .clone();
+    let referenced_column_name = referred_columns
+        .first()
+        .ok_or(TranslateError::UnreachableForeignKeyColumns(
+            columns.iter().map(|i| i.to_string()).collect::<String>(),
+        ))?
+        .value
+        .clone();
 
-            let referenced_table_name = translate_object_name(foreign_table)?;
+    let referenced_table_name = translate_object_name(foreign_table)?;
 
-            let name = match name {
-                Some(name) => name.value.clone(),
-                None => {
-                    format!("FK_{referencing_column_name}-{referenced_table_name}_{referenced_column_name}")
-                }
-            };
-
-            Ok(ForeignKey {
-                name,
-                referencing_column_name,
-                referenced_table_name,
-                referenced_column_name,
-                on_delete: translate_referential_action(on_delete)?,
-                on_update: translate_referential_action(on_update)?,
-            })
+    let name = match name {
+        Some(name) => name.value.clone(),
+        None => {
+            format!("FK_{referencing_column_name}-{referenced_table_name}_{referenced_column_name}")
         }
-        _ => Err(TranslateError::UnsupportedConstraint(table_constraint.to_string()).into()),
-    }
+    };
+
+    Ok(ForeignKey {
+        name,
+        referencing_column_name,
+        referenced_table_name,
+        referenced_column_name,
+        on_delete: translate_referential_action(on_delete)?,
+        on_update: translate_referential_action(on_update)?,
+    })
 }
 
 #[cfg(test)]
