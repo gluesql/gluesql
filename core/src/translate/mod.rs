@@ -7,7 +7,7 @@ mod function;
 mod operator;
 mod query;
 
-use crate::ast::UniqueConstraint;
+use crate::ast::{CheckConstraint, UniqueConstraint};
 use itertools::Itertools;
 
 pub use self::{
@@ -102,13 +102,15 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             ..
         }) => {
             let mut unique_constraints = Vec::new();
+            let mut check_constraints = Vec::new();
             let mut primary_key: Option<Vec<usize>> = None;
 
             let translated_columns = columns
                 .iter()
                 .enumerate()
                 .map(|(index, column)| {
-                    let (translated_column, is_primary, is_unique) = translate_column_def(column)?;
+                    let (translated_column, is_primary, is_unique, check_constraint) =
+                        translate_column_def(column)?;
                     if is_primary {
                         match primary_key.as_mut() {
                             Some(_) => {
@@ -121,6 +123,9 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                     }
                     if is_unique {
                         unique_constraints.push(UniqueConstraint::new(None, vec![index]));
+                    }
+                    if let Some(check_constraint) = check_constraint {
+                        check_constraints.push(check_constraint);
                     }
                     Ok(translated_column)
                 })
@@ -175,6 +180,11 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                     unique_constraints.push(UniqueConstraint::new(
                         name.clone().map(|n| n.value),
                         indices,
+                    ));
+                } else if let sqlparser::ast::TableConstraint::Check { name, expr } = constraint {
+                    check_constraints.push(CheckConstraint::new(
+                        name.clone().map(|n| n.value),
+                        translate_expr(expr)?,
                     ));
                 } else {
                     foreign_keys.push(translate_foreign_key(constraint)?);
@@ -262,6 +272,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 foreign_keys,
                 primary_key,
                 unique_constraints,
+                check_constraints,
                 comment: comment.as_ref().map(|comment| {
                     match comment {
                         SqlCommentDef::WithEq(comment) => comment,
@@ -586,6 +597,7 @@ mod tests {
             }],
             primary_key: Some(vec![0]),
             unique_constraints: vec![],
+            check_constraints: vec![],
             comment: None,
         });
 
@@ -638,6 +650,7 @@ mod tests {
             }],
             primary_key: Some(vec![0]),
             unique_constraints: vec![],
+            check_constraints: vec![],
             comment: None,
         });
 
@@ -690,6 +703,7 @@ mod tests {
             }],
             primary_key: Some(vec![0]),
             unique_constraints: vec![],
+            check_constraints: vec![],
             comment: None,
         });
 

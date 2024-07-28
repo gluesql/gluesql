@@ -3,7 +3,7 @@ use {
         data_type::translate_data_type, expr::translate_expr, translate_object_name, TranslateError,
     },
     crate::{
-        ast::{AlterTableOperation, ColumnDef, OperateFunctionArg},
+        ast::{AlterTableOperation, CheckConstraint, ColumnDef, OperateFunctionArg},
         result::Result,
     },
     sqlparser::ast::{
@@ -18,8 +18,8 @@ pub fn translate_alter_table_operation(
 ) -> Result<AlterTableOperation> {
     match sql_alter_table_operation {
         SqlAlterTableOperation::AddColumn { column_def, .. } => {
-            let (column_def, _, unique) = translate_column_def(column_def)?;
-            Ok(AlterTableOperation::AddColumn { column_def, unique })
+            let (column_def, _, unique, check) = translate_column_def(column_def)?;
+            Ok(AlterTableOperation::AddColumn { column_def, unique, check })
         }
         SqlAlterTableOperation::DropColumn {
             column_name,
@@ -49,7 +49,7 @@ pub fn translate_alter_table_operation(
 }
 
 /// Returns the column definition and whether the column is a primary key.
-pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<(ColumnDef, bool, bool)> {
+pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<(ColumnDef, bool, bool, Option<CheckConstraint>)> {
     let SqlColumnDef {
         name,
         data_type,
@@ -57,22 +57,22 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<(ColumnDef,
         ..
     } = sql_column_def;
 
-    let (nullable, default, unique, primary, comment) = options.iter().try_fold(
-        (true, None, false, false, None),
-        |(nullable, default, unique, primary, comment),
+    let (nullable, default, unique, primary, comment, check) = options.iter().try_fold(
+        (true, None, false, false, None, None),
+        |(nullable, default, unique, primary, comment, check),
          SqlColumnOptionDef { option, .. }|
          -> Result<_> {
             match option {
-                SqlColumnOption::Null => Ok((nullable, default, unique, primary, comment)),
-                SqlColumnOption::NotNull => Ok((false, default, unique, primary, comment)),
+                SqlColumnOption::Null => Ok((nullable, default, unique, primary, comment, check)),
+                SqlColumnOption::NotNull => Ok((false, default, unique, primary, comment, check)),
                 SqlColumnOption::Default(default) => {
                     let default = translate_expr(default).map(Some)?;
 
-                    Ok((nullable, default, unique, primary, comment))
+                    Ok((nullable, default, unique, primary, comment, check))
                 }
                 SqlColumnOption::Unique { is_primary, .. } => {
                     let nullable = if *is_primary { false } else { nullable };
-                    Ok((nullable, default, !(*is_primary), *is_primary, comment))
+                    Ok((nullable, default, !(*is_primary), *is_primary, comment, check))
                 }
                 SqlColumnOption::Comment(comment) => Ok((
                     nullable,
@@ -80,7 +80,12 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<(ColumnDef,
                     unique,
                     primary,
                     Some(comment.to_string()),
+                    check,
                 )),
+                SqlColumnOption::Check(expr) => {
+                    let check = Some(CheckConstraint::anonymous(translate_expr(expr)?));
+                    Ok((nullable, default, unique, primary, comment, check))
+                }
                 _ => Err(TranslateError::UnsupportedColumnOption(option.to_string()).into()),
             }
         },
@@ -96,6 +101,7 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<(ColumnDef,
         },
         primary,
         unique,
+        check,
     ))
 }
 

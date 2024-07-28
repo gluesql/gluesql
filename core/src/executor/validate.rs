@@ -1,13 +1,14 @@
 use {
+    super::{filter::Filter, RowContext},
     crate::{
         data::{Key, Schema, Value},
         result::Result,
-        store::{DataRow, Store},
+        store::{DataRow, GStore, Store},
     },
     futures::stream::TryStreamExt,
     im_rc::HashSet,
     serde::Serialize,
-    std::fmt::Debug,
+    std::{fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
     utils::Vector,
 };
@@ -28,6 +29,9 @@ pub enum ValidateError {
 
     #[error("duplicated unique constraint found")]
     DuplicatedUniqueConstraintFound,
+
+    #[error("Check constraint violation on rule '{0}'")]
+    CheckConstraintViolation(String),
 }
 
 impl ValidateError {
@@ -198,7 +202,41 @@ pub async fn validate_unique<T: Store>(
                 Ok(())
             })
         })
-        .await
+        .await?;
+
+    Ok(())
+}
+
+pub async fn validate_check<T: Store + GStore>(
+    storage: &T,
+    schema: &Schema,
+    columns: &[String],
+    row_iter: impl Iterator<Item = &[Value]> + Clone,
+) -> Result<()> {
+    if schema.check_constraints.is_empty() {
+        return Ok(());
+    }
+
+    let filters = schema
+        .check_constraints
+        .iter()
+        .map(|check_clause| Filter::new(storage, Some(&check_clause.expression), None, None))
+        .collect::<Vec<_>>();
+
+    for values in row_iter {
+        dbg!(values);
+
+        for filter in &filters {
+            if !filter
+                .check(Rc::new(RowContext::RefVecData { columns, values }))
+                .await?
+            {
+                return Err(ValidateError::CheckConstraintViolation(filter.to_sql()).into());
+            }
+        }
+    }
+
+    Ok(())
 }
 
 fn create_unique_constraints<'a>(

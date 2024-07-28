@@ -1,3 +1,5 @@
+use crate::ast::{CheckConstraint, Expr};
+
 #[derive(Clone, Debug)]
 pub struct PrimaryKeyConstraintNode {
     columns: Vec<String>,
@@ -24,6 +26,23 @@ impl AsRef<[String]> for PrimaryKeyConstraintNode {
 pub struct UniqueConstraintNode {
     name: Option<String>,
     columns: Vec<String>,
+}
+
+#[derive(Clone, Debug)]
+pub struct CheckConstraintNode {
+    expr: Expr,
+}
+
+impl From<Expr> for CheckConstraintNode {
+    fn from(expr: Expr) -> Self {
+        CheckConstraintNode { expr }
+    }
+}
+
+impl From<CheckConstraintNode> for CheckConstraint {
+    fn from(node: CheckConstraintNode) -> Self {
+        CheckConstraint::anonymous(node.expr)
+    }
 }
 
 impl UniqueConstraintNode {

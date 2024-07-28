@@ -66,8 +66,8 @@ pub struct AddColumnNode {
 impl Build for AddColumnNode {
     fn build(self) -> Result<Statement> {
         let table_name = self.table_node.table_name;
-        let (column_def, _, unique) = translate_column_def(&parse_column_def(self.column_def)?)?;
-        let operation = AlterTableOperation::AddColumn { column_def, unique };
+        let (column_def, _, unique, check) = translate_column_def(&parse_column_def(self.column_def)?)?;
+        let operation = AlterTableOperation::AddColumn { column_def, unique, check };
         Ok(Statement::AlterTable {
             name: table_name,
             operation,

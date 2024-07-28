@@ -1,7 +1,7 @@
 use {
     super::SharedMemoryStorage,
     async_trait::async_trait,
-    gluesql_core::{ast::ColumnDef, error::Result, store::AlterTable},
+    gluesql_core::{ast::{CheckConstraint, ColumnDef}, error::Result, store::AlterTable},
     std::sync::Arc,
 };
 
@@ -33,11 +33,12 @@ impl AlterTable for SharedMemoryStorage {
         table_name: &str,
         column_def: &ColumnDef,
         unique: bool,
+        check: &Option<CheckConstraint>,
     ) -> Result<()> {
         let database = Arc::clone(&self.database);
         let mut database = database.write().await;
 
-        database.add_column(table_name, column_def, unique).await
+        database.add_column(table_name, column_def, unique, check).await
     }
 
     async fn drop_column(

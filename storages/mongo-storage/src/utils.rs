@@ -2,7 +2,7 @@ use {
     crate::{description::TableDescription, error::ResultExt},
     bson::{doc, Document},
     gluesql_core::{
-        ast::{ForeignKey, UniqueConstraint},
+        ast::{CheckConstraint, ForeignKey, UniqueConstraint},
         error::Result,
     },
     mongodb::options::CreateCollectionOptions,
@@ -20,6 +20,7 @@ impl Validator {
         foreign_keys: Vec<ForeignKey>,
         primary_key: Option<Vec<usize>>,
         unique_constraints: Vec<UniqueConstraint>,
+        check_constraints: Vec<CheckConstraint>,
         comment: Option<String>,
     ) -> Result<Self> {
         let mut required = vec![crate::PRIMARY_KEY_SYMBOL.to_owned()];
@@ -36,6 +37,7 @@ impl Validator {
                 foreign_keys,
                 primary_key,
                 unique_constraints,
+                check_constraints,
                 comment,
             }),
         )

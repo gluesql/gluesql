@@ -6,7 +6,7 @@ use {
     crate::{
         ast::{ColumnDef, Expr, ForeignKey, Query, SetExpr, Values},
         data::{Key, Row, Schema, Value},
-        executor::{evaluate::evaluate_stateless, limit::Limit},
+        executor::{evaluate::evaluate_stateless, limit::Limit, validate::validate_check},
         result::Result,
         store::{DataRow, GStore, GStoreMut},
     },
@@ -99,7 +99,7 @@ async fn fetch_vec_rows<T: GStore>(
     columns: &[String],
     source: &Query,
 ) -> Result<RowsData> {
-    let labels = Rc::from(schema.get_column_names().unwrap());
+    let column_names: Rc<Vec<String>> = Rc::from(schema.get_column_names().unwrap());
     let column_defs = Rc::from(schema.column_defs.as_ref().unwrap());
     let column_validation = ColumnValidation::All;
 
@@ -114,11 +114,11 @@ async fn fetch_vec_rows<T: GStore>(
             let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref()).await?;
             let rows = stream::iter(values_list).then(|values| {
                 let column_defs = Rc::clone(&column_defs);
-                let labels = Rc::clone(&labels);
+                let column_names = Rc::clone(&column_names);
 
                 async move {
                     Ok(Row::Vec {
-                        columns: labels,
+                        columns: column_names.as_slice().into(),
                         values: fill_values(&column_defs, columns, values).await?,
                     })
                 }
@@ -165,6 +165,14 @@ async fn fetch_vec_rows<T: GStore>(
     .await?;
 
     validate_foreign_key(storage, &column_defs, &schema.foreign_keys, &rows).await?;
+
+    validate_check(
+        storage,
+        schema,
+        &column_names,
+        rows.iter().map(|values| values.as_slice()),
+    )
+    .await?;
 
     Ok(if schema.primary_key.is_some() {
         let rows = rows

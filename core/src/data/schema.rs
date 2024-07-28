@@ -2,7 +2,10 @@ use itertools::Itertools;
 use {
     super::Value,
     crate::{
-        ast::{ColumnDef, Expr, ForeignKey, OrderByExpr, Statement, ToSql, UniqueConstraint},
+        ast::{
+            CheckConstraint, ColumnDef, Expr, ForeignKey, OrderByExpr, Statement, ToSql,
+            UniqueConstraint,
+        },
         prelude::{parse, translate, Key},
         result::Result,
     },
@@ -47,6 +50,7 @@ pub struct Schema {
     pub foreign_keys: Vec<ForeignKey>,
     pub primary_key: Option<Vec<usize>>,
     pub unique_constraints: Vec<UniqueConstraint>,
+    pub check_constraints: Vec<CheckConstraint>,
     pub comment: Option<String>,
 }
 
@@ -229,6 +233,7 @@ impl Schema {
             foreign_keys,
             primary_key,
             unique_constraints,
+            check_constraints,
             comment,
         } = self;
 
@@ -242,6 +247,7 @@ impl Schema {
             foreign_keys: foreign_keys.to_owned(),
             primary_key: primary_key.to_owned(),
             unique_constraints: unique_constraints.to_owned(),
+            check_constraints: check_constraints.to_owned(),
         }
         .to_sql();
 
@@ -301,6 +307,7 @@ impl Schema {
                 foreign_keys,
                 primary_key,
                 unique_constraints,
+                check_constraints,
                 comment,
                 ..
             } => Ok(Schema {
@@ -311,6 +318,7 @@ impl Schema {
                 foreign_keys,
                 primary_key,
                 unique_constraints,
+                check_constraints,
                 comment,
             }),
             _ => Err(SchemaParseError::CannotParseDDL.into()),
@@ -345,6 +353,7 @@ mod tests {
             foreign_keys,
             primary_key,
             unique_constraints,
+            check_constraints,
             comment,
         } = actual;
 
@@ -356,6 +365,7 @@ mod tests {
             foreign_keys: foreign_keys_e,
             primary_key: primary_key_e,
             unique_constraints: unique_constraints_e,
+            check_constraints: check_constraints_e,
             comment: comment_e,
         } = expected;
 
@@ -365,6 +375,7 @@ mod tests {
         assert_eq!(foreign_keys, foreign_keys_e);
         assert_eq!(primary_key, primary_key_e);
         assert_eq!(unique_constraints, unique_constraints_e);
+        assert_eq!(check_constraints, check_constraints_e);
         assert_eq!(comment, comment_e);
         indexes
             .into_iter()
@@ -413,6 +424,7 @@ mod tests {
             foreign_keys: Vec::new(),
             primary_key: None,
             unique_constraints: Vec::new(),
+            check_constraints: Vec::new(),
             comment: None,
         };
 
@@ -430,6 +442,7 @@ mod tests {
             foreign_keys: Vec::new(),
             primary_key: None,
             unique_constraints: Vec::new(),
+            check_constraints: Vec::new(),
             comment: None,
         };
         let ddl = r#"CREATE TABLE "Test";"#;
@@ -455,6 +468,7 @@ mod tests {
             foreign_keys: Vec::new(),
             primary_key: Some(vec![0]),
             unique_constraints: Vec::new(),
+            check_constraints: Vec::new(),
             comment: None,
         };
 
@@ -497,6 +511,7 @@ mod tests {
             foreign_keys: Vec::new(),
             primary_key: Some(vec![0, 1]),
             unique_constraints: vec![UniqueConstraint::new(None, vec![2])],
+            check_constraints: Vec::new(),
             comment: None,
         };
 
@@ -553,6 +568,7 @@ mod tests {
             primary_key: None,
             foreign_keys: Vec::new(),
             unique_constraints: Vec::new(),
+            check_constraints: Vec::new(),
             comment: None,
         };
         let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);
@@ -599,6 +615,7 @@ CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);"#;
             foreign_keys: Vec::new(),
             primary_key: None,
             unique_constraints: Vec::new(),
+            check_constraints: Vec::new(),
             comment: None,
         };
         let ddl = r#"CREATE TABLE "1" ("2" INT NULL, ";" INT NULL);
@@ -634,6 +651,7 @@ CREATE INDEX "." ON "1" (";");"#;
             foreign_keys: Vec::new(),
             primary_key: Some(vec![0, 1]),
             unique_constraints: vec![],
+            check_constraints: vec![],
             comment: None,
         };
 
@@ -672,6 +690,7 @@ CREATE INDEX "." ON "1" (";");"#;
                 UniqueConstraint::new(Some("unique_name".to_owned()), vec![1]),
                 UniqueConstraint::new(Some("unique_id_and_name".to_owned()), vec![0, 1]),
             ],
+            check_constraints: Vec::new(),
             comment: None,
         };
 
@@ -707,6 +726,7 @@ CREATE INDEX "." ON "1" (";");"#;
             primary_key: None,
             foreign_keys: Vec::new(),
             unique_constraints: Vec::new(),
+            check_constraints: Vec::new(),
             comment: None,
         };
 

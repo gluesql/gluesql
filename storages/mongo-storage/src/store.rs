@@ -248,6 +248,7 @@ impl MongoStorage {
                 foreign_keys,
                 primary_key,
                 unique_constraints,
+                check_constraints,
                 comment,
             } = from_str::<TableDescription>(table_description).map_storage_err()?;
 
@@ -259,6 +260,7 @@ impl MongoStorage {
                 foreign_keys,
                 primary_key,
                 unique_constraints,
+                check_constraints,
                 comment,
             };
 

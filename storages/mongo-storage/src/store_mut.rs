@@ -95,6 +95,7 @@ impl StoreMut for MongoStorage {
             schema.foreign_keys.clone(),
             schema.primary_key.clone(),
             schema.unique_constraints.clone(),
+            schema.check_constraints.clone(),
             comment,
         )?;
 

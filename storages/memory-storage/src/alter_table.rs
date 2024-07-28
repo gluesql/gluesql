@@ -2,7 +2,7 @@ use {
     super::MemoryStorage,
     async_trait::async_trait,
     gluesql_core::{
-        ast::{ColumnDef, UniqueConstraint},
+        ast::{CheckConstraint, ColumnDef, UniqueConstraint},
         data::Value,
         error::{AlterTableError, Error, Result},
         store::{AlterTable, DataRow},
@@ -62,6 +62,7 @@ impl AlterTable for MemoryStorage {
         table_name: &str,
         column_def: &ColumnDef,
         unique: bool,
+        check: &Option<CheckConstraint>,
     ) -> Result<()> {
         let item = self
             .items
@@ -120,9 +121,15 @@ impl AlterTable for MemoryStorage {
 
         // If the column is unique, we need to add it to the unique constraints
         if unique {
+            // TODO: maybe check to avoid duplicates.
             schema
                 .unique_constraints
                 .push(UniqueConstraint::new_anonimous(vec![column_defs.len() - 1]));
+        }
+
+        if let Some(check) = check {
+            // TODO: maybe check to remove duplicates.
+            schema.check_constraints.push(check.clone());
         }
 
         Ok(())

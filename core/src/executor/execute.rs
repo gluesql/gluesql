@@ -174,6 +174,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
             foreign_keys,
             primary_key,
             unique_constraints,
+            check_constraints,
             comment,
         } => {
             let options = CreateTableOptions {
@@ -185,6 +186,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 foreign_keys,
                 primary_key,
                 unique_constraints,
+                check_constraints,
                 comment,
             };
 

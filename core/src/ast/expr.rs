@@ -311,6 +311,11 @@ impl Expr {
     pub fn null() -> Self {
         Expr::Literal(AstLiteral::Null)
     }
+
+    /// Create a new `Expr` representing a `TRUE` literal.
+    pub fn tautology() -> Self {
+        Expr::Literal(AstLiteral::Boolean(true))
+    }
 }
 
 #[cfg(test)]

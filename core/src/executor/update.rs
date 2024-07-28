@@ -1,4 +1,5 @@
 use super::delete::delete;
+use super::validate::validate_check;
 use super::Referencing;
 use crate::ast::Expr;
 use crate::error::ExecuteError;
@@ -239,7 +240,7 @@ pub async fn update<T: GStore + GStoreMut>(
     let foreign_keys = Rc::new(&schema.foreign_keys);
     let referencings = storage.fetch_referencings(table_name).await?;
 
-    let rows = fetch(storage, table_name, all_columns, selection.as_ref())
+    let rows = fetch(storage, table_name, all_columns.clone(), selection.as_ref())
         .await?
         .into_stream()
         .then(|item| async {
@@ -311,14 +312,16 @@ pub async fn update<T: GStore + GStoreMut>(
         .try_collect::<Vec<_>>()
         .await?;
 
-    if schema.column_defs.is_some() {
+    if let Some(all_columns) = all_columns {
         let column_validation = ColumnValidation::SpecifiedColumns(columns_to_update);
+
         let rows = rows.iter().filter_map(|(_, row, _, _, _)| match row {
             Row::Vec { values, .. } => Some(values.as_slice()),
             Row::Map(_) => None,
         });
 
-        validate_unique(storage, table_name, &schema, column_validation, rows).await?;
+        validate_unique(storage, table_name, &schema, column_validation, rows.clone()).await?;
+        validate_check(storage, &schema, &all_columns, rows).await?;
     }
 
     let num_rows = rows.len();

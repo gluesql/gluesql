@@ -46,6 +46,7 @@ pub mod unary_operator;
 pub mod update;
 pub mod validate;
 pub mod values;
+pub mod check_constraint;
 
 pub mod tester;
 
@@ -77,6 +78,7 @@ macro_rules! generate_store_tests {
         glue!(delete, delete::delete);
         glue!(basic, basic::basic);
         glue!(array, array::array);
+        glue!(check_constraint, check_constraint::check_constraint);
         glue!(bitwise_and, bitwise_and::bitwise_and);
         glue!(aggregate_avg, aggregate::avg::avg);
         glue!(aggregate_count, aggregate::count::count);

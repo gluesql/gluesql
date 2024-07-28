@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{Expr, ToSql};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Hash, Deserialize)]
 /// Struct representing a CHECK constraint.
 ///
 /// # Examples
@@ -65,11 +65,11 @@ impl ToSql for CheckConstraint {
     /// the constraint as a table-level constraint.
     fn to_sql(&self) -> String {
         let name = match &self.name {
-            Some(name) => format!("CONSTRAINT {} ", name),
+            Some(name) => format!("CONSTRAINT \"{}\" ", name),
             None => "".to_string(),
         };
 
-        format!("{}CHECK {}", name, self.expression.to_sql())
+        format!("{}CHECK ({})", name, self.expression.to_sql())
     }
 }
 
@@ -89,7 +89,7 @@ mod tests {
             right: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(0)))),
         });
 
-        assert_eq!(check.to_sql(), "CHECK \"a\" > 0");
+        assert_eq!(check.to_sql(), "CHECK (\"a\" > 0)");
     }
 
     #[test]
@@ -103,6 +103,6 @@ mod tests {
             }
         );
 
-        assert_eq!(check.to_sql(), "CONSTRAINT check_a CHECK \"a\" > 0");
+        assert_eq!(check.to_sql(), "CONSTRAINT \"check_a\" CHECK (\"a\" > 0)");
     }
 }

@@ -503,6 +503,20 @@ impl ParquetStorage {
             });
         }
 
+        for (index, check_constraint) in schema.check_constraints.iter().enumerate() {
+            metadata.push(KeyValue {
+                key: format!(
+                    "check_constraint_{}",
+                    check_constraint
+                        .name
+                        .as_ref()
+                        .map(|name| name.to_owned())
+                        .unwrap_or(index.to_string())
+                ),
+                value: Some(serde_json::to_string(&check_constraint).map_storage_err()?),
+            });
+        }
+
         if let Some(primary_key) = &schema.primary_key {
             metadata.push(KeyValue {
                 key: "primary_key".to_string(),

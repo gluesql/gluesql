@@ -1,21 +1,21 @@
 mod ast_literal;
+mod check_constraint;
 mod data_type;
 mod ddl;
 mod expr;
 mod function;
 mod operator;
 mod query;
-mod check_constraint;
 
 pub use {
     ast_literal::{AstLiteral, DateTimeField, TrimWhereField},
+    check_constraint::CheckConstraint,
     data_type::DataType,
     ddl::*,
     expr::{Expr, Subscript},
     function::{Aggregate, CountArgExpr, Function},
     operator::*,
     query::*,
-    check_constraint::CheckConstraint,
 };
 
 use {
@@ -220,6 +220,7 @@ pub enum Statement {
         foreign_keys: Vec<ForeignKey>,
         primary_key: Option<Vec<usize>>,
         unique_constraints: Vec<UniqueConstraint>,
+        check_constraints: Vec<CheckConstraint>,
         comment: Option<String>,
     },
     /// CREATE FUNCTION
@@ -347,6 +348,7 @@ impl ToSql for Statement {
                 foreign_keys,
                 primary_key,
                 unique_constraints,
+                check_constraints,
                 comment,
             } => {
                 let if_not_exists = if_not_exists.then_some("IF NOT EXISTS");
@@ -380,6 +382,7 @@ impl ToSql for Statement {
                                 .chain(unique_constraints.iter().map(|unique_constraint| {
                                     unique_constraint.to_sql(&column_names)
                                 }))
+                                .chain(check_constraints.iter().map(ToSql::to_sql))
                                 .chain(primary_key)
                                 .collect::<Vec<_>>()
                                 .join(", ");
@@ -520,10 +523,10 @@ pub struct Array {
 mod tests {
     use {
         crate::ast::{
-            AlterTableOperation, Assignment, AstLiteral, BinaryOperator, ColumnDef, DataType, Expr,
-            ForeignKey, OperateFunctionArg, OrderByExpr, Query, ReferentialAction, Select,
-            SelectItem, SetExpr, Statement, TableFactor, TableWithJoins, ToSql, UniqueConstraint,
-            Values, Variable,
+            AlterTableOperation, Assignment, AstLiteral, BinaryOperator, CheckConstraint,
+            ColumnDef, DataType, Expr, ForeignKey, OperateFunctionArg, OrderByExpr, Query,
+            ReferentialAction, Select, SelectItem, SetExpr, Statement, TableFactor, TableWithJoins,
+            ToSql, UniqueConstraint, Values, Variable,
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,
@@ -641,6 +644,7 @@ mod tests {
                 foreign_keys: Vec::new(),
                 primary_key: None,
                 unique_constraints: Vec::new(),
+                check_constraints: Vec::new(),
                 comment: None,
             }
             .to_sql()
@@ -657,6 +661,7 @@ mod tests {
                 foreign_keys: Vec::new(),
                 primary_key: None,
                 unique_constraints: Vec::new(),
+                check_constraints: Vec::new(),
                 comment: None,
             }
             .to_sql()
@@ -679,6 +684,7 @@ mod tests {
                 foreign_keys: Vec::new(),
                 primary_key: None,
                 unique_constraints: Vec::new(),
+                check_constraints: Vec::new(),
                 comment: Some("this is comment".to_owned()),
             }
             .to_sql()
@@ -717,6 +723,93 @@ mod tests {
                 foreign_keys: Vec::new(),
                 primary_key: None,
                 unique_constraints: Vec::new(),
+                check_constraints: Vec::new(),
+                comment: None,
+            }
+            .to_sql()
+        );
+    }
+
+    #[test]
+    /// Test to evaluate whether the `CREATE TABLE` statement involving CHECK constraints can be converted to SQL.
+    fn to_sql_create_table_with_check() {
+        assert_eq!(
+            r#"CREATE TABLE "Foo" ("id" INT NOT NULL, "name" TEXT NOT NULL, CHECK ("id" > 0));"#,
+            Statement::CreateTable {
+                if_not_exists: false,
+                name: "Foo".into(),
+                columns: Some(vec![
+                    ColumnDef {
+                        name: "id".to_owned(),
+                        data_type: DataType::Int,
+                        nullable: false,
+                        default: None,
+                        comment: None,
+                    },
+                    ColumnDef {
+                        name: "name".to_owned(),
+                        data_type: DataType::Text,
+                        nullable: false,
+                        default: None,
+                        comment: None,
+                    }
+                ]),
+                source: None,
+                engine: None,
+                foreign_keys: Vec::new(),
+                primary_key: None,
+                unique_constraints: Vec::new(),
+                check_constraints: vec![CheckConstraint::new(
+                    None,
+                    Expr::BinaryOp {
+                        left: Box::new(Expr::Identifier("id".to_owned())),
+                        op: BinaryOperator::Gt,
+                        right: Box::new(Expr::Literal(AstLiteral::Number(
+                            BigDecimal::from_str("0").unwrap()
+                        )))
+                    }
+                )],
+                comment: None,
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"CREATE TABLE "Foo" ("id" INT NOT NULL, "name" TEXT NOT NULL, CONSTRAINT "check_id" CHECK ("id" > 0));"#,
+            Statement::CreateTable {
+                if_not_exists: false,
+                name: "Foo".into(),
+                columns: Some(vec![
+                    ColumnDef {
+                        name: "id".to_owned(),
+                        data_type: DataType::Int,
+                        nullable: false,
+                        default: None,
+                        comment: None,
+                    },
+                    ColumnDef {
+                        name: "name".to_owned(),
+                        data_type: DataType::Text,
+                        nullable: false,
+                        default: None,
+                        comment: None,
+                    }
+                ]),
+                source: None,
+                engine: None,
+                foreign_keys: Vec::new(),
+                primary_key: None,
+                unique_constraints: Vec::new(),
+                check_constraints: vec![CheckConstraint::new(
+                    Some("check_id".to_owned()),
+                    Expr::BinaryOp {
+                        left: Box::new(Expr::Identifier("id".to_owned())),
+                        op: BinaryOperator::Gt,
+                        right: Box::new(Expr::Literal(AstLiteral::Number(
+                            BigDecimal::from_str("0").unwrap()
+                        )))
+                    }
+                )],
                 comment: None,
             }
             .to_sql()
@@ -752,6 +845,7 @@ mod tests {
                 foreign_keys: Vec::new(),
                 primary_key: None,
                 unique_constraints: vec![UniqueConstraint::new(None, vec![0])],
+                check_constraints: Vec::new(),
                 comment: None,
             }
             .to_sql()
@@ -783,6 +877,7 @@ mod tests {
                 foreign_keys: Vec::new(),
                 primary_key: None,
                 unique_constraints: vec![UniqueConstraint::new(None, vec![0])],
+                check_constraints: Vec::new(),
                 comment: None,
             }
             .to_sql()
@@ -818,6 +913,7 @@ mod tests {
                     Some("unique_id".to_owned()),
                     vec![0]
                 )],
+                check_constraints: Vec::new(),
                 comment: None,
             }
             .to_sql()
@@ -850,6 +946,7 @@ mod tests {
                 foreign_keys: Vec::new(),
                 primary_key: None,
                 unique_constraints: vec![UniqueConstraint::new(None, vec![0, 1])],
+                check_constraints: Vec::new(),
                 comment: None,
             }
             .to_sql()
@@ -886,6 +983,7 @@ mod tests {
                     UniqueConstraint::new(None, vec![1]),
                     UniqueConstraint::new(Some("my_unique".to_owned()), vec![0, 1]),
                 ],
+                check_constraints: Vec::new(),
                 comment: None,
             }
             .to_sql()
@@ -932,6 +1030,7 @@ mod tests {
                 foreign_keys: Vec::new(),
                 primary_key: None,
                 unique_constraints: Vec::new(),
+                check_constraints: Vec::new(),
                 comment: None,
             }
             .to_sql()
@@ -955,6 +1054,7 @@ mod tests {
                 foreign_keys: Vec::new(),
                 primary_key: None,
                 unique_constraints: Vec::new(),
+                check_constraints: Vec::new(),
                 comment: None,
             }
             .to_sql()
@@ -974,6 +1074,7 @@ mod tests {
                 foreign_keys: Vec::new(),
                 primary_key: None,
                 unique_constraints: Vec::new(),
+                check_constraints: Vec::new(),
                 comment: None,
             }
             .to_sql()
@@ -996,6 +1097,7 @@ mod tests {
                 foreign_keys: Vec::new(),
                 primary_key: None,
                 unique_constraints: Vec::new(),
+                check_constraints: Vec::new(),
                 comment: None,
             }
             .to_sql()
@@ -1048,7 +1150,8 @@ mod tests {
                         ))),
                         comment: None,
                     },
-                    unique: false
+                    unique: false,
+                    check: None
                 }
             }
             .to_sql()
@@ -1068,7 +1171,39 @@ mod tests {
                         ))),
                         comment: None,
                     },
-                    unique: true
+                    unique: true,
+                    check: None
+                }
+            }
+            .to_sql()
+        );
+
+        // Next, we try to add a new column with a Check constraint.
+        assert_eq!(
+            r#"ALTER TABLE "Foo" ADD COLUMN "amount" INT NOT NULL DEFAULT 10 CHECK ("amount" > 0);"#,
+            Statement::AlterTable {
+                name: "Foo".into(),
+                operation: AlterTableOperation::AddColumn {
+                    column_def: ColumnDef {
+                        name: "amount".to_owned(),
+                        data_type: DataType::Int,
+                        nullable: false,
+                        default: Some(Expr::Literal(AstLiteral::Number(
+                            BigDecimal::from_str("10").unwrap()
+                        ))),
+                        comment: None,
+                    },
+                    unique: false,
+                    check: Some(CheckConstraint::new(
+                        None,
+                        Expr::BinaryOp {
+                            left: Box::new(Expr::Identifier("amount".to_owned())),
+                            op: BinaryOperator::Gt,
+                            right: Box::new(Expr::Literal(AstLiteral::Number(
+                                BigDecimal::from_str("0").unwrap()
+                            )))
+                        }
+                    ))
                 }
             }
             .to_sql()

@@ -1,7 +1,7 @@
 use {
-    super::{column_def::UniqueConstraintNode, Build},
+    super::{column_def::{CheckConstraintNode, UniqueConstraintNode}, Build},
     crate::{
-        ast::{Statement, UniqueConstraint},
+        ast::{CheckConstraint, Statement, UniqueConstraint},
         ast_builder::{column_def::PrimaryKeyConstraintNode, ColumnDefNode},
         error::TranslateError,
         parse_sql::parse_column_def,
@@ -17,6 +17,7 @@ pub struct CreateTableNode {
     columns: Option<Vec<ColumnDefNode>>,
     primary_key_constraint: Option<PrimaryKeyConstraintNode>,
     unique_constraints: Vec<UniqueConstraintNode>,
+    check_constraints: Vec<CheckConstraintNode>,
 }
 
 impl CreateTableNode {
@@ -27,6 +28,7 @@ impl CreateTableNode {
             columns: None,
             primary_key_constraint: None,
             unique_constraints: Vec::new(),
+            check_constraints: Vec::new(),
         }
     }
 
@@ -144,6 +146,11 @@ impl CreateTableNode {
         self.unique_constraints.push(unique_constraint);
         Ok(self)
     }
+
+    pub fn check_constraint<T: Into<CheckConstraintNode>>(mut self, expr: T) -> Self {
+        self.check_constraints.push(expr.into());
+        self
+    }
 }
 
 impl Build for CreateTableNode {
@@ -151,13 +158,15 @@ impl Build for CreateTableNode {
         let table_name = self.table_name;
         let mut primary_key: Option<Vec<usize>> = None;
         let mut unique_constraints: Vec<UniqueConstraint> = Vec::new();
+        let mut check_constraints: Vec<CheckConstraint> = Vec::new();
+
         let columns: Option<Vec<crate::ast::ColumnDef>> = match self.columns {
             Some(columns) => Some(
                 columns
                     .into_iter()
                     .enumerate()
                     .map(|(index, column_statement)| {
-                        let (translated_column, is_primary, is_unique) =
+                        let (translated_column, is_primary, is_unique, check) =
                             translate_column_def(&parse_column_def(column_statement)?)?;
                         if is_primary {
                             {
@@ -175,6 +184,9 @@ impl Build for CreateTableNode {
                         }
                         if is_unique {
                             unique_constraints.push(UniqueConstraint::new_anonimous(vec![index]));
+                        }
+                        if let Some(check) = check {
+                            check_constraints.push(check);
                         }
                         Ok(translated_column)
                     })
@@ -224,6 +236,10 @@ impl Build for CreateTableNode {
             ));
         }
 
+        for check_constraint_node in self.check_constraints {
+            check_constraints.push(check_constraint_node.into());
+        }
+
         Ok(Statement::CreateTable {
             name: table_name,
             if_not_exists: self.if_not_exists,
@@ -233,6 +249,7 @@ impl Build for CreateTableNode {
             foreign_keys: Vec::new(),
             primary_key,
             unique_constraints,
+            check_constraints,
             comment: None,
         })
     }

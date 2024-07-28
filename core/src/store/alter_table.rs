@@ -1,6 +1,6 @@
 use {
     crate::{
-        ast::ColumnDef,
+        ast::{CheckConstraint, ColumnDef},
         result::{Error, Result},
     },
     async_trait::async_trait,
@@ -54,6 +54,7 @@ pub trait AlterTable {
         _table_name: &str,
         _column_def: &ColumnDef,
         _unique: bool,
+        _check: &Option<CheckConstraint>,
     ) -> Result<()> {
         let msg = "[Storage] AlterTable::add_column is not supported".to_owned();
 

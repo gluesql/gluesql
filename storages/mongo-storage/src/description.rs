@@ -1,5 +1,5 @@
 use {
-    gluesql_core::ast::{Expr, ForeignKey, UniqueConstraint},
+    gluesql_core::ast::{CheckConstraint, Expr, ForeignKey, UniqueConstraint},
     serde::{Deserialize, Serialize},
 };
 
@@ -8,6 +8,7 @@ pub struct TableDescription {
     pub foreign_keys: Vec<ForeignKey>,
     pub primary_key: Option<Vec<usize>>,
     pub unique_constraints: Vec<UniqueConstraint>,
+    pub check_constraints: Vec<CheckConstraint>,
     pub comment: Option<String>,
 }
 
