@@ -3263,7 +3263,7 @@ checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
 [[package]]
 name = "sqlparser"
 version = "0.49.0"
-source = "git+https://github.com/LucaCappelletti94/sqlparser-rs.git#d5a6af12fd8fae89d9e861dc143dafd5378a67ab"
+source = "git+https://github.com/LucaCappelletti94/sqlparser-rs.git#3887809b291adb691bb189708283f3b50ba76aae"
 dependencies = [
  "bigdecimal",
  "log",
@@ -3547,9 +3547,9 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tokio"
-version = "1.39.1"
+version = "1.39.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d040ac2b29ab03b09d4129c2f5bbd012a3ac2f79d38ff506a4bf8dd34b0eac8a"
+checksum = "daa4fb1bc778bd6f04cbfc4bb2d06a7396a8f299dc33ea1900cedaa316f467b1"
 dependencies = [
  "backtrace",
  "bytes",

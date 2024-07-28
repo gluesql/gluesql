@@ -5,6 +5,7 @@ mod expr;
 mod function;
 mod operator;
 mod query;
+mod check_constraint;
 
 pub use {
     ast_literal::{AstLiteral, DateTimeField, TrimWhereField},
@@ -14,6 +15,7 @@ pub use {
     function::{Aggregate, CountArgExpr, Function},
     operator::*,
     query::*,
+    check_constraint::CheckConstraint,
 };
 
 use {
