@@ -215,10 +215,12 @@ impl ToSql for Statement {
                 let primary_key = match (primary_key.as_ref(), columns.as_ref()) {
                     (Some(indices), Some(columns)) => Some(format!(
                         "PRIMARY KEY ({})",
-                        indices
+                        columns
                             .iter()
-                            .copied()
-                            .map(|i| columns[i].name.as_ref())
+                            .enumerate()
+                            .filter_map(|(i, column)| {
+                                indices.contains(&i).then_some(column.name.as_str())
+                            })
                             .collect::<Vec<_>>()
                             .join(", ")
                     )),
