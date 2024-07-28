@@ -320,7 +320,14 @@ pub async fn update<T: GStore + GStoreMut>(
             Row::Map(_) => None,
         });
 
-        validate_unique(storage, table_name, &schema, column_validation, rows.clone()).await?;
+        validate_unique(
+            storage,
+            table_name,
+            &schema,
+            column_validation,
+            rows.clone(),
+        )
+        .await?;
         validate_check(storage, &schema, &all_columns, rows).await?;
     }
 

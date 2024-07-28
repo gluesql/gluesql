@@ -60,12 +60,17 @@ pub async fn alter_table<T: GStore + GStoreMut>(
                 .rename_column(table_name, old_column_name, new_column_name)
                 .await
         }
-        AlterTableOperation::AddColumn { column_def, unique, check } => {
-
+        AlterTableOperation::AddColumn {
+            column_def,
+            unique,
+            check,
+        } => {
             // TODO: maybe validate check constraint?
             validate(column_def, *unique).await?;
 
-            storage.add_column(table_name, column_def, *unique, check).await
+            storage
+                .add_column(table_name, column_def, *unique, check)
+                .await
         }
         AlterTableOperation::DropColumn {
             column_name,

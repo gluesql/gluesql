@@ -1,5 +1,8 @@
 use {
-    super::{column_def::{CheckConstraintNode, UniqueConstraintNode}, Build},
+    super::{
+        column_def::{CheckConstraintNode, UniqueConstraintNode},
+        Build,
+    },
     crate::{
         ast::{CheckConstraint, Statement, UniqueConstraint},
         ast_builder::{column_def::PrimaryKeyConstraintNode, ColumnDefNode},

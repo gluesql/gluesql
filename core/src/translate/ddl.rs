@@ -19,7 +19,11 @@ pub fn translate_alter_table_operation(
     match sql_alter_table_operation {
         SqlAlterTableOperation::AddColumn { column_def, .. } => {
             let (column_def, _, unique, check) = translate_column_def(column_def)?;
-            Ok(AlterTableOperation::AddColumn { column_def, unique, check })
+            Ok(AlterTableOperation::AddColumn {
+                column_def,
+                unique,
+                check,
+            })
         }
         SqlAlterTableOperation::DropColumn {
             column_name,
@@ -49,7 +53,9 @@ pub fn translate_alter_table_operation(
 }
 
 /// Returns the column definition and whether the column is a primary key.
-pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<(ColumnDef, bool, bool, Option<CheckConstraint>)> {
+pub fn translate_column_def(
+    sql_column_def: &SqlColumnDef,
+) -> Result<(ColumnDef, bool, bool, Option<CheckConstraint>)> {
     let SqlColumnDef {
         name,
         data_type,
@@ -72,7 +78,14 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<(ColumnDef,
                 }
                 SqlColumnOption::Unique { is_primary, .. } => {
                     let nullable = if *is_primary { false } else { nullable };
-                    Ok((nullable, default, !(*is_primary), *is_primary, comment, check))
+                    Ok((
+                        nullable,
+                        default,
+                        !(*is_primary),
+                        *is_primary,
+                        comment,
+                        check,
+                    ))
                 }
                 SqlColumnOption::Comment(comment) => Ok((
                     nullable,

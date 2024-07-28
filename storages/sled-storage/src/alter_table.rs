@@ -418,7 +418,8 @@ impl AlterTable for SledStorage {
         });
 
         if self.check_retry(tx_result)? {
-            self.add_column(table_name, column_def, unique, check).await?;
+            self.add_column(table_name, column_def, unique, check)
+                .await?;
         }
 
         Ok(())

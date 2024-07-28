@@ -53,31 +53,37 @@ impl JsonStorage {
         }
 
         let schema_path = self.schema_path(table_name);
-        let (column_defs, foreign_keys, primary_key, unique_constraints, check_constraints, comment) =
-            match schema_path.exists() {
-                true => {
-                    let mut file = File::open(&schema_path).map_storage_err()?;
-                    let mut ddl = String::new();
-                    file.read_to_string(&mut ddl).map_storage_err()?;
+        let (
+            column_defs,
+            foreign_keys,
+            primary_key,
+            unique_constraints,
+            check_constraints,
+            comment,
+        ) = match schema_path.exists() {
+            true => {
+                let mut file = File::open(&schema_path).map_storage_err()?;
+                let mut ddl = String::new();
+                file.read_to_string(&mut ddl).map_storage_err()?;
 
-                    let schema = Schema::from_ddl(&ddl)?;
-                    if schema.table_name != table_name {
-                        return Err(Error::StorageMsg(
-                            JsonStorageError::TableNameDoesNotMatchWithFile.to_string(),
-                        ));
-                    }
-
-                    (
-                        schema.column_defs,
-                        schema.foreign_keys,
-                        schema.primary_key,
-                        schema.unique_constraints,
-                        schema.check_constraints,
-                        schema.comment,
-                    )
+                let schema = Schema::from_ddl(&ddl)?;
+                if schema.table_name != table_name {
+                    return Err(Error::StorageMsg(
+                        JsonStorageError::TableNameDoesNotMatchWithFile.to_string(),
+                    ));
                 }
-                false => (None, Vec::new(), None, Vec::new(), Vec::new(), None),
-            };
+
+                (
+                    schema.column_defs,
+                    schema.foreign_keys,
+                    schema.primary_key,
+                    schema.unique_constraints,
+                    schema.check_constraints,
+                    schema.comment,
+                )
+            }
+            false => (None, Vec::new(), None, Vec::new(), Vec::new(), None),
+        };
 
         Ok(Some(Schema {
             table_name: table_name.to_owned(),

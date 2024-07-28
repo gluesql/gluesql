@@ -10,6 +10,7 @@ pub mod bitwise_and;
 pub mod bitwise_shift_left;
 pub mod bitwise_shift_right;
 pub mod case;
+pub mod check_constraint;
 pub mod column_alias;
 pub mod concat;
 pub mod custom_function;
@@ -46,7 +47,6 @@ pub mod unary_operator;
 pub mod update;
 pub mod validate;
 pub mod values;
-pub mod check_constraint;
 
 pub mod tester;
 

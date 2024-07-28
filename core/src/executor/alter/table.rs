@@ -2,7 +2,8 @@ use {
     super::{validate, validate_column_names, AlterError},
     crate::{
         ast::{
-            CheckConstraint, ColumnDef, ForeignKey, Query, SetExpr, TableFactor, ToSql, UniqueConstraint, Values
+            CheckConstraint, ColumnDef, ForeignKey, Query, SetExpr, TableFactor, ToSql,
+            UniqueConstraint, Values,
         },
         data::{Schema, TableError},
         executor::{evaluate_stateless, select::select},

@@ -7,7 +7,11 @@ use {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AlterTableOperation {
     /// `ADD [ COLUMN ] <column_def>`
-    AddColumn { column_def: ColumnDef, unique: bool, check: Option<CheckConstraint> },
+    AddColumn {
+        column_def: ColumnDef,
+        unique: bool,
+        check: Option<CheckConstraint>,
+    },
     /// `DROP [ COLUMN ] [ IF EXISTS ] <column_name> [ CASCADE ]`
     DropColumn {
         column_name: String,
@@ -43,7 +47,11 @@ pub struct OperateFunctionArg {
 impl ToSql for AlterTableOperation {
     fn to_sql(&self) -> String {
         match self {
-            AlterTableOperation::AddColumn { column_def, unique, check } => {
+            AlterTableOperation::AddColumn {
+                column_def,
+                unique,
+                check,
+            } => {
                 format!(
                     "ADD {}COLUMN {}{}",
                     if *unique { "UNIQUE " } else { "" },

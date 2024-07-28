@@ -57,7 +57,7 @@ impl CheckConstraint {
 
 impl ToSql for CheckConstraint {
     /// Converts the `CheckConstraint` to its SQL representation.
-    /// 
+    ///
     /// # Implementation notes
     /// Since we normalize all column-level check constraints to
     /// a standard table-level check constraint, we do not need to
@@ -66,7 +66,7 @@ impl ToSql for CheckConstraint {
     fn to_sql(&self) -> String {
         let name = match &self.name {
             Some(name) => format!("CONSTRAINT \"{}\" ", name),
-            None => "".to_string(),
+            None => "".to_owned(),
         };
 
         format!("{}CHECK ({})", name, self.expression.to_sql())
@@ -83,7 +83,7 @@ mod tests {
 
     #[test]
     fn test_check_constraint() {
-        let check = CheckConstraint::anonymous(Expr::BinaryOp{
+        let check = CheckConstraint::anonymous(Expr::BinaryOp {
             left: Box::new(Expr::Identifier("a".to_string())),
             op: BinaryOperator::Gt,
             right: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(0)))),
@@ -96,11 +96,11 @@ mod tests {
     fn test_check_constraint_with_name() {
         let check = CheckConstraint::new(
             Some("check_a".to_string()),
-            Expr::BinaryOp{
+            Expr::BinaryOp {
                 left: Box::new(Expr::Identifier("a".to_string())),
                 op: BinaryOperator::Gt,
                 right: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(0)))),
-            }
+            },
         );
 
         assert_eq!(check.to_sql(), "CONSTRAINT \"check_a\" CHECK (\"a\" > 0)");
