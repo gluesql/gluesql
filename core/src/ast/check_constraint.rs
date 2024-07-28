@@ -84,7 +84,7 @@ mod tests {
     #[test]
     fn test_check_constraint() {
         let check = CheckConstraint::anonymous(Expr::BinaryOp {
-            left: Box::new(Expr::Identifier("a".to_string())),
+            left: Box::new(Expr::Identifier("a".to_owned())),
             op: BinaryOperator::Gt,
             right: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(0)))),
         });
@@ -95,9 +95,9 @@ mod tests {
     #[test]
     fn test_check_constraint_with_name() {
         let check = CheckConstraint::new(
-            Some("check_a".to_string()),
+            Some("check_a".to_owned()),
             Expr::BinaryOp {
-                left: Box::new(Expr::Identifier("a".to_string())),
+                left: Box::new(Expr::Identifier("a".to_owned())),
                 op: BinaryOperator::Gt,
                 right: Box::new(Expr::Literal(AstLiteral::Number(BigDecimal::from(0)))),
             },
