@@ -2,16 +2,15 @@ mod cmp_expr;
 mod non_clustered;
 mod primary_key;
 
+use {
+    super::{select::Prebuild, ExprNode},
+    crate::ast::{Expr, IndexOperator},
+};
 pub use {
     crate::{ast::IndexItem, result::Result},
     cmp_expr::CmpExprNode,
     non_clustered::{non_clustered, NonClusteredNode},
     primary_key::{primary_key, PrimaryKeyNode},
-};
-
-use {
-    super::{select::Prebuild, ExprNode},
-    crate::ast::{Expr, IndexOperator},
 };
 
 #[derive(Clone, Debug)]

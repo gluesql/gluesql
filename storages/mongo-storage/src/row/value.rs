@@ -3,11 +3,10 @@ use {
     gluesql_core::{
         ast::{Expr, ToSql},
         chrono::{NaiveDate, NaiveDateTime, TimeZone, Utc},
-        data::{Interval, Point},
+        data::{Interval, Point, Value},
         parse_sql::parse_interval,
-        prelude::{DataType, Error},
+        prelude::{DataType, Error, Result},
         translate::translate_expr,
-        {data::Value, prelude::Result},
     },
     mongodb::bson::{self, doc, Binary, Bson, DateTime, Decimal128, Document},
     rust_decimal::Decimal,

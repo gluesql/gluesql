@@ -2,11 +2,8 @@ use {
     super::{context::RowContext, evaluate::evaluate_stateless, filter::check_expr},
     crate::{
         ast::{
-            ToSql,
-            {
-                Dictionary, Expr, IndexItem, Join, Query, Select, SelectItem, SetExpr, TableAlias,
-                TableFactor, TableWithJoins, ToSqlUnquoted, Values,
-            },
+            Dictionary, Expr, IndexItem, Join, Query, Select, SelectItem, SetExpr, TableAlias,
+            TableFactor, TableWithJoins, ToSql, ToSqlUnquoted, Values,
         },
         data::{get_alias, get_index, Key, Row, Value},
         executor::{evaluate::evaluate, select::select},

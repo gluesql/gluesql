@@ -1,10 +1,13 @@
 use {
     super::Build,
-    crate::ast_builder::column_def::PrimaryKeyConstraintNode,
-    crate::error::TranslateError,
-    crate::parse_sql::parse_column_def,
-    crate::translate::translate_column_def,
-    crate::{ast::Statement, ast_builder::ColumnDefNode, result::Result},
+    crate::{
+        ast::Statement,
+        ast_builder::{column_def::PrimaryKeyConstraintNode, ColumnDefNode},
+        error::TranslateError,
+        parse_sql::parse_column_def,
+        result::Result,
+        translate::translate_column_def,
+    },
 };
 
 #[derive(Clone, Debug)]

@@ -10,6 +10,13 @@ mod project;
 mod root;
 mod values;
 
+use {
+    super::Build,
+    crate::{
+        ast::{Query, Select, SetExpr, Statement},
+        result::Result,
+    },
+};
 pub use {
     filter::FilterNode,
     group_by::GroupByNode,
@@ -22,14 +29,6 @@ pub use {
     project::ProjectNode,
     root::{select, SelectNode},
     values::{values, ValuesNode},
-};
-
-use {
-    super::Build,
-    crate::{
-        ast::{Query, Select, SetExpr, Statement},
-        result::Result,
-    },
 };
 
 pub trait Prebuild<T> {

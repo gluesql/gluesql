@@ -1,6 +1,8 @@
-use {serde::Serialize, std::fmt::Debug, thiserror::Error as ThisError};
+use {
+    crate::data::schema::SchemaError, serde::Serialize, std::fmt::Debug,
+    thiserror::Error as ThisError,
+};
 
-use crate::data::schema::SchemaError;
 pub use crate::{
     ast_builder::AstBuilderError,
     data::{

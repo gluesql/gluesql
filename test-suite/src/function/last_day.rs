@@ -1,8 +1,8 @@
 use {
-    crate::*, chrono::NaiveDate, gluesql_core::executor::EvaluateError,
-    gluesql_core::prelude::Value::*,
+    crate::*,
+    chrono::NaiveDate,
+    gluesql_core::{executor::EvaluateError, prelude::Value::*},
 };
-
 test_case!(last_day, {
     let g = get_tester!();
 

@@ -1,9 +1,7 @@
 use {
-    super::Build,
+    super::{Build, OrderByExprNode},
     crate::{ast::Statement, result::Result},
 };
-
-use super::OrderByExprNode;
 
 #[derive(Clone, Debug)]
 pub struct CreateIndexNode<'a> {

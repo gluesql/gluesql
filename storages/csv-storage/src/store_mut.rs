@@ -11,10 +11,12 @@ use {
         store::{DataRow, StoreMut},
     },
     std::{
+        cmp::Ordering,
         collections::BTreeSet,
         fs::{remove_file, rename, File, OpenOptions},
         io::Write,
-        {cmp::Ordering, iter::Peekable, vec::IntoIter},
+        iter::Peekable,
+        vec::IntoIter,
     },
 };
 
