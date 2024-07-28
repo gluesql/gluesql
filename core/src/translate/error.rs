@@ -168,9 +168,33 @@ pub enum TranslateError {
     #[error("cannot drop primary index")]
     CannotDropPrimary,
 
+    #[error("multiple primary key constraint is not supported")]
+    MultiplePrimaryKeyNotSupported,
+
+    #[error("repeated columns in primary key constraint: {0}")]
+    RepeatedColumnsInPrimaryKeyConstraint(String),
+
+    #[error("empty primary key columns")]
+    EmptyPrimaryKeyConstraint,
+
     #[error("unreachable - empty columns")]
     UnreachableForeignKeyColumns(String),
 
     #[error("unsupported constraint: {0}")]
     UnsupportedConstraint(String),
+
+    #[error("column not found in table: {0}")]
+    ColumnNotFoundInTable(String),
+
+    #[error("duplicated unique constraint on columns: {0}")]
+    DuplicatedUniqueConstraint(String),
+
+    #[error("duplicated unique constraint name: {0}")]
+    DuplicatedUniqueConstraintName(String),
+
+    #[error("repeated columns in unique constraint: {0}")]
+    RepeatedColumnsInUniqueConstraint(String),
+
+    #[error("empty unique constraint columns")]
+    EmptyUniqueConstraintColumns,
 }

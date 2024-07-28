@@ -5,7 +5,7 @@ use {
         translate_data_type, translate_object_name, TranslateError,
     },
     crate::{
-        ast::{Aggregate, CountArgExpr, Expr, Function},
+        ast::{Aggregate, CountArgExpr, CreateFunctionBody, Expr, Function},
         result::Result,
     },
     sqlparser::ast::{
@@ -693,6 +693,22 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 .map(translate_expr)
                 .collect::<Result<Vec<_>>>()?;
             Ok(Expr::Function(Box::new(Function::Custom { name, exprs })))
+        }
+    }
+}
+
+pub fn translate_create_function_body(
+    body: &sqlparser::ast::CreateFunctionBody,
+) -> Result<CreateFunctionBody> {
+    match body {
+        sqlparser::ast::CreateFunctionBody::Return(expr) => {
+            Ok(CreateFunctionBody::Return(translate_expr(expr)?))
+        }
+        sqlparser::ast::CreateFunctionBody::AsAfterOptions(expr) => {
+            Ok(CreateFunctionBody::AsAfterOptions(translate_expr(expr)?))
+        }
+        sqlparser::ast::CreateFunctionBody::AsBeforeOptions(expr) => {
+            Ok(CreateFunctionBody::AsBeforeOptions(translate_expr(expr)?))
         }
     }
 }

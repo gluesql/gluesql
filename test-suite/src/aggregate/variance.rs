@@ -9,7 +9,7 @@ test_case!(variance, {
         id INTEGER,
         quantity INTEGER,
         age INTEGER NULL,
-        total INTEGER,
+        total INTEGER
     );
     ",
     )

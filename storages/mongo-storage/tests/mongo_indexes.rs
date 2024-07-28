@@ -5,7 +5,7 @@ use {
     gluesql_core::prelude::{Glue, Payload},
     gluesql_mongo_storage::{utils::Validator, MongoStorage},
     mongodb::{options::IndexOptions, IndexModel},
-    std::vec,
+    std::{collections::HashMap, vec},
 };
 
 #[tokio::test]
@@ -23,7 +23,7 @@ async fn mongo_indexes() {
         "name": { "bsonType": ["string"], "title": "TEXT" },
     };
 
-    let options = Validator::new(labels, column_types, Vec::new(), None)
+    let options = Validator::new(labels, column_types, Vec::new(), None, Vec::new(), HashMap::new(), None)
         .unwrap()
         .to_options();
 

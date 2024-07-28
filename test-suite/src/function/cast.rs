@@ -399,7 +399,7 @@ test_case!(cast_value, {
         CREATE TABLE IntervalLog (
         id INTEGER,
         interval_str_1 TEXT,
-        interval_str_2 TEXT,
+        interval_str_2 TEXT
     )",
             Ok(Payload::Create),
         ),

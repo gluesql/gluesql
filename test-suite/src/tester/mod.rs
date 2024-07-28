@@ -159,6 +159,7 @@ pub trait Tester<T: GStore + GStoreMut> {
     }
 
     async fn run(&mut self, sql: &str) -> Payload {
+        dbg!(sql);
         self.run_inner(sql).await.unwrap()
     }
 

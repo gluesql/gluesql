@@ -10,7 +10,7 @@ test_case!(concat, {
             rate FLOAT,
             flag BOOLEAN,
             text TEXT,
-            null_value TEXT NULL,
+            null_value TEXT NULL
         );
     ",
     )

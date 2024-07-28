@@ -1,5 +1,6 @@
 use {serde::Serialize, std::fmt::Debug, thiserror::Error as ThisError};
 
+use crate::data::schema::SchemaError;
 pub use crate::{
     ast_builder::AstBuilderError,
     data::{
@@ -11,7 +12,7 @@ pub use crate::{
         InsertError, SelectError, SortError, UpdateError, ValidateError,
     },
     plan::PlanError,
-    store::{AlterTableError, IndexError},
+    store::{AlterTableError, IndexError, TriggerError},
     translate::TranslateError,
 };
 
@@ -33,6 +34,8 @@ pub enum Error {
     AlterTable(#[from] AlterTableError),
     #[error("index: {0}")]
     Index(#[from] IndexError),
+    #[error("trigger: {0}")]
+    Trigger(#[from] TriggerError),
     #[error("execute: {0}")]
     Execute(#[from] ExecuteError),
     #[error("alter: {0}")]
@@ -75,6 +78,8 @@ pub enum Error {
     Plan(#[from] PlanError),
     #[error("schema-parse: {0}")]
     Schema(#[from] SchemaParseError),
+    #[error("schema: {0}")]
+    SchemaError(#[from] SchemaError),
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

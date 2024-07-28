@@ -13,7 +13,6 @@ test_case!(insert_schema, {
         data_type: DataType::Int,
         nullable: false,
         default: Some(Expr::Literal(AstLiteral::Number(11.into()))),
-        unique: None,
         comment: Some("default value is lucky eleven".to_owned()),
     }]);
 
@@ -23,6 +22,9 @@ test_case!(insert_schema, {
         indexes: Vec::new(),
         engine: None,
         foreign_keys: Vec::new(),
+        primary_key: None,
+        unique_constraints: Vec::new(),
+        triggers: Default::default(),
         comment: Some("this is comment for table".to_owned()),
     };
 
@@ -35,7 +37,6 @@ test_case!(insert_schema, {
             data_type: DataType::Text,
             nullable: false,
             default: None,
-            unique: None,
             comment: Some("this is comment for name column".to_owned()),
         });
 
@@ -57,6 +58,9 @@ test_case!(insert_schema, {
         indexes: Vec::new(),
         engine: None,
         foreign_keys: Vec::new(),
+        primary_key: None,
+        unique_constraints: Vec::new(),
+        triggers: Default::default(),
         comment: Some("this is comment for schemaless table".to_owned()),
     };
     storage.insert_schema(&schema).await.unwrap();

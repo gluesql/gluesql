@@ -1,7 +1,7 @@
 use {
     super::{validate_arg_names, validate_default_args, AlterError},
     crate::{
-        ast::{Expr, OperateFunctionArg},
+        ast::{CreateFunctionBody, OperateFunctionArg},
         data::CustomFunction,
         result::Result,
         store::{GStore, GStoreMut},
@@ -13,7 +13,7 @@ pub async fn insert_function<T: GStore + GStoreMut>(
     func_name: &str,
     args: &Vec<OperateFunctionArg>,
     or_replace: bool,
-    body: &Expr,
+    body: &CreateFunctionBody
 ) -> Result<()> {
     validate_arg_names(args)?;
     validate_default_args(args).await?;

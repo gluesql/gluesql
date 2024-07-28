@@ -1,18 +1,19 @@
 mod alter_table;
 mod data_row;
 mod function;
+mod trigger;
 mod index;
 mod metadata;
 mod transaction;
 
-pub trait GStore: Store + Index + Metadata + CustomFunction {}
-impl<S: Store + Index + Metadata + CustomFunction> GStore for S {}
+pub trait GStore: Store + Index + Metadata + CustomFunction + CustomTrigger {}
+impl<S: Store + Index + Metadata + CustomFunction + CustomTrigger> GStore for S {}
 
 pub trait GStoreMut:
-    StoreMut + IndexMut + AlterTable + Transaction + CustomFunction + CustomFunctionMut
+    StoreMut + IndexMut + AlterTable + Transaction + CustomFunction + CustomFunctionMut + CustomTriggerMut
 {
 }
-impl<S: StoreMut + IndexMut + AlterTable + Transaction + CustomFunction + CustomFunctionMut>
+impl<S: StoreMut + IndexMut + AlterTable + Transaction + CustomFunction + CustomFunctionMut + CustomTriggerMut>
     GStoreMut for S
 {
 }
@@ -21,6 +22,7 @@ pub use {
     alter_table::{AlterTable, AlterTableError},
     data_row::DataRow,
     function::{CustomFunction, CustomFunctionMut},
+    trigger::{CustomTrigger, CustomTriggerMut, TriggerError},
     index::{Index, IndexError, IndexMut},
     metadata::{MetaIter, Metadata},
     transaction::Transaction,
@@ -34,7 +36,7 @@ use {
     },
     async_trait::async_trait,
     futures::stream::Stream,
-    std::pin::Pin,
+    std::pin::Pin
 };
 
 pub type RowIter<'a> = Pin<Box<dyn Stream<Item = Result<(Key, DataRow)>> + 'a>>;

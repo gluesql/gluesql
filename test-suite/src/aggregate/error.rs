@@ -12,7 +12,7 @@ test_case!(error, {
             id INTEGER,
             quantity INTEGER,
             age INTEGER NULL,
-            total INTEGER,
+            total INTEGER
         );
     ",
     )

@@ -11,7 +11,7 @@ test_case!(timestamp, {
 CREATE TABLE TimestampLog (
     id INTEGER,
     t1 TIMESTAMP,
-    t2 TIMESTAMP,
+    t2 TIMESTAMP
 )",
     )
     .await;

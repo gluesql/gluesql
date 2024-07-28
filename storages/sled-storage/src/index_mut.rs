@@ -71,12 +71,15 @@ impl IndexMut for SledStorage {
 
             let (schema_snapshot, schema) = schema_snapshot.delete(txid);
             let Schema {
+                table_name: _,
                 column_defs,
                 indexes,
                 engine,
                 foreign_keys,
+                primary_key,
+                unique_constraints,
+                triggers,
                 comment,
-                ..
             } = schema
                 .ok_or_else(|| IndexError::ConflictTableNotFound(table_name.to_owned()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
@@ -105,6 +108,9 @@ impl IndexMut for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                primary_key,
+                unique_constraints,
+                triggers,
                 comment,
             };
 
@@ -167,12 +173,15 @@ impl IndexMut for SledStorage {
 
             let (schema_snapshot, schema) = schema_snapshot.delete(txid);
             let Schema {
+                table_name: _,
                 column_defs,
                 indexes,
                 engine,
                 foreign_keys,
+                primary_key,
+                unique_constraints,
+                triggers,
                 comment,
-                ..
             } = schema
                 .ok_or_else(|| IndexError::ConflictTableNotFound(table_name.to_owned()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
@@ -196,6 +205,9 @@ impl IndexMut for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                primary_key,
+                unique_constraints,
+                triggers,
                 comment,
             };
 

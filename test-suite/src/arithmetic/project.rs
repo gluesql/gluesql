@@ -10,7 +10,7 @@ test_case!(project, {
         "
         CREATE TABLE Arith (
             id INTEGER,
-            num INTEGER,
+            num INTEGER
         );
     ",
     )

@@ -15,7 +15,7 @@ test_case!(time, {
 CREATE TABLE TimeLog (
     id INTEGER,
     time1 TIME,
-    time2 TIME,
+    time2 TIME
 )"#,
     )
     .await;

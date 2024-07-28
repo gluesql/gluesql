@@ -1,5 +1,5 @@
 use {
-    crate::ast::{Expr, OperateFunctionArg},
+    crate::ast::{CreateFunctionBody, OperateFunctionArg},
     serde::{Deserialize, Serialize},
 };
 
@@ -7,7 +7,7 @@ use {
 pub struct CustomFunction {
     pub func_name: String,
     pub args: Vec<OperateFunctionArg>,
-    pub body: Expr,
+    pub body: CreateFunctionBody,
 }
 
 impl CustomFunction {

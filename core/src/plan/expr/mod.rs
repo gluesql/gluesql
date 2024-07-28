@@ -2,7 +2,7 @@ mod aggregate;
 mod function;
 
 use {
-    crate::ast::{Expr, Query},
+    crate::ast::{Expr, Query, Subscript},
     std::iter::once,
 };
 
@@ -65,8 +65,29 @@ impl<'a> From<&'a Expr> for PlanExpr<'a> {
 
                 PlanExpr::MultiExprs(exprs)
             }
-            Expr::ArrayIndex { obj, indexes } => {
-                let exprs = indexes.iter().chain(once(obj.as_ref())).collect();
+            Expr::Subscript { expr, subscript } => {
+                let indices: Vec<&Expr> = match subscript.as_ref() {
+                    Subscript::Index { index } => vec![index],
+                    Subscript::Slice {
+                        lower_bound,
+                        upper_bound,
+                        stride,
+                    } => {
+                        let mut indices = Vec::with_capacity(3);
+                        if let Some(lower_bound) = lower_bound {
+                            indices.push(lower_bound);
+                        }
+                        if let Some(upper_bound) = upper_bound {
+                            indices.push(upper_bound);
+                        }
+                        if let Some(stride) = stride {
+                            indices.push(stride);
+                        }
+                        indices
+                    }
+                };
+
+                let exprs = once(expr.as_ref()).chain(indices).collect();
                 PlanExpr::MultiExprs(exprs)
             }
             Expr::Array { elem } => {

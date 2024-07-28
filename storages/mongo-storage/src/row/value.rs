@@ -45,7 +45,7 @@ impl IntoValue for Bson {
             (Bson::Double(num), DataType::Float32) => Value::F32(num as f32),
             (Bson::Double(num), _) => Value::F64(num),
             (Bson::String(string), DataType::Inet) => {
-                Value::Inet(string.parse().map_storage_err()?)
+                Value::Inet(string.parse::<std::net::IpAddr>().map_storage_err()?)
             }
             (Bson::String(string), DataType::Timestamp) => Value::Timestamp(
                 NaiveDateTime::parse_from_str(&string, "%Y-%m-%d %H:%M:%S%.f").map_storage_err()?,
@@ -102,12 +102,18 @@ impl IntoValue for Bson {
                 let options = regex.options;
                 Value::Str(format!("/{}/{}", pattern, options))
             }
-            (Bson::Int32(i), DataType::Uint8) => Value::U8(i.try_into().map_storage_err()?),
+            (Bson::Int32(i), DataType::Uint8) => {
+                Value::U8(<i32 as TryInto<u8>>::try_into(i).map_storage_err()?)
+            }
             (Bson::Int32(i), DataType::Int8) => Value::I8(i as i8),
             (Bson::Int32(i), DataType::Int16) => Value::I16(i as i16),
-            (Bson::Int32(i), DataType::Uint16) => Value::U16(i.try_into().map_storage_err()?),
+            (Bson::Int32(i), DataType::Uint16) => {
+                Value::U16(<i32 as TryInto<u16>>::try_into(i).map_storage_err()?)
+            }
             (Bson::Int32(i), _) => Value::I32(i),
-            (Bson::Int64(i), DataType::Uint32) => Value::U32(i.try_into().map_storage_err()?),
+            (Bson::Int64(i), DataType::Uint32) => {
+                Value::U32(<i64 as TryInto<u32>>::try_into(i).map_storage_err()?)
+            }
             (Bson::Int64(i), _) => Value::I64(i),
             (Bson::Binary(Binary { bytes, .. }), DataType::Uuid) => {
                 let u128 = u128::from_be_bytes(
@@ -122,7 +128,7 @@ impl IntoValue for Bson {
             (Bson::Binary(Binary { bytes, .. }), _) => Value::Bytea(bytes),
             (Bson::Decimal128(decimal128), DataType::Uint64) => {
                 let bytes = decimal128.bytes();
-                let u64 = u64::from_be_bytes(bytes[..8].try_into().map_storage_err()?);
+                let u64 = u64::from_be_bytes(<[u8; 8]>::try_from(&bytes[..8]).map_storage_err()?);
 
                 Value::U64(u64)
             }

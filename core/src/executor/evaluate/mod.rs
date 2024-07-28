@@ -7,7 +7,7 @@ use {
     self::function::BreakCase,
     super::{context::RowContext, select::select},
     crate::{
-        ast::{Aggregate, Expr, Function},
+        ast::{Aggregate, Expr, Function, Subscript},
         data::{CustomFunction, Interval, Literal, Row, Value},
         mock::MockStorage,
         result::{Error, Result},
@@ -289,10 +289,40 @@ async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 None => Ok(Evaluated::Value(Value::Null)),
             }
         }
-        Expr::ArrayIndex { obj, indexes } => {
-            let obj = eval(obj).await?;
-            let indexes = try_join_all(indexes.iter().map(eval)).await?;
-            expr::array_index(obj, indexes)
+        // Expr::ArrayIndex { obj, indexes } => {
+        //     let obj = eval(obj).await?;
+        //     let indexes = try_join_all(indexes.iter().map(eval)).await?;
+        //     expr::array_index(obj, indexes)
+        // }
+        Expr::Subscript { expr, subscript } => {
+            let expr = eval(expr).await?;
+            let indexes = match subscript.as_ref() {
+                Subscript::Index { index } => vec![eval(index).await?],
+                Subscript::Slice {
+                    lower_bound,
+                    upper_bound,
+                    stride,
+                } => {
+                    let lower_bound = match lower_bound {
+                        Some(v) => Some(eval(v).await?),
+                        None => None,
+                    };
+                    let upper_bound = match upper_bound {
+                        Some(v) => Some(eval(v).await?),
+                        None => None,
+                    };
+                    let stride = match stride {
+                        Some(v) => Some(eval(v).await?),
+                        None => None,
+                    };
+
+                    vec![lower_bound, upper_bound, stride]
+                        .into_iter()
+                        .flatten()
+                        .collect()
+                }
+            };
+            expr::array_index(expr, indexes)
         }
         Expr::Array { elem } => try_join_all(elem.iter().map(eval))
             .await?
@@ -386,7 +416,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                     Some(Rc::new(context))
                 })?;
 
-            return evaluate_inner(storage, context, None, body).await;
+            return evaluate_inner(storage, context, None, body.as_ref()).await;
         }
         Function::ConcatWs { separator, exprs } => {
             let separator = eval(separator).await?;

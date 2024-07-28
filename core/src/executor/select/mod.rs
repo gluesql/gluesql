@@ -154,6 +154,7 @@ pub async fn select_with_labels<'a, T: GStore>(
         filter_context.as_ref().map(Rc::clone),
         None,
     ));
+
     let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref()).await?;
     let sort = Sort::new(
         storage,

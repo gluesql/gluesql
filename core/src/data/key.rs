@@ -50,6 +50,7 @@ pub enum Key {
     Interval(Interval),
     Uuid(u128),
     Inet(IpAddr),
+    List(Vec<Key>),
     None,
 }
 
@@ -81,6 +82,7 @@ impl Ord for Key {
             (Key::None, Key::None) => Ordering::Equal,
             (Key::None, _) => Ordering::Greater,
             (_, Key::None) => Ordering::Less,
+            (Key::List(l), Key::List(r)) => l.cmp(r),
 
             (left, right) => {
                 if left.to_order() <= right.to_order() {
@@ -130,9 +132,21 @@ impl TryFrom<Value> for Key {
             Uuid(v) => Ok(Key::Uuid(v)),
             Null => Ok(Key::None),
             Map(_) => Err(KeyError::MapTypeKeyNotSupported.into()),
-            List(_) => Err(KeyError::ListTypeKeyNotSupported.into()),
+            List(values) => Key::try_from(values),
             Point(_) => Err(KeyError::PointTypeKeyNotSupported.into()),
         }
+    }
+}
+
+impl TryFrom<Vec<Value>> for Key {
+    type Error = Error;
+
+    fn try_from(values: Vec<Value>) -> Result<Self> {
+        values
+            .into_iter()
+            .map(Key::try_from)
+            .collect::<Result<Vec<_>>>()
+            .map(Key::List)
     }
 }
 
@@ -169,6 +183,7 @@ impl From<Key> for Value {
             Key::Time(v) => Value::Time(v),
             Key::Interval(v) => Value::Interval(v),
             Key::Uuid(v) => Value::Uuid(v),
+            Key::List(v) => Value::List(v.into_iter().map(Value::from).collect()),
             Key::None => Value::Null,
         }
     }
@@ -337,6 +352,13 @@ impl Key {
                 .chain(v.to_be_bytes().iter())
                 .copied()
                 .collect::<Vec<_>>(),
+            Key::List(v) => v
+                .iter()
+                .map(|key| key.to_cmp_be_bytes())
+                .collect::<Result<Vec<_>>>()?
+                .into_iter()
+                .flatten()
+                .collect(),
             Key::None => vec![NONE],
         })
     }
@@ -366,6 +388,7 @@ impl Key {
             Key::Uuid(_) => 21,
             Key::Inet(_) => 22,
             Key::None => 23,
+            Key::List(_) => 24,
         }
     }
 }
@@ -380,7 +403,7 @@ mod tests {
             result::Result,
             translate::translate_expr,
         },
-        chrono::{NaiveDate, NaiveDateTime, NaiveTime},
+        chrono::{DateTime, NaiveDate, NaiveTime},
         futures::executor::block_on,
         rust_decimal::Decimal,
         std::{cmp::Ordering, collections::HashMap, net::IpAddr, str::FromStr},
@@ -447,10 +470,6 @@ mod tests {
             Err(KeyError::MapTypeKeyNotSupported.into())
         );
         assert_eq!(
-            Key::try_from(Value::List(Vec::default())),
-            Err(KeyError::ListTypeKeyNotSupported.into())
-        );
-        assert_eq!(
             convert("SUBSTR('BEEF', 2, 3)"),
             Ok(Key::Str("EEF".to_owned()))
         );
@@ -469,13 +488,14 @@ mod tests {
     #[test]
     fn cmp() {
         use {
+            chrono::DateTime,
             std::{net::IpAddr, str::FromStr},
             uuid::Uuid,
         };
 
         let dec = |v| Decimal::from_str(v).unwrap();
         let date = |y, m, d| NaiveDate::from_ymd_opt(y, m, d).unwrap();
-        let timestamp = |v| NaiveDateTime::from_timestamp_millis(v).unwrap();
+        let timestamp = |v| DateTime::from_timestamp_millis(v).unwrap().naive_utc();
         let time = |h, m, s| NaiveTime::from_hms_milli_opt(h, m, s, 0).unwrap();
         let uuid = |v| Uuid::parse_str(v).unwrap().as_u128();
         let inet = |v| IpAddr::from_str(v).unwrap();
@@ -860,9 +880,15 @@ mod tests {
         );
         assert_eq!(
             Value::from(Key::Timestamp(
-                NaiveDateTime::from_timestamp_millis(1662921288).unwrap()
+                DateTime::from_timestamp_millis(1662921288)
+                    .unwrap()
+                    .naive_utc()
             )),
-            Value::Timestamp(NaiveDateTime::from_timestamp_millis(1662921288).unwrap())
+            Value::Timestamp(
+                DateTime::from_timestamp_millis(1662921288)
+                    .unwrap()
+                    .naive_utc()
+            )
         );
         assert_eq!(
             Value::from(Key::Time(
@@ -887,5 +913,28 @@ mod tests {
             )
         );
         matches!(Value::from(Key::None), Value::Null);
+    }
+
+    #[test]
+    fn test_list_value_from_list_key() {
+        use crate::data::Key;
+        use crate::data::Value;
+
+        let key = Key::List(vec![Key::I32(1), Key::I32(2), Key::I32(3)]);
+        let value = Value::List(vec![Value::I32(1), Value::I32(2), Value::I32(3)]);
+
+        assert_eq!(Value::from(key), value);
+    }
+
+    #[test]
+    fn test_to_order() {
+        // None
+        assert_eq!(Key::None.to_order(), 23);
+
+        // List
+        assert_eq!(Key::List(vec![]).to_order(), 24);
+
+        // List, with elements
+        assert_eq!(Key::List(vec![Key::I32(1)]).to_order(), 24);
     }
 }

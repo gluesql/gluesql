@@ -6,6 +6,11 @@ mod expr;
 mod function;
 mod operator;
 mod query;
+mod trigger;
+
+use crate::ast::{CreateTrigger, DropTrigger, UniqueConstraint};
+use function::translate_create_function_body;
+use itertools::Itertools;
 
 pub use self::{
     data_type::translate_data_type,
@@ -22,11 +27,11 @@ use {
     },
     ddl::translate_alter_table_operation,
     sqlparser::ast::{
-        Assignment as SqlAssignment, Delete as SqlDelete, FromTable as SqlFromTable,
-        Ident as SqlIdent, Insert as SqlInsert, ObjectName as SqlObjectName,
-        ObjectType as SqlObjectType, ReferentialAction as SqlReferentialAction,
-        Statement as SqlStatement, TableConstraint as SqlTableConstraint, TableFactor,
-        TableWithJoins,
+        Assignment as SqlAssignment, AssignmentTarget as SqlAssignmentTarget,
+        CommentDef as SqlCommentDef, CreateIndex as SqlCreateIndex, CreateTable as SqlCreateTable,
+        Delete as SqlDelete, FromTable as SqlFromTable, Ident as SqlIdent, Insert as SqlInsert,
+        ObjectName as SqlObjectName, ObjectType as SqlObjectType, Statement as SqlStatement,
+        TableConstraint as SqlTableConstraint, TableFactor, TableWithJoins,
     },
 };
 
@@ -87,7 +92,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 selection: selection.as_ref().map(translate_expr).transpose()?,
             })
         }
-        SqlStatement::CreateTable {
+        SqlStatement::CreateTable(SqlCreateTable {
             if_not_exists,
             name,
             columns,
@@ -96,34 +101,217 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             constraints,
             comment,
             ..
-        } => {
-            let columns = columns
+        }) => {
+            let mut unique_constraints = Vec::new();
+            let mut primary_key: Option<Vec<usize>> = None;
+
+            let translated_columns = columns
                 .iter()
-                .map(translate_column_def)
+                .enumerate()
+                .map(|(index, column)| {
+                    let (translated_column, is_primary, is_unique) = translate_column_def(column)?;
+                    if is_primary {
+                        match primary_key.as_mut() {
+                            Some(_) => {
+                                return Err(TranslateError::MultiplePrimaryKeyNotSupported.into())
+                            }
+                            None => {
+                                primary_key.get_or_insert_with(Vec::new).push(index);
+                            }
+                        }
+                    }
+                    if is_unique {
+                        unique_constraints.push(UniqueConstraint::new(None, vec![index]));
+                    }
+                    Ok(translated_column)
+                })
                 .collect::<Result<Vec<_>>>()?;
 
-            let columns = (!columns.is_empty()).then_some(columns);
+            let mut foreign_keys = Vec::new();
 
-            let name = translate_object_name(name)?;
+            for constraint in constraints {
+                if let sqlparser::ast::TableConstraint::PrimaryKey {
+                    columns: primary_key_columns,
+                    ..
+                } = constraint
+                {
+                    match primary_key.as_mut() {
+                        Some(_) => {
+                            return Err(TranslateError::MultiplePrimaryKeyNotSupported.into())
+                        }
+                        None => {
+                            for column in primary_key_columns {
+                                primary_key.get_or_insert_with(Vec::new).push(
+                                    translated_columns
+                                        .iter()
+                                        .position(|v| v.name == column.value)
+                                        .ok_or_else(|| {
+                                            TranslateError::ColumnNotFoundInTable(
+                                                column.to_string(),
+                                            )
+                                        })?,
+                                );
+                            }
+                        }
+                    }
+                } else if let sqlparser::ast::TableConstraint::Unique {
+                    name,
+                    columns: unique_columns,
+                    ..
+                } = constraint
+                {
+                    let mut indices = Vec::new();
+                    for column in unique_columns {
+                        if let Some(index) =
+                            columns.iter().position(|c| c.name.value == column.value)
+                        {
+                            indices.push(index);
+                        } else {
+                            return Err(TranslateError::ColumnNotFoundInTable(
+                                column.value.clone(),
+                            )
+                            .into());
+                        }
+                    }
+                    unique_constraints.push(UniqueConstraint::new(
+                        name.clone().map(|n| n.value),
+                        indices,
+                    ));
+                } else {
+                    foreign_keys.push(translate_foreign_key(constraint)?);
+                }
+            }
 
-            let foreign_keys = constraints
-                .iter()
-                .map(translate_foreign_key)
-                .collect::<Result<Vec<_>>>()?;
+            if let Some(primary_key) = primary_key.as_ref() {
+                if primary_key.is_empty() {
+                    return Err(TranslateError::EmptyPrimaryKeyConstraint.into());
+                }
+
+                // Check whether there are repeated columns in primary key constraint
+                let primary_key_columns = primary_key.iter().map(|i| &translated_columns[*i].name);
+
+                if let Some(repeated_column) = primary_key_columns
+                    .clone()
+                    .find(|column| primary_key_columns.clone().filter(|c| c == column).count() > 1)
+                {
+                    return Err(TranslateError::RepeatedColumnsInPrimaryKeyConstraint(
+                        repeated_column.clone(),
+                    )
+                    .into());
+                }
+            }
+
+            for (index, unique_constraint) in unique_constraints.iter().enumerate() {
+                let unique_columns = unique_constraint
+                    .column_indices()
+                    .iter()
+                    .map(|i| &translated_columns[*i].name);
+
+                // Check whether there are repeated columns in unique constraints
+                if let Some(repeated_column) = unique_columns
+                    .clone()
+                    .find(|column| unique_columns.clone().filter(|c| c == column).count() > 1)
+                {
+                    return Err(TranslateError::RepeatedColumnsInUniqueConstraint(
+                        repeated_column.clone(),
+                    )
+                    .into());
+                }
+
+                // Check whether there are duplicated unique constraints
+                if unique_constraints
+                    .iter()
+                    .skip(index + 1)
+                    .any(|c| c.column_indices() == unique_constraint.column_indices())
+                {
+                    return Err(TranslateError::DuplicatedUniqueConstraint(
+                        unique_columns.clone().join(", "),
+                    )
+                    .into());
+                }
+
+                // Check whether there are empty unique constraints
+                if unique_constraint.column_indices().is_empty() {
+                    return Err(TranslateError::EmptyUniqueConstraintColumns.into());
+                }
+
+                // Check whether there are multiple named unique constraints
+                if unique_constraint.name().is_some()
+                    && unique_constraints
+                        .iter()
+                        .skip(index + 1)
+                        .any(|c| c.name() == unique_constraint.name())
+                {
+                    return Err(TranslateError::DuplicatedUniqueConstraintName(
+                        unique_constraint.name().unwrap().to_owned(),
+                    )
+                    .into());
+                }
+            }
+
+            let translated_columns = (!translated_columns.is_empty()).then_some(translated_columns);
 
             Ok(Statement::CreateTable {
                 if_not_exists: *if_not_exists,
-                name,
-                columns,
-                source: match query {
-                    Some(v) => Some(translate_query(v).map(Box::new)?),
-                    None => None,
-                },
-                engine: engine.clone(),
+                name: translate_object_name(name)?,
+                columns: translated_columns,
+                source: query
+                    .as_ref()
+                    .map(|query| translate_query(query).map(Box::new))
+                    .transpose()?,
+                engine: engine.as_ref().map(|v| v.name.to_owned()),
                 foreign_keys,
-                comment: comment.clone(),
+                primary_key,
+                unique_constraints,
+                comment: comment.as_ref().map(|comment| {
+                    match comment {
+                        SqlCommentDef::WithEq(comment) => comment,
+                        SqlCommentDef::WithoutEq(comment) => comment,
+                    }
+                    .to_owned()
+                }),
             })
         }
+        SqlStatement::CreateTrigger {
+            or_replace,
+            name,
+            period,
+            events,
+            table_name,
+            referencing,
+            trigger_object,
+            include_each,
+            condition,
+            exec_body,
+            characteristics,
+        } => Ok(Statement::CreateTrigger(CreateTrigger::from_sql_parser(
+            SqlStatement::CreateTrigger {
+                or_replace: *or_replace,
+                name: name.clone(),
+                period: *period,
+                events: events.clone(),
+                table_name: table_name.clone(),
+                referencing: referencing.clone(),
+                trigger_object: trigger_object.clone(),
+                include_each: *include_each,
+                condition: condition.clone(),
+                exec_body: exec_body.clone(),
+                characteristics: characteristics.clone(),
+            },
+        )?)),
+        SqlStatement::DropTrigger {
+            if_exists,
+            trigger_name,
+            table_name,
+            option,
+        } => Ok(Statement::DropTrigger(DropTrigger::from_sql_parser(
+            SqlStatement::DropTrigger {
+                if_exists: *if_exists,
+                trigger_name: trigger_name.clone(),
+                table_name: table_name.clone(),
+                option: option.clone(),
+            },
+        ))),
         SqlStatement::AlterTable {
             name, operations, ..
         } => {
@@ -166,12 +354,12 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 .map(|v| translate_object_name(&v.name))
                 .collect::<Result<Vec<_>>>()?,
         }),
-        SqlStatement::CreateIndex {
+        SqlStatement::CreateIndex(SqlCreateIndex {
             name,
             table_name,
             columns,
             ..
-        } => {
+        }) => {
             if columns.len() > 1 {
                 return Err(TranslateError::CompositeIndexNotSupported.into());
             }
@@ -255,7 +443,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             or_replace,
             name,
             args,
-            params,
+            function_body,
             ..
         } => {
             let args = args
@@ -270,12 +458,11 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 or_replace: *or_replace,
                 name: translate_object_name(name)?,
                 args: args.unwrap_or_default(),
-                return_: params
-                    .return_
-                    .as_ref()
-                    .map(translate_expr)
-                    .transpose()?
-                    .ok_or(TranslateError::UnsupportedEmptyFunctionBody)?,
+                body: translate_create_function_body(
+                    function_body
+                        .as_ref()
+                        .ok_or(TranslateError::UnsupportedEmptyFunctionBody)?,
+                )?,
             })
         }
         _ => Err(TranslateError::UnsupportedStatement(sql_statement.to_string()).into()),
@@ -283,20 +470,31 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
 }
 
 pub fn translate_assignment(sql_assignment: &SqlAssignment) -> Result<Assignment> {
-    let SqlAssignment { id, value } = sql_assignment;
+    let SqlAssignment { target, value } = sql_assignment;
 
-    if id.len() > 1 {
-        return Err(
-            TranslateError::CompoundIdentOnUpdateNotSupported(sql_assignment.to_string()).into(),
-        );
-    }
+    let target = match target {
+        SqlAssignmentTarget::Tuple(_) => {
+            return Err(TranslateError::CompoundIdentOnUpdateNotSupported(
+                sql_assignment.to_string(),
+            )
+            .into());
+        }
+        SqlAssignmentTarget::ColumnName(SqlObjectName(targets)) => {
+            if targets.len() > 1 {
+                return Err(TranslateError::CompoundIdentOnUpdateNotSupported(
+                    sql_assignment.to_string(),
+                )
+                .into());
+            } else {
+                targets
+                    .first()
+                    .ok_or(TranslateError::UnreachableEmptyIdent)?
+            }
+        }
+    };
 
     Ok(Assignment {
-        id: id
-            .first()
-            .ok_or(TranslateError::UnreachableEmptyIdent)?
-            .value
-            .to_owned(),
+        id: target.value.to_owned(),
         value: translate_expr(value)?,
     })
 }
@@ -326,19 +524,6 @@ fn translate_object_name(sql_object_name: &SqlObjectName) -> Result<String> {
 
 pub fn translate_idents(idents: &[SqlIdent]) -> Vec<String> {
     idents.iter().map(|v| v.value.to_owned()).collect()
-}
-
-pub fn translate_referential_action(
-    action: &Option<SqlReferentialAction>,
-) -> Result<ReferentialAction> {
-    use SqlReferentialAction::*;
-
-    let action = action.unwrap_or(NoAction);
-
-    match action {
-        NoAction | Restrict => Ok(ReferentialAction::NoAction),
-        _ => Err(TranslateError::UnsupportedConstraint(action.to_string()).into()),
-    }
 }
 
 pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<ForeignKey> {
@@ -380,8 +565,12 @@ pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Fo
                 referencing_column_name,
                 referenced_table_name,
                 referenced_column_name,
-                on_delete: translate_referential_action(on_delete)?,
-                on_update: translate_referential_action(on_update)?,
+                on_delete: on_delete
+                    .map(ReferentialAction::from)
+                    .unwrap_or(ReferentialAction::NoAction),
+                on_update: on_update
+                    .map(ReferentialAction::from)
+                    .unwrap_or(ReferentialAction::NoAction),
             })
         }
         _ => Err(TranslateError::UnsupportedConstraint(table_constraint.to_string()).into()),
@@ -390,6 +579,7 @@ pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Fo
 
 #[cfg(test)]
 mod tests {
+    use crate::ast::{ColumnDef, DataType};
     use {super::*, crate::parse_sql::parse};
 
     #[test]
@@ -398,6 +588,181 @@ mod tests {
         let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
         let expected =
             Err(TranslateError::DefaultValuesOnInsertNotSupported("Foo".to_owned()).into());
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_on_update_cascade() {
+        let sql = "CREATE TABLE Foo (id INTEGER PRIMARY KEY, bar INTEGER, FOREIGN KEY (bar) REFERENCES Foo (id) ON UPDATE CASCADE)";
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+        let expected = Ok(Statement::CreateTable {
+            if_not_exists: false,
+            name: "Foo".to_owned(),
+            columns: Some(vec![
+                ColumnDef {
+                    name: "id".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: false,
+                    default: None,
+                    comment: None,
+                },
+                ColumnDef {
+                    name: "bar".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: true,
+                    default: None,
+                    comment: None,
+                },
+            ]),
+            source: None,
+            engine: None,
+            foreign_keys: vec![ForeignKey {
+                name: "FK_bar-Foo_id".to_owned(),
+                referencing_column_name: "bar".to_owned(),
+                referenced_table_name: "Foo".to_owned(),
+                referenced_column_name: "id".to_owned(),
+                on_delete: ReferentialAction::NoAction,
+                on_update: ReferentialAction::Cascade,
+            }],
+            primary_key: Some(vec![0]),
+            unique_constraints: vec![],
+            comment: None,
+        });
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_create_table_with_unknown_primary_key() {
+        let sql = "CREATE TABLE Foo (id INTEGER, PRIMARY KEY (unknown))";
+
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+
+        let expected = Err(TranslateError::ColumnNotFoundInTable("unknown".to_owned()).into());
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_on_delete_cascade() {
+        let sql = "CREATE TABLE Foo (id INTEGER PRIMARY KEY, bar INTEGER, FOREIGN KEY (bar) REFERENCES Foo (id) ON DELETE CASCADE)";
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+        let expected = Ok(Statement::CreateTable {
+            if_not_exists: false,
+            name: "Foo".to_owned(),
+            columns: Some(vec![
+                ColumnDef {
+                    name: "id".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: false,
+                    default: None,
+                    comment: None,
+                },
+                ColumnDef {
+                    name: "bar".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: true,
+                    default: None,
+                    comment: None,
+                },
+            ]),
+            source: None,
+            engine: None,
+            foreign_keys: vec![ForeignKey {
+                name: "FK_bar-Foo_id".to_owned(),
+                referencing_column_name: "bar".to_owned(),
+                referenced_table_name: "Foo".to_owned(),
+                referenced_column_name: "id".to_owned(),
+                on_delete: ReferentialAction::Cascade,
+                on_update: ReferentialAction::NoAction,
+            }],
+            primary_key: Some(vec![0]),
+            unique_constraints: vec![],
+            comment: None,
+        });
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_create_table_with_multiple_primary_key() {
+        let sql = "CREATE TABLE Foo (id INTEGER PRIMARY KEY, PRIMARY KEY (id, id2))";
+
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+
+        let expected = Err(TranslateError::MultiplePrimaryKeyNotSupported.into());
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_on_delete_on_update_cascade_same_line() {
+        let sql = "CREATE TABLE Foo (id INTEGER PRIMARY KEY, bar INTEGER, FOREIGN KEY (bar) REFERENCES Foo (id) ON DELETE CASCADE ON UPDATE CASCADE)";
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+        let expected = Ok(Statement::CreateTable {
+            if_not_exists: false,
+            name: "Foo".to_owned(),
+            columns: Some(vec![
+                ColumnDef {
+                    name: "id".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: false,
+                    default: None,
+                    comment: None,
+                },
+                ColumnDef {
+                    name: "bar".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: true,
+                    default: None,
+                    comment: None,
+                },
+            ]),
+            source: None,
+            engine: None,
+            foreign_keys: vec![ForeignKey {
+                name: "FK_bar-Foo_id".to_owned(),
+                referencing_column_name: "bar".to_owned(),
+                referenced_table_name: "Foo".to_owned(),
+                referenced_column_name: "id".to_owned(),
+                on_delete: ReferentialAction::Cascade,
+                on_update: ReferentialAction::Cascade,
+            }],
+            primary_key: Some(vec![0]),
+            unique_constraints: vec![],
+            comment: None,
+        });
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_create_table_with_multiple_primary_key_columns() {
+        let sql = "CREATE TABLE Foo (id INTEGER PRIMARY KEY, id2 INTEGER PRIMARY KEY)";
+
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+
+        let expected = Err(TranslateError::MultiplePrimaryKeyNotSupported.into());
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_create_table_with_repeated_unique_constraint_columns() {
+        let sql = "CREATE TABLE Foo (id INTEGER, id2 INTEGER, UNIQUE (id, id))";
+
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+
+        let expected =
+            Err(TranslateError::RepeatedColumnsInUniqueConstraint("id".to_owned()).into());
+
+        assert_eq!(actual, expected);
+
+        let sql = "CREATE TABLE Foo (id INTEGER UNIQUE, id2 INTEGER, UNIQUE (id))";
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+
+        let expected = Err(TranslateError::DuplicatedUniqueConstraint("id".to_owned()).into());
 
         assert_eq!(actual, expected);
     }
