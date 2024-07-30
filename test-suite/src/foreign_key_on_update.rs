@@ -7,7 +7,7 @@
 use {
     crate::*,
     gluesql_core::{
-        error::{InsertError, TranslateError, UpdateError},
+        error::{AlterError, InsertError, TranslateError, UpdateError},
         prelude::Payload,
     },
 };
@@ -21,6 +21,26 @@ test_case!(foreign_key_on_update, {
         );",
     )
     .await;
+
+    g.run(
+        "CREATE TABLE ReferencedNoPK (
+            id INTEGER
+        );",
+    ).await;
+
+    g.named_test(
+        "On update operations on a table without primary key should fail",
+        "CREATE TABLE Referencing (
+            id INTEGER PRIMARY KEY,
+            referenced_id INTEGER,
+            FOREIGN KEY (referenced_id) REFERENCES ReferencedNoPK(id) ON UPDATE NO ACTION
+        );",
+        Err(AlterError::ReferencingNonPKColumn {
+            referenced_table: "ReferencedNoPK".to_owned(),
+            referenced_column: "id".to_owned(),
+        }
+        .into()),
+    ).await;
 
     g.named_test(
         "On update cascade should fail as primary key cannot be updated",
@@ -54,6 +74,26 @@ test_case!(foreign_key_on_update, {
         Err(TranslateError::UnsupportedConstraint("ON UPDATE SET DEFAULT".to_owned()).into()),
     )
     .await;
+
+    g.named_test(
+        "Trying to make create operation on a table that does not exist should fail",
+        "CREATE TABLE Referencing (
+            id INTEGER PRIMARY KEY,
+            referenced_id INTEGER,
+            FOREIGN KEY (referenced_id) REFERENCES NonExisting(id) ON UPDATE NO ACTION
+        );",
+        Err(AlterError::ReferencedTableNotFound("NonExisting".to_owned()).into()),
+    ).await;
+
+    g.named_test(
+        "Trying to make create operation on a column that does not exist should fail",
+        "CREATE TABLE Referencing (
+            id INTEGER PRIMARY KEY,
+            referenced_id INTEGER,
+            FOREIGN KEY (referenced_id) REFERENCES Referenced(non_existing) ON UPDATE NO ACTION
+        );",
+        Err(AlterError::ReferencedColumnNotFound("non_existing".to_owned()).into()),
+    ).await;
 
     g.named_test(
         "On update no action should pass as primary key cannot be updated",

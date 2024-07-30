@@ -22,6 +22,17 @@ test_case!(foreign_key_on_delete, {
     .await;
 
     g.named_test(
+        "Creating table with foreign key should be failed if referenced table does not exist",
+        "CREATE TABLE ReferencingTable (
+            id INT,
+            referenced_id INT,
+            FOREIGN KEY (referenced_id) REFERENCES NonExistingTable (id) ON DELETE CASCADE
+        );",
+        Err(AlterError::ReferencedTableNotFound("NonExistingTable".to_owned()).into()),
+    )
+    .await;
+
+    g.named_test(
         "Creating table with foreign key should be failed if referenced table does not have primary key",
         "CREATE TABLE ReferencingTable (
             id INT,
