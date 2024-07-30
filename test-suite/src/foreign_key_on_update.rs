@@ -26,7 +26,8 @@ test_case!(foreign_key_on_update, {
         "CREATE TABLE ReferencedNoPK (
             id INTEGER
         );",
-    ).await;
+    )
+    .await;
 
     g.named_test(
         "On update operations on a table without primary key should fail",
@@ -40,7 +41,8 @@ test_case!(foreign_key_on_update, {
             referenced_column: "id".to_owned(),
         }
         .into()),
-    ).await;
+    )
+    .await;
 
     g.named_test(
         "On update cascade should fail as primary key cannot be updated",
@@ -83,7 +85,8 @@ test_case!(foreign_key_on_update, {
             FOREIGN KEY (referenced_id) REFERENCES NonExisting(id) ON UPDATE NO ACTION
         );",
         Err(AlterError::ReferencedTableNotFound("NonExisting".to_owned()).into()),
-    ).await;
+    )
+    .await;
 
     g.named_test(
         "Trying to make create operation on a column that does not exist should fail",
@@ -93,7 +96,8 @@ test_case!(foreign_key_on_update, {
             FOREIGN KEY (referenced_id) REFERENCES Referenced(non_existing) ON UPDATE NO ACTION
         );",
         Err(AlterError::ReferencedColumnNotFound("non_existing".to_owned()).into()),
-    ).await;
+    )
+    .await;
 
     g.named_test(
         "On update no action should pass as primary key cannot be updated",
