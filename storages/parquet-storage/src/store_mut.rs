@@ -440,7 +440,7 @@ impl ParquetStorage {
             Some(ref defs) => defs.clone(),
             None => {
                 vec![ColumnDef {
-                    name: "schemaless".to_string(),
+                    name: "schemaless".to_owned(),
                     data_type: DataType::Map,
                     nullable: true,
                     default: None,
@@ -505,7 +505,7 @@ impl ParquetStorage {
 
         if let Some(primary_key) = &schema.primary_key {
             metadata.push(KeyValue {
-                key: "primary_key".to_string(),
+                key: "primary_key".to_owned(),
                 value: Some(serde_json::to_string(primary_key).map_storage_err()?),
             });
         }
@@ -536,19 +536,19 @@ impl ParquetStorage {
                 }
             }
             metadata.push(KeyValue {
-                key: "schemaless".to_string(),
-                value: Some("false".to_string()),
+                key: "schemaless".to_owned(),
+                value: Some("false".to_owned()),
             });
         } else {
             metadata.push(KeyValue {
-                key: "schemaless".to_string(),
-                value: Some("true".to_string()),
+                key: "schemaless".to_owned(),
+                value: Some("true".to_owned()),
             });
         }
 
         if schema.comment.is_some() {
             metadata.push(KeyValue {
-                key: "comment".to_string(),
+                key: "comment".to_owned(),
                 value: schema.comment.as_ref().map(ToOwned::to_owned),
             });
         }

@@ -198,9 +198,9 @@ impl ParquetStorage {
 
     fn generate_temp_schema() -> Schema {
         Schema {
-            table_name: "temporary".to_string(),
+            table_name: "temporary".to_owned(),
             column_defs: Some(vec![ColumnDef {
-                name: "schemaless".to_string(),
+                name: "schemaless".to_owned(),
                 data_type: DataType::Map,
                 nullable: true,
                 default: None,

@@ -11,7 +11,7 @@ async fn test_from_parquet_storage_error_to_error() {
 
     let cases = vec![(
         glue.execute("SELECT * FROM nested_maps_snappy").await,
-        Err(ParquetStorageError::UnexpectedKeyTypeForMap("Int(1)".to_string()).into()),
+        Err(ParquetStorageError::UnexpectedKeyTypeForMap("Int(1)".to_owned()).into()),
     )];
 
     for (actual, expected) in cases {

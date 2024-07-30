@@ -49,7 +49,7 @@ async fn redis_storage_tables() {
             assert_eq!(labels[1], "name");
 
             assert_eq!(rows[0][0], Value::I64(2));
-            assert_eq!(rows[0][1], Value::Str("Wanda".to_string()));
+            assert_eq!(rows[0][1], Value::Str("Wanda".to_owned()));
         }
         _ => unreachable!(),
     }
@@ -68,7 +68,7 @@ async fn redis_storage_tables() {
             assert_eq!(labels[2], "birth");
 
             assert_eq!(rows[0][0], Value::I64(1));
-            assert_eq!(rows[0][1], Value::Str("Superman".to_string()));
+            assert_eq!(rows[0][1], Value::Str("Superman".to_owned()));
             assert_eq!(
                 rows[0][2],
                 Value::Date(NaiveDate::from_ymd_opt(2023, 12, 31).unwrap())

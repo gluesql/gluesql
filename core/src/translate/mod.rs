@@ -555,7 +555,7 @@ mod tests {
 
         assert_eq!(
             actual,
-            TranslateError::UnsupportedConstraint("ON UPDATE CASCADE".to_string()).into()
+            TranslateError::UnsupportedConstraint("ON UPDATE CASCADE".to_owned()).into()
         );
     }
 
@@ -631,7 +631,7 @@ mod tests {
 
         assert_eq!(
             actual,
-            TranslateError::UnsupportedConstraint("ON UPDATE CASCADE".to_string()).into()
+            TranslateError::UnsupportedConstraint("ON UPDATE CASCADE".to_owned()).into()
         );
     }
 
