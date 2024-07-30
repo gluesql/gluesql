@@ -90,34 +90,12 @@ impl Payload {
     /// # Arguments
     /// * `other` - The other payload to be added.
     ///
-    /// # Example
-    /// ```
-    /// use gluesql_core::executor::Payload;
-    ///
-    /// let mut payload = Payload::Insert(1);
-    /// payload.accumulate(&Payload::Insert(2));
-    ///
-    /// assert_eq!(payload, Payload::Insert(3));
-    /// ```
-    ///
-    /// # Panics
-    /// Panics if the payloads are not of the same type.
-    ///
-    /// ```should_panic
-    /// use gluesql_core::executor::Payload;
-    ///
-    /// let mut payload = Payload::Insert(1);
-    ///
-    /// payload.accumulate(&Payload::Delete(2));
-    /// ```
-    ///
-    pub fn accumulate(&mut self, other: &Self) {
+    pub(super) fn accumulate(&mut self, other: &Self) {
         match (self, other) {
             (Payload::Insert(a), Payload::Insert(b)) => *a += b,
             (Payload::Delete(a), Payload::Delete(b)) => *a += b,
-            (Payload::Update(a), Payload::Update(b)) => *a += b,
             _ => {
-                unreachable!("accumulate is only for Insert, Delete, and Update")
+                unreachable!("Accumulate is only for Insert and Delete")
             }
         }
     }

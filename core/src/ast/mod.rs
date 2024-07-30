@@ -84,10 +84,6 @@ pub struct UniqueConstraint {
 impl UniqueConstraint {
     /// Creates a new UNIQUE constraint with the given name and columns.
     pub fn new(name: Option<String>, columns: Vec<usize>) -> Self {
-        assert!(
-            !columns.is_empty(),
-            "A UNIQUE constraint must have at least one column."
-        );
         Self { name, columns }
     }
 
