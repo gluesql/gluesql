@@ -19,7 +19,8 @@ pub mod delete;
 pub mod dictionary;
 pub mod dictionary_index;
 pub mod filter;
-pub mod foreign_key;
+pub mod foreign_key_on_delete;
+pub mod foreign_key_on_update;
 pub mod function;
 pub mod index;
 pub mod inline_view;
@@ -169,7 +170,14 @@ macro_rules! generate_store_tests {
         glue!(nested_select, nested_select::nested_select);
         glue!(primary_key, primary_key::primary_key);
         glue!(multiple_primary_keys, primary_key::multiple_primary_keys);
-        glue!(foreign_key, foreign_key::foreign_key);
+        glue!(
+            foreign_key_on_delete,
+            foreign_key_on_delete::foreign_key_on_delete
+        );
+        glue!(
+            foreign_key_on_update,
+            foreign_key_on_update::foreign_key_on_update
+        );
         glue!(series, series::series);
         glue!(nullable, nullable::nullable);
         glue!(nullable_text, nullable::nullable_text);

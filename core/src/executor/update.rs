@@ -1,5 +1,3 @@
-use super::delete::delete;
-use super::Referencing;
 use crate::ast::Expr;
 use crate::error::ExecuteError;
 use crate::executor::fetch::fetch;
@@ -7,8 +5,6 @@ use crate::executor::validate::validate_unique;
 use crate::executor::validate::ColumnValidation;
 use crate::prelude::Payload;
 use crate::store::DataRow;
-use futures::Future;
-use std::pin::Pin;
 
 use {
     super::{
@@ -46,21 +42,9 @@ pub enum UpdateError {
         referenced_value: String,
     },
 
-    #[error("Restrict reference column exists: {0}")]
-    ReferencingColumnExists(String),
-
     #[error("Default value not found on column: {0}")]
     ColumnDoesNotHaveDefaultValue(String),
 }
-
-type UpdateRows = (
-    Vec<(Key, DataRow)>,
-    Vec<(
-        Vec<(String, Expr)>,
-        Vec<(String, String, Expr)>,
-        Vec<(String, String, Expr)>,
-    )>,
-);
 
 pub struct Update<'a, T: GStore> {
     storage: &'a T,
@@ -237,147 +221,34 @@ pub async fn update<T: GStore + GStoreMut>(
     let update_executor = Update::new(storage, table_name, assignments, &schema)?;
 
     let foreign_keys = Rc::new(&schema.foreign_keys);
-    let referencings = storage.fetch_referencings(table_name).await?;
 
-    let rows = fetch(storage, table_name, all_columns, selection.as_ref())
+    let rows: Vec<(Key, DataRow)> = fetch(storage, table_name, all_columns, selection.as_ref())
         .await?
         .into_stream()
         .then(|item| async {
             let (key, row) = item?;
-            let mut delete_ops = Vec::new();
-            let mut update_null_ops = Vec::new();
-            let mut update_default_ops = Vec::new();
-
-            for Referencing {
-                table_name: referencing_table_name,
-                foreign_key:
-                    ForeignKey {
-                        referencing_column_name,
-                        referenced_column_name,
-                        on_update,
-                        ..
-                    },
-            } in &referencings
-            {
-                let value = row.get_value(referenced_column_name).unwrap().clone();
-
-                let expr = &Expr::BinaryOp {
-                    left: Box::new(Expr::Identifier(referencing_column_name.clone())),
-                    op: crate::ast::BinaryOperator::Eq,
-                    right: Box::new(Expr::try_from(value)?),
-                };
-
-                let columns = Some(Rc::from(Vec::new()));
-                let referencing_rows =
-                    fetch(storage, referencing_table_name, columns, Some(expr)).await?;
-
-                let referencing_row_exists = Box::pin(referencing_rows).next().await.is_some();
-
-                if referencing_row_exists {
-                    use crate::ast::ReferentialAction::*;
-                    match on_update {
-                        Cascade => {
-                            delete_ops.push((referencing_table_name.clone(), expr.clone()));
-                        }
-                        SetNull => {
-                            update_null_ops.push((
-                                referencing_table_name.clone(),
-                                referencing_column_name.clone(),
-                                expr.clone(),
-                            ));
-                        }
-                        SetDefault => {
-                            update_default_ops.push((
-                                referencing_table_name.clone(),
-                                referencing_column_name.clone(),
-                                expr.clone(),
-                            ));
-                        }
-                        NoAction => {
-                            return Err(UpdateError::ReferencingColumnExists(format!(
-                                "{referencing_table_name}.{referencing_column_name}"
-                            ))
-                            .into());
-                        }
-                    }
-                }
-            }
 
             let foreign_keys = Rc::clone(&foreign_keys);
             let row = update_executor.apply(row, foreign_keys.as_ref()).await?;
 
-            Ok::<_, Error>((key, row, delete_ops, update_null_ops, update_default_ops))
+            Ok::<_, Error>((key, row.into()))
         })
         .try_collect::<Vec<_>>()
         .await?;
 
     if schema.column_defs.is_some() {
         let column_validation = ColumnValidation::SpecifiedColumns(columns_to_update);
-        let rows = rows.iter().filter_map(|(_, row, _, _, _)| match row {
-            Row::Vec { values, .. } => Some(values.as_slice()),
-            Row::Map(_) => None,
+        let rows = rows.iter().filter_map(|(_, row)| match row {
+            DataRow::Vec(values) => Some(values.as_slice()),
+            DataRow::Map(_) => None,
         });
 
         validate_unique(storage, table_name, &schema, column_validation, rows).await?;
     }
 
     let num_rows = rows.len();
-    let (rows, ops): UpdateRows = rows
-        .into_iter()
-        .map(
-            |(key, row, delete_ops, update_null_ops, update_default_ops)| {
-                (
-                    (key, row.into()),
-                    (delete_ops, update_null_ops, update_default_ops),
-                )
-            },
-        )
-        .unzip();
-
-    let mut update_payload = storage
+    storage
         .insert_data(table_name, rows)
         .await
-        .map(|_| Payload::Update(num_rows))?;
-
-    for (delete_ops, update_null_ops, update_default_ops) in ops {
-        for (referencing_table_name, expr) in delete_ops {
-            let expr = Some(expr);
-            delete(storage, &referencing_table_name, &expr).await?;
-        }
-
-        for (referencing_table_name, referencing_column_name, expr) in update_null_ops {
-            let expr = Some(expr);
-            let assignment = vec![Assignment::new(referencing_column_name, Expr::null())];
-            let boxed_update: Pin<Box<dyn Future<Output = Result<Payload>>>> =
-                Box::pin(update(storage, &referencing_table_name, &expr, &assignment));
-            update_payload.accumulate(&boxed_update.await?);
-        }
-
-        for (referencing_table_name, referencing_column_name, expr) in update_default_ops {
-            let expr = Some(expr);
-            let column_defs = storage
-                .fetch_schema(&referencing_table_name)
-                .await?
-                .and_then(|schema| schema.column_defs);
-
-            let default = vec![column_defs
-                .as_ref()
-                .and_then(|column_defs| {
-                    column_defs
-                        .iter()
-                        .find(|column_def| column_def.name == referencing_column_name)
-                        .and_then(|column_def| column_def.default.clone())
-                })
-                .map(|default| Assignment::new(referencing_column_name.clone(), default))
-                .ok_or(UpdateError::ColumnDoesNotHaveDefaultValue(
-                    referencing_column_name,
-                ))?];
-
-            let boxed_update: Pin<Box<dyn Future<Output = Result<Payload>>>> =
-                Box::pin(update(storage, &referencing_table_name, &expr, &default));
-            update_payload.accumulate(&boxed_update.await?);
-        }
-    }
-
-    Ok(update_payload)
+        .map(|_| Payload::Update(num_rows))
 }

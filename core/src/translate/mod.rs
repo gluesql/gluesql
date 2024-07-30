@@ -501,6 +501,21 @@ pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Fo
                 }
             };
 
+            let on_update = on_update
+                .map(|action| match action {
+                    sqlparser::ast::ReferentialAction::Cascade
+                    | sqlparser::ast::ReferentialAction::SetDefault
+                    | sqlparser::ast::ReferentialAction::SetNull => Err(
+                        TranslateError::UnsupportedConstraint(format!("ON UPDATE {}", action)),
+                    ),
+                    sqlparser::ast::ReferentialAction::NoAction
+                    | sqlparser::ast::ReferentialAction::Restrict => {
+                        Ok(ReferentialAction::NoAction)
+                    }
+                })
+                .transpose()?
+                .unwrap_or(ReferentialAction::NoAction);
+
             Ok(ForeignKey {
                 name,
                 referencing_column_name,
@@ -509,9 +524,7 @@ pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Fo
                 on_delete: on_delete
                     .map(ReferentialAction::from)
                     .unwrap_or(ReferentialAction::NoAction),
-                on_update: on_update
-                    .map(ReferentialAction::from)
-                    .unwrap_or(ReferentialAction::NoAction),
+                on_update,
             })
         }
         _ => Err(TranslateError::UnsupportedConstraint(table_constraint.to_string()).into()),
@@ -536,42 +549,14 @@ mod tests {
     #[test]
     fn test_on_update_cascade() {
         let sql = "CREATE TABLE Foo (id INTEGER PRIMARY KEY, bar INTEGER, FOREIGN KEY (bar) REFERENCES Foo (id) ON UPDATE CASCADE)";
-        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
-        let expected = Ok(Statement::CreateTable {
-            if_not_exists: false,
-            name: "Foo".to_owned(),
-            columns: Some(vec![
-                ColumnDef {
-                    name: "id".to_owned(),
-                    data_type: DataType::Int,
-                    nullable: false,
-                    default: None,
-                    comment: None,
-                },
-                ColumnDef {
-                    name: "bar".to_owned(),
-                    data_type: DataType::Int,
-                    nullable: true,
-                    default: None,
-                    comment: None,
-                },
-            ]),
-            source: None,
-            engine: None,
-            foreign_keys: vec![ForeignKey {
-                name: "FK_bar-Foo_id".to_owned(),
-                referencing_column_name: "bar".to_owned(),
-                referenced_table_name: "Foo".to_owned(),
-                referenced_column_name: "id".to_owned(),
-                on_delete: ReferentialAction::NoAction,
-                on_update: ReferentialAction::Cascade,
-            }],
-            primary_key: Some(vec![0]),
-            unique_constraints: vec![],
-            comment: None,
-        });
+        let actual = parse(sql)
+            .and_then(|parsed| translate(&parsed[0]))
+            .unwrap_err();
 
-        assert_eq!(actual, expected);
+        assert_eq!(
+            actual,
+            TranslateError::UnsupportedConstraint("ON UPDATE CASCADE".to_string()).into()
+        );
     }
 
     #[test]
@@ -640,42 +625,14 @@ mod tests {
     #[test]
     fn test_on_delete_on_update_cascade_same_line() {
         let sql = "CREATE TABLE Foo (id INTEGER PRIMARY KEY, bar INTEGER, FOREIGN KEY (bar) REFERENCES Foo (id) ON DELETE CASCADE ON UPDATE CASCADE)";
-        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
-        let expected = Ok(Statement::CreateTable {
-            if_not_exists: false,
-            name: "Foo".to_owned(),
-            columns: Some(vec![
-                ColumnDef {
-                    name: "id".to_owned(),
-                    data_type: DataType::Int,
-                    nullable: false,
-                    default: None,
-                    comment: None,
-                },
-                ColumnDef {
-                    name: "bar".to_owned(),
-                    data_type: DataType::Int,
-                    nullable: true,
-                    default: None,
-                    comment: None,
-                },
-            ]),
-            source: None,
-            engine: None,
-            foreign_keys: vec![ForeignKey {
-                name: "FK_bar-Foo_id".to_owned(),
-                referencing_column_name: "bar".to_owned(),
-                referenced_table_name: "Foo".to_owned(),
-                referenced_column_name: "id".to_owned(),
-                on_delete: ReferentialAction::Cascade,
-                on_update: ReferentialAction::Cascade,
-            }],
-            primary_key: Some(vec![0]),
-            unique_constraints: vec![],
-            comment: None,
-        });
+        let actual = parse(sql)
+            .and_then(|parsed| translate(&parsed[0]))
+            .unwrap_err();
 
-        assert_eq!(actual, expected);
+        assert_eq!(
+            actual,
+            TranslateError::UnsupportedConstraint("ON UPDATE CASCADE".to_string()).into()
+        );
     }
 
     #[test]
