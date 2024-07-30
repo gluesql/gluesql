@@ -1,7 +1,7 @@
 use {
     super::context::Context,
     crate::{
-        ast::{ColumnDef, ColumnUniqueOption, Expr, Function, Query, TableAlias, TableFactor},
+        ast::{ColumnDef, Expr, Function, Query, TableAlias, TableFactor},
         data::Schema,
     },
     std::rc::Rc,
@@ -200,26 +200,23 @@ pub trait Planner<'a> {
             | TableFactor::Dictionary { .. } => return next,
         };
 
-        let column_defs = match self.get_schema(name) {
-            Some(Schema { column_defs, .. }) => column_defs,
+        let schema = self.get_schema(name);
+
+        let columns = match schema.as_ref().and_then(|Schema { column_defs, .. }| {
+            column_defs.as_ref().map(|column_defs| {
+                column_defs
+                    .iter()
+                    .map(|ColumnDef { name, .. }| name.as_str())
+                    .collect::<Vec<_>>()
+            })
+        }) {
+            Some(columns) => columns,
             None => return next,
         };
 
-        let column_defs = match column_defs {
-            Some(column_defs) => column_defs,
-            None => return next,
-        };
-
-        let columns = column_defs
-            .iter()
-            .map(|ColumnDef { name, .. }| name.as_str())
-            .collect::<Vec<_>>();
-
-        let primary_key = column_defs
-            .iter()
-            .find_map(|ColumnDef { name, unique, .. }| {
-                (unique == &Some(ColumnUniqueOption { is_primary: true })).then_some(name.as_str())
-            });
+        let primary_key = schema
+            .as_ref()
+            .and_then(|schema| Some(schema.primary_key_column_names()?.collect()));
 
         let context = Context::new(
             alias.unwrap_or_else(|| name.to_owned()),

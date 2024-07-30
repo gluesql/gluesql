@@ -1,7 +1,6 @@
 use {
     crate::{
-        ast::{ColumnDef, ColumnUniqueOption},
-        data::{Key, Value},
+        data::{Key, Schema, Value},
         result::Result,
         store::{DataRow, Store},
     },
@@ -21,197 +20,211 @@ pub enum ValidateError {
     #[error("conflict! schemaless row found in schema based data")]
     ConflictOnUnexpectedSchemalessRowFound,
 
-    #[error("duplicate entry '{}' for unique column '{1}'", String::from(.0))]
-    DuplicateEntryOnUniqueField(Value, String),
+    #[error("duplicate entry '{0:?}' for unique column '{1:?}'")]
+    DuplicateEntryOnUniqueField(Vec<Value>, Vec<String>),
 
-    #[error("duplicate entry '{0:?}' for primary_key field")]
+    #[error("duplicate entry for primary_key field, parsed key: '{0:?}', message: '{0:?}'")]
     DuplicateEntryOnPrimaryKeyField(Key),
+
+    #[error("duplicated unique constraint found")]
+    DuplicatedUniqueConstraintFound,
 }
 
-pub enum ColumnValidation<'column_def> {
+impl ValidateError {
+    /// Returns a new `ValidateError::DuplicateEntryOnUniqueField` variant.
+    pub fn duplicate_entry_on_multi_unique_field(
+        value: Vec<Value>,
+        column_names: Vec<String>,
+    ) -> Self {
+        Self::DuplicateEntryOnUniqueField(value, column_names)
+    }
+
+    /// Returns a new `ValidateError::DuplicateEntryOnUniqueField` variant.
+    pub fn duplicate_entry_on_single_unique_field(value: Value, column_name: String) -> Self {
+        Self::duplicate_entry_on_multi_unique_field(vec![value], vec![column_name])
+    }
+}
+
+pub enum ColumnValidation {
     /// `INSERT`
-    All(&'column_def [ColumnDef]),
+    All,
     /// `UPDATE`
-    SpecifiedColumns(&'column_def [ColumnDef], Vec<String>),
+    SpecifiedColumns(Vec<String>),
 }
 
 #[derive(Debug)]
-struct UniqueConstraint {
-    column_index: usize,
-    column_name: String,
+/// A validator for unique constraints.
+struct UniqueConstraintValidator {
+    column_indices: Vec<usize>,
+    column_names: Vec<String>,
     keys: HashSet<Key>,
 }
 
-impl UniqueConstraint {
-    fn new(column_index: usize, column_name: String) -> Self {
+impl UniqueConstraintValidator {
+    fn new(column_indices: &[usize], column_names: &[&str]) -> Self {
         Self {
-            column_index,
-            column_name,
+            column_indices: column_indices.to_vec(),
+            column_names: column_names.iter().map(|&s| s.to_owned()).collect(),
             keys: HashSet::new(),
         }
     }
 
-    fn add(self, value: &Value) -> Result<Self> {
-        let new_key = self.check(value)?;
-
-        if matches!(new_key, Key::None) {
+    /// Adds a new value to the unique constraint.
+    ///
+    /// # Arguments
+    /// * `value` - The value to add to the unique constraint.
+    ///
+    /// # Raises
+    /// * `ValidateError::DuplicateEntryOnUniqueField` - If the value already exists in the unique constraint.
+    fn add(self, value: Vec<Value>) -> Result<Self> {
+        // If there is any Null Value, given that the acceptance
+        // of Null Values is not defined in the UniqueConstraint.
+        if value.iter().any(|v| v.is_null()) {
             return Ok(self);
         }
+
+        let new_key = self.check(&value)?;
 
         let keys = self.keys.update(new_key);
 
         Ok(Self {
-            column_index: self.column_index,
-            column_name: self.column_name,
+            column_indices: self.column_indices,
+            column_names: self.column_names,
             keys,
         })
     }
 
-    fn check(&self, value: &Value) -> Result<Key> {
-        let key = Key::try_from(value)?;
+    fn check(&self, value: &[Value]) -> Result<Key> {
+        let key = Key::try_from(value.to_vec())?;
 
         if !self.keys.contains(&key) {
             Ok(key)
         } else {
             Err(ValidateError::DuplicateEntryOnUniqueField(
-                value.clone(),
-                self.column_name.to_owned(),
+                value.to_vec(),
+                self.column_names.clone(),
             )
             .into())
         }
     }
 }
 
+type Constraints<'a> = (bool, Vec<(&'a [usize], Vec<&'a str>)>);
+
 pub async fn validate_unique<T: Store>(
     storage: &T,
     table_name: &str,
-    column_validation: ColumnValidation<'_>,
+    schema: &Schema,
+    column_validation: ColumnValidation,
     row_iter: impl Iterator<Item = &[Value]> + Clone,
 ) -> Result<()> {
-    enum Columns {
-        /// key index
-        PrimaryKeyOnly(usize),
-        /// `[(key_index, table_name)]`
-        All(Vec<(usize, String)>),
-    }
+    // First, we retrieve the primary key indices and the unique columns to validate.
+    // Specifically, we only care about validating the primary key indices in the case of an UPDATE
+    // if the primary key columns are specified in the set of the columns being updated.
 
-    let columns = match &column_validation {
-        ColumnValidation::All(column_defs) => {
-            let primary_key_index = column_defs
-                .iter()
-                .enumerate()
-                .find(|(_, ColumnDef { unique, .. })| {
-                    unique == &Some(ColumnUniqueOption { is_primary: true })
+    let (validate_primary_key, unique_columns): Constraints = match &column_validation {
+        ColumnValidation::All => (
+            schema.primary_key.is_some(),
+            schema.unique_constraint_columns_and_indices().collect(),
+        ),
+        ColumnValidation::SpecifiedColumns(specified_columns) => (
+            schema.has_primary_key_columns(specified_columns),
+            schema
+                .unique_constraint_columns_and_indices()
+                .filter(|(_, column_names)| {
+                    specified_columns.iter().any(|specified_column| {
+                        column_names
+                            .iter()
+                            .any(|column_name| column_name == specified_column)
+                    })
                 })
-                .map(|(i, _)| i);
-            let other_unique_column_def_count = column_defs
-                .iter()
-                .filter(|ColumnDef { unique, .. }| {
-                    unique == &Some(ColumnUniqueOption { is_primary: false })
-                })
-                .count();
-
-            match (primary_key_index, other_unique_column_def_count) {
-                (Some(primary_key_index), 0) => Columns::PrimaryKeyOnly(primary_key_index),
-                _ => Columns::All(fetch_all_unique_columns(column_defs)),
-            }
-        }
-        ColumnValidation::SpecifiedColumns(column_defs, specified_columns) => Columns::All(
-            fetch_specified_unique_columns(column_defs, specified_columns),
+                .collect(),
         ),
     };
 
-    match columns {
-        Columns::PrimaryKeyOnly(primary_key_index) => {
-            for primary_key in
-                row_iter.filter_map(|row| row.get(primary_key_index).map(Key::try_from))
-            {
-                let key = primary_key?;
+    // We then proceed to validate the primary keys.
+    if validate_primary_key {
+        for row in row_iter.clone() {
+            let primary_key = schema.get_primary_key(row)?;
 
-                if storage.fetch_data(table_name, &key).await?.is_some() {
-                    return Err(ValidateError::DuplicateEntryOnPrimaryKeyField(key).into());
-                }
-            }
-
-            Ok(())
-        }
-        Columns::All(columns) => {
-            let unique_constraints: Vec<_> = create_unique_constraints(columns, row_iter)?.into();
-            if unique_constraints.is_empty() {
-                return Ok(());
-            }
-
-            let unique_constraints = &unique_constraints;
-            storage
-                .scan_data(table_name)
+            if storage
+                .fetch_data(table_name, &primary_key)
                 .await?
-                .try_for_each(|(_, data_row)| async {
-                    let values = match data_row {
-                        DataRow::Vec(values) => values,
-                        DataRow::Map(_) => {
-                            return Err(
-                                ValidateError::ConflictOnUnexpectedSchemalessRowFound.into()
-                            );
-                        }
-                    };
-
-                    unique_constraints.iter().try_for_each(|constraint| {
-                        let col_idx = constraint.column_index;
-                        let val = values
-                            .get(col_idx)
-                            .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
-
-                        constraint.check(val)?;
-
-                        Ok(())
-                    })
-                })
-                .await
+                .is_some()
+            {
+                return Err(ValidateError::DuplicateEntryOnPrimaryKeyField(primary_key).into());
+            }
         }
     }
+
+    // After having validated the primary keys, we proceed to validate the unique columns.
+    // If the unique columns are empty, we can skip the validation.
+    if unique_columns.is_empty() {
+        return Ok(());
+    }
+
+    let unique_constraints: Vec<_> = create_unique_constraints(unique_columns, row_iter)?.into();
+
+    let unique_constraints = &unique_constraints;
+    storage
+        .scan_data(table_name)
+        .await?
+        .try_for_each(|(_, data_row)| async {
+            let values = match data_row {
+                DataRow::Vec(values) => values,
+                DataRow::Map(_) => {
+                    return Err(ValidateError::ConflictOnUnexpectedSchemalessRowFound.into());
+                }
+            };
+
+            unique_constraints.iter().try_for_each(|constraint| {
+                let values = constraint
+                    .column_indices
+                    .iter()
+                    .map(|&column_index| {
+                        Ok(values
+                            .get(column_index)
+                            .ok_or(ValidateError::ConflictOnStorageColumnIndex(column_index))?
+                            .clone())
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+
+                if values.iter().any(|v| v.is_null()) {
+                    return Ok(());
+                }
+
+                constraint.check(&values)?;
+
+                Ok(())
+            })
+        })
+        .await
 }
 
 fn create_unique_constraints<'a>(
-    unique_columns: Vec<(usize, String)>,
+    unique_columns: Vec<(&[usize], Vec<&str>)>,
     row_iter: impl Iterator<Item = &'a [Value]> + Clone,
-) -> Result<Vector<UniqueConstraint>> {
+) -> Result<Vector<UniqueConstraintValidator>> {
     unique_columns
         .into_iter()
         .try_fold(Vector::new(), |constraints, col| {
-            let (col_idx, col_name) = col;
-            let new_constraint = UniqueConstraint::new(col_idx, col_name);
+            let (column_indices, column_names) = col;
+            let new_constraint = UniqueConstraintValidator::new(column_indices, &column_names);
             let new_constraint = row_iter
                 .clone()
                 .try_fold(new_constraint, |constraint, row| {
-                    let val = row
-                        .get(col_idx)
-                        .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
-
-                    constraint.add(val)
+                    let values = constraint
+                        .column_indices
+                        .iter()
+                        .map(|column_index| {
+                            Ok(row
+                                .get(*column_index)
+                                .ok_or(ValidateError::ConflictOnStorageColumnIndex(*column_index))?
+                                .to_owned())
+                        })
+                        .collect::<Result<Vec<_>>>()?;
+                    constraint.add(values)
                 })?;
             Ok(constraints.push(new_constraint))
         })
-}
-
-fn fetch_all_unique_columns(column_defs: &[ColumnDef]) -> Vec<(usize, String)> {
-    column_defs
-        .iter()
-        .enumerate()
-        .filter_map(|(i, table_col)| table_col.unique.map(|_| (i, table_col.name.to_owned())))
-        .collect()
-}
-
-fn fetch_specified_unique_columns(
-    all_column_defs: &[ColumnDef],
-    specified_columns: &[String],
-) -> Vec<(usize, String)> {
-    all_column_defs
-        .iter()
-        .enumerate()
-        .filter_map(|(i, table_col)| {
-            (table_col.unique.is_some()
-                && specified_columns.iter().any(|col| col == &table_col.name))
-            .then_some((i, table_col.name.to_owned()))
-        })
-        .collect()
 }

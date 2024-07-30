@@ -1,22 +1,30 @@
+use crate::ast::Expr;
+use crate::error::ExecuteError;
+use crate::executor::fetch::fetch;
+use crate::executor::validate::validate_unique;
+use crate::executor::validate::ColumnValidation;
+use crate::prelude::Payload;
+use crate::store::DataRow;
+
 use {
     super::{
         context::RowContext,
         evaluate::{evaluate, Evaluated},
     },
     crate::{
-        ast::{Assignment, ColumnDef, ColumnUniqueOption, ForeignKey},
-        data::{Key, Row, Value},
+        ast::{Assignment, ColumnDef, ForeignKey},
+        data::{Key, Row, Schema, Value},
         result::{Error, Result},
-        store::GStore,
+        store::{GStore, GStoreMut},
     },
     futures::stream::{self, StreamExt, TryStreamExt},
     serde::Serialize,
     std::{borrow::Cow, fmt::Debug, rc::Rc},
-    thiserror::Error,
+    thiserror::Error as ThisError,
     utils::HashMapExt,
 };
 
-#[derive(Error, Serialize, Debug, PartialEq, Eq)]
+#[derive(ThisError, Serialize, Debug, PartialEq, Eq)]
 pub enum UpdateError {
     #[error("column not found {0}")]
     ColumnNotFound(String),
@@ -33,13 +41,16 @@ pub enum UpdateError {
         column_name: String,
         referenced_value: String,
     },
+
+    #[error("Default value not found on column: {0}")]
+    ColumnDoesNotHaveDefaultValue(String),
 }
 
 pub struct Update<'a, T: GStore> {
     storage: &'a T,
     table_name: &'a str,
     fields: &'a [Assignment],
-    column_defs: Option<&'a [ColumnDef]>,
+    schema: &'a Schema,
 }
 
 impl<'a, T: GStore> Update<'a, T> {
@@ -47,17 +58,15 @@ impl<'a, T: GStore> Update<'a, T> {
         storage: &'a T,
         table_name: &'a str,
         fields: &'a [Assignment],
-        column_defs: Option<&'a [ColumnDef]>,
+        schema: &'a Schema,
     ) -> Result<Self> {
-        if let Some(column_defs) = column_defs {
+        if schema.column_defs.is_some() {
             for assignment in fields.iter() {
                 let Assignment { id, .. } = assignment;
 
-                if column_defs.iter().all(|col_def| &col_def.name != id) {
+                if !schema.has_column(id) {
                     return Err(UpdateError::ColumnNotFound(id.to_owned()).into());
-                } else if column_defs.iter().any(|ColumnDef { name, unique, .. }| {
-                    name == id && matches!(unique, Some(ColumnUniqueOption { is_primary: true }))
-                }) {
+                } else if schema.is_primary_key(id) {
                     return Err(UpdateError::UpdateOnPrimaryKeyNotSupported(id.to_owned()).into());
                 }
             }
@@ -67,7 +76,7 @@ impl<'a, T: GStore> Update<'a, T> {
             storage,
             table_name,
             fields,
-            column_defs,
+            schema,
         })
     }
 
@@ -85,33 +94,32 @@ impl<'a, T: GStore> Update<'a, T> {
 
                 async move {
                     let evaluated = evaluate(self.storage, context, None, value_expr).await?;
-                    let value = match self.column_defs {
-                        Some(column_defs) => {
-                            let ColumnDef {
-                                data_type,
-                                nullable,
-                                ..
-                            } = column_defs
-                                .iter()
-                                .find(|column_def| id == &column_def.name)
-                                .ok_or(UpdateError::ConflictOnSchema)?;
+                    let value = if self.schema.column_defs.is_some() {
+                        let ColumnDef {
+                            data_type,
+                            nullable,
+                            ..
+                        } = self
+                            .schema
+                            .get_column_def(id)
+                            .ok_or(UpdateError::ConflictOnSchema)?;
 
-                            let value = match evaluated {
-                                Evaluated::Literal(v) => Value::try_from_literal(data_type, &v)?,
-                                Evaluated::Value(v) => {
-                                    v.validate_type(data_type)?;
-                                    v
-                                }
-                                Evaluated::StrSlice {
-                                    source: s,
-                                    range: r,
-                                } => Value::Str(s[r].to_owned()),
-                            };
+                        let value = match evaluated {
+                            Evaluated::Literal(v) => Value::try_from_literal(data_type, &v)?,
+                            Evaluated::Value(v) => {
+                                v.validate_type(data_type)?;
+                                v
+                            }
+                            Evaluated::StrSlice {
+                                source: s,
+                                range: r,
+                            } => Value::Str(s[r].to_owned()),
+                        };
 
-                            value.validate_null(*nullable)?;
-                            value
-                        }
-                        None => evaluated.try_into()?,
+                        value.validate_null(*nullable)?;
+                        value
+                    } else {
+                        evaluated.try_into()?
                     };
 
                     Ok::<_, Error>((id.as_ref(), value))
@@ -179,4 +187,68 @@ impl<'a, T: GStore> Update<'a, T> {
             }
         })
     }
+}
+
+/// Update data in the table
+///
+/// # Arguments
+/// * `storage` - The storage to execute the query
+/// * `table_name` - The name of the table to update
+/// * `selection` - The selection to filter the rows to update
+/// * `assignments` - The assignments to update
+pub async fn update<T: GStore + GStoreMut>(
+    storage: &mut T,
+    table_name: &str,
+    selection: &Option<Expr>,
+    assignments: &[Assignment],
+) -> Result<Payload> {
+    let schema = storage
+        .fetch_schema(table_name)
+        .await?
+        .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
+
+    let all_columns = schema.column_defs.as_deref().map(|columns| {
+        columns
+            .iter()
+            .map(|col_def| col_def.name.to_owned())
+            .collect()
+    });
+    let columns_to_update: Vec<String> = assignments
+        .iter()
+        .map(|assignment| assignment.id.to_owned())
+        .collect();
+
+    let update_executor = Update::new(storage, table_name, assignments, &schema)?;
+
+    let foreign_keys = Rc::new(&schema.foreign_keys);
+
+    let rows: Vec<(Key, DataRow)> = fetch(storage, table_name, all_columns, selection.as_ref())
+        .await?
+        .into_stream()
+        .then(|item| async {
+            let (key, row) = item?;
+
+            let foreign_keys = Rc::clone(&foreign_keys);
+            let row = update_executor.apply(row, foreign_keys.as_ref()).await?;
+
+            Ok::<_, Error>((key, row.into()))
+        })
+        .try_collect::<Vec<_>>()
+        .await?;
+
+    if schema.column_defs.is_some() {
+        let column_validation = ColumnValidation::SpecifiedColumns(columns_to_update);
+        let rows = rows.iter().filter_map(|(_, row)| match row {
+            DataRow::Vec(values) => Some(values.as_slice()),
+            DataRow::Map(_) => None,
+        });
+
+        validate_unique(storage, table_name, &schema, column_validation, rows).await?;
+    }
+
+    let num_rows = rows.len();
+    storage
+        .insert_data(table_name, rows)
+        .await
+        .map(|_| Payload::Update(num_rows))
 }

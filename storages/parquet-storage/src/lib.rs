@@ -2,7 +2,7 @@ use {
     column_def::ParquetSchemaType,
     error::{OptionExt, ParquetStorageError, ResultExt},
     gluesql_core::{
-        ast::{ColumnDef, ColumnUniqueOption, ForeignKey},
+        ast::{ColumnDef, ForeignKey, UniqueConstraint},
         data::Schema,
         error::{Error, Result},
         prelude::{DataType, Key, Value},
@@ -60,13 +60,15 @@ impl ParquetStorage {
 
         let mut is_schemaless = false;
         let mut foreign_keys = Vec::new();
+        let mut primary_key: Option<Vec<usize>> = None;
+        let mut unique_constraints = Vec::new();
         let mut comment = None;
         if let Some(metadata) = key_value_file_metadata {
             for kv in metadata.iter() {
                 if kv.key == "schemaless" {
                     is_schemaless = matches!(kv.value.as_deref(), Some("true"));
                 } else if kv.key == "comment" {
-                    comment = kv.value.clone();
+                    comment.clone_from(&kv.value);
                 } else if kv.key.starts_with("foreign_key") {
                     let fk = kv
                         .value
@@ -78,6 +80,27 @@ impl ParquetStorage {
                         .map_storage_err()?;
 
                     foreign_keys.push(fk);
+                } else if kv.key == "primary_key" {
+                    primary_key = Some(
+                        kv.value
+                            .as_ref()
+                            .map(|x| from_str::<Vec<usize>>(x))
+                            .map_storage_err(Error::StorageMsg(
+                                "No value found on metadata".to_owned(),
+                            ))?
+                            .map_storage_err()?,
+                    );
+                } else if kv.key.starts_with("unique_constraint") {
+                    let uc = kv
+                        .value
+                        .as_ref()
+                        .map(|x| from_str::<UniqueConstraint>(x))
+                        .map_storage_err(Error::StorageMsg(
+                            "No value found on metadata".to_owned(),
+                        ))?
+                        .map_storage_err()?;
+
+                    unique_constraints.push(uc);
                 }
             }
         }
@@ -105,6 +128,8 @@ impl ParquetStorage {
             indexes: vec![],
             engine: None,
             foreign_keys,
+            primary_key,
+            unique_constraints,
             comment,
         }))
     }
@@ -133,25 +158,19 @@ impl ParquetStorage {
         let mut rows = Vec::new();
         let mut key_counter: u64 = 0;
 
-        if let Some(column_defs) = &fetched_schema.column_defs {
+        if fetched_schema.column_defs.is_some() {
             for record in row_iter {
                 let record: Row = record.map_storage_err()?;
                 let mut row = Vec::new();
-                let mut key = None;
 
                 for (idx, (_, field)) in record.get_column_iter().enumerate() {
                     let value = ParquetField(field.clone()).to_value(&fetched_schema, idx)?;
                     row.push(value.clone());
-
-                    if column_defs[idx].unique == Some(ColumnUniqueOption { is_primary: true }) {
-                        key = Key::try_from(&value).ok();
-                    }
                 }
 
-                let generated_key = key.unwrap_or_else(|| {
-                    let generated = Key::U64(key_counter);
+                let generated_key = fetched_schema.get_primary_key(&row).unwrap_or({
                     key_counter += 1;
-                    generated
+                    Key::U64(key_counter - 1)
                 });
                 rows.push(Ok((generated_key, DataRow::Vec(row))));
             }
@@ -179,18 +198,19 @@ impl ParquetStorage {
 
     fn generate_temp_schema() -> Schema {
         Schema {
-            table_name: "temporary".to_string(),
+            table_name: "temporary".to_owned(),
             column_defs: Some(vec![ColumnDef {
-                name: "schemaless".to_string(),
+                name: "schemaless".to_owned(),
                 data_type: DataType::Map,
                 nullable: true,
                 default: None,
-                unique: None,
                 comment: None,
             }]),
             indexes: vec![],
             engine: None,
             foreign_keys: Vec::new(),
+            primary_key: None,
+            unique_constraints: Vec::new(),
             comment: None,
         }
     }

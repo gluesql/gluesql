@@ -5,24 +5,22 @@ use {
             CreateTableOptions,
         },
         delete::delete,
-        fetch::fetch,
         insert::insert,
         select::{select, select_with_labels},
-        update::Update,
-        validate::{validate_unique, ColumnValidation},
+        update::{self},
     },
     crate::{
         ast::{
             AstLiteral, BinaryOperator, DataType, Dictionary, Expr, Query, SelectItem, SetExpr,
             Statement, TableAlias, TableFactor, TableWithJoins, Variable,
         },
-        data::{Key, Row, Schema, Value},
+        data::{Schema, Value},
         result::Result,
         store::{GStore, GStoreMut},
     },
     futures::stream::{StreamExt, TryStreamExt},
     serde::{Deserialize, Serialize},
-    std::{collections::HashMap, env::var, fmt::Debug, rc::Rc},
+    std::{collections::HashMap, env::var, fmt::Debug},
     thiserror::Error as ThisError,
 };
 
@@ -86,6 +84,21 @@ impl Payload {
             _ => return None,
         })
     }
+
+    /// Comulates the number of affected rows in the payload, when the provided payload is of the same type.
+    ///
+    /// # Arguments
+    /// * `other` - The other payload to be added.
+    ///
+    pub(super) fn accumulate(&mut self, other: &Self) {
+        match (self, other) {
+            (Payload::Insert(a), Payload::Insert(b)) => *a += b,
+            (Payload::Delete(a), Payload::Delete(b)) => *a += b,
+            _ => {
+                unreachable!("Accumulate is only for Insert and Delete")
+            }
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
@@ -137,6 +150,8 @@ async fn execute_inner<T: GStore + GStoreMut>(
             source,
             engine,
             foreign_keys,
+            primary_key,
+            unique_constraints,
             comment,
         } => {
             let options = CreateTableOptions {
@@ -146,6 +161,8 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 source,
                 engine,
                 foreign_keys,
+                primary_key,
+                unique_constraints,
                 comment,
             };
 
@@ -194,69 +211,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
             table_name,
             selection,
             assignments,
-        } => {
-            let Schema {
-                column_defs,
-                foreign_keys,
-                ..
-            } = storage
-                .fetch_schema(table_name)
-                .await?
-                .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
-
-            let all_columns = column_defs.as_deref().map(|columns| {
-                columns
-                    .iter()
-                    .map(|col_def| col_def.name.to_owned())
-                    .collect()
-            });
-            let columns_to_update: Vec<String> = assignments
-                .iter()
-                .map(|assignment| assignment.id.to_owned())
-                .collect();
-
-            let update = Update::new(storage, table_name, assignments, column_defs.as_deref())?;
-
-            let foreign_keys = Rc::new(foreign_keys);
-
-            let rows = fetch(storage, table_name, all_columns, selection.as_ref())
-                .await?
-                .and_then(|item| {
-                    let update = &update;
-                    let (key, row) = item;
-
-                    let foreign_keys = Rc::clone(&foreign_keys);
-                    async move {
-                        let row = update.apply(row, foreign_keys.as_ref()).await?;
-
-                        Ok((key, row))
-                    }
-                })
-                .try_collect::<Vec<(Key, Row)>>()
-                .await?;
-
-            if let Some(column_defs) = column_defs {
-                let column_validation =
-                    ColumnValidation::SpecifiedColumns(&column_defs, columns_to_update);
-                let rows = rows.iter().filter_map(|(_, row)| match row {
-                    Row::Vec { values, .. } => Some(values.as_slice()),
-                    Row::Map(_) => None,
-                });
-
-                validate_unique(storage, table_name, column_validation, rows).await?;
-            }
-
-            let num_rows = rows.len();
-            let rows = rows
-                .into_iter()
-                .map(|(key, row)| (key, row.into()))
-                .collect();
-
-            storage
-                .insert_data(table_name, rows)
-                .await
-                .map(|_| Payload::Update(num_rows))
-        }
+        } => update::update(storage, table_name, selection, assignments).await,
         Statement::Delete {
             table_name,
             selection,
@@ -404,5 +359,56 @@ async fn execute_inner<T: GStore + GStoreMut>(
         Statement::DropFunction { if_exists, names } => delete_function(storage, names, *if_exists)
             .await
             .map(|_| Payload::DropFunction),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::data::Value;
+
+    #[test]
+    fn test_payload_select() {
+        let payload = Payload::Select {
+            labels: vec!["a".to_owned(), "b".to_owned()],
+            rows: vec![vec![Value::U8(1), Value::U8(2)]],
+        };
+
+        let mut iter = payload.select().unwrap();
+        let row = iter.next().unwrap();
+
+        assert_eq!(row.get("a"), Some(&&Value::U8(1)));
+        assert_eq!(row.get("b"), Some(&&Value::U8(2)));
+    }
+
+    #[test]
+    fn test_payload_select_map() {
+        let payload = Payload::SelectMap(vec![{
+            let mut map = HashMap::new();
+            map.insert("a".to_owned(), Value::U8(1));
+            map.insert("b".to_owned(), Value::U8(2));
+            map
+        }]);
+
+        let mut iter = payload.select().unwrap();
+        let row = iter.next().unwrap();
+
+        assert_eq!(row.get("a"), Some(&&Value::U8(1)));
+        assert_eq!(row.get("b"), Some(&&Value::U8(2)));
+    }
+
+    #[test]
+    fn test_payload_accumulate() {
+        let mut payload = Payload::Insert(1);
+        payload.accumulate(&Payload::Insert(2));
+
+        assert_eq!(payload, Payload::Insert(3));
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_payload_accumulate_panic() {
+        let mut payload = Payload::Insert(1);
+        payload.accumulate(&Payload::Delete(2));
     }
 }

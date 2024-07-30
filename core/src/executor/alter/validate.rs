@@ -1,25 +1,27 @@
 use {
     super::AlterError,
     crate::{
-        ast::{ColumnDef, ColumnUniqueOption, DataType, OperateFunctionArg},
+        ast::{ColumnDef, DataType, OperateFunctionArg},
         executor::evaluate_stateless,
         result::Result,
     },
 };
 
-pub async fn validate(column_def: &ColumnDef) -> Result<()> {
+/// Validates whether the column definition is self-consistent.
+///
+/// # Arguments
+/// * `column_def` - The column definition to validate.
+/// * `unique` - Whether the column is unique.
+pub async fn validate(column_def: &ColumnDef, unique: bool) -> Result<()> {
     let ColumnDef {
         data_type,
         default,
-        unique,
         name,
         ..
     } = column_def;
 
     // unique + data type
-    if matches!(data_type, DataType::Float | DataType::Map)
-        && matches!(unique, Some(ColumnUniqueOption { .. }))
-    {
+    if matches!(data_type, DataType::Float | DataType::Map) && unique {
         return Err(AlterError::UnsupportedDataTypeForUniqueColumn(
             name.to_owned(),
             data_type.clone(),
@@ -34,17 +36,19 @@ pub async fn validate(column_def: &ColumnDef) -> Result<()> {
     Ok(())
 }
 
-pub fn validate_column_names(column_defs: &[ColumnDef]) -> Result<()> {
-    let duplicate_column_name = column_defs
-        .iter()
+pub fn validate_column_names<'a, C: Clone + Iterator<Item = &'a str>>(
+    column_names: C,
+) -> Result<()> {
+    let duplicate_column_name = column_names
+        .clone()
         .enumerate()
         .find(|(i, base_column)| {
-            column_defs
-                .iter()
+            column_names
+                .clone()
                 .skip(i + 1)
-                .any(|target_column| base_column.name == target_column.name)
+                .any(|target_column| base_column == &target_column)
         })
-        .map(|(_, column)| &column.name);
+        .map(|(_, column)| column);
 
     match duplicate_column_name {
         Some(v) => Err(AlterError::DuplicateColumnName(v.to_owned()).into()),

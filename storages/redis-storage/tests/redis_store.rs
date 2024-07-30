@@ -117,7 +117,7 @@ async fn redis_storage_no_primarykey() {
             assert_eq!(labels[0], "id");
             assert_eq!(rows[0][0], Value::I64(1));
             assert_eq!(labels[1], "name");
-            assert_eq!(rows[0][1], Value::Str("Superman".to_string()));
+            assert_eq!(rows[0][1], Value::Str("Superman".to_owned()));
             assert_eq!(labels[2], "birth");
             assert_eq!(
                 rows[0][2],
@@ -142,7 +142,7 @@ async fn redis_storage_no_primarykey() {
             assert_eq!(labels[2], "birth");
 
             for r in rows.iter() {
-                if r[1] == Value::Str("Batman".to_string()) {
+                if r[1] == Value::Str("Batman".to_owned()) {
                     assert_eq!(
                         r[2],
                         Value::Date(NaiveDate::from_ymd_opt(1999, 12, 31).unwrap())
@@ -167,7 +167,7 @@ async fn redis_storage_no_primarykey() {
             assert_eq!(labels[2], "birth");
 
             for r in rows.iter() {
-                assert_ne!(r[1], Value::Str("Super".to_string()));
+                assert_ne!(r[1], Value::Str("Super".to_owned()));
             }
         }
         _ => unreachable!(),
@@ -232,7 +232,7 @@ async fn redis_storage_primarykey() {
 
             assert_eq!(rows.len(), 1);
 
-            assert_eq!(rows[0][0], Value::Str("Batman".to_string()));
+            assert_eq!(rows[0][0], Value::Str("Batman".to_owned()));
             assert_eq!(
                 rows[0][1],
                 Value::Date(NaiveDate::from_ymd_opt(2011, 12, 31).unwrap())
