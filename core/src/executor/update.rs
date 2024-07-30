@@ -47,7 +47,7 @@ pub enum UpdateError {
     },
 
     #[error("Restrict reference column exists: {0}")]
-    RestrictingColumnExists(String),
+    ReferencingColumnExists(String),
 
     #[error("Default value not found on column: {0}")]
     ColumnDoesNotHaveDefaultValue(String),
@@ -294,7 +294,7 @@ pub async fn update<T: GStore + GStoreMut>(
                             ));
                         }
                         NoAction => {
-                            return Err(UpdateError::RestrictingColumnExists(format!(
+                            return Err(UpdateError::ReferencingColumnExists(format!(
                                 "{referencing_table_name}.{referencing_column_name}"
                             ))
                             .into());

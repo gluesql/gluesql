@@ -597,14 +597,14 @@ test_case!(foreign_key, {
     g.named_test(
         "Deleting referenced row should fail if referencing value exists (by default: NO ACTION and gets error)",
         "DELETE FROM ReferencedTableWithPK WHERE id = 1;",
-        Err(DeleteError::RestrictingColumnExists("ReferencingTable.referenced_id".to_owned()).into()),
+        Err(DeleteError::ReferencingColumnExists("ReferencingTable.referenced_id".to_owned()).into()),
     )
     .await;
 
     g.named_test(
         "Updating referenced row should fail if referencing value exists (by default: NO ACTION and gets error)",
         "UPDATE ReferencedTableWithPK SET name = 'referenced_table1 updated' WHERE id = 1;",
-        Err(UpdateError::RestrictingColumnExists("ReferencingTable.referenced_id".to_owned()).into()),
+        Err(UpdateError::ReferencingColumnExists("ReferencingTable.referenced_id".to_owned()).into()),
     ).await;
 
     g.named_test(

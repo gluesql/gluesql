@@ -21,7 +21,7 @@ use std::pin::Pin;
 #[derive(ThisError, Serialize, Debug, PartialEq, Eq)]
 pub enum DeleteError {
     #[error("Restrict reference column exists: {0}")]
-    RestrictingColumnExists(String),
+    ReferencingColumnExists(String),
 
     #[error("Value not found on column: {0}")]
     ValueNotFound(String),
@@ -104,7 +104,7 @@ pub async fn delete<T: GStore + GStoreMut>(
                             ));
                         }
                         NoAction => {
-                            return Err(DeleteError::RestrictingColumnExists(format!(
+                            return Err(DeleteError::ReferencingColumnExists(format!(
                                 "{referencing_table_name}.{referencing_column_name}"
                             ))
                             .into());
