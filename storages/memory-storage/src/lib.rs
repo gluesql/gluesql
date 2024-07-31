@@ -87,7 +87,7 @@ impl Store for MemoryStorage {
         let row = self
             .items
             .get(table_name)
-            .and_then(|item| item.rows.get(key).map(Clone::clone));
+            .and_then(|item| item.rows.get(key).cloned());
 
         Ok(row)
     }

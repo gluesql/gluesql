@@ -73,8 +73,8 @@ pub struct PySledStorageModeConfig(pub sled::Mode);
 impl PySledStorageModeConfig {
     pub fn __repr__(&self) -> PyResult<String> {
         match self.0 {
-            sled::Mode::LowSpace => Ok("LowSpace".to_string()),
-            sled::Mode::HighThroughput => Ok("HighThroughput".to_string()),
+            sled::Mode::LowSpace => Ok("LowSpace".to_owned()),
+            sled::Mode::HighThroughput => Ok("HighThroughput".to_owned()),
         }
     }
 }

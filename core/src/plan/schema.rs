@@ -168,10 +168,13 @@ async fn scan_join<T: Store>(storage: &T, join: &Join) -> Result<HashMap<String,
 }
 
 #[async_recursion(?Send)]
-async fn scan_table_factor<T: Store>(
+async fn scan_table_factor<T>(
     storage: &T,
     table_factor: &TableFactor,
-) -> Result<HashMap<String, Schema>> {
+) -> Result<HashMap<String, Schema>>
+where
+    T: Store,
+{
     match table_factor {
         TableFactor::Table { name, .. } => {
             let schema = storage.fetch_schema(name).await?;
@@ -187,7 +190,10 @@ async fn scan_table_factor<T: Store>(
 }
 
 #[async_recursion(?Send)]
-async fn scan_expr<T: Store>(storage: &T, expr: &Expr) -> Result<HashMap<String, Schema>> {
+async fn scan_expr<T>(storage: &T, expr: &Expr) -> Result<HashMap<String, Schema>>
+where
+    T: Store,
+{
     let schema_list = match expr.into() {
         PlanExpr::None | PlanExpr::Identifier(_) | PlanExpr::CompoundIdentifier { .. } => {
             HashMap::new()

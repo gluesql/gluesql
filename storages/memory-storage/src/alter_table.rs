@@ -17,7 +17,7 @@ impl AlterTable for MemoryStorage {
             .remove(table_name)
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
 
-        item.schema.table_name = new_table_name.to_owned();
+        new_table_name.clone_into(&mut item.schema.table_name);
         self.items.insert(new_table_name.to_owned(), item);
 
         Ok(())
@@ -52,7 +52,7 @@ impl AlterTable for MemoryStorage {
             .find(|column_def| column_def.name == old_column_name)
             .ok_or(AlterTableError::RenamingColumnNotFound)?;
 
-        column_def.name = new_column_name.to_owned();
+        new_column_name.clone_into(&mut column_def.name);
 
         Ok(())
     }
