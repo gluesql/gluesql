@@ -386,10 +386,13 @@ pub async fn fetch_columns<T: GStore>(
 }
 
 #[async_recursion(?Send)]
-pub async fn fetch_relation_columns<T: GStore>(
+pub async fn fetch_relation_columns<T>(
     storage: &T,
     table_factor: &TableFactor,
-) -> Result<Option<Vec<String>>> {
+) -> Result<Option<Vec<String>>>
+where
+    T: GStore,
+{
     match table_factor {
         TableFactor::Table { name, alias, .. } => {
             let columns = fetch_columns(storage, name).await?;
