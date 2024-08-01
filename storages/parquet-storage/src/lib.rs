@@ -67,7 +67,7 @@ impl ParquetStorage {
                 if kv.key == "schemaless" {
                     is_schemaless = matches!(kv.value.as_deref(), Some("true"));
                 } else if kv.key == "comment" {
-                    comment.clone_from(&kv.value);
+                  comment.clone_from(&kv.value)
                 } else if kv.key.starts_with("foreign_key") {
                     let fk = kv
                         .value
@@ -185,9 +185,9 @@ impl ParquetStorage {
 
     fn generate_temp_schema() -> Schema {
         Schema {
-            table_name: "temporary".to_string(),
+            table_name: "temporary".to_owned(),
             column_defs: Some(vec![ColumnDef {
-                name: "schemaless".to_string(),
+                name: "schemaless".to_owned(),
                 data_type: DataType::Map,
                 nullable: true,
                 default: None,

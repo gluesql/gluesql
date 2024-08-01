@@ -42,7 +42,7 @@ impl ParquetField {
                                 micros as u32,
                             )
                             .map_storage_err(Error::StorageMsg(
-                                "Failed to convert to NaiveTime".to_string(),
+                                "Failed to convert to NaiveTime".to_owned(),
                             ))
                             .map(Value::Time);
                         }
@@ -159,7 +159,7 @@ impl ParquetField {
                 };
                 match decimal {
                     Some(v) => Ok(v),
-                    None => Err(Error::StorageMsg("Invalid decimal".to_string())),
+                    None => Err(Error::StorageMsg("Invalid decimal".to_owned())),
                 }
             }
             Field::MapInternal(m) => {
