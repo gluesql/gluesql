@@ -67,7 +67,7 @@ impl ParquetStorage {
                 if kv.key == "schemaless" {
                     is_schemaless = matches!(kv.value.as_deref(), Some("true"));
                 } else if kv.key == "comment" {
-                  comment.clone_from(&kv.value)
+                    comment.clone_from(&kv.value)
                 } else if kv.key.starts_with("foreign_key") {
                     let fk = kv
                         .value
