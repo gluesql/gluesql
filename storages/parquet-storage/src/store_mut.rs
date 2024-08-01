@@ -576,6 +576,7 @@ impl ParquetStorage {
             DataType::Decimal => Ok((Type::BYTE_ARRAY, None)),
             DataType::Timestamp => Ok((Type::BYTE_ARRAY, None)),
             DataType::Bytea => Ok((Type::BYTE_ARRAY, None)),
+            DataType::Array(..) => Ok((Type::BYTE_ARRAY, None)),
         }
     }
 }

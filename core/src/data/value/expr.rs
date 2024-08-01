@@ -114,6 +114,11 @@ impl TryFrom<Value> for Expr {
 
                 Expr::Literal(AstLiteral::QuotedString(json.to_string()))
             }
+            Value::Array(v) => {
+                let json: JsonValue = v.try_into().map_err(|_| ValueToExprConversionFailure)?;
+
+                Expr::Literal(AstLiteral::QuotedString(json.to_string()))
+            }
             Value::Point(v) => Expr::Literal(AstLiteral::QuotedString(v.to_string())),
             Value::Null => Expr::Literal(AstLiteral::Null),
         };

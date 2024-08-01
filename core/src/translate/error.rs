@@ -78,6 +78,9 @@ pub enum TranslateError {
     #[error("unsupported multiple alter table operations, expected: `ALTER TABLE <table> <operation>`, got: `ALTER TABLE <table> <operation>, <operation>, ..`")]
     UnsupportedMultipleAlterTableOperations,
 
+    #[error("unsupported array type definition, expected: `[]<type>`, got: `{0}`")]
+    UnsupportedArrayTypeDefinition(String),
+
     #[error("unreachable empty alter table operation")]
     UnreachableEmptyAlterTableOperation,
 
