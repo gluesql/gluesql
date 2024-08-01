@@ -49,6 +49,30 @@ pub fn translate_alter_table_operation(
     }
 }
 
+/// Returns the column definitions and the indices of the primary key columns.
+pub fn translate_column_defs<I: IntoIterator<Item = Result<SqlColumnDef>>>(
+    sql_column_defs: I,
+) -> Result<(Vec<ColumnDef>, Option<Vec<usize>>)> {
+    sql_column_defs.into_iter().enumerate().try_fold(
+        (Vec::new(), None::<Vec<usize>>), // Initial accumulator: (column_defs, primary_key)
+        |(mut column_defs, primary_key), (index, sql_column_def)| {
+            let (translated_column, is_primary) = translate_column_def(&sql_column_def?)?;
+
+            column_defs.push(translated_column);
+            Ok((
+                column_defs,
+                match (primary_key, is_primary) {
+                    (Some(_), true) => {
+                        return Err(TranslateError::MultiplePrimaryKeyNotSupported.into())
+                    }
+                    (None, true) => Some(vec![index]),
+                    (primary_key, false) => primary_key,
+                },
+            ))
+        },
+    )
+}
+
 /// Returns the column definition and whether the column is a primary key.
 pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<(ColumnDef, bool)> {
     let SqlColumnDef {

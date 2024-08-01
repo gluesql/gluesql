@@ -386,7 +386,7 @@ mod tests {
             comment: None,
         };
 
-        let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, PRIMARY KEY (id));"#;
+        let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, PRIMARY KEY ("id"));"#;
         assert_eq!(schema.to_ddl(), ddl);
 
         let actual = Schema::from_ddl(ddl).unwrap();
@@ -430,7 +430,7 @@ mod tests {
             comment: None,
         };
 
-        let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, "user_id" INT NOT NULL, "image_id" INT NOT NULL UNIQUE, PRIMARY KEY (id, user_id));"#;
+        let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, "user_id" INT NOT NULL, "image_id" INT NOT NULL UNIQUE, PRIMARY KEY ("id", "user_id"));"#;
         assert_eq!(schema.to_ddl(), ddl);
 
         let actual = Schema::from_ddl(ddl).unwrap();

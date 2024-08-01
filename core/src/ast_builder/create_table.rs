@@ -6,7 +6,7 @@ use {
         error::TranslateError,
         parse_sql::parse_column_def,
         result::Result,
-        translate::translate_column_def,
+        translate::translate_column_defs,
     },
 };
 
@@ -49,61 +49,45 @@ impl CreateTableNode {
 
 impl Build for CreateTableNode {
     fn build(self) -> Result<Statement> {
-        let table_name = self.table_name;
-        let mut primary_key: Option<Vec<usize>> = None;
-        let columns: Option<Vec<crate::ast::ColumnDef>> = match self.columns {
-            Some(columns) => Some(
-                columns
-                    .into_iter()
-                    .enumerate()
-                    .map(|(index, column_statement)| {
-                        let (translated_column, is_primary) =
-                            translate_column_def(&parse_column_def(column_statement)?)?;
-                        if is_primary {
-                            {
-                                match primary_key.as_mut() {
-                                    Some(_) => {
-                                        return Err(
-                                            TranslateError::MultiplePrimaryKeyNotSupported.into()
-                                        )
-                                    }
-                                    None => {
-                                        primary_key = Some(vec![index]);
-                                    }
-                                }
-                            }
-                        }
-                        Ok(translated_column)
-                    })
-                    .collect::<Result<Vec<_>>>()?,
-            ),
-            None => None,
-        };
+        let (columns, primary_key): (Vec<crate::ast::ColumnDef>, Option<Vec<usize>>) = self
+            .columns
+            .map(|columns| {
+                translate_column_defs(
+                    columns
+                        .iter()
+                        .map(|column| parse_column_def(column.as_ref())),
+                )
+            })
+            .transpose()?
+            .map(Result::Ok)
+            .unwrap_or_else(|| Err(TranslateError::LackOfColumns(self.table_name.clone())))?;
 
-        if let Some(primary_key_constraint) = self.primary_key_constraint {
-            if primary_key.is_some() {
+        let primary_key = match (primary_key, self.primary_key_constraint) {
+            (Some(_), Some(_)) => {
                 return Err(TranslateError::MultiplePrimaryKeyNotSupported.into());
             }
-
-            let mut indices = Vec::new();
-
-            if let Some(columns) = columns.as_ref() {
-                for column in primary_key_constraint.as_ref() {
-                    if let Some(index) = columns.iter().position(|c| &c.name == column) {
-                        indices.push(index);
-                    } else {
-                        return Err(TranslateError::ColumnNotFoundInTable(column.clone()).into());
-                    }
-                }
-            }
-
-            primary_key = Some(indices);
+            (Some(primary_key), None) => Some(primary_key),
+            (None, Some(primary_key)) => Some(
+                primary_key
+                    .as_ref()
+                    .iter()
+                    .map(|column| {
+                        columns
+                            .iter()
+                            .position(|c| &c.name == column)
+                            .ok_or_else(|| {
+                                TranslateError::ColumnNotFoundInTable(column.clone()).into()
+                            })
+                    })
+                    .collect::<Result<Vec<usize>>>()?,
+            ),
+            (None, None) => None,
         };
 
         Ok(Statement::CreateTable {
-            name: table_name,
+            name: self.table_name,
             if_not_exists: self.if_not_exists,
-            columns,
+            columns: Some(columns),
             source: None,
             engine: None,
             foreign_keys: Vec::new(),
@@ -141,6 +125,15 @@ mod tests {
     }
 
     #[test]
+    fn test_create_table_without_columns() {
+        let actual = table("Foo").create_table().build();
+        assert_eq!(
+            actual.unwrap_err(),
+            TranslateError::LackOfColumns("Foo".to_owned()).into()
+        );
+    }
+
+    #[test]
     fn create_table_with_primary_key() {
         let actual = table("Foo")
             .create_table()
@@ -175,12 +168,5 @@ mod tests {
             actual.unwrap_err(),
             TranslateError::ColumnNotFoundInTable("age".to_owned()).into()
         );
-    }
-
-    #[test]
-    fn create_table_without_column() {
-        let actual = table("Foo").create_table().build();
-        let expected = "CREATE TABLE Foo";
-        test(actual, expected);
     }
 }

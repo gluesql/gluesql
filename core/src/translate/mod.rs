@@ -9,7 +9,7 @@ mod query;
 
 pub use self::{
     data_type::translate_data_type,
-    ddl::{translate_column_def, translate_operate_function_arg},
+    ddl::{translate_column_def, translate_column_defs, translate_operate_function_arg},
     error::TranslateError,
     expr::{translate_expr, translate_order_by_expr},
     query::{alias_or_name, translate_query, translate_select_item},
@@ -96,26 +96,10 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             comment,
             ..
         } => {
-            let mut primary_key: Option<Vec<usize>> = None;
-
-            let translated_columns = columns
-                .iter()
-                .enumerate()
-                .map(|(index, column)| {
-                    let (translated_column, is_primary) = translate_column_def(column)?;
-                    if is_primary {
-                        match primary_key.as_mut() {
-                            Some(_) => {
-                                return Err(TranslateError::MultiplePrimaryKeyNotSupported.into())
-                            }
-                            None => {
-                                primary_key.get_or_insert_with(Vec::new).push(index);
-                            }
-                        }
-                    }
-                    Ok(translated_column)
-                })
-                .collect::<Result<Vec<_>>>()?;
+            let (translated_columns, mut primary_key): (
+                Vec<crate::ast::ColumnDef>,
+                Option<Vec<usize>>,
+            ) = translate_column_defs(columns.iter().cloned().map(Result::Ok))?;
 
             let mut foreign_keys = Vec::new();
 
@@ -124,25 +108,27 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                     sqlparser::ast::TableConstraint::PrimaryKey {
                         columns: primary_key_columns,
                         ..
-                    } => match primary_key.as_mut() {
-                        Some(_) => {
-                            return Err(TranslateError::MultiplePrimaryKeyNotSupported.into())
+                    } => {
+                        if primary_key.is_some() {
+                            return Err(TranslateError::MultiplePrimaryKeyNotSupported.into());
+                        } else {
+                            primary_key = Some(
+                                primary_key_columns
+                                    .iter()
+                                    .map(|column| {
+                                        columns.iter().position(|c| &c.name == column).ok_or_else(
+                                            || {
+                                                TranslateError::ColumnNotFoundInTable(
+                                                    column.value.clone(),
+                                                )
+                                                .into()
+                                            },
+                                        )
+                                    })
+                                    .collect::<Result<Vec<usize>>>()?,
+                            );
                         }
-                        None => {
-                            for column in primary_key_columns {
-                                primary_key.get_or_insert_with(Vec::new).push(
-                                    translated_columns
-                                        .iter()
-                                        .position(|v| v.name == column.value)
-                                        .ok_or_else(|| {
-                                            TranslateError::ColumnNotFoundInTable(
-                                                column.to_string(),
-                                            )
-                                        })?,
-                                );
-                            }
-                        }
-                    },
+                    }
                     sqlparser::ast::TableConstraint::ForeignKey {
                         name,
                         columns,

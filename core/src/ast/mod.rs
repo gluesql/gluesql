@@ -221,6 +221,7 @@ impl ToSql for Statement {
                             .filter_map(|(i, column)| {
                                 indices.contains(&i).then_some(column.name.as_str())
                             })
+                            .map(|s| format!(r#""{}""#, s))
                             .collect::<Vec<_>>()
                             .join(", ")
                     )),
