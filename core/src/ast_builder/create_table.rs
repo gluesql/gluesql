@@ -49,7 +49,7 @@ impl CreateTableNode {
 
 impl Build for CreateTableNode {
     fn build(self) -> Result<Statement> {
-        let (columns, primary_key): (Vec<crate::ast::ColumnDef>, Option<Vec<usize>>) = self
+        let (columns, primary_key): (Option<Vec<crate::ast::ColumnDef>>, Option<Vec<usize>>) = self
             .columns
             .map(|columns| {
                 translate_column_defs(
@@ -59,8 +59,8 @@ impl Build for CreateTableNode {
                 )
             })
             .transpose()?
-            .map(Result::Ok)
-            .unwrap_or_else(|| Err(TranslateError::LackOfColumns(self.table_name.clone())))?;
+            .map(|(columns, primary_key)| (Some(columns), primary_key))
+            .unwrap_or_else(|| (None, None));
 
         let primary_key = match (primary_key, self.primary_key_constraint) {
             (Some(_), Some(_)) => {
@@ -73,8 +73,8 @@ impl Build for CreateTableNode {
                     .iter()
                     .map(|column| {
                         columns
-                            .iter()
-                            .position(|c| &c.name == column)
+                            .as_ref()
+                            .and_then(|columns| columns.iter().position(|c| &c.name == column))
                             .ok_or_else(|| {
                                 TranslateError::ColumnNotFoundInTable(column.clone()).into()
                             })
@@ -87,7 +87,7 @@ impl Build for CreateTableNode {
         Ok(Statement::CreateTable {
             name: self.table_name,
             if_not_exists: self.if_not_exists,
-            columns: Some(columns),
+            columns,
             source: None,
             engine: None,
             foreign_keys: Vec::new(),
@@ -122,15 +122,6 @@ mod tests {
             .build();
         let expected = "CREATE TABLE IF NOT EXISTS Foo (id UUID UNIQUE, name TEXT)";
         test(actual, expected);
-    }
-
-    #[test]
-    fn test_create_table_without_columns() {
-        let actual = table("Foo").create_table().build();
-        assert_eq!(
-            actual.unwrap_err(),
-            TranslateError::LackOfColumns("Foo".to_owned()).into()
-        );
     }
 
     #[test]

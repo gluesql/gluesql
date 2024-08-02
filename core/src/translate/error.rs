@@ -156,9 +156,6 @@ pub enum TranslateError {
     #[error("unreachable empty table")]
     UnreachableEmptyTable,
 
-    #[error("Table {0} has mo columns")]
-    LackOfColumns(String),
-
     #[error("unreachable - FROM cannot be ommitted in DELETE statement")]
     UnreachableOmittingFromInDelete,
 
