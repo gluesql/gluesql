@@ -235,25 +235,6 @@ impl PrimaryKey {
                 }),
                 original_expr: original_left_expr.and(original_right_expr),
             },
-            (
-                left,
-                PrimaryKey::Found {
-                    index_item: right_index_item,
-                    refactored_expr: right_refactored_expr,
-                    original_expr: right_expr,
-                },
-            ) => {
-                let rhs = PrimaryKey::Found {
-                    index_item: right_index_item,
-                    refactored_expr: right_refactored_expr,
-                    original_expr: right_expr,
-                };
-                // When both the left and right branches have a refactored expression,
-                // we must merge the two refactored expressions into a single expression.
-                // Since, in order to wri
-                let refactored = left.has_refactored_expr() && rhs.has_refactored_expr();
-                rhs.and(left).commute_and(refactored)
-            }
             // If we have found part of a primary key in the right branch, we must
             // merge the index items from the left branch with the index items from the
             // right branch. In some instances, we may encounter cases where the same
@@ -417,25 +398,15 @@ impl PrimaryKey {
                 original_expr: original_expr.and(other_original_expr),
             }
             .into(),
-            (
-                PrimaryKey::NotFound(other_original_expr),
-                PrimaryKey::Partial(Partial {
-                    index_items,
-                    refactored_expr,
-                    original_expr,
-                }),
-            ) => {
-                let refactored = refactored_expr.is_some();
-                PrimaryKey::Partial(Partial {
-                    index_items,
-                    refactored_expr,
-                    original_expr,
-                })
-                .and(PrimaryKey::NotFound(other_original_expr))
-                .commute_and(refactored)
-            }
             (PrimaryKey::NotFound(left), PrimaryKey::NotFound(right)) => {
                 PrimaryKey::NotFound(left.and(right))
+            }
+            (left, right) => {
+                // When both the left and right branches have a refactored expression,
+                // we must merge the two refactored expressions into a single expression.
+                // Since, in order to wri
+                let refactored = left.has_refactored_expr() && right.has_refactored_expr();
+                right.and(left).commute_and(refactored)
             }
         }
     }
