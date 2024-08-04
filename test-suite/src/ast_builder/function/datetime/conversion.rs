@@ -1,7 +1,6 @@
-use chrono::{NaiveDate, NaiveTime};
-
 use {
     crate::*,
+    chrono::{NaiveDate, NaiveTime},
     gluesql_core::{
         ast_builder::{function as f, *},
         executor::Payload,

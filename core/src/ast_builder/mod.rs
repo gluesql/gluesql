@@ -27,7 +27,22 @@ mod table_name;
 mod transaction;
 mod update;
 
+/// Available aggregate or normal SQL functions
+pub use expr::{
+    aggregate::{avg, count, max, min, stdev, sum, variance, AggregateNode},
+    function,
+};
+/// Available expression builder functions
+pub use expr::{
+    bitwise_not, bytea, case, col, date, exists, expr, factorial, minus, nested, not, not_exists,
+    null, num, numeric::NumericNode, plus, subquery, text, time, timestamp, uuid, ExprNode,
+};
+/// Functions for building transaction statements
+pub use transaction::{begin, commit, rollback};
 pub use {
+    alter_table::{
+        AddColumnNode, AlterTableNode, DropColumnNode, RenameColumnNode, RenameTableNode,
+    },
     assignment::AssignmentNode,
     build::Build,
     column_def::ColumnDefNode,
@@ -40,6 +55,7 @@ pub use {
     execute::Execute,
     expr_list::ExprList,
     expr_with_alias::ExprWithAliasNode,
+    index::{CreateIndexNode, DropIndexNode},
     index_item::{
         non_clustered, primary_key, CmpExprNode, IndexItemNode, NonClusteredNode, PrimaryKeyNode,
     },
@@ -60,27 +76,6 @@ pub use {
     table_name::table,
     update::UpdateNode,
 };
-
-/// Available expression builder functions
-pub use expr::{
-    bitwise_not, bytea, case, col, date, exists, expr, factorial, minus, nested, not, not_exists,
-    null, num, numeric::NumericNode, plus, subquery, text, time, timestamp, uuid, ExprNode,
-};
-
-pub use alter_table::{
-    AddColumnNode, AlterTableNode, DropColumnNode, RenameColumnNode, RenameTableNode,
-};
-
-pub use {index::CreateIndexNode, index::DropIndexNode};
-
-/// Available aggregate or normal SQL functions
-pub use expr::{
-    aggregate::{avg, count, max, min, stdev, sum, variance, AggregateNode},
-    function,
-};
-
-/// Functions for building transaction statements
-pub use transaction::{begin, commit, rollback};
 
 #[cfg(test)]
 fn test(actual: crate::result::Result<crate::ast::Statement>, expected: &str) {

@@ -1,18 +1,15 @@
 use {
+    gluesql_core::{
+        chrono::NaiveDateTime,
+        prelude::{
+            Glue, Payload,
+            Value::{self, *},
+        },
+    },
+    gluesql_parquet_storage::ParquetStorage,
     parquet::data_type::ByteArray,
     std::fs,
-    test_suite::concat_with_null,
-    {
-        gluesql_core::{
-            chrono::NaiveDateTime,
-            prelude::{
-                Glue, Payload,
-                Value::{self, *},
-            },
-        },
-        gluesql_parquet_storage::ParquetStorage,
-        test_suite::{concat_with, row, select, select_with_null, stringify_label},
-    },
+    test_suite::{concat_with, concat_with_null, row, select, select_with_null, stringify_label},
 };
 
 struct FileGuard {
