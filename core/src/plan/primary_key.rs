@@ -198,9 +198,8 @@ impl<'a> PrimaryKeyPlanner<'a> {
         current_context: &Rc<Context<'a>>,
         expr: Expr,
     ) -> PrimaryKey {
-
         // Returns te primary key variant associated to the provided key and value, if any.
-        let get_primary_key = |key: &Box<Expr>, value: &Box<Expr>| -> Option<PrimaryKey>{
+        let get_primary_key = |key: &Expr, value: &Expr| -> Option<PrimaryKey> {
             if !(check_evaluable(Some(current_context.clone()), key)
                 && check_evaluable(None, value))
             {
@@ -208,32 +207,35 @@ impl<'a> PrimaryKeyPlanner<'a> {
             }
 
             let key_column: &str = if let Expr::Identifier(ident)
-            | Expr::CompoundIdentifier { ident, .. } = key.as_ref()
+            | Expr::CompoundIdentifier { ident, .. } = key
             {
                 ident
             } else {
                 return None;
             };
 
-            current_context.get_primary_key_index_by_name(key_column).map(|index| {
-                let number_of_primary_key_columns = current_context.number_of_primary_key_columns();
-                if number_of_primary_key_columns == 1 {
-                    // If we have a single primary key column, we can directly create a Found primary key.
-                    PrimaryKey::new_found(*value.clone())
-                } else {
-                    // Otherwise, we create a Partial primary key.
-                    PrimaryKey::new_partial(
-                        *value.clone(),
-                        index,
-                        number_of_primary_key_columns,
-                        Expr::BinaryOp {
-                            left: key.clone(),
-                            op: BinaryOperator::Eq,
-                            right: value.clone(),
-                        },
-                    )
-                }
-            })
+            current_context
+                .get_primary_key_index_by_name(key_column)
+                .map(|index| {
+                    let number_of_primary_key_columns =
+                        current_context.number_of_primary_key_columns();
+                    if number_of_primary_key_columns == 1 {
+                        // If we have a single primary key column, we can directly create a Found primary key.
+                        PrimaryKey::new_found(value.clone())
+                    } else {
+                        // Otherwise, we create a Partial primary key.
+                        PrimaryKey::new_partial(
+                            value.clone(),
+                            index,
+                            number_of_primary_key_columns,
+                            Expr::BinaryOp {
+                                left: Box::new(key.clone()),
+                                op: BinaryOperator::Eq,
+                                right: Box::new(value.clone()),
+                            },
+                        )
+                    }
+                })
         };
 
         match expr {
@@ -241,22 +243,18 @@ impl<'a> PrimaryKeyPlanner<'a> {
                 left,
                 op: BinaryOperator::Eq,
                 right,
-            } => match get_primary_key(&left, &right) {
-                Some(primary_key) => primary_key,
-                None => match get_primary_key(&right, &left) {
-                    Some(primary_key) => primary_key,
-                    None => {
-                        PrimaryKey::NotFound(self.subquery_expr(
-                            Context::concat(Some(current_context.clone()), outer_context),
-                            Expr::BinaryOp {
-                                left,
-                                op: BinaryOperator::Eq,
-                                right,
-                            },
-                        ))
-                    }
-                },
-            },
+            } => get_primary_key(&left, &right)
+                .or_else(|| get_primary_key(&right, &left))
+                .unwrap_or_else(|| {
+                    PrimaryKey::NotFound(self.subquery_expr(
+                        Context::concat(Some(current_context.clone()), outer_context),
+                        Expr::BinaryOp {
+                            left,
+                            op: BinaryOperator::Eq,
+                            right,
+                        },
+                    ))
+                }),
             Expr::BinaryOp {
                 left,
                 op: BinaryOperator::And,
