@@ -1,4 +1,7 @@
-use {crate::*, gluesql_core::executor::EvaluateError, gluesql_core::prelude::Value::*};
+use {
+    crate::*,
+    gluesql_core::{executor::EvaluateError, prelude::Value::*},
+};
 
 test_case!(take, {
     let g = get_tester!();

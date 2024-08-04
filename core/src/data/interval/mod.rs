@@ -2,6 +2,7 @@ mod error;
 mod primitive;
 mod string;
 
+pub use error::IntervalError;
 use {
     super::Value,
     crate::{ast::DateTimeField, result::Result},
@@ -11,8 +12,6 @@ use {
     serde::{Deserialize, Serialize},
     std::{cmp::Ordering, fmt::Debug},
 };
-
-pub use error::IntervalError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Interval {

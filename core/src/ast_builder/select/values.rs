@@ -1,12 +1,10 @@
-use {
-    crate::ast_builder::{
+use crate::{
+    ast::{Expr, Query, SetExpr, Values},
+    ast_builder::{
         select::Prebuild, ExprList, ExprNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode,
         QueryNode, TableFactorNode,
     },
-    crate::{
-        ast::{Expr, Query, SetExpr, Values},
-        result::Result,
-    },
+    result::Result,
 };
 
 #[derive(Clone, Debug)]

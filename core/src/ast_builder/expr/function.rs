@@ -1,10 +1,7 @@
-use {
-    super::ExprNode,
-    crate::{
-        ast::{DateTimeField, Function},
-        ast_builder::{DataTypeNode, ExprList},
-        result::{Error, Result},
-    },
+use crate::{
+    ast::{DateTimeField, Function},
+    ast_builder::{DataTypeNode, ExprList, ExprNode},
+    result::{Error, Result},
 };
 
 #[derive(Clone, Debug)]

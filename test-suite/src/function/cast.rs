@@ -1,5 +1,3 @@
-use gluesql_core::translate::TranslateError;
-
 use {
     crate::*,
     chrono::{NaiveDate, NaiveTime},
@@ -10,6 +8,7 @@ use {
             DataType, Payload,
             Value::{self, *},
         },
+        translate::TranslateError,
     },
     rust_decimal::Decimal,
 };

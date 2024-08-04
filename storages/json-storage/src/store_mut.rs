@@ -11,9 +11,11 @@ use {
     },
     serde_json::{to_string_pretty, Map, Value as JsonValue},
     std::{
+        cmp::Ordering,
         fs::{remove_file, File, OpenOptions},
         io::Write,
-        {cmp::Ordering, iter::Peekable, vec::IntoIter},
+        iter::Peekable,
+        vec::IntoIter,
     },
 };
 

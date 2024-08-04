@@ -13,13 +13,6 @@ pub mod function;
 pub mod in_list;
 pub mod numeric;
 
-pub use {
-    case::case,
-    exists::{exists, not_exists},
-    nested::nested,
-    unary_op::{bitwise_not, factorial, minus, not, plus},
-};
-
 use {
     crate::{
         ast::{Aggregate, AstLiteral, BinaryOperator, Expr, Function, Query, UnaryOperator},
@@ -35,6 +28,12 @@ use {
     in_list::InListNode,
     numeric::NumericNode,
     std::borrow::Cow,
+};
+pub use {
+    case::case,
+    exists::{exists, not_exists},
+    nested::nested,
+    unary_op::{bitwise_not, factorial, minus, not, plus},
 };
 
 #[derive(Clone, Debug)]

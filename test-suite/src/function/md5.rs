@@ -1,6 +1,9 @@
 use {
     crate::*,
-    gluesql_core::{error::TranslateError, prelude::Payload, prelude::Value::*},
+    gluesql_core::{
+        error::TranslateError,
+        prelude::{Payload, Value::*},
+    },
 };
 
 test_case!(md5, {

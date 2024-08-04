@@ -94,8 +94,10 @@ async fn redis_storage_namespace() {
 
 #[tokio::test]
 async fn redis_storage_no_primarykey() {
-    use chrono::NaiveDate;
-    use gluesql_core::prelude::{Glue, Payload, Value};
+    use {
+        chrono::NaiveDate,
+        gluesql_core::prelude::{Glue, Payload, Value},
+    };
 
     let mut path = env::current_dir().unwrap();
     path.push("tests/redis-storage.toml");
@@ -183,8 +185,10 @@ async fn redis_storage_no_primarykey() {
 
 #[tokio::test]
 async fn redis_storage_primarykey() {
-    use chrono::NaiveDate;
-    use gluesql_core::prelude::{Glue, Payload, Value};
+    use {
+        chrono::NaiveDate,
+        gluesql_core::prelude::{Glue, Payload, Value},
+    };
 
     let mut path = env::current_dir().unwrap();
     path.push("tests/redis-storage.toml");
