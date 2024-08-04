@@ -95,6 +95,40 @@ impl ToSqlUnquoted for Expr {
 }
 
 impl Expr {
+    /// Create a new AND binary expression.
+    pub fn and(self, other: Expr) -> Expr {
+        Expr::BinaryOp {
+            left: Box::new(self),
+            op: BinaryOperator::And,
+            right: Box::new(other),
+        }
+    }
+
+    /// Create a new equals binary expression.
+    pub fn equal(self, other: Expr) -> Expr {
+        Expr::BinaryOp {
+            left: Box::new(self),
+            op: BinaryOperator::Eq,
+            right: Box::new(other),
+        }
+    }
+
+    /// Commute the AND binary expression.
+    pub fn commute_and(self) -> Expr {
+        match self {
+            Expr::BinaryOp {
+                left,
+                op: BinaryOperator::And,
+                right,
+            } => Expr::BinaryOp {
+                left: right,
+                op: BinaryOperator::And,
+                right: left,
+            },
+            _ => self,
+        }
+    }
+
     fn to_sql_with(&self, quoted: bool) -> String {
         match self {
             Expr::Identifier(s) => match quoted {
