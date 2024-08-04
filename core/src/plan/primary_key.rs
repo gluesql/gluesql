@@ -206,13 +206,12 @@ impl<'a> PrimaryKeyPlanner<'a> {
                 return None;
             }
 
-            let key_column: &str = if let Expr::Identifier(ident)
-            | Expr::CompoundIdentifier { ident, .. } = key
-            {
-                ident
-            } else {
-                return None;
-            };
+            let key_column: &str =
+                if let Expr::Identifier(ident) | Expr::CompoundIdentifier { ident, .. } = key {
+                    ident
+                } else {
+                    return None;
+                };
 
             current_context
                 .get_primary_key_index_by_name(key_column)
