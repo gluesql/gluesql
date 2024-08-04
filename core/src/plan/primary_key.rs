@@ -47,6 +47,7 @@ impl<'a> Planner<'a> for PrimaryKeyPlanner<'a> {
     fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: Query) -> Query {
         let body = match query.body {
             SetExpr::Select(select) => {
+                dbg!(&select);
                 let select = self.select(outer_context, *select);
 
                 SetExpr::Select(Box::new(select))
@@ -149,6 +150,7 @@ impl<'a> PrimaryKeyPlanner<'a> {
             .selection
             .map(|expr| match current_context.as_ref() {
                 Some(current_context) => {
+                    dbg!(&expr);
                     let result = self.expr(outer_context, current_context, expr);
                     match result {
                         PrimaryKey::Found {
@@ -266,23 +268,50 @@ impl<'a> PrimaryKeyPlanner<'a> {
                 op: BinaryOperator::And,
                 right,
             } => {
-                match self.expr(
-                    outer_context.as_ref().map(Rc::clone),
-                    current_context,
-                    *left,
+                match (
+                    self.expr(
+                        outer_context.as_ref().map(Rc::clone),
+                        current_context,
+                        *left,
+                    ),
+                    self.expr(
+                        outer_context.as_ref().map(Rc::clone),
+                        current_context,
+                        *right.clone(),
+                    ),
                 ) {
-                    PrimaryKey::Found {
-                        index_item,
-                        refactored_expr: refactored_left_expr,
-                    } => PrimaryKey::Found {
+                    (
+                        PrimaryKey::Found {
+                            index_item,
+                            refactored_expr: refactored_left_expr,
+                        },
+                        PrimaryKey::NotFound(right_expr),
+                    ) => PrimaryKey::Found {
                         index_item,
                         refactored_expr: match refactored_left_expr {
                             Some(refactored_left_expr) => Some(Expr::BinaryOp {
                                 left: Box::new(refactored_left_expr),
                                 op: BinaryOperator::And,
-                                right,
+                                right: Box::new(right_expr),
                             }),
-                            None => Some(*right),
+                            None => Some(right_expr),
+                        },
+                    },
+                    (
+                        PrimaryKey::Found {
+                            index_item,
+                            refactored_expr: refactored_left_expr,
+                        },
+                        _,
+                    ) => PrimaryKey::Found {
+                        index_item,
+                        refactored_expr: match refactored_left_expr {
+                            Some(refactored_left_expr) => Some(Expr::BinaryOp {
+                                left: Box::new(refactored_left_expr),
+                                op: BinaryOperator::And,
+                                right: Box::new(right.as_ref().clone()),
+                            }),
+                            None => Some(right.as_ref().clone()),
                         },
                     },
                     // If the search of the left branch has determined part of a primary key, we
@@ -291,247 +320,256 @@ impl<'a> PrimaryKeyPlanner<'a> {
                     // a WHERE statement such as `user_id = 1 AND comment_id = 2`. In such a case
                     // the left branch will determine the user_id, and the right branch will determine
                     // the comment_id.
-                    PrimaryKey::Partial(Partial {
-                        index_items: left_index_items,
-                        refactored_expr: left_refactored_expr,
-                        original_expr: left_original_expr,
-                    }) => {
-                        match self.expr(outer_context, current_context, *right) {
-                            // If we have found a complete primary key in the right branch, we must
-                            // give priority to the refactored expression obtained from the right branch
-                            // and use only the original expression from the left branch.
-                            PrimaryKey::Found {
-                                index_item,
-                                refactored_expr: refactored_right_expr,
-                            } => PrimaryKey::Found {
-                                index_item,
-                                refactored_expr: match refactored_right_expr {
-                                    Some(refactored_right_expr) => Some(Expr::BinaryOp {
-                                        left: Box::new(left_original_expr),
-                                        op: BinaryOperator::And,
-                                        right: Box::new(refactored_right_expr),
-                                    }),
-                                    None => Some(left_original_expr),
-                                },
-                            },
-                            // If we have found part of a primary key in the right branch, we must
-                            // merge the index items from the left branch with the index items from the
-                            // right branch. In some instances, we may encounter cases where the same
-                            // primary key column is set in both the left branch and the right branch. In
-                            // such cases, we must give priority to the value set in the left branch,
-                            // and leave as-is the right branch.
-                            PrimaryKey::Partial(Partial {
+                    (
+                        PrimaryKey::Partial(Partial {
+                            index_items: _,
+                            refactored_expr: _,
+                            original_expr: left_original_expr,
+                        }),
+                        PrimaryKey::Found {
+                            index_item,
+                            refactored_expr: refactored_right_expr,
+                        },
+                    ) => PrimaryKey::Found {
+                        index_item,
+                        refactored_expr: match refactored_right_expr {
+                            Some(refactored_right_expr) => Some(Expr::BinaryOp {
+                                left: Box::new(left_original_expr),
+                                op: BinaryOperator::And,
+                                right: Box::new(refactored_right_expr),
+                            }),
+                            None => Some(left_original_expr),
+                        },
+                    },
+                    // If we have found part of a primary key in the right branch, we must
+                    // merge the index items from the left branch with the index items from the
+                    // right branch. In some instances, we may encounter cases where the same
+                    // primary key column is set in both the left branch and the right branch. In
+                    // such cases, we must give priority to the value set in the left branch,
+                    // and leave as-is the right branch.
+                    (
+                        PrimaryKey::Partial(Partial {
+                            index_items: left_index_items,
+                            refactored_expr: left_refactored_expr,
+                            original_expr: left_original_expr,
+                        }),
+                        PrimaryKey::Partial(Partial {
+                            index_items: right_index_items,
+                            refactored_expr: right_refactored_expr,
+                            original_expr: right_original_expr,
+                        }),
+                    ) => {
+                        // First, we check whether the two set of index items overlap.
+                        if left_index_items
+                            .iter()
+                            .zip(right_index_items.iter())
+                            .any(|(left, right)| left.is_some() && right.is_some())
+                        {
+                            // If all of the elements of the smaller set as entirely contained
+                            // by the larger set, we keep the larger set and discard the smaller set.
+                            let number_of_left_elements = left_index_items
+                                .iter()
+                                .filter(|item| item.is_some())
+                                .count();
+                            let number_of_right_elements = right_index_items
+                                .iter()
+                                .filter(|item| item.is_some())
+                                .count();
+
+                            let left_partial = Partial {
+                                index_items: left_index_items,
+                                refactored_expr: left_refactored_expr,
+                                original_expr: left_original_expr,
+                            };
+                            let right_partial = Partial {
                                 index_items: right_index_items,
                                 refactored_expr: right_refactored_expr,
                                 original_expr: right_original_expr,
-                            }) => {
-                                // First, we check whether the two set of index items overlap.
-                                if left_index_items
-                                    .iter()
-                                    .zip(right_index_items.iter())
-                                    .any(|(left, right)| left.is_some() && right.is_some())
-                                {
-                                    // If all of the elements of the smaller set as entirely contained
-                                    // by the larger set, we keep the larger set and discard the smaller set.
-                                    let number_of_left_elements = left_index_items
-                                        .iter()
-                                        .filter(|item| item.is_some())
-                                        .count();
-                                    let number_of_right_elements = right_index_items
-                                        .iter()
-                                        .filter(|item| item.is_some())
-                                        .count();
+                            };
 
-                                    let left_partial = Partial {
-                                        index_items: left_index_items,
-                                        refactored_expr: left_refactored_expr,
-                                        original_expr: left_original_expr,
-                                    };
-                                    let right_partial = Partial {
-                                        index_items: right_index_items,
-                                        refactored_expr: right_refactored_expr,
-                                        original_expr: right_original_expr,
-                                    };
+                            let (smaller_partial, larger_partial) =
+                                if number_of_left_elements < number_of_right_elements {
+                                    (left_partial, right_partial)
+                                } else {
+                                    (right_partial, left_partial)
+                                };
 
-                                    let (smaller_partial, larger_partial) =
-                                        if number_of_left_elements < number_of_right_elements {
-                                            (left_partial, right_partial)
-                                        } else {
-                                            (right_partial, left_partial)
-                                        };
-
-                                    // We merge the index items from the larger set with the index items
-                                    // from the smaller set, giving priority to the larger set in case of
-                                    // overlapping values.
-                                    let merged_index_items = larger_partial
-                                        .index_items
-                                        .iter()
-                                        .zip(smaller_partial.index_items)
-                                        .map(|(larger, smaller)| {
-                                            if larger.is_some() {
-                                                larger.clone()
-                                            } else {
-                                                smaller
-                                            }
-                                        })
-                                        .collect::<Vec<_>>();
-
-                                    let refactored_expr = match larger_partial.refactored_expr {
-                                        Some(larger_refactored_expr) => Some(Expr::BinaryOp {
-                                            left: Box::new(larger_refactored_expr),
-                                            op: BinaryOperator::And,
-                                            right: Box::new(smaller_partial.original_expr.clone()),
-                                        }),
-                                        None => Some(smaller_partial.original_expr.clone()),
-                                    };
-
-                                    // We check whether the merged index items form a complete primary key.
-                                    return if merged_index_items.iter().all(Option::is_some) {
-                                        PrimaryKey::Found {
-                                            index_item: IndexItem::PrimaryKey(
-                                                merged_index_items
-                                                    .into_iter()
-                                                    .map(Option::unwrap)
-                                                    .collect(),
-                                            ),
-                                            refactored_expr,
-                                        }
+                            // We merge the index items from the larger set with the index items
+                            // from the smaller set, giving priority to the larger set in case of
+                            // overlapping values.
+                            let merged_index_items = larger_partial
+                                .index_items
+                                .iter()
+                                .zip(smaller_partial.index_items)
+                                .map(|(larger, smaller)| {
+                                    if larger.is_some() {
+                                        larger.clone()
                                     } else {
-                                        Partial {
-                                            index_items: merged_index_items,
-                                            refactored_expr,
-                                            original_expr: Expr::BinaryOp {
-                                                left: Box::new(larger_partial.original_expr),
-                                                op: BinaryOperator::And,
-                                                right: Box::new(smaller_partial.original_expr),
-                                            },
-                                        }
-                                        .into()
-                                    };
+                                        smaller
+                                    }
+                                })
+                                .collect::<Vec<_>>();
+
+                            let refactored_expr = match larger_partial.refactored_expr {
+                                Some(larger_refactored_expr) => Some(Expr::BinaryOp {
+                                    left: Box::new(larger_refactored_expr),
+                                    op: BinaryOperator::And,
+                                    right: Box::new(smaller_partial.original_expr.clone()),
+                                }),
+                                None => Some(smaller_partial.original_expr.clone()),
+                            };
+
+                            // We check whether the merged index items form a complete primary key.
+                            return if merged_index_items.iter().all(Option::is_some) {
+                                PrimaryKey::Found {
+                                    index_item: IndexItem::PrimaryKey(
+                                        merged_index_items
+                                            .into_iter()
+                                            .map(Option::unwrap)
+                                            .collect(),
+                                    ),
+                                    refactored_expr,
                                 }
-
-                                // Otherwise, we merge the index items from the left branch with the index
-                                // items from the right branch, knowing that there are no overlapping values.
-                                let index_items: Vec<_> = left_index_items
-                                    .into_iter()
-                                    .zip(right_index_items)
-                                    .map(|(left, right)| left.or(right))
-                                    .collect();
-
-                                // If we have identified all the primary key columns, we can convert the
-                                // Partial primary key into a Found primary key.
-                                if index_items.iter().all(Option::is_some) {
-                                    return PrimaryKey::Found {
-                                        index_item: IndexItem::PrimaryKey(
-                                            index_items.into_iter().map(Option::unwrap).collect(),
-                                        ),
-                                        refactored_expr: match left_refactored_expr {
-                                            Some(left_refactored_expr) => {
-                                                match right_refactored_expr {
-                                                    Some(right_refactored_expr) => {
-                                                        Some(Expr::BinaryOp {
-                                                            left: Box::new(left_refactored_expr),
-                                                            op: BinaryOperator::And,
-                                                            right: Box::new(right_refactored_expr),
-                                                        })
-                                                    }
-                                                    None => Some(left_refactored_expr),
-                                                }
-                                            }
-                                            None => right_refactored_expr,
-                                        },
-                                    };
-                                }
-
-                                // Otherwise, we return an extended Partial primary key.
+                            } else {
                                 Partial {
-                                    index_items,
-                                    refactored_expr: match left_refactored_expr {
-                                        Some(left_refactored_expr) => match right_refactored_expr {
-                                            Some(right_refactored_expr) => Some(Expr::BinaryOp {
-                                                left: Box::new(left_refactored_expr),
-                                                op: BinaryOperator::And,
-                                                right: Box::new(right_refactored_expr),
-                                            }),
-                                            None => Some(left_refactored_expr),
-                                        },
-                                        None => right_refactored_expr,
-                                    },
+                                    index_items: merged_index_items,
+                                    refactored_expr,
                                     original_expr: Expr::BinaryOp {
-                                        left: Box::new(left_original_expr),
+                                        left: Box::new(larger_partial.original_expr),
                                         op: BinaryOperator::And,
-                                        right: Box::new(right_original_expr),
+                                        right: Box::new(smaller_partial.original_expr),
                                     },
                                 }
                                 .into()
-                            }
-
-                            // Otherwise, if we have not identified any primary key within the right branch,
-                            // since we still have the partial match from the left branch, we need to reconstruct
-                            // the original expression from the left branch and the right branch and return a
-                            // partial primary key.
-                            PrimaryKey::NotFound(right_expr) => Partial {
-                                index_items: left_index_items,
-                                refactored_expr: match left_refactored_expr {
-                                    Some(left_refactored_expr) => Some(Expr::BinaryOp {
-                                        left: Box::new(left_refactored_expr),
-                                        op: BinaryOperator::And,
-                                        right: Box::new(right_expr.clone()),
-                                    }),
-                                    None => Some(right_expr.clone()),
-                                },
-                                original_expr: Expr::BinaryOp {
-                                    left: Box::new(left_original_expr),
-                                    op: BinaryOperator::And,
-                                    right: Box::new(right_expr),
-                                },
-                            }
-                            .into(),
+                            };
                         }
-                    }
-                    PrimaryKey::NotFound(left) => {
-                        match self.expr(outer_context, current_context, *right) {
-                            PrimaryKey::Found {
-                                index_item,
-                                refactored_expr,
-                            } => PrimaryKey::Found {
-                                index_item,
-                                refactored_expr: match refactored_expr {
-                                    Some(refactored_expr) => Some(Expr::BinaryOp {
-                                        left: Box::new(left),
-                                        op: BinaryOperator::And,
-                                        right: Box::new(refactored_expr),
-                                    }),
-                                    None => Some(left),
+
+                        // Otherwise, we merge the index items from the left branch with the index
+                        // items from the right branch, knowing that there are no overlapping values.
+                        let index_items: Vec<_> = left_index_items
+                            .into_iter()
+                            .zip(right_index_items)
+                            .map(|(left, right)| left.or(right))
+                            .collect();
+
+                        // If we have identified all the primary key columns, we can convert the
+                        // Partial primary key into a Found primary key.
+                        if index_items.iter().all(Option::is_some) {
+                            return PrimaryKey::Found {
+                                index_item: IndexItem::PrimaryKey(
+                                    index_items.into_iter().map(Option::unwrap).collect(),
+                                ),
+                                refactored_expr: match left_refactored_expr {
+                                    Some(left_refactored_expr) => match right_refactored_expr {
+                                        Some(right_refactored_expr) => Some(Expr::BinaryOp {
+                                            left: Box::new(left_refactored_expr),
+                                            op: BinaryOperator::And,
+                                            right: Box::new(right_refactored_expr),
+                                        }),
+                                        None => Some(left_refactored_expr),
+                                    },
+                                    None => right_refactored_expr,
                                 },
-                            },
-                            PrimaryKey::Partial(Partial {
-                                index_items,
-                                refactored_expr: right_refactored_expr,
-                                original_expr: right_original_expr,
-                            }) => Partial {
-                                index_items,
-                                refactored_expr: match right_refactored_expr {
+                            };
+                        }
+
+                        // Otherwise, we return an extended Partial primary key.
+                        Partial {
+                            index_items,
+                            refactored_expr: match left_refactored_expr {
+                                Some(left_refactored_expr) => match right_refactored_expr {
                                     Some(right_refactored_expr) => Some(Expr::BinaryOp {
-                                        left: Box::new(left.clone()),
+                                        left: Box::new(left_refactored_expr),
                                         op: BinaryOperator::And,
                                         right: Box::new(right_refactored_expr),
                                     }),
-                                    None => Some(left.clone()),
+                                    None => Some(left_refactored_expr),
                                 },
-                                original_expr: Expr::BinaryOp {
-                                    left: Box::new(left),
-                                    op: BinaryOperator::And,
-                                    right: Box::new(right_original_expr),
-                                },
-                            }
-                            .into(),
-                            PrimaryKey::NotFound(right) => PrimaryKey::NotFound(Expr::BinaryOp {
+                                None => right_refactored_expr,
+                            },
+                            original_expr: Expr::BinaryOp {
+                                left: Box::new(left_original_expr),
+                                op: BinaryOperator::And,
+                                right: Box::new(right_original_expr),
+                            },
+                        }
+                        .into()
+                    }
+                    // Otherwise, if we have not identified any primary key within the right branch,
+                    // since we still have the partial match from the left branch, we need to reconstruct
+                    // the original expression from the left branch and the right branch and return a
+                    // partial primary key.
+                    (
+                        PrimaryKey::Partial(Partial {
+                            index_items: left_index_items,
+                            refactored_expr: left_refactored_expr,
+                            original_expr: left_original_expr,
+                        }),
+                        PrimaryKey::NotFound(right_expr),
+                    ) => Partial {
+                        index_items: left_index_items,
+                        refactored_expr: match left_refactored_expr {
+                            Some(left_refactored_expr) => Some(Expr::BinaryOp {
+                                left: Box::new(left_refactored_expr),
+                                op: BinaryOperator::And,
+                                right: Box::new(right_expr.clone()),
+                            }),
+                            None => Some(right_expr.clone()),
+                        },
+                        original_expr: Expr::BinaryOp {
+                            left: Box::new(left_original_expr),
+                            op: BinaryOperator::And,
+                            right: Box::new(right_expr),
+                        },
+                    }
+                    .into(),
+                    (
+                        PrimaryKey::NotFound(left),
+                        PrimaryKey::Found {
+                            index_item,
+                            refactored_expr,
+                        },
+                    ) => PrimaryKey::Found {
+                        index_item,
+                        refactored_expr: match refactored_expr {
+                            Some(refactored_expr) => Some(Expr::BinaryOp {
                                 left: Box::new(left),
                                 op: BinaryOperator::And,
-                                right: Box::new(right),
+                                right: Box::new(refactored_expr),
                             }),
-                        }
+                            None => Some(left),
+                        },
+                    },
+                    (
+                        PrimaryKey::NotFound(left),
+                        PrimaryKey::Partial(Partial {
+                            index_items,
+                            refactored_expr: right_refactored_expr,
+                            original_expr: right_original_expr,
+                        }),
+                    ) => Partial {
+                        index_items,
+                        refactored_expr: match right_refactored_expr {
+                            Some(right_refactored_expr) => Some(Expr::BinaryOp {
+                                left: Box::new(left.clone()),
+                                op: BinaryOperator::And,
+                                right: Box::new(right_refactored_expr),
+                            }),
+                            None => Some(left.clone()),
+                        },
+                        original_expr: Expr::BinaryOp {
+                            left: Box::new(left),
+                            op: BinaryOperator::And,
+                            right: Box::new(right_original_expr),
+                        },
+                    }
+                    .into(),
+                    (PrimaryKey::NotFound(left), PrimaryKey::NotFound(right)) => {
+                        PrimaryKey::NotFound(Expr::BinaryOp {
+                            left: Box::new(left),
+                            op: BinaryOperator::And,
+                            right: Box::new(right),
+                        })
                     }
                 }
             }
@@ -1730,5 +1768,428 @@ mod tests {
             having: None,
         });
         assert_eq!(actual, expected, "nested:\n{sql}");
+    }
+
+    #[test]
+    fn test_singleton_primary_key_in_subquery() {
+        let storage = run("
+            CREATE TABLE Player (
+                id INTEGER PRIMARY KEY,
+                name TEXT
+            );
+        ");
+
+        let sql = "SELECT * FROM Player WHERE id IN (SELECT id FROM Player WHERE name = 'Merlin');";
+        let actual = plan(&storage, sql);
+        let expected = {
+            let subquery = Query {
+                body: SetExpr::Select(Box::new(Select {
+                    projection: vec![SelectItem::Expr {
+                        expr: Expr::Identifier("id".to_owned()),
+                        label: "id".to_owned(),
+                    }],
+                    from: TableWithJoins {
+                        relation: TableFactor::Table {
+                            name: "Player".to_owned(),
+                            alias: None,
+                            index: None,
+                        },
+                        joins: Vec::new(),
+                    },
+                    selection: Some(Expr::BinaryOp {
+                        left: Box::new(Expr::Identifier("name".to_owned())),
+                        op: BinaryOperator::Eq,
+                        right: Box::new(Expr::Literal(AstLiteral::QuotedString(
+                            "Merlin".to_owned(),
+                        ))),
+                    }),
+                    group_by: Vec::new(),
+                    having: None,
+                })),
+                limit: None,
+                offset: None,
+                order_by: Vec::new(),
+            };
+
+            select(Select {
+                projection: vec![SelectItem::Wildcard],
+                from: TableWithJoins {
+                    relation: TableFactor::Table {
+                        name: "Player".to_owned(),
+                        alias: None,
+                        index: None,
+                    },
+                    joins: Vec::new(),
+                },
+                selection: Some(Expr::InSubquery {
+                    expr: Box::new(Expr::Identifier("id".to_owned())),
+                    subquery: Box::new(subquery),
+                    negated: false,
+                }),
+                group_by: Vec::new(),
+                having: None,
+            })
+        };
+        assert_eq!(actual, expected, "primary key in subquery:\n{sql}");
+
+        let sql = "SELECT * FROM Player WHERE id IN (SELECT id FROM Player WHERE name = 'Merlin' AND id = 1);";
+        let actual = plan(&storage, sql);
+        let expected = {
+            let subquery = Query {
+                body: SetExpr::Select(Box::new(Select {
+                    projection: vec![SelectItem::Expr {
+                        expr: Expr::Identifier("id".to_owned()),
+                        label: "id".to_owned(),
+                    }],
+                    from: TableWithJoins {
+                        relation: TableFactor::Table {
+                            name: "Player".to_owned(),
+                            alias: None,
+                            index: Some(IndexItem::PrimaryKey(vec![expr("1")])),
+                        },
+                        joins: Vec::new(),
+                    },
+                    selection: Some(Expr::BinaryOp {
+                        left: Box::new(Expr::Identifier("name".to_owned())),
+                        op: BinaryOperator::Eq,
+                        right: Box::new(Expr::Literal(AstLiteral::QuotedString(
+                            "Merlin".to_owned(),
+                        ))),
+                    }),
+                    group_by: Vec::new(),
+                    having: None,
+                })),
+                limit: None,
+                offset: None,
+                order_by: Vec::new(),
+            };
+
+            select(Select {
+                projection: vec![SelectItem::Wildcard],
+                from: TableWithJoins {
+                    relation: TableFactor::Table {
+                        name: "Player".to_owned(),
+                        alias: None,
+                        index: None,
+                    },
+                    joins: Vec::new(),
+                },
+                selection: Some(Expr::InSubquery {
+                    expr: Box::new(Expr::Identifier("id".to_owned())),
+                    subquery: Box::new(subquery),
+                    negated: false,
+                }),
+                group_by: Vec::new(),
+                having: None,
+            })
+        };
+
+        assert_eq!(actual, expected, "primary key in subquery:\n{sql}");
+
+        // Next, we test a case where we have a primary key both in the main query and in the subquery.
+
+        let sql =
+            "SELECT * FROM Player WHERE id = 1 AND id IN (SELECT * FROM Player WHERE id = 5);";
+
+        let actual = plan(&storage, sql);
+
+        let expected = {
+            let subquery = Query {
+                body: SetExpr::Select(Box::new(Select {
+                    projection: vec![SelectItem::Wildcard],
+                    from: TableWithJoins {
+                        relation: TableFactor::Table {
+                            name: "Player".to_owned(),
+                            alias: None,
+                            index: Some(IndexItem::PrimaryKey(vec![expr("5")])),
+                        },
+                        joins: Vec::new(),
+                    },
+                    selection: None,
+                    group_by: Vec::new(),
+                    having: None,
+                })),
+                limit: None,
+                offset: None,
+                order_by: Vec::new(),
+            };
+
+            select(Select {
+                projection: vec![SelectItem::Wildcard],
+                from: TableWithJoins {
+                    relation: TableFactor::Table {
+                        name: "Player".to_owned(),
+                        alias: None,
+                        index: Some(IndexItem::PrimaryKey(vec![expr("1")])),
+                    },
+                    joins: Vec::new(),
+                },
+                selection: Some(Expr::InSubquery {
+                    expr: Box::new(Expr::Identifier("id".to_owned())),
+                    subquery: Box::new(subquery),
+                    negated: false,
+                }),
+                group_by: Vec::new(),
+                having: None,
+            })
+        };
+
+        assert_eq!(actual, expected, "primary key in subquery:\n{sql}");
+    }
+
+    #[test]
+    fn test_composite_primary_key_in_subquery() {
+        let storage = run("
+            CREATE TABLE Player (
+                id INTEGER,
+                name TEXT,
+                PRIMARY KEY (id, name)
+            );
+        ");
+
+        let sql = "SELECT * FROM Player WHERE id IN (SELECT id FROM Player WHERE name = 'Merlin');";
+        let actual = plan(&storage, sql);
+        let expected = {
+            let subquery = Query {
+                body: SetExpr::Select(Box::new(Select {
+                    projection: vec![SelectItem::Expr {
+                        expr: Expr::Identifier("id".to_owned()),
+                        label: "id".to_owned(),
+                    }],
+                    from: TableWithJoins {
+                        relation: TableFactor::Table {
+                            name: "Player".to_owned(),
+                            alias: None,
+                            index: None,
+                        },
+                        joins: Vec::new(),
+                    },
+                    selection: Some(Expr::BinaryOp {
+                        left: Box::new(Expr::Identifier("name".to_owned())),
+                        op: BinaryOperator::Eq,
+                        right: Box::new(Expr::Literal(AstLiteral::QuotedString(
+                            "Merlin".to_owned(),
+                        ))),
+                    }),
+                    group_by: Vec::new(),
+                    having: None,
+                })),
+                limit: None,
+                offset: None,
+                order_by: Vec::new(),
+            };
+
+            select(Select {
+                projection: vec![SelectItem::Wildcard],
+                from: TableWithJoins {
+                    relation: TableFactor::Table {
+                        name: "Player".to_owned(),
+                        alias: None,
+                        index: None,
+                    },
+                    joins: Vec::new(),
+                },
+                selection: Some(Expr::InSubquery {
+                    expr: Box::new(Expr::Identifier("id".to_owned())),
+                    subquery: Box::new(subquery),
+                    negated: false,
+                }),
+                group_by: Vec::new(),
+                having: None,
+            })
+        };
+        assert_eq!(
+            actual, expected,
+            "composite primary key in subquery:\n{sql}"
+        );
+
+        let sql = "SELECT * FROM Player WHERE id IN (SELECT id FROM Player WHERE name = 'Merlin' AND id = 1);";
+
+        let actual = plan(&storage, sql);
+
+        let expected = {
+            let subquery = Query {
+                body: SetExpr::Select(Box::new(Select {
+                    projection: vec![SelectItem::Expr {
+                        expr: Expr::Identifier("id".to_owned()),
+                        label: "id".to_owned(),
+                    }],
+                    from: TableWithJoins {
+                        relation: TableFactor::Table {
+                            name: "Player".to_owned(),
+                            alias: None,
+                            index: Some(IndexItem::PrimaryKey(vec![expr("1"), expr("'Merlin'")])),
+                        },
+                        joins: Vec::new(),
+                    },
+                    selection: None,
+                    group_by: Vec::new(),
+                    having: None,
+                })),
+                limit: None,
+                offset: None,
+                order_by: Vec::new(),
+            };
+
+            select(Select {
+                projection: vec![SelectItem::Wildcard],
+                from: TableWithJoins {
+                    relation: TableFactor::Table {
+                        name: "Player".to_owned(),
+                        alias: None,
+                        index: None,
+                    },
+                    joins: Vec::new(),
+                },
+                selection: Some(Expr::InSubquery {
+                    expr: Box::new(Expr::Identifier("id".to_owned())),
+                    subquery: Box::new(subquery),
+                    negated: false,
+                }),
+                group_by: Vec::new(),
+                having: None,
+            })
+        };
+
+        assert_eq!(
+            actual, expected,
+            "composite primary key in subquery:\n{sql}"
+        );
+    }
+
+    #[test]
+    fn test_composite_primary_key_in_main_query_and_subquery() {
+        let storage = run("
+            CREATE TABLE Player (
+                id INTEGER,
+                name TEXT,
+                PRIMARY KEY (id, name)
+            );
+        ");
+
+        let sql =
+            "SELECT * FROM Player WHERE id = 1 AND name IN (SELECT name FROM Player WHERE id = 1);";
+        let actual = plan(&storage, sql);
+        let expected = {
+            let subquery = Query {
+                body: SetExpr::Select(Box::new(Select {
+                    projection: vec![SelectItem::Expr {
+                        expr: Expr::Identifier("name".to_owned()),
+                        label: "name".to_owned(),
+                    }],
+                    from: TableWithJoins {
+                        relation: TableFactor::Table {
+                            name: "Player".to_owned(),
+                            alias: None,
+                            index: None,
+                        },
+                        joins: Vec::new(),
+                    },
+                    selection: Some(Expr::BinaryOp {
+                        left: Box::new(Expr::Identifier("id".to_owned())),
+                        op: BinaryOperator::Eq,
+                        right: Box::new(Expr::Literal(AstLiteral::Number(1.into()))),
+                    }),
+                    group_by: Vec::new(),
+                    having: None,
+                })),
+                limit: None,
+                offset: None,
+                order_by: Vec::new(),
+            };
+
+            select(Select {
+                projection: vec![SelectItem::Wildcard],
+                from: TableWithJoins {
+                    relation: TableFactor::Table {
+                        name: "Player".to_owned(),
+                        alias: None,
+                        index: None,
+                    },
+                    joins: Vec::new(),
+                },
+                selection: Some(Expr::BinaryOp {
+                    left: Box::new(Expr::BinaryOp {
+                        left: Box::new(Expr::Identifier("id".to_owned())),
+                        op: BinaryOperator::Eq,
+                        right: Box::new(Expr::Literal(AstLiteral::Number(1.into()))),
+                    }),
+                    op: BinaryOperator::And,
+                    right: Box::new(Expr::InSubquery {
+                        expr: Box::new(Expr::Identifier("name".to_owned())),
+                        subquery: Box::new(subquery),
+                        negated: false,
+                    }),
+                }),
+                group_by: Vec::new(),
+                having: None,
+            })
+        };
+        assert_eq!(
+            actual, expected,
+            "composite primary key in main query and subquery:\n{sql}"
+        );
+
+        let sql = "SELECT * FROM Player WHERE id = 1 AND name = 'Merlin' AND (
+            SELECT * FROM Player WHERE name = 'bar' AND id = 4
+        );";
+
+        let actual = plan(&storage, sql);
+
+        let expected = {
+            let subquery = Query {
+                body: SetExpr::Select(Box::new(Select {
+                    projection: vec![SelectItem::Wildcard],
+                    from: TableWithJoins {
+                        relation: TableFactor::Table {
+                            name: "Player".to_owned(),
+                            alias: None,
+                            index: Some(IndexItem::PrimaryKey(vec![expr("4"), expr("'bar'")])),
+                        },
+                        joins: Vec::new(),
+                    },
+                    selection: None,
+                    group_by: Vec::new(),
+                    having: None,
+                })),
+                limit: None,
+                offset: None,
+                order_by: Vec::new(),
+            };
+
+            select(Select {
+                projection: vec![SelectItem::Wildcard],
+                from: TableWithJoins {
+                    relation: TableFactor::Table {
+                        name: "Player".to_owned(),
+                        alias: None,
+                        index: Some(IndexItem::PrimaryKey(vec![expr("1"), expr("'Merlin'")])),
+                    },
+                    joins: Vec::new(),
+                },
+                selection: Some(Expr::Subquery(Box::new(subquery))),
+                group_by: Vec::new(),
+                having: None,
+            })
+        };
+
+        assert_eq!(
+            actual, expected,
+            "composite primary key in main query and subquery:\n{sql}"
+        );
+
+        // Inverting the order of the subquery and primary key in the main query should
+        // yield the same result.
+
+        let sql = "SELECT * FROM Player WHERE (
+            SELECT * FROM Player WHERE id = 4 AND name = 'bar'
+        ) AND id = 1 AND name = 'Merlin';";
+
+        let actual = plan(&storage, sql);
+
+        assert_eq!(
+            actual, expected,
+            "composite primary key in main query and subquery:\n{sql}"
+        );
     }
 }
