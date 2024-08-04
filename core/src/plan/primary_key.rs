@@ -198,17 +198,13 @@ impl<'a> PrimaryKeyPlanner<'a> {
         current_context: &Rc<Context<'a>>,
         expr: Expr,
     ) -> PrimaryKey {
-        enum PossibleResults {
-            Matched(PrimaryKey),
-            Retry(Box<Expr>, Box<Expr>),
-        }
 
-        // Returns the primary key variant associated to the provided key and value, if any.
-        let get_primary_key = |key: Box<Expr>, value: Box<Expr>| {
-            if !(check_evaluable(Some(current_context.clone()), &key)
-                && check_evaluable(None, &value))
+        // Returns te primary key variant associated to the provided key and value, if any.
+        let get_primary_key = |key: &Box<Expr>, value: &Box<Expr>| -> Option<PrimaryKey>{
+            if !(check_evaluable(Some(current_context.clone()), key)
+                && check_evaluable(None, value))
             {
-                return PossibleResults::Retry(key, value);
+                return None;
             }
 
             let key_column: &str = if let Expr::Identifier(ident)
@@ -216,14 +212,14 @@ impl<'a> PrimaryKeyPlanner<'a> {
             {
                 ident
             } else {
-                return PossibleResults::Retry(key, value);
+                return None;
             };
 
-            if let Some(index) = current_context.get_primary_key_index_by_name(key_column) {
+            current_context.get_primary_key_index_by_name(key_column).map(|index| {
                 let number_of_primary_key_columns = current_context.number_of_primary_key_columns();
-                PossibleResults::Matched(if number_of_primary_key_columns == 1 {
+                if number_of_primary_key_columns == 1 {
                     // If we have a single primary key column, we can directly create a Found primary key.
-                    PrimaryKey::new_found(*value)
+                    PrimaryKey::new_found(*value.clone())
                 } else {
                     // Otherwise, we create a Partial primary key.
                     PrimaryKey::new_partial(
@@ -231,15 +227,13 @@ impl<'a> PrimaryKeyPlanner<'a> {
                         index,
                         number_of_primary_key_columns,
                         Expr::BinaryOp {
-                            left: key,
+                            left: key.clone(),
                             op: BinaryOperator::Eq,
-                            right: value,
+                            right: value.clone(),
                         },
                     )
-                })
-            } else {
-                PossibleResults::Retry(key, value)
-            }
+                }
+            })
         };
 
         match expr {
@@ -247,11 +241,11 @@ impl<'a> PrimaryKeyPlanner<'a> {
                 left,
                 op: BinaryOperator::Eq,
                 right,
-            } => match get_primary_key(left, right) {
-                PossibleResults::Matched(primary_key) => primary_key,
-                PossibleResults::Retry(left, right) => match get_primary_key(right, left) {
-                    PossibleResults::Matched(primary_key) => primary_key,
-                    PossibleResults::Retry(right, left) => {
+            } => match get_primary_key(&left, &right) {
+                Some(primary_key) => primary_key,
+                None => match get_primary_key(&right, &left) {
+                    Some(primary_key) => primary_key,
+                    None => {
                         PrimaryKey::NotFound(self.subquery_expr(
                             Context::concat(Some(current_context.clone()), outer_context),
                             Expr::BinaryOp {
