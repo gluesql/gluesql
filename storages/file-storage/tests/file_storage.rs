@@ -1,6 +1,9 @@
 use {
-    async_trait::async_trait, gluesql_core::prelude::Glue, gluesql_file_storage::FileStorage,
-    std::fs::remove_dir_all, test_suite::*,
+    async_trait::async_trait,
+    gluesql_core::{data::Value::I64, prelude::Glue},
+    gluesql_file_storage::FileStorage,
+    std::fs::{create_dir, remove_dir_all},
+    test_suite::*,
 };
 
 struct FileStorageTester {
@@ -27,3 +30,27 @@ impl Tester<FileStorage> for FileStorageTester {
 }
 
 generate_store_tests!(tokio::test, FileStorageTester);
+
+#[tokio::test]
+async fn scan_data_to_ignore_directory_items() {
+    let path = "./tests/ignore_directory_items/";
+    let storage = FileStorage::new(path).unwrap();
+    let mut glue = Glue::new(storage);
+
+    glue.execute("CREATE TABLE Foo (id INTEGER);")
+        .await
+        .unwrap();
+    glue.execute("INSERT TABLE Foo VALUES (1), (2), (3);")
+        .await
+        .unwrap();
+
+    let dir_path = format!("{path}Foo/something_in_data_directory");
+    create_dir(dir_path).unwrap();
+
+    assert_eq!(
+        glue.execute("SELECT * FROM Foo").await.unwrap().remove(0),
+        select!(id I64; 1; 2; 3)
+    );
+
+    remove_dir_all(path).unwrap();
+}
