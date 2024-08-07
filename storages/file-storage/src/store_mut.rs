@@ -31,6 +31,9 @@ impl StoreMut for FileStorage {
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         let path = self.path(table_name);
+        if !path.exists() {
+            return Ok(());
+        }
 
         fs::remove_dir_all(&path).map_storage_err()?;
 
