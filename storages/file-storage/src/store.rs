@@ -25,7 +25,7 @@ impl Store for FileStorage {
                 let path = dir_entry.path();
                 fs::read_to_string(path)
                     .map_storage_err()
-                    .and_then(|data| toml::from_str(&data).map_storage_err())
+                    .and_then(|data| Schema::from_ddl(&data))
                     .map(Some)
             })
             .filter_map(Result::transpose)
@@ -37,14 +37,14 @@ impl Store for FileStorage {
     }
 
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
-        let path = self.path(table_name).with_extension("toml");
+        let path = self.path(table_name).with_extension("sql");
         if !path.exists() {
             return Ok(None);
         }
 
         fs::read_to_string(path)
             .map_storage_err()
-            .and_then(|data| toml::from_str(&data).map_storage_err())
+            .and_then(|data| Schema::from_ddl(&data))
             .map(Some)
     }
 
