@@ -57,7 +57,7 @@ impl Store for FileStorage {
         fs::read_to_string(path)
             .map_storage_err()
             .and_then(|data| {
-                toml::from_str(&data)
+                ron::from_str(&data)
                     .map_storage_err()
                     .map(|FileRow { row, .. }| row)
             })

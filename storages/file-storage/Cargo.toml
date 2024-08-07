@@ -13,7 +13,6 @@ gluesql-core.workspace = true
 async-trait = "0.1"
 serde = { version = "1", features = ["derive"] }
 futures = "0.3"
-toml = { version = "0.8.19", features = ["preserve_order"] }
 uuid = { version = "1.10.0", features = ["v7"] }
 hex = "0.4.3"
 ron = { version = "0.8.1", features = ["integer128"] }
