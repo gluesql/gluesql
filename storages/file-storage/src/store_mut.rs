@@ -19,10 +19,15 @@ impl StoreMut for FileStorage {
         let table_name = schema.table_name.clone();
         let schema = schema.to_ddl();
         let path = self.path(table_name);
-
-        fs::create_dir(&path).map_storage_err()?;
+        if !path.exists() {
+            fs::create_dir(&path).map_storage_err()?;
+        }
 
         let path = path.with_extension("sql");
+        if path.exists() {
+            fs::remove_file(&path).map_storage_err()?;
+        }
+
         let mut file = File::create(path).map_storage_err()?;
         file.write_all(schema.as_bytes()).map_storage_err()?;
 
