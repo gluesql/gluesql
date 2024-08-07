@@ -1,6 +1,6 @@
 use {
     async_trait::async_trait, gluesql_core::prelude::Glue, gluesql_file_storage::FileStorage,
-    test_suite::*,
+    std::fs::remove_dir_all, test_suite::*,
 };
 
 struct FileStorageTester {
@@ -9,10 +9,15 @@ struct FileStorageTester {
 
 #[async_trait(?Send)]
 impl Tester<FileStorage> for FileStorageTester {
-    async fn new(_: &str) -> Self {
-        let storage = FileStorage::default();
-        let glue = Glue::new(storage);
+    async fn new(namespace: &str) -> Self {
+        let path = format!("tmp/{namespace}");
 
+        if let Err(e) = remove_dir_all(&path) {
+            println!("fs::remove_file {:?}", e);
+        };
+
+        let storage = FileStorage::new(&path).expect("FileStorage::new");
+        let glue = Glue::new(storage);
         FileStorageTester { glue }
     }
 
