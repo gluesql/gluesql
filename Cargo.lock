@@ -1326,6 +1326,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "gluesql-file-storage"
+version = "0.15.0"
+dependencies = [
+ "async-trait",
+ "futures",
+ "gluesql-core",
+ "gluesql-test-suite",
+ "serde",
+ "tokio",
+]
+
+[[package]]
 name = "gluesql-idb-storage"
 version = "0.15.0"
 dependencies = [
