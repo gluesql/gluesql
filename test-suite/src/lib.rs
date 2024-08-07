@@ -303,7 +303,7 @@ macro_rules! generate_store_tests {
         glue!(schemaless_basic, schemaless::basic);
         glue!(schemaless_error, schemaless::error);
 
-        glue!(store, store::insert_schema::insert_schema);
+        glue!(store_insert_schema, store::insert_schema::insert_schema);
     };
 }
 
