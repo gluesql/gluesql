@@ -1,6 +1,9 @@
 use {
-    async_trait::async_trait, gluesql_core::prelude::Glue, gluesql_git_storage::GitStorage,
-    std::fs::remove_dir_all, test_suite::*,
+    async_trait::async_trait,
+    gluesql_core::prelude::Glue,
+    gluesql_git_storage::{GitStorage, StorageType},
+    std::fs::remove_dir_all,
+    test_suite::*,
 };
 
 struct GitStorageTester {
@@ -10,13 +13,13 @@ struct GitStorageTester {
 #[async_trait(?Send)]
 impl Tester<GitStorage> for GitStorageTester {
     async fn new(namespace: &str) -> Self {
-        let path = format!("tmp/{namespace}");
+        let path = format!("tmp/git_storage_json/{namespace}");
 
         if let Err(e) = remove_dir_all(&path) {
             println!("fs::remove_file {:?}", e);
         };
 
-        let storage = GitStorage::init(&path).expect("GitStorage::init");
+        let storage = GitStorage::init(&path, StorageType::Json).expect("GitStorage::init - JSON");
         let glue = Glue::new(storage);
         GitStorageTester { glue }
     }

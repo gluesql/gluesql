@@ -11,8 +11,13 @@ use {
             AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Transaction,
         },
     },
+    gluesql_csv_storage::CsvStorage,
     gluesql_file_storage::FileStorage,
+    gluesql_json_storage::JsonStorage,
+    strum_macros::Display,
 };
+
+pub use git2;
 
 pub struct GitStorage {
     pub storage_base: StorageBase,
@@ -22,11 +27,16 @@ pub struct GitStorage {
 
 pub enum StorageBase {
     File(FileStorage),
-    /*
     Csv(CsvStorage),
     Json(JsonStorage),
-    Parquet(ParquetStorage),
-    */
+}
+
+#[derive(Clone, Copy, Display)]
+#[strum(serialize_all = "lowercase")]
+pub enum StorageType {
+    File,
+    Csv,
+    Json,
 }
 
 fn signature() -> Result<Signature<'static>> {
@@ -34,9 +44,8 @@ fn signature() -> Result<Signature<'static>> {
 }
 
 impl GitStorage {
-    pub fn init(path: &str) -> Result<Self> {
-        let storage = FileStorage::new(path)?;
-        let storage_base = StorageBase::File(storage);
+    pub fn init(path: &str, storage_type: StorageType) -> Result<Self> {
+        let storage_base = Self::storage_base(path, storage_type)?;
         let repo = Repository::init(path).map_storage_err()?;
         let signature = signature()?;
 
@@ -47,10 +56,9 @@ impl GitStorage {
         })
     }
 
-    pub fn open(path: &str) -> Result<Self> {
-        let storage = FileStorage::new(path)?;
-        let storage_base = StorageBase::File(storage);
-        let repo = Repository::open(path).map_storage_err()?;
+    pub fn with_repo(repo: Repository, storage_type: StorageType) -> Result<Self> {
+        let path = repo.path().to_str().map_storage_err("path not exists")?;
+        let storage_base = Self::storage_base(path, storage_type)?;
         let signature = signature()?;
 
         Ok(Self {
@@ -58,6 +66,20 @@ impl GitStorage {
             repo,
             signature,
         })
+    }
+
+    fn storage_base(path: &str, storage_type: StorageType) -> Result<StorageBase> {
+        use StorageType::*;
+
+        match storage_type {
+            File => FileStorage::new(path).map(StorageBase::File),
+            Csv => CsvStorage::new(path).map(StorageBase::Csv),
+            Json => JsonStorage::new(path).map(StorageBase::Json),
+        }
+    }
+
+    pub fn set_signature(&mut self, signature: Signature<'static>) {
+        self.signature = signature;
     }
 
     pub fn pull(&self) -> Result<()> {
@@ -73,12 +95,10 @@ impl GitStorage {
             let mut index = self.repo.index()?;
 
             index.add_all(["*"].iter(), IndexAddOption::DEFAULT, None)?;
-
             index.write()?;
 
             let tree_id = index.write_tree_to(&self.repo)?;
             let tree = self.repo.find_tree(tree_id)?;
-
             let parent_commit = match self.repo.head() {
                 Ok(head) => vec![head.resolve()?.peel_to_commit()?],
                 Err(_) => vec![],
@@ -108,6 +128,16 @@ pub trait ResultExt<T, E: ToString> {
 impl<T, E: ToString> ResultExt<T, E> for std::result::Result<T, E> {
     fn map_storage_err(self) -> Result<T, Error> {
         self.map_err(|e| e.to_string()).map_err(Error::StorageMsg)
+    }
+}
+
+pub trait OptionExt<T> {
+    fn map_storage_err(self, message: &str) -> Result<T, Error>;
+}
+
+impl<T> OptionExt<T> for std::option::Option<T> {
+    fn map_storage_err(self, message: &str) -> Result<T, Error> {
+        self.ok_or_else(|| Error::StorageMsg(message.to_owned()))
     }
 }
 

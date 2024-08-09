@@ -11,8 +11,11 @@ documentation.workspace = true
 [dependencies]
 gluesql-core.workspace = true
 gluesql-file-storage.workspace = true
+gluesql-csv-storage.workspace = true
+gluesql-json-storage.workspace = true
 async-trait = "0.1"
 git2 = "0.19.0"
+strum_macros = "0.26.4"
 
 [dev-dependencies]
 test-suite.workspace = true
