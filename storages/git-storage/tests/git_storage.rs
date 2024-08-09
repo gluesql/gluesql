@@ -16,7 +16,7 @@ impl Tester<GitStorage> for GitStorageTester {
             println!("fs::remove_file {:?}", e);
         };
 
-        let storage = GitStorage::new(&path).expect("GitStorage::new");
+        let storage = GitStorage::init(&path).expect("GitStorage::init");
         let glue = Glue::new(storage);
         GitStorageTester { glue }
     }
