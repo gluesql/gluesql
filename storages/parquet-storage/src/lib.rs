@@ -2,7 +2,7 @@ use {
     column_def::ParquetSchemaType,
     error::{OptionExt, ParquetStorageError, ResultExt},
     gluesql_core::{
-        ast::{ColumnDef, ColumnUniqueOption, ForeignKey},
+        ast::{ColumnDef, ForeignKey},
         data::Schema,
         error::{Error, Result},
         prelude::{DataType, Key, Value},
@@ -60,6 +60,7 @@ impl ParquetStorage {
 
         let mut is_schemaless = false;
         let mut foreign_keys = Vec::new();
+        let mut primary_key: Option<Vec<usize>> = None;
         let mut comment = None;
         if let Some(metadata) = key_value_file_metadata {
             for kv in metadata.iter() {
@@ -78,6 +79,16 @@ impl ParquetStorage {
                         .map_storage_err()?;
 
                     foreign_keys.push(fk);
+                } else if kv.key == "primary_key" {
+                    primary_key = Some(
+                        kv.value
+                            .as_ref()
+                            .map(|x| from_str::<Vec<usize>>(x))
+                            .map_storage_err(Error::StorageMsg(
+                                "No value found on metadata".to_owned(),
+                            ))?
+                            .map_storage_err()?,
+                    );
                 }
             }
         }
@@ -105,6 +116,7 @@ impl ParquetStorage {
             indexes: vec![],
             engine: None,
             foreign_keys,
+            primary_key,
             comment,
         }))
     }
@@ -133,25 +145,19 @@ impl ParquetStorage {
         let mut rows = Vec::new();
         let mut key_counter: u64 = 0;
 
-        if let Some(column_defs) = &fetched_schema.column_defs {
+        if fetched_schema.column_defs.is_some() {
             for record in row_iter {
                 let record: Row = record.map_storage_err()?;
                 let mut row = Vec::new();
-                let mut key = None;
 
                 for (idx, (_, field)) in record.get_column_iter().enumerate() {
                     let value = ParquetField(field.clone()).to_value(&fetched_schema, idx)?;
                     row.push(value.clone());
-
-                    if column_defs[idx].unique == Some(ColumnUniqueOption { is_primary: true }) {
-                        key = Key::try_from(&value).ok();
-                    }
                 }
 
-                let generated_key = key.unwrap_or_else(|| {
-                    let generated = Key::U64(key_counter);
+                let generated_key = fetched_schema.get_primary_key(&row).unwrap_or({
                     key_counter += 1;
-                    generated
+                    Key::U64(key_counter - 1)
                 });
                 rows.push(Ok((generated_key, DataRow::Vec(row))));
             }
@@ -185,12 +191,13 @@ impl ParquetStorage {
                 data_type: DataType::Map,
                 nullable: true,
                 default: None,
-                unique: None,
+                unique: false,
                 comment: None,
             }]),
             indexes: vec![],
             engine: None,
             foreign_keys: Vec::new(),
+            primary_key: None,
             comment: None,
         }
     }

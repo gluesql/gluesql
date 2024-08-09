@@ -1058,7 +1058,10 @@ impl TryFrom<&Value> for Point {
 mod tests {
     use {
         super::{ConvertError, Result, Value},
-        crate::{ast::DataType, data::point, data::Interval as I, data::Point},
+        crate::{
+            ast::DataType,
+            data::{point, Interval as I, Point},
+        },
         chrono::{self, NaiveDate, NaiveDateTime, NaiveTime},
         rust_decimal::Decimal,
         std::{

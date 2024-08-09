@@ -153,6 +153,7 @@ pub trait Tester<T: GStore + GStoreMut> {
         println!("[RUN] {}", sql);
         let parsed = parse(sql)?;
         let statement = translate(&parsed[0])?;
+
         let statement = plan(&glue.storage, statement).await?;
 
         glue.execute_stmt(&statement).await

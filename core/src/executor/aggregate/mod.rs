@@ -1,6 +1,7 @@
 mod error;
 mod state;
 
+pub use error::AggregateError;
 use {
     self::state::State,
     super::{
@@ -18,8 +19,6 @@ use {
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
     std::{convert::identity, rc::Rc},
 };
-
-pub use error::AggregateError;
 
 pub struct Aggregator<'a, T: GStore> {
     storage: &'a T,

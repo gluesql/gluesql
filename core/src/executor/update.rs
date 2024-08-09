@@ -4,8 +4,8 @@ use {
         evaluate::{evaluate, Evaluated},
     },
     crate::{
-        ast::{Assignment, ColumnDef, ColumnUniqueOption, ForeignKey},
-        data::{Key, Row, Value},
+        ast::{Assignment, ColumnDef, ForeignKey},
+        data::{Key, Row, Schema, Value},
         result::{Error, Result},
         store::GStore,
     },
@@ -39,7 +39,7 @@ pub struct Update<'a, T: GStore> {
     storage: &'a T,
     table_name: &'a str,
     fields: &'a [Assignment],
-    column_defs: Option<&'a [ColumnDef]>,
+    schema: &'a Schema,
 }
 
 impl<'a, T: GStore> Update<'a, T> {
@@ -47,17 +47,15 @@ impl<'a, T: GStore> Update<'a, T> {
         storage: &'a T,
         table_name: &'a str,
         fields: &'a [Assignment],
-        column_defs: Option<&'a [ColumnDef]>,
+        schema: &'a Schema,
     ) -> Result<Self> {
-        if let Some(column_defs) = column_defs {
+        if schema.column_defs.is_some() {
             for assignment in fields.iter() {
                 let Assignment { id, .. } = assignment;
 
-                if column_defs.iter().all(|col_def| &col_def.name != id) {
+                if !schema.has_column(id) {
                     return Err(UpdateError::ColumnNotFound(id.to_owned()).into());
-                } else if column_defs.iter().any(|ColumnDef { name, unique, .. }| {
-                    name == id && matches!(unique, Some(ColumnUniqueOption { is_primary: true }))
-                }) {
+                } else if schema.is_primary_key(id) {
                     return Err(UpdateError::UpdateOnPrimaryKeyNotSupported(id.to_owned()).into());
                 }
             }
@@ -67,7 +65,7 @@ impl<'a, T: GStore> Update<'a, T> {
             storage,
             table_name,
             fields,
-            column_defs,
+            schema,
         })
     }
 
@@ -85,33 +83,32 @@ impl<'a, T: GStore> Update<'a, T> {
 
                 async move {
                     let evaluated = evaluate(self.storage, context, None, value_expr).await?;
-                    let value = match self.column_defs {
-                        Some(column_defs) => {
-                            let ColumnDef {
-                                data_type,
-                                nullable,
-                                ..
-                            } = column_defs
-                                .iter()
-                                .find(|column_def| id == &column_def.name)
-                                .ok_or(UpdateError::ConflictOnSchema)?;
+                    let value = if self.schema.column_defs.is_some() {
+                        let ColumnDef {
+                            data_type,
+                            nullable,
+                            ..
+                        } = self
+                            .schema
+                            .get_column_def(id)
+                            .ok_or(UpdateError::ConflictOnSchema)?;
 
-                            let value = match evaluated {
-                                Evaluated::Literal(v) => Value::try_from_literal(data_type, &v)?,
-                                Evaluated::Value(v) => {
-                                    v.validate_type(data_type)?;
-                                    v
-                                }
-                                Evaluated::StrSlice {
-                                    source: s,
-                                    range: r,
-                                } => Value::Str(s[r].to_owned()),
-                            };
+                        let value = match evaluated {
+                            Evaluated::Literal(v) => Value::try_from_literal(data_type, &v)?,
+                            Evaluated::Value(v) => {
+                                v.validate_type(data_type)?;
+                                v
+                            }
+                            Evaluated::StrSlice {
+                                source: s,
+                                range: r,
+                            } => Value::Str(s[r].to_owned()),
+                        };
 
-                            value.validate_null(*nullable)?;
-                            value
-                        }
-                        None => evaluated.try_into()?,
+                        value.validate_null(*nullable)?;
+                        value
+                    } else {
+                        evaluated.try_into()?
                     };
 
                     Ok::<_, Error>((id.as_ref(), value))

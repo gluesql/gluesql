@@ -3,7 +3,6 @@ use {
     chrono::NaiveDate,
     gluesql_core::{executor::EvaluateError, prelude::Value::*},
 };
-
 test_case!(last_day, {
     let g = get_tester!();
 

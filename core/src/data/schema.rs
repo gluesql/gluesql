@@ -1,7 +1,8 @@
 use {
+    super::Value,
     crate::{
         ast::{ColumnDef, Expr, ForeignKey, OrderByExpr, Statement, ToSql},
-        prelude::{parse, translate},
+        prelude::{parse, translate, Key},
         result::Result,
     },
     chrono::{NaiveDateTime, Utc},
@@ -10,6 +11,15 @@ use {
     strum_macros::Display,
     thiserror::Error as ThisError,
 };
+
+#[derive(ThisError, Clone, Debug, PartialEq, Deserialize, Serialize, Eq)]
+pub enum SchemaError {
+    #[error("no primary key defined")]
+    NoPrimaryKeyDefined,
+
+    #[error("incompatible row length: {0}")]
+    IncompatibleRowLength(usize),
+}
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Display)]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
@@ -34,10 +44,117 @@ pub struct Schema {
     pub indexes: Vec<SchemaIndex>,
     pub engine: Option<String>,
     pub foreign_keys: Vec<ForeignKey>,
+    pub primary_key: Option<Vec<usize>>,
     pub comment: Option<String>,
 }
 
 impl Schema {
+    /// Returns the number of columns in the schema.
+    pub fn number_of_columns(&self) -> usize {
+        self.column_defs
+            .as_ref()
+            .map(|column_defs| column_defs.len())
+            .unwrap_or(0)
+    }
+
+    /// Returns the key associates to the provided row.
+    ///
+    /// # Arguments
+    /// * `row` - The row to get the key for.
+    pub fn get_primary_key<R: AsRef<[Value]>>(&self, row: R) -> Result<Key> {
+        if row.as_ref().len() != self.number_of_columns() {
+            return Err(SchemaError::IncompatibleRowLength(row.as_ref().len()).into());
+        }
+
+        match self.primary_key {
+            Some(ref primary_key) => {
+                let mut key: Vec<Key> = Vec::with_capacity(primary_key.len());
+
+                for &index in primary_key.iter() {
+                    key.push(Key::try_from(row.as_ref()[index].clone())?);
+                }
+
+                Ok(if key.len() == 1 {
+                    key.pop().unwrap()
+                } else {
+                    Key::List(key)
+                })
+            }
+            None => Err(SchemaError::NoPrimaryKeyDefined.into()),
+        }
+    }
+
+    /// Returns an iterator over the ColumnDef instances in the schema that compose the primary key.
+    pub fn primary_key_columns(&self) -> Option<impl Iterator<Item = &ColumnDef>> {
+        self.primary_key.as_ref().map(|primary_key| {
+            primary_key.iter().filter_map(move |index| {
+                self.column_defs
+                    .as_ref()
+                    .and_then(|column_defs| column_defs.get(*index))
+            })
+        })
+    }
+
+    /// Returns an iterator over the ColumnDef instances in the schema that compose the primary key.
+    pub fn primary_key_column_names(&self) -> Option<impl Iterator<Item = &str>> {
+        self.primary_key_columns()
+            .map(|columns| columns.map(|column| column.name.as_str()))
+    }
+
+    /// Returns whether the schema has a given column.
+    pub fn has_column<S: AsRef<str>>(&self, column: S) -> bool {
+        self.column_defs
+            .as_ref()
+            .map(|column_defs| {
+                column_defs
+                    .iter()
+                    .any(|column_def| column_def.name == column.as_ref())
+            })
+            .unwrap_or(false)
+    }
+
+    /// Returns reference to the column definition for the given column name.
+    ///
+    /// # Arguments
+    /// * `column` - The column name to look up.
+    pub fn get_column_def<S: AsRef<str>>(&self, column: S) -> Option<&ColumnDef> {
+        self.column_defs.as_ref().and_then(|column_defs| {
+            column_defs
+                .iter()
+                .find(|column_def| column_def.name == column.as_ref())
+        })
+    }
+
+    /// Returns the names of the columns defined in the schema, if any.
+    pub fn get_column_names(&self) -> Option<Vec<String>> {
+        self.column_defs.as_ref().map(|column_defs| {
+            column_defs
+                .iter()
+                .map(|column_def| column_def.name.clone())
+                .collect()
+        })
+    }
+
+    /// Returns whether the provided column is part of the primary key.
+    ///
+    /// # Arguments
+    /// * `column` - The column to check.
+    pub fn is_primary_key<S: AsRef<str>>(&self, column: S) -> bool {
+        self.primary_key_columns()
+            .map(|mut columns| columns.any(|column_def| column_def.name == column.as_ref()))
+            .unwrap_or(false)
+    }
+
+    /// Returns whether any of the columns in the provided iterator are part of the primary key.
+    pub fn has_primary_key_columns<I: IntoIterator<Item = S>, S: AsRef<str>>(
+        &self,
+        columns: I,
+    ) -> bool {
+        columns
+            .into_iter()
+            .any(|column| self.is_primary_key(column))
+    }
+
     pub fn to_ddl(&self) -> String {
         let Schema {
             table_name,
@@ -45,6 +162,7 @@ impl Schema {
             indexes,
             engine,
             foreign_keys,
+            primary_key,
             comment,
         } = self;
 
@@ -56,6 +174,7 @@ impl Schema {
             comment: comment.to_owned(),
             source: None,
             foreign_keys: foreign_keys.to_owned(),
+            primary_key: primary_key.to_owned(),
         }
         .to_sql();
 
@@ -113,6 +232,7 @@ impl Schema {
                 columns,
                 engine,
                 foreign_keys,
+                primary_key,
                 comment,
                 ..
             } => Ok(Schema {
@@ -121,6 +241,7 @@ impl Schema {
                 indexes,
                 engine,
                 foreign_keys,
+                primary_key,
                 comment,
             }),
             _ => Err(SchemaParseError::CannotParseDDL.into()),
@@ -139,9 +260,9 @@ mod tests {
     use {
         super::SchemaParseError,
         crate::{
-            ast::{AstLiteral, ColumnDef, ColumnUniqueOption, Expr},
+            ast::{AstLiteral, ColumnDef, Expr},
             chrono::Utc,
-            data::{Schema, SchemaIndex, SchemaIndexOrd},
+            data::{schema::SchemaError, Schema, SchemaIndex, SchemaIndexOrd, Value},
             prelude::DataType,
         },
     };
@@ -153,6 +274,7 @@ mod tests {
             indexes,
             engine,
             foreign_keys,
+            primary_key,
             comment,
         } = actual;
 
@@ -162,6 +284,7 @@ mod tests {
             indexes: indexes_e,
             engine: engine_e,
             foreign_keys: foreign_keys_e,
+            primary_key: primary_key_e,
             comment: comment_e,
         } = expected;
 
@@ -169,6 +292,7 @@ mod tests {
         assert_eq!(column_defs, column_defs_e);
         assert_eq!(engine, engine_e);
         assert_eq!(foreign_keys, foreign_keys_e);
+        assert_eq!(primary_key, primary_key_e);
         assert_eq!(comment, comment_e);
         indexes
             .into_iter()
@@ -202,7 +326,7 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: None,
+                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -210,13 +334,14 @@ mod tests {
                     data_type: DataType::Text,
                     nullable: true,
                     default: Some(Expr::Literal(AstLiteral::QuotedString("glue".to_owned()))),
-                    unique: None,
+                    unique: false,
                     comment: None,
                 },
             ]),
             indexes: Vec::new(),
             engine: None,
             foreign_keys: Vec::new(),
+            primary_key: None,
             comment: None,
         };
 
@@ -232,6 +357,7 @@ mod tests {
             indexes: Vec::new(),
             engine: None,
             foreign_keys: Vec::new(),
+            primary_key: None,
             comment: None,
         };
         let ddl = r#"CREATE TABLE "Test";"#;
@@ -250,16 +376,61 @@ mod tests {
                 data_type: DataType::Int,
                 nullable: false,
                 default: None,
-                unique: Some(ColumnUniqueOption { is_primary: true }),
+                unique: false,
                 comment: None,
             }]),
             indexes: Vec::new(),
             engine: None,
             foreign_keys: Vec::new(),
+            primary_key: Some(vec![0]),
             comment: None,
         };
 
-        let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL PRIMARY KEY);"#;
+        let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, PRIMARY KEY ("id"));"#;
+        assert_eq!(schema.to_ddl(), ddl);
+
+        let actual = Schema::from_ddl(ddl).unwrap();
+        assert_schema(actual, schema);
+    }
+
+    #[test]
+    fn table_composite_primary() {
+        let schema = Schema {
+            table_name: "User".to_owned(),
+            column_defs: Some(vec![
+                ColumnDef {
+                    name: "id".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: false,
+                    default: None,
+                    unique: false,
+                    comment: None,
+                },
+                ColumnDef {
+                    name: "user_id".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: false,
+                    default: None,
+                    unique: false,
+                    comment: None,
+                },
+                ColumnDef {
+                    name: "image_id".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: false,
+                    default: None,
+                    unique: true,
+                    comment: None,
+                },
+            ]),
+            indexes: Vec::new(),
+            engine: None,
+            foreign_keys: Vec::new(),
+            primary_key: Some(vec![0, 1]),
+            comment: None,
+        };
+
+        let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, "user_id" INT NOT NULL, "image_id" INT NOT NULL UNIQUE, PRIMARY KEY ("id", "user_id"));"#;
         assert_eq!(schema.to_ddl(), ddl);
 
         let actual = Schema::from_ddl(ddl).unwrap();
@@ -284,7 +455,7 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    unique: None,
+                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -292,7 +463,7 @@ mod tests {
                     data_type: DataType::Text,
                     nullable: false,
                     default: None,
-                    unique: None,
+                    unique: false,
                     comment: None,
                 },
             ]),
@@ -311,6 +482,7 @@ mod tests {
                 },
             ],
             engine: None,
+            primary_key: None,
             foreign_keys: Vec::new(),
             comment: None,
         };
@@ -338,7 +510,7 @@ CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);"#;
                     data_type: DataType::Int,
                     nullable: true,
                     default: None,
-                    unique: None,
+                    unique: false,
                     comment: None,
                 },
                 ColumnDef {
@@ -346,7 +518,7 @@ CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);"#;
                     data_type: DataType::Int,
                     nullable: true,
                     default: None,
-                    unique: None,
+                    unique: false,
                     comment: None,
                 },
             ]),
@@ -358,6 +530,7 @@ CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);"#;
             }],
             engine: None,
             foreign_keys: Vec::new(),
+            primary_key: None,
             comment: None,
         };
         let ddl = r#"CREATE TABLE "1" ("2" INT NULL, ";" INT NULL);
@@ -366,5 +539,75 @@ CREATE INDEX "." ON "1" (";");"#;
 
         let actual = Schema::from_ddl(ddl).unwrap();
         assert_schema(actual, schema);
+    }
+
+    #[test]
+    fn test_primary_key_short_row() {
+        let schema = Schema {
+            table_name: "User".to_owned(),
+            column_defs: Some(vec![
+                ColumnDef {
+                    name: "id".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: false,
+                    default: None,
+                    unique: false,
+                    comment: None,
+                },
+                ColumnDef {
+                    name: "name".to_owned(),
+                    data_type: DataType::Text,
+                    nullable: false,
+                    default: None,
+                    unique: false,
+                    comment: None,
+                },
+            ]),
+            indexes: Vec::new(),
+            engine: None,
+            primary_key: Some(vec![0, 1]),
+            foreign_keys: Vec::new(),
+            comment: None,
+        };
+
+        let error = SchemaError::IncompatibleRowLength(1);
+        let actual = schema.get_primary_key(vec![Value::U8(1)]);
+
+        assert_eq!(actual, Err(error.into()));
+    }
+
+    #[test]
+    fn test_primary_key_no_primary_key() {
+        let schema = Schema {
+            table_name: "User".to_owned(),
+            column_defs: Some(vec![
+                ColumnDef {
+                    name: "id".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: false,
+                    default: None,
+                    unique: false,
+                    comment: None,
+                },
+                ColumnDef {
+                    name: "name".to_owned(),
+                    data_type: DataType::Text,
+                    nullable: false,
+                    default: None,
+                    unique: false,
+                    comment: None,
+                },
+            ]),
+            indexes: Vec::new(),
+            engine: None,
+            primary_key: None,
+            foreign_keys: Vec::new(),
+            comment: None,
+        };
+
+        let error = SchemaError::NoPrimaryKeyDefined;
+        let actual = schema.get_primary_key(vec![Value::U8(1), Value::U8(2)]);
+
+        assert_eq!(actual, Err(error.into()));
     }
 }

@@ -168,9 +168,15 @@ pub enum TranslateError {
     #[error("cannot drop primary index")]
     CannotDropPrimary,
 
+    #[error("multiple primary key constraint is not supported")]
+    MultiplePrimaryKeyNotSupported,
+
     #[error("unreachable - empty columns")]
     UnreachableForeignKeyColumns(String),
 
     #[error("unsupported constraint: {0}")]
     UnsupportedConstraint(String),
+
+    #[error("column not found in table: {0}")]
+    ColumnNotFoundInTable(String),
 }
