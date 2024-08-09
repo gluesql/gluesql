@@ -9,7 +9,10 @@ use {
         ast::ColumnUniqueOption,
         data::{Key, Schema},
         error::{Error, Result},
-        store::{DataRow, Metadata, RowIter, Store, StoreMut},
+        store::{
+            AlterTable, CustomFunction, CustomFunctionMut, DataRow, Index, IndexMut, Metadata,
+            RowIter, Store, StoreMut, Transaction,
+        },
     },
     serde::{Deserialize, Serialize},
     uuid::Uuid,
@@ -203,10 +206,10 @@ impl StoreMut for WebStorage {
     }
 }
 
-impl gluesql_core::store::AlterTable for WebStorage {}
-impl gluesql_core::store::Index for WebStorage {}
-impl gluesql_core::store::IndexMut for WebStorage {}
-impl gluesql_core::store::Transaction for WebStorage {}
+impl AlterTable for WebStorage {}
+impl Index for WebStorage {}
+impl IndexMut for WebStorage {}
+impl Transaction for WebStorage {}
 impl Metadata for WebStorage {}
-impl gluesql_core::store::CustomFunction for WebStorage {}
-impl gluesql_core::store::CustomFunctionMut for WebStorage {}
+impl CustomFunction for WebStorage {}
+impl CustomFunctionMut for WebStorage {}
