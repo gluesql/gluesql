@@ -12,7 +12,7 @@ use {
         },
     },
     gluesql_csv_storage::CsvStorage,
-    gluesql_file_storage::FileStorage,
+    // gluesql_file_storage::FileStorage,
     gluesql_json_storage::JsonStorage,
     strum_macros::Display,
 };
@@ -26,7 +26,7 @@ pub struct GitStorage {
 }
 
 pub enum StorageBase {
-    File(FileStorage),
+    // File(FileStorage),
     Csv(CsvStorage),
     Json(JsonStorage),
 }
@@ -34,7 +34,7 @@ pub enum StorageBase {
 #[derive(Clone, Copy, Display)]
 #[strum(serialize_all = "lowercase")]
 pub enum StorageType {
-    File,
+    // File,
     Csv,
     Json,
 }
@@ -72,7 +72,7 @@ impl GitStorage {
         use StorageType::*;
 
         match storage_type {
-            File => FileStorage::new(path).map(StorageBase::File),
+            // File => FileStorage::new(path).map(StorageBase::File),
             Csv => CsvStorage::new(path).map(StorageBase::Csv),
             Json => JsonStorage::new(path).map(StorageBase::Json),
         }

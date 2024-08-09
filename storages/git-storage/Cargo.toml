@@ -10,7 +10,6 @@ documentation.workspace = true
 
 [dependencies]
 gluesql-core.workspace = true
-gluesql-file-storage.workspace = true
 gluesql-csv-storage.workspace = true
 gluesql-json-storage.workspace = true
 async-trait = "0.1"
