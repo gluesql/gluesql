@@ -55,10 +55,11 @@ impl GitStorage {
         let signature = signature()?;
         */
 
-        Command::new("cd")
-            .arg(path)
+        Command::new("git")
+            .current_dir(path)
+            .arg("init")
             .output()
-            .expect("failed to cd {path}");
+            .expect("failed to git init");
 
         Ok(Self {
             storage_base,
