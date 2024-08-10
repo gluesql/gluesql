@@ -4,8 +4,6 @@ mod store;
 mod store_mut;
 
 use {
-    std::process::Command,
-    git2::{IndexAddOption, Repository, Signature},
     gluesql_core::{
         error::{Error, Result},
         store::{
@@ -15,18 +13,15 @@ use {
     gluesql_csv_storage::CsvStorage,
     // gluesql_file_storage::FileStorage,
     gluesql_json_storage::JsonStorage,
+    std::process::Command,
     strum_macros::Display,
 };
 
-pub use git2;
-
 pub struct GitStorage {
     pub storage_base: StorageBase,
-    /*
-    pub repo: Repository,
-    pub signature: Signature<'static>,
-    */
     pub path: String,
+    pub remote: String,
+    pub branch: String,
 }
 
 pub enum StorageBase {
@@ -43,17 +38,12 @@ pub enum StorageType {
     Json,
 }
 
-fn signature() -> Result<Signature<'static>> {
-    Signature::now("GlueSQL Bot", "bot.glue.glue.gluesql@gluesql.org").map_storage_err()
-}
+const DEFAULT_REMOTE: &str = "origin";
+const DEFAULT_BRANCH: &str = "main";
 
 impl GitStorage {
     pub fn init(path: &str, storage_type: StorageType) -> Result<Self> {
         let storage_base = Self::storage_base(path, storage_type)?;
-        /*
-        let repo = Repository::init(path).map_storage_err()?;
-        let signature = signature()?;
-        */
 
         Command::new("git")
             .current_dir(path)
@@ -64,26 +54,29 @@ impl GitStorage {
         Ok(Self {
             storage_base,
             path: path.to_owned(),
-            /*
-            repo,
-            signature,
-            */
+            remote: DEFAULT_REMOTE.to_owned(),
+            branch: DEFAULT_BRANCH.to_owned(),
         })
     }
 
-    /*
-    pub fn with_repo(repo: Repository, storage_type: StorageType) -> Result<Self> {
-        let path = repo.path().to_str().map_storage_err("path not exists")?;
+    pub fn open(path: &str, storage_type: StorageType) -> Result<Self> {
         let storage_base = Self::storage_base(path, storage_type)?;
-        let signature = signature()?;
 
         Ok(Self {
             storage_base,
-            repo,
-            signature,
+            path: path.to_owned(),
+            remote: DEFAULT_REMOTE.to_owned(),
+            branch: DEFAULT_BRANCH.to_owned(),
         })
     }
-    */
+
+    pub fn set_remove(&mut self, remote: String) {
+        self.remote = remote;
+    }
+
+    pub fn set_branch(&mut self, branch: String) {
+        self.branch = branch;
+    }
 
     fn storage_base(path: &str, storage_type: StorageType) -> Result<StorageBase> {
         use StorageType::*;
@@ -95,60 +88,43 @@ impl GitStorage {
         }
     }
 
-    /*
-    pub fn set_signature(&mut self, signature: Signature<'static>) {
-        self.signature = signature;
-    }
-    */
-
     pub fn pull(&self) -> Result<()> {
-        todo!()
+        Command::new("git")
+            .current_dir(&self.path)
+            .arg("pull")
+            .arg(&self.remote)
+            .arg(&self.branch)
+            .output()
+            .map_storage_err()
+            .map(|_| ())
     }
 
     pub fn push(&self) -> Result<()> {
-        todo!()
+        Command::new("git")
+            .current_dir(&self.path)
+            .arg("push")
+            .arg(&self.remote)
+            .arg(&self.branch)
+            .output()
+            .map_storage_err()
+            .map(|_| ())
     }
 
     pub fn add_and_commit(&self, message: &str) -> Result<()> {
         Command::new("git")
+            .current_dir(&self.path)
             .arg("add")
             .arg(".")
             .output()
-            .unwrap();
+            .map_storage_err()?;
 
         Command::new("git")
+            .current_dir(&self.path)
             .arg("commit")
             .arg("-m")
             .arg(message)
             .output()
-            .unwrap();
-        /*
-        (|| -> std::result::Result<(), git2::Error> {
-            let mut index = self.repo.index()?;
-
-            index.add_all(["*"].iter(), IndexAddOption::DEFAULT, None)?;
-            index.write()?;
-
-            let tree_id = index.write_tree_to(&self.repo)?;
-            let tree = self.repo.find_tree(tree_id)?;
-            let parent_commit = match self.repo.head() {
-                Ok(head) => vec![head.resolve()?.peel_to_commit()?],
-                Err(_) => vec![],
-            };
-
-            self.repo.commit(
-                Some("HEAD"),
-                &self.signature,
-                &self.signature,
-                message,
-                &tree,
-                &parent_commit.iter().collect::<Vec<_>>(),
-            )?;
-
-            Ok(())
-        })()
-        .map_storage_err()?;
-        */
+            .map_storage_err()?;
 
         Ok(())
     }
@@ -161,16 +137,6 @@ pub trait ResultExt<T, E: ToString> {
 impl<T, E: ToString> ResultExt<T, E> for std::result::Result<T, E> {
     fn map_storage_err(self) -> Result<T, Error> {
         self.map_err(|e| e.to_string()).map_err(Error::StorageMsg)
-    }
-}
-
-pub trait OptionExt<T> {
-    fn map_storage_err(self, message: &str) -> Result<T, Error>;
-}
-
-impl<T> OptionExt<T> for std::option::Option<T> {
-    fn map_storage_err(self, message: &str) -> Result<T, Error> {
-        self.ok_or_else(|| Error::StorageMsg(message.to_owned()))
     }
 }
 
