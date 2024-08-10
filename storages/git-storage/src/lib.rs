@@ -4,6 +4,7 @@ mod store;
 mod store_mut;
 
 use {
+    std::process::Command,
     git2::{IndexAddOption, Repository, Signature},
     gluesql_core::{
         error::{Error, Result},
@@ -21,8 +22,11 @@ pub use git2;
 
 pub struct GitStorage {
     pub storage_base: StorageBase,
+    /*
     pub repo: Repository,
     pub signature: Signature<'static>,
+    */
+    pub path: String,
 }
 
 pub enum StorageBase {
@@ -46,16 +50,27 @@ fn signature() -> Result<Signature<'static>> {
 impl GitStorage {
     pub fn init(path: &str, storage_type: StorageType) -> Result<Self> {
         let storage_base = Self::storage_base(path, storage_type)?;
+        /*
         let repo = Repository::init(path).map_storage_err()?;
         let signature = signature()?;
+        */
+
+        Command::new("cd")
+            .arg(path)
+            .output()
+            .expect("failed to cd {path}");
 
         Ok(Self {
             storage_base,
+            path: path.to_owned(),
+            /*
             repo,
             signature,
+            */
         })
     }
 
+    /*
     pub fn with_repo(repo: Repository, storage_type: StorageType) -> Result<Self> {
         let path = repo.path().to_str().map_storage_err("path not exists")?;
         let storage_base = Self::storage_base(path, storage_type)?;
@@ -67,6 +82,7 @@ impl GitStorage {
             signature,
         })
     }
+    */
 
     fn storage_base(path: &str, storage_type: StorageType) -> Result<StorageBase> {
         use StorageType::*;
@@ -78,9 +94,11 @@ impl GitStorage {
         }
     }
 
+    /*
     pub fn set_signature(&mut self, signature: Signature<'static>) {
         self.signature = signature;
     }
+    */
 
     pub fn pull(&self) -> Result<()> {
         todo!()
@@ -91,6 +109,19 @@ impl GitStorage {
     }
 
     pub fn add_and_commit(&self, message: &str) -> Result<()> {
+        Command::new("git")
+            .arg("add")
+            .arg(".")
+            .output()
+            .unwrap();
+
+        Command::new("git")
+            .arg("commit")
+            .arg("-m")
+            .arg(message)
+            .output()
+            .unwrap();
+        /*
         (|| -> std::result::Result<(), git2::Error> {
             let mut index = self.repo.index()?;
 
@@ -116,6 +147,7 @@ impl GitStorage {
             Ok(())
         })()
         .map_storage_err()?;
+        */
 
         Ok(())
     }
