@@ -70,7 +70,7 @@ impl GitStorage {
         })
     }
 
-    pub fn set_remove(&mut self, remote: String) {
+    pub fn set_remote(&mut self, remote: String) {
         self.remote = remote;
     }
 

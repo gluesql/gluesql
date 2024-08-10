@@ -31,6 +31,7 @@ async fn pull_and_push() {
         .unwrap();
 
     let mut storage = GitStorage::open(path, StorageType::Json).unwrap();
+    storage.set_remote(remote.clone());
     storage.set_branch(branch.clone());
     storage.pull().unwrap();
 
