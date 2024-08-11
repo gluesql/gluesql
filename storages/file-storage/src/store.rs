@@ -7,7 +7,7 @@ use {
         error::Result,
         store::{DataRow, RowIter, Store},
     },
-    std::fs,
+    std::{ffi::OsStr, fs},
 };
 
 #[async_trait(?Send)]
@@ -18,11 +18,13 @@ impl Store for FileStorage {
             .map(|dir_entry| {
                 let dir_entry = dir_entry.map_storage_err()?;
                 let file_type = dir_entry.file_type().map_storage_err()?;
-                if file_type.is_dir() {
+                let path = dir_entry.path();
+                let extension = path.extension().and_then(OsStr::to_str);
+                if file_type.is_dir() || extension != Some("sql") {
                     return Ok(None);
                 }
 
-                self.fetch_schema(dir_entry.path()).map(Some)
+                self.fetch_schema(path).map(Some)
             })
             .filter_map(Result::transpose)
             .collect::<Result<Vec<Schema>>>()?;
@@ -64,11 +66,13 @@ impl Store for FileStorage {
             .map(|dir_entry| {
                 let dir_entry = dir_entry.map_storage_err()?;
                 let file_type = dir_entry.file_type().map_storage_err()?;
-                if file_type.is_dir() {
+                let path = dir_entry.path();
+                let extension = path.extension().and_then(OsStr::to_str);
+                if file_type.is_dir() || extension != Some("ron") {
                     return Ok(None);
                 }
 
-                Ok(Some(dir_entry.path()))
+                Ok(Some(path))
             })
             .filter_map(Result::transpose)
             .collect::<Result<Vec<_>>>()?;
