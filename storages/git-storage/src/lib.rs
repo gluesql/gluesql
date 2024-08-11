@@ -70,14 +70,6 @@ impl GitStorage {
         })
     }
 
-    pub fn set_remote(&mut self, remote: String) {
-        self.remote = remote;
-    }
-
-    pub fn set_branch(&mut self, branch: String) {
-        self.branch = branch;
-    }
-
     fn storage_base(path: &str, storage_type: StorageType) -> Result<StorageBase> {
         use StorageType::*;
 
@@ -86,6 +78,33 @@ impl GitStorage {
             Csv => CsvStorage::new(path).map(StorageBase::Csv),
             Json => JsonStorage::new(path).map(StorageBase::Json),
         }
+    }
+
+    pub fn set_remote(&mut self, remote: String) {
+        self.remote = remote;
+    }
+
+    pub fn set_branch(&mut self, branch: String) {
+        self.branch = branch;
+    }
+
+    pub fn add_and_commit(&self, message: &str) -> Result<()> {
+        Command::new("git")
+            .current_dir(&self.path)
+            .arg("add")
+            .arg(".")
+            .output()
+            .map_storage_err()?;
+
+        Command::new("git")
+            .current_dir(&self.path)
+            .arg("commit")
+            .arg("-m")
+            .arg(message)
+            .output()
+            .map_storage_err()?;
+
+        Ok(())
     }
 
     pub fn pull(&self) -> Result<()> {
@@ -108,25 +127,6 @@ impl GitStorage {
             .output()
             .map_storage_err()
             .map(|_| ())
-    }
-
-    pub fn add_and_commit(&self, message: &str) -> Result<()> {
-        Command::new("git")
-            .current_dir(&self.path)
-            .arg("add")
-            .arg(".")
-            .output()
-            .map_storage_err()?;
-
-        Command::new("git")
-            .current_dir(&self.path)
-            .arg("commit")
-            .arg("-m")
-            .arg(message)
-            .output()
-            .map_storage_err()?;
-
-        Ok(())
     }
 }
 
