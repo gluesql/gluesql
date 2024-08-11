@@ -6,6 +6,7 @@ use {
         error::Result,
         store::{DataRow, StoreMut},
     },
+    ron::ser::{to_string_pretty, PrettyConfig},
     std::{
         fs::{self, File},
         io::Write,
@@ -53,7 +54,7 @@ impl StoreMut for FileStorage {
             let key = Key::Uuid(Uuid::now_v7().as_u128());
             let path = self.data_path(table_name, &key)?;
             let row = FileRow { key, row };
-            let row = ron::to_string(&row).map_storage_err()?;
+            let row = to_string_pretty(&row, PrettyConfig::default()).map_storage_err()?;
 
             let mut file = File::create(path).map_storage_err()?;
             file.write_all(row.as_bytes()).map_storage_err()?;
@@ -66,7 +67,7 @@ impl StoreMut for FileStorage {
         for (key, row) in rows {
             let path = self.data_path(table_name, &key)?;
             let row = FileRow { key, row };
-            let row = ron::to_string(&row).map_storage_err()?;
+            let row = to_string_pretty(&row, PrettyConfig::default()).map_storage_err()?;
 
             let mut file = File::create(path).map_storage_err()?;
             file.write_all(row.as_bytes()).map_storage_err()?;
