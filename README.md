@@ -104,7 +104,21 @@ With GlueSQL, you can use JSONL or JSON files as a database that supports SQL an
 
 ### CSV Storage
 
-CSVStorage in GlueSQL allows you to work with CSV files as if they were SQL databases. This feature is perfect for developers who want to use the simplicity of CSV files while taking advantage of SQL's capabilities.
+CSV Storage in GlueSQL allows you to work with CSV files as if they were SQL databases. This feature is perfect for developers who want to use the simplicity of CSV files while taking advantage of SQL's capabilities.
+
+### Parquet Storage
+
+Parquet Storage in GlueSQL allows you to treat Parquet files as SQL databases, enabling SQL operations like SELECT, INSERT, and UPDATE directly on Parquet data. It offers a convenient way to work with the efficiency and structure of Parquet files while utilizing the full power of SQL.
+
+### File Storage
+
+File Storage is a custom storage implementation that utilizes the filesystem.
+For each table name, the schema information is saved in a .sql format using a CREATE TABLE query.
+The data is stored by creating a directory with the same name as the table and serializing the data using RON format in the subdirectory.
+
+### Git Storage
+
+Git Storage is a custom storage option in GlueSQL that integrates seamlessly with a Git repository, allowing you to version-control your data directly within Git. This storage option automatically handles add and commit operations, ensuring your data changes are tracked. For remote operations like pull and push, GitStorage provides methods that developers can manually invoke, giving you full control over synchronization with remote repositories.
 
 ### Mongo Storage
 
