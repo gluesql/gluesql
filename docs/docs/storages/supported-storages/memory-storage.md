@@ -1,7 +1,3 @@
----
-sidebar_position: 1
----
-
 # Memory Storage
 
 MemoryStorage is a foundational storage option designed for in-memory, non-persistent data. Despite its simplicity, it is robust enough for use in production environments.

@@ -1,7 +1,3 @@
----
-sidebar_position: 5
----
-
 # WebStorage (local & session)
 
 WebStorage - yes, the localStorage and sessionStorage you're familiar with. With GlueSQL, you can use SQL to interact with these storages!

@@ -1,7 +1,3 @@
----
-sidebar_position: 3
----
-
 # Sled Storage
 
 SledStorage is currently the representative persistent data storage for GlueSQL. As the name suggests, it's a storage option based on the Sled key-value embedded database built in Rust ([Sled on Github](https://github.com/spacejam/sled)).
