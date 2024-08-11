@@ -29,4 +29,4 @@ jobs:
             cargo release publish --workspace --no-confirm
           fi
         env:
-         CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES }} 
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES }} 
