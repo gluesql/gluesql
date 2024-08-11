@@ -1,0 +1,25 @@
+[package]
+name = "gluesql-git-storage"
+authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
+version.workspace = true
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation.workspace = true
+
+[dependencies]
+gluesql-core.workspace = true
+gluesql-file-storage.workspace = true
+gluesql-csv-storage.workspace = true
+gluesql-json-storage.workspace = true
+async-trait = "0.1"
+strum_macros = "0.26.4"
+
+[dev-dependencies]
+test-suite.workspace = true
+tokio = { version = "1", features = ["rt", "macros"] }
+uuid = { version = "1.10.0", features = ["v7"] }
+
+[features]
+test-git-remote = []

@@ -99,6 +99,25 @@ jobs:
           cd storages/redis-storage
           cargo test --verbose --features test-redis
 
+  run_gitstorage_tests:
+    name: Run GitStorage tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Prepare
+        run: |
+          git config --global user.email "taehoon.moon@outlook.com"
+          git config --global user.name "Taehoon Moon (Bot)"
+
+      - name: Test
+        env:
+          GIT_REMOTE: https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/git-storage-test.git
+        run: |
+          cd storages/git-storage
+          cargo test --verbose --features test-git-remote
+
   run_examples:
     name: Run examples
     runs-on: ubuntu-latest
