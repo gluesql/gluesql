@@ -83,13 +83,11 @@ impl Store for FileStorage {
         entries.sort();
 
         let rows = entries.into_iter().map(|path| {
-            fs::read_to_string(path)
-                .map_storage_err()
-                .and_then(move |data| {
-                    let FileRow { key, row } = ron::from_str(&data).map_storage_err()?;
+            let data = fs::read_to_string(path).map_storage_err()?;
 
-                    Ok((key, row))
-                })
+            ron::from_str(&data)
+                .map_storage_err()
+                .map(|FileRow { key, row }| (key, row))
         });
 
         Ok(Box::pin(iter(rows)))
