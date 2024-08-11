@@ -7,8 +7,8 @@ use {
     gluesql_core::{
         error::{Error, Result},
         store::{
-            AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Store,
-            StoreMut, Transaction,
+            AlterTable, CustomFunction, CustomFunctionMut, FileBased, Index, IndexMut, Metadata,
+            Store, StoreMut, Transaction,
         },
     },
     gluesql_csv_storage::CsvStorage,
@@ -18,8 +18,8 @@ use {
     strum_macros::Display,
 };
 
-pub struct GitStorage {
-    pub storage_base: StorageBase,
+pub struct GitStorage<T: FileBased> {
+    pub storage_base: T,
     pub path: String,
     pub remote: String,
     pub branch: String,
@@ -42,10 +42,8 @@ pub enum StorageType {
 const DEFAULT_REMOTE: &str = "origin";
 const DEFAULT_BRANCH: &str = "main";
 
-impl GitStorage {
-    pub fn init(path: &str, storage_type: StorageType) -> Result<Self> {
-        let storage_base = Self::storage_base(path, storage_type)?;
-
+impl<T: FileBased> GitStorage<T> {
+    pub fn init(path: &str) -> Result<Self> {
         Command::new("git")
             .current_dir(path)
             .arg("init")
@@ -53,33 +51,31 @@ impl GitStorage {
             .expect("failed to git init");
 
         Ok(Self {
-            storage_base,
+            storage_base: T::new(path)?,
             path: path.to_owned(),
             remote: DEFAULT_REMOTE.to_owned(),
             branch: DEFAULT_BRANCH.to_owned(),
         })
     }
 
-    pub fn open(path: &str, storage_type: StorageType) -> Result<Self> {
-        let storage_base = Self::storage_base(path, storage_type)?;
-
+    pub fn open(path: &str) -> Result<Self> {
         Ok(Self {
-            storage_base,
+            storage_base: T::new(path)?,
             path: path.to_owned(),
             remote: DEFAULT_REMOTE.to_owned(),
             branch: DEFAULT_BRANCH.to_owned(),
         })
     }
 
-    fn storage_base(path: &str, storage_type: StorageType) -> Result<StorageBase> {
-        use StorageType::*;
+    // fn storage_base(path: &str, storage_type: StorageType) -> Result<StorageBase> {
+    //     use StorageType::*;
 
-        match storage_type {
-            File => FileStorage::new(path).map(StorageBase::File),
-            Csv => CsvStorage::new(path).map(StorageBase::Csv),
-            Json => JsonStorage::new(path).map(StorageBase::Json),
-        }
-    }
+    //     match storage_type {
+    //         File => FileStorage::new(path).map(StorageBase::File),
+    //         Csv => CsvStorage::new(path).map(StorageBase::Csv),
+    //         Json => JsonStorage::new(path).map(StorageBase::Json),
+    //     }
+    // }
 
     pub fn set_remote(&mut self, remote: String) {
         self.remote = remote;
@@ -130,21 +126,21 @@ impl GitStorage {
             .map(|_| ())
     }
 
-    fn get_store(&self) -> &dyn Store {
-        match &self.storage_base {
-            StorageBase::File(storage) => storage,
-            StorageBase::Csv(storage) => storage,
-            StorageBase::Json(storage) => storage,
-        }
-    }
+    // fn get_store(&self) -> &dyn Store {
+    //     match &self.storage_base {
+    //         StorageBase::File(storage) => storage,
+    //         StorageBase::Csv(storage) => storage,
+    //         StorageBase::Json(storage) => storage,
+    //     }
+    // }
 
-    fn get_store_mut(&mut self) -> &mut dyn StoreMut {
-        match &mut self.storage_base {
-            StorageBase::File(storage) => storage,
-            StorageBase::Csv(storage) => storage,
-            StorageBase::Json(storage) => storage,
-        }
-    }
+    // fn get_store_mut(&mut self) -> &mut dyn StoreMut {
+    //     match &mut self.storage_base {
+    //         StorageBase::File(storage) => storage,
+    //         StorageBase::Csv(storage) => storage,
+    //         StorageBase::Json(storage) => storage,
+    //     }
+    // }
 }
 
 pub trait ResultExt<T, E: ToString> {
@@ -157,10 +153,10 @@ impl<T, E: ToString> ResultExt<T, E> for std::result::Result<T, E> {
     }
 }
 
-impl AlterTable for GitStorage {}
-impl Index for GitStorage {}
-impl IndexMut for GitStorage {}
-impl Transaction for GitStorage {}
-impl Metadata for GitStorage {}
-impl CustomFunction for GitStorage {}
-impl CustomFunctionMut for GitStorage {}
+impl<T: FileBased> AlterTable for GitStorage<T> {}
+impl<T: FileBased> Index for GitStorage<T> {}
+impl<T: FileBased> IndexMut for GitStorage<T> {}
+impl<T: FileBased> Transaction for GitStorage<T> {}
+impl<T: FileBased> Metadata for GitStorage<T> {}
+impl<T: FileBased> CustomFunction for GitStorage<T> {}
+impl<T: FileBased> CustomFunctionMut for GitStorage<T> {}

@@ -8,8 +8,8 @@ use {
         data::{Key, Schema},
         error::{Error, Result},
         store::{
-            AlterTable, CustomFunction, CustomFunctionMut, DataRow, Index, IndexMut, Metadata,
-            Transaction,
+            AlterTable, CustomFunction, CustomFunctionMut, DataRow, FileBased, Index, IndexMut,
+            Metadata, Transaction,
         },
     },
     hex::ToHex,
@@ -32,14 +32,16 @@ pub struct FileRow {
     pub row: DataRow,
 }
 
-impl FileStorage {
-    pub fn new(path: &str) -> Result<Self> {
+impl FileBased for FileStorage {
+    fn new(path: &str) -> Result<Self> {
         fs::create_dir_all(path).map_storage_err()?;
         let path = PathBuf::from(path);
 
         Ok(Self { path })
     }
+}
 
+impl FileStorage {
     pub fn path<T: AsRef<Path>>(&self, table_name: T) -> PathBuf {
         let mut path = self.path.clone();
         path.push(table_name);

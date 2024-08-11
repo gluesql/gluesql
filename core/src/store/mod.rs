@@ -109,3 +109,7 @@ pub trait StoreMut {
         Err(Error::StorageMsg(msg))
     }
 }
+
+pub trait FileBased: Store + StoreMut + Sized {
+    fn new(path: &str) -> Result<Self>;
+}

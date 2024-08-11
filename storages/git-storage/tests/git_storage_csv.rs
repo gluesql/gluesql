@@ -1,17 +1,14 @@
 use {
-    async_trait::async_trait,
-    gluesql_core::prelude::Glue,
-    gluesql_git_storage::{GitStorage, StorageType},
-    std::fs::remove_dir_all,
-    test_suite::*,
+    async_trait::async_trait, gluesql_core::prelude::Glue, gluesql_csv_storage::CsvStorage,
+    gluesql_git_storage::GitStorage, std::fs::remove_dir_all, test_suite::*,
 };
 
 struct GitStorageTester {
-    glue: Glue<GitStorage>,
+    glue: Glue<GitStorage<CsvStorage>>,
 }
 
 #[async_trait(?Send)]
-impl Tester<GitStorage> for GitStorageTester {
+impl Tester<GitStorage<CsvStorage>> for GitStorageTester {
     async fn new(namespace: &str) -> Self {
         let path = format!("tmp/git_storage_csv/{namespace}");
 
@@ -19,12 +16,12 @@ impl Tester<GitStorage> for GitStorageTester {
             println!("fs::remove_file {:?}", e);
         };
 
-        let storage = GitStorage::init(&path, StorageType::Csv).expect("GitStorage::init - CSV");
+        let storage = GitStorage::init(&path).expect("GitStorage::init - CSV");
         let glue = Glue::new(storage);
         GitStorageTester { glue }
     }
 
-    fn get_glue(&mut self) -> &mut Glue<GitStorage> {
+    fn get_glue(&mut self) -> &mut Glue<GitStorage<CsvStorage>> {
         &mut self.glue
     }
 }
