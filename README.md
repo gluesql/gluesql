@@ -102,6 +102,10 @@ Sled Storage is a persistent data storage option for GlueSQL that is built on th
 
 With GlueSQL, you can use JSONL or JSON files as a database that supports SQL and AST Builder, making it a powerful option for developers who need to work with JSON data. JSON Storage is a storage system that uses two types of files: a schema file (optional) and a data file. The schema file is written in Standard SQL and stores the structure of the table, while the data file contains the actual data and supports two file formats: `*.json` and `*.jsonl`. JSON Storage supports all DML features, but is particularly specialized for SELECT and INSERT.
 
+### CSV Storage
+
+CSVStorage in GlueSQL allows you to work with CSV files as if they were SQL databases. This feature is perfect for developers who want to use the simplicity of CSV files while taking advantage of SQL's capabilities.
+
 ### Mongo Storage
 
 With Mongo storage, you can use mongodb as a storage for SQL queries. You can use all the features supported by GlueSQL, such as aggregations and joins, which were previously difficult to handle on an unstructured database. In particular, you can use GlueSQL's powerful schema system on mongodb, which is as strong as an RDBMS.

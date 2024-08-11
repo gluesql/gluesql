@@ -1,4 +1,4 @@
-# Parquet Storage Extension for GlueSQL
+# Parquet Storage
 
 ## Introduction
 

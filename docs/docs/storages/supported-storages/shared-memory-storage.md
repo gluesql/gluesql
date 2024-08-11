@@ -1,7 +1,3 @@
----
-sidebar_position: 2
----
-
 # Shared Memory Storage
 
 SharedMemoryStorage is a storage option designed to provide more comfortable usage of MemoryStorage in concurrent environments. Although it doesn't operate in parallel, it makes accessing the same data from multiple threads simultaneously more convenient.
