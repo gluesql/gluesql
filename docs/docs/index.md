@@ -80,7 +80,25 @@ Shared Memory Storage is a storage option designed to provide more comfortable u
 Sled Storage is a persistent data storage option for GlueSQL that is built on the Sled key-value embedded database in Rust. It is the only storage option currently supported by GlueSQL that implements all Store traits, from non-clustered indexes to transactions. Sled Storage is an excellent choice for handling and storing data in a Rust environment. To use Sled Storage, you can create a SledStorage instance using a path.
 
 ### JSON Storage
-With GlueSQL, you can use JSONL or JSON files as a database that supports SQL and AST Builder, making it a powerful option for developers who need to work with JSON data. JSON Storage is a storage system that uses two types of files: a schema file (optional) and a data file. The schema file is written in Standard SQL and stores the structure of the table, while the data file contains the actual data and supports two file formats: *.json and *.jsonl. JSON Storage supports all DML features, but is particularly specialized for SELECT and INSERT.
+With GlueSQL, you can use JSONL or JSON files as a database that supports SQL and AST Builder, making it a powerful option for developers who need to work with JSON data. JSON Storage is a storage system that uses two types of files: a schema file (optional) and a data file. The schema file is written in Standard SQL and stores the structure of the table, while the data file contains the actual data and supports two file formats: `*.json` and `*.jsonl`. JSON Storage supports all DML features, but is particularly specialized for SELECT and INSERT.
+
+### CSV Storage
+CSV Storage in GlueSQL allows you to work with CSV files as if they were SQL databases. This feature is perfect for developers who want to use the simplicity of CSV files while taking advantage of SQL's capabilities.
+
+### Parquet Storage
+Parquet Storage in GlueSQL allows you to treat Parquet files as SQL databases, enabling SQL operations like SELECT, INSERT, and UPDATE directly on Parquet data. It offers a convenient way to work with the efficiency and structure of Parquet files while utilizing the full power of SQL.
+
+### File Storage
+File Storage is a custom storage implementation that utilizes the filesystem.
+For each table name, the schema information is saved in a .sql format using a CREATE TABLE query.
+The data is stored by creating a directory with the same name as the table and serializing the data using RON format in the subdirectory.
+
+### Git Storage
+Git Storage is a custom storage option in GlueSQL that integrates seamlessly with a Git repository, allowing you to version-control your data directly within Git. This storage option automatically handles add and commit operations, ensuring your data changes are tracked. For remote operations like pull and push, GitStorage provides methods that developers can manually invoke, giving you full control over synchronization with remote repositories.
+
+### Mongo Storage
+With Mongo storage, you can use mongodb as a storage for SQL queries. You can use all the features supported by GlueSQL, such as aggregations and joins, which were previously difficult to handle on an unstructured database. In particular, you can use GlueSQL's powerful schema system on mongodb, which is as strong as an RDBMS.
+To run tests, refer to [here](storages/mongo-storage/README.md)
 
 ### Web Storage
 WebStorage, specifically localStorage and sessionStorage, can be used as a data storage system for GlueSQL. While WebStorage is a simple key-value database that uses string keys, GlueSQL makes it more powerful by adding support for SQL queries. This allows you to use SQL to interact with WebStorage, making it a convenient option for developers who are familiar with SQL. WebStorage can be used in JavaScript (Web) environments and Rust WebAssembly environments.
