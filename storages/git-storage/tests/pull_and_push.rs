@@ -2,7 +2,8 @@
 
 use {
     gluesql_core::prelude::Glue,
-    gluesql_git_storage::{GitStorage, StorageType},
+    gluesql_git_storage::GitStorage,
+    gluesql_json_storage::JsonStorage,
     std::{env, fs::remove_dir_all, process::Command},
     uuid::Uuid,
 };
@@ -10,7 +11,7 @@ use {
 #[tokio::test]
 async fn pull_and_push() {
     let remote =
-        env::var("GIT_REMOTE").unwrap_or("git@github.com:gluesql/git-storage-test.git".to_owned());
+        env::var("GIT_REMOTE").unwrap_or("https://github.com/gluesql/git-storage-test".to_owned());
     let path = "./tmp/git-storage-test/";
     let _ = remove_dir_all(path);
 
@@ -30,7 +31,7 @@ async fn pull_and_push() {
         .output()
         .unwrap();
 
-    let mut storage = GitStorage::open(path, StorageType::Json).unwrap();
+    let mut storage: GitStorage<JsonStorage> = GitStorage::open(path).unwrap();
     storage.set_remote(remote.clone());
     storage.set_branch(branch.clone());
     storage.pull().unwrap();
