@@ -1,0 +1,58 @@
+name: Publish Docs
+
+on:
+  workflow_dispatch:
+    inputs:
+      # Latest commit to include with the release. If omitted, use the latest commit on the main branch.
+      sha:
+        description: Commit SHA
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  publish_docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Clone gluesql.org
+        run: git clone https://github.com/gluesql/gluesql.github.io.git &&
+          cd gluesql.github.io &&
+          git checkout gh-pages
+
+      - name: Fetch version
+        run: |
+          VERSION=$(grep "^version = " Cargo.toml | sed 's/version = "\(.*\)"/\1/'>&1)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          
+      - name: Build docs
+        run: |
+          cd docs
+          yarn install
+          GLUESQL_DOCS_BASE_URL=/docs/${{ env.VERSION }}/ yarn build
+
+      - name: Update docs/dev/ to gluesql.org
+        run: |
+          rm -rf gluesql.github.io/docs/${{ env.VERSION }}
+          mkdir docs/${{ env.VERSION }}/
+          mv docs/build gluesql.github.io/docs/${{ env.VERSION }}
+
+      - name: Prepare
+        run: |
+          git config --global user.email "taehoon.moon@outlook.com"
+          git config --global user.name "Taehoon Moon (Bot)"
+
+      - name: Commit and deploy
+        run: |
+          cd gluesql.github.io
+          git add docs/${{ env.VERSION }}
+          git diff-index --quiet HEAD || (
+            git commit -m "Publish Docs - ${{ env.VERSION }}" &&
+            git push https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/gluesql.github.io.git
+          )
