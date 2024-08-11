@@ -98,7 +98,6 @@ Git Storage is a custom storage option in GlueSQL that integrates seamlessly wit
 
 ### Mongo Storage
 With Mongo storage, you can use mongodb as a storage for SQL queries. You can use all the features supported by GlueSQL, such as aggregations and joins, which were previously difficult to handle on an unstructured database. In particular, you can use GlueSQL's powerful schema system on mongodb, which is as strong as an RDBMS.
-To run tests, refer to [here](storages/mongo-storage/README.md)
 
 ### Web Storage
 WebStorage, specifically localStorage and sessionStorage, can be used as a data storage system for GlueSQL. While WebStorage is a simple key-value database that uses string keys, GlueSQL makes it more powerful by adding support for SQL queries. This allows you to use SQL to interact with WebStorage, making it a convenient option for developers who are familiar with SQL. WebStorage can be used in JavaScript (Web) environments and Rust WebAssembly environments.
