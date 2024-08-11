@@ -27,7 +27,7 @@ jobs:
       - name: Set up wasm pack
         uses: jetli/wasm-pack-action@v0.4.0
         with:
-          version: 'v0.12.1'
+          version: 'v0.13.0'
       - run: |
           cd pkg/javascript
           npm install
@@ -49,7 +49,7 @@ jobs:
       - name: Set up wasm pack
         uses: jetli/wasm-pack-action@v0.4.0
         with:
-          version: 'v0.12.1'
+          version: 'v0.13.0'
       - run: |
           cd storages/web-storage
           wasm-pack test --headless --firefox
