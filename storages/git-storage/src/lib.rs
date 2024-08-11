@@ -4,12 +4,11 @@ mod store;
 mod store_mut;
 
 use {
-    core::panic,
     gluesql_core::{
         error::{Error, Result},
         store::{
             AlterTable, CustomFunction, CustomFunctionMut, FileBased, Index, IndexMut, Metadata,
-            Store, StoreMut, Transaction,
+            Transaction,
         },
     },
     gluesql_csv_storage::CsvStorage,
@@ -61,23 +60,15 @@ impl<T: FileBased> GitStorage<T> {
     }
 
     pub fn open(path: &str) -> Result<Self> {
+        let storage_base = T::new(path)?;
+
         Ok(Self {
-            storage_base: T::new(path)?,
+            storage_base,
             path: path.to_owned(),
             remote: DEFAULT_REMOTE.to_owned(),
             branch: DEFAULT_BRANCH.to_owned(),
         })
     }
-
-    // fn storage_base(path: &str, storage_type: StorageType) -> Result<StorageBase> {
-    //     use StorageType::*;
-
-    //     match storage_type {
-    //         File => FileStorage::new(path).map(StorageBase::File),
-    //         Csv => CsvStorage::new(path).map(StorageBase::Csv),
-    //         Json => JsonStorage::new(path).map(StorageBase::Json),
-    //     }
-    // }
 
     pub fn set_remote(&mut self, remote: String) {
         self.remote = remote;
@@ -127,22 +118,6 @@ impl<T: FileBased> GitStorage<T> {
             .map_storage_err()
             .map(|_| ())
     }
-
-    // fn get_store(&self) -> &dyn Store {
-    //     match &self.storage_base {
-    //         StorageBase::File(storage) => storage,
-    //         StorageBase::Csv(storage) => storage,
-    //         StorageBase::Json(storage) => storage,
-    //     }
-    // }
-
-    // fn get_store_mut(&mut self) -> &mut dyn StoreMut {
-    //     match &mut self.storage_base {
-    //         StorageBase::File(storage) => storage,
-    //         StorageBase::Csv(storage) => storage,
-    //         StorageBase::Json(storage) => storage,
-    //     }
-    // }
 }
 
 pub trait ResultExt<T, E: ToString> {

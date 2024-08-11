@@ -1,5 +1,8 @@
 use {
-    gluesql_core::prelude::{Glue, Value},
+    gluesql_core::{
+        prelude::{Glue, Value},
+        store::FileBased,
+    },
     gluesql_json_storage::JsonStorage,
     serde_json::json,
     test_suite::select_map,

@@ -16,7 +16,7 @@ use {
     gluesql_core::{
         ast::{Expr, SetExpr, Statement, ToSql, Values},
         data::Value,
-        store::{DataRow, GStore, GStoreMut, Store, Transaction},
+        store::{DataRow, FileBased, GStore, GStoreMut, Store, Transaction},
     },
     gluesql_csv_storage::CsvStorage,
     gluesql_file_storage::FileStorage,
