@@ -28,6 +28,7 @@ gluesql-web-storage = { workspace = true, optional = true }
 gluesql-idb-storage = { workspace = true, optional = true }
 gluesql-redis-storage = { workspace = true, optional = true }
 gluesql-parquet-storage = { workspace = true, optional = true }
+gluesql-file-storage = { workspace = true, optional = true }
 
 [dev-dependencies]
 futures = "0.3"
@@ -45,4 +46,5 @@ default = [
 	"gluesql-csv-storage",
 	"gluesql-composite-storage",
 	"gluesql-redis-storage",
+  "gluesql-file-storage",
 ]
