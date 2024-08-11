@@ -66,7 +66,7 @@ impl Store for FileStorage {
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
         let path = self.path(table_name);
-        let mut rows = fs::read_dir(path)
+        let mut entries = fs::read_dir(path)
             .map_storage_err()?
             .map(|dir_entry| {
                 let dir_entry = dir_entry.map_storage_err()?;
@@ -75,21 +75,22 @@ impl Store for FileStorage {
                     return Ok(None);
                 }
 
-                let path = dir_entry.path();
-                fs::read_to_string(&path)
-                    .map_storage_err()
-                    .and_then(move |data| {
-                        let FileRow { key, row } = ron::from_str(&data).map_storage_err()?;
-
-                        Ok((path, key, row))
-                    })
-                    .map(Some)
+                Ok(Some(dir_entry.path()))
             })
             .filter_map(Result::transpose)
             .collect::<Result<Vec<_>>>()?;
 
-        rows.sort_by_cached_key(|(path, _, _)| path.clone());
-        let rows = rows.into_iter().map(|(_, key, row)| (key, row)).map(Ok);
+        entries.sort();
+
+        let rows = entries.into_iter().map(|path| {
+            fs::read_to_string(path)
+                .map_storage_err()
+                .and_then(move |data| {
+                    let FileRow { key, row } = ron::from_str(&data).map_storage_err()?;
+
+                    Ok((key, row))
+                })
+        });
 
         Ok(Box::pin(iter(rows)))
     }
