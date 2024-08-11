@@ -1,8 +1,8 @@
 use {
-    gluesql_core::{prelude::{
-        Glue,
-        Payload, Value::*,
-    }, store::FileBased},
+    gluesql_core::{
+        prelude::{Glue, Payload, Value::*},
+        store::FileBased,
+    },
     gluesql_json_storage::JsonStorage,
     std::fs::remove_dir_all,
     test_suite::{concat_with, row, select, stringify_label},
