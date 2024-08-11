@@ -7,7 +7,11 @@ on:
       sha:
         description: Commit SHA
         type: string
- 
+      dry_run:
+        description: Dry run
+        type: boolean
+        default: true
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -30,6 +34,10 @@ jobs:
           cd pkg/javascript
           wasm-pack build --no-pack --target web --no-typescript --release --out-dir ./dist_web
           wasm-pack build --no-pack --target nodejs --no-typescript --release --out-dir ./dist_nodejs -- --no-default-features --features nodejs
-          npm publish --dry-run
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            npm publish --dry-run
+          else
+            npm publish
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM }}

@@ -7,6 +7,10 @@ on:
       sha:
         description: Commit SHA
         type: string
+      dry_run:
+        description: Dry run
+        type: boolean
+        default: true
 
 env:
   CARGO_TERM_COLOR: always
@@ -18,6 +22,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
-      - run: cargo release publish --workspace --no-confirm --no-publish
+      - run: |
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            cargo release publish --workspace --no-confirm --no-publish
+          else
+            cargo release publish --workspace --no-confirm
+          fi
         env:
          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES }} 
