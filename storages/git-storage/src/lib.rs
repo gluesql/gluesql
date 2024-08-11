@@ -7,7 +7,8 @@ use {
     gluesql_core::{
         error::{Error, Result},
         store::{
-            AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Transaction,
+            AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Store,
+            StoreMut, Transaction,
         },
     },
     gluesql_csv_storage::CsvStorage,
@@ -127,6 +128,22 @@ impl GitStorage {
             .output()
             .map_storage_err()
             .map(|_| ())
+    }
+
+    fn get_store(&self) -> &dyn Store {
+        match &self.storage_base {
+            StorageBase::File(storage) => storage,
+            StorageBase::Csv(storage) => storage,
+            StorageBase::Json(storage) => storage,
+        }
+    }
+
+    fn get_store_mut(&mut self) -> &mut dyn StoreMut {
+        match &mut self.storage_base {
+            StorageBase::File(storage) => storage,
+            StorageBase::Csv(storage) => storage,
+            StorageBase::Json(storage) => storage,
+        }
     }
 }
 
