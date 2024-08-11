@@ -487,9 +487,9 @@ checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
 
 [[package]]
 name = "chrono"
-version = "0.4.38"
+version = "0.4.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a21f936df1771bf62b77f047b726c4625ff2e8aa607c01ec06e5a05bd8463401"
+checksum = "9f13690e35a5e4ace198e7beea2895d29f3a9cc55015fcebe6336bd2010af9eb"
 dependencies = [
  "android-tzdata",
  "iana-time-zone",
@@ -1346,6 +1346,7 @@ dependencies = [
  "async-trait",
  "gluesql-core",
  "gluesql-csv-storage",
+ "gluesql-file-storage",
  "gluesql-json-storage",
  "gluesql-test-suite",
  "strum_macros 0.26.4",
