@@ -27,6 +27,9 @@ pub use gluesql_csv_storage;
 #[cfg(feature = "gluesql-parquet-storage")]
 pub use gluesql_parquet_storage;
 
+#[cfg(feature = "gluesql-file-storage")]
+pub use gluesql_file_storage;
+
 #[cfg(feature = "gluesql-composite-storage")]
 pub use gluesql_composite_storage;
 
@@ -59,6 +62,9 @@ pub mod prelude {
 
     #[cfg(feature = "gluesql-parquet-storage")]
     pub use gluesql_parquet_storage::ParquetStorage;
+
+    #[cfg(feature = "gluesql-file-storage")]
+    pub use gluesql_file_storage::FileStorage;
 
     #[cfg(feature = "gluesql-composite-storage")]
     pub use gluesql_composite_storage::CompositeStorage;

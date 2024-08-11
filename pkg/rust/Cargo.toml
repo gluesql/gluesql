@@ -28,6 +28,7 @@ gluesql-web-storage = { workspace = true, optional = true }
 gluesql-idb-storage = { workspace = true, optional = true }
 gluesql-redis-storage = { workspace = true, optional = true }
 gluesql-parquet-storage = { workspace = true, optional = true }
+gluesql-file-storage = { workspace = true, optional = true }
 
 [dev-dependencies]
 futures = "0.3"
@@ -35,14 +36,15 @@ futures = "0.3"
 [features]
 # DB User
 default = [
-	"cli",
-	"test-suite",
-	"gluesql_memory_storage",
-	"gluesql-shared-memory-storage",
-	"gluesql_sled_storage",
-	"gluesql-json-storage",
-	"gluesql-parquet-storage",
-	"gluesql-csv-storage",
-	"gluesql-composite-storage",
-	"gluesql-redis-storage",
+  "cli",
+  "test-suite",
+  "gluesql_memory_storage",
+  "gluesql-shared-memory-storage",
+  "gluesql_sled_storage",
+  "gluesql-json-storage",
+  "gluesql-parquet-storage",
+  "gluesql-csv-storage",
+  "gluesql-composite-storage",
+  "gluesql-redis-storage",
+  "gluesql-file-storage",
 ]

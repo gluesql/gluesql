@@ -19,6 +19,7 @@ use {
         store::{DataRow, GStore, GStoreMut, Store, Transaction},
     },
     gluesql_csv_storage::CsvStorage,
+    gluesql_file_storage::FileStorage,
     gluesql_json_storage::JsonStorage,
     gluesql_memory_storage::MemoryStorage,
     gluesql_parquet_storage::ParquetStorage,
@@ -58,6 +59,7 @@ enum Storage {
     Json,
     Csv,
     Parquet,
+    File,
 }
 
 pub fn run() -> Result<()> {
@@ -102,6 +104,14 @@ pub fn run() -> Result<()> {
 
             run(
                 ParquetStorage::new(path).expect("failed to load parquet-storage"),
+                args.execute,
+            );
+        }
+        (Some(path), Some(Storage::File), _) => {
+            println!("[file-storage] connected to {}", path);
+
+            run(
+                FileStorage::new(path).expect("failed to load file-storage"),
                 args.execute,
             );
         }
