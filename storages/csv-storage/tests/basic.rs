@@ -1,7 +1,10 @@
 use {
-    gluesql_core::prelude::{
-        Glue,
-        Value::{Str, I64},
+    gluesql_core::{
+        prelude::{
+            Glue,
+            Value::{Str, I64},
+        },
+        store::FileBased,
     },
     gluesql_csv_storage::CsvStorage,
     test_suite::*,

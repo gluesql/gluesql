@@ -4,6 +4,7 @@ mod store;
 mod store_mut;
 
 use {
+    core::panic,
     gluesql_core::{
         error::{Error, Result},
         store::{
@@ -44,6 +45,7 @@ const DEFAULT_BRANCH: &str = "main";
 
 impl<T: FileBased> GitStorage<T> {
     pub fn init(path: &str) -> Result<Self> {
+        let storage_base = T::new(path)?;
         Command::new("git")
             .current_dir(path)
             .arg("init")
@@ -51,7 +53,7 @@ impl<T: FileBased> GitStorage<T> {
             .expect("failed to git init");
 
         Ok(Self {
-            storage_base: T::new(path)?,
+            storage_base,
             path: path.to_owned(),
             remote: DEFAULT_REMOTE.to_owned(),
             branch: DEFAULT_BRANCH.to_owned(),

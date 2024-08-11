@@ -1,7 +1,10 @@
 use {
-    gluesql_core::prelude::{
-        Glue,
-        Value::{self, Str},
+    gluesql_core::{
+        prelude::{
+            Glue,
+            Value::{self, Str},
+        },
+        store::FileBased,
     },
     gluesql_csv_storage::CsvStorage,
     serde_json::json,
