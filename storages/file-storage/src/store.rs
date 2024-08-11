@@ -22,11 +22,7 @@ impl Store for FileStorage {
                     return Ok(None);
                 }
 
-                let path = dir_entry.path();
-                fs::read_to_string(path)
-                    .map_storage_err()
-                    .and_then(|data| Schema::from_ddl(&data))
-                    .map(Some)
+                self.fetch_schema(dir_entry.path()).map(Some)
             })
             .filter_map(Result::transpose)
             .collect::<Result<Vec<Schema>>>()?;
@@ -42,10 +38,7 @@ impl Store for FileStorage {
             return Ok(None);
         }
 
-        fs::read_to_string(path)
-            .map_storage_err()
-            .and_then(|data| Schema::from_ddl(&data))
-            .map(Some)
+        self.fetch_schema(path).map(Some)
     }
 
     async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {

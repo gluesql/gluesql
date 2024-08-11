@@ -5,7 +5,7 @@ mod store_mut;
 
 use {
     gluesql_core::{
-        data::Key,
+        data::{Key, Schema},
         error::{Error, Result},
         store::{
             AlterTable, CustomFunction, CustomFunctionMut, DataRow, Index, IndexMut, Metadata,
@@ -54,6 +54,12 @@ impl FileStorage {
         let path = path.with_extension("ron");
 
         Ok(path)
+    }
+
+    fn fetch_schema(&self, path: PathBuf) -> Result<Schema> {
+        fs::read_to_string(path)
+            .map_storage_err()
+            .and_then(|data| Schema::from_ddl(&data))
     }
 }
 
