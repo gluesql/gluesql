@@ -1,7 +1,7 @@
 #![cfg(feature = "test-git-remote")]
 
 use {
-    core::{panic, str},
+    core::str,
     gluesql_core::prelude::Glue,
     gluesql_git_storage::GitStorage,
     gluesql_json_storage::JsonStorage,
