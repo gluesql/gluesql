@@ -48,7 +48,7 @@ impl GitStorage {
         let cmd = cmd.current_dir(path);
 
         let output = args
-            .into_iter()
+            .iter()
             .fold(cmd, |acc, cur| acc.arg(cur))
             .output()
             .map_storage_err()?;
