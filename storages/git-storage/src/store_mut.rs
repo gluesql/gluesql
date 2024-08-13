@@ -1,5 +1,5 @@
 use {
-    crate::GitStorage,
+    crate::{Dml::*, GitStorage},
     async_trait::async_trait,
     gluesql_core::{
         data::{Key, Schema},
@@ -25,28 +25,21 @@ impl StoreMut for GitStorage {
 
     async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
         let n = rows.len();
-
         self.get_store_mut().append_data(table_name, rows).await?;
-        self.add_and_commit(&format!(
-            "[GitStorage::append_data] {table_name} - {n} rows"
-        ))
+        self.dml_commit(AppendData, table_name, n)
     }
 
     async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
         let n = rows.len();
 
         self.get_store_mut().insert_data(table_name, rows).await?;
-        self.add_and_commit(&format!(
-            "[GitStorage::insert_data] {table_name} - {n} rows"
-        ))
+        self.dml_commit(InsertData, table_name, n)
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let n = keys.len();
 
         self.get_store_mut().delete_data(table_name, keys).await?;
-        self.add_and_commit(&format!(
-            "[GitStorage::delete_data] {table_name} - {n} rows"
-        ))
+        self.dml_commit(DeleteData, table_name, n)
     }
 }

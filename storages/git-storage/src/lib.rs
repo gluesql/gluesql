@@ -54,6 +54,10 @@ impl GitStorage {
             .map_storage_err()?;
 
         if !output.status.success() {
+            println!("#debug>status: {}", output.status);
+            println!("#debug>stdout: {}", String::from_utf8_lossy(&output.stdout));
+            // println!("#debug>stderr: {}", String::from_utf8_lossy(&output.stderr));
+
             return Err(Error::StorageMsg(
                 String::from_utf8_lossy(&output.stderr).to_string(),
             ));
@@ -106,7 +110,15 @@ impl GitStorage {
     pub fn add_and_commit(&self, message: &str) -> Result<()> {
         GitStorage::git(&self.path, &["add", "."])?;
 
-        GitStorage::git(&self.path, &["commit", "-m", message, "--allow-empty"])
+        GitStorage::git(&self.path, &["commit", "-m", message])
+    }
+
+    pub fn dml_commit(&self, dml: Dml, table_name: &str, n: usize) -> Result<()> {
+        if n == 0 {
+            return Ok(());
+        }
+
+        self.add_and_commit(&format!("[GitStorage::{dml}] {table_name} - {n} rows"))
     }
 
     pub fn pull(&self) -> Result<()> {
@@ -132,6 +144,14 @@ impl GitStorage {
             StorageBase::Json(storage) => storage,
         }
     }
+}
+
+#[derive(Display)]
+#[strum(serialize_all = "snake_case")]
+pub enum Dml {
+    AppendData,
+    InsertData,
+    DeleteData,
 }
 
 pub trait ResultExt<T, E: ToString> {
