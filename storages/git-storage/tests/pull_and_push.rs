@@ -3,7 +3,7 @@
 use {
     gluesql_core::prelude::Glue,
     gluesql_git_storage::{GitStorage, StorageType},
-    std::{env, fs::remove_dir_all, process::Command},
+    std::{env, fs::remove_dir_all},
     uuid::Uuid,
 };
 
@@ -13,22 +13,10 @@ async fn pull_and_push() {
         env::var("GIT_REMOTE").unwrap_or("git@github.com:gluesql/git-storage-test.git".to_owned());
     let path = "./tmp/git-storage-test/";
     let _ = remove_dir_all(path);
-
-    Command::new("git")
-        .current_dir("./tmp")
-        .arg("clone")
-        .arg(&remote)
-        .output()
-        .unwrap();
+    GitStorage::git("./tmp", &["clone", &remote]).unwrap();
 
     let branch = format!("test-{}", Uuid::now_v7());
-    Command::new("git")
-        .current_dir(path)
-        .arg("checkout")
-        .arg("-b")
-        .arg(&branch)
-        .output()
-        .unwrap();
+    GitStorage::git(path, &["checkout", "-b", &branch]).unwrap();
 
     let mut storage = GitStorage::open(path, StorageType::Json).unwrap();
     storage.set_remote(remote.clone());
@@ -45,12 +33,5 @@ async fn pull_and_push() {
 
     glue.storage.push().unwrap();
 
-    Command::new("git")
-        .current_dir(path)
-        .arg("push")
-        .arg(remote)
-        .arg("-d")
-        .arg(branch)
-        .output()
-        .unwrap();
+    GitStorage::git(path, &["push", "remote", "-d", &branch]).unwrap();
 }

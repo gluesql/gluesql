@@ -43,14 +43,32 @@ const DEFAULT_REMOTE: &str = "origin";
 const DEFAULT_BRANCH: &str = "main";
 
 impl GitStorage {
+    pub fn git(path: &str, args: &[&str]) -> Result<(), Error> {
+        println!(">>>>git {}", args.join(" "));
+
+        let mut cmd = Command::new("git");
+        let cmd = cmd.current_dir(path);
+
+        let output = args
+            .into_iter()
+            .fold(cmd, |acc, cur| acc.arg(cur))
+            .output()
+            .map_storage_err()?;
+
+        if !output.status.success() {
+            println!("stdout: {:?}", String::from_utf8_lossy(&output.stdout));
+            println!("status: {}", output.status);
+            return Err(Error::StorageMsg(
+                String::from_utf8_lossy(&output.stderr).to_string(),
+            ));
+        }
+
+        Ok(())
+    }
+
     pub fn init(path: &str, storage_type: StorageType) -> Result<Self> {
         let storage_base = Self::storage_base(path, storage_type)?;
-
-        Command::new("git")
-            .current_dir(path)
-            .arg("init")
-            .output()
-            .expect("failed to git init");
+        GitStorage::git(path, &["init"])?;
 
         Ok(Self {
             storage_base,
@@ -90,44 +108,17 @@ impl GitStorage {
     }
 
     pub fn add_and_commit(&self, message: &str) -> Result<()> {
-        Command::new("git")
-            .current_dir(&self.path)
-            .arg("add")
-            .arg(".")
-            .output()
-            .map_storage_err()?;
+        GitStorage::git(&self.path, &["add", "."])?;
 
-        Command::new("git")
-            .current_dir(&self.path)
-            .arg("commit")
-            .arg("-m")
-            .arg(message)
-            .output()
-            .map_storage_err()?;
-
-        Ok(())
+        GitStorage::git(&self.path, &["commit", "-m", message])
     }
 
     pub fn pull(&self) -> Result<()> {
-        Command::new("git")
-            .current_dir(&self.path)
-            .arg("pull")
-            .arg(&self.remote)
-            .arg(&self.branch)
-            .output()
-            .map_storage_err()
-            .map(|_| ())
+        GitStorage::git(&self.path, &["pull", &self.remote, &self.branch])
     }
 
     pub fn push(&self) -> Result<()> {
-        Command::new("git")
-            .current_dir(&self.path)
-            .arg("push")
-            .arg(&self.remote)
-            .arg(&self.branch)
-            .output()
-            .map_storage_err()
-            .map(|_| ())
+        GitStorage::git(&self.path, &["push", &self.remote, &self.branch])
     }
 
     fn get_store(&self) -> &dyn Store {
