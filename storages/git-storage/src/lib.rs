@@ -44,8 +44,6 @@ const DEFAULT_BRANCH: &str = "main";
 
 impl GitStorage {
     pub fn git(path: &str, args: &[&str]) -> Result<(), Error> {
-        println!(">>>>git {}", args.join(" "));
-
         let mut cmd = Command::new("git");
         let cmd = cmd.current_dir(path);
 
@@ -56,8 +54,6 @@ impl GitStorage {
             .map_storage_err()?;
 
         if !output.status.success() {
-            println!("stdout: {:?}", String::from_utf8_lossy(&output.stdout));
-            println!("status: {}", output.status);
             return Err(Error::StorageMsg(
                 String::from_utf8_lossy(&output.stderr).to_string(),
             ));
@@ -110,7 +106,7 @@ impl GitStorage {
     pub fn add_and_commit(&self, message: &str) -> Result<()> {
         GitStorage::git(&self.path, &["add", "."])?;
 
-        GitStorage::git(&self.path, &["commit", "-m", message])
+        GitStorage::git(&self.path, &["commit", "-m", message, "--allow-empty"])
     }
 
     pub fn pull(&self) -> Result<()> {
