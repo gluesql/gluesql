@@ -216,7 +216,7 @@ pub async fn drop_table<T: GStore + GStoreMut>(
     table_names: &[String],
     if_exists: bool,
     cascade: bool,
-) -> Result<()> {
+) -> Result<usize> {
     for table_name in table_names {
         let schema = storage.fetch_schema(table_name).await?;
 
@@ -249,10 +249,11 @@ pub async fn drop_table<T: GStore + GStoreMut>(
             storage.insert_schema(&schema).await?;
         }
 
+        // unnessary call
         storage.delete_schema(table_name).await?;
     }
 
-    Ok(())
+    Ok(table_names.len())
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize)]
