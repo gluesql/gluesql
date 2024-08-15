@@ -81,7 +81,7 @@ async fn json_dml() {
         ),
         (
             glue.execute("DROP TABLE JsonDML").await,
-            Ok(Payload::DropTable),
+            Ok(Payload::DropTable(1)),
         ),
         (
             glue.execute("SELECT COUNT(*) FROM GLUE_TABLES WHERE TABLE_NAME = 'JsonDML'")

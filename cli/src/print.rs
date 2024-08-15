@@ -389,7 +389,7 @@ mod tests {
         }
 
         test!(Payload::Create, "Table created");
-        test!(Payload::DropTable(1), "1 Table dropped");
+        test!(Payload::DropTable(1), "1 table dropped");
         test!(Payload::AlterTable, "Table altered");
         test!(Payload::CreateIndex, "Index created");
         test!(Payload::DropIndex, "Index dropped");

@@ -11,7 +11,7 @@ use {
 async fn basic<T: GStore + GStoreMut>(mut glue: Glue<T>) {
     assert_eq!(
         glue.execute("DROP TABLE IF EXISTS api_test").await,
-        Ok(vec![Payload::DropTable])
+        Ok(vec![Payload::DropTable(0)])
     );
 
     assert_eq!(
