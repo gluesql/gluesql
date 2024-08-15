@@ -229,21 +229,24 @@ pub async fn drop_table<T: GStore + GStoreMut>(
             let storage_clone = Arc::clone(&storage);
 
             async move {
-                let mut storage = storage_clone
-                    .lock()
-                    .map_err(|_| AlterError::UnreachableStorageClone)?;
+                let referencings: Vec<Referencing>;
+                {
+                    let storage = storage_clone
+                        .lock()
+                        .map_err(|_| AlterError::UnreachableStorageClone)?;
 
-                let schema = storage.fetch_schema(table_name).await?;
+                    let schema = storage.fetch_schema(table_name).await?;
 
-                match (schema, if_exists) {
-                    (None, true) => return Ok(acc),
-                    (None, false) => {
-                        return Err(AlterError::TableNotFound(table_name.to_owned()).into());
+                    match (schema, if_exists) {
+                        (None, true) => return Ok(acc),
+                        (None, false) => {
+                            return Err(AlterError::TableNotFound(table_name.to_owned()).into());
+                        }
+                        _ => {}
                     }
-                    _ => {}
-                }
 
-                let referencings = storage.fetch_referencings(table_name).await?;
+                    referencings = storage.fetch_referencings(table_name).await?;
+                }
 
                 if !referencings.is_empty() && !cascade {
                     return Err::<usize, Error>(
@@ -260,6 +263,9 @@ pub async fn drop_table<T: GStore + GStoreMut>(
                     foreign_key: ForeignKey { name, .. },
                 } in referencings
                 {
+                    let mut storage = storage_clone
+                        .lock()
+                        .map_err(|_| AlterError::UnreachableStorageClone)?;
                     let mut schema = storage
                         .fetch_schema(&table_name)
                         .await?
@@ -270,6 +276,9 @@ pub async fn drop_table<T: GStore + GStoreMut>(
                     storage.borrow_mut().insert_schema(&schema).await?;
                 }
 
+                let mut storage = storage_clone
+                    .lock()
+                    .map_err(|_| AlterError::UnreachableStorageClone)?;
                 storage.delete_schema(table_name).await?;
 
                 Ok(acc + 1)

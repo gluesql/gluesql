@@ -160,7 +160,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
             ..
         } => drop_table(storage, names, *if_exists, *cascade)
             .await
-            .map(|n| Payload::DropTable(n)),
+            .map(Payload::DropTable),
         Statement::AlterTable { name, operation } => alter_table(storage, name, operation)
             .await
             .map(|_| Payload::AlterTable),
