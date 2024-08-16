@@ -42,22 +42,15 @@ pub enum StorageType {
 const DEFAULT_REMOTE: &str = "origin";
 const DEFAULT_BRANCH: &str = "main";
 
-impl GitStorage {
-    pub fn git(path: &str, args: &[&str]) -> Result<(), Error> {
-        let mut cmd = Command::new("git");
-        let cmd = cmd.current_dir(path);
+trait CommandExt {
+    fn execute(&mut self) -> Result<(), Error>;
+}
 
-        let output = args
-            .iter()
-            .fold(cmd, |acc, cur| acc.arg(cur))
-            .output()
-            .map_storage_err()?;
+impl CommandExt for Command {
+    fn execute(&mut self) -> Result<(), Error> {
+        let output = self.output().map_storage_err()?;
 
         if !output.status.success() {
-            println!("#debug>status: {}", output.status);
-            println!("#debug>stdout: {}", String::from_utf8_lossy(&output.stdout));
-            // println!("#debug>stderr: {}", String::from_utf8_lossy(&output.stderr));
-
             return Err(Error::StorageMsg(
                 String::from_utf8_lossy(&output.stderr).to_string(),
             ));
@@ -65,10 +58,15 @@ impl GitStorage {
 
         Ok(())
     }
+}
 
+impl GitStorage {
     pub fn init(path: &str, storage_type: StorageType) -> Result<Self> {
         let storage_base = Self::storage_base(path, storage_type)?;
-        GitStorage::git(path, &["init"])?;
+        Command::new("git")
+            .current_dir(path)
+            .arg("init")
+            .execute()?;
 
         Ok(Self {
             storage_base,
@@ -108,9 +106,18 @@ impl GitStorage {
     }
 
     pub fn add_and_commit(&self, message: &str) -> Result<()> {
-        GitStorage::git(&self.path, &["add", "."])?;
+        Command::new("git")
+            .current_dir(&self.path)
+            .arg("add")
+            .arg(".")
+            .execute()?;
 
-        GitStorage::git(&self.path, &["commit", "-m", message])
+        Command::new("git")
+            .current_dir(&self.path)
+            .arg("commit")
+            .arg("-m")
+            .arg(message)
+            .execute()
     }
 
     pub fn dml_commit(&self, dml: Dml, table_name: &str, n: usize) -> Result<()> {
@@ -122,11 +129,21 @@ impl GitStorage {
     }
 
     pub fn pull(&self) -> Result<()> {
-        GitStorage::git(&self.path, &["pull", &self.remote, &self.branch])
+        Command::new("git")
+            .current_dir(&self.path)
+            .arg("pull")
+            .arg(&self.remote)
+            .arg(&self.branch)
+            .execute()
     }
 
     pub fn push(&self) -> Result<()> {
-        GitStorage::git(&self.path, &["push", &self.remote, &self.branch])
+        Command::new("git")
+            .current_dir(&self.path)
+            .arg("push")
+            .arg(&self.remote)
+            .arg(&self.branch)
+            .execute()
     }
 
     fn get_store(&self) -> &dyn Store {
