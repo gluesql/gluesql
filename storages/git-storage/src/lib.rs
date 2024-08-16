@@ -1,8 +1,10 @@
 #![deny(clippy::str_to_string)]
 
+mod command_ext;
 mod store;
 mod store_mut;
 
+pub use command_ext::CommandExt;
 use {
     gluesql_core::{
         error::{Error, Result},
@@ -41,24 +43,6 @@ pub enum StorageType {
 
 const DEFAULT_REMOTE: &str = "origin";
 const DEFAULT_BRANCH: &str = "main";
-
-pub trait CommandExt {
-    fn execute(&mut self) -> Result<(), Error>;
-}
-
-impl CommandExt for Command {
-    fn execute(&mut self) -> Result<(), Error> {
-        let output = self.output().map_storage_err()?;
-
-        if !output.status.success() {
-            return Err(Error::StorageMsg(
-                String::from_utf8_lossy(&output.stderr).to_string(),
-            ));
-        }
-
-        Ok(())
-    }
-}
 
 impl GitStorage {
     pub fn init(path: &str, storage_type: StorageType) -> Result<Self> {
