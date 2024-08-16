@@ -1229,6 +1229,7 @@ dependencies = [
  "gluesql-core",
  "gluesql-csv-storage",
  "gluesql-file-storage",
+ "gluesql-git-storage",
  "gluesql-idb-storage",
  "gluesql-json-storage",
  "gluesql-parquet-storage",
