@@ -104,12 +104,12 @@ impl GitStorage {
             .execute()
     }
 
-    pub fn dml_commit(&self, dml: Dml, table_name: &str, n: usize) -> Result<()> {
+    pub fn dml_commit(&self, dml_type: &str, table_name: &str, n: usize) -> Result<()> {
         if n == 0 {
             return Ok(());
         }
 
-        self.add_and_commit(&format!("[GitStorage::{dml}] {table_name} - {n} rows"))
+        self.add_and_commit(&format!("[GitStorage::{dml_type}] {table_name} - {n} rows"))
     }
 
     pub fn pull(&self) -> Result<()> {
@@ -145,14 +145,6 @@ impl GitStorage {
             StorageBase::Json(storage) => storage,
         }
     }
-}
-
-#[derive(Display)]
-#[strum(serialize_all = "snake_case")]
-pub enum Dml {
-    AppendData,
-    InsertData,
-    DeleteData,
 }
 
 pub trait ResultExt<T, E: ToString> {
