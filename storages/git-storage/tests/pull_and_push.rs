@@ -55,7 +55,7 @@ async fn pull_and_push() {
         .arg("push")
         .arg(remote)
         .arg("-d")
-        .arg(&branch)
+        .arg(branch)
         .execute()
         .unwrap();
 }
