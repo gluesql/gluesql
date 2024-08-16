@@ -53,7 +53,7 @@ async fn pull_and_push() {
     Command::new("git")
         .current_dir(path)
         .arg("push")
-        .arg("remote")
+        .arg(remote)
         .arg("-d")
         .arg(&branch)
         .execute()
