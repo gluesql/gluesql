@@ -307,7 +307,7 @@ test_case!(foreign_key, {
     g.named_test(
         "Dropping table with cascade should drop both table and constraint",
         "DROP TABLE ReferencedTableWithPK CASCADE;",
-        Ok(Payload::DropTable),
+        Ok(Payload::DropTable(1)),
     )
     .await;
 
@@ -326,7 +326,7 @@ test_case!(foreign_key, {
     g.named_test(
         "Dropping self referencing table should succeed",
         "DROP TABLE SelfReferencingTable;",
-        Ok(Payload::DropTable),
+        Ok(Payload::DropTable(1)),
     )
     .await;
 });

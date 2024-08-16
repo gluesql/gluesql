@@ -18,7 +18,7 @@ test_case!(table, {
                 "Meta".to_owned()   "TABLE".to_owned()
             )),
         ),
-        ("DROP TABLE Meta", Ok(Payload::DropTable)),
+        ("DROP TABLE Meta", Ok(Payload::DropTable(1))),
         (
             "SELECT COUNT(*)
                      FROM GLUE_OBJECTS

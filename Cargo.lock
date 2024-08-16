@@ -1257,6 +1257,7 @@ dependencies = [
  "gluesql_sled_storage",
  "rustyline",
  "rustyline-derive",
+ "strum_macros 0.25.3",
  "tabled",
  "thiserror",
  "tokio",

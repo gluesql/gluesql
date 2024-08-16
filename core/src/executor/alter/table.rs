@@ -10,9 +10,13 @@ use {
         result::{Error, Result},
         store::{GStore, GStoreMut},
     },
-    futures::stream::TryStreamExt,
+    futures::stream::{self, StreamExt, TryStreamExt},
     serde::Serialize,
-    std::fmt,
+    std::{
+        borrow::BorrowMut,
+        fmt,
+        sync::{Arc, Mutex},
+    },
 };
 
 pub struct CreateTableOptions<'a> {
@@ -216,43 +220,73 @@ pub async fn drop_table<T: GStore + GStoreMut>(
     table_names: &[String],
     if_exists: bool,
     cascade: bool,
-) -> Result<()> {
-    for table_name in table_names {
-        let schema = storage.fetch_schema(table_name).await?;
+) -> Result<usize> {
+    let storage = Arc::new(Mutex::new(storage));
 
-        if !if_exists {
-            schema.ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
-        }
+    let n = stream::iter(table_names)
+        .map(Ok)
+        .try_fold(0usize, |acc, table_name| {
+            let storage_clone = Arc::clone(&storage);
 
-        let referencings = storage.fetch_referencings(table_name).await?;
+            async move {
+                let referencings: Vec<Referencing>;
+                {
+                    let storage = storage_clone
+                        .lock()
+                        .map_err(|_| AlterError::UnreachableStorageClone)?;
 
-        if !referencings.is_empty() && !cascade {
-            return Err(AlterError::CannotDropTableWithReferencing {
-                referenced_table_name: table_name.into(),
-                referencings,
+                    let schema = storage.fetch_schema(table_name).await?;
+
+                    match (schema, if_exists) {
+                        (None, true) => return Ok(acc),
+                        (None, false) => {
+                            return Err(AlterError::TableNotFound(table_name.to_owned()).into());
+                        }
+                        _ => {}
+                    }
+
+                    referencings = storage.fetch_referencings(table_name).await?;
+                }
+
+                if !referencings.is_empty() && !cascade {
+                    return Err::<usize, Error>(
+                        AlterError::CannotDropTableWithReferencing {
+                            referenced_table_name: table_name.into(),
+                            referencings,
+                        }
+                        .into(),
+                    );
+                }
+
+                for Referencing {
+                    table_name,
+                    foreign_key: ForeignKey { name, .. },
+                } in referencings
+                {
+                    let mut storage = storage_clone
+                        .lock()
+                        .map_err(|_| AlterError::UnreachableStorageClone)?;
+                    let mut schema = storage
+                        .fetch_schema(&table_name)
+                        .await?
+                        .ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
+                    schema
+                        .foreign_keys
+                        .retain(|foreign_key| foreign_key.name != name);
+                    storage.borrow_mut().insert_schema(&schema).await?;
+                }
+
+                let mut storage = storage_clone
+                    .lock()
+                    .map_err(|_| AlterError::UnreachableStorageClone)?;
+                storage.delete_schema(table_name).await?;
+
+                Ok(acc + 1)
             }
-            .into());
-        }
+        })
+        .await?;
 
-        for Referencing {
-            table_name,
-            foreign_key: ForeignKey { name, .. },
-        } in referencings
-        {
-            let mut schema = storage
-                .fetch_schema(&table_name)
-                .await?
-                .ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
-            schema
-                .foreign_keys
-                .retain(|foreign_key| foreign_key.name != name);
-            storage.insert_schema(&schema).await?;
-        }
-
-        storage.delete_schema(table_name).await?;
-    }
-
-    Ok(())
+    Ok(n)
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize)]

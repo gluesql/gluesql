@@ -24,7 +24,7 @@ fn convert_payload(payload: Payload) -> Json {
     // TODO: Improve below logic.
     match payload {
         Payload::Create => json!({ "type": "CREATE TABLE" }),
-        Payload::DropTable => json!({ "type": "DROP TABLE" }),
+        Payload::DropTable(num) => json!({ "type": "DROP TABLE", "affected": num }),
         Payload::Select { labels, rows } => {
             let rows = rows
                 .into_iter()

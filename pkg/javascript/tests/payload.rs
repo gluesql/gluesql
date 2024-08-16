@@ -110,7 +110,7 @@ async fn queries() {
         ),
         (
             "DROP TABLE IF EXISTS Foo",
-            json!([{ "type": "DROP TABLE" }]),
+            json!([{ "type": "DROP TABLE", "affected": 1 }]),
         ),
     ];
 

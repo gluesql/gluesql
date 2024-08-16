@@ -81,7 +81,7 @@ test_case!(basic, {
     assert_eq!(actual, expected, "select after delete");
 
     let actual = table("Foo").drop_table().execute(glue).await;
-    let expected = Ok(Payload::DropTable);
+    let expected = Ok(Payload::DropTable(1));
     assert_eq!(actual, expected, "drop table");
 
     let actual = table("Foo")

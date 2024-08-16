@@ -25,6 +25,7 @@ thiserror = "1.0"
 edit = "0.1.4"
 futures = "0.3"
 anyhow = "1.0"
+strum_macros = "0.25"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }
