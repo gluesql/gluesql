@@ -38,7 +38,6 @@ async fn pull_and_push() {
     let mut storage = GitStorage::open(path, StorageType::Json).unwrap();
     storage.set_remote(remote.clone());
     storage.set_branch(branch.clone());
-    storage.pull().unwrap();
 
     let mut glue = Glue::new(storage);
     glue.execute("CREATE TABLE Foo (id INTEGER);")
@@ -49,6 +48,7 @@ async fn pull_and_push() {
         .unwrap();
 
     glue.storage.push().unwrap();
+    glue.storage.pull().unwrap();
 
     Command::new("git")
         .current_dir(path)
