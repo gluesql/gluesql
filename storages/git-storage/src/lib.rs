@@ -104,14 +104,6 @@ impl GitStorage {
             .execute()
     }
 
-    pub fn dml_commit(&self, dml_type: &str, table_name: &str, n: usize) -> Result<()> {
-        if n == 0 {
-            return Ok(());
-        }
-
-        self.add_and_commit(&format!("[GitStorage::{dml_type}] {table_name} - {n} rows"))
-    }
-
     pub fn pull(&self) -> Result<()> {
         Command::new("git")
             .current_dir(&self.path)
