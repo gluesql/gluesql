@@ -220,8 +220,12 @@ pub async fn drop_table<T: GStore + GStoreMut>(
     for table_name in table_names {
         let schema = storage.fetch_schema(table_name).await?;
 
-        if !if_exists {
-            schema.ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
+        match (schema, if_exists) {
+            (None, true) => return Ok(()),
+            (None, false) => {
+                return Err(AlterError::TableNotFound(table_name.to_owned()).into());
+            }
+            _ => {}
         }
 
         let referencings = storage.fetch_referencings(table_name).await?;
