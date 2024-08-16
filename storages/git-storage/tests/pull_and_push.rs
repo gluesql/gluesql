@@ -4,6 +4,11 @@ use {
     gluesql_core::prelude::Glue,
     gluesql_git_storage::{GitStorage, StorageType},
     std::{env, fs::remove_dir_all},
+    std::{
+        env,
+        fs::{create_dir, remove_dir_all},
+        process::Command,
+    },
     uuid::Uuid,
 };
 
@@ -13,7 +18,14 @@ async fn pull_and_push() {
         env::var("GIT_REMOTE").unwrap_or("git@github.com:gluesql/git-storage-test.git".to_owned());
     let path = "./tmp/git-storage-test/";
     let _ = remove_dir_all(path);
-    GitStorage::git("./tmp", &["clone", &remote]).unwrap();
+    let _ = create_dir(".tmp");
+
+    Command::new("git")
+        .current_dir("./tmp")
+        .arg("clone")
+        .arg(&remote)
+        .output()
+        .unwrap();
 
     let branch = format!("test-{}", Uuid::now_v7());
     GitStorage::git(path, &["checkout", "-b", &branch]).unwrap();
