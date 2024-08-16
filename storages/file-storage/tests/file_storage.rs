@@ -1,6 +1,6 @@
 use {
     async_trait::async_trait,
-    gluesql_core::{data::Value::I64, prelude::Glue},
+    gluesql_core::{data::Value::I64, prelude::Glue, store::FileBased},
     gluesql_file_storage::FileStorage,
     std::fs::{create_dir, remove_dir_all},
     test_suite::*,

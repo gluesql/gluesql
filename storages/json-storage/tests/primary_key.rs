@@ -1,7 +1,7 @@
 use {
-    gluesql_core::prelude::{
-        Glue,
-        {Payload, Value::*},
+    gluesql_core::{
+        prelude::{Glue, Payload, Value::*},
+        store::FileBased,
     },
     gluesql_json_storage::JsonStorage,
     std::fs::remove_dir_all,

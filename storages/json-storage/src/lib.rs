@@ -12,7 +12,7 @@ use {
         ast::ColumnUniqueOption,
         data::{value::HashMapJsonExt, Key, Schema},
         error::{Error, Result},
-        store::{DataRow, Metadata},
+        store::{DataRow, FileBased, Metadata},
     },
     iter_enum::Iterator,
     serde_json::Value as JsonValue,
@@ -31,14 +31,16 @@ pub struct JsonStorage {
     pub path: PathBuf,
 }
 
-impl JsonStorage {
-    pub fn new(path: &str) -> Result<Self> {
+impl FileBased for JsonStorage {
+    fn new(path: &str) -> Result<Self> {
         fs::create_dir_all(path).map_storage_err()?;
         let path = PathBuf::from(path);
 
         Ok(Self { path })
     }
+}
 
+impl JsonStorage {
     fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         match (
             self.jsonl_path(table_name).exists(),

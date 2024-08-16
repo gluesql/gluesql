@@ -10,8 +10,8 @@ use {
         error::Result,
         parse_sql::parse_data_type,
         store::{
-            AlterTable, CustomFunction, CustomFunctionMut, DataRow, Index, IndexMut, Metadata,
-            Transaction,
+            AlterTable, CustomFunction, CustomFunctionMut, DataRow, FileBased, Index, IndexMut,
+            Metadata, Transaction,
         },
         translate::translate_data_type,
     },
@@ -29,14 +29,16 @@ pub struct CsvStorage {
     pub path: PathBuf,
 }
 
-impl CsvStorage {
-    pub fn new(path: &str) -> Result<Self> {
+impl FileBased for CsvStorage {
+    fn new(path: &str) -> Result<Self> {
         fs::create_dir_all(path).map_storage_err()?;
         let path = PathBuf::from(path);
 
         Ok(Self { path })
     }
+}
 
+impl CsvStorage {
     fn fetch_schema(&self, table_name: &str) -> Result<Option<(Schema, bool)>> {
         let schema_path = self.schema_path(table_name);
         if !schema_path.exists() {

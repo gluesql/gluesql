@@ -1,6 +1,9 @@
 use {
-    async_trait::async_trait, gluesql_core::prelude::Glue, gluesql_json_storage::JsonStorage,
-    std::fs::remove_dir_all, test_suite::*,
+    async_trait::async_trait,
+    gluesql_core::{prelude::Glue, store::FileBased},
+    gluesql_json_storage::JsonStorage,
+    std::fs::remove_dir_all,
+    test_suite::*,
 };
 
 struct JsonTester {

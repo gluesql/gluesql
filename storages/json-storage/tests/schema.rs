@@ -5,6 +5,7 @@ use {
             Glue,
             Value::{self, *},
         },
+        store::FileBased,
     },
     gluesql_json_storage::JsonStorage,
     std::{

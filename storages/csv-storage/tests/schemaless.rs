@@ -5,6 +5,7 @@ use {
             Glue,
             Value::{self, Null, Str, I64},
         },
+        store::FileBased,
     },
     gluesql_csv_storage::CsvStorage,
     serde_json::json,

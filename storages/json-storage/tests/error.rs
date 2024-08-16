@@ -2,6 +2,7 @@ use {
     gluesql_core::{
         error::{SchemaParseError, ValueError},
         prelude::{Error, Glue},
+        store::FileBased,
     },
     gluesql_json_storage::{error::JsonStorageError, JsonStorage},
 };

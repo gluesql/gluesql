@@ -1,5 +1,5 @@
 use {
-    gluesql_core::prelude::Glue,
+    gluesql_core::{prelude::Glue, store::FileBased},
     gluesql_csv_storage::{error::CsvStorageError, CsvStorage},
 };
 
