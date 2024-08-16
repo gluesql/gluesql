@@ -26,24 +26,29 @@ jobs:
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             cargo release publish --workspace --no-confirm --no-publish
           else
-            cargo publish -p gluesql-utils && sleep 3
-            cargo publish -p gluesql-core && sleep 3
-            cargo publish -p gluesql-test-suite && sleep 3
-            cargo publish -p gluesql_memory_storage && sleep 3
-            cargo publish -p gluesql-shared-memory-storage && sleep 3
-            cargo publish -p gluesql-redis-storage && sleep 3
-            cargo publish -p gluesql-mongo-storage && sleep 3
-            cargo publish -p gluesql-web-storage && sleep 3
-            cargo publish -p gluesql-idb-storage && sleep 3
-            cargo publish -p gluesql-sled-storage && sleep 3
-            cargo publish -p gluesql-csv-storage && sleep 3
-            cargo publish -p gluesql-json-storage && sleep 3
-            cargo publish -p gluesql-parquet-storage && sleep 3
-            cargo publish -p gluesql-file-storage && sleep 3
-            cargo publish -p gluesql-git-storage && sleep 3
-            cargo publish -p gluesql-composite-storage && sleep 3
-            cargo publish -p gluesql-cli && sleep 3
-            cargo publish -p gluesql && sleep 3
+            packages=(
+              "gluesql-utils"
+              "gluesql-core"
+              "gluesql-test-suite"
+              "gluesql_sled_storage"
+              "gluesql_memory_storage"
+              "gluesql-shared-memory-storage"
+              "gluesql-redis-storage"
+              "gluesql-mongo-storage"
+              "gluesql-web-storage"
+              "gluesql-idb-storage"
+              "gluesql-csv-storage"
+              "gluesql-json-storage"
+              "gluesql-parquet-storage"
+              "gluesql-file-storage"
+              "gluesql-git-storage"
+              "gluesql-composite-storage"
+              "gluesql-cli"
+              "gluesql"
+            )
+            for package in "${packages[@]}"; do
+              cargo publish -p "$package" && sleep 3
+            done
           fi
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES }}
