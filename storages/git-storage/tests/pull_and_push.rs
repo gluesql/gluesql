@@ -2,8 +2,7 @@
 
 use {
     gluesql_core::prelude::Glue,
-    gluesql_git_storage::{GitStorage, StorageType},
-    std::{env, fs::remove_dir_all},
+    gluesql_git_storage::{CommandExt, GitStorage, StorageType},
     std::{
         env,
         fs::{create_dir, remove_dir_all},
@@ -24,11 +23,17 @@ async fn pull_and_push() {
         .current_dir("./tmp")
         .arg("clone")
         .arg(&remote)
-        .output()
+        .execute()
         .unwrap();
 
     let branch = format!("test-{}", Uuid::now_v7());
-    GitStorage::git(path, &["checkout", "-b", &branch]).unwrap();
+    Command::new("git")
+        .current_dir(path)
+        .arg("checkout")
+        .arg("-b")
+        .arg(&branch)
+        .execute()
+        .unwrap();
 
     let mut storage = GitStorage::open(path, StorageType::Json).unwrap();
     storage.set_remote(remote.clone());
@@ -45,5 +50,12 @@ async fn pull_and_push() {
 
     glue.storage.push().unwrap();
 
-    GitStorage::git(path, &["push", "remote", "-d", &branch]).unwrap();
+    Command::new("git")
+        .current_dir(path)
+        .arg("push")
+        .arg("remote")
+        .arg("-d")
+        .arg(&branch)
+        .execute()
+        .unwrap();
 }

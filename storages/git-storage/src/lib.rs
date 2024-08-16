@@ -42,7 +42,7 @@ pub enum StorageType {
 const DEFAULT_REMOTE: &str = "origin";
 const DEFAULT_BRANCH: &str = "main";
 
-trait CommandExt {
+pub trait CommandExt {
     fn execute(&mut self) -> Result<(), Error>;
 }
 
