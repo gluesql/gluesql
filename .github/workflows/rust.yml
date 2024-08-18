@@ -46,7 +46,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
       - run: |
-          cd core && cargo test --verbose && cd .. 
+          cd core && cargo test --verbose && cd ..
           cd utils && cargo test --verbose && cd ..
           cd cli && cargo test --verbose && cd ..
           cd pkg/rust
@@ -116,7 +116,7 @@ jobs:
           GIT_REMOTE: https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/git-storage-test.git
         run: |
           cd storages/git-storage
-          cargo test --verbose --features test-git-remote
+          GIT_REMOTE=$GIT_REMOTE cargo test --verbose --features test-git-remote
 
   run_examples:
     name: Run examples
