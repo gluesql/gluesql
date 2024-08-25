@@ -19,7 +19,7 @@ use {
         collections::HashMap,
         fs::{self, File},
         io::Read,
-        path::PathBuf,
+        path::{Path, PathBuf},
     },
 };
 
@@ -30,7 +30,8 @@ pub struct CsvStorage {
 }
 
 impl CsvStorage {
-    pub fn new(path: &str) -> Result<Self> {
+    pub fn new<T: AsRef<Path>>(path: T) -> Result<Self> {
+        let path = path.as_ref();
         fs::create_dir_all(path).map_storage_err()?;
         let path = PathBuf::from(path);
 
