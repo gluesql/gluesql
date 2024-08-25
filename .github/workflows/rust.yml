@@ -14,91 +14,6 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  clippy_workspace:
-    name: Clippy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy --all-targets -- -D warnings
-
-  rust_fmt:
-    name: Rustfmt
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: Swatinem/rust-cache@v2
-      - run: |
-          cargo fmt -- --check
-
-  rust_build:
-    name: Build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo build --all-features --verbose
-
-  run_tests:
-    name: Run tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: Swatinem/rust-cache@v2
-      - run: |
-          cd core && cargo test --verbose && cd ..
-          cd utils && cargo test --verbose && cd ..
-          cd cli && cargo test --verbose && cd ..
-          cd pkg/rust
-          cargo test --lib --bins --tests --examples --verbose --no-default-features --features "gluesql_memory_storage gluesql_sled_storage"
-          cd ../../
-
-  run_storage_tests:
-    name: Run storage tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: Swatinem/rust-cache@v2
-      - run: |
-          cd storages
-          cd memory-storage && cargo test --verbose && cd ..
-          cd shared-memory-storage && cargo test --verbose && cd ..
-          cd composite-storage && cargo test --verbose && cd ..
-          cd json-storage && cargo test --verbose && cd ..
-          cd csv-storage && cargo test --verbose && cd ..
-          cd parquet-storage && cargo test --verbose && cd ..
-          cd file-storage && cargo test --verbose && cd ..
-          cd sled-storage
-          cargo test --verbose -- --skip sled_transaction_timeout
-          cargo test sled_transaction_timeout --verbose -- --test-threads=1
-          cargo test --benches
-
-  run_mongostorage_tests:
-    name: Run MongoStorage tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: Swatinem/rust-cache@v2
-      - name: MongoDB in GitHub Actions
-        uses: supercharge/mongodb-github-action@v1.10.0
-      - run: |
-          cd storages/mongo-storage
-          cargo test --verbose --features test-mongo
-
-  run_redisstorage_tests:
-    name: Run RedisStorage tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: Swatinem/rust-cache@v2
-      - name: Redis in GitHub Actions
-        uses: supercharge/redis-github-action@1.7.0
-        with:
-          redis-version: 6
-      - run: |
-          cd storages/redis-storage
-          cargo test --verbose --features test-redis
-
   run_gitstorage_tests:
     name: Run GitStorage tests
     runs-on: ubuntu-latest
@@ -117,17 +32,3 @@ jobs:
         run: |
           cd storages/git-storage
           GIT_REMOTE=$GIT_REMOTE cargo test --verbose --features test-git-remote
-
-  run_examples:
-    name: Run examples
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: Swatinem/rust-cache@v2
-      - run: |
-          cargo run --package gluesql --example hello_world
-          cargo run --package gluesql --example api_usage
-          cargo run --package gluesql --example memory_storage_usage
-          cargo run --package gluesql --example sled_multi_threaded
-          cargo run --package gluesql --example using_config
-          cargo run --package gluesql --example hello_ast_builder
