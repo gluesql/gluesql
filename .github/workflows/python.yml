@@ -2,11 +2,11 @@ name: Python
 
 on:
   push:
-    branches: [release-*]
+    branches: [main, release-*]
     paths-ignore:
       - "docs/**"
   pull_request:
-    branches: [release-*]
+    branches: [main, release-*]
     paths-ignore:
       - "docs/**"
 

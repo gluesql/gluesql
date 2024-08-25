@@ -49,7 +49,6 @@ async fn pull_and_push() {
 
     glue.storage.push().unwrap();
 
-    /*
     Command::new("git")
         .current_dir(path)
         .arg("push")
@@ -58,5 +57,4 @@ async fn pull_and_push() {
         .arg(branch)
         .output()
         .unwrap();
-        */
 }
