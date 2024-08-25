@@ -46,5 +46,6 @@ jobs:
       - name: Test
         run: |
           export GIT_REMOTE=$(git remote get-url origin)
+          echo $GIT_REMOTE
           cd storages/git-storage
           GIT_REMOTE=$GIT_REMOTE cargo test --verbose --features test-git-remote
