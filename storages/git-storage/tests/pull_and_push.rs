@@ -14,18 +14,16 @@ use {
 #[tokio::test]
 async fn pull_and_push() {
     let remote = env::var("GIT_REMOTE").unwrap_or("git@github.com:gluesql/gluesql.git".to_owned());
-    println!("remote: {remote}");
     let path = ".tmp/gluesql/";
     let _ = remove_dir_all(path);
     let _ = create_dir(".tmp");
 
-    let r = Command::new("git")
+    Command::new("git")
         .current_dir(".tmp")
         .arg("clone")
         .arg(&remote)
         .output()
         .unwrap();
-    println!("{r:?}");
 
     let branch = format!("test-{}", Uuid::now_v7());
     Command::new("git")
@@ -51,6 +49,7 @@ async fn pull_and_push() {
 
     glue.storage.push().unwrap();
 
+    /*
     Command::new("git")
         .current_dir(path)
         .arg("push")
@@ -59,4 +58,5 @@ async fn pull_and_push() {
         .arg(branch)
         .output()
         .unwrap();
+        */
 }
