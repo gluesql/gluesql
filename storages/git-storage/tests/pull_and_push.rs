@@ -19,12 +19,13 @@ async fn pull_and_push() {
     let _ = remove_dir_all(path);
     let _ = create_dir(".tmp");
 
-    Command::new("git")
+    let r = Command::new("git")
         .current_dir("./tmp")
         .arg("clone")
         .arg(&remote)
         .output()
         .unwrap();
+    println!("{r:?}");
 
     let branch = format!("test-{}", Uuid::now_v7());
     Command::new("git")
