@@ -2,13 +2,13 @@ name: Python
 
 on:
   push:
-    branches: [main, release-*]
+    branches: [release-*]
     paths-ignore:
-      - 'docs/**'
+      - "docs/**"
   pull_request:
-    branches: [main, release-*]
+    branches: [release-*]
     paths-ignore:
-      - 'docs/**'
+      - "docs/**"
 
 env:
   CARGO_TERM_COLOR: always

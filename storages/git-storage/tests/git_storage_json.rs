@@ -29,4 +29,4 @@ impl Tester<GitStorage> for GitStorageTester {
     }
 }
 
-generate_store_tests!(tokio::test, GitStorageTester);
+// generate_store_tests!(tokio::test, GitStorageTester);

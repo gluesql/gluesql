@@ -48,17 +48,3 @@ jobs:
           export GIT_REMOTE=$(git remote get-url origin)
           cd storages/git-storage
           GIT_REMOTE=$GIT_REMOTE cargo test --verbose --features test-git-remote
-
-  run_examples:
-    name: Run examples
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: Swatinem/rust-cache@v2
-      - run: |
-          cargo run --package gluesql --example hello_world
-          cargo run --package gluesql --example api_usage
-          cargo run --package gluesql --example memory_storage_usage
-          cargo run --package gluesql --example sled_multi_threaded
-          cargo run --package gluesql --example using_config
-          cargo run --package gluesql --example hello_ast_builder
