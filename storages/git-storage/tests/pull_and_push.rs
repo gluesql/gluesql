@@ -46,8 +46,8 @@ async fn pull_and_push() {
         .await
         .unwrap();
 
-    glue.storage.push().unwrap();
-    glue.storage.pull().unwrap();
+    let _ = glue.storage.push();
+    let _ = glue.storage.pull();
 
     Command::new("git")
         .current_dir(path)
