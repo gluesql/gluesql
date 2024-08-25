@@ -2,11 +2,11 @@ name: JavaScript
 
 on:
   push:
-    branches: [main, release-*]
+    branches: [release-*]
     paths-ignore:
       - 'docs/**'
   pull_request:
-    branches: [main, release-*]
+    branches: [release-*]
     paths-ignore:
       - 'docs/**'
 
