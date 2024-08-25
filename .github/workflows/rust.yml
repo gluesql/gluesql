@@ -28,7 +28,7 @@ jobs:
 
       - name: Test
         env:
-          GIT_REMOTE: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.event.pull_request.head.repo.clone_url }}
+          GIT_REMOTE: ${{ github.event.pull_request.head.repo.clone_url }}
         run: |
           cd storages/git-storage
           GIT_REMOTE=$GIT_REMOTE cargo test --verbose --features test-git-remote
