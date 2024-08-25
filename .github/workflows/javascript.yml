@@ -4,11 +4,11 @@ on:
   push:
     branches: [main, release-*]
     paths-ignore:
-      - "docs/**"
+      - 'docs/**'
   pull_request:
     branches: [main, release-*]
     paths-ignore:
-      - "docs/**"
+      - 'docs/**'
 
 env:
   CARGO_TERM_COLOR: always
@@ -27,7 +27,7 @@ jobs:
       - name: Set up wasm pack
         uses: jetli/wasm-pack-action@v0.4.0
         with:
-          version: "v0.13.0"
+          version: 'v0.13.0'
       - run: |
           cd pkg/javascript
           npm install
@@ -49,7 +49,7 @@ jobs:
       - name: Set up wasm pack
         uses: jetli/wasm-pack-action@v0.4.0
         with:
-          version: "v0.13.0"
+          version: 'v0.13.0'
       - run: |
           cd storages/web-storage
           wasm-pack test --headless --firefox
