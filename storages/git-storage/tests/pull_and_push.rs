@@ -2,7 +2,7 @@
 
 use {
     gluesql_core::prelude::Glue,
-    gluesql_git_storage::{GitStorage, StorageType},
+    gluesql_git_storage::{CommandExt, GitStorage, StorageType},
     std::{
         env,
         fs::{create_dir, remove_dir_all},
@@ -22,7 +22,7 @@ async fn pull_and_push() {
         .current_dir(".tmp")
         .arg("clone")
         .arg(&remote)
-        .output()
+        .execute()
         .unwrap();
 
     let branch = format!("test-{}", Uuid::now_v7());
@@ -31,13 +31,12 @@ async fn pull_and_push() {
         .arg("checkout")
         .arg("-b")
         .arg(&branch)
-        .output()
+        .execute()
         .unwrap();
 
     let mut storage = GitStorage::open(path, StorageType::Json).unwrap();
     storage.set_remote(remote.clone());
     storage.set_branch(branch.clone());
-    storage.pull().unwrap();
 
     let mut glue = Glue::new(storage);
     glue.execute("CREATE TABLE Foo (id INTEGER);")
@@ -48,6 +47,7 @@ async fn pull_and_push() {
         .unwrap();
 
     glue.storage.push().unwrap();
+    glue.storage.pull().unwrap();
 
     Command::new("git")
         .current_dir(path)
@@ -55,6 +55,6 @@ async fn pull_and_push() {
         .arg(remote)
         .arg("-d")
         .arg(branch)
-        .output()
+        .execute()
         .unwrap();
 }

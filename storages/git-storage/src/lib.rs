@@ -1,8 +1,10 @@
 #![deny(clippy::str_to_string)]
 
+mod command_ext;
 mod store;
 mod store_mut;
 
+pub use command_ext::CommandExt;
 use {
     gluesql_core::{
         error::{Error, Result},
@@ -49,12 +51,10 @@ impl GitStorage {
     pub fn init<T: AsRef<Path>>(path: T, storage_type: StorageType) -> Result<Self> {
         let path = path.as_ref();
         let storage_base = Self::storage_base(path, storage_type)?;
-
         Command::new("git")
             .current_dir(path)
             .arg("init")
-            .output()
-            .expect("failed to git init");
+            .execute()?;
 
         Ok(Self {
             storage_base,
@@ -99,18 +99,14 @@ impl GitStorage {
             .current_dir(&self.path)
             .arg("add")
             .arg(".")
-            .output()
-            .map_storage_err()?;
+            .execute()?;
 
         Command::new("git")
             .current_dir(&self.path)
             .arg("commit")
             .arg("-m")
             .arg(message)
-            .output()
-            .map_storage_err()?;
-
-        Ok(())
+            .execute()
     }
 
     pub fn pull(&self) -> Result<()> {
@@ -119,9 +115,7 @@ impl GitStorage {
             .arg("pull")
             .arg(&self.remote)
             .arg(&self.branch)
-            .output()
-            .map_storage_err()
-            .map(|_| ())
+            .execute()
     }
 
     pub fn push(&self) -> Result<()> {
@@ -130,9 +124,7 @@ impl GitStorage {
             .arg("push")
             .arg(&self.remote)
             .arg(&self.branch)
-            .output()
-            .map_storage_err()
-            .map(|_| ())
+            .execute()
     }
 
     fn get_store(&self) -> &dyn Store {
