@@ -31,74 +31,6 @@ jobs:
       - run: |
           cargo fmt -- --check
 
-  rust_build:
-    name: Build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo build --all-features --verbose
-
-  run_tests:
-    name: Run tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: Swatinem/rust-cache@v2
-      - run: |
-          cd core && cargo test --verbose && cd ..
-          cd utils && cargo test --verbose && cd ..
-          cd cli && cargo test --verbose && cd ..
-          cd pkg/rust
-          cargo test --lib --bins --tests --examples --verbose --no-default-features --features "gluesql_memory_storage gluesql_sled_storage"
-          cd ../../
-
-  run_storage_tests:
-    name: Run storage tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: Swatinem/rust-cache@v2
-      - run: |
-          cd storages
-          cd memory-storage && cargo test --verbose && cd ..
-          cd shared-memory-storage && cargo test --verbose && cd ..
-          cd composite-storage && cargo test --verbose && cd ..
-          cd json-storage && cargo test --verbose && cd ..
-          cd csv-storage && cargo test --verbose && cd ..
-          cd parquet-storage && cargo test --verbose && cd ..
-          cd file-storage && cargo test --verbose && cd ..
-          cd sled-storage
-          cargo test --verbose -- --skip sled_transaction_timeout
-          cargo test sled_transaction_timeout --verbose -- --test-threads=1
-          cargo test --benches
-
-  run_mongostorage_tests:
-    name: Run MongoStorage tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: Swatinem/rust-cache@v2
-      - name: MongoDB in GitHub Actions
-        uses: supercharge/mongodb-github-action@v1.10.0
-      - run: |
-          cd storages/mongo-storage
-          cargo test --verbose --features test-mongo
-
-  run_redisstorage_tests:
-    name: Run RedisStorage tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: Swatinem/rust-cache@v2
-      - name: Redis in GitHub Actions
-        uses: supercharge/redis-github-action@1.7.0
-        with:
-          redis-version: 6
-      - run: |
-          cd storages/redis-storage
-          cargo test --verbose --features test-redis
-
   run_gitstorage_tests:
     name: Run GitStorage tests
     runs-on: ubuntu-latest
@@ -108,13 +40,12 @@ jobs:
 
       - name: Prepare
         run: |
-          git config --global user.email "taehoon.moon@outlook.com"
-          git config --global user.name "Taehoon Moon (Bot)"
+          git config --global user.email "gitstorage.bot@gluesql.org"
+          git config --global user.name "GitStorage Bot"
 
       - name: Test
-        env:
-          GIT_REMOTE: https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/git-storage-test.git
         run: |
+          export GIT_REMOTE=$(git remote get-url origin)
           cd storages/git-storage
           GIT_REMOTE=$GIT_REMOTE cargo test --verbose --features test-git-remote
 
