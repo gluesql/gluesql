@@ -16,7 +16,7 @@ use {
     std::{
         collections::HashMap,
         fs::{self, File},
-        path::PathBuf,
+        path::{Path, PathBuf},
     },
     value::ParquetField,
 };
@@ -39,10 +39,11 @@ pub struct ParquetStorage {
 }
 
 impl ParquetStorage {
-    pub fn new(path: &str) -> Result<Self> {
+    pub fn new<T: AsRef<Path>>(path: T) -> Result<Self> {
+        let path = path.as_ref();
         fs::create_dir_all(path).map_storage_err()?;
-        let path = PathBuf::from(path);
-        Ok(Self { path })
+
+        Ok(Self { path: path.into() })
     }
 
     fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {

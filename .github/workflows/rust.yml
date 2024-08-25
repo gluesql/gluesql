@@ -108,12 +108,12 @@ jobs:
 
       - name: Prepare
         run: |
-          git config --global user.email "taehoon.moon@outlook.com"
-          git config --global user.name "Taehoon Moon (Bot)"
+          git config --global user.email "gitstorage.bot@gluesql.org"
+          git config --global user.name "GitStorage Bot"
 
       - name: Test
         env:
-          GIT_REMOTE: https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/git-storage-test.git
+          GIT_REMOTE: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
         run: |
           cd storages/git-storage
           GIT_REMOTE=$GIT_REMOTE cargo test --verbose --features test-git-remote
