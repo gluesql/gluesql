@@ -44,7 +44,8 @@ jobs:
           git config --global user.name "GitStorage Bot"
 
       - name: Test
+        env:
+          GIT_REMOTE: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
         run: |
-          export GIT_REMOTE=https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
           cd storages/git-storage
           GIT_REMOTE=$GIT_REMOTE cargo test --verbose --features test-git-remote
