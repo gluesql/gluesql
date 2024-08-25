@@ -47,8 +47,6 @@ jobs:
               "gluesql"
             )
             for package in "${packages[@]}"; do
-              cargo publish -p "$package" && sleep 3
+              cargo publish -p "$package" --token ${{ secrets.CRATES }} && sleep 3
             done
           fi
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES }}
