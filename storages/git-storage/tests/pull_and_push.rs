@@ -13,9 +13,8 @@ use {
 
 #[tokio::test]
 async fn pull_and_push() {
-    let remote =
-        env::var("GIT_REMOTE").unwrap_or("git@github.com:gluesql/git-storage-test.git".to_owned());
-    let path = "./tmp/git-storage-test/";
+    let remote = env::var("GIT_REMOTE").unwrap_or("git@github.com:gluesql/gluesql.git".to_owned());
+    let path = "./tmp/gluesql/";
     let _ = remove_dir_all(path);
     let _ = create_dir(".tmp");
 
