@@ -33,11 +33,11 @@ pub struct FileRow {
 }
 
 impl FileStorage {
-    pub fn new(path: &str) -> Result<Self> {
+    pub fn new<T: AsRef<Path>>(path: T) -> Result<Self> {
+        let path = path.as_ref();
         fs::create_dir_all(path).map_storage_err()?;
-        let path = PathBuf::from(path);
 
-        Ok(Self { path })
+        Ok(Self { path: path.into() })
     }
 
     pub fn path<T: AsRef<Path>>(&self, table_name: T) -> PathBuf {

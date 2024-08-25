@@ -14,13 +14,16 @@ use {
     gluesql_csv_storage::CsvStorage,
     gluesql_file_storage::FileStorage,
     gluesql_json_storage::JsonStorage,
-    std::process::Command,
+    std::{
+        path::{Path, PathBuf},
+        process::Command,
+    },
     strum_macros::Display,
 };
 
 pub struct GitStorage {
     pub storage_base: StorageBase,
-    pub path: String,
+    pub path: PathBuf,
     pub remote: String,
     pub branch: String,
 }
@@ -43,7 +46,8 @@ const DEFAULT_REMOTE: &str = "origin";
 const DEFAULT_BRANCH: &str = "main";
 
 impl GitStorage {
-    pub fn init(path: &str, storage_type: StorageType) -> Result<Self> {
+    pub fn init<T: AsRef<Path>>(path: T, storage_type: StorageType) -> Result<Self> {
+        let path = path.as_ref();
         let storage_base = Self::storage_base(path, storage_type)?;
 
         Command::new("git")
@@ -60,7 +64,8 @@ impl GitStorage {
         })
     }
 
-    pub fn open(path: &str, storage_type: StorageType) -> Result<Self> {
+    pub fn open<T: AsRef<Path>>(path: T, storage_type: StorageType) -> Result<Self> {
+        let path = path.as_ref();
         let storage_base = Self::storage_base(path, storage_type)?;
 
         Ok(Self {
@@ -71,7 +76,7 @@ impl GitStorage {
         })
     }
 
-    fn storage_base(path: &str, storage_type: StorageType) -> Result<StorageBase> {
+    fn storage_base(path: &Path, storage_type: StorageType) -> Result<StorageBase> {
         use StorageType::*;
 
         match storage_type {
