@@ -380,7 +380,7 @@ mod tests {
             result::Result,
             translate::translate_expr,
         },
-        chrono::{NaiveDate, NaiveDateTime, NaiveTime},
+        chrono::{DateTime, NaiveDate, NaiveTime},
         futures::executor::block_on,
         rust_decimal::Decimal,
         std::{cmp::Ordering, collections::HashMap, net::IpAddr, str::FromStr},
@@ -475,7 +475,7 @@ mod tests {
 
         let dec = |v| Decimal::from_str(v).unwrap();
         let date = |y, m, d| NaiveDate::from_ymd_opt(y, m, d).unwrap();
-        let timestamp = |v| NaiveDateTime::from_timestamp_millis(v).unwrap();
+        let timestamp = |v| DateTime::from_timestamp_millis(v).unwrap().naive_utc();
         let time = |h, m, s| NaiveTime::from_hms_milli_opt(h, m, s, 0).unwrap();
         let uuid = |v| Uuid::parse_str(v).unwrap().as_u128();
         let inet = |v| IpAddr::from_str(v).unwrap();
@@ -860,9 +860,15 @@ mod tests {
         );
         assert_eq!(
             Value::from(Key::Timestamp(
-                NaiveDateTime::from_timestamp_millis(1662921288).unwrap()
+                DateTime::from_timestamp_millis(1662921288)
+                    .unwrap()
+                    .naive_utc()
             )),
-            Value::Timestamp(NaiveDateTime::from_timestamp_millis(1662921288).unwrap())
+            Value::Timestamp(
+                DateTime::from_timestamp_millis(1662921288)
+                    .unwrap()
+                    .naive_utc()
+            )
         );
         assert_eq!(
             Value::from(Key::Time(
