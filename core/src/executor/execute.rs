@@ -96,7 +96,7 @@ pub enum PayloadVariable {
     Version(String),
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ExplainTableRow {
     pub name: String,
     pub data_type: DataType,
