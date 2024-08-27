@@ -2,7 +2,7 @@ use {
     crate::error::{OptionExt, ParquetStorageError, ResultExt},
     byteorder::{BigEndian, ByteOrder},
     gluesql_core::{
-        chrono::{Duration, NaiveDate, NaiveDateTime, NaiveTime},
+        chrono::{DateTime, Duration, NaiveDate, NaiveTime},
         data::{Schema, Value},
         prelude::{DataType, Error, Result},
     },
@@ -131,13 +131,15 @@ impl ParquetField {
                 Ok(Value::List(list))
             }
             Field::TimestampMillis(v) => Ok(Value::Timestamp(
-                NaiveDateTime::from_timestamp_millis(*v)
-                    .map_storage_err("Field::TimestampMillis to Value::Timestamp fail")?,
+                DateTime::from_timestamp_millis(*v)
+                    .map_storage_err("Field::TimestampMillis to Value::Timestamp fail")?
+                    .naive_utc(),
             )),
 
             Field::TimestampMicros(v) => Ok(Value::Timestamp(
-                NaiveDateTime::from_timestamp_micros(*v)
-                    .map_storage_err("Field::TimestampMicros to Value::Timestamp fail")?,
+                DateTime::from_timestamp_micros(*v)
+                    .map_storage_err("Field::TimestampMicros to Value::Timestamp fail")?
+                    .naive_utc(),
             )),
             Field::Decimal(v) => {
                 let decimal = match v {
