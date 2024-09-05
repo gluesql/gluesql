@@ -26,7 +26,7 @@ use {
         Ident as SqlIdent, Insert as SqlInsert, ObjectName as SqlObjectName,
         ObjectType as SqlObjectType, ReferentialAction as SqlReferentialAction,
         Statement as SqlStatement, TableConstraint as SqlTableConstraint, TableFactor,
-        TableWithJoins,
+        TableWithJoins, CreateFunctionBody as SqlCreateFunctionBody,
     },
 };
 
@@ -255,7 +255,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             or_replace,
             name,
             args,
-            params,
+            function_body,
             ..
         } => {
             let args = args
@@ -270,12 +270,11 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 or_replace: *or_replace,
                 name: translate_object_name(name)?,
                 args: args.unwrap_or_default(),
-                return_: params
-                    .return_
-                    .as_ref()
-                    .map(translate_expr)
-                    .transpose()?
-                    .ok_or(TranslateError::UnsupportedEmptyFunctionBody)?,
+                return_: if let Some(SqlCreateFunctionBody::Return(return_)) = function_body {
+                    translate_expr(return_)?
+                } else {
+                    return Err(TranslateError::UnsupportedEmptyFunctionBody.into());
+                },
             })
         }
         _ => Err(TranslateError::UnsupportedStatement(sql_statement.to_string()).into()),

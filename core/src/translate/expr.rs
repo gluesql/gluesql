@@ -10,13 +10,13 @@ use {
         translate_idents, translate_query, TranslateError,
     },
     crate::{
-        ast::{Expr, OrderByExpr},
+        ast::{Expr, OrderByExpr, Subscript},
         result::Result,
         translate::function::translate_trim,
     },
     sqlparser::ast::{
         Array, DateTimeField as SqlDateTimeField, Expr as SqlExpr, Interval as SqlInterval,
-        OrderByExpr as SqlOrderByExpr,
+        OrderByExpr as SqlOrderByExpr, Subscript as SqlSubscript,
     },
 };
 
@@ -163,9 +163,22 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
                 .map(|expr| translate_expr(expr.as_ref()).map(Box::new))
                 .transpose()?,
         }),
-        SqlExpr::ArrayIndex { obj, indexes } => Ok(Expr::ArrayIndex {
-            obj: translate_expr(obj).map(Box::new)?,
-            indexes: indexes.iter().map(translate_expr).collect::<Result<_>>()?,
+        SqlExpr::Subscript { expr, subscript } => Ok(Expr::Subscript {
+            expr: translate_expr(expr).map(Box::new)?,
+            subscript: Box::new(match subscript.as_ref() {
+                SqlSubscript::Index { index } => Subscript::Index {
+                    index: translate_expr(index)?,
+                },
+                SqlSubscript::Slice {
+                    lower_bound,
+                    upper_bound,
+                    stride,
+                } => Subscript::Slice {
+                    lower_bound: lower_bound.as_ref().map(translate_expr).transpose()?,
+                    upper_bound: upper_bound.as_ref().map(translate_expr).transpose()?,
+                    stride: stride.as_ref().map(translate_expr).transpose()?,
+                },
+            }),
         }),
         SqlExpr::Array(Array { elem, .. }) => Ok(Expr::Array {
             elem: elem.iter().map(translate_expr).collect::<Result<_>>()?,

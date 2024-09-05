@@ -1,7 +1,7 @@
 use {
     super::context::Context,
     crate::{
-        ast::{ColumnDef, ColumnUniqueOption, Expr, Function, Query, TableAlias, TableFactor},
+        ast::{ColumnDef, ColumnUniqueOption, Expr, Function, Query, TableAlias, TableFactor, Subscript},
         data::Schema,
     },
     std::rc::Rc,
@@ -145,13 +145,31 @@ pub trait Planner<'a> {
                     else_result,
                 }
             }
-            Expr::ArrayIndex { obj, indexes } => {
-                let indexes = indexes
-                    .into_iter()
-                    .map(|expr| self.subquery_expr(outer_context.as_ref().map(Rc::clone), expr))
-                    .collect();
-                let obj = Box::new(self.subquery_expr(outer_context, *obj));
-                Expr::ArrayIndex { obj, indexes }
+            Expr::Subscript { expr, subscript } => {
+                let expr =
+                    Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *expr));
+                let subscript = Box::new(match subscript.as_ref() {
+                    Subscript::Index { index } => Subscript::Index {
+                        index: self.subquery_expr(outer_context, index.clone()),
+                    },
+                    Subscript::Slice {
+                        lower_bound,
+                        upper_bound,
+                        stride,
+                    } => Subscript::Slice {
+                        lower_bound: lower_bound.as_ref().map(|expr| {
+                            self.subquery_expr(outer_context.as_ref().map(Rc::clone), expr.clone())
+                        }),
+                        upper_bound: upper_bound.as_ref().map(|expr| {
+                            self.subquery_expr(outer_context.as_ref().map(Rc::clone), expr.clone())
+                        }),
+                        stride: stride.as_ref().map(|expr| {
+                            self.subquery_expr(outer_context.as_ref().map(Rc::clone), expr.clone())
+                        }),
+                    },
+                });
+
+                Expr::Subscript { expr, subscript }
             }
             Expr::Array { elem } => {
                 let elem = elem
