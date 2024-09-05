@@ -314,7 +314,7 @@ mod tests {
     use {
         crate::ast::{
             AstLiteral, BinaryOperator, DataType, DateTimeField, Expr, Query, Select, SelectItem,
-            SetExpr, TableFactor, TableWithJoins, ToSql, ToSqlUnquoted, UnaryOperator, Subscript,
+            SetExpr, Subscript, TableFactor, TableWithJoins, ToSql, ToSqlUnquoted, UnaryOperator,
         },
         bigdecimal::BigDecimal,
         regex::Regex,

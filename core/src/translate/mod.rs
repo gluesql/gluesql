@@ -22,11 +22,11 @@ use {
     },
     ddl::translate_alter_table_operation,
     sqlparser::ast::{
-        Assignment as SqlAssignment, Delete as SqlDelete, FromTable as SqlFromTable,
-        Ident as SqlIdent, Insert as SqlInsert, ObjectName as SqlObjectName,
-        ObjectType as SqlObjectType, ReferentialAction as SqlReferentialAction,
-        Statement as SqlStatement, TableConstraint as SqlTableConstraint, TableFactor,
-        TableWithJoins, CreateFunctionBody as SqlCreateFunctionBody,
+        Assignment as SqlAssignment, CreateFunctionBody as SqlCreateFunctionBody,
+        Delete as SqlDelete, FromTable as SqlFromTable, Ident as SqlIdent, Insert as SqlInsert,
+        ObjectName as SqlObjectName, ObjectType as SqlObjectType,
+        ReferentialAction as SqlReferentialAction, Statement as SqlStatement,
+        TableConstraint as SqlTableConstraint, TableFactor, TableWithJoins,
     },
 };
 

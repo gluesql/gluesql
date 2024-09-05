@@ -1,7 +1,10 @@
 use {
     super::context::Context,
     crate::{
-        ast::{ColumnDef, ColumnUniqueOption, Expr, Function, Query, TableAlias, TableFactor, Subscript},
+        ast::{
+            ColumnDef, ColumnUniqueOption, Expr, Function, Query, Subscript, TableAlias,
+            TableFactor,
+        },
         data::Schema,
     },
     std::rc::Rc,
