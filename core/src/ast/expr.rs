@@ -711,6 +711,20 @@ mod tests {
             .to_sql()
         );
 
+        // Next, we test the Slice variant of Subscript
+        assert_eq!(
+            r#""choco"[1:2:3]"#,
+            Expr::Subscript {
+                expr: Box::new(Expr::Identifier("choco".to_owned())),
+                subscript: Box::new(Subscript::Slice {
+                    lower_bound: Some(Expr::Literal(AstLiteral::Number(BigDecimal::from(1)))),
+                    upper_bound: Some(Expr::Literal(AstLiteral::Number(BigDecimal::from(2)))),
+                    stride: Some(Expr::Literal(AstLiteral::Number(BigDecimal::from(3)))),
+                })
+            }
+            .to_sql()
+        );
+
         assert_eq!(
             r#"['GlueSQL', 'Rust']"#,
             Expr::Array {
