@@ -164,13 +164,7 @@ async fn fetch_vec_rows<T: GStore>(
     )
     .await?;
 
-    validate_foreign_key(
-        storage,
-        column_defs,
-        schema.foreign_keys.as_slice(),
-        &rows,
-    )
-    .await?;
+    validate_foreign_key(storage, column_defs, schema.foreign_keys.as_slice(), &rows).await?;
 
     validate_check_constraint(
         storage,
