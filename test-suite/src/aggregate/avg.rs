@@ -9,7 +9,7 @@ test_case!(avg, {
             id INTEGER,
             quantity INTEGER,
             age INTEGER NULL,
-            total INTEGER,
+            total INTEGER
         );
     ",
     )

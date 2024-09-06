@@ -37,7 +37,7 @@ test_case!(insert, async move {
 CREATE TABLE Test (
     id INTEGER DEFAULT 1,
     num INTEGER NULL,
-    name TEXT NOT NULL,
+    name TEXT NOT NULL
 );"
     );
 

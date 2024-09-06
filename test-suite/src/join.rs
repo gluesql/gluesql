@@ -21,7 +21,7 @@ test_case!(join, {
         CREATE TABLE Item (
             id INTEGER,
             quantity INTEGER,
-            player_id INTEGER,
+            player_id INTEGER
         );
     ",
     ];
@@ -164,7 +164,7 @@ test_case!(project, {
         CREATE TABLE Item (
             id INTEGER,
             quantity INTEGER,
-            player_id INTEGER,
+            player_id INTEGER
         );
     ",
     ];

@@ -14,7 +14,7 @@ test_case!(insert, {
 CREATE TABLE Test (
     id INTEGER DEFAULT 1,
     num INTEGER NULL,
-    name TEXT NOT NULL,
+    name TEXT NOT NULL
 );",
     )
     .await;

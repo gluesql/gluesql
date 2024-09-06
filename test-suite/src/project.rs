@@ -20,7 +20,7 @@ test_case!(project, {
         CREATE TABLE ProjectItem (
             id INTEGER,
             player_id INTEGER,
-            quantity INTEGER,
+            quantity INTEGER
         );
     ",
     ];

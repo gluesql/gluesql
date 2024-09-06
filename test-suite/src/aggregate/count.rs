@@ -9,7 +9,7 @@ test_case!(count, {
             id INTEGER,
             quantity INTEGER NULL,
             age INTEGER NULL,
-            total INTEGER,
+            total INTEGER
         );
     ",
     )
