@@ -68,8 +68,8 @@ pub async fn insert<T: GStore + GStoreMut>(
         .await?
         .ok_or_else(|| InsertError::TableNotFound(table_name.to_owned()))?;
 
-    let rows = if schema.column_defs.is_some() {
-        fetch_vec_rows(storage, table_name, &schema, columns, source).await
+    let rows = if let Some(column_defs) = schema.column_defs.as_ref() {
+        fetch_vec_rows(storage, table_name, &schema, columns, column_defs, source).await
     } else {
         fetch_map_rows(storage, source).await.map(RowsData::Append)
     }?;
@@ -99,11 +99,11 @@ async fn fetch_vec_rows<T: GStore>(
     table_name: &str,
     schema: &Schema,
     columns: &[String],
+    column_defs: &[ColumnDef],
     source: &Query,
 ) -> Result<RowsData> {
-    let column_names: Rc<Vec<String>> = Rc::from(schema.get_column_names().unwrap());
-    let column_defs = Rc::from(schema.column_defs.as_ref().unwrap());
-    let column_validation = ColumnValidation::All(column_defs.as_slice());
+    let column_names: Rc<Vec<String>> = Rc::from(schema.get_column_names().unwrap_or_default());
+    let column_validation = ColumnValidation::All(column_defs);
 
     #[derive(futures_enum::Stream)]
     enum Rows<I1, I2> {
@@ -115,13 +115,12 @@ async fn fetch_vec_rows<T: GStore>(
         SetExpr::Values(Values(values_list)) => {
             let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref()).await?;
             let rows = stream::iter(values_list).then(|values| {
-                let column_defs = Rc::clone(&column_defs);
                 let column_names = Rc::clone(&column_names);
 
                 async move {
                     Ok(Row::Vec {
                         columns: column_names.as_slice().into(),
-                        values: fill_values(&column_defs, columns, values).await?,
+                        values: fill_values(column_defs, columns, values).await?,
                     })
                 }
             });
@@ -167,7 +166,7 @@ async fn fetch_vec_rows<T: GStore>(
 
     validate_foreign_key(
         storage,
-        column_defs.as_slice(),
+        column_defs,
         schema.foreign_keys.as_slice(),
         &rows,
     )
