@@ -66,7 +66,7 @@ impl ToSql for CheckConstraint {
     fn to_sql(&self) -> String {
         let name = match &self.name {
             Some(name) => format!("CONSTRAINT \"{}\" ", name),
-            None => "".to_string(),
+            None => "".to_owned(),
         };
 
         format!("{}CHECK ({})", name, self.expression.to_sql())

@@ -52,7 +52,7 @@ impl Build for CreateTableNode {
         Ok(Statement::CreateTable {
             name: table_name,
             if_not_exists: self.if_not_exists,
-            columns: (!columns.is_empty()).then(|| columns),
+            columns: (!columns.is_empty()).then_some(columns),
             check_constraints,
             source: None,
             engine: None,

@@ -377,18 +377,18 @@ pub fn translate_constraints<'a, I: IntoIterator<Item = &'a SqlTableConstraint>>
                 ..
             } => {
                 foreign_keys.push(translate_foreign_key(
-                    &name,
+                    name,
                     columns.as_slice(),
-                    &foreign_table,
+                    foreign_table,
                     referred_columns.as_slice(),
-                    &on_delete,
-                    &on_update,
+                    on_delete,
+                    on_update,
                 )?);
             }
             SqlTableConstraint::Check { name, expr } => {
                 check_constraints.push(CheckConstraint::new(
                     name.as_ref().map(|v| v.value.to_owned()),
-                    translate_expr(&expr)?,
+                    translate_expr(expr)?,
                 ));
             }
             _ => return Err(TranslateError::UnsupportedConstraint(constraint.to_string()).into()),
