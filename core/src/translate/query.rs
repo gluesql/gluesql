@@ -96,7 +96,9 @@ fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
 
     let group_by = match group_by {
         SqlGroupByExpr::Expressions(group_by, _group_by_with_modifiers) => group_by,
-        SqlGroupByExpr::All(_group_by_with_modifiers) => return Err(TranslateError::UnsupportedGroupByAll.into()),
+        SqlGroupByExpr::All(_group_by_with_modifiers) => {
+            return Err(TranslateError::UnsupportedGroupByAll.into())
+        }
     };
 
     Ok(Select {

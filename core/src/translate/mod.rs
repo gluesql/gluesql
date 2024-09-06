@@ -121,7 +121,9 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                     Some(v) => Some(translate_query(v).map(Box::new)?),
                     None => None,
                 },
-                engine: engine.as_ref().map(|table_engine| table_engine.name.to_owned()),
+                engine: engine
+                    .as_ref()
+                    .map(|table_engine| table_engine.name.to_owned()),
                 foreign_keys,
                 comment: comment.as_ref().map(|comment| match comment {
                     SqlCommentDef::WithEq(comment) => comment.to_owned(),
