@@ -290,29 +290,28 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
 pub fn translate_assignment(sql_assignment: &SqlAssignment) -> Result<Assignment> {
     let SqlAssignment { target, value } = sql_assignment;
 
-    let target = match target {
+    let id = match target {
         SqlAssignmentTarget::Tuple(_) => {
-            return Err(TranslateError::CompoundIdentOnUpdateNotSupported(
+            return Err(TranslateError::TupleAssignmentOnUpdateNotSupported(
                 sql_assignment.to_string(),
             )
             .into());
         }
-        SqlAssignmentTarget::ColumnName(SqlObjectName(targets)) => {
-            if targets.len() > 1 {
-                return Err(TranslateError::CompoundIdentOnUpdateNotSupported(
-                    sql_assignment.to_string(),
-                )
-                .into());
-            } else {
-                targets
-                    .first()
-                    .ok_or(TranslateError::UnreachableEmptyIdent)?
-            }
-        }
+        SqlAssignmentTarget::ColumnName(SqlObjectName(id)) => id,
     };
 
+    if id.len() > 1 {
+        return Err(
+            TranslateError::CompoundIdentOnUpdateNotSupported(sql_assignment.to_string()).into(),
+        );
+    }
+
     Ok(Assignment {
-        id: target.value.to_owned(),
+        id: id
+            .first()
+            .ok_or(TranslateError::UnreachableEmptyIdent)?
+            .value
+            .to_owned(),
         value: translate_expr(value)?,
     })
 }
@@ -414,6 +413,18 @@ mod tests {
         let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
         let expected =
             Err(TranslateError::DefaultValuesOnInsertNotSupported("Foo".to_owned()).into());
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_tuple_assignment_on_update_not_supported() {
+        let sql = "UPDATE Foo SET (a, b) = (1, 2)";
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+        let expected = Err(TranslateError::TupleAssignmentOnUpdateNotSupported(
+            "(a, b) = (1, 2)".to_owned(),
+        )
+        .into());
 
         assert_eq!(actual, expected);
     }

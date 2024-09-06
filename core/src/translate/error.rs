@@ -17,6 +17,9 @@ pub enum TranslateError {
     #[error("unimplemented - compound identifier on update not supported: {0}")]
     CompoundIdentOnUpdateNotSupported(String),
 
+    #[error("unimplemented - tuple assigment on update is not supported: {0}")]
+    TupleAssignmentOnUpdateNotSupported(String),
+
     #[error("too many params in drop index")]
     TooManyParamsInDropIndex,
 
