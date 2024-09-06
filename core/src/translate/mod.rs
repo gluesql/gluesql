@@ -17,7 +17,7 @@ pub use self::{
 
 use {
     crate::{
-        ast::{Assignment, ForeignKey, ReferentialAction, Statement, Variable},
+        ast::{Assignment, CheckConstraint, ForeignKey, ReferentialAction, Statement, Variable},
         result::Result,
     },
     ddl::translate_alter_table_operation,
@@ -99,19 +99,22 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             comment,
             ..
         }) => {
-            let columns = columns
-                .iter()
-                .map(translate_column_def)
-                .collect::<Result<Vec<_>>>()?;
+            let mut translated_columns = Vec::new();
+            let mut check_constraints = Vec::new();
 
-            let columns = (!columns.is_empty()).then_some(columns);
+            for column in columns {
+                let (translated_column, check_constraint) = translate_column_def(column)?;
+                translated_columns.push(translated_column);
+                check_constraints.extend(check_constraint);
+            }
+
+            let columns = (!translated_columns.is_empty()).then_some(translated_columns);
 
             let name = translate_object_name(name)?;
 
-            let foreign_keys = constraints
-                .iter()
-                .map(translate_foreign_key)
-                .collect::<Result<Vec<_>>>()?;
+            let (foreign_keys, table_check_constraints) = translate_constraints(constraints)?;
+
+            check_constraints.extend(table_check_constraints);
 
             Ok(Statement::CreateTable {
                 if_not_exists: *if_not_exists,
@@ -125,6 +128,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                     .as_ref()
                     .map(|table_engine| table_engine.name.to_owned()),
                 foreign_keys,
+                check_constraints,
                 comment: comment.as_ref().map(|comment| match comment {
                     SqlCommentDef::WithEq(comment) => comment.to_owned(),
                     SqlCommentDef::WithoutEq(comment) => comment.to_owned(),
@@ -356,51 +360,83 @@ pub fn translate_referential_action(
     }
 }
 
-pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<ForeignKey> {
-    match table_constraint {
-        SqlTableConstraint::ForeignKey {
-            name,
-            columns,
-            foreign_table,
-            referred_columns,
-            on_delete,
-            on_update,
-            ..
-        } => {
-            let referencing_column_name = columns.first().map(|i| i.value.clone()).ok_or(
-                TranslateError::UnreachableForeignKeyColumns(
-                    columns.iter().map(|i| i.to_string()).collect::<String>(),
-                ),
-            )?;
-
-            let referenced_column_name = referred_columns
-                .first()
-                .ok_or(TranslateError::UnreachableForeignKeyColumns(
-                    columns.iter().map(|i| i.to_string()).collect::<String>(),
-                ))?
-                .value
-                .clone();
-
-            let referenced_table_name = translate_object_name(foreign_table)?;
-
-            let name = match name {
-                Some(name) => name.value.clone(),
-                None => {
-                    format!("FK_{referencing_column_name}-{referenced_table_name}_{referenced_column_name}")
-                }
-            };
-
-            Ok(ForeignKey {
+pub fn translate_constraints<'a, I: IntoIterator<Item = &'a SqlTableConstraint>>(
+    constraints: I,
+) -> Result<(Vec<ForeignKey>, Vec<CheckConstraint>)> {
+    let mut foreign_keys = Vec::new();
+    let mut check_constraints = Vec::new();
+    for constraint in constraints {
+        match constraint {
+            SqlTableConstraint::ForeignKey {
                 name,
-                referencing_column_name,
-                referenced_table_name,
-                referenced_column_name,
-                on_delete: translate_referential_action(on_delete)?,
-                on_update: translate_referential_action(on_update)?,
-            })
+                columns,
+                foreign_table,
+                referred_columns,
+                on_delete,
+                on_update,
+                ..
+            } => {
+                foreign_keys.push(translate_foreign_key(
+                    &name,
+                    columns.as_slice(),
+                    &foreign_table,
+                    referred_columns.as_slice(),
+                    &on_delete,
+                    &on_update,
+                )?);
+            }
+            SqlTableConstraint::Check { name, expr } => {
+                check_constraints.push(CheckConstraint::new(
+                    name.as_ref().map(|v| v.value.to_owned()),
+                    translate_expr(&expr)?,
+                ));
+            }
+            _ => return Err(TranslateError::UnsupportedConstraint(constraint.to_string()).into()),
         }
-        _ => Err(TranslateError::UnsupportedConstraint(table_constraint.to_string()).into()),
     }
+
+    Ok((foreign_keys, check_constraints))
+}
+
+fn translate_foreign_key(
+    name: &Option<SqlIdent>,
+    columns: &[SqlIdent],
+    foreign_table: &SqlObjectName,
+    referred_columns: &[SqlIdent],
+    on_delete: &Option<SqlReferentialAction>,
+    on_update: &Option<SqlReferentialAction>,
+) -> Result<ForeignKey> {
+    let referencing_column_name = columns.first().map(|i| i.value.clone()).ok_or(
+        TranslateError::UnreachableForeignKeyColumns(
+            columns.iter().map(|i| i.to_string()).collect::<String>(),
+        ),
+    )?;
+
+    let referenced_column_name = referred_columns
+        .first()
+        .ok_or(TranslateError::UnreachableForeignKeyColumns(
+            columns.iter().map(|i| i.to_string()).collect::<String>(),
+        ))?
+        .value
+        .clone();
+
+    let referenced_table_name = translate_object_name(foreign_table)?;
+
+    let name = match name {
+        Some(name) => name.value.clone(),
+        None => {
+            format!("FK_{referencing_column_name}-{referenced_table_name}_{referenced_column_name}")
+        }
+    };
+
+    Ok(ForeignKey {
+        name,
+        referencing_column_name,
+        referenced_table_name,
+        referenced_column_name,
+        on_delete: translate_referential_action(on_delete)?,
+        on_update: translate_referential_action(on_update)?,
+    })
 }
 
 #[cfg(test)]

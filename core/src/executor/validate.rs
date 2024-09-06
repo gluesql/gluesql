@@ -1,14 +1,16 @@
 use {
+    super::filter::Filter,
     crate::{
-        ast::{ColumnDef, ColumnUniqueOption},
-        data::{Key, Value},
+        ast::{ColumnDef, ColumnUniqueOption, ToSql},
+        data::{Key, Schema, Value},
+        executor::RowContext,
         result::Result,
-        store::{DataRow, Store},
+        store::{DataRow, GStore, Store},
     },
     futures::stream::TryStreamExt,
     im_rc::HashSet,
     serde::Serialize,
-    std::fmt::Debug,
+    std::{fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
     utils::Vector,
 };
@@ -26,6 +28,9 @@ pub enum ValidateError {
 
     #[error("duplicate entry '{0:?}' for primary_key field")]
     DuplicateEntryOnPrimaryKeyField(Key),
+
+    #[error("Check constraint violation on rule '{0}'")]
+    CheckConstraintViolation(String),
 }
 
 pub enum ColumnValidation<'column_def> {
@@ -80,6 +85,36 @@ impl UniqueConstraint {
             .into())
         }
     }
+}
+
+pub async fn validate_check_constraint<T: Store + GStore>(
+    storage: &T,
+    schema: &Schema,
+    columns: &[String],
+    row_iter: impl Iterator<Item = &[Value]> + Clone,
+) -> Result<()> {
+    if schema.check_constraints.is_empty() {
+        return Ok(());
+    }
+
+    let filters = schema
+        .check_constraints
+        .iter()
+        .map(|check_clause| Filter::new(storage, Some(&check_clause.expression), None, None))
+        .collect::<Vec<_>>();
+
+    for values in row_iter {
+        for filter in &filters {
+            if !filter
+                .check(Rc::new(RowContext::RefVecData { columns, values }))
+                .await?
+            {
+                return Err(ValidateError::CheckConstraintViolation(filter.to_sql()).into());
+            }
+        }
+    }
+
+    Ok(())
 }
 
 pub async fn validate_unique<T: Store>(

@@ -271,6 +271,7 @@ impl MongoStorage {
             let TableDescription {
                 foreign_keys,
                 comment,
+                check_constraints,
             } = from_str::<TableDescription>(table_description).map_storage_err()?;
 
             let schema = Schema {
@@ -279,6 +280,7 @@ impl MongoStorage {
                 indexes: Vec::new(),
                 engine: None,
                 foreign_keys,
+                check_constraints,
                 comment,
             };
 

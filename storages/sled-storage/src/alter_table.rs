@@ -9,7 +9,7 @@ use {
     async_io::block_on,
     async_trait::async_trait,
     gluesql_core::{
-        ast::ColumnDef,
+        ast::{CheckConstraint, ColumnDef},
         data::{schema::Schema, Value},
         error::{AlterTableError, Error, Result},
         executor::evaluate_stateless,
@@ -52,6 +52,7 @@ impl AlterTable for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                check_constraints,
                 comment,
                 ..
             } = old_schema
@@ -64,6 +65,7 @@ impl AlterTable for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                check_constraints,
                 comment,
             };
 
@@ -164,6 +166,7 @@ impl AlterTable for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                check_constraints,
                 comment: schema_comment,
                 ..
             } = snapshot
@@ -215,6 +218,7 @@ impl AlterTable for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                check_constraints,
                 comment: schema_comment,
             };
             let (snapshot, _) = snapshot.update(txid, schema);
@@ -240,7 +244,12 @@ impl AlterTable for SledStorage {
         Ok(())
     }
 
-    async fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
+    async fn add_column(
+        &mut self,
+        table_name: &str,
+        column_def: &ColumnDef,
+        check: &Option<CheckConstraint>,
+    ) -> Result<()> {
         let prefix = format!("data/{}/", table_name);
         let items = self
             .tree
@@ -269,6 +278,7 @@ impl AlterTable for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                mut check_constraints,
                 comment,
             } = schema_snapshot
                 .get(txid, None)
@@ -360,6 +370,8 @@ impl AlterTable for SledStorage {
                 .chain(once(column_def.clone()))
                 .collect::<Vec<ColumnDef>>();
 
+            check_constraints.extend(check.clone());
+
             let temp_key = key::temp_schema(txid, &table_name);
 
             let schema = Schema {
@@ -368,6 +380,7 @@ impl AlterTable for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                check_constraints,
                 comment,
             };
             let (schema_snapshot, _) = schema_snapshot.update(txid, schema);
@@ -385,7 +398,7 @@ impl AlterTable for SledStorage {
         });
 
         if self.check_retry(tx_result)? {
-            self.add_column(table_name, column_def).await?;
+            self.add_column(table_name, column_def, check).await?;
         }
 
         Ok(())
@@ -425,6 +438,7 @@ impl AlterTable for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                check_constraints,
                 comment,
             } = schema_snapshot
                 .get(txid, None)
@@ -507,6 +521,7 @@ impl AlterTable for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                check_constraints,
                 comment,
             };
             let (schema_snapshot, _) = schema_snapshot.update(txid, schema);

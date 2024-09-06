@@ -1,13 +1,16 @@
 use {
     super::{DataType, Expr},
-    crate::ast::ToSql,
+    crate::ast::{CheckConstraint, ToSql},
     serde::{Deserialize, Serialize},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AlterTableOperation {
     /// `ADD [ COLUMN ] <column_def>`
-    AddColumn { column_def: ColumnDef },
+    AddColumn {
+        column_def: ColumnDef,
+        check: Option<CheckConstraint>,
+    },
     /// `DROP [ COLUMN ] [ IF EXISTS ] <column_name> [ CASCADE ]`
     DropColumn {
         column_name: String,
@@ -50,8 +53,15 @@ pub struct OperateFunctionArg {
 impl ToSql for AlterTableOperation {
     fn to_sql(&self) -> String {
         match self {
-            AlterTableOperation::AddColumn { column_def } => {
-                format!("ADD COLUMN {}", column_def.to_sql())
+            AlterTableOperation::AddColumn { column_def, check } => {
+                format!(
+                    "ADD COLUMN {}{}",
+                    column_def.to_sql(),
+                    check
+                        .as_ref()
+                        .map(|check| format!(" {}", check.to_sql()))
+                        .unwrap_or_default()
+                )
             }
             AlterTableOperation::DropColumn {
                 column_name,

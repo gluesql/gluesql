@@ -1,7 +1,8 @@
+//! AST Builder node for column definitions
 use crate::{
-    ast::ColumnDef,
+    ast::{CheckConstraint, ColumnDef},
     parse_sql::parse_column_def,
-    result::{Error, Result},
+    result::Result,
     translate::translate_column_def,
 };
 
@@ -10,19 +11,18 @@ pub enum ColumnDefNode {
     Text(String),
 }
 
-impl From<&str> for ColumnDefNode {
-    fn from(column_def: &str) -> Self {
-        ColumnDefNode::Text(column_def.to_owned())
+impl ColumnDefNode {
+    pub fn parse(self) -> Result<(ColumnDef, Option<CheckConstraint>)> {
+        match self {
+            ColumnDefNode::Text(text) => {
+                parse_column_def(text).and_then(|column_def| translate_column_def(&column_def))
+            }
+        }
     }
 }
 
-impl TryFrom<ColumnDefNode> for ColumnDef {
-    type Error = Error;
-
-    fn try_from(column_def_node: ColumnDefNode) -> Result<ColumnDef> {
-        match column_def_node {
-            ColumnDefNode::Text(column_def) => parse_column_def(column_def)
-                .and_then(|column_def| translate_column_def(&column_def)),
-        }
+impl From<&str> for ColumnDefNode {
+    fn from(column_def: &str) -> Self {
+        ColumnDefNode::Text(column_def.to_owned())
     }
 }
