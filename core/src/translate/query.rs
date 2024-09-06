@@ -15,7 +15,7 @@ use {
         Join as SqlJoin, JoinConstraint as SqlJoinConstraint, JoinOperator as SqlJoinOperator,
         Query as SqlQuery, Select as SqlSelect, SelectItem as SqlSelectItem, SetExpr as SqlSetExpr,
         TableAlias as SqlTableAlias, TableFactor as SqlTableFactor,
-        TableWithJoins as SqlTableWithJoins,
+        TableFunctionArgs as SqlTableFunctionArgs, TableWithJoins as SqlTableWithJoins,
     },
 };
 
@@ -185,7 +185,7 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
             let alias = translate_table_alias(alias);
 
             match (object_name.as_str(), args) {
-                ("SERIES", Some(args)) => Ok(TableFactor::Series {
+                ("SERIES", Some(SqlTableFunctionArgs { args, .. })) => Ok(TableFactor::Series {
                     alias: alias_or_name(alias, object_name),
                     size: translate_table_args(args)?,
                 }),
@@ -244,6 +244,7 @@ fn translate_join(sql_join: &SqlJoin) -> Result<Join> {
     let SqlJoin {
         relation,
         join_operator: sql_join_operator,
+        ..
     } = sql_join;
 
     let translate_constraint = |sql_join_constraint: &SqlJoinConstraint| match sql_join_constraint {
