@@ -137,14 +137,14 @@ mod tests {
         // Case where Column Def is Materialized
         let sql_column_def = SqlColumnDef {
             name: SqlIdent {
-                value: "column_name".to_string(),
+                value: "column_name".to_owned(),
                 quote_style: None,
             },
             data_type: SqlDataType::Int16,
             collation: None,
             options: vec![ColumnOptionDef {
                 name: Some(SqlIdent {
-                    value: "MATERIALIZED".to_string(),
+                    value: "MATERIALIZED".to_owned(),
                     quote_style: None,
                 }),
                 option: ColumnOption::Materialized(SqlExpr::Value(SqlValue::Boolean(true))),
@@ -153,20 +153,20 @@ mod tests {
 
         assert_eq!(
             translate_column_def(&sql_column_def),
-            Err(TranslateError::UnsupportedColumnOption("MATERIALIZED true".to_string()).into())
+            Err(TranslateError::UnsupportedColumnOption("MATERIALIZED true".to_owned()).into())
         );
 
         // Case where Column Def includes a Check Constraint
         let sql_column_def = SqlColumnDef {
             name: SqlIdent {
-                value: "column_name".to_string(),
+                value: "column_name".to_owned(),
                 quote_style: None,
             },
             data_type: SqlDataType::Int16,
             collation: None,
             options: vec![ColumnOptionDef {
                 name: Some(SqlIdent {
-                    value: "CHECK".to_string(),
+                    value: "CHECK".to_owned(),
                     quote_style: None,
                 }),
                 option: ColumnOption::Check(SqlExpr::Value(SqlValue::Boolean(true))),
@@ -177,14 +177,16 @@ mod tests {
             translate_column_def(&sql_column_def),
             Ok((
                 ColumnDef {
-                    name: "column_name".to_string(),
+                    name: "column_name".to_owned(),
                     data_type: crate::ast::DataType::Int16,
                     nullable: true,
                     default: None,
                     unique: None,
                     comment: None,
                 },
-                Some(CheckConstraint::anonymous(Expr::Literal(AstLiteral::Boolean(true))))
+                Some(CheckConstraint::anonymous(Expr::Literal(
+                    AstLiteral::Boolean(true)
+                )))
             ))
         );
     }

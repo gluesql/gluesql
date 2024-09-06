@@ -441,7 +441,13 @@ fn translate_foreign_key(
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::parse_sql::parse};
+    use {
+        super::*,
+        crate::{
+            ast::{AstLiteral, BinaryOperator, Expr},
+            parse_sql::parse,
+        },
+    };
 
     #[test]
     fn statement() {
@@ -461,6 +467,59 @@ mod tests {
             "(a, b) = (1, 2)".to_owned(),
         )
         .into());
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_translate_constraints() {
+        let sql = "CREATE TABLE Foo (\
+            a INT PRIMARY KEY, \
+            b INT, \
+            FOREIGN KEY (b) REFERENCES Foo(a) ON DELETE RESTRICT ON UPDATE RESTRICT, \
+            CHECK (b > 0) \
+        )";
+        let actual = parse(sql).and_then(|parsed| {
+            translate(&parsed[0]).map(|stmt| match stmt {
+                Statement::CreateTable {
+                    check_constraints,
+                    foreign_keys,
+                    ..
+                } => (check_constraints, foreign_keys),
+                _ => unreachable!(),
+            })
+        });
+        let expected = Ok((
+            vec![CheckConstraint::new(
+                None,
+                Expr::BinaryOp {
+                    left: Box::new(Expr::Identifier("b".to_owned())),
+                    op: BinaryOperator::Gt,
+                    right: Box::new(Expr::Literal(AstLiteral::Number(0.into()))),
+                },
+            )],
+            vec![ForeignKey {
+                name: "FK_b-Foo_a".to_owned(),
+                referencing_column_name: "b".to_owned(),
+                referenced_table_name: "Foo".to_owned(),
+                referenced_column_name: "a".to_owned(),
+                on_delete: ReferentialAction::NoAction,
+                on_update: ReferentialAction::NoAction,
+            }],
+        ));
+
+        assert_eq!(actual, expected);
+
+        // We now try with an unsupported constraint, like Index
+        let sql = "CREATE TABLE Foo (\
+            a INT PRIMARY KEY, \
+            b INT, \
+            UNIQUE (b) \
+        )";
+
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+
+        let expected = Err(TranslateError::UnsupportedConstraint("UNIQUE (b)".to_owned()).into());
 
         assert_eq!(actual, expected);
     }

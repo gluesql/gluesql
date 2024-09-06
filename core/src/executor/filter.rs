@@ -56,10 +56,10 @@ where
     T: GStore,
 {
     fn to_sql(&self) -> String {
-        match self.where_clause {
-            Some(expr) => expr.to_sql(),
-            None => "".to_owned(),
-        }
+        self.where_clause
+            .as_ref()
+            .map(|expr| expr.to_sql())
+            .unwrap_or_default()
     }
 }
 
