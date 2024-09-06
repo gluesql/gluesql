@@ -15,8 +15,9 @@ use {
         translate::function::translate_trim,
     },
     sqlparser::ast::{
-        Array, DateTimeField as SqlDateTimeField, Expr as SqlExpr, Interval as SqlInterval,
-        OrderByExpr as SqlOrderByExpr, Subscript as SqlSubscript,
+        Array, CeilFloorKind as SqlCeilFloorKind, DateTimeField as SqlDateTimeField,
+        Expr as SqlExpr, Interval as SqlInterval, OrderByExpr as SqlOrderByExpr,
+        Subscript as SqlSubscript,
     },
 };
 
@@ -99,7 +100,7 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             op: translate_unary_operator(op)?,
             expr: translate_expr(expr).map(Box::new)?,
         }),
-        SqlExpr::Extract { field, expr } => translate_extract(field, expr),
+        SqlExpr::Extract { field, expr, .. } => translate_extract(field, expr),
         SqlExpr::Nested(expr) => translate_expr(expr).map(Box::new).map(Expr::Nested),
         SqlExpr::Value(value) => translate_ast_literal(value).map(Expr::Literal),
         SqlExpr::TypedString { data_type, value } => Ok(Expr::TypedString {
@@ -120,14 +121,20 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             translate_trim(expr, trim_where, trim_what)
         }
         SqlExpr::Floor { expr, field } => {
-            if !matches!(field, SqlDateTimeField::NoDateTime) {
+            if !matches!(
+                field,
+                SqlCeilFloorKind::DateTimeField(SqlDateTimeField::NoDateTime)
+            ) {
                 return Err(TranslateError::UnsupportedExpr(sql_expr.to_string()).into());
             }
 
             translate_floor(expr)
         }
         SqlExpr::Ceil { expr, field } => {
-            if !matches!(field, SqlDateTimeField::NoDateTime) {
+            if !matches!(
+                field,
+                SqlCeilFloorKind::DateTimeField(SqlDateTimeField::NoDateTime)
+            ) {
                 return Err(TranslateError::UnsupportedExpr(sql_expr.to_string()).into());
             }
 
