@@ -45,18 +45,8 @@ pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
             match name.as_deref() {
                 Some("MAP") => Ok(DataType::Map),
                 Some("LIST") => Ok(DataType::List),
-                Some("INT8") => Ok(DataType::Int8),
-                Some("INT16") => Ok(DataType::Int16),
-                Some("INT32") => Ok(DataType::Int32),
-                Some("INT128") => Ok(DataType::Int128),
-                Some("UINT8") => Ok(DataType::Uint8),
-                Some("UINT16") => Ok(DataType::Uint16),
-                Some("UINT32") => Ok(DataType::Uint32),
-                Some("UINT64") => Ok(DataType::Uint64),
-                Some("UINT128") => Ok(DataType::Uint128),
                 Some("POINT") => Ok(DataType::Point),
                 Some("INET") => Ok(DataType::Inet),
-                Some("FLOAT32") => Ok(DataType::Float32),
 
                 _ => Err(TranslateError::UnsupportedDataType(sql_data_type.to_string()).into()),
             }
@@ -122,21 +112,7 @@ mod tests {
 
         test!("MAP" => Ok(DataType::Map));
         test!("LIST" => Ok(DataType::List));
-
-        test!("INT8" => Ok(DataType::Int8));
-        test!("INT16" => Ok(DataType::Int16));
-        test!("INT32" => Ok(DataType::Int32));
-        test!("INT128" => Ok(DataType::Int128));
-
-        test!("UINT8" => Ok(DataType::Uint8));
-        test!("UINT16" => Ok(DataType::Uint16));
-        test!("UINT32" => Ok(DataType::Uint32));
-        test!("UINT64" => Ok(DataType::Uint64));
-        test!("UINT128" => Ok(DataType::Uint128));
-
         test!("POINT" => Ok(DataType::Point));
         test!("INET" => Ok(DataType::Inet));
-
-        test!("FLOAT32" => Ok(DataType::Float32));
     }
 }
