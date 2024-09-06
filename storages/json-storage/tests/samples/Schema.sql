@@ -14,5 +14,5 @@ CREATE TABLE Schema (
   interval INTERVAL,
   uuid UUID,
   map MAP,
-  list LIST,
+  list LIST
 );

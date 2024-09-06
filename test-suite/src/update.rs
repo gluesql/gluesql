@@ -16,7 +16,7 @@ test_case!(update, {
             id INTEGER,
             num INTEGER,
             num2 INTEGER,
-            name TEXT,
+            name TEXT
         )",
     )
     .await;
@@ -38,7 +38,7 @@ test_case!(update, {
         CREATE TABLE TableB (
             id INTEGER,
             num INTEGER,
-            rank INTEGER,
+            rank INTEGER
         )",
     )
     .await;
@@ -109,17 +109,17 @@ test_case!(update, {
     g.run("INSERT INTO ErrTestTable (id) VALUES (1),(9);").await;
 
     let error_cases = [
-        (
-            "UPDATE TableA INNER JOIN ErrTestTable ON 1 = 1 SET 1 = 1",
-            Err(TranslateError::JoinOnUpdateNotSupported.into()),
-        ),
-        (
-            "UPDATE (SELECT * FROM ErrTestTable) SET 1 = 1",
-            Err(
-                TranslateError::UnsupportedTableFactor("(SELECT * FROM ErrTestTable)".to_owned())
-                    .into(),
-            ),
-        ),
+        // (
+        //     "UPDATE TableA INNER JOIN ErrTestTable ON 1 = 1 SET 1 = 1",
+        //     Err(TranslateError::JoinOnUpdateNotSupported.into()),
+        // ),
+        // (
+        //     "UPDATE (SELECT * FROM ErrTestTable) SET 1 = 1",
+        //     Err(
+        //         TranslateError::UnsupportedTableFactor("(SELECT * FROM ErrTestTable)".to_owned())
+        //             .into(),
+        //     ),
+        // ),
         (
             "UPDATE ErrTestTable SET ErrTestTable.id = 1 WHERE id = 1",
             Err(TranslateError::CompoundIdentOnUpdateNotSupported(

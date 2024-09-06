@@ -22,7 +22,7 @@ Create a table named `Item` with a column `name`:
 
 ```sql
 CREATE TABLE Item (
-    name TEXT DEFAULT 'abcd',
+    name TEXT DEFAULT 'abcd'
 );
 ```
 

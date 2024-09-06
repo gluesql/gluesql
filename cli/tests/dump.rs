@@ -32,7 +32,7 @@ async fn dump_and_import() {
             interval INTERVAL,
             uuid UUID,
             map MAP,
-            list LIST,
+            list LIST
          );",
         r#"INSERT INTO Foo
          VALUES (

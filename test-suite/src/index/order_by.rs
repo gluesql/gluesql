@@ -8,7 +8,7 @@ test_case!(order_by, {
 CREATE TABLE Test (
     id INTEGER,
     num INTEGER NULL,
-    name TEXT,
+    name TEXT
 )",
     )
     .await;

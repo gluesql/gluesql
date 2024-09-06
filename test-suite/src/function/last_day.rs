@@ -11,7 +11,7 @@ test_case!(last_day, {
         "CREATE TABLE LastDay (
             id INTEGER,
             date DATE,
-            timestamp TIMESTAMP,
+            timestamp TIMESTAMP
         );",
     )
     .await;
