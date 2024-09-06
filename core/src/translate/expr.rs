@@ -208,6 +208,7 @@ pub fn translate_order_by_expr(sql_order_by_expr: &SqlOrderByExpr) -> Result<Ord
         expr,
         asc,
         nulls_first,
+        ..
     } = sql_order_by_expr;
 
     if nulls_first.is_some() {

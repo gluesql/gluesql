@@ -31,9 +31,8 @@ pub fn translate_query(sql_query: &SqlQuery) -> Result<Query> {
     let body = translate_set_expr(body)?;
     let order_by = order_by
         .iter()
-        .map(translate_order_by_expr)
+        .flat_map(|order_by| order_by.exprs.iter().map(translate_order_by_expr))
         .collect::<Result<_>>()?;
-
     let limit = limit.as_ref().map(translate_expr).transpose()?;
     let offset = offset
         .as_ref()
