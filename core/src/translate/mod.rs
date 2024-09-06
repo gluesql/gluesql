@@ -22,11 +22,11 @@ use {
     },
     ddl::translate_alter_table_operation,
     sqlparser::ast::{
-        Assignment as SqlAssignment, Delete as SqlDelete, FromTable as SqlFromTable,
-        Ident as SqlIdent, Insert as SqlInsert, ObjectName as SqlObjectName,
-        ObjectType as SqlObjectType, ReferentialAction as SqlReferentialAction,
-        Statement as SqlStatement, TableConstraint as SqlTableConstraint, TableFactor,
-        TableWithJoins,
+        Assignment as SqlAssignment, CreateFunctionBody as SqlCreateFunctionBody,
+        Delete as SqlDelete, FromTable as SqlFromTable, Ident as SqlIdent, Insert as SqlInsert,
+        ObjectName as SqlObjectName, ObjectType as SqlObjectType,
+        ReferentialAction as SqlReferentialAction, Statement as SqlStatement,
+        TableConstraint as SqlTableConstraint, TableFactor, TableWithJoins,
     },
 };
 
@@ -255,7 +255,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             or_replace,
             name,
             args,
-            params,
+            function_body: Some(SqlCreateFunctionBody::Return(return_)),
             ..
         } => {
             let args = args
@@ -270,13 +270,11 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 or_replace: *or_replace,
                 name: translate_object_name(name)?,
                 args: args.unwrap_or_default(),
-                return_: params
-                    .return_
-                    .as_ref()
-                    .map(translate_expr)
-                    .transpose()?
-                    .ok_or(TranslateError::UnsupportedEmptyFunctionBody)?,
+                return_: translate_expr(return_)?,
             })
+        }
+        SqlStatement::CreateFunction { .. } => {
+            Err(TranslateError::UnsupportedEmptyFunctionBody.into())
         }
         _ => Err(TranslateError::UnsupportedStatement(sql_statement.to_string()).into()),
     }

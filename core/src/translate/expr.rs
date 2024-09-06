@@ -16,7 +16,7 @@ use {
     },
     sqlparser::ast::{
         Array, DateTimeField as SqlDateTimeField, Expr as SqlExpr, Interval as SqlInterval,
-        OrderByExpr as SqlOrderByExpr,
+        OrderByExpr as SqlOrderByExpr, Subscript as SqlSubscript,
     },
 };
 
@@ -163,10 +163,15 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
                 .map(|expr| translate_expr(expr.as_ref()).map(Box::new))
                 .transpose()?,
         }),
-        SqlExpr::ArrayIndex { obj, indexes } => Ok(Expr::ArrayIndex {
-            obj: translate_expr(obj).map(Box::new)?,
-            indexes: indexes.iter().map(translate_expr).collect::<Result<_>>()?,
-        }),
+        SqlExpr::Subscript { expr, subscript } => match subscript.as_ref() {
+            SqlSubscript::Index { index } => Ok(Expr::ArrayIndex {
+                obj: translate_expr(expr).map(Box::new)?,
+                indexes: vec![translate_expr(index)?],
+            }),
+            SqlSubscript::Slice { .. } => {
+                Err(TranslateError::UnsupportedExpr(sql_expr.to_string()).into())
+            }
+        },
         SqlExpr::Array(Array { elem, .. }) => Ok(Expr::Array {
             elem: elem.iter().map(translate_expr).collect::<Result<_>>()?,
         }),
