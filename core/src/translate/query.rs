@@ -29,16 +29,10 @@ pub fn translate_query(sql_query: &SqlQuery) -> Result<Query> {
     } = sql_query;
 
     let body = translate_set_expr(body)?;
-    let order_by = if let Some(order_by) = order_by {
-        order_by
-            .exprs
-            .iter()
-            .map(translate_order_by_expr)
-            .collect::<Result<_>>()?
-    } else {
-        vec![]
-    };
-
+    let order_by = order_by
+        .iter()
+        .flat_map(|order_by| order_by.exprs.iter().map(translate_order_by_expr))
+        .collect::<Result<_>>()?;
     let limit = limit.as_ref().map(translate_expr).transpose()?;
     let offset = offset
         .as_ref()
