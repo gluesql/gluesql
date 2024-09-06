@@ -120,3 +120,72 @@ pub fn translate_operate_function_arg(arg: &SqlOperateFunctionArg) -> Result<Ope
         default,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::ast::{AstLiteral, Expr};
+
+    use super::*;
+    use sqlparser::ast::{
+        ColumnDef as SqlColumnDef, ColumnOption, ColumnOptionDef, DataType as SqlDataType,
+        Expr as SqlExpr, Ident as SqlIdent, Value as SqlValue,
+    };
+
+    #[test]
+    /// Test to cover all of the possible cases of the `translate_column_def` function.
+    fn test_translate_column_def() {
+        // Case where Column Def is Materialized
+        let sql_column_def = SqlColumnDef {
+            name: SqlIdent {
+                value: "column_name".to_string(),
+                quote_style: None,
+            },
+            data_type: SqlDataType::Int16,
+            collation: None,
+            options: vec![ColumnOptionDef {
+                name: Some(SqlIdent {
+                    value: "MATERIALIZED".to_string(),
+                    quote_style: None,
+                }),
+                option: ColumnOption::Materialized(SqlExpr::Value(SqlValue::Boolean(true))),
+            }],
+        };
+
+        assert_eq!(
+            translate_column_def(&sql_column_def),
+            Err(TranslateError::UnsupportedColumnOption("MATERIALIZED true".to_string()).into())
+        );
+
+        // Case where Column Def includes a Check Constraint
+        let sql_column_def = SqlColumnDef {
+            name: SqlIdent {
+                value: "column_name".to_string(),
+                quote_style: None,
+            },
+            data_type: SqlDataType::Int16,
+            collation: None,
+            options: vec![ColumnOptionDef {
+                name: Some(SqlIdent {
+                    value: "CHECK".to_string(),
+                    quote_style: None,
+                }),
+                option: ColumnOption::Check(SqlExpr::Value(SqlValue::Boolean(true))),
+            }],
+        };
+
+        assert_eq!(
+            translate_column_def(&sql_column_def),
+            Ok((
+                ColumnDef {
+                    name: "column_name".to_string(),
+                    data_type: crate::ast::DataType::Int16,
+                    nullable: true,
+                    default: None,
+                    unique: None,
+                    comment: None,
+                },
+                Some(CheckConstraint::anonymous(Expr::Literal(AstLiteral::Boolean(true))))
+            ))
+        );
+    }
+}
