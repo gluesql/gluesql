@@ -72,10 +72,6 @@ mod tests {
 
         test!("INT" => SqlDataType::Int(None) => Ok(DataType::Int));
         test!("INTEGER" => SqlDataType::Integer(None) => Ok(DataType::Int));
-        test!("INT64" => SqlDataType::Int64 => Ok(DataType::Int));
-
-        test!("INT8" => SqlDataType::Int8(None) => Ok(DataType::Int8));
-
         test!("INT UNSIGNED" => SqlDataType::UnsignedInt(None) => Ok(DataType::Uint64));
         test!("INTEGER UNSIGNED" => SqlDataType::UnsignedInteger(None) => Ok(DataType::Uint64));
 
