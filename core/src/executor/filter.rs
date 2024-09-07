@@ -71,7 +71,6 @@ pub async fn check_expr<'a, T: GStore>(
     aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
     expr: &'a Expr,
 ) -> Result<Option<bool>> {
-    dbg!(&expr);
     evaluate(storage, context, aggregated, expr)
         .await
         .map(|evaluated| evaluated.try_into())?

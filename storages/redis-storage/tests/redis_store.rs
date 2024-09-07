@@ -176,7 +176,7 @@ async fn redis_storage_no_primarykey() {
     }
 
     let _: Vec<Payload> = glue
-        .execute("SELECT id, name, birth FROM Heroes WHERE id = '2';")
+        .execute("SELECT id, name, birth FROM Heroes WHERE id = 2;")
         .await
         .unwrap();
 
