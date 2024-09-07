@@ -71,6 +71,44 @@ pub fn binary_op<'a>(
     }
 }
 
+pub fn unary_op<'a>(op: &UnaryOperator, v: Evaluated<'a>) -> Result<Evaluated<'a>> {
+    match op {
+        UnaryOperator::Plus => v.unary_plus(),
+        UnaryOperator::Minus => v.unary_minus(),
+        UnaryOperator::Not => v.try_into().map(|v: Option<bool>| match v {
+            Some(v) => Evaluated::Value(Value::Bool(!v)),
+            None => Evaluated::Value(Value::Null),
+        }),
+        UnaryOperator::Factorial => v.unary_factorial(),
+        UnaryOperator::BitwiseNot => v.unary_bitwise_not(),
+    }
+}
+
+pub fn between<'a>(
+    target: Evaluated<'a>,
+    negated: bool,
+    low: Evaluated<'a>,
+    high: Evaluated<'a>,
+) -> Result<Evaluated<'a>> {
+    let v = low.evaluate_cmp(&target)? != Some(Ordering::Greater)
+        && target.evaluate_cmp(&high)? != Some(Ordering::Greater);
+    let v = negated ^ v;
+
+    Ok(Evaluated::Value(Value::Bool(v)))
+}
+
+pub fn array_index<'a>(obj: Evaluated<'a>, indexes: Vec<Evaluated<'a>>) -> Result<Evaluated<'a>> {
+    let value = match obj {
+        Evaluated::Value(value) => value,
+        _ => return Err(EvaluateError::MapOrListTypeRequired.into()),
+    };
+    let indexes = indexes
+        .into_iter()
+        .map(Value::try_from)
+        .collect::<Result<Vec<_>>>()?;
+    value.selector_by_index(&indexes).map(Evaluated::Value)
+}
+
 #[cfg(test)]
 mod test_binary_op {
     use super::*;
@@ -121,42 +159,4 @@ mod test_binary_op {
             assert_eq!(result, Evaluated::Value(Value::Null));
         }
     }
-}
-
-pub fn unary_op<'a>(op: &UnaryOperator, v: Evaluated<'a>) -> Result<Evaluated<'a>> {
-    match op {
-        UnaryOperator::Plus => v.unary_plus(),
-        UnaryOperator::Minus => v.unary_minus(),
-        UnaryOperator::Not => v.try_into().map(|v: Option<bool>| match v {
-            Some(v) => Evaluated::Value(Value::Bool(!v)),
-            None => Evaluated::Value(Value::Null),
-        }),
-        UnaryOperator::Factorial => v.unary_factorial(),
-        UnaryOperator::BitwiseNot => v.unary_bitwise_not(),
-    }
-}
-
-pub fn between<'a>(
-    target: Evaluated<'a>,
-    negated: bool,
-    low: Evaluated<'a>,
-    high: Evaluated<'a>,
-) -> Result<Evaluated<'a>> {
-    let v = low.evaluate_cmp(&target)? != Some(Ordering::Greater)
-        && target.evaluate_cmp(&high)? != Some(Ordering::Greater);
-    let v = negated ^ v;
-
-    Ok(Evaluated::Value(Value::Bool(v)))
-}
-
-pub fn array_index<'a>(obj: Evaluated<'a>, indexes: Vec<Evaluated<'a>>) -> Result<Evaluated<'a>> {
-    let value = match obj {
-        Evaluated::Value(value) => value,
-        _ => return Err(EvaluateError::MapOrListTypeRequired.into()),
-    };
-    let indexes = indexes
-        .into_iter()
-        .map(Value::try_from)
-        .collect::<Result<Vec<_>>>()?;
-    value.selector_by_index(&indexes).map(Evaluated::Value)
 }
