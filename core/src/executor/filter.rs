@@ -15,6 +15,16 @@ pub struct Filter<'a, T: GStore> {
     where_clause: Option<&'a Expr>,
     context: Option<Rc<RowContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
+    /// Whether to consider as 'true' the evaluations that result in NULL.
+    ///
+    /// Taken directly from the PostgreSQL documentation:
+    ///
+    /// It should be noted that a check constraint is satisfied if
+    /// the check expression evaluates to true or the null value.
+    /// Since most expressions will evaluate to the null value if
+    /// any operand is null, they will not prevent null values
+    /// in the constrained columns.
+    allow_null_evaluations: bool,
 }
 
 impl<'a, T: GStore> Filter<'a, T> {
@@ -23,12 +33,14 @@ impl<'a, T: GStore> Filter<'a, T> {
         where_clause: Option<&'a Expr>,
         context: Option<Rc<RowContext<'a>>>,
         aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
+        allow_null_evaluations: bool,
     ) -> Self {
         Self {
             storage,
             where_clause,
             context,
             aggregated,
+            allow_null_evaluations,
         }
     }
 
@@ -44,7 +56,9 @@ impl<'a, T: GStore> Filter<'a, T> {
                 let context = Some(context);
                 let aggregated = self.aggregated.as_ref().map(Rc::clone);
 
-                check_expr(self.storage, context, aggregated, expr).await
+                Ok(check_expr(self.storage, context, aggregated, expr)
+                    .await?
+                    .unwrap_or(self.allow_null_evaluations))
             }
             None => Ok(true),
         }
@@ -56,7 +70,8 @@ pub async fn check_expr<'a, T: GStore>(
     context: Option<Rc<RowContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
     expr: &'a Expr,
-) -> Result<bool> {
+) -> Result<Option<bool>> {
+    dbg!(&expr);
     evaluate(storage, context, aggregated, expr)
         .await
         .map(|evaluated| evaluated.try_into())?

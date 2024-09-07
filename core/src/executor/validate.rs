@@ -186,7 +186,6 @@ fn create_unique_constraints<'a>(
                     let val = row
                         .get(col_idx)
                         .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
-
                     constraint.add(val)
                 })?;
             Ok(constraints.push(new_constraint))

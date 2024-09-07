@@ -2,6 +2,7 @@ use {
     super::{BigDecimalExt, StringExt},
     crate::{
         ast::{AstLiteral, BinaryOperator, ToSql},
+        error::EvaluateError,
         result::{Error, Result},
     },
     bigdecimal::BigDecimal,
@@ -91,20 +92,31 @@ fn unsupported_binary_op(left: &Literal, op: BinaryOperator, right: &Literal) ->
 }
 
 impl<'a> Literal<'a> {
-    pub fn evaluate_eq(&self, other: &Literal<'_>) -> bool {
+    /// Evaluate the equality of two literals.
+    ///
+    /// # Returns
+    /// When one of the literals is `Null`, it returns `None`, as any
+    /// operation with `Null` results in `Null`. Otherwise, it returns
+    /// `Some(bool)` where `true` means the two literals are equal.
+    pub fn evaluate_eq(&self, other: &Literal<'_>) -> Result<Option<bool>> {
         match (self, other) {
-            (Null, Null) => false,
-            _ => self == other,
+            (_, Null) | (Null, _) => Ok(None),
+            (Boolean(l), Boolean(r)) => Ok(Some(l == r)),
+            (Number(l), Number(r)) => Ok(Some(l == r)),
+            (Text(l), Text(r)) => Ok(Some(l == r)),
+            (Bytea(l), Bytea(r)) => Ok(Some(l == r)),
+            _ => Err(EvaluateError::NonComparableArgumentError("EQ".to_owned()).into()),
         }
     }
 
-    pub fn evaluate_cmp(&self, other: &Literal<'a>) -> Option<Ordering> {
+    pub fn evaluate_cmp(&self, other: &Literal<'a>) -> Result<Option<Ordering>> {
         match (self, other) {
-            (Boolean(l), Boolean(r)) => Some(l.cmp(r)),
-            (Number(l), Number(r)) => Some(l.cmp(r)),
-            (Text(l), Text(r)) => Some(l.cmp(r)),
-            (Bytea(l), Bytea(r)) => Some(l.cmp(r)),
-            _ => None,
+            (Null, _) | (_, Null) => Ok(None),
+            (Boolean(l), Boolean(r)) => Ok(Some(l.cmp(r))),
+            (Number(l), Number(r)) => Ok(Some(l.cmp(r))),
+            (Text(l), Text(r)) => Ok(Some(l.cmp(r))),
+            (Bytea(l), Bytea(r)) => Ok(Some(l.cmp(r))),
+            _ => Err(EvaluateError::NonComparableArgumentError("CMP".to_owned()).into()),
         }
     }
 
@@ -273,7 +285,7 @@ impl<'a> Literal<'a> {
 mod tests {
     use {
         super::Literal::*,
-        crate::ast::BinaryOperator,
+        crate::{ast::BinaryOperator, error::EvaluateError},
         bigdecimal::BigDecimal,
         std::{borrow::Cow, str::FromStr},
     };
@@ -530,26 +542,37 @@ mod tests {
         }
 
         //Boolean
-        assert!(Boolean(true).evaluate_eq(&Boolean(true)));
-        assert!(!Boolean(true).evaluate_eq(&Boolean(false)));
+        assert_eq!(Boolean(true).evaluate_eq(&Boolean(true)), Ok(Some(true)));
+        assert_eq!(Boolean(true).evaluate_eq(&Boolean(false)), Ok(Some(false)));
+        assert_eq!(Boolean(true).evaluate_eq(&Null), Ok(None));
         //Number
-        assert!(num!("123").evaluate_eq(&num!("123")));
-        assert!(num!("12.0").evaluate_eq(&num!("12.0")));
-        assert!(num!("12.0").evaluate_eq(&num!("12")));
-        assert!(!num!("12.0").evaluate_eq(&num!("12.123")));
-        assert!(!num!("123").evaluate_eq(&num!("12.3")));
-        assert!(!num!("123").evaluate_eq(&text!("Foo")));
-        assert!(!num!("123").evaluate_eq(&Null));
+        assert_eq!(num!("123").evaluate_eq(&num!("123")), Ok(Some(true)));
+        assert_eq!(num!("12.0").evaluate_eq(&num!("12.0")), Ok(Some(true)));
+        assert_eq!(num!("12.0").evaluate_eq(&num!("12")), Ok(Some(true)));
+        assert_eq!(num!("12.0").evaluate_eq(&num!("12.123")), Ok(Some(false)));
+        assert_eq!(num!("123").evaluate_eq(&num!("12.3")), Ok(Some(false)));
+        assert_eq!(
+            num!("123").evaluate_eq(&text!("Foo")),
+            Err(EvaluateError::NonComparableArgumentError("EQ".to_owned()).into())
+        );
+        assert_eq!(num!("123").evaluate_eq(&Null), Ok(None));
+        assert_eq!(num!("123").evaluate_eq(&Null), Ok(None));
         //Text
-        assert!(text!("Foo").evaluate_eq(&text!("Foo")));
-        assert!(!text!("Foo").evaluate_eq(&text!("Bar")));
-        assert!(!text!("Foo").evaluate_eq(&Null));
+        assert_eq!(text!("Foo").evaluate_eq(&text!("Foo")), Ok(Some(true)));
+        assert_eq!(text!("Foo").evaluate_eq(&text!("Bar")), Ok(Some(false)));
+        assert_eq!(text!("Foo").evaluate_eq(&Null), Ok(None));
         //Bytea
-        assert!(bytea!("12A456").evaluate_eq(&bytea!("12A456")));
-        assert!(!bytea!("1230").evaluate_eq(&num!("1230")));
-        assert!(!bytea!("12").evaluate_eq(&Null));
+        assert_eq!(
+            bytea!("12A456").evaluate_eq(&bytea!("12A456")),
+            Ok(Some(true))
+        );
+        assert_eq!(
+            bytea!("1230").evaluate_eq(&num!("1230")),
+            Err(EvaluateError::NonComparableArgumentError("EQ".to_owned()).into())
+        );
+        assert_eq!(bytea!("12").evaluate_eq(&Null), Ok(None));
         // Null
-        assert!(!Null.evaluate_eq(&Null));
+        assert_eq!(Null.evaluate_eq(&Null), Ok(None));
     }
 
     #[test]
@@ -574,69 +597,84 @@ mod tests {
         //Boolean
         assert_eq!(
             Boolean(false).evaluate_cmp(&Boolean(true)),
-            Some(Ordering::Less)
+            Ok(Some(Ordering::Less))
         );
         assert_eq!(
             Boolean(true).evaluate_cmp(&Boolean(true)),
-            Some(Ordering::Equal)
+            Ok(Some(Ordering::Equal))
         );
         assert_eq!(
             Boolean(true).evaluate_cmp(&Boolean(false)),
-            Some(Ordering::Greater)
+            Ok(Some(Ordering::Greater))
         );
-        assert_eq!(Boolean(true).evaluate_cmp(&num!("1")), None);
-        assert_eq!(Boolean(true).evaluate_cmp(&text!("Foo")), None);
-        assert_eq!(Boolean(true).evaluate_cmp(&Null), None);
+        assert_eq!(
+            Boolean(true).evaluate_cmp(&num!("1")),
+            Err(EvaluateError::NonComparableArgumentError("CMP".to_owned()).into())
+        );
+        assert_eq!(
+            Boolean(true).evaluate_cmp(&text!("Foo")),
+            Err(EvaluateError::NonComparableArgumentError("CMP".to_owned()).into())
+        );
+        assert_eq!(Boolean(true).evaluate_cmp(&Null), Ok(None));
         //Number - valid format -> (int, int), (float, int), (int, float), (float, float)
         assert_eq!(
             num!("123").evaluate_cmp(&num!("1234")),
-            Some(Ordering::Less)
+            Ok(Some(Ordering::Less))
         );
         assert_eq!(
             num!("12.0").evaluate_cmp(&num!("123")),
-            Some(Ordering::Less)
+            Ok(Some(Ordering::Less))
         );
         assert_eq!(
             num!("123").evaluate_cmp(&num!("123.1")),
-            Some(Ordering::Less)
+            Ok(Some(Ordering::Less))
         );
         assert_eq!(
             num!("12.0").evaluate_cmp(&num!("12.1")),
-            Some(Ordering::Less)
+            Ok(Some(Ordering::Less))
         );
         assert_eq!(
             num!("123").evaluate_cmp(&num!("123")),
-            Some(Ordering::Equal)
+            Ok(Some(Ordering::Equal))
         );
         assert_eq!(
             num!("1234").evaluate_cmp(&num!("123")),
-            Some(Ordering::Greater)
+            Ok(Some(Ordering::Greater))
         );
-        assert_eq!(num!("123").evaluate_cmp(&text!("123")), None);
-        assert_eq!(num!("123").evaluate_cmp(&Null), None);
+        assert_eq!(
+            num!("123").evaluate_cmp(&text!("123")),
+            Err(EvaluateError::NonComparableArgumentError("CMP".to_owned()).into())
+        );
+        assert_eq!(num!("123").evaluate_cmp(&Null), Ok(None));
         //text
-        assert_eq!(text!("a").evaluate_cmp(&text!("b")), Some(Ordering::Less));
-        assert_eq!(text!("a").evaluate_cmp(&text!("a")), Some(Ordering::Equal));
+        assert_eq!(
+            text!("a").evaluate_cmp(&text!("b")),
+            Ok(Some(Ordering::Less))
+        );
+        assert_eq!(
+            text!("a").evaluate_cmp(&text!("a")),
+            Ok(Some(Ordering::Equal))
+        );
         assert_eq!(
             text!("b").evaluate_cmp(&text!("a")),
-            Some(Ordering::Greater)
+            Ok(Some(Ordering::Greater))
         );
-        assert_eq!(text!("a").evaluate_cmp(&Null), None);
+        assert_eq!(text!("a").evaluate_cmp(&Null), Ok(None));
         //Bytea
         assert_eq!(
             bytea!("12").evaluate_cmp(&bytea!("20")),
-            Some(Ordering::Less)
+            Ok(Some(Ordering::Less))
         );
         assert_eq!(
             bytea!("31").evaluate_cmp(&bytea!("31")),
-            Some(Ordering::Equal)
+            Ok(Some(Ordering::Equal))
         );
         assert_eq!(
             bytea!("9A").evaluate_cmp(&bytea!("2A")),
-            Some(Ordering::Greater)
+            Ok(Some(Ordering::Greater))
         );
-        assert_eq!(bytea!("345D").evaluate_cmp(&Null), None);
-        assert_eq!(Null.evaluate_cmp(&Null), None);
+        assert_eq!(bytea!("345D").evaluate_cmp(&Null), Ok(None));
+        assert_eq!(Null.evaluate_cmp(&Null), Ok(None));
     }
 
     #[test]

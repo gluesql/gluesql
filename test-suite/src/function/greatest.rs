@@ -65,7 +65,7 @@ test_case!(greatest, {
 
     g.test(
         "SELECT GREATEST(1, 2, 'bibibik') AS goat;",
-        Err(EvaluateError::NonComparableArgumentError("GREATEST".to_owned()).into()),
+        Err(EvaluateError::NonComparableArgumentError("CMP".to_owned()).into()),
     )
     .await;
 

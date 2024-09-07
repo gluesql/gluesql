@@ -36,15 +36,15 @@ impl CreateTableNode {
 impl Build for CreateTableNode {
     fn build(self) -> Result<Statement> {
         let table_name = self.table_name;
-        let columns = match self.columns {
-            Some(columns) => Some(
+        let columns = self
+            .columns
+            .map(|columns| {
                 columns
                     .into_iter()
-                    .map(TryInto::try_into)
-                    .collect::<Result<Vec<_>>>()?,
-            ),
-            None => None,
-        };
+                    .map(|column| column.parse())
+                    .collect::<Result<Vec<_>>>()
+            })
+            .transpose()?;
 
         Ok(Statement::CreateTable {
             name: table_name,

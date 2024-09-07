@@ -168,7 +168,15 @@ where
 
             stream::iter(list)
                 .then(eval)
-                .try_filter(|evaluated| ready(evaluated.evaluate_eq(&target)))
+                .try_filter(|evaluated| {
+                    ready(
+                        evaluated
+                            .evaluate_eq(&target)
+                            .ok()
+                            .flatten()
+                            .unwrap_or(false),
+                    )
+                })
                 .try_next()
                 .await
                 .map(|v| v.is_some() ^ negated)
@@ -199,7 +207,15 @@ where
 
                     Ok(Evaluated::Value(value))
                 })
-                .try_filter(|evaluated| ready(evaluated.evaluate_eq(&target)))
+                .try_filter(|evaluated| {
+                    ready(
+                        evaluated
+                            .evaluate_eq(&target)
+                            .ok()
+                            .flatten()
+                            .unwrap_or(false),
+                    )
+                })
                 .try_next()
                 .await
                 .map(|v| v.is_some() ^ negated)
@@ -228,9 +244,12 @@ where
             let evaluated = target.like(pattern, true)?;
 
             Ok(match negated {
-                true => Evaluated::Value(Value::Bool(
-                    evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false))),
-                )),
+                true => {
+                    match evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false)))? {
+                        Some(boolean) => Evaluated::Value(Value::Bool(boolean)),
+                        None => Evaluated::Value(Value::Null),
+                    }
+                }
                 false => evaluated,
             })
         }
@@ -244,9 +263,12 @@ where
             let evaluated = target.like(pattern, false)?;
 
             Ok(match negated {
-                true => Evaluated::Value(Value::Bool(
-                    evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false))),
-                )),
+                true => {
+                    match evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false)))? {
+                        Some(boolean) => Evaluated::Value(Value::Bool(boolean)),
+                        None => Evaluated::Value(Value::Null),
+                    }
+                }
                 false => evaluated,
             })
         }
@@ -285,7 +307,7 @@ where
             for (when, then) in when_then.iter() {
                 let when = eval(when).await?;
 
-                if when.evaluate_eq(&operand) {
+                if when.evaluate_eq(&operand)?.unwrap_or(false) {
                     return eval(then).await;
                 }
             }

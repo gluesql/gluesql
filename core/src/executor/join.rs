@@ -260,7 +260,7 @@ impl<'a> JoinExecutor<'a> {
                     match where_clause {
                         Some(expr) => check_expr(storage, Some(filter_context), None, expr)
                             .await
-                            .map(|pass| pass.then_some((hash_key, row))),
+                            .map(|pass| pass.unwrap_or_default().then_some((hash_key, row))),
                         None => Ok(Some((hash_key, row))),
                     }
                 }
@@ -288,7 +288,9 @@ async fn check_where_clause<'a, 'b, T: GStore>(
     let filter_context = Some(Rc::new(filter_context));
 
     match where_clause {
-        Some(expr) => check_expr(storage, filter_context, None, expr).await?,
+        Some(expr) => check_expr(storage, filter_context, None, expr)
+            .await?
+            .unwrap_or_default(),
         None => true,
     }
     .then(|| RowContext::new(table_alias, Cow::Owned(row.into_owned()), project_context))

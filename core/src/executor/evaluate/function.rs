@@ -730,7 +730,7 @@ pub fn greatest(name: String, exprs: Vec<Evaluated<'_>>) -> Result<Evaluated<'_>
                 None => return Ok(Some(expr)),
             };
 
-            match greatest.evaluate_cmp(&expr) {
+            match greatest.evaluate_cmp(&expr)? {
                 Some(std::cmp::Ordering::Less) => Ok(Some(expr)),
                 Some(_) => Ok(Some(greatest)),
                 None => Err(EvaluateError::NonComparableArgumentError(name.to_owned()).into()),

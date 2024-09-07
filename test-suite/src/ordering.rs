@@ -1,4 +1,4 @@
-use {crate::*, gluesql_core::prelude::Value::Bool};
+use {crate::*, gluesql_core::error::EvaluateError};
 
 test_case!(ordering, {
     let g = get_tester!();
@@ -70,10 +70,19 @@ test_case!(ordering, {
     }
 
     // Literal comparison with BinaryOperator
-    g.test("select 1 < 'a' as test", Ok(select!(test Bool; false)))
-        .await;
-    g.test("select 1 >= 'a' as test", Ok(select!(test Bool; false)))
-        .await;
-    g.test("select 1 = 'a' as test", Ok(select!(test Bool; false)))
-        .await;
+    g.test(
+        "select 1 < 'a' as test",
+        Err(EvaluateError::NonComparableArgumentError("CMP".to_owned()).into()),
+    )
+    .await;
+    g.test(
+        "select 1 >= 'a' as test",
+        Err(EvaluateError::NonComparableArgumentError("CMP".to_owned()).into()),
+    )
+    .await;
+    g.test(
+        "select 1 = 'a' as test",
+        Err(EvaluateError::NonComparableArgumentError("EQ".to_owned()).into()),
+    )
+    .await;
 });

@@ -155,7 +155,7 @@ impl<'a, T: GStore> Aggregator<'a, T> {
                                 having,
                             )
                             .await
-                            .map(|pass| pass.then_some((aggregated, next)))
+                            .map(|pass| pass.unwrap_or_default().then_some((aggregated, next)))
                             .transpose()
                         }
                     }

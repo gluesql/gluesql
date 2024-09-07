@@ -25,17 +25,23 @@ pub fn binary_op<'a>(
 ) -> Result<Evaluated<'a>> {
     macro_rules! cmp {
         ($expr: expr) => {
-            Ok(Evaluated::Value(Value::Bool($expr)))
+            if $expr.is_none() {
+                Ok(Evaluated::Value(Value::Null))
+            } else {
+                Ok(Evaluated::Value(Value::Bool($expr.unwrap())))
+            }
         };
     }
 
     macro_rules! cond {
         (l $op: tt r) => {{
-            let l: bool = l.try_into()?;
-            let r: bool = r.try_into()?;
-            let v = l $op r;
+            let l: Option<bool> = l.try_into()?;
+            let r: Option<bool> = r.try_into()?;
 
-            Ok(Evaluated::Value(Value::Bool(v)))
+            match (l, r) {
+                (Some(l), Some(r)) => Ok(Evaluated::Value(Value::Bool(l $op r))),
+                _ => return Ok(Evaluated::Value(Value::Null))
+            }
         }};
     }
 
@@ -46,18 +52,16 @@ pub fn binary_op<'a>(
         BinaryOperator::Divide => l.divide(&r),
         BinaryOperator::Modulo => l.modulo(&r),
         BinaryOperator::StringConcat => l.concat(r),
-        BinaryOperator::Eq => cmp!(l.evaluate_eq(&r)),
-        BinaryOperator::NotEq => cmp!(!l.evaluate_eq(&r)),
-        BinaryOperator::Lt => cmp!(l.evaluate_cmp(&r) == Some(Ordering::Less)),
-        BinaryOperator::LtEq => cmp!(matches!(
-            l.evaluate_cmp(&r),
-            Some(Ordering::Less) | Some(Ordering::Equal)
-        )),
-        BinaryOperator::Gt => cmp!(l.evaluate_cmp(&r) == Some(Ordering::Greater)),
-        BinaryOperator::GtEq => cmp!(matches!(
-            l.evaluate_cmp(&r),
-            Some(Ordering::Greater) | Some(Ordering::Equal)
-        )),
+        BinaryOperator::Eq => cmp!(l.evaluate_eq(&r)?),
+        BinaryOperator::NotEq => cmp!(l.evaluate_eq(&r)?.map(|eq| !eq)),
+        BinaryOperator::Lt => cmp!(l.evaluate_cmp(&r)?.map(|ord| ord == Ordering::Less)),
+        BinaryOperator::LtEq => cmp!(l
+            .evaluate_cmp(&r)?
+            .map(|ord| ord == Ordering::Less || ord == Ordering::Equal)),
+        BinaryOperator::Gt => cmp!(l.evaluate_cmp(&r)?.map(|ord| ord == Ordering::Greater)),
+        BinaryOperator::GtEq => cmp!(l
+            .evaluate_cmp(&r)?
+            .map(|ord| ord == Ordering::Greater || ord == Ordering::Equal)),
         BinaryOperator::And => cond!(l && r),
         BinaryOperator::Or => cond!(l || r),
         BinaryOperator::Xor => cond!(l ^ r),
@@ -67,13 +71,66 @@ pub fn binary_op<'a>(
     }
 }
 
+#[cfg(test)]
+mod test_binary_op {
+    use super::*;
+
+    #[test]
+    fn test_binary_op() {
+        let l = Evaluated::Value(Value::I16(1));
+        let r = Evaluated::Value(Value::I16(2));
+        let op = BinaryOperator::Plus;
+        let result = binary_op(&op, l, r).unwrap();
+        assert_eq!(result, Evaluated::Value(Value::I16(3)));
+
+        // All binary operations with a NULL value should return NULL
+        for op in &[
+            BinaryOperator::Plus,
+            BinaryOperator::Minus,
+            BinaryOperator::Multiply,
+            BinaryOperator::Divide,
+            BinaryOperator::Modulo,
+            BinaryOperator::Eq,
+            BinaryOperator::NotEq,
+            BinaryOperator::Lt,
+            BinaryOperator::LtEq,
+            BinaryOperator::Gt,
+            BinaryOperator::GtEq,
+        ] {
+            let l = Evaluated::Value(Value::I16(1));
+            let r = Evaluated::Value(Value::Null);
+            let result = binary_op(op, l, r).unwrap();
+            assert_eq!(
+                result,
+                Evaluated::Value(Value::Null),
+                "When l is not NULL and r is NULL, the result of operation '{op}' should be NULL"
+            );
+
+            let l = Evaluated::Value(Value::Null);
+            let r = Evaluated::Value(Value::I16(1));
+            let result = binary_op(op, l, r).unwrap();
+            assert_eq!(
+                result,
+                Evaluated::Value(Value::Null),
+                "When l is NULL and r is not NULL, the result of operation '{op}' should be NULL"
+            );
+
+            let l = Evaluated::Value(Value::Null);
+            let r = Evaluated::Value(Value::Null);
+            let result = binary_op(op, l, r).unwrap();
+            assert_eq!(result, Evaluated::Value(Value::Null));
+        }
+    }
+}
+
 pub fn unary_op<'a>(op: &UnaryOperator, v: Evaluated<'a>) -> Result<Evaluated<'a>> {
     match op {
         UnaryOperator::Plus => v.unary_plus(),
         UnaryOperator::Minus => v.unary_minus(),
-        UnaryOperator::Not => v
-            .try_into()
-            .map(|v: bool| Evaluated::Value(Value::Bool(!v))),
+        UnaryOperator::Not => v.try_into().map(|v: Option<bool>| match v {
+            Some(v) => Evaluated::Value(Value::Bool(!v)),
+            None => Evaluated::Value(Value::Null),
+        }),
         UnaryOperator::Factorial => v.unary_factorial(),
         UnaryOperator::BitwiseNot => v.unary_bitwise_not(),
     }
@@ -85,8 +142,8 @@ pub fn between<'a>(
     low: Evaluated<'a>,
     high: Evaluated<'a>,
 ) -> Result<Evaluated<'a>> {
-    let v = low.evaluate_cmp(&target) != Some(Ordering::Greater)
-        && target.evaluate_cmp(&high) != Some(Ordering::Greater);
+    let v = low.evaluate_cmp(&target)? != Some(Ordering::Greater)
+        && target.evaluate_cmp(&high)? != Some(Ordering::Greater);
     let v = negated ^ v;
 
     Ok(Evaluated::Value(Value::Bool(v)))

@@ -89,11 +89,11 @@ impl AggrValue {
                 }
             }
             Self::Sum(value) => Ok(Some(Self::Sum(value.add(new_value)?))),
-            Self::Min(value) => match &value.evaluate_cmp(new_value) {
+            Self::Min(value) => match &value.evaluate_cmp(new_value)? {
                 Some(Ordering::Greater) => Ok(Some(Self::Min(new_value.clone()))),
                 _ => Ok(None),
             },
-            Self::Max(value) => match &value.evaluate_cmp(new_value) {
+            Self::Max(value) => match &value.evaluate_cmp(new_value)? {
                 Some(Ordering::Less) => Ok(Some(Self::Max(new_value.clone()))),
                 _ => Ok(None),
             },

@@ -53,19 +53,21 @@ impl TryFrom<&Evaluated<'_>> for Key {
     }
 }
 
-impl TryFrom<Evaluated<'_>> for bool {
+impl TryFrom<Evaluated<'_>> for Option<bool> {
     type Error = Error;
 
-    fn try_from(e: Evaluated<'_>) -> Result<bool> {
+    fn try_from(e: Evaluated<'_>) -> Result<Option<bool>> {
         match e {
-            Evaluated::Literal(Literal::Boolean(v)) => Ok(v),
+            Evaluated::Literal(Literal::Null) => Ok(None),
+            Evaluated::Value(Value::Null) => Ok(None),
+            Evaluated::Literal(Literal::Boolean(v)) => Ok(Some(v)),
             Evaluated::Literal(v) => {
                 Err(EvaluateError::BooleanTypeRequired(format!("{:?}", v)).into())
             }
             Evaluated::StrSlice { source, range } => {
                 Err(EvaluateError::BooleanTypeRequired(source[range].to_owned()).into())
             }
-            Evaluated::Value(Value::Bool(v)) => Ok(v),
+            Evaluated::Value(Value::Bool(v)) => Ok(Some(v)),
             Evaluated::Value(v) => {
                 Err(EvaluateError::BooleanTypeRequired(format!("{:?}", v)).into())
             }
@@ -127,7 +129,7 @@ pub fn exceptional_int_val_to_eval<'a>(name: String, v: Value) -> Result<Evaluat
 }
 
 impl<'a> Evaluated<'a> {
-    pub fn evaluate_eq(&self, other: &Evaluated<'a>) -> bool {
+    pub fn evaluate_eq(&self, other: &Evaluated<'a>) -> Result<Option<bool>> {
         match (self, other) {
             (Evaluated::Literal(a), Evaluated::Literal(b)) => a.evaluate_eq(b),
             (Evaluated::Literal(b), Evaluated::Value(a))
@@ -151,37 +153,37 @@ impl<'a> Evaluated<'a> {
                     source: source2,
                     range: range2,
                 },
-            ) => source[range.clone()] == source2[range2.clone()],
+            ) => Ok(Some(source[range.clone()] == source2[range2.clone()])),
         }
     }
 
-    pub fn evaluate_cmp(&self, other: &Evaluated<'a>) -> Option<Ordering> {
-        match (self, other) {
-            (Evaluated::Literal(l), Evaluated::Literal(r)) => l.evaluate_cmp(r),
+    pub fn evaluate_cmp(&self, other: &Evaluated<'a>) -> Result<Option<Ordering>> {
+        Ok(match (self, other) {
+            (Evaluated::Literal(l), Evaluated::Literal(r)) => l.evaluate_cmp(r)?,
             (Evaluated::Literal(l), Evaluated::Value(r)) => {
-                r.evaluate_cmp_with_literal(l).map(|o| o.reverse())
+                r.evaluate_cmp_with_literal(l)?.map(|o| o.reverse())
             }
-            (Evaluated::Value(l), Evaluated::Literal(r)) => l.evaluate_cmp_with_literal(r),
-            (Evaluated::Value(l), Evaluated::Value(r)) => l.evaluate_cmp(r),
+            (Evaluated::Value(l), Evaluated::Literal(r)) => l.evaluate_cmp_with_literal(r)?,
+            (Evaluated::Value(l), Evaluated::Value(r)) => l.evaluate_cmp(r)?,
             (Evaluated::Literal(l), Evaluated::StrSlice { source, range }) => {
                 let r = Literal::Text(Cow::Borrowed(&source[range.clone()]));
 
-                l.evaluate_cmp(&r)
+                l.evaluate_cmp(&r)?
             }
             (Evaluated::Value(l), Evaluated::StrSlice { source, range }) => {
                 let r = Literal::Text(Cow::Borrowed(&source[range.clone()]));
 
-                l.evaluate_cmp_with_literal(&r)
+                l.evaluate_cmp_with_literal(&r)?
             }
             (Evaluated::StrSlice { source, range }, Evaluated::Literal(l)) => {
                 let r = Literal::Text(Cow::Borrowed(&source[range.clone()]));
 
-                l.evaluate_cmp(&r).map(|o| o.reverse())
+                l.evaluate_cmp(&r)?.map(|o| o.reverse())
             }
             (Evaluated::StrSlice { source, range }, Evaluated::Value(r)) => {
                 let l = Literal::Text(Cow::Borrowed(&source[range.clone()]));
 
-                r.evaluate_cmp_with_literal(&l).map(|o| o.reverse())
+                r.evaluate_cmp_with_literal(&l)?.map(|o| o.reverse())
             }
             (
                 Evaluated::StrSlice {
@@ -193,7 +195,7 @@ impl<'a> Evaluated<'a> {
                     range: br,
                 },
             ) => a[ar.clone()].partial_cmp(&b[br.clone()]),
-        }
+        })
     }
 
     pub fn add<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
@@ -829,5 +831,47 @@ impl<'a> Evaluated<'a> {
         value.validate_null(nullable)?;
 
         Ok(value)
+    }
+}
+
+#[cfg(test)]
+mod test_evaluated {
+    use super::*;
+
+    #[test]
+    fn test_binary_op() {
+        let l = Evaluated::Literal(Literal::Number(Cow::Owned(1.into())));
+        let r = Evaluated::Literal(Literal::Number(Cow::Owned(2.into())));
+
+        let result = binary_op(
+            &l,
+            &r,
+            BinaryOperator::Plus,
+            |l, r| l.add(r),
+            |l, r| l.add(r),
+        )
+        .unwrap();
+
+        assert_eq!(
+            result,
+            Evaluated::Literal(Literal::Number(Cow::Owned(3.into())))
+        );
+
+        // Operations such as >, <, >=, <=, !=, == with a NULL value should return NULL
+        let l = Evaluated::Literal(Literal::Null);
+        let r = Evaluated::Literal(Literal::Number(Cow::Owned(2.into())));
+
+        for op in &[
+            BinaryOperator::Gt,
+            BinaryOperator::Lt,
+            BinaryOperator::GtEq,
+            BinaryOperator::LtEq,
+            BinaryOperator::NotEq,
+            BinaryOperator::Eq,
+        ] {
+            let result = binary_op(&l, &r, *op, |l, r| l.add(r), |l, r| l.add(r)).unwrap();
+
+            assert_eq!(result, Evaluated::Literal(Literal::Null));
+        }
     }
 }

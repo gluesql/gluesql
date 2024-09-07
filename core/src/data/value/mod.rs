@@ -60,35 +60,57 @@ pub enum Value {
 }
 
 impl Value {
-    pub fn evaluate_eq(&self, other: &Value) -> bool {
-        match (self, other) {
-            (Value::I8(l), _) => l == other,
-            (Value::I16(l), _) => l == other,
-            (Value::I32(l), _) => l == other,
-            (Value::I64(l), _) => l == other,
-            (Value::I128(l), _) => l == other,
-            (Value::U8(l), _) => l == other,
-            (Value::U16(l), _) => l == other,
-            (Value::U32(l), _) => l == other,
-            (Value::U64(l), _) => l == other,
-            (Value::U128(l), _) => l == other,
-            (Value::F32(l), _) => l == other,
-            (Value::F64(l), _) => l == other,
-            (Value::Date(l), Value::Timestamp(r)) => l
-                .and_hms_opt(0, 0, 0)
-                .map(|date_time| &date_time == r)
-                .unwrap_or(false),
-            (Value::Timestamp(l), Value::Date(r)) => r
-                .and_hms_opt(0, 0, 0)
-                .map(|date_time| l == &date_time)
-                .unwrap_or(false),
-            (Value::Null, Value::Null) => false,
-            _ => self == other,
-        }
+    pub fn evaluate_eq(&self, other: &Value) -> Result<Option<bool>> {
+        Ok(match (self, other) {
+            (Value::Null, _) | (_, Value::Null) => None,
+            (Value::I8(l), _) => Some(l == other),
+            (Value::I16(l), _) => Some(l == other),
+            (Value::I32(l), _) => Some(l == other),
+            (Value::I64(l), _) => Some(l == other),
+            (Value::I128(l), _) => Some(l == other),
+            (Value::U8(l), _) => Some(l == other),
+            (Value::U16(l), _) => Some(l == other),
+            (Value::U32(l), _) => Some(l == other),
+            (Value::U64(l), _) => Some(l == other),
+            (Value::U128(l), _) => Some(l == other),
+            (Value::F32(l), _) => Some(l == other),
+            (Value::F64(l), _) => Some(l == other),
+            (Value::Decimal(l), Value::Decimal(r)) => Some(l == r),
+            (Value::Date(l), Value::Date(r)) => Some(l == r),
+            (Value::Date(l), Value::Timestamp(r)) => Some(
+                l.and_hms_opt(0, 0, 0)
+                    .map(|date_time| &date_time == r)
+                    .unwrap_or(false),
+            ),
+            (Value::Timestamp(l), Value::Date(r)) => Some(
+                r.and_hms_opt(0, 0, 0)
+                    .map(|date_time| l == &date_time)
+                    .unwrap_or(false),
+            ),
+            (Value::Timestamp(l), Value::Timestamp(r)) => Some(l == r),
+            (Value::Time(l), Value::Time(r)) => Some(l == r),
+            (Value::Interval(l), Value::Interval(r)) => Some(l == r),
+            (Value::Uuid(l), Value::Uuid(r)) => Some(l == r),
+            (Value::Bool(l), Value::Bool(r)) => Some(l == r),
+            (Value::Str(l), Value::Str(r)) => Some(l == r),
+            (Value::Bytea(l), Value::Bytea(r)) => Some(l == r),
+            (Value::Inet(l), Value::Inet(r)) => Some(l == r),
+            (Value::Map(l), Value::Map(r)) => Some(l == r),
+            (Value::List(l), Value::List(r)) => Some(l == r),
+            (Value::Point(l), Value::Point(r)) => Some(l == r),
+            _ => {
+                return Err(ValueError::IncompatibleLiteralForDataType {
+                    data_type: self.data_type(),
+                    literal: format!("{:?}", other),
+                }
+                .into());
+            }
+        })
     }
 
-    pub fn evaluate_cmp(&self, other: &Value) -> Option<Ordering> {
-        match (self, other) {
+    pub fn evaluate_cmp(&self, other: &Value) -> Result<Option<Ordering>> {
+        Ok(match (self, other) {
+            (Value::Null, _) | (_, Value::Null) => None,
             (Value::I8(l), _) => l.partial_cmp(other),
             (Value::I16(l), _) => l.partial_cmp(other),
             (Value::I32(l), _) => l.partial_cmp(other),
@@ -117,8 +139,14 @@ impl Value {
             (Value::Time(l), Value::Time(r)) => Some(l.cmp(r)),
             (Value::Interval(l), Value::Interval(r)) => l.partial_cmp(r),
             (Value::Uuid(l), Value::Uuid(r)) => Some(l.cmp(r)),
-            _ => None,
-        }
+            _ => {
+                return Err(ValueError::IncompatibleLiteralForDataType {
+                    data_type: self.data_type(),
+                    literal: format!("{:?}", other),
+                }
+                .into());
+            }
+        })
     }
 
     pub fn is_zero(&self) -> bool {
@@ -874,7 +902,10 @@ fn str_position(from_str: &str, sub_str: &str) -> usize {
 mod tests {
     use {
         super::{Interval, Value::*},
-        crate::data::{point::Point, value::uuid::parse_uuid, NumericBinaryOperator, ValueError},
+        crate::{
+            ast::DataType,
+            data::{point::Point, value::uuid::parse_uuid, NumericBinaryOperator, ValueError},
+        },
         chrono::{NaiveDate, NaiveTime},
         rust_decimal::Decimal,
         std::{net::IpAddr, str::FromStr},
@@ -899,51 +930,65 @@ mod tests {
         let bytea = |v: &str| Bytea(hex::decode(v).unwrap());
         let inet = |v: &str| Inet(IpAddr::from_str(v).unwrap());
 
-        assert_eq!(Null, Null);
-        assert!(!Null.evaluate_eq(&Null));
-        assert!(Bool(true).evaluate_eq(&Bool(true)));
-        assert!(I8(1).evaluate_eq(&I8(1)));
-        assert!(I16(1).evaluate_eq(&I16(1)));
-        assert!(I32(1).evaluate_eq(&I32(1)));
-        assert!(I64(1).evaluate_eq(&I64(1)));
-        assert!(I128(1).evaluate_eq(&I128(1)));
-        assert!(U8(1).evaluate_eq(&U8(1)));
-        assert!(U16(1).evaluate_eq(&U16(1)));
-        assert!(U32(1).evaluate_eq(&U32(1)));
-        assert!(U64(1).evaluate_eq(&U64(1)));
-        assert!(U128(1).evaluate_eq(&U128(1)));
-        assert!(I64(1).evaluate_eq(&F64(1.0)));
-        assert!(F32(1.0_f32).evaluate_eq(&I64(1)));
-        assert!(F32(6.11_f32).evaluate_eq(&F64(6.11)));
-        assert!(F64(1.0).evaluate_eq(&I64(1)));
-        assert!(F64(6.11).evaluate_eq(&F64(6.11)));
-        assert!(Str("Glue".to_owned()).evaluate_eq(&Str("Glue".to_owned())));
-        assert!(bytea("1004").evaluate_eq(&bytea("1004")));
-        assert!(inet("::1").evaluate_eq(&inet("::1")));
-        assert!(Interval(Interval::Month(1)).evaluate_eq(&Interval(Interval::Month(1))));
-        assert!(Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap())
-            .evaluate_eq(&Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap())));
-        assert!(decimal(1).evaluate_eq(&decimal(1)));
-        assert!(
+        assert_eq!(Ok(None), Null.evaluate_eq(&Null));
+        assert_eq!(Ok(Some(true)), Bool(true).evaluate_eq(&Bool(true)));
+        assert_eq!(Ok(Some(true)), I8(1).evaluate_eq(&I8(1)));
+        assert_eq!(Ok(Some(true)), I16(1).evaluate_eq(&I16(1)));
+        assert_eq!(Ok(Some(true)), I32(1).evaluate_eq(&I32(1)));
+        assert_eq!(Ok(Some(true)), I64(1).evaluate_eq(&I64(1)));
+        assert_eq!(Ok(Some(true)), I128(1).evaluate_eq(&I128(1)));
+        assert_eq!(Ok(Some(true)), U8(1).evaluate_eq(&U8(1)));
+        assert_eq!(Ok(Some(true)), U16(1).evaluate_eq(&U16(1)));
+        assert_eq!(Ok(Some(true)), U32(1).evaluate_eq(&U32(1)));
+        assert_eq!(Ok(Some(true)), U64(1).evaluate_eq(&U64(1)));
+        assert_eq!(Ok(Some(true)), U128(1).evaluate_eq(&U128(1)));
+        assert_eq!(Ok(Some(true)), I64(1).evaluate_eq(&F64(1.0)));
+        assert_eq!(Ok(Some(true)), F32(1.0_f32).evaluate_eq(&I64(1)));
+        assert_eq!(Ok(Some(true)), F32(6.11_f32).evaluate_eq(&F64(6.11)));
+        assert_eq!(Ok(Some(true)), F64(1.0).evaluate_eq(&I64(1)));
+        assert_eq!(Ok(Some(true)), F64(6.11).evaluate_eq(&F64(6.11)));
+        assert_eq!(
+            Ok(Some(true)),
+            Str("Glue".to_owned()).evaluate_eq(&Str("Glue".to_owned()))
+        );
+        assert_eq!(Ok(Some(true)), bytea("1004").evaluate_eq(&bytea("1004")));
+        assert_eq!(Ok(Some(true)), inet("::1").evaluate_eq(&inet("::1")));
+        assert_eq!(
+            Ok(Some(true)),
+            Interval(Interval::Month(1)).evaluate_eq(&Interval(Interval::Month(1)))
+        );
+        assert_eq!(
+            Ok(Some(true)),
+            Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap())
+                .evaluate_eq(&Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap()))
+        );
+        assert_eq!(Ok(Some(true)), decimal(1).evaluate_eq(&decimal(1)));
+        assert_eq!(
+            Ok(Some(true)),
             Date("2020-05-01".parse().unwrap()).evaluate_eq(&Date("2020-05-01".parse().unwrap()))
         );
-        assert!(
+        assert_eq!(
+            Ok(Some(true)),
             Timestamp("2020-05-01T00:00:00".parse::<NaiveDateTime>().unwrap()).evaluate_eq(
                 &Timestamp("2020-05-01T00:00:00".parse::<NaiveDateTime>().unwrap())
             )
         );
-        assert!(
+        assert_eq!(
+            Ok(Some(true)),
             Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()).evaluate_eq(&Uuid(
                 parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()
             ))
         );
-        assert!(Point(Point::new(1.0, 2.0)).evaluate_eq(&Point(Point::new(1.0, 2.0))));
+        assert_eq!(
+            Ok(Some(true)),
+            Point(Point::new(1.0, 2.0)).evaluate_eq(&Point(Point::new(1.0, 2.0)))
+        );
 
         let date = Date("2020-05-01".parse().unwrap());
         let timestamp = Timestamp("2020-05-01T00:00:00".parse::<NaiveDateTime>().unwrap());
 
-        assert!(date.evaluate_eq(&timestamp));
-        assert!(timestamp.evaluate_eq(&date));
+        assert_eq!(Ok(Some(true)), date.evaluate_eq(&timestamp));
+        assert_eq!(Ok(Some(true)), timestamp.evaluate_eq(&date));
     }
 
     #[test]
@@ -955,14 +1000,20 @@ mod tests {
 
         assert_eq!(
             Bool(true).evaluate_cmp(&Bool(false)),
-            Some(Ordering::Greater)
+            Ok(Some(Ordering::Greater))
         );
-        assert_eq!(Bool(true).evaluate_cmp(&Bool(true)), Some(Ordering::Equal));
+        assert_eq!(
+            Bool(true).evaluate_cmp(&Bool(true)),
+            Ok(Some(Ordering::Equal))
+        );
         assert_eq!(
             Bool(false).evaluate_cmp(&Bool(false)),
-            Some(Ordering::Equal)
+            Ok(Some(Ordering::Equal))
         );
-        assert_eq!(Bool(false).evaluate_cmp(&Bool(true)), Some(Ordering::Less));
+        assert_eq!(
+            Bool(false).evaluate_cmp(&Bool(true)),
+            Ok(Some(Ordering::Less))
+        );
 
         let date = Date(NaiveDate::from_ymd_opt(2020, 5, 1).unwrap());
         let timestamp = Timestamp(
@@ -972,67 +1023,80 @@ mod tests {
                 .unwrap(),
         );
 
-        assert_eq!(date.evaluate_cmp(&timestamp), Some(Ordering::Greater));
-        assert_eq!(timestamp.evaluate_cmp(&date), Some(Ordering::Less));
+        assert_eq!(date.evaluate_cmp(&timestamp), Ok(Some(Ordering::Greater)));
+        assert_eq!(timestamp.evaluate_cmp(&date), Ok(Some(Ordering::Less)));
 
         assert_eq!(
             Time(NaiveTime::from_hms_opt(23, 0, 1).unwrap())
                 .evaluate_cmp(&Time(NaiveTime::from_hms_opt(10, 59, 59).unwrap())),
-            Some(Ordering::Greater)
+            Ok(Some(Ordering::Greater))
         );
         assert_eq!(
             Interval(Interval::Month(1)).evaluate_cmp(&Interval(Interval::Month(2))),
-            Some(Ordering::Less)
+            Ok(Some(Ordering::Less))
         );
 
         let one = Decimal(rust_decimal::Decimal::ONE);
         let two = Decimal(rust_decimal::Decimal::TWO);
-        assert_eq!(one.evaluate_cmp(&two), Some(Ordering::Less));
-        assert_eq!(two.evaluate_cmp(&one), Some(Ordering::Greater));
+        assert_eq!(one.evaluate_cmp(&two), Ok(Some(Ordering::Less)));
+        assert_eq!(two.evaluate_cmp(&one), Ok(Some(Ordering::Greater)));
 
         assert_eq!(
             F32(1.0_f32).evaluate_cmp(&F32(1.0_f32)),
-            Some(Ordering::Equal)
+            Ok(Some(Ordering::Equal))
         );
-        assert_eq!(F64(1.0).evaluate_cmp(&F64(1.0)), Some(Ordering::Equal));
+        assert_eq!(F64(1.0).evaluate_cmp(&F64(1.0)), Ok(Some(Ordering::Equal)));
 
         assert_eq!(
             Interval(Interval::Month(1)).evaluate_cmp(&Interval(Interval::Month(1))),
-            Some(Ordering::Equal)
+            Ok(Some(Ordering::Equal))
         );
 
         assert_eq!(
             Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()).evaluate_cmp(&Uuid(
                 parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()
             )),
-            Some(Ordering::Equal)
+            Ok(Some(Ordering::Equal))
         );
 
-        assert_eq!(Null.evaluate_cmp(&Null), None);
+        assert_eq!(Null.evaluate_cmp(&Null), Ok(None));
 
         let bytea = |v: &str| Bytea(hex::decode(v).unwrap());
-        assert_eq!(bytea("12").evaluate_cmp(&bytea("20")), Some(Ordering::Less));
+        assert_eq!(
+            bytea("12").evaluate_cmp(&bytea("20")),
+            Ok(Some(Ordering::Less))
+        );
         assert_eq!(
             bytea("9123").evaluate_cmp(&bytea("9122")),
-            Some(Ordering::Greater)
+            Ok(Some(Ordering::Greater))
         );
         assert_eq!(
             bytea("10").evaluate_cmp(&bytea("10")),
-            Some(Ordering::Equal)
+            Ok(Some(Ordering::Equal))
         );
 
         let inet = |v: &str| Inet(IpAddr::from_str(v).unwrap());
         assert_eq!(
             inet("0.0.0.0").evaluate_cmp(&inet("127.0.0.1")),
-            Some(Ordering::Less)
+            Ok(Some(Ordering::Less))
         );
         assert_eq!(
             inet("192.168.0.1").evaluate_cmp(&inet("127.0.0.1")),
-            Some(Ordering::Greater)
+            Ok(Some(Ordering::Greater))
         );
         assert_eq!(
             inet("::1").evaluate_cmp(&inet("::1")),
-            Some(Ordering::Equal)
+            Ok(Some(Ordering::Equal))
+        );
+
+        // We try to compare incompatible types
+        assert_eq!(
+            Bool(true).evaluate_cmp(&I8(1)),
+            Err(ValueError::IncompatibleLiteralForDataType {
+                data_type: DataType::Boolean,
+                literal: "I8(1)".to_owned()
+            }
+            .into())
         );
     }
 
@@ -1040,45 +1104,45 @@ mod tests {
     fn cmp_ints() {
         use std::cmp::Ordering;
 
-        assert_eq!(I8(0).evaluate_cmp(&I8(-1)), Some(Ordering::Greater));
-        assert_eq!(I8(0).evaluate_cmp(&I8(0)), Some(Ordering::Equal));
-        assert_eq!(I8(0).evaluate_cmp(&I8(1)), Some(Ordering::Less));
+        assert_eq!(I8(0).evaluate_cmp(&I8(-1)), Ok(Some(Ordering::Greater)));
+        assert_eq!(I8(0).evaluate_cmp(&I8(0)), Ok(Some(Ordering::Equal)));
+        assert_eq!(I8(0).evaluate_cmp(&I8(1)), Ok(Some(Ordering::Less)));
 
-        assert_eq!(I16(0).evaluate_cmp(&I8(-1)), Some(Ordering::Greater));
-        assert_eq!(I16(0).evaluate_cmp(&I8(0)), Some(Ordering::Equal));
-        assert_eq!(I16(0).evaluate_cmp(&I8(1)), Some(Ordering::Less));
+        assert_eq!(I16(0).evaluate_cmp(&I8(-1)), Ok(Some(Ordering::Greater)));
+        assert_eq!(I16(0).evaluate_cmp(&I8(0)), Ok(Some(Ordering::Equal)));
+        assert_eq!(I16(0).evaluate_cmp(&I8(1)), Ok(Some(Ordering::Less)));
 
-        assert_eq!(I32(0).evaluate_cmp(&I8(-1)), Some(Ordering::Greater));
-        assert_eq!(I32(0).evaluate_cmp(&I8(0)), Some(Ordering::Equal));
-        assert_eq!(I32(0).evaluate_cmp(&I8(1)), Some(Ordering::Less));
+        assert_eq!(I32(0).evaluate_cmp(&I8(-1)), Ok(Some(Ordering::Greater)));
+        assert_eq!(I32(0).evaluate_cmp(&I8(0)), Ok(Some(Ordering::Equal)));
+        assert_eq!(I32(0).evaluate_cmp(&I8(1)), Ok(Some(Ordering::Less)));
 
-        assert_eq!(I64(0).evaluate_cmp(&I8(-1)), Some(Ordering::Greater));
-        assert_eq!(I64(0).evaluate_cmp(&I8(0)), Some(Ordering::Equal));
-        assert_eq!(I64(0).evaluate_cmp(&I8(1)), Some(Ordering::Less));
+        assert_eq!(I64(0).evaluate_cmp(&I8(-1)), Ok(Some(Ordering::Greater)));
+        assert_eq!(I64(0).evaluate_cmp(&I8(0)), Ok(Some(Ordering::Equal)));
+        assert_eq!(I64(0).evaluate_cmp(&I8(1)), Ok(Some(Ordering::Less)));
 
-        assert_eq!(I128(0).evaluate_cmp(&I8(-1)), Some(Ordering::Greater));
-        assert_eq!(I128(0).evaluate_cmp(&I8(0)), Some(Ordering::Equal));
-        assert_eq!(I128(0).evaluate_cmp(&I8(1)), Some(Ordering::Less));
+        assert_eq!(I128(0).evaluate_cmp(&I8(-1)), Ok(Some(Ordering::Greater)));
+        assert_eq!(I128(0).evaluate_cmp(&I8(0)), Ok(Some(Ordering::Equal)));
+        assert_eq!(I128(0).evaluate_cmp(&I8(1)), Ok(Some(Ordering::Less)));
 
-        assert_eq!(U8(1).evaluate_cmp(&U8(0)), Some(Ordering::Greater));
-        assert_eq!(U8(0).evaluate_cmp(&U8(0)), Some(Ordering::Equal));
-        assert_eq!(U8(0).evaluate_cmp(&U8(1)), Some(Ordering::Less));
+        assert_eq!(U8(1).evaluate_cmp(&U8(0)), Ok(Some(Ordering::Greater)));
+        assert_eq!(U8(0).evaluate_cmp(&U8(0)), Ok(Some(Ordering::Equal)));
+        assert_eq!(U8(0).evaluate_cmp(&U8(1)), Ok(Some(Ordering::Less)));
 
-        assert_eq!(U16(1).evaluate_cmp(&U16(0)), Some(Ordering::Greater));
-        assert_eq!(U16(0).evaluate_cmp(&U16(0)), Some(Ordering::Equal));
-        assert_eq!(U16(0).evaluate_cmp(&U16(1)), Some(Ordering::Less));
+        assert_eq!(U16(1).evaluate_cmp(&U16(0)), Ok(Some(Ordering::Greater)));
+        assert_eq!(U16(0).evaluate_cmp(&U16(0)), Ok(Some(Ordering::Equal)));
+        assert_eq!(U16(0).evaluate_cmp(&U16(1)), Ok(Some(Ordering::Less)));
 
-        assert_eq!(U32(1).evaluate_cmp(&U32(0)), Some(Ordering::Greater));
-        assert_eq!(U32(0).evaluate_cmp(&U32(0)), Some(Ordering::Equal));
-        assert_eq!(U32(0).evaluate_cmp(&U32(1)), Some(Ordering::Less));
+        assert_eq!(U32(1).evaluate_cmp(&U32(0)), Ok(Some(Ordering::Greater)));
+        assert_eq!(U32(0).evaluate_cmp(&U32(0)), Ok(Some(Ordering::Equal)));
+        assert_eq!(U32(0).evaluate_cmp(&U32(1)), Ok(Some(Ordering::Less)));
 
-        assert_eq!(U64(1).evaluate_cmp(&U64(0)), Some(Ordering::Greater));
-        assert_eq!(U64(0).evaluate_cmp(&U64(0)), Some(Ordering::Equal));
-        assert_eq!(U64(0).evaluate_cmp(&U64(1)), Some(Ordering::Less));
+        assert_eq!(U64(1).evaluate_cmp(&U64(0)), Ok(Some(Ordering::Greater)));
+        assert_eq!(U64(0).evaluate_cmp(&U64(0)), Ok(Some(Ordering::Equal)));
+        assert_eq!(U64(0).evaluate_cmp(&U64(1)), Ok(Some(Ordering::Less)));
 
-        assert_eq!(U128(1).evaluate_cmp(&U128(0)), Some(Ordering::Greater));
-        assert_eq!(U128(0).evaluate_cmp(&U128(0)), Some(Ordering::Equal));
-        assert_eq!(U128(0).evaluate_cmp(&U128(1)), Some(Ordering::Less));
+        assert_eq!(U128(1).evaluate_cmp(&U128(0)), Ok(Some(Ordering::Greater)));
+        assert_eq!(U128(0).evaluate_cmp(&U128(0)), Ok(Some(Ordering::Equal)));
+        assert_eq!(U128(0).evaluate_cmp(&U128(1)), Ok(Some(Ordering::Less)));
     }
 
     #[test]
@@ -1111,7 +1175,7 @@ mod tests {
 
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
-                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c));
+                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c).unwrap().unwrap());
             };
         }
 
@@ -1895,7 +1959,7 @@ mod tests {
 
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
-                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c));
+                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c).unwrap().unwrap());
             };
         }
 
@@ -2057,7 +2121,7 @@ mod tests {
 
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
-                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c));
+                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c).unwrap().unwrap());
             };
         }
 
@@ -2216,7 +2280,7 @@ mod tests {
     #[test]
     fn cast() {
         use {
-            crate::{ast::DataType::*, data::Point, prelude::Value},
+            crate::{ast::DataType, data::Point, prelude::Value},
             chrono::{NaiveDate, NaiveTime},
         };
 
@@ -2238,163 +2302,163 @@ mod tests {
         let point = |x, y| Value::Point(Point::new(x, y));
 
         // Same as
-        cast!(Bool(true)            => Boolean      , Bool(true));
-        cast!(Str("a".to_owned())   => Text         , Str("a".to_owned()));
-        cast!(bytea                 => Bytea        , bytea);
-        cast!(inet("::1")           => Inet         , inet("::1"));
-        cast!(I8(1)                 => Int8         , I8(1));
-        cast!(I16(1)                 => Int16         , I16(1));
-        cast!(I32(1)                => Int32        , I32(1));
-        cast!(I64(1)                => Int          , I64(1));
-        cast!(I128(1)               => Int128       , I128(1));
-        cast!(U8(1)                 => Uint8        , U8(1));
-        cast!(U16(1)                 => Uint16        , U16(1));
-        cast!(U32(1)                 => Uint32        , U32(1));
-        cast!(U64(1)                 => Uint64        , U64(1));
-        cast!(U128(1)                 => Uint128        , U128(1));
-        cast!(F32(1.0_f32)              => Float32        , F32(1.0_f32));
-        cast!(F64(1.0)              => Float        , F64(1.0));
-        cast!(Value::Uuid(123)      => Uuid         , Value::Uuid(123));
+        cast!(Bool(true)            => DataType::Boolean      , Bool(true));
+        cast!(Str("a".to_owned())   => DataType::Text         , Str("a".to_owned()));
+        cast!(bytea                 => DataType::Bytea        , bytea);
+        cast!(inet("::1")           => DataType::Inet         , inet("::1"));
+        cast!(I8(1)                 => DataType::Int8         , I8(1));
+        cast!(I16(1)                 => DataType::Int16         , I16(1));
+        cast!(I32(1)                => DataType::Int32        , I32(1));
+        cast!(I64(1)                => DataType::Int          , I64(1));
+        cast!(I128(1)               => DataType::Int128       , I128(1));
+        cast!(U8(1)                 => DataType::Uint8        , U8(1));
+        cast!(U16(1)                 => DataType::Uint16        , U16(1));
+        cast!(U32(1)                 => DataType::Uint32        , U32(1));
+        cast!(U64(1)                 => DataType::Uint64        , U64(1));
+        cast!(U128(1)                 => DataType::Uint128        , U128(1));
+        cast!(F32(1.0_f32)              => DataType::Float32        , F32(1.0_f32));
+        cast!(F64(1.0)              => DataType::Float        , F64(1.0));
+        cast!(Value::Uuid(123)      => DataType::Uuid         , Value::Uuid(123));
 
         // Boolean
-        cast!(Str("TRUE".to_owned())    => Boolean, Bool(true));
-        cast!(Str("FALSE".to_owned())   => Boolean, Bool(false));
-        cast!(I8(1)                     => Boolean, Bool(true));
-        cast!(I8(0)                     => Boolean, Bool(false));
-        cast!(I16(0)                     => Boolean, Bool(false));
-        cast!(I32(1)                     => Boolean, Bool(true));
-        cast!(I32(0)                     => Boolean, Bool(false));
-        cast!(I64(1)                    => Boolean, Bool(true));
-        cast!(I64(0)                    => Boolean, Bool(false));
-        cast!(I128(1)                   => Boolean, Bool(true));
-        cast!(I128(0)                   => Boolean, Bool(false));
-        cast!(U8(1)                   => Boolean, Bool(true));
-        cast!(U8(0)                   => Boolean, Bool(false));
-        cast!(U16(1)                   => Boolean, Bool(true));
-        cast!(U16(0)                   => Boolean, Bool(false));
-        cast!(U32(1)                   => Boolean, Bool(true));
-        cast!(U32(1)                   => Boolean, Bool(true));
-        cast!(U64(1)                   => Boolean, Bool(true));
-        cast!(U64(0)                   => Boolean, Bool(false));
-        cast!(U128(0)                   => Boolean, Bool(false));
-        cast!(U128(0)                   => Boolean, Bool(false));
-        cast!(F32(1.0_f32)                  => Boolean, Bool(true));
-        cast!(F32(0.0_f32)                  => Boolean, Bool(false));
-        cast!(F64(1.0)                  => Boolean, Bool(true));
-        cast!(F64(0.0)                  => Boolean, Bool(false));
-        cast!(Null                      => Boolean, Null);
+        cast!(Str("TRUE".to_owned())    => DataType::Boolean, Bool(true));
+        cast!(Str("FALSE".to_owned())   => DataType::Boolean, Bool(false));
+        cast!(I8(1)                     => DataType::Boolean, Bool(true));
+        cast!(I8(0)                     => DataType::Boolean, Bool(false));
+        cast!(I16(0)                     => DataType::Boolean, Bool(false));
+        cast!(I32(1)                     => DataType::Boolean, Bool(true));
+        cast!(I32(0)                     => DataType::Boolean, Bool(false));
+        cast!(I64(1)                    => DataType::Boolean, Bool(true));
+        cast!(I64(0)                    => DataType::Boolean, Bool(false));
+        cast!(I128(1)                   => DataType::Boolean, Bool(true));
+        cast!(I128(0)                   => DataType::Boolean, Bool(false));
+        cast!(U8(1)                   => DataType::Boolean, Bool(true));
+        cast!(U8(0)                   => DataType::Boolean, Bool(false));
+        cast!(U16(1)                   => DataType::Boolean, Bool(true));
+        cast!(U16(0)                   => DataType::Boolean, Bool(false));
+        cast!(U32(1)                   => DataType::Boolean, Bool(true));
+        cast!(U32(1)                   => DataType::Boolean, Bool(true));
+        cast!(U64(1)                   => DataType::Boolean, Bool(true));
+        cast!(U64(0)                   => DataType::Boolean, Bool(false));
+        cast!(U128(0)                   => DataType::Boolean, Bool(false));
+        cast!(U128(0)                   => DataType::Boolean, Bool(false));
+        cast!(F32(1.0_f32)                  => DataType::Boolean, Bool(true));
+        cast!(F32(0.0_f32)                  => DataType::Boolean, Bool(false));
+        cast!(F64(1.0)                  => DataType::Boolean, Bool(true));
+        cast!(F64(0.0)                  => DataType::Boolean, Bool(false));
+        cast!(Null                      => DataType::Boolean, Null);
 
         // Integer
-        cast!(Bool(true)            => Int8, I8(1));
-        cast!(Bool(false)           => Int8, I8(0));
-        cast!(F32(1.1_f32)              => Int8, I8(1));
-        cast!(F64(1.1)              => Int8, I8(1));
-        cast!(Str("11".to_owned())  => Int8, I8(11));
-        cast!(Null                  => Int8, Null);
+        cast!(Bool(true)            => DataType::Int8, I8(1));
+        cast!(Bool(false)           => DataType::Int8, I8(0));
+        cast!(F32(1.1_f32)              => DataType::Int8, I8(1));
+        cast!(F64(1.1)              => DataType::Int8, I8(1));
+        cast!(Str("11".to_owned())  => DataType::Int8, I8(11));
+        cast!(Null                  => DataType::Int8, Null);
 
-        cast!(Bool(true)            => Int32, I32(1));
-        cast!(Bool(false)           => Int32, I32(0));
-        cast!(F32(1.1_f32)              => Int32, I32(1));
-        cast!(F64(1.1)              => Int32, I32(1));
-        cast!(Str("11".to_owned())  => Int32, I32(11));
-        cast!(Null                  => Int32, Null);
+        cast!(Bool(true)            => DataType::Int32, I32(1));
+        cast!(Bool(false)           => DataType::Int32, I32(0));
+        cast!(F32(1.1_f32)              => DataType::Int32, I32(1));
+        cast!(F64(1.1)              => DataType::Int32, I32(1));
+        cast!(Str("11".to_owned())  => DataType::Int32, I32(11));
+        cast!(Null                  => DataType::Int32, Null);
 
-        cast!(Bool(true)            => Int, I64(1));
-        cast!(Bool(false)           => Int, I64(0));
-        cast!(F32(1.1_f32)              => Int, I64(1));
-        cast!(F64(1.1)              => Int, I64(1));
-        cast!(Str("11".to_owned())  => Int, I64(11));
-        cast!(Null                  => Int, Null);
+        cast!(Bool(true)            => DataType::Int, I64(1));
+        cast!(Bool(false)           => DataType::Int, I64(0));
+        cast!(F32(1.1_f32)              => DataType::Int, I64(1));
+        cast!(F64(1.1)              => DataType::Int, I64(1));
+        cast!(Str("11".to_owned())  => DataType::Int, I64(11));
+        cast!(Null                  => DataType::Int, Null);
 
-        cast!(Bool(true)            => Int128, I128(1));
-        cast!(Bool(false)           => Int128, I128(0));
-        cast!(F32(1.1_f32)          => Int128, I128(1));
-        cast!(F64(1.1)              => Int128, I128(1));
-        cast!(Str("11".to_owned())  => Int128, I128(11));
-        cast!(Null                  => Int128, Null);
+        cast!(Bool(true)            => DataType::Int128, I128(1));
+        cast!(Bool(false)           => DataType::Int128, I128(0));
+        cast!(F32(1.1_f32)          => DataType::Int128, I128(1));
+        cast!(F64(1.1)              => DataType::Int128, I128(1));
+        cast!(Str("11".to_owned())  => DataType::Int128, I128(11));
+        cast!(Null                  => DataType::Int128, Null);
 
-        cast!(Bool(true)            => Uint8, U8(1));
-        cast!(Bool(false)           => Uint8, U8(0));
-        cast!(F32(1.1_f32)              => Uint8, U8(1));
-        cast!(F64(1.1)              => Uint8, U8(1));
-        cast!(Str("11".to_owned())  => Uint8, U8(11));
-        cast!(Null                  => Uint8, Null);
+        cast!(Bool(true)            => DataType::Uint8, U8(1));
+        cast!(Bool(false)           => DataType::Uint8, U8(0));
+        cast!(F32(1.1_f32)              => DataType::Uint8, U8(1));
+        cast!(F64(1.1)              => DataType::Uint8, U8(1));
+        cast!(Str("11".to_owned())  => DataType::Uint8, U8(11));
+        cast!(Null                  => DataType::Uint8, Null);
 
-        cast!(Bool(true)            => Uint16, U16(1));
-        cast!(Bool(false)           => Uint16, U16(0));
-        cast!(F32(1.1_f32)              => Uint16, U16(1));
-        cast!(F64(1.1)              => Uint16, U16(1));
-        cast!(Str("11".to_owned())  => Uint16, U16(11));
-        cast!(Null                  => Uint16, Null);
+        cast!(Bool(true)            => DataType::Uint16, U16(1));
+        cast!(Bool(false)           => DataType::Uint16, U16(0));
+        cast!(F32(1.1_f32)              => DataType::Uint16, U16(1));
+        cast!(F64(1.1)              => DataType::Uint16, U16(1));
+        cast!(Str("11".to_owned())  => DataType::Uint16, U16(11));
+        cast!(Null                  => DataType::Uint16, Null);
 
-        cast!(Bool(true)            => Uint32, U32(1));
-        cast!(Bool(false)           => Uint32, U32(0));
-        cast!(F32(1.1_f32)              => Uint32, U32(1));
-        cast!(F64(1.1)              => Uint32, U32(1));
-        cast!(Str("11".to_owned())  => Uint32, U32(11));
-        cast!(Null                  => Uint32, Null);
+        cast!(Bool(true)            => DataType::Uint32, U32(1));
+        cast!(Bool(false)           => DataType::Uint32, U32(0));
+        cast!(F32(1.1_f32)              => DataType::Uint32, U32(1));
+        cast!(F64(1.1)              => DataType::Uint32, U32(1));
+        cast!(Str("11".to_owned())  => DataType::Uint32, U32(11));
+        cast!(Null                  => DataType::Uint32, Null);
 
-        cast!(Bool(true)            => Uint64, U64(1));
-        cast!(Bool(false)           => Uint64, U64(0));
-        cast!(F32(1.1_f32)              => Uint64, U64(1));
-        cast!(F64(1.1)              => Uint64, U64(1));
-        cast!(Str("11".to_owned())  => Uint64, U64(11));
-        cast!(Null                  => Uint64, Null);
+        cast!(Bool(true)            => DataType::Uint64, U64(1));
+        cast!(Bool(false)           => DataType::Uint64, U64(0));
+        cast!(F32(1.1_f32)              => DataType::Uint64, U64(1));
+        cast!(F64(1.1)              => DataType::Uint64, U64(1));
+        cast!(Str("11".to_owned())  => DataType::Uint64, U64(11));
+        cast!(Null                  => DataType::Uint64, Null);
 
-        cast!(Bool(true)            => Uint128, U128(1));
-        cast!(Bool(false)           => Uint128, U128(0));
-        cast!(F32(1.1_f32)              => Uint128, U128(1));
-        cast!(F64(1.1)              => Uint128, U128(1));
-        cast!(Str("11".to_owned())  => Uint128, U128(11));
-        cast!(Null                  => Uint128, Null);
+        cast!(Bool(true)            => DataType::Uint128, U128(1));
+        cast!(Bool(false)           => DataType::Uint128, U128(0));
+        cast!(F32(1.1_f32)              => DataType::Uint128, U128(1));
+        cast!(F64(1.1)              => DataType::Uint128, U128(1));
+        cast!(Str("11".to_owned())  => DataType::Uint128, U128(11));
+        cast!(Null                  => DataType::Uint128, Null);
 
         // Float32
-        cast!(Bool(true)            => Float32, F32(1.0_f32));
-        cast!(Bool(false)           => Float32, F32(0.0_f32));
-        cast!(I8(1)                 => Float32, F32(1.0_f32));
-        cast!(I16(1)                 => Float32, F32(1.0_f32));
-        cast!(I32(1)                => Float32, F32(1.0_f32));
-        cast!(I64(1)                => Float32, F32(1.0_f32));
-        cast!(I128(1)               => Float32, F32(1.0_f32));
-        cast!(F64(1.0)               => Float32, F32(1.0_f32));
+        cast!(Bool(true)            => DataType::Float32, F32(1.0_f32));
+        cast!(Bool(false)           => DataType::Float32, F32(0.0_f32));
+        cast!(I8(1)                 => DataType::Float32, F32(1.0_f32));
+        cast!(I16(1)                 => DataType::Float32, F32(1.0_f32));
+        cast!(I32(1)                => DataType::Float32, F32(1.0_f32));
+        cast!(I64(1)                => DataType::Float32, F32(1.0_f32));
+        cast!(I128(1)               => DataType::Float32, F32(1.0_f32));
+        cast!(F64(1.0)               => DataType::Float32, F32(1.0_f32));
 
         // Float
-        cast!(Bool(true)            => Float, F64(1.0));
-        cast!(Bool(false)           => Float, F64(0.0));
-        cast!(I8(1)                 => Float, F64(1.0));
-        cast!(I16(1)                 => Float, F64(1.0));
-        cast!(I32(1)                => Float, F64(1.0));
-        cast!(I64(1)                => Float, F64(1.0));
-        cast!(I128(1)               => Float, F64(1.0));
-        cast!(F32(1_f32)               => Float, F64(1.0));
+        cast!(Bool(true)            => DataType::Float, F64(1.0));
+        cast!(Bool(false)           => DataType::Float, F64(0.0));
+        cast!(I8(1)                 => DataType::Float, F64(1.0));
+        cast!(I16(1)                 => DataType::Float, F64(1.0));
+        cast!(I32(1)                => DataType::Float, F64(1.0));
+        cast!(I64(1)                => DataType::Float, F64(1.0));
+        cast!(I128(1)               => DataType::Float, F64(1.0));
+        cast!(F32(1_f32)               => DataType::Float, F64(1.0));
 
-        cast!(U8(1)                 => Float, F64(1.0));
-        cast!(U16(1)                 => Float, F64(1.0));
-        cast!(U32(1)                 => Float, F64(1.0));
-        cast!(U64(1)                 => Float, F64(1.0));
-        cast!(U128(1)                 => Float, F64(1.0));
-        cast!(Str("11".to_owned())  => Float, F64(11.0));
-        cast!(Null                  => Float, Null);
+        cast!(U8(1)                 => DataType::Float, F64(1.0));
+        cast!(U16(1)                 => DataType::Float, F64(1.0));
+        cast!(U32(1)                 => DataType::Float, F64(1.0));
+        cast!(U64(1)                 => DataType::Float, F64(1.0));
+        cast!(U128(1)                 => DataType::Float, F64(1.0));
+        cast!(Str("11".to_owned())  => DataType::Float, F64(11.0));
+        cast!(Null                  => DataType::Float, Null);
 
         // Text
-        cast!(Bool(true)    => Text, Str("TRUE".to_owned()));
-        cast!(Bool(false)   => Text, Str("FALSE".to_owned()));
-        cast!(I8(11)        => Text, Str("11".to_owned()));
-        cast!(I16(11)        => Text, Str("11".to_owned()));
-        cast!(I32(11)        => Text, Str("11".to_owned()));
-        cast!(I64(11)       => Text, Str("11".to_owned()));
-        cast!(I128(11)        => Text, Str("11".to_owned()));
-        cast!(U8(11)        => Text, Str("11".to_owned()));
-        cast!(U16(11)        => Text, Str("11".to_owned()));
-        cast!(U32(11)        => Text, Str("11".to_owned()));
-        cast!(U64(11)        => Text, Str("11".to_owned()));
-        cast!(U128(11)        => Text, Str("11".to_owned()));
-        cast!(F32(1.0_f32)      => Text, Str("1".to_owned()));
-        cast!(F64(1.0)      => Text, Str("1".to_owned()));
-        cast!(inet("::1")    => Text, Str("::1".to_owned()));
+        cast!(Bool(true)    => DataType::Text, Str("TRUE".to_owned()));
+        cast!(Bool(false)   => DataType::Text, Str("FALSE".to_owned()));
+        cast!(I8(11)        => DataType::Text, Str("11".to_owned()));
+        cast!(I16(11)        => DataType::Text, Str("11".to_owned()));
+        cast!(I32(11)        => DataType::Text, Str("11".to_owned()));
+        cast!(I64(11)       => DataType::Text, Str("11".to_owned()));
+        cast!(I128(11)        => DataType::Text, Str("11".to_owned()));
+        cast!(U8(11)        => DataType::Text, Str("11".to_owned()));
+        cast!(U16(11)        => DataType::Text, Str("11".to_owned()));
+        cast!(U32(11)        => DataType::Text, Str("11".to_owned()));
+        cast!(U64(11)        => DataType::Text, Str("11".to_owned()));
+        cast!(U128(11)        => DataType::Text, Str("11".to_owned()));
+        cast!(F32(1.0_f32)      => DataType::Text, Str("1".to_owned()));
+        cast!(F64(1.0)      => DataType::Text, Str("1".to_owned()));
+        cast!(inet("::1")    => DataType::Text, Str("::1".to_owned()));
 
         let date = Value::Date(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap());
-        cast!(date          => Text, Str("2021-05-01".to_owned()));
+        cast!(date          => DataType::Text, Str("2021-05-01".to_owned()));
 
         let timestamp = Value::Timestamp(
             NaiveDate::from_ymd_opt(2021, 5, 1)
@@ -2402,8 +2466,8 @@ mod tests {
                 .and_hms_opt(12, 34, 50)
                 .unwrap(),
         );
-        cast!(timestamp     => Text, Str("2021-05-01 12:34:50".to_owned()));
-        cast!(Null          => Text, Null);
+        cast!(timestamp     => DataType::Text, Str("2021-05-01 12:34:50".to_owned()));
+        cast!(Null          => DataType::Text, Null);
 
         // Date
         let date = Value::Date(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap());
@@ -2414,53 +2478,53 @@ mod tests {
                 .unwrap(),
         );
 
-        cast!(Str("2021-05-01".to_owned()) => Date, date.to_owned());
-        cast!(timestamp                    => Date, date);
-        cast!(Null                         => Date, Null);
+        cast!(Str("2021-05-01".to_owned()) => DataType::Date, date.to_owned());
+        cast!(timestamp                    => DataType::Date, date);
+        cast!(Null                         => DataType::Date, Null);
 
         // Time
-        cast!(Str("08:05:30".to_owned()) => Time, Value::Time(NaiveTime::from_hms_opt(8, 5, 30).unwrap()));
-        cast!(Null                       => Time, Null);
+        cast!(Str("08:05:30".to_owned()) => DataType::Time, Value::Time(NaiveTime::from_hms_opt(8, 5, 30).unwrap()));
+        cast!(Null                       => DataType::Time, Null);
 
         // Timestamp
-        cast!(Value::Date(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap()) => Timestamp, Value::Timestamp(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap().and_hms_opt(0, 0, 0).unwrap()));
-        cast!(Str("2021-05-01 08:05:30".to_owned())                     => Timestamp, Value::Timestamp(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap().and_hms_opt(8, 5, 30).unwrap()));
-        cast!(Null                                                      => Timestamp, Null);
+        cast!(Value::Date(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap()) => DataType::Timestamp, Value::Timestamp(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap().and_hms_opt(0, 0, 0).unwrap()));
+        cast!(Str("2021-05-01 08:05:30".to_owned())                     => DataType::Timestamp, Value::Timestamp(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap().and_hms_opt(8, 5, 30).unwrap()));
+        cast!(Null                                                      => DataType::Timestamp, Null);
 
         // Bytea
-        cast!(Value::Str("0abc".to_owned()) => Bytea, Value::Bytea(hex::decode("0abc").unwrap()));
+        cast!(Value::Str("0abc".to_owned()) => DataType::Bytea, Value::Bytea(hex::decode("0abc").unwrap()));
         assert_eq!(
-            Value::Str("!@#$5".to_owned()).cast(&Bytea),
+            Value::Str("!@#$5".to_owned()).cast(&DataType::Bytea),
             Err(ValueError::CastFromHexToByteaFailed("!@#$5".to_owned()).into()),
         );
 
         // Inet
-        cast!(inet("::1") => Inet, inet("::1"));
-        cast!(Str("::1".to_owned()) => Inet, inet("::1"));
-        cast!(Str("0.0.0.0".to_owned()) => Inet, inet("0.0.0.0"));
+        cast!(inet("::1") => DataType::Inet, inet("::1"));
+        cast!(Str("::1".to_owned()) => DataType::Inet, inet("::1"));
+        cast!(Str("0.0.0.0".to_owned()) => DataType::Inet, inet("0.0.0.0"));
 
         // Point
-        cast!(point(0.32, 0.52) => Point, point(0.32, 0.52));
-        cast!(Str("POINT(0.32 0.52)".to_owned()) => Point, point(0.32, 0.52));
+        cast!(point(0.32, 0.52) => DataType::Point, point(0.32, 0.52));
+        cast!(Str("POINT(0.32 0.52)".to_owned()) => DataType::Point, point(0.32, 0.52));
 
         // Map
         cast!(
-            Str(r#"{"a": 1}"#.to_owned()) => Map,
+            Str(r#"{"a": 1}"#.to_owned()) => DataType::Map,
             Value::parse_json_map(r#"{"a": 1}"#).unwrap()
         );
 
         // List
         cast!(
-            Str(r#"[1, 2, 3]"#.to_owned()) => List,
+            Str(r#"[1, 2, 3]"#.to_owned()) => DataType::List,
             Value::parse_json_list(r#"[1, 2, 3]"#).unwrap()
         );
 
         // Casting error
         assert_eq!(
-            Value::Uuid(123).cast(&List),
+            Value::Uuid(123).cast(&DataType::List),
             Err(ValueError::UnimplementedCast {
                 value: Value::Uuid(123),
-                data_type: List,
+                data_type: DataType::List,
             }
             .into())
         );
@@ -2675,7 +2739,7 @@ mod tests {
     fn bitwise_and() {
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
-                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c));
+                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c).unwrap().unwrap());
             };
         }
 

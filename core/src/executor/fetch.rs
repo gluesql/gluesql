@@ -67,7 +67,7 @@ pub async fn fetch<'a, T: GStore>(
 
                 check_expr(storage, Some(Rc::new(context)), None, expr)
                     .await
-                    .map(|pass| pass.then_some((key, row)))
+                    .map(|pass| pass.unwrap_or_default().then_some((key, row)))
             }
         });
 

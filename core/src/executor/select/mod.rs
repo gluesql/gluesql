@@ -156,6 +156,7 @@ where
         where_clause.as_ref(),
         filter_context.as_ref().map(Rc::clone),
         None,
+        false,
     ));
     let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref()).await?;
     let sort = Sort::new(

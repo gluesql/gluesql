@@ -141,6 +141,9 @@ pub enum TranslateError {
     #[error("unsupported column option: {0}")]
     UnsupportedColumnOption(String),
 
+    #[error("unsupported check constraint at column-level - only table-level check constraints are supported: {0}")]
+    UnsupportedCheckConstraintAtColumnLevel(String),
+
     #[error("unsupported alter table operation: {0}")]
     UnsupportedAlterTableOperation(String),
 
