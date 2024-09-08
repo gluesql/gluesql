@@ -161,7 +161,7 @@ mod test_binary_op {
     }
 
     #[test]
-    fn test_unary_op(){
+    fn test_unary_op() {
         let v = Evaluated::Value(Value::I16(1));
         let op = UnaryOperator::Minus;
         let result = unary_op(&op, v).unwrap();
@@ -187,11 +187,10 @@ mod test_binary_op {
         let op = UnaryOperator::Not;
         let result = unary_op(&op, v).unwrap();
         assert_eq!(result, Evaluated::Value(Value::Null));
-
     }
 
     #[test]
-    fn test_array_index(){
+    fn test_array_index() {
         // Test case where a MapOrListTypeRequired error is returned
         let obj = Evaluated::Literal(Literal::Text("test".into()));
         let indexes = vec![Evaluated::Value(Value::I16(1))];

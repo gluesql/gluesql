@@ -2532,9 +2532,10 @@ mod tests {
         // Conversion into UUID
         assert_eq!(
             Value::Str("936DA01F9ABD4d9d80C702AF85C822A8".to_owned()).cast(&DataType::Uuid),
-            Ok(Value::Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()))
+            Ok(Value::Uuid(
+                parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()
+            ))
         );
-
     }
 
     #[test]
@@ -2833,7 +2834,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract(){
+    fn test_extract() {
         // Test extracting Year from field.
         let date = Date(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap());
         assert_eq!(date.extract(&DateTimeField::Year), Ok(I64(2021)));

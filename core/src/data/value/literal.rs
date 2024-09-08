@@ -881,8 +881,9 @@ mod tests {
         // We test the case where we compare an INET with a Number and we fail to convert
         // the provided number to either a u32 or a u128.
         assert_eq!(
-            Value::Inet(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)))
-                .evaluate_cmp_with_literal(&Literal::Number(Cow::Owned(BigDecimal::new(1.into(), 100)))),
+            Value::Inet(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))).evaluate_cmp_with_literal(
+                &Literal::Number(Cow::Owned(BigDecimal::new(1.into(), 100)))
+            ),
             Ok(None)
         );
     }
@@ -1128,11 +1129,14 @@ mod tests {
 
         // Test to check whether comparing incompatible types raises an error.
         assert_eq!(
-            Value::try_from(&Literal::Text(Cow::Owned("hello".to_owned()))).unwrap().evaluate_eq(&Value::Bool(true)),
+            Value::try_from(&Literal::Text(Cow::Owned("hello".to_owned())))
+                .unwrap()
+                .evaluate_eq(&Value::Bool(true)),
             Err(ValueError::IncompatibleLiteralForDataType {
                 data_type: DataType::Text,
                 literal: "Bool(true)".to_owned()
-            }.into())
+            }
+            .into())
         );
     }
 
@@ -1346,33 +1350,41 @@ mod tests {
 
         // Literal cast to int8 failed:
         assert_eq!(
-            Value::try_cast_from_literal(&DataType::Int8, &Literal::Number(Cow::Owned(
-                BigDecimal::from_str("128").unwrap()
-            ))),
+            Value::try_cast_from_literal(
+                &DataType::Int8,
+                &Literal::Number(Cow::Owned(BigDecimal::from_str("128").unwrap()))
+            ),
             Err(ValueError::LiteralCastToInt8Failed("128".to_owned()).into())
         );
 
         // Literal cast to Uint32 failed:
         assert_eq!(
-            Value::try_cast_from_literal(&DataType::Uint32, &Literal::Number(Cow::Owned(
-                BigDecimal::from_str("4294967296").unwrap()
-            ))),
+            Value::try_cast_from_literal(
+                &DataType::Uint32,
+                &Literal::Number(Cow::Owned(BigDecimal::from_str("4294967296").unwrap()))
+            ),
             Err(ValueError::LiteralCastToUint32Failed("4294967296".to_owned()).into())
         );
 
         // Literal cast to Uint64 failed:
         assert_eq!(
-            Value::try_cast_from_literal(&DataType::Uint64, &Literal::Number(Cow::Owned(
-                BigDecimal::from_str("18446744073709551616").unwrap()
-            ))),
+            Value::try_cast_from_literal(
+                &DataType::Uint64,
+                &Literal::Number(Cow::Owned(
+                    BigDecimal::from_str("18446744073709551616").unwrap()
+                ))
+            ),
             Err(ValueError::LiteralCastToUint64Failed("18446744073709551616".to_owned()).into())
         );
 
         // Literal cast to Uint128 failed:
         assert_eq!(
-            Value::try_cast_from_literal(&DataType::Uint128, &Literal::Number(Cow::Owned(
-                BigDecimal::from_str("340282366920938463463374607431768211456").unwrap()
-            ))),
+            Value::try_cast_from_literal(
+                &DataType::Uint128,
+                &Literal::Number(Cow::Owned(
+                    BigDecimal::from_str("340282366920938463463374607431768211456").unwrap()
+                ))
+            ),
             Err(ValueError::LiteralCastToUint128Failed(
                 "340282366920938463463374607431768211456".to_owned()
             )
@@ -1381,7 +1393,10 @@ mod tests {
 
         // Failing to parse INET string:
         assert_eq!(
-            Value::try_cast_from_literal(&DataType::Inet, &Literal::Text(Cow::Owned("123".to_owned()))),
+            Value::try_cast_from_literal(
+                &DataType::Inet,
+                &Literal::Text(Cow::Owned("123".to_owned()))
+            ),
             Err(ValueError::FailedToParseInetString("123".to_owned()).into())
         );
     }
