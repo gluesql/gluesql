@@ -328,7 +328,7 @@ impl Value {
                 .map_err(|_| ValueError::LiteralCastFromTextToIntegerFailed(v.to_string()).into()),
             (DataType::Int16, Literal::Number(v)) => match v.to_i16() {
                 Some(x) => Ok(Value::I16(x)),
-                None => Err(ValueError::LiteralCastToInt8Failed(v.to_string()).into()),
+                None => Err(ValueError::LiteralCastToInt16Failed(v.to_string()).into()),
             },
             (DataType::Int16, Literal::Boolean(v)) => {
                 let v = i16::from(*v);
@@ -559,7 +559,7 @@ mod tests {
         super::parse_uuid,
         crate::{
             ast::DataType,
-            data::{Literal, Value, ValueError},
+            data::{Interval, Literal, Point, Value, ValueError},
             error::ValueError::IncompatibleLiteralForDataType,
         },
         bigdecimal::BigDecimal,
@@ -780,6 +780,17 @@ mod tests {
             DataType::Inet
         );
         assert_eq!(Value::Null.data_type(), DataType::Null);
+
+        assert_eq!(Value::Map(Default::default()).data_type(), DataType::Map);
+        assert_eq!(Value::List(Default::default()).data_type(), DataType::List);
+        assert_eq!(
+            Value::Interval(Interval::Month(1)).data_type(),
+            DataType::Interval
+        );
+        assert_eq!(
+            Value::Point(Point::new(0.0, 1.0)).data_type(),
+            DataType::Point
+        );
     }
 
     #[test]
@@ -1357,6 +1368,15 @@ mod tests {
             Err(ValueError::LiteralCastToInt8Failed("128".to_owned()).into())
         );
 
+        // Literal cast to int16 failed:
+        assert_eq!(
+            Value::try_cast_from_literal(
+                &DataType::Int16,
+                &Literal::Number(Cow::Owned(BigDecimal::from_str("32768").unwrap()))
+            ),
+            Err(ValueError::LiteralCastToInt16Failed("32768".to_owned()).into())
+        );
+
         // Literal cast to Uint32 failed:
         assert_eq!(
             Value::try_cast_from_literal(
@@ -1398,6 +1418,14 @@ mod tests {
                 &Literal::Text(Cow::Owned("123".to_owned()))
             ),
             Err(ValueError::FailedToParseInetString("123".to_owned()).into())
+        );
+
+        assert_eq!(
+            Value::try_cast_from_literal(
+                &DataType::Inet,
+                &Literal::Number(Cow::Owned(BigDecimal::from_str("12354546566547765677657687875748465765764545").unwrap()))
+            ),
+            Err(ValueError::FailedToParseInetString("12354546566547765677657687875748465765764545".to_owned()).into())
         );
     }
 }

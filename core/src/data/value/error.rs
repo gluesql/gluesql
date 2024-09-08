@@ -145,6 +145,9 @@ pub enum ValueError {
     #[error("literal cast failed to Unsigned Int(8): {0}")]
     LiteralCastToUnsignedInt8Failed(String),
 
+    #[error("literal cast failed to INT16: {0}")]
+    LiteralCastToInt16Failed(String),
+
     #[error("literal cast failed to UINT16: {0}")]
     LiteralCastToUint16Failed(String),
 
