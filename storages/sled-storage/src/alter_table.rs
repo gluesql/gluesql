@@ -269,10 +269,6 @@ impl AlterTable for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
-<<<<<<< HEAD
-=======
-                check_constraints,
->>>>>>> 2471532f (Now operations involving None follow SQL standard)
                 comment,
             } = schema_snapshot
                 .get(txid, None)
