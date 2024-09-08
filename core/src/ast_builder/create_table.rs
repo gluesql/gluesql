@@ -41,7 +41,7 @@ impl Build for CreateTableNode {
             .map(|columns| {
                 columns
                     .into_iter()
-                    .map(|column| column.parse())
+                    .map(|column| column.try_into())
                     .collect::<Result<Vec<_>>>()
             })
             .transpose()?;

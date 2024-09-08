@@ -79,10 +79,6 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> 
                 SqlColumnOption::Comment(comment) => {
                     Ok((nullable, default, unique, Some(comment.to_string())))
                 }
-                SqlColumnOption::Check(expr) => Err(
-                    TranslateError::UnsupportedCheckConstraintAtColumnLevel(expr.to_string())
-                        .into(),
-                ),
                 _ => Err(TranslateError::UnsupportedColumnOption(option.to_string()).into()),
             }
         },
