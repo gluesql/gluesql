@@ -874,4 +874,36 @@ mod test_evaluated {
             assert_eq!(result, Evaluated::Literal(Literal::Null));
         }
     }
+
+    #[test]
+    fn try_from_evaluated_into_option_bool() {
+        let evaluated = Evaluated::Literal(Literal::Boolean(true));
+        let result = Option::<bool>::try_from(evaluated).unwrap();
+
+        assert_eq!(result, Some(true));
+
+        let evaluated = Evaluated::Literal(Literal::Null);
+        let result = Option::<bool>::try_from(evaluated).unwrap();
+
+        assert_eq!(result, None);
+
+        let evaluated = Evaluated::Literal(Literal::Number(Cow::Owned(1.into())));
+        let result = Option::<bool>::try_from(evaluated);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn try_from_evaluated_into_hashmap_string_value() {
+        let evaluated = Evaluated::Literal(Literal::Text(Cow::Owned(r#"{"a": 1}"#.into())));
+        let result = HashMap::<String, Value>::try_from(evaluated).unwrap();
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result.get("a").unwrap(), &Value::I64(1));
+
+        let evaluated = Evaluated::Literal(Literal::Number(Cow::Owned(1.into())));
+        let result = HashMap::<String, Value>::try_from(evaluated);
+
+        assert!(result.is_err());
+    }
 }

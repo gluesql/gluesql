@@ -560,6 +560,7 @@ mod tests {
         crate::{
             ast::DataType,
             data::{Literal, Value, ValueError},
+            error::ValueError::IncompatibleLiteralForDataType,
         },
         bigdecimal::BigDecimal,
         chrono::{NaiveDate, NaiveDateTime, NaiveTime},
@@ -729,6 +730,56 @@ mod tests {
             Ok(Some(true)),
             Value::Uuid(uuid).evaluate_eq_with_literal(text!(uuid_text))
         );
+        assert_eq!(
+            Err(IncompatibleLiteralForDataType {
+                data_type: DataType::Int128,
+                literal: "Text(\"Hello\")".to_owned()
+            }
+            .into()),
+            Value::I128(67689).evaluate_eq_with_literal(text!("Hello"))
+        );
+    }
+
+    #[test]
+    fn test_value_data_type() {
+        assert_eq!(Value::Bool(true).data_type(), DataType::Boolean);
+        assert_eq!(Value::I8(1).data_type(), DataType::Int8);
+        assert_eq!(Value::I16(1).data_type(), DataType::Int16);
+        assert_eq!(Value::I32(1).data_type(), DataType::Int32);
+        assert_eq!(Value::I64(1).data_type(), DataType::Int);
+        assert_eq!(Value::I128(1).data_type(), DataType::Int128);
+        assert_eq!(Value::U8(1).data_type(), DataType::Uint8);
+        assert_eq!(Value::U16(1).data_type(), DataType::Uint16);
+        assert_eq!(Value::U32(1).data_type(), DataType::Uint32);
+        assert_eq!(Value::U64(1).data_type(), DataType::Uint64);
+        assert_eq!(Value::U128(1).data_type(), DataType::Uint128);
+        assert_eq!(Value::F32(1.0).data_type(), DataType::Float32);
+        assert_eq!(Value::F64(1.0).data_type(), DataType::Float);
+        assert_eq!(
+            Value::Decimal(Decimal::new(1, 0)).data_type(),
+            DataType::Decimal
+        );
+        assert_eq!(Value::Str("Hello".to_owned()).data_type(), DataType::Text);
+        assert_eq!(Value::Bytea(vec![1, 2, 3]).data_type(), DataType::Bytea);
+        assert_eq!(Value::Date(date(2021, 11, 20)).data_type(), DataType::Date);
+        assert_eq!(
+            Value::Timestamp(date_time(2021, 11, 20, 10, 0, 0, 0)).data_type(),
+            DataType::Timestamp
+        );
+        assert_eq!(Value::Time(time(10, 0, 0, 0)).data_type(), DataType::Time);
+        assert_eq!(
+            Value::Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()).data_type(),
+            DataType::Uuid
+        );
+        assert_eq!(
+            Value::Inet(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))).data_type(),
+            DataType::Inet
+        );
+        assert_eq!(
+            Value::Inet(IpAddr::from_str("::2:4cb0:16ea").unwrap()).data_type(),
+            DataType::Inet
+        );
+        assert_eq!(Value::Null.data_type(), DataType::Null);
     }
 
     #[test]
@@ -825,6 +876,14 @@ mod tests {
                 literal: "Text(\"1\")".to_owned()
             }
             .into())
+        );
+
+        // We test the case where we compare an INET with a Number and we fail to convert
+        // the provided number to either a u32 or a u128.
+        assert_eq!(
+            Value::Inet(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)))
+                .evaluate_cmp_with_literal(&Literal::Number(Cow::Owned(BigDecimal::new(1.into(), 100)))),
+            Ok(None)
         );
     }
 
@@ -1065,7 +1124,16 @@ mod tests {
         test!(num!("1.0"), Value::F32(1.0_f32));
         test!(num!("1.0"), Value::F64(1.0));
         test!(&Literal::Boolean(false), Value::Bool(false));
-        assert!(matches!(Value::try_from(&Literal::Null), Ok(Value::Null)))
+        assert!(matches!(Value::try_from(&Literal::Null), Ok(Value::Null)));
+
+        // Test to check whether comparing incompatible types raises an error.
+        assert_eq!(
+            Value::try_from(&Literal::Text(Cow::Owned("hello".to_owned()))).unwrap().evaluate_eq(&Value::Bool(true)),
+            Err(ValueError::IncompatibleLiteralForDataType {
+                data_type: DataType::Text,
+                literal: "Bool(true)".to_owned()
+            }.into())
+        );
     }
 
     #[test]
@@ -1272,6 +1340,49 @@ mod tests {
             DataType::List,
             text!(r#"[ 1, 2, 3 ]"#),
             Value::parse_json_list(r#"[ 1, 2, 3 ]"#).unwrap()
+        );
+
+        // We now cover the corner cases.
+
+        // Literal cast to int8 failed:
+        assert_eq!(
+            Value::try_cast_from_literal(&DataType::Int8, &Literal::Number(Cow::Owned(
+                BigDecimal::from_str("128").unwrap()
+            ))),
+            Err(ValueError::LiteralCastToInt8Failed("128".to_owned()).into())
+        );
+
+        // Literal cast to Uint32 failed:
+        assert_eq!(
+            Value::try_cast_from_literal(&DataType::Uint32, &Literal::Number(Cow::Owned(
+                BigDecimal::from_str("4294967296").unwrap()
+            ))),
+            Err(ValueError::LiteralCastToUint32Failed("4294967296".to_owned()).into())
+        );
+
+        // Literal cast to Uint64 failed:
+        assert_eq!(
+            Value::try_cast_from_literal(&DataType::Uint64, &Literal::Number(Cow::Owned(
+                BigDecimal::from_str("18446744073709551616").unwrap()
+            ))),
+            Err(ValueError::LiteralCastToUint64Failed("18446744073709551616".to_owned()).into())
+        );
+
+        // Literal cast to Uint128 failed:
+        assert_eq!(
+            Value::try_cast_from_literal(&DataType::Uint128, &Literal::Number(Cow::Owned(
+                BigDecimal::from_str("340282366920938463463374607431768211456").unwrap()
+            ))),
+            Err(ValueError::LiteralCastToUint128Failed(
+                "340282366920938463463374607431768211456".to_owned()
+            )
+            .into())
+        );
+
+        // Failing to parse INET string:
+        assert_eq!(
+            Value::try_cast_from_literal(&DataType::Inet, &Literal::Text(Cow::Owned("123".to_owned()))),
+            Err(ValueError::FailedToParseInetString("123".to_owned()).into())
         );
     }
 }

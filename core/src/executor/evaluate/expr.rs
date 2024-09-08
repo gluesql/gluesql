@@ -159,4 +159,45 @@ mod test_binary_op {
             assert_eq!(result, Evaluated::Value(Value::Null));
         }
     }
+
+    #[test]
+    fn test_unary_op(){
+        let v = Evaluated::Value(Value::I16(1));
+        let op = UnaryOperator::Minus;
+        let result = unary_op(&op, v).unwrap();
+        assert_eq!(result, Evaluated::Value(Value::I16(-1)));
+
+        let v = Evaluated::Value(Value::Bool(true));
+        let op = UnaryOperator::Not;
+        let result = unary_op(&op, v).unwrap();
+        assert_eq!(result, Evaluated::Value(Value::Bool(false)));
+
+        let v = Evaluated::Value(Value::Bool(false));
+        let op = UnaryOperator::Not;
+        let result = unary_op(&op, v).unwrap();
+        assert_eq!(result, Evaluated::Value(Value::Bool(true)));
+
+        let v = Evaluated::Value(Value::I16(1));
+        let op = UnaryOperator::BitwiseNot;
+        let result = unary_op(&op, v).unwrap();
+        assert_eq!(result, Evaluated::Value(Value::I16(-2)));
+
+        // We check the unary operation on a None value
+        let v = Evaluated::Value(Value::Null);
+        let op = UnaryOperator::Not;
+        let result = unary_op(&op, v).unwrap();
+        assert_eq!(result, Evaluated::Value(Value::Null));
+
+    }
+
+    #[test]
+    fn test_array_index(){
+        // Test case where a MapOrListTypeRequired error is returned
+        let obj = Evaluated::Literal(Literal::Text("test".into()));
+        let indexes = vec![Evaluated::Value(Value::I16(1))];
+        assert_eq!(
+            Err(EvaluateError::MapOrListTypeRequired.into()),
+            array_index(obj, indexes)
+        );
+    }
 }

@@ -903,7 +903,7 @@ mod tests {
     use {
         super::{Interval, Value::*},
         crate::{
-            ast::DataType,
+            ast::{DataType, DateTimeField},
             data::{point::Point, value::uuid::parse_uuid, NumericBinaryOperator, ValueError},
         },
         chrono::{NaiveDate, NaiveTime},
@@ -2528,6 +2528,13 @@ mod tests {
             }
             .into())
         );
+
+        // Conversion into UUID
+        assert_eq!(
+            Value::Str("936DA01F9ABD4d9d80C702AF85C822A8".to_owned()).cast(&DataType::Uuid),
+            Ok(Value::Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()))
+        );
+
     }
 
     #[test]
@@ -2823,6 +2830,25 @@ mod tests {
             }
             .into())
         );
+    }
+
+    #[test]
+    fn test_extract(){
+        // Test extracting Year from field.
+        let date = Date(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap());
+        assert_eq!(date.extract(&DateTimeField::Year), Ok(I64(2021)));
+        assert_eq!(date.extract(&DateTimeField::Month), Ok(I64(5)));
+        assert_eq!(date.extract(&DateTimeField::Day), Ok(I64(1)));
+
+        let timestamp = Timestamp(
+            NaiveDate::from_ymd_opt(2021, 5, 1)
+                .unwrap()
+                .and_hms_opt(12, 34, 50)
+                .unwrap(),
+        );
+        assert_eq!(timestamp.extract(&DateTimeField::Hour), Ok(I64(12)));
+        assert_eq!(timestamp.extract(&DateTimeField::Minute), Ok(I64(34)));
+        assert_eq!(timestamp.extract(&DateTimeField::Second), Ok(I64(50)));
     }
 
     #[test]
