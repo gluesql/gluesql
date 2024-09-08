@@ -1423,9 +1423,14 @@ mod tests {
         assert_eq!(
             Value::try_cast_from_literal(
                 &DataType::Inet,
-                &Literal::Number(Cow::Owned(BigDecimal::from_str("12354546566547765677657687875748465765764545").unwrap()))
+                &Literal::Number(Cow::Owned(
+                    BigDecimal::from_str("12354546566547765677657687875748465765764545").unwrap()
+                ))
             ),
-            Err(ValueError::FailedToParseInetString("12354546566547765677657687875748465765764545".to_owned()).into())
+            Err(ValueError::FailedToParseInetString(
+                "12354546566547765677657687875748465765764545".to_owned()
+            )
+            .into())
         );
     }
 }
