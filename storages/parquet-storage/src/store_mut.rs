@@ -581,3 +581,118 @@ impl ParquetStorage {
         }
     }
 }
+
+#[cfg(test)]
+mod test_get_parquet_type_mappings {
+    use super::*;
+
+    #[test]
+    fn test_get_parquet_type_mappings() {
+        let data_type = DataType::Text;
+        let result = ParquetStorage::get_parquet_type_mappings(&data_type);
+        assert_eq!(
+            result.unwrap(),
+            (Type::BYTE_ARRAY, Some(ConvertedType::UTF8))
+        );
+
+        let data_type = DataType::Date;
+        let result = ParquetStorage::get_parquet_type_mappings(&data_type);
+        assert_eq!(result.unwrap(), (Type::INT32, Some(ConvertedType::DATE)));
+
+        let data_type = DataType::Uint8;
+        let result = ParquetStorage::get_parquet_type_mappings(&data_type);
+        assert_eq!(result.unwrap(), (Type::INT32, Some(ConvertedType::UINT_8)));
+
+        let data_type = DataType::Int;
+        let result = ParquetStorage::get_parquet_type_mappings(&data_type);
+        assert_eq!(result.unwrap(), (Type::INT64, Some(ConvertedType::INT_64)));
+
+        let data_type = DataType::Int8;
+        let result = ParquetStorage::get_parquet_type_mappings(&data_type);
+        assert_eq!(result.unwrap(), (Type::INT32, Some(ConvertedType::INT_8)));
+
+        let data_type = DataType::Int16;
+        let result = ParquetStorage::get_parquet_type_mappings(&data_type);
+        assert_eq!(result.unwrap(), (Type::INT32, Some(ConvertedType::INT_16)));
+
+        let data_type = DataType::Int32;
+        let result = ParquetStorage::get_parquet_type_mappings(&data_type);
+        assert_eq!(result.unwrap(), (Type::INT32, Some(ConvertedType::INT_32)));
+
+        let data_type = DataType::Uint16;
+        let result = ParquetStorage::get_parquet_type_mappings(&data_type);
+        assert_eq!(result.unwrap(), (Type::INT32, Some(ConvertedType::UINT_16)));
+
+        let data_type = DataType::Uint32;
+        let result = ParquetStorage::get_parquet_type_mappings(&data_type);
+        assert_eq!(result.unwrap(), (Type::INT32, Some(ConvertedType::UINT_32)));
+
+        let data_type = DataType::Uint64;
+        let result = ParquetStorage::get_parquet_type_mappings(&data_type);
+        assert_eq!(result.unwrap(), (Type::INT64, Some(ConvertedType::UINT_64)));
+
+        let data_type = DataType::Boolean;
+        let result = ParquetStorage::get_parquet_type_mappings(&data_type);
+        assert_eq!(result.unwrap(), (Type::BOOLEAN, None));
+
+        let data_type = DataType::Float32;
+        let result = ParquetStorage::get_parquet_type_mappings(&data_type);
+        assert_eq!(result.unwrap(), (Type::FLOAT, None));
+
+        let data_type = DataType::Float;
+        let result = ParquetStorage::get_parquet_type_mappings(&data_type);
+        assert_eq!(result.unwrap(), (Type::DOUBLE, None));
+
+        let data_type = DataType::Uuid;
+        let result = ParquetStorage::get_parquet_type_mappings(&data_type);
+        assert_eq!(result.unwrap(), (Type::FIXED_LEN_BYTE_ARRAY, None));
+
+        let data_type = DataType::Point;
+        let result = ParquetStorage::get_parquet_type_mappings(&data_type);
+        assert_eq!(result.unwrap(), (Type::BYTE_ARRAY, None));
+
+        let data_type = DataType::Inet;
+        let result = ParquetStorage::get_parquet_type_mappings(&data_type);
+        assert_eq!(result.unwrap(), (Type::BYTE_ARRAY, None));
+
+        let data_type = DataType::Uint128;
+        let result = ParquetStorage::get_parquet_type_mappings(&data_type);
+        assert_eq!(result.unwrap(), (Type::BYTE_ARRAY, None));
+
+        let data_type = DataType::Int128;
+        let result = ParquetStorage::get_parquet_type_mappings(&data_type);
+        assert_eq!(result.unwrap(), (Type::BYTE_ARRAY, None));
+
+        let data_type = DataType::Time;
+        let result = ParquetStorage::get_parquet_type_mappings(&data_type);
+        assert_eq!(result.unwrap(), (Type::INT64, None));
+
+        let data_type = DataType::Map;
+        let result = ParquetStorage::get_parquet_type_mappings(&data_type);
+        assert_eq!(result.unwrap(), (Type::BYTE_ARRAY, None));
+
+        let data_type = DataType::List;
+        let result = ParquetStorage::get_parquet_type_mappings(&data_type);
+        assert_eq!(result.unwrap(), (Type::BYTE_ARRAY, None));
+
+        let data_type = DataType::Interval;
+        let result = ParquetStorage::get_parquet_type_mappings(&data_type);
+        assert_eq!(result.unwrap(), (Type::BYTE_ARRAY, None));
+
+        let data_type = DataType::Decimal;
+        let result = ParquetStorage::get_parquet_type_mappings(&data_type);
+        assert_eq!(result.unwrap(), (Type::BYTE_ARRAY, None));
+
+        let data_type = DataType::Timestamp;
+        let result = ParquetStorage::get_parquet_type_mappings(&data_type);
+        assert_eq!(result.unwrap(), (Type::BYTE_ARRAY, None));
+
+        let data_type = DataType::Bytea;
+        let result = ParquetStorage::get_parquet_type_mappings(&data_type);
+        assert_eq!(result.unwrap(), (Type::BYTE_ARRAY, None));
+
+        let data_type = DataType::Null;
+        let result = ParquetStorage::get_parquet_type_mappings(&data_type);
+        assert_eq!(result.unwrap(), (Type::BYTE_ARRAY, None));
+    }
+}
