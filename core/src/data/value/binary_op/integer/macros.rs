@@ -285,6 +285,37 @@ macro_rules! generate_binary_op_tests {
                     $primitive::MAX.try_add(&U128(1)),
                     overflow_err($variant($primitive::MAX), U128(1), Add)
                 );
+
+                // We cover the cases where the try from primitive fails
+                assert_eq!(
+                    $primitive::MAX.try_add(&Bool(true)),
+                    Err(ValueError::NonNumericMathOperation {
+                        lhs: $variant($primitive::MAX),
+                        operator: Add,
+                        rhs: Bool(true)
+                    }
+                    .into())
+                );
+
+                assert_eq!(
+                    $primitive::MAX.try_add(&List(vec![])),
+                    Err(ValueError::NonNumericMathOperation {
+                        lhs: $variant($primitive::MAX),
+                        operator: Add,
+                        rhs: List(vec![])
+                    }
+                    .into())
+                );
+
+                assert_eq!(
+                    $primitive::MAX.try_add(&Map(std::collections::HashMap::new())),
+                    Err(ValueError::NonNumericMathOperation {
+                        lhs: $variant($primitive::MAX),
+                        operator: Add,
+                        rhs: Map(std::collections::HashMap::new())
+                    }
+                    .into())
+                );
             }
 
             #[test]
@@ -344,6 +375,38 @@ macro_rules! generate_binary_op_tests {
                 assert_eq!(
                     $primitive::MIN.try_subtract(&U128(1)),
                     overflow_err($variant($primitive::MIN), U128(1), Subtract)
+                );
+
+                // We cover the cases where the try from primitive fails
+
+                assert_eq!(
+                    $primitive::MIN.try_subtract(&Bool(true)),
+                    Err(ValueError::NonNumericMathOperation {
+                        lhs: $variant($primitive::MIN),
+                        operator: Subtract,
+                        rhs: Bool(true)
+                    }
+                    .into())
+                );
+
+                assert_eq!(
+                    $primitive::MIN.try_subtract(&List(vec![])),
+                    Err(ValueError::NonNumericMathOperation {
+                        lhs: $variant($primitive::MIN),
+                        operator: Subtract,
+                        rhs: List(vec![])
+                    }
+                    .into())
+                );
+
+                assert_eq!(
+                    $primitive::MIN.try_subtract(&Map(std::collections::HashMap::new())),
+                    Err(ValueError::NonNumericMathOperation {
+                        lhs: $variant($primitive::MIN),
+                        operator: Subtract,
+                        rhs: Map(std::collections::HashMap::new())
+                    }
+                    .into())
                 );
             }
 
@@ -405,6 +468,38 @@ macro_rules! generate_binary_op_tests {
                     $primitive::MAX.try_multiply(&U128(2)),
                     overflow_err($variant($primitive::MAX), U128(2), Multiply)
                 );
+
+                // We cover the cases where the try from primitive fails
+
+                assert_eq!(
+                    $primitive::MAX.try_multiply(&Bool(true)),
+                    Err(ValueError::NonNumericMathOperation {
+                        lhs: $variant($primitive::MAX),
+                        operator: Multiply,
+                        rhs: Bool(true)
+                    }
+                    .into())
+                );
+
+                assert_eq!(
+                    $primitive::MAX.try_multiply(&List(vec![])),
+                    Err(ValueError::NonNumericMathOperation {
+                        lhs: $variant($primitive::MAX),
+                        operator: Multiply,
+                        rhs: List(vec![])
+                    }
+                    .into())
+                );
+
+                assert_eq!(
+                    $primitive::MAX.try_multiply(&Map(std::collections::HashMap::new())),
+                    Err(ValueError::NonNumericMathOperation {
+                        lhs: $variant($primitive::MAX),
+                        operator: Multiply,
+                        rhs: Map(std::collections::HashMap::new())
+                    }
+                    .into())
+                );
             }
 
             #[test]
@@ -460,6 +555,38 @@ macro_rules! generate_binary_op_tests {
                 assert_eq!(
                     $primitive::MAX.try_divide(&U128(0)),
                     overflow_err($variant($primitive::MAX), U128(0), Divide)
+                );
+
+                // We cover the cases where the try from primitive fails
+
+                assert_eq!(
+                    $primitive::MAX.try_divide(&Bool(true)),
+                    Err(ValueError::NonNumericMathOperation {
+                        lhs: $variant($primitive::MAX),
+                        operator: Divide,
+                        rhs: Bool(true)
+                    }
+                    .into())
+                );
+
+                assert_eq!(
+                    $primitive::MAX.try_divide(&List(vec![])),
+                    Err(ValueError::NonNumericMathOperation {
+                        lhs: $variant($primitive::MAX),
+                        operator: Divide,
+                        rhs: List(vec![])
+                    }
+                    .into())
+                );
+
+                assert_eq!(
+                    $primitive::MAX.try_divide(&Map(std::collections::HashMap::new())),
+                    Err(ValueError::NonNumericMathOperation {
+                        lhs: $variant($primitive::MAX),
+                        operator: Divide,
+                        rhs: Map(std::collections::HashMap::new())
+                    }
+                    .into())
                 );
             }
 
@@ -517,6 +644,38 @@ macro_rules! generate_binary_op_tests {
                     $primitive::MAX.try_modulo(&U128(0)),
                     overflow_err($variant($primitive::MAX), U128(0), Modulo)
                 );
+
+                // We cover the cases where the try from primitive fails
+
+                assert_eq!(
+                    $primitive::MAX.try_modulo(&Bool(true)),
+                    Err(ValueError::NonNumericMathOperation {
+                        lhs: $variant($primitive::MAX),
+                        operator: Modulo,
+                        rhs: Bool(true)
+                    }
+                    .into())
+                );
+
+                assert_eq!(
+                    $primitive::MAX.try_modulo(&List(vec![])),
+                    Err(ValueError::NonNumericMathOperation {
+                        lhs: $variant($primitive::MAX),
+                        operator: Modulo,
+                        rhs: List(vec![])
+                    }
+                    .into())
+                );
+
+                assert_eq!(
+                    $primitive::MAX.try_modulo(&Map(std::collections::HashMap::new())),
+                    Err(ValueError::NonNumericMathOperation {
+                        lhs: $variant($primitive::MAX),
+                        operator: Modulo,
+                        rhs: Map(std::collections::HashMap::new())
+                    }
+                    .into())
+                );
             }
 
             #[test]
@@ -537,12 +696,34 @@ macro_rules! generate_binary_op_tests {
                 assert_eq!(base.try_add(&U64(1)), Ok($variant(2)));
                 assert_eq!(base.try_add(&U128(1)), Ok($variant(2)));
 
+                // We cover the cases where the try from primitive fails
+
                 assert_eq!(
                     base.try_add(&Bool(true)),
                     Err(ValueError::NonNumericMathOperation {
                         lhs: $variant(base),
                         operator: NumericBinaryOperator::Add,
                         rhs: Bool(true)
+                    }
+                    .into())
+                );
+
+                assert_eq!(
+                    base.try_add(&List(vec![])),
+                    Err(ValueError::NonNumericMathOperation {
+                        lhs: $variant(base),
+                        operator: NumericBinaryOperator::Add,
+                        rhs: List(vec![])
+                    }
+                    .into())
+                );
+
+                assert_eq!(
+                    base.try_add(&Map(std::collections::HashMap::new())),
+                    Err(ValueError::NonNumericMathOperation {
+                        lhs: $variant(base),
+                        operator: NumericBinaryOperator::Add,
+                        rhs: Map(std::collections::HashMap::new())
                     }
                     .into())
                 );
@@ -566,12 +747,34 @@ macro_rules! generate_binary_op_tests {
                 assert_eq!(base.try_subtract(&U64(1)), Ok($variant(0)));
                 assert_eq!(base.try_subtract(&U128(1)), Ok($variant(0)));
 
+                // We cover the cases where the try from primitive fails
+
                 assert_eq!(
                     base.try_subtract(&Bool(true)),
                     Err(ValueError::NonNumericMathOperation {
                         lhs: $variant(base),
                         operator: NumericBinaryOperator::Subtract,
                         rhs: Bool(true)
+                    }
+                    .into())
+                );
+
+                assert_eq!(
+                    base.try_subtract(&List(vec![])),
+                    Err(ValueError::NonNumericMathOperation {
+                        lhs: $variant(base),
+                        operator: NumericBinaryOperator::Subtract,
+                        rhs: List(vec![])
+                    }
+                    .into())
+                );
+
+                assert_eq!(
+                    base.try_subtract(&Map(std::collections::HashMap::new())),
+                    Err(ValueError::NonNumericMathOperation {
+                        lhs: $variant(base),
+                        operator: NumericBinaryOperator::Subtract,
+                        rhs: Map(std::collections::HashMap::new())
                     }
                     .into())
                 );
@@ -595,12 +798,34 @@ macro_rules! generate_binary_op_tests {
                 assert_eq!(base.try_multiply(&U64(2)), Ok($variant(6)));
                 assert_eq!(base.try_multiply(&U128(2)), Ok($variant(6)));
 
+                // We cover the cases where the try from primitive fails
+
                 assert_eq!(
                     base.try_multiply(&Bool(true)),
                     Err(ValueError::NonNumericMathOperation {
                         lhs: $variant(base),
                         operator: NumericBinaryOperator::Multiply,
                         rhs: Bool(true)
+                    }
+                    .into())
+                );
+
+                assert_eq!(
+                    base.try_multiply(&List(vec![])),
+                    Err(ValueError::NonNumericMathOperation {
+                        lhs: $variant(base),
+                        operator: NumericBinaryOperator::Multiply,
+                        rhs: List(vec![])
+                    }
+                    .into())
+                );
+
+                assert_eq!(
+                    base.try_multiply(&Map(std::collections::HashMap::new())),
+                    Err(ValueError::NonNumericMathOperation {
+                        lhs: $variant(base),
+                        operator: NumericBinaryOperator::Multiply,
+                        rhs: Map(std::collections::HashMap::new())
                     }
                     .into())
                 );
@@ -624,12 +849,34 @@ macro_rules! generate_binary_op_tests {
                 assert_eq!(base.try_divide(&U64(2)), Ok($variant(3)));
                 assert_eq!(base.try_divide(&U128(2)), Ok($variant(3)));
 
+                // We cover the cases where the try from primitive fails
+
                 assert_eq!(
                     base.try_divide(&Bool(true)),
                     Err(ValueError::NonNumericMathOperation {
                         lhs: $variant(base),
                         operator: NumericBinaryOperator::Divide,
                         rhs: Bool(true)
+                    }
+                    .into())
+                );
+
+                assert_eq!(
+                    base.try_divide(&List(vec![])),
+                    Err(ValueError::NonNumericMathOperation {
+                        lhs: $variant(base),
+                        operator: NumericBinaryOperator::Divide,
+                        rhs: List(vec![])
+                    }
+                    .into())
+                );
+
+                assert_eq!(
+                    base.try_divide(&Map(std::collections::HashMap::new())),
+                    Err(ValueError::NonNumericMathOperation {
+                        lhs: $variant(base),
+                        operator: NumericBinaryOperator::Divide,
+                        rhs: Map(std::collections::HashMap::new())
                     }
                     .into())
                 );
@@ -653,12 +900,34 @@ macro_rules! generate_binary_op_tests {
                 assert_eq!(base.try_modulo(&U64(1)), Ok($variant(0)));
                 assert_eq!(base.try_modulo(&U128(1)), Ok($variant(0)));
 
+                // We cover the cases where the try from primitive fails
+
                 assert_eq!(
                     base.try_modulo(&Bool(true)),
                     Err(ValueError::NonNumericMathOperation {
                         lhs: $variant(base),
                         operator: NumericBinaryOperator::Modulo,
                         rhs: Bool(true)
+                    }
+                    .into())
+                );
+
+                assert_eq!(
+                    base.try_modulo(&List(vec![])),
+                    Err(ValueError::NonNumericMathOperation {
+                        lhs: $variant(base),
+                        operator: NumericBinaryOperator::Modulo,
+                        rhs: List(vec![])
+                    }
+                    .into())
+                );
+
+                assert_eq!(
+                    base.try_modulo(&Map(std::collections::HashMap::new())),
+                    Err(ValueError::NonNumericMathOperation {
+                        lhs: $variant(base),
+                        operator: NumericBinaryOperator::Modulo,
+                        rhs: Map(std::collections::HashMap::new())
                     }
                     .into())
                 );
@@ -708,7 +977,8 @@ macro_rules! generate_cmp_ord_tests {
     ($primitive: ident) => {
         mod cmp_ord_tests {
             use {
-                rust_decimal::prelude::Decimal, std::cmp::Ordering, $crate::data::value::Value::*,
+                rust_decimal::prelude::Decimal, std::cmp::Ordering, std::collections::HashMap,
+                $crate::data::value::Value::*,
             };
 
             #[test]
@@ -730,6 +1000,11 @@ macro_rules! generate_cmp_ord_tests {
                 assert_eq!(base, U128(1));
 
                 assert_ne!(base, Bool(true));
+
+                // We cover the cases where the try from primitive fails
+                assert_ne!(base, List(vec![]));
+                assert_ne!(base, Map(HashMap::new()));
+                assert_ne!(base, Null);
             }
 
             #[test]
@@ -788,6 +1063,11 @@ macro_rules! generate_cmp_ord_tests {
                 assert_eq!(base.partial_cmp(&U128(2)), Some(Ordering::Less));
 
                 assert_eq!(base.partial_cmp(&Bool(true)), None);
+
+                // We cover the cases where the try from primitive fails
+                assert_eq!(base.partial_cmp(&List(vec![])), None);
+                assert_eq!(base.partial_cmp(&Map(HashMap::new())), None);
+                assert_eq!(base.partial_cmp(&Null), None);
             }
         }
     };

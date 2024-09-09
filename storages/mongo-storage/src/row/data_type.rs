@@ -3,7 +3,7 @@ use {
     strum_macros::{EnumString, IntoStaticStr},
 };
 
-#[derive(IntoStaticStr, EnumString)]
+#[derive(IntoStaticStr, EnumString, PartialEq, Eq, Debug)]
 pub enum BsonType {
     #[strum(to_string = "double")]
     Double,
@@ -109,5 +109,39 @@ impl IntoRange for DataType {
             DataType::Time => Some(0),
             v => v.get_max().map(|max| -max),
         }
+    }
+}
+
+#[cfg(test)]
+mod test_bsontype_conversions {
+    use super::*;
+
+    #[test]
+    fn test_bsontype_conversions() {
+        assert_eq!(BsonType::Boolean, BsonType::from(&DataType::Boolean));
+        assert_eq!(BsonType::Int32, BsonType::from(&DataType::Int8));
+        assert_eq!(BsonType::Int32, BsonType::from(&DataType::Int16));
+        assert_eq!(BsonType::Int32, BsonType::from(&DataType::Int32));
+        assert_eq!(BsonType::Int64, BsonType::from(&DataType::Int));
+        assert_eq!(BsonType::Int32, BsonType::from(&DataType::Uint8));
+        assert_eq!(BsonType::Int32, BsonType::from(&DataType::Uint16));
+        assert_eq!(BsonType::Int64, BsonType::from(&DataType::Uint32));
+        assert_eq!(BsonType::Decimal128, BsonType::from(&DataType::Uint64));
+        assert_eq!(BsonType::Decimal128, BsonType::from(&DataType::Uint128));
+        assert_eq!(BsonType::Double, BsonType::from(&DataType::Float32));
+        assert_eq!(BsonType::Double, BsonType::from(&DataType::Float));
+        assert_eq!(BsonType::String, BsonType::from(&DataType::Text));
+        assert_eq!(BsonType::Binary, BsonType::from(&DataType::Bytea));
+        assert_eq!(BsonType::Date, BsonType::from(&DataType::Date));
+        assert_eq!(BsonType::String, BsonType::from(&DataType::Timestamp));
+        assert_eq!(BsonType::Date, BsonType::from(&DataType::Time));
+        assert_eq!(BsonType::Binary, BsonType::from(&DataType::Uuid));
+        assert_eq!(BsonType::Object, BsonType::from(&DataType::Map));
+        assert_eq!(BsonType::Array, BsonType::from(&DataType::List));
+        assert_eq!(BsonType::Decimal128, BsonType::from(&DataType::Decimal));
+        assert_eq!(BsonType::Object, BsonType::from(&DataType::Point));
+        assert_eq!(BsonType::String, BsonType::from(&DataType::Inet));
+        assert_eq!(BsonType::String, BsonType::from(&DataType::Interval));
+        assert_eq!(BsonType::Null, BsonType::from(&DataType::Null));
     }
 }

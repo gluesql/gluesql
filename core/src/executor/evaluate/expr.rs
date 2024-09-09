@@ -138,20 +138,12 @@ mod test_binary_op {
             let l = Evaluated::Value(Value::I16(1));
             let r = Evaluated::Value(Value::Null);
             let result = binary_op(op, l, r).unwrap();
-            assert_eq!(
-                result,
-                Evaluated::Value(Value::Null),
-                "When l is not NULL and r is NULL, the result of operation '{op}' should be NULL"
-            );
+            assert_eq!(result, Evaluated::Value(Value::Null),);
 
             let l = Evaluated::Value(Value::Null);
             let r = Evaluated::Value(Value::I16(1));
             let result = binary_op(op, l, r).unwrap();
-            assert_eq!(
-                result,
-                Evaluated::Value(Value::Null),
-                "When l is NULL and r is not NULL, the result of operation '{op}' should be NULL"
-            );
+            assert_eq!(result, Evaluated::Value(Value::Null),);
 
             let l = Evaluated::Value(Value::Null);
             let r = Evaluated::Value(Value::Null);
