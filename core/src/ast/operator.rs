@@ -1,7 +1,6 @@
 use {
     crate::ast::ToSql,
     serde::{Deserialize, Serialize},
-    std::fmt::Display,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -47,34 +46,29 @@ pub enum BinaryOperator {
     BitwiseShiftRight,
 }
 
-impl Display for BinaryOperator {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        match self {
-            BinaryOperator::Plus => write!(f, "+"),
-            BinaryOperator::Minus => write!(f, "-"),
-            BinaryOperator::Multiply => write!(f, "*"),
-            BinaryOperator::Divide => write!(f, "/"),
-            BinaryOperator::Modulo => write!(f, "%"),
-            BinaryOperator::StringConcat => write!(f, "+"),
-            BinaryOperator::Gt => write!(f, ">"),
-            BinaryOperator::Lt => write!(f, "<"),
-            BinaryOperator::GtEq => write!(f, ">="),
-            BinaryOperator::LtEq => write!(f, "<="),
-            BinaryOperator::Eq => write!(f, "="),
-            BinaryOperator::NotEq => write!(f, "<>"),
-            BinaryOperator::And => write!(f, "AND"),
-            BinaryOperator::Or => write!(f, "OR"),
-            BinaryOperator::Xor => write!(f, "XOR"),
-            BinaryOperator::BitwiseAnd => write!(f, "&"),
-            BinaryOperator::BitwiseShiftLeft => write!(f, "<<"),
-            BinaryOperator::BitwiseShiftRight => write!(f, ">>"),
-        }
-    }
-}
-
 impl ToSql for BinaryOperator {
     fn to_sql(&self) -> String {
-        format!("{}", self)
+        match self {
+            BinaryOperator::Plus => "+",
+            BinaryOperator::Minus => "-",
+            BinaryOperator::Multiply => "*",
+            BinaryOperator::Divide => "/",
+            BinaryOperator::Modulo => "%",
+            BinaryOperator::StringConcat => "+",
+            BinaryOperator::Gt => ">",
+            BinaryOperator::Lt => "<",
+            BinaryOperator::GtEq => ">=",
+            BinaryOperator::LtEq => "<=",
+            BinaryOperator::Eq => "=",
+            BinaryOperator::NotEq => "<>",
+            BinaryOperator::And => "AND",
+            BinaryOperator::Or => "OR",
+            BinaryOperator::Xor => "XOR",
+            BinaryOperator::BitwiseAnd => "&",
+            BinaryOperator::BitwiseShiftLeft => "<<",
+            BinaryOperator::BitwiseShiftRight => ">>",
+        }
+        .to_owned()
     }
 }
 
