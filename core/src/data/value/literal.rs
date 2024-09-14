@@ -117,44 +117,13 @@ impl Value {
                 }
             }),
             _ => {
-                return Err(ValueError::IncompatibleLiteralForDataType {
-                    data_type: self.data_type(),
+                return Err(ValueError::IncompatibleLiteralForValue {
+                    value: self.clone(),
                     literal: format!("{:?}", other),
                 }
                 .into())
             }
         })
-    }
-
-    pub fn data_type(&self) -> DataType {
-        match self {
-            Value::Bool(_) => DataType::Boolean,
-            Value::I8(_) => DataType::Int8,
-            Value::I16(_) => DataType::Int16,
-            Value::I32(_) => DataType::Int32,
-            Value::I64(_) => DataType::Int,
-            Value::I128(_) => DataType::Int128,
-            Value::U8(_) => DataType::Uint8,
-            Value::U16(_) => DataType::Uint16,
-            Value::U32(_) => DataType::Uint32,
-            Value::U64(_) => DataType::Uint64,
-            Value::U128(_) => DataType::Uint128,
-            Value::F32(_) => DataType::Float32,
-            Value::F64(_) => DataType::Float,
-            Value::Decimal(_) => DataType::Decimal,
-            Value::Str(_) => DataType::Text,
-            Value::Bytea(_) => DataType::Bytea,
-            Value::Date(_) => DataType::Date,
-            Value::Timestamp(_) => DataType::Timestamp,
-            Value::Time(_) => DataType::Time,
-            Value::Uuid(_) => DataType::Uuid,
-            Value::Inet(_) => DataType::Inet,
-            Value::Point(_) => DataType::Point,
-            Value::Interval(_) => DataType::Interval,
-            Value::Map(_) => DataType::Map,
-            Value::List(_) => DataType::List,
-            Value::Null => DataType::Null,
-        }
     }
 
     pub fn evaluate_cmp_with_literal(&self, other: &Literal<'_>) -> Result<Option<Ordering>> {
@@ -191,8 +160,8 @@ impl Value {
                 }
             }
             _ => {
-                return Err(ValueError::IncompatibleLiteralForDataType {
-                    data_type: self.data_type(),
+                return Err(ValueError::IncompatibleLiteralForValue {
+                    value: self.clone(),
                     literal: format!("{:?}", other),
                 }
                 .into())
@@ -557,11 +526,7 @@ impl Value {
 mod tests {
     use {
         super::parse_uuid,
-        crate::{
-            ast::DataType,
-            data::{Interval, Literal, Point, Value, ValueError},
-            error::ValueError::IncompatibleLiteralForDataType,
-        },
+        crate::data::{Literal, Value, ValueError},
         bigdecimal::BigDecimal,
         chrono::{NaiveDate, NaiveDateTime, NaiveTime},
         rust_decimal::Decimal,
@@ -731,65 +696,12 @@ mod tests {
             Value::Uuid(uuid).evaluate_eq_with_literal(text!(uuid_text))
         );
         assert_eq!(
-            Err(IncompatibleLiteralForDataType {
-                data_type: DataType::Int128,
+            Err(ValueError::IncompatibleLiteralForValue {
+                value: Value::I128(67689),
                 literal: "Text(\"Hello\")".to_owned()
             }
             .into()),
             Value::I128(67689).evaluate_eq_with_literal(text!("Hello"))
-        );
-    }
-
-    #[test]
-    fn test_value_data_type() {
-        assert_eq!(Value::Bool(true).data_type(), DataType::Boolean);
-        assert_eq!(Value::I8(1).data_type(), DataType::Int8);
-        assert_eq!(Value::I16(1).data_type(), DataType::Int16);
-        assert_eq!(Value::I32(1).data_type(), DataType::Int32);
-        assert_eq!(Value::I64(1).data_type(), DataType::Int);
-        assert_eq!(Value::I128(1).data_type(), DataType::Int128);
-        assert_eq!(Value::U8(1).data_type(), DataType::Uint8);
-        assert_eq!(Value::U16(1).data_type(), DataType::Uint16);
-        assert_eq!(Value::U32(1).data_type(), DataType::Uint32);
-        assert_eq!(Value::U64(1).data_type(), DataType::Uint64);
-        assert_eq!(Value::U128(1).data_type(), DataType::Uint128);
-        assert_eq!(Value::F32(1.0).data_type(), DataType::Float32);
-        assert_eq!(Value::F64(1.0).data_type(), DataType::Float);
-        assert_eq!(
-            Value::Decimal(Decimal::new(1, 0)).data_type(),
-            DataType::Decimal
-        );
-        assert_eq!(Value::Str("Hello".to_owned()).data_type(), DataType::Text);
-        assert_eq!(Value::Bytea(vec![1, 2, 3]).data_type(), DataType::Bytea);
-        assert_eq!(Value::Date(date(2021, 11, 20)).data_type(), DataType::Date);
-        assert_eq!(
-            Value::Timestamp(date_time(2021, 11, 20, 10, 0, 0, 0)).data_type(),
-            DataType::Timestamp
-        );
-        assert_eq!(Value::Time(time(10, 0, 0, 0)).data_type(), DataType::Time);
-        assert_eq!(
-            Value::Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()).data_type(),
-            DataType::Uuid
-        );
-        assert_eq!(
-            Value::Inet(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))).data_type(),
-            DataType::Inet
-        );
-        assert_eq!(
-            Value::Inet(IpAddr::from_str("::2:4cb0:16ea").unwrap()).data_type(),
-            DataType::Inet
-        );
-        assert_eq!(Value::Null.data_type(), DataType::Null);
-
-        assert_eq!(Value::Map(Default::default()).data_type(), DataType::Map);
-        assert_eq!(Value::List(Default::default()).data_type(), DataType::List);
-        assert_eq!(
-            Value::Interval(Interval::Month(1)).data_type(),
-            DataType::Interval
-        );
-        assert_eq!(
-            Value::Point(Point::new(0.0, 1.0)).data_type(),
-            DataType::Point
         );
     }
 
@@ -868,8 +780,8 @@ mod tests {
 
         assert_eq!(
             Value::I8(1).evaluate_cmp_with_literal(&Literal::Boolean(true)),
-            Err(ValueError::IncompatibleLiteralForDataType {
-                data_type: DataType::Int8,
+            Err(ValueError::IncompatibleLiteralForValue {
+                value: Value::I8(1),
                 literal: "Boolean(true)".to_owned()
             }
             .into())
@@ -882,8 +794,8 @@ mod tests {
 
         assert_eq!(
             Value::I8(1).evaluate_cmp_with_literal(&Literal::Text(Cow::Owned("1".to_owned()))),
-            Err(ValueError::IncompatibleLiteralForDataType {
-                data_type: DataType::Int8,
+            Err(ValueError::IncompatibleLiteralForValue {
+                value: Value::I8(1),
                 literal: "Text(\"1\")".to_owned()
             }
             .into())
@@ -1143,9 +1055,9 @@ mod tests {
             Value::try_from(&Literal::Text(Cow::Owned("hello".to_owned())))
                 .unwrap()
                 .evaluate_eq(&Value::Bool(true)),
-            Err(ValueError::IncompatibleLiteralForDataType {
-                data_type: DataType::Text,
-                literal: "Bool(true)".to_owned()
+            Err(ValueError::IncompatibleValues {
+                lhs: Value::try_from(&Literal::Text(Cow::Owned("hello".to_owned()))).unwrap(),
+                rhs: Value::Bool(true)
             }
             .into())
         );

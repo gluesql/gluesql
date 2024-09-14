@@ -77,7 +77,6 @@ impl From<&DataType> for BsonType {
             DataType::Point => BsonType::Object,
             DataType::Inet => BsonType::String,
             DataType::Interval => BsonType::String,
-            DataType::Null => BsonType::Null,
         }
     }
 }
@@ -142,6 +141,5 @@ mod test_bsontype_conversions {
         assert_eq!(BsonType::Object, BsonType::from(&DataType::Point));
         assert_eq!(BsonType::String, BsonType::from(&DataType::Inet));
         assert_eq!(BsonType::String, BsonType::from(&DataType::Interval));
-        assert_eq!(BsonType::Null, BsonType::from(&DataType::Null));
     }
 }

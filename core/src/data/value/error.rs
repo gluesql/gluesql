@@ -17,6 +17,12 @@ pub enum ValueError {
         literal: String,
     },
 
+    #[error("Value: {value:?} is incompatible with literal: {literal:?}")]
+    IncompatibleLiteralForValue { value: Value, literal: String },
+
+    #[error("Left value: {lhs:?} is incompatible with right value: {rhs:?}")]
+    IncompatibleValues { lhs: Value, rhs: Value },
+
     #[error("incompatible data type, data type: {data_type:#?}, value: {value:#?}")]
     IncompatibleDataType { data_type: DataType, value: Value },
 

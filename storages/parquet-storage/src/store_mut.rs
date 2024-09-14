@@ -56,7 +56,6 @@ lazy_static! {
         m.insert(DataType::List, "List");
         m.insert(DataType::Decimal, "Decimal");
         m.insert(DataType::Point, "Point");
-        m.insert(DataType::Null, "Null");
         m
     };
 }
@@ -577,7 +576,6 @@ impl ParquetStorage {
             DataType::Decimal => Ok((Type::BYTE_ARRAY, None)),
             DataType::Timestamp => Ok((Type::BYTE_ARRAY, None)),
             DataType::Bytea => Ok((Type::BYTE_ARRAY, None)),
-            DataType::Null => Ok((Type::BYTE_ARRAY, None)),
         }
     }
 }
@@ -688,10 +686,6 @@ mod test_get_parquet_type_mappings {
         assert_eq!(result.unwrap(), (Type::BYTE_ARRAY, None));
 
         let data_type = DataType::Bytea;
-        let result = ParquetStorage::get_parquet_type_mappings(&data_type);
-        assert_eq!(result.unwrap(), (Type::BYTE_ARRAY, None));
-
-        let data_type = DataType::Null;
         let result = ParquetStorage::get_parquet_type_mappings(&data_type);
         assert_eq!(result.unwrap(), (Type::BYTE_ARRAY, None));
     }

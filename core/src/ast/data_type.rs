@@ -31,5 +31,4 @@ pub enum DataType {
     List,
     Decimal,
     Point,
-    Null,
 }

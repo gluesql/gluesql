@@ -99,9 +99,9 @@ impl Value {
             (Value::List(l), Value::List(r)) => Some(l == r),
             (Value::Point(l), Value::Point(r)) => Some(l == r),
             _ => {
-                return Err(ValueError::IncompatibleLiteralForDataType {
-                    data_type: self.data_type(),
-                    literal: format!("{:?}", other),
+                return Err(ValueError::IncompatibleValues {
+                    lhs: self.clone(),
+                    rhs: other.clone(),
                 }
                 .into());
             }
@@ -140,9 +140,9 @@ impl Value {
             (Value::Interval(l), Value::Interval(r)) => l.partial_cmp(r),
             (Value::Uuid(l), Value::Uuid(r)) => Some(l.cmp(r)),
             _ => {
-                return Err(ValueError::IncompatibleLiteralForDataType {
-                    data_type: self.data_type(),
-                    literal: format!("{:?}", other),
+                return Err(ValueError::IncompatibleValues {
+                    lhs: self.clone(),
+                    rhs: other.clone(),
                 }
                 .into());
             }
@@ -903,7 +903,7 @@ mod tests {
     use {
         super::{Interval, Value::*},
         crate::{
-            ast::{DataType, DateTimeField},
+            ast::DateTimeField,
             data::{point::Point, value::uuid::parse_uuid, NumericBinaryOperator, ValueError},
         },
         chrono::{NaiveDate, NaiveTime},
@@ -1092,9 +1092,9 @@ mod tests {
         // We try to compare incompatible types
         assert_eq!(
             Bool(true).evaluate_cmp(&I8(1)),
-            Err(ValueError::IncompatibleLiteralForDataType {
-                data_type: DataType::Boolean,
-                literal: "I8(1)".to_owned()
+            Err(ValueError::IncompatibleValues {
+                lhs: Bool(true),
+                rhs: I8(1)
             }
             .into())
         );
