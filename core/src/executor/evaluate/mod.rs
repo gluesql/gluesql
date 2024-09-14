@@ -7,9 +7,10 @@ use {
     self::function::BreakCase,
     super::{context::RowContext, select::select},
     crate::{
-        ast::{Aggregate, Expr, Function},
+        ast::{Aggregate, Expr, Function, Placeholder},
         data::{CustomFunction, Interval, Literal, Row, Value},
         mock::MockStorage,
+        parameter,
         result::{Error, Result},
         store::GStore,
     },
@@ -70,6 +71,10 @@ where
         Expr::TypedString { data_type, value } => {
             expr::typed_string(data_type, Cow::Borrowed(value))
         }
+        Expr::Placeholder(p) => match p {
+            Placeholder::Text(_) => unimplemented!(),
+            Placeholder::Resolved(_, v) => Ok(Evaluated::Value(v.try_into()?)),
+        },
         Expr::Identifier(ident) => {
             let context = context
                 .ok_or_else(|| EvaluateError::ContextRequiredForIdentEvaluation(expr.clone()))?;

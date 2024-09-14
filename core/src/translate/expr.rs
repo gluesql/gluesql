@@ -10,14 +10,14 @@ use {
         translate_idents, translate_query, TranslateError,
     },
     crate::{
-        ast::{Expr, OrderByExpr},
+        ast::{Expr, OrderByExpr, Placeholder},
         result::Result,
         translate::function::translate_trim,
     },
     sqlparser::ast::{
         Array, CeilFloorKind as SqlCeilFloorKind, DateTimeField as SqlDateTimeField,
         Expr as SqlExpr, Interval as SqlInterval, OrderByExpr as SqlOrderByExpr,
-        Subscript as SqlSubscript,
+        Subscript as SqlSubscript, Value as SqlValue,
     },
 };
 
@@ -102,7 +102,10 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
         }),
         SqlExpr::Extract { field, expr, .. } => translate_extract(field, expr),
         SqlExpr::Nested(expr) => translate_expr(expr).map(Box::new).map(Expr::Nested),
-        SqlExpr::Value(value) => translate_ast_literal(value).map(Expr::Literal),
+        SqlExpr::Value(value) => match value {
+            SqlValue::Placeholder(v) => Ok(Expr::Placeholder(Placeholder::Text(v.clone()))),
+            _ => translate_ast_literal(value).map(Expr::Literal),
+        },
         SqlExpr::TypedString { data_type, value } => Ok(Expr::TypedString {
             data_type: translate_data_type(data_type)?,
             value: value.to_owned(),

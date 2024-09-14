@@ -4,7 +4,24 @@ use {
         ToSqlUnquoted, UnaryOperator,
     },
     serde::{Deserialize, Serialize},
+    std::fmt::{Display, Error, Formatter},
 };
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Placeholder {
+    Text(String),
+    Resolved(String, Vec<u8>),
+}
+
+impl Display for Placeholder {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        match self {
+            Self::Text(t) => write!(f, "{}", &t)?,
+            Self::Resolved(t, _) => write!(f, "{}", &t)?,
+        }
+        Ok(())
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Expr {
@@ -56,6 +73,7 @@ pub enum Expr {
         data_type: DataType,
         value: String,
     },
+    Placeholder(Placeholder),
     Function(Box<Function>),
     Aggregate(Box<Aggregate>),
     Exists {
@@ -182,6 +200,7 @@ impl Expr {
             Expr::Nested(expr) => format!("({})", expr.to_sql_with(quoted)),
             Expr::Literal(s) => s.to_sql(),
             Expr::TypedString { data_type, value } => format!("{data_type} '{value}'"),
+            Expr::Placeholder(v) => format!("{}", &v),
             Expr::Case {
                 operand,
                 when_then,
