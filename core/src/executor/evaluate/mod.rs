@@ -72,7 +72,7 @@ where
             expr::typed_string(data_type, Cow::Borrowed(value))
         }
         Expr::Placeholder(p) => match p {
-            Placeholder::Text(_) => unimplemented!(),
+            Placeholder::Text(v) => panic!("unsolved placeholder: {}", &v),
             Placeholder::Resolved(_, v) => Ok(Evaluated::Value(v.try_into()?)),
         },
         Expr::Identifier(ident) => {
