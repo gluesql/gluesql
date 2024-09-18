@@ -10,7 +10,6 @@ use {
         ast::{Aggregate, Expr, Function, Placeholder},
         data::{CustomFunction, Interval, Literal, Row, Value},
         mock::MockStorage,
-        parameter,
         result::{Error, Result},
         store::GStore,
     },
@@ -72,7 +71,7 @@ where
             expr::typed_string(data_type, Cow::Borrowed(value))
         }
         Expr::Placeholder(p) => match p {
-            Placeholder::Text(v) => panic!("unsolved placeholder: {}", &v),
+            Placeholder::Text(v) => Err(EvaluateError::IdentifierNotFound(v.to_owned()).into()),
             Placeholder::Resolved(_, v) => Ok(Evaluated::Value(v.try_into()?)),
         },
         Expr::Identifier(ident) => {

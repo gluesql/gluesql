@@ -1,24 +1,9 @@
 use crate::{
     ast::{Expr, Placeholder, Query, SelectItem, SetExpr, Statement, Values},
-    data::Value,
-    result::{Error, Result},
+    result::Result,
 };
-use std::borrow::BorrowMut;
 
-impl TryFrom<&Vec<u8>> for Value {
-    type Error = Error;
-    fn try_from(bytes: &Vec<u8>) -> Result<Self, Self::Error> {
-        // TODO: recover Value from bytes.
-        Ok(Value::I64(123))
-    }
-}
-
-impl Into<Vec<u8>> for Value {
-    fn into(self) -> Vec<u8> {
-        // TODO: serialize Value to bytes.
-        vec![0]
-    }
-}
+mod wire;
 
 fn resolve_parameters_expr(x: &mut Expr) -> Result<()> {
     match x {
