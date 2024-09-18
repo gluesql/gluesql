@@ -21,16 +21,6 @@ impl ToSql for Placeholder {
     }
 }
 
-// impl Display for Placeholder {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-//         match self {
-//             Self::Text(t) => write!(f, "{}", &t)?,
-//             Self::Resolved(t, _) => write!(f, "{}", &t)?,
-//         }
-//         Ok(())
-//     }
-// }
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Expr {
     Identifier(String),
