@@ -4,7 +4,6 @@ use {
         ToSqlUnquoted, UnaryOperator,
     },
     serde::{Deserialize, Serialize},
-    std::fmt::{Display, Error, Formatter},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -13,15 +12,24 @@ pub enum Placeholder {
     Resolved(String, Vec<u8>),
 }
 
-impl Display for Placeholder {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+impl ToSql for Placeholder {
+    fn to_sql(&self) -> String {
         match self {
-            Self::Text(t) => write!(f, "{}", &t)?,
-            Self::Resolved(t, _) => write!(f, "{}", &t)?,
+            Self::Text(t) => format!("{}", &t),
+            Self::Resolved(t, _) => format!("{}", &t),
         }
-        Ok(())
     }
 }
+
+// impl Display for Placeholder {
+//     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+//         match self {
+//             Self::Text(t) => write!(f, "{}", &t)?,
+//             Self::Resolved(t, _) => write!(f, "{}", &t)?,
+//         }
+//         Ok(())
+//     }
+// }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Expr {
@@ -200,7 +208,7 @@ impl Expr {
             Expr::Nested(expr) => format!("({})", expr.to_sql_with(quoted)),
             Expr::Literal(s) => s.to_sql(),
             Expr::TypedString { data_type, value } => format!("{data_type} '{value}'"),
-            Expr::Placeholder(v) => format!("{}", &v),
+            Expr::Placeholder(v) => v.to_sql(),
             Expr::Case {
                 operand,
                 when_then,
