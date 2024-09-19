@@ -3,6 +3,10 @@ use crate::{
     result::Result,
 };
 
+mod error;
+
+pub use error::ParameterError;
+
 mod wire;
 
 fn resolve_parameters_expr(x: &mut Expr) -> Result<()> {

@@ -10,6 +10,7 @@ pub use crate::{
         AggregateError, AlterError, DeleteError, EvaluateError, ExecuteError, FetchError,
         InsertError, SelectError, SortError, UpdateError, ValidateError,
     },
+    parameter::ParameterError,
     plan::PlanError,
     store::{AlterTableError, IndexError},
     translate::TranslateError,
@@ -28,6 +29,9 @@ pub enum Error {
 
     #[error("ast-builder: {0}")]
     AstBuilder(#[from] AstBuilderError),
+
+    #[error("parameter-resolving: {0}")]
+    Parameter(#[from] ParameterError),
 
     #[error("alter-table: {0}")]
     AlterTable(#[from] AlterTableError),
