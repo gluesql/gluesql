@@ -23,7 +23,7 @@ pub mod prelude {
         data::{Key, Value},
         executor::{execute, Payload, PayloadVariable},
         glue::Glue,
-        parameter::resolve_parameters,
+        parameter::{resolve_parameters, Parameters},
         parse_sql::parse,
         plan::plan,
         result::{Error, Result},

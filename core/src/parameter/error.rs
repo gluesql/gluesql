@@ -1,5 +1,6 @@
 use {
     serde::Serialize,
+    serde_json::Error as JSONError,
     std::{
         fmt,
         fmt::{Debug, Display},
@@ -9,15 +10,21 @@ use {
 
 #[derive(TError, Serialize, Debug, PartialEq)]
 pub enum ParameterError {
-    Decode(String),
-    Encode(String),
+    JSON(String),
+    Notfound(String),
 }
 
 impl Display for ParameterError {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
-            Self::Encode(v) => write!(f, "{}", &v),
-            Self::Decode(v) => write!(f, "{}", &v),
+            Self::JSON(v) => write!(f, "json: {}", &v),
+            Self::Notfound(v) => write!(f, "parameter {} not found.", &v),
         }
+    }
+}
+
+impl From<JSONError> for ParameterError {
+    fn from(e: JSONError) -> Self {
+        Self::JSON(format!("{}", &e))
     }
 }
