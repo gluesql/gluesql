@@ -19,8 +19,8 @@ impl TryFrom<Vec<u8>> for Value {
     }
 }
 
-impl Into<Vec<u8>> for &Value {
-    fn into(self) -> Vec<u8> {
-        to_vec(self).unwrap()
+impl From<&Value> for Vec<u8> {
+    fn from(v: &Value) -> Self {
+        to_vec(v).unwrap()
     }
 }

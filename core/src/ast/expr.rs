@@ -15,8 +15,8 @@ pub enum Placeholder {
 impl ToSql for Placeholder {
     fn to_sql(&self) -> String {
         match self {
-            Self::Text(t) => format!("{}", &t),
-            Self::Resolved(t, _) => format!("{}", &t),
+            Self::Text(t) => t.to_string(),
+            Self::Resolved(t, _) => t.to_string(),
         }
     }
 }
