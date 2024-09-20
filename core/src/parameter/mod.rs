@@ -52,7 +52,6 @@ fn resolve_parameters_expr(ps: &dyn Parameters, x: &mut Expr) -> Result<()> {
             let x = expr.as_mut();
             resolve_parameters_expr(ps, x)?;
             for x in list.iter_mut() {
-                // let x = &mut list[i];
                 resolve_parameters_expr(ps, x)?;
             }
         }
@@ -133,9 +132,7 @@ fn resolve_parameters_expr(ps: &dyn Parameters, x: &mut Expr) -> Result<()> {
                 let v = bv.as_mut();
                 resolve_parameters_expr(ps, v)?;
             }
-            // for i in 0..when_then.len() {
             for (wh, th) in when_then.iter_mut() {
-                // let (wh, th) = &mut when_then[i];
                 resolve_parameters_expr(ps, wh)?;
                 resolve_parameters_expr(ps, th)?;
             }
@@ -147,7 +144,6 @@ fn resolve_parameters_expr(ps: &dyn Parameters, x: &mut Expr) -> Result<()> {
         Expr::ArrayIndex { obj, indexes } => {
             let v = obj.as_mut();
             resolve_parameters_expr(ps, v)?;
-            // for i in 0..indexes.len() {
             for x in indexes.iter_mut() {
                 resolve_parameters_expr(ps, x)?;
             }
@@ -161,7 +157,6 @@ fn resolve_parameters_expr(ps: &dyn Parameters, x: &mut Expr) -> Result<()> {
             resolve_parameters_expr(ps, x)?;
         }
         Expr::Array { elem } => {
-            // for i in 0..elem.len() {
             for x in elem.iter_mut() {
                 resolve_parameters_expr(ps, x)?;
             }
@@ -178,16 +173,12 @@ fn resolve_parameters_query(ps: &dyn Parameters, q: &mut Query) -> Result<()> {
             if let Some(ref mut selection) = s.selection {
                 resolve_parameters_expr(ps, selection)?;
             }
-            // for i in 0..s.projection.len() {
             for select_item in s.projection.iter_mut() {
-                // let select_item = &mut s.projection[i];
                 if let SelectItem::Expr { expr, label: _ } = select_item {
                     resolve_parameters_expr(ps, expr)?;
                 }
             }
-            //for i in 0..s.group_by.len() {
             for x in s.group_by.iter_mut() {
-                // let v = &mut s.group_by[i];
                 resolve_parameters_expr(ps, x)?;
             }
             if let Some(having) = &mut s.having {
@@ -196,10 +187,7 @@ fn resolve_parameters_query(ps: &dyn Parameters, q: &mut Query) -> Result<()> {
         }
         SetExpr::Values(values) => {
             let Values(exprs) = values;
-            // for i in 0..exprs.len() {
             for g in exprs.iter_mut() {
-                // let g = &mut exprs[i];
-                //for j in 0..g.len() {
                 for x in g.iter_mut() {
                     resolve_parameters_expr(ps, x)?;
                 }
@@ -226,21 +214,15 @@ pub fn resolve_parameters(ps: &dyn Parameters, s: &mut Statement) -> Result<()> 
             assignments,
             selection: Some(expr),
         } => {
-            // for i in 0..assignments.len() {
             for x in assignments.iter_mut() {
-                resolve_parameters_expr(ps, &mut x.value)?; // &mut assignments[i].value)?;
+                resolve_parameters_expr(ps, &mut x.value)?;
             }
-            // if let Some(expr) = selection {
             resolve_parameters_expr(ps, expr)?;
-            // }
         }
         Statement::Delete {
             table_name: _,
             selection: Some(ref mut v),
         } => {
-            // if let Some(ref mut v) = selection {
-            //     resolve_parameters_expr(ps, v)?;
-            // }
             resolve_parameters_expr(ps, v)?;
         }
         Statement::CreateTable {
@@ -252,10 +234,8 @@ pub fn resolve_parameters(ps: &dyn Parameters, s: &mut Statement) -> Result<()> 
             foreign_keys: _,
             comment: _,
         } => {
-            // if let Some(bq) = source {
             let q = bq.as_mut();
             resolve_parameters_query(ps, q)?;
-            // }
         }
         _ => {}
     }
