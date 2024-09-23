@@ -3,6 +3,7 @@ mod function;
 mod interval;
 mod key;
 mod literal;
+mod nullable;
 mod point;
 mod row;
 mod string_ext;
@@ -17,6 +18,7 @@ pub use {
     interval::{Interval, IntervalError},
     key::{Key, KeyError},
     literal::{Literal, LiteralError},
+    nullable::Nullable,
     point::Point,
     row::{Row, RowError},
     schema::{Schema, SchemaIndex, SchemaIndexOrd, SchemaParseError},
