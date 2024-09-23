@@ -10,6 +10,7 @@ pub mod bitwise_and;
 pub mod bitwise_shift_left;
 pub mod bitwise_shift_right;
 pub mod case;
+pub mod check_constraints;
 pub mod column_alias;
 pub mod concat;
 pub mod custom_function;
@@ -97,6 +98,7 @@ macro_rules! generate_store_tests {
             bitwise_shift_right,
             bitwise_shift_right::bitwise_shift_right
         );
+        glue!(check_constraints, check_constraints::check_constraint);
         glue!(create_table, alter::create_table);
         glue!(drop_table, alter::drop_table);
         glue!(default, default::default);

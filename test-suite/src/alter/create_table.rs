@@ -62,10 +62,6 @@ test_case!(create_table, {
             Err(TranslateError::UnsupportedDataType("GLOBE".to_owned()).into()),
         ),
         (
-            "CREATE TABLE Gluery (id INTEGER CHECK (true));",
-            Err(TranslateError::UnsupportedColumnOption("CHECK (true)".to_owned()).into()),
-        ),
-        (
             "
         CREATE TABLE CreateTable3 (
             id INTEGER,

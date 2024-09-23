@@ -1,7 +1,7 @@
 use {
     super::{context::RowContext, evaluate::evaluate},
     crate::{
-        ast::{Aggregate, Expr},
+        ast::{Aggregate, Expr, ToSql},
         data::Value,
         result::Result,
         store::GStore,
@@ -48,6 +48,18 @@ impl<'a, T: GStore> Filter<'a, T> {
             }
             None => Ok(true),
         }
+    }
+}
+
+impl<'a, T> ToSql for Filter<'a, T>
+where
+    T: GStore,
+{
+    fn to_sql(&self) -> String {
+        self.where_clause
+            .as_ref()
+            .map(|expr| expr.to_sql())
+            .unwrap_or_default()
     }
 }
 

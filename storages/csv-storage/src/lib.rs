@@ -71,6 +71,7 @@ impl CsvStorage {
                 indexes: Vec::new(),
                 engine: None,
                 foreign_keys: Vec::new(),
+                check_constraints: Vec::new(),
                 comment: None,
             };
 

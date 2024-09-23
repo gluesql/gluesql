@@ -64,9 +64,9 @@ pub struct AddColumnNode {
 impl Build for AddColumnNode {
     fn build(self) -> Result<Statement> {
         let table_name = self.table_node.table_name;
-        let operation = AlterTableOperation::AddColumn {
-            column_def: self.column_def.try_into()?,
-        };
+
+        let (column_def, check) = self.column_def.parse()?;
+        let operation = AlterTableOperation::AddColumn { column_def, check };
         Ok(Statement::AlterTable {
             name: table_name,
             operation,

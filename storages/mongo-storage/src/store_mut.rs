@@ -123,7 +123,13 @@ impl StoreMut for MongoStorage {
             .unwrap_or_default();
 
         let comment = schema.comment.as_ref().map(ToOwned::to_owned);
-        let validator = Validator::new(labels, column_types, schema.foreign_keys.clone(), comment)?;
+        let validator = Validator::new(
+            labels,
+            column_types,
+            schema.foreign_keys.clone(),
+            schema.check_constraints.clone(),
+            comment,
+        )?;
 
         let schema_exists = self
             .fetch_schema(&schema.table_name)

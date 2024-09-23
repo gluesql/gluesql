@@ -75,6 +75,7 @@ impl IndexMut for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                check_constraints,
                 comment,
                 ..
             } = schema
@@ -105,6 +106,7 @@ impl IndexMut for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                check_constraints,
                 comment,
             };
 
@@ -171,6 +173,7 @@ impl IndexMut for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                check_constraints,
                 comment,
                 ..
             } = schema
@@ -196,6 +199,7 @@ impl IndexMut for SledStorage {
                 indexes,
                 engine,
                 foreign_keys,
+                check_constraints,
                 comment,
             };
 

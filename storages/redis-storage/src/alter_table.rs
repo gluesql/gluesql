@@ -2,7 +2,7 @@ use {
     super::RedisStorage,
     async_trait::async_trait,
     gluesql_core::{
-        ast::ColumnDef,
+        ast::{CheckConstraint, ColumnDef},
         data::Value,
         error::{AlterTableError, Error, Result},
         store::{AlterTable, DataRow, Store},
@@ -75,12 +75,19 @@ impl AlterTable for RedisStorage {
         Ok(())
     }
 
-    async fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
+    async fn add_column(
+        &mut self,
+        table_name: &str,
+        column_def: &ColumnDef,
+        check: &Option<CheckConstraint>,
+    ) -> Result<()> {
         if let Some(mut schema) = self.fetch_schema(table_name).await? {
             let column_defs = schema
                 .column_defs
                 .as_mut()
                 .ok_or_else(|| AlterTableError::SchemalessTableFound(table_name.to_owned()))?;
+
+            schema.check_constraints.extend(check.clone());
 
             if column_defs
                 .iter()

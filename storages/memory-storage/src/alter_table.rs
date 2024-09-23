@@ -2,7 +2,7 @@ use {
     super::MemoryStorage,
     async_trait::async_trait,
     gluesql_core::{
-        ast::ColumnDef,
+        ast::{CheckConstraint, ColumnDef},
         data::Value,
         error::{AlterTableError, Error, Result},
         store::{AlterTable, DataRow},
@@ -57,7 +57,12 @@ impl AlterTable for MemoryStorage {
         Ok(())
     }
 
-    async fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
+    async fn add_column(
+        &mut self,
+        table_name: &str,
+        column_def: &ColumnDef,
+        check_constraints: &Option<CheckConstraint>,
+    ) -> Result<()> {
         let item = self
             .items
             .get_mut(table_name)
@@ -111,6 +116,10 @@ impl AlterTable for MemoryStorage {
         }
 
         column_defs.push(column_def.clone());
+
+        item.schema
+            .check_constraints
+            .extend(check_constraints.clone());
 
         Ok(())
     }
