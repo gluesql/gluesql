@@ -2,7 +2,7 @@ use {
     super::{Interval, Key, StringExt},
     crate::{
         ast::{DataType, DateTimeField},
-        data::point::Point,
+        data::{point::Point, Nullable},
         result::Result,
     },
     binary_op::TryBinaryOperator,
@@ -60,8 +60,11 @@ pub enum Value {
 }
 
 impl Value {
-    pub fn evaluate_eq(&self, other: &Value) -> bool {
+    pub fn evaluate_eq(&self, other: &Value) -> Nullable<bool> {
         match (self, other) {
+            (Value::Null, _) | (_, Value::Null) => {
+                return Nullable::Null;
+            }
             (Value::I8(l), _) => l == other,
             (Value::I16(l), _) => l == other,
             (Value::I32(l), _) => l == other,
@@ -82,9 +85,9 @@ impl Value {
                 .and_hms_opt(0, 0, 0)
                 .map(|date_time| l == &date_time)
                 .unwrap_or(false),
-            (Value::Null, Value::Null) => false,
             _ => self == other,
         }
+        .into()
     }
 
     pub fn evaluate_cmp(&self, other: &Value) -> Option<Ordering> {
@@ -870,6 +873,12 @@ fn str_position(from_str: &str, sub_str: &str) -> usize {
         .unwrap_or(0)
 }
 
+impl From<bool> for Value {
+    fn from(value: bool) -> Self {
+        Value::Bool(value)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use {
@@ -900,50 +909,63 @@ mod tests {
         let inet = |v: &str| Inet(IpAddr::from_str(v).unwrap());
 
         assert_eq!(Null, Null);
-        assert!(!Null.evaluate_eq(&Null));
-        assert!(Bool(true).evaluate_eq(&Bool(true)));
-        assert!(I8(1).evaluate_eq(&I8(1)));
-        assert!(I16(1).evaluate_eq(&I16(1)));
-        assert!(I32(1).evaluate_eq(&I32(1)));
-        assert!(I64(1).evaluate_eq(&I64(1)));
-        assert!(I128(1).evaluate_eq(&I128(1)));
-        assert!(U8(1).evaluate_eq(&U8(1)));
-        assert!(U16(1).evaluate_eq(&U16(1)));
-        assert!(U32(1).evaluate_eq(&U32(1)));
-        assert!(U64(1).evaluate_eq(&U64(1)));
-        assert!(U128(1).evaluate_eq(&U128(1)));
-        assert!(I64(1).evaluate_eq(&F64(1.0)));
-        assert!(F32(1.0_f32).evaluate_eq(&I64(1)));
-        assert!(F32(6.11_f32).evaluate_eq(&F64(6.11)));
-        assert!(F64(1.0).evaluate_eq(&I64(1)));
-        assert!(F64(6.11).evaluate_eq(&F64(6.11)));
-        assert!(Str("Glue".to_owned()).evaluate_eq(&Str("Glue".to_owned())));
-        assert!(bytea("1004").evaluate_eq(&bytea("1004")));
-        assert!(inet("::1").evaluate_eq(&inet("::1")));
-        assert!(Interval(Interval::Month(1)).evaluate_eq(&Interval(Interval::Month(1))));
+        assert!(Null.evaluate_eq(&Null).is_null());
+        assert!(Null.evaluate_eq(&Bool(true)).is_null());
+        assert!(Bool(true).evaluate_eq(&Null).is_null());
+        assert!(Bool(true).evaluate_eq(&Bool(true)).unwrap());
+        assert!(I8(1).evaluate_eq(&I8(1)).unwrap());
+        assert!(I16(1).evaluate_eq(&I16(1)).unwrap());
+        assert!(I32(1).evaluate_eq(&I32(1)).unwrap());
+        assert!(I64(1).evaluate_eq(&I64(1)).unwrap());
+        assert!(I128(1).evaluate_eq(&I128(1)).unwrap());
+        assert!(U8(1).evaluate_eq(&U8(1)).unwrap());
+        assert!(U16(1).evaluate_eq(&U16(1)).unwrap());
+        assert!(U32(1).evaluate_eq(&U32(1)).unwrap());
+        assert!(U64(1).evaluate_eq(&U64(1)).unwrap());
+        assert!(U128(1).evaluate_eq(&U128(1)).unwrap());
+        assert!(I64(1).evaluate_eq(&F64(1.0)).unwrap());
+        assert!(F32(1.0_f32).evaluate_eq(&I64(1)).unwrap());
+        assert!(F32(6.11_f32).evaluate_eq(&F64(6.11)).unwrap());
+        assert!(F64(1.0).evaluate_eq(&I64(1)).unwrap());
+        assert!(F64(6.11).evaluate_eq(&F64(6.11)).unwrap());
+        assert!(Str("Glue".to_owned())
+            .evaluate_eq(&Str("Glue".to_owned()))
+            .unwrap());
+        assert!(bytea("1004").evaluate_eq(&bytea("1004")).unwrap());
+        assert!(inet("::1").evaluate_eq(&inet("::1")).unwrap());
+        assert!(Interval(Interval::Month(1))
+            .evaluate_eq(&Interval(Interval::Month(1)))
+            .unwrap());
         assert!(Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap())
-            .evaluate_eq(&Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap())));
-        assert!(decimal(1).evaluate_eq(&decimal(1)));
+            .evaluate_eq(&Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap()))
+            .unwrap());
+        assert!(decimal(1).evaluate_eq(&decimal(1)).unwrap());
+        assert!(Date("2020-05-01".parse().unwrap())
+            .evaluate_eq(&Date("2020-05-01".parse().unwrap()))
+            .unwrap());
         assert!(
-            Date("2020-05-01".parse().unwrap()).evaluate_eq(&Date("2020-05-01".parse().unwrap()))
+            Timestamp("2020-05-01T00:00:00".parse::<NaiveDateTime>().unwrap())
+                .evaluate_eq(&Timestamp(
+                    "2020-05-01T00:00:00".parse::<NaiveDateTime>().unwrap()
+                ))
+                .unwrap()
         );
         assert!(
-            Timestamp("2020-05-01T00:00:00".parse::<NaiveDateTime>().unwrap()).evaluate_eq(
-                &Timestamp("2020-05-01T00:00:00".parse::<NaiveDateTime>().unwrap())
-            )
+            Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap())
+                .evaluate_eq(&Uuid(
+                    parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()
+                ))
+                .unwrap()
         );
-        assert!(
-            Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()).evaluate_eq(&Uuid(
-                parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()
-            ))
-        );
-        assert!(Point(Point::new(1.0, 2.0)).evaluate_eq(&Point(Point::new(1.0, 2.0))));
+        assert!(Point(Point::new(1.0, 2.0))
+            .evaluate_eq(&Point(Point::new(1.0, 2.0)))
+            .unwrap());
 
         let date = Date("2020-05-01".parse().unwrap());
         let timestamp = Timestamp("2020-05-01T00:00:00".parse::<NaiveDateTime>().unwrap());
 
-        assert!(date.evaluate_eq(&timestamp));
-        assert!(timestamp.evaluate_eq(&date));
+        assert!(date.evaluate_eq(&timestamp).unwrap());
+        assert!(timestamp.evaluate_eq(&date).unwrap());
     }
 
     #[test]
@@ -1111,7 +1133,7 @@ mod tests {
 
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
-                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c));
+                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c).unwrap());
             };
         }
 
@@ -1895,7 +1917,7 @@ mod tests {
 
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
-                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c));
+                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c).unwrap());
             };
         }
 
@@ -2057,7 +2079,7 @@ mod tests {
 
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
-                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c));
+                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c).unwrap());
             };
         }
 
@@ -2675,7 +2697,7 @@ mod tests {
     fn bitwise_and() {
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
-                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c));
+                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c).unwrap());
             };
         }
 

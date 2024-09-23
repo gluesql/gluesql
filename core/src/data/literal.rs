@@ -1,5 +1,5 @@
 use {
-    super::{BigDecimalExt, StringExt},
+    super::{BigDecimalExt, Nullable, StringExt},
     crate::{
         ast::{AstLiteral, BinaryOperator, ToSql},
         result::{Error, Result},
@@ -91,10 +91,19 @@ fn unsupported_binary_op(left: &Literal, op: BinaryOperator, right: &Literal) ->
 }
 
 impl<'a> Literal<'a> {
-    pub fn evaluate_eq(&self, other: &Literal<'_>) -> bool {
+    /// Returns whether the two literals are equal.
+    ///
+    /// # Arguments
+    /// * `other` - The other literal to compare.
+    ///
+    /// # Returns
+    /// A nullable boolean value representing the equality of the two literals,
+    /// which can be `true`, `false`, or `null` if either of the literals is `null`.
+    ///
+    pub fn evaluate_eq(&self, other: &Literal<'_>) -> Nullable<bool> {
         match (self, other) {
-            (Null, Null) => false,
-            _ => self == other,
+            (Null, _) | (_, Null) => Nullable::Null,
+            _ => (self == other).into(),
         }
     }
 
@@ -530,26 +539,26 @@ mod tests {
         }
 
         //Boolean
-        assert!(Boolean(true).evaluate_eq(&Boolean(true)));
-        assert!(!Boolean(true).evaluate_eq(&Boolean(false)));
+        assert!(Boolean(true).evaluate_eq(&Boolean(true)).unwrap());
+        assert!(!Boolean(true).evaluate_eq(&Boolean(false)).unwrap());
         //Number
-        assert!(num!("123").evaluate_eq(&num!("123")));
-        assert!(num!("12.0").evaluate_eq(&num!("12.0")));
-        assert!(num!("12.0").evaluate_eq(&num!("12")));
-        assert!(!num!("12.0").evaluate_eq(&num!("12.123")));
-        assert!(!num!("123").evaluate_eq(&num!("12.3")));
-        assert!(!num!("123").evaluate_eq(&text!("Foo")));
-        assert!(!num!("123").evaluate_eq(&Null));
+        assert!(num!("123").evaluate_eq(&num!("123")).unwrap());
+        assert!(num!("12.0").evaluate_eq(&num!("12.0")).unwrap());
+        assert!(num!("12.0").evaluate_eq(&num!("12")).unwrap());
+        assert!(!num!("12.0").evaluate_eq(&num!("12.123")).unwrap());
+        assert!(!num!("123").evaluate_eq(&num!("12.3")).unwrap());
+        assert!(!num!("123").evaluate_eq(&text!("Foo")).unwrap());
+        assert!(num!("123").evaluate_eq(&Null).is_null());
         //Text
-        assert!(text!("Foo").evaluate_eq(&text!("Foo")));
-        assert!(!text!("Foo").evaluate_eq(&text!("Bar")));
-        assert!(!text!("Foo").evaluate_eq(&Null));
+        assert!(text!("Foo").evaluate_eq(&text!("Foo")).unwrap());
+        assert!(!text!("Foo").evaluate_eq(&text!("Bar")).unwrap());
+        assert!(text!("Foo").evaluate_eq(&Null).is_null());
         //Bytea
-        assert!(bytea!("12A456").evaluate_eq(&bytea!("12A456")));
-        assert!(!bytea!("1230").evaluate_eq(&num!("1230")));
-        assert!(!bytea!("12").evaluate_eq(&Null));
+        assert!(bytea!("12A456").evaluate_eq(&bytea!("12A456")).unwrap());
+        assert!(!bytea!("1230").evaluate_eq(&num!("1230")).unwrap());
+        assert!(bytea!("12").evaluate_eq(&Null).is_null());
         // Null
-        assert!(!Null.evaluate_eq(&Null));
+        assert!(Null.evaluate_eq(&Null).is_null());
     }
 
     #[test]

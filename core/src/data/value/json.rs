@@ -276,33 +276,41 @@ mod tests {
         assert!(Value::try_from(JsonValue::Null).unwrap().is_null());
         assert!(Value::try_from(JsonValue::Bool(false))
             .unwrap()
-            .evaluate_eq(&Value::Bool(false)));
+            .evaluate_eq(&Value::Bool(false))
+            .unwrap());
         assert!(Value::try_from(JsonValue::Number(54321.into()))
             .unwrap()
-            .evaluate_eq(&Value::I32(54321)));
+            .evaluate_eq(&Value::I32(54321))
+            .unwrap());
         assert!(Value::try_from(JsonValue::Number(54321.into()))
             .unwrap()
-            .evaluate_eq(&Value::I64(54321)));
+            .evaluate_eq(&Value::I64(54321))
+            .unwrap());
         assert!(Value::try_from(JsonValue::Number(54321.into()))
             .unwrap()
-            .evaluate_eq(&Value::I128(54321)));
+            .evaluate_eq(&Value::I128(54321))
+            .unwrap());
         assert!(
             Value::try_from(JsonValue::Number(JsonNumber::from_f64(3.21).unwrap()))
                 .unwrap()
                 .evaluate_eq(&Value::F64(3.21))
+                .unwrap()
         );
         assert!(Value::try_from(JsonValue::String("world".to_owned()))
             .unwrap()
-            .evaluate_eq(&Value::Str("world".to_owned())));
+            .evaluate_eq(&Value::Str("world".to_owned()))
+            .unwrap());
         assert!(
             Value::try_from(JsonValue::Array(vec![JsonValue::Bool(true)]))
                 .unwrap()
                 .evaluate_eq(&Value::List(vec![Value::Bool(true)]))
+                .unwrap()
         );
         assert!(Value::try_from(json!({ "a": true }))
             .unwrap()
             .evaluate_eq(&Value::Map(
                 [("a".to_owned(), Value::Bool(true))].into_iter().collect()
-            )));
+            ))
+            .unwrap());
     }
 }
