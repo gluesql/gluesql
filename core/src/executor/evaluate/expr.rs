@@ -23,10 +23,6 @@ pub fn binary_op<'a>(
     l: Evaluated<'a>,
     r: Evaluated<'a>,
 ) -> Result<Evaluated<'a>> {
-    if l.is_null() || r.is_null() {
-        return Ok(Evaluated::null());
-    }
-
     macro_rules! cmp {
         ($expr: expr) => {
             Ok(Evaluated::Value(Value::Bool($expr)))
@@ -72,16 +68,17 @@ pub fn binary_op<'a>(
 }
 
 pub fn unary_op<'a>(op: &UnaryOperator, v: Evaluated<'a>) -> Result<Evaluated<'a>> {
-    if v.is_null() {
-        return Ok(Evaluated::null());
-    }
-
     match op {
         UnaryOperator::Plus => v.unary_plus(),
         UnaryOperator::Minus => v.unary_minus(),
-        UnaryOperator::Not => v
-            .try_into()
-            .map(|v: bool| Evaluated::Value(Value::Bool(!v))),
+        UnaryOperator::Not => {
+            if v.is_null() {
+                Ok(Evaluated::null())
+            } else {
+                let v: bool = v.try_into()?;
+                Ok(Evaluated::Value(Value::Bool(!v)))
+            }
+        }
         UnaryOperator::Factorial => v.unary_factorial(),
         UnaryOperator::BitwiseNot => v.unary_bitwise_not(),
     }
