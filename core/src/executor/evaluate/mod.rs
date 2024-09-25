@@ -58,61 +58,27 @@ async fn stream_contains_target<'life, 'stream, 'item>(
         return Ok(Nullable::Null);
     }
 
-    if negated {
-        // In the case of `NOT IN LIST`, we return true if none of the values in the list
-        // are equal to the target value. If no value in the list is equal to the target
-        // value and there are no null values in the list, we return true. If there are
-        // null values in the list, and none of the non-null values are equal to the target
-        // value, we return null.
-        stream
-            .try_fold(Nullable::Entry(true), |acc, evaluated| {
-                ready(Ok(
-                    // If we have already found a non-match, we don't need to check the rest of
-                    // the list.
-                    if let Nullable::Entry(false) = acc {
-                        Nullable::Entry(false)
-                    } else {
-                        // Otherwise, we need to check if the current value is equal to the target
-                        // value.
-                        match evaluated.evaluate_eq(&target) {
-                            // If it is, we return false, and we can disregard the value in acc.
-                            Nullable::Entry(true) => Nullable::Entry(false),
-                            // If it isn't, we return the and ops with the current value of acc, which
-                            // if either one is Null will propagate the null value.
-                            other => acc | other,
+    stream
+        .try_fold(Nullable::Entry(negated), |acc, evaluated| {
+            ready(Ok(
+                // If we have already found a non-match, we don't need to check the rest of
+                // the list.
+                if acc.map_or(false, |v| v != negated) {
+                    Nullable::Entry(!negated)
+                } else {
+                    // Otherwise, we need to check if the current value is equal to the target
+                    // value.
+                    evaluated.evaluate_eq(&target).then(|v| {
+                        if v {
+                            Nullable::Entry(!negated)
+                        } else {
+                            acc
                         }
-                    },
-                ))
-            })
-            .await
-    } else {
-        // In the case of `IN LIST`, we return true if any of the values in the list
-        // are equal to the target value. If no value in the list is equal to the target
-        // value and there are no null values in the list, we return false. If there are
-        // null values in the list, and none of the non-null values are equal to the target
-        // value, we return null.
-        stream
-            .try_fold(Nullable::Entry(false), |acc, evaluated| {
-                ready(Ok(
-                    // If we have already found a match, we don't need to check the rest of the
-                    // list.
-                    if let Nullable::Entry(true) = acc {
-                        Nullable::Entry(true)
-                    } else {
-                        // Otherwise, we need to check if the current value is equal to the target
-                        // value.
-                        match evaluated.evaluate_eq(&target) {
-                            // If it is, we return true, and we can disregard the value in acc.
-                            Nullable::Entry(true) => Nullable::Entry(true),
-                            // If it isn't, we return the or ops with the current value of acc, which
-                            // if either one is Null will propagate the null value.
-                            other => acc | other,
-                        }
-                    },
-                ))
-            })
-            .await
-    }
+                    })
+                },
+            ))
+        })
+        .await
 }
 
 #[async_recursion(?Send)]

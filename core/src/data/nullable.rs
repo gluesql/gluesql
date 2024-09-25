@@ -16,6 +16,24 @@ pub enum Nullable<T> {
     Entry(T),
 }
 
+impl<T> Nullable<T> {
+    /// When the value is non-null, maps it to another nullable value.
+    pub(crate) fn then<U, F: FnOnce(T) -> Nullable<U>>(self, f: F) -> Nullable<U> {
+        match self {
+            Nullable::Null => Nullable::Null,
+            Nullable::Entry(value) => f(value),
+        }
+    }
+
+    /// Maps a nullable value to another nullable value, providing a default value if the value is `NULL`.
+    pub(crate) fn map_or<U, F: FnOnce(T) -> U>(self, default: U, f: F) -> U {
+        match self {
+            Nullable::Null => default,
+            Nullable::Entry(value) => f(value),
+        }
+    }
+}
+
 #[cfg(test)]
 impl<T> Nullable<T> {
     /// Returns `true` if the value is `Nullable::Null`.
