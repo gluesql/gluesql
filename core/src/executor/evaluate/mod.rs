@@ -61,7 +61,7 @@ async fn stream_contains_target<'life, 'stream, 'item>(
     stream
         .try_fold(Nullable::Entry(negated), |acc, evaluated| {
             ready(Ok(
-                // If we have already found a non-match, we don't need to check the rest of
+                // If we have already found a match/non-match, we don't need to check the rest of
                 // the list.
                 if acc.map_or(false, |v| v != negated) {
                     Nullable::Entry(!negated)
