@@ -67,15 +67,3 @@ impl<T: Not<Output = T>> Not for Nullable<T> {
         }
     }
 }
-
-impl<T: BitOr<Output = T>> BitOr for Nullable<T> {
-    type Output = Self;
-
-    /// Bitwise ORs two nullable values, returning NULL if either value is NULL.
-    fn bitor(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (Nullable::Null, _) | (_, Nullable::Null) => Nullable::Null,
-            (Nullable::Entry(lhs), Nullable::Entry(rhs)) => Nullable::Entry(lhs | rhs),
-        }
-    }
-}
