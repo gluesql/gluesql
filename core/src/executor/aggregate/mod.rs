@@ -10,7 +10,7 @@ use {
     },
     crate::{
         ast::{Expr, SelectItem},
-        data::Key,
+        data::{Key, Nullable},
         result::Result,
         store::GStore,
     },
@@ -155,7 +155,10 @@ impl<'a, T: GStore> Aggregator<'a, T> {
                                 having,
                             )
                             .await
-                            .map(|pass| pass.then_some((aggregated, next)))
+                            .map(|pass| match pass {
+                                Nullable::Entry(true) => Some((aggregated, next)),
+                                Nullable::Entry(false) | Nullable::Null => None,
+                            })
                             .transpose()
                         }
                     }

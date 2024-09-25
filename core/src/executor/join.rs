@@ -5,7 +5,7 @@ use {
             Expr, Join as AstJoin, JoinConstraint, JoinExecutor as AstJoinExecutor,
             JoinOperator as AstJoinOperator, TableFactor,
         },
-        data::{get_alias, Key, Row, Value},
+        data::{get_alias, Key, Nullable, Row, Value},
         executor::{context::RowContext, evaluate::evaluate, filter::check_expr},
         result::Result,
         store::GStore,
@@ -260,7 +260,11 @@ impl<'a> JoinExecutor<'a> {
                     match where_clause {
                         Some(expr) => check_expr(storage, Some(filter_context), None, expr)
                             .await
-                            .map(|pass| pass.then_some((hash_key, row))),
+                            .map(|pass| match pass {
+                                Nullable::Entry(true) => Some((hash_key, row)),
+                                // In a where, NULL is treated as false
+                                Nullable::Entry(false) | Nullable::Null => None,
+                            }),
                         None => Ok(Some((hash_key, row))),
                     }
                 }
@@ -288,7 +292,11 @@ async fn check_where_clause<'a, 'b, T: GStore>(
     let filter_context = Some(Rc::new(filter_context));
 
     match where_clause {
-        Some(expr) => check_expr(storage, filter_context, None, expr).await?,
+        Some(expr) => match check_expr(storage, filter_context, None, expr).await? {
+            Nullable::Entry(value) => value,
+            // In a where, NULL is treated as false
+            Nullable::Null => false,
+        },
         None => true,
     }
     .then(|| RowContext::new(table_alias, Cow::Owned(row.into_owned()), project_context))

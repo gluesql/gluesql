@@ -6,7 +6,7 @@ use {
     },
     crate::{
         ast::DataType,
-        data::{value::uuid::parse_uuid, BigDecimalExt, Interval, Literal, Point},
+        data::{value::uuid::parse_uuid, BigDecimalExt, Interval, Literal, Nullable, Point},
         result::{Error, Result},
     },
     bigdecimal::BigDecimal,
@@ -49,8 +49,11 @@ impl TryFrom<Literal<'_>> for Value {
 }
 
 impl Value {
-    pub fn evaluate_eq_with_literal(&self, other: &Literal<'_>) -> bool {
+    pub fn evaluate_eq_with_literal(&self, other: &Literal<'_>) -> Nullable<bool> {
         match (self, other) {
+            (Value::Null, _) | (_, Literal::Null) => {
+                return Nullable::Null;
+            }
             (Value::Bool(l), Literal::Boolean(r)) => l == r,
             (Value::I8(l), Literal::Number(r)) => r.to_i8().map(|r| *l == r).unwrap_or(false),
             (Value::I16(l), Literal::Number(r)) => r.to_i16().map(|r| *l == r).unwrap_or(false),
@@ -92,9 +95,9 @@ impl Value {
                     false
                 }
             }
-            (Value::Null, Literal::Null) => false,
             _ => false,
         }
+        .into()
     }
 
     pub fn evaluate_cmp_with_literal(&self, other: &Literal<'_>) -> Option<Ordering> {
@@ -537,38 +540,78 @@ mod tests {
         let bytea = || hex::decode("123456").unwrap();
         let inet = |v: &str| Value::Inet(IpAddr::from_str(v).unwrap());
 
-        assert!(Value::Bool(true).evaluate_eq_with_literal(&Literal::Boolean(true)));
-        assert!(Value::I8(8).evaluate_eq_with_literal(num!("8")));
-        assert!(Value::I32(32).evaluate_eq_with_literal(num!("32")));
-        assert!(Value::I16(16).evaluate_eq_with_literal(num!("16")));
-        assert!(Value::I32(32).evaluate_eq_with_literal(num!("32")));
-        assert!(Value::I64(64).evaluate_eq_with_literal(num!("64")));
-        assert!(Value::I128(128).evaluate_eq_with_literal(num!("128")));
-        assert!(Value::U8(7).evaluate_eq_with_literal(num!("7")));
-        assert!(Value::U16(64).evaluate_eq_with_literal(num!("64")));
-        assert!(Value::U32(64).evaluate_eq_with_literal(num!("64")));
-        assert!(Value::U64(64).evaluate_eq_with_literal(num!("64")));
-        assert!(Value::U128(64).evaluate_eq_with_literal(num!("64")));
-        assert!(Value::F32(7.123).evaluate_eq_with_literal(num!("7.123")));
-        assert!(Value::F64(7.123).evaluate_eq_with_literal(num!("7.123")));
-        assert!(Value::Str("Hello".to_owned()).evaluate_eq_with_literal(text!("Hello")));
-        assert!(Value::Bytea(bytea()).evaluate_eq_with_literal(&Literal::Bytea(bytea())));
-        assert!(inet("127.0.0.1").evaluate_eq_with_literal(text!("127.0.0.1")));
-        assert!(inet("::1").evaluate_eq_with_literal(text!("::1")));
-        assert!(inet("0.0.0.0").evaluate_eq_with_literal(num!("0")));
-        assert!(!inet("::1").evaluate_eq_with_literal(num!("0")));
-        assert!(inet("::2:4cb0:16ea").evaluate_eq_with_literal(num!("9876543210")));
-        assert!(!inet("::1").evaluate_eq_with_literal(text!("-1")));
-        assert!(!inet("::1").evaluate_eq_with_literal(num!("-1")));
-        assert!(Value::Date(date(2021, 11, 20)).evaluate_eq_with_literal(text!("2021-11-20")));
-        assert!(!Value::Date(date(2021, 11, 20)).evaluate_eq_with_literal(text!("202=abcdef")));
+        assert!(Value::Bool(true)
+            .evaluate_eq_with_literal(&Literal::Boolean(true))
+            .unwrap());
+        assert!(Value::I8(8).evaluate_eq_with_literal(num!("8")).unwrap());
+        assert!(Value::I32(32).evaluate_eq_with_literal(num!("32")).unwrap());
+        assert!(Value::I16(16).evaluate_eq_with_literal(num!("16")).unwrap());
+        assert!(Value::I32(32).evaluate_eq_with_literal(num!("32")).unwrap());
+        assert!(Value::I64(64).evaluate_eq_with_literal(num!("64")).unwrap());
+        assert!(Value::I128(128)
+            .evaluate_eq_with_literal(num!("128"))
+            .unwrap());
+        assert!(Value::U8(7).evaluate_eq_with_literal(num!("7")).unwrap());
+        assert!(Value::U16(64).evaluate_eq_with_literal(num!("64")).unwrap());
+        assert!(Value::U32(64).evaluate_eq_with_literal(num!("64")).unwrap());
+        assert!(Value::U64(64).evaluate_eq_with_literal(num!("64")).unwrap());
+        assert!(Value::U128(64)
+            .evaluate_eq_with_literal(num!("64"))
+            .unwrap());
+        assert!(Value::F32(7.123)
+            .evaluate_eq_with_literal(num!("7.123"))
+            .unwrap());
+        assert!(Value::F64(7.123)
+            .evaluate_eq_with_literal(num!("7.123"))
+            .unwrap());
+        assert!(Value::Str("Hello".to_owned())
+            .evaluate_eq_with_literal(text!("Hello"))
+            .unwrap());
+        assert!(Value::Bytea(bytea())
+            .evaluate_eq_with_literal(&Literal::Bytea(bytea()))
+            .unwrap());
+        assert!(inet("127.0.0.1")
+            .evaluate_eq_with_literal(text!("127.0.0.1"))
+            .unwrap());
+        assert!(inet("::1").evaluate_eq_with_literal(text!("::1")).unwrap());
+        assert!(inet("0.0.0.0").evaluate_eq_with_literal(num!("0")).unwrap());
+        assert!(!inet("::1").evaluate_eq_with_literal(num!("0")).unwrap());
+        assert!(inet("::2:4cb0:16ea")
+            .evaluate_eq_with_literal(num!("9876543210"))
+            .unwrap());
+        assert!(!inet("::1").evaluate_eq_with_literal(text!("-1")).unwrap());
+        assert!(!inet("::1").evaluate_eq_with_literal(num!("-1")).unwrap());
+        assert!(Value::Date(date(2021, 11, 20))
+            .evaluate_eq_with_literal(text!("2021-11-20"))
+            .unwrap());
+        assert!(!Value::Date(date(2021, 11, 20))
+            .evaluate_eq_with_literal(text!("202=abcdef"))
+            .unwrap());
         assert!(Value::Timestamp(date_time(2021, 11, 20, 10, 0, 0, 0))
-            .evaluate_eq_with_literal(text!("2021-11-20T10:00:00Z")));
+            .evaluate_eq_with_literal(text!("2021-11-20T10:00:00Z"))
+            .unwrap());
         assert!(!Value::Timestamp(date_time(2021, 11, 20, 10, 0, 0, 0))
-            .evaluate_eq_with_literal(text!("2021-11-Hello")));
-        assert!(Value::Time(time(10, 0, 0, 0)).evaluate_eq_with_literal(text!("10:00:00")));
-        assert!(!Value::Time(time(10, 0, 0, 0)).evaluate_eq_with_literal(text!("FALSE")));
-        assert!(Value::Uuid(uuid).evaluate_eq_with_literal(text!(uuid_text)));
+            .evaluate_eq_with_literal(text!("2021-11-Hello"))
+            .unwrap());
+        assert!(Value::Time(time(10, 0, 0, 0))
+            .evaluate_eq_with_literal(text!("10:00:00"))
+            .unwrap());
+        assert!(!Value::Time(time(10, 0, 0, 0))
+            .evaluate_eq_with_literal(text!("FALSE"))
+            .unwrap());
+        assert!(Value::Uuid(uuid)
+            .evaluate_eq_with_literal(text!(uuid_text))
+            .unwrap());
+
+        assert!(Value::Null
+            .evaluate_eq_with_literal(&Literal::Null)
+            .is_null());
+        assert!(Value::Null
+            .evaluate_eq_with_literal(&Literal::Boolean(true))
+            .is_null());
+        assert!(Value::Bool(true)
+            .evaluate_eq_with_literal(&Literal::Null)
+            .is_null());
     }
 
     #[test]
@@ -866,7 +909,10 @@ mod tests {
 
         macro_rules! test {
             ($from: expr, $expected: expr) => {
-                assert!(Value::try_from($from).unwrap().evaluate_eq(&$expected));
+                assert!(Value::try_from($from)
+                    .unwrap()
+                    .evaluate_eq(&$expected)
+                    .unwrap());
             };
         }
 
