@@ -1,7 +1,6 @@
 //! Submodule providing the `Nullable` enum and associated traits.
 
 use core::ops::Not;
-use std::ops::BitOr;
 
 #[derive(Debug, Clone, Copy, Hash)]
 /// Enum representing a nullable value.
