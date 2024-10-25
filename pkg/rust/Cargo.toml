@@ -33,6 +33,8 @@ gluesql-git-storage = { workspace = true, optional = true }
 
 [dev-dependencies]
 futures = "0.3"
+anyhow = "1.0"
+uuid = { version = "1", features = ["v7"] }
 
 [features]
 # DB User

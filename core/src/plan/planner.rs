@@ -1,5 +1,5 @@
 use {
-    super::context::Context,
+    super::context::{Context, PrimaryKey},
     crate::{
         ast::{ColumnDef, ColumnUniqueOption, Expr, Function, Query, TableAlias, TableFactor},
         data::Schema,
@@ -215,11 +215,19 @@ pub trait Planner<'a> {
             .map(|ColumnDef { name, .. }| name.as_str())
             .collect::<Vec<_>>();
 
-        let primary_key = column_defs
-            .iter()
-            .find_map(|ColumnDef { name, unique, .. }| {
-                (unique == &Some(ColumnUniqueOption { is_primary: true })).then_some(name.as_str())
-            });
+        let primary_key = column_defs.iter().find_map(
+            |ColumnDef {
+                 data_type,
+                 name,
+                 unique,
+                 ..
+             }| {
+                (unique == &Some(ColumnUniqueOption { is_primary: true })).then_some(PrimaryKey {
+                    data_type: data_type.clone(),
+                    column: name.as_str(),
+                })
+            },
+        );
 
         let context = Context::new(
             alias.unwrap_or_else(|| name.to_owned()),

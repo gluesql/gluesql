@@ -1,10 +1,11 @@
-use std::rc::Rc;
+use {crate::ast::DataType, std::rc::Rc};
 
 pub enum Context<'a> {
     Data {
         alias: String,
         columns: Vec<&'a str>,
-        primary_key: Option<&'a str>,
+        // primary_key: Option<&'a str>,
+        primary_key: Option<PrimaryKey<'a>>,
         next: Option<Rc<Context<'a>>>,
     },
     Bridge {
@@ -13,11 +14,17 @@ pub enum Context<'a> {
     },
 }
 
+pub struct PrimaryKey<'a> {
+    pub data_type: DataType,
+    pub column: &'a str,
+}
+
 impl<'a> Context<'a> {
     pub fn new(
         alias: String,
         columns: Vec<&'a str>,
-        primary_key: Option<&'a str>,
+        // primary_key: Option<&'a str>,
+        primary_key: Option<PrimaryKey<'a>>,
         next: Option<Rc<Context<'a>>>,
     ) -> Self {
         Context::Data {
@@ -81,19 +88,18 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn contains_primary_key(&self, target_column: &str) -> bool {
+    pub fn contains_primary_key(&self, target_column: &str) -> Option<DataType> {
         match self {
             Self::Data {
                 primary_key: Some(primary_key),
                 ..
-            } if primary_key == &target_column => true,
+            } if primary_key.column == target_column => Some(primary_key.data_type),
             Self::Data { next, .. } => next
                 .as_ref()
-                .map(|next| next.contains_primary_key(target_column))
-                .unwrap_or(false),
+                .and_then(|next| next.contains_primary_key(target_column)),
             Self::Bridge { left, right } => {
                 left.contains_primary_key(target_column)
-                    || right.contains_primary_key(target_column)
+                    .or_else(|| right.contains_primary_key(target_column))
             }
         }
     }

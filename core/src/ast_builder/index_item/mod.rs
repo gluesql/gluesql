@@ -3,7 +3,7 @@ mod non_clustered;
 mod primary_key;
 
 use {
-    super::{select::Prebuild, ExprNode},
+    super::{select::Prebuild, ExprNode, DataTypeNode},
     crate::ast::{Expr, IndexOperator},
 };
 pub use {
@@ -20,7 +20,11 @@ pub enum IndexItemNode<'a> {
         asc: Option<bool>,
         cmp_expr: Option<(IndexOperator, ExprNode<'a>)>,
     },
-    PrimaryKey(ExprNode<'a>),
+    // PrimaryKey(ExprNode<'a>),
+    PrimaryKey {
+        data_type: DataTypeNode,
+        expr: exprNode<'a>,
+    }
 }
 
 impl<'a> From<CmpExprNode<'a>> for IndexItemNode<'a> {
