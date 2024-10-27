@@ -26,6 +26,7 @@ gluesql-csv-storage = { workspace = true, optional = true }
 gluesql-composite-storage = { workspace = true, optional = true }
 gluesql-web-storage = { workspace = true, optional = true }
 gluesql-idb-storage = { workspace = true, optional = true }
+gluesql-mongo-storage = { workspace = true, optional = true }
 gluesql-redis-storage = { workspace = true, optional = true }
 gluesql-parquet-storage = { workspace = true, optional = true }
 gluesql-file-storage = { workspace = true, optional = true }
@@ -46,6 +47,7 @@ default = [
   "gluesql-parquet-storage",
   "gluesql-csv-storage",
   "gluesql-composite-storage",
+  "gluesql-mongo-storage",
   "gluesql-redis-storage",
   "gluesql-file-storage",
   "gluesql-git-storage",

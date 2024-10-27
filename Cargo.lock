@@ -1232,6 +1232,7 @@ dependencies = [
  "gluesql-git-storage",
  "gluesql-idb-storage",
  "gluesql-json-storage",
+ "gluesql-mongo-storage",
  "gluesql-parquet-storage",
  "gluesql-redis-storage",
  "gluesql-shared-memory-storage",
