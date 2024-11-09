@@ -380,11 +380,11 @@ mod tests {
         let storage = run("
             CREATE TABLE Player (
                 id INTEGER PRIMARY KEY,
-                name TEXT,
+                name TEXT
             );
             CREATE TABLE Badge (
                 title TEXT PRIMARY KEY,
-                user_id INTEGER,
+                user_id INTEGER
             );
         ");
 

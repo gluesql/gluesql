@@ -16,7 +16,7 @@ test_case!(update, {
             id INTEGER,
             num INTEGER,
             num2 INTEGER,
-            name TEXT,
+            name TEXT
         )",
     )
     .await;
@@ -38,7 +38,7 @@ test_case!(update, {
         CREATE TABLE TableB (
             id INTEGER,
             num INTEGER,
-            rank INTEGER,
+            rank INTEGER
         )",
     )
     .await;
@@ -110,11 +110,11 @@ test_case!(update, {
 
     let error_cases = [
         (
-            "UPDATE TableA INNER JOIN ErrTestTable ON 1 = 1 SET 1 = 1",
+            "UPDATE TableA INNER JOIN ErrTestTable ON 1 = 1 SET id = 1",
             Err(TranslateError::JoinOnUpdateNotSupported.into()),
         ),
         (
-            "UPDATE (SELECT * FROM ErrTestTable) SET 1 = 1",
+            "UPDATE (SELECT * FROM ErrTestTable) SET id = 1",
             Err(
                 TranslateError::UnsupportedTableFactor("(SELECT * FROM ErrTestTable)".to_owned())
                     .into(),

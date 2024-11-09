@@ -9,7 +9,7 @@ test_case!(group_by, {
             id INTEGER,
             quantity INTEGER NULL,
             city TEXT,
-            ratio FLOAT,
+            ratio FLOAT
         );
     ",
     )

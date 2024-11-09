@@ -36,8 +36,8 @@ jobs:
         env:
           RUSTFLAGS: -Cinstrument-coverage
           LLVM_PROFILE_FILE: gluesql-%p-%m.profraw
-          GIT_REMOTE: https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/git-storage-test.git
-        run: cargo test --all-features --verbose
+          GIT_REMOTE: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
+        run: GIT_REMOTE=$GIT_REMOTE cargo test --all-features --verbose
       - name: Run grcov
         run: |
           mkdir coverage

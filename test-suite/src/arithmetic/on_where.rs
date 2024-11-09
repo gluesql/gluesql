@@ -8,7 +8,7 @@ test_case!(on_where, {
         CREATE TABLE Arith (
             id INTEGER,
             num INTEGER,
-            name TEXT,
+            name TEXT
         );
     ",
     )

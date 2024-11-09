@@ -30,6 +30,9 @@ pub use gluesql_parquet_storage;
 #[cfg(feature = "gluesql-file-storage")]
 pub use gluesql_file_storage;
 
+#[cfg(feature = "gluesql-git-storage")]
+pub use gluesql_git_storage;
+
 #[cfg(feature = "gluesql-composite-storage")]
 pub use gluesql_composite_storage;
 
@@ -65,6 +68,9 @@ pub mod prelude {
 
     #[cfg(feature = "gluesql-file-storage")]
     pub use gluesql_file_storage::FileStorage;
+
+    #[cfg(feature = "gluesql-git-storage")]
+    pub use gluesql_git_storage::GitStorage;
 
     #[cfg(feature = "gluesql-composite-storage")]
     pub use gluesql_composite_storage::CompositeStorage;

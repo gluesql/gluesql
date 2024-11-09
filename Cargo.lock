@@ -487,9 +487,9 @@ checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
 
 [[package]]
 name = "chrono"
-version = "0.4.33"
+version = "0.4.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f13690e35a5e4ace198e7beea2895d29f3a9cc55015fcebe6336bd2010af9eb"
+checksum = "a21f936df1771bf62b77f047b726c4625ff2e8aa607c01ec06e5a05bd8463401"
 dependencies = [
  "android-tzdata",
  "iana-time-zone",
@@ -1221,7 +1221,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql"
-version = "0.16.0"
+version = "0.16.2"
 dependencies = [
  "futures",
  "gluesql-cli",
@@ -1229,8 +1229,10 @@ dependencies = [
  "gluesql-core",
  "gluesql-csv-storage",
  "gluesql-file-storage",
+ "gluesql-git-storage",
  "gluesql-idb-storage",
  "gluesql-json-storage",
+ "gluesql-mongo-storage",
  "gluesql-parquet-storage",
  "gluesql-redis-storage",
  "gluesql-shared-memory-storage",
@@ -1242,7 +1244,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-cli"
-version = "0.16.0"
+version = "0.16.2"
 dependencies = [
  "anyhow",
  "clap 3.2.25",
@@ -1265,7 +1267,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-composite-storage"
-version = "0.16.0"
+version = "0.16.2"
 dependencies = [
  "async-trait",
  "futures",
@@ -1279,7 +1281,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-core"
-version = "0.16.0"
+version = "0.16.2"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -1309,7 +1311,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-csv-storage"
-version = "0.16.0"
+version = "0.16.2"
 dependencies = [
  "async-trait",
  "csv",
@@ -1327,7 +1329,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-file-storage"
-version = "0.16.0"
+version = "0.16.2"
 dependencies = [
  "async-trait",
  "futures",
@@ -1342,7 +1344,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-git-storage"
-version = "0.16.0"
+version = "0.16.2"
 dependencies = [
  "async-trait",
  "gluesql-core",
@@ -1357,7 +1359,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-idb-storage"
-version = "0.16.0"
+version = "0.16.2"
 dependencies = [
  "async-trait",
  "futures",
@@ -1375,7 +1377,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-js"
-version = "0.16.0"
+version = "0.16.2"
 dependencies = [
  "async-trait",
  "console_error_panic_hook",
@@ -1396,7 +1398,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-json-storage"
-version = "0.16.0"
+version = "0.16.2"
 dependencies = [
  "async-trait",
  "futures",
@@ -1414,7 +1416,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-mongo-storage"
-version = "0.16.0"
+version = "0.16.2"
 dependencies = [
  "async-trait",
  "bson",
@@ -1434,7 +1436,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-parquet-storage"
-version = "0.16.0"
+version = "0.16.2"
 dependencies = [
  "async-trait",
  "bincode",
@@ -1455,7 +1457,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-py"
-version = "0.16.0"
+version = "0.16.2"
 dependencies = [
  "gloo-utils 0.1.7",
  "gluesql-composite-storage",
@@ -1476,7 +1478,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-redis-storage"
-version = "0.16.0"
+version = "0.16.2"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1492,7 +1494,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-shared-memory-storage"
-version = "0.16.0"
+version = "0.16.2"
 dependencies = [
  "async-trait",
  "futures",
@@ -1505,7 +1507,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-test-suite"
-version = "0.16.0"
+version = "0.16.2"
 dependencies = [
  "async-trait",
  "bigdecimal",
@@ -1520,7 +1522,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-utils"
-version = "0.16.0"
+version = "0.16.2"
 dependencies = [
  "futures",
  "indexmap 1.9.3",
@@ -1529,7 +1531,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql-web-storage"
-version = "0.16.0"
+version = "0.16.2"
 dependencies = [
  "async-trait",
  "futures",
@@ -1544,7 +1546,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql_memory_storage"
-version = "0.16.0"
+version = "0.16.2"
 dependencies = [
  "async-trait",
  "futures",
@@ -1556,7 +1558,7 @@ dependencies = [
 
 [[package]]
 name = "gluesql_sled_storage"
-version = "0.16.0"
+version = "0.16.2"
 dependencies = [
  "async-io",
  "async-trait",
@@ -3320,9 +3322,9 @@ checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
 
 [[package]]
 name = "sqlparser"
-version = "0.46.0"
+version = "0.50.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11a81a8cad9befe4cf1b9d2d4b9c6841c76f0882a3fec00d95133953c13b3d3d"
+checksum = "b2e5b515a2bd5168426033e9efbfd05500114833916f1d5c268f938b4ee130ac"
 dependencies = [
  "bigdecimal",
  "log",

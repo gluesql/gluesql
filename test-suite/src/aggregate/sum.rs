@@ -9,7 +9,7 @@ test_case!(sum, {
             id INTEGER,
             quantity INTEGER,
             age INTEGER NULL,
-            total INTEGER,
+            total INTEGER
         );
     ",
     )

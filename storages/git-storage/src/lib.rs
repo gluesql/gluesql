@@ -1,8 +1,10 @@
 #![deny(clippy::str_to_string)]
 
+mod command_ext;
 mod store;
 mod store_mut;
 
+pub use command_ext::CommandExt;
 use {
     gluesql_core::{
         error::{Error, Result},
@@ -14,13 +16,16 @@ use {
     gluesql_csv_storage::CsvStorage,
     gluesql_file_storage::FileStorage,
     gluesql_json_storage::JsonStorage,
-    std::process::Command,
+    std::{
+        path::{Path, PathBuf},
+        process::Command,
+    },
     strum_macros::Display,
 };
 
 pub struct GitStorage {
     pub storage_base: StorageBase,
-    pub path: String,
+    pub path: PathBuf,
     pub remote: String,
     pub branch: String,
 }
@@ -43,14 +48,13 @@ const DEFAULT_REMOTE: &str = "origin";
 const DEFAULT_BRANCH: &str = "main";
 
 impl GitStorage {
-    pub fn init(path: &str, storage_type: StorageType) -> Result<Self> {
+    pub fn init<T: AsRef<Path>>(path: T, storage_type: StorageType) -> Result<Self> {
+        let path = path.as_ref();
         let storage_base = Self::storage_base(path, storage_type)?;
-
         Command::new("git")
             .current_dir(path)
             .arg("init")
-            .output()
-            .expect("failed to git init");
+            .execute()?;
 
         Ok(Self {
             storage_base,
@@ -60,7 +64,8 @@ impl GitStorage {
         })
     }
 
-    pub fn open(path: &str, storage_type: StorageType) -> Result<Self> {
+    pub fn open<T: AsRef<Path>>(path: T, storage_type: StorageType) -> Result<Self> {
+        let path = path.as_ref();
         let storage_base = Self::storage_base(path, storage_type)?;
 
         Ok(Self {
@@ -71,7 +76,7 @@ impl GitStorage {
         })
     }
 
-    fn storage_base(path: &str, storage_type: StorageType) -> Result<StorageBase> {
+    fn storage_base(path: &Path, storage_type: StorageType) -> Result<StorageBase> {
         use StorageType::*;
 
         match storage_type {
@@ -94,18 +99,14 @@ impl GitStorage {
             .current_dir(&self.path)
             .arg("add")
             .arg(".")
-            .output()
-            .map_storage_err()?;
+            .execute()?;
 
         Command::new("git")
             .current_dir(&self.path)
             .arg("commit")
             .arg("-m")
             .arg(message)
-            .output()
-            .map_storage_err()?;
-
-        Ok(())
+            .execute()
     }
 
     pub fn pull(&self) -> Result<()> {
@@ -114,9 +115,7 @@ impl GitStorage {
             .arg("pull")
             .arg(&self.remote)
             .arg(&self.branch)
-            .output()
-            .map_storage_err()
-            .map(|_| ())
+            .execute()
     }
 
     pub fn push(&self) -> Result<()> {
@@ -125,9 +124,7 @@ impl GitStorage {
             .arg("push")
             .arg(&self.remote)
             .arg(&self.branch)
-            .output()
-            .map_storage_err()
-            .map(|_| ())
+            .execute()
     }
 
     fn get_store(&self) -> &dyn Store {

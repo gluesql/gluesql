@@ -22,11 +22,13 @@ use {
     },
     ddl::translate_alter_table_operation,
     sqlparser::ast::{
-        Assignment as SqlAssignment, Delete as SqlDelete, FromTable as SqlFromTable,
-        Ident as SqlIdent, Insert as SqlInsert, ObjectName as SqlObjectName,
-        ObjectType as SqlObjectType, ReferentialAction as SqlReferentialAction,
-        Statement as SqlStatement, TableConstraint as SqlTableConstraint, TableFactor,
-        TableWithJoins,
+        Assignment as SqlAssignment, AssignmentTarget as SqlAssignmentTarget,
+        CommentDef as SqlCommentDef, CreateFunctionBody as SqlCreateFunctionBody,
+        CreateIndex as SqlCreateIndex, CreateTable as SqlCreateTable, Delete as SqlDelete,
+        FromTable as SqlFromTable, Ident as SqlIdent, Insert as SqlInsert,
+        ObjectName as SqlObjectName, ObjectType as SqlObjectType,
+        ReferentialAction as SqlReferentialAction, Statement as SqlStatement,
+        TableConstraint as SqlTableConstraint, TableFactor, TableWithJoins,
     },
 };
 
@@ -87,7 +89,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 selection: selection.as_ref().map(translate_expr).transpose()?,
             })
         }
-        SqlStatement::CreateTable {
+        SqlStatement::CreateTable(SqlCreateTable {
             if_not_exists,
             name,
             columns,
@@ -96,7 +98,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             constraints,
             comment,
             ..
-        } => {
+        }) => {
             let columns = columns
                 .iter()
                 .map(translate_column_def)
@@ -119,9 +121,14 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                     Some(v) => Some(translate_query(v).map(Box::new)?),
                     None => None,
                 },
-                engine: engine.clone(),
+                engine: engine
+                    .as_ref()
+                    .map(|table_engine| table_engine.name.to_owned()),
                 foreign_keys,
-                comment: comment.clone(),
+                comment: comment.as_ref().map(|comment| match comment {
+                    SqlCommentDef::WithEq(comment) => comment.to_owned(),
+                    SqlCommentDef::WithoutEq(comment) => comment.to_owned(),
+                }),
             })
         }
         SqlStatement::AlterTable {
@@ -166,12 +173,12 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 .map(|v| translate_object_name(&v.name))
                 .collect::<Result<Vec<_>>>()?,
         }),
-        SqlStatement::CreateIndex {
+        SqlStatement::CreateIndex(SqlCreateIndex {
             name,
             table_name,
             columns,
             ..
-        } => {
+        }) => {
             if columns.len() > 1 {
                 return Err(TranslateError::CompositeIndexNotSupported.into());
             }
@@ -255,7 +262,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             or_replace,
             name,
             args,
-            params,
+            function_body: Some(SqlCreateFunctionBody::Return(return_)),
             ..
         } => {
             let args = args
@@ -270,20 +277,28 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 or_replace: *or_replace,
                 name: translate_object_name(name)?,
                 args: args.unwrap_or_default(),
-                return_: params
-                    .return_
-                    .as_ref()
-                    .map(translate_expr)
-                    .transpose()?
-                    .ok_or(TranslateError::UnsupportedEmptyFunctionBody)?,
+                return_: translate_expr(return_)?,
             })
+        }
+        SqlStatement::CreateFunction { .. } => {
+            Err(TranslateError::UnsupportedEmptyFunctionBody.into())
         }
         _ => Err(TranslateError::UnsupportedStatement(sql_statement.to_string()).into()),
     }
 }
 
 pub fn translate_assignment(sql_assignment: &SqlAssignment) -> Result<Assignment> {
-    let SqlAssignment { id, value } = sql_assignment;
+    let SqlAssignment { target, value } = sql_assignment;
+
+    let id = match target {
+        SqlAssignmentTarget::Tuple(_) => {
+            return Err(TranslateError::TupleAssignmentOnUpdateNotSupported(
+                sql_assignment.to_string(),
+            )
+            .into());
+        }
+        SqlAssignmentTarget::ColumnName(SqlObjectName(id)) => id,
+    };
 
     if id.len() > 1 {
         return Err(
@@ -398,6 +413,18 @@ mod tests {
         let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
         let expected =
             Err(TranslateError::DefaultValuesOnInsertNotSupported("Foo".to_owned()).into());
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_tuple_assignment_on_update_not_supported() {
+        let sql = "UPDATE Foo SET (a, b) = (1, 2)";
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+        let expected = Err(TranslateError::TupleAssignmentOnUpdateNotSupported(
+            "(a, b) = (1, 2)".to_owned(),
+        )
+        .into());
 
         assert_eq!(actual, expected);
     }

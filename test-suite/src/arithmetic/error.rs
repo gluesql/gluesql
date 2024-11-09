@@ -17,7 +17,7 @@ test_case!(error, {
         CREATE TABLE Arith (
             id INTEGER,
             num INTEGER,
-            name TEXT,
+            name TEXT
         );
     ",
     )
