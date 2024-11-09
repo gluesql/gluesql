@@ -235,13 +235,11 @@ pub async fn drop_table<T: GStore + GStoreMut>(
         let referencings = storage.fetch_referencings(table_name).await?;
 
         if !referencings.is_empty() && !cascade {
-            return Err::<usize, Error>(
-                AlterError::CannotDropTableWithReferencing {
-                    referenced_table_name: table_name.into(),
-                    referencings,
-                }
-                .into(),
-            );
+            return Err(AlterError::CannotDropTableWithReferencing {
+                referenced_table_name: table_name.into(),
+                referencings,
+            }
+            .into());
         }
 
         for Referencing {
