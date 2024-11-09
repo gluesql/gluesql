@@ -10,13 +10,9 @@ use {
         result::{Error, Result},
         store::{GStore, GStoreMut},
     },
-    futures::stream::{self, StreamExt, TryStreamExt},
+    futures::stream::TryStreamExt,
     serde::Serialize,
-    std::{
-        borrow::BorrowMut,
-        fmt,
-        sync::{Arc, Mutex},
-    },
+    std::{borrow::BorrowMut, fmt},
 };
 
 pub struct CreateTableOptions<'a> {
@@ -224,7 +220,6 @@ pub async fn drop_table<T: GStore + GStoreMut>(
     let mut n = 0;
 
     for table_name in table_names {
-        let referencings: Vec<Referencing>;
         let schema = storage.fetch_schema(table_name).await?;
 
         match (schema, if_exists) {
@@ -237,7 +232,7 @@ pub async fn drop_table<T: GStore + GStoreMut>(
             _ => {}
         }
 
-        referencings = storage.fetch_referencings(table_name).await?;
+        let referencings = storage.fetch_referencings(table_name).await?;
 
         if !referencings.is_empty() && !cascade {
             return Err::<usize, Error>(
@@ -265,7 +260,7 @@ pub async fn drop_table<T: GStore + GStoreMut>(
         }
         storage.delete_schema(table_name).await?;
 
-        n = n + 1;
+        n += 1;
     }
 
     Ok(n)
