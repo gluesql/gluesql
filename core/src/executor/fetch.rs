@@ -48,8 +48,6 @@ pub async fn fetch<'a, T: GStore>(
     columns: Option<Rc<[String]>>,
     where_clause: Option<&'a Expr>,
 ) -> Result<impl Stream<Item = Result<(Key, Row)>> + 'a> {
-    println!("fetch, were_clause: {:?}", where_clause);
-
     let columns = columns.unwrap_or_else(|| Rc::from([]));
     let rows = storage
         .scan_data(table_name)
@@ -175,7 +173,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                         })
                                     })
                                     .map(|column_def| &column_def.data_type)
-                                    .unwrap();
+                                    .ok_or(FetchError::Unreachable)?;
 
                                 Value::try_from_literal(data_type, &literal)
                             }
