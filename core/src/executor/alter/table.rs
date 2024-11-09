@@ -256,7 +256,7 @@ pub async fn drop_table<T: GStore + GStoreMut>(
             schema
                 .foreign_keys
                 .retain(|foreign_key| foreign_key.name != name);
-            storage.borrow_mut().insert_schema(&schema).await?;
+            storage.insert_schema(&schema).await?;
         }
         storage.delete_schema(table_name).await?;
 
