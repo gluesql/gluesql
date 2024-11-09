@@ -221,70 +221,52 @@ pub async fn drop_table<T: GStore + GStoreMut>(
     if_exists: bool,
     cascade: bool,
 ) -> Result<usize> {
-    let storage = Arc::new(Mutex::new(storage));
+    let mut n = 0;
 
-    let n = stream::iter(table_names)
-        .map(Ok)
-        .try_fold(0usize, |acc, table_name| {
-            let storage_clone = Arc::clone(&storage);
+    for table_name in table_names {
+        let referencings: Vec<Referencing>;
+        let schema = storage.fetch_schema(table_name).await?;
 
-            async move {
-                let referencings: Vec<Referencing>;
-                {
-                    let storage = storage_clone
-                        .lock()
-                        .map_err(|_| AlterError::UnreachableStorageClone)?;
-
-                    let schema = storage.fetch_schema(table_name).await?;
-
-                    match (schema, if_exists) {
-                        (None, true) => return Ok(acc),
-                        (None, false) => {
-                            return Err(AlterError::TableNotFound(table_name.to_owned()).into());
-                        }
-                        _ => {}
-                    }
-
-                    referencings = storage.fetch_referencings(table_name).await?;
-                }
-
-                if !referencings.is_empty() && !cascade {
-                    return Err::<usize, Error>(
-                        AlterError::CannotDropTableWithReferencing {
-                            referenced_table_name: table_name.into(),
-                            referencings,
-                        }
-                        .into(),
-                    );
-                }
-
-                for Referencing {
-                    table_name,
-                    foreign_key: ForeignKey { name, .. },
-                } in referencings
-                {
-                    let mut storage = storage_clone
-                        .lock()
-                        .map_err(|_| AlterError::UnreachableStorageClone)?;
-                    let mut schema = storage
-                        .fetch_schema(&table_name)
-                        .await?
-                        .ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
-                    schema
-                        .foreign_keys
-                        .retain(|foreign_key| foreign_key.name != name);
-                    storage.borrow_mut().insert_schema(&schema).await?;
-                }
-
-                let mut storage = storage_clone
-                    .lock()
-                    .map_err(|_| AlterError::UnreachableStorageClone)?;
-                storage.delete_schema(table_name).await?;
-
-                Ok(acc + 1)
+        match (schema, if_exists) {
+            (None, true) => {
+                continue;
             }
-        })
-        .await?;
+            (None, false) => {
+                return Err(AlterError::TableNotFound(table_name.to_owned()).into());
+            }
+            _ => {}
+        }
+
+        referencings = storage.fetch_referencings(table_name).await?;
+
+        if !referencings.is_empty() && !cascade {
+            return Err::<usize, Error>(
+                AlterError::CannotDropTableWithReferencing {
+                    referenced_table_name: table_name.into(),
+                    referencings,
+                }
+                .into(),
+            );
+        }
+
+        for Referencing {
+            table_name,
+            foreign_key: ForeignKey { name, .. },
+        } in referencings
+        {
+            let mut schema = storage
+                .fetch_schema(&table_name)
+                .await?
+                .ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
+            schema
+                .foreign_keys
+                .retain(|foreign_key| foreign_key.name != name);
+            storage.borrow_mut().insert_schema(&schema).await?;
+        }
+        storage.delete_schema(table_name).await?;
+
+        n = n + 1;
+    }
 
     Ok(n)
 }
