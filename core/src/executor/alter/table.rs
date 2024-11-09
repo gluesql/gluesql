@@ -12,7 +12,7 @@ use {
     },
     futures::stream::TryStreamExt,
     serde::Serialize,
-    std::{borrow::BorrowMut, fmt},
+    std::fmt,
 };
 
 pub struct CreateTableOptions<'a> {
