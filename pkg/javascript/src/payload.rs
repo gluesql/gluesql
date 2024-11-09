@@ -17,7 +17,7 @@ pub fn convert(payloads: Vec<Payload>) -> JsValue {
 fn convert_payload(payload: Payload) -> Json {
     match payload {
         Payload::Create => json!({ "type": "CREATE TABLE" }),
-        Payload::DropTable => json!({ "type": "DROP TABLE" }),
+        Payload::DropTable(num) => json!({ "type": "DROP TABLE", "affected": num }),
         Payload::Select { labels, rows } => {
             let rows = rows
                 .into_iter()

@@ -8,6 +8,7 @@ use {
         io::{Result as IOResult, Write},
         path::Path,
     },
+    strum_macros::Display,
     tabled::{builder::Builder, Style, Table},
 };
 
@@ -97,14 +98,21 @@ impl<'a, W: Write> Print<W> {
     }
 
     pub fn payload(&mut self, payload: &Payload) -> IOResult<()> {
-        let mut affected = |n: usize, msg: &str| -> IOResult<()> {
-            let payload = format!("{} row{} {}", n, if n > 1 { "s" } else { "" }, msg);
+        #[derive(Display)]
+        #[strum(serialize_all = "snake_case")]
+        enum Target {
+            Table,
+            Row,
+        }
+        let mut affected = |n: usize, target: Target, msg: &str| -> IOResult<()> {
+            let payload = format!("{n} {target}{} {msg}", if n > 1 { "s" } else { "" });
             self.writeln(payload)
         };
 
+        use Target::*;
         match payload {
             Payload::Create => self.writeln("Table created")?,
-            Payload::DropTable => self.writeln("Table dropped")?,
+            Payload::DropTable(n) => affected(*n, Table, "dropped")?,
             Payload::DropFunction => self.writeln("Function dropped")?,
             Payload::AlterTable => self.writeln("Table altered")?,
             Payload::CreateIndex => self.writeln("Index created")?,
@@ -112,9 +120,9 @@ impl<'a, W: Write> Print<W> {
             Payload::Commit => self.writeln("Commit completed")?,
             Payload::Rollback => self.writeln("Rollback completed")?,
             Payload::StartTransaction => self.writeln("Transaction started")?,
-            Payload::Insert(n) => affected(*n, "inserted")?,
-            Payload::Delete(n) => affected(*n, "deleted")?,
-            Payload::Update(n) => affected(*n, "updated")?,
+            Payload::Insert(n) => affected(*n, Row, "inserted")?,
+            Payload::Delete(n) => affected(*n, Row, "deleted")?,
+            Payload::Update(n) => affected(*n, Row, "updated")?,
             Payload::ShowVariable(PayloadVariable::Version(v)) => self.writeln(format!("v{v}"))?,
             Payload::ShowVariable(PayloadVariable::Tables(names)) => {
                 let mut table = self.get_table(["tables"]);
@@ -381,7 +389,7 @@ mod tests {
         }
 
         test!(Payload::Create, "Table created");
-        test!(Payload::DropTable, "Table dropped");
+        test!(Payload::DropTable(1), "1 table dropped");
         test!(Payload::AlterTable, "Table altered");
         test!(Payload::CreateIndex, "Index created");
         test!(Payload::DropIndex, "Index dropped");

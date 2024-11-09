@@ -216,12 +216,16 @@ pub async fn drop_table<T: GStore + GStoreMut>(
     table_names: &[String],
     if_exists: bool,
     cascade: bool,
-) -> Result<()> {
+) -> Result<usize> {
+    let mut n = 0;
+
     for table_name in table_names {
         let schema = storage.fetch_schema(table_name).await?;
 
         match (schema, if_exists) {
-            (None, true) => return Ok(()),
+            (None, true) => {
+                continue;
+            }
             (None, false) => {
                 return Err(AlterError::TableNotFound(table_name.to_owned()).into());
             }
@@ -252,11 +256,12 @@ pub async fn drop_table<T: GStore + GStoreMut>(
                 .retain(|foreign_key| foreign_key.name != name);
             storage.insert_schema(&schema).await?;
         }
-
         storage.delete_schema(table_name).await?;
+
+        n += 1;
     }
 
-    Ok(())
+    Ok(n)
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize)]

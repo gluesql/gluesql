@@ -112,5 +112,5 @@ def test_payload():
     DROP TABLE IF EXISTS Foo
             """
         )
-        == [{"type": "DROP TABLE"}]
+        == [{"affected": 1, "type": "DROP TABLE"}]
     )

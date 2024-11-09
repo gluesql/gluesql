@@ -33,7 +33,7 @@ CREATE TABLE DropTable (
                 1     2     "Hello".to_owned()
             )),
         ),
-        ("DROP TABLE DropTable;", Ok(Payload::DropTable)),
+        ("DROP TABLE DropTable;", Ok(Payload::DropTable(1))),
         (
             "DROP TABLE DropTable;",
             Err(AlterError::TableNotFound("DropTable".to_owned()).into()),
@@ -47,8 +47,8 @@ CREATE TABLE DropTable (
 )",
             Ok(Payload::Create),
         ),
-        ("DROP TABLE IF EXISTS DropTable;", Ok(Payload::DropTable)),
-        ("DROP TABLE IF EXISTS DropTable;", Ok(Payload::DropTable)),
+        ("DROP TABLE IF EXISTS DropTable;", Ok(Payload::DropTable(1))),
+        ("DROP TABLE IF EXISTS DropTable;", Ok(Payload::DropTable(0))),
         (
             "SELECT id, num, name FROM DropTable;",
             Err(FetchError::TableNotFound("DropTable".to_owned()).into()),
@@ -80,7 +80,10 @@ CREATE TABLE DropTable (
         )",
             Ok(Payload::Create),
         ),
-        ("DROP TABLE DropTable1, DropTable2;", Ok(Payload::DropTable)),
+        (
+            "DROP TABLE DropTable1, DropTable2;",
+            Ok(Payload::DropTable(2)),
+        ),
         (
             "SELECT id, num, name FROM DropTable1;",
             Err(FetchError::TableNotFound("DropTable1".to_owned()).into()),
@@ -109,7 +112,7 @@ CREATE TABLE DropTable (
         ),
         (
             "DROP TABLE IF EXISTS DropTable1, DropTable2;",
-            Ok(Payload::DropTable),
+            Ok(Payload::DropTable(2)),
         ),
         (
             "SELECT id, num, name FROM DropTable1;",
@@ -130,7 +133,7 @@ CREATE TABLE DropTable (
         ),
         (
             "DROP TABLE IF EXISTS DropTable1, DropTable2;",
-            Ok(Payload::DropTable),
+            Ok(Payload::DropTable(1)),
         ),
         (
             "SELECT id, num, name FROM DropTable1;",
