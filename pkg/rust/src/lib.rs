@@ -12,7 +12,7 @@ pub mod core {
 #[cfg(feature = "gluesql_memory_storage")]
 pub use gluesql_memory_storage;
 
-#[cfg(feature = "shared-memory-storage")]
+#[cfg(feature = "gluesql-shared-memory-storage")]
 pub use shared_memory_storage;
 
 #[cfg(feature = "gluesql_sled_storage")]
