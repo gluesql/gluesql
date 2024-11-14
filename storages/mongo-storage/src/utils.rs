@@ -2,7 +2,7 @@ use {
     crate::{description::TableDescription, error::ResultExt},
     bson::{doc, Document},
     gluesql_core::{
-        ast::{ColumnDef, ForeignKey},
+        ast::{CheckConstraint, ColumnDef, ForeignKey},
         error::Result,
     },
     mongodb::options::CreateCollectionOptions,
@@ -24,6 +24,7 @@ impl Validator {
         labels: Vec<String>,
         column_types: Document,
         foreign_keys: Vec<ForeignKey>,
+        check_constraints: Vec<CheckConstraint>,
         comment: Option<String>,
     ) -> Result<Self> {
         let mut required = vec!["_id".to_owned()];
@@ -38,6 +39,7 @@ impl Validator {
         let table_description = to_string(
             &(TableDescription {
                 foreign_keys,
+                check_constraints,
                 comment,
             }),
         )

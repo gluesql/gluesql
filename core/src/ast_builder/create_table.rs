@@ -1,6 +1,10 @@
 use {
     super::Build,
-    crate::{ast::Statement, ast_builder::ColumnDefNode, result::Result},
+    crate::{
+        ast::{CheckConstraint, Statement},
+        ast_builder::ColumnDefNode,
+        result::Result,
+    },
 };
 
 #[derive(Clone, Debug)]
@@ -36,20 +40,20 @@ impl CreateTableNode {
 impl Build for CreateTableNode {
     fn build(self) -> Result<Statement> {
         let table_name = self.table_name;
-        let columns = match self.columns {
-            Some(columns) => Some(
-                columns
-                    .into_iter()
-                    .map(TryInto::try_into)
-                    .collect::<Result<Vec<_>>>()?,
-            ),
-            None => None,
-        };
+        let mut columns = Vec::new();
+        let mut check_constraints: Vec<CheckConstraint> = Vec::new();
+
+        for column in self.columns.unwrap_or_default() {
+            let (column_def, check) = column.parse()?;
+            columns.push(column_def);
+            check_constraints.extend(check);
+        }
 
         Ok(Statement::CreateTable {
             name: table_name,
             if_not_exists: self.if_not_exists,
-            columns,
+            columns: (!columns.is_empty()).then_some(columns),
+            check_constraints,
             source: None,
             engine: None,
             foreign_keys: Vec::new(),

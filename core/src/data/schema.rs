@@ -1,6 +1,6 @@
 use {
     crate::{
-        ast::{ColumnDef, Expr, ForeignKey, OrderByExpr, Statement, ToSql},
+        ast::{CheckConstraint, ColumnDef, Expr, ForeignKey, OrderByExpr, Statement, ToSql},
         prelude::{parse, translate},
         result::Result,
     },
@@ -34,10 +34,20 @@ pub struct Schema {
     pub indexes: Vec<SchemaIndex>,
     pub engine: Option<String>,
     pub foreign_keys: Vec<ForeignKey>,
+    pub check_constraints: Vec<CheckConstraint>,
     pub comment: Option<String>,
 }
 
 impl Schema {
+    pub fn get_column_names(&self) -> Option<Vec<String>> {
+        self.column_defs.as_ref().map(|columns| {
+            columns
+                .iter()
+                .map(|ColumnDef { name, .. }| name.to_owned())
+                .collect()
+        })
+    }
+
     pub fn to_ddl(&self) -> String {
         let Schema {
             table_name,
@@ -45,6 +55,7 @@ impl Schema {
             indexes,
             engine,
             foreign_keys,
+            check_constraints,
             comment,
         } = self;
 
@@ -56,6 +67,7 @@ impl Schema {
             comment: comment.to_owned(),
             source: None,
             foreign_keys: foreign_keys.to_owned(),
+            check_constraints: check_constraints.to_owned(),
         }
         .to_sql();
 
@@ -113,6 +125,7 @@ impl Schema {
                 columns,
                 engine,
                 foreign_keys,
+                check_constraints,
                 comment,
                 ..
             } => Ok(Schema {
@@ -121,6 +134,7 @@ impl Schema {
                 indexes,
                 engine,
                 foreign_keys,
+                check_constraints,
                 comment,
             }),
             _ => Err(SchemaParseError::CannotParseDDL.into()),
@@ -153,6 +167,7 @@ mod tests {
             indexes,
             engine,
             foreign_keys,
+            check_constraints,
             comment,
         } = actual;
 
@@ -162,6 +177,7 @@ mod tests {
             indexes: indexes_e,
             engine: engine_e,
             foreign_keys: foreign_keys_e,
+            check_constraints: check_constraints_e,
             comment: comment_e,
         } = expected;
 
@@ -169,6 +185,7 @@ mod tests {
         assert_eq!(column_defs, column_defs_e);
         assert_eq!(engine, engine_e);
         assert_eq!(foreign_keys, foreign_keys_e);
+        assert_eq!(check_constraints, check_constraints_e);
         assert_eq!(comment, comment_e);
         indexes
             .into_iter()
@@ -217,6 +234,7 @@ mod tests {
             indexes: Vec::new(),
             engine: None,
             foreign_keys: Vec::new(),
+            check_constraints: Vec::new(),
             comment: None,
         };
 
@@ -232,6 +250,7 @@ mod tests {
             indexes: Vec::new(),
             engine: None,
             foreign_keys: Vec::new(),
+            check_constraints: Vec::new(),
             comment: None,
         };
         let ddl = r#"CREATE TABLE "Test";"#;
@@ -256,6 +275,7 @@ mod tests {
             indexes: Vec::new(),
             engine: None,
             foreign_keys: Vec::new(),
+            check_constraints: Vec::new(),
             comment: None,
         };
 
@@ -312,6 +332,7 @@ mod tests {
             ],
             engine: None,
             foreign_keys: Vec::new(),
+            check_constraints: Vec::new(),
             comment: None,
         };
         let ddl = r#"CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);
@@ -358,6 +379,7 @@ CREATE TABLE "User" ("id" INT NOT NULL, "name" TEXT NOT NULL);"#;
             }],
             engine: None,
             foreign_keys: Vec::new(),
+            check_constraints: Vec::new(),
             comment: None,
         };
         let ddl = r#"CREATE TABLE "1" ("2" INT NULL, ";" INT NULL);

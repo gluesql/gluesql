@@ -3,7 +3,9 @@ use {
         data_type::translate_data_type, expr::translate_expr, translate_object_name, TranslateError,
     },
     crate::{
-        ast::{AlterTableOperation, ColumnDef, ColumnUniqueOption, OperateFunctionArg},
+        ast::{
+            AlterTableOperation, CheckConstraint, ColumnDef, ColumnUniqueOption, OperateFunctionArg,
+        },
         result::Result,
     },
     sqlparser::ast::{
@@ -18,9 +20,8 @@ pub fn translate_alter_table_operation(
 ) -> Result<AlterTableOperation> {
     match sql_alter_table_operation {
         SqlAlterTableOperation::AddColumn { column_def, .. } => {
-            Ok(AlterTableOperation::AddColumn {
-                column_def: translate_column_def(column_def)?,
-            })
+            let (column_def, check) = translate_column_def(column_def)?;
+            Ok(AlterTableOperation::AddColumn { column_def, check })
         }
         SqlAlterTableOperation::DropColumn {
             column_name,
@@ -49,7 +50,9 @@ pub fn translate_alter_table_operation(
     }
 }
 
-pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> {
+pub fn translate_column_def(
+    sql_column_def: &SqlColumnDef,
+) -> Result<(ColumnDef, Option<CheckConstraint>)> {
     let SqlColumnDef {
         name,
         data_type,
@@ -57,16 +60,18 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> 
         ..
     } = sql_column_def;
 
-    let (nullable, default, unique, comment) = options.iter().try_fold(
-        (true, None, None, None),
-        |(nullable, default, unique, comment), SqlColumnOptionDef { option, .. }| -> Result<_> {
+    let (nullable, default, unique, check, comment) = options.iter().try_fold(
+        (true, None, None, None, None),
+        |(nullable, default, unique, check, comment),
+         SqlColumnOptionDef { option, .. }|
+         -> Result<_> {
             match option {
-                SqlColumnOption::Null => Ok((nullable, default, unique, comment)),
-                SqlColumnOption::NotNull => Ok((false, default, unique, comment)),
+                SqlColumnOption::Null => Ok((nullable, default, unique, check, comment)),
+                SqlColumnOption::NotNull => Ok((false, default, unique, check, comment)),
                 SqlColumnOption::Default(default) => {
                     let default = translate_expr(default).map(Some)?;
 
-                    Ok((nullable, default, unique, comment))
+                    Ok((nullable, default, unique, check, comment))
                 }
                 SqlColumnOption::Unique { is_primary, .. } => {
                     let nullable = if *is_primary { false } else { nullable };
@@ -74,24 +79,31 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> 
                         is_primary: *is_primary,
                     });
 
-                    Ok((nullable, default, unique, comment))
+                    Ok((nullable, default, unique, check, comment))
                 }
                 SqlColumnOption::Comment(comment) => {
-                    Ok((nullable, default, unique, Some(comment.to_string())))
+                    Ok((nullable, default, unique, check, Some(comment.to_string())))
+                }
+                SqlColumnOption::Check(expr) => {
+                    let check = Some(CheckConstraint::anonymous(translate_expr(expr)?));
+                    Ok((nullable, default, unique, check, comment))
                 }
                 _ => Err(TranslateError::UnsupportedColumnOption(option.to_string()).into()),
             }
         },
     )?;
 
-    Ok(ColumnDef {
-        name: name.value.to_owned(),
-        data_type: translate_data_type(data_type)?,
-        nullable,
-        default,
-        unique,
-        comment,
-    })
+    Ok((
+        ColumnDef {
+            name: name.value.to_owned(),
+            data_type: translate_data_type(data_type)?,
+            nullable,
+            default,
+            unique,
+            comment,
+        },
+        check,
+    ))
 }
 
 pub fn translate_operate_function_arg(arg: &SqlOperateFunctionArg) -> Result<OperateFunctionArg> {
@@ -107,4 +119,75 @@ pub fn translate_operate_function_arg(arg: &SqlOperateFunctionArg) -> Result<Ope
         data_type,
         default,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::ast::{AstLiteral, Expr};
+
+    use super::*;
+    use sqlparser::ast::{
+        ColumnDef as SqlColumnDef, ColumnOption, ColumnOptionDef, DataType as SqlDataType,
+        Expr as SqlExpr, Ident as SqlIdent, Value as SqlValue,
+    };
+
+    #[test]
+    /// Test to cover all of the possible cases of the `translate_column_def` function.
+    fn test_translate_column_def() {
+        // Case where Column Def is Materialized
+        let sql_column_def = SqlColumnDef {
+            name: SqlIdent {
+                value: "column_name".to_owned(),
+                quote_style: None,
+            },
+            data_type: SqlDataType::Int16,
+            collation: None,
+            options: vec![ColumnOptionDef {
+                name: Some(SqlIdent {
+                    value: "MATERIALIZED".to_owned(),
+                    quote_style: None,
+                }),
+                option: ColumnOption::Materialized(SqlExpr::Value(SqlValue::Boolean(true))),
+            }],
+        };
+
+        assert_eq!(
+            translate_column_def(&sql_column_def),
+            Err(TranslateError::UnsupportedColumnOption("MATERIALIZED true".to_owned()).into())
+        );
+
+        // Case where Column Def includes a Check Constraint
+        let sql_column_def = SqlColumnDef {
+            name: SqlIdent {
+                value: "column_name".to_owned(),
+                quote_style: None,
+            },
+            data_type: SqlDataType::Int16,
+            collation: None,
+            options: vec![ColumnOptionDef {
+                name: Some(SqlIdent {
+                    value: "CHECK".to_owned(),
+                    quote_style: None,
+                }),
+                option: ColumnOption::Check(SqlExpr::Value(SqlValue::Boolean(true))),
+            }],
+        };
+
+        assert_eq!(
+            translate_column_def(&sql_column_def),
+            Ok((
+                ColumnDef {
+                    name: "column_name".to_owned(),
+                    data_type: crate::ast::DataType::Int16,
+                    nullable: true,
+                    default: None,
+                    unique: None,
+                    comment: None,
+                },
+                Some(CheckConstraint::anonymous(Expr::Literal(
+                    AstLiteral::Boolean(true)
+                )))
+            ))
+        );
+    }
 }
