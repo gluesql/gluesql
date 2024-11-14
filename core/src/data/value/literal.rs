@@ -229,6 +229,7 @@ impl Value {
         }
     }
 
+    // sql like "CAST"
     pub fn try_cast_from_literal(data_type: &DataType, literal: &Literal<'_>) -> Result<Value> {
         match (data_type, literal) {
             (DataType::Boolean, Literal::Boolean(v)) => Ok(Value::Bool(*v)),
