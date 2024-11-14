@@ -148,6 +148,20 @@ impl<'a, W: Write> Print<W> {
                 let table = self.build_table(table);
                 self.writeln(table)?;
             }
+            Payload::ExplainTable(columns) => {
+                let mut table = self.get_table(vec!["Field", "Type", "Null", "Key", "Default"]);
+                for row in columns {
+                    table.add_record([
+                        row.name.to_owned(),
+                        row.data_type.to_string(),
+                        row.nullable.to_string(),
+                        row.key.to_string(),
+                        row.default.to_string(),
+                    ]);
+                }
+                let table = self.build_table(table);
+                self.write(table)?;
+            }
             Payload::Select { labels, rows } => match &self.option.tabular {
                 true => {
                     let labels = labels.iter().map(AsRef::as_ref);
@@ -367,7 +381,7 @@ mod tests {
     fn print_payload() {
         use gluesql_core::{
             ast::DataType,
-            prelude::{Payload, PayloadVariable, Value},
+            prelude::{ExplainTableRow, Payload, PayloadVariable, Value},
         };
 
         let mut print = Print::new(Vec::new(), None, Default::default());
@@ -583,6 +597,47 @@ mod tests {
 | uuid   | UUID      |
 | hash   | MAP       |
 | mylist | LIST      |"
+        );
+
+        test!(
+            Payload::ExplainTable(vec![
+                ExplainTableRow {
+                    name: "id".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: false,
+                    key: "PRIMARY KEY".to_owned(),
+                    default: "".to_owned(),
+                },
+                ExplainTableRow {
+                    name: "name".to_owned(),
+                    data_type: DataType::Text,
+                    nullable: true,
+                    key: "".to_owned(),
+                    default: "".to_owned(),
+                },
+                ExplainTableRow {
+                    name: "age".to_owned(),
+                    data_type: DataType::Int,
+                    nullable: false,
+                    key: "".to_owned(),
+                    default: "".to_owned(),
+                },
+                ExplainTableRow {
+                    name: "alive".to_owned(),
+                    data_type: DataType::Boolean,
+                    nullable: true,
+                    key: "".to_owned(),
+                    default: "TRUE".to_owned(),
+                }
+            ]),
+            "
+| Field | Type    | Null  | Key         | Default |
+|-------|---------|-------|-------------|---------|
+| id    | INT     | false | PRIMARY KEY |         |
+| name  | TEXT    | true  |             |         |
+| age   | INT     | false |             |         |
+| alive | BOOLEAN | true  |             | TRUE    |
+"
         );
 
         // ".set tabular OFF" should print SELECTED payload without tabular option
