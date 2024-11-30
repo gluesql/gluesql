@@ -30,6 +30,7 @@ impl Tester<FileStorage> for FileStorageTester {
 }
 
 generate_store_tests!(tokio::test, FileStorageTester);
+generate_alter_table_tests!(tokio::test, FileStorageTester);
 
 #[tokio::test]
 async fn scan_data_to_ignore_directory_items() {

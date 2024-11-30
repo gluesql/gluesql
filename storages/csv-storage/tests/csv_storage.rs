@@ -27,3 +27,4 @@ impl Tester<CsvStorage> for CsvTester {
 }
 
 generate_store_tests!(tokio::test, CsvTester);
+generate_alter_table_tests!(tokio::test, CsvTester);

@@ -27,3 +27,4 @@ impl Tester<JsonStorage> for JsonTester {
 }
 
 generate_store_tests!(tokio::test, JsonTester);
+generate_alter_table_tests!(tokio::test, JsonTester);

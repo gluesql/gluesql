@@ -27,3 +27,4 @@ impl Tester<ParquetStorage> for ParquetTester {
 }
 
 generate_store_tests!(tokio::test, ParquetTester);
+generate_alter_table_tests!(tokio::test, ParquetTester);
