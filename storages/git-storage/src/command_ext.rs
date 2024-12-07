@@ -44,7 +44,13 @@ mod tests {
         Command::new("git")
             .current_dir(path)
             .arg("init")
-            .arg("--initial-branch=main")
+            .execute()
+            .unwrap();
+        Command::new("git")
+            .current_dir(path)
+            .arg("checkout")
+            .arg("-b")
+            .arg("main")
             .execute()
             .unwrap();
 
