@@ -104,6 +104,7 @@ impl GitStorage {
         Command::new("git")
             .current_dir(&self.path)
             .arg("commit")
+            .arg("--allow-empty")
             .arg("-m")
             .arg(message)
             .execute()
