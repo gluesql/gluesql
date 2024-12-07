@@ -28,3 +28,4 @@ impl Tester<MongoStorage> for MongoTester {
 }
 
 generate_store_tests!(tokio::test, MongoTester);
+generate_alter_table_tests!(tokio::test, MongoTester);

@@ -31,3 +31,4 @@ impl Tester<WebStorage> for LocalStorageTester {
 }
 
 generate_store_tests!(wasm_bindgen_test, LocalStorageTester);
+generate_alter_table_tests!(wasm_bindgen_test, LocalStorageTester);

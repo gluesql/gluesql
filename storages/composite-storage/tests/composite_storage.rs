@@ -25,3 +25,4 @@ impl Tester<CompositeStorage> for CompositeTester {
 }
 
 generate_store_tests!(tokio::test, CompositeTester);
+generate_alter_table_tests!(tokio::test, CompositeTester);
