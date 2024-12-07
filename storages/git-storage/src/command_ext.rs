@@ -43,7 +43,8 @@ mod tests {
         Command::new("mkdir").arg("-p").arg(path).execute().unwrap();
         Command::new("git")
             .current_dir(path)
-            .arg("init,  --initial-branch=main")
+            .arg("init")
+            .arg("--initial-branch=main")
             .execute()
             .unwrap();
 
