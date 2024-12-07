@@ -87,7 +87,6 @@ pub trait AlterTable: Store + StoreMut {
             .try_collect::<Vec<_>>()
             .await?;
 
-        self.delete_schema(table_name).await?;
         self.insert_schema(&schema).await?;
         self.insert_data(table_name, rows).await
     }
