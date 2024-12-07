@@ -21,7 +21,7 @@ impl CommandExt for Command {
                 (!stderr.is_empty()).then(|| format!("[stderr] {}", stderr)),
             ]
             .into_iter()
-            .filter_map(|x| x)
+            .flatten()
             .collect::<Vec<_>>()
             .join("\n");
 
