@@ -23,7 +23,7 @@ impl CommandExt for Command {
             .into_iter()
             .flatten()
             .collect::<Vec<_>>()
-            .join("\n");
+            .join("");
 
             return Err(Error::StorageMsg(out_and_err));
         }
@@ -57,7 +57,7 @@ mod tests {
         assert!(executed.is_err());
         assert_eq!(
         executed.unwrap_err().to_string(),
-        "storage: [stdout] On branch main\n\nInitial commit\n\nnothing to commit (create/copy files and use \"git add\" to track)\n"
+        "storage: [stdout] On branch main\nInitial commit\nnothing to commit (create/copy files and use \"git add\" to track)\n"
     );
 
         let executed = Command::new("git")
