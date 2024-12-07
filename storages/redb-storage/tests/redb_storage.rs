@@ -29,3 +29,4 @@ impl Tester<RedbStorage> for RedbTester {
 }
 
 generate_store_tests!(tokio::test, RedbTester);
+generate_transaction_tests!(tokio::test, RedbTester);
