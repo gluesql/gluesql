@@ -20,8 +20,8 @@ impl CommandExt for Command {
                 (!stdout.is_empty()).then(|| format!("[stdout] {}", stdout)),
                 (!stderr.is_empty()).then(|| format!("[stderr] {}", stderr)),
             ]
-            .iter()
-            .filter_map(|x| x.clone())
+            .into_iter()
+            .filter_map(|x| x)
             .collect::<Vec<_>>()
             .join("\n");
 
