@@ -9,6 +9,7 @@ mod delete;
 mod drop_table;
 mod error;
 mod execute;
+mod explain_table;
 mod expr;
 mod expr_list;
 mod expr_with_alias;
@@ -53,6 +54,7 @@ pub use {
     drop_table::DropTableNode,
     error::AstBuilderError,
     execute::Execute,
+    explain_table::ExplainTableNode,
     expr_list::ExprList,
     expr_with_alias::ExprWithAliasNode,
     index::{CreateIndexNode, DropIndexNode},
