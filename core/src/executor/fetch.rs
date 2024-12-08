@@ -6,7 +6,7 @@ use {
             SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, ToSql, ToSqlUnquoted,
             Values,
         },
-        data::{get_alias, get_index, Key, Row, Value},
+        data::{get_alias, get_index, Key, Nullable, Row, Value},
         executor::{evaluate::evaluate, select::select},
         result::Result,
         store::{DataRow, GStore},
@@ -67,7 +67,10 @@ pub async fn fetch<'a, T: GStore>(
 
                 check_expr(storage, Some(Rc::new(context)), None, expr)
                     .await
-                    .map(|pass| pass.then_some((key, row)))
+                    .map(|pass| match pass {
+                        Nullable::Entry(true) => Some((key, row)),
+                        Nullable::Null | Nullable::Entry(false) => None,
+                    })
             }
         });
 

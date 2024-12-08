@@ -46,8 +46,8 @@ pub fn binary_op<'a>(
         BinaryOperator::Divide => l.divide(&r),
         BinaryOperator::Modulo => l.modulo(&r),
         BinaryOperator::StringConcat => l.concat(r),
-        BinaryOperator::Eq => cmp!(l.evaluate_eq(&r)),
-        BinaryOperator::NotEq => cmp!(!l.evaluate_eq(&r)),
+        BinaryOperator::Eq => Ok(l.evaluate_eq(&r).into()),
+        BinaryOperator::NotEq => Ok((!l.evaluate_eq(&r)).into()),
         BinaryOperator::Lt => cmp!(l.evaluate_cmp(&r) == Some(Ordering::Less)),
         BinaryOperator::LtEq => cmp!(matches!(
             l.evaluate_cmp(&r),
@@ -71,9 +71,14 @@ pub fn unary_op<'a>(op: &UnaryOperator, v: Evaluated<'a>) -> Result<Evaluated<'a
     match op {
         UnaryOperator::Plus => v.unary_plus(),
         UnaryOperator::Minus => v.unary_minus(),
-        UnaryOperator::Not => v
-            .try_into()
-            .map(|v: bool| Evaluated::Value(Value::Bool(!v))),
+        UnaryOperator::Not => {
+            if v.is_null() {
+                Ok(Evaluated::null())
+            } else {
+                let v: bool = v.try_into()?;
+                Ok(Evaluated::Value(Value::Bool(!v)))
+            }
+        }
         UnaryOperator::Factorial => v.unary_factorial(),
         UnaryOperator::BitwiseNot => v.unary_bitwise_not(),
     }

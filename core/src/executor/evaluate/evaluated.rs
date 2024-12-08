@@ -2,7 +2,7 @@ use {
     super::error::EvaluateError,
     crate::{
         ast::{BinaryOperator, DataType, TrimWhereField},
-        data::{value::HashMapJsonExt, Key, Literal, Value},
+        data::{value::HashMapJsonExt, Key, Literal, Nullable, Value},
         result::{Error, Result},
     },
     std::{borrow::Cow, cmp::Ordering, collections::HashMap, ops::Range},
@@ -16,6 +16,15 @@ pub enum Evaluated<'a> {
         range: Range<usize>,
     },
     Value(Value),
+}
+
+impl<T: Into<Value>> From<Nullable<T>> for Evaluated<'_> {
+    fn from(value: Nullable<T>) -> Self {
+        match value {
+            Nullable::Null => Evaluated::Value(Value::Null),
+            Nullable::Entry(value) => Evaluated::Value(value.into()),
+        }
+    }
 }
 
 impl TryFrom<Evaluated<'_>> for Value {
@@ -127,7 +136,12 @@ pub fn exceptional_int_val_to_eval<'a>(name: String, v: Value) -> Result<Evaluat
 }
 
 impl<'a> Evaluated<'a> {
-    pub fn evaluate_eq(&self, other: &Evaluated<'a>) -> bool {
+    /// Returns a null value.
+    pub fn null() -> Self {
+        Evaluated::Value(Value::Null)
+    }
+
+    pub fn evaluate_eq(&self, other: &Evaluated<'a>) -> Nullable<bool> {
         match (self, other) {
             (Evaluated::Literal(a), Evaluated::Literal(b)) => a.evaluate_eq(b),
             (Evaluated::Literal(b), Evaluated::Value(a))
@@ -151,7 +165,7 @@ impl<'a> Evaluated<'a> {
                     source: source2,
                     range: range2,
                 },
-            ) => source[range.clone()] == source2[range2.clone()],
+            ) => (source[range.clone()] == source2[range2.clone()]).into(),
         }
     }
 

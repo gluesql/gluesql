@@ -8,7 +8,7 @@ use {
     super::{context::RowContext, select::select},
     crate::{
         ast::{Aggregate, Expr, Function},
-        data::{CustomFunction, Interval, Literal, Row, Value},
+        data::{CustomFunction, Interval, Literal, Nullable, Row, Value},
         mock::MockStorage,
         result::{Error, Result},
         store::GStore,
@@ -18,6 +18,7 @@ use {
     futures::{
         future::{ready, try_join_all},
         stream::{self, StreamExt, TryStreamExt},
+        Stream,
     },
     im_rc::HashMap,
     std::{borrow::Cow, ops::ControlFlow, rc::Rc},
@@ -46,6 +47,38 @@ pub async fn evaluate_stateless<'a, 'b: 'a>(
     let storage: Option<&MockStorage> = None;
 
     evaluate_inner(storage, context, None, expr).await
+}
+
+async fn stream_contains_target<'life, 'stream, 'item>(
+    target: Evaluated<'life>,
+    negated: bool,
+    stream: impl Stream<Item = Result<Evaluated<'item>>> + 'stream,
+) -> Result<Nullable<bool>> {
+    if target.is_null() {
+        return Ok(Nullable::Null);
+    }
+
+    stream
+        .try_fold(Nullable::Entry(negated), |acc, evaluated| {
+            ready(Ok(
+                // If we have already found a match/non-match, we don't need to check the rest of
+                // the list.
+                if acc.map_or(false, |v| v != negated) {
+                    Nullable::Entry(!negated)
+                } else {
+                    // Otherwise, we need to check if the current value is equal to the target
+                    // value.
+                    evaluated.evaluate_eq(&target).then(|v| {
+                        if v {
+                            Nullable::Entry(!negated)
+                        } else {
+                            acc
+                        }
+                    })
+                },
+            ))
+        })
+        .await
 }
 
 #[async_recursion(?Send)]
@@ -166,14 +199,9 @@ where
             let negated = *negated;
             let target = eval(expr).await?;
 
-            stream::iter(list)
-                .then(eval)
-                .try_filter(|evaluated| ready(evaluated.evaluate_eq(&target)))
-                .try_next()
+            stream_contains_target(target, negated, stream::iter(list).then(eval))
                 .await
-                .map(|v| v.is_some() ^ negated)
-                .map(Value::Bool)
-                .map(Evaluated::Value)
+                .map(Into::into)
         }
         Expr::InSubquery {
             expr: target_expr,
@@ -184,27 +212,23 @@ where
                 storage.ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(expr.clone()))?;
             let target = eval(target_expr).await?;
 
-            select(storage, subquery, context)
-                .await?
-                .map(|row| {
-                    let value = match row? {
-                        Row::Vec { values, .. } => values,
-                        Row::Map(_) => {
-                            return Err(EvaluateError::SchemalessProjectionForInSubQuery.into());
-                        }
+            let select_ops = select(storage, subquery, context).await?.map(|row| {
+                let value = match row? {
+                    Row::Vec { values, .. } => values,
+                    Row::Map(_) => {
+                        return Err(EvaluateError::SchemalessProjectionForInSubQuery.into());
                     }
-                    .into_iter()
-                    .next()
-                    .unwrap_or(Value::Null);
+                }
+                .into_iter()
+                .next()
+                .unwrap_or(Value::Null);
 
-                    Ok(Evaluated::Value(value))
-                })
-                .try_filter(|evaluated| ready(evaluated.evaluate_eq(&target)))
-                .try_next()
+                Ok(Evaluated::Value(value))
+            });
+
+            stream_contains_target(target, *negated, select_ops)
                 .await
-                .map(|v| v.is_some() ^ negated)
-                .map(Value::Bool)
-                .map(Evaluated::Value)
+                .map(Into::into)
         }
         Expr::Between {
             expr,
@@ -228,9 +252,9 @@ where
             let evaluated = target.like(pattern, true)?;
 
             Ok(match negated {
-                true => Evaluated::Value(Value::Bool(
-                    evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false))),
-                )),
+                true => evaluated
+                    .evaluate_eq(&Evaluated::Literal(Literal::Boolean(false)))
+                    .into(),
                 false => evaluated,
             })
         }
@@ -244,9 +268,9 @@ where
             let evaluated = target.like(pattern, false)?;
 
             Ok(match negated {
-                true => Evaluated::Value(Value::Bool(
-                    evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false))),
-                )),
+                true => evaluated
+                    .evaluate_eq(&Evaluated::Literal(Literal::Boolean(false)))
+                    .into(),
                 false => evaluated,
             })
         }
@@ -285,7 +309,7 @@ where
             for (when, then) in when_then.iter() {
                 let when = eval(when).await?;
 
-                if when.evaluate_eq(&operand) {
+                if let Nullable::Entry(true) = when.evaluate_eq(&operand) {
                     return eval(then).await;
                 }
             }

@@ -2,7 +2,7 @@ use {
     super::{context::RowContext, evaluate::evaluate},
     crate::{
         ast::{Aggregate, Expr},
-        data::Value,
+        data::{Nullable, Value},
         result::Result,
         store::GStore,
     },
@@ -44,7 +44,13 @@ impl<'a, T: GStore> Filter<'a, T> {
                 let context = Some(context);
                 let aggregated = self.aggregated.as_ref().map(Rc::clone);
 
-                check_expr(self.storage, context, aggregated, expr).await
+                Ok(
+                    match check_expr(self.storage, context, aggregated, expr).await? {
+                        Nullable::Entry(value) => value,
+                        // In a where, NULL is treated as false
+                        Nullable::Null => false,
+                    },
+                )
             }
             None => Ok(true),
         }
@@ -56,8 +62,15 @@ pub async fn check_expr<'a, T: GStore>(
     context: Option<Rc<RowContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
     expr: &'a Expr,
-) -> Result<bool> {
+) -> Result<Nullable<bool>> {
     evaluate(storage, context, aggregated, expr)
         .await
-        .map(|evaluated| evaluated.try_into())?
+        .map(|evaluated| {
+            if evaluated.is_null() {
+                Ok(Nullable::Null)
+            } else {
+                let value: bool = evaluated.try_into()?;
+                Ok(Nullable::Entry(value))
+            }
+        })?
 }
