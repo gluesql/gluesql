@@ -7,10 +7,10 @@ use {
         ast::{BinaryOperator, Expr, ForeignKey, ReferentialAction},
         result::{Error, Result},
         store::{GStore, GStoreMut},
+        Grc,
     },
     futures::stream::{StreamExt, TryStreamExt},
     serde::Serialize,
-    std::rc::Rc,
     thiserror::Error as ThisError,
 };
 
@@ -23,12 +23,13 @@ pub enum DeleteError {
     ValueNotFound(String),
 }
 
-pub async fn delete<T: GStore + GStoreMut>(
-    storage: &mut T,
+pub async fn delete(
+    #[cfg(feature = "send")] storage: &mut (impl GStore + GStoreMut + Send + Sync),
+    #[cfg(not(feature = "send"))] storage: &mut (impl GStore + GStoreMut),
     table_name: &str,
     selection: &Option<Expr>,
 ) -> Result<Payload> {
-    let columns = fetch_columns(storage, table_name).await?.map(Rc::from);
+    let columns = fetch_columns(storage, table_name).await?.map(Grc::from);
     let referencings = storage.fetch_referencings(table_name).await?;
     let keys = fetch(storage, table_name, columns, selection.as_ref())
         .await?
@@ -58,7 +59,7 @@ pub async fn delete<T: GStore + GStoreMut>(
                     right: Box::new(Expr::try_from(value)?),
                 };
 
-                let columns = Some(Rc::from(Vec::new()));
+                let columns = Some(Grc::from(Vec::new()));
                 let referencing_rows =
                     fetch(storage, referencing_table_name, columns, Some(expr)).await?;
 

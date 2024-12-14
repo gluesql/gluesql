@@ -6,8 +6,9 @@ use {
             SetExpr, Statement, TableWithJoins,
         },
         data::Schema,
+        Grc,
     },
-    std::{collections::HashMap, rc::Rc},
+    std::collections::HashMap,
     utils::Vector,
 };
 
@@ -29,7 +30,7 @@ struct JoinPlanner<'a> {
 }
 
 impl<'a> Planner<'a> for JoinPlanner<'a> {
-    fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: Query) -> Query {
+    fn query(&self, outer_context: Option<Grc<Context<'a>>>, query: Query) -> Query {
         let Query {
             body,
             order_by,
@@ -60,7 +61,7 @@ impl<'a> Planner<'a> for JoinPlanner<'a> {
 }
 
 impl<'a> JoinPlanner<'a> {
-    fn select(&self, outer_context: Option<Rc<Context<'a>>>, select: Select) -> Select {
+    fn select(&self, outer_context: Option<Grc<Context<'a>>>, select: Select) -> Select {
         let Select {
             projection,
             from,
@@ -83,16 +84,16 @@ impl<'a> JoinPlanner<'a> {
 
     fn table_with_joins(
         &self,
-        outer_context: Option<Rc<Context<'a>>>,
+        outer_context: Option<Grc<Context<'a>>>,
         table_with_joins: TableWithJoins,
-    ) -> (Option<Rc<Context<'a>>>, TableWithJoins) {
+    ) -> (Option<Grc<Context<'a>>>, TableWithJoins) {
         let TableWithJoins { relation, joins } = table_with_joins;
         let init_context = self.update_context(None, &relation);
         let (context, joins) =
             joins
                 .into_iter()
                 .fold((init_context, Vector::new()), |(context, joins), join| {
-                    let outer_context = outer_context.as_ref().map(Rc::clone);
+                    let outer_context = outer_context.as_ref().map(Grc::clone);
                     let (context, join) = self.join(outer_context, context, join);
                     let joins = joins.push(join);
 
@@ -106,10 +107,10 @@ impl<'a> JoinPlanner<'a> {
 
     fn join(
         &self,
-        outer_context: Option<Rc<Context<'a>>>,
-        inner_context: Option<Rc<Context<'a>>>,
+        outer_context: Option<Grc<Context<'a>>>,
+        inner_context: Option<Grc<Context<'a>>>,
         join: Join,
-    ) -> (Option<Rc<Context<'a>>>, Join) {
+    ) -> (Option<Grc<Context<'a>>>, Join) {
         let Join {
             relation,
             join_operator,
@@ -151,7 +152,7 @@ impl<'a> JoinPlanner<'a> {
         let current_context = self.update_context(None, &relation);
         let (join_executor, expr) = self.join_expr(
             outer_context,
-            inner_context.as_ref().map(Rc::clone),
+            inner_context.as_ref().map(Grc::clone),
             current_context,
             expr,
         );
@@ -175,9 +176,9 @@ impl<'a> JoinPlanner<'a> {
 
     fn join_expr(
         &self,
-        outer_context: Option<Rc<Context<'a>>>,
-        inner_context: Option<Rc<Context<'a>>>,
-        current_context: Option<Rc<Context<'a>>>,
+        outer_context: Option<Grc<Context<'a>>>,
+        inner_context: Option<Grc<Context<'a>>>,
+        current_context: Option<Grc<Context<'a>>>,
         expr: Expr,
     ) -> (JoinExecutor, Option<Expr>) {
         match expr {
@@ -187,8 +188,8 @@ impl<'a> JoinPlanner<'a> {
                 right,
             } => {
                 let key_context = {
-                    let current = current_context.as_ref().map(Rc::clone);
-                    let outer = outer_context.as_ref().map(Rc::clone);
+                    let current = current_context.as_ref().map(Grc::clone);
+                    let outer = outer_context.as_ref().map(Grc::clone);
 
                     Context::concat(current, outer)
                 };
@@ -198,8 +199,9 @@ impl<'a> JoinPlanner<'a> {
                     Context::concat(context, outer_context)
                 };
 
-                let left_as_key = check_evaluable(key_context.as_ref().map(Rc::clone), &left);
-                let right_as_value = check_evaluable(value_context.as_ref().map(Rc::clone), &right);
+                let left_as_key = check_evaluable(key_context.as_ref().map(Grc::clone), &left);
+                let right_as_value =
+                    check_evaluable(value_context.as_ref().map(Grc::clone), &right);
 
                 if left_as_key && right_as_value {
                     let join_executor = JoinExecutor::Hash {
@@ -238,9 +240,9 @@ impl<'a> JoinPlanner<'a> {
                 right,
             } => {
                 let (join_executor, left) = self.join_expr(
-                    outer_context.as_ref().map(Rc::clone),
-                    inner_context.as_ref().map(Rc::clone),
-                    current_context.as_ref().map(Rc::clone),
+                    outer_context.as_ref().map(Grc::clone),
+                    inner_context.as_ref().map(Grc::clone),
+                    current_context.as_ref().map(Grc::clone),
                     *left,
                 );
 
@@ -251,8 +253,8 @@ impl<'a> JoinPlanner<'a> {
                 } = join_executor
                 {
                     let context = {
-                        let current = current_context.as_ref().map(Rc::clone);
-                        let outer = outer_context.as_ref().map(Rc::clone);
+                        let current = current_context.as_ref().map(Grc::clone);
+                        let outer = outer_context.as_ref().map(Grc::clone);
 
                         Context::concat(current, outer)
                     };
@@ -288,9 +290,9 @@ impl<'a> JoinPlanner<'a> {
                 }
 
                 let (join_executor, right) = self.join_expr(
-                    outer_context.as_ref().map(Rc::clone),
+                    outer_context.as_ref().map(Grc::clone),
                     inner_context,
-                    current_context.as_ref().map(Rc::clone),
+                    current_context.as_ref().map(Grc::clone),
                     *right,
                 );
 
@@ -387,14 +389,14 @@ impl<'a> JoinPlanner<'a> {
 type EvaluableExpr = Option<Expr>;
 type RemainderExpr = Option<Expr>;
 
-fn find_evaluable(context: Option<Rc<Context<'_>>>, expr: Expr) -> (EvaluableExpr, RemainderExpr) {
+fn find_evaluable(context: Option<Grc<Context<'_>>>, expr: Expr) -> (EvaluableExpr, RemainderExpr) {
     match expr {
         Expr::BinaryOp {
             left,
             op: BinaryOperator::And,
             right,
         } => {
-            let (evaluable, remainder) = find_evaluable(context.as_ref().map(Rc::clone), *left);
+            let (evaluable, remainder) = find_evaluable(context.as_ref().map(Grc::clone), *left);
             let (evaluable2, remainder2) = find_evaluable(context, *right);
 
             let merge = |expr, expr2| match (expr, expr2) {

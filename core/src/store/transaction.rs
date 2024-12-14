@@ -3,7 +3,8 @@ use {
     async_trait::async_trait,
 };
 
-#[async_trait(?Send)]
+#[cfg_attr(not(feature = "send"), async_trait(?Send))]
+#[cfg_attr(feature = "send", async_trait)]
 pub trait Transaction {
     async fn begin(&mut self, autocommit: bool) -> Result<bool> {
         if autocommit {

@@ -8,8 +8,12 @@ license.workspace = true
 repository.workspace = true
 documentation.workspace = true
 
+[features]
+send = ["gluesql-core/send"]
+
 [dependencies]
-gluesql-core.workspace = true
+#gluesql-core.workspace = true
+gluesql-core = { path = "../core", version = "0.16.3" }
 async-trait = "0.1"
 bigdecimal = "0.4.2"
 chrono = "0.4.31"

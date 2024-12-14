@@ -5,22 +5,26 @@ use {
         executor::{context::RowContext, evaluate::evaluate},
         result::Result,
         store::GStore,
+        Grc, HashMap,
     },
     futures::stream::{self, StreamExt, TryStreamExt},
-    im_rc::HashMap,
-    std::rc::Rc,
 };
 
-pub struct Project<'a, T: GStore> {
+pub struct Project<'a, T> {
     storage: &'a T,
-    context: Option<Rc<RowContext<'a>>>,
+    context: Option<Grc<RowContext<'a>>>,
     fields: &'a [SelectItem],
 }
 
-impl<'a, T: GStore> Project<'a, T> {
+impl<
+        'a,
+        #[cfg(feature = "send")] T: GStore + Send + Sync,
+        #[cfg(not(feature = "send"))] T: GStore,
+    > Project<'a, T>
+{
     pub fn new(
         storage: &'a T,
-        context: Option<Rc<RowContext<'a>>>,
+        context: Option<Grc<RowContext<'a>>>,
         fields: &'a [SelectItem],
     ) -> Self {
         Self {
@@ -32,24 +36,24 @@ impl<'a, T: GStore> Project<'a, T> {
 
     pub async fn apply(
         &self,
-        aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
-        labels: Option<Rc<[String]>>,
-        context: Rc<RowContext<'a>>,
+        aggregated: Option<Grc<HashMap<&'a Aggregate, Value>>>,
+        labels: Option<Grc<[String]>>,
+        context: Grc<RowContext<'a>>,
     ) -> Result<Row> {
         let filter_context = match &self.context {
-            Some(filter_context) => Rc::new(RowContext::concat(
-                Rc::clone(&context),
-                Rc::clone(filter_context),
+            Some(filter_context) => Grc::new(RowContext::concat(
+                Grc::clone(&context),
+                Grc::clone(filter_context),
             )),
-            None => Rc::clone(&context),
+            None => Grc::clone(&context),
         };
         let filter_context = Some(filter_context);
         let context = &context;
 
         let entries = stream::iter(self.fields)
             .then(|item| {
-                let filter_context = filter_context.as_ref().map(Rc::clone);
-                let aggregated = aggregated.as_ref().map(Rc::clone);
+                let filter_context = filter_context.as_ref().map(Grc::clone);
+                let aggregated = aggregated.as_ref().map(Grc::clone);
 
                 async move {
                     match item {
@@ -72,7 +76,7 @@ impl<'a, T: GStore> Project<'a, T> {
 
         Ok(match labels {
             Some(labels) => Row::Vec {
-                columns: Rc::clone(&labels),
+                columns: Grc::clone(&labels),
                 values: entries.into_iter().map(|(_, v)| v).collect(),
             },
             None => Row::Map(entries.into_iter().map(|(k, v)| (k.clone(), v)).collect()),

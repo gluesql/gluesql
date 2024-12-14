@@ -8,8 +8,9 @@ use {
     },
 };
 
-pub async fn alter_table<T: GStore + GStoreMut>(
-    storage: &mut T,
+pub async fn alter_table(
+    #[cfg(feature = "send")] storage: &mut (impl GStore + GStoreMut + Send + Sync),
+    #[cfg(not(feature = "send"))] storage: &mut (impl GStore + GStoreMut),
     table_name: &str,
     operation: &AlterTableOperation,
 ) -> Result<()> {

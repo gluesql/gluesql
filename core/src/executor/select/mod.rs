@@ -20,10 +20,11 @@ use {
         data::{get_alias, Key, Row, Value},
         result::Result,
         store::GStore,
+        Grc,
     },
     async_recursion::async_recursion,
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
-    std::{borrow::Cow, rc::Rc},
+    std::borrow::Cow,
     utils::Vector,
 };
 
@@ -32,7 +33,7 @@ async fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> Result<(Vec<Row>, Vec<Str
     let labels = (1..=first_len)
         .map(|i| format!("column{}", i))
         .collect::<Vec<_>>();
-    let columns = Rc::from(labels.clone());
+    let columns = Grc::from(labels.clone());
 
     let mut column_types = vec![None; first_len];
     let mut rows = Vec::with_capacity(exprs_list.len());
@@ -61,7 +62,7 @@ async fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> Result<(Vec<Row>, Vec<Str
         }
 
         rows.push(Row::Vec {
-            columns: Rc::clone(&columns),
+            columns: Grc::clone(&columns),
             values,
         });
     }
@@ -99,15 +100,17 @@ async fn sort_stateless(rows: Vec<Row>, order_by: &[OrderByExpr]) -> Result<Vec<
     Ok(sorted)
 }
 
-#[async_recursion(?Send)]
-pub async fn select_with_labels<'a, T>(
-    storage: &'a T,
+// these two same fns can be replaced with a impl type alias for the return type once its stabilized (https://rust-lang.github.io/impl-trait-initiative/explainer/tait.html)
+#[cfg(feature = "send")]
+#[async_recursion]
+pub async fn select_with_labels<'a>(
+    storage: &'a (impl GStore + Send + Sync),
     query: &'a Query,
-    filter_context: Option<Rc<RowContext<'a>>>,
-) -> Result<(Option<Vec<String>>, impl Stream<Item = Result<Row>> + 'a)>
-where
-    T: GStore,
-{
+    filter_context: Option<Grc<RowContext<'a>>>,
+) -> Result<(
+    Option<Vec<String>>,
+    impl Stream<Item = Result<Row>> + Send + 'a,
+)> {
     #[derive(futures_enum::Stream)]
     enum Row<S1, S2> {
         Select(S2),
@@ -143,34 +146,35 @@ where
             Ok(RowContext::new(alias, Cow::Owned(row), None))
         });
 
-    let join = Join::new(storage, joins, filter_context.as_ref().map(Rc::clone));
+    let join = Join::new(storage, joins, filter_context.as_ref().map(Grc::clone));
     let aggregate = Aggregator::new(
         storage,
         projection,
         group_by,
         having.as_ref(),
-        filter_context.as_ref().map(Rc::clone),
+        filter_context.as_ref().map(Grc::clone),
     );
-    let filter = Rc::new(Filter::new(
+
+    let filter = Grc::new(Filter::new(
         storage,
         where_clause.as_ref(),
-        filter_context.as_ref().map(Rc::clone),
+        filter_context.as_ref().map(Grc::clone),
         None,
     ));
     let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref()).await?;
     let sort = Sort::new(
         storage,
-        filter_context.as_ref().map(Rc::clone),
+        filter_context.as_ref().map(Grc::clone),
         &query.order_by,
     );
 
     let rows = join.apply(rows).await?;
     let rows = rows.try_filter_map(move |project_context| {
-        let filter = Rc::clone(&filter);
+        let filter = Grc::clone(&filter);
 
         async move {
             filter
-                .check(Rc::clone(&project_context))
+                .check(Grc::clone(&project_context))
                 .await
                 .map(|pass| pass.then_some(project_context))
         }
@@ -180,19 +184,23 @@ where
 
     let labels = fetch_labels(storage, relation, joins, projection)
         .await?
-        .map(Rc::from);
+        .map(Grc::from);
 
-    let project = Rc::new(Project::new(storage, filter_context, projection));
-    let project_labels = labels.as_ref().map(Rc::clone);
+    let project = Grc::new(Project::new(storage, filter_context, projection));
+    let project_labels = labels.as_ref().map(Grc::clone);
     let rows = rows.and_then(move |aggregate_context| {
-        let labels = project_labels.as_ref().map(Rc::clone);
-        let project = Rc::clone(&project);
+        let labels = project_labels.as_ref().map(Grc::clone);
+        let project = Grc::clone(&project);
         let AggregateContext { aggregated, next } = aggregate_context;
-        let aggregated = aggregated.map(Rc::new);
+        let aggregated = aggregated.map(Grc::new);
 
         async move {
             let row = project
-                .apply(aggregated.as_ref().map(Rc::clone), labels, Rc::clone(&next))
+                .apply(
+                    aggregated.as_ref().map(Grc::clone),
+                    labels,
+                    Grc::clone(&next),
+                )
                 .await?;
 
             Ok((aggregated, next, row))
@@ -206,11 +214,137 @@ where
     Ok((labels, Row::Select(rows)))
 }
 
-pub async fn select<'a, T: GStore>(
-    storage: &'a T,
+// these two same fns can be replaced with a impl type alias for the return type once its stabilized (https://rust-lang.github.io/impl-trait-initiative/explainer/tait.html)
+#[cfg(not(feature = "send"))]
+#[async_recursion(?Send)]
+pub async fn select_with_labels<'a>(
+    storage: &'a impl GStore,
     query: &'a Query,
-    filter_context: Option<Rc<RowContext<'a>>>,
+    filter_context: Option<Grc<RowContext<'a>>>,
+) -> Result<(Option<Vec<String>>, impl Stream<Item = Result<Row>> + 'a)> {
+    #[derive(futures_enum::Stream)]
+    enum Row<S1, S2> {
+        Select(S2),
+        Values(S1),
+    }
+
+    let Select {
+        from: table_with_joins,
+        selection: where_clause,
+        projection,
+        group_by,
+        having,
+    } = match &query.body {
+        SetExpr::Select(statement) => statement.as_ref(),
+        SetExpr::Values(Values(values_list)) => {
+            let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref()).await?;
+            let (rows, labels) = rows_with_labels(values_list).await?;
+            let rows = sort_stateless(rows, &query.order_by).await?;
+            let rows = stream::iter(rows.into_iter().map(Ok));
+            let rows = limit.apply(rows);
+
+            return Ok((Some(labels), Row::Values(rows)));
+        }
+    };
+
+    let TableWithJoins { relation, joins } = &table_with_joins;
+    let rows = fetch_relation_rows(storage, relation, &None)
+        .await?
+        .map(move |row| {
+            let row = row?;
+            let alias = get_alias(relation);
+
+            Ok(RowContext::new(alias, Cow::Owned(row), None))
+        });
+
+    let join = Join::new(storage, joins, filter_context.as_ref().map(Grc::clone));
+    let aggregate = Aggregator::new(
+        storage,
+        projection,
+        group_by,
+        having.as_ref(),
+        filter_context.as_ref().map(Grc::clone),
+    );
+
+    let filter = Grc::new(Filter::new(
+        storage,
+        where_clause.as_ref(),
+        filter_context.as_ref().map(Grc::clone),
+        None,
+    ));
+    let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref()).await?;
+    let sort = Sort::new(
+        storage,
+        filter_context.as_ref().map(Grc::clone),
+        &query.order_by,
+    );
+
+    let rows = join.apply(rows).await?;
+    let rows = rows.try_filter_map(move |project_context| {
+        let filter = Grc::clone(&filter);
+
+        async move {
+            filter
+                .check(Grc::clone(&project_context))
+                .await
+                .map(|pass| pass.then_some(project_context))
+        }
+    });
+
+    let rows = aggregate.apply(rows).await?;
+
+    let labels = fetch_labels(storage, relation, joins, projection)
+        .await?
+        .map(Grc::from);
+
+    let project = Grc::new(Project::new(storage, filter_context, projection));
+    let project_labels = labels.as_ref().map(Grc::clone);
+    let rows = rows.and_then(move |aggregate_context| {
+        let labels = project_labels.as_ref().map(Grc::clone);
+        let project = Grc::clone(&project);
+        let AggregateContext { aggregated, next } = aggregate_context;
+        let aggregated = aggregated.map(Grc::new);
+
+        async move {
+            let row = project
+                .apply(
+                    aggregated.as_ref().map(Grc::clone),
+                    labels,
+                    Grc::clone(&next),
+                )
+                .await?;
+
+            Ok((aggregated, next, row))
+        }
+    });
+
+    let rows = sort.apply(rows, get_alias(relation)).await?;
+    let rows = limit.apply(rows);
+    let labels = labels.map(|labels| labels.iter().cloned().collect());
+
+    Ok((labels, Row::Select(rows)))
+}
+
+// these two same fns can be replaced with a impl type alias for the return type once its stabilized (https://rust-lang.github.io/impl-trait-initiative/explainer/tait.html)
+#[cfg(not(feature = "send"))]
+pub async fn select<'a>(
+    #[cfg(feature = "send")] storage: &'a (impl GStore + Send + Sync),
+    #[cfg(not(feature = "send"))] storage: &'a impl GStore,
+    query: &'a Query,
+    filter_context: Option<Grc<RowContext<'a>>>,
 ) -> Result<impl Stream<Item = Result<Row>> + 'a> {
+    select_with_labels(storage, query, filter_context)
+        .await
+        .map(|(_, rows)| rows)
+}
+
+#[cfg(feature = "send")]
+pub async fn select<'a>(
+    #[cfg(feature = "send")] storage: &'a (impl GStore + Send + Sync),
+    #[cfg(not(feature = "send"))] storage: &'a impl GStore,
+    query: &'a Query,
+    filter_context: Option<Grc<RowContext<'a>>>,
+) -> Result<impl Stream<Item = Result<Row>> + Send + 'a> {
     select_with_labels(storage, query, filter_context)
         .await
         .map(|(_, rows)| rows)

@@ -10,9 +10,12 @@ use {
     async_trait::async_trait,
 };
 
-#[async_trait(?Send)]
-pub trait Execute<T: GStore + GStoreMut>
-where
+#[cfg_attr(not(feature = "send"), async_trait(?Send))]
+#[cfg_attr(feature = "send", async_trait)]
+pub trait Execute<
+    #[cfg(feature = "send")] T: GStore + GStoreMut + Send + Sync,
+    #[cfg(not(feature = "send"))] T: GStore + GStoreMut,
+> where
     Self: Sized + Build,
 {
     async fn execute(self, glue: &mut Glue<T>) -> Result<Payload> {
@@ -22,8 +25,15 @@ where
     }
 }
 
-#[async_trait(?Send)]
-impl<T: GStore + GStoreMut, B: Build> Execute<T> for B {}
+#[cfg_attr(not(feature = "send"), async_trait(?Send))]
+#[cfg_attr(feature = "send", async_trait)]
+impl<
+        #[cfg(feature = "send")] T: GStore + GStoreMut + Send + Sync,
+        #[cfg(not(feature = "send"))] T: GStore + GStoreMut,
+        B: Build,
+    > Execute<T> for B
+{
+}
 
 impl Build for Statement {
     fn build(self) -> Result<Statement> {

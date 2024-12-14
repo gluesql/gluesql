@@ -18,7 +18,10 @@ pub fn expr(sql: &str) -> Expr {
     translate_expr(&parsed).unwrap()
 }
 
-pub async fn run<T: GStore + GStoreMut>(
+pub async fn run<
+    #[cfg(feature = "send")] T: GStore + GStoreMut + Send + Sync,
+    #[cfg(not(feature = "send"))] T: GStore + GStoreMut,
+>(
     sql: &str,
     glue: &mut Glue<T>,
     indexes: Option<Vec<IndexItem>>,
@@ -141,8 +144,13 @@ pub fn type_match(expected: &[DataType], found: Result<Payload>) {
 ///
 /// Actual test cases are in [test-suite/src/](https://github.com/gluesql/gluesql/blob/main/test-suite/src/),
 /// not in `/tests/`.
-#[async_trait(?Send)]
-pub trait Tester<T: GStore + GStoreMut> {
+#[cfg_attr(not(feature = "send"), async_trait(?Send))]
+#[cfg_attr(feature = "send", async_trait)]
+pub trait Tester<
+    #[cfg(feature = "send")] T: GStore + GStoreMut + Send + Sync,
+    #[cfg(not(feature = "send"))] T: GStore + GStoreMut,
+>
+{
     async fn new(namespace: &str) -> Self;
 
     fn get_glue(&mut self) -> &mut Glue<T>;
@@ -209,13 +217,14 @@ pub trait Tester<T: GStore + GStoreMut> {
     }
 }
 
+// cfg(feature) shouldn't be inside macro because it will be expanded together with these directives
+#[cfg(not(feature = "send"))]
 #[macro_export]
 macro_rules! test_case {
     ($name: ident, $content: expr) => {
-        pub async fn $name<T>(mut tester: impl $crate::Tester<T>)
-        where
-            T: gluesql_core::store::GStore + gluesql_core::store::GStoreMut,
-        {
+        pub async fn $name<
+             T:  gluesql_core::store::GStore + gluesql_core::store::GStoreMut
+        >(mut tester: impl $crate::Tester<T>) {
             #[allow(unused_variables)]
             let glue = tester.get_glue();
 
@@ -243,3 +252,39 @@ macro_rules! test_case {
         }
     };
 }
+
+#[cfg(feature = "send")]
+#[macro_export]
+macro_rules! test_case {
+    ($name: ident, $content: expr) => {
+        pub async fn $name<
+             T: gluesql_core::store::GStore + gluesql_core::store::GStoreMut + Send + Sync,
+        >(mut tester: impl $crate::Tester<T> + Send) {
+            #[allow(unused_variables)]
+            let glue = tester.get_glue();
+
+            #[allow(unused_macros)]
+            macro_rules! get_glue {
+                () => {
+                    glue
+                };
+            }
+
+            #[allow(unused_macros)]
+            macro_rules! get_tester {
+                () => {
+                    &mut tester
+                };
+            }
+
+            async {
+                $content;
+
+                gluesql_core::prelude::Result::<()>::Ok(())
+            }
+            .await
+            .unwrap()
+        }
+    };
+}
+

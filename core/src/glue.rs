@@ -14,12 +14,15 @@ use {
     },
 };
 
-#[derive(Debug)]
 pub struct Glue<T: GStore + GStoreMut> {
     pub storage: T,
 }
 
-impl<T: GStore + GStoreMut> Glue<T> {
+impl<
+        #[cfg(feature = "send")] T: GStore + GStoreMut + Send + Sync,
+        #[cfg(not(feature = "send"))] T: GStore + GStoreMut,
+    > Glue<T>
+{
     pub fn new(storage: T) -> Self {
         Self { storage }
     }

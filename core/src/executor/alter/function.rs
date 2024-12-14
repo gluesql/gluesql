@@ -8,8 +8,9 @@ use {
     },
 };
 
-pub async fn insert_function<T: GStore + GStoreMut>(
-    storage: &mut T,
+pub async fn insert_function(
+    #[cfg(feature = "send")] storage: &mut (impl GStore + GStoreMut + Send + Sync),
+    #[cfg(not(feature = "send"))] storage: &mut (impl GStore + GStoreMut),
     func_name: &str,
     args: &Vec<OperateFunctionArg>,
     or_replace: bool,
@@ -33,8 +34,9 @@ pub async fn insert_function<T: GStore + GStoreMut>(
     }
 }
 
-pub async fn delete_function<T: GStore + GStoreMut>(
-    storage: &mut T,
+pub async fn delete_function(
+    #[cfg(feature = "send")] storage: &mut (impl GStore + GStoreMut + Send + Sync),
+    #[cfg(not(feature = "send"))] storage: &mut (impl GStore + GStoreMut),
     func_names: &[String],
     if_exists: bool,
 ) -> Result<()> {

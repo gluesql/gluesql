@@ -1,15 +1,15 @@
-use std::rc::Rc;
+use crate::Grc;
 
 pub enum Context<'a> {
     Data {
         alias: String,
         columns: Vec<&'a str>,
         primary_key: Option<&'a str>,
-        next: Option<Rc<Context<'a>>>,
+        next: Option<Grc<Context<'a>>>,
     },
     Bridge {
-        left: Rc<Context<'a>>,
-        right: Rc<Context<'a>>,
+        left: Grc<Context<'a>>,
+        right: Grc<Context<'a>>,
     },
 }
 
@@ -18,7 +18,7 @@ impl<'a> Context<'a> {
         alias: String,
         columns: Vec<&'a str>,
         primary_key: Option<&'a str>,
-        next: Option<Rc<Context<'a>>>,
+        next: Option<Grc<Context<'a>>>,
     ) -> Self {
         Context::Data {
             alias,
@@ -29,11 +29,11 @@ impl<'a> Context<'a> {
     }
 
     pub fn concat(
-        left: Option<Rc<Context<'a>>>,
-        right: Option<Rc<Context<'a>>>,
-    ) -> Option<Rc<Self>> {
+        left: Option<Grc<Context<'a>>>,
+        right: Option<Grc<Context<'a>>>,
+    ) -> Option<Grc<Self>> {
         match (left, right) {
-            (Some(left), Some(right)) => Some(Rc::new(Self::Bridge { left, right })),
+            (Some(left), Some(right)) => Some(Grc::new(Self::Bridge { left, right })),
             (context @ Some(_), None) | (None, context @ Some(_)) => context,
             (None, None) => None,
         }

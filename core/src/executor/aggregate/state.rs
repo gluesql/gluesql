@@ -5,17 +5,16 @@ use {
         executor::{context::RowContext, evaluate::evaluate},
         result::Result,
         store::GStore,
+        Grc, HashMap, HashSet,
     },
     futures::stream::{self, StreamExt, TryStreamExt},
-    im_rc::{HashMap, HashSet},
-    itertools::Itertools,
-    std::{cmp::Ordering, rc::Rc},
+    std::cmp::Ordering,
     utils::{IndexMap, Vector},
 };
 
-type Group = Rc<Vec<Key>>;
+type Group = Grc<Vec<Key>>;
 type ValuesMap<'a> = HashMap<&'a Aggregate, Value>;
-type Context<'a> = Rc<RowContext<'a>>;
+type Context<'a> = Grc<RowContext<'a>>;
 
 enum AggrValue {
     Count {
@@ -154,34 +153,39 @@ impl AggrValue {
     }
 }
 
-pub struct State<'a, T: GStore> {
+pub struct State<'a, T> {
     storage: &'a T,
     index: usize,
     group: Group,
     values: IndexMap<(Group, &'a Aggregate), (usize, AggrValue)>,
     groups: HashSet<Group>,
-    contexts: Vector<Rc<RowContext<'a>>>,
+    contexts: Vector<Grc<RowContext<'a>>>,
 }
 
-impl<'a, T: GStore> State<'a, T> {
+impl<
+        'a,
+        #[cfg(feature = "send")] T: GStore + Send + Sync,
+        #[cfg(not(feature = "send"))] T: GStore,
+    > State<'a, T>
+{
     pub fn new(storage: &'a T) -> Self {
         State {
             storage,
             index: 0,
-            group: Rc::new(vec![Key::None]),
+            group: Grc::new(vec![Key::None]),
             values: IndexMap::new(),
             groups: HashSet::new(),
             contexts: Vector::new(),
         }
     }
 
-    pub fn apply(self, index: usize, group: Vec<Key>, context: Rc<RowContext<'a>>) -> Self {
-        let group = Rc::new(group);
+    pub fn apply(self, index: usize, group: Vec<Key>, context: Grc<RowContext<'a>>) -> Self {
+        let group = Grc::new(group);
         let (groups, contexts) = if self.groups.contains(&group) {
             (self.groups, self.contexts)
         } else {
             (
-                self.groups.update(Rc::clone(&group)),
+                self.groups.update(Grc::clone(&group)),
                 self.contexts.push(context),
             )
         };
@@ -196,13 +200,13 @@ impl<'a, T: GStore> State<'a, T> {
     }
 
     fn update(self, aggr: &'a Aggregate, value: AggrValue) -> Self {
-        let key = (Rc::clone(&self.group), aggr);
+        let key = (Grc::clone(&self.group), aggr);
         let (values, _) = self.values.insert(key, (self.index, value));
         Self { values, ..self }
     }
 
     fn get(&self, aggr: &'a Aggregate) -> Option<&(usize, AggrValue)> {
-        let group = Rc::clone(&self.group);
+        let group = Grc::clone(&self.group);
 
         self.values.get(&(group, aggr))
     }
@@ -222,28 +226,29 @@ impl<'a, T: GStore> State<'a, T> {
             values, contexts, ..
         } = self;
 
-        stream::iter(values.into_iter().chunks(size).into_iter().enumerate())
-            .then(|(i, entries)| {
-                let next = contexts.get(i).map(Rc::clone);
+        // using iter_chunks because itertools::Chunk is !Send, and the `while` loop because iter_chunks:Chunks is not an Iterator
+        let mut chunked = iter_chunks::IterChunks::chunks(values.into_iter(), size);
 
-                async move {
-                    let aggregated = stream::iter(entries)
-                        .then(|((_, aggr), (_, aggr_value))| async move {
-                            aggr_value.export().await.map(|value| (aggr, value))
-                        })
-                        .try_collect::<HashMap<&'a Aggregate, Value>>()
-                        .await?;
+        let mut i = 0;
+        let mut records: Vec<(Option<ValuesMap<'a>>, Option<Grc<RowContext<'a>>>)> = vec![];
 
-                    Ok((Some(aggregated), next))
-                }
-            })
-            .try_collect::<Vec<(Option<ValuesMap<'a>>, Option<Rc<RowContext<'a>>>)>>()
-            .await
+        while let Some(entries) = chunked.next() {
+            let next = contexts.get(i).map(Grc::clone);
+            let aggregated = stream::iter(entries)
+                .then(|((_, aggr), (_, aggr_value))| async move {
+                    aggr_value.export().await.map(|value| (aggr, value))
+                })
+                .try_collect::<HashMap<&'a Aggregate, Value>>()
+                .await?;
+            records.push((Some(aggregated), next));
+            i += 1;
+        }
+        Ok(records)
     }
 
     pub async fn accumulate(
         self,
-        filter_context: Option<Rc<RowContext<'a>>>,
+        filter_context: Option<Grc<RowContext<'a>>>,
         aggr: &'a Aggregate,
     ) -> Result<State<'a, T>> {
         let value = match aggr {

@@ -37,10 +37,14 @@ use {
     std::pin::Pin,
 };
 
+#[cfg(feature = "send")]
+pub type RowIter<'a> = Pin<Box<dyn Stream<Item = Result<(Key, DataRow)>> + Send + 'a>>;
+#[cfg(not(feature = "send"))]
 pub type RowIter<'a> = Pin<Box<dyn Stream<Item = Result<(Key, DataRow)>> + 'a>>;
 
 /// By implementing `Store` trait, you can run `SELECT` query.
-#[async_trait(?Send)]
+#[cfg_attr(not(feature = "send"), async_trait(?Send))]
+#[cfg_attr(feature = "send", async_trait)]
 pub trait Store {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>>;
 
@@ -77,7 +81,8 @@ pub trait Store {
 
 /// By implementing `StoreMut` trait,
 /// you can run `INSERT`, `CREATE TABLE`, `DELETE`, `UPDATE` and `DROP TABLE` queries.
-#[async_trait(?Send)]
+#[cfg_attr(not(feature = "send"), async_trait(?Send))]
+#[cfg_attr(feature = "send", async_trait)]
 pub trait StoreMut {
     async fn insert_schema(&mut self, _schema: &Schema) -> Result<()> {
         let msg = "[Storage] StoreMut::insert_schema is not supported".to_owned();

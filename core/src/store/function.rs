@@ -6,7 +6,8 @@ use {
     async_trait::async_trait,
 };
 
-#[async_trait(?Send)]
+#[cfg_attr(not(feature = "send"), async_trait(?Send))]
+#[cfg_attr(feature = "send", async_trait)]
 pub trait CustomFunction {
     async fn fetch_function(&self, _func_name: &str) -> Result<Option<&StructCustomFunction>> {
         Err(Error::StorageMsg(
@@ -20,7 +21,8 @@ pub trait CustomFunction {
     }
 }
 
-#[async_trait(?Send)]
+#[cfg_attr(not(feature = "send"), async_trait(?Send))]
+#[cfg_attr(feature = "send", async_trait)]
 pub trait CustomFunctionMut {
     async fn insert_function(&mut self, _func: StructCustomFunction) -> Result<()> {
         Err(Error::StorageMsg(

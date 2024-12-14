@@ -7,7 +7,7 @@ struct SledTester {
     glue: Glue<SledStorage>,
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Tester<SledStorage> for SledTester {
     async fn new(namespace: &str) -> Self {
         let path = format!("data/{}", namespace);

@@ -1,7 +1,7 @@
 use {
-    crate::{data::Value, executor::RowContext, result::Result},
+    crate::{data::Value, executor::RowContext, result::Result, Grc},
     serde::Serialize,
-    std::{collections::HashMap, fmt::Debug, rc::Rc},
+    std::{collections::HashMap, fmt::Debug},
     thiserror::Error,
 };
 
@@ -17,7 +17,7 @@ pub enum RowError {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Row {
     Vec {
-        columns: Rc<[String]>,
+        columns: Grc<[String]>,
         values: Vec<Value>,
     },
     Map(HashMap<String, Value>),

@@ -19,10 +19,11 @@ use {
         data::{Key, Row, Schema, Value},
         result::Result,
         store::{GStore, GStoreMut},
+        Grc,
     },
     futures::stream::{StreamExt, TryStreamExt},
     serde::{Deserialize, Serialize},
-    std::{collections::HashMap, env::var, fmt::Debug, rc::Rc},
+    std::{collections::HashMap, env::var, fmt::Debug},
     thiserror::Error as ThisError,
 };
 
@@ -95,8 +96,9 @@ pub enum PayloadVariable {
     Version(String),
 }
 
-pub async fn execute<T: GStore + GStoreMut>(
-    storage: &mut T,
+pub async fn execute(
+    #[cfg(feature = "send")] storage: &mut (impl GStore + GStoreMut + Send + Sync),
+    #[cfg(not(feature = "send"))] storage: &mut (impl GStore + GStoreMut),
     statement: &Statement,
 ) -> Result<Payload> {
     if matches!(
@@ -123,8 +125,9 @@ pub async fn execute<T: GStore + GStoreMut>(
     }
 }
 
-async fn execute_inner<T: GStore + GStoreMut>(
-    storage: &mut T,
+async fn execute_inner(
+    #[cfg(feature = "send")] storage: &mut (impl GStore + GStoreMut + Send + Sync),
+    #[cfg(not(feature = "send"))] storage: &mut (impl GStore + GStoreMut),
     statement: &Statement,
 ) -> Result<Payload> {
     match statement {
@@ -217,7 +220,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
 
             let update = Update::new(storage, table_name, assignments, column_defs.as_deref())?;
 
-            let foreign_keys = Rc::new(foreign_keys);
+            let foreign_keys = Grc::new(foreign_keys);
 
             let rows = fetch(storage, table_name, all_columns, selection.as_ref())
                 .await?
@@ -225,7 +228,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
                     let update = &update;
                     let (key, row) = item;
 
-                    let foreign_keys = Rc::clone(&foreign_keys);
+                    let foreign_keys = Grc::clone(&foreign_keys);
                     async move {
                         let row = update.apply(row, foreign_keys.as_ref()).await?;
 
