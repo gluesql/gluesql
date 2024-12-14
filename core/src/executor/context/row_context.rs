@@ -1,6 +1,9 @@
 use {
-    crate::data::{Row, Value},
-    std::{borrow::Cow, collections::HashMap, fmt::Debug, rc::Rc},
+    crate::{
+        data::{Row, Value},
+        Grc,
+    },
+    std::{borrow::Cow, collections::HashMap, fmt::Debug},
 };
 
 #[derive(Debug)]
@@ -8,7 +11,7 @@ pub enum RowContext<'a> {
     Data {
         table_alias: &'a str,
         row: Cow<'a, Row>,
-        next: Option<Rc<RowContext<'a>>>,
+        next: Option<Grc<RowContext<'a>>>,
     },
     RefVecData {
         columns: &'a [String],
@@ -16,13 +19,13 @@ pub enum RowContext<'a> {
     },
     RefMapData(&'a HashMap<String, Value>),
     Bridge {
-        left: Rc<RowContext<'a>>,
-        right: Rc<RowContext<'a>>,
+        left: Grc<RowContext<'a>>,
+        right: Grc<RowContext<'a>>,
     },
 }
 
 impl<'a> RowContext<'a> {
-    pub fn new(table_alias: &'a str, row: Cow<'a, Row>, next: Option<Rc<RowContext<'a>>>) -> Self {
+    pub fn new(table_alias: &'a str, row: Cow<'a, Row>, next: Option<Grc<RowContext<'a>>>) -> Self {
         Self::Data {
             table_alias,
             row,
@@ -30,7 +33,7 @@ impl<'a> RowContext<'a> {
         }
     }
 
-    pub fn concat(left: Rc<RowContext<'a>>, right: Rc<RowContext<'a>>) -> Self {
+    pub fn concat(left: Grc<RowContext<'a>>, right: Grc<RowContext<'a>>) -> Self {
         Self::Bridge { left, right }
     }
 

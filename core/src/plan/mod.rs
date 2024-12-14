@@ -16,7 +16,13 @@ pub use {
     primary_key::plan as plan_primary_key, schema::fetch_schema_map,
 };
 
-pub async fn plan<T: Store>(storage: &T, statement: Statement) -> Result<Statement> {
+pub async fn plan<
+    #[cfg(feature = "send")] T: Store + Send + Sync,
+    #[cfg(not(feature = "send"))] T: Store,
+>(
+    storage: &T,
+    statement: Statement,
+) -> Result<Statement> {
     let schema_map = fetch_schema_map(storage, &statement).await?;
     validate(&schema_map, &statement)?;
     let statement = plan_primary_key(&schema_map, statement);

@@ -8,10 +8,11 @@ use {
         data::{Key, Row, Value},
         result::{Error, Result},
         store::GStore,
+        Grc,
     },
     futures::stream::{self, StreamExt, TryStreamExt},
     serde::Serialize,
-    std::{borrow::Cow, fmt::Debug, rc::Rc},
+    std::{borrow::Cow, fmt::Debug},
     thiserror::Error,
     utils::HashMapExt,
 };
@@ -35,14 +36,19 @@ pub enum UpdateError {
     },
 }
 
-pub struct Update<'a, T: GStore> {
+pub struct Update<'a, T> {
     storage: &'a T,
     table_name: &'a str,
     fields: &'a [Assignment],
     column_defs: Option<&'a [ColumnDef]>,
 }
 
-impl<'a, T: GStore> Update<'a, T> {
+impl<
+        'a,
+        #[cfg(feature = "send")] T: GStore + Send + Sync,
+        #[cfg(not(feature = "send"))] T: GStore,
+    > Update<'a, T>
+{
     pub fn new(
         storage: &'a T,
         table_name: &'a str,
@@ -73,7 +79,7 @@ impl<'a, T: GStore> Update<'a, T> {
 
     pub async fn apply(&self, row: Row, foreign_keys: &[ForeignKey]) -> Result<Row> {
         let context = RowContext::new(self.table_name, Cow::Borrowed(&row), None);
-        let context = Some(Rc::new(context));
+        let context = Some(Grc::new(context));
 
         let assignments = stream::iter(self.fields.iter())
             .then(|assignment| {
@@ -81,7 +87,7 @@ impl<'a, T: GStore> Update<'a, T> {
                     id,
                     value: value_expr,
                 } = assignment;
-                let context = context.as_ref().map(Rc::clone);
+                let context = context.as_ref().map(Grc::clone);
 
                 async move {
                     let evaluated = evaluate(self.storage, context, None, value_expr).await?;

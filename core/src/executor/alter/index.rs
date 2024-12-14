@@ -8,8 +8,9 @@ use {
     },
 };
 
-pub async fn create_index<T: GStore + GStoreMut>(
-    storage: &mut T,
+pub async fn create_index(
+    #[cfg(feature = "send")] storage: &mut (impl GStore + GStoreMut + Send + Sync),
+    #[cfg(not(feature = "send"))] storage: &mut (impl GStore + GStoreMut),
     table_name: &str,
     index_name: &str,
     column: &OrderByExpr,

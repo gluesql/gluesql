@@ -4,9 +4,9 @@ use {
         data::{Key, Value},
         result::Result,
         store::{DataRow, Store},
+        HashSet,
     },
     futures::stream::TryStreamExt,
-    im_rc::HashSet,
     serde::Serialize,
     std::fmt::Debug,
     thiserror::Error as ThisError,
@@ -82,7 +82,10 @@ impl UniqueConstraint {
     }
 }
 
-pub async fn validate_unique<T: Store>(
+pub async fn validate_unique<
+    #[cfg(feature = "send")] T: Store + Send,
+    #[cfg(not(feature = "send"))] T: Store,
+>(
     storage: &T,
     table_name: &str,
     column_validation: ColumnValidation<'_>,

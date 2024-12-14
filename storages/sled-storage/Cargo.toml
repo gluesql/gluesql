@@ -9,7 +9,8 @@ repository.workspace = true
 documentation.workspace = true
 
 [dependencies]
-gluesql-core.workspace = true
+#gluesql-core.workspace = true
+gluesql-core = { path = "../../core", version = "0.16.3", features = ["send"] }
 utils.workspace = true
 async-trait = "0.1"
 iter-enum = "1"
@@ -21,7 +22,8 @@ async-io = "1"
 futures = "0.3"
 
 [dev-dependencies]
-test-suite.workspace = true
+#test-suite.workspace = true
+test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.16.3", features = ["send"] }
 criterion = "0.3"
 tokio = { version = "1", features = ["rt", "macros"] }
 

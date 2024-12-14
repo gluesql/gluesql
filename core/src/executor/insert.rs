@@ -9,10 +9,11 @@ use {
         executor::{evaluate::evaluate_stateless, limit::Limit},
         result::Result,
         store::{DataRow, GStore, GStoreMut},
+        Grc,
     },
     futures::stream::{self, StreamExt, TryStreamExt},
     serde::Serialize,
-    std::{fmt::Debug, rc::Rc},
+    std::fmt::Debug,
     thiserror::Error as ThisError,
 };
 
@@ -55,8 +56,9 @@ enum RowsData {
     Insert(Vec<(Key, DataRow)>),
 }
 
-pub async fn insert<T: GStore + GStoreMut>(
-    storage: &mut T,
+pub async fn insert(
+    #[cfg(feature = "send")] storage: &mut (impl GStore + GStoreMut + Send + Sync),
+    #[cfg(not(feature = "send"))] storage: &mut (impl GStore + GStoreMut),
     table_name: &str,
     columns: &[String],
     source: &Query,
@@ -105,21 +107,22 @@ pub async fn insert<T: GStore + GStoreMut>(
     }
 }
 
-async fn fetch_vec_rows<T: GStore>(
-    storage: &T,
+async fn fetch_vec_rows(
+    #[cfg(feature = "send")] storage: &(impl GStore + Send + Sync),
+    #[cfg(not(feature = "send"))] storage: &impl GStore,
     table_name: &str,
     column_defs: Vec<ColumnDef>,
     columns: &[String],
     source: &Query,
     foreign_keys: Vec<ForeignKey>,
 ) -> Result<RowsData> {
-    let labels = Rc::from(
+    let labels = Grc::from(
         column_defs
             .iter()
             .map(|column_def| column_def.name.to_owned())
             .collect::<Vec<_>>(),
     );
-    let column_defs = Rc::from(column_defs);
+    let column_defs = Grc::from(column_defs);
     let column_validation = ColumnValidation::All(&column_defs);
 
     #[derive(futures_enum::Stream)]
@@ -132,8 +135,8 @@ async fn fetch_vec_rows<T: GStore>(
         SetExpr::Values(Values(values_list)) => {
             let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref()).await?;
             let rows = stream::iter(values_list).then(|values| {
-                let column_defs = Rc::clone(&column_defs);
-                let labels = Rc::clone(&labels);
+                let column_defs = Grc::clone(&column_defs);
+                let labels = Grc::clone(&labels);
 
                 async move {
                     Ok(Row::Vec {
@@ -203,9 +206,10 @@ async fn fetch_vec_rows<T: GStore>(
     }
 }
 
-async fn validate_foreign_key<T: GStore>(
-    storage: &T,
-    column_defs: &Rc<[ColumnDef]>,
+async fn validate_foreign_key(
+    #[cfg(feature = "send")] storage: &(impl GStore + Send + Sync),
+    #[cfg(not(feature = "send"))] storage: &impl GStore,
+    column_defs: &Grc<[ColumnDef]>,
     foreign_keys: Vec<ForeignKey>,
     rows: &[Vec<Value>],
 ) -> Result<()> {
@@ -255,7 +259,11 @@ async fn validate_foreign_key<T: GStore>(
     Ok(())
 }
 
-async fn fetch_map_rows<T: GStore>(storage: &T, source: &Query) -> Result<Vec<DataRow>> {
+async fn fetch_map_rows(
+    #[cfg(feature = "send")] storage: &(impl GStore + Send + Sync),
+    #[cfg(not(feature = "send"))] storage: &impl GStore,
+    source: &Query,
+) -> Result<Vec<DataRow>> {
     #[derive(futures_enum::Stream)]
     enum Rows<I1, I2> {
         Values(I1),

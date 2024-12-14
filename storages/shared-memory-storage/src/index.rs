@@ -9,7 +9,7 @@ use {
     },
 };
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Index for SharedMemoryStorage {
     async fn scan_indexed_data(
         &self,
@@ -24,7 +24,7 @@ impl Index for SharedMemoryStorage {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl IndexMut for SharedMemoryStorage {
     async fn create_index(
         &mut self,

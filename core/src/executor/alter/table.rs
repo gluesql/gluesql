@@ -25,8 +25,9 @@ pub struct CreateTableOptions<'a> {
     pub comment: &'a Option<String>,
 }
 
-pub async fn create_table<T: GStore + GStoreMut>(
-    storage: &mut T,
+pub async fn create_table(
+    #[cfg(feature = "send")] storage: &mut (impl GStore + GStoreMut + Send + Sync),
+    #[cfg(not(feature = "send"))] storage: &mut (impl GStore + GStoreMut),
     CreateTableOptions {
         target_table_name,
         column_defs,
@@ -211,8 +212,9 @@ pub async fn create_table<T: GStore + GStoreMut>(
     }
 }
 
-pub async fn drop_table<T: GStore + GStoreMut>(
-    storage: &mut T,
+pub async fn drop_table(
+    #[cfg(feature = "send")] storage: &mut (impl GStore + GStoreMut + Send + Sync),
+    #[cfg(not(feature = "send"))] storage: &mut (impl GStore + GStoreMut),
     table_names: &[String],
     if_exists: bool,
     cascade: bool,

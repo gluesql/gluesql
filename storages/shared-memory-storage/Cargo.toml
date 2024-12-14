@@ -12,8 +12,10 @@ repository.workspace = true
 documentation.workspace = true
 
 [dependencies]
-gluesql-core.workspace = true
-gluesql_memory_storage.workspace = true
+#gluesql-core = { workspace = true, features = ["send"] }
+#gluesql_memory_storage.workspace = true
+gluesql-core = { path = "../../core", version = "0.16.3", features = ["send"] }
+gluesql_memory_storage = { path = "../memory-storage", version = "0.16.3" }
 
 async-trait = "0.1"
 serde = { version = "1", features = ["derive"] }
@@ -21,5 +23,6 @@ tokio = { version = "1", features = ["sync"] }
 futures = "0.3"
 
 [dev-dependencies]
-test-suite.workspace = true
+#test-suite = { workspace = true, features = ["send"] }
+test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.16.3", features = ["send"] }
 tokio = { version = "1", features = ["rt", "macros"] }

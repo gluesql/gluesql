@@ -1,22 +1,24 @@
 [workspace]
 resolver = "2"
 members = [
-  "cli",
+  #"cli",
   "core",
-  "pkg/rust",
-  "pkg/javascript",
-  "pkg/python",
-  "storages/*",
+  #"pkg/rust",
+  #"pkg/javascript",
+  #"pkg/python",
+  #"storages/*",
+  "storages/memory-storage",
+  #"storages/shared-memory-storage",
   "test-suite",
   "utils",
 ]
 default-members = [
-  "cli",
+  #"cli",
   "core",
-  "pkg/rust",
-  "pkg/javascript",
-  "pkg/python",
-  "storages/*",
+  #"pkg/rust",
+  #"pkg/javascript",
+  #"pkg/python",
+  #"storages/*",
   "test-suite",
   "utils",
 ]
@@ -35,21 +37,21 @@ repository = "https://github.com/gluesql/gluesql"
 documentation = "https://docs.rs/gluesql/"
 
 [workspace.dependencies]
-gluesql-core = { path = "./core", version = "0.16.3" }
+#gluesql-core = { path = "./core", version = "0.16.3" }
 
-cli = { package = "gluesql-cli", path = "./cli", version = "0.16.3" }
-test-suite = { package = "gluesql-test-suite", path = "./test-suite", version = "0.16.3" }
-gluesql_memory_storage = { path = "./storages/memory-storage", version = "0.16.3" }
-gluesql-shared-memory-storage = { path = "./storages/shared-memory-storage", version = "0.16.3" }
-gluesql_sled_storage = { path = "./storages/sled-storage", version = "0.16.3" }
-gluesql-json-storage = { path = "./storages/json-storage", version = "0.16.3" }
-gluesql-csv-storage = { path = "./storages/csv-storage", version = "0.16.3" }
-gluesql-composite-storage = { path = "./storages/composite-storage", version = "0.16.3" }
-gluesql-web-storage = { path = "./storages/web-storage", version = "0.16.3" }
-gluesql-idb-storage = { path = "./storages/idb-storage", version = "0.16.3" }
-gluesql-redis-storage = { path = "./storages/redis-storage", version = "0.16.3" }
-gluesql-mongo-storage = { path = "./storages/mongo-storage", version = "0.16.3" }
-gluesql-parquet-storage = { path = "./storages/parquet-storage", version = "0.16.3" }
-gluesql-file-storage = { path = "./storages/file-storage", version = "0.16.3" }
-gluesql-git-storage = { path = "./storages/git-storage", version = "0.16.3" }
-utils = { package = "gluesql-utils", path = "./utils", version = "0.16.3" }
+#cli = { package = "gluesql-cli", path = "./cli", version = "0.16.3" }
+#test-suite = { package = "gluesql-test-suite", path = "./test-suite", version = "0.16.3" }
+#gluesql_memory_storage = { path = "./storages/memory-storage", version = "0.16.3" }
+#gluesql-shared-memory-storage = { path = "./storages/shared-memory-storage", version = "0.16.3" }
+#gluesql_sled_storage = { path = "./storages/sled-storage", version = "0.16.3" }
+#gluesql-json-storage = { path = "./storages/json-storage", version = "0.16.3" }
+#gluesql-csv-storage = { path = "./storages/csv-storage", version = "0.16.3" }
+#gluesql-composite-storage = { path = "./storages/composite-storage", version = "0.16.3" }
+#gluesql-web-storage = { path = "./storages/web-storage", version = "0.16.3" }
+#gluesql-idb-storage = { path = "./storages/idb-storage", version = "0.16.3" }
+#gluesql-redis-storage = { path = "./storages/redis-storage", version = "0.16.3" }
+#gluesql-mongo-storage = { path = "./storages/mongo-storage", version = "0.16.3" }
+#gluesql-parquet-storage = { path = "./storages/parquet-storage", version = "0.16.3" }
+#gluesql-file-storage = { path = "./storages/file-storage", version = "0.16.3" }
+#gluesql-git-storage = { path = "./storages/git-storage", version = "0.16.3" }
+#utils = { package = "gluesql-utils", path = "./utils", version = "0.16.3" }

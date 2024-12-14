@@ -32,3 +32,13 @@ pub mod prelude {
 pub mod error {
     pub use crate::result::*;
 }
+
+#[cfg(not(feature = "send"))]
+pub(crate) use std::rc::Rc as Grc;
+#[cfg(feature = "send")]
+pub(crate) use std::sync::Arc as Grc;
+
+#[cfg(feature = "send")]
+pub(crate) use im::{HashMap, HashSet};
+#[cfg(not(feature = "send"))]
+pub(crate) use im_rc::{HashMap, HashSet};

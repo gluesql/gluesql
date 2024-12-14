@@ -9,8 +9,8 @@ repository.workspace = true
 documentation.workspace = true
 
 [dependencies]
-utils.workspace = true
-
+#utils.workspace = true
+utils = { package = "gluesql-utils", path = "../utils", version = "0.16.3" }
 regex = "1"
 async-trait = "0.1"
 async-recursion = "1"
@@ -19,9 +19,11 @@ futures-enum = "0.1.17"
 futures = "0.3"
 chrono = { version = "0.4.38", features = ["serde", "wasmbind"] }
 rust_decimal = { version = "1", features = ["serde-str"] }
+im = { version = "15", optional = true }
 im-rc = "15"
 iter-enum = "1"
 itertools = "0.12"
+iter-chunks = "=0.2.2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sqlparser = { version = "0.50", features = ["serde", "bigdecimal"] }
@@ -39,6 +41,9 @@ features = ["v4", "js"]
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies.uuid]
 version = "1"
 features = ["v4"]
+
+[features]
+send = ["im"]
 
 [dev-dependencies]
 pretty_assertions = "1"

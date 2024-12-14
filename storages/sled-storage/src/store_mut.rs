@@ -17,7 +17,7 @@ use {
     sled::transaction::{ConflictableTransactionError, ConflictableTransactionResult},
 };
 
-#[async_trait(?Send)]
+#[async_trait]
 impl StoreMut for SledStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let state = &self.state;
