@@ -20,7 +20,7 @@ pretty_assertions = "1"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies.uuid]
 version = "1"
-features = ["v4", "js"]
+features = ["v4", "v7", "js"]
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies.uuid]
 version = "1"
 features = ["v4", "v7"]
