@@ -147,7 +147,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
 
                         Rows::Indexed(rows)
                     }
-                    Some(IndexItem::PrimaryKey(expr)) => {
+                    Some(IndexItem::PrimaryKey { expr, .. }) => {
                         let filter_context = filter_context.as_ref().map(Rc::clone);
                         let key = evaluate(storage, filter_context, None, expr)
                             .await

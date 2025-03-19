@@ -1223,6 +1223,7 @@ dependencies = [
 name = "gluesql"
 version = "0.16.3"
 dependencies = [
+ "anyhow",
  "futures",
  "gluesql-cli",
  "gluesql-composite-storage",
@@ -1240,6 +1241,7 @@ dependencies = [
  "gluesql-web-storage",
  "gluesql_memory_storage",
  "gluesql_sled_storage",
+ "uuid",
 ]
 
 [[package]]

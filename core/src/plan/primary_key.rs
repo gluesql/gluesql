@@ -108,35 +108,52 @@ impl<'a> PrimaryKeyPlanner<'a> {
             let key = match key {
                 Expr::Identifier(ident) => ident,
                 Expr::CompoundIdentifier { ident, .. } => ident,
-                _ => return false,
+                // _ => return false,
+                _ => return None,
             };
 
+            /*
             current_context
                 .as_ref()
                 .map(|context| context.contains_primary_key(key))
                 .unwrap_or(false)
+                */
+            current_context.as_ref()
+                .and_then(|context| context.contains_primary_key(key))
         };
 
         match expr {
-            Expr::BinaryOp {
+            expr @ Expr::BinaryOp {
                 left: key,
                 op: BinaryOperator::Eq,
                 right: value,
             }
-            | Expr::BinaryOp {
+            | expr @ Expr::BinaryOp {
                 left: value,
                 op: BinaryOperator::Eq,
                 right: key,
-            } if check_primary_key(key.as_ref())
-                && check_evaluable(current_context.as_ref().map(Rc::clone), &key)
+            } // if check_primary_key(key.as_ref())
+                if check_evaluable(current_context.as_ref().map(Rc::clone), &key)
                 && check_evaluable(None, &value) =>
             {
-                let index_item = IndexItem::PrimaryKey(*value);
+                if let Some(data_type) = check_primary_key(key.as_ref()) {
+                    let index_item = IndexItem::PrimaryKey {
+                        data_type,
+                        expr: *value,
+                    };
 
-                PrimaryKey::Found {
-                    index_item,
-                    expr: None,
+                    PrimaryKey::Found {
+                        index_item,
+                        expr: None,
+                    }
+                } else {
+                    let outer_context = Context::concat(current_context, outer_context);
+                    let expr = self.subquery_expr(outer_context, expr);
+
+                    PrimaryKey::NotFound(expr)
                 }
+
+                // let index_item = IndexItem::PrimaryKey(*value);
             }
             Expr::BinaryOp {
                 left,
