@@ -16,6 +16,31 @@ test_case!(uuid, {
 
     let parse_uuid = |v| UUID::parse_str(v).unwrap().as_u128();
 
+    {
+        let uuid = UUID::now_v7();
+
+        let test_cases = [
+            (
+                "CREATE TABLE posts (id UUID PRIMARY KEY)",
+                Ok(Payload::Create),
+            ),
+            (
+                &format!(r#"INSERT INTO posts ("id") VALUES ('{uuid}')"#),
+                Ok(Payload::Insert(1)),
+            ),
+        ];
+
+        for (sql, expected) in test_cases {
+            g.test(sql, expected).await;
+        }
+
+        let glue = g.get_glue();
+        let sql = format!("SELECT id FROM posts WHERE id = '{uuid}';", uuid = uuid);
+        let payload = glue.execute(sql).await.unwrap();
+
+        assert_eq!(payload, vec![select!( id Uuid; uuid.as_u128() )]);
+    }
+
     let test_cases = [
         ("CREATE TABLE UUID (uuid_field UUID)", Ok(Payload::Create)),
         (

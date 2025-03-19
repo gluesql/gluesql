@@ -172,7 +172,8 @@ impl JsonStorage {
                 )?;
 
                 if column_def.unique == Some(ColumnUniqueOption { is_primary: true }) {
-                    key = Some(value.clone().try_into().map_storage_err()?);
+                    let value = value.cast(&column_def.data_type)?;
+                    key = Some(value.try_into().map_storage_err()?);
                 }
 
                 let value = match value.get_type() {
