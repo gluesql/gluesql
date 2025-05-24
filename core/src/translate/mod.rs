@@ -259,6 +259,9 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
         SqlStatement::ShowColumns { table_name, .. } => Ok(Statement::ShowColumns {
             table_name: translate_object_name(table_name)?,
         }),
+        SqlStatement::ExplainTable { table_name, .. } => Ok(Statement::ExplainTable {
+            table_name: translate_object_name(table_name)?,
+        }),
         SqlStatement::CreateFunction {
             or_replace,
             name,

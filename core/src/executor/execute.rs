@@ -14,7 +14,7 @@ use {
     crate::{
         ast::{
             AstLiteral, BinaryOperator, DataType, Dictionary, Expr, Query, SelectItem, SetExpr,
-            Statement, TableAlias, TableFactor, TableWithJoins, Variable,
+            Statement, TableAlias, TableFactor, TableWithJoins, ToSql, Variable,
         },
         data::{Key, Row, Schema, Value},
         result::Result,
@@ -35,6 +35,7 @@ pub enum ExecuteError {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub enum Payload {
     ShowColumns(Vec<(String, DataType)>),
+    ExplainTable(Vec<ExplainTableRow>),
     Create,
     Insert(usize),
     Select {
@@ -93,6 +94,15 @@ pub enum PayloadVariable {
     Tables(Vec<String>),
     Functions(Vec<String>),
     Version(String),
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct ExplainTableRow {
+    pub name: String,
+    pub data_type: DataType,
+    pub nullable: bool,
+    pub key: String,
+    pub default: String,
 }
 
 pub async fn execute<T: GStore + GStoreMut>(
@@ -292,6 +302,26 @@ async fn execute_inner<T: GStore + GStoreMut>(
                 .collect();
 
             Ok(Payload::ShowColumns(output))
+        }
+        Statement::ExplainTable { table_name } => {
+            let Schema { column_defs, .. } = storage
+                .fetch_schema(table_name)
+                .await?
+                .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
+
+            let output: Vec<ExplainTableRow> = column_defs
+                .unwrap_or_default()
+                .into_iter()
+                .map(|key| ExplainTableRow {
+                    name: key.name,
+                    data_type: key.data_type,
+                    nullable: key.nullable,
+                    key: key.unique.map(|e| e.to_sql()).unwrap_or_default(),
+                    default: key.default.map(|e| e.to_sql()).unwrap_or_default(),
+                })
+                .collect();
+
+            Ok(Payload::ExplainTable(output))
         }
         Statement::ShowIndexes(table_name) => {
             let query = Query {

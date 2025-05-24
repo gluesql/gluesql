@@ -102,6 +102,14 @@ fn convert_payload(payload: Payload) -> Json {
         Payload::AlterTable => json!({ "type": "ALTER TABLE" }),
         Payload::CreateIndex => json!({ "type": "CREATE INDEX" }),
         Payload::DropIndex => json!({ "type": "DROP INDEX" }),
+        Payload::ExplainTable(columns) => {
+            let columns = columns.into_iter().map(|row| json!(row)).collect();
+
+            json!({
+                "type": "EXPLAIN",
+                "columns": Json::Array(columns),
+            })
+        }
         Payload::StartTransaction => json!({ "type": "BEGIN" }),
         Payload::Commit => json!({ "type": "COMMIT" }),
         Payload::Rollback => json!({ "type": "ROLLBACK" }),
