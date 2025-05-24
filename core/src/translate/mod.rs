@@ -126,8 +126,9 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                     .map(|table_engine| table_engine.name.to_owned()),
                 foreign_keys,
                 comment: comment.as_ref().map(|comment| match comment {
-                    SqlCommentDef::WithEq(comment) => comment.to_owned(),
-                    SqlCommentDef::WithoutEq(comment) => comment.to_owned(),
+                    SqlCommentDef::WithEq(comment)
+                    | SqlCommentDef::WithoutEq(comment)
+                    | SqlCommentDef::AfterColumnDefsWithoutEq(comment) => comment.to_owned(),
                 }),
             })
         }

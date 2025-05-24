@@ -64,7 +64,7 @@ INSERT INTO IntervalLog VALUES
             id,
             interval1 / 3 AS i1,
             interval2 - INTERVAL 3600 SECOND AS i2,
-            INTERVAL 20 + 10 SECOND + INTERVAL 10 SECOND * 3 AS i3
+            INTERVAL (20 + 10) SECOND + INTERVAL (10 * 3) SECOND AS i3
         FROM IntervalLog WHERE id = 2;",
         Ok(select!(
             id  | i1         | i2           | i3
