@@ -56,26 +56,23 @@ impl StoreMut for MongoStorage {
                             false => vec![data_type],
                         };
 
-                        match &column_def.unique {
-                            Some(ColumnUniqueOption { is_primary }) => match *is_primary {
-                                true => {
-                                    indexes.push(IndexInfo {
-                                        name: format!("{column_name}_PK"),
-                                        key: column_name.clone(),
-                                        index_type: IndexType::Primary,
-                                    });
-                                }
-                                false => {
-                                    bson_type = vec![data_type, "null"];
-                                    indexes.push(IndexInfo {
-                                        name: format!("{column_name}_UNIQUE"),
-                                        key: column_name.clone(),
-                                        index_type: IndexType::Unique,
-                                    });
-                                }
-                            },
-                            None => {}
-                        }
+                        if let Some(ColumnUniqueOption { is_primary }) = &column_def.unique { match *is_primary {
+                            true => {
+                                indexes.push(IndexInfo {
+                                    name: format!("{column_name}_PK"),
+                                    key: column_name.clone(),
+                                    index_type: IndexType::Primary,
+                                });
+                            }
+                            false => {
+                                bson_type = vec![data_type, "null"];
+                                indexes.push(IndexInfo {
+                                    name: format!("{column_name}_UNIQUE"),
+                                    key: column_name.clone(),
+                                    index_type: IndexType::Unique,
+                                });
+                            }
+                        } }
 
                         let mut property = doc! {
                             "bsonType": bson_type,
