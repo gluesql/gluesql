@@ -8,7 +8,10 @@ use {
 
 #[async_trait(?Send)]
 pub trait CustomFunction {
-    async fn fetch_function<'a>(&'a self, _func_name: &str) -> Result<Option<&'a StructCustomFunction>> {
+    async fn fetch_function<'a>(
+        &'a self,
+        _func_name: &str,
+    ) -> Result<Option<&'a StructCustomFunction>> {
         Err(Error::StorageMsg(
             "[Storage] CustomFunction is not supported".to_owned(),
         ))

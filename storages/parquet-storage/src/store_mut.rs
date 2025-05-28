@@ -204,51 +204,48 @@ impl ParquetStorage {
                             (Value::Null, ColumnWriter::BoolColumnWriter(typed)) => {
                                 typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
                             }
-                            (Value::Null, ColumnWriter::Int32ColumnWriter( typed)) => {
+                            (Value::Null, ColumnWriter::Int32ColumnWriter(typed)) => {
                                 typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
                             }
-                            (Value::Null, ColumnWriter::Int64ColumnWriter( typed)) => {
+                            (Value::Null, ColumnWriter::Int64ColumnWriter(typed)) => {
                                 typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
                             }
-                            (Value::Null, ColumnWriter::Int96ColumnWriter( typed)) => {
+                            (Value::Null, ColumnWriter::Int96ColumnWriter(typed)) => {
                                 typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
                             }
-                            (Value::Null, ColumnWriter::FloatColumnWriter( typed)) => {
+                            (Value::Null, ColumnWriter::FloatColumnWriter(typed)) => {
                                 typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
                             }
-                            (Value::Null, ColumnWriter::DoubleColumnWriter( typed)) => {
+                            (Value::Null, ColumnWriter::DoubleColumnWriter(typed)) => {
                                 typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
                             }
-                            (Value::Null, ColumnWriter::ByteArrayColumnWriter( typed)) => {
+                            (Value::Null, ColumnWriter::ByteArrayColumnWriter(typed)) => {
                                 typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
                             }
-                            (
-                                Value::Null,
-                                ColumnWriter::FixedLenByteArrayColumnWriter( typed),
-                            ) => {
+                            (Value::Null, ColumnWriter::FixedLenByteArrayColumnWriter(typed)) => {
                                 typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
                             }
-                            (Value::Bool(val), ColumnWriter::BoolColumnWriter( typed)) => {
+                            (Value::Bool(val), ColumnWriter::BoolColumnWriter(typed)) => {
                                 typed
                                     .write_batch(&[val], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
-                            (Value::I8(val), ColumnWriter::Int32ColumnWriter( typed)) => {
+                            (Value::I8(val), ColumnWriter::Int32ColumnWriter(typed)) => {
                                 typed
                                     .write_batch(&[val as i32], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
-                            (Value::I16(val), ColumnWriter::Int32ColumnWriter( typed)) => {
+                            (Value::I16(val), ColumnWriter::Int32ColumnWriter(typed)) => {
                                 typed
                                     .write_batch(&[val as i32], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
-                            (Value::I32(val), ColumnWriter::Int32ColumnWriter( typed)) => {
+                            (Value::I32(val), ColumnWriter::Int32ColumnWriter(typed)) => {
                                 typed
                                     .write_batch(&[val], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
-                            (Value::Date(d), ColumnWriter::Int32ColumnWriter( typed)) => {
+                            (Value::Date(d), ColumnWriter::Int32ColumnWriter(typed)) => {
                                 let epoch = NaiveDate::from_ymd_opt(1970, 1, 1)
                                     .expect("Invalid epoch date");
                                 let days_since_epoch = (d - epoch).num_days() as i32;
@@ -256,7 +253,7 @@ impl ParquetStorage {
                                     .write_batch(&[days_since_epoch], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
-                            (Value::U8(val), ColumnWriter::Int32ColumnWriter( typed)) => {
+                            (Value::U8(val), ColumnWriter::Int32ColumnWriter(typed)) => {
                                 typed
                                     .write_batch(&[val as i32], Some(&[1]), None)
                                     .map_storage_err()?;
@@ -290,28 +287,19 @@ impl ParquetStorage {
                                     .write_batch(&[total_micros], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
-                            (
-                                Value::Timestamp(val),
-                                ColumnWriter::ByteArrayColumnWriter(typed),
-                            ) => {
+                            (Value::Timestamp(val), ColumnWriter::ByteArrayColumnWriter(typed)) => {
                                 let serialized = bincode::serialize(&val).map_storage_err()?;
                                 typed
                                     .write_batch(&[serialized.into()], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
-                            (
-                                Value::I128(val),
-                                ColumnWriter::ByteArrayColumnWriter(typed),
-                            ) => {
+                            (Value::I128(val), ColumnWriter::ByteArrayColumnWriter(typed)) => {
                                 let serialized = bincode::serialize(&val).map_storage_err()?;
                                 typed
                                     .write_batch(&[serialized.into()], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
-                            (
-                                Value::U128(val),
-                                ColumnWriter::ByteArrayColumnWriter(typed),
-                            ) => {
+                            (Value::U128(val), ColumnWriter::ByteArrayColumnWriter(typed)) => {
                                 let serialized = bincode::serialize(&val).map_storage_err()?;
                                 typed
                                     .write_batch(&[serialized.into()], Some(&[1]), None)
@@ -340,10 +328,7 @@ impl ParquetStorage {
                                     .write_batch(&[val], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
-                            (
-                                Value::Str(val),
-                                ColumnWriter::ByteArrayColumnWriter(typed),
-                            ) => {
+                            (Value::Str(val), ColumnWriter::ByteArrayColumnWriter(typed)) => {
                                 typed
                                     .write_batch(
                                         &[ByteArray::from(val.as_bytes())],
@@ -352,28 +337,19 @@ impl ParquetStorage {
                                     )
                                     .map_storage_err()?;
                             }
-                            (
-                                Value::Decimal(val),
-                                ColumnWriter::ByteArrayColumnWriter(typed),
-                            ) => {
+                            (Value::Decimal(val), ColumnWriter::ByteArrayColumnWriter(typed)) => {
                                 let serialized = bincode::serialize(&val).map_storage_err()?;
                                 typed
                                     .write_batch(&[serialized.into()], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
-                            (
-                                Value::Interval(val),
-                                ColumnWriter::ByteArrayColumnWriter(typed),
-                            ) => {
+                            (Value::Interval(val), ColumnWriter::ByteArrayColumnWriter(typed)) => {
                                 let serialized = bincode::serialize(&val).map_storage_err()?;
                                 typed
                                     .write_batch(&[serialized.into()], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
-                            (
-                                Value::Bytea(val),
-                                ColumnWriter::ByteArrayColumnWriter(typed),
-                            ) => {
+                            (Value::Bytea(val), ColumnWriter::ByteArrayColumnWriter(typed)) => {
                                 let byte_array = ByteArray::from(val);
                                 typed
                                     .write_batch(&[byte_array], Some(&[1]), None)
@@ -385,10 +361,7 @@ impl ParquetStorage {
                                     .write_batch(&[serialized.into()], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
-                            (
-                                Value::List(l),
-                                ColumnWriter::ByteArrayColumnWriter(typed),
-                            ) => {
+                            (Value::List(l), ColumnWriter::ByteArrayColumnWriter(typed)) => {
                                 let serialized = bincode::serialize(&l).map_storage_err()?;
                                 typed
                                     .write_batch(&[serialized.into()], Some(&[1]), None)

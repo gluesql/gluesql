@@ -200,7 +200,10 @@ impl RedisStorage {
 
 #[async_trait(?Send)]
 impl CustomFunction for RedisStorage {
-    async fn fetch_function<'a>(&'a self, _func_name: &str) -> Result<Option<&'a StructCustomFunction>> {
+    async fn fetch_function<'a>(
+        &'a self,
+        _func_name: &str,
+    ) -> Result<Option<&'a StructCustomFunction>> {
         Err(Error::StorageMsg(
             "[RedisStorage] fetch_function is not supported yet".to_owned(),
         ))
