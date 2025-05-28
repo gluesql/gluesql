@@ -101,7 +101,7 @@ pub trait AlterTable: Store + StoreMut {
             (Some(default), _) => evaluate_stateless(None, default).await?.try_into()?,
             (None, true) => Value::Null,
             (None, false) => {
-                return Err(AlterTableError::DefaultValueRequired(column_def.clone()).into())
+                return Err(AlterTableError::DefaultValueRequired(column_def.clone()).into());
             }
         };
 
@@ -127,7 +127,7 @@ pub trait AlterTable: Store + StoreMut {
                         DataRow::Map(_) => {
                             Err(AlterTableError::ConflictOnUnexpectedMapRowFound.into())
                         }
-                        DataRow::Vec(ref mut rows) => {
+                        DataRow::Vec(rows) => {
                             rows.push(default_value);
 
                             Ok((key, data_row))
@@ -165,7 +165,7 @@ pub trait AlterTable: Store + StoreMut {
             Some(i) => i,
             None if if_exists => return Ok(()),
             None => {
-                return Err(AlterTableError::DroppingColumnNotFound(column_name.to_owned()).into())
+                return Err(AlterTableError::DroppingColumnNotFound(column_name.to_owned()).into());
             }
         };
 
@@ -177,7 +177,7 @@ pub trait AlterTable: Store + StoreMut {
             .and_then(|(key, mut data_row)| async move {
                 match &mut data_row {
                     DataRow::Map(_) => Err(AlterTableError::ConflictOnUnexpectedMapRowFound.into()),
-                    DataRow::Vec(ref mut rows) => {
+                    DataRow::Vec(rows) => {
                         rows.remove(i);
 
                         Ok((key, data_row))

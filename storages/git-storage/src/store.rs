@@ -22,7 +22,7 @@ impl Store for GitStorage {
         self.get_store().fetch_data(table_name, key).await
     }
 
-    async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
+    async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
         self.get_store().scan_data(table_name).await
     }
 }

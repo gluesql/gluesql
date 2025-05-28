@@ -59,7 +59,7 @@ impl Store for FileStorage {
             .map(Some)
     }
 
-    async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
+    async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
         let path = self.path(table_name);
         let mut entries = fs::read_dir(path)
             .map_storage_err()?

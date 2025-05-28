@@ -265,7 +265,7 @@ impl Store for IdbStorage {
         }
     }
 
-    async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
+    async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
         let column_defs = self
             .fetch_schema(table_name)
             .await?

@@ -27,15 +27,15 @@ mod table_name;
 mod transaction;
 mod update;
 
-/// Available aggregate or normal SQL functions
-pub use expr::{
-    aggregate::{avg, count, max, min, stdev, sum, variance, AggregateNode},
-    function,
-};
 /// Available expression builder functions
 pub use expr::{
-    bitwise_not, bytea, case, col, date, exists, expr, factorial, minus, nested, not, not_exists,
-    null, num, numeric::NumericNode, plus, subquery, text, time, timestamp, uuid, ExprNode,
+    ExprNode, bitwise_not, bytea, case, col, date, exists, expr, factorial, minus, nested, not,
+    not_exists, null, num, numeric::NumericNode, plus, subquery, text, time, timestamp, uuid,
+};
+/// Available aggregate or normal SQL functions
+pub use expr::{
+    aggregate::{AggregateNode, avg, count, max, min, stdev, sum, variance},
+    function,
 };
 /// Functions for building transaction statements
 pub use transaction::{begin, commit, rollback};
@@ -57,21 +57,21 @@ pub use {
     expr_with_alias::ExprWithAliasNode,
     index::{CreateIndexNode, DropIndexNode},
     index_item::{
-        non_clustered, primary_key, CmpExprNode, IndexItemNode, NonClusteredNode, PrimaryKeyNode,
+        CmpExprNode, IndexItemNode, NonClusteredNode, PrimaryKeyNode, non_clustered, primary_key,
     },
     insert::InsertNode,
     order_by_expr::OrderByExprNode,
     order_by_expr_list::OrderByExprList,
     query::QueryNode,
     select::{
-        select, values, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
-        JoinNode, LimitNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode,
+        FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode, LimitNode,
+        OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode, select, values,
     },
     select_item::SelectItemNode,
     select_item_list::SelectItemList,
     show_columns::ShowColumnsNode,
     table_factor::{
-        glue_indexes, glue_objects, glue_table_columns, glue_tables, series, TableFactorNode,
+        TableFactorNode, glue_indexes, glue_objects, glue_table_columns, glue_tables, series,
     },
     table_name::table,
     update::UpdateNode,

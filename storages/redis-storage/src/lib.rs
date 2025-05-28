@@ -124,7 +124,7 @@ impl RedisStorage {
         redis::cmd("SET")
             .arg(key)
             .arg(value)
-            .query(&mut self.conn.get_mut())
+            .query::<()>(&mut self.conn.get_mut())
             .map_err(|e| {
                 Error::StorageMsg(format!(
                     "[RedisStorage] failed to execute SET: key={} value={} error={}",
@@ -138,7 +138,7 @@ impl RedisStorage {
     pub fn redis_execute_del(&mut self, key: &str) -> Result<()> {
         redis::cmd("DEL")
             .arg(key)
-            .query(&mut self.conn.get_mut())
+            .query::<()>(&mut self.conn.get_mut())
             .map_err(|e| {
                 Error::StorageMsg(format!(
                     "[RedisStorage] failed to execute DEL: key={} error={}",
@@ -200,13 +200,13 @@ impl RedisStorage {
 
 #[async_trait(?Send)]
 impl CustomFunction for RedisStorage {
-    async fn fetch_function(&self, _func_name: &str) -> Result<Option<&StructCustomFunction>> {
+    async fn fetch_function<'a>(&'a self, _func_name: &str) -> Result<Option<&'a StructCustomFunction>> {
         Err(Error::StorageMsg(
             "[RedisStorage] fetch_function is not supported yet".to_owned(),
         ))
     }
 
-    async fn fetch_all_functions(&self) -> Result<Vec<&StructCustomFunction>> {
+    async fn fetch_all_functions<'a>(&'a self) -> Result<Vec<&'a StructCustomFunction>> {
         Err(Error::StorageMsg(
             "[RedisStorage] fetch_all_functions is not supported yet".to_owned(),
         ))
@@ -333,7 +333,7 @@ impl Store for RedisStorage {
         Ok(None)
     }
 
-    async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
+    async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
         // First read all keys of the table
         let redis_keys: Vec<String> = self
             .conn

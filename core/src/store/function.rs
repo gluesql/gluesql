@@ -8,12 +8,13 @@ use {
 
 #[async_trait(?Send)]
 pub trait CustomFunction {
-    async fn fetch_function(&self, _func_name: &str) -> Result<Option<&StructCustomFunction>> {
+    async fn fetch_function<'a>(&'a self, _func_name: &str) -> Result<Option<&'a StructCustomFunction>> {
         Err(Error::StorageMsg(
             "[Storage] CustomFunction is not supported".to_owned(),
         ))
     }
-    async fn fetch_all_functions(&self) -> Result<Vec<&StructCustomFunction>> {
+
+    async fn fetch_all_functions<'a>(&'a self) -> Result<Vec<&'a StructCustomFunction>> {
         Err(Error::StorageMsg(
             "[Storage] CustomFunction is not supported".to_owned(),
         ))

@@ -58,7 +58,7 @@ async fn basic<T: GStore + GStoreMut>(mut glue: Glue<T>) {
 #[cfg(feature = "gluesql_sled_storage")]
 #[test]
 fn sled_basic() {
-    use gluesql_sled_storage::{sled, SledStorage};
+    use gluesql_sled_storage::{SledStorage, sled};
 
     let config = sled::Config::default()
         .path("data/using_config")

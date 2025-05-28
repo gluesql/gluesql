@@ -155,7 +155,7 @@ fn check_table_factor(context: Option<Rc<Context<'_>>>, table_factor: &TableFact
 #[cfg(test)]
 mod tests {
     use {
-        super::{check_expr, Context},
+        super::{Context, check_expr},
         crate::{parse_sql::parse_expr, translate::translate_expr},
         std::rc::Rc,
     };

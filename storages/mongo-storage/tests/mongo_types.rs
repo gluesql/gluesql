@@ -1,9 +1,9 @@
 #![cfg(feature = "test-mongo")]
 
 use {
-    bson::{doc, Bson},
+    bson::{Bson, doc},
     gluesql_core::prelude::{Glue, Payload, Value},
-    gluesql_mongo_storage::{utils::Validator, MongoStorage},
+    gluesql_mongo_storage::{MongoStorage, utils::Validator},
     std::{collections::HashMap, vec},
 };
 

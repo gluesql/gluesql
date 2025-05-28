@@ -25,10 +25,10 @@ use {
         store::Metadata,
     },
     sled::{
+        Config, Db,
         transaction::{
             ConflictableTransactionError, ConflictableTransactionResult, TransactionalTree,
         },
-        Config, Db,
     },
 };
 

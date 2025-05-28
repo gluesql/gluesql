@@ -120,7 +120,7 @@ impl<'a> OffsetNode<'a> {
         OffsetLimitNode::new(self, expr)
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
         QueryNode::OffsetNode(self).alias_as(table_alias)
     }
 }
@@ -142,7 +142,7 @@ mod tests {
                 Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SetExpr,
                 Statement, TableFactor, TableWithJoins,
             },
-            ast_builder::{col, num, table, test, Build, SelectItemList},
+            ast_builder::{Build, SelectItemList, col, num, table, test},
         },
         pretty_assertions::assert_eq,
     };

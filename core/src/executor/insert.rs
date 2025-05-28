@@ -1,7 +1,7 @@
 use {
     super::{
         select::select,
-        validate::{validate_unique, ColumnValidation},
+        validate::{ColumnValidation, validate_unique},
     },
     crate::{
         ast::{ColumnDef, ColumnUniqueOption, Expr, ForeignKey, Query, SetExpr, Values},
@@ -39,7 +39,9 @@ pub enum InsertError {
     #[error("map type required: {0}")]
     MapTypeValueRequired(String),
 
-    #[error("cannot find referenced value on {table_name}.{column_name} with value {referenced_value:?}")]
+    #[error(
+        "cannot find referenced value on {table_name}.{column_name} with value {referenced_value:?}"
+    )]
     CannotFindReferencedValue {
         table_name: String,
         column_name: String,

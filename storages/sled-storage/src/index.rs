@@ -1,8 +1,8 @@
 use {
     super::{
-        err_into,
+        SledStorage, Snapshot, State, err_into,
         index_sync::{build_index_key, build_index_key_prefix},
-        lock, SledStorage, Snapshot, State,
+        lock,
     },
     async_trait::async_trait,
     futures::stream::iter,
@@ -20,13 +20,13 @@ use {
 
 #[async_trait(?Send)]
 impl Index for SledStorage {
-    async fn scan_indexed_data(
-        &self,
+    async fn scan_indexed_data<'a>(
+        &'a self,
         table_name: &str,
         index_name: &str,
         asc: Option<bool>,
         cmp_value: Option<(&IndexOperator, Value)>,
-    ) -> Result<RowIter> {
+    ) -> Result<RowIter<'a>> {
         let data_keys = {
             #[derive(Iterator, DoubleEndedIterator)]
             enum DataIds<I1, I2, I3, I4> {

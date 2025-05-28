@@ -1,7 +1,7 @@
 use {
     super::{
         context::RowContext,
-        evaluate::{evaluate, Evaluated},
+        evaluate::{Evaluated, evaluate},
     },
     crate::{
         ast::{Assignment, ColumnDef, ColumnUniqueOption, ForeignKey},
@@ -27,7 +27,9 @@ pub enum UpdateError {
     #[error("conflict on schema, row data does not fit to schema")]
     ConflictOnSchema,
 
-    #[error("cannot find referenced value on {table_name}.{column_name} with value {referenced_value:?}")]
+    #[error(
+        "cannot find referenced value on {table_name}.{column_name} with value {referenced_value:?}"
+    )]
     CannotFindReferencedValue {
         table_name: String,
         column_name: String,

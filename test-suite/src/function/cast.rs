@@ -2,7 +2,7 @@ use {
     crate::*,
     chrono::{NaiveDate, NaiveTime},
     gluesql_core::{
-        data::{value::ConvertError, Interval as I},
+        data::{Interval as I, value::ConvertError},
         error::ValueError,
         prelude::{
             DataType, Payload,
@@ -39,10 +39,7 @@ test_case!(cast_literal, {
             "SELECT CAST('TRUE' AS BOOLEAN) AS cast FROM Item",
             Ok(select!(cast Bool; true)),
         ),
-        (
-            "SELECT 1::BOOLEAN AS cast",
-            Ok(select!(cast Bool; true)),
-        ),
+        ("SELECT 1::BOOLEAN AS cast", Ok(select!(cast Bool; true))),
         (
             "SELECT CAST(1 AS BOOLEAN) AS cast FROM Item",
             Ok(select!(cast Bool; true)),
@@ -192,7 +189,8 @@ test_case!(cast_literal, {
             Err(ConvertError {
                 value: Str("foobar".to_owned()),
                 data_type: DataType::Decimal,
-            }.into()),
+            }
+            .into()),
         ),
         (
             "SELECT CAST(myint8 AS Decimal) AS cast FROM test",
@@ -218,18 +216,17 @@ test_case!(cast_literal, {
             "SELECT CAST(mybool AS Decimal) AS cast FROM test",
             Ok(select!(cast Decimal; Decimal::new(1,0))),
         ),
-
         (
             "SELECT CAST(not(mybool) AS Decimal) AS cast FROM test",
             Ok(select!(cast Decimal; Decimal::new(0,0))),
         ),
-
         (
             "SELECT CAST(mydate AS Decimal) AS cast FROM test",
             Err(ConvertError {
                 value: Value::Date(NaiveDate::from_ymd_opt(2001, 9, 11).unwrap()),
                 data_type: DataType::Decimal,
-            }.into()),
+            }
+            .into()),
         ),
         (
             "SELECT CAST(1 AS TEXT) AS cast FROM Item",
@@ -317,11 +314,15 @@ test_case!(cast_literal, {
         ),
         (
             "SELECT CAST('AM 8:05:30.9' AS TIME) AS cast FROM Item",
-            Ok(select_with_null!(cast; Value::Time(NaiveTime::from_hms_milli_opt(8, 5, 30, 900).unwrap()))),
+            Ok(
+                select_with_null!(cast; Value::Time(NaiveTime::from_hms_milli_opt(8, 5, 30, 900).unwrap())),
+            ),
         ),
         (
             "SELECT CAST('8:05:30.9 AM' AS TIME) AS cast FROM Item",
-            Ok(select_with_null!(cast; Value::Time(NaiveTime::from_hms_milli_opt(8, 5, 30, 900).unwrap()))),
+            Ok(
+                select_with_null!(cast; Value::Time(NaiveTime::from_hms_milli_opt(8, 5, 30, 900).unwrap())),
+            ),
         ),
         (
             "SELECT CAST('25:08:05' AS TIME) AS cast FROM Item",
@@ -391,7 +392,8 @@ test_case!(cast_value, {
             Err(ConvertError {
                 value: Str("1".to_owned()),
                 data_type: DataType::Boolean,
-            }.into()),
+            }
+            .into()),
         ),
         (
             "
@@ -431,8 +433,8 @@ test_case!(cast_value, {
         ),
         (
             "SELECT CAST(1 AS STRING FORMAT 'ASCII') AS bytes_to_string;",
-            Err(TranslateError::UnsupportedCastFormat("'ASCII'".to_owned()).into())
-        )
+            Err(TranslateError::UnsupportedCastFormat("'ASCII'".to_owned()).into()),
+        ),
     ];
 
     for (sql, expected) in test_cases {

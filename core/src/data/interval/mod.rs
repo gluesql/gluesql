@@ -8,7 +8,7 @@ use {
     crate::{ast::DateTimeField, result::Result},
     chrono::{Datelike, Duration, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
     core::str::FromStr,
-    rust_decimal::{prelude::ToPrimitive, Decimal},
+    rust_decimal::{Decimal, prelude::ToPrimitive},
     serde::{Deserialize, Serialize},
     std::{cmp::Ordering, fmt::Debug},
 };

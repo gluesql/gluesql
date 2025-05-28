@@ -66,7 +66,7 @@ impl Store for SharedMemoryStorage {
         database.fetch_data(table_name, key).await
     }
 
-    async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
+    async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
         let rows = self
             .database
             .read()

@@ -1,7 +1,7 @@
 use {
     crate::{
-        error::{CsvStorageError, OptionExt, ResultExt},
         CsvStorage,
+        error::{CsvStorageError, OptionExt, ResultExt},
     },
     async_trait::async_trait,
     futures::stream::iter,
@@ -62,7 +62,7 @@ impl Store for CsvStorage {
         Ok(None)
     }
 
-    async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
+    async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
         let rows = self.scan_data(table_name).map(|(_, rows)| rows)?;
 
         Ok(Box::pin(iter(rows)))

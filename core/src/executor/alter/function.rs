@@ -1,5 +1,5 @@
 use {
-    super::{validate_arg_names, validate_default_args, AlterError},
+    super::{AlterError, validate_arg_names, validate_default_args},
     crate::{
         ast::{Expr, OperateFunctionArg},
         data::CustomFunction,

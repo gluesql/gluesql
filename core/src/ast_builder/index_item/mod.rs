@@ -3,14 +3,14 @@ mod non_clustered;
 mod primary_key;
 
 use {
-    super::{select::Prebuild, ExprNode},
+    super::{ExprNode, select::Prebuild},
     crate::ast::{Expr, IndexOperator},
 };
 pub use {
     crate::{ast::IndexItem, result::Result},
     cmp_expr::CmpExprNode,
-    non_clustered::{non_clustered, NonClusteredNode},
-    primary_key::{primary_key, PrimaryKeyNode},
+    non_clustered::{NonClusteredNode, non_clustered},
+    primary_key::{PrimaryKeyNode, primary_key},
 };
 
 #[derive(Clone, Debug)]

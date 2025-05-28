@@ -1,12 +1,12 @@
 use {
     super::{
+        Value,
         date::{parse_date, parse_time, parse_timestamp},
         error::ValueError,
-        Value,
     },
     crate::{
         ast::DataType,
-        data::{value::uuid::parse_uuid, BigDecimalExt, Interval, Literal, Point},
+        data::{BigDecimalExt, Interval, Literal, Point, value::uuid::parse_uuid},
         result::{Error, Result},
     },
     bigdecimal::BigDecimal,
@@ -562,10 +562,14 @@ mod tests {
         assert!(!inet("::1").evaluate_eq_with_literal(num!("-1")));
         assert!(Value::Date(date(2021, 11, 20)).evaluate_eq_with_literal(text!("2021-11-20")));
         assert!(!Value::Date(date(2021, 11, 20)).evaluate_eq_with_literal(text!("202=abcdef")));
-        assert!(Value::Timestamp(date_time(2021, 11, 20, 10, 0, 0, 0))
-            .evaluate_eq_with_literal(text!("2021-11-20T10:00:00Z")));
-        assert!(!Value::Timestamp(date_time(2021, 11, 20, 10, 0, 0, 0))
-            .evaluate_eq_with_literal(text!("2021-11-Hello")));
+        assert!(
+            Value::Timestamp(date_time(2021, 11, 20, 10, 0, 0, 0))
+                .evaluate_eq_with_literal(text!("2021-11-20T10:00:00Z"))
+        );
+        assert!(
+            !Value::Timestamp(date_time(2021, 11, 20, 10, 0, 0, 0))
+                .evaluate_eq_with_literal(text!("2021-11-Hello"))
+        );
         assert!(Value::Time(time(10, 0, 0, 0)).evaluate_eq_with_literal(text!("10:00:00")));
         assert!(!Value::Time(time(10, 0, 0, 0)).evaluate_eq_with_literal(text!("FALSE")));
         assert!(Value::Uuid(uuid).evaluate_eq_with_literal(text!(uuid_text)));

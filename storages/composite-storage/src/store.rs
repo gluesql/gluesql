@@ -43,7 +43,7 @@ impl Store for CompositeStorage {
             .await
     }
 
-    async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
+    async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
         self.fetch_storage(table_name)
             .await?
             .scan_data(table_name)

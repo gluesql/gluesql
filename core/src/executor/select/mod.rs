@@ -6,7 +6,7 @@ pub use error::SelectError;
 use {
     self::project::Project,
     super::{
-        aggregate::Aggregator,
+        aggregate,
         context::{AggregateContext, RowContext},
         evaluate::evaluate_stateless,
         fetch::{fetch_labels, fetch_relation_rows},
@@ -17,7 +17,7 @@ use {
     },
     crate::{
         ast::{Expr, OrderByExpr, Query, Select, SetExpr, TableWithJoins, Values},
-        data::{get_alias, Key, Row, Value},
+        data::{Key, Row, Value, get_alias},
         result::Result,
         store::GStore,
     },
@@ -144,13 +144,16 @@ where
         });
 
     let join = Join::new(storage, joins, filter_context.as_ref().map(Rc::clone));
+    /*
     let aggregate = Aggregator::new(
-        storage,
+        /*
         projection,
         group_by,
         having.as_ref(),
         filter_context.as_ref().map(Rc::clone),
+        */
     );
+    */
     let filter = Rc::new(Filter::new(
         storage,
         where_clause.as_ref(),
@@ -176,7 +179,15 @@ where
         }
     });
 
-    let rows = aggregate.apply(rows).await?;
+    let rows = aggregate::apply(
+        storage,
+        projection,
+        group_by,
+        having.as_ref(),
+        filter_context.as_ref().map(Rc::clone),
+        rows,
+    )
+    .await?;
 
     let labels = fetch_labels(storage, relation, joins, projection)
         .await?

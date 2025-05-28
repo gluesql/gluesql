@@ -8,7 +8,7 @@ use {
         prelude::{DataType, Error, Result},
         translate::translate_expr,
     },
-    mongodb::bson::{self, doc, Binary, Bson, DateTime, Decimal128, Document},
+    mongodb::bson::{self, Binary, Bson, DateTime, Decimal128, Document, doc},
     rust_decimal::Decimal,
     std::collections::HashMap,
 };
@@ -65,7 +65,7 @@ impl IntoValue for Bson {
                     _ => {
                         return Err(Error::StorageMsg(
                             MongoStorageError::UnsupportedBsonType.to_string(),
-                        ))
+                        ));
                     }
                 }
             }

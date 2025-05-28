@@ -1,16 +1,16 @@
 use {
     super::{
+        SledStorage, Snapshot,
         error::err_into,
         fetch_schema, key,
         lock::{self, LockAcquired},
         transaction::TxPayload,
-        SledStorage, Snapshot,
     },
     async_io::block_on,
     async_trait::async_trait,
     gluesql_core::{
         ast::ColumnDef,
-        data::{schema::Schema, Value},
+        data::{Value, schema::Schema},
         error::{AlterTableError, Error, Result},
         executor::evaluate_stateless,
         store::{AlterTable, DataRow},

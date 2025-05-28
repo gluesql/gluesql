@@ -1,5 +1,5 @@
 use {
-    crate::{error::ResultExt, ParquetStorage, ParquetStorageError},
+    crate::{ParquetStorage, ParquetStorageError, error::ResultExt},
     async_trait::async_trait,
     gluesql_core::{
         ast::{ColumnDef, ToSql},
@@ -21,7 +21,7 @@ use {
     std::{
         cmp::Ordering,
         collections::HashMap,
-        fs::{remove_file, File},
+        fs::{File, remove_file},
         iter::Peekable,
         sync::Arc,
         vec::IntoIter,
@@ -201,54 +201,54 @@ impl ParquetStorage {
                         let value = values[i].clone();
                         let col_writer = &mut col_writer;
                         match (value, col_writer) {
-                            (Value::Null, ColumnWriter::BoolColumnWriter(ref mut typed)) => {
+                            (Value::Null, ColumnWriter::BoolColumnWriter(typed)) => {
                                 typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
                             }
-                            (Value::Null, ColumnWriter::Int32ColumnWriter(ref mut typed)) => {
+                            (Value::Null, ColumnWriter::Int32ColumnWriter( typed)) => {
                                 typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
                             }
-                            (Value::Null, ColumnWriter::Int64ColumnWriter(ref mut typed)) => {
+                            (Value::Null, ColumnWriter::Int64ColumnWriter( typed)) => {
                                 typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
                             }
-                            (Value::Null, ColumnWriter::Int96ColumnWriter(ref mut typed)) => {
+                            (Value::Null, ColumnWriter::Int96ColumnWriter( typed)) => {
                                 typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
                             }
-                            (Value::Null, ColumnWriter::FloatColumnWriter(ref mut typed)) => {
+                            (Value::Null, ColumnWriter::FloatColumnWriter( typed)) => {
                                 typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
                             }
-                            (Value::Null, ColumnWriter::DoubleColumnWriter(ref mut typed)) => {
+                            (Value::Null, ColumnWriter::DoubleColumnWriter( typed)) => {
                                 typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
                             }
-                            (Value::Null, ColumnWriter::ByteArrayColumnWriter(ref mut typed)) => {
+                            (Value::Null, ColumnWriter::ByteArrayColumnWriter( typed)) => {
                                 typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
                             }
                             (
                                 Value::Null,
-                                ColumnWriter::FixedLenByteArrayColumnWriter(ref mut typed),
+                                ColumnWriter::FixedLenByteArrayColumnWriter( typed),
                             ) => {
                                 typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
                             }
-                            (Value::Bool(val), ColumnWriter::BoolColumnWriter(ref mut typed)) => {
+                            (Value::Bool(val), ColumnWriter::BoolColumnWriter( typed)) => {
                                 typed
                                     .write_batch(&[val], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
-                            (Value::I8(val), ColumnWriter::Int32ColumnWriter(ref mut typed)) => {
+                            (Value::I8(val), ColumnWriter::Int32ColumnWriter( typed)) => {
                                 typed
                                     .write_batch(&[val as i32], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
-                            (Value::I16(val), ColumnWriter::Int32ColumnWriter(ref mut typed)) => {
+                            (Value::I16(val), ColumnWriter::Int32ColumnWriter( typed)) => {
                                 typed
                                     .write_batch(&[val as i32], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
-                            (Value::I32(val), ColumnWriter::Int32ColumnWriter(ref mut typed)) => {
+                            (Value::I32(val), ColumnWriter::Int32ColumnWriter( typed)) => {
                                 typed
                                     .write_batch(&[val], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
-                            (Value::Date(d), ColumnWriter::Int32ColumnWriter(ref mut typed)) => {
+                            (Value::Date(d), ColumnWriter::Int32ColumnWriter( typed)) => {
                                 let epoch = NaiveDate::from_ymd_opt(1970, 1, 1)
                                     .expect("Invalid epoch date");
                                 let days_since_epoch = (d - epoch).num_days() as i32;
@@ -256,32 +256,32 @@ impl ParquetStorage {
                                     .write_batch(&[days_since_epoch], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
-                            (Value::U8(val), ColumnWriter::Int32ColumnWriter(ref mut typed)) => {
+                            (Value::U8(val), ColumnWriter::Int32ColumnWriter( typed)) => {
                                 typed
                                     .write_batch(&[val as i32], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
-                            (Value::U16(val), ColumnWriter::Int32ColumnWriter(ref mut typed)) => {
+                            (Value::U16(val), ColumnWriter::Int32ColumnWriter(typed)) => {
                                 typed
                                     .write_batch(&[val as i32], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
-                            (Value::U32(val), ColumnWriter::Int32ColumnWriter(ref mut typed)) => {
+                            (Value::U32(val), ColumnWriter::Int32ColumnWriter(typed)) => {
                                 typed
                                     .write_batch(&[val as i32], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
-                            (Value::U64(val), ColumnWriter::Int64ColumnWriter(ref mut typed)) => {
+                            (Value::U64(val), ColumnWriter::Int64ColumnWriter(typed)) => {
                                 typed
                                     .write_batch(&[val as i64], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
-                            (Value::I64(val), ColumnWriter::Int64ColumnWriter(ref mut typed)) => {
+                            (Value::I64(val), ColumnWriter::Int64ColumnWriter(typed)) => {
                                 typed
                                     .write_batch(&[val], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
-                            (Value::Time(val), ColumnWriter::Int64ColumnWriter(ref mut typed)) => {
+                            (Value::Time(val), ColumnWriter::Int64ColumnWriter(typed)) => {
                                 let total_micros = (val.hour() as i64 * 60 * 60 * 1_000_000) // hours to micros
                                 + (val.minute() as i64 * 60 * 1_000_000)                          // minutes to micros
                                 + (val.second() as i64 * 1_000_000)                               // seconds to micros
@@ -292,7 +292,7 @@ impl ParquetStorage {
                             }
                             (
                                 Value::Timestamp(val),
-                                ColumnWriter::ByteArrayColumnWriter(ref mut typed),
+                                ColumnWriter::ByteArrayColumnWriter(typed),
                             ) => {
                                 let serialized = bincode::serialize(&val).map_storage_err()?;
                                 typed
@@ -301,7 +301,7 @@ impl ParquetStorage {
                             }
                             (
                                 Value::I128(val),
-                                ColumnWriter::ByteArrayColumnWriter(ref mut typed),
+                                ColumnWriter::ByteArrayColumnWriter(typed),
                             ) => {
                                 let serialized = bincode::serialize(&val).map_storage_err()?;
                                 typed
@@ -310,7 +310,7 @@ impl ParquetStorage {
                             }
                             (
                                 Value::U128(val),
-                                ColumnWriter::ByteArrayColumnWriter(ref mut typed),
+                                ColumnWriter::ByteArrayColumnWriter(typed),
                             ) => {
                                 let serialized = bincode::serialize(&val).map_storage_err()?;
                                 typed
@@ -319,7 +319,7 @@ impl ParquetStorage {
                             }
                             (
                                 Value::Uuid(val),
-                                ColumnWriter::FixedLenByteArrayColumnWriter(ref mut typed),
+                                ColumnWriter::FixedLenByteArrayColumnWriter(typed),
                             ) => {
                                 let serialized = bincode::serialize(&val).map_storage_err()?;
                                 typed
@@ -330,19 +330,19 @@ impl ParquetStorage {
                                     )
                                     .map_storage_err()?;
                             }
-                            (Value::F32(val), ColumnWriter::FloatColumnWriter(ref mut typed)) => {
+                            (Value::F32(val), ColumnWriter::FloatColumnWriter(typed)) => {
                                 typed
                                     .write_batch(&[val], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
-                            (Value::F64(val), ColumnWriter::DoubleColumnWriter(ref mut typed)) => {
+                            (Value::F64(val), ColumnWriter::DoubleColumnWriter(typed)) => {
                                 typed
                                     .write_batch(&[val], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
                             (
                                 Value::Str(val),
-                                ColumnWriter::ByteArrayColumnWriter(ref mut typed),
+                                ColumnWriter::ByteArrayColumnWriter(typed),
                             ) => {
                                 typed
                                     .write_batch(
@@ -354,7 +354,7 @@ impl ParquetStorage {
                             }
                             (
                                 Value::Decimal(val),
-                                ColumnWriter::ByteArrayColumnWriter(ref mut typed),
+                                ColumnWriter::ByteArrayColumnWriter(typed),
                             ) => {
                                 let serialized = bincode::serialize(&val).map_storage_err()?;
                                 typed
@@ -363,7 +363,7 @@ impl ParquetStorage {
                             }
                             (
                                 Value::Interval(val),
-                                ColumnWriter::ByteArrayColumnWriter(ref mut typed),
+                                ColumnWriter::ByteArrayColumnWriter(typed),
                             ) => {
                                 let serialized = bincode::serialize(&val).map_storage_err()?;
                                 typed
@@ -372,7 +372,7 @@ impl ParquetStorage {
                             }
                             (
                                 Value::Bytea(val),
-                                ColumnWriter::ByteArrayColumnWriter(ref mut typed),
+                                ColumnWriter::ByteArrayColumnWriter(typed),
                             ) => {
                                 let byte_array = ByteArray::from(val);
                                 typed
@@ -387,7 +387,7 @@ impl ParquetStorage {
                             }
                             (
                                 Value::List(l),
-                                ColumnWriter::ByteArrayColumnWriter(ref mut typed),
+                                ColumnWriter::ByteArrayColumnWriter(typed),
                             ) => {
                                 let serialized = bincode::serialize(&l).map_storage_err()?;
                                 typed

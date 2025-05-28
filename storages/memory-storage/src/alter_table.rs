@@ -93,7 +93,7 @@ impl AlterTable for MemoryStorage {
             }
             (None, true) => Value::Null,
             (None, false) => {
-                return Err(AlterTableError::DefaultValueRequired(column_def.clone()).into())
+                return Err(AlterTableError::DefaultValueRequired(column_def.clone()).into());
             }
         };
 
@@ -159,7 +159,7 @@ impl AlterTable for MemoryStorage {
             }
             None if if_exists => {}
             None => {
-                return Err(AlterTableError::DroppingColumnNotFound(column_name.to_owned()).into())
+                return Err(AlterTableError::DroppingColumnNotFound(column_name.to_owned()).into());
             }
         };
 

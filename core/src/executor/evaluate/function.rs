@@ -7,7 +7,7 @@ use {
     },
     chrono::{Datelike, Duration, Months},
     md5::{Digest, Md5},
-    rand::{rngs::StdRng, Rng, SeedableRng},
+    rand::{Rng, SeedableRng, rngs::StdRng},
     std::ops::ControlFlow::{self as StdControlFlow, Break, Continue},
     uuid::Uuid,
 };
@@ -356,7 +356,7 @@ pub fn abs<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
         Value::F32(v) => Value::F32(v.abs()),
         Value::F64(v) => Value::F64(v.abs()),
         _ => {
-            return Err(EvaluateError::FunctionRequiresFloatValue(name).into()).into_control_flow()
+            return Err(EvaluateError::FunctionRequiresFloatValue(name).into()).into_control_flow();
         }
     };
 
@@ -403,7 +403,7 @@ pub fn ceil<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
 
 pub fn rand<'a>(name: String, seed: Option<Evaluated<'_>>) -> ControlFlow<Evaluated<'a>> {
     let seed = if let Some(v) = seed {
-        StdRng::seed_from_u64(eval_to_float(&name, v)? as u64).gen()
+        StdRng::seed_from_u64(eval_to_float(&name, v)? as u64).r#gen()
     } else {
         rand::random()
     };
@@ -764,7 +764,7 @@ pub fn last_day<'a>(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<
         Value::Timestamp(timestamp) => timestamp.date(),
         _ => {
             return Err(EvaluateError::FunctionRequiresDateOrDateTimeValue(name).into())
-                .into_control_flow()
+                .into_control_flow();
         }
     };
 

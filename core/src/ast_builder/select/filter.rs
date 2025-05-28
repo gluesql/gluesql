@@ -93,7 +93,7 @@ impl<'a> FilterNode<'a> {
         OrderByNode::new(self, order_by_exprs)
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
         QueryNode::FilterNode(self).alias_as(table_alias)
     }
 }
@@ -115,7 +115,7 @@ mod tests {
                 BinaryOperator, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, Query,
                 Select, SetExpr, Statement, TableFactor, TableWithJoins,
             },
-            ast_builder::{col, expr, table, test, Build, SelectItemList},
+            ast_builder::{Build, SelectItemList, col, expr, table, test},
         },
         pretty_assertions::assert_eq,
     };

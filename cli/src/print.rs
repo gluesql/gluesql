@@ -9,7 +9,7 @@ use {
         path::Path,
     },
     strum_macros::Display,
-    tabled::{builder::Builder, Style, Table},
+    tabled::{Style, Table, builder::Builder},
 };
 
 pub struct Print<W: Write> {

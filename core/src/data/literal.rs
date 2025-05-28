@@ -4,11 +4,11 @@ use {
         ast::{AstLiteral, BinaryOperator, ToSql},
         result::{Error, Result},
     },
+    Literal::*,
     bigdecimal::BigDecimal,
     serde::Serialize,
     std::{borrow::Cow, cmp::Ordering, convert::TryFrom, fmt::Debug},
     thiserror::Error,
-    Literal::*,
 };
 
 #[derive(Error, Serialize, Debug, PartialEq, Eq)]

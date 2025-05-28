@@ -1,7 +1,7 @@
 use {
     super::{Value, ValueError},
     crate::result::{Error, Result},
-    chrono::{offset::Utc, TimeZone},
+    chrono::{TimeZone, offset::Utc},
     core::str::FromStr,
     serde_json::{Map as JsonMap, Number as JsonNumber, Value as JsonValue},
     std::collections::HashMap,
@@ -133,10 +133,10 @@ impl TryFrom<JsonValue> for Value {
 #[cfg(test)]
 mod tests {
     use {
-        crate::data::{value::uuid::parse_uuid, Interval, Point, Value, ValueError},
+        crate::data::{Interval, Point, Value, ValueError, value::uuid::parse_uuid},
         chrono::{NaiveDate, NaiveTime},
         rust_decimal::Decimal,
-        serde_json::{json, Number as JsonNumber, Value as JsonValue},
+        serde_json::{Number as JsonNumber, Value as JsonValue, json},
         std::{net::IpAddr, str::FromStr},
     };
 
@@ -274,35 +274,47 @@ mod tests {
     #[test]
     fn json_to_value() {
         assert!(Value::try_from(JsonValue::Null).unwrap().is_null());
-        assert!(Value::try_from(JsonValue::Bool(false))
-            .unwrap()
-            .evaluate_eq(&Value::Bool(false)));
-        assert!(Value::try_from(JsonValue::Number(54321.into()))
-            .unwrap()
-            .evaluate_eq(&Value::I32(54321)));
-        assert!(Value::try_from(JsonValue::Number(54321.into()))
-            .unwrap()
-            .evaluate_eq(&Value::I64(54321)));
-        assert!(Value::try_from(JsonValue::Number(54321.into()))
-            .unwrap()
-            .evaluate_eq(&Value::I128(54321)));
+        assert!(
+            Value::try_from(JsonValue::Bool(false))
+                .unwrap()
+                .evaluate_eq(&Value::Bool(false))
+        );
+        assert!(
+            Value::try_from(JsonValue::Number(54321.into()))
+                .unwrap()
+                .evaluate_eq(&Value::I32(54321))
+        );
+        assert!(
+            Value::try_from(JsonValue::Number(54321.into()))
+                .unwrap()
+                .evaluate_eq(&Value::I64(54321))
+        );
+        assert!(
+            Value::try_from(JsonValue::Number(54321.into()))
+                .unwrap()
+                .evaluate_eq(&Value::I128(54321))
+        );
         assert!(
             Value::try_from(JsonValue::Number(JsonNumber::from_f64(3.21).unwrap()))
                 .unwrap()
                 .evaluate_eq(&Value::F64(3.21))
         );
-        assert!(Value::try_from(JsonValue::String("world".to_owned()))
-            .unwrap()
-            .evaluate_eq(&Value::Str("world".to_owned())));
+        assert!(
+            Value::try_from(JsonValue::String("world".to_owned()))
+                .unwrap()
+                .evaluate_eq(&Value::Str("world".to_owned()))
+        );
         assert!(
             Value::try_from(JsonValue::Array(vec![JsonValue::Bool(true)]))
                 .unwrap()
                 .evaluate_eq(&Value::List(vec![Value::Bool(true)]))
         );
-        assert!(Value::try_from(json!({ "a": true }))
-            .unwrap()
-            .evaluate_eq(&Value::Map(
-                [("a".to_owned(), Value::Bool(true))].into_iter().collect()
-            )));
+        assert!(
+            Value::try_from(json!({ "a": true }))
+                .unwrap()
+                .evaluate_eq(&Value::Map(
+                    [("a".to_owned(), Value::Bool(true))].into_iter().collect()
+                ))
+        );
     }
 }

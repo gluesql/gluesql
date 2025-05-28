@@ -54,8 +54,8 @@ pub mod prelude {
     #[cfg(feature = "gluesql_memory_storage")]
     pub use gluesql_memory_storage::MemoryStorage;
 
-    #[cfg(feature = "shared-memory-storage")]
-    pub use shared_memory_storage::SharedMemoryStorage;
+    #[cfg(feature = "gluesql-shared-memory-storage")]
+    pub use gluesql_shared_memory_storage::SharedMemoryStorage;
 
     #[cfg(feature = "gluesql_sled_storage")]
     pub use gluesql_sled_storage::SledStorage;

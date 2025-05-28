@@ -10,7 +10,7 @@ use {
     error::{JsonStorageError, OptionExt, ResultExt},
     gluesql_core::{
         ast::ColumnUniqueOption,
-        data::{value::HashMapJsonExt, Key, Schema},
+        data::{Key, Schema, value::HashMapJsonExt},
         error::{Error, Result},
         store::{DataRow, Metadata},
     },
@@ -47,7 +47,7 @@ impl JsonStorage {
             (true, true) => {
                 return Err(Error::StorageMsg(
                     JsonStorageError::BothJsonlAndJsonExist(table_name.to_owned()).to_string(),
-                ))
+                ));
             }
             (false, false) => return Ok(None),
             _ => {}

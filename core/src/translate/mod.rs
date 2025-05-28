@@ -75,7 +75,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             let from = match from {
                 SqlFromTable::WithFromKeyword(from) => from,
                 SqlFromTable::WithoutKeyword(_) => {
-                    return Err(TranslateError::UnreachableOmittingFromInDelete.into())
+                    return Err(TranslateError::UnreachableOmittingFromInDelete.into());
                 }
             };
             let table_name = from
@@ -387,7 +387,9 @@ pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Fo
             let name = match name {
                 Some(name) => name.value.clone(),
                 None => {
-                    format!("FK_{referencing_column_name}-{referenced_table_name}_{referenced_column_name}")
+                    format!(
+                        "FK_{referencing_column_name}-{referenced_table_name}_{referenced_column_name}"
+                    )
                 }
             };
 

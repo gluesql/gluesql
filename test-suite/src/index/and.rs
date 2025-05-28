@@ -1,7 +1,7 @@
 use {
     crate::*,
-    gluesql_core::{ast::IndexOperator::*, prelude::*},
     Value::*,
+    gluesql_core::{ast::IndexOperator::*, prelude::*},
 };
 
 test_case!(and, {

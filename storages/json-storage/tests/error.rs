@@ -3,7 +3,7 @@ use {
         error::{SchemaParseError, ValueError},
         prelude::{Error, Glue},
     },
-    gluesql_json_storage::{error::JsonStorageError, JsonStorage},
+    gluesql_json_storage::{JsonStorage, error::JsonStorageError},
 };
 
 #[tokio::test]

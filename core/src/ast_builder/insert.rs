@@ -62,7 +62,7 @@ impl<'a> Build for InsertSourceNode<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{num, table, test, Build};
+    use crate::ast_builder::{Build, num, table, test};
 
     #[test]
     fn insert() {

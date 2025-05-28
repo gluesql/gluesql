@@ -98,7 +98,7 @@ impl<'a> Build for UpdateSetNode<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{col, num, table, test, text, Build};
+    use crate::ast_builder::{Build, col, num, table, test, text};
 
     #[test]
     fn update() {

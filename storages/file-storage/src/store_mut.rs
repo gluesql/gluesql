@@ -6,7 +6,7 @@ use {
         error::Result,
         store::{DataRow, StoreMut},
     },
-    ron::ser::{to_string_pretty, PrettyConfig},
+    ron::ser::{PrettyConfig, to_string_pretty},
     std::{
         fs::{self, File},
         io::Write,

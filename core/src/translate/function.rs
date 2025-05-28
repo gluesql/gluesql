@@ -1,8 +1,9 @@
 use {
     super::{
+        TranslateError,
         ast_literal::{translate_datetime_field, translate_trim_where_field},
         expr::translate_expr,
-        translate_data_type, translate_object_name, TranslateError,
+        translate_data_type, translate_object_name,
     },
     crate::{
         ast::{Aggregate, CountArgExpr, Expr, Function},
@@ -197,7 +198,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
     let args = match args {
         SqlFunctionArguments::None => Vec::new(),
         SqlFunctionArguments::Subquery(_) => {
-            return Err(TranslateError::UnreachableSubqueryFunctionArgNotSupported.into())
+            return Err(TranslateError::UnreachableSubqueryFunctionArgNotSupported.into());
         }
         SqlFunctionArguments::List(list) => list.args.iter().collect(),
     };

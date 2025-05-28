@@ -1,7 +1,7 @@
 use {
     super::{
-        date::{parse_date, parse_time, parse_timestamp},
         Value,
+        date::{parse_date, parse_time, parse_timestamp},
     },
     crate::{ast::DataType, data::Point},
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
@@ -145,7 +145,7 @@ impl TryFrom<&Value> for bool {
                     return Err(ConvertError {
                         value: v.clone(),
                         data_type: DataType::Boolean,
-                    })
+                    });
                 }
             },
             Value::Decimal(value) => {
@@ -175,7 +175,7 @@ impl TryFrom<&Value> for bool {
                 return Err(ConvertError {
                     value: v.clone(),
                     data_type: DataType::Boolean,
-                })
+                });
             }
         })
     }
@@ -231,7 +231,7 @@ impl TryFrom<&Value> for i8 {
                 return Err(ConvertError {
                     value: v.clone(),
                     data_type: DataType::Int8,
-                })
+                });
             }
         })
     }
@@ -287,7 +287,7 @@ impl TryFrom<&Value> for i16 {
                 return Err(ConvertError {
                     value: v.clone(),
                     data_type: DataType::Int16,
-                })
+                });
             }
         })
     }
@@ -340,7 +340,7 @@ impl TryFrom<&Value> for i32 {
                 return Err(ConvertError {
                     value: v.clone(),
                     data_type: DataType::Int32,
-                })
+                });
             }
         })
     }
@@ -393,7 +393,7 @@ impl TryFrom<&Value> for i64 {
                 return Err(ConvertError {
                     value: v.clone(),
                     data_type: DataType::Int,
-                })
+                });
             }
         })
     }
@@ -446,7 +446,7 @@ impl TryFrom<&Value> for i128 {
                 return Err(ConvertError {
                     value: v.clone(),
                     data_type: DataType::Int128,
-                })
+                });
             }
         })
     }
@@ -499,7 +499,7 @@ impl TryFrom<&Value> for u8 {
                 return Err(ConvertError {
                     value: v.clone(),
                     data_type: DataType::Uint8,
-                })
+                });
             }
         })
     }
@@ -551,7 +551,7 @@ impl TryFrom<&Value> for u16 {
                 return Err(ConvertError {
                     value: v.clone(),
                     data_type: DataType::Uint16,
-                })
+                });
             }
         })
     }
@@ -605,7 +605,7 @@ impl TryFrom<&Value> for u32 {
                 return Err(ConvertError {
                     value: v.clone(),
                     data_type: DataType::Uint32,
-                })
+                });
             }
         })
     }
@@ -658,7 +658,7 @@ impl TryFrom<&Value> for u64 {
                 return Err(ConvertError {
                     value: v.clone(),
                     data_type: DataType::Uint64,
-                })
+                });
             }
         })
     }
@@ -711,7 +711,7 @@ impl TryFrom<&Value> for u128 {
                 return Err(ConvertError {
                     value: v.clone(),
                     data_type: DataType::Uint128,
-                })
+                });
             }
         })
     }
@@ -770,7 +770,7 @@ impl TryFrom<&Value> for f32 {
                 return Err(ConvertError {
                     value: v.clone(),
                     data_type: DataType::Float32,
-                })
+                });
             }
         })
     }
@@ -829,7 +829,7 @@ impl TryFrom<&Value> for f64 {
                 return Err(ConvertError {
                     value: v.clone(),
                     data_type: DataType::Float,
-                })
+                });
             }
         })
     }
@@ -938,7 +938,7 @@ impl TryFrom<&Value> for Decimal {
                 return Err(ConvertError {
                     value: v.clone(),
                     data_type: DataType::Decimal,
-                })
+                });
             }
         })
     }
@@ -960,7 +960,7 @@ impl TryFrom<&Value> for NaiveDate {
                 return Err(ConvertError {
                     value: v.clone(),
                     data_type: DataType::Date,
-                })
+                });
             }
         })
     }
@@ -981,7 +981,7 @@ impl TryFrom<&Value> for NaiveTime {
                 return Err(ConvertError {
                     value: v.clone(),
                     data_type: DataType::Time,
-                })
+                });
             }
         })
     }
@@ -1006,7 +1006,7 @@ impl TryFrom<&Value> for NaiveDateTime {
                 return Err(ConvertError {
                     value: v.clone(),
                     data_type: DataType::Timestamp,
-                })
+                });
             }
         })
     }
@@ -1027,7 +1027,7 @@ impl TryFrom<&Value> for IpAddr {
                 return Err(ConvertError {
                     value: v.clone(),
                     data_type: DataType::Inet,
-                })
+                });
             }
         })
     }
@@ -1048,7 +1048,7 @@ impl TryFrom<&Value> for Point {
                 return Err(ConvertError {
                     value: v.clone(),
                     data_type: DataType::Point,
-                })
+                });
             }
         })
     }
@@ -1058,7 +1058,7 @@ impl TryFrom<&Value> for Point {
 mod tests {
     use {
         super::{ConvertError, Result, Value},
-        crate::{ast::DataType, data::point, data::Interval as I, data::Point},
+        crate::{ast::DataType, data::Interval as I, data::Point, data::point},
         chrono::{self, NaiveDate, NaiveDateTime, NaiveTime},
         rust_decimal::Decimal,
         std::{

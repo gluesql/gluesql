@@ -21,6 +21,6 @@ pub use {
     row::{Row, RowError},
     schema::{Schema, SchemaIndex, SchemaIndexOrd, SchemaParseError},
     string_ext::{StringExt, StringExtError},
-    table::{get_alias, get_index, TableError},
+    table::{TableError, get_alias, get_index},
     value::{ConvertError, HashMapJsonExt, NumericBinaryOperator, Value, ValueError},
 };

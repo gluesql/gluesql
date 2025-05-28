@@ -70,7 +70,7 @@ mod tests {
     use {
         crate::{
             ast::SelectItem,
-            ast_builder::{col, SelectItemNode},
+            ast_builder::{SelectItemNode, col},
             parse_sql::parse_select_item,
             translate::translate_select_item,
         },

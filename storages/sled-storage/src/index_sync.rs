@@ -1,5 +1,5 @@
 use {
-    super::{err_into, fetch_schema, key, Snapshot},
+    super::{Snapshot, err_into, fetch_schema, key},
     gluesql_core::{
         ast::Expr,
         data::schema::{Schema, SchemaIndex},
@@ -9,10 +9,10 @@ use {
         store::DataRow,
     },
     sled::{
+        IVec,
         transaction::{
             ConflictableTransactionError, ConflictableTransactionResult, TransactionalTree,
         },
-        IVec,
     },
     std::borrow::Cow,
     utils::Vector,

@@ -36,7 +36,7 @@ impl Build for DropTableNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{table, test, Build};
+    use crate::ast_builder::{Build, table, test};
 
     #[test]
     fn drop_table() {

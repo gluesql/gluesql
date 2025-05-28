@@ -73,7 +73,7 @@ mod tests {
     use {
         crate::{
             ast::SelectItem,
-            ast_builder::{col, expr, SelectItemList},
+            ast_builder::{SelectItemList, col, expr},
             parse_sql::parse_select_items,
             result::Result,
             translate::translate_select_item,

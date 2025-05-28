@@ -1,5 +1,5 @@
 use {
-    super::{validate, AlterError, Referencing},
+    super::{AlterError, Referencing, validate},
     crate::{
         ast::{AlterTableOperation, Expr, Function},
         data::{Schema, SchemaIndex},
