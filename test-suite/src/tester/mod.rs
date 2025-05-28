@@ -46,8 +46,7 @@ pub fn test_indexes(statement: &Statement, indexes: Option<Vec<IndexItem>>) {
         }
 
         for expected_index in expected {
-            if !found.contains(&(&expected_index))
-            {
+            if !found.contains(&(&expected_index)) {
                 panic!("index does not exist: {:#?}", expected_index)
             }
         }
