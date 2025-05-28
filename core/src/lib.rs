@@ -1,5 +1,5 @@
 #![deny(clippy::str_to_string)]
-#![allow(clippy::result_large_err)]
+// #![allow(clippy::result_large_err)]
 
 // re-export
 pub use {chrono, sqlparser};

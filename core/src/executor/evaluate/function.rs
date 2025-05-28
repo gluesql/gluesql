@@ -526,7 +526,7 @@ pub fn lcm<'a>(
         let result = (a * b).abs().checked_div(gcd_val).unwrap_or(0);
 
         i64::try_from(result)
-            .map_err(|_| Error::Value(ValueError::LcmResultOutOfRange))
+            .map_err(|_| ValueError::LcmResultOutOfRange.into())
             .into_control_flow()
     }
 

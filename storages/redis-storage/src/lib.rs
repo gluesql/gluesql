@@ -341,7 +341,7 @@ impl Store for RedisStorage {
         let redis_keys: Vec<String> = self
             .conn
             .borrow_mut()
-            .scan_match(&Self::redis_generate_scankey(&self.namespace, table_name))
+            .scan_match(Self::redis_generate_scankey(&self.namespace, table_name))
             .map(|iter| iter.collect::<Vec<String>>())
             .map_err(|e| {
                 Error::StorageMsg(format!(

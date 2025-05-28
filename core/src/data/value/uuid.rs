@@ -1,13 +1,9 @@
-use {
-    super::ValueError,
-    crate::result::{Error, Result},
-    uuid::Uuid,
-};
+use {super::ValueError, crate::result::Result, uuid::Uuid};
 
 pub fn parse_uuid(v: &str) -> Result<u128> {
     match Uuid::parse_str(v) {
         Ok(u) => Ok(u.as_u128()),
-        _ => Err(Error::Value(ValueError::FailedToParseUUID(v.to_owned()))),
+        _ => Err(ValueError::FailedToParseUUID(v.to_owned()).into()),
     }
 }
 
