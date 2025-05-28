@@ -18,7 +18,7 @@ pub enum PrevNode<'a> {
     Having(HavingNode<'a>),
     Join(Box<JoinNode<'a>>),
     JoinConstraint(Box<JoinConstraintNode<'a>>),
-    HashJoin(HashJoinNode<'a>),
+    HashJoin(Box<HashJoinNode<'a>>),
     Filter(FilterNode<'a>),
 }
 
@@ -68,7 +68,7 @@ impl<'a> From<JoinConstraintNode<'a>> for PrevNode<'a> {
 
 impl<'a> From<HashJoinNode<'a>> for PrevNode<'a> {
     fn from(node: HashJoinNode<'a>) -> Self {
-        PrevNode::HashJoin(node)
+        PrevNode::HashJoin(Box::new(node))
     }
 }
 

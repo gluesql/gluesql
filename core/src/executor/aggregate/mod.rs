@@ -16,7 +16,7 @@ use {
     },
     async_recursion::async_recursion,
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
-    std::{convert::identity, rc::Rc},
+    std::rc::Rc,
 };
 
 pub use error::AggregateError;
@@ -32,13 +32,10 @@ fn check_aggregate<'a>(fields: &'a [SelectItem], group_by: &'a [Expr]) -> bool {
         return true;
     }
 
-    fields
-        .iter()
-        .map(|field| match field {
-            SelectItem::Expr { expr, .. } => check(&expr),
-            _ => false,
-        })
-        .any(identity)
+    fields.iter().any(|field| match field {
+        SelectItem::Expr { expr, .. } => check(expr),
+        _ => false,
+    })
 }
 
 pub async fn apply<'a, T: GStore, U: Stream<Item = Result<Rc<RowContext<'a>>>> + 'a>(
@@ -233,11 +230,10 @@ fn check(expr: &Expr) -> bool {
             operand.as_ref().map(|expr| check(expr)).unwrap_or(false)
                 || when_then
                     .iter()
-                    .map(|(when, then)| check(when) || check(then))
-                    .any(identity)
+                    .any(|(when, then)| check(when) || check(then))
                 || else_result
                     .as_ref()
-                    .map(|expr| check(&expr))
+                    .map(|expr| check(expr))
                     .unwrap_or(false)
         }
         Expr::Aggregate(_) => true,

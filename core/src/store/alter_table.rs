@@ -78,7 +78,7 @@ pub trait AlterTable: Store + StoreMut {
         column_defs
             .iter_mut()
             .find(|column_def| column_def.name == old_column_name)
-            .ok_or_else(|| AlterTableError::RenamingColumnNotFound)?
+            .ok_or(AlterTableError::RenamingColumnNotFound)?
             .name = new_column_name.to_owned();
 
         let rows = self

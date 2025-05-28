@@ -172,7 +172,7 @@ impl Value {
     }
 
     pub fn validate_type(&self, data_type: &DataType) -> Result<()> {
-        let valid = self.get_type().map_or(true, |t| t == *data_type);
+        let valid = self.get_type().is_none_or(|t| t == *data_type);
 
         if !valid {
             return Err(ValueError::IncompatibleDataType {

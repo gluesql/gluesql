@@ -4,7 +4,7 @@ use {
         Expr, Join, JoinConstraint, JoinOperator, Query, Select, SelectItem, SetExpr, TableAlias,
         TableFactor, TableWithJoins, Values,
     },
-    std::{convert::identity, rc::Rc},
+    std::rc::Rc,
 };
 
 pub fn check_expr(context: Option<Rc<Context<'_>>>, expr: &Expr) -> bool {
@@ -51,8 +51,7 @@ fn check_query(context: Option<Rc<Context<'_>>>, query: &Query) -> bool {
         SetExpr::Values(Values(rows)) => rows
             .iter()
             .flatten()
-            .map(|expr| check_expr(context.as_ref().map(Rc::clone), expr))
-            .all(identity),
+            .all(|expr| check_expr(context.as_ref().map(Rc::clone), expr)),
     };
 
     if !body {
@@ -62,8 +61,7 @@ fn check_query(context: Option<Rc<Context<'_>>>, query: &Query) -> bool {
     let order_by = order_by
         .iter()
         .map(|order_by| &order_by.expr)
-        .map(|expr| check_expr(context.as_ref().map(Rc::clone), expr))
-        .all(identity);
+        .all(|expr| check_expr(context.as_ref().map(Rc::clone), expr));
     if !order_by {
         return false;
     }
@@ -71,8 +69,7 @@ fn check_query(context: Option<Rc<Context<'_>>>, query: &Query) -> bool {
     limit
         .iter()
         .chain(offset.iter())
-        .map(|expr| check_expr(context.as_ref().map(Rc::clone), expr))
-        .all(identity)
+        .all(|expr| check_expr(context.as_ref().map(Rc::clone), expr))
 }
 
 fn check_select(context: Option<Rc<Context<'_>>>, select: &Select) -> bool {
@@ -84,14 +81,10 @@ fn check_select(context: Option<Rc<Context<'_>>>, select: &Select) -> bool {
         having,
     } = select;
 
-    if !projection
-        .iter()
-        .map(|select_item| match select_item {
-            SelectItem::Expr { expr, .. } => check_expr(context.as_ref().map(Rc::clone), expr),
-            SelectItem::QualifiedWildcard(_) | SelectItem::Wildcard => true,
-        })
-        .all(identity)
-    {
+    if !projection.iter().all(|select_item| match select_item {
+        SelectItem::Expr { expr, .. } => check_expr(context.as_ref().map(Rc::clone), expr),
+        SelectItem::QualifiedWildcard(_) | SelectItem::Wildcard => true,
+    }) {
         return false;
     }
 
@@ -101,30 +94,26 @@ fn check_select(context: Option<Rc<Context<'_>>>, select: &Select) -> bool {
         return false;
     }
 
-    if !joins
-        .iter()
-        .map(|join| {
-            let Join {
-                relation,
-                join_operator,
-                ..
-            } = join;
+    if !joins.iter().all(|join| {
+        let Join {
+            relation,
+            join_operator,
+            ..
+        } = join;
 
-            if !check_table_factor(context.as_ref().map(Rc::clone), relation) {
-                return false;
-            }
+        if !check_table_factor(context.as_ref().map(Rc::clone), relation) {
+            return false;
+        }
 
-            match join_operator {
-                JoinOperator::Inner(JoinConstraint::On(expr))
-                | JoinOperator::LeftOuter(JoinConstraint::On(expr)) => {
-                    check_expr(context.as_ref().map(Rc::clone), expr)
-                }
-                JoinOperator::Inner(JoinConstraint::None)
-                | JoinOperator::LeftOuter(JoinConstraint::None) => true,
+        match join_operator {
+            JoinOperator::Inner(JoinConstraint::On(expr))
+            | JoinOperator::LeftOuter(JoinConstraint::On(expr)) => {
+                check_expr(context.as_ref().map(Rc::clone), expr)
             }
-        })
-        .all(identity)
-    {
+            JoinOperator::Inner(JoinConstraint::None)
+            | JoinOperator::LeftOuter(JoinConstraint::None) => true,
+        }
+    }) {
         return false;
     }
 
@@ -132,8 +121,7 @@ fn check_select(context: Option<Rc<Context<'_>>>, select: &Select) -> bool {
         .iter()
         .chain(group_by.iter())
         .chain(having.iter())
-        .map(|expr| check_expr(context.as_ref().map(Rc::clone), expr))
-        .all(identity)
+        .all(|expr| check_expr(context.as_ref().map(Rc::clone), expr))
 }
 
 fn check_table_factor(context: Option<Rc<Context<'_>>>, table_factor: &TableFactor) -> bool {
