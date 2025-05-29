@@ -6,6 +6,7 @@ pub use {chrono, sqlparser};
 
 mod glue;
 mod mock;
+mod parameter;
 mod result;
 
 pub mod ast;
@@ -23,6 +24,7 @@ pub mod prelude {
         data::{Key, Value},
         executor::{Payload, PayloadVariable, execute},
         glue::Glue,
+        parameter::{resolve_parameters, Parameters},
         parse_sql::parse,
         plan::plan,
         result::{Error, Result},

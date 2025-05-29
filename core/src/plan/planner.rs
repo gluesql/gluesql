@@ -17,7 +17,8 @@ pub trait Planner<'a> {
             Expr::Identifier(_)
             | Expr::CompoundIdentifier { .. }
             | Expr::Literal(_)
-            | Expr::TypedString { .. } => expr,
+            | Expr::TypedString { .. }
+            | Expr::Placeholder(_) => expr,
             Expr::IsNull(expr) => Expr::IsNull(Box::new(self.subquery_expr(outer_context, *expr))),
             Expr::IsNotNull(expr) => {
                 Expr::IsNotNull(Box::new(self.subquery_expr(outer_context, *expr)))

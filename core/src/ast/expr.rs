@@ -7,6 +7,21 @@ use {
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Placeholder {
+    Text(String),
+    Resolved(String, Vec<u8>),
+}
+
+impl ToSql for Placeholder {
+    fn to_sql(&self) -> String {
+        match self {
+            Self::Text(t) => t.to_string(),
+            Self::Resolved(t, _) => t.to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Expr {
     Identifier(String),
     CompoundIdentifier {
@@ -56,6 +71,7 @@ pub enum Expr {
         data_type: DataType,
         value: String,
     },
+    Placeholder(Placeholder),
     Function(Box<Function>),
     Aggregate(Box<Aggregate>),
     Exists {
@@ -182,6 +198,7 @@ impl Expr {
             Expr::Nested(expr) => format!("({})", expr.to_sql_with(quoted)),
             Expr::Literal(s) => s.to_sql(),
             Expr::TypedString { data_type, value } => format!("{data_type} '{value}'"),
+            Expr::Placeholder(v) => v.to_sql(),
             Expr::Case {
                 operand,
                 when_then,
