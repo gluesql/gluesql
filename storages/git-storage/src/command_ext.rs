@@ -62,9 +62,9 @@ mod tests {
             .execute();
         assert!(executed.is_err());
         assert_eq!(
-        executed.unwrap_err().to_string(),
-        "storage: [stdout] On branch main\n\nInitial commit\n\nnothing to commit (create/copy files and use \"git add\" to track)\n"
-    );
+            executed.unwrap_err().to_string(),
+            "storage: [stdout] On branch main\n\nInitial commit\n\nnothing to commit (create/copy files and use \"git add\" to track)\n"
+        );
 
         let executed = Command::new("git")
             .current_dir(path)

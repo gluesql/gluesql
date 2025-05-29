@@ -3,9 +3,9 @@ use {
     crate::{
         ast::{Join, JoinExecutor, Select},
         ast_builder::{
-            select::Prebuild, ExprList, ExprNode, FilterNode, GroupByNode, JoinConstraintNode,
-            JoinNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
-            SelectItemList, TableFactorNode,
+            ExprList, ExprNode, FilterNode, GroupByNode, JoinConstraintNode, JoinNode, LimitNode,
+            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode, SelectItemList,
+            TableFactorNode, select::Prebuild,
         },
         result::Result,
     },
@@ -107,7 +107,7 @@ impl<'a> HashJoinNode<'a> {
         Ok(join_constraint_data)
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
         QueryNode::HashJoinNode(self).alias_as(table_alias)
     }
 }
@@ -149,7 +149,7 @@ mod tests {
                 Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SetExpr,
                 Statement, TableAlias, TableFactor, TableWithJoins,
             },
-            ast_builder::{col, expr, table, Build, SelectItemList},
+            ast_builder::{Build, SelectItemList, col, expr, table},
         },
         pretty_assertions::assert_eq,
     };

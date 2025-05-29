@@ -24,7 +24,7 @@ gluesql-web-storage.workspace = true
 gluesql-idb-storage.workspace = true
 gluesql-composite-storage.workspace = true
 
-wasm-bindgen = { version = "0.2.79" }
+wasm-bindgen = { version = "0.2.100" }
 wasm-bindgen-futures = "0.4.29"
 js-sys = "0.3"
 
@@ -41,5 +41,5 @@ console_error_panic_hook = { version = "0.1.6", optional = true }
 [dev-dependencies]
 test-suite.workspace = true
 
-wasm-bindgen-test = "0.3.13"
+wasm-bindgen-test = "0.3.50"
 async-trait = "0.1"

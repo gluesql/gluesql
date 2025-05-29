@@ -267,11 +267,7 @@ impl Key {
                     let v = v.unpack();
                     let v = v.lo as i128 + ((v.mid as i128) << 32) + ((v.hi as i128) << 64);
 
-                    if sign == 0 {
-                        -v
-                    } else {
-                        v
-                    }
+                    if sign == 0 { -v } else { v }
                 };
 
                 [VALUE, sign]

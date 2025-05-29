@@ -1,14 +1,14 @@
 use {
     crate::{
+        MongoStorage,
         description::ColumnDescription,
         error::{MongoStorageError, OptionExt, ResultExt},
         row::{
             data_type::{BsonType, IntoRange},
-            key::{into_object_id, KeyIntoBson},
+            key::{KeyIntoBson, into_object_id},
             value::IntoBson,
         },
-        utils::{get_primary_key, Validator},
-        MongoStorage,
+        utils::{Validator, get_primary_key},
     },
     async_trait::async_trait,
     gluesql_core::{
@@ -18,7 +18,7 @@ use {
         store::{DataRow, Store, StoreMut},
     },
     mongodb::{
-        bson::{doc, Bson, Document},
+        bson::{Bson, Document, doc},
         options::{IndexOptions, ReplaceOptions},
     },
 };
@@ -56,8 +56,8 @@ impl StoreMut for MongoStorage {
                             false => vec![data_type],
                         };
 
-                        match &column_def.unique {
-                            Some(ColumnUniqueOption { is_primary }) => match *is_primary {
+                        if let Some(ColumnUniqueOption { is_primary }) = &column_def.unique {
+                            match *is_primary {
                                 true => {
                                     indexes.push(IndexInfo {
                                         name: format!("{column_name}_PK"),
@@ -73,8 +73,7 @@ impl StoreMut for MongoStorage {
                                         index_type: IndexType::Unique,
                                     });
                                 }
-                            },
-                            None => {}
+                            }
                         }
 
                         let mut property = doc! {

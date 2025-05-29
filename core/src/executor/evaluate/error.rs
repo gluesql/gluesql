@@ -148,7 +148,9 @@ pub enum EvaluateError {
         found: usize,
     },
 
-    #[error("function args.length not matching: {name}, expected: {expected_minimum} ~ {expected_maximum}, found: {found}")]
+    #[error(
+        "function args.length not matching: {name}, expected: {expected_minimum} ~ {expected_maximum}, found: {found}"
+    )]
     FunctionArgsLengthNotWithinRange {
         name: String,
         expected_minimum: usize,

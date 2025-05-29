@@ -59,7 +59,7 @@ impl<'a> HavingNode<'a> {
         OrderByNode::new(self, expr_list)
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
         QueryNode::HavingNode(self).alias_as(table_alias)
     }
 }
@@ -75,7 +75,7 @@ impl<'a> Prebuild<Select> for HavingNode<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{table, test, Build};
+    use crate::ast_builder::{Build, table, test};
 
     #[test]
     fn having() {

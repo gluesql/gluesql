@@ -1,6 +1,6 @@
 use {
     super::ValueError,
-    crate::result::{Error, Result},
+    crate::result::Result,
     regex::Regex,
     serde::{Deserialize, Serialize},
     std::fmt,
@@ -23,13 +23,13 @@ impl Point {
         if let Some(captures) = re.captures(v) {
             let x = captures[1]
                 .parse::<f64>()
-                .map_err(|_| Error::Value(ValueError::FailedToParsePoint(v.to_owned())))?;
+                .map_err(|_| ValueError::FailedToParsePoint(v.to_owned()))?;
             let y = captures[2]
                 .parse::<f64>()
-                .map_err(|_| Error::Value(ValueError::FailedToParsePoint(v.to_owned())))?;
+                .map_err(|_| ValueError::FailedToParsePoint(v.to_owned()))?;
             Ok(Self { x, y })
         } else {
-            Err(Error::Value(ValueError::FailedToParsePoint(v.to_owned())))
+            Err(ValueError::FailedToParsePoint(v.to_owned()).into())
         }
     }
 

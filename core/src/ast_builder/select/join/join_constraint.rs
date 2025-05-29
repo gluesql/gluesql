@@ -3,9 +3,9 @@ use {
     crate::{
         ast::{Join, JoinConstraint, JoinOperator, Select},
         ast_builder::{
-            select::Prebuild, ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinNode,
-            LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
-            SelectItemList, TableFactorNode,
+            ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinNode, LimitNode,
+            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode, SelectItemList,
+            TableFactorNode, select::Prebuild,
         },
         result::Result,
     },
@@ -102,7 +102,7 @@ impl<'a> JoinConstraintNode<'a> {
         OrderByNode::new(self, order_by_exprs)
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
         QueryNode::JoinConstraintNode(self).alias_as(table_alias)
     }
 }
@@ -141,7 +141,7 @@ mod tests {
                 Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SetExpr,
                 Statement, TableFactor, TableWithJoins,
             },
-            ast_builder::{col, table, test, Build, SelectItemList},
+            ast_builder::{Build, SelectItemList, col, table, test},
         },
         pretty_assertions::assert_eq,
     };

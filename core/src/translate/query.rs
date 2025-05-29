@@ -1,7 +1,7 @@
 use {
     super::{
-        function::translate_function_arg_exprs, translate_expr, translate_idents,
-        translate_object_name, translate_order_by_expr, TranslateError,
+        TranslateError, function::translate_function_arg_exprs, translate_expr, translate_idents,
+        translate_object_name, translate_order_by_expr,
     },
     crate::{
         ast::{
@@ -96,7 +96,7 @@ fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
     let group_by = match group_by {
         SqlGroupByExpr::Expressions(group_by, _group_by_with_modifiers) => group_by,
         SqlGroupByExpr::All(_group_by_with_modifiers) => {
-            return Err(TranslateError::UnsupportedGroupByAll.into())
+            return Err(TranslateError::UnsupportedGroupByAll.into());
         }
     };
 

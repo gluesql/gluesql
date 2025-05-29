@@ -1,6 +1,6 @@
 use {
     super::{
-        data_type::translate_data_type, expr::translate_expr, translate_object_name, TranslateError,
+        TranslateError, data_type::translate_data_type, expr::translate_expr, translate_object_name,
     },
     crate::{
         ast::{AlterTableOperation, ColumnDef, ColumnUniqueOption, OperateFunctionArg},

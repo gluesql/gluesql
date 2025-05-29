@@ -4,10 +4,10 @@ use {
     error::GlueSQLError,
     gluesql_core::{
         ast::Statement,
-        prelude::{execute, parse, plan, Payload},
+        prelude::{Payload, execute, parse, plan},
         translate::translate,
     },
-    payload::{convert, PyPayload},
+    payload::{PyPayload, convert},
     pyo3::{prelude::*, types::PyString},
     storages::{
         PyJsonStorage, PyMemoryStorage, PySharedMemoryStorage, PySledStorage, PySledStorageConfig,

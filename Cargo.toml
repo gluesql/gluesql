@@ -28,7 +28,7 @@ default-members = [
 
 [workspace.package]
 version = "0.16.3"
-edition = "2021"
+edition = "2024"
 description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
 license = "Apache-2.0"
 repository = "https://github.com/gluesql/gluesql"

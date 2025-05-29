@@ -36,7 +36,7 @@ pub enum Error {
     #[error("execute: {0}")]
     Execute(#[from] ExecuteError),
     #[error("alter: {0}")]
-    Alter(#[from] AlterError),
+    Alter(Box<AlterError>),
     #[error("fetch: {0}")]
     Fetch(#[from] FetchError),
     #[error("select: {0}")]
@@ -62,7 +62,7 @@ pub enum Error {
     #[error("key: {0}")]
     Key(#[from] KeyError),
     #[error("value: {0}")]
-    Value(#[from] ValueError),
+    Value(Box<ValueError>),
     #[error("convert: {0}")]
     Convert(#[from] ConvertError),
     #[error("literal: {0}")]
@@ -78,3 +78,15 @@ pub enum Error {
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
+
+impl From<AlterError> for Error {
+    fn from(e: AlterError) -> Error {
+        Error::Alter(Box::new(e))
+    }
+}
+
+impl From<ValueError> for Error {
+    fn from(e: ValueError) -> Error {
+        Error::Value(Box::new(e))
+    }
+}

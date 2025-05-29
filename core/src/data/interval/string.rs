@@ -1,5 +1,5 @@
 use {
-    super::{Interval, IntervalError, DAY, HOUR, MINUTE, SECOND},
+    super::{DAY, HOUR, Interval, IntervalError, MINUTE, SECOND},
     crate::{
         ast::{Expr, ToSql},
         parse_sql::parse_interval,
@@ -21,7 +21,7 @@ impl Interval {
                 let literal = match expr.as_ref() {
                     Expr::Literal(literal) => literal.to_sql(),
                     _ => {
-                        return Err(IntervalError::ParseSupportedOnlyLiteral { expr: *expr }.into())
+                        return Err(IntervalError::ParseSupportedOnlyLiteral { expr: *expr }.into());
                     }
                 };
 

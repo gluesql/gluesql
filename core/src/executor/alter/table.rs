@@ -1,5 +1,5 @@
 use {
-    super::{validate, validate_column_names, AlterError},
+    super::{AlterError, validate, validate_column_names},
     crate::{
         ast::{
             ColumnDef, ColumnUniqueOption, ForeignKey, Query, SetExpr, TableFactor, ToSql, Values,

@@ -164,9 +164,9 @@ macro_rules! impl_try_binary_op {
     ($variant: ident, $primitive: ident) => {
         use $crate::{
             data::value::{
-                error::{NumericBinaryOperator::*, ValueError},
                 TryBinaryOperator,
                 Value::*,
+                error::{NumericBinaryOperator::*, ValueError},
             },
             result::Result,
         };
@@ -209,12 +209,12 @@ macro_rules! generate_binary_op_tests {
             use {
                 rust_decimal::prelude::Decimal,
                 $crate::data::{
+                    NumericBinaryOperator::{self, *},
+                    ValueError,
                     value::{
                         TryBinaryOperator,
                         Value::{self, *},
                     },
-                    NumericBinaryOperator::{self, *},
-                    ValueError,
                 },
             };
 

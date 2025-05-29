@@ -1,13 +1,13 @@
 use {
-    super::{join::JoinOperatorType, Prebuild},
+    super::{Prebuild, join::JoinOperatorType},
     crate::{
         ast::{
             AstLiteral, Expr, Query, Select, SelectItem, TableAlias, TableFactor, TableWithJoins,
         },
         ast_builder::{
-            table_factor::TableType, ExprList, ExprNode, FilterNode, GroupByNode, JoinNode,
-            LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
-            SelectItemList, TableFactorNode,
+            ExprList, ExprNode, FilterNode, GroupByNode, JoinNode, LimitNode, OffsetNode,
+            OrderByExprList, OrderByNode, ProjectNode, QueryNode, SelectItemList, TableFactorNode,
+            table_factor::TableType,
         },
         result::Result,
         translate::alias_or_name,
@@ -74,7 +74,7 @@ impl<'a> SelectNode<'a> {
         )
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
         QueryNode::SelectNode(self).alias_as(table_alias)
     }
 }
@@ -142,7 +142,7 @@ pub fn select<'a>() -> SelectNode<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{select, table, test, Build};
+    use crate::ast_builder::{Build, select, table, test};
 
     #[test]
     fn select_root() {

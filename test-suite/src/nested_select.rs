@@ -74,9 +74,18 @@ test_case!(nested_select, {
             4,
             "SELECT * FROM Player WHERE id IN (SELECT user_id FROM Request WHERE user_id = Player.id);",
         ),
-        (4, "SELECT * FROM Player WHERE id IN (SELECT user_id FROM Request WHERE user_id IN (Player.id));"),
-        (2, "SELECT * FROM Player WHERE id IN (SELECT user_id FROM Request WHERE quantity IN (6, 7, 8, 9));"),
-        (9, "SELECT * FROM Request WHERE user_id IN (SELECT id FROM Player WHERE name IN ('Taehoon', 'Hwan'));"),
+        (
+            4,
+            "SELECT * FROM Player WHERE id IN (SELECT user_id FROM Request WHERE user_id IN (Player.id));",
+        ),
+        (
+            2,
+            "SELECT * FROM Player WHERE id IN (SELECT user_id FROM Request WHERE quantity IN (6, 7, 8, 9));",
+        ),
+        (
+            9,
+            "SELECT * FROM Request WHERE user_id IN (SELECT id FROM Player WHERE name IN ('Taehoon', 'Hwan'));",
+        ),
     ];
     for (num, sql) in select_sqls {
         g.count(sql, num).await;

@@ -3,7 +3,7 @@
 use {
     gloo_utils::format::JsValueSerdeExt,
     gluesql_core::prelude::{Payload, PayloadVariable},
-    serde_json::{json, Value as Json},
+    serde_json::{Value as Json, json},
     wasm_bindgen::prelude::JsValue,
 };
 

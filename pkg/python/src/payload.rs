@@ -1,8 +1,8 @@
 use {
     gluesql_core::prelude::{Payload, PayloadVariable},
-    pyo3::{pyclass, PyObject, Python},
+    pyo3::{PyObject, Python, pyclass},
     pythonize::pythonize,
-    serde_json::{json, Value as Json},
+    serde_json::{Value as Json, json},
 };
 
 #[pyclass]

@@ -95,7 +95,7 @@ mod tests {
         super::OrStream,
         futures::{
             executor::block_on,
-            stream::{empty, once, StreamExt},
+            stream::{StreamExt, empty, once},
         },
     };
 

@@ -71,7 +71,7 @@ impl<'a> Context<'a> {
                 Context::Data { labels, next, .. } => {
                     let current = labels
                         .as_ref()
-                        .map(|labels| labels.iter().any(|label| *label == column_name))
+                        .map(|labels| labels.contains(&column_name))
                         .unwrap_or(false);
 
                     let next = next
@@ -138,7 +138,6 @@ fn contextualize_table_factor<'a>(
         TableFactor::Derived { subquery, .. } => contextualize_query(schema_map, subquery),
         TableFactor::Series { .. } | TableFactor::Dictionary { .. } => None,
     }
-    .map(Rc::from)
 }
 
 #[cfg(test)]

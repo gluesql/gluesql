@@ -1,7 +1,7 @@
 use super::{
-    table_factor::TableType, AlterTableNode, CreateIndexNode, CreateTableNode, DeleteNode,
-    DropIndexNode, DropTableNode, IndexItemNode, InsertNode, OrderByExprNode, SelectNode,
-    ShowColumnsNode, TableFactorNode, UpdateNode,
+    AlterTableNode, CreateIndexNode, CreateTableNode, DeleteNode, DropIndexNode, DropTableNode,
+    IndexItemNode, InsertNode, OrderByExprNode, SelectNode, ShowColumnsNode, TableFactorNode,
+    UpdateNode, table_factor::TableType,
 };
 #[derive(Clone, Debug)]
 pub struct TableNameNode {

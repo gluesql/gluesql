@@ -1,7 +1,7 @@
 use {
     super::{
-        fetch::{fetch, fetch_columns},
         Payload, Referencing,
+        fetch::{fetch, fetch_columns},
     },
     crate::{
         ast::{BinaryOperator, Expr, ForeignKey, ReferentialAction},

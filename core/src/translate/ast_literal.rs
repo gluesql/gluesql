@@ -33,7 +33,7 @@ pub fn translate_datetime_field(sql_datetime_field: &SqlDateTimeField) -> Result
         _ => {
             return Err(
                 TranslateError::UnsupportedDateTimeField(sql_datetime_field.to_string()).into(),
-            )
+            );
         }
     })
 }

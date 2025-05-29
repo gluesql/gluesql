@@ -1,5 +1,6 @@
 use {
     super::{
+        TranslateError,
         ast_literal::{translate_ast_literal, translate_datetime_field},
         data_type::translate_data_type,
         function::{
@@ -7,7 +8,7 @@ use {
             translate_position,
         },
         operator::{translate_binary_operator, translate_unary_operator},
-        translate_idents, translate_query, TranslateError,
+        translate_idents, translate_query,
     },
     crate::{
         ast::{Expr, OrderByExpr},

@@ -109,7 +109,7 @@ impl ShowOption {
 
 impl Command {
     pub fn parse(line: &str, option: &PrintOption) -> Result<Self, CommandError> {
-        let line = line.trim_start().trim_end_matches(|c| c == ' ' || c == ';');
+        let line = line.trim_start().trim_end_matches([' ', ';']);
         // We detect if the line is a command or not
         if line.starts_with('.') {
             let params: Vec<&str> = line.split_whitespace().collect();

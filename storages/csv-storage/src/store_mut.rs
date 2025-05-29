@@ -1,7 +1,7 @@
 use {
     crate::{
-        error::{CsvStorageError, ResultExt},
         CsvStorage,
+        error::{CsvStorageError, ResultExt},
     },
     async_trait::async_trait,
     csv::Writer,
@@ -13,7 +13,7 @@ use {
     std::{
         cmp::Ordering,
         collections::BTreeSet,
-        fs::{remove_file, rename, File, OpenOptions},
+        fs::{File, OpenOptions, remove_file, rename},
         io::Write,
         iter::Peekable,
         vec::IntoIter,

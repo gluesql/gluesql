@@ -16,7 +16,7 @@ pub fn not_exists<'a, T: Into<QueryNode<'a>>>(query: T) -> ExprNode<'a> {
 
 #[cfg(test)]
 mod test {
-    use crate::ast_builder::{col, exists, not_exists, table, test, test_expr, Build};
+    use crate::ast_builder::{Build, col, exists, not_exists, table, test, test_expr};
 
     #[test]
     fn exist() {

@@ -1,15 +1,15 @@
 use {
     super::{
         alter::{
-            alter_table, create_index, create_table, delete_function, drop_table, insert_function,
-            CreateTableOptions,
+            CreateTableOptions, alter_table, create_index, create_table, delete_function,
+            drop_table, insert_function,
         },
         delete::delete,
         fetch::fetch,
         insert::insert,
         select::{select, select_with_labels},
         update::Update,
-        validate::{validate_unique, ColumnValidation},
+        validate::{ColumnValidation, validate_unique},
     },
     crate::{
         ast::{

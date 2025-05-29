@@ -1,8 +1,7 @@
 use {
     super::{
-        err_into, key,
-        lock::{get_txdata_key, Lock, TxData},
-        SledStorage, Snapshot,
+        SledStorage, Snapshot, err_into, key,
+        lock::{Lock, TxData, get_txdata_key},
     },
     gluesql_core::{data::Schema, error::Result, store::DataRow},
     std::time::{SystemTime, UNIX_EPOCH},

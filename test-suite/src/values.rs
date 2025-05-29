@@ -119,9 +119,10 @@ test_case!(values, {
                 ("column2".into(), Text),
                 ("column3".into(), Boolean),
                 ("column4".into(), Int),
-                ("column5".into(), Text)])),
-            ),
-            (
+                ("column5".into(), Text),
+            ])),
+        ),
+        (
             "SELECT * FROM (VALUES (1, 'a'), (2, 'b')) AS Derived",
             Ok(select!(
                 column1 | column2;
@@ -139,10 +140,7 @@ test_case!(values, {
                 2         "b".to_owned()
             )),
         ),
-        (
-            "INSERT INTO Items (id) VALUES (1);",
-            Ok(Payload::Insert(1))
-        ),
+        ("INSERT INTO Items (id) VALUES (1);", Ok(Payload::Insert(1))),
         (
             "INSERT INTO Items (id2) VALUES (1);",
             Err(InsertError::WrongColumnName("id2".to_owned()).into()),

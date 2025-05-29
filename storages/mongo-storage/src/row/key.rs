@@ -31,7 +31,7 @@ pub fn into_object_id(key: Key) -> Result<Bson> {
         _ => {
             return Err(Error::StorageMsg(
                 MongoStorageError::UnsupportedBsonType.to_string(),
-            ))
+            ));
         }
     })
 }

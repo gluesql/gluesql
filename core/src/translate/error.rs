@@ -40,7 +40,9 @@ pub enum TranslateError {
         found: usize,
     },
 
-    #[error("function args.length not matching: {name}, expected: {expected_minimum} ~ {expected_maximum}, found: {found}")]
+    #[error(
+        "function args.length not matching: {name}, expected: {expected_minimum} ~ {expected_maximum}, found: {found}"
+    )]
     FunctionArgsLengthNotWithinRange {
         name: String,
         expected_minimum: usize,
@@ -66,7 +68,9 @@ pub enum TranslateError {
     #[error("unsupported unnamed index")]
     UnsupportedUnnamedIndex,
 
-    #[error("unsupported trim chars: expected: `TRIM((BOTH | LEADING | TRAILING) <text> FROM <expr>)`, got: `TRIM(<expr> [<chars>, ..])` syntax")]
+    #[error(
+        "unsupported trim chars: expected: `TRIM((BOTH | LEADING | TRAILING) <text> FROM <expr>)`, got: `TRIM(<expr> [<chars>, ..])` syntax"
+    )]
     UnsupportedTrimChars,
 
     #[error("unsupported CAST format: {0}")]
@@ -78,7 +82,9 @@ pub enum TranslateError {
     #[error("SAFE_CAST(..) is not supported")]
     SafeCastNotSupported,
 
-    #[error("unsupported multiple alter table operations, expected: `ALTER TABLE <table> <operation>`, got: `ALTER TABLE <table> <operation>, <operation>, ..`")]
+    #[error(
+        "unsupported multiple alter table operations, expected: `ALTER TABLE <table> <operation>`, got: `ALTER TABLE <table> <operation>, <operation>, ..`"
+    )]
     UnsupportedMultipleAlterTableOperations,
 
     #[error("unreachable empty alter table operation")]

@@ -2,7 +2,7 @@ use {
     super::error::EvaluateError,
     crate::{
         ast::{BinaryOperator, DataType, TrimWhereField},
-        data::{value::HashMapJsonExt, Key, Literal, Value},
+        data::{Key, Literal, Value, value::HashMapJsonExt},
         result::{Error, Result},
     },
     std::{borrow::Cow, cmp::Ordering, collections::HashMap, ops::Range},
@@ -424,7 +424,7 @@ impl<'a> Evaluated<'a> {
                 (l, 0..end)
             }
             Evaluated::Literal(Literal::Null) | Evaluated::Value(Value::Null) => {
-                return Ok(Evaluated::Value(Value::Null))
+                return Ok(Evaluated::Value(Value::Null));
             }
             Evaluated::StrSlice { source, range } => (source, range),
             Evaluated::Value(Value::Str(v)) => {
@@ -502,7 +502,7 @@ impl<'a> Evaluated<'a> {
                 (l, 0..end)
             }
             Evaluated::Literal(Literal::Null) | Evaluated::Value(Value::Null) => {
-                return Ok(Evaluated::Value(Value::Null))
+                return Ok(Evaluated::Value(Value::Null));
             }
             Evaluated::StrSlice { source, range } => (source, range),
             Evaluated::Value(Value::Str(v)) => {
@@ -579,7 +579,7 @@ impl<'a> Evaluated<'a> {
                 (l, 0..end)
             }
             Evaluated::Literal(Literal::Null) | Evaluated::Value(Value::Null) => {
-                return Ok(Evaluated::Value(Value::Null))
+                return Ok(Evaluated::Value(Value::Null));
             }
             Evaluated::StrSlice { source, range } => (source, range),
             Evaluated::Value(Value::Str(v)) => {
@@ -634,7 +634,7 @@ impl<'a> Evaluated<'a> {
                 (l, 0..end)
             }
             Evaluated::Literal(Literal::Null) | Evaluated::Value(Value::Null) => {
-                return Ok(Evaluated::Value(Value::Null))
+                return Ok(Evaluated::Value(Value::Null));
             }
             Evaluated::StrSlice { source, range } => (source, range),
             Evaluated::Value(Value::Str(v)) => {

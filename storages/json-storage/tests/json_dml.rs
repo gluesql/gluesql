@@ -3,7 +3,7 @@ use {
     gluesql_json_storage::JsonStorage,
     serde_json::json,
     std::{
-        fs::{remove_dir_all, File},
+        fs::{File, remove_dir_all},
         io::Write,
     },
     test_suite::select_map,

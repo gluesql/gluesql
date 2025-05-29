@@ -1,7 +1,7 @@
 use {
     rustyline::{
-        validate::{ValidationContext, ValidationResult, Validator},
         Result,
+        validate::{ValidationContext, ValidationResult, Validator},
     },
     rustyline_derive::{Completer, Helper, Highlighter, Hinter},
 };

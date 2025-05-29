@@ -1,7 +1,7 @@
 use {
     gluesql_core::prelude::{
         Glue, Payload,
-        Value::{Date, Decimal, Null, Str, I64},
+        Value::{Date, Decimal, I64, Null, Str},
     },
     gluesql_csv_storage::CsvStorage,
     rust_decimal_macros::dec,

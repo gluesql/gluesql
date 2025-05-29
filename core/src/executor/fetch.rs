@@ -6,9 +6,9 @@ use {
             SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, ToSql, ToSqlUnquoted,
             Values,
         },
-        data::{get_alias, get_index, Key, Row, Value},
+        data::{Key, Row, Value, get_alias, get_index},
         executor::{
-            evaluate::{evaluate, Evaluated},
+            evaluate::{Evaluated, evaluate},
             select::select,
         },
         result::Result,

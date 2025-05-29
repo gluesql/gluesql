@@ -1,13 +1,13 @@
 use {
     crate::{
+        MongoStorage,
         description::{ColumnDescription, TableDescription},
         error::{MongoStorageError, OptionExt, ResultExt},
-        row::{key::KeyIntoBson, value::IntoValue, IntoRow},
+        row::{IntoRow, key::KeyIntoBson, value::IntoValue},
         utils::get_primary_key,
-        MongoStorage,
     },
     async_trait::async_trait,
-    futures::{stream, Stream, StreamExt, TryStreamExt},
+    futures::{Stream, StreamExt, TryStreamExt, stream},
     gluesql_core::{
         ast::{ColumnDef, ColumnUniqueOption},
         data::{Key, Schema},
@@ -18,9 +18,9 @@ use {
         translate::translate_data_type,
     },
     mongodb::{
-        bson::{doc, document::ValueAccessError, Document},
-        options::{FindOptions, ListIndexesOptions},
         IndexModel,
+        bson::{Document, doc, document::ValueAccessError},
+        options::{FindOptions, ListIndexesOptions},
     },
     serde_json::from_str,
     std::{collections::HashMap, future},
@@ -87,7 +87,7 @@ impl Store for MongoStorage {
             .transpose()
     }
 
-    async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
+    async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
         let column_defs = self.get_column_defs(table_name).await?;
 
         let primary_key = column_defs
@@ -245,7 +245,7 @@ impl MongoStorage {
                         Err(_) => {
                             return Err(Error::StorageMsg(
                                 MongoStorageError::InvalidGlueType.to_string(),
-                            ))
+                            ));
                         }
                     };
 

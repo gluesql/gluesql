@@ -11,13 +11,13 @@ use {
 
 #[async_trait(?Send)]
 impl Index for MemoryStorage {
-    async fn scan_indexed_data(
-        &self,
+    async fn scan_indexed_data<'a>(
+        &'a self,
         _table_name: &str,
         _index_name: &str,
         _asc: Option<bool>,
         _cmp_value: Option<(&IndexOperator, Value)>,
-    ) -> Result<RowIter> {
+    ) -> Result<RowIter<'a>> {
         Err(Error::StorageMsg(
             "[MemoryStorage] index is not supported".to_owned(),
         ))
