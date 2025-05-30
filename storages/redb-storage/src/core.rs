@@ -86,9 +86,9 @@ impl StorageCore {
     }
 
     pub fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
-        if let Some(write_txn) = self.txn.as_ref() {
+        if let Some(txn) = self.txn.as_ref() {
             let table_def = Self::data_table_def(table_name)?;
-            let table = write_txn.open_table(table_def)?;
+            let table = txn.open_table(table_def)?;
 
             let rows: Vec<_> = table
                 .iter()?
