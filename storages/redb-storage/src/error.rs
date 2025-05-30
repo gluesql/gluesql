@@ -17,7 +17,7 @@ pub enum StorageError {
     #[error(transparent)]
     RedbTable(#[from] redb::TableError),
     #[error(transparent)]
-    RedbTransaction(#[from] redb::TransactionError),
+    RedbTransaction(Box<redb::TransactionError>),
     #[error(transparent)]
     RedbCommit(#[from] redb::CommitError),
 
@@ -28,5 +28,11 @@ pub enum StorageError {
 impl From<StorageError> for Error {
     fn from(e: StorageError) -> Error {
         Error::StorageMsg(e.to_string())
+    }
+}
+
+impl From<redb::TransactionError> for StorageError {
+    fn from(e: redb::TransactionError) -> StorageError {
+        StorageError::RedbTransaction(Box::new(e))
     }
 }
