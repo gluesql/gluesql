@@ -172,7 +172,7 @@ impl Value {
     }
 
     pub fn validate_type(&self, data_type: &DataType) -> Result<()> {
-        let valid = self.get_type().map_or(true, |t| t == *data_type);
+        let valid = self.get_type().is_none_or(|t| t == *data_type);
 
         if !valid {
             return Err(ValueError::IncompatibleDataType {
@@ -781,7 +781,7 @@ impl Value {
                     value: self.clone(),
                     field: *date_type,
                 }
-                .into())
+                .into());
             }
         };
 
@@ -874,7 +874,7 @@ fn str_position(from_str: &str, sub_str: &str) -> usize {
 mod tests {
     use {
         super::{Interval, Value::*},
-        crate::data::{point::Point, value::uuid::parse_uuid, NumericBinaryOperator, ValueError},
+        crate::data::{NumericBinaryOperator, ValueError, point::Point, value::uuid::parse_uuid},
         chrono::{NaiveDate, NaiveTime},
         rust_decimal::Decimal,
         std::{net::IpAddr, str::FromStr},
@@ -921,8 +921,10 @@ mod tests {
         assert!(bytea("1004").evaluate_eq(&bytea("1004")));
         assert!(inet("::1").evaluate_eq(&inet("::1")));
         assert!(Interval(Interval::Month(1)).evaluate_eq(&Interval(Interval::Month(1))));
-        assert!(Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap())
-            .evaluate_eq(&Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap())));
+        assert!(
+            Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap())
+                .evaluate_eq(&Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap()))
+        );
         assert!(decimal(1).evaluate_eq(&decimal(1)));
         assert!(
             Date("2020-05-01".parse().unwrap()).evaluate_eq(&Date("2020-05-01".parse().unwrap()))
@@ -2548,12 +2550,16 @@ mod tests {
         assert!(F32(1.0_f32).validate_type(&D::Int).is_err());
         assert!(F64(1.0).validate_type(&D::Float).is_ok());
         assert!(F64(1.0).validate_type(&D::Int).is_err());
-        assert!(Decimal(rust_decimal::Decimal::ONE)
-            .validate_type(&D::Decimal)
-            .is_ok());
-        assert!(Decimal(rust_decimal::Decimal::ONE)
-            .validate_type(&D::Int)
-            .is_err());
+        assert!(
+            Decimal(rust_decimal::Decimal::ONE)
+                .validate_type(&D::Decimal)
+                .is_ok()
+        );
+        assert!(
+            Decimal(rust_decimal::Decimal::ONE)
+                .validate_type(&D::Int)
+                .is_err()
+        );
         assert!(Str("a".to_owned()).validate_type(&D::Text).is_ok());
         assert!(Str("a".to_owned()).validate_type(&D::Int).is_err());
         assert!(bytea.validate_type(&D::Bytea).is_ok());

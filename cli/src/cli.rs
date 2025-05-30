@@ -4,13 +4,13 @@ use {
         helper::CliHelper,
         print::Print,
     },
-    edit::{edit_file, edit_with_builder, Builder},
+    edit::{Builder, edit_file, edit_with_builder},
     futures::executor::block_on,
     gluesql_core::{
         prelude::Glue,
         store::{GStore, GStoreMut},
     },
-    rustyline::{error::ReadlineError, Editor},
+    rustyline::{Editor, error::ReadlineError},
     std::{
         error::Error,
         fs::File,

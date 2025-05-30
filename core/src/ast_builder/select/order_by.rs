@@ -119,7 +119,7 @@ impl<'a> OrderByNode<'a> {
         LimitNode::new(self, expr)
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
         QueryNode::OrderByNode(self).alias_as(table_alias)
     }
 }
@@ -141,7 +141,7 @@ mod tests {
                 Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SetExpr,
                 Statement, TableFactor, TableWithJoins,
             },
-            ast_builder::{col, table, test, Build, ExprNode, OrderByExprList, SelectItemList},
+            ast_builder::{Build, ExprNode, OrderByExprList, SelectItemList, col, table, test},
         },
         pretty_assertions::assert_eq,
     };
@@ -163,8 +163,8 @@ mod tests {
             .offset(10)
             .build();
         let expected = "
-                SELECT * FROM Bar 
-                ORDER BY name asc, id desc, country 
+                SELECT * FROM Bar
+                ORDER BY name asc, id desc, country
                 OFFSET 10
             ";
         test(actual, expected);
@@ -176,8 +176,8 @@ mod tests {
             .order_by(vec!["id desc"])
             .build();
         let expected = "
-                SELECT * FROM Bar 
-                GROUP BY name 
+                SELECT * FROM Bar
+                GROUP BY name
                 ORDER BY id desc
             ";
         test(actual, expected);

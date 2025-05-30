@@ -1,6 +1,6 @@
 use {
     crate::*,
-    chrono::{format::ParseErrorKind, NaiveDate, NaiveTime},
+    chrono::{NaiveDate, NaiveTime, format::ParseErrorKind},
     gluesql_core::{
         error::EvaluateError,
         prelude::{Error, Value::*},

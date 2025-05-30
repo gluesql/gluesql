@@ -5,9 +5,9 @@ use {
         prelude::Value,
         result::Result,
     },
+    Value::*,
     rust_decimal::prelude::Decimal,
     std::cmp::Ordering,
-    Value::*,
 };
 
 impl PartialEq<Value> for Decimal {

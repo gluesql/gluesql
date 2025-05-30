@@ -43,10 +43,13 @@ impl MemoryStorage {
 
 #[async_trait(?Send)]
 impl CustomFunction for MemoryStorage {
-    async fn fetch_function(&self, func_name: &str) -> Result<Option<&StructCustomFunction>> {
+    async fn fetch_function<'a>(
+        &'a self,
+        func_name: &str,
+    ) -> Result<Option<&'a StructCustomFunction>> {
         Ok(self.functions.get(&func_name.to_uppercase()))
     }
-    async fn fetch_all_functions(&self) -> Result<Vec<&StructCustomFunction>> {
+    async fn fetch_all_functions<'a>(&'a self) -> Result<Vec<&'a StructCustomFunction>> {
         Ok(self.functions.values().collect())
     }
 }
@@ -92,7 +95,7 @@ impl Store for MemoryStorage {
         Ok(row)
     }
 
-    async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
+    async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
         let rows = MemoryStorage::scan_data(self, table_name)
             .into_iter()
             .map(Ok);

@@ -1,8 +1,8 @@
 use {
     crate::*,
+    Value::*,
     chrono::NaiveTime,
     gluesql_core::{ast::IndexOperator::*, prelude::*},
-    Value::*,
 };
 
 test_case!(value, {

@@ -1,11 +1,11 @@
 use {
     super::{
-        err_into,
+        SledStorage, Snapshot, err_into,
         index_sync::IndexSync,
         key,
         lock::{self, LockAcquired},
         transaction::TxPayload,
-        tx_err_into, SledStorage, Snapshot,
+        tx_err_into,
     },
     async_io::block_on,
     async_trait::async_trait,

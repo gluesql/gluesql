@@ -1,10 +1,10 @@
 #![cfg(feature = "test-mongo")]
 
 use {
-    bson::{doc, Document},
+    bson::{Document, doc},
     gluesql_core::prelude::{Glue, Payload},
-    gluesql_mongo_storage::{utils::Validator, MongoStorage},
-    mongodb::{options::IndexOptions, IndexModel},
+    gluesql_mongo_storage::{MongoStorage, utils::Validator},
+    mongodb::{IndexModel, options::IndexOptions},
     std::vec,
 };
 

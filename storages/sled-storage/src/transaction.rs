@@ -1,8 +1,8 @@
 use {
     super::{
-        err_into, key,
+        SledStorage, Snapshot, State, err_into, key,
         lock::{self, Lock},
-        tx_err_into, SledStorage, Snapshot, State,
+        tx_err_into,
     },
     async_trait::async_trait,
     gluesql_core::{
@@ -10,13 +10,13 @@ use {
         error::{Error, Result},
         store::{DataRow, Transaction},
     },
-    serde::{de::DeserializeOwned, Serialize},
+    serde::{Serialize, de::DeserializeOwned},
     sled::{
+        IVec,
         transaction::{
             ConflictableTransactionError, ConflictableTransactionResult, TransactionError,
             TransactionalTree,
         },
-        IVec,
     },
     std::result::Result as StdResult,
 };

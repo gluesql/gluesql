@@ -1,5 +1,5 @@
 use {
-    super::{values::ValuesNode, Prebuild},
+    super::{Prebuild, values::ValuesNode},
     crate::{
         ast::Query,
         ast_builder::{
@@ -115,7 +115,7 @@ impl<'a> LimitNode<'a> {
         }
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
         QueryNode::LimitNode(self).alias_as(table_alias)
     }
 }
@@ -137,7 +137,7 @@ mod tests {
                 Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SetExpr,
                 Statement, TableFactor, TableWithJoins,
             },
-            ast_builder::{col, num, table, test, Build, SelectItemList},
+            ast_builder::{Build, SelectItemList, col, num, table, test},
         },
         pretty_assertions::assert_eq,
     };

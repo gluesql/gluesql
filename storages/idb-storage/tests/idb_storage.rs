@@ -29,3 +29,4 @@ impl Tester<IdbStorage> for IdbStorageTester {
 }
 
 generate_store_tests!(wasm_bindgen_test, IdbStorageTester);
+generate_alter_table_tests!(wasm_bindgen_test, IdbStorageTester);

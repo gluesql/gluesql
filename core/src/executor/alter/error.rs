@@ -58,7 +58,9 @@ pub enum AlterError {
     #[error("referencing column not found: {0}")]
     ReferencingColumnNotFound(String),
 
-    #[error("referencing column '{referencing_column}' of data type '{referencing_column_type}' does not match referenced column '{referenced_column}' of data type '{referenced_column_type}'")]
+    #[error(
+        "referencing column '{referencing_column}' of data type '{referencing_column_type}' does not match referenced column '{referenced_column}' of data type '{referenced_column_type}'"
+    )]
     ForeignKeyDataTypeMismatch {
         referencing_column: String,
         referencing_column_type: DataType,
@@ -66,7 +68,9 @@ pub enum AlterError {
         referenced_column_type: DataType,
     },
 
-    #[error("referenced column '{referenced_table}.{referenced_column}' is not unique, cannot be used as foreign key")]
+    #[error(
+        "referenced column '{referenced_table}.{referenced_column}' is not unique, cannot be used as foreign key"
+    )]
     ReferencingNonPKColumn {
         referenced_table: String,
         referenced_column: String,

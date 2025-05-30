@@ -43,7 +43,7 @@ impl<'a> Build for DeleteNode<'a> {
 mod tests {
     use crate::{
         ast::Expr,
-        ast_builder::{col, table, test, Build},
+        ast_builder::{Build, col, table, test},
     };
 
     #[test]

@@ -40,7 +40,7 @@ impl<'a> OffsetLimitNode<'a> {
         }
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
         QueryNode::OffsetLimitNode(self).alias_as(table_alias)
     }
 }
@@ -56,7 +56,7 @@ impl<'a> Prebuild<Query> for OffsetLimitNode<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{table, test, Build};
+    use crate::ast_builder::{Build, table, test};
 
     #[test]
     fn offset_limit() {

@@ -3,7 +3,7 @@ use {
         error::FetchError,
         prelude::{
             Glue,
-            Value::{self, Null, Str, I64},
+            Value::{self, I64, Null, Str},
         },
     },
     gluesql_csv_storage::CsvStorage,

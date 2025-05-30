@@ -4,7 +4,7 @@
 use {
     async_trait::async_trait,
     futures::stream::iter,
-    gloo_storage::{errors::StorageError, LocalStorage, SessionStorage, Storage},
+    gloo_storage::{LocalStorage, SessionStorage, Storage, errors::StorageError},
     gluesql_core::{
         ast::ColumnUniqueOption,
         data::{Key, Schema},
@@ -116,7 +116,7 @@ impl Store for WebStorage {
         Ok(row)
     }
 
-    async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
+    async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
         let path = format!("{}/{}", DATA_PATH, table_name);
         let mut rows = self.get::<Vec<(Key, DataRow)>>(path)?.unwrap_or_default();
 

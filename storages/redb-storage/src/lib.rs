@@ -40,7 +40,7 @@ impl Store for RedbStorage {
         self.0.fetch_data(table_name, key).map_err(Into::into)
     }
 
-    async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
+    async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
         let rows = self.0.scan_data(table_name)?;
         let rows = rows.into_iter().map(Ok);
 

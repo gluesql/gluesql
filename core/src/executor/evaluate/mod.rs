@@ -26,13 +26,15 @@ use {
 pub use {error::EvaluateError, evaluated::Evaluated};
 
 #[async_recursion(?Send)]
-pub async fn evaluate<'a, 'b: 'a, 'c: 'a, T>(
+pub async fn evaluate<'a, 'b, 'c, T>(
     storage: &'a T,
     context: Option<Rc<RowContext<'b>>>,
     aggregated: Option<Rc<HashMap<&'c Aggregate, Value>>>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>>
 where
+    'b: 'a,
+    'c: 'a,
     T: GStore,
 {
     evaluate_inner(Some(storage), context, aggregated, expr).await
@@ -49,13 +51,15 @@ pub async fn evaluate_stateless<'a, 'b: 'a>(
 }
 
 #[async_recursion(?Send)]
-async fn evaluate_inner<'a, 'b: 'a, 'c: 'a, T>(
+async fn evaluate_inner<'a, 'b, 'c, T>(
     storage: Option<&'a T>,
     context: Option<Rc<RowContext<'b>>>,
     aggregated: Option<Rc<HashMap<&'c Aggregate, Value>>>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>>
 where
+    'b: 'a,
+    'c: 'a,
     T: GStore,
 {
     let eval = |expr| {

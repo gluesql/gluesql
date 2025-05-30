@@ -1,4 +1,5 @@
 #![deny(clippy::str_to_string)]
+// #![allow(clippy::result_large_err)]
 
 // re-export
 pub use {chrono, sqlparser};
@@ -20,7 +21,7 @@ pub mod prelude {
     pub use crate::{
         ast::DataType,
         data::{Key, Value},
-        executor::{execute, Payload, PayloadVariable},
+        executor::{Payload, PayloadVariable, execute},
         glue::Glue,
         parse_sql::parse,
         plan::plan,

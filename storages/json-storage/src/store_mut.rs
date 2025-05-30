@@ -1,7 +1,7 @@
 use {
     crate::{
-        error::{JsonStorageError, OptionExt, ResultExt},
         JsonStorage,
+        error::{JsonStorageError, OptionExt, ResultExt},
     },
     async_trait::async_trait,
     gluesql_core::{
@@ -9,10 +9,10 @@ use {
         error::Result,
         store::{DataRow, StoreMut},
     },
-    serde_json::{to_string_pretty, Map, Value as JsonValue},
+    serde_json::{Map, Value as JsonValue, to_string_pretty},
     std::{
         cmp::Ordering,
-        fs::{remove_file, File, OpenOptions},
+        fs::{File, OpenOptions, remove_file},
         io::Write,
         iter::Peekable,
         vec::IntoIter,

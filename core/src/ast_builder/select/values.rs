@@ -1,8 +1,8 @@
 use crate::{
     ast::{Expr, Query, SetExpr, Values},
     ast_builder::{
-        select::Prebuild, ExprList, ExprNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode,
-        QueryNode, TableFactorNode,
+        ExprList, ExprNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode, QueryNode,
+        TableFactorNode, select::Prebuild,
     },
     result::Result,
 };
@@ -25,7 +25,7 @@ impl<'a> ValuesNode<'a> {
         LimitNode::new(self, expr)
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
         QueryNode::ValuesNode(self).alias_as(table_alias)
     }
 }
@@ -57,7 +57,7 @@ pub fn values<'a, T: Into<ExprList<'a>>>(values: Vec<T>) -> ValuesNode<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{num, test, Build};
+    use crate::ast_builder::{Build, num, test};
 
     #[test]
     fn values() {

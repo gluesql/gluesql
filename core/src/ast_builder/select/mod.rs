@@ -27,8 +27,8 @@ pub use {
     offset_limit::OffsetLimitNode,
     order_by::OrderByNode,
     project::ProjectNode,
-    root::{select, SelectNode},
-    values::{values, ValuesNode},
+    root::{SelectNode, select},
+    values::{ValuesNode, values},
 };
 
 pub trait Prebuild<T> {

@@ -223,7 +223,7 @@ mod tests {
                 JoinOperator, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
                 TableWithJoins, Values,
             },
-            mock::{run, MockStorage},
+            mock::{MockStorage, run},
             parse_sql::{parse, parse_expr},
             plan::fetch_schema_map,
             translate::{translate, translate_expr},

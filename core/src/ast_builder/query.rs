@@ -1,10 +1,10 @@
 use {
     super::{
-        select::{Prebuild, ValuesNode},
-        table_factor::TableType,
         ExprList, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
         LimitNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode,
         TableFactorNode,
+        select::{Prebuild, ValuesNode},
+        table_factor::TableType,
     },
     crate::{
         ast::{Expr, Query, SetExpr, Values},
@@ -129,8 +129,8 @@ mod test {
                 TableFactor, TableWithJoins,
             },
             ast_builder::{
-                col, glue_indexes, glue_objects, glue_table_columns, glue_tables, series, table,
-                test_query, SelectItemList,
+                SelectItemList, col, glue_indexes, glue_objects, glue_table_columns, glue_tables,
+                series, table, test_query,
             },
         },
         pretty_assertions::assert_eq,

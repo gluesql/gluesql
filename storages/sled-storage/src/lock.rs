@@ -1,12 +1,12 @@
 use {
-    super::{err_into, State},
+    super::{State, err_into},
     gluesql_core::error::{Error, Result},
     serde::{Deserialize, Serialize},
     sled::{
+        Db,
         transaction::{
             ConflictableTransactionError, ConflictableTransactionResult, TransactionalTree,
         },
-        Db,
     },
     std::time::{SystemTime, UNIX_EPOCH},
 };

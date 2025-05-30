@@ -68,7 +68,7 @@ impl Store for MockStorage {
         ))
     }
 
-    async fn scan_data(&self, _table_name: &str) -> Result<RowIter<'_>> {
+    async fn scan_data<'a>(&'a self, _table_name: &str) -> Result<RowIter<'a>> {
         Err(Error::StorageMsg(
             "[MockStorage] scan_data not supported".to_owned(),
         ))
@@ -121,34 +121,38 @@ mod tests {
         // AlterTable
         assert!(block_on(storage.rename_schema("Foo", "Bar")).is_err());
         assert!(block_on(storage.rename_column("Foo", "col_old", "col_new")).is_err());
-        assert!(block_on(storage.add_column(
-            "Foo",
-            &ColumnDef {
-                name: "new_col".to_owned(),
-                data_type: DataType::Boolean,
-                nullable: false,
-                default: None,
-                unique: None,
-                comment: None,
-            },
-        ))
-        .is_err());
+        assert!(
+            block_on(storage.add_column(
+                "Foo",
+                &ColumnDef {
+                    name: "new_col".to_owned(),
+                    data_type: DataType::Boolean,
+                    nullable: false,
+                    default: None,
+                    unique: None,
+                    comment: None,
+                },
+            ))
+            .is_err()
+        );
         assert!(block_on(storage.drop_column("Foo", "col", false)).is_err());
 
         // Index & IndexMut
         assert!(block_on(storage.scan_indexed_data("Foo", "idx_col", None, None)).is_err());
-        assert!(block_on(storage.create_index(
-            "Foo",
-            "idx_col",
-            &OrderByExpr {
-                expr: Expr::TypedString {
-                    data_type: DataType::Boolean,
-                    value: "true".to_owned(),
+        assert!(
+            block_on(storage.create_index(
+                "Foo",
+                "idx_col",
+                &OrderByExpr {
+                    expr: Expr::TypedString {
+                        data_type: DataType::Boolean,
+                        value: "true".to_owned(),
+                    },
+                    asc: None,
                 },
-                asc: None,
-            },
-        ))
-        .is_err());
+            ))
+            .is_err()
+        );
         assert!(block_on(storage.drop_index("Foo", "idx_col")).is_err());
 
         // Transaction

@@ -48,7 +48,7 @@ pub trait Store {
 
     async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>>;
 
-    async fn scan_data(&self, table_name: &str) -> Result<RowIter<'_>>;
+    async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>>;
 
     async fn fetch_referencings(&self, table_name: &str) -> Result<Vec<Referencing>> {
         let schemas = self.fetch_all_schemas().await?;

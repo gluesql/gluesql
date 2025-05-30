@@ -1,5 +1,5 @@
 use {
-    super::{err_into, key, lock, SledStorage, Snapshot, State},
+    super::{SledStorage, Snapshot, State, err_into, key, lock},
     async_trait::async_trait,
     futures::stream::iter,
     gluesql_core::{
@@ -93,7 +93,7 @@ impl Store for SledStorage {
         Ok(row)
     }
 
-    async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
+    async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
         let (txid, created_at) = match self.state {
             State::Transaction {
                 txid, created_at, ..

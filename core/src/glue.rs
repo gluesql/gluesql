@@ -1,7 +1,7 @@
 use {
     crate::{
         ast::Statement,
-        executor::{execute, Payload},
+        executor::{Payload, execute},
         parse_sql::parse,
         plan::plan,
         result::Result,
@@ -9,8 +9,8 @@ use {
         translate::translate,
     },
     futures::{
-        stream::{self, StreamExt},
         TryStreamExt,
+        stream::{self, StreamExt},
     },
 };
 

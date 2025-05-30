@@ -1,7 +1,7 @@
 use {
     crate::*,
-    gluesql_core::{ast_builder::*, prelude::*},
     Value::*,
+    gluesql_core::{ast_builder::*, prelude::*},
 };
 
 test_case!(ast_builder, {

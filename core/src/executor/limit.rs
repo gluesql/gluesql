@@ -33,10 +33,10 @@ impl Limit {
         Ok(Self { limit, offset })
     }
 
-    pub fn apply<'a>(
+    pub fn apply<'a, T: Stream<Item = Result<Row>> + 'a>(
         &self,
-        rows: impl Stream<Item = Result<Row>> + 'a,
-    ) -> impl Stream<Item = Result<Row>> + 'a {
+        rows: T,
+    ) -> impl Stream<Item = Result<Row>> + 'a + use<'a, T> {
         #[derive(futures_enum::Stream)]
         enum S<S1, S2, S3, S4> {
             Both(S3),

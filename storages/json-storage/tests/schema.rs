@@ -1,6 +1,6 @@
 use {
     gluesql_core::{
-        data::{value::HashMapJsonExt, Interval},
+        data::{Interval, value::HashMapJsonExt},
         prelude::{
             Glue,
             Value::{self, *},

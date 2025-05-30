@@ -1,6 +1,6 @@
 use {
     gluesql_core::prelude::Glue,
-    gluesql_parquet_storage::{error::ParquetStorageError, ParquetStorage},
+    gluesql_parquet_storage::{ParquetStorage, error::ParquetStorageError},
 };
 
 #[tokio::test]

@@ -6,8 +6,11 @@ use {
             SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, ToSql, ToSqlUnquoted,
             Values,
         },
-        data::{get_alias, get_index, Key, Row, Value},
-        executor::{evaluate::evaluate, select::select},
+        data::{Key, Row, Value, get_alias, get_index},
+        executor::{
+            evaluate::{Evaluated, evaluate},
+            select::select,
+        },
         result::Result,
         store::{DataRow, GStore},
     },
@@ -34,6 +37,9 @@ pub enum FetchError {
 
     #[error("table '{0}' has {1} columns available but {2} column aliases specified")]
     TooManyColumnAliases(String, usize, usize),
+
+    #[error("unreachable")]
+    Unreachable,
 }
 
 pub async fn fetch<'a, T: GStore>(
@@ -148,11 +154,32 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                         Rows::Indexed(rows)
                     }
                     Some(IndexItem::PrimaryKey(expr)) => {
+                        let schema = storage
+                            .fetch_schema(name)
+                            .await?
+                            .ok_or(FetchError::Unreachable)?;
+
                         let filter_context = filter_context.as_ref().map(Rc::clone);
-                        let key = evaluate(storage, filter_context, None, expr)
-                            .await
-                            .and_then(Value::try_from)
-                            .and_then(Key::try_from)?;
+                        let evaluated = evaluate(storage, filter_context, None, expr).await?;
+
+                        let value = match evaluated {
+                            Evaluated::Literal(literal) => {
+                                let data_type = schema
+                                    .column_defs
+                                    .as_ref()
+                                    .and_then(|column_defs| {
+                                        column_defs.iter().find(|column_def| {
+                                            column_def.unique.map(|u| u.is_primary) == Some(true)
+                                        })
+                                    })
+                                    .map(|column_def| &column_def.data_type)
+                                    .ok_or(FetchError::Unreachable)?;
+
+                                Value::try_from_literal(data_type, &literal)
+                            }
+                            eval => eval.try_into(),
+                        }?;
+                        let key = Key::try_from(value)?;
 
                         match storage.fetch_data(name, &key).await? {
                             Some(data_row) => {

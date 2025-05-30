@@ -1,5 +1,5 @@
 use {
-    criterion::{criterion_group, criterion_main, Criterion},
+    criterion::{Criterion, criterion_group, criterion_main},
     futures::executor::block_on,
     gluesql_core::prelude::Glue,
     gluesql_sled_storage::SledStorage,

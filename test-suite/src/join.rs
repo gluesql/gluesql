@@ -1,10 +1,10 @@
 use {
     crate::*,
+    Value::*,
     gluesql_core::{
         error::{PlanError, TranslateError},
         prelude::*,
     },
-    Value::*,
 };
 
 test_case!(join, {
@@ -75,10 +75,21 @@ test_case!(join, {
             15,
             "SELECT * FROM Item LEFT JOIN Player ON Player.id = Item.player_id;",
         ),
-        (5, "SELECT * FROM Item LEFT JOIN Player ON Player.id = Item.player_id WHERE quantity = 1;"),
-        (7, "SELECT * FROM Item LEFT JOIN Player ON Player.id = Item.player_id WHERE Player.id = 1;"),
-        (7, "SELECT * FROM Item INNER JOIN Player ON Player.id = Item.player_id WHERE Player.id = 1;"),
-        (7, "SELECT * FROM Item
+        (
+            5,
+            "SELECT * FROM Item LEFT JOIN Player ON Player.id = Item.player_id WHERE quantity = 1;",
+        ),
+        (
+            7,
+            "SELECT * FROM Item LEFT JOIN Player ON Player.id = Item.player_id WHERE Player.id = 1;",
+        ),
+        (
+            7,
+            "SELECT * FROM Item INNER JOIN Player ON Player.id = Item.player_id WHERE Player.id = 1;",
+        ),
+        (
+            7,
+            "SELECT * FROM Item
             LEFT JOIN Player ON Player.id = Item.player_id
             LEFT JOIN Player p1 ON p1.id = Item.player_id
             LEFT JOIN Player p2 ON p2.id = Item.player_id
@@ -89,8 +100,11 @@ test_case!(join, {
             LEFT JOIN Player p7 ON p7.id = Item.player_id
             LEFT JOIN Player p8 ON p8.id = Item.player_id
             LEFT JOIN Player p9 ON p9.id = Item.player_id
-            WHERE Player.id = 1;"),
-        (6, "SELECT * FROM Item
+            WHERE Player.id = 1;",
+        ),
+        (
+            6,
+            "SELECT * FROM Item
             LEFT JOIN Player ON Player.id = Item.player_id
             LEFT JOIN Player p1 ON p1.id = Item.player_id
             LEFT JOIN Player p2 ON p2.id = Item.player_id
@@ -101,26 +115,62 @@ test_case!(join, {
             LEFT JOIN Player p7 ON p7.id = Item.player_id
             LEFT JOIN Player p8 ON p8.id = Item.player_id
             INNER JOIN Player p9 ON p9.id = Item.player_id AND Item.id > 101
-            WHERE Player.id = 1;"),
-        (5, "SELECT * FROM Item LEFT JOIN Player ON Player.id = Item.player_id WHERE Item.quantity = 1;"),
-        (5, "SELECT * FROM Item i LEFT JOIN Player p ON p.id = i.player_id WHERE i.quantity = 1;"),
-        (15, "SELECT * FROM Item i LEFT JOIN Player p ON p.id = i.player_id AND p.id = 1;"),
-        (15, "SELECT * FROM Item i LEFT JOIN Player p ON p.id = i.player_id AND i.quantity = 1;"),
-        (15, "SELECT * FROM Item LEFT JOIN Player ON Player.id = Item.player_id AND Item.quantity = 1;"),
-        (7, "SELECT * FROM Item i JOIN Player p ON p.id = i.player_id AND p.id = 1;"),
-        (7, "SELECT * FROM Item i INNER JOIN Player p ON p.id = i.player_id AND p.id = 1;"),
-        (5, "SELECT * FROM Item i JOIN Player p ON p.id = i.player_id AND i.quantity = 1;"),
-        (0, "SELECT * FROM Player
+            WHERE Player.id = 1;",
+        ),
+        (
+            5,
+            "SELECT * FROM Item LEFT JOIN Player ON Player.id = Item.player_id WHERE Item.quantity = 1;",
+        ),
+        (
+            5,
+            "SELECT * FROM Item i LEFT JOIN Player p ON p.id = i.player_id WHERE i.quantity = 1;",
+        ),
+        (
+            15,
+            "SELECT * FROM Item i LEFT JOIN Player p ON p.id = i.player_id AND p.id = 1;",
+        ),
+        (
+            15,
+            "SELECT * FROM Item i LEFT JOIN Player p ON p.id = i.player_id AND i.quantity = 1;",
+        ),
+        (
+            15,
+            "SELECT * FROM Item LEFT JOIN Player ON Player.id = Item.player_id AND Item.quantity = 1;",
+        ),
+        (
+            7,
+            "SELECT * FROM Item i JOIN Player p ON p.id = i.player_id AND p.id = 1;",
+        ),
+        (
+            7,
+            "SELECT * FROM Item i INNER JOIN Player p ON p.id = i.player_id AND p.id = 1;",
+        ),
+        (
+            5,
+            "SELECT * FROM Item i JOIN Player p ON p.id = i.player_id AND i.quantity = 1;",
+        ),
+        (
+            0,
+            "SELECT * FROM Player
             INNER JOIN Item ON 1 = 2
             INNER JOIN Item i2 ON 1 = 2
-        "),
-        (7, "SELECT * FROM Item
+        ",
+        ),
+        (
+            7,
+            "SELECT * FROM Item
             LEFT JOIN Player ON Player.id = Item.player_id
-            WHERE Player.id = (SELECT id FROM Player LIMIT 1 OFFSET 0);"),
-        (0, "SELECT * FROM Item i1
+            WHERE Player.id = (SELECT id FROM Player LIMIT 1 OFFSET 0);",
+        ),
+        (
+            0,
+            "SELECT * FROM Item i1
             LEFT JOIN Player ON Player.id = i1.player_id
-            WHERE Player.id = (SELECT id FROM Item i2 WHERE i2.id = i1.id)"),
-        (0, "SELECT * FROM Item i1
+            WHERE Player.id = (SELECT id FROM Item i2 WHERE i2.id = i1.id)",
+        ),
+        (
+            0,
+            "SELECT * FROM Item i1
             LEFT JOIN Player ON Player.id = i1.player_id
             WHERE Player.id =
                 (SELECT i2.id FROM Item i2
@@ -128,17 +178,27 @@ test_case!(join, {
                  WHERE
                      i2.id = i1.id AND
                      i3.id = i2.id AND
-                     i1.id = i3.id);"),
-        (4, "SELECT * FROM Item i1
+                     i1.id = i3.id);",
+        ),
+        (
+            4,
+            "SELECT * FROM Item i1
             LEFT JOIN Player ON Player.id = i1.player_id
             WHERE Player.id IN
                 (SELECT i2.player_id FROM Item i2
                  JOIN Item i3 ON i3.id = i2.id
-                 WHERE Player.name = 'Jorno');"),
+                 WHERE Player.name = 'Jorno');",
+        ),
         // cartesian product tests
-        (15, "SELECT * FROM Player INNER JOIN Item ON Player.id = Item.player_id;"),
+        (
+            15,
+            "SELECT * FROM Player INNER JOIN Item ON Player.id = Item.player_id;",
+        ),
         (25, "SELECT * FROM Player p1 LEFT JOIN Player p2 ON 1 = 1"),
-        (30, "SELECT * FROM Item INNER JOIN Item i2 ON i2.id IN (101, 103);"),
+        (
+            30,
+            "SELECT * FROM Item INNER JOIN Item i2 ON i2.id IN (101, 103);",
+        ),
     ];
 
     for (num, sql) in select_sqls {

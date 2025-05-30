@@ -39,9 +39,9 @@ mod tests {
     use crate::{
         ast::{AstLiteral, Expr, IndexOperator},
         ast_builder::{
-            index_item::{non_clustered, IndexItem},
-            select::Prebuild,
             IndexItemNode,
+            index_item::{IndexItem, non_clustered},
+            select::Prebuild,
         },
     };
 

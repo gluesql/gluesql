@@ -13,7 +13,7 @@ use {
             AlterTable, CustomFunction, CustomFunctionMut, Index, IndexMut, Metadata, Transaction,
         },
     },
-    mongodb::{options::ClientOptions, Client, Database},
+    mongodb::{Client, Database, options::ClientOptions},
 };
 
 pub struct MongoStorage {

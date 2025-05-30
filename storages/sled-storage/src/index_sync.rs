@@ -1,5 +1,5 @@
 use {
-    super::{err_into, fetch_schema, key, Snapshot},
+    super::{Snapshot, err_into, fetch_schema, key},
     gluesql_core::{
         ast::Expr,
         data::schema::{Schema, SchemaIndex},
@@ -9,10 +9,10 @@ use {
         store::DataRow,
     },
     sled::{
+        IVec,
         transaction::{
             ConflictableTransactionError, ConflictableTransactionResult, TransactionalTree,
         },
-        IVec,
     },
     std::borrow::Cow,
     utils::Vector,
@@ -23,7 +23,7 @@ pub struct IndexSync<'a> {
     txid: u64,
     table_name: &'a str,
     columns: Option<Vec<String>>,
-    indexes: Cow<'a, Vec<SchemaIndex>>,
+    indexes: Cow<'a, [SchemaIndex]>,
 }
 
 impl<'a> IndexSync<'a> {
@@ -42,7 +42,7 @@ impl<'a> IndexSync<'a> {
                 .collect::<Vec<_>>()
         });
 
-        let indexes = Cow::Borrowed(indexes);
+        let indexes = Cow::Borrowed(indexes.as_slice());
 
         Self {
             tree,

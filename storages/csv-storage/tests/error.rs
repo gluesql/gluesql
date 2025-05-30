@@ -1,6 +1,6 @@
 use {
     gluesql_core::prelude::Glue,
-    gluesql_csv_storage::{error::CsvStorageError, CsvStorage},
+    gluesql_csv_storage::{CsvStorage, error::CsvStorageError},
 };
 
 #[tokio::test]

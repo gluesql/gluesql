@@ -1,4 +1,4 @@
-use chrono::{offset::Utc, DateTime, NaiveDate, NaiveDateTime, NaiveTime};
+use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, offset::Utc};
 
 pub fn parse_date(v: &str) -> Option<NaiveDate> {
     if let Ok(v) = v.parse::<NaiveDate>() {

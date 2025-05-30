@@ -3,9 +3,9 @@ use {
     crate::{
         ast::{Join, JoinExecutor, JoinOperator, Select, TableAlias, TableFactor},
         ast_builder::{
-            select::Prebuild, ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode,
-            JoinConstraintNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode,
-            QueryNode, SelectItemList, SelectNode, TableFactorNode,
+            ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinConstraintNode,
+            LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
+            SelectItemList, SelectNode, TableFactorNode, select::Prebuild,
         },
         result::Result,
     },
@@ -151,7 +151,7 @@ impl<'a> JoinNode<'a> {
         OrderByNode::new(self, order_by_exprs)
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
         QueryNode::JoinNode(self).alias_as(table_alias)
     }
 
@@ -189,7 +189,7 @@ impl<'a> Prebuild<Select> for JoinNode<'a> {
 #[cfg(test)]
 mod tests {
     use {
-        crate::ast_builder::{table, test, Build},
+        crate::ast_builder::{Build, table, test},
         pretty_assertions::assert_eq,
     };
 
@@ -262,7 +262,7 @@ mod tests {
             ])
             .build();
         let expected = "
-            SELECT Orders.OrderID, Customers.CustomerName, Orders.OrderDate 
+            SELECT Orders.OrderID, Customers.CustomerName, Orders.OrderDate
             FROM Orders INNER JOIN Customers
         ";
         test(actual, expected);
@@ -572,7 +572,7 @@ mod tests {
                 Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SetExpr,
                 Statement, TableAlias, TableFactor, TableWithJoins,
             },
-            ast_builder::{col, SelectItemList},
+            ast_builder::{SelectItemList, col},
         };
 
         let gen_expected = |other_join| {

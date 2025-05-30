@@ -42,17 +42,19 @@ impl<'a, T: GStore> Sort<'a, T> {
         }
     }
 
-    pub async fn apply(
-        &self,
-        rows: impl Stream<
+    pub async fn apply<
+        U: Stream<
                 Item = Result<(
                     Option<Rc<HashMap<&'a Aggregate, Value>>>,
                     Rc<RowContext<'a>>,
                     Row,
                 )>,
             > + 'a,
+    >(
+        &self,
+        rows: U,
         table_alias: &'a str,
-    ) -> Result<impl Stream<Item = Result<Row>> + 'a> {
+    ) -> Result<impl Stream<Item = Result<Row>> + 'a + use<'a, T, U>> {
         #[derive(futures_enum::Stream)]
         enum Rows<I1, I2> {
             NonOrderBy(I1),

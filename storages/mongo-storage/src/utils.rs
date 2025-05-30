@@ -1,6 +1,6 @@
 use {
     crate::{description::TableDescription, error::ResultExt},
-    bson::{doc, Document},
+    bson::{Document, doc},
     gluesql_core::{
         ast::{ColumnDef, ForeignKey},
         error::Result,
