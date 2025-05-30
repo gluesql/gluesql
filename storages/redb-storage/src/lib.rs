@@ -6,7 +6,6 @@ mod error;
 use {
     async_trait::async_trait,
     core::StorageCore,
-    futures::stream::iter,
     gluesql_core::{
         data::{Key, Schema},
         error::Result,
@@ -41,10 +40,7 @@ impl Store for RedbStorage {
     }
 
     async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
-        let rows = self.0.scan_data(table_name)?;
-        let rows = rows.into_iter().map(Ok);
-
-        Ok(Box::pin(iter(rows)))
+        self.0.scan_data(table_name).map_err(Into::into)
     }
 }
 

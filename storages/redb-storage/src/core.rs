@@ -1,9 +1,11 @@
 use {
     super::error::StorageError,
+    async_stream::try_stream,
     bincode::{deserialize, serialize},
+    futures::stream::iter,
     gluesql_core::{
         data::{Key, Schema},
-        store::DataRow,
+        store::{DataRow, RowIter},
     },
     redb::{Database, ReadableTable, TableDefinition},
     std::path::Path,
@@ -83,24 +85,38 @@ impl StorageCore {
         Ok(row)
     }
 
-    // todo: should not be collected
-    pub fn scan_data(&self, table_name: &str) -> Result<Vec<(Key, DataRow)>> {
-        let txn = self.txn.as_ref().ok_or(StorageError::TransactionNotFound)?;
+    pub fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
+        if let Some(write_txn) = self.txn.as_ref() {
+            let table_def = Self::data_table_def(table_name)?;
+            let table = write_txn.open_table(table_def)?;
+
+            let rows: Vec<_> = table
+                .iter()?
+                .map(|entry| {
+                    let value = entry?.1.value();
+                    let (key, row): (Key, DataRow) = deserialize(&value)?;
+
+                    Ok((key, row))
+                })
+                .collect::<Result<_>>()?;
+
+            return Ok(Box::pin(iter(rows.into_iter().map(Ok))));
+        }
+
+        let read_txn = self.db.begin_read()?;
         let table_def = StorageCore::data_table_def(table_name)?;
-        let table = txn.open_table(table_def)?;
+        let table = read_txn.open_table(table_def)?;
 
-        let rows = table
-            .iter()?
-            .map(|entry| {
-                let value = entry?.1.value();
-                let (key, row) = deserialize(value.as_ref())?;
+        let rows = try_stream! {
+            for entry in table.iter().map_err(Into::<StorageError>::into)? {
+                let value = entry.map_err(Into::<StorageError>::into)?.1.value();
+                let (key, row): (Key, DataRow) = deserialize(&value).map_err(Into::<StorageError>::into)?;
 
-                Ok((key, row))
-            })
-            .collect::<Result<_>>();
+                yield (key, row);
+            }
+        };
 
-        let rows = rows?;
-        Ok(rows)
+        Ok(Box::pin(rows))
     }
 }
 
@@ -111,6 +127,9 @@ impl StorageCore {
         let mut table = txn.open_table(SCHEMA_TABLE)?;
         let value = serialize(&schema)?;
         table.insert(schema.table_name.as_str(), value)?;
+
+        let data_def = StorageCore::data_table_def(&schema.table_name)?;
+        txn.open_table(data_def)?;
 
         Ok(())
     }
