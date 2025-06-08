@@ -29,8 +29,9 @@ impl StorageCore {
     }
 
     fn data_table_def(table_name: &str) -> Result<TableDefinition<&'static [u8], Vec<u8>>> {
-        // let table_name = format!("data_{}", table_name);
-        // todo
+        let table_name = format!("data_{table_name}");
+        let table_name: &'static str = Box::leak(table_name.into_boxed_str());
+
         Ok(TableDefinition::new(table_name))
     }
 }
