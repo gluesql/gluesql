@@ -19,13 +19,18 @@ type Result<T> = std::result::Result<T, StorageError>;
 pub struct StorageCore {
     db: Database,
     txn: Option<redb::WriteTransaction>,
+    autocommit: bool,
 }
 
 impl StorageCore {
     pub fn new<P: AsRef<Path>>(filename: P) -> Result<Self> {
         let db = Database::create(filename)?;
 
-        Ok(Self { db, txn: None })
+        Ok(Self {
+            db,
+            txn: None,
+            autocommit: false,
+        })
     }
 
     fn data_table_def(table_name: &str) -> Result<TableDefinition<&'static [u8], Vec<u8>>> {
@@ -87,7 +92,8 @@ impl StorageCore {
     }
 
     pub fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
-        if let Some(txn) = self.txn.as_ref() {
+        if !self.autocommit {
+            let txn = self.txn.as_ref().ok_or(StorageError::TransactionNotFound)?;
             let table_def = Self::data_table_def(table_name)?;
             let table = txn.open_table(table_def)?;
 
@@ -201,6 +207,7 @@ impl StorageCore {
             (false, _) => {
                 let write_txn = self.db.begin_write()?;
                 self.txn = Some(write_txn);
+                self.autocommit = autocommit;
 
                 Ok(autocommit)
             }
@@ -212,6 +219,8 @@ impl StorageCore {
             txn.abort()?;
         }
 
+        self.autocommit = false;
+
         Ok(())
     }
 
@@ -219,6 +228,8 @@ impl StorageCore {
         if let Some(txn) = self.txn.take() {
             txn.commit()?;
         }
+
+        self.autocommit = false;
 
         Ok(())
     }
