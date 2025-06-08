@@ -1,10 +1,15 @@
 use {
     gluesql_core::store::Transaction,
     gluesql_redb_storage::RedbStorage,
-    redb::{backends::FileBackend, Database, StorageBackend, TableDefinition},
-    std::fs::{create_dir, remove_file, OpenOptions},
-    std::io::ErrorKind,
-    std::sync::{atomic::{AtomicBool, Ordering}, Arc},
+    redb::{Database, StorageBackend, TableDefinition, backends::FileBackend},
+    std::{
+        fs::{OpenOptions, create_dir, remove_file},
+        io::ErrorKind,
+        sync::{
+            Arc,
+            atomic::{AtomicBool, Ordering},
+        },
+    },
 };
 
 #[derive(Debug)]
@@ -75,7 +80,5 @@ async fn begin_write_after_io_error() {
 
     let mut storage = RedbStorage::from_database(db);
     let err = storage.begin(true).await.expect_err("begin should fail");
-    assert!(err
-        .to_string()
-        .contains("Previous I/O error"));
+    assert!(err.to_string().contains("Previous I/O error"));
 }
