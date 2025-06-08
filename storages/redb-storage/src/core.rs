@@ -42,7 +42,10 @@ impl StorageCore {
         }
     }
 
-    fn data_table_def<'a>(&self, table_name: &'a str) -> Result<TableDefinition<'a, &'static [u8], Vec<u8>>> {
+    fn data_table_def<'a>(
+        &self,
+        table_name: &'a str,
+    ) -> Result<TableDefinition<'a, &'static [u8], Vec<u8>>> {
         if table_name == SCHEMA_TABLE_NAME {
             return Err(StorageError::ReservedTableName(table_name.to_owned()));
         }

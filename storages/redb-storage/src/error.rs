@@ -6,6 +6,8 @@ pub enum StorageError {
     NestedTransactionNotSupported,
     #[error("transaction not found")]
     TransactionNotFound,
+    #[error("cannot create table with reserved name: {0}")]
+    ReservedTableName(String),
 
     #[error(transparent)]
     Glue(#[from] Error),
@@ -23,9 +25,6 @@ pub enum StorageError {
 
     #[error(transparent)]
     Bincode(#[from] bincode::Error),
-
-    #[error("cannot create table with reserved name: {0}")]
-    ReservedTableName(String),
 }
 
 impl From<StorageError> for Error {
@@ -39,4 +38,3 @@ impl From<redb::TransactionError> for StorageError {
         StorageError::RedbTransaction(Box::new(e))
     }
 }
-
