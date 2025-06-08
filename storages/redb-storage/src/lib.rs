@@ -14,6 +14,7 @@ use {
             RowIter, Store, StoreMut, Transaction,
         },
     },
+    redb::Database,
     std::path::Path,
 };
 
@@ -22,6 +23,10 @@ pub struct RedbStorage(StorageCore);
 impl RedbStorage {
     pub fn new<P: AsRef<Path>>(filename: P) -> Result<Self> {
         StorageCore::new(filename).map(Self).map_err(Into::into)
+    }
+
+    pub fn from_database(db: Database) -> Self {
+        Self(StorageCore::from_database(db))
     }
 }
 
