@@ -45,7 +45,7 @@ macro_rules! generate_parse_fn {
     };
 }
 
-generate_parse_fn!(parse_query, SqlQuery);
+generate_parse_fn!(parse_query, Box<SqlQuery>);
 generate_parse_fn!(parse_expr, SqlExpr);
 generate_parse_fn!(
     parse_comma_separated_exprs,

@@ -77,6 +77,7 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             negated,
             pattern,
             escape_char: None,
+            ..
         } => Ok(Expr::Like {
             expr: translate_expr(expr).map(Box::new)?,
             negated: *negated,
@@ -87,6 +88,7 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             negated,
             pattern,
             escape_char: None,
+            ..
         } => Ok(Expr::ILike {
             expr: translate_expr(expr).map(Box::new)?,
             negated: *negated,
