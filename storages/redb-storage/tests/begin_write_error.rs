@@ -60,6 +60,7 @@ async fn begin_write_after_io_error() {
         .read(true)
         .write(true)
         .create(true)
+        .truncate(true)
         .open(path)
         .expect("create file");
     let fail_flag = Arc::new(AtomicBool::new(false));
