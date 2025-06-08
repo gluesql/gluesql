@@ -1,6 +1,8 @@
-use gluesql_core::error::Error;
-use gluesql_redb_storage::RedbStorage;
-use std::fs::{create_dir, remove_file};
+use {
+    gluesql_core::error::Error,
+    gluesql_redb_storage::RedbStorage,
+    std::fs::{create_dir, remove_file},
+};
 
 #[tokio::test]
 async fn redb_storage_interface_error() {
