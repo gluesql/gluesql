@@ -12,7 +12,7 @@ use {
     uuid::Uuid,
 };
 
-const SCHEMA_TABLE: TableDefinition<&str, Vec<u8>> = TableDefinition::new("__SCHEMA__");
+const SCHEMA_TABLE: TableDefinition<&str, Vec<u8>> = TableDefinition::new("SCHEMA");
 
 type Result<T> = std::result::Result<T, StorageError>;
 
@@ -42,7 +42,7 @@ impl StorageCore {
     }
 
     fn data_table_def(table_name: &str) -> Result<TableDefinition<&'static [u8], Vec<u8>>> {
-        let table_name = format!("data_{table_name}");
+        let table_name = format!("DATA/{table_name}");
         let table_name: &'static str = Box::leak(table_name.into_boxed_str());
 
         Ok(TableDefinition::new(table_name))
