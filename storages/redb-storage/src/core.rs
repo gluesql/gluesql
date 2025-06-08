@@ -12,7 +12,8 @@ use {
     uuid::Uuid,
 };
 
-const SCHEMA_TABLE: TableDefinition<&str, Vec<u8>> = TableDefinition::new("SCHEMA");
+const SCHEMA_TABLE_NAME: &str = "__SCHEMA__";
+const SCHEMA_TABLE: TableDefinition<&str, Vec<u8>> = TableDefinition::new(SCHEMA_TABLE_NAME);
 
 type Result<T> = std::result::Result<T, StorageError>;
 
@@ -41,9 +42,10 @@ impl StorageCore {
         }
     }
 
-    fn data_table_def(table_name: &str) -> Result<TableDefinition<&'static [u8], Vec<u8>>> {
-        let table_name = format!("DATA/{table_name}");
-        let table_name: &'static str = Box::leak(table_name.into_boxed_str());
+    fn data_table_def<'a>(&self, table_name: &'a str) -> Result<TableDefinition<'a, &'static [u8], Vec<u8>>> {
+        if table_name == SCHEMA_TABLE_NAME {
+            return Err(StorageError::ReservedTableName(table_name.to_owned()));
+        }
 
         Ok(TableDefinition::new(table_name))
     }
@@ -85,7 +87,7 @@ impl StorageCore {
 
     pub fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {
         let txn = self.txn.as_ref().ok_or(StorageError::TransactionNotFound)?;
-        let table_def = StorageCore::data_table_def(table_name)?;
+        let table_def = self.data_table_def(table_name)?;
         let table = txn.open_table(table_def)?;
 
         let key = key.to_cmp_be_bytes()?;
@@ -102,7 +104,7 @@ impl StorageCore {
     pub fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
         if !self.autocommit {
             let txn = self.txn.as_ref().ok_or(StorageError::TransactionNotFound)?;
-            let table_def = Self::data_table_def(table_name)?;
+            let table_def = self.data_table_def(table_name)?;
             let table = txn.open_table(table_def)?;
 
             let rows: Vec<_> = table
@@ -119,7 +121,7 @@ impl StorageCore {
         }
 
         let read_txn = self.db.begin_read()?;
-        let table_def = StorageCore::data_table_def(table_name)?;
+        let table_def = self.data_table_def(table_name)?;
         let table = read_txn.open_table(table_def)?;
 
         let rows = try_stream! {
@@ -138,31 +140,29 @@ impl StorageCore {
 // StoreMut
 impl StorageCore {
     pub async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
+        let data_def = self.data_table_def(&schema.table_name)?;
         let txn = self.txn.as_mut().ok_or(StorageError::TransactionNotFound)?;
         let mut table = txn.open_table(SCHEMA_TABLE)?;
         let value = serialize(&schema)?;
         table.insert(schema.table_name.as_str(), value)?;
-
-        let data_def = StorageCore::data_table_def(&schema.table_name)?;
         txn.open_table(data_def)?;
 
         Ok(())
     }
 
     pub async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
+        let table_def = self.data_table_def(table_name)?;
         let txn = self.txn.as_mut().ok_or(StorageError::TransactionNotFound)?;
         let mut table = txn.open_table(SCHEMA_TABLE)?;
         table.remove(table_name)?;
-
-        let table_def = StorageCore::data_table_def(table_name)?;
         txn.delete_table(table_def)?;
 
         Ok(())
     }
 
     pub async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
+        let table_def = self.data_table_def(table_name)?;
         let txn = self.txn.as_mut().ok_or(StorageError::TransactionNotFound)?;
-        let table_def = StorageCore::data_table_def(table_name)?;
         let mut table = txn.open_table(table_def)?;
 
         for row in rows {
@@ -177,8 +177,8 @@ impl StorageCore {
     }
 
     pub async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
+        let table_def = self.data_table_def(table_name)?;
         let txn = self.txn.as_mut().ok_or(StorageError::TransactionNotFound)?;
-        let table_def = StorageCore::data_table_def(table_name)?;
         let mut table = txn.open_table(table_def)?;
 
         for (key, row) in rows {
@@ -192,8 +192,8 @@ impl StorageCore {
     }
 
     pub async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
+        let table_def = self.data_table_def(table_name)?;
         let txn = self.txn.as_mut().ok_or(StorageError::TransactionNotFound)?;
-        let table_def = StorageCore::data_table_def(table_name)?;
         let mut table = txn.open_table(table_def)?;
 
         for key in keys {
