@@ -3,6 +3,8 @@
 mod core;
 mod error;
 
+pub use error::StorageError;
+
 use {
     async_trait::async_trait,
     core::StorageCore,
