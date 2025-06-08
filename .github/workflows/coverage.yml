@@ -15,43 +15,38 @@ env:
 
 jobs:
   coverage:
-    runs-on: [self-hosted, linux]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - name: MongoDB in GitHub Actions
+        uses: supercharge/mongodb-github-action@v1.10.0
+      - name: Redis in GitHub Actions
+        uses: supercharge/redis-github-action@1.7.0
+        with:
+          redis-version: 6
+      - name: Prepare git config
+        run: |
+          git config --global user.email "gitstorage.bot@gluesql.org"
+          git config --global user.name "GitStorage Bot"
       - run: rustup component add llvm-tools-preview
       - run: cargo install grcov
       - name: clean
         run: |
           cargo clean
           rm -rf ./target/debug/deps/gluesql*
-          rm *.profraw && rm **/*.profraw
+          find . -name '*.profraw' -delete
           cd storages/csv-storage && rm -rf ./tmp && cd ../..
           cd storages/json-storage && rm -rf ./tmp && cd ../..
           redis-cli flushall
       - name: build
         env:
           RUSTFLAGS: -Cinstrument-coverage
-        run: cargo build --verbose
-      - name: test
+        run: cargo build --workspace --all-features --verbose
+      - name: run coverage
         env:
-          RUSTFLAGS: -Cinstrument-coverage
-          LLVM_PROFILE_FILE: gluesql-%p-%m.profraw
           GIT_REMOTE: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
-        run: GIT_REMOTE=$GIT_REMOTE cargo test --all-features --verbose
-      - name: Run grcov
-        run: |
-          mkdir coverage
-          grcov . \
-            --binary-path ./target/debug/ \
-            -s . \
-            -t lcov \
-            --branch \
-            --ignore-not-existing \
-            --ignore "/*" \
-            --ignore "pkg/rust/examples/*.rs" \
-            --ignore "cli/src/{cli,helper,lib,main}.rs" \
-            --excl-line "(#\\[derive\\()|(^\s*.await[;,]?$)|(^test_case\!\([\d\w]+,)" \
-            -o ./coverage/lcov.info
+        run: bash ./scripts/coverage.sh
       - name: Coveralls
         uses: coverallsapp/github-action@master
         with:
