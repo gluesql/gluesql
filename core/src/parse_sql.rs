@@ -29,6 +29,7 @@ macro_rules! generate_parse_fn {
                 .with_tokens(tokens)
                 .$fn_name()
                 .map_err(|e| Error::Parser(format!("{:#?}", e)))
+                .map(|boxed| *boxed)
         }
     };
     ($fn_name: ident, $parse_fn_name: ident, $parse_fn_arg: ident, $output_type: ty) => {
