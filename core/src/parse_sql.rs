@@ -45,7 +45,17 @@ macro_rules! generate_parse_fn {
     };
 }
 
-generate_parse_fn!(parse_query, SqlQuery);
+pub fn parse_query<Sql: AsRef<str>>(sql_expr: Sql) -> Result<SqlQuery> {
+    let tokens = Tokenizer::new(&DIALECT, sql_expr.as_ref())
+        .tokenize()
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))?;
+
+    Parser::new(&DIALECT)
+        .with_tokens(tokens)
+        .parse_query()
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))
+        .map(|boxed| *boxed)
+}
 generate_parse_fn!(parse_expr, SqlExpr);
 generate_parse_fn!(
     parse_comma_separated_exprs,
