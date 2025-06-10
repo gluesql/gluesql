@@ -7,7 +7,7 @@ use {
         data::{Key, Schema},
         store::{DataRow, RowIter},
     },
-    redb::{Database, ReadableTable, TableDefinition},
+    redb::{Database, ReadableTable, TableDefinition, WriteTransaction},
     std::path::Path,
     uuid::Uuid,
 };
@@ -17,10 +17,17 @@ const SCHEMA_TABLE: TableDefinition<&str, Vec<u8>> = TableDefinition::new(SCHEMA
 
 type Result<T> = std::result::Result<T, StorageError>;
 
+pub enum TransactionState {
+    None,
+    Active {
+        txn: WriteTransaction,
+        autocommit: bool,
+    },
+}
+
 pub struct StorageCore {
     db: Database,
-    txn: Option<redb::WriteTransaction>,
-    autocommit: bool,
+    state: TransactionState,
 }
 
 impl StorageCore {
@@ -29,16 +36,14 @@ impl StorageCore {
 
         Ok(Self {
             db,
-            txn: None,
-            autocommit: false,
+            state: TransactionState::None,
         })
     }
 
     pub fn from_database(db: Database) -> Self {
         Self {
             db,
-            txn: None,
-            autocommit: false,
+            state: TransactionState::None,
         }
     }
 
@@ -52,12 +57,33 @@ impl StorageCore {
 
         Ok(TableDefinition::new(table_name))
     }
+
+    fn txn(&self) -> Result<&WriteTransaction> {
+        match &self.state {
+            TransactionState::Active { txn, .. } => Ok(txn),
+            TransactionState::None => Err(StorageError::TransactionNotFound),
+        }
+    }
+
+    fn txn_mut(&mut self) -> Result<&mut WriteTransaction> {
+        match &mut self.state {
+            TransactionState::Active { txn, .. } => Ok(txn),
+            TransactionState::None => Err(StorageError::TransactionNotFound),
+        }
+    }
+
+    fn take_txn(&mut self) -> Option<WriteTransaction> {
+        match std::mem::replace(&mut self.state, TransactionState::None) {
+            TransactionState::Active { txn, .. } => Some(txn),
+            TransactionState::None => None,
+        }
+    }
 }
 
 // Store
 impl StorageCore {
     pub fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
-        let txn = self.txn.as_ref().ok_or(StorageError::TransactionNotFound)?;
+        let txn = self.txn()?;
         let table = txn.open_table(SCHEMA_TABLE)?;
 
         table
@@ -71,12 +97,12 @@ impl StorageCore {
     }
 
     pub fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
-        let schema = match self.txn.as_ref() {
-            Some(txn) => txn
+        let schema = match &self.state {
+            TransactionState::Active { txn, .. } => txn
                 .open_table(SCHEMA_TABLE)?
                 .get(table_name)?
                 .map(|v| deserialize(&v.value())),
-            None => self
+            TransactionState::None => self
                 .db
                 .begin_write()?
                 .open_table(SCHEMA_TABLE)?
@@ -89,7 +115,7 @@ impl StorageCore {
     }
 
     pub fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {
-        let txn = self.txn.as_ref().ok_or(StorageError::TransactionNotFound)?;
+        let txn = self.txn()?;
         let table_def = self.data_table_def(table_name)?;
         let table = txn.open_table(table_def)?;
 
@@ -105,22 +131,23 @@ impl StorageCore {
     }
 
     pub fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
-        if !self.autocommit {
-            let txn = self.txn.as_ref().ok_or(StorageError::TransactionNotFound)?;
-            let table_def = self.data_table_def(table_name)?;
-            let table = txn.open_table(table_def)?;
+        if let TransactionState::Active { autocommit, txn } = &self.state {
+            if !autocommit {
+                let table_def = self.data_table_def(table_name)?;
+                let table = txn.open_table(table_def)?;
 
-            let rows: Vec<_> = table
-                .iter()?
-                .map(|entry| {
-                    let value = entry?.1.value();
-                    let (key, row): (Key, DataRow) = deserialize(&value)?;
+                let rows: Vec<_> = table
+                    .iter()?
+                    .map(|entry| {
+                        let value = entry?.1.value();
+                        let (key, row): (Key, DataRow) = deserialize(&value)?;
 
-                    Ok((key, row))
-                })
-                .collect::<Result<_>>()?;
+                        Ok((key, row))
+                    })
+                    .collect::<Result<_>>()?;
 
-            return Ok(Box::pin(iter(rows.into_iter().map(Ok))));
+                return Ok(Box::pin(iter(rows.into_iter().map(Ok))));
+            }
         }
 
         let read_txn = self.db.begin_read()?;
@@ -144,7 +171,7 @@ impl StorageCore {
 impl StorageCore {
     pub async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let data_def = self.data_table_def(&schema.table_name)?;
-        let txn = self.txn.as_mut().ok_or(StorageError::TransactionNotFound)?;
+        let txn = self.txn_mut()?;
         let mut table = txn.open_table(SCHEMA_TABLE)?;
         let value = serialize(&schema)?;
         table.insert(schema.table_name.as_str(), value)?;
@@ -155,7 +182,7 @@ impl StorageCore {
 
     pub async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         let table_def = self.data_table_def(table_name)?;
-        let txn = self.txn.as_mut().ok_or(StorageError::TransactionNotFound)?;
+        let txn = self.txn_mut()?;
         let mut table = txn.open_table(SCHEMA_TABLE)?;
         table.remove(table_name)?;
         txn.delete_table(table_def)?;
@@ -165,7 +192,7 @@ impl StorageCore {
 
     pub async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
         let table_def = self.data_table_def(table_name)?;
-        let txn = self.txn.as_mut().ok_or(StorageError::TransactionNotFound)?;
+        let txn = self.txn_mut()?;
         let mut table = txn.open_table(table_def)?;
 
         for row in rows {
@@ -181,7 +208,7 @@ impl StorageCore {
 
     pub async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
         let table_def = self.data_table_def(table_name)?;
-        let txn = self.txn.as_mut().ok_or(StorageError::TransactionNotFound)?;
+        let txn = self.txn_mut()?;
         let mut table = txn.open_table(table_def)?;
 
         for (key, row) in rows {
@@ -196,7 +223,7 @@ impl StorageCore {
 
     pub async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let table_def = self.data_table_def(table_name)?;
-        let txn = self.txn.as_mut().ok_or(StorageError::TransactionNotFound)?;
+        let txn = self.txn_mut()?;
         let mut table = txn.open_table(table_def)?;
 
         for key in keys {
@@ -212,13 +239,17 @@ impl StorageCore {
 // Transaction
 impl StorageCore {
     pub fn begin(&mut self, autocommit: bool) -> Result<bool> {
-        match (self.txn.is_some(), autocommit) {
-            (true, true) => Ok(false),
-            (true, false) => Err(StorageError::NestedTransactionNotSupported),
-            (false, _) => {
+        match (&self.state, autocommit) {
+            (TransactionState::Active { .. }, true) => Ok(false),
+            (TransactionState::Active { .. }, false) => {
+                Err(StorageError::NestedTransactionNotSupported)
+            }
+            (TransactionState::None, _) => {
                 let write_txn = self.db.begin_write()?;
-                self.txn = Some(write_txn);
-                self.autocommit = autocommit;
+                self.state = TransactionState::Active {
+                    txn: write_txn,
+                    autocommit,
+                };
 
                 Ok(autocommit)
             }
@@ -226,21 +257,17 @@ impl StorageCore {
     }
 
     pub fn rollback(&mut self) -> Result<()> {
-        if let Some(txn) = self.txn.take() {
+        if let Some(txn) = self.take_txn() {
             txn.abort()?;
         }
-
-        self.autocommit = false;
 
         Ok(())
     }
 
     pub fn commit(&mut self) -> Result<()> {
-        if let Some(txn) = self.txn.take() {
+        if let Some(txn) = self.take_txn() {
             txn.commit()?;
         }
-
-        self.autocommit = false;
 
         Ok(())
     }
