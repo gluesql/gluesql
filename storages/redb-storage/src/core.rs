@@ -71,6 +71,13 @@ impl StorageCore {
             TransactionState::None => Err(StorageError::TransactionNotFound),
         }
     }
+
+    fn take_txn(&mut self) -> Option<WriteTransaction> {
+        match std::mem::replace(&mut self.state, TransactionState::None) {
+            TransactionState::Active { txn, .. } => Some(txn),
+            TransactionState::None => None,
+        }
+    }
 }
 
 // Store
@@ -250,8 +257,7 @@ impl StorageCore {
     }
 
     pub fn rollback(&mut self) -> Result<()> {
-        let prev = std::mem::replace(&mut self.state, TransactionState::None);
-        if let TransactionState::Active { txn, .. } = prev {
+        if let Some(txn) = self.take_txn() {
             txn.abort()?;
         }
 
@@ -259,8 +265,7 @@ impl StorageCore {
     }
 
     pub fn commit(&mut self) -> Result<()> {
-        let prev = std::mem::replace(&mut self.state, TransactionState::None);
-        if let TransactionState::Active { txn, .. } = prev {
+        if let Some(txn) = self.take_txn() {
             txn.commit()?;
         }
 
