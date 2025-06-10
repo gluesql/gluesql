@@ -20,7 +20,7 @@ type Result<T> = std::result::Result<T, StorageError>;
 pub enum TransactionState {
     None,
     Active {
-        txn: WriteTransaction,
+        txn: Box<WriteTransaction>,
         autocommit: bool,
     },
 }
@@ -74,7 +74,7 @@ impl StorageCore {
 
     fn take_txn(&mut self) -> Option<WriteTransaction> {
         match std::mem::replace(&mut self.state, TransactionState::None) {
-            TransactionState::Active { txn, .. } => Some(txn),
+            TransactionState::Active { txn, .. } => Some(*txn),
             TransactionState::None => None,
         }
     }
@@ -247,7 +247,7 @@ impl StorageCore {
             (TransactionState::None, _) => {
                 let write_txn = self.db.begin_write()?;
                 self.state = TransactionState::Active {
-                    txn: write_txn,
+                    txn: Box::new(write_txn),
                     autocommit,
                 };
 
