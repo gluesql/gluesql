@@ -37,7 +37,7 @@ pub use {
     std::net::IpAddr,
 };
 
-#[frb(non_opaque)]
+#[frb(non_opaque, ignore)]
 pub fn execute(sql: String) -> Result<Vec<Payload>, Error> {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     runtime.block_on(async {
@@ -49,7 +49,7 @@ pub fn execute(sql: String) -> Result<Vec<Payload>, Error> {
     })
 }
 
-#[flutter_rust_bridge::frb(init)]
+#[frb(init, ignore)]
 pub fn init_app() {
     // Default utilities - feel free to customize
     flutter_rust_bridge::setup_default_user_utils();
