@@ -197,7 +197,7 @@ impl StorageCore {
 
         for row in rows {
             let key = Key::Uuid(Uuid::now_v7().as_u128());
-            let value = serialize(&(key.clone(), row))?;
+            let value = serialize(&(&key, row))?;
             let table_key = key.to_cmp_be_bytes()?;
             let table_key = table_key.as_slice();
             table.insert(table_key, value)?;
@@ -212,7 +212,7 @@ impl StorageCore {
         let mut table = txn.open_table(table_def)?;
 
         for (key, row) in rows {
-            let value = serialize(&(key.clone(), row))?;
+            let value = serialize(&(&key, row))?;
             let table_key = key.to_cmp_be_bytes()?;
             let table_key = table_key.as_slice();
             table.insert(table_key, value)?;
