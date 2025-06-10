@@ -3,8 +3,8 @@ mod non_clustered;
 mod primary_key;
 
 use {
-    super::{ExprNode, select::Prebuild},
-    crate::ast::{Expr, IndexOperator},
+    super::{DataTypeNode, ExprNode, select::Prebuild},
+    crate::ast::{DataType, Expr, IndexOperator},
 };
 pub use {
     crate::{ast::IndexItem, result::Result},
@@ -20,7 +20,10 @@ pub enum IndexItemNode<'a> {
         asc: Option<bool>,
         cmp_expr: Option<(IndexOperator, ExprNode<'a>)>,
     },
-    PrimaryKey(ExprNode<'a>),
+    PrimaryKey {
+        data_type: DataTypeNode,
+        expr: ExprNode<'a>,
+    },
 }
 
 impl<'a> From<CmpExprNode<'a>> for IndexItemNode<'a> {
@@ -62,7 +65,13 @@ impl<'a> Prebuild<IndexItem> for IndexItemNode<'a> {
                     cmp_expr: cmp_expr_result,
                 })
             }
-            IndexItemNode::PrimaryKey(expr) => Ok(IndexItem::PrimaryKey(expr.try_into()?)),
+            IndexItemNode::PrimaryKey { data_type, expr } => {
+                let data_type: DataType = data_type.try_into()?;
+                Ok(IndexItem::PrimaryKey {
+                    data_type,
+                    expr: expr.try_into()?,
+                })
+            }
         }
     }
 }

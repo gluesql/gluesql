@@ -28,7 +28,7 @@ test_case!(index_by, {
     assert_eq!(actual, expected, "insert - specifying columns");
 
     let actual = table("Foo")
-        .index_by(primary_key().eq("1"))
+        .index_by(primary_key("INTEGER").eq("1"))
         .select()
         .project("id, name")
         .execute(glue)

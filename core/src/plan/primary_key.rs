@@ -108,34 +108,42 @@ impl<'a> PrimaryKeyPlanner<'a> {
             let key = match key {
                 Expr::Identifier(ident) => ident,
                 Expr::CompoundIdentifier { ident, .. } => ident,
-                _ => return false,
+                _ => return None,
             };
 
             current_context
                 .as_ref()
-                .map(|context| context.contains_primary_key(key))
-                .unwrap_or(false)
+                .and_then(|context| context.contains_primary_key(key))
         };
 
         match expr {
-            Expr::BinaryOp {
-                left: key,
+            ref expr @ Expr::BinaryOp {
+                left: ref key,
                 op: BinaryOperator::Eq,
-                right: value,
+                right: ref value,
             }
-            | Expr::BinaryOp {
-                left: value,
+            | ref expr @ Expr::BinaryOp {
+                left: ref value,
                 op: BinaryOperator::Eq,
-                right: key,
-            } if check_primary_key(key.as_ref())
-                && check_evaluable(current_context.as_ref().map(Rc::clone), &key)
+                right: ref key,
+            } if check_evaluable(current_context.as_ref().map(Rc::clone), &key)
                 && check_evaluable(None, &value) =>
             {
-                let index_item = IndexItem::PrimaryKey(*value);
+                if let Some(data_type) = check_primary_key(key.as_ref()) {
+                    let index_item = IndexItem::PrimaryKey {
+                        data_type,
+                        expr: (**value).clone(),
+                    };
 
-                PrimaryKey::Found {
-                    index_item,
-                    expr: None,
+                    PrimaryKey::Found {
+                        index_item,
+                        expr: None,
+                    }
+                } else {
+                    let outer_context = Context::concat(current_context, outer_context);
+                    let expr = self.subquery_expr(outer_context, (*expr).clone());
+
+                    PrimaryKey::NotFound(expr)
                 }
             }
             Expr::BinaryOp {
@@ -271,7 +279,10 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
+                    index: Some(IndexItem::PrimaryKey {
+                        data_type: DataType::Int,
+                        expr: expr("1"),
+                    }),
                 },
                 joins: Vec::new(),
             },
@@ -289,7 +300,10 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
+                    index: Some(IndexItem::PrimaryKey {
+                        data_type: DataType::Int,
+                        expr: expr("1"),
+                    }),
                 },
                 joins: Vec::new(),
             },
@@ -307,7 +321,10 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
+                    index: Some(IndexItem::PrimaryKey {
+                        data_type: DataType::Int,
+                        expr: expr("1"),
+                    }),
                 },
                 joins: Vec::new(),
             },
@@ -331,7 +348,10 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
+                    index: Some(IndexItem::PrimaryKey {
+                        data_type: DataType::Int,
+                        expr: expr("1"),
+                    }),
                 },
                 joins: Vec::new(),
             },
@@ -364,7 +384,10 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
+                    index: Some(IndexItem::PrimaryKey {
+                        data_type: DataType::Int,
+                        expr: expr("1"),
+                    }),
                 },
                 joins: Vec::new(),
             },
@@ -396,7 +419,10 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
+                    index: Some(IndexItem::PrimaryKey {
+                        data_type: DataType::Int,
+                        expr: expr("1"),
+                    }),
                 },
                 joins: vec![Join {
                     relation: TableFactor::Table {
@@ -454,7 +480,10 @@ mod tests {
                         relation: TableFactor::Table {
                             name: "Player".to_owned(),
                             alias: None,
-                            index: Some(IndexItem::PrimaryKey(expr("1"))),
+                            index: Some(IndexItem::PrimaryKey {
+                                data_type: DataType::Int,
+                                expr: expr("1"),
+                            }),
                         },
                         joins: Vec::new(),
                     },
