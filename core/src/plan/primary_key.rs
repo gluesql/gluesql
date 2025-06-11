@@ -2,8 +2,8 @@ use {
     super::{context::Context, evaluable::check_expr as check_evaluable, planner::Planner},
     crate::{
         ast::{
-            BinaryOperator, DataType, Expr, IndexItem, Query, Select, SetExpr, Statement,
-            TableAlias, TableFactor, TableWithJoins, ColumnDef, ColumnUniqueOption,
+            BinaryOperator, ColumnDef, ColumnUniqueOption, DataType, Expr, IndexItem, Query,
+            Select, SetExpr, Statement, TableAlias, TableFactor, TableWithJoins,
         },
         data::Schema,
     },
@@ -62,8 +62,7 @@ impl<'a> PrimaryKeyPlanner<'a> {
             if let Some(schema) = self.get_schema(table_name) {
                 if let Some(column_defs) = &schema.column_defs {
                     if let Some(ColumnDef { data_type, .. }) = column_defs.iter().find(|c| {
-                        c.name == ident
-                            && c.unique == Some(ColumnUniqueOption { is_primary: true })
+                        c.name == ident && c.unique == Some(ColumnUniqueOption { is_primary: true })
                     }) {
                         return Some(data_type.clone());
                     }
@@ -182,8 +181,16 @@ impl<'a> PrimaryKeyPlanner<'a> {
             {
                 let (alias, ident) = match key.as_ref() {
                     Expr::Identifier(ident) => (None, ident.as_str()),
-                    Expr::CompoundIdentifier { alias, ident } => (Some(alias.as_str()), ident.as_str()),
-                    _ => unreachable!(),
+                    Expr::CompoundIdentifier { alias, ident } => {
+                        (Some(alias.as_str()), ident.as_str())
+                    }
+                    _ => {
+                        return PrimaryKey::NotFound(Expr::BinaryOp {
+                            left: key,
+                            op: BinaryOperator::Eq,
+                            right: value,
+                        });
+                    }
                 };
                 let data_type = self
                     .find_pk_data_type(alias_map, alias, ident)
@@ -256,7 +263,8 @@ impl<'a> PrimaryKeyPlanner<'a> {
                     }
                 }
             }
-            Expr::Nested(expr) => match self.expr(alias_map, outer_context, current_context, *expr) {
+            Expr::Nested(expr) => match self.expr(alias_map, outer_context, current_context, *expr)
+            {
                 PrimaryKey::Found { index_item, expr } => {
                     let expr = expr.map(Box::new).map(Expr::Nested);
 
@@ -280,9 +288,9 @@ mod tests {
         super::plan as plan_primary_key,
         crate::{
             ast::{
-                AstLiteral, BinaryOperator, Expr, IndexItem, Join, JoinConstraint, JoinExecutor,
-                JoinOperator, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
-                TableWithJoins, Values, DataType,
+                AstLiteral, BinaryOperator, DataType, Expr, IndexItem, Join, JoinConstraint,
+                JoinExecutor, JoinOperator, Query, Select, SelectItem, SetExpr, Statement,
+                TableFactor, TableWithJoins, Values,
             },
             mock::{MockStorage, run},
             parse_sql::{parse, parse_expr},

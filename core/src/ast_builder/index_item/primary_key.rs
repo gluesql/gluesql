@@ -17,7 +17,7 @@ pub fn primary_key() -> PrimaryKeyNode {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ast::{AstLiteral, Expr, DataType},
+        ast::{AstLiteral, DataType, Expr},
         ast_builder::{index_item::IndexItem, primary_key, select::Prebuild},
     };
 
