@@ -159,7 +159,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
 
                         let value = match evaluated {
                             Evaluated::Literal(literal) => {
-                                Value::try_from_literal(&data_type, &literal)
+                                Value::try_from_literal(data_type, &literal)
                             }
                             eval => eval.try_into(),
                         }?;
