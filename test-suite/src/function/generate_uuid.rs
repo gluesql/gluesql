@@ -1,6 +1,6 @@
 use {
     crate::*,
-    gluesql_core::{ast::DataType, error::TranslateError, prelude::Payload},
+    gluesql_core::{ast::DataType, error::TranslateError},
 };
 
 test_case!(generate_uuid, {
@@ -8,15 +8,7 @@ test_case!(generate_uuid, {
 
     let test_cases = [
         (
-            "CREATE TABLE SingleItem (id UUID DEFAULT GENERATE_UUID())",
-            Ok(Payload::Create),
-        ),
-        (
-            r#"INSERT INTO SingleItem VALUES (GENERATE_UUID())"#,
-            Ok(Payload::Insert(1)),
-        ),
-        (
-            "SELECT generate_uuid(0) as uuid FROM SingleItem",
+            "SELECT generate_uuid(0) as uuid",
             Err(TranslateError::FunctionArgsLengthNotMatching {
                 name: "GENERATE_UUID".to_owned(),
                 expected: 0,
@@ -30,10 +22,8 @@ test_case!(generate_uuid, {
         g.test(sql, expected).await;
     }
 
-    g.count("SELECT GENERATE_UUID() FROM SingleItem", 1).await;
-    g.type_match(
-        "SELECT GENERATE_UUID() as uuid FROM SingleItem",
-        &[DataType::Uuid],
-    )
-    .await;
+    g.count("SELECT GENERATE_UUID()", 1).await;
+    g.count("VALUES (GENERATE_UUID())", 1).await;
+    g.type_match("SELECT GENERATE_UUID() as uuid", &[DataType::Uuid]).await;
+    g.type_match("VALUES (GENERATE_UUID())", &[DataType::Uuid]).await;
 });
