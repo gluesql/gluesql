@@ -18,6 +18,9 @@ pub use gluesql_shared_memory_storage;
 #[cfg(feature = "gluesql_sled_storage")]
 pub use gluesql_sled_storage;
 
+#[cfg(feature = "gluesql-redb-storage")]
+pub use gluesql_redb_storage;
+
 #[cfg(feature = "gluesql-json-storage")]
 pub use gluesql_json_storage;
 
@@ -59,6 +62,9 @@ pub mod prelude {
 
     #[cfg(feature = "gluesql_sled_storage")]
     pub use gluesql_sled_storage::SledStorage;
+
+    #[cfg(feature = "gluesql-redb-storage")]
+    pub use gluesql_redb_storage::RedbStorage;
 
     #[cfg(feature = "gluesql-json-storage")]
     pub use gluesql_json_storage::JsonStorage;
