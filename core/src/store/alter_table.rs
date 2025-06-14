@@ -32,7 +32,8 @@ pub enum AlterTableError {
     ConflictOnUnexpectedMapRowFound,
 }
 
-#[async_trait(?Send)]
+#[cfg_attr(feature = "send", async_trait)]
+#[cfg_attr(not(feature = "send"), async_trait(?Send))]
 pub trait AlterTable: Store + StoreMut {
     async fn rename_schema(&mut self, table_name: &str, new_table_name: &str) -> Result<()> {
         let mut schema = self
