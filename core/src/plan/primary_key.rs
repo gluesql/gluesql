@@ -729,4 +729,59 @@ mod tests {
         });
         assert_eq!(actual, expected, "nested:\n{sql}");
     }
+
+    #[test]
+    fn find_pk_data_type() {
+        let storage = run("CREATE TABLE Player (
+                id INTEGER PRIMARY KEY,
+                name TEXT
+            );
+            CREATE TABLE Item (
+                seq TEXT PRIMARY KEY,
+                amount INTEGER
+            );
+            CREATE TABLE Log (
+                id INTEGER,
+                note TEXT
+            );");
+
+        let parsed = parse("SELECT * FROM Player p JOIN Item i ON True JOIN Log l ON True")
+            .expect("select")
+            .into_iter()
+            .next()
+            .unwrap();
+        let statement = translate(&parsed).unwrap();
+        let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
+        let planner = super::PrimaryKeyPlanner {
+            schema_map: &schema_map,
+        };
+
+        if let Statement::Query(Query {
+            body: SetExpr::Select(select),
+            ..
+        }) = statement
+        {
+            let alias_map = super::PrimaryKeyPlanner::alias_map(&select.from);
+
+            assert_eq!(
+                planner.find_pk_data_type(&alias_map, Some("p"), "id"),
+                Some(DataType::Int)
+            );
+            assert_eq!(
+                planner.find_pk_data_type(&alias_map, Some("i"), "seq"),
+                Some(DataType::Text)
+            );
+            assert_eq!(planner.find_pk_data_type(&alias_map, Some("x"), "id"), None);
+            assert_eq!(
+                planner.find_pk_data_type(&alias_map, None, "seq"),
+                Some(DataType::Text)
+            );
+            assert_eq!(
+                planner.find_pk_data_type(&alias_map, Some("p"), "name"),
+                None
+            );
+        } else {
+            unreachable!();
+        }
+    }
 }
