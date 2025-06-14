@@ -1443,9 +1443,11 @@ dependencies = [
 name = "gluesql-macros"
 version = "0.16.3"
 dependencies = [
+ "chrono",
  "gluesql-core",
  "proc-macro2",
  "quote",
+ "rust_decimal",
  "syn 2.0.89",
 ]
 

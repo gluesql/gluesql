@@ -18,3 +18,5 @@ syn = { version = "2", features = ["full"] }
 
 [dev-dependencies]
 gluesql-core.workspace = true
+chrono = "0.4"
+rust_decimal = "1"
