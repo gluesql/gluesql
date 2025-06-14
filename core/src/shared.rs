@@ -8,7 +8,11 @@ pub use im::{HashMap, HashSet};
 #[cfg(not(feature = "send"))]
 pub use im_rc::{HashMap, HashSet};
 
+#[cfg(feature = "send")]
+pub trait SendSync: Send + Sync {}
+#[cfg(not(feature = "send"))]
 pub trait SendSync {}
+
 #[cfg(feature = "send")]
 impl<T: Send + Sync> SendSync for T {}
 #[cfg(not(feature = "send"))]

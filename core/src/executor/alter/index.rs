@@ -4,11 +4,12 @@ use {
         ast::{ColumnDef, Expr, Function, OrderByExpr},
         data::Schema,
         result::Result,
+        shared::SendSync,
         store::{GStore, GStoreMut},
     },
 };
 
-pub async fn create_index<T: GStore + GStoreMut>(
+pub async fn create_index<T: GStore + GStoreMut + SendSync>(
     storage: &mut T,
     table_name: &str,
     index_name: &str,

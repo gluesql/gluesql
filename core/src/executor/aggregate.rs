@@ -111,7 +111,7 @@ pub async fn apply<'a, T: GStore + SendSync, U: Stream<Item = Result<Rc<RowConte
         .map(S::Aggregate)
 }
 
-async fn group_by_having<'a, T: GStore>(
+async fn group_by_having<'a, T: GStore + SendSync>(
     storage: &'a T,
     filter_context: Option<Rc<RowContext<'a>>>,
     having: Option<&'a Expr>,

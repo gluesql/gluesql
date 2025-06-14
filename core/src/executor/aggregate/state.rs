@@ -8,7 +8,6 @@ use {
         store::GStore,
     },
     futures::stream::{self, StreamExt, TryStreamExt},
-    itertools::Itertools,
     std::cmp::Ordering,
     utils::{IndexMap, Vector},
 };
@@ -222,23 +221,28 @@ impl<'a, T: GStore + SendSync> State<'a, T> {
             values, contexts, ..
         } = self;
 
-        stream::iter(values.into_iter().chunks(size).into_iter().enumerate())
-            .then(|(i, entries)| {
-                let next = contexts.get(i).map(Rc::clone);
+        use std::collections::VecDeque;
 
-                async move {
-                    let aggregated = stream::iter(entries)
-                        .then(|((_, aggr), (_, aggr_value))| async move {
-                            aggr_value.export().await.map(|value| (aggr, value))
-                        })
-                        .try_collect::<HashMap<&'a Aggregate, Value>>()
-                        .await?;
+        let mut entries: VecDeque<_> = values.into_iter().collect();
+        let mut results = Vec::new();
+        let mut idx = 0;
 
-                    Ok((Some(aggregated), next))
-                }
-            })
-            .try_collect::<Vec<(Option<ValuesMap<'a>>, Option<Rc<RowContext<'a>>>)>>()
-            .await
+        while !entries.is_empty() {
+            let chunk: Vec<_> = entries.drain(..usize::min(size, entries.len())).collect();
+            let next = contexts.get(idx).map(Rc::clone);
+
+            let aggregated = stream::iter(chunk)
+                .then(|((_, aggr), (_, aggr_value))| async move {
+                    aggr_value.export().await.map(|value| (aggr, value))
+                })
+                .try_collect::<HashMap<&'a Aggregate, Value>>()
+                .await?;
+
+            results.push((Some(aggregated), next));
+            idx += 1;
+        }
+
+        Ok(results)
     }
 
     pub async fn accumulate(

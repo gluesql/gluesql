@@ -4,11 +4,12 @@ use {
         ast::{AlterTableOperation, Expr, Function},
         data::{Schema, SchemaIndex},
         result::Result,
+        shared::SendSync,
         store::{GStore, GStoreMut},
     },
 };
 
-pub async fn alter_table<T: GStore + GStoreMut>(
+pub async fn alter_table<T: GStore + GStoreMut + SendSync>(
     storage: &mut T,
     table_name: &str,
     operation: &AlterTableOperation,

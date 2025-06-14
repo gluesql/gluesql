@@ -4,11 +4,12 @@ use {
         ast::{Expr, OperateFunctionArg},
         data::CustomFunction,
         result::Result,
+        shared::SendSync,
         store::{GStore, GStoreMut},
     },
 };
 
-pub async fn insert_function<T: GStore + GStoreMut>(
+pub async fn insert_function<T: GStore + GStoreMut + SendSync>(
     storage: &mut T,
     func_name: &str,
     args: &Vec<OperateFunctionArg>,
@@ -33,7 +34,7 @@ pub async fn insert_function<T: GStore + GStoreMut>(
     }
 }
 
-pub async fn delete_function<T: GStore + GStoreMut>(
+pub async fn delete_function<T: GStore + GStoreMut + SendSync>(
     storage: &mut T,
     func_names: &[String],
     if_exists: bool,

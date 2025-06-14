@@ -8,6 +8,7 @@ use {
         executor::{evaluate_stateless, select::select},
         prelude::{DataType, Value},
         result::{Error, Result},
+        shared::SendSync,
         store::{GStore, GStoreMut},
     },
     futures::stream::TryStreamExt,
@@ -25,7 +26,7 @@ pub struct CreateTableOptions<'a> {
     pub comment: &'a Option<String>,
 }
 
-pub async fn create_table<T: GStore + GStoreMut>(
+pub async fn create_table<T: GStore + GStoreMut + SendSync>(
     storage: &mut T,
     CreateTableOptions {
         target_table_name,
@@ -211,7 +212,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
     }
 }
 
-pub async fn drop_table<T: GStore + GStoreMut>(
+pub async fn drop_table<T: GStore + GStoreMut + SendSync>(
     storage: &mut T,
     table_names: &[String],
     if_exists: bool,
