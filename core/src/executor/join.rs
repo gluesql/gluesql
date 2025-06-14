@@ -1,6 +1,6 @@
 use {
     super::fetch::{fetch_relation_columns, fetch_relation_rows},
-    crate::shared::Rc,
+    crate::shared::{Rc, SendSync},
     crate::{
         ast::{
             Expr, Join as AstJoin, JoinConstraint, JoinExecutor as AstJoinExecutor,
@@ -20,7 +20,7 @@ use {
     utils::OrStream,
 };
 
-pub struct Join<'a, T: GStore> {
+pub struct Join<'a, T: GStore + SendSync> {
     storage: &'a T,
     join_clauses: &'a [AstJoin],
     filter_context: Option<Rc<RowContext<'a>>>,
@@ -29,7 +29,7 @@ pub struct Join<'a, T: GStore> {
 type JoinItem<'a> = Rc<RowContext<'a>>;
 type Joined<'a> = Pin<Box<dyn Stream<Item = Result<JoinItem<'a>>> + 'a>>;
 
-impl<'a, T: GStore> Join<'a, T> {
+impl<'a, T: GStore + SendSync> Join<'a, T> {
     pub fn new(
         storage: &'a T,
         join_clauses: &'a [AstJoin],
@@ -59,7 +59,7 @@ impl<'a, T: GStore> Join<'a, T> {
     }
 }
 
-async fn join<'a, T: GStore>(
+async fn join<'a, T: GStore + SendSync>(
     storage: &'a T,
     filter_context: Option<Rc<RowContext<'a>>>,
     ast_join: &'a AstJoin,
@@ -222,7 +222,7 @@ enum JoinExecutor<'a> {
 }
 
 impl<'a> JoinExecutor<'a> {
-    async fn new<T: GStore>(
+    async fn new<T: GStore + SendSync>(
         storage: &'a T,
         relation: &TableFactor,
         filter_context: Option<Rc<RowContext<'a>>>,
@@ -277,7 +277,7 @@ impl<'a> JoinExecutor<'a> {
     }
 }
 
-async fn check_where_clause<'a, 'b, T: GStore>(
+async fn check_where_clause<'a, 'b, T: GStore + SendSync>(
     storage: &'a T,
     table_alias: &'a str,
     filter_context: Option<Rc<RowContext<'a>>>,

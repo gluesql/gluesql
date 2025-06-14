@@ -1,5 +1,6 @@
 use {
     super::expr::PlanExpr,
+    crate::shared::SendSync,
     crate::{
         ast::{
             Expr, Join, JoinConstraint, JoinOperator, Query, Select, SelectItem, SetExpr,
@@ -14,7 +15,7 @@ use {
     std::collections::HashMap,
 };
 
-pub async fn fetch_schema_map<T: Store>(
+pub async fn fetch_schema_map<T: Store + SendSync>(
     storage: &T,
     statement: &Statement,
 ) -> Result<HashMap<String, Schema>> {
@@ -167,7 +168,8 @@ async fn scan_join<T: Store>(storage: &T, join: &Join) -> Result<HashMap<String,
     Ok(schema_list)
 }
 
-#[async_recursion(?Send)]
+#[cfg_attr(feature = "send", async_recursion)]
+#[cfg_attr(not(feature = "send"), async_recursion(?Send))]
 async fn scan_table_factor<T>(
     storage: &T,
     table_factor: &TableFactor,
@@ -189,7 +191,8 @@ where
     }
 }
 
-#[async_recursion(?Send)]
+#[cfg_attr(feature = "send", async_recursion)]
+#[cfg_attr(not(feature = "send"), async_recursion(?Send))]
 async fn scan_expr<T>(storage: &T, expr: &Expr) -> Result<HashMap<String, Schema>>
 where
     T: Store,

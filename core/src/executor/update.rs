@@ -3,7 +3,7 @@ use {
         context::RowContext,
         evaluate::{Evaluated, evaluate},
     },
-    crate::shared::Rc,
+    crate::shared::{Rc, SendSync},
     crate::{
         ast::{Assignment, ColumnDef, ColumnUniqueOption, ForeignKey},
         data::{Key, Row, Value},
@@ -38,14 +38,14 @@ pub enum UpdateError {
     },
 }
 
-pub struct Update<'a, T: GStore> {
+pub struct Update<'a, T: GStore + SendSync> {
     storage: &'a T,
     table_name: &'a str,
     fields: &'a [Assignment],
     column_defs: Option<&'a [ColumnDef]>,
 }
 
-impl<'a, T: GStore> Update<'a, T> {
+impl<'a, T: GStore + SendSync> Update<'a, T> {
     pub fn new(
         storage: &'a T,
         table_name: &'a str,

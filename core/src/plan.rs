@@ -9,14 +9,14 @@ mod primary_key;
 mod schema;
 mod validate;
 
-use crate::{ast::Statement, result::Result, store::Store};
+use crate::{ast::Statement, result::Result, shared::SendSync, store::Store};
 
 pub use {
     self::validate::validate, error::*, index::plan as plan_index, join::plan as plan_join,
     primary_key::plan as plan_primary_key, schema::fetch_schema_map,
 };
 
-pub async fn plan<T: Store>(storage: &T, statement: Statement) -> Result<Statement> {
+pub async fn plan<T: Store + SendSync>(storage: &T, statement: Statement) -> Result<Statement> {
     let schema_map = fetch_schema_map(storage, &statement).await?;
     validate(&schema_map, &statement)?;
     let statement = plan_primary_key(&schema_map, statement);

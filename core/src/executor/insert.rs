@@ -3,7 +3,7 @@ use {
         select::select,
         validate::{ColumnValidation, validate_unique},
     },
-    crate::shared::Rc,
+    crate::shared::{Rc, SendSync},
     crate::{
         ast::{ColumnDef, ColumnUniqueOption, Expr, ForeignKey, Query, SetExpr, Values},
         data::{Key, Row, Schema, Value},
@@ -58,7 +58,7 @@ enum RowsData {
     Insert(Vec<(Key, DataRow)>),
 }
 
-pub async fn insert<T: GStore + GStoreMut>(
+pub async fn insert<T: GStore + GStoreMut + SendSync>(
     storage: &mut T,
     table_name: &str,
     columns: &[String],
@@ -108,7 +108,7 @@ pub async fn insert<T: GStore + GStoreMut>(
     }
 }
 
-async fn fetch_vec_rows<T: GStore>(
+async fn fetch_vec_rows<T: GStore + SendSync>(
     storage: &T,
     table_name: &str,
     column_defs: Vec<ColumnDef>,
@@ -206,7 +206,7 @@ async fn fetch_vec_rows<T: GStore>(
     }
 }
 
-async fn validate_foreign_key<T: GStore>(
+async fn validate_foreign_key<T: GStore + SendSync>(
     storage: &T,
     column_defs: &Rc<[ColumnDef]>,
     foreign_keys: Vec<ForeignKey>,
@@ -258,7 +258,7 @@ async fn validate_foreign_key<T: GStore>(
     Ok(())
 }
 
-async fn fetch_map_rows<T: GStore>(storage: &T, source: &Query) -> Result<Vec<DataRow>> {
+async fn fetch_map_rows<T: GStore + SendSync>(storage: &T, source: &Query) -> Result<Vec<DataRow>> {
     #[derive(futures_enum::Stream)]
     enum Rows<I1, I2> {
         Values(I1),

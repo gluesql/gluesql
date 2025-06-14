@@ -11,7 +11,7 @@ use {
         update::Update,
         validate::{ColumnValidation, validate_unique},
     },
-    crate::shared::Rc,
+    crate::shared::{Rc, SendSync},
     crate::{
         ast::{
             AstLiteral, BinaryOperator, DataType, Dictionary, Expr, Query, SelectItem, SetExpr,
@@ -96,7 +96,7 @@ pub enum PayloadVariable {
     Version(String),
 }
 
-pub async fn execute<T: GStore + GStoreMut>(
+pub async fn execute<T: GStore + GStoreMut + SendSync>(
     storage: &mut T,
     statement: &Statement,
 ) -> Result<Payload> {
@@ -124,7 +124,7 @@ pub async fn execute<T: GStore + GStoreMut>(
     }
 }
 
-async fn execute_inner<T: GStore + GStoreMut>(
+async fn execute_inner<T: GStore + GStoreMut + SendSync>(
     storage: &mut T,
     statement: &Statement,
 ) -> Result<Payload> {

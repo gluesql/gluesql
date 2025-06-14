@@ -1,6 +1,6 @@
 use {
     super::{context::RowContext, evaluate::evaluate},
-    crate::shared::{HashMap, Rc},
+    crate::shared::{HashMap, Rc, SendSync},
     crate::{
         ast::{Aggregate, Expr},
         data::Value,
@@ -9,14 +9,14 @@ use {
     },
 };
 
-pub struct Filter<'a, T: GStore> {
+pub struct Filter<'a, T: GStore + SendSync> {
     storage: &'a T,
     where_clause: Option<&'a Expr>,
     context: Option<Rc<RowContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
 }
 
-impl<'a, T: GStore> Filter<'a, T> {
+impl<'a, T: GStore + SendSync> Filter<'a, T> {
     pub fn new(
         storage: &'a T,
         where_clause: Option<&'a Expr>,
@@ -50,7 +50,7 @@ impl<'a, T: GStore> Filter<'a, T> {
     }
 }
 
-pub async fn check_expr<'a, T: GStore>(
+pub async fn check_expr<'a, T: GStore + SendSync>(
     storage: &'a T,
     context: Option<Rc<RowContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,

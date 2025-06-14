@@ -19,7 +19,9 @@ pub struct Glue<T: GStore + GStoreMut> {
     pub storage: T,
 }
 
-impl<T: GStore + GStoreMut> Glue<T> {
+use crate::shared::SendSync;
+
+impl<T: GStore + GStoreMut + SendSync> Glue<T> {
     pub fn new(storage: T) -> Self {
         Self { storage }
     }

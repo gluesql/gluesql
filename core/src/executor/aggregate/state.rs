@@ -1,5 +1,5 @@
 use {
-    crate::shared::{HashMap, HashSet, Rc},
+    crate::shared::{HashMap, HashSet, Rc, SendSync},
     crate::{
         ast::{Aggregate, CountArgExpr, DataType},
         data::{Key, Value},
@@ -154,7 +154,7 @@ impl AggrValue {
     }
 }
 
-pub struct State<'a, T: GStore> {
+pub struct State<'a, T: GStore + SendSync> {
     storage: &'a T,
     index: usize,
     group: Group,
@@ -163,7 +163,7 @@ pub struct State<'a, T: GStore> {
     contexts: Vector<Rc<RowContext<'a>>>,
 }
 
-impl<'a, T: GStore> State<'a, T> {
+impl<'a, T: GStore + SendSync> State<'a, T> {
     pub fn new(storage: &'a T) -> Self {
         State {
             storage,

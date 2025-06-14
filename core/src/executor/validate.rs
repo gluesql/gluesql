@@ -1,5 +1,5 @@
 use {
-    crate::shared::HashSet,
+    crate::shared::{HashSet, SendSync},
     crate::{
         ast::{ColumnDef, ColumnUniqueOption},
         data::{Key, Value},
@@ -82,7 +82,7 @@ impl UniqueConstraint {
     }
 }
 
-pub async fn validate_unique<T: Store>(
+pub async fn validate_unique<T: Store + SendSync>(
     storage: &T,
     table_name: &str,
     column_validation: ColumnValidation<'_>,

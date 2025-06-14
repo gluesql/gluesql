@@ -3,7 +3,7 @@ use {
         Payload, Referencing,
         fetch::{fetch, fetch_columns},
     },
-    crate::shared::Rc,
+    crate::shared::{Rc, SendSync},
     crate::{
         ast::{BinaryOperator, Expr, ForeignKey, ReferentialAction},
         result::{Error, Result},
@@ -23,7 +23,7 @@ pub enum DeleteError {
     ValueNotFound(String),
 }
 
-pub async fn delete<T: GStore + GStoreMut>(
+pub async fn delete<T: GStore + GStoreMut + SendSync>(
     storage: &mut T,
     table_name: &str,
     selection: &Option<Expr>,

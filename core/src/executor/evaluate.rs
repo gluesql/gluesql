@@ -25,7 +25,10 @@ use {
 
 pub use {error::EvaluateError, evaluated::Evaluated};
 
-#[async_recursion(?Send)]
+use crate::shared::SendSync;
+
+#[cfg_attr(feature = "send", async_recursion)]
+#[cfg_attr(not(feature = "send"), async_recursion(?Send))]
 pub async fn evaluate<'a, 'b, 'c, T>(
     storage: &'a T,
     context: Option<Rc<RowContext<'b>>>,
@@ -35,7 +38,7 @@ pub async fn evaluate<'a, 'b, 'c, T>(
 where
     'b: 'a,
     'c: 'a,
-    T: GStore,
+    T: GStore + SendSync,
 {
     evaluate_inner(Some(storage), context, aggregated, expr).await
 }
@@ -50,7 +53,8 @@ pub async fn evaluate_stateless<'a, 'b: 'a>(
     evaluate_inner(storage, context, None, expr).await
 }
 
-#[async_recursion(?Send)]
+#[cfg_attr(feature = "send", async_recursion)]
+#[cfg_attr(not(feature = "send"), async_recursion(?Send))]
 async fn evaluate_inner<'a, 'b, 'c, T>(
     storage: Option<&'a T>,
     context: Option<Rc<RowContext<'b>>>,
@@ -60,7 +64,7 @@ async fn evaluate_inner<'a, 'b, 'c, T>(
 where
     'b: 'a,
     'c: 'a,
-    T: GStore,
+    T: GStore + SendSync,
 {
     let eval = |expr| {
         let context = context.as_ref().map(Rc::clone);
@@ -328,7 +332,7 @@ where
     }
 }
 
-async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
+async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore + SendSync>(
     storage: Option<&'a T>,
     context: Option<Rc<RowContext<'b>>>,
     aggregated: Option<Rc<HashMap<&'c Aggregate, Value>>>,
