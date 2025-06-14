@@ -19,7 +19,8 @@ futures-enum = "0.1.17"
 futures = "0.3"
 chrono = { version = "0.4.38", features = ["serde", "wasmbind"] }
 rust_decimal = { version = "1", features = ["serde-str"] }
-im-rc = "15"
+im-rc = { version = "15", optional = true }
+im = { version = "15", optional = true }
 iter-enum = "1"
 itertools = "0.12"
 serde = { version = "1", features = ["derive"] }
@@ -42,3 +43,7 @@ features = ["v4"]
 
 [dev-dependencies]
 pretty_assertions = "1"
+
+[features]
+default = ["im-rc"]
+send = ["im"]

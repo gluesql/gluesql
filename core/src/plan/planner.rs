@@ -1,10 +1,10 @@
 use {
     super::context::Context,
+    crate::shared::Rc,
     crate::{
         ast::{ColumnDef, ColumnUniqueOption, Expr, Function, Query, TableAlias, TableFactor},
         data::Schema,
     },
-    std::rc::Rc,
 };
 
 pub trait Planner<'a> {

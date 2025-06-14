@@ -4,7 +4,7 @@ use {
         Expr, Join, JoinConstraint, JoinOperator, Query, Select, SelectItem, SetExpr, TableAlias,
         TableFactor, TableWithJoins, Values,
     },
-    std::rc::Rc,
+    crate::shared::Rc,
 };
 
 pub fn check_expr(context: Option<Rc<Context<'_>>>, expr: &Expr) -> bool {
@@ -144,8 +144,7 @@ fn check_table_factor(context: Option<Rc<Context<'_>>>, table_factor: &TableFact
 mod tests {
     use {
         super::{Context, check_expr},
-        crate::{parse_sql::parse_expr, translate::translate_expr},
-        std::rc::Rc,
+        crate::{parse_sql::parse_expr, shared::Rc, translate::translate_expr},
     };
 
     fn test(context: Option<Rc<Context<'_>>>, sql: &str, expected: bool) {

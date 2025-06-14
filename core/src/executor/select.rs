@@ -15,6 +15,7 @@ use {
         limit::Limit,
         sort::Sort,
     },
+    crate::shared::Rc,
     crate::{
         ast::{Expr, OrderByExpr, Query, Select, SetExpr, TableWithJoins, Values},
         data::{Key, Row, Value, get_alias},
@@ -23,7 +24,7 @@ use {
     },
     async_recursion::async_recursion,
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
-    std::{borrow::Cow, rc::Rc},
+    std::borrow::Cow,
     utils::Vector,
 };
 

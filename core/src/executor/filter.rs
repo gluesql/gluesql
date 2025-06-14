@@ -1,13 +1,12 @@
 use {
     super::{context::RowContext, evaluate::evaluate},
+    crate::shared::{HashMap, Rc},
     crate::{
         ast::{Aggregate, Expr},
         data::Value,
         result::Result,
         store::GStore,
     },
-    im_rc::HashMap,
-    std::rc::Rc,
 };
 
 pub struct Filter<'a, T: GStore> {

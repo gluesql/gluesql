@@ -3,6 +3,7 @@ use {
         context::RowContext,
         evaluate::{Evaluated, evaluate},
     },
+    crate::shared::Rc,
     crate::{
         ast::{Assignment, ColumnDef, ColumnUniqueOption, ForeignKey},
         data::{Key, Row, Value},
@@ -11,7 +12,7 @@ use {
     },
     futures::stream::{self, StreamExt, TryStreamExt},
     serde::Serialize,
-    std::{borrow::Cow, fmt::Debug, rc::Rc},
+    std::{borrow::Cow, fmt::Debug},
     thiserror::Error,
     utils::HashMapExt,
 };

@@ -6,6 +6,7 @@ mod function;
 use {
     self::function::BreakCase,
     super::{context::RowContext, select::select},
+    crate::shared::{HashMap, Rc},
     crate::{
         ast::{Aggregate, Expr, Function},
         data::{CustomFunction, Interval, Literal, Row, Value},
@@ -19,8 +20,7 @@ use {
         future::{ready, try_join_all},
         stream::{self, StreamExt, TryStreamExt},
     },
-    im_rc::HashMap,
-    std::{borrow::Cow, ops::ControlFlow, rc::Rc},
+    std::{borrow::Cow, ops::ControlFlow},
 };
 
 pub use {error::EvaluateError, evaluated::Evaluated};

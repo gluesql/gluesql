@@ -3,6 +3,7 @@ use {
         select::select,
         validate::{ColumnValidation, validate_unique},
     },
+    crate::shared::Rc,
     crate::{
         ast::{ColumnDef, ColumnUniqueOption, Expr, ForeignKey, Query, SetExpr, Values},
         data::{Key, Row, Schema, Value},
@@ -12,7 +13,7 @@ use {
     },
     futures::stream::{self, StreamExt, TryStreamExt},
     serde::Serialize,
-    std::{fmt::Debug, rc::Rc},
+    std::fmt::Debug,
     thiserror::Error as ThisError,
 };
 

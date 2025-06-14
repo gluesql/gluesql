@@ -1,4 +1,5 @@
 use {
+    crate::shared::{HashMap, Rc},
     crate::{
         ast::{Aggregate, SelectItem},
         data::{Row, Value},
@@ -7,8 +8,6 @@ use {
         store::GStore,
     },
     futures::stream::{self, StreamExt, TryStreamExt},
-    im_rc::HashMap,
-    std::rc::Rc,
 };
 
 pub struct Project<'a, T: GStore> {

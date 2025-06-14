@@ -1,5 +1,6 @@
 use {
     super::fetch::{fetch_relation_columns, fetch_relation_rows},
+    crate::shared::Rc,
     crate::{
         ast::{
             Expr, Join as AstJoin, JoinConstraint, JoinExecutor as AstJoinExecutor,
@@ -15,7 +16,7 @@ use {
         stream::{self, Stream, StreamExt, TryStreamExt, empty, once},
     },
     itertools::Itertools,
-    std::{borrow::Cow, collections::HashMap, pin::Pin, rc::Rc},
+    std::{borrow::Cow, collections::HashMap, pin::Pin},
     utils::OrStream,
 };
 

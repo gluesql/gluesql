@@ -3,6 +3,7 @@ use {
         Payload, Referencing,
         fetch::{fetch, fetch_columns},
     },
+    crate::shared::Rc,
     crate::{
         ast::{BinaryOperator, Expr, ForeignKey, ReferentialAction},
         result::{Error, Result},
@@ -10,7 +11,6 @@ use {
     },
     futures::stream::{StreamExt, TryStreamExt},
     serde::Serialize,
-    std::rc::Rc,
     thiserror::Error as ThisError,
 };
 

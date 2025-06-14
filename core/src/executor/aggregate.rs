@@ -8,6 +8,7 @@ use {
         evaluate::{Evaluated, evaluate},
         filter::check_expr,
     },
+    crate::shared::Rc,
     crate::{
         ast::{Expr, SelectItem},
         data::Key,
@@ -16,7 +17,6 @@ use {
     },
     async_recursion::async_recursion,
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
-    std::rc::Rc,
 };
 
 pub use error::AggregateError;

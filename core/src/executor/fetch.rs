@@ -1,5 +1,6 @@
 use {
     super::{context::RowContext, evaluate::evaluate_stateless, filter::check_expr},
+    crate::shared::Rc,
     crate::{
         ast::{
             ColumnDef, ColumnUniqueOption, Dictionary, Expr, IndexItem, Join, Query, Select,
@@ -20,7 +21,7 @@ use {
         stream::{self, Stream, StreamExt, TryStreamExt},
     },
     serde::Serialize,
-    std::{borrow::Cow, collections::HashMap, fmt::Debug, iter, rc::Rc},
+    std::{borrow::Cow, collections::HashMap, fmt::Debug, iter},
     thiserror::Error as ThisError,
 };
 

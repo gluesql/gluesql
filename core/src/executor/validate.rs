@@ -1,4 +1,5 @@
 use {
+    crate::shared::HashSet,
     crate::{
         ast::{ColumnDef, ColumnUniqueOption},
         data::{Key, Value},
@@ -6,7 +7,6 @@ use {
         store::{DataRow, Store},
     },
     futures::stream::TryStreamExt,
-    im_rc::HashSet,
     serde::Serialize,
     std::fmt::Debug,
     thiserror::Error as ThisError,

@@ -11,6 +11,7 @@ use {
         update::Update,
         validate::{ColumnValidation, validate_unique},
     },
+    crate::shared::Rc,
     crate::{
         ast::{
             AstLiteral, BinaryOperator, DataType, Dictionary, Expr, Query, SelectItem, SetExpr,
@@ -22,7 +23,7 @@ use {
     },
     futures::stream::{StreamExt, TryStreamExt},
     serde::{Deserialize, Serialize},
-    std::{collections::HashMap, env::var, fmt::Debug, rc::Rc},
+    std::{collections::HashMap, env::var, fmt::Debug},
     thiserror::Error as ThisError,
 };
 

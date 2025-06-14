@@ -1,4 +1,5 @@
 use {
+    crate::shared::{HashMap, HashSet, Rc},
     crate::{
         ast::{Aggregate, CountArgExpr, DataType},
         data::{Key, Value},
@@ -7,9 +8,8 @@ use {
         store::GStore,
     },
     futures::stream::{self, StreamExt, TryStreamExt},
-    im_rc::{HashMap, HashSet},
     itertools::Itertools,
-    std::{cmp::Ordering, rc::Rc},
+    std::cmp::Ordering,
     utils::{IndexMap, Vector},
 };
 

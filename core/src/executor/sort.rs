@@ -1,5 +1,6 @@
 use {
     super::{context::RowContext, evaluate::evaluate},
+    crate::shared::{HashMap, Rc},
     crate::{
         ast::{Aggregate, AstLiteral, Expr, OrderByExpr, UnaryOperator},
         data::{Key, Row, Value},
@@ -8,9 +9,8 @@ use {
     },
     bigdecimal::ToPrimitive,
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
-    im_rc::HashMap,
     serde::Serialize,
-    std::{borrow::Cow, cmp::Ordering, fmt::Debug, rc::Rc},
+    std::{borrow::Cow, cmp::Ordering, fmt::Debug},
     thiserror::Error as ThisError,
     utils::Vector,
 };
