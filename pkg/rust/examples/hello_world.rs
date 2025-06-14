@@ -1,10 +1,15 @@
 #[cfg(feature = "gluesql_sled_storage")]
 mod hello_world {
     use {
-        gluesql::{gluesql_sled_storage::SledStorage, prelude::Glue},
+        gluesql::{
+            core::data::Row,
+            gluesql_sled_storage::SledStorage,
+            prelude::{FromRow, Glue},
+        },
         std::fs,
     };
 
+    #[derive(FromRow)]
     struct GreetRow {
         name: String,
     }
@@ -56,10 +61,12 @@ mod hello_world {
             .select()
             .unwrap()
             .map(|map| {
-                let name = *map.get("name").unwrap();
-                let name = name.into();
-
-                GreetRow { name }
+                let row = Row::Map(
+                    map.iter()
+                        .map(|(k, v)| (k.to_string(), (*v).clone()))
+                        .collect(),
+                );
+                GreetRow::from_row(&row).unwrap()
             })
             .collect::<Vec<_>>();
 

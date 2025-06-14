@@ -4,9 +4,11 @@
 // re-export
 pub use {chrono, sqlparser};
 
+mod from_row;
 mod glue;
 mod mock;
 mod result;
+pub use from_row::FromRow;
 
 pub mod ast;
 pub mod ast_builder;
@@ -22,6 +24,7 @@ pub mod prelude {
         ast::DataType,
         data::{Key, Value},
         executor::{Payload, PayloadVariable, execute},
+        from_row::FromRow,
         glue::Glue,
         parse_sql::parse,
         plan::plan,

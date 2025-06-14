@@ -1,0 +1,17 @@
+[package]
+name = "gluesql-derive"
+authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
+version.workspace = true
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+quote = "1"
+proc-macro2 = "1"
+syn = { version = "2", features = ["full"] }

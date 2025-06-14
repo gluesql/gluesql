@@ -9,6 +9,8 @@ pub mod core {
     pub use gluesql_core::*;
 }
 
+pub use gluesql_derive::FromRow;
+
 #[cfg(feature = "gluesql_memory_storage")]
 pub use gluesql_memory_storage;
 
@@ -52,6 +54,7 @@ pub use gluesql_idb_storage;
 pub use test_suite;
 
 pub mod prelude {
+    pub use crate::FromRow;
     pub use gluesql_core::prelude::*;
 
     #[cfg(feature = "gluesql_memory_storage")]
