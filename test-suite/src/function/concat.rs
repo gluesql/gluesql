@@ -6,23 +6,8 @@ use {
 test_case!(concat, {
     let g = get_tester!();
 
-    g.run(
-        "
-        CREATE TABLE Concat (
-            id INTEGER,
-            rate FLOAT,
-            flag BOOLEAN,
-            text TEXT,
-            null_value TEXT NULL
-        );
-    ",
-    )
-    .await;
-    g.run("INSERT INTO Concat VALUES (1, 2.3, TRUE, 'Foo', NULL);")
-        .await;
-
     g.test(
-        "select concat('ab', 'cd') as myc from Concat;",
+        "select concat('ab', 'cd') as myc;",
         Ok(select!(
            myc
            Str;
@@ -32,7 +17,7 @@ test_case!(concat, {
     .await;
 
     g.test(
-        "select concat('ab', 'cd', 'ef') as myconcat from Concat;",
+        "select concat('ab', 'cd', 'ef') as myconcat;",
         Ok(select!(
            myconcat
            Str;
@@ -42,20 +27,20 @@ test_case!(concat, {
     .await;
 
     g.test(
-        "select concat('ab', 'cd', NULL, 'ef') as myconcat from Concat;",
+        "select concat('ab', 'cd', NULL, 'ef') as myconcat;",
         Ok(select_with_null!(myconcat; Null)),
     )
     .await;
 
     g.test(
-        "select concat(DATE '2020-06-11', DATE '2020-16-3') as myconcat from Concat;",
+        "select concat(DATE '2020-06-11', DATE '2020-16-3') as myconcat;",
         Err(ValueError::FailedToParseDate("2020-16-3".to_owned()).into()),
     )
     .await;
 
     // test with non string arguments
     g.test(
-        "select concat(123, 456, 3.14) as myconcat from Concat;",
+        "select concat(123, 456, 3.14) as myconcat;",
         Ok(select!(
            myconcat
            Str;
@@ -65,31 +50,16 @@ test_case!(concat, {
     .await;
     // test with zero arguments
     g.test(
-        r#"select concat() as myconcat from Concat;"#,
+        r#"select concat() as myconcat;"#,
         Err(ValueError::EmptyArgNotAllowedInConcat.into()),
     )
     .await;
 
-    g.run(
-        r#"
-        CREATE TABLE ListTypeConcat (
-            id INTEGER,
-            items LIST,
-            items2 LIST
-        )"#,
-    )
-    .await;
-
-    g.run(
-        r#"
-        INSERT INTO ListTypeConcat VALUES
-            (1, '[1, 2, 3]', '["one", "two", "three"]');
-        "#,
-    )
-    .await;
-
     g.test(
-        r#"select concat(items, items2) as myconcat from ListTypeConcat;"#,
+        r#"SELECT CONCAT(
+            CAST('[1, 2, 3]' AS LIST),
+            CAST('["one", "two", "three"]' AS LIST)
+        ) AS myconcat;"#,
         Ok(select!(
            myconcat
            List;
