@@ -1,5 +1,7 @@
 use {
     super::{context::RowContext, evaluate::evaluate_stateless, filter::check_expr},
+    crate::shared::Rc,
+    crate::shared::SendSync,
     crate::{
         ast::{
             ColumnDef, ColumnUniqueOption, Dictionary, Expr, IndexItem, Join, Query, Select,
@@ -20,7 +22,7 @@ use {
         stream::{self, Stream, StreamExt, TryStreamExt},
     },
     serde::Serialize,
-    std::{borrow::Cow, collections::HashMap, fmt::Debug, iter, rc::Rc},
+    std::{borrow::Cow, collections::HashMap, fmt::Debug, iter},
     thiserror::Error as ThisError,
 };
 
@@ -42,7 +44,7 @@ pub enum FetchError {
     Unreachable,
 }
 
-pub async fn fetch<'a, T: GStore>(
+pub async fn fetch<'a, T: GStore + SendSync>(
     storage: &'a T,
     table_name: &'a str,
     columns: Option<Rc<[String]>>,
@@ -88,7 +90,7 @@ pub enum Rows<I1, I2, I3, I4> {
     Dictionary(I4),
 }
 
-pub async fn fetch_relation_rows<'a, T: GStore>(
+pub async fn fetch_relation_rows<'a, T: GStore + SendSync>(
     storage: &'a T,
     table_factor: &'a TableFactor,
     filter_context: &Option<Rc<RowContext<'a>>>,
@@ -390,7 +392,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
     }
 }
 
-pub async fn fetch_columns<T: GStore>(
+pub async fn fetch_columns<T: GStore + SendSync>(
     storage: &T,
     table_name: &str,
 ) -> Result<Option<Vec<String>>> {
@@ -409,13 +411,14 @@ pub async fn fetch_columns<T: GStore>(
     Ok(columns)
 }
 
-#[async_recursion(?Send)]
+#[cfg_attr(feature = "send", async_recursion)]
+#[cfg_attr(not(feature = "send"), async_recursion(?Send))]
 pub async fn fetch_relation_columns<T>(
     storage: &T,
     table_factor: &TableFactor,
 ) -> Result<Option<Vec<String>>>
 where
-    T: GStore,
+    T: GStore + SendSync,
 {
     match table_factor {
         TableFactor::Table { name, alias, .. } => {
@@ -529,7 +532,7 @@ where
     }
 }
 
-async fn fetch_join_columns<'a, T: GStore>(
+async fn fetch_join_columns<'a, T: GStore + SendSync>(
     storage: &T,
     joins: &'a [Join],
 ) -> Result<Option<Vec<(&'a String, Vec<String>)>>> {
@@ -549,7 +552,7 @@ async fn fetch_join_columns<'a, T: GStore>(
     Ok((columns.len() == joins.len()).then_some(columns))
 }
 
-pub async fn fetch_labels<T: GStore>(
+pub async fn fetch_labels<T: GStore + SendSync>(
     storage: &T,
     relation: &TableFactor,
     joins: &[Join],
