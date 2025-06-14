@@ -3,7 +3,7 @@ resolver = "2"
 members = [
   "cli",
   "core",
-  "gluesql-derive",
+  "gluesql-macros",
   "pkg/rust",
   "pkg/javascript",
   "pkg/python",
@@ -14,7 +14,7 @@ members = [
 default-members = [
   "cli",
   "core",
-  "gluesql-derive",
+  "gluesql-macros",
   "pkg/rust",
   "pkg/javascript",
   "pkg/python",
@@ -38,7 +38,7 @@ documentation = "https://docs.rs/gluesql/"
 
 [workspace.dependencies]
 gluesql-core = { path = "./core", version = "0.16.3" }
-gluesql-derive = { path = "./gluesql-derive", version = "0.16.3" }
+gluesql-macros = { path = "./gluesql-macros", version = "0.16.3" }
 
 cli = { package = "gluesql-cli", path = "./cli", version = "0.16.3" }
 test-suite = { package = "gluesql-test-suite", path = "./test-suite", version = "0.16.3" }

@@ -1251,11 +1251,11 @@ dependencies = [
  "gluesql-composite-storage",
  "gluesql-core",
  "gluesql-csv-storage",
- "gluesql-derive",
  "gluesql-file-storage",
  "gluesql-git-storage",
  "gluesql-idb-storage",
  "gluesql-json-storage",
+ "gluesql-macros",
  "gluesql-mongo-storage",
  "gluesql-parquet-storage",
  "gluesql-redb-storage",
@@ -1353,15 +1353,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gluesql-derive"
-version = "0.16.3"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.89",
-]
-
-[[package]]
 name = "gluesql-file-storage"
 version = "0.16.3"
 dependencies = [
@@ -1446,6 +1437,16 @@ dependencies = [
  "thiserror 1.0.63",
  "tokio",
  "uuid",
+]
+
+[[package]]
+name = "gluesql-macros"
+version = "0.16.3"
+dependencies = [
+ "gluesql-core",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.89",
 ]
 
 [[package]]
