@@ -7,8 +7,8 @@ pub use crate::{
         StringExtError, TableError, ValueError,
     },
     executor::{
-        AlterError, DeleteError, EvaluateError, ExecuteError, FetchError, InsertError,
-        SelectError, SortError, UpdateError, ValidateError,
+        AlterError, DeleteError, EvaluateError, ExecuteError, FetchError, InsertError, SelectError,
+        SortError, UpdateError, ValidateError,
     },
     plan::PlanError,
     store::{AlterTableError, IndexError},
