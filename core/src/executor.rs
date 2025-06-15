@@ -15,7 +15,6 @@ mod update;
 mod validate;
 
 pub use {
-    aggregate::AggregateError,
     alter::{AlterError, Referencing},
     context::RowContext,
     delete::DeleteError,

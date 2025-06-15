@@ -1,4 +1,3 @@
-mod error;
 mod state;
 
 use {
@@ -18,8 +17,6 @@ use {
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
     std::rc::Rc,
 };
-
-pub use error::AggregateError;
 
 #[derive(futures_enum::Stream)]
 enum S<T1, T2> {
