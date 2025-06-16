@@ -1,4 +1,3 @@
-mod error;
 mod state;
 
 use {
@@ -18,8 +17,6 @@ use {
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
     std::rc::Rc,
 };
-
-pub use error::AggregateError;
 
 #[derive(futures_enum::Stream)]
 enum S<T1, T2> {
@@ -125,11 +122,10 @@ async fn group_by_having<'a, T: GStore>(
     let rows = stream::iter(rows)
         .filter_map(move |(aggregated, next)| {
             let filter_context = filter_context.as_ref().map(Rc::clone);
-            let aggregated = aggregated.map(Rc::new);
 
             async move {
                 match having {
-                    None => Some(Ok((aggregated.as_ref().map(Rc::clone), next))),
+                    None => Some(Ok((aggregated, next))),
                     Some(having) => {
                         let filter_context = match filter_context {
                             Some(filter_context) => {
@@ -138,28 +134,17 @@ async fn group_by_having<'a, T: GStore>(
                             None => Rc::clone(&next),
                         };
                         let filter_context = Some(filter_context);
-                        let aggregated = aggregated.as_ref().map(Rc::clone);
+                        let aggr_rc = aggregated.clone().map(Rc::new);
 
-                        check_expr(
-                            storage,
-                            filter_context,
-                            aggregated.as_ref().map(Rc::clone),
-                            having,
-                        )
-                        .await
-                        .map(|pass| pass.then_some((aggregated, next)))
-                        .transpose()
+                        check_expr(storage, filter_context, aggr_rc, having)
+                            .await
+                            .map(|pass| pass.then_some((aggregated, next)))
+                            .transpose()
                     }
                 }
             }
         })
-        .and_then(|(aggregated, next)| async move {
-            aggregated
-                .map(Rc::try_unwrap)
-                .transpose()
-                .map_err(|_| AggregateError::UnreachableRcUnwrapFailure.into())
-                .map(|aggregated| AggregateContext { aggregated, next })
-        });
+        .map(|res| res.map(|(aggregated, next)| AggregateContext { aggregated, next }));
 
     Ok(rows)
 }
