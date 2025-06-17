@@ -11,6 +11,9 @@ on:
         description: Dry run
         type: boolean
         default: true
+  pull_request:
+    # Run on any pull request for validation in dry-run mode
+    branches: ["**"]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -34,7 +37,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.sha }}
+          ref: ${{ inputs.sha || github.sha }}
 
       # Avoid potential out-of-memory errors
       - name: Set swap space for Linux
@@ -78,7 +81,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.sha }}
+          ref: ${{ inputs.sha || github.sha }}
 
       # Avoid potential out-of-memory errors
       - name: Set swap space for Linux
