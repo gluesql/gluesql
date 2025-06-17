@@ -1,6 +1,7 @@
 name: Publish JavaScript
 
 on:
+  pull_request:
   workflow_dispatch:
     inputs:
       # Latest commit to include with the release. If omitted, use the latest commit on the main branch.
@@ -34,7 +35,7 @@ jobs:
           cd pkg/javascript
           wasm-pack build --no-pack --target web --no-typescript --release --out-dir ./dist_web
           wasm-pack build --no-pack --target nodejs --no-typescript --release --out-dir ./dist_nodejs -- --no-default-features --features nodejs
-          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+          if [ "${{ github.event.inputs.dry_run || 'true' }}" = "true" ]; then
             npm publish --dry-run
           else
             npm publish
