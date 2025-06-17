@@ -11,9 +11,6 @@ on:
         description: Dry run
         type: boolean
         default: true
-  pull_request:
-    # Run on any pull request for validation in dry-run mode
-    branches: ["**"]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
