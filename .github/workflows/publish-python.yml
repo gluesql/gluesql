@@ -91,6 +91,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+      - name: Configure PyO3 cross
+        if: matrix.architecture == 'aarch64'
+        run: echo "PYO3_CROSS_PYTHON_VERSION=${{ env.PYTHON_VERSION }}" >> $GITHUB_ENV
 
       - name: Set Rust target for aarch64
         if: matrix.architecture == 'aarch64'
