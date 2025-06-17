@@ -1,12 +1,14 @@
 name: Publish JavaScript
 
 on:
+  pull_request:
   workflow_dispatch:
     inputs:
       # Latest commit to include with the release. If omitted, use the latest commit on the main branch.
       sha:
         description: Commit SHA
         type: string
+        default: "58f24d5f053e4b57f5b831a5d390511d4e9621a3"
       dry_run:
         description: Dry run
         type: boolean
@@ -25,6 +27,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          registry-url: 'https://registry.npmjs.org'
       - name: Set up wasm pack
         uses: jetli/wasm-pack-action@v0.4.0
         with:
