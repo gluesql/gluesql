@@ -12,7 +12,7 @@ on:
       dry_run:
         description: Dry run
         type: boolean
-        default: true
+        default: false
 
 env:
   CARGO_TERM_COLOR: always
