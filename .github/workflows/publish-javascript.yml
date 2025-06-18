@@ -25,6 +25,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          registry-url: 'https://registry.npmjs.org'
       - name: Set up wasm pack
         uses: jetli/wasm-pack-action@v0.4.0
         with:
