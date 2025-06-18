@@ -23,9 +23,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
       - run: |
-          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
-            cargo release publish --workspace --no-confirm --no-publish
-          else
             packages=(
               "gluesql-utils"
               "gluesql-core"
@@ -47,6 +44,9 @@ jobs:
               "gluesql"
             )
             for package in "${packages[@]}"; do
-              cargo publish -p "$package" --token ${{ secrets.CRATES }} && sleep 3
+              if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+                cargo publish -p "$package" --workspace --no-confirm --no-publish && sleep 3
+              else
+                cargo publish -p "$package" --token ${{ secrets.CRATES }} && sleep 3
+              fi
             done
-          fi
