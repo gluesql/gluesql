@@ -8,6 +8,7 @@ on:
       sha:
         description: Commit SHA
         type: string
+        default: "b178ac47e150dde313cff85688e6a2141e8eccb5"
       dry_run:
         description: Dry run
         type: boolean
