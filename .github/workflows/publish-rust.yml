@@ -21,10 +21,13 @@ jobs:
   publish_to_crates:
     name: to crates.io
     runs-on: ubuntu-latest
+    env:
+      SHA: ${{ github.event.inputs.sha || 'b178ac47e150dde313cff85688e6a2141e8eccb5' }}
+      DRY_RUN: ${{ github.event.inputs.dry_run || 'true' }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.sha }}
+          ref: ${{ env.SHA }}
       - uses: Swatinem/rust-cache@v2
       - run: |
             packages=(
@@ -48,7 +51,7 @@ jobs:
               "gluesql"
             )
             for package in "${packages[@]}"; do
-              if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+              if [ "$DRY_RUN" = "true" ]; then
                 cargo publish -p "$package" --workspace --no-confirm --no-publish && sleep 3
               else
                 cargo publish -p "$package" --token ${{ secrets.CRATES }} && sleep 3
