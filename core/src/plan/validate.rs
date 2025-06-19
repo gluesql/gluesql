@@ -1,11 +1,12 @@
 use {
     super::PlanError,
+    crate::shared::Rc,
     crate::{
         ast::{Expr, Join, Query, SelectItem, SetExpr, Statement, TableFactor, TableWithJoins},
         data::Schema,
         result::Result,
     },
-    std::{collections::HashMap, rc::Rc},
+    std::collections::HashMap,
 };
 
 type SchemaMap = HashMap<String, Schema>;

@@ -1,7 +1,7 @@
 use {
-    crate::{data::Value, executor::RowContext, result::Result},
+    crate::{data::Value, executor::RowContext, result::Result, shared::Rc},
     serde::Serialize,
-    std::{collections::HashMap, fmt::Debug, rc::Rc},
+    std::{collections::HashMap, fmt::Debug},
     thiserror::Error,
 };
 

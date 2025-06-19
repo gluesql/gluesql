@@ -1,8 +1,11 @@
 use {
     super::RowContext,
-    crate::{ast::Aggregate, data::Value},
-    im_rc::HashMap,
-    std::{fmt::Debug, rc::Rc},
+    crate::{
+        ast::Aggregate,
+        data::Value,
+        shared::{HashMap, Rc},
+    },
+    std::fmt::Debug,
 };
 
 #[derive(Debug)]

@@ -5,13 +5,15 @@ use {
         executor::Payload,
         prelude::Glue,
         result::Result,
+        shared::SendSync,
         store::{GStore, GStoreMut},
     },
     async_trait::async_trait,
 };
 
-#[async_trait(?Send)]
-pub trait Execute<T: GStore + GStoreMut>
+#[cfg_attr(feature = "send", async_trait)]
+#[cfg_attr(not(feature = "send"), async_trait(?Send))]
+pub trait Execute<T: GStore + GStoreMut + SendSync>
 where
     Self: Sized + Build,
 {
@@ -22,8 +24,9 @@ where
     }
 }
 
-#[async_trait(?Send)]
-impl<T: GStore + GStoreMut, B: Build> Execute<T> for B {}
+#[cfg_attr(feature = "send", async_trait)]
+#[cfg_attr(not(feature = "send"), async_trait(?Send))]
+impl<T: GStore + GStoreMut + SendSync, B: Build> Execute<T> for B {}
 
 impl Build for Statement {
     fn build(self) -> Result<Statement> {
