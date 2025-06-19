@@ -52,7 +52,7 @@ jobs:
             )
             for package in "${packages[@]}"; do
               if [ "$DRY_RUN" = "true" ]; then
-                cargo publish -p "$package" --workspace --no-confirm --no-publish && sleep 3
+                cargo publish -p "$package" --dry-run && sleep 3
               else
                 cargo publish -p "$package" --token ${{ secrets.CRATES }} && sleep 3
               fi
