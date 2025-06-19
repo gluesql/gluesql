@@ -8,7 +8,6 @@ on:
       sha:
         description: Commit SHA
         type: string
-        default: "b178ac47e150dde313cff85688e6a2141e8eccb5"
       dry_run:
         description: Dry run
         type: boolean
@@ -22,7 +21,7 @@ jobs:
     name: to crates.io
     runs-on: ubuntu-latest
     env:
-      SHA: ${{ github.event.inputs.sha || 'b178ac47e150dde313cff85688e6a2141e8eccb5' }}
+      SHA: ${{ github.event.inputs.sha || '58f24d5f053e4b57f5b831a5d390511d4e9621a3' }}
       DRY_RUN: ${{ github.event.inputs.dry_run || 'true' }}
     steps:
       - uses: actions/checkout@v4
