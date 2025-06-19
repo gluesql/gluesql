@@ -1,7 +1,6 @@
 name: Publish Rust
 
 on:
-  pull_request:
   workflow_dispatch:
     inputs:
       # Latest commit to include with the release. If omitted, use the latest commit on the main branch.
@@ -21,7 +20,7 @@ jobs:
     name: to crates.io
     runs-on: ubuntu-latest
     env:
-      SHA: ${{ github.event.inputs.sha || '58f24d5f053e4b57f5b831a5d390511d4e9621a3' }}
+      SHA: ${{ github.event.inputs.sha }}
       DRY_RUN: ${{ github.event.inputs.dry_run || 'true' }}
     steps:
       - uses: actions/checkout@v4
