@@ -16,6 +16,7 @@ gluesql-json-storage.workspace = true
 gluesql-csv-storage.workspace = true
 gluesql-parquet-storage.workspace = true
 gluesql-file-storage.workspace = true
+gluesql-redb-storage.workspace = true
 
 clap = { version = "3.2.2", features = ["derive"] }
 rustyline = "9.1"

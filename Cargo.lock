@@ -1279,6 +1279,7 @@ dependencies = [
  "gluesql-file-storage",
  "gluesql-json-storage",
  "gluesql-parquet-storage",
+ "gluesql-redb-storage",
  "gluesql_memory_storage",
  "gluesql_sled_storage",
  "rustyline",
