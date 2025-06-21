@@ -98,6 +98,10 @@ Shared Memory Storage is a storage option designed to provide more comfortable u
 
 Sled Storage is a persistent data storage option for GlueSQL that is built on the Sled key-value embedded database in Rust. It is the only storage option currently supported by GlueSQL that implements all Store traits, from non-clustered indexes to transactions. Sled Storage is an excellent choice for handling and storing data in a Rust environment. To use Sled Storage, you can create a SledStorage instance using a path.
 
+### Redb Storage
+
+Redb Storage leverages the [redb](https://docs.rs/redb) embedded database for persistent storage with transactional support. It stores everything in a single database file, offering another simple way to keep your data on disk while enjoying GlueSQL's query capabilities.
+
 ### JSON Storage
 
 With GlueSQL, you can use JSONL or JSON files as a database that supports SQL and AST Builder, making it a powerful option for developers who need to work with JSON data. JSON Storage is a storage system that uses two types of files: a schema file (optional) and a data file. The schema file is written in Standard SQL and stores the structure of the table, while the data file contains the actual data and supports two file formats: `*.json` and `*.jsonl`. JSON Storage supports all DML features, but is particularly specialized for SELECT and INSERT.
