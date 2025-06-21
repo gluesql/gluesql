@@ -1,6 +1,6 @@
 {
   "name": "gluesql",
-  "version": "0.16.3",
+  "version": "0.17.0",
   "description": "GlueSQL is quite sticky, it attaches to anywhere",
   "browser": "gluesql.js",
   "main": "gluesql.node.js",
