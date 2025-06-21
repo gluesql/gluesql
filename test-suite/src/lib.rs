@@ -299,7 +299,7 @@ macro_rules! generate_store_tests {
         );
         glue!(ast_builder_index_by, ast_builder::index_by::index_by);
         glue!(
-            ast_builder_schemaless_basic, 
+            ast_builder_schemaless_basic,
             ast_builder::schemaless::basic::basic
         );
 
