@@ -21,11 +21,13 @@ use {
         result::Result,
         store::GStore,
     },
-    async_recursion::async_recursion,
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
-    std::{borrow::Cow, rc::Rc},
+    futures::Future,
+    std::{borrow::Cow, pin::Pin, rc::Rc},
     utils::Vector,
 };
+
+type Rows<'a> = Pin<Box<dyn Stream<Item = Result<Row>> + 'a>>;
 
 async fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> Result<(Vec<Row>, Vec<String>)> {
     let first_len = exprs_list[0].len();
@@ -99,20 +101,15 @@ async fn sort_stateless(rows: Vec<Row>, order_by: &[OrderByExpr]) -> Result<Vec<
     Ok(sorted)
 }
 
-#[async_recursion(?Send)]
-pub async fn select_with_labels<'a, T>(
+pub fn select_with_labels<'a, T>(
     storage: &'a T,
     query: &'a Query,
     filter_context: Option<Rc<RowContext<'a>>>,
-) -> Result<(Option<Vec<String>>, impl Stream<Item = Result<Row>> + 'a)>
+) -> Pin<Box<dyn Future<Output = Result<(Option<Vec<String>>, Rows<'a>)>> + 'a>>
 where
     T: GStore,
 {
-    #[derive(futures_enum::Stream)]
-    enum Row<S1, S2> {
-        Select(S2),
-        Values(S1),
-    }
+    Box::pin(async move {
 
     let Select {
         from: table_with_joins,
@@ -128,8 +125,9 @@ where
             let rows = sort_stateless(rows, &query.order_by).await?;
             let rows = stream::iter(rows.into_iter().map(Ok));
             let rows = limit.apply(rows);
+            let rows: Rows<'a> = Box::pin(rows);
 
-            return Ok((Some(labels), Row::Values(rows)));
+            return Ok((Some(labels), rows));
         }
     };
 
@@ -212,9 +210,11 @@ where
 
     let rows = sort.apply(rows, get_alias(relation)).await?;
     let rows = limit.apply(rows);
+    let rows: Rows<'a> = Box::pin(rows);
     let labels = labels.map(|labels| labels.iter().cloned().collect());
 
-    Ok((labels, Row::Select(rows)))
+    Ok((labels, rows))
+    })
 }
 
 pub async fn select<'a, T: GStore>(
