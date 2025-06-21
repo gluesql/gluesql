@@ -35,6 +35,7 @@ jobs:
               "gluesql_sled_storage"
               "gluesql_memory_storage"
               "gluesql-shared-memory-storage"
+              "gluesql-redb-storage"
               "gluesql-redis-storage"
               "gluesql-mongo-storage"
               "gluesql-web-storage"
