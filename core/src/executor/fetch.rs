@@ -153,28 +153,12 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
 
                         Rows::Indexed(rows)
                     }
-                    Some(IndexItem::PrimaryKey(expr)) => {
-                        let schema = storage
-                            .fetch_schema(name)
-                            .await?
-                            .ok_or(FetchError::Unreachable)?;
-
+                    Some(IndexItem::PrimaryKey { data_type, expr }) => {
                         let filter_context = filter_context.as_ref().map(Rc::clone);
                         let evaluated = evaluate(storage, filter_context, None, expr).await?;
 
                         let value = match evaluated {
                             Evaluated::Literal(literal) => {
-                                let data_type = schema
-                                    .column_defs
-                                    .as_ref()
-                                    .and_then(|column_defs| {
-                                        column_defs.iter().find(|column_def| {
-                                            column_def.unique.map(|u| u.is_primary) == Some(true)
-                                        })
-                                    })
-                                    .map(|column_def| &column_def.data_type)
-                                    .ok_or(FetchError::Unreachable)?;
-
                                 Value::try_from_literal(data_type, &literal)
                             }
                             eval => eval.try_into(),
