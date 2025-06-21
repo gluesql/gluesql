@@ -9,3 +9,4 @@ pub mod select;
 pub mod statements;
 pub mod update;
 pub mod values;
+pub mod schemaless;
