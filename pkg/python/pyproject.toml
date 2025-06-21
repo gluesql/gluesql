@@ -10,7 +10,7 @@ features = ["include-python-workspace"]
 name = "gluesql"
 requires-python = ">=3.10"
 description = "GlueSQL is quite sticky. It attaches to anywhere."
-readme = "../../README.md"
+readme = "README.md"
 classifiers = [
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
