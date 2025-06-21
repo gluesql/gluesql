@@ -298,7 +298,10 @@ macro_rules! generate_store_tests {
             ast_builder::function::text::position_and_indexing
         );
         glue!(ast_builder_index_by, ast_builder::index_by::index_by);
-        glue!(ast_builder_schemaless_basic, ast_builder::schemaless::basic::basic);
+        glue!(
+            ast_builder_schemaless_basic, 
+            ast_builder::schemaless::basic::basic
+        );
 
         // schemaless data support
         glue!(schemaless_basic, schemaless::basic);
