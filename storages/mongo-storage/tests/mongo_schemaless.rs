@@ -8,10 +8,10 @@ use {
 };
 
 #[tokio::test]
-async fn mongo_array_schemaless() {
+async fn mongo_schemaless() {
     let conn_str = "mongodb://localhost:27017";
 
-    let storage = MongoStorage::new(conn_str, "mongo_array")
+    let storage = MongoStorage::new(conn_str, "mongo_schemaless")
         .await
         .expect("MongoStorage::new");
     storage.drop_database().await.expect("database dropped");
@@ -21,9 +21,10 @@ async fn mongo_array_schemaless() {
     glue.execute("CREATE TABLE Logs").await.unwrap();
     glue.execute(
         format!(
-            "INSERT INTO Logs VALUES ('{}'), ('{}');",
+            "INSERT INTO Logs VALUES ('{}'), ('{}'), ('{}');",
             json!({ "id": 1, "value": 30 }),
-            json!({ "id": 2, "rate": 3.5, "list": [1, 2, 3] })
+            json!({ "id": 2, "rate": 3.5, "list": [1, 2, 3] }),
+            json!({ "id": 3, "optional": null })
         )
         .as_str(),
     )
@@ -44,6 +45,10 @@ async fn mongo_array_schemaless() {
                     "list".to_owned(),
                     Value::List(vec![Value::I64(1), Value::I64(2), Value::I64(3)]),
                 ),
+            ]),
+            HashMap::from([
+                ("id".to_owned(), Value::I64(3)),
+                ("optional".to_owned(), Value::Null),
             ]),
         ])),
     )];

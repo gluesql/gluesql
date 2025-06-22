@@ -1,4 +1,4 @@
-use {gluesql_core::error::Error, mongodb::bson::Bson, thiserror::Error};
+use {gluesql_core::error::Error, thiserror::Error};
 
 pub trait ResultExt<T, E: ToString> {
     fn map_storage_err(self) -> Result<T, Error>;
@@ -31,9 +31,6 @@ pub enum MongoStorageError {
 
     #[error("unsupported bson type")]
     UnsupportedBsonType,
-
-    #[error("unsupported bson type: {0:?}")]
-    UnsupportedBsonValue(Bson),
 
     #[error(r#"Invalid bsonType - it should be Array eg) ["string"] or ["string", "null"]"#)]
     InvalidBsonType,

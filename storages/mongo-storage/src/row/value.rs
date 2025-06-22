@@ -37,9 +37,9 @@ impl IntoValue for Bson {
                     .collect::<Result<Vec<_>>>()?,
             ),
             Bson::Null => Value::Null,
-            other => {
+            _other => {
                 return Err(Error::StorageMsg(
-                    MongoStorageError::UnsupportedBsonValue(other).to_string(),
+                    MongoStorageError::UnsupportedBsonType.to_string(),
                 ));
             }
         })
