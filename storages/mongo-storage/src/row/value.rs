@@ -38,11 +38,9 @@ impl IntoValue for Bson {
             ),
             Bson::Null => Value::Null,
             other => {
-                return Err(Error::StorageMsg(format!(
-                    "{}: {:?}",
-                    MongoStorageError::UnsupportedBsonType,
-                    other
-                )));
+                return Err(Error::StorageMsg(
+                    MongoStorageError::UnsupportedBsonValue(other).to_string(),
+                ));
             }
         })
     }
