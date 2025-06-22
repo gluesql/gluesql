@@ -31,29 +31,24 @@ async fn mongo_schemaless() {
     .await
     .unwrap();
 
-    let cases = vec![(
-        glue.execute("SELECT * FROM Logs").await,
-        Ok(Payload::SelectMap(vec![
-            HashMap::from([
-                ("id".to_owned(), Value::I64(1)),
-                ("value".to_owned(), Value::I64(30)),
-            ]),
-            HashMap::from([
-                ("id".to_owned(), Value::I64(2)),
-                ("rate".to_owned(), Value::F64(3.5)),
-                (
-                    "list".to_owned(),
-                    Value::List(vec![Value::I64(1), Value::I64(2), Value::I64(3)]),
-                ),
-            ]),
-            HashMap::from([
-                ("id".to_owned(), Value::I64(3)),
-                ("optional".to_owned(), Value::Null),
-            ]),
-        ])),
-    )];
-
-    for (actual, expected) in cases {
-        assert_eq!(actual.map(|mut payloads| payloads.remove(0)), expected);
-    }
+    let actual = glue.execute("SELECT * FROM Logs").await;
+    let expected = Ok(vec![Payload::SelectMap(vec![
+        HashMap::from([
+            ("id".to_owned(), Value::I64(1)),
+            ("value".to_owned(), Value::I64(30)),
+        ]),
+        HashMap::from([
+            ("id".to_owned(), Value::I64(2)),
+            ("rate".to_owned(), Value::F64(3.5)),
+            (
+                "list".to_owned(),
+                Value::List(vec![Value::I64(1), Value::I64(2), Value::I64(3)]),
+            ),
+        ]),
+        HashMap::from([
+            ("id".to_owned(), Value::I64(3)),
+            ("optional".to_owned(), Value::Null),
+        ]),
+    ])]);
+    assert_eq!(actual, expected);
 }
