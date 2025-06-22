@@ -30,10 +30,19 @@ impl IntoValue for Bson {
             Bson::Boolean(b) => Value::Bool(b),
             Bson::Int32(i) => Value::I32(i),
             Bson::Int64(i) => Value::I64(i),
-            _ => {
-                return Err(Error::StorageMsg(
-                    MongoStorageError::UnsupportedBsonType.to_string(),
-                ));
+            Bson::Double(f) => Value::F64(f),
+            Bson::Array(arr) => Value::List(
+                arr.into_iter()
+                    .map(|v| v.into_value_schemaless())
+                    .collect::<Result<Vec<_>>>()?,
+            ),
+            Bson::Null => Value::Null,
+            other => {
+                return Err(Error::StorageMsg(format!(
+                    "{}: {:?}",
+                    MongoStorageError::UnsupportedBsonType,
+                    other
+                )));
             }
         })
     }
