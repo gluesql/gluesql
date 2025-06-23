@@ -14,27 +14,13 @@ CONCAT(list_value1, list_value2, ...)
 
 ## Examples
 
-Consider the following table `ListTypeConcat`:
+### Example: CONCAT two lists
 
 ```sql
-CREATE TABLE ListTypeConcat (
-    id INTEGER,
-    items LIST,
-    items2 LIST
-);
-```
-
-With the following data:
-
-```sql
-INSERT INTO ListTypeConcat VALUES
-    (1, '[1, 2, 3]', '["one", "two", "three"]');
-```
-
-### Example 1: CONCAT two lists
-
-```sql
-SELECT CONCAT(items, items2) AS myconcat FROM ListTypeConcat;
+SELECT CONCAT(
+  CAST('[1, 2, 3]' AS LIST),
+  CAST('["one", "two", "three"]' AS LIST)
+) AS myconcat;
 ```
 
 **Result:**
@@ -42,3 +28,4 @@ SELECT CONCAT(items, items2) AS myconcat FROM ListTypeConcat;
 | myconcat                            |
 |-------------------------------------|
 | [1, 2, 3, "one", "two", "three"]    |
+

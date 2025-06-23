@@ -25,12 +25,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          registry-url: 'https://registry.npmjs.org'
       - name: Set up wasm pack
         uses: jetli/wasm-pack-action@v0.4.0
         with:
           version: 'v0.13.0'
       - run: |
-          echo "\n[profile.release]\nopt-level = \"s\"" >> Cargo.toml
+          printf '\n[profile.release]\nopt-level = "s"\n' >> Cargo.toml
           cd pkg/javascript
           wasm-pack build --no-pack --target web --no-typescript --release --out-dir ./dist_web
           wasm-pack build --no-pack --target nodejs --no-typescript --release --out-dir ./dist_nodejs -- --no-default-features --features nodejs
