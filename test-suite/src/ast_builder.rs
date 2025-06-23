@@ -5,6 +5,7 @@ pub mod expr;
 pub mod function;
 pub mod index_by;
 pub mod insert;
+pub mod schemaless;
 pub mod select;
 pub mod statements;
 pub mod update;
