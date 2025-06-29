@@ -1,17 +1,19 @@
 use {
-    crate::error::{MongoStorageError, OptionExt, ResultExt},
+    crate::error::MongoStorageError,
     gluesql_core::{
         ast::{Expr, ToSql},
         chrono::{NaiveDate, NaiveDateTime, TimeZone, Utc},
         data::{Interval, Point, Value},
         parse_sql::parse_interval,
-        prelude::{DataType, Error, Result},
+        prelude::DataType,
         translate::translate_expr,
     },
     mongodb::bson::{self, Binary, Bson, DateTime, Decimal128, Document, doc},
     rust_decimal::Decimal,
     std::collections::HashMap,
 };
+
+type Result<T> = std::result::Result<T, MongoStorageError>;
 
 pub trait IntoValue {
     fn into_value_schemaless(self) -> Result<Value>;
@@ -38,9 +40,7 @@ impl IntoValue for Bson {
             ),
             Bson::Null => Value::Null,
             _ => {
-                return Err(Error::StorageMsg(
-                    MongoStorageError::UnsupportedBsonType.to_string(),
-                ));
+                return Err(MongoStorageError::UnsupportedBsonType);
             }
         })
     }
@@ -50,29 +50,31 @@ impl IntoValue for Bson {
             (Bson::Null, _) => Value::Null,
             (Bson::Double(num), DataType::Float32) => Value::F32(num as f32),
             (Bson::Double(num), _) => Value::F64(num),
-            (Bson::String(string), DataType::Inet) => {
-                Value::Inet(string.parse().map_storage_err()?)
-            }
+            (Bson::String(string), DataType::Inet) => Value::Inet(
+                string
+                    .parse()
+                    .map_err(|_| MongoStorageError::UnsupportedBsonType)?,
+            ),
             (Bson::String(string), DataType::Timestamp) => Value::Timestamp(
-                NaiveDateTime::parse_from_str(&string, "%Y-%m-%d %H:%M:%S%.f").map_storage_err()?,
+                NaiveDateTime::parse_from_str(&string, "%Y-%m-%d %H:%M:%S%.f")
+                    .map_err(|_| MongoStorageError::UnsupportedBsonType)?,
             ),
             (Bson::String(string), DataType::Interval) => {
-                let interval = parse_interval(string)?;
-                let interval = translate_expr(&interval)?;
+                let interval =
+                    parse_interval(string).map_err(|_| MongoStorageError::UnsupportedBsonType)?;
+                let interval = translate_expr(&interval)
+                    .map_err(|_| MongoStorageError::UnsupportedBsonType)?;
                 match interval {
                     Expr::Interval {
                         expr,
                         leading_field,
                         last_field,
-                    } => Value::Interval(Interval::try_from_str(
-                        &expr.to_sql(),
-                        leading_field,
-                        last_field,
-                    )?),
+                    } => Value::Interval(
+                        Interval::try_from_str(&expr.to_sql(), leading_field, last_field)
+                            .map_err(|_| MongoStorageError::UnsupportedBsonType)?,
+                    ),
                     _ => {
-                        return Err(Error::StorageMsg(
-                            MongoStorageError::UnsupportedBsonType.to_string(),
-                        ));
+                        return Err(MongoStorageError::UnsupportedBsonType);
                     }
                 }
             }
@@ -89,11 +91,11 @@ impl IntoValue for Bson {
                 let x = d
                     .get("x")
                     .and_then(Bson::as_f64)
-                    .map_storage_err(MongoStorageError::UnsupportedBsonType)?;
+                    .ok_or(MongoStorageError::UnsupportedBsonType)?;
                 let y = d
                     .get("y")
                     .and_then(Bson::as_f64)
-                    .map_storage_err(MongoStorageError::UnsupportedBsonType)?;
+                    .ok_or(MongoStorageError::UnsupportedBsonType)?;
 
                 Value::Point(Point::new(x, y))
             }
@@ -108,19 +110,27 @@ impl IntoValue for Bson {
                 let options = regex.options;
                 Value::Str(format!("/{}/{}", pattern, options))
             }
-            (Bson::Int32(i), DataType::Uint8) => Value::U8(i.try_into().map_storage_err()?),
+            (Bson::Int32(i), DataType::Uint8) => Value::U8(
+                i.try_into()
+                    .map_err(|_| MongoStorageError::UnsupportedBsonType)?,
+            ),
             (Bson::Int32(i), DataType::Int8) => Value::I8(i as i8),
             (Bson::Int32(i), DataType::Int16) => Value::I16(i as i16),
-            (Bson::Int32(i), DataType::Uint16) => Value::U16(i.try_into().map_storage_err()?),
+            (Bson::Int32(i), DataType::Uint16) => Value::U16(
+                i.try_into()
+                    .map_err(|_| MongoStorageError::UnsupportedBsonType)?,
+            ),
             (Bson::Int32(i), _) => Value::I32(i),
-            (Bson::Int64(i), DataType::Uint32) => Value::U32(i.try_into().map_storage_err()?),
+            (Bson::Int64(i), DataType::Uint32) => Value::U32(
+                i.try_into()
+                    .map_err(|_| MongoStorageError::UnsupportedBsonType)?,
+            ),
             (Bson::Int64(i), _) => Value::I64(i),
             (Bson::Binary(Binary { bytes, .. }), DataType::Uuid) => {
                 let u128 = u128::from_be_bytes(
                     bytes
                         .try_into()
-                        .ok()
-                        .map_storage_err(MongoStorageError::UnsupportedBsonType)?,
+                        .map_err(|_| MongoStorageError::UnsupportedBsonType)?,
                 );
 
                 Value::Uuid(u128)
@@ -128,7 +138,11 @@ impl IntoValue for Bson {
             (Bson::Binary(Binary { bytes, .. }), _) => Value::Bytea(bytes),
             (Bson::Decimal128(decimal128), DataType::Uint64) => {
                 let bytes = decimal128.bytes();
-                let u64 = u64::from_be_bytes(bytes[..8].try_into().map_storage_err()?);
+                let u64 = u64::from_be_bytes(
+                    bytes[..8]
+                        .try_into()
+                        .map_err(|_| MongoStorageError::UnsupportedBsonType)?,
+                );
 
                 Value::U64(u64)
             }
@@ -158,7 +172,7 @@ impl IntoValue for Bson {
                     (
                         "scope".to_owned(),
                         bson::to_bson(&scope)
-                            .map_storage_err()?
+                            .map_err(|_| MongoStorageError::UnsupportedBsonType)?
                             .into_value_schemaless()?,
                     ),
                 ]))
@@ -166,9 +180,7 @@ impl IntoValue for Bson {
             (Bson::MinKey, _) => Value::Str("MinKey()".to_owned()),
             (Bson::MaxKey, _) => Value::Str("MaxKey()".to_owned()),
             _ => {
-                return Err(Error::StorageMsg(
-                    MongoStorageError::UnsupportedBsonType.to_string(),
-                ));
+                return Err(MongoStorageError::UnsupportedBsonType);
             }
         })
     }
@@ -212,7 +224,7 @@ impl IntoBson for Value {
             Value::Date(val) => {
                 let utc = Utc.from_utc_datetime(
                     &val.and_hms_opt(0, 0, 0)
-                        .map_storage_err(MongoStorageError::UnsupportedBsonType)?,
+                        .ok_or(MongoStorageError::UnsupportedBsonType)?,
                 );
                 let datetime = DateTime::from_chrono(utc);
 
@@ -221,7 +233,7 @@ impl IntoBson for Value {
             Value::Timestamp(val) => Ok(Bson::String(val.to_string())),
             Value::Time(val) => {
                 let date = NaiveDate::from_ymd_opt(1970, 1, 1)
-                    .map_storage_err(MongoStorageError::UnsupportedBsonType)?;
+                    .ok_or(MongoStorageError::UnsupportedBsonType)?;
                 let utc = Utc.from_utc_datetime(&NaiveDateTime::new(date, val));
                 let datetime = DateTime::from_chrono(utc);
 
@@ -238,7 +250,7 @@ impl IntoBson for Value {
                         .try_fold(Document::new(), |mut acc, (key, value)| {
                             acc.extend(doc! {key: value.into_bson()?});
 
-                            Ok::<_, Error>(acc)
+                            Ok::<_, MongoStorageError>(acc)
                         })?;
 
                 Ok(Bson::Document(doc))

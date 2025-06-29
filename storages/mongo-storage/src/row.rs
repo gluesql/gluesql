@@ -40,7 +40,7 @@ impl IntoRow for Document {
             .into_iter()
             .skip(1)
             .zip(data_types)
-            .map(|((_, bson), data_type)| bson.into_value(data_type))
+            .map(|((_, bson), data_type)| bson.into_value(data_type).map_storage_err())
             .collect::<Result<Vec<_>>>()?;
 
         Ok((key, DataRow::Vec(row)))

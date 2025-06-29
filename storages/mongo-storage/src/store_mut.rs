@@ -208,7 +208,9 @@ impl StoreMut for MongoStorage {
                     .iter()
                     .zip(values.into_iter())
                     .try_fold(Document::new(), |mut acc, (column_def, value)| {
-                        acc.extend(doc! {column_def.name.clone(): value.into_bson()?});
+                        acc.extend(
+                            doc! {column_def.name.clone(): value.into_bson().map_storage_err()?},
+                        );
 
                         Ok(acc)
                     }),
@@ -216,7 +218,7 @@ impl StoreMut for MongoStorage {
                     hash_map
                         .into_iter()
                         .try_fold(Document::new(), |mut acc, (key, value)| {
-                            acc.extend(doc! {key: value.into_bson()?});
+                            acc.extend(doc! {key: value.into_bson().map_storage_err()?});
 
                             Ok(acc)
                         })
@@ -251,24 +253,24 @@ impl StoreMut for MongoStorage {
                     .iter()
                     .zip(values.into_iter())
                     .try_fold(
-                        doc! {"_id": key.clone().into_bson(primary_key.is_some())?},
+                        doc! {"_id": key.clone().into_bson(primary_key.is_some()).map_storage_err()?},
                         |mut acc, (column_def, value)| {
-                            acc.extend(doc! {column_def.name.clone(): value.into_bson()?});
+                            acc.extend(doc! {column_def.name.clone(): value.into_bson().map_storage_err()?});
 
                             Ok::<_, Error>(acc)
                         },
                     ),
                 DataRow::Map(hash_map) => hash_map.into_iter().try_fold(
-                    doc! {"_id": into_object_id(key.clone())?},
+                    doc! {"_id": into_object_id(key.clone()).map_storage_err()?},
                     |mut acc, (key, value)| {
-                        acc.extend(doc! {key: value.into_bson()?});
+                        acc.extend(doc! {key: value.into_bson().map_storage_err()?});
 
                         Ok(acc)
                     },
                 ),
             }?;
 
-            let query = doc! {"_id": key.into_bson(primary_key.is_some())?};
+            let query = doc! {"_id": key.into_bson(primary_key.is_some()).map_storage_err()?};
             let options = ReplaceOptions::builder().upsert(Some(true)).build();
 
             self.db
@@ -291,7 +293,10 @@ impl StoreMut for MongoStorage {
             .collection::<Bson>(table_name)
             .delete_many(
                 doc! { "_id": {
-                    "$in": keys.into_iter().map(|key| key.into_bson(primary_key.is_some())).collect::<Result<Vec<_>>>()?
+                    "$in": keys
+                        .into_iter()
+                        .map(|key| key.into_bson(primary_key.is_some()).map_storage_err())
+                        .collect::<Result<Vec<_>>>()?
                 }},
                 None,
             )

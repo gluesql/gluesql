@@ -58,7 +58,7 @@ impl Store for MongoStorage {
             .ok_or(MongoStorageError::Unreachable)
             .map_storage_err()?;
 
-        let filter = doc! { "_id": target.to_owned().into_bson(true)?};
+        let filter = doc! { "_id": target.to_owned().into_bson(true).map_storage_err()?};
         let projection = doc! {"_id": 0};
         let options = FindOptions::builder()
             .projection(projection)
@@ -80,7 +80,9 @@ impl Store for MongoStorage {
             .map(|doc| {
                 doc.into_iter()
                     .zip(column_defs.iter())
-                    .map(|((_, bson), column_def)| bson.into_value(&column_def.data_type))
+                    .map(|((_, bson), column_def)| {
+                        bson.into_value(&column_def.data_type).map_storage_err()
+                    })
                     .collect::<Result<Vec<_>>>()
                     .map(DataRow::Vec)
             })
@@ -133,7 +135,9 @@ impl Store for MongoStorage {
                         .to_vec();
                     let key = Key::Bytea(key_bytes);
                     let row = iter
-                        .map(|(key, bson)| Ok((key, bson.into_value_schemaless()?)))
+                        .map(|(key, bson)| {
+                            Ok((key, bson.into_value_schemaless().map_storage_err()?))
+                        })
                         .collect::<Result<HashMap<String, Value>>>()?;
 
                     Ok((key, DataRow::Map(row)))
