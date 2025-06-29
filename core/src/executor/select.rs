@@ -144,16 +144,6 @@ where
         });
 
     let join = Join::new(storage, joins, filter_context.as_ref().map(Rc::clone));
-    /*
-    let aggregate = Aggregator::new(
-        /*
-        projection,
-        group_by,
-        having.as_ref(),
-        filter_context.as_ref().map(Rc::clone),
-        */
-    );
-    */
     let filter = Rc::new(Filter::new(
         storage,
         where_clause.as_ref(),
