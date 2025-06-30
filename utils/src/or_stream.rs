@@ -103,8 +103,9 @@ mod tests {
             Stream,
             executor::block_on,
             pin_mut,
-            stream::{StreamExt, empty, once, pending},
+            stream::{StreamExt, empty, once, poll_fn},
         },
+        std::task::Poll,
     };
 
     #[test]
@@ -142,13 +143,13 @@ mod tests {
         assert_eq!(or.size_hint(), (1, Some(1)));
 
         // else branch with s2_low > 0
-        let s1 = pending::<i32>();
+        let s1 = poll_fn(|_| Poll::<Option<i32>>::Pending);
         let s2 = once(async { 1 });
         let or = OrStream::new(s1, s2);
         assert_eq!(or.size_hint(), (1, None));
 
         // else branch with s2_low == 0
-        let s1 = pending::<i32>();
+        let s1 = poll_fn(|_| Poll::<Option<i32>>::Pending);
         let s2 = empty();
         let or = OrStream::new(s1, s2);
         assert_eq!(or.size_hint(), (0, None));
