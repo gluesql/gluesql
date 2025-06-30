@@ -4,10 +4,10 @@ use {
         ast::{
             ColumnDef, ColumnUniqueOption, ForeignKey, Query, SetExpr, TableFactor, ToSql, Values,
         },
-        data::{Schema, TableError},
+        data::Schema,
         executor::{evaluate_stateless, select::select},
         prelude::{DataType, Value},
-        result::{Error, Result},
+        result::Result,
         store::{GStore, GStoreMut},
     },
     futures::stream::TryStreamExt,
@@ -63,7 +63,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
                     Some(vec![column_def])
                 }
                 _ => {
-                    return Err(Error::Table(TableError::Unreachable));
+                    return Err(AlterError::Unreachable.into());
                 }
             },
             SetExpr::Values(Values(values_list)) => {
