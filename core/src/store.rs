@@ -50,6 +50,50 @@ pub trait Store {
 
     async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>>;
 
+    async fn scan_data_with_columns<'a>(
+        &'a self,
+        table_name: &str,
+        columns: &[String],
+    ) -> Result<RowIter<'a>> {
+        use futures::TryStreamExt;
+
+        let schema = self.fetch_schema(table_name).await?;
+        let column_defs = schema
+            .as_ref()
+            .and_then(|schema| schema.column_defs.as_ref());
+
+        let indices: Vec<usize> = match column_defs {
+            Some(column_defs) => columns
+                .iter()
+                .filter_map(|name| column_defs.iter().position(|def| def.name == *name))
+                .collect(),
+            None => Vec::new(),
+        };
+
+        let columns = columns.to_owned();
+        let rows = self
+            .scan_data(table_name)
+            .await?
+            .map_ok(move |(key, data_row)| {
+                let data_row = match data_row {
+                    DataRow::Vec(values) => DataRow::Vec(
+                        indices
+                            .iter()
+                            .filter_map(|&i| values.get(i).cloned())
+                            .collect(),
+                    ),
+                    DataRow::Map(mut map) => {
+                        map.retain(|k, _| columns.contains(k));
+                        DataRow::Map(map)
+                    }
+                };
+
+                (key, data_row)
+            });
+
+        Ok(Box::pin(rows))
+    }
+
     async fn fetch_referencings(&self, table_name: &str) -> Result<Vec<Referencing>> {
         let schemas = self.fetch_all_schemas().await?;
 

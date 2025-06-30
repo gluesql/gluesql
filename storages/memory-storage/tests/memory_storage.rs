@@ -96,3 +96,34 @@ async fn memory_storage_transaction() {
     test!(glue "COMMIT", Ok(vec![Payload::Commit]));
     test!(glue "ROLLBACK", Ok(vec![Payload::Rollback]));
 }
+#[tokio::test]
+async fn scan_data_with_columns_default() {
+    use futures::TryStreamExt;
+    use gluesql_core::{
+        data::Key,
+        data::Value,
+        prelude::Glue,
+        store::{DataRow, Store},
+    };
+
+    let storage = MemoryStorage::default();
+    let mut glue = Glue::new(storage);
+
+    exec!(glue "CREATE TABLE Foo (id INTEGER, name TEXT, flag BOOLEAN);");
+    exec!(glue "INSERT INTO Foo VALUES (1, 'a', TRUE), (2, 'b', FALSE);");
+
+    let rows = Store::scan_data_with_columns(&glue.storage, "Foo", &["name".to_owned()])
+        .await
+        .unwrap()
+        .try_collect::<Vec<_>>()
+        .await
+        .unwrap();
+
+    assert_eq!(
+        rows,
+        vec![
+            (Key::I64(1), DataRow::Vec(vec![Value::Str("a".to_owned())])),
+            (Key::I64(2), DataRow::Vec(vec![Value::Str("b".to_owned())])),
+        ]
+    );
+}
