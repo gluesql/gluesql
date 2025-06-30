@@ -94,7 +94,9 @@ mod tests {
     use {
         super::OrStream,
         futures::{
+            Stream,
             executor::block_on,
+            future::ready,
             stream::{StreamExt, empty, once},
         },
     };
@@ -102,20 +104,45 @@ mod tests {
     #[test]
     fn basic() {
         block_on(async move {
-            let s1 = once(async { 1 });
-            let s2 = once(async { 3 });
+            let s1 = once(ready(1));
+            let s2 = once(ready(3));
             let v = OrStream::new(s1, s2).collect::<Vec<i32>>().await;
             assert_eq!(vec![1], v);
 
             let s1 = empty();
-            let s2 = once(async { 3 });
+            let s2 = once(ready(3));
             let v = OrStream::new(s1, s2).collect::<Vec<i32>>().await;
             assert_eq!(vec![3], v);
 
-            let s1 = once(async { 3 });
+            let s1 = once(ready(3));
             let s2 = empty();
             let v = OrStream::new(s1, s2).collect::<Vec<i32>>().await;
             assert_eq!(vec![3], v);
+        });
+    }
+
+    #[test]
+    fn size_hint_states() {
+        block_on(async move {
+            // Initial state - `stream1` has an item so `size_hint` should come from it
+            let s1 = once(ready(1));
+            let s2 = once(ready(3));
+            let mut or_stream = OrStream::new(s1, s2);
+            assert_eq!((1, Some(1)), or_stream.size_hint());
+
+            // After the first item `state` becomes `St1` and hints follow `stream1`
+            assert_eq!(Some(1), or_stream.next().await);
+            assert_eq!((0, Some(0)), or_stream.size_hint());
+
+            // `stream1` is empty from the start so `size_hint` falls back to `stream2`
+            let s1 = empty();
+            let s2 = once(ready(2));
+            let mut or_stream = OrStream::new(s1, s2);
+            assert_eq!((1, Some(1)), or_stream.size_hint());
+
+            // Polling once switches to `St2` which reports `stream2`'s size hint
+            assert_eq!(Some(2), or_stream.next().await);
+            assert_eq!((0, Some(0)), or_stream.size_hint());
         });
     }
 }
