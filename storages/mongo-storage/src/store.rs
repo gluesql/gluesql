@@ -52,7 +52,7 @@ impl Store for MongoStorage {
         let column_defs = self
             .get_column_defs(table_name)
             .await?
-            .map_storage_err(MongoStorageError::Unreachable)?;
+            .map_storage_err(MongoStorageError::ConflictFetchData)?;
 
         let primary_key = get_primary_key(&column_defs)
             .ok_or(MongoStorageError::Unreachable)

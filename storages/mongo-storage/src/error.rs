@@ -29,6 +29,12 @@ pub enum MongoStorageError {
     #[error("unreachable")]
     Unreachable,
 
+    #[error("conflict when fetching data")]
+    ConflictFetchData,
+
+    #[error("conflict when appending data")]
+    ConflictAppendData,
+
     #[error("unsupported bson type")]
     UnsupportedBsonType,
 
