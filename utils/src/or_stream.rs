@@ -99,14 +99,32 @@ where
 mod tests {
     use {
         super::OrStream,
+        core::pin::Pin,
         futures::{
             Stream,
             executor::block_on,
             pin_mut,
             stream::{StreamExt, empty, once, poll_fn},
         },
-        std::task::Poll,
+        std::task::{Context, Poll},
     };
+
+    struct HintStream {
+        low: usize,
+        high: Option<usize>,
+    }
+
+    impl Stream for HintStream {
+        type Item = i32;
+
+        fn poll_next(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+            Poll::Pending
+        }
+
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            (self.low, self.high)
+        }
+    }
 
     #[test]
     fn basic() {
@@ -153,6 +171,18 @@ mod tests {
         let s2 = empty();
         let or = OrStream::new(s1, s2);
         assert_eq!(or.size_hint(), (0, None));
+
+        // both highs defined triggers max branch
+        let s1 = HintStream {
+            low: 0,
+            high: Some(3),
+        };
+        let s2 = HintStream {
+            low: 1,
+            high: Some(2),
+        };
+        let or = OrStream::new(s1, s2);
+        assert_eq!(or.size_hint(), (1, Some(3)));
     }
 
     #[test]
