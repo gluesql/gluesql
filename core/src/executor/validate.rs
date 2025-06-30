@@ -1,4 +1,5 @@
 use {
+    crate::shared::{HashSet, SendSync},
     crate::{
         ast::{ColumnDef, ColumnUniqueOption},
         data::{Key, Value},
@@ -6,7 +7,6 @@ use {
         store::{DataRow, Store},
     },
     futures::stream::TryStreamExt,
-    im_rc::HashSet,
     serde::Serialize,
     std::fmt::Debug,
     thiserror::Error as ThisError,
@@ -82,7 +82,7 @@ impl UniqueConstraint {
     }
 }
 
-pub async fn validate_unique<T: Store>(
+pub async fn validate_unique<T: Store + SendSync>(
     storage: &T,
     table_name: &str,
     column_validation: ColumnValidation<'_>,
