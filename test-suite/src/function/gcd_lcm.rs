@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        error::{EvaluateError, ValueError},
+        error::EvaluateError,
         prelude::{Payload, Value::*},
     },
 };
@@ -117,7 +117,7 @@ test_case!(gcd_lcm, {
         (
             // check i64::MIN overflow error
             "SELECT GCD(-9223372036854775808, -9223372036854775808)",
-            Err(ValueError::GcdLcmOverflow(i64::MIN).into()),
+            Err(EvaluateError::GcdLcmOverflow(i64::MIN).into()),
         ),
         (
             "SELECT LCM(0, 0) as test",
@@ -138,14 +138,14 @@ test_case!(gcd_lcm, {
         (
             // check i64::MIN overflow error
             "SELECT LCM(-9223372036854775808, -9223372036854775808)",
-            Err(ValueError::GcdLcmOverflow(i64::MIN).into()),
+            Err(EvaluateError::GcdLcmOverflow(i64::MIN).into()),
         ),
         (
             // 10^10 + 19 and 10^10 + 33 are prime numbers
             // LCM(10^10+19, 10^10+33) = (10^10+19)*(10^10+33)
             // this result is out of i64 range.
             "SELECT LCM(10000000019, 10000000033)",
-            Err(ValueError::LcmResultOutOfRange.into()),
+            Err(EvaluateError::LcmResultOutOfRange.into()),
         ),
         (
             "SELECT gcd(1.0, 1);",
