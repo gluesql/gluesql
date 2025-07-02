@@ -1,6 +1,7 @@
 use {
-    gluesql_cli::dump_database,
+    gluesql_cli::dump_storage,
     gluesql_core::prelude::Glue,
+    gluesql_memory_storage::MemoryStorage,
     gluesql_sled_storage::{SledStorage, sled},
     std::{fs::File, io::Read, path::PathBuf},
 };
@@ -68,7 +69,7 @@ async fn dump_and_import() {
         source_glue.execute(sql).await.unwrap();
     }
 
-    dump_database(&mut source_glue.storage, dump_path.clone()).unwrap();
+    dump_storage(&mut source_glue.storage, dump_path.clone()).unwrap();
 
     let data_path = "tmp/target";
     let config = sled::Config::default().path(data_path).temporary(true);
@@ -98,6 +99,43 @@ async fn dump_and_import() {
     assert_eq!(source_data, target_data);
 
     let sql = "SELECT * FROM Baz;";
+    let source_data = source_glue.execute(sql).await.unwrap();
+    let target_data = target_glue.execute(sql).await.unwrap();
+    assert_eq!(source_data, target_data);
+}
+
+#[tokio::test]
+async fn dump_and_import_memory() {
+    let dump_path = PathBuf::from("tmp/memory_dump.sql");
+
+    let source_storage = MemoryStorage::default();
+    let mut source_glue = Glue::new(source_storage);
+
+    let sqls = vec![
+        "CREATE TABLE Foo (id INT);",
+        "INSERT INTO Foo VALUES (1), (2);",
+    ];
+
+    for sql in sqls {
+        source_glue.execute(sql).await.unwrap();
+    }
+
+    dump_storage(&mut source_glue.storage, dump_path.clone()).unwrap();
+
+    let target_storage = MemoryStorage::default();
+    let mut target_glue = Glue::new(target_storage);
+
+    let mut contents = String::new();
+    File::open(&dump_path)
+        .unwrap()
+        .read_to_string(&mut contents)
+        .unwrap();
+
+    for sql in contents.split(';').filter(|sql| !sql.trim().is_empty()) {
+        target_glue.execute(sql).await.unwrap();
+    }
+
+    let sql = "SELECT * FROM Foo";
     let source_data = source_glue.execute(sql).await.unwrap();
     let target_data = target_glue.execute(sql).await.unwrap();
     assert_eq!(source_data, target_data);
