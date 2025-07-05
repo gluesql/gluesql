@@ -1,5 +1,6 @@
 use {
     super::{context::Context, evaluable::check_expr as check_evaluable, planner::Planner},
+    crate::shared::Rc,
     crate::{
         ast::{
             BinaryOperator, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select,
@@ -7,7 +8,7 @@ use {
         },
         data::Schema,
     },
-    std::{collections::HashMap, rc::Rc},
+    std::collections::HashMap,
     utils::Vector,
 };
 

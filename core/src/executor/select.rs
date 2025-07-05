@@ -15,6 +15,7 @@ use {
         limit::Limit,
         sort::Sort,
     },
+    crate::shared::Rc,
     crate::{
         ast::{Expr, OrderByExpr, Query, Select, SetExpr, TableWithJoins, Values},
         data::{Key, Row, Value, get_alias},
@@ -23,7 +24,7 @@ use {
     },
     async_recursion::async_recursion,
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
-    std::{borrow::Cow, rc::Rc},
+    std::borrow::Cow,
     utils::Vector,
 };
 
@@ -99,14 +100,17 @@ async fn sort_stateless(rows: Vec<Row>, order_by: &[OrderByExpr]) -> Result<Vec<
     Ok(sorted)
 }
 
-#[async_recursion(?Send)]
+use crate::shared::SendSync;
+
+#[cfg_attr(feature = "send", async_recursion)]
+#[cfg_attr(not(feature = "send"), async_recursion(?Send))]
 pub async fn select_with_labels<'a, T>(
     storage: &'a T,
     query: &'a Query,
     filter_context: Option<Rc<RowContext<'a>>>,
 ) -> Result<(Option<Vec<String>>, impl Stream<Item = Result<Row>> + 'a)>
 where
-    T: GStore,
+    T: GStore + SendSync,
 {
     #[derive(futures_enum::Stream)]
     enum Row<S1, S2> {
@@ -207,7 +211,7 @@ where
     Ok((labels, Row::Select(rows)))
 }
 
-pub async fn select<'a, T: GStore>(
+pub async fn select<'a, T: GStore + SendSync>(
     storage: &'a T,
     query: &'a Query,
     filter_context: Option<Rc<RowContext<'a>>>,

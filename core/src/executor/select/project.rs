@@ -1,4 +1,5 @@
 use {
+    crate::shared::{HashMap, Rc, SendSync},
     crate::{
         ast::{Aggregate, SelectItem},
         data::{Row, Value},
@@ -7,17 +8,15 @@ use {
         store::GStore,
     },
     futures::stream::{self, StreamExt, TryStreamExt},
-    im_rc::HashMap,
-    std::rc::Rc,
 };
 
-pub struct Project<'a, T: GStore> {
+pub struct Project<'a, T: GStore + SendSync> {
     storage: &'a T,
     context: Option<Rc<RowContext<'a>>>,
     fields: &'a [SelectItem],
 }
 
-impl<'a, T: GStore> Project<'a, T> {
+impl<'a, T: GStore + SendSync> Project<'a, T> {
     pub fn new(
         storage: &'a T,
         context: Option<Rc<RowContext<'a>>>,
