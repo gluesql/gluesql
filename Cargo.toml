@@ -50,6 +50,7 @@ gluesql-web-storage = { path = "./storages/web-storage", version = "0.17.0" }
 gluesql-idb-storage = { path = "./storages/idb-storage", version = "0.17.0" }
 gluesql-redis-storage = { path = "./storages/redis-storage", version = "0.17.0" }
 gluesql-mongo-storage = { path = "./storages/mongo-storage", version = "0.17.0" }
+gluesql-etcd-storage = { path = "./storages/etcd-storage", version = "0.17.0" }
 gluesql-parquet-storage = { path = "./storages/parquet-storage", version = "0.17.0" }
 gluesql-file-storage = { path = "./storages/file-storage", version = "0.17.0" }
 gluesql-git-storage = { path = "./storages/git-storage", version = "0.17.0" }
