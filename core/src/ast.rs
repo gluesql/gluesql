@@ -155,6 +155,27 @@ pub enum Variable {
 }
 
 impl ToSql for Statement {
+    /// Converts a `Statement` into its corresponding SQL string representation.
+    ///
+    /// This method generates valid SQL for a wide range of statement types, including
+    /// SELECT, INSERT, UPDATE, DELETE, CREATE TABLE, CREATE FUNCTION, ALTER TABLE,
+    /// DROP TABLE, DROP FUNCTION, CREATE INDEX, DROP INDEX, transaction control statements,
+    /// and SHOW statements. Optional clauses and formatting (such as quoting identifiers)
+    /// are handled according to the statement variant.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use your_crate::{Statement, ToSql};
+    ///
+    /// let stmt = Statement::Insert {
+    ///     table_name: "users".to_string(),
+    ///     columns: vec!["id".to_string(), "name".to_string()],
+    ///     source: Box::new(Statement::Query(/* ... */)), // Example only
+    /// };
+    /// let sql = stmt.to_sql();
+    /// assert!(sql.starts_with("INSERT INTO \"users\""));
+    /// ```
     fn to_sql(&self) -> String {
         match self {
             Statement::ShowColumns { table_name } => {
