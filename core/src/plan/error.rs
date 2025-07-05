@@ -6,4 +6,7 @@ pub enum PlanError {
     /// situation.
     #[error("column reference {0} is ambiguous, please specify the table name")]
     ColumnReferenceAmbiguous(String),
+
+    #[error("unreachable")]
+    Unreachable,
 }
