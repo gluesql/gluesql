@@ -166,6 +166,18 @@ pub enum EvaluateError {
 
     #[error("function requires at least one argument: {0}")]
     FunctionRequiresAtLeastOneArgument(String),
+
+    #[error("function CONCAT requires at least 1 argument")]
+    EmptyArgNotAllowedInConcat,
+
+    #[error("LCM calculation resulted in a value out of the i64 range")]
+    LcmResultOutOfRange,
+
+    #[error("GCD or LCM calculation overflowed on trying to get the absolute value of {0}")]
+    GcdLcmOverflow(i64),
+
+    #[error("failed to convert Value to u32: {0}")]
+    I64ToU32ConversionFailure(String),
 }
 
 fn error_serialize<S>(error: &chrono::format::ParseError, serializer: S) -> Result<S::Ok, S::Error>

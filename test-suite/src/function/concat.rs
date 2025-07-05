@@ -1,6 +1,9 @@
 use {
     crate::*,
-    gluesql_core::{error::ValueError, prelude::Value::*},
+    gluesql_core::{
+        error::{EvaluateError, ValueError},
+        prelude::Value::*,
+    },
 };
 
 test_case!(concat, {
@@ -51,7 +54,7 @@ test_case!(concat, {
     // test with zero arguments
     g.test(
         r#"select concat() as myconcat;"#,
-        Err(ValueError::EmptyArgNotAllowedInConcat.into()),
+        Err(EvaluateError::EmptyArgNotAllowedInConcat.into()),
     )
     .await;
 
