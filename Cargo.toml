@@ -10,14 +10,26 @@ members = [
   "test-suite",
   "utils",
 ]
-exclude = ["storages/etcd-storage"]
 default-members = [
   "cli",
   "core",
   "pkg/rust",
   "pkg/javascript",
   "pkg/python",
-  "storages/*",
+  "storages/composite-storage",
+  "storages/csv-storage",
+  "storages/file-storage",
+  "storages/git-storage",
+  "storages/idb-storage",
+  "storages/json-storage",
+  "storages/memory-storage",
+  "storages/mongo-storage",
+  "storages/parquet-storage",
+  "storages/redb-storage",
+  "storages/redis-storage",
+  "storages/shared-memory-storage",
+  "storages/sled-storage",
+  "storages/web-storage",
   "test-suite",
   "utils",
 ]
