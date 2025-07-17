@@ -72,17 +72,23 @@ where
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         match self.state {
-            Initial => match self.stream1.size_hint() {
-                (_, Some(0)) => self.stream2.size_hint(),
-                (0, i1_high) => {
-                    let (i2_low, i2_high) = self.stream2.size_hint();
-                    let low = usize::from(i2_low > 0);
+            Initial => {
+                let (s1_low, s1_high) = self.stream1.size_hint();
+                let (s2_low, s2_high) = self.stream2.size_hint();
 
-                    let high = i1_high.and_then(|h1| i2_high.map(|h2| max(h1, h2)));
+                if s1_high == Some(0) {
+                    (s2_low, s2_high)
+                } else if s1_low > 0 {
+                    (s1_low, s1_high)
+                } else {
+                    let low = if s2_low > 0 { 1 } else { 0 };
+                    let high = match (s1_high, s2_high) {
+                        (Some(h1), Some(h2)) => Some(max(h1, h2)),
+                        _ => None,
+                    };
                     (low, high)
                 }
-                i1_hint => i1_hint,
-            },
+            }
             St1 => self.stream1.size_hint(),
             St2 => self.stream2.size_hint(),
         }
@@ -94,9 +100,12 @@ mod tests {
     use {
         super::OrStream,
         futures::{
+            Stream,
             executor::block_on,
-            stream::{StreamExt, empty, once},
+            pin_mut,
+            stream::{StreamExt, empty, iter, once, poll_fn},
         },
+        std::task::Poll,
     };
 
     #[test]
@@ -116,6 +125,56 @@ mod tests {
             let s2 = empty();
             let v = OrStream::new(s1, s2).collect::<Vec<i32>>().await;
             assert_eq!(vec![3], v);
+        });
+    }
+
+    #[test]
+    fn size_hint_initial_branches() {
+        // stream1 high is Some(0)
+        let s1 = empty();
+        let s2 = once(async { 1 });
+        let or = OrStream::new(s1, s2);
+        assert_eq!(or.size_hint(), (1, Some(1)));
+
+        // stream1 low > 0
+        let s1 = once(async { 1 });
+        let s2 = empty();
+        let or = OrStream::new(s1, s2);
+        assert_eq!(or.size_hint(), (1, Some(1)));
+
+        // else branch with s2_low > 0
+        let s1 = poll_fn(|_| Poll::<Option<i32>>::Pending);
+        let s2 = once(async { 1 });
+        let or = OrStream::new(s1, s2);
+        assert_eq!(or.size_hint(), (1, None));
+
+        // else branch with s2_low == 0
+        let s1 = poll_fn(|_| Poll::<Option<i32>>::Pending);
+        let s2 = empty();
+        let or = OrStream::new(s1, s2);
+        assert_eq!(or.size_hint(), (0, None));
+
+        // both highs defined triggers max branch
+        let s1 = iter([1, 2, 3]).filter(|_| async { true });
+        let s2 = iter([1, 2]);
+        let or = OrStream::new(s1, s2);
+        assert_eq!(or.size_hint(), (1, Some(3)));
+    }
+
+    #[test]
+    fn size_hint_state_changes() {
+        block_on(async {
+            // move to St1 after first item from stream1
+            let or = OrStream::new(once(async { 1 }), once(async { 2 }));
+            pin_mut!(or);
+            assert_eq!(or.next().await, Some(1));
+            assert_eq!(or.size_hint(), (0, Some(0)));
+
+            // move to St2 when stream1 is empty
+            let or = OrStream::new(empty(), once(async { 2 }));
+            pin_mut!(or);
+            assert_eq!(or.next().await, Some(2));
+            assert_eq!(or.size_hint(), (0, Some(0)));
         });
     }
 }
