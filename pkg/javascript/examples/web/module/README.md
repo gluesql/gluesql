@@ -1,16 +1,12 @@
 ## Guide: Running module example
 
 ### How to run?
-0. Before going on, you should build and generate `dist` directory. So go to under `gluesql/gluesql-js/web`. And run these commands
+0. Before going on, you should build and generate `dist_web` directory. So go to `pkg/javascript` and run this command:
 ```sh
-# install dependencies
-$ yarn
-
-# build for examples/web/module
-$ yarn build:browser
+wasm-pack build --no-pack --target web --no-typescript --release --out-dir ./dist_web
 ```
 
-1. Go to under `gluesql/gluesql-js` 
+1. Go to under `pkg/javascript`
 
 2. Serve files using proper application
 There are many http server applications. Here are some examples
@@ -20,7 +16,7 @@ There are many http server applications. Here are some examples
 # 1. install
 $ cargo install simple-http-server
 
-# 2. serve files under `gluesql/gluesql-js`. Now open the browser and go to `http://localhost:3030`
+# 2. serve files under `pkg/javascript`. Now open the browser and go to `http://localhost:3000`
 $ simple-http-server --port 3000
 
 # 3. navigate to `examples/web/module/index.html`. The url should be `http://localhost:3000/examples/web/module/index.html`
@@ -33,4 +29,12 @@ $ simple-http-server --port 3000
 $ npx http-server
 
 # Remaining steps are same as `simple-http-server` section guide
+```
+
+- Python [http.server](https://docs.python.org/3/library/http.server.html#module-http.server) module
+```sh
+# 1. Run the following command
+$ python3 -m http.server 3000
+
+# Steps 3 and onwards follow the same process as described in the simple-http-server section.
 ```
