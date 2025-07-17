@@ -85,6 +85,22 @@ jobs:
           cd storages/mongo-storage
           cargo test --verbose --features test-mongo
 
+  run_etcdstorage_tests:
+    name: Run EtcdStorage tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - name: Install etcd and protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y etcd-server protobuf-compiler
+          nohup etcd >/tmp/etcd.log 2>&1 &
+          sleep 5
+      - run: |
+          cd storages/etcd-storage
+          cargo test --verbose --features test-etcd
+
   run_redisstorage_tests:
     name: Run RedisStorage tests
     runs-on: ubuntu-latest
