@@ -21,26 +21,48 @@ test_case!(int128, {
 
     let parse_i128 = |text: &str| -> i128 { text.parse().unwrap() };
 
-    let max_str = "170141183460469231731687303715884105728";
-    let min_str = "-170141183460469231731687303715884105729";
+    // int128::MAX+1
+    let invalid_large_str = "170141183460469231731687303715884105728";
+    // int128::MIN-1
+    let invalid_small_str = "-170141183460469231731687303715884105729";
 
     g.test(
-        &format!("INSERT INTO Item VALUES ({}, {})", max_str, max_str),
+        &format!(
+            "INSERT INTO Item VALUES ({}, {})",
+            invalid_large_str, invalid_large_str
+        ),
+        Err(ValueError::FailedToParseNumber.into()),
+    )
+    .await;
+
+    g.test(
+        &format!(
+            "INSERT INTO Item VALUES ({}, {})",
+            invalid_small_str, invalid_small_str
+        ),
         Err(ValueError::FailedToParseNumber.into()),
     )
     .await;
 
     // cast i128::MAX+1
     g.test(
-        &format!("select cast({} as INT128) from Item", max_str),
-        Err(ValueError::LiteralCastToDataTypeFailed(DataType::Int128, max_str.to_owned()).into()),
+        &format!("select cast({} as INT128) from Item", invalid_large_str),
+        Err(ValueError::LiteralCastToDataTypeFailed(
+            DataType::Int128,
+            invalid_large_str.to_owned(),
+        )
+        .into()),
     )
     .await;
 
     // cast i128::MIN-1
     g.test(
-        &format!("select cast({} as INT128) from Item", min_str),
-        Err(ValueError::LiteralCastToDataTypeFailed(DataType::Int128, min_str.to_owned()).into()),
+        &format!("select cast({} as INT128) from Item", invalid_small_str),
+        Err(ValueError::LiteralCastToDataTypeFailed(
+            DataType::Int128,
+            invalid_small_str.to_owned(),
+        )
+        .into()),
     )
     .await;
 
