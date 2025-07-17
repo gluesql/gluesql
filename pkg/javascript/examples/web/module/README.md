@@ -30,3 +30,11 @@ $ npx http-server
 
 # Remaining steps are same as `simple-http-server` section guide
 ```
+
+- Python [http.server](https://docs.python.org/3/library/http.server.html#module-http.server) module
+```sh
+# 1. Run the following command
+$ python3 -m http.server 3000
+
+# Steps 3 and onwards follow the same process as described in the simple-http-server section.
+```
