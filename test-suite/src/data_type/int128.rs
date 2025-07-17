@@ -35,6 +35,15 @@ test_case!(int128, {
     )
     .await;
 
+    g.test(
+        &format!(
+            "INSERT INTO Item VALUES ({}, {})",
+            invalid_small_str, invalid_small_str
+        ),
+        Err(ValueError::FailedToParseNumber.into()),
+    )
+    .await;
+
     // cast i128::MAX+1
     g.test(
         &format!("select cast({} as INT128) from Item", invalid_large_str),
