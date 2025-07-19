@@ -2,7 +2,6 @@ mod error;
 mod primitive;
 mod string;
 
-use bigdecimal::BigDecimal;
 pub use error::IntervalError;
 use {
     super::Value,
@@ -20,35 +19,13 @@ pub enum Interval {
     Microsecond(i64),
 }
 
-use std::sync::LazyLock;
-
-// TODO: Document the decision or reference the spec defining the microsecond value for 1 month.
-static MONTH_TO_MICROSECOND_MULTIPLIER: LazyLock<BigDecimal> =
-    LazyLock::new(|| BigDecimal::from(30 * 24 * 60 * 60 * 1_000_000i64));
-
-impl Ord for Interval {
-    fn cmp(&self, other: &Self) -> Ordering {
-        fn cmp_inner(month: i32, microsecond: i64) -> Ordering {
-            (BigDecimal::from(month) * MONTH_TO_MICROSECOND_MULTIPLIER.clone())
-                .cmp(&BigDecimal::from(microsecond))
-        }
-
-        match (self, other) {
-            (Interval::Month(l), Interval::Month(r)) => l.cmp(r),
-            (Interval::Microsecond(l), Interval::Microsecond(r)) => l.cmp(r),
-            (Interval::Month(month), Interval::Microsecond(microsecond)) => {
-                cmp_inner(*month, *microsecond)
-            }
-            (Interval::Microsecond(microsecond), Interval::Month(month)) => {
-                cmp_inner(*month, *microsecond)
-            }
-        }
-    }
-}
-
 impl PartialOrd<Interval> for Interval {
     fn partial_cmp(&self, other: &Interval) -> Option<Ordering> {
-        Some(self.cmp(other))
+        match (self, other) {
+            (Interval::Month(l), Interval::Month(r)) => Some(l.cmp(r)),
+            (Interval::Microsecond(l), Interval::Microsecond(r)) => Some(l.cmp(r)),
+            _ => None,
+        }
     }
 }
 
@@ -336,7 +313,18 @@ mod tests {
     fn cmp() {
         assert!(Interval::Month(12) > Interval::Month(1));
         assert!(Interval::Microsecond(300) > Interval::Microsecond(1));
-        assert!(Interval::Month(1) > Interval::Microsecond(1000));
+
+        // NOTE: Month and Microsecond are incomparable
+        assert!(
+            Interval::Month(1)
+                .partial_cmp(&Interval::Microsecond(1000))
+                .is_none()
+        );
+        assert!(
+            Interval::Microsecond(1000)
+                .partial_cmp(&Interval::Month(1))
+                .is_none()
+        );
     }
 
     fn date(year: i32, month: u32, day: u32) -> NaiveDate {
