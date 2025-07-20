@@ -81,12 +81,6 @@ pub enum ValueError {
     #[error("unary factorial operation overflow")]
     FactorialOverflow,
 
-    #[error("GCD or LCM calculation overflowed on trying to get the absolute value of {0}")]
-    GcdLcmOverflow(i64),
-
-    #[error("LCM calculation resulted in a value out of the i64 range")]
-    LcmResultOutOfRange,
-
     #[error("unary bit_not operation for non numeric value")]
     UnaryBitwiseNotOnNonNumeric,
 
@@ -101,9 +95,6 @@ pub enum ValueError {
 
     #[error("failed to cast from hex string to bytea: {0}")]
     CastFromHexToByteaFailed(String),
-
-    #[error("function CONCAT requires at least 1 argument")]
-    EmptyArgNotAllowedInConcat,
 
     // Cast errors from literal to value
     #[error("literal cast failed from text to integer: {0}")]
@@ -227,9 +218,6 @@ pub enum ValueError {
 
     #[error("failed to convert Value to Expr")]
     ValueToExprConversionFailure,
-
-    #[error("failed to convert Value to u32: {0}")]
-    I64ToU32ConversionFailure(String),
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Display)]
