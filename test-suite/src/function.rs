@@ -7,6 +7,7 @@ pub mod ceil;
 pub mod chr;
 pub mod coalesce;
 pub mod concat;
+pub mod current_datetime;
 pub mod concat_ws;
 pub mod dedup;
 pub mod degrees;
