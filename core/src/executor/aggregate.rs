@@ -7,6 +7,7 @@ use {
         evaluate::{Evaluated, evaluate},
         filter::check_expr,
     },
+    crate::shared::{Rc, SendSync},
     crate::{
         ast::{Expr, SelectItem},
         data::Key,
@@ -15,7 +16,6 @@ use {
     },
     async_recursion::async_recursion,
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
-    std::rc::Rc,
 };
 
 #[derive(futures_enum::Stream)]
@@ -35,7 +35,7 @@ fn check_aggregate<'a>(fields: &'a [SelectItem], group_by: &'a [Expr]) -> bool {
     })
 }
 
-pub async fn apply<'a, T: GStore, U: Stream<Item = Result<Rc<RowContext<'a>>>> + 'a>(
+pub async fn apply<'a, T: GStore + SendSync, U: Stream<Item = Result<Rc<RowContext<'a>>>> + 'a>(
     storage: &'a T,
     fields: &'a [SelectItem],
     group_by: &'a [Expr],
@@ -108,7 +108,7 @@ pub async fn apply<'a, T: GStore, U: Stream<Item = Result<Rc<RowContext<'a>>>> +
         .map(S::Aggregate)
 }
 
-async fn group_by_having<'a, T: GStore>(
+async fn group_by_having<'a, T: GStore + SendSync>(
     storage: &'a T,
     filter_context: Option<Rc<RowContext<'a>>>,
     having: Option<&'a Expr>,
@@ -149,14 +149,15 @@ async fn group_by_having<'a, T: GStore>(
     Ok(rows)
 }
 
-#[async_recursion(?Send)]
+#[cfg_attr(feature = "send", async_recursion)]
+#[cfg_attr(not(feature = "send"), async_recursion(?Send))]
 async fn aggregate<'a, T>(
     state: State<'a, T>,
     filter_context: Option<Rc<RowContext<'a>>>,
     expr: &'a Expr,
 ) -> Result<State<'a, T>>
 where
-    T: GStore,
+    T: GStore + SendSync,
 {
     let aggr = |state, expr| aggregate(state, filter_context.as_ref().map(Rc::clone), expr);
 

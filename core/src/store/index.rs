@@ -38,7 +38,8 @@ pub enum IndexError {
     ConflictOnIndexDataDeleteSync,
 }
 
-#[async_trait(?Send)]
+#[cfg_attr(feature = "send", async_trait)]
+#[cfg_attr(not(feature = "send"), async_trait(?Send))]
 pub trait Index {
     async fn scan_indexed_data<'a>(
         &'a self,
@@ -53,7 +54,8 @@ pub trait Index {
     }
 }
 
-#[async_trait(?Send)]
+#[cfg_attr(feature = "send", async_trait)]
+#[cfg_attr(not(feature = "send"), async_trait(?Send))]
 pub trait IndexMut {
     async fn create_index(
         &mut self,

@@ -1,6 +1,7 @@
 use {
     crate::data::{Row, Value},
-    std::{borrow::Cow, collections::HashMap, fmt::Debug, rc::Rc},
+    crate::shared::Rc,
+    std::{borrow::Cow, collections::HashMap, fmt::Debug},
 };
 
 #[derive(Debug)]
