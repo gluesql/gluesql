@@ -589,9 +589,13 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             return f::greatest(name, exprs);
         }
         Function::Now() => return Ok(Evaluated::Value(Value::Timestamp(Utc::now().naive_utc()))),
-        Function::CurrentDate() => return Ok(Evaluated::Value(Value::Date(Utc::now().date_naive()))),
+        Function::CurrentDate() => {
+            return Ok(Evaluated::Value(Value::Date(Utc::now().date_naive())));
+        }
         Function::CurrentTime() => return Ok(Evaluated::Value(Value::Time(Utc::now().time()))),
-        Function::CurrentTimestamp() => return Ok(Evaluated::Value(Value::Timestamp(Utc::now().naive_utc()))),
+        Function::CurrentTimestamp() => {
+            return Ok(Evaluated::Value(Value::Timestamp(Utc::now().naive_utc())));
+        }
         Function::Format { expr, format } => {
             let expr = eval(expr).await?;
             let format = eval(format).await?;

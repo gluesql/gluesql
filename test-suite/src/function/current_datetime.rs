@@ -19,22 +19,18 @@ test_case!(current_datetime, {
             "SELECT COUNT(*) as count FROM test_dates WHERE event_date = CURRENT_DATE",
             Ok(select!("count" I64; 1)),
         ),
-        
         (
             "SELECT CURRENT_TIME > TIME '00:00:00' as is_after_midnight",
             Ok(select!("is_after_midnight" Bool; true)),
         ),
-        
         (
             "SELECT CURRENT_TIMESTAMP > NOW() - INTERVAL '1' SECOND as within_second",
             Ok(select!("within_second" Bool; true)),
         ),
-        
         (
             "SELECT ABS(EXTRACT(SECOND FROM (CURRENT_TIMESTAMP - NOW()))) < 1 as same_time",
             Ok(select!("same_time" Bool; true)),
         ),
-        
         (
             "CREATE TABLE type_test (
                 id INT,

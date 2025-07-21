@@ -142,7 +142,10 @@ macro_rules! generate_store_tests {
         glue!(function_log10, function::exp_log::log10);
         glue!(function_exp, function::exp_log::exp);
         glue!(function_now, function::now::now);
-        glue!(function_current_datetime, function::current_datetime::current_datetime);
+        glue!(
+            function_current_datetime,
+            function::current_datetime::current_datetime
+        );
         glue!(function_sign, function::sign::sign);
         glue!(function_skip, function::skip::skip);
         glue!(function_to_date, function::to_date::to_date);
