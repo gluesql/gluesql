@@ -17,7 +17,8 @@ impl Function {
         }
 
         match self {
-            Self::Now() | Function::Pi() | Function::GenerateUuid() | Self::Rand(None) => {
+            Self::Now() | Function::Pi() | Function::GenerateUuid() | Self::Rand(None) 
+            | Function::CurrentDate() | Function::CurrentTime() | Function::CurrentTimestamp() => {
                 Exprs::Empty(empty())
             }
             Self::Lower(expr)
