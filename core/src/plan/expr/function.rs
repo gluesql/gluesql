@@ -248,6 +248,9 @@ mod tests {
     fn as_exprs() {
         // Empty
         test("NOW()", &[]);
+        test("CURRENT_DATE()", &[]);
+        test("CURRENT_TIME()", &[]);
+        test("CURRENT_TIMESTAMP()", &[]);
         test("PI()", &[]);
         test("GENERATE_UUID()", &[]);
         test("RAND()", &[]);

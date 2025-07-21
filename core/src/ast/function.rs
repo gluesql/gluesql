@@ -340,9 +340,9 @@ impl ToSql for Function {
             Function::Radians(e) => format!("RADIANS({})", e.to_sql()),
             Function::Degrees(e) => format!("DEGREES({})", e.to_sql()),
             Function::Now() => "NOW()".to_owned(),
-            Function::CurrentDate() => "CURRENT_DATE".to_owned(),
-            Function::CurrentTime() => "CURRENT_TIME".to_owned(),
-            Function::CurrentTimestamp() => "CURRENT_TIMESTAMP".to_owned(),
+            Function::CurrentDate() => "CURRENT_DATE()".to_owned(),
+            Function::CurrentTime() => "CURRENT_TIME()".to_owned(),
+            Function::CurrentTimestamp() => "CURRENT_TIMESTAMP()".to_owned(),
             Function::Pi() => "PI()".to_owned(),
             Function::LastDay(expr) => format!("LAST_DAY({})", expr.to_sql()),
             Function::Ltrim { expr, chars } => match chars {
