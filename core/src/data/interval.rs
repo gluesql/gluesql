@@ -13,6 +13,18 @@ use {
     std::{cmp::Ordering, fmt::Debug},
 };
 
+/// Represents a time interval, which can be either in months or microseconds.
+///
+/// The [`Interval`] type is divided into two variants: [`Interval::Month`] and [`Interval::Microsecond`].
+/// This distinction is made because the conversion between months and days is not consistent.
+/// While a year can be clearly calculated as 12 months in the solar calendar,
+/// a month can vary in the number of days (28, 30, or 31 days).
+///
+/// To ensure precise calculations and comparisons, intervals are represented in the smallest
+/// unambiguous units: `Month` for month-based intervals and `Microsecond` for microsecond-based intervals.
+/// Comparisons are only allowed within the same unit type to avoid ambiguity.
+///
+/// For more details on how comparisons are implemented, refer to the [`Interval::partial_cmp`] trait.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Interval {
     Month(i32),
