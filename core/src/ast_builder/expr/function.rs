@@ -24,6 +24,9 @@ pub enum FunctionNode<'a> {
     Tan(ExprNode<'a>),
     Pi,
     Now,
+    CurrentDate,
+    CurrentTime,
+    CurrentTimestamp,
     Left {
         expr: ExprNode<'a>,
         size: ExprNode<'a>,
@@ -197,6 +200,9 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
             FunctionNode::Tan(expr_node) => expr_node.try_into().map(Function::Tan),
             FunctionNode::Pi => Ok(Function::Pi()),
             FunctionNode::Now => Ok(Function::Now()),
+            FunctionNode::CurrentDate => Ok(Function::CurrentDate()),
+            FunctionNode::CurrentTime => Ok(Function::CurrentTime()),
+            FunctionNode::CurrentTimestamp => Ok(Function::CurrentTimestamp()),
             FunctionNode::Left { expr, size } => {
                 let expr = expr.try_into()?;
                 let size = size.try_into()?;
@@ -638,6 +644,15 @@ pub fn generate_uuid<'a>() -> ExprNode<'a> {
 }
 pub fn now<'a>() -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Now))
+}
+pub fn current_date<'a>() -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::CurrentDate))
+}
+pub fn current_time<'a>() -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::CurrentTime))
+}
+pub fn current_timestamp<'a>() -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::CurrentTimestamp))
 }
 pub fn left<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(expr: T, size: U) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Left {
@@ -1113,6 +1128,27 @@ mod tests {
     fn function_now() {
         let actual = f::now();
         let expected = "NOW()";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_current_date() {
+        let actual = f::current_date();
+        let expected = "CURRENT_DATE()";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_current_time() {
+        let actual = f::current_time();
+        let expected = "CURRENT_TIME()";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_current_timestamp() {
+        let actual = f::current_timestamp();
+        let expected = "CURRENT_TIMESTAMP()";
         test_expr(actual, expected);
     }
 

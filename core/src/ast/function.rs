@@ -972,6 +972,18 @@ mod tests {
         );
 
         assert_eq!("NOW()", &Expr::Function(Box::new(Function::Now())).to_sql());
+        assert_eq!(
+            "CURRENT_DATE()",
+            &Expr::Function(Box::new(Function::CurrentDate())).to_sql()
+        );
+        assert_eq!(
+            "CURRENT_TIME()",
+            &Expr::Function(Box::new(Function::CurrentTime())).to_sql()
+        );
+        assert_eq!(
+            "CURRENT_TIMESTAMP()",
+            &Expr::Function(Box::new(Function::CurrentTimestamp())).to_sql()
+        );
 
         assert_eq!("PI()", &Expr::Function(Box::new(Function::Pi())).to_sql());
 
