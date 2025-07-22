@@ -108,6 +108,9 @@ pub enum Function {
     Radians(Expr),
     Degrees(Expr),
     Now(),
+    CurrentDate(),
+    CurrentTime(),
+    CurrentTimestamp(),
     Pi(),
     LastDay(Expr),
     Ltrim {
@@ -337,6 +340,9 @@ impl ToSql for Function {
             Function::Radians(e) => format!("RADIANS({})", e.to_sql()),
             Function::Degrees(e) => format!("DEGREES({})", e.to_sql()),
             Function::Now() => "NOW()".to_owned(),
+            Function::CurrentDate() => "CURRENT_DATE()".to_owned(),
+            Function::CurrentTime() => "CURRENT_TIME()".to_owned(),
+            Function::CurrentTimestamp() => "CURRENT_TIMESTAMP()".to_owned(),
             Function::Pi() => "PI()".to_owned(),
             Function::LastDay(expr) => format!("LAST_DAY({})", expr.to_sql()),
             Function::Ltrim { expr, chars } => match chars {
@@ -966,6 +972,18 @@ mod tests {
         );
 
         assert_eq!("NOW()", &Expr::Function(Box::new(Function::Now())).to_sql());
+        assert_eq!(
+            "CURRENT_DATE()",
+            &Expr::Function(Box::new(Function::CurrentDate())).to_sql()
+        );
+        assert_eq!(
+            "CURRENT_TIME()",
+            &Expr::Function(Box::new(Function::CurrentTime())).to_sql()
+        );
+        assert_eq!(
+            "CURRENT_TIMESTAMP()",
+            &Expr::Function(Box::new(Function::CurrentTimestamp())).to_sql()
+        );
 
         assert_eq!("PI()", &Expr::Function(Box::new(Function::Pi())).to_sql());
 

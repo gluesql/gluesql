@@ -8,6 +8,7 @@ pub mod chr;
 pub mod coalesce;
 pub mod concat;
 pub mod concat_ws;
+pub mod current_datetime;
 pub mod dedup;
 pub mod degrees;
 pub mod div_mod;
