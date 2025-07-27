@@ -1,11 +1,12 @@
 use {
+    super::PlanError,
     crate::{
         ast::{
             AstLiteral, BinaryOperator, Expr, Function, IndexItem, IndexOperator, OrderByExpr,
             Query, Select, SetExpr, Statement, TableAlias, TableFactor, TableWithJoins,
         },
-        data::{Schema, SchemaIndex, SchemaIndexOrd, TableError},
-        result::{Error, Result},
+        data::{Schema, SchemaIndex, SchemaIndexOrd},
+        result::Result,
     },
     std::collections::HashMap,
     utils::Vector,
@@ -126,7 +127,7 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
             TableFactor::Derived { .. }
             | TableFactor::Series { .. }
             | TableFactor::Dictionary { .. } => {
-                return Err(Error::Table(TableError::Unreachable));
+                return Err(PlanError::Unreachable.into());
             }
         };
 
@@ -209,7 +210,7 @@ fn plan_select(
                 TableFactor::Derived { .. }
                 | TableFactor::Series { .. }
                 | TableFactor::Dictionary { .. } => {
-                    return Err(Error::Table(TableError::Unreachable));
+                    return Err(PlanError::Unreachable.into());
                 }
             };
 
