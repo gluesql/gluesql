@@ -370,6 +370,13 @@ pub fn ifnull<'a>(expr: Evaluated<'a>, then: Evaluated<'a>) -> ControlFlow<Evalu
     })
 }
 
+pub fn nullif<'a>(expr1: Evaluated<'a>, expr2: Evaluated<'a>) -> ControlFlow<Evaluated<'a>> {
+    Continue(match expr1 == expr2 {
+        true => Evaluated::Value(Value::Null),
+        false => expr1,
+    })
+}
+
 pub fn sign(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'_>> {
     let x = eval_to_float(&name, n)?;
     if x == 0.0 {

@@ -61,6 +61,10 @@ pub enum Function {
         expr: Expr,
         then: Expr,
     },
+    NullIf {
+        expr1: Expr,
+        expr2: Expr,
+    },
     Rand(Option<Expr>),
     Round(Expr),
     Floor(Expr),
@@ -285,6 +289,9 @@ impl ToSql for Function {
             }
             Function::IfNull { expr, then } => {
                 format!("IFNULL({}, {})", expr.to_sql(), then.to_sql())
+            }
+            Function::NullIf { expr1, expr2} => {
+                format!("NULLIF({}, {})", expr1.to_sql(), expr2.to_sql())
             }
             Function::Rand(e) => match e {
                 Some(v) => format!("RAND({})", v.to_sql()),
@@ -544,7 +551,7 @@ mod tests {
             TrimWhereField,
         },
         bigdecimal::BigDecimal,
-        std::str::FromStr,
+        std::{f32::consts::E, str::FromStr},
     };
 
     #[test]
@@ -751,6 +758,15 @@ mod tests {
             &Expr::Function(Box::new(Function::IfNull {
                 expr: Expr::Identifier("updated_at".to_owned()),
                 then: Expr::Identifier("created_at".to_owned())
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"NULLIF("updated_at", "created_at")"#,
+            &Expr::Function(Box::new(Function::NullIf { 
+                expr1: Expr::Identifier("updated_at".to_owned()), 
+                expr2: Expr::Identifier("created_at".to_owned()) 
             }))
             .to_sql()
         );
