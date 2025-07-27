@@ -1,8 +1,7 @@
 use {
     crate::*,
-    chrono::{NaiveDate, NaiveTime},
-    gluesql_core::{ast_builder::null, error::{EvaluateError, TranslateError}, prelude::{Payload, Value::*}},
-    rust_decimal::Decimal,
+    chrono::NaiveDate,
+    gluesql_core::{error::TranslateError, prelude::Value::*},
 };
 
 test_case!(nullif, {
@@ -31,6 +30,18 @@ test_case!(nullif, {
         "NULLIF with different strings should return first arguments",
         "SELECT NULLIF('hello', 'helle') AS result",
         Ok(select_with_null!("result"; Str("hello".to_string()))),
+    ).await;
+
+    g.named_test(
+        "NULLIF with equal date should return NULL",
+        "SELECT NULLIF(TO_DATE('2025-01-01', '%Y-%m-%d'), TO_DATE('2025-01-01', '%Y-%m-%d')) AS result",
+        Ok(select_with_null!("result"; Null)),
+    ).await;
+
+    g.named_test(
+        "NULLIF with different date should return first arguments",
+        "SELECT NULLIF(TO_DATE('2025-01-01', '%Y-%m-%d'), TO_DATE('2025-01-02', '%Y-%m-%d')) AS result",
+        Ok(select!(result; Date; NaiveDate::from_ymd_opt(2025, 1, 1).unwrap())),
     ).await;
 
     g.named_test(

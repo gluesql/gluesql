@@ -414,6 +414,9 @@ impl<'a> ExprNode<'a> {
     pub fn ifnull<T: Into<ExprNode<'a>>>(self, another: T) -> ExprNode<'a> {
         ifnull(self, another)
     }
+    pub fn nullif<T: Into<ExprNode<'a>>>(self, another: T) -> ExprNode<'a> {
+        nullif(self, another)
+    }
     pub fn ceil(self) -> ExprNode<'a> {
         ceil(self)
     }
@@ -590,6 +593,12 @@ pub fn ifnull<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(expr: T, then: U
     ExprNode::Function(Box::new(FunctionNode::IfNull {
         expr: expr.into(),
         then: then.into(),
+    }))
+}
+pub fn nullif<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(expr1: T, expr2: U) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::NullIf {
+        expr1: expr1.into(),
+        expr2: expr2.into(),
     }))
 }
 pub fn ceil<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
