@@ -404,7 +404,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             f::concat_ws(name, separator, exprs)
         }
         Function::IfNull { expr, then } => f::ifnull(eval(expr).await?, eval(then).await?),
-        Function::NullIf { expr1, expr2 } => f::nullif(eval(expr1).await?, eval(expr2).await?), 
+        Function::NullIf { expr1, expr2 } => f::nullif(eval(expr1).await?, eval(expr2).await?),
         Function::Lower(expr) => f::lower(name, eval(expr).await?),
         Function::Initcap(expr) => f::initcap(name, eval(expr).await?),
         Function::Upper(expr) => f::upper(name, eval(expr).await?),

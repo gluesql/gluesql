@@ -290,7 +290,7 @@ impl ToSql for Function {
             Function::IfNull { expr, then } => {
                 format!("IFNULL({}, {})", expr.to_sql(), then.to_sql())
             }
-            Function::NullIf { expr1, expr2} => {
+            Function::NullIf { expr1, expr2 } => {
                 format!("NULLIF({}, {})", expr1.to_sql(), expr2.to_sql())
             }
             Function::Rand(e) => match e {
@@ -551,7 +551,7 @@ mod tests {
             TrimWhereField,
         },
         bigdecimal::BigDecimal,
-        std::{str::FromStr},
+        std::str::FromStr,
     };
 
     #[test]
@@ -764,9 +764,9 @@ mod tests {
 
         assert_eq!(
             r#"NULLIF("updated_at", "created_at")"#,
-            &Expr::Function(Box::new(Function::NullIf { 
-                expr1: Expr::Identifier("updated_at".to_owned()), 
-                expr2: Expr::Identifier("created_at".to_owned()) 
+            &Expr::Function(Box::new(Function::NullIf {
+                expr1: Expr::Identifier("updated_at".to_owned()),
+                expr2: Expr::Identifier("created_at".to_owned())
             }))
             .to_sql()
         );

@@ -595,7 +595,10 @@ pub fn ifnull<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(expr: T, then: U
         then: then.into(),
     }))
 }
-pub fn nullif<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(expr1: T, expr2: U) -> ExprNode<'a> {
+pub fn nullif<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
+    expr1: T,
+    expr2: U,
+) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::NullIf {
         expr1: expr1.into(),
         expr2: expr2.into(),

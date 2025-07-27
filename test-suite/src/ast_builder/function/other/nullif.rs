@@ -36,11 +36,11 @@ test_case!(nullif, {
 
     // Return null when text equal
     let actual = table("Foo")
-            .select()
-            .project("id")
-            .project(col("name").nullif(text("hello")))
-            .execute(glue)
-            .await;
+        .select()
+        .project("id")
+        .project(col("name").nullif(text("hello")))
+        .execute(glue)
+        .await;
     let expected = Ok(select_with_null!(
         id | "NULLIF(\"name\", 'hello')";
         I64(100)   Null;
@@ -60,13 +60,17 @@ test_case!(nullif, {
         I64(100) Str("hello".to_owned());
         I64(200) Null
     ));
-    assert_eq!(actual, expected, "return first argument with other column using nullif");
+    assert_eq!(
+        actual, expected,
+        "return first argument with other column using nullif"
+    );
 
     // nullif without table
     let actual = values(vec![
         vec![f::nullif(text("HELLO"), text("WORLD"))],
         vec![f::nullif(text("WORLD"), text("WORLD"))],
-    ]).execute(glue)
+    ])
+    .execute(glue)
     .await;
     let expected = Ok(select_with_null!(
         "column1" | Str;

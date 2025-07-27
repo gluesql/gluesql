@@ -18,19 +18,22 @@ test_case!(nullif, {
         "NULLIF with different integers should return first arguments",
         "SELECT NULLIF(1, 0) AS result",
         Ok(select_with_null!("result"; I64(1))),
-    ).await;
+    )
+    .await;
 
     g.named_test(
         "NULLIF with equal strings should return NULL",
         "SELECT NULLIF('hello', 'hello') AS result",
         Ok(select_with_null!("result"; Null)),
-    ).await;
+    )
+    .await;
 
     g.named_test(
         "NULLIF with different strings should return first arguments",
         "SELECT NULLIF('hello', 'helle') AS result",
-        Ok(select_with_null!("result"; Str("hello".to_string()))),
-    ).await;
+        Ok(select_with_null!("result"; Str("hello".to_owned()))),
+    )
+    .await;
 
     g.named_test(
         "NULLIF with equal date should return NULL",
@@ -48,19 +51,23 @@ test_case!(nullif, {
         "NULLIF with zero argument should throw EvaluateError",
         "SELECT NULLIF() AS result",
         Err(TranslateError::FunctionArgsLengthNotMatching {
-            name: "NULLIF".to_string(),
+            name: "NULLIF".to_owned(),
             expected: 2,
             found: 0,
-        }.into()),
-    ).await;
+        }
+        .into()),
+    )
+    .await;
 
     g.named_test(
         "NULLIF with one argument should throw EvaluateError",
         "SELECT NULLIF(1) AS result",
         Err(TranslateError::FunctionArgsLengthNotMatching {
-            name: "NULLIF".to_string(),
+            name: "NULLIF".to_owned(),
             expected: 2,
             found: 1,
-        }.into()),
-    ).await;
+        }
+        .into()),
+    )
+    .await;
 });
