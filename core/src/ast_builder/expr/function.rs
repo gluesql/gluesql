@@ -12,6 +12,10 @@ pub enum FunctionNode<'a> {
         expr: ExprNode<'a>,
         then: ExprNode<'a>,
     },
+    NullIf {
+        expr1: ExprNode<'a>,
+        expr2: ExprNode<'a>,
+    },
     Ceil(ExprNode<'a>),
     Rand(Option<ExprNode<'a>>),
     Round(ExprNode<'a>),
@@ -182,6 +186,11 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
                 let expr = expr.try_into()?;
                 let then = then.try_into()?;
                 Ok(Function::IfNull { expr, then })
+            }
+            FunctionNode::NullIf { expr1, expr2 } => {
+                let expr1 = expr1.try_into()?;
+                let expr2 = expr2.try_into()?;
+                Ok(Function::NullIf { expr1, expr2 })
             }
             FunctionNode::Ceil(expr_node) => expr_node.try_into().map(Function::Ceil),
             FunctionNode::Rand(expr_node) => Ok(Function::Rand(

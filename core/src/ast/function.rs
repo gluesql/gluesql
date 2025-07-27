@@ -551,7 +551,7 @@ mod tests {
             TrimWhereField,
         },
         bigdecimal::BigDecimal,
-        std::{f32::consts::E, str::FromStr},
+        std::{str::FromStr},
     };
 
     #[test]
