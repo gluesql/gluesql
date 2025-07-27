@@ -1018,6 +1018,17 @@ mod tests {
     }
 
     #[test]
+    fn function_nullif() {
+        let actual = f::nullif(text("hello"), text("world"));
+        let expected = "NULLIF('hello', 'world')";
+        test_expr(actual, expected);
+
+        let actual = col("updated_at").nullif(col("created_at"));
+        let expected = "NULLIF(updated_at, created_at)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
     fn function_ceil() {
         let actual = f::ceil(col("num"));
         let expected = "CEIL(num)";
