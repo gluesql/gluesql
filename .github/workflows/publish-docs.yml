@@ -43,6 +43,25 @@ jobs:
           mkdir docs/${{ env.VERSION }}/
           mv docs/build gluesql.github.io/docs/${{ env.VERSION }}
 
+      - name: Update docs index.html redirect
+        run: |
+          cat > gluesql.github.io/docs/index.html <<EOF
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <title>Redirect to GlueSQL Docs</title>
+            </head>
+          <style>
+          </style>
+            <body>
+              <script>
+                location.href = 'https://gluesql.org/docs/${VERSION}/';
+              </script>
+            </body>
+          </html>
+          EOF
+
       - name: Prepare
         run: |
           git config --global user.email "taehoon.moon@outlook.com"
@@ -51,7 +70,7 @@ jobs:
       - name: Commit and deploy
         run: |
           cd gluesql.github.io
-          git add docs/${{ env.VERSION }}
+          git add docs/${{ env.VERSION }} docs/index.html
           git diff-index --quiet HEAD || (
             git commit -m "Publish Docs - ${{ env.VERSION }}" &&
             git push https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/gluesql.github.io.git
