@@ -17,9 +17,13 @@ impl Function {
         }
 
         match self {
-            Self::Now() | Function::Pi() | Function::GenerateUuid() | Self::Rand(None) => {
-                Exprs::Empty(empty())
-            }
+            Self::Now()
+            | Function::Pi()
+            | Function::GenerateUuid()
+            | Self::Rand(None)
+            | Function::CurrentDate()
+            | Function::CurrentTime()
+            | Function::CurrentTimestamp() => Exprs::Empty(empty()),
             Self::Lower(expr)
             | Self::Length(expr)
             | Self::Initcap(expr)
@@ -244,6 +248,9 @@ mod tests {
     fn as_exprs() {
         // Empty
         test("NOW()", &[]);
+        test("CURRENT_DATE()", &[]);
+        test("CURRENT_TIME()", &[]);
+        test("CURRENT_TIMESTAMP()", &[]);
         test("PI()", &[]);
         test("GENERATE_UUID()", &[]);
         test("RAND()", &[]);

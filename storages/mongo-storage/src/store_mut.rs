@@ -204,7 +204,7 @@ impl StoreMut for MongoStorage {
             .map(|row| match row {
                 DataRow::Vec(values) => column_defs
                     .as_ref()
-                    .map_storage_err(MongoStorageError::Unreachable)?
+                    .map_storage_err(MongoStorageError::ConflictAppendData)?
                     .iter()
                     .zip(values.into_iter())
                     .try_fold(Document::new(), |mut acc, (column_def, value)| {

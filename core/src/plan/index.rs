@@ -112,58 +112,55 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
             })
     });
 
-    match index {
-        index if index.is_some() => {
-            let Select {
-                projection,
-                from,
-                selection,
-                group_by,
-                having,
-            } = *select;
+    if index.is_some() {
+        let Select {
+            projection,
+            from,
+            selection,
+            group_by,
+            having,
+        } = *select;
 
-            let TableWithJoins { relation, joins } = from;
-            let (name, alias) = match relation {
-                TableFactor::Table { name, alias, .. } => (name, alias),
-                TableFactor::Derived { .. }
-                | TableFactor::Series { .. }
-                | TableFactor::Dictionary { .. } => {
-                    return Err(PlanError::Unreachable.into());
-                }
-            };
+        let TableWithJoins { relation, joins } = from;
+        let (name, alias) = match relation {
+            TableFactor::Table { name, alias, .. } => (name, alias),
+            TableFactor::Derived { .. }
+            | TableFactor::Series { .. }
+            | TableFactor::Dictionary { .. } => {
+                return Err(PlanError::Unreachable.into());
+            }
+        };
 
-            let from = TableWithJoins {
-                relation: TableFactor::Table { name, alias, index },
-                joins,
-            };
+        let from = TableWithJoins {
+            relation: TableFactor::Table { name, alias, index },
+            joins,
+        };
 
-            let select = Select {
-                projection,
-                from,
-                selection,
-                group_by,
-                having,
-            };
+        let select = Select {
+            projection,
+            from,
+            selection,
+            group_by,
+            having,
+        };
 
-            Ok(Query {
-                body: SetExpr::Select(Box::new(select)),
-                order_by: Vector::from(order_by).pop().0.into(),
-                limit,
-                offset,
-            })
-        }
-        _ => {
-            let select = plan_select(schema_map, &indexes, *select)?;
-            let body = SetExpr::Select(Box::new(select));
-            let query = Query {
-                body,
-                order_by,
-                limit,
-                offset,
-            };
+        Ok(Query {
+            body: SetExpr::Select(Box::new(select)),
+            order_by: Vector::from(order_by).pop().0.into(),
+            limit,
+            offset,
+        })
+    } else {
+        let select = plan_select(schema_map, &indexes, *select)?;
+        let body = SetExpr::Select(Box::new(select));
+        let query = Query {
+            body,
+            order_by,
+            limit,
+            offset,
+        };
 
-            Ok(query)
-        }
+        Ok(query)
     }
 }
 

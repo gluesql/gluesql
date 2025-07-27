@@ -170,7 +170,10 @@ impl ToSql for Statement {
                     false => format!("({}) ", columns.join(", ")),
                 };
 
-                format!("INSERT INTO {table_name} {columns}{};", source.to_sql())
+                format!(
+                    r#"INSERT INTO "{table_name}" {columns}{};"#,
+                    source.to_sql()
+                )
             }
             Statement::Update {
                 table_name,
@@ -379,7 +382,7 @@ mod tests {
     #[test]
     fn to_sql_insert() {
         assert_eq!(
-            "INSERT INTO Test (id, num, name) VALUES (1, 2, 'Hello');",
+            r#"INSERT INTO "Test" (id, num, name) VALUES (1, 2, 'Hello');"#,
             Statement::Insert {
                 table_name: "Test".into(),
                 columns: vec!["id".to_owned(), "num".to_owned(), "name".to_owned()],

@@ -2,7 +2,7 @@ use {
     super::{EvaluateError, Evaluated},
     crate::{
         ast::DateTimeField,
-        data::{Key, Point, Value, ValueError},
+        data::{Key, Point, Value},
         result::{Error, Result},
     },
     chrono::{Datelike, Duration, Months},
@@ -153,7 +153,7 @@ pub fn concat(exprs: Vec<Evaluated<'_>>) -> ControlFlow<Evaluated> {
             Some(left) => left.concat(right).break_if_null().map(Some),
         })?;
 
-    value.continue_or_break(ValueError::EmptyArgNotAllowedInConcat.into())
+    value.continue_or_break(EvaluateError::EmptyArgNotAllowedInConcat.into())
 }
 
 pub fn concat_ws<'a>(
@@ -526,7 +526,7 @@ pub fn lcm<'a>(
         let result = (a * b).abs().checked_div(gcd_val).unwrap_or(0);
 
         i64::try_from(result)
-            .map_err(|_| ValueError::LcmResultOutOfRange.into())
+            .map_err(|_| EvaluateError::LcmResultOutOfRange.into())
             .into_control_flow()
     }
 
@@ -536,10 +536,10 @@ pub fn lcm<'a>(
 fn gcd_i64(a: i64, b: i64) -> ControlFlow<i64> {
     let mut a = a
         .checked_abs()
-        .continue_or_break(ValueError::GcdLcmOverflow(a).into())?;
+        .continue_or_break(EvaluateError::GcdLcmOverflow(a).into())?;
     let mut b = b
         .checked_abs()
-        .continue_or_break(ValueError::GcdLcmOverflow(b).into())?;
+        .continue_or_break(EvaluateError::GcdLcmOverflow(b).into())?;
 
     while b > 0 {
         (a, b) = (b, a % b);
@@ -832,7 +832,7 @@ pub fn add_month<'a>(
         let size_as_u32 = size
             .abs()
             .try_into()
-            .map_err(|_| ValueError::I64ToU32ConversionFailure(name).into())
+            .map_err(|_| EvaluateError::I64ToU32ConversionFailure(name).into())
             .into_control_flow()?;
         let new_months = chrono::Months::new(size_as_u32);
 

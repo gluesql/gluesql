@@ -75,7 +75,10 @@ impl Ord for Key {
             (Key::Date(l), Key::Date(r)) => l.cmp(r),
             (Key::Timestamp(l), Key::Timestamp(r)) => l.cmp(r),
             (Key::Time(l), Key::Time(r)) => l.cmp(r),
-            (Key::Interval(l), Key::Interval(r)) => l.cmp(r),
+            (Key::Interval(l), Key::Interval(r)) => l.partial_cmp(r).unwrap_or(match (l, r) {
+                (Interval::Month(_), Interval::Microsecond(_)) => Ordering::Greater,
+                _ => Ordering::Less,
+            }),
             (Key::Uuid(l), Key::Uuid(r)) => l.cmp(r),
             (Key::Inet(l), Key::Inet(r)) => l.cmp(r),
             (Key::None, Key::None) => Ordering::Equal,

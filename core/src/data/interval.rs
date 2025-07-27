@@ -13,26 +13,31 @@ use {
     std::{cmp::Ordering, fmt::Debug},
 };
 
+/// Represents a time interval, which can be either in months or microseconds.
+///
+/// The [`Interval`] type is divided into two variants: [`Interval::Month`] and [`Interval::Microsecond`].
+/// This distinction is made because the conversion between months and days is not consistent.
+/// While a year can be clearly calculated as 12 months in the solar calendar,
+/// a month can vary in the number of days (28, 30, or 31 days).
+///
+/// To ensure precise calculations and comparisons, intervals are represented in the smallest
+/// unambiguous units: `Month` for month-based intervals and `Microsecond` for microsecond-based intervals.
+/// Comparisons are only allowed within the same unit type to avoid ambiguity.
+///
+/// For more details on how comparisons are implemented, refer to the [`Interval::partial_cmp`] trait.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Interval {
     Month(i32),
     Microsecond(i64),
 }
 
-impl Ord for Interval {
-    fn cmp(&self, other: &Self) -> Ordering {
-        match (self, other) {
-            (Interval::Month(l), Interval::Month(r)) => l.cmp(r),
-            (Interval::Microsecond(l), Interval::Microsecond(r)) => l.cmp(r),
-            (Interval::Month(_), Interval::Microsecond(_)) => Ordering::Greater,
-            (Interval::Microsecond(_), Interval::Month(_)) => Ordering::Less,
-        }
-    }
-}
-
 impl PartialOrd<Interval> for Interval {
     fn partial_cmp(&self, other: &Interval) -> Option<Ordering> {
-        Some(self.cmp(other))
+        match (self, other) {
+            (Interval::Month(l), Interval::Month(r)) => Some(l.cmp(r)),
+            (Interval::Microsecond(l), Interval::Microsecond(r)) => Some(l.cmp(r)),
+            _ => None,
+        }
     }
 }
 
@@ -320,7 +325,18 @@ mod tests {
     fn cmp() {
         assert!(Interval::Month(12) > Interval::Month(1));
         assert!(Interval::Microsecond(300) > Interval::Microsecond(1));
-        assert!(Interval::Month(1) > Interval::Microsecond(1000));
+
+        // NOTE: Month and Microsecond are incomparable
+        assert!(
+            Interval::Month(1)
+                .partial_cmp(&Interval::Microsecond(1000))
+                .is_none()
+        );
+        assert!(
+            Interval::Microsecond(1000)
+                .partial_cmp(&Interval::Month(1))
+                .is_none()
+        );
     }
 
     fn date(year: i32, month: u32, day: u32) -> NaiveDate {

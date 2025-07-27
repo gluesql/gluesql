@@ -77,10 +77,10 @@ This command can set each Print options
 
 | command            | description                              |
 | ------------------ | ---------------------------------------- |
-| tabular {ON\|OFF}  | turn on/off html table format            |
-| colsep {SEPARATOR} | set column separator(`tabular OFF` only) |
-| colwrap {WRAPPER}  | set column wrapper(`tabular OFF` only)   |
-| heading {ON\|OFF}  | turn on/off heading                      |
+| tabular \{ON\|OFF}  | turn on/off html table format            |
+| colsep \{SEPARATOR} | set column separator(`tabular OFF` only) |
+| colwrap \{WRAPPER}  | set column wrapper(`tabular OFF` only)   |
+| heading \{ON\|OFF}  | turn on/off heading                      |
 
 ```
 gluesql> VALUES (1, 'Glue'), (2, 'SQL');

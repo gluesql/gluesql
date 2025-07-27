@@ -209,7 +209,7 @@ glue.execute("SELECT * FROM food;").await.unwrap();
 ## Limitations
 
 1. For Parquet files storing data with `parquet::record::api::Field::MapInternal`, errors are encountered if the key information utilizes a data type other than string as the key.
-This is attributed to the fact that GlueSQL's HashMap is of type <String, Value>, hence, limiting the use of other data types as keys.
+This is attributed to the fact that GlueSQL's HashMap is of type \<String, Value>, hence, limiting the use of other data types as keys.
 
 2. The interface for reading data in columnar units is currently not supported by GlueSQL, which might result in suboptimal read and write performance.
 
