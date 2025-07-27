@@ -12,24 +12,26 @@ test_case!(current_date, {
         };
     }
 
-    let test_cases = [
-        (
-            "CREATE TABLE Item (date DATE DEFAULT CURRENT_DATE)",
-            Ok(Payload::Create),
-        ),
-        (
-            "INSERT INTO Item VALUES
-                ('2021-06-15'),
-                ('9999-12-31');",
-            Ok(Payload::Insert(2)),
-        ),
-        (
-            "SELECT date FROM Item WHERE date > CURRENT_DATE;",
-            Ok(select!("date" Date; date!("9999-12-31"))),
-        ),
-    ];
+    g.named_test(
+        "table with CURRENT_DATE default",
+        "CREATE TABLE Item (date DATE DEFAULT CURRENT_DATE)",
+        Ok(Payload::Create),
+    )
+    .await;
 
-    for (sql, expected) in test_cases {
-        g.test(sql, expected).await;
-    }
+    g.named_test(
+        "insert date values",
+        "INSERT INTO Item VALUES
+            ('2021-06-15'),
+            ('9999-12-31');",
+        Ok(Payload::Insert(2)),
+    )
+    .await;
+
+    g.named_test(
+        "filter by CURRENT_DATE",
+        "SELECT date FROM Item WHERE date > CURRENT_DATE;",
+        Ok(select!("date" Date; date!("9999-12-31"))),
+    )
+    .await;
 });
