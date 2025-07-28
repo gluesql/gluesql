@@ -3,6 +3,7 @@ use {
     crate::{
         ast::{Aggregate, Expr},
         data::Value,
+        executor::evaluate::Evaluated,
         result::Result,
         store::GStore,
     },
@@ -59,5 +60,8 @@ pub async fn check_expr<'a, T: GStore>(
 ) -> Result<bool> {
     evaluate(storage, context, aggregated, expr)
         .await
-        .map(|evaluated| evaluated.try_into())?
+        .map(|evaluated| match evaluated {
+            Evaluated::Value(Value::Null) => Ok(false),
+            _ => evaluated.try_into(),
+        })?
 }

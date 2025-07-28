@@ -39,6 +39,10 @@ pub fn binary_op<'a>(
         }};
     }
 
+    if l.is_null() || r.is_null() {
+        return Ok(Evaluated::Value(Value::Null));
+    }
+
     match op {
         BinaryOperator::Plus => l.add(&r),
         BinaryOperator::Minus => l.subtract(&r),
@@ -68,6 +72,10 @@ pub fn binary_op<'a>(
 }
 
 pub fn unary_op<'a>(op: &UnaryOperator, v: Evaluated<'a>) -> Result<Evaluated<'a>> {
+    if v.is_null() {
+        return Ok(Evaluated::Value(Value::Null));
+    }
+
     match op {
         UnaryOperator::Plus => v.unary_plus(),
         UnaryOperator::Minus => v.unary_minus(),
