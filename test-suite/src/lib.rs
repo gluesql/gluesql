@@ -315,6 +315,8 @@ macro_rules! generate_store_tests {
         glue!(schemaless_error, schemaless::error);
 
         glue!(store_insert_schema, store::insert_schema::insert_schema);
+
+        glue!(function_between, function::between::between);
     };
 }
 
