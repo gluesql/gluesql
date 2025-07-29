@@ -170,6 +170,10 @@ where
             let negated = *negated;
             let target = eval(expr).await?;
 
+            if target.is_null() {
+                return Ok(target);
+            }
+
             stream::iter(list)
                 .then(eval)
                 .try_filter(|evaluated| ready(evaluated.evaluate_eq(&target)))
