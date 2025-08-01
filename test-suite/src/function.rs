@@ -36,6 +36,7 @@ pub mod ltrim_rtrim;
 pub mod math_function;
 pub mod md5;
 pub mod now;
+pub mod nullif;
 pub mod pi;
 pub mod position;
 pub mod prepend;

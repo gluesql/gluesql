@@ -12,6 +12,10 @@ pub enum FunctionNode<'a> {
         expr: ExprNode<'a>,
         then: ExprNode<'a>,
     },
+    NullIf {
+        expr1: ExprNode<'a>,
+        expr2: ExprNode<'a>,
+    },
     Ceil(ExprNode<'a>),
     Rand(Option<ExprNode<'a>>),
     Round(ExprNode<'a>),
@@ -185,6 +189,11 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
                 let expr = expr.try_into()?;
                 let then = then.try_into()?;
                 Ok(Function::IfNull { expr, then })
+            }
+            FunctionNode::NullIf { expr1, expr2 } => {
+                let expr1 = expr1.try_into()?;
+                let expr2 = expr2.try_into()?;
+                Ok(Function::NullIf { expr1, expr2 })
             }
             FunctionNode::Ceil(expr_node) => expr_node.try_into().map(Function::Ceil),
             FunctionNode::Rand(expr_node) => Ok(Function::Rand(
@@ -411,6 +420,9 @@ impl<'a> ExprNode<'a> {
     pub fn ifnull<T: Into<ExprNode<'a>>>(self, another: T) -> ExprNode<'a> {
         ifnull(self, another)
     }
+    pub fn nullif<T: Into<ExprNode<'a>>>(self, another: T) -> ExprNode<'a> {
+        nullif(self, another)
+    }
     pub fn ceil(self) -> ExprNode<'a> {
         ceil(self)
     }
@@ -587,6 +599,15 @@ pub fn ifnull<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(expr: T, then: U
     ExprNode::Function(Box::new(FunctionNode::IfNull {
         expr: expr.into(),
         then: then.into(),
+    }))
+}
+pub fn nullif<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
+    expr1: T,
+    expr2: U,
+) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::NullIf {
+        expr1: expr1.into(),
+        expr2: expr2.into(),
     }))
 }
 pub fn ceil<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
@@ -1011,6 +1032,17 @@ mod tests {
 
         let actual = col("updated_at").ifnull(col("created_at"));
         let expected = "IFNULL(updated_at, created_at)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_nullif() {
+        let actual = f::nullif(text("hello"), text("world"));
+        let expected = "NULLIF('hello', 'world')";
+        test_expr(actual, expected);
+
+        let actual = col("updated_at").nullif(col("created_at"));
+        let expected = "NULLIF(updated_at, created_at)";
         test_expr(actual, expected);
     }
 

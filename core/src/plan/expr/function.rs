@@ -138,6 +138,7 @@ impl Function {
                 count: None,
             }
             | Self::IfNull { expr, then: expr2 }
+            | Self::NullIf { expr1: expr, expr2 }
             | Self::Unwrap {
                 expr,
                 selector: expr2,
