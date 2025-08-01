@@ -1,6 +1,6 @@
 # Null Handling 
 
-In some cases, you may need to handle `NULL` values in your database. GlueSQL provides a function called `ifnull` and `nullif` to handle these cases.
+In some cases, you may need to handle `NULL` values in your database. GlueSQL provides functions called `ifnull` and `nullif` to handle these cases.
 
 ## IFNULL - ifnull
 
@@ -45,7 +45,7 @@ In the first case, "HELLO" is returned because it's not `NULL`. In the second ca
 
 ## NULLIF - nullif
 
-The `nullif` function checks if the first expression is equal to second expression, and if it is, it returns `NULL`. If the first expression is not equal to second expression, it returns the value of the first expression.
+The `nullif` function checks whether the first expression equals the second expression, If they are equal, it returns `NULL`. Otherwise, it returns the value of the first expression.
 
 ```rust
 let actual = table("Foo")
@@ -64,7 +64,7 @@ You can also use `nullif` with another column:
 let actual = table("Foo")
     .select()
     .project("id")
-    .project(col("name").nullif(col("nickname")))  // If the "name" column is equal to "nickname" column, return NULL. Otherwise, return "name" column
+    .project(col("name").nullif(col("nickname")))  // If the "name" column equals the "nickname" column, return NULL. Otherwise, return the value of the "name" column
     .execute(glue)
     .await;
 ```
@@ -74,12 +74,12 @@ In this example, if the "name" column is equal to "nickname" column, `NULL` is r
 The `nullif` function can also be used without a table:
 
 ```rust
-    let actual = values(vec![
-        vec![ast_builder::nullif(text("HELLO"), text("WORLD"))],
-        vec![ast_builder::nullif(text("WORLD"), text("WORLD"))],
-    ])
-    .execute(glue)
-    .await;
+let actual = values(vec![
+    vec![ast_builder::nullif(text("HELLO"), text("WORLD"))],
+    vec![ast_builder::nullif(text("WORLD"), text("WORLD"))],
+])
+.execute(glue)
+.await;
 ```
 
 In the first case, "HELLO" is returned because it's not equal to "WORLD". In the second case, `NULL` is returned because the first value is equal to second value.
