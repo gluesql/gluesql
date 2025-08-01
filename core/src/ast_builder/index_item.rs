@@ -4,7 +4,7 @@ mod primary_key;
 
 use {
     super::{ExprNode, select::Prebuild},
-    crate::ast::{Expr, IndexOperator},
+    crate::ast::{DataType, Expr, IndexOperator},
 };
 pub use {
     crate::{ast::IndexItem, result::Result},
@@ -62,7 +62,10 @@ impl<'a> Prebuild<IndexItem> for IndexItemNode<'a> {
                     cmp_expr: cmp_expr_result,
                 })
             }
-            IndexItemNode::PrimaryKey(expr) => Ok(IndexItem::PrimaryKey(expr.try_into()?)),
+            IndexItemNode::PrimaryKey(expr) => Ok(IndexItem::PrimaryKey {
+                data_type: DataType::Int,
+                expr: expr.try_into()?,
+            }),
         }
     }
 }
