@@ -1,6 +1,6 @@
 # Null Handling 
 
-In some cases, you may need to handle `NULL` values in your database. GlueSQL provides a function called `ifnull` to handle these cases.
+In some cases, you may need to handle `NULL` values in your database. GlueSQL provides a function called `ifnull` and `nullif` to handle these cases.
 
 ## IFNULL - ifnull
 
@@ -42,3 +42,44 @@ let actual = values(vec![
 ```
 
 In the first case, "HELLO" is returned because it's not `NULL`. In the second case, "WORLD" is returned because the first value is `NULL`.
+
+## NULLIF - nullif
+
+The `nullif` function checks if the first expression is equal to second expression, and if it is, it returns `NULL`. If the first expression is not equal to second expression, it returns the value of the first expression.
+
+```rust
+let actual = table("Foo")
+    .select()
+    .project("id")
+    .project(col("name").nullif(text("hello")))  // If the "name" column is equal to "hello", return NULL. Otherwise, return "name" column
+    .execute(glue)
+    .await;
+```
+
+In the above example, if the "name" column is equal to "hello", `NULL` is returned. Otherwise, the value of the "name" column is returned.
+
+You can also use `ifnull` with another column:
+
+```rust
+let actual = table("Foo")
+    .select()
+    .project("id")
+    .project(col("name").nullif(col("nickname")))  // If the "name" column is equal to "nickname" column, return NULL. Otherwise, return "name" column
+    .execute(glue)
+    .await;
+```
+
+In this example, if the "name" column is equal to "nickname" column, `NULL` is returned. Otherwise, the value of the "name" column is returned.
+
+The `nullif` function can also be used without a table:
+
+```rust
+    let actual = values(vec![
+        vec![ast_builder::nullif(text("HELLO"), text("WORLD"))],
+        vec![ast_builder::nullif(text("WORLD"), text("WORLD"))],
+    ])
+    .execute(glue)
+    .await;
+```
+
+In the first case, "HELLO" is returned because it's not equal to "WORLD". In the second case, `NULL` is returned because the first value is equal to second value.
