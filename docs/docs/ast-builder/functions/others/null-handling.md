@@ -58,7 +58,7 @@ let actual = table("Foo")
 
 In the above example, if the "name" column is equal to "hello", `NULL` is returned. Otherwise, the value of the "name" column is returned.
 
-You can also use `ifnull` with another column:
+You can also use `nullif` with another column:
 
 ```rust
 let actual = table("Foo")
