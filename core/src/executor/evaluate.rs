@@ -13,10 +13,9 @@ use {
         result::{Error, Result},
         store::GStore,
     },
-    async_recursion::async_recursion,
     chrono::prelude::Utc,
     futures::{
-        future::{ready, try_join_all},
+        future::{LocalBoxFuture, ready, try_join_all},
         stream::{self, StreamExt, TryStreamExt},
     },
     im_rc::HashMap,
@@ -24,308 +23,309 @@ use {
 };
 
 pub use {error::EvaluateError, evaluated::Evaluated};
-
-#[async_recursion(?Send)]
-pub async fn evaluate<'a, 'b, 'c, T>(
+pub fn evaluate<'a, 'b, 'c, T>(
     storage: &'a T,
     context: Option<Rc<RowContext<'b>>>,
     aggregated: Option<Rc<HashMap<&'c Aggregate, Value>>>,
     expr: &'a Expr,
-) -> Result<Evaluated<'a>>
+) -> LocalBoxFuture<'a, Result<Evaluated<'a>>>
 where
     'b: 'a,
     'c: 'a,
     T: GStore,
 {
-    evaluate_inner(Some(storage), context, aggregated, expr).await
+    evaluate_inner(Some(storage), context, aggregated, expr)
 }
 
-pub async fn evaluate_stateless<'a, 'b: 'a>(
+pub fn evaluate_stateless<'a, 'b: 'a>(
     context: Option<RowContext<'b>>,
     expr: &'a Expr,
-) -> Result<Evaluated<'a>> {
+) -> LocalBoxFuture<'a, Result<Evaluated<'a>>> {
     let context = context.map(Rc::new);
     let storage: Option<&MockStorage> = None;
 
-    evaluate_inner(storage, context, None, expr).await
+    evaluate_inner(storage, context, None, expr)
 }
 
-#[async_recursion(?Send)]
-async fn evaluate_inner<'a, 'b, 'c, T>(
+fn evaluate_inner<'a, 'b, 'c, T>(
     storage: Option<&'a T>,
     context: Option<Rc<RowContext<'b>>>,
     aggregated: Option<Rc<HashMap<&'c Aggregate, Value>>>,
     expr: &'a Expr,
-) -> Result<Evaluated<'a>>
+) -> LocalBoxFuture<'a, Result<Evaluated<'a>>>
 where
     'b: 'a,
     'c: 'a,
     T: GStore,
 {
-    let eval = |expr| {
-        let context = context.as_ref().map(Rc::clone);
-        let aggregated = aggregated.as_ref().map(Rc::clone);
-
-        evaluate_inner(storage, context, aggregated, expr)
-    };
-
-    match expr {
-        Expr::Literal(ast_literal) => expr::literal(ast_literal),
-        Expr::TypedString { data_type, value } => {
-            expr::typed_string(data_type, Cow::Borrowed(value))
-        }
-        Expr::Identifier(ident) => {
-            let context = context
-                .ok_or_else(|| EvaluateError::ContextRequiredForIdentEvaluation(expr.clone()))?;
-
-            match context.get_value(ident) {
-                Some(value) => Ok(value.clone()),
-                None => Err(EvaluateError::IdentifierNotFound(ident.to_owned()).into()),
-            }
-            .map(Evaluated::Value)
-        }
-        Expr::Nested(expr) => eval(expr).await,
-        Expr::CompoundIdentifier { alias, ident } => {
-            let context = context
-                .ok_or_else(|| EvaluateError::ContextRequiredForIdentEvaluation(expr.clone()))?;
-
-            match context.get_alias_value(alias, ident) {
-                Some(value) => Ok(value.clone()),
-                None => Err(EvaluateError::CompoundIdentifierNotFound {
-                    table_alias: alias.to_owned(),
-                    column_name: ident.to_owned(),
-                }
-                .into()),
-            }
-            .map(Evaluated::Value)
-        }
-        Expr::Subquery(query) => {
-            let storage =
-                storage.ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(expr.clone()))?;
-
-            let evaluations = select(storage, query, context.as_ref().map(Rc::clone))
-                .await?
-                .map(|row| {
-                    let value = match row? {
-                        Row::Vec { columns, values } => {
-                            if columns.len() > 1 {
-                                return Err(EvaluateError::MoreThanOneColumnReturned.into());
-                            }
-                            values
-                        }
-                        Row::Map(_) => {
-                            return Err(EvaluateError::SchemalessProjectionForSubQuery.into());
-                        }
-                    }
-                    .into_iter()
-                    .next();
-
-                    Ok::<_, Error>(value)
-                })
-                .take(2)
-                .try_collect::<Vec<_>>()
-                .await?;
-
-            if evaluations.len() > 1 {
-                return Err(EvaluateError::MoreThanOneRowReturned.into());
-            }
-
-            let value = evaluations
-                .into_iter()
-                .next()
-                .flatten()
-                .unwrap_or(Value::Null);
-
-            Ok(Evaluated::Value(value))
-        }
-        Expr::BinaryOp { op, left, right } => {
-            let left = eval(left).await?;
-            let right = eval(right).await?;
-
-            expr::binary_op(op, left, right)
-        }
-        Expr::UnaryOp { op, expr } => {
-            let v = eval(expr).await?;
-
-            expr::unary_op(op, v)
-        }
-        Expr::Aggregate(aggr) => match aggregated
-            .as_ref()
-            .and_then(|aggregated| aggregated.get(aggr.as_ref()))
-        {
-            Some(value) => Ok(Evaluated::Value(value.clone())),
-            None => Err(EvaluateError::UnreachableEmptyAggregateValue(*aggr.clone()).into()),
-        },
-        Expr::Function(func) => {
+    Box::pin(async move {
+        let eval = |expr| {
             let context = context.as_ref().map(Rc::clone);
             let aggregated = aggregated.as_ref().map(Rc::clone);
 
-            evaluate_function(storage, context, aggregated, func).await
-        }
-        Expr::InList {
-            expr,
-            list,
-            negated,
-        } => {
-            let negated = *negated;
-            let target = eval(expr).await?;
+            evaluate_inner(storage, context, aggregated, expr)
+        };
 
-            stream::iter(list)
-                .then(eval)
-                .try_filter(|evaluated| ready(evaluated.evaluate_eq(&target)))
-                .try_next()
-                .await
-                .map(|v| v.is_some() ^ negated)
-                .map(Value::Bool)
+        match expr {
+            Expr::Literal(ast_literal) => expr::literal(ast_literal),
+            Expr::TypedString { data_type, value } => {
+                expr::typed_string(data_type, Cow::Borrowed(value))
+            }
+            Expr::Identifier(ident) => {
+                let context = context.ok_or_else(|| {
+                    EvaluateError::ContextRequiredForIdentEvaluation(expr.clone())
+                })?;
+
+                match context.get_value(ident) {
+                    Some(value) => Ok(value.clone()),
+                    None => Err(EvaluateError::IdentifierNotFound(ident.to_owned()).into()),
+                }
                 .map(Evaluated::Value)
-        }
-        Expr::InSubquery {
-            expr: target_expr,
-            subquery,
-            negated,
-        } => {
-            let storage =
-                storage.ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(expr.clone()))?;
-            let target = eval(target_expr).await?;
+            }
+            Expr::Nested(expr) => eval(expr).await,
+            Expr::CompoundIdentifier { alias, ident } => {
+                let context = context.ok_or_else(|| {
+                    EvaluateError::ContextRequiredForIdentEvaluation(expr.clone())
+                })?;
 
-            select(storage, subquery, context)
-                .await?
-                .map(|row| {
-                    let value = match row? {
-                        Row::Vec { values, .. } => values,
-                        Row::Map(_) => {
-                            return Err(EvaluateError::SchemalessProjectionForInSubQuery.into());
-                        }
+                match context.get_alias_value(alias, ident) {
+                    Some(value) => Ok(value.clone()),
+                    None => Err(EvaluateError::CompoundIdentifierNotFound {
+                        table_alias: alias.to_owned(),
+                        column_name: ident.to_owned(),
                     }
+                    .into()),
+                }
+                .map(Evaluated::Value)
+            }
+            Expr::Subquery(query) => {
+                let storage =
+                    storage.ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(expr.clone()))?;
+
+                let evaluations = select(storage, query, context.as_ref().map(Rc::clone))
+                    .await?
+                    .map(|row| {
+                        let value = match row? {
+                            Row::Vec { columns, values } => {
+                                if columns.len() > 1 {
+                                    return Err(EvaluateError::MoreThanOneColumnReturned.into());
+                                }
+                                values
+                            }
+                            Row::Map(_) => {
+                                return Err(EvaluateError::SchemalessProjectionForSubQuery.into());
+                            }
+                        }
+                        .into_iter()
+                        .next();
+
+                        Ok::<_, Error>(value)
+                    })
+                    .take(2)
+                    .try_collect::<Vec<_>>()
+                    .await?;
+
+                if evaluations.len() > 1 {
+                    return Err(EvaluateError::MoreThanOneRowReturned.into());
+                }
+
+                let value = evaluations
                     .into_iter()
                     .next()
+                    .flatten()
                     .unwrap_or(Value::Null);
 
-                    Ok(Evaluated::Value(value))
+                Ok(Evaluated::Value(value))
+            }
+            Expr::BinaryOp { op, left, right } => {
+                let left = eval(left).await?;
+                let right = eval(right).await?;
+
+                expr::binary_op(op, left, right)
+            }
+            Expr::UnaryOp { op, expr } => {
+                let v = eval(expr).await?;
+
+                expr::unary_op(op, v)
+            }
+            Expr::Aggregate(aggr) => match aggregated
+                .as_ref()
+                .and_then(|aggregated| aggregated.get(aggr.as_ref()))
+            {
+                Some(value) => Ok(Evaluated::Value(value.clone())),
+                None => Err(EvaluateError::UnreachableEmptyAggregateValue(*aggr.clone()).into()),
+            },
+            Expr::Function(func) => {
+                let context = context.as_ref().map(Rc::clone);
+                let aggregated = aggregated.as_ref().map(Rc::clone);
+
+                evaluate_function(storage, context, aggregated, func).await
+            }
+            Expr::InList {
+                expr,
+                list,
+                negated,
+            } => {
+                let negated = *negated;
+                let target = eval(expr).await?;
+
+                stream::iter(list)
+                    .then(eval)
+                    .try_filter(|evaluated| ready(evaluated.evaluate_eq(&target)))
+                    .try_next()
+                    .await
+                    .map(|v| v.is_some() ^ negated)
+                    .map(Value::Bool)
+                    .map(Evaluated::Value)
+            }
+            Expr::InSubquery {
+                expr: target_expr,
+                subquery,
+                negated,
+            } => {
+                let storage =
+                    storage.ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(expr.clone()))?;
+                let target = eval(target_expr).await?;
+
+                select(storage, subquery, context)
+                    .await?
+                    .map(|row| {
+                        let value = match row? {
+                            Row::Vec { values, .. } => values,
+                            Row::Map(_) => {
+                                return Err(EvaluateError::SchemalessProjectionForInSubQuery.into());
+                            }
+                        }
+                        .into_iter()
+                        .next()
+                        .unwrap_or(Value::Null);
+
+                        Ok(Evaluated::Value(value))
+                    })
+                    .try_filter(|evaluated| ready(evaluated.evaluate_eq(&target)))
+                    .try_next()
+                    .await
+                    .map(|v| v.is_some() ^ negated)
+                    .map(Value::Bool)
+                    .map(Evaluated::Value)
+            }
+            Expr::Between {
+                expr,
+                negated,
+                low,
+                high,
+            } => {
+                let target = eval(expr).await?;
+                let low = eval(low).await?;
+                let high = eval(high).await?;
+
+                expr::between(target, *negated, low, high)
+            }
+            Expr::Like {
+                expr,
+                negated,
+                pattern,
+            } => {
+                let target = eval(expr).await?;
+                let pattern = eval(pattern).await?;
+                let evaluated = target.like(pattern, true)?;
+
+                Ok(match negated {
+                    true => Evaluated::Value(Value::Bool(
+                        evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false))),
+                    )),
+                    false => evaluated,
                 })
-                .try_filter(|evaluated| ready(evaluated.evaluate_eq(&target)))
-                .try_next()
-                .await
-                .map(|v| v.is_some() ^ negated)
-                .map(Value::Bool)
-                .map(Evaluated::Value)
-        }
-        Expr::Between {
-            expr,
-            negated,
-            low,
-            high,
-        } => {
-            let target = eval(expr).await?;
-            let low = eval(low).await?;
-            let high = eval(high).await?;
+            }
+            Expr::ILike {
+                expr,
+                negated,
+                pattern,
+            } => {
+                let target = eval(expr).await?;
+                let pattern = eval(pattern).await?;
+                let evaluated = target.like(pattern, false)?;
 
-            expr::between(target, *negated, low, high)
-        }
-        Expr::Like {
-            expr,
-            negated,
-            pattern,
-        } => {
-            let target = eval(expr).await?;
-            let pattern = eval(pattern).await?;
-            let evaluated = target.like(pattern, true)?;
+                Ok(match negated {
+                    true => Evaluated::Value(Value::Bool(
+                        evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false))),
+                    )),
+                    false => evaluated,
+                })
+            }
+            Expr::Exists { subquery, negated } => {
+                let storage =
+                    storage.ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(expr.clone()))?;
 
-            Ok(match negated {
-                true => Evaluated::Value(Value::Bool(
-                    evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false))),
-                )),
-                false => evaluated,
-            })
-        }
-        Expr::ILike {
-            expr,
-            negated,
-            pattern,
-        } => {
-            let target = eval(expr).await?;
-            let pattern = eval(pattern).await?;
-            let evaluated = target.like(pattern, false)?;
+                select(storage, subquery, context)
+                    .await?
+                    .try_next()
+                    .await
+                    .map(|v| v.is_some() ^ negated)
+                    .map(Value::Bool)
+                    .map(Evaluated::Value)
+            }
+            Expr::IsNull(expr) => {
+                let v = eval(expr).await?.is_null();
 
-            Ok(match negated {
-                true => Evaluated::Value(Value::Bool(
-                    evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false))),
-                )),
-                false => evaluated,
-            })
-        }
-        Expr::Exists { subquery, negated } => {
-            let storage =
-                storage.ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(expr.clone()))?;
+                Ok(Evaluated::Value(Value::Bool(v)))
+            }
+            Expr::IsNotNull(expr) => {
+                let v = eval(expr).await?.is_null();
 
-            select(storage, subquery, context)
-                .await?
-                .try_next()
-                .await
-                .map(|v| v.is_some() ^ negated)
-                .map(Value::Bool)
-                .map(Evaluated::Value)
-        }
-        Expr::IsNull(expr) => {
-            let v = eval(expr).await?.is_null();
+                Ok(Evaluated::Value(Value::Bool(!v)))
+            }
+            Expr::Case {
+                operand,
+                when_then,
+                else_result,
+            } => {
+                let operand = match operand {
+                    Some(op) => eval(op).await?,
+                    None => Evaluated::Value(Value::Bool(true)),
+                };
 
-            Ok(Evaluated::Value(Value::Bool(v)))
-        }
-        Expr::IsNotNull(expr) => {
-            let v = eval(expr).await?.is_null();
+                for (when, then) in when_then.iter() {
+                    let when = eval(when).await?;
 
-            Ok(Evaluated::Value(Value::Bool(!v)))
-        }
-        Expr::Case {
-            operand,
-            when_then,
-            else_result,
-        } => {
-            let operand = match operand {
-                Some(op) => eval(op).await?,
-                None => Evaluated::Value(Value::Bool(true)),
-            };
+                    if when.evaluate_eq(&operand) {
+                        return eval(then).await;
+                    }
+                }
 
-            for (when, then) in when_then.iter() {
-                let when = eval(when).await?;
-
-                if when.evaluate_eq(&operand) {
-                    return eval(then).await;
+                match else_result {
+                    Some(er) => eval(er).await,
+                    None => Ok(Evaluated::Value(Value::Null)),
                 }
             }
+            Expr::ArrayIndex { obj, indexes } => {
+                let obj = eval(obj).await?;
+                let indexes = try_join_all(indexes.iter().map(eval)).await?;
+                expr::array_index(obj, indexes)
+            }
+            Expr::Array { elem } => try_join_all(elem.iter().map(eval))
+                .await?
+                .into_iter()
+                .map(Value::try_from)
+                .collect::<Result<Vec<_>>>()
+                .map(Value::List)
+                .map(Evaluated::Value),
+            Expr::Interval {
+                expr,
+                leading_field,
+                last_field,
+            } => {
+                let value = eval(expr)
+                    .await
+                    .and_then(Value::try_from)
+                    .map(String::from)?;
 
-            match else_result {
-                Some(er) => eval(er).await,
-                None => Ok(Evaluated::Value(Value::Null)),
+                Interval::try_from_str(&value, *leading_field, *last_field)
+                    .map(Value::Interval)
+                    .map(Evaluated::Value)
             }
         }
-        Expr::ArrayIndex { obj, indexes } => {
-            let obj = eval(obj).await?;
-            let indexes = try_join_all(indexes.iter().map(eval)).await?;
-            expr::array_index(obj, indexes)
-        }
-        Expr::Array { elem } => try_join_all(elem.iter().map(eval))
-            .await?
-            .into_iter()
-            .map(Value::try_from)
-            .collect::<Result<Vec<_>>>()
-            .map(Value::List)
-            .map(Evaluated::Value),
-        Expr::Interval {
-            expr,
-            leading_field,
-            last_field,
-        } => {
-            let value = eval(expr)
-                .await
-                .and_then(Value::try_from)
-                .map(String::from)?;
-
-            Interval::try_from_str(&value, *leading_field, *last_field)
-                .map(Value::Interval)
-                .map(Evaluated::Value)
-        }
-    }
+    })
 }
 
 async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
