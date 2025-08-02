@@ -38,6 +38,9 @@ pub enum EvaluateError {
     #[error("function requires map value: {0}")]
     FunctionRequiresMapValue(String),
 
+    #[error("invalid hexadecimal string: {0}")]
+    InvalidHexadecimal(String),
+
     #[error("function requires point value: {0}")]
     FunctionRequiresPointValue(String),
 
