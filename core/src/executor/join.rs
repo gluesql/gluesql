@@ -26,7 +26,7 @@ pub struct Join<'a, T: GStore> {
 }
 
 type JoinItem<'a> = Arc<RowContext<'a>>;
-type Joined<'a> = Pin<Box<dyn Stream<Item = Result<JoinItem<'a>>> + 'a>>;
+type Joined<'a> = Pin<Box<dyn Stream<Item = Result<JoinItem<'a>>> + Send + 'a>>;
 
 impl<'a, T: GStore> Join<'a, T> {
     pub fn new(
@@ -43,7 +43,7 @@ impl<'a, T: GStore> Join<'a, T> {
 
     pub async fn apply(
         self,
-        rows: impl Stream<Item = Result<RowContext<'a>>> + 'a,
+        rows: impl Stream<Item = Result<RowContext<'a>>> + Send + 'a,
     ) -> Result<Joined<'a>> {
         let init_rows: Joined = Box::pin(rows.map(|row| row.map(Arc::new)));
 
@@ -62,7 +62,7 @@ async fn join<'a, T: GStore>(
     storage: &'a T,
     filter_context: Option<Arc<RowContext<'a>>>,
     ast_join: &'a AstJoin,
-    left_rows: impl Stream<Item = Result<JoinItem<'a>>> + 'a,
+    left_rows: impl Stream<Item = Result<JoinItem<'a>>> + Send + 'a,
 ) -> Result<Joined<'a>> {
     let AstJoin {
         relation,
