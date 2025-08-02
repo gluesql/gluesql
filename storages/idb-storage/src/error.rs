@@ -15,17 +15,17 @@ impl<T, E: Display> ErrInto<T> for Result<T, E> {
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 pub trait StoreReqIntoFuture<T> {
     async fn into_future(self) -> Result<T>;
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl<F, T, E: Display> StoreReqIntoFuture<T> for Result<F, E>
 where
     F: IntoFuture<Output = StdResult<T, E>>,
 {
     async fn into_future(self) -> Result<T> {
-        self.err_into()?.await.err_into()
+        self.err_into()?.into_future().await.err_into()
     }
 }
