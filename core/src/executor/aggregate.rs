@@ -13,8 +13,10 @@ use {
         result::Result,
         store::GStore,
     },
-    async_recursion::async_recursion,
-    futures::stream::{self, Stream, StreamExt, TryStreamExt},
+    futures::{
+        future::BoxFuture,
+        stream::{self, Stream, StreamExt, TryStreamExt},
+    },
     std::sync::Arc,
 };
 
@@ -149,54 +151,56 @@ async fn group_by_having<'a, T: GStore>(
     Ok(rows)
 }
 
-#[async_recursion]
-async fn aggregate<'a, T>(
+fn aggregate<'a, T>(
     state: State<'a, T>,
     filter_context: Option<Arc<RowContext<'a>>>,
     expr: &'a Expr,
-) -> Result<State<'a, T>>
+) -> BoxFuture<'a, Result<State<'a, T>>>
 where
-    T: GStore,
+    T: GStore + 'a,
 {
-    let aggr = |state, expr| aggregate(state, filter_context.as_ref().map(Arc::clone), expr);
+    Box::pin(async move {
+        match expr {
+            Expr::Between {
+                expr, low, high, ..
+            } => {
+                let state = aggregate(state, filter_context.clone(), expr).await?;
+                let state = aggregate(state, filter_context.clone(), low).await?;
+                aggregate(state, filter_context, high).await
+            }
+            Expr::BinaryOp { left, right, .. } => {
+                let state = aggregate(state, filter_context.clone(), left).await?;
+                aggregate(state, filter_context, right).await
+            }
+            Expr::UnaryOp { expr, .. } => aggregate(state, filter_context, expr).await,
+            Expr::Nested(expr) => aggregate(state, filter_context, expr).await,
+            Expr::Case {
+                operand,
+                when_then,
+                else_result,
+            } => {
+                let mut state = match operand.as_deref() {
+                    Some(op) => aggregate(state, filter_context.clone(), op).await?,
+                    None => state,
+                };
 
-    match expr {
-        Expr::Between {
-            expr, low, high, ..
-        } => {
-            stream::iter([expr, low, high])
-                .map(Ok)
-                .try_fold(state, |state, expr| async move { aggr(state, expr).await })
-                .await
-        }
-        Expr::BinaryOp { left, right, .. } => {
-            stream::iter([left, right])
-                .map(Ok)
-                .try_fold(state, |state, expr| async move { aggr(state, expr).await })
-                .await
-        }
-        Expr::UnaryOp { expr, .. } => aggr(state, expr).await,
-        Expr::Nested(expr) => aggr(state, expr).await,
-        Expr::Case {
-            operand,
-            when_then,
-            else_result,
-        } => {
-            let operand = std::iter::once(operand.as_ref())
-                .filter_map(|operand| operand.map(|operand| &**operand));
-            let when_then = when_then
-                .iter()
-                .flat_map(|(when, then)| std::iter::once(when).chain(std::iter::once(then)));
-            let else_result = std::iter::once(else_result.as_ref())
-                .filter_map(|else_result| else_result.map(|else_result| &**else_result));
+                for (when, then) in when_then {
+                    state = aggregate(state, filter_context.clone(), when).await?;
+                    state = aggregate(state, filter_context.clone(), then).await?;
+                }
 
-            stream::iter(operand.chain(when_then).chain(else_result).map(Ok))
-                .try_fold(state, aggr)
-                .await
+                if let Some(else_expr) = else_result.as_deref() {
+                    state = aggregate(state, filter_context.clone(), else_expr).await?;
+                }
+
+                Ok(state)
+            }
+            Expr::Aggregate(aggr_expr) => {
+                state.accumulate(filter_context, aggr_expr.as_ref()).await
+            }
+            _ => Ok(state),
         }
-        Expr::Aggregate(aggr) => state.accumulate(filter_context, aggr.as_ref()).await,
-        _ => Ok(state),
-    }
+    })
 }
 
 fn check(expr: &Expr) -> bool {
