@@ -149,7 +149,7 @@ async fn group_by_having<'a, T: GStore>(
     Ok(rows)
 }
 
-#[async_recursion(?Send)]
+#[async_recursion]
 async fn aggregate<'a, T>(
     state: State<'a, T>,
     filter_context: Option<Arc<RowContext<'a>>>,

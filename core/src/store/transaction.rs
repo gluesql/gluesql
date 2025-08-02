@@ -3,8 +3,8 @@ use {
     async_trait::async_trait,
 };
 
-#[async_trait(?Send)]
-pub trait Transaction {
+#[async_trait]
+pub trait Transaction: Send + Sync {
     async fn begin(&mut self, autocommit: bool) -> Result<bool> {
         if autocommit {
             return Ok(false);

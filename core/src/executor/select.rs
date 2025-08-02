@@ -99,14 +99,17 @@ async fn sort_stateless(rows: Vec<Row>, order_by: &[OrderByExpr]) -> Result<Vec<
     Ok(sorted)
 }
 
-#[async_recursion(?Send)]
+#[async_recursion]
 pub async fn select_with_labels<'a, T>(
     storage: &'a T,
     query: &'a Query,
     filter_context: Option<Arc<RowContext<'a>>>,
-) -> Result<(Option<Vec<String>>, impl Stream<Item = Result<Row>> + 'a)>
+) -> Result<(
+    Option<Vec<String>>,
+    impl Stream<Item = Result<Row>> + Send + 'a,
+)>
 where
-    T: GStore,
+    T: GStore + Send + Sync,
 {
     #[derive(futures_enum::Stream)]
     enum Row<S1, S2> {
@@ -211,11 +214,14 @@ where
     Ok((labels, Row::Select(rows)))
 }
 
-pub async fn select<'a, T: GStore>(
+pub async fn select<'a, T>(
     storage: &'a T,
     query: &'a Query,
     filter_context: Option<Arc<RowContext<'a>>>,
-) -> Result<impl Stream<Item = Result<Row>> + 'a> {
+) -> Result<impl Stream<Item = Result<Row>> + Send + 'a>
+where
+    T: GStore + Send + Sync,
+{
     select_with_labels(storage, query, filter_context)
         .await
         .map(|(_, rows)| rows)

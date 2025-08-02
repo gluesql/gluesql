@@ -17,7 +17,7 @@ use {
     async_recursion::async_recursion,
     futures::{
         future,
-        stream::{self, Stream, StreamExt, TryStreamExt},
+        stream::{self, Stream, TryStreamExt},
     },
     serde::Serialize,
     std::{borrow::Cow, collections::HashMap, fmt::Debug, iter, sync::Arc},
@@ -409,7 +409,7 @@ pub async fn fetch_columns<T: GStore>(
     Ok(columns)
 }
 
-#[async_recursion(?Send)]
+#[async_recursion]
 pub async fn fetch_relation_columns<T>(
     storage: &T,
     table_factor: &TableFactor,
@@ -533,20 +533,16 @@ async fn fetch_join_columns<'a, T: GStore>(
     storage: &T,
     joins: &'a [Join],
 ) -> Result<Option<Vec<(&'a String, Vec<String>)>>> {
-    let columns = stream::iter(joins)
-        .filter_map(|join| async {
-            let relation = &join.relation;
-            let alias = get_alias(relation);
-
-            fetch_relation_columns(storage, relation)
-                .await
-                .map(|columns| Some((alias, columns?)))
-                .transpose()
-        })
-        .try_collect::<Vec<_>>()
-        .await?;
-
-    Ok((columns.len() == joins.len()).then_some(columns))
+    let mut all_columns = Vec::with_capacity(joins.len());
+    for join in joins {
+        if let Some(columns) = fetch_relation_columns(storage, &join.relation).await? {
+            let alias = get_alias(&join.relation);
+            all_columns.push((alias, columns));
+        } else {
+            return Ok(None);
+        }
+    }
+    Ok(Some(all_columns))
 }
 
 pub async fn fetch_labels<T: GStore>(

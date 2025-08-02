@@ -25,7 +25,7 @@ use {
 
 pub use {error::EvaluateError, evaluated::Evaluated};
 
-#[async_recursion(?Send)]
+#[async_recursion]
 pub async fn evaluate<'a, 'b, 'c, T>(
     storage: &'a T,
     context: Option<Arc<RowContext<'b>>>,
@@ -50,7 +50,7 @@ pub async fn evaluate_stateless<'a, 'b: 'a>(
     evaluate_inner(storage, context, None, expr).await
 }
 
-#[async_recursion(?Send)]
+#[async_recursion]
 async fn evaluate_inner<'a, 'b, 'c, T>(
     storage: Option<&'a T>,
     context: Option<Arc<RowContext<'b>>>,
