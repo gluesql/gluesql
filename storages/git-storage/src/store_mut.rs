@@ -8,7 +8,7 @@ use {
     },
 };
 
-#[async_trait(?Send)]
+#[async_trait]
 impl StoreMut for GitStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         self.get_store_mut().insert_schema(schema).await?;

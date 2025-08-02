@@ -37,11 +37,11 @@ use {
     std::pin::Pin,
 };
 
-pub type RowIter<'a> = Pin<Box<dyn Stream<Item = Result<(Key, DataRow)>> + 'a>>;
+pub type RowIter<'a> = Pin<Box<dyn Stream<Item = Result<(Key, DataRow)>> + Send + 'a>>;
 
 /// By implementing `Store` trait, you can run `SELECT` query.
-#[async_trait(?Send)]
-pub trait Store {
+#[async_trait]
+pub trait Store: Send + Sync {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>>;
 
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>>;
@@ -77,8 +77,8 @@ pub trait Store {
 
 /// By implementing `StoreMut` trait,
 /// you can run `INSERT`, `CREATE TABLE`, `DELETE`, `UPDATE` and `DROP TABLE` queries.
-#[async_trait(?Send)]
-pub trait StoreMut {
+#[async_trait]
+pub trait StoreMut: Send + Sync {
     async fn insert_schema(&mut self, _schema: &Schema) -> Result<()> {
         let msg = "[Storage] StoreMut::insert_schema is not supported".to_owned();
 

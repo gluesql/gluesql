@@ -26,6 +26,6 @@ where
     F: IntoFuture<Output = StdResult<T, E>>,
 {
     async fn into_future(self) -> Result<T> {
-        self.err_into()?.await.err_into()
+        self.err_into()?.into_future().await.err_into()
     }
 }

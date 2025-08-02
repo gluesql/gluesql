@@ -7,8 +7,8 @@ use {
 type ObjectName = String;
 pub type MetaIter = Box<dyn Iterator<Item = Result<(ObjectName, HashMap<String, Value>)>>>;
 
-#[async_trait(?Send)]
-pub trait Metadata {
+#[async_trait]
+pub trait Metadata: Send + Sync {
     async fn scan_table_meta(&self) -> Result<MetaIter> {
         Ok(Box::new(empty()))
     }

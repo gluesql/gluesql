@@ -23,7 +23,7 @@ There are two methods available:
 2. `delete_function`: This method deletes a custom function from the storage system using the provided function name.
 
 ```rust
-#[async_trait(?Send)]
+#[async_trait]
 pub trait CustomFunctionMut {
     async fn insert_function(&mut self, _func: StructCustomFunction) -> Result<()>;
 

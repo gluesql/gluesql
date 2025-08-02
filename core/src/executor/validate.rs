@@ -6,7 +6,7 @@ use {
         store::{DataRow, Store},
     },
     futures::stream::TryStreamExt,
-    im_rc::HashSet,
+    im::HashSet,
     serde::Serialize,
     std::fmt::Debug,
     thiserror::Error as ThisError,

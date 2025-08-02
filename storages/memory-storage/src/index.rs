@@ -9,7 +9,7 @@ use {
     },
 };
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Index for MemoryStorage {
     async fn scan_indexed_data<'a>(
         &'a self,
@@ -24,7 +24,7 @@ impl Index for MemoryStorage {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl IndexMut for MemoryStorage {
     async fn create_index(
         &mut self,
