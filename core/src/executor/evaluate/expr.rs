@@ -93,8 +93,8 @@ pub fn between<'a>(
     low: Evaluated<'a>,
     high: Evaluated<'a>,
 ) -> Result<Evaluated<'a>> {
-    if target.is_null() {
-        return Ok(target);
+    if target.is_null() || low.is_null() || high.is_null() {
+        return Ok(Evaluated::Value(Value::Null));
     }
 
     let v = low.evaluate_cmp(&target) != Some(Ordering::Greater)
