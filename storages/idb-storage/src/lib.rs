@@ -48,7 +48,7 @@ impl IdbStorage {
         let error = Arc::new(Mutex::new(None));
         let open_request = {
             let error = Arc::clone(&error);
-            let mut open_request = factory.get().open(namespace.as_str(), None).err_into()?;
+            let mut open_request = factory.open(namespace.as_str(), None).err_into()?;
             open_request.on_upgrade_needed(move |event| {
                 let database = match event.database().err_into() {
                     Ok(database) => database,
@@ -104,11 +104,7 @@ impl IdbStorage {
     }
 
     pub async fn delete(&self) -> Result<()> {
-        self.factory
-            .get()
-            .delete(&self.namespace)
-            .into_future()
-            .await
+        self.factory.delete(&self.namespace).into_future().await
     }
 
     async fn alter_object_store(
@@ -116,15 +112,14 @@ impl IdbStorage {
         table_name: String,
         alter_type: AlterType,
     ) -> Result<()> {
-        let version = self.database.get().version().err_into()? + 1;
-        self.database.get().close();
+        let version = self.database.version().err_into()? + 1;
+        self.database.close();
 
         let error = Arc::new(Mutex::new(None));
         let open_request = {
             let error = Arc::clone(&error);
             let mut open_request = self
                 .factory
-                .get()
                 .open(self.namespace.as_str(), Some(version))
                 .err_into()?;
 
@@ -206,7 +201,6 @@ impl Store for IdbStorage {
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         let transaction = self
             .database
-            .get()
             .transaction(&[SCHEMA_STORE], TransactionMode::ReadOnly)
             .err_into()?;
 
@@ -231,7 +225,6 @@ impl Store for IdbStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         let transaction = self
             .database
-            .get()
             .transaction(&[SCHEMA_STORE], TransactionMode::ReadOnly)
             .err_into()?;
 
@@ -255,7 +248,6 @@ impl Store for IdbStorage {
             .and_then(|schema| schema.column_defs);
         let transaction = self
             .database
-            .get()
             .transaction(&[table_name], TransactionMode::ReadOnly)
             .err_into()?;
 
@@ -281,7 +273,6 @@ impl Store for IdbStorage {
             .and_then(|schema| schema.column_defs);
         let transaction = self
             .database
-            .get()
             .transaction(&[table_name], TransactionMode::ReadOnly)
             .err_into()?;
 
@@ -339,7 +330,6 @@ impl StoreMut for IdbStorage {
 
         let transaction = self
             .database
-            .get()
             .transaction(&[SCHEMA_STORE], TransactionMode::ReadWrite)
             .err_into()?;
         let store = transaction.object_store(SCHEMA_STORE).err_into()?;
@@ -362,7 +352,6 @@ impl StoreMut for IdbStorage {
 
         let transaction = self
             .database
-            .get()
             .transaction(&[SCHEMA_STORE], TransactionMode::ReadWrite)
             .err_into()?;
         let store = transaction.object_store(SCHEMA_STORE).err_into()?;
@@ -376,7 +365,6 @@ impl StoreMut for IdbStorage {
     async fn append_data(&mut self, table_name: &str, new_rows: Vec<DataRow>) -> Result<()> {
         let transaction = self
             .database
-            .get()
             .transaction(&[table_name], TransactionMode::ReadWrite)
             .err_into()?;
         let store = transaction.object_store(table_name).err_into()?;
@@ -399,7 +387,6 @@ impl StoreMut for IdbStorage {
     async fn insert_data(&mut self, table_name: &str, new_rows: Vec<(Key, DataRow)>) -> Result<()> {
         let transaction = self
             .database
-            .get()
             .transaction(&[table_name], TransactionMode::ReadWrite)
             .err_into()?;
         let store = transaction.object_store(table_name).err_into()?;
@@ -425,7 +412,6 @@ impl StoreMut for IdbStorage {
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let transaction = self
             .database
-            .get()
             .transaction(&[table_name], TransactionMode::ReadWrite)
             .err_into()?;
         let store = transaction.object_store(table_name).err_into()?;
