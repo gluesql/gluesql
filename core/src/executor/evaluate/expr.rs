@@ -72,16 +72,10 @@ pub fn binary_op<'a>(
 }
 
 pub fn unary_op<'a>(op: &UnaryOperator, v: Evaluated<'a>) -> Result<Evaluated<'a>> {
-    if v.is_null() {
-        return Ok(Evaluated::Value(Value::Null));
-    }
-
     match op {
         UnaryOperator::Plus => v.unary_plus(),
         UnaryOperator::Minus => v.unary_minus(),
-        UnaryOperator::Not => v
-            .try_into()
-            .map(|v: bool| Evaluated::Value(Value::Bool(!v))),
+        UnaryOperator::Not => v.unary_not(),
         UnaryOperator::Factorial => v.unary_factorial(),
         UnaryOperator::BitwiseNot => v.unary_bitwise_not(),
     }
