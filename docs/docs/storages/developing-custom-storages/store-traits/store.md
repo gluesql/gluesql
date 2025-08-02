@@ -20,7 +20,7 @@ Here are the four methods required to implement the `Store` trait:
 pub type RowIter = Box<dyn Iterator<Item = Result<(Key, DataRow)>>>;
 
 /// By implementing `Store` trait, you can run `SELECT` query.
-#[async_trait(?Send)]
+#[async_trait]
 pub trait Store {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>>;
 

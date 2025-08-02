@@ -23,7 +23,7 @@ use {
     },
 };
 
-type RowIter = Box<dyn Iterator<Item = Result<(Key, DataRow)>>>;
+type RowIter = Box<dyn Iterator<Item = Result<(Key, DataRow)>> + Send>;
 
 pub struct CsvStorage {
     pub path: PathBuf,
