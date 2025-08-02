@@ -6,8 +6,8 @@ use {
         result::Result,
         store::GStore,
     },
+    futures::{StreamExt, TryStreamExt, stream},
     im::{HashMap, HashSet},
-    // itertools::Itertools,
     std::{cmp::Ordering, sync::Arc},
     utils::{IndexMap, Vector},
 };
@@ -16,6 +16,7 @@ type Group = Arc<Vec<Key>>;
 type ValuesMap<'a> = HashMap<&'a Aggregate, Value>;
 type Context<'a> = Arc<RowContext<'a>>;
 
+#[derive(Clone)]
 enum AggrValue {
     Count {
         wildcard: bool,
@@ -207,7 +208,7 @@ impl<'a, T: GStore> State<'a, T> {
     }
 
     pub async fn export(self) -> Result<Vec<(Option<ValuesMap<'a>>, Option<Context<'a>>)>> {
-        let _size = match self.values.keys().next() {
+        let size = match self.values.keys().next() {
             Some((target, _)) => match self.values.keys().position(|(group, _)| group != target) {
                 Some(size) => size,
                 None => self.values.len(),
@@ -217,31 +218,25 @@ impl<'a, T: GStore> State<'a, T> {
             }
         };
 
-        /*
         let Self {
             values, contexts, ..
         } = self;
 
-        stream::iter(values.into_iter().chunks(size).into_iter().enumerate())
-            .then(|(i, entries)| {
-                let next = contexts.get(i).map(Arc::clone);
+        let entries: Vec<_> = values.into_iter().collect();
+        let mut results = Vec::with_capacity(contexts.len());
 
-                async move {
-                    let aggregated = stream::iter(entries)
-                        .then(|((_, aggr), (_, aggr_value))| async move {
-                            aggr_value.export().await.map(|value| (aggr, value))
-                        })
-                        .try_collect::<HashMap<&'a Aggregate, Value>>()
-                        .await?;
+        for (idx, chunk) in entries.chunks(size).enumerate() {
+            let aggregated = stream::iter(chunk.iter().cloned())
+                .then(|((_, aggr), (_, aggr_value))| async move {
+                    aggr_value.export().await.map(|v| (aggr, v))
+                })
+                .try_collect::<HashMap<&'a Aggregate, Value>>()
+                .await?;
 
-                    Ok((Some(aggregated), next))
-                }
-            })
-            .try_collect::<Vec<(Option<ValuesMap<'a>>, Option<Arc<RowContext<'a>>>)>>()
-            .await
-            */
+            results.push((Some(aggregated), contexts.get(idx).cloned()));
+        }
 
-        todo!()
+        Ok(results)
     }
 
     pub async fn accumulate(

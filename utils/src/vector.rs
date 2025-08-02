@@ -58,6 +58,14 @@ impl<T> Vector<T> {
     pub fn get(&self, i: usize) -> Option<&T> {
         self.0.get(i)
     }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 impl<T> Default for Vector<T> {
