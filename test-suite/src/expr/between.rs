@@ -14,7 +14,7 @@ test_case!(between, {
         (i128::MIN, i128::MIN, i128::MAX, true),
         (i128::MAX, i128::MIN, i128::MAX, true),
     ] {
-        let expr = format!("{} BETWEEN {} AND {}", target, lhs, rhs);
+        let expr = format!("{target} BETWEEN {lhs} AND {rhs}");
         let result_macro = if expected {
             Ok(select!(res Bool; true))
         } else {
@@ -63,10 +63,10 @@ test_case!(between, {
         (2, 1),                 // 'target' is greater than 'rhs'.
         (i128::MAX, i128::MIN), // 'target' is greater than 'rhs' but big difference.
     ] {
-        let expr = format!("{} BETWEEN NULL AND {}", target, rhs);
+        let expr = format!("{target} BETWEEN NULL AND {rhs}");
         g.named_test(
-            format!("'{}' should return NULL", expr).as_str(),
-            format!("SELECT {} as res;", expr).as_str(),
+            format!("'{expr}' should return NULL").as_str(),
+            format!("SELECT {expr} as res;").as_str(),
             Ok(select_with_null!(
                     res;
                     Null
@@ -84,10 +84,10 @@ test_case!(between, {
         (2, 1),                 // 'target' is greater than 'lhs'.
         (i128::MAX, i128::MIN), // 'target' is greater than 'lhs' but big difference.
     ] {
-        let expr = format!("{} BETWEEN {} AND NULL", target, lhs);
+        let expr = format!("{target} BETWEEN {lhs} AND NULL");
         g.named_test(
-            format!("'{}' should return NULL", expr).as_str(),
-            format!("SELECT {} as res;", expr).as_str(),
+            format!("'{expr}' should return NULL").as_str(),
+            format!("SELECT {expr} as res;").as_str(),
             Ok(select_with_null!(
                     res;
                     Null
