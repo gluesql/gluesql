@@ -169,14 +169,12 @@ where
             let negated = *negated;
             let target = eval(expr).await?;
 
-            stream::iter(list)
-                .then(eval)
-                .try_filter(|evaluated| ready(evaluated.evaluate_eq(&target)))
-                .try_next()
-                .await
-                .map(|v| v.is_some() ^ negated)
-                .map(Value::Bool)
-                .map(Evaluated::Value)
+            let matched = try_join_all(list.iter().map(eval))
+                .await?
+                .into_iter()
+                .any(|v| v.evaluate_eq(&target));
+
+            Ok(Evaluated::Value(Value::Bool(matched ^ negated)))
         }
         Expr::InSubquery {
             expr: target_expr,
