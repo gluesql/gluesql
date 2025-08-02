@@ -8,9 +8,9 @@ use {
     },
     bigdecimal::ToPrimitive,
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
-    im_rc::HashMap,
+    im::HashMap,
     serde::Serialize,
-    std::{borrow::Cow, cmp::Ordering, fmt::Debug, rc::Rc},
+    std::{borrow::Cow, cmp::Ordering, fmt::Debug, sync::Arc},
     thiserror::Error as ThisError,
     utils::Vector,
 };
@@ -25,14 +25,14 @@ pub enum SortError {
 
 pub struct Sort<'a, T: GStore> {
     storage: &'a T,
-    context: Option<Rc<RowContext<'a>>>,
+    context: Option<Arc<RowContext<'a>>>,
     order_by: &'a [OrderByExpr],
 }
 
 impl<'a, T: GStore> Sort<'a, T> {
     pub fn new(
         storage: &'a T,
-        context: Option<Rc<RowContext<'a>>>,
+        context: Option<Arc<RowContext<'a>>>,
         order_by: &'a [OrderByExpr],
     ) -> Self {
         Self {
@@ -45,8 +45,8 @@ impl<'a, T: GStore> Sort<'a, T> {
     pub async fn apply<
         U: Stream<
                 Item = Result<(
-                    Option<Rc<HashMap<&'a Aggregate, Value>>>,
-                    Rc<RowContext<'a>>,
+                    Option<Arc<HashMap<&'a Aggregate, Value>>>,
+                    Arc<RowContext<'a>>,
                     Row,
                 )>,
             > + 'a,
@@ -111,24 +111,24 @@ impl<'a, T: GStore> Sort<'a, T> {
 
                 let filter_context = match &self.context {
                     Some(context) => {
-                        Rc::new(RowContext::concat(Rc::clone(&next), Rc::clone(context)))
+                        Arc::new(RowContext::concat(Arc::clone(&next), Arc::clone(context)))
                     }
-                    None => Rc::clone(&next),
+                    None => Arc::clone(&next),
                 };
 
                 async move {
                     let context = RowContext::new(table_alias, Cow::Borrowed(&row), None);
-                    let label_context = Rc::new(context);
-                    let filter_context = Rc::new(RowContext::concat(
+                    let label_context = Arc::new(context);
+                    let filter_context = Arc::new(RowContext::concat(
                         filter_context,
-                        Rc::clone(&label_context),
+                        Arc::clone(&label_context),
                     ));
 
                     let keys = order_by
                         .map(stream::iter)?
                         .then(|(sort_type, asc)| {
-                            let context = Some(Rc::clone(&filter_context));
-                            let aggregated = aggregated.as_ref().map(Rc::clone);
+                            let context = Some(Arc::clone(&filter_context));
+                            let aggregated = aggregated.as_ref().map(Arc::clone);
 
                             async move {
                                 match sort_type {

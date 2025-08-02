@@ -15,7 +15,7 @@ use {
     },
     async_recursion::async_recursion,
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
-    std::rc::Rc,
+    std::sync::Arc,
 };
 
 #[derive(futures_enum::Stream)]
@@ -35,12 +35,12 @@ fn check_aggregate<'a>(fields: &'a [SelectItem], group_by: &'a [Expr]) -> bool {
     })
 }
 
-pub async fn apply<'a, T: GStore, U: Stream<Item = Result<Rc<RowContext<'a>>>> + 'a>(
+pub async fn apply<'a, T: GStore, U: Stream<Item = Result<Arc<RowContext<'a>>>> + 'a>(
     storage: &'a T,
     fields: &'a [SelectItem],
     group_by: &'a [Expr],
     having: Option<&'a Expr>,
-    filter_context: Option<Rc<RowContext<'a>>>,
+    filter_context: Option<Arc<RowContext<'a>>>,
     rows: U,
 ) -> Result<impl Stream<Item = Result<AggregateContext<'a>>> + use<'a, T, U>> {
     if !check_aggregate(fields, group_by) {
@@ -60,17 +60,17 @@ pub async fn apply<'a, T: GStore, U: Stream<Item = Result<Rc<RowContext<'a>>>> +
 
             async move {
                 let filter_context = match filter_context {
-                    Some(filter_context) => Rc::new(RowContext::concat(
-                        Rc::clone(&project_context),
+                    Some(filter_context) => Arc::new(RowContext::concat(
+                        Arc::clone(&project_context),
                         filter_context,
                     )),
-                    None => Rc::clone(&project_context),
+                    None => Arc::clone(&project_context),
                 };
                 let filter_context = Some(filter_context);
 
                 let evaluated: Vec<Evaluated<'_>> = stream::iter(group_by.iter())
                     .then(|expr| {
-                        let filter_clone = filter_context.as_ref().map(Rc::clone);
+                        let filter_clone = filter_context.as_ref().map(Arc::clone);
                         async move { evaluate(storage, filter_clone, None, expr).await }
                     })
                     .try_collect::<Vec<_>>()
@@ -81,11 +81,11 @@ pub async fn apply<'a, T: GStore, U: Stream<Item = Result<Rc<RowContext<'a>>>> +
                     .map(Key::try_from)
                     .collect::<Result<Vec<Key>>>()?;
 
-                let state = state.apply(index, group, Rc::clone(&project_context));
+                let state = state.apply(index, group, Arc::clone(&project_context));
                 let state = stream::iter(fields)
                     .map(Ok)
                     .try_fold(state, |state, field| {
-                        let filter_clone = filter_context.as_ref().map(Rc::clone);
+                        let filter_clone = filter_context.as_ref().map(Arc::clone);
 
                         async move {
                             match field {
@@ -110,7 +110,7 @@ pub async fn apply<'a, T: GStore, U: Stream<Item = Result<Rc<RowContext<'a>>>> +
 
 async fn group_by_having<'a, T: GStore>(
     storage: &'a T,
-    filter_context: Option<Rc<RowContext<'a>>>,
+    filter_context: Option<Arc<RowContext<'a>>>,
     having: Option<&'a Expr>,
     state: State<'a, T>,
 ) -> Result<impl Stream<Item = Result<AggregateContext<'a>>>> {
@@ -121,7 +121,7 @@ async fn group_by_having<'a, T: GStore>(
         .filter_map(|(aggregated, next)| next.map(|next| (aggregated, next)));
     let rows = stream::iter(rows)
         .filter_map(move |(aggregated, next)| {
-            let filter_context = filter_context.as_ref().map(Rc::clone);
+            let filter_context = filter_context.as_ref().map(Arc::clone);
 
             async move {
                 match having {
@@ -129,12 +129,12 @@ async fn group_by_having<'a, T: GStore>(
                     Some(having) => {
                         let filter_context = match filter_context {
                             Some(filter_context) => {
-                                Rc::new(RowContext::concat(Rc::clone(&next), filter_context))
+                                Arc::new(RowContext::concat(Arc::clone(&next), filter_context))
                             }
-                            None => Rc::clone(&next),
+                            None => Arc::clone(&next),
                         };
                         let filter_context = Some(filter_context);
-                        let aggr_rc = aggregated.clone().map(Rc::new);
+                        let aggr_rc = aggregated.clone().map(Arc::new);
 
                         check_expr(storage, filter_context, aggr_rc, having)
                             .await
@@ -152,13 +152,13 @@ async fn group_by_having<'a, T: GStore>(
 #[async_recursion(?Send)]
 async fn aggregate<'a, T>(
     state: State<'a, T>,
-    filter_context: Option<Rc<RowContext<'a>>>,
+    filter_context: Option<Arc<RowContext<'a>>>,
     expr: &'a Expr,
 ) -> Result<State<'a, T>>
 where
     T: GStore,
 {
-    let aggr = |state, expr| aggregate(state, filter_context.as_ref().map(Rc::clone), expr);
+    let aggr = |state, expr| aggregate(state, filter_context.as_ref().map(Arc::clone), expr);
 
     match expr {
         Expr::Between {

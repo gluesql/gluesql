@@ -22,7 +22,7 @@ use {
     },
     futures::stream::{StreamExt, TryStreamExt},
     serde::{Deserialize, Serialize},
-    std::{collections::HashMap, env::var, fmt::Debug, rc::Rc},
+    std::{collections::HashMap, env::var, fmt::Debug, sync::Arc},
     thiserror::Error as ThisError,
 };
 
@@ -217,7 +217,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
 
             let update = Update::new(storage, table_name, assignments, column_defs.as_deref())?;
 
-            let foreign_keys = Rc::new(foreign_keys);
+            let foreign_keys = Arc::new(foreign_keys);
 
             let rows = fetch(storage, table_name, all_columns, selection.as_ref())
                 .await?
@@ -225,7 +225,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
                     let update = &update;
                     let (key, row) = item;
 
-                    let foreign_keys = Rc::clone(&foreign_keys);
+                    let foreign_keys = Arc::clone(&foreign_keys);
                     async move {
                         let row = update.apply(row, foreign_keys.as_ref()).await?;
 

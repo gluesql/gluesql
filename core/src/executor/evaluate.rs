@@ -19,8 +19,8 @@ use {
         future::{ready, try_join_all},
         stream::{self, StreamExt, TryStreamExt},
     },
-    im_rc::HashMap,
-    std::{borrow::Cow, ops::ControlFlow, rc::Rc},
+    im::HashMap,
+    std::{borrow::Cow, ops::ControlFlow, sync::Arc},
 };
 
 pub use {error::EvaluateError, evaluated::Evaluated};
@@ -28,8 +28,8 @@ pub use {error::EvaluateError, evaluated::Evaluated};
 #[async_recursion(?Send)]
 pub async fn evaluate<'a, 'b, 'c, T>(
     storage: &'a T,
-    context: Option<Rc<RowContext<'b>>>,
-    aggregated: Option<Rc<HashMap<&'c Aggregate, Value>>>,
+    context: Option<Arc<RowContext<'b>>>,
+    aggregated: Option<Arc<HashMap<&'c Aggregate, Value>>>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>>
 where
@@ -44,7 +44,7 @@ pub async fn evaluate_stateless<'a, 'b: 'a>(
     context: Option<RowContext<'b>>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>> {
-    let context = context.map(Rc::new);
+    let context = context.map(Arc::new);
     let storage: Option<&MockStorage> = None;
 
     evaluate_inner(storage, context, None, expr).await
@@ -53,8 +53,8 @@ pub async fn evaluate_stateless<'a, 'b: 'a>(
 #[async_recursion(?Send)]
 async fn evaluate_inner<'a, 'b, 'c, T>(
     storage: Option<&'a T>,
-    context: Option<Rc<RowContext<'b>>>,
-    aggregated: Option<Rc<HashMap<&'c Aggregate, Value>>>,
+    context: Option<Arc<RowContext<'b>>>,
+    aggregated: Option<Arc<HashMap<&'c Aggregate, Value>>>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>>
 where
@@ -63,8 +63,8 @@ where
     T: GStore,
 {
     let eval = |expr| {
-        let context = context.as_ref().map(Rc::clone);
-        let aggregated = aggregated.as_ref().map(Rc::clone);
+        let context = context.as_ref().map(Arc::clone);
+        let aggregated = aggregated.as_ref().map(Arc::clone);
 
         evaluate_inner(storage, context, aggregated, expr)
     };
@@ -103,7 +103,7 @@ where
             let storage =
                 storage.ok_or_else(|| EvaluateError::UnsupportedStatelessExpr(expr.clone()))?;
 
-            let evaluations = select(storage, query, context.as_ref().map(Rc::clone))
+            let evaluations = select(storage, query, context.as_ref().map(Arc::clone))
                 .await?
                 .map(|row| {
                     let value = match row? {
@@ -157,8 +157,8 @@ where
             None => Err(EvaluateError::UnreachableEmptyAggregateValue(*aggr.clone()).into()),
         },
         Expr::Function(func) => {
-            let context = context.as_ref().map(Rc::clone);
-            let aggregated = aggregated.as_ref().map(Rc::clone);
+            let context = context.as_ref().map(Arc::clone);
+            let aggregated = aggregated.as_ref().map(Arc::clone);
 
             evaluate_function(storage, context, aggregated, func).await
         }
@@ -330,15 +330,15 @@ where
 
 async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
     storage: Option<&'a T>,
-    context: Option<Rc<RowContext<'b>>>,
-    aggregated: Option<Rc<HashMap<&'c Aggregate, Value>>>,
+    context: Option<Arc<RowContext<'b>>>,
+    aggregated: Option<Arc<HashMap<&'c Aggregate, Value>>>,
     func: &'b Function,
 ) -> Result<Evaluated<'a>> {
     use function as f;
 
     let eval = |expr| {
-        let context = context.as_ref().map(Rc::clone);
-        let aggregated = aggregated.as_ref().map(Rc::clone);
+        let context = context.as_ref().map(Arc::clone);
+        let aggregated = aggregated.as_ref().map(Arc::clone);
 
         evaluate_inner(storage, context, aggregated, expr)
     };
@@ -393,7 +393,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
                 .map(|values| {
                     let row = Cow::Owned(Row::Map(values));
                     let context = RowContext::new(name, row, None);
-                    Some(Rc::new(context))
+                    Some(Arc::new(context))
                 })?;
 
             return evaluate_inner(storage, context, None, body).await;

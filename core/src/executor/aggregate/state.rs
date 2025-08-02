@@ -7,15 +7,15 @@ use {
         store::GStore,
     },
     futures::stream::{self, StreamExt, TryStreamExt},
-    im_rc::{HashMap, HashSet},
+    im::{HashMap, HashSet},
     itertools::Itertools,
-    std::{cmp::Ordering, rc::Rc},
+    std::{cmp::Ordering, sync::Arc},
     utils::{IndexMap, Vector},
 };
 
-type Group = Rc<Vec<Key>>;
+type Group = Arc<Vec<Key>>;
 type ValuesMap<'a> = HashMap<&'a Aggregate, Value>;
-type Context<'a> = Rc<RowContext<'a>>;
+type Context<'a> = Arc<RowContext<'a>>;
 
 enum AggrValue {
     Count {
@@ -160,7 +160,7 @@ pub struct State<'a, T: GStore> {
     group: Group,
     values: IndexMap<(Group, &'a Aggregate), (usize, AggrValue)>,
     groups: HashSet<Group>,
-    contexts: Vector<Rc<RowContext<'a>>>,
+    contexts: Vector<Arc<RowContext<'a>>>,
 }
 
 impl<'a, T: GStore> State<'a, T> {
@@ -168,20 +168,20 @@ impl<'a, T: GStore> State<'a, T> {
         State {
             storage,
             index: 0,
-            group: Rc::new(vec![Key::None]),
+            group: Arc::new(vec![Key::None]),
             values: IndexMap::new(),
             groups: HashSet::new(),
             contexts: Vector::new(),
         }
     }
 
-    pub fn apply(self, index: usize, group: Vec<Key>, context: Rc<RowContext<'a>>) -> Self {
-        let group = Rc::new(group);
+    pub fn apply(self, index: usize, group: Vec<Key>, context: Arc<RowContext<'a>>) -> Self {
+        let group = Arc::new(group);
         let (groups, contexts) = if self.groups.contains(&group) {
             (self.groups, self.contexts)
         } else {
             (
-                self.groups.update(Rc::clone(&group)),
+                self.groups.update(Arc::clone(&group)),
                 self.contexts.push(context),
             )
         };
@@ -196,13 +196,13 @@ impl<'a, T: GStore> State<'a, T> {
     }
 
     fn update(self, aggr: &'a Aggregate, value: AggrValue) -> Self {
-        let key = (Rc::clone(&self.group), aggr);
+        let key = (Arc::clone(&self.group), aggr);
         let (values, _) = self.values.insert(key, (self.index, value));
         Self { values, ..self }
     }
 
     fn get(&self, aggr: &'a Aggregate) -> Option<&(usize, AggrValue)> {
-        let group = Rc::clone(&self.group);
+        let group = Arc::clone(&self.group);
 
         self.values.get(&(group, aggr))
     }
@@ -224,7 +224,7 @@ impl<'a, T: GStore> State<'a, T> {
 
         stream::iter(values.into_iter().chunks(size).into_iter().enumerate())
             .then(|(i, entries)| {
-                let next = contexts.get(i).map(Rc::clone);
+                let next = contexts.get(i).map(Arc::clone);
 
                 async move {
                     let aggregated = stream::iter(entries)
@@ -237,13 +237,13 @@ impl<'a, T: GStore> State<'a, T> {
                     Ok((Some(aggregated), next))
                 }
             })
-            .try_collect::<Vec<(Option<ValuesMap<'a>>, Option<Rc<RowContext<'a>>>)>>()
+            .try_collect::<Vec<(Option<ValuesMap<'a>>, Option<Arc<RowContext<'a>>>)>>()
             .await
     }
 
     pub async fn accumulate(
         self,
-        filter_context: Option<Rc<RowContext<'a>>>,
+        filter_context: Option<Arc<RowContext<'a>>>,
         aggr: &'a Aggregate,
     ) -> Result<State<'a, T>> {
         let value = match aggr {
