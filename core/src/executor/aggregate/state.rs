@@ -6,9 +6,8 @@ use {
         result::Result,
         store::GStore,
     },
-    futures::stream::{self, StreamExt, TryStreamExt},
     im::{HashMap, HashSet},
-    itertools::Itertools,
+    // itertools::Itertools,
     std::{cmp::Ordering, sync::Arc},
     utils::{IndexMap, Vector},
 };
@@ -208,7 +207,7 @@ impl<'a, T: GStore> State<'a, T> {
     }
 
     pub async fn export(self) -> Result<Vec<(Option<ValuesMap<'a>>, Option<Context<'a>>)>> {
-        let size = match self.values.keys().next() {
+        let _size = match self.values.keys().next() {
             Some((target, _)) => match self.values.keys().position(|(group, _)| group != target) {
                 Some(size) => size,
                 None => self.values.len(),
@@ -218,6 +217,7 @@ impl<'a, T: GStore> State<'a, T> {
             }
         };
 
+        /*
         let Self {
             values, contexts, ..
         } = self;
@@ -239,6 +239,9 @@ impl<'a, T: GStore> State<'a, T> {
             })
             .try_collect::<Vec<(Option<ValuesMap<'a>>, Option<Arc<RowContext<'a>>>)>>()
             .await
+            */
+
+        todo!()
     }
 
     pub async fn accumulate(
