@@ -25,7 +25,6 @@ use {
 
 pub use {error::EvaluateError, evaluated::Evaluated};
 
-#[async_recursion]
 pub async fn evaluate<'a, 'b, 'c, T>(
     storage: &'a T,
     context: Option<Arc<RowContext<'b>>>,
