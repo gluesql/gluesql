@@ -2,7 +2,6 @@ pub mod abs;
 pub mod add_month;
 pub mod append;
 pub mod ascii;
-pub mod between;
 pub mod cast;
 pub mod ceil;
 pub mod chr;

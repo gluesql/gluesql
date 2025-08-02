@@ -18,10 +18,10 @@ pub mod default;
 pub mod delete;
 pub mod dictionary;
 pub mod dictionary_index;
+pub mod expr;
 pub mod filter;
 pub mod foreign_key;
 pub mod function;
-pub mod in_list;
 pub mod index;
 pub mod inline_view;
 pub mod insert;
@@ -104,7 +104,6 @@ macro_rules! generate_store_tests {
         glue!(limit, limit::limit);
         glue!(like_ilike, like_ilike::like_ilike);
         glue!(filter, filter::filter);
-        glue!(in_list, in_list::in_list);
         glue!(inline_view, inline_view::inline_view);
         glue!(values, values::values);
         glue!(unary_operator, unary_operator::unary_operator);
@@ -318,7 +317,8 @@ macro_rules! generate_store_tests {
 
         glue!(store_insert_schema, store::insert_schema::insert_schema);
 
-        glue!(function_between, function::between::between);
+        glue!(expr_between, expr::between::between);
+        glue!(expr_in_list, expr::in_list::in_list);
     };
 }
 
