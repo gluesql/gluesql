@@ -1225,9 +1225,9 @@ mod tests {
 
         assert_eq!(
             "HEX(228)",
-            &Expr::Function(Box::new(Function::Hex(Expr::Literal(
-                AstLiteral::Number(BigDecimal::from_str("228").unwrap())
-            ))))
+            &Expr::Function(Box::new(Function::Hex(Expr::Literal(AstLiteral::Number(
+                BigDecimal::from(228)
+            )))))
             .to_sql()
         );
 
