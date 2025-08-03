@@ -344,6 +344,27 @@ pub fn md5<'a>(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> 
     Continue(Evaluated::Value(Value::Str(result)))
 }
 
+pub fn hex<'a>(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    match expr.try_into().break_if_null()? {
+        Value::I64(number) => {
+            let result = format!("{number:X}");
+            Continue(Evaluated::Value(Value::Str(result)))
+        }
+        Value::Str(string) => {
+            let result = string
+                .as_bytes()
+                .iter()
+                .map(|b| format!("{b:02X}"))
+                .collect::<String>();
+
+            Continue(Evaluated::Value(Value::Str(result)))
+        }
+        _ => Break(BreakCase::Err(
+            EvaluateError::FunctionRequiresIntegerOrStringValue(name).into(),
+        )),
+    }
+}
+
 // --- float ---
 
 pub fn abs<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
