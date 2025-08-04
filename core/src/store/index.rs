@@ -54,7 +54,7 @@ pub trait Index {
 }
 
 #[async_trait]
-pub trait IndexMut: Send + Sync {
+pub trait IndexMut {
     async fn create_index(
         &mut self,
         _table_name: &str,
