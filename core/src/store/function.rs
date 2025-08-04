@@ -25,7 +25,7 @@ pub trait CustomFunction {
 }
 
 #[async_trait]
-pub trait CustomFunctionMut: Send + Sync {
+pub trait CustomFunctionMut {
     async fn insert_function(&mut self, _func: StructCustomFunction) -> Result<()> {
         Err(Error::StorageMsg(
             "[Storage] CustomFunction is not supported".to_owned(),
