@@ -51,9 +51,13 @@ jobs:
             --ignore "cli/src/{cli,helper,lib,main}.rs" \
             --excl-line "(#\\[derive\\()|(^\s*.await[;,]?$)|(^test_case\!\([\d\w]+,)" \
             -o ./coverage/lcov.info
+      - name: Sanity check lcov size
+        run: du -h coverage/lcov.info && head -20 coverage/lcov.info
       - name: Coveralls
         uses: coverallsapp/github-action@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          file: coverage/lcov.info
+          format: lcov
           fail-on-error: true
           debug: true
