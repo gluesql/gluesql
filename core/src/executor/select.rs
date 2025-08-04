@@ -109,7 +109,7 @@ pub async fn select_with_labels<'a, T>(
     impl Stream<Item = Result<Row>> + Send + 'a,
 )>
 where
-    T: GStore + Send + Sync,
+    T: GStore,
 {
     #[derive(futures_enum::Stream)]
     enum Row<S1, S2> {
@@ -220,7 +220,7 @@ pub async fn select<'a, T>(
     filter_context: Option<Arc<RowContext<'a>>>,
 ) -> Result<impl Stream<Item = Result<Row>> + Send + 'a>
 where
-    T: GStore + Send + Sync,
+    T: GStore,
 {
     select_with_labels(storage, query, filter_context)
         .await
