@@ -33,7 +33,7 @@ pub enum AlterTableError {
 }
 
 #[async_trait]
-pub trait AlterTable: Store + StoreMut + Send + Sync {
+pub trait AlterTable: Store + StoreMut {
     async fn rename_schema(&mut self, table_name: &str, new_table_name: &str) -> Result<()> {
         let mut schema = self
             .fetch_schema(table_name)
