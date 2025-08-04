@@ -26,6 +26,14 @@ use {
     web_sys::console,
 };
 
+trait SendWrapperExt: Sized {
+    fn send_wrapper(self) -> SendWrapper<Self> {
+        SendWrapper::new(self)
+    }
+}
+
+impl<T> SendWrapperExt for T {}
+
 const SCHEMA_STORE: &str = "gluesql-schema";
 const DEFAULT_NAMESPACE: &str = "gluesql";
 
@@ -104,7 +112,10 @@ impl IdbStorage {
     }
 
     pub async fn delete(&self) -> Result<()> {
-        SendWrapper::new(self.factory.delete(&self.namespace).into_future())
+        self.factory
+            .delete(&self.namespace)
+            .into_future()
+            .send_wrapper()
             .await
             .err_into()
     }
@@ -185,9 +196,7 @@ impl IdbStorage {
             open_request
         };
 
-        self.database = SendWrapper::new(open_request.into_future())
-            .await
-            .err_into()?;
+        self.database = open_request.into_future().send_wrapper().await.err_into()?;
         if let Some(e) = Arc::try_unwrap(error)
             .map_err(|_| Error::StorageMsg("infallible - Arc::try_unwrap failed".to_owned()))?
             .into_inner()
@@ -203,14 +212,20 @@ impl IdbStorage {
 #[async_trait]
 impl Store for IdbStorage {
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
-        let transaction = SendWrapper::new(
-            self.database
-                .transaction(&[SCHEMA_STORE], TransactionMode::ReadOnly)
-                .err_into()?,
-        );
+        let transaction = self
+            .database
+            .transaction(&[SCHEMA_STORE], TransactionMode::ReadOnly)
+            .err_into()?
+            .send_wrapper();
 
-        let store = SendWrapper::new(transaction.object_store(SCHEMA_STORE).err_into()?);
-        let schemas = SendWrapper::new(store.get_all(None, None).into_future())
+        let store = transaction
+            .object_store(SCHEMA_STORE)
+            .err_into()?
+            .send_wrapper();
+        let schemas = store
+            .get_all(None, None)
+            .into_future()
+            .send_wrapper()
             .await
             .err_into()?;
         let schemas = schemas
@@ -226,28 +241,42 @@ impl Store for IdbStorage {
             })
             .collect::<Result<Vec<Schema>>>()?;
 
-        SendWrapper::new(transaction.take().commit().into_future())
+        transaction
+            .take()
+            .commit()
+            .into_future()
+            .send_wrapper()
             .await
             .err_into()?;
         Ok(schemas)
     }
 
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
-        let transaction = SendWrapper::new(
-            self.database
-                .transaction(&[SCHEMA_STORE], TransactionMode::ReadOnly)
-                .err_into()?,
-        );
+        let transaction = self
+            .database
+            .transaction(&[SCHEMA_STORE], TransactionMode::ReadOnly)
+            .err_into()?
+            .send_wrapper();
 
-        let store = SendWrapper::new(transaction.object_store(SCHEMA_STORE).err_into()?);
-        let schema = SendWrapper::new(store.get(JsValue::from_str(table_name)).into_future())
+        let store = transaction
+            .object_store(SCHEMA_STORE)
+            .err_into()?
+            .send_wrapper();
+        let schema = store
+            .get(JsValue::from_str(table_name))
+            .into_future()
+            .send_wrapper()
             .await
             .err_into()?
             .and_then(|schema| JsValue::as_string(&schema))
             .map(|schema| Schema::from_ddl(schema.as_str()))
             .transpose()?;
 
-        SendWrapper::new(transaction.take().commit().into_future())
+        transaction
+            .take()
+            .commit()
+            .into_future()
+            .send_wrapper()
             .await
             .err_into()?;
         Ok(schema)
@@ -258,25 +287,35 @@ impl Store for IdbStorage {
             .fetch_schema(table_name)
             .await?
             .and_then(|schema| schema.column_defs);
-        let transaction = SendWrapper::new(
-            self.database
-                .transaction(&[table_name], TransactionMode::ReadOnly)
-                .err_into()?,
-        );
+        let transaction = self
+            .database
+            .transaction(&[table_name], TransactionMode::ReadOnly)
+            .err_into()?
+            .send_wrapper();
 
-        let store = SendWrapper::new(transaction.object_store(table_name).err_into()?);
+        let store = transaction
+            .object_store(table_name)
+            .err_into()?
+            .send_wrapper();
 
         let key: Value = target.clone().into();
         let key: JsonValue = key.try_into()?;
         let key = JsValue::from_serde(&key).err_into()?;
-        let row = SendWrapper::new(store.get(key).into_future())
+        let row = store
+            .get(key)
+            .into_future()
+            .send_wrapper()
             .await
             .err_into()?;
         let row = row
             .map(|row| convert(row, column_defs.as_deref()))
             .transpose()?;
 
-        SendWrapper::new(transaction.take().commit().into_future())
+        transaction
+            .take()
+            .commit()
+            .into_future()
+            .send_wrapper()
             .await
             .err_into()?;
 
@@ -288,30 +327,40 @@ impl Store for IdbStorage {
             .fetch_schema(table_name)
             .await?
             .and_then(|schema| schema.column_defs);
-        let transaction = SendWrapper::new(
-            self.database
-                .transaction(&[table_name], TransactionMode::ReadOnly)
-                .err_into()?,
-        );
+        let transaction = self
+            .database
+            .transaction(&[table_name], TransactionMode::ReadOnly)
+            .err_into()?
+            .send_wrapper();
 
-        let store = SendWrapper::new(transaction.object_store(table_name).err_into()?);
-        let mut cursor = match SendWrapper::new(
-            store
-                .open_cursor(None, Some(CursorDirection::Next))
-                .into_future(),
-        )
-        .await
-        .err_into()?
+        let store = transaction
+            .object_store(table_name)
+            .err_into()?
+            .send_wrapper();
+        let mut cursor = match store
+            .open_cursor(None, Some(CursorDirection::Next))
+            .into_future()
+            .send_wrapper()
+            .await
+            .err_into()?
         {
-            Some(cursor) => SendWrapper::new(cursor.into_managed()),
+            Some(cursor) => cursor.into_managed().send_wrapper(),
             None => {
                 return Ok(Box::pin(empty()));
             }
         };
 
         let mut rows = Vec::new();
-        let mut current_key = SendWrapper::new(cursor.key().err_into()?.unwrap_or(JsValue::NULL));
-        let mut current_row = SendWrapper::new(cursor.value().err_into()?.unwrap_or(JsValue::NULL));
+        let mut current_key = cursor
+            .key()
+            .err_into()?
+            .unwrap_or(JsValue::NULL)
+            .send_wrapper();
+        let mut current_row = cursor
+            .value()
+            .err_into()?
+            .unwrap_or(JsValue::NULL)
+            .send_wrapper();
 
         while !current_key.as_ref().is_null() {
             {
@@ -326,12 +375,24 @@ impl Store for IdbStorage {
                 rows.push((key, row));
             }
 
-            SendWrapper::new(cursor.advance(1)).await.err_into()?;
-            current_key = SendWrapper::new(cursor.key().err_into()?.unwrap_or(JsValue::NULL));
-            current_row = SendWrapper::new(cursor.value().err_into()?.unwrap_or(JsValue::NULL));
+            cursor.advance(1).send_wrapper().await.err_into()?;
+            current_key = cursor
+                .key()
+                .err_into()?
+                .unwrap_or(JsValue::NULL)
+                .send_wrapper();
+            current_row = cursor
+                .value()
+                .err_into()?
+                .unwrap_or(JsValue::NULL)
+                .send_wrapper();
         }
 
-        SendWrapper::new(transaction.take().commit().into_future())
+        transaction
+            .take()
+            .commit()
+            .into_future()
+            .send_wrapper()
             .await
             .err_into()?;
 
@@ -355,27 +416,40 @@ impl StoreMut for IdbStorage {
                 .await?;
         }
 
-        let transaction = SendWrapper::new(
-            self.database
-                .transaction(&[SCHEMA_STORE], TransactionMode::ReadWrite)
-                .err_into()?,
-        );
-        let store = SendWrapper::new(transaction.object_store(SCHEMA_STORE).err_into()?);
+        let transaction = self
+            .database
+            .transaction(&[SCHEMA_STORE], TransactionMode::ReadWrite)
+            .err_into()?
+            .send_wrapper();
+        let store = transaction
+            .object_store(SCHEMA_STORE)
+            .err_into()?
+            .send_wrapper();
 
-        let key = SendWrapper::new(JsValue::from_str(&schema.table_name));
-        let schema = SendWrapper::new(JsValue::from(schema.to_ddl()));
+        let key = JsValue::from_str(&schema.table_name).send_wrapper();
+        let schema = JsValue::from(schema.to_ddl()).send_wrapper();
 
         if schema_exists {
-            SendWrapper::new(store.put(&*schema, Some(&*key)).into_future())
+            store
+                .put(&schema, Some(&key))
+                .into_future()
+                .send_wrapper()
                 .await
                 .err_into()?;
         } else {
-            SendWrapper::new(store.add(&*schema, Some(&*key)).into_future())
+            store
+                .add(&schema, Some(&key))
+                .into_future()
+                .send_wrapper()
                 .await
                 .err_into()?;
         };
 
-        SendWrapper::new(transaction.take().commit().into_future())
+        transaction
+            .take()
+            .commit()
+            .into_future()
+            .send_wrapper()
             .await
             .err_into()
             .map(|_| ())
@@ -385,31 +459,44 @@ impl StoreMut for IdbStorage {
         self.alter_object_store(table_name.to_owned(), AlterType::DeleteSchema)
             .await?;
 
-        let transaction = SendWrapper::new(
-            self.database
-                .transaction(&[SCHEMA_STORE], TransactionMode::ReadWrite)
-                .err_into()?,
-        );
-        let store = SendWrapper::new(transaction.object_store(SCHEMA_STORE).err_into()?);
+        let transaction = self
+            .database
+            .transaction(&[SCHEMA_STORE], TransactionMode::ReadWrite)
+            .err_into()?
+            .send_wrapper();
+        let store = transaction
+            .object_store(SCHEMA_STORE)
+            .err_into()?
+            .send_wrapper();
 
         let key = JsValue::from_str(table_name);
-        SendWrapper::new(store.delete(Query::from(key)).into_future())
+        store
+            .delete(Query::from(key))
+            .into_future()
+            .send_wrapper()
             .await
             .err_into()?;
 
-        SendWrapper::new(transaction.take().commit().into_future())
+        transaction
+            .take()
+            .commit()
+            .into_future()
+            .send_wrapper()
             .await
             .err_into()
             .map(|_| ())
     }
 
     async fn append_data(&mut self, table_name: &str, new_rows: Vec<DataRow>) -> Result<()> {
-        let transaction = SendWrapper::new(
-            self.database
-                .transaction(&[table_name], TransactionMode::ReadWrite)
-                .err_into()?,
-        );
-        let store = SendWrapper::new(transaction.object_store(table_name).err_into()?);
+        let transaction = self
+            .database
+            .transaction(&[table_name], TransactionMode::ReadWrite)
+            .err_into()?
+            .send_wrapper();
+        let store = transaction
+            .object_store(table_name)
+            .err_into()?
+            .send_wrapper();
 
         for data_row in new_rows {
             let row = match data_row {
@@ -419,26 +506,36 @@ impl StoreMut for IdbStorage {
 
             let row = JsonValue::try_from(row)?;
             let row = JsValue::from_serde(&row).err_into()?;
-            let row = SendWrapper::new(row);
+            let row = row.send_wrapper();
 
-            SendWrapper::new(store.add(&*row, None).into_future())
+            store
+                .add(&row, None)
+                .into_future()
+                .send_wrapper()
                 .await
                 .err_into()?;
         }
 
-        SendWrapper::new(transaction.take().commit().into_future())
+        transaction
+            .take()
+            .commit()
+            .into_future()
+            .send_wrapper()
             .await
             .err_into()
             .map(|_| ())
     }
 
     async fn insert_data(&mut self, table_name: &str, new_rows: Vec<(Key, DataRow)>) -> Result<()> {
-        let transaction = SendWrapper::new(
-            self.database
-                .transaction(&[table_name], TransactionMode::ReadWrite)
-                .err_into()?,
-        );
-        let store = SendWrapper::new(transaction.object_store(table_name).err_into()?);
+        let transaction = self
+            .database
+            .transaction(&[table_name], TransactionMode::ReadWrite)
+            .err_into()?
+            .send_wrapper();
+        let store = transaction
+            .object_store(table_name)
+            .err_into()?
+            .send_wrapper();
 
         for (key, data_row) in new_rows {
             let row = match data_row {
@@ -448,42 +545,59 @@ impl StoreMut for IdbStorage {
 
             let row = JsonValue::try_from(row)?;
             let row = JsValue::from_serde(&row).err_into()?;
-            let row = SendWrapper::new(row);
+            let row = row.send_wrapper();
 
             let key: JsonValue = Value::from(key).try_into()?;
             let key = JsValue::from_serde(&key).err_into()?;
-            let key = SendWrapper::new(key);
+            let key = key.send_wrapper();
 
-            SendWrapper::new(store.put(&*row, Some(&*key)).into_future())
+            store
+                .put(&row, Some(&key))
+                .into_future()
+                .send_wrapper()
                 .await
                 .err_into()?;
         }
 
-        SendWrapper::new(transaction.take().commit().into_future())
+        transaction
+            .take()
+            .commit()
+            .into_future()
+            .send_wrapper()
             .await
             .err_into()
             .map(|_| ())
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
-        let transaction = SendWrapper::new(
-            self.database
-                .transaction(&[table_name], TransactionMode::ReadWrite)
-                .err_into()?,
-        );
-        let store = SendWrapper::new(transaction.object_store(table_name).err_into()?);
+        let transaction = self
+            .database
+            .transaction(&[table_name], TransactionMode::ReadWrite)
+            .err_into()?
+            .send_wrapper();
+        let store = transaction
+            .object_store(table_name)
+            .err_into()?
+            .send_wrapper();
 
         for key in keys {
             let key: JsonValue = Value::from(key).try_into()?;
             let key = JsValue::from_serde(&key).err_into()?;
             let key = Query::from(key);
 
-            SendWrapper::new(store.delete(key).into_future())
+            store
+                .delete(key)
+                .into_future()
+                .send_wrapper()
                 .await
                 .err_into()?;
         }
 
-        SendWrapper::new(transaction.take().commit().into_future())
+        transaction
+            .take()
+            .commit()
+            .into_future()
+            .send_wrapper()
             .await
             .err_into()
             .map(|_| ())
