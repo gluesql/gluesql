@@ -103,3 +103,24 @@ impl<T> From<Vector<T>> for Vec<T> {
         vector.0
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Vector;
+
+    #[test]
+    fn len() {
+        let vector = Vector::new().push(1).push(2).push(3);
+
+        assert_eq!(3, vector.len());
+    }
+
+    #[test]
+    fn is_empty() {
+        let vector = Vector::<i32>::new();
+        assert!(vector.is_empty());
+
+        let vector = vector.push(1);
+        assert!(!vector.is_empty());
+    }
+}
