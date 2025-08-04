@@ -539,20 +539,20 @@ mod tests {
         assert_eq!(Boolean(false), num!("12.0").evaluate_eq(&num!("12.123")));
         assert_eq!(Boolean(false), num!("123").evaluate_eq(&num!("12.3")));
         assert_eq!(Boolean(false), num!("123").evaluate_eq(&text!("Foo")));
-        assert_eq!(Boolean(false), num!("123").evaluate_eq(&Null));
+        assert_eq!(Null, num!("123").evaluate_eq(&Null));
         //Text
         assert_eq!(Boolean(true), text!("Foo").evaluate_eq(&text!("Foo")));
         assert_eq!(Boolean(false), text!("Foo").evaluate_eq(&text!("Bar")));
-        assert_eq!(Boolean(false), text!("Foo").evaluate_eq(&Null));
+        assert_eq!(Null, text!("Foo").evaluate_eq(&Null));
         //Bytea
         assert_eq!(
             Boolean(true),
             bytea!("12A456").evaluate_eq(&bytea!("12A456"))
         );
         assert_eq!(Boolean(false), bytea!("1230").evaluate_eq(&num!("1230")));
-        assert_eq!(Boolean(false), bytea!("12").evaluate_eq(&Null));
+        assert_eq!(Null, bytea!("12").evaluate_eq(&Null));
         // Null
-        assert_eq!(Boolean(false), Null.evaluate_eq(&Null));
+        assert_eq!(Null, Null.evaluate_eq(&Null));
     }
 
     #[test]
