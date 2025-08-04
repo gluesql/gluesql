@@ -53,11 +53,13 @@ jobs:
             -o ./coverage/lcov.info
       - name: Sanity check lcov size
         run: du -h coverage/lcov.info && head -20 coverage/lcov.info
-      - name: Upload test results to Codecov
-        if: ${{ !cancelled() }}
-        uses: codecov/test-results-action@v1
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
         with:
+          files: ./coverage/lcov.info
           token: ${{ secrets.CODECOV_TOKEN }}
+          flags: rust
+          fail_ci_if_error: true
       - name: Coveralls
         uses: coverallsapp/github-action@v2
         with:
