@@ -14,7 +14,7 @@ use {
     std::collections::HashMap,
 };
 
-pub async fn fetch_schema_map<T: Store + Send + Sync>(
+pub async fn fetch_schema_map<T: Store>(
     storage: &T,
     statement: &Statement,
 ) -> Result<HashMap<String, Schema>> {
@@ -63,10 +63,7 @@ pub async fn fetch_schema_map<T: Store + Send + Sync>(
     }
 }
 
-async fn scan_query<T: Store + Send + Sync>(
-    storage: &T,
-    query: &Query,
-) -> Result<HashMap<String, Schema>> {
+async fn scan_query<T: Store>(storage: &T, query: &Query) -> Result<HashMap<String, Schema>> {
     let Query {
         body,
         limit,
@@ -95,10 +92,7 @@ async fn scan_query<T: Store + Send + Sync>(
     Ok(schema_list)
 }
 
-async fn scan_select<T: Store + Send + Sync>(
-    storage: &T,
-    select: &Select,
-) -> Result<HashMap<String, Schema>> {
+async fn scan_select<T: Store>(storage: &T, select: &Select) -> Result<HashMap<String, Schema>> {
     let Select {
         projection,
         from,
@@ -134,7 +128,7 @@ async fn scan_select<T: Store + Send + Sync>(
         .collect())
 }
 
-async fn scan_table_with_joins<T: Store + Send + Sync>(
+async fn scan_table_with_joins<T: Store>(
     storage: &T,
     table_with_joins: &TableWithJoins,
 ) -> Result<HashMap<String, Schema>> {
@@ -151,10 +145,7 @@ async fn scan_table_with_joins<T: Store + Send + Sync>(
         .collect())
 }
 
-async fn scan_join<T: Store + Send + Sync>(
-    storage: &T,
-    join: &Join,
-) -> Result<HashMap<String, Schema>> {
+async fn scan_join<T: Store>(storage: &T, join: &Join) -> Result<HashMap<String, Schema>> {
     let Join {
         relation,
         join_operator,
@@ -182,7 +173,7 @@ async fn scan_table_factor<T>(
     table_factor: &TableFactor,
 ) -> Result<HashMap<String, Schema>>
 where
-    T: Store + Send + Sync,
+    T: Store,
 {
     match table_factor {
         TableFactor::Table { name, .. } => {
@@ -201,7 +192,7 @@ where
 #[async_recursion]
 async fn scan_expr<T>(storage: &T, expr: &Expr) -> Result<HashMap<String, Schema>>
 where
-    T: Store + Send + Sync,
+    T: Store,
 {
     let schema_list = match expr.into() {
         PlanExpr::None | PlanExpr::Identifier(_) | PlanExpr::CompoundIdentifier { .. } => {
