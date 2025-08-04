@@ -4,7 +4,7 @@ use {
 };
 
 #[async_trait]
-pub trait Transaction: Send + Sync {
+pub trait Transaction {
     async fn begin(&mut self, autocommit: bool) -> Result<bool> {
         if autocommit {
             return Ok(false);
