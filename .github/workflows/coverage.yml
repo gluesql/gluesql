@@ -52,6 +52,8 @@ jobs:
             --excl-line "(#\\[derive\\()|(^\s*.await[;,]?$)|(^test_case\!\([\d\w]+,)" \
             -o ./coverage/lcov.info
       - name: Coveralls
-        uses: coverallsapp/github-action@master
+        uses: coverallsapp/github-action@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          fail-on-error: true
+          debug: true
