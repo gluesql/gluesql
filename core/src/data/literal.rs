@@ -91,10 +91,10 @@ fn unsupported_binary_op(left: &Literal, op: BinaryOperator, right: &Literal) ->
 }
 
 impl<'a> Literal<'a> {
-    pub fn evaluate_eq(&self, other: &Literal<'_>) -> bool {
+    pub fn evaluate_eq(&self, other: &Literal<'_>) -> Self {
         match (self, other) {
-            (Null, Null) => false,
-            _ => self == other,
+            (Null, _) | (_, Null) => Null,
+            _ => Boolean(self == other),
         }
     }
 
@@ -530,26 +530,29 @@ mod tests {
         }
 
         //Boolean
-        assert!(Boolean(true).evaluate_eq(&Boolean(true)));
-        assert!(!Boolean(true).evaluate_eq(&Boolean(false)));
+        assert_eq!(Boolean(true), Boolean(true).evaluate_eq(&Boolean(true)));
+        assert_eq!(Boolean(false), Boolean(true).evaluate_eq(&Boolean(false)));
         //Number
-        assert!(num!("123").evaluate_eq(&num!("123")));
-        assert!(num!("12.0").evaluate_eq(&num!("12.0")));
-        assert!(num!("12.0").evaluate_eq(&num!("12")));
-        assert!(!num!("12.0").evaluate_eq(&num!("12.123")));
-        assert!(!num!("123").evaluate_eq(&num!("12.3")));
-        assert!(!num!("123").evaluate_eq(&text!("Foo")));
-        assert!(!num!("123").evaluate_eq(&Null));
+        assert_eq!(Boolean(true), num!("123").evaluate_eq(&num!("123")));
+        assert_eq!(Boolean(true), num!("12.0").evaluate_eq(&num!("12.0")));
+        assert_eq!(Boolean(true), num!("12.0").evaluate_eq(&num!("12")));
+        assert_eq!(Boolean(false), num!("12.0").evaluate_eq(&num!("12.123")));
+        assert_eq!(Boolean(false), num!("123").evaluate_eq(&num!("12.3")));
+        assert_eq!(Boolean(false), num!("123").evaluate_eq(&text!("Foo")));
+        assert_eq!(Boolean(false), num!("123").evaluate_eq(&Null));
         //Text
-        assert!(text!("Foo").evaluate_eq(&text!("Foo")));
-        assert!(!text!("Foo").evaluate_eq(&text!("Bar")));
-        assert!(!text!("Foo").evaluate_eq(&Null));
+        assert_eq!(Boolean(true), text!("Foo").evaluate_eq(&text!("Foo")));
+        assert_eq!(Boolean(false), text!("Foo").evaluate_eq(&text!("Bar")));
+        assert_eq!(Boolean(false), text!("Foo").evaluate_eq(&Null));
         //Bytea
-        assert!(bytea!("12A456").evaluate_eq(&bytea!("12A456")));
-        assert!(!bytea!("1230").evaluate_eq(&num!("1230")));
-        assert!(!bytea!("12").evaluate_eq(&Null));
+        assert_eq!(
+            Boolean(true),
+            bytea!("12A456").evaluate_eq(&bytea!("12A456"))
+        );
+        assert_eq!(Boolean(false), bytea!("1230").evaluate_eq(&num!("1230")));
+        assert_eq!(Boolean(false), bytea!("12").evaluate_eq(&Null));
         // Null
-        assert!(!Null.evaluate_eq(&Null));
+        assert_eq!(Boolean(false), Null.evaluate_eq(&Null));
     }
 
     #[test]
