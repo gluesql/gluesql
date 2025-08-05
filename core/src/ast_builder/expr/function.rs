@@ -157,6 +157,7 @@ pub enum FunctionNode<'a> {
     Ascii(ExprNode<'a>),
     Chr(ExprNode<'a>),
     Md5(ExprNode<'a>),
+    Hex(ExprNode<'a>),
     Point {
         x: ExprNode<'a>,
         y: ExprNode<'a>,
@@ -375,6 +376,7 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
             FunctionNode::Ascii(expr) => expr.try_into().map(Function::Ascii),
             FunctionNode::Chr(expr) => expr.try_into().map(Function::Chr),
             FunctionNode::Md5(expr) => expr.try_into().map(Function::Md5),
+            FunctionNode::Hex(expr) => expr.try_into().map(Function::Hex),
             FunctionNode::Point { x, y } => {
                 let x = x.try_into()?;
                 let y = y.try_into()?;
@@ -939,6 +941,10 @@ pub fn chr<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
 
 pub fn md5<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Md5(expr.into())))
+}
+
+pub fn hex<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Hex(expr.into())))
 }
 
 pub fn point<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(x: T, y: U) -> ExprNode<'a> {
@@ -1717,6 +1723,21 @@ mod tests {
     fn function_md5() {
         let actual = f::md5(text("abc"));
         let expected = "MD5('abc')";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_hex() {
+        let actual = f::hex(num(10));
+        let expected = "HEX(10)";
+        test_expr(actual, expected);
+
+        let actual = f::hex(text("10"));
+        let expected = "HEX('10')";
+        test_expr(actual, expected);
+
+        let actual = f::hex(text("GlueSQL"));
+        let expected = "HEX('GlueSQL')";
         test_expr(actual, expected);
     }
 

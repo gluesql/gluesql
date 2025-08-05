@@ -562,6 +562,12 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             let expr = translate_expr(args[0])?;
             Ok(Expr::Function(Box::new(Function::Md5(expr))))
         }
+        "HEX" => {
+            check_len(name, args.len(), 1)?;
+
+            let expr = translate_expr(args[0])?;
+            Ok(Expr::Function(Box::new(Function::Hex(expr))))
+        }
         "LENGTH" => {
             check_len(name, args.len(), 1)?;
 

@@ -50,6 +50,7 @@ impl Function {
             | Self::Ascii(expr)
             | Self::Chr(expr)
             | Self::Md5(expr)
+            | Self::Hex(expr)
             | Self::LastDay(expr)
             | Self::Ltrim { expr, chars: None }
             | Self::Rtrim { expr, chars: None }
@@ -286,6 +287,7 @@ mod tests {
         test(r#"CAST(1 AS BOOLEAN)"#, &["1"]);
         test(r#"IS_EMPTY(col)"#, &["col"]);
         test(r#"VALUES(col)"#, &["col"]);
+        test(r#"HEX(10)"#, &["10"]);
 
         test(r#"ABS(1)"#, &["1"]);
         test(r#"ABS(-1)"#, &["-1"]);
