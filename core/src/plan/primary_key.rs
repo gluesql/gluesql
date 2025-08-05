@@ -266,6 +266,7 @@ mod tests {
         let sql = "SELECT * FROM Player WHERE id = 1;";
         let actual = plan(&storage, sql);
         let expected = select(Select {
+            distinct: false,
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
@@ -284,6 +285,7 @@ mod tests {
         let sql = "SELECT * FROM Player WHERE 1 = id;";
         let actual = plan(&storage, sql);
         let expected = select(Select {
+            distinct: false,
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
@@ -302,6 +304,7 @@ mod tests {
         let sql = "SELECT * FROM Player WHERE id = 1 AND True;";
         let actual = plan(&storage, sql);
         let expected = select(Select {
+            distinct: false,
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
@@ -326,6 +329,7 @@ mod tests {
         ";
         let actual = plan(&storage, sql);
         let expected = select(Select {
+            distinct: false,
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
@@ -359,6 +363,7 @@ mod tests {
         ";
         let actual = plan(&storage, sql);
         let expected = select(Select {
+            distinct: false,
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
@@ -391,6 +396,7 @@ mod tests {
         let sql = "SELECT * FROM Player JOIN Badge WHERE Player.id = 1";
         let actual = plan(&storage, sql);
         let expected = select(Select {
+            distinct: false,
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
@@ -417,6 +423,7 @@ mod tests {
         let sql = "SELECT * FROM Player JOIN Badge WHERE Player.id = Badge.user_id";
         let actual = plan(&storage, sql);
         let expected = select(Select {
+            distinct: false,
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
@@ -449,6 +456,7 @@ mod tests {
         let expected = {
             let subquery = Query {
                 body: SetExpr::Select(Box::new(Select {
+                    distinct: false,
                     projection: vec![SelectItem::Wildcard],
                     from: TableWithJoins {
                         relation: TableFactor::Table {
@@ -468,6 +476,7 @@ mod tests {
             };
 
             select(Select {
+                distinct: false,
                 projection: vec![SelectItem::Wildcard],
                 from: TableWithJoins {
                     relation: TableFactor::Table {
@@ -503,6 +512,7 @@ mod tests {
         let expected = {
             let subquery = Query {
                 body: SetExpr::Select(Box::new(Select {
+                    distinct: false,
                     projection: vec![SelectItem::Expr {
                         expr: Expr::Identifier("name".to_owned()),
                         label: "name".to_owned(),
@@ -525,6 +535,7 @@ mod tests {
             };
 
             select(Select {
+                distinct: false,
                 projection: vec![SelectItem::Wildcard],
                 from: TableWithJoins {
                     relation: TableFactor::Table {
@@ -554,6 +565,7 @@ mod tests {
         let expected = {
             let subquery = Query {
                 body: SetExpr::Select(Box::new(Select {
+                    distinct: false,
                     projection: vec![SelectItem::Expr {
                         expr: Expr::Identifier("id".to_owned()),
                         label: "id".to_owned(),
@@ -576,6 +588,7 @@ mod tests {
             };
 
             select(Select {
+                distinct: false,
                 projection: vec![SelectItem::Wildcard],
                 from: TableWithJoins {
                     relation: TableFactor::Table {
@@ -624,6 +637,7 @@ mod tests {
         let sql = "SELECT * FROM Player WHERE (name);";
         let actual = plan(&storage, sql);
         let expected = select(Select {
+            distinct: false,
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {

@@ -18,6 +18,7 @@ pub mod default;
 pub mod delete;
 pub mod dictionary;
 pub mod dictionary_index;
+pub mod distinct;
 pub mod filter;
 pub mod foreign_key;
 pub mod function;

@@ -11,11 +11,12 @@ use {
         result::Result,
     },
     sqlparser::ast::{
-        Expr as SqlExpr, FunctionArg as SqlFunctionArg, GroupByExpr as SqlGroupByExpr,
-        Join as SqlJoin, JoinConstraint as SqlJoinConstraint, JoinOperator as SqlJoinOperator,
-        Query as SqlQuery, Select as SqlSelect, SelectItem as SqlSelectItem, SetExpr as SqlSetExpr,
-        TableAlias as SqlTableAlias, TableFactor as SqlTableFactor,
-        TableFunctionArgs as SqlTableFunctionArgs, TableWithJoins as SqlTableWithJoins,
+        Distinct as SqlDistinct, Expr as SqlExpr, FunctionArg as SqlFunctionArg,
+        GroupByExpr as SqlGroupByExpr, Join as SqlJoin, JoinConstraint as SqlJoinConstraint,
+        JoinOperator as SqlJoinOperator, Query as SqlQuery, Select as SqlSelect,
+        SelectItem as SqlSelectItem, SetExpr as SqlSetExpr, TableAlias as SqlTableAlias,
+        TableFactor as SqlTableFactor, TableFunctionArgs as SqlTableFunctionArgs,
+        TableWithJoins as SqlTableWithJoins,
     },
 };
 
@@ -75,9 +76,13 @@ fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
         return Err(TranslateError::TooManyTables.into());
     }
 
-    if distinct.is_some() {
-        return Err(TranslateError::SelectDistinctNotSupported.into());
-    }
+    let distinct = match distinct {
+        Some(SqlDistinct::Distinct) => true,
+        Some(SqlDistinct::On(_)) => {
+            return Err(TranslateError::SelectDistinctOnNotSupported.into());
+        }
+        None => false,
+    };
 
     let from = match from.first() {
         Some(sql_table_with_joins) => translate_table_with_joins(sql_table_with_joins)?,
@@ -101,6 +106,7 @@ fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
     };
 
     Ok(Select {
+        distinct,
         projection: projection
             .iter()
             .map(translate_select_item)

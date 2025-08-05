@@ -10,7 +10,13 @@ use {
     core::ops::Sub,
     rust_decimal::Decimal,
     serde::{Deserialize, Serialize},
-    std::{cmp::Ordering, collections::HashMap, fmt::Debug, net::IpAddr},
+    std::{
+        cmp::Ordering,
+        collections::{BTreeMap, HashMap},
+        fmt::Debug,
+        hash::{Hash, Hasher},
+        net::IpAddr,
+    },
 };
 
 mod binary_op;
@@ -857,6 +863,59 @@ impl Value {
             _ => position + start - 1,
         };
         Ok(Value::I64(position))
+    }
+}
+
+impl Eq for Value {}
+
+impl Hash for Value {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        std::mem::discriminant(self).hash(state);
+
+        match self {
+            Value::Bool(v) => v.hash(state),
+            Value::I8(v) => v.hash(state),
+            Value::I16(v) => v.hash(state),
+            Value::I32(v) => v.hash(state),
+            Value::I64(v) => v.hash(state),
+            Value::I128(v) => v.hash(state),
+            Value::U8(v) => v.hash(state),
+            Value::U16(v) => v.hash(state),
+            Value::U32(v) => v.hash(state),
+            Value::U64(v) => v.hash(state),
+            Value::U128(v) => v.hash(state),
+            // Float types: use canonical representation for consistent hashing
+            // GlueSQL uses EPSILON comparison, so we normalize to handle +0.0/-0.0
+            Value::F32(v) => {
+                let canonical = if *v == 0.0f32 { 0.0f32 } else { *v };
+                canonical.to_bits().hash(state);
+            }
+            Value::F64(v) => {
+                let canonical = if *v == 0.0f64 { 0.0f64 } else { *v };
+                canonical.to_bits().hash(state);
+            }
+            Value::Decimal(v) => v.hash(state),
+            Value::Str(v) => v.hash(state),
+            Value::Bytea(v) => v.hash(state),
+            Value::Inet(v) => v.hash(state),
+            Value::Date(v) => v.hash(state),
+            Value::Timestamp(v) => v.hash(state),
+            Value::Time(v) => v.hash(state),
+            Value::Interval(v) => v.hash(state),
+            Value::Uuid(v) => v.hash(state),
+            // Collections: hash sorted entries by key for consistent ordering
+            Value::Map(map) => {
+                let sorted_map: BTreeMap<_, _> = map.iter().collect();
+                sorted_map.hash(state);
+            }
+            Value::List(list) => list.hash(state),
+            // Complex types: use string representation as fallback
+            Value::Point(p) => format!("{:?}", p).hash(state),
+            Value::Null => {
+                // Null gets its own unique hash based on discriminant only
+                // No additional data needed since discriminant already makes it unique
+            }
+        }
     }
 }
 
@@ -2818,5 +2877,163 @@ mod tests {
         assert_eq!(map.get_type(), Some(D::Map));
         assert_eq!(list.get_type(), Some(D::List));
         assert_eq!(Null.get_type(), None);
+    }
+
+    #[test]
+    fn hash_consistency() {
+        use {
+            super::Interval,
+            crate::data::point::Point,
+            chrono::{NaiveDate, NaiveTime},
+            rust_decimal::Decimal,
+            std::{
+                collections::HashMap,
+                collections::hash_map::DefaultHasher,
+                f32::consts::PI as PI_F32,
+                f64::consts::PI as PI_F64,
+                hash::{Hash, Hasher},
+                net::IpAddr,
+                str::FromStr,
+            },
+        };
+
+        fn hash_value<T: Hash>(t: &T) -> u64 {
+            let mut hasher = DefaultHasher::new();
+            t.hash(&mut hasher);
+            hasher.finish()
+        }
+
+        // Float zero normalization: 0.0 and -0.0 should hash the same
+        let zero_pos_f32 = F32(0.0);
+        let zero_neg_f32 = F32(-0.0);
+        assert_eq!(hash_value(&zero_pos_f32), hash_value(&zero_neg_f32),);
+
+        let zero_pos_f64 = F64(0.0);
+        let zero_neg_f64 = F64(-0.0);
+        assert_eq!(hash_value(&zero_pos_f64), hash_value(&zero_neg_f64),);
+
+        // Non-zero floats should hash differently
+        let one_f32 = F32(1.0);
+        let neg_one_f32 = F32(-1.0);
+        assert_ne!(hash_value(&one_f32), hash_value(&neg_one_f32),);
+
+        let one_f64 = F64(1.0);
+        let neg_one_f64 = F64(-1.0);
+        assert_ne!(hash_value(&one_f64), hash_value(&neg_one_f64),);
+
+        // Hash and Eq consistency: if a == b, then hash(a) == hash(b)
+        let values_equal = [
+            // Integer types
+            (I8(42), I8(42)),
+            (I16(42), I16(42)),
+            (I32(42), I32(42)),
+            (I64(42), I64(42)),
+            (I128(42), I128(42)),
+            (U8(42), U8(42)),
+            (U16(42), U16(42)),
+            (U32(42), U32(42)),
+            (U64(42), U64(42)),
+            (U128(42), U128(42)),
+            // Float types (using const values for exact representation)
+            (F32(PI_F32), F32(PI_F32)),
+            (F64(PI_F64), F64(PI_F64)),
+            // Decimal
+            (Decimal(Decimal::new(314, 2)), Decimal(Decimal::new(314, 2))),
+            // Boolean
+            (Bool(true), Bool(true)),
+            (Bool(false), Bool(false)),
+            // String
+            (Str("test".to_owned()), Str("test".to_owned())),
+            // Bytea
+            (Bytea(vec![1, 2, 3]), Bytea(vec![1, 2, 3])),
+            // Inet
+            (
+                Inet(IpAddr::from_str("127.0.0.1").unwrap()),
+                Inet(IpAddr::from_str("127.0.0.1").unwrap()),
+            ),
+            (
+                Inet(IpAddr::from_str("::1").unwrap()),
+                Inet(IpAddr::from_str("::1").unwrap()),
+            ),
+            // Date
+            (
+                Date(NaiveDate::from_ymd_opt(2025, 8, 6).unwrap()),
+                Date(NaiveDate::from_ymd_opt(2025, 8, 6).unwrap()),
+            ),
+            // Timestamp
+            (
+                Timestamp(
+                    NaiveDate::from_ymd_opt(2025, 8, 6)
+                        .unwrap()
+                        .and_hms_opt(10, 30, 0)
+                        .unwrap(),
+                ),
+                Timestamp(
+                    NaiveDate::from_ymd_opt(2025, 8, 6)
+                        .unwrap()
+                        .and_hms_opt(10, 30, 0)
+                        .unwrap(),
+                ),
+            ),
+            // Time
+            (
+                Time(NaiveTime::from_hms_opt(10, 30, 0).unwrap()),
+                Time(NaiveTime::from_hms_opt(10, 30, 0).unwrap()),
+            ),
+            // Interval
+            (Interval(Interval::hours(5)), Interval(Interval::hours(5))),
+            // UUID
+            (Uuid(123456789), Uuid(123456789)),
+            // List
+            (List(vec![I64(1), I64(2)]), List(vec![I64(1), I64(2)])),
+            // Null
+            (Null, Null),
+        ];
+
+        for (a, b) in values_equal {
+            assert_eq!(a, b, "Values should be equal");
+            assert_eq!(
+                hash_value(&a),
+                hash_value(&b),
+                "Equal values should hash the same: {:?} vs {:?}",
+                a,
+                b
+            );
+        }
+
+        // Map hash consistency (sorted by key)
+        let mut map1 = HashMap::new();
+        map1.insert("b".to_owned(), I64(2));
+        map1.insert("a".to_owned(), I64(1));
+
+        let mut map2 = HashMap::new();
+        map2.insert("a".to_owned(), I64(1));
+        map2.insert("b".to_owned(), I64(2));
+
+        let value_map1 = super::Value::Map(map1);
+        let value_map2 = super::Value::Map(map2);
+
+        assert_eq!(
+            value_map1, value_map2,
+            "Maps with same content should be equal"
+        );
+        assert_eq!(
+            hash_value(&value_map1),
+            hash_value(&value_map2),
+            "Equal maps should hash the same regardless of insertion order"
+        );
+
+        // Point hash consistency
+        let point1 = Point(Point::new(1.0, 2.0));
+        let point2 = Point(Point::new(1.0, 2.0));
+        assert_eq!(
+            point1, point2,
+            "Points with same coordinates should be equal"
+        );
+        assert_eq!(
+            hash_value(&point1),
+            hash_value(&point2),
+            "Equal points should hash the same"
+        );
     }
 }
