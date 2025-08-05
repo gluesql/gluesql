@@ -487,6 +487,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         Function::Ascii(expr) => f::ascii(name, eval(expr).await?),
         Function::Chr(expr) => f::chr(name, eval(expr).await?),
         Function::Md5(expr) => f::md5(name, eval(expr).await?),
+        Function::Hex(expr) => f::hex(name, eval(expr).await?),
 
         // --- float ---
         Function::Abs(expr) => f::abs(name, eval(expr).await?),

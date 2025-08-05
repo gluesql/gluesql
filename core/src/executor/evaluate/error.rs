@@ -17,6 +17,9 @@ pub enum EvaluateError {
     #[error("function requires string value: {0}")]
     FunctionRequiresStringValue(String),
 
+    #[error("function requires integer or string value: {0}")]
+    FunctionRequiresIntegerOrStringValue(String),
+
     #[error("function requires integer value: {0}")]
     FunctionRequiresIntegerValue(String),
 
