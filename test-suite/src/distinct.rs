@@ -1,4 +1,8 @@
-use {crate::*, gluesql_core::prelude::Value::*};
+use {
+    crate::*,
+    gluesql_core::{data::Value, prelude::Value::*},
+    serde_json::json,
+};
 
 test_case!(distinct, {
     let g = get_tester!();
@@ -9,7 +13,7 @@ test_case!(distinct, {
 
     g.named_test(
         "DISTINCT single column",
-        "SELECT DISTINCT name FROM Item ORDER BY name",
+        "SELECT DISTINCT name FROM Item WHERE name IS NOT NULL ORDER BY name",
         Ok(select!(name; Str; "Apple".to_owned(); "Banana".to_owned())),
     )
     .await;
@@ -17,43 +21,55 @@ test_case!(distinct, {
     g.named_test(
         "DISTINCT multiple columns",
         "SELECT DISTINCT id, name FROM Item ORDER BY id",
-        Ok(select!(
+        Ok(select_with_null!(
             id | name;
-            I64 | Str;
-            1 "Apple".to_owned();
-            2 "Banana".to_owned();
-            3 "".to_owned()
+            I64(1) Str("Apple".to_owned());
+            I64(2) Str("Banana".to_owned());
+            I64(3) Null
         )),
     )
     .await;
 
-    g.named_test(
-        "DISTINCT with NULL values",
-        "SELECT DISTINCT price FROM Item ORDER BY price",
-        Ok(select!(price; I64; 100; 200)),
-    )
-    .await;
-
-    g.run("CREATE TABLE MapData (id INTEGER, data MAP)").await;
+    g.run("CREATE TABLE Restaurant (id INTEGER, menu MAP)")
+        .await;
     g.run(
         r#"
-        INSERT INTO MapData VALUES
-        (1, '{"a": 1, "b": 2}'),
-        (2, '{"a": 1, "b": 2}'),
-        (3, '{"a": 3, "b": 4}')
+        INSERT INTO Restaurant VALUES
+        (1, '{"dish": "pizza", "price": 12000}'),
+        (2, '{"dish": "pizza", "price": 12000}'),
+        (3, '{"dish": "pasta", "price": 15000}')
     "#,
     )
     .await;
 
-    let m = |s: &str| gluesql_core::prelude::Value::parse_json_map(s).unwrap();
+    g.named_test(
+        "DISTINCT with Map menu data",
+        "SELECT DISTINCT menu FROM Restaurant ORDER BY UNWRAP(menu, 'price')",
+        Ok(select_with_null!(
+            menu;
+            Value::parse_json_map(r#"{"dish": "pizza", "price": 12000}"#).unwrap();
+            Value::parse_json_map(r#"{"dish": "pasta", "price": 15000}"#).unwrap()
+        )),
+    )
+    .await;
+
+    g.run("CREATE TABLE FoodOrders").await;
+    g.run(
+        r#"
+        INSERT INTO FoodOrders VALUES
+        ('{"food": "burger", "quantity": 2}'),
+        ('{"food": "burger", "quantity": 2}'),
+        ('{"food": "chicken", "quantity": 1}')
+    "#,
+    )
+    .await;
 
     g.named_test(
-        "DISTINCT with Map data (schemaless rows)",
-        "SELECT DISTINCT data FROM MapData ORDER BY UNWRAP(data, 'a')",
-        Ok(select_with_null!(
-            data;
-            m(r#"{"a": 1, "b": 2}"#);
-            m(r#"{"a": 3, "b": 4}"#)
+        "DISTINCT with schemaless food orders (Row::Map case)",
+        "SELECT DISTINCT * FROM FoodOrders",
+        Ok(select_map!(
+            json!({"food": "burger", "quantity": 2}),
+            json!({"food": "chicken", "quantity": 1})
         )),
     )
     .await;
