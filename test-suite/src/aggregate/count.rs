@@ -57,7 +57,7 @@ test_case!(count, {
         ),
         (
             "SELECT COUNT(DISTINCT age) FROM Item",
-            select!("COUNT(DISTINCT age)"; I64; 3), // NULL 무시하고 [11, 90, 3] = 3개
+            select!("COUNT(DISTINCT age)"; I64; 3),
         ),
     ];
 

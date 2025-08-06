@@ -236,7 +236,7 @@ impl Select {
         };
 
         let Select {
-            distinct: _,
+            distinct,
             projection,
             from,
             selection,
@@ -269,11 +269,18 @@ impl Select {
             .filter(|sql| !sql.is_empty())
             .join(" ");
 
+        let distinct = if *distinct { "DISTINCT " } else { "" };
+
         if condition.is_empty() {
-            format!("SELECT {projection} FROM {}", from.to_sql_with(quoted))
+            format!(
+                "SELECT {}{projection} FROM {}",
+                distinct,
+                from.to_sql_with(quoted)
+            )
         } else {
             format!(
-                "SELECT {projection} FROM {} {condition}",
+                "SELECT {}{projection} FROM {} {condition}",
+                distinct,
                 from.to_sql_with(quoted)
             )
         }
