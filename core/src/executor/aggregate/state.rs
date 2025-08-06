@@ -79,15 +79,15 @@ impl AggrValue {
             Aggregate::Count {
                 expr: CountArgExpr::Wildcard,
                 distinct,
-            } => AggrValue::Count {
-                wildcard: true,
-                count: 1,
-                distinct_values: if *distinct {
-                    Some(HashSet::new())
-                } else {
-                    None
-                },
-            },
+            } => {
+                let distinct_values = distinct.then(|| HashSet::from(&[value][..]));
+
+                AggrValue::Count {
+                    wildcard: true,
+                    count: 1,
+                    distinct_values,
+                }
+            }
             Aggregate::Count {
                 expr: CountArgExpr::Expr(_),
                 distinct,
@@ -506,8 +506,21 @@ impl<'a, T: GStore> State<'a, T> {
         let value = match aggr {
             Aggregate::Count {
                 expr: CountArgExpr::Wildcard,
-                distinct: _,
-            } => Value::Null,
+                distinct,
+            } => {
+                if *distinct {
+                    // For COUNT(DISTINCT *), we need to use all column values as a composite value
+                    if let Some(ref context) = filter_context {
+                        let entries = context.get_all_entries();
+                        let values: Vec<Value> = entries.into_iter().map(|(_, v)| v).collect();
+                        Value::List(values)
+                    } else {
+                        Value::Null
+                    }
+                } else {
+                    Value::Null
+                }
+            }
             Aggregate::Count {
                 expr: CountArgExpr::Expr(expr),
                 distinct: _,

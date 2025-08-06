@@ -199,7 +199,10 @@ pub fn stdev_distinct<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{avg, col, count, max, min, stdev, sum, test_expr, variance};
+    use crate::ast_builder::{
+        avg, avg_distinct, col, count, count_distinct, max, max_distinct, min, min_distinct, stdev,
+        stdev_distinct, sum, sum_distinct, test_expr, variance, variance_distinct,
+    };
 
     #[test]
     fn aggregate() {
@@ -215,6 +218,18 @@ mod tests {
         let expected = "COUNT(*)";
         test_expr(actual, expected);
 
+        let actual = count_distinct("*");
+        let expected = "COUNT(DISTINCT *)";
+        test_expr(actual, expected);
+
+        let actual = col("id").count_distinct();
+        let expected = "COUNT(DISTINCT id)";
+        test_expr(actual, expected);
+
+        let actual = count_distinct("id");
+        let expected = "COUNT(DISTINCT id)";
+        test_expr(actual, expected);
+
         let actual = col("amount").sum();
         let expected = "SUM(amount)";
         test_expr(actual, expected);
@@ -223,11 +238,28 @@ mod tests {
         let expected = "SUM(amount)";
         test_expr(actual, expected);
 
+        let actual = col("amount").sum_distinct();
+        let expected = "SUM(DISTINCT amount)";
+        test_expr(actual, expected);
+
+        let actual = sum_distinct("amount");
+        let expected = "SUM(DISTINCT amount)";
+        test_expr(actual, expected);
+
         let actual = col("budget").min();
         let expected = "MIN(budget)";
         test_expr(actual, expected);
+
         let actual = min("budget");
         let expected = "MIN(budget)";
+        test_expr(actual, expected);
+
+        let actual = col("budget").min_distinct();
+        let expected = "MIN(DISTINCT budget)";
+        test_expr(actual, expected);
+
+        let actual = min_distinct("budget");
+        let expected = "MIN(DISTINCT budget)";
         test_expr(actual, expected);
 
         let actual = col("score").max();
@@ -238,12 +270,28 @@ mod tests {
         let expected = "MAX(score)";
         test_expr(actual, expected);
 
+        let actual = col("grade").max_distinct();
+        let expected = "MAX(DISTINCT grade)";
+        test_expr(actual, expected);
+
+        let actual = max_distinct("grade");
+        let expected = "MAX(DISTINCT grade)";
+        test_expr(actual, expected);
+
         let actual = col("grade").avg();
         let expected = "AVG(grade)";
         test_expr(actual, expected);
 
         let actual = avg("grade");
         let expected = "AVG(grade)";
+        test_expr(actual, expected);
+
+        let actual = col("grade").avg_distinct();
+        let expected = "AVG(DISTINCT grade)";
+        test_expr(actual, expected);
+
+        let actual = avg_distinct("grade");
+        let expected = "AVG(DISTINCT grade)";
         test_expr(actual, expected);
 
         let actual = col("statistic").variance();
@@ -254,12 +302,28 @@ mod tests {
         let expected = "VARIANCE(statistic)";
         test_expr(actual, expected);
 
+        let actual = col("statistic").variance_distinct();
+        let expected = "VARIANCE(DISTINCT statistic)";
+        test_expr(actual, expected);
+
+        let actual = variance_distinct("statistic");
+        let expected = "VARIANCE(DISTINCT statistic)";
+        test_expr(actual, expected);
+
         let actual = col("scatterplot").stdev();
         let expected = "STDEV(scatterplot)";
         test_expr(actual, expected);
 
         let actual = stdev("scatterplot");
         let expected = "STDEV(scatterplot)";
+        test_expr(actual, expected);
+
+        let actual = col("scatterplot").stdev_distinct();
+        let expected = "STDEV(DISTINCT scatterplot)";
+        test_expr(actual, expected);
+
+        let actual = stdev_distinct("scatterplot");
+        let expected = "STDEV(DISTINCT scatterplot)";
         test_expr(actual, expected);
     }
 }

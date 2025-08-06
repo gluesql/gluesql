@@ -2991,49 +2991,37 @@ mod tests {
         ];
 
         for (a, b) in values_equal {
-            assert_eq!(a, b, "Values should be equal");
-            assert_eq!(
-                hash_value(&a),
-                hash_value(&b),
-                "Equal values should hash the same: {:?} vs {:?}",
-                a,
-                b
-            );
+            assert_eq!(a, b);
+            assert_eq!(hash_value(&a), hash_value(&b), "{:?} vs {:?}", a, b);
         }
 
-        // Map hash consistency (sorted by key)
-        let mut map1 = HashMap::new();
-        map1.insert("b".to_owned(), I64(2));
-        map1.insert("a".to_owned(), I64(1));
+        // Map hash consistency (sorted by key) - test cases
+        let map_test_cases = [
+            // Test case 1: Different insertion order should hash the same
+            {
+                let mut map1 = HashMap::new();
+                map1.insert("b".to_owned(), I64(2));
+                map1.insert("a".to_owned(), I64(1));
 
-        let mut map2 = HashMap::new();
-        map2.insert("a".to_owned(), I64(1));
-        map2.insert("b".to_owned(), I64(2));
+                let mut map2 = HashMap::new();
+                map2.insert("a".to_owned(), I64(1));
+                map2.insert("b".to_owned(), I64(2));
 
-        let value_map1 = super::Value::Map(map1);
-        let value_map2 = super::Value::Map(map2);
+                (super::Value::Map(map1), super::Value::Map(map2))
+            },
+        ];
 
-        assert_eq!(
-            value_map1, value_map2,
-            "Maps with same content should be equal"
-        );
-        assert_eq!(
-            hash_value(&value_map1),
-            hash_value(&value_map2),
-            "Equal maps should hash the same regardless of insertion order"
-        );
+        for (value_map1, value_map2) in map_test_cases {
+            assert_eq!(value_map1, value_map2);
+            assert_eq!(hash_value(&value_map1), hash_value(&value_map2));
+        }
 
-        // Point hash consistency
-        let point1 = Point(Point::new(1.0, 2.0));
-        let point2 = Point(Point::new(1.0, 2.0));
-        assert_eq!(
-            point1, point2,
-            "Points with same coordinates should be equal"
-        );
-        assert_eq!(
-            hash_value(&point1),
-            hash_value(&point2),
-            "Equal points should hash the same"
-        );
+        // Point hash consistency - test cases
+        let point_test_cases = [(Point(Point::new(1.0, 2.0)), Point(Point::new(1.0, 2.0)))];
+
+        for (point1, point2) in point_test_cases {
+            assert_eq!(point1, point2);
+            assert_eq!(hash_value(&point1), hash_value(&point2));
+        }
     }
 }

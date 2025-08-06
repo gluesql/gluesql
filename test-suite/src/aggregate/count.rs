@@ -23,7 +23,8 @@ test_case!(count, {
             (4,  3,    3, 1),
             (5, 25, NULL, 1),
             (6, 15,   11, 2),
-            (7, 20,   90, 1);
+            (7, 20,   90, 1),
+            (1, NULL, 11, 1);
     ",
     )
     .await;
@@ -34,7 +35,7 @@ test_case!(count, {
             select!(
                 "COUNT(*)";
                 I64;
-                7
+                8
             ),
         ),
         (
@@ -42,7 +43,7 @@ test_case!(count, {
             select!(
                 "COUNT(age)" | "COUNT(quantity)";
                 I64          |               I64;
-                5                              6
+                6                              6
             ),
         ),
         (
@@ -66,8 +67,12 @@ test_case!(count, {
             select!(
                 "COUNT(age)" | "COUNT(DISTINCT age)";
                 I64          |                  I64;
-                5                                  3
+                6                                  3
             ),
+        ),
+        (
+            "SELECT COUNT(DISTINCT *) FROM Item",
+            select!("COUNT(DISTINCT *)"; I64; 7),
         ),
     ];
 

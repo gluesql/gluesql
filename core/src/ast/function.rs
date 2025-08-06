@@ -1510,6 +1510,15 @@ mod tests {
         );
 
         assert_eq!(
+            r#"MIN(DISTINCT "id")"#,
+            Expr::Aggregate(Box::new(Aggregate::Min {
+                expr: Expr::Identifier("id".to_owned()),
+                distinct: true
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
             r#"SUM("price")"#,
             Expr::Aggregate(Box::new(Aggregate::Sum {
                 expr: Expr::Identifier("price".to_owned()),

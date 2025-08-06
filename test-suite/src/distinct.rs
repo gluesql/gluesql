@@ -33,4 +33,28 @@ test_case!(distinct, {
         Ok(select!(price; I64; 100; 200)),
     )
     .await;
+
+    g.run("CREATE TABLE MapData (id INTEGER, data MAP)").await;
+    g.run(
+        r#"
+        INSERT INTO MapData VALUES
+        (1, '{"a": 1, "b": 2}'),
+        (2, '{"a": 1, "b": 2}'),
+        (3, '{"a": 3, "b": 4}')
+    "#,
+    )
+    .await;
+
+    let m = |s: &str| gluesql_core::prelude::Value::parse_json_map(s).unwrap();
+
+    g.named_test(
+        "DISTINCT with Map data (schemaless rows)",
+        "SELECT DISTINCT data FROM MapData ORDER BY UNWRAP(data, 'a')",
+        Ok(select_with_null!(
+            data;
+            m(r#"{"a": 1, "b": 2}"#);
+            m(r#"{"a": 3, "b": 4}"#)
+        )),
+    )
+    .await;
 });
