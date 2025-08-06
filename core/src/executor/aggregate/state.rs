@@ -9,7 +9,7 @@ use {
     futures::stream::{self, StreamExt, TryStreamExt},
     im_rc::{HashMap, HashSet},
     itertools::Itertools,
-    std::{cmp::Ordering, rc::Rc},
+    std::{cmp::Ordering, iter::once, rc::Rc},
     utils::{IndexMap, Vector},
 };
 
@@ -61,14 +61,16 @@ impl AggrValue {
         distinct_values: Option<HashSet<Value>>,
         new_value: &Value,
     ) -> (bool, Option<HashSet<Value>>) {
-        if let Some(mut set) = distinct_values {
-            if set.contains(new_value) {
-                return (false, Some(set));
+        match distinct_values {
+            Some(set) => {
+                if set.contains(new_value) {
+                    (false, Some(set))
+                } else {
+                    let new_set = set.into_iter().chain(once(new_value.clone())).collect();
+                    (true, Some(new_set))
+                }
             }
-            set.insert(new_value.clone());
-            (true, Some(set))
-        } else {
-            (true, None)
+            None => (true, None),
         }
     }
 
@@ -222,15 +224,15 @@ impl AggrValue {
                 distinct_values,
             } => {
                 let wildcard = *wildcard;
-                let mut distinct_values = distinct_values.clone();
 
-                if !new_value.is_null() {
-                    let (should_process, updated_distinct) =
-                        Self::check_distinct(distinct_values, new_value);
-                    distinct_values = updated_distinct;
-                    if !should_process {
-                        return Ok(None);
-                    }
+                let (should_process, distinct_values) = if !new_value.is_null() {
+                    Self::check_distinct(distinct_values.clone(), new_value)
+                } else {
+                    (true, distinct_values.clone())
+                };
+
+                if !should_process {
+                    return Ok(None);
                 }
 
                 if wildcard || !new_value.is_null() {
@@ -247,11 +249,8 @@ impl AggrValue {
                 value,
                 distinct_values,
             } => {
-                let mut distinct_values = distinct_values.clone();
-
-                let (should_process, updated_distinct) =
-                    Self::check_distinct(distinct_values, new_value);
-                distinct_values = updated_distinct;
+                let (should_process, distinct_values) =
+                    Self::check_distinct(distinct_values.clone(), new_value);
                 if !should_process {
                     return Ok(None);
                 }
@@ -265,11 +264,8 @@ impl AggrValue {
                 value,
                 distinct_values,
             } => {
-                let mut distinct_values = distinct_values.clone();
-
-                let (should_process, updated_distinct) =
-                    Self::check_distinct(distinct_values, new_value);
-                distinct_values = updated_distinct;
+                let (should_process, distinct_values) =
+                    Self::check_distinct(distinct_values.clone(), new_value);
                 if !should_process {
                     return Ok(None);
                 }
@@ -289,11 +285,8 @@ impl AggrValue {
                 value,
                 distinct_values,
             } => {
-                let mut distinct_values = distinct_values.clone();
-
-                let (should_process, updated_distinct) =
-                    Self::check_distinct(distinct_values, new_value);
-                distinct_values = updated_distinct;
+                let (should_process, distinct_values) =
+                    Self::check_distinct(distinct_values.clone(), new_value);
                 if !should_process {
                     return Ok(None);
                 }
@@ -314,11 +307,8 @@ impl AggrValue {
                 count,
                 distinct_values,
             } => {
-                let mut distinct_values = distinct_values.clone();
-
-                let (should_process, updated_distinct) =
-                    Self::check_distinct(distinct_values, new_value);
-                distinct_values = updated_distinct;
+                let (should_process, distinct_values) =
+                    Self::check_distinct(distinct_values.clone(), new_value);
                 if !should_process {
                     return Ok(None);
                 }
@@ -335,11 +325,8 @@ impl AggrValue {
                 count,
                 distinct_values,
             } => {
-                let mut distinct_values = distinct_values.clone();
-
-                let (should_process, updated_distinct) =
-                    Self::check_distinct(distinct_values, new_value);
-                distinct_values = updated_distinct;
+                let (should_process, distinct_values) =
+                    Self::check_distinct(distinct_values.clone(), new_value);
                 if !should_process {
                     return Ok(None);
                 }
@@ -357,11 +344,8 @@ impl AggrValue {
                 count,
                 distinct_values,
             } => {
-                let mut distinct_values = distinct_values.clone();
-
-                let (should_process, updated_distinct) =
-                    Self::check_distinct(distinct_values, new_value);
-                distinct_values = updated_distinct;
+                let (should_process, distinct_values) =
+                    Self::check_distinct(distinct_values.clone(), new_value);
                 if !should_process {
                     return Ok(None);
                 }
@@ -510,13 +494,12 @@ impl<'a, T: GStore> State<'a, T> {
             } => {
                 if *distinct {
                     // For COUNT(DISTINCT *), we need to use all column values as a composite value
-                    if let Some(ref context) = filter_context {
-                        let entries = context.get_all_entries();
-                        let values: Vec<Value> = entries.into_iter().map(|(_, v)| v).collect();
-                        Value::List(values)
-                    } else {
-                        Value::Null
-                    }
+                    let context = filter_context.as_ref().expect(
+                        "filter_context should always be Some in current GlueSQL architecture",
+                    );
+                    let entries = context.get_all_entries();
+                    let values: Vec<Value> = entries.into_iter().map(|(_, v)| v).collect();
+                    Value::List(values)
                 } else {
                     Value::Null
                 }
