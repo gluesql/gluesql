@@ -21,104 +21,358 @@ enum AggrValue {
     Count {
         wildcard: bool,
         count: i64,
+        distinct_values: Option<HashSet<Value>>,
     },
-    Sum(Value),
-    Min(Value),
-    Max(Value),
+    Sum {
+        value: Value,
+        distinct_values: Option<HashSet<Value>>,
+    },
+    Min {
+        value: Value,
+        distinct_values: Option<HashSet<Value>>,
+    },
+    Max {
+        value: Value,
+        distinct_values: Option<HashSet<Value>>,
+    },
     Avg {
         sum: Value,
         count: i64,
+        distinct_values: Option<HashSet<Value>>,
     },
     Variance {
         sum_square: Value,
         sum: Value,
         count: i64,
+        distinct_values: Option<HashSet<Value>>,
     },
     Stdev {
         sum_square: Value,
         sum: Value,
         count: i64,
+        distinct_values: Option<HashSet<Value>>,
     },
 }
 
 impl AggrValue {
+    /// Helper function to check DISTINCT values and update set
+    /// Returns (should_process, updated_distinct_values)
+    fn check_distinct(
+        distinct_values: Option<HashSet<Value>>,
+        new_value: &Value,
+    ) -> (bool, Option<HashSet<Value>>) {
+        if let Some(mut set) = distinct_values {
+            if set.contains(new_value) {
+                return (false, Some(set));
+            }
+            set.insert(new_value.clone());
+            (true, Some(set))
+        } else {
+            (true, None)
+        }
+    }
+
     fn new(aggr: &Aggregate, value: &Value) -> Result<Self> {
         let value = value.clone();
 
         Ok(match aggr {
-            Aggregate::Count(CountArgExpr::Wildcard) => AggrValue::Count {
+            Aggregate::Count {
+                expr: CountArgExpr::Wildcard,
+                distinct,
+            } => AggrValue::Count {
                 wildcard: true,
                 count: 1,
+                distinct_values: if *distinct {
+                    Some(HashSet::new())
+                } else {
+                    None
+                },
             },
-            Aggregate::Count(CountArgExpr::Expr(_)) => AggrValue::Count {
-                wildcard: false,
-                count: i64::from(!value.is_null()),
-            },
-            Aggregate::Sum(_) => AggrValue::Sum(value),
-            Aggregate::Min(_) => AggrValue::Min(value),
-            Aggregate::Max(_) => AggrValue::Max(value),
-            Aggregate::Avg(_) => AggrValue::Avg {
-                sum: value,
-                count: 1,
-            },
-            Aggregate::Variance(_) => AggrValue::Variance {
-                sum_square: value.multiply(&value)?,
-                sum: value,
-                count: 1,
-            },
-            Aggregate::Stdev(_) => AggrValue::Stdev {
-                sum_square: value.multiply(&value)?,
-                sum: value,
-                count: 1,
-            },
+            Aggregate::Count {
+                expr: CountArgExpr::Expr(_),
+                distinct,
+            } => {
+                let mut distinct_values = if *distinct {
+                    Some(HashSet::new())
+                } else {
+                    None
+                };
+
+                if let Some(ref mut set) = distinct_values {
+                    if !value.is_null() {
+                        set.insert(value.clone());
+                    }
+                }
+
+                AggrValue::Count {
+                    wildcard: false,
+                    count: i64::from(!value.is_null()),
+                    distinct_values,
+                }
+            }
+            Aggregate::Sum { expr: _, distinct } => {
+                let mut distinct_values = if *distinct {
+                    Some(HashSet::new())
+                } else {
+                    None
+                };
+
+                if let Some(ref mut set) = distinct_values {
+                    set.insert(value.clone());
+                }
+
+                AggrValue::Sum {
+                    value: value.clone(),
+                    distinct_values,
+                }
+            }
+            Aggregate::Min { expr: _, distinct } => {
+                let mut distinct_values = if *distinct {
+                    Some(HashSet::new())
+                } else {
+                    None
+                };
+
+                if let Some(ref mut set) = distinct_values {
+                    set.insert(value.clone());
+                }
+
+                AggrValue::Min {
+                    value: value.clone(),
+                    distinct_values,
+                }
+            }
+            Aggregate::Max { expr: _, distinct } => {
+                let mut distinct_values = if *distinct {
+                    Some(HashSet::new())
+                } else {
+                    None
+                };
+
+                if let Some(ref mut set) = distinct_values {
+                    set.insert(value.clone());
+                }
+
+                AggrValue::Max {
+                    value: value.clone(),
+                    distinct_values,
+                }
+            }
+            Aggregate::Avg { expr: _, distinct } => {
+                let mut distinct_values = if *distinct {
+                    Some(HashSet::new())
+                } else {
+                    None
+                };
+
+                if let Some(ref mut set) = distinct_values {
+                    set.insert(value.clone());
+                }
+
+                AggrValue::Avg {
+                    sum: value.clone(),
+                    count: 1,
+                    distinct_values,
+                }
+            }
+            Aggregate::Variance { expr: _, distinct } => {
+                let mut distinct_values = if *distinct {
+                    Some(HashSet::new())
+                } else {
+                    None
+                };
+
+                if let Some(ref mut set) = distinct_values {
+                    set.insert(value.clone());
+                }
+
+                AggrValue::Variance {
+                    sum_square: value.multiply(&value)?,
+                    sum: value.clone(),
+                    count: 1,
+                    distinct_values,
+                }
+            }
+            Aggregate::Stdev { expr: _, distinct } => {
+                let mut distinct_values = if *distinct {
+                    Some(HashSet::new())
+                } else {
+                    None
+                };
+
+                if let Some(ref mut set) = distinct_values {
+                    set.insert(value.clone());
+                }
+
+                AggrValue::Stdev {
+                    sum_square: value.multiply(&value)?,
+                    sum: value.clone(),
+                    count: 1,
+                    distinct_values,
+                }
+            }
         })
     }
 
     fn accumulate(&self, new_value: &Value) -> Result<Option<Self>> {
         match self {
-            Self::Count { wildcard, count } => {
+            Self::Count {
+                wildcard,
+                count,
+                distinct_values,
+            } => {
                 let wildcard = *wildcard;
+                let mut distinct_values = distinct_values.clone();
+
+                if !new_value.is_null() {
+                    let (should_process, updated_distinct) =
+                        Self::check_distinct(distinct_values, new_value);
+                    distinct_values = updated_distinct;
+                    if !should_process {
+                        return Ok(None);
+                    }
+                }
 
                 if wildcard || !new_value.is_null() {
                     Ok(Some(AggrValue::Count {
                         wildcard,
                         count: count + 1,
+                        distinct_values,
                     }))
                 } else {
                     Ok(None)
                 }
             }
-            Self::Sum(value) => Ok(Some(Self::Sum(value.add(new_value)?))),
-            Self::Min(value) => match &value.evaluate_cmp(new_value) {
-                Some(Ordering::Greater) => Ok(Some(Self::Min(new_value.clone()))),
-                _ => Ok(None),
-            },
-            Self::Max(value) => match &value.evaluate_cmp(new_value) {
-                Some(Ordering::Less) => Ok(Some(Self::Max(new_value.clone()))),
-                _ => Ok(None),
-            },
-            Self::Avg { sum, count } => Ok(Some(Self::Avg {
-                sum: sum.add(new_value)?,
-                count: count + 1,
-            })),
+            Self::Sum {
+                value,
+                distinct_values,
+            } => {
+                let mut distinct_values = distinct_values.clone();
+
+                let (should_process, updated_distinct) =
+                    Self::check_distinct(distinct_values, new_value);
+                distinct_values = updated_distinct;
+                if !should_process {
+                    return Ok(None);
+                }
+
+                Ok(Some(Self::Sum {
+                    value: value.add(new_value)?,
+                    distinct_values,
+                }))
+            }
+            Self::Min {
+                value,
+                distinct_values,
+            } => {
+                let mut distinct_values = distinct_values.clone();
+
+                let (should_process, updated_distinct) =
+                    Self::check_distinct(distinct_values, new_value);
+                distinct_values = updated_distinct;
+                if !should_process {
+                    return Ok(None);
+                }
+
+                match &value.evaluate_cmp(new_value) {
+                    Some(Ordering::Greater) => Ok(Some(Self::Min {
+                        value: new_value.clone(),
+                        distinct_values,
+                    })),
+                    _ => Ok(Some(Self::Min {
+                        value: value.clone(),
+                        distinct_values,
+                    })),
+                }
+            }
+            Self::Max {
+                value,
+                distinct_values,
+            } => {
+                let mut distinct_values = distinct_values.clone();
+
+                let (should_process, updated_distinct) =
+                    Self::check_distinct(distinct_values, new_value);
+                distinct_values = updated_distinct;
+                if !should_process {
+                    return Ok(None);
+                }
+
+                match &value.evaluate_cmp(new_value) {
+                    Some(Ordering::Less) => Ok(Some(Self::Max {
+                        value: new_value.clone(),
+                        distinct_values,
+                    })),
+                    _ => Ok(Some(Self::Max {
+                        value: value.clone(),
+                        distinct_values,
+                    })),
+                }
+            }
+            Self::Avg {
+                sum,
+                count,
+                distinct_values,
+            } => {
+                let mut distinct_values = distinct_values.clone();
+
+                let (should_process, updated_distinct) =
+                    Self::check_distinct(distinct_values, new_value);
+                distinct_values = updated_distinct;
+                if !should_process {
+                    return Ok(None);
+                }
+
+                Ok(Some(Self::Avg {
+                    sum: sum.add(new_value)?,
+                    count: count + 1,
+                    distinct_values,
+                }))
+            }
             Self::Variance {
                 sum_square,
                 sum,
                 count,
-            } => Ok(Some(Self::Variance {
-                sum_square: sum_square.add(&new_value.multiply(new_value)?)?,
-                sum: sum.add(new_value)?,
-                count: count + 1,
-            })),
+                distinct_values,
+            } => {
+                let mut distinct_values = distinct_values.clone();
+
+                let (should_process, updated_distinct) =
+                    Self::check_distinct(distinct_values, new_value);
+                distinct_values = updated_distinct;
+                if !should_process {
+                    return Ok(None);
+                }
+
+                Ok(Some(Self::Variance {
+                    sum_square: sum_square.add(&new_value.multiply(new_value)?)?,
+                    sum: sum.add(new_value)?,
+                    count: count + 1,
+                    distinct_values,
+                }))
+            }
             Self::Stdev {
                 sum_square,
                 sum,
                 count,
-            } => Ok(Some(Self::Stdev {
-                sum_square: sum_square.add(&new_value.multiply(new_value)?)?,
-                sum: sum.add(new_value)?,
-                count: count + 1,
-            })),
+                distinct_values,
+            } => {
+                let mut distinct_values = distinct_values.clone();
+
+                let (should_process, updated_distinct) =
+                    Self::check_distinct(distinct_values, new_value);
+                distinct_values = updated_distinct;
+                if !should_process {
+                    return Ok(None);
+                }
+
+                Ok(Some(Self::Stdev {
+                    sum_square: sum_square.add(&new_value.multiply(new_value)?)?,
+                    sum: sum.add(new_value)?,
+                    count: count + 1,
+                    distinct_values,
+                }))
+            }
         }
     }
 
@@ -134,21 +388,24 @@ impl AggrValue {
 
         match self {
             Self::Count { count, .. } => Ok(Value::I64(count)),
-            Self::Sum(value) | Self::Min(value) | Self::Max(value) => Ok(value),
-            Self::Avg { sum, count } => {
+            Self::Sum { value, .. } | Self::Min { value, .. } | Self::Max { value, .. } => {
+                Ok(value)
+            }
+            Self::Avg { sum, count, .. } => {
                 let sum = sum.cast(&DataType::Float)?;
-
                 sum.divide(&Value::I64(count))
             }
             Self::Variance {
                 sum_square,
                 sum,
                 count,
+                ..
             } => variance(sum_square, sum, count).await,
             Self::Stdev {
                 sum_square,
                 sum,
                 count,
+                ..
             } => variance(sum_square, sum, count).await?.sqrt(),
         }
     }
@@ -247,16 +504,24 @@ impl<'a, T: GStore> State<'a, T> {
         aggr: &'a Aggregate,
     ) -> Result<State<'a, T>> {
         let value = match aggr {
-            Aggregate::Count(CountArgExpr::Wildcard) => Value::Null,
-            Aggregate::Count(CountArgExpr::Expr(expr))
-            | Aggregate::Sum(expr)
-            | Aggregate::Min(expr)
-            | Aggregate::Max(expr)
-            | Aggregate::Avg(expr)
-            | Aggregate::Variance(expr)
-            | Aggregate::Stdev(expr) => evaluate(self.storage, filter_context, None, expr)
-                .await?
-                .try_into()?,
+            Aggregate::Count {
+                expr: CountArgExpr::Wildcard,
+                distinct: _,
+            } => Value::Null,
+            Aggregate::Count {
+                expr: CountArgExpr::Expr(expr),
+                distinct: _,
+            }
+            | Aggregate::Sum { expr, distinct: _ }
+            | Aggregate::Min { expr, distinct: _ }
+            | Aggregate::Max { expr, distinct: _ }
+            | Aggregate::Avg { expr, distinct: _ }
+            | Aggregate::Variance { expr, distinct: _ }
+            | Aggregate::Stdev { expr, distinct: _ } => {
+                evaluate(self.storage, filter_context, None, expr)
+                    .await?
+                    .try_into()?
+            }
         };
         let aggr_value = match self.get(aggr) {
             Some((index, _)) if self.index <= *index => None,

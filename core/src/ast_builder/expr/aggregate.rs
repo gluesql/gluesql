@@ -10,13 +10,13 @@ use {
 
 #[derive(Clone, Debug)]
 pub enum AggregateNode<'a> {
-    Count(CountArgExprNode<'a>),
-    Sum(ExprNode<'a>),
-    Min(ExprNode<'a>),
-    Max(ExprNode<'a>),
-    Avg(ExprNode<'a>),
-    Variance(ExprNode<'a>),
-    Stdev(ExprNode<'a>),
+    Count(CountArgExprNode<'a>, bool), // second field is distinct
+    Sum(ExprNode<'a>, bool),
+    Min(ExprNode<'a>, bool),
+    Max(ExprNode<'a>, bool),
+    Avg(ExprNode<'a>, bool),
+    Variance(ExprNode<'a>, bool),
+    Stdev(ExprNode<'a>, bool),
 }
 
 #[derive(Clone, Debug)]
@@ -58,75 +58,143 @@ impl<'a> TryFrom<AggregateNode<'a>> for Aggregate {
 
     fn try_from(aggr_node: AggregateNode<'a>) -> Result<Self> {
         match aggr_node {
-            AggregateNode::Count(count_arg_expr_node) => {
-                count_arg_expr_node.try_into().map(Aggregate::Count)
-            }
-            AggregateNode::Sum(expr_node) => expr_node.try_into().map(Aggregate::Sum),
-            AggregateNode::Min(expr_node) => expr_node.try_into().map(Aggregate::Min),
-            AggregateNode::Max(expr_node) => expr_node.try_into().map(Aggregate::Max),
-            AggregateNode::Avg(expr_node) => expr_node.try_into().map(Aggregate::Avg),
-            AggregateNode::Variance(expr_node) => expr_node.try_into().map(Aggregate::Variance),
-            AggregateNode::Stdev(expr_node) => expr_node.try_into().map(Aggregate::Stdev),
+            AggregateNode::Count(count_arg_expr_node, distinct) => count_arg_expr_node
+                .try_into()
+                .map(|expr| Aggregate::Count { expr, distinct }),
+            AggregateNode::Sum(expr_node, distinct) => expr_node
+                .try_into()
+                .map(|expr| Aggregate::Sum { expr, distinct }),
+            AggregateNode::Min(expr_node, distinct) => expr_node
+                .try_into()
+                .map(|expr| Aggregate::Min { expr, distinct }),
+            AggregateNode::Max(expr_node, distinct) => expr_node
+                .try_into()
+                .map(|expr| Aggregate::Max { expr, distinct }),
+            AggregateNode::Avg(expr_node, distinct) => expr_node
+                .try_into()
+                .map(|expr| Aggregate::Avg { expr, distinct }),
+            AggregateNode::Variance(expr_node, distinct) => expr_node
+                .try_into()
+                .map(|expr| Aggregate::Variance { expr, distinct }),
+            AggregateNode::Stdev(expr_node, distinct) => expr_node
+                .try_into()
+                .map(|expr| Aggregate::Stdev { expr, distinct }),
         }
     }
 }
 
 impl<'a> ExprNode<'a> {
-    pub fn count(self) -> Self {
-        count(self)
+    pub fn count(self) -> ExprNode<'a> {
+        ExprNode::Aggregate(Box::new(AggregateNode::Count(self.into(), false)))
     }
 
-    pub fn sum(self) -> Self {
-        sum(self)
+    pub fn count_distinct(self) -> ExprNode<'a> {
+        ExprNode::Aggregate(Box::new(AggregateNode::Count(self.into(), true)))
     }
 
-    pub fn min(self) -> Self {
-        min(self)
+    pub fn sum(self) -> ExprNode<'a> {
+        ExprNode::Aggregate(Box::new(AggregateNode::Sum(self, false)))
     }
 
-    pub fn max(self) -> Self {
-        max(self)
+    pub fn sum_distinct(self) -> ExprNode<'a> {
+        ExprNode::Aggregate(Box::new(AggregateNode::Sum(self, true)))
     }
 
-    pub fn avg(self) -> Self {
-        avg(self)
+    pub fn min(self) -> ExprNode<'a> {
+        ExprNode::Aggregate(Box::new(AggregateNode::Min(self, false)))
     }
 
-    pub fn variance(self) -> Self {
-        variance(self)
+    pub fn min_distinct(self) -> ExprNode<'a> {
+        ExprNode::Aggregate(Box::new(AggregateNode::Min(self, true)))
     }
 
-    pub fn stdev(self) -> Self {
-        stdev(self)
+    pub fn max(self) -> ExprNode<'a> {
+        ExprNode::Aggregate(Box::new(AggregateNode::Max(self, false)))
+    }
+
+    pub fn max_distinct(self) -> ExprNode<'a> {
+        ExprNode::Aggregate(Box::new(AggregateNode::Max(self, true)))
+    }
+
+    pub fn avg(self) -> ExprNode<'a> {
+        ExprNode::Aggregate(Box::new(AggregateNode::Avg(self, false)))
+    }
+
+    pub fn avg_distinct(self) -> ExprNode<'a> {
+        ExprNode::Aggregate(Box::new(AggregateNode::Avg(self, true)))
+    }
+
+    pub fn variance(self) -> ExprNode<'a> {
+        ExprNode::Aggregate(Box::new(AggregateNode::Variance(self, false)))
+    }
+
+    pub fn variance_distinct(self) -> ExprNode<'a> {
+        ExprNode::Aggregate(Box::new(AggregateNode::Variance(self, true)))
+    }
+
+    pub fn stdev(self) -> ExprNode<'a> {
+        ExprNode::Aggregate(Box::new(AggregateNode::Stdev(self, false)))
+    }
+
+    pub fn stdev_distinct(self) -> ExprNode<'a> {
+        ExprNode::Aggregate(Box::new(AggregateNode::Stdev(self, true)))
     }
 }
 
 pub fn count<'a, T: Into<CountArgExprNode<'a>>>(expr: T) -> ExprNode<'a> {
-    ExprNode::Aggregate(Box::new(AggregateNode::Count(expr.into())))
+    ExprNode::Aggregate(Box::new(AggregateNode::Count(expr.into(), false)))
+}
+
+pub fn count_distinct<'a, T: Into<CountArgExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Aggregate(Box::new(AggregateNode::Count(expr.into(), true)))
 }
 
 pub fn sum<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
-    ExprNode::Aggregate(Box::new(AggregateNode::Sum(expr.into())))
+    ExprNode::Aggregate(Box::new(AggregateNode::Sum(expr.into(), false)))
+}
+
+pub fn sum_distinct<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Aggregate(Box::new(AggregateNode::Sum(expr.into(), true)))
 }
 
 pub fn min<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
-    ExprNode::Aggregate(Box::new(AggregateNode::Min(expr.into())))
+    ExprNode::Aggregate(Box::new(AggregateNode::Min(expr.into(), false)))
+}
+
+pub fn min_distinct<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Aggregate(Box::new(AggregateNode::Min(expr.into(), true)))
 }
 
 pub fn max<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
-    ExprNode::Aggregate(Box::new(AggregateNode::Max(expr.into())))
+    ExprNode::Aggregate(Box::new(AggregateNode::Max(expr.into(), false)))
+}
+
+pub fn max_distinct<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Aggregate(Box::new(AggregateNode::Max(expr.into(), true)))
 }
 
 pub fn avg<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
-    ExprNode::Aggregate(Box::new(AggregateNode::Avg(expr.into())))
+    ExprNode::Aggregate(Box::new(AggregateNode::Avg(expr.into(), false)))
+}
+
+pub fn avg_distinct<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Aggregate(Box::new(AggregateNode::Avg(expr.into(), true)))
 }
 
 pub fn variance<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
-    ExprNode::Aggregate(Box::new(AggregateNode::Variance(expr.into())))
+    ExprNode::Aggregate(Box::new(AggregateNode::Variance(expr.into(), false)))
+}
+
+pub fn variance_distinct<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Aggregate(Box::new(AggregateNode::Variance(expr.into(), true)))
 }
 
 pub fn stdev<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
-    ExprNode::Aggregate(Box::new(AggregateNode::Stdev(expr.into())))
+    ExprNode::Aggregate(Box::new(AggregateNode::Stdev(expr.into(), false)))
+}
+
+pub fn stdev_distinct<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Aggregate(Box::new(AggregateNode::Stdev(expr.into(), true)))
 }
 
 #[cfg(test)]

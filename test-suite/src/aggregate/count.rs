@@ -51,6 +51,14 @@ test_case!(count, {
                 0
             ),
         ),
+        (
+            "SELECT COUNT(DISTINCT id) FROM Item",
+            select!("COUNT(DISTINCT id)"; I64; 5),
+        ),
+        (
+            "SELECT COUNT(DISTINCT age) FROM Item",
+            select!("COUNT(DISTINCT age)"; I64; 3), // NULL 무시하고 [11, 90, 3] = 3개
+        ),
     ];
 
     for (sql, expected) in test_cases {

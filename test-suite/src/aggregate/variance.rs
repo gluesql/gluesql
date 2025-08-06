@@ -39,6 +39,14 @@ test_case!(variance, {
                 2.0              74.64
             ),
         ),
+        (
+            "SELECT VARIANCE(DISTINCT id) FROM Item",
+            select!("VARIANCE(DISTINCT id)"; F64; 2.0),
+        ),
+        (
+            "SELECT VARIANCE(DISTINCT age) FROM Item",
+            select_with_null!("VARIANCE(DISTINCT age)"; Null),
+        ),
     ];
 
     for (sql, expected) in test_cases {

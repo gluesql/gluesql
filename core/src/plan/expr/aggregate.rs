@@ -3,14 +3,20 @@ use crate::ast::{Aggregate, CountArgExpr, Expr};
 impl Aggregate {
     pub fn as_expr(&self) -> Option<&Expr> {
         match self {
-            Aggregate::Count(CountArgExpr::Wildcard) => None,
-            Aggregate::Count(CountArgExpr::Expr(expr))
-            | Aggregate::Sum(expr)
-            | Aggregate::Max(expr)
-            | Aggregate::Min(expr)
-            | Aggregate::Avg(expr)
-            | Aggregate::Variance(expr)
-            | Aggregate::Stdev(expr) => Some(expr),
+            Aggregate::Count {
+                expr: CountArgExpr::Wildcard,
+                distinct: _,
+            } => None,
+            Aggregate::Count {
+                expr: CountArgExpr::Expr(expr),
+                distinct: _,
+            }
+            | Aggregate::Sum { expr, distinct: _ }
+            | Aggregate::Max { expr, distinct: _ }
+            | Aggregate::Min { expr, distinct: _ }
+            | Aggregate::Avg { expr, distinct: _ }
+            | Aggregate::Variance { expr, distinct: _ }
+            | Aggregate::Stdev { expr, distinct: _ } => Some(expr),
         }
     }
 }
