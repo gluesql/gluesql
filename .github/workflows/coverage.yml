@@ -6,6 +6,7 @@ on:
     paths-ignore:
       - "docs/**"
   pull_request:
+    branches: [main]
     paths-ignore:
       - "docs/**"
 
@@ -51,6 +52,13 @@ jobs:
             --ignore "cli/src/{cli,helper,lib,main}.rs" \
             --excl-line "(#\\[derive\\()|(^\s*.await[;,]?$)|(^test_case\!\([\d\w]+,)" \
             -o ./coverage/lcov.info
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage/lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: rust
+          fail_ci_if_error: true
       - name: Coveralls
         uses: coverallsapp/github-action@master
         with:

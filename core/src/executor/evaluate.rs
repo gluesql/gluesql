@@ -25,7 +25,6 @@ use {
 
 pub use {error::EvaluateError, evaluated::Evaluated};
 
-#[async_recursion(?Send)]
 pub async fn evaluate<'a, 'b, 'c, T>(
     storage: &'a T,
     context: Option<Rc<RowContext<'b>>>,
@@ -490,6 +489,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
         Function::Ascii(expr) => f::ascii(name, eval(expr).await?),
         Function::Chr(expr) => f::chr(name, eval(expr).await?),
         Function::Md5(expr) => f::md5(name, eval(expr).await?),
+        Function::Hex(expr) => f::hex(name, eval(expr).await?),
 
         // --- float ---
         Function::Abs(expr) => f::abs(name, eval(expr).await?),
