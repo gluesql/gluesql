@@ -28,6 +28,7 @@ async fn add_column_schemaless_row_error() {
     let storage = RedisStorage::new("redis_alter_table_schemaless", &url, port);
     let mut glue = Glue::new(storage);
 
+    glue.execute("DROP TABLE IF EXISTS dummy;").await.unwrap();
     glue.execute("CREATE TABLE dummy (id INTEGER);")
         .await
         .unwrap();
@@ -75,6 +76,7 @@ async fn add_column_deserialize_error() {
     let storage = RedisStorage::new("redis_alter_table_bad_row", &url, port);
     let mut glue = Glue::new(storage);
 
+    glue.execute("DROP TABLE IF EXISTS dummy;").await.unwrap();
     glue.execute("CREATE TABLE dummy (id INTEGER);")
         .await
         .unwrap();
@@ -118,6 +120,7 @@ async fn drop_column_schemaless_row_error() {
     let storage = RedisStorage::new("redis_drop_column_schemaless", &url, port);
     let mut glue = Glue::new(storage);
 
+    glue.execute("DROP TABLE IF EXISTS dummy;").await.unwrap();
     glue.execute("CREATE TABLE dummy (id INTEGER, foo INTEGER);")
         .await
         .unwrap();
@@ -157,6 +160,7 @@ async fn drop_column_deserialize_error() {
     let storage = RedisStorage::new("redis_drop_column_bad_row", &url, port);
     let mut glue = Glue::new(storage);
 
+    glue.execute("DROP TABLE IF EXISTS dummy;").await.unwrap();
     glue.execute("CREATE TABLE dummy (id INTEGER, foo INTEGER);")
         .await
         .unwrap();
