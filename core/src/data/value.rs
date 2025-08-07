@@ -60,30 +60,32 @@ pub enum Value {
 }
 
 impl Value {
-    pub fn evaluate_eq(&self, other: &Value) -> bool {
+    pub fn evaluate_eq(&self, other: &Value) -> Self {
         match (self, other) {
-            (Value::I8(l), _) => l == other,
-            (Value::I16(l), _) => l == other,
-            (Value::I32(l), _) => l == other,
-            (Value::I64(l), _) => l == other,
-            (Value::I128(l), _) => l == other,
-            (Value::U8(l), _) => l == other,
-            (Value::U16(l), _) => l == other,
-            (Value::U32(l), _) => l == other,
-            (Value::U64(l), _) => l == other,
-            (Value::U128(l), _) => l == other,
-            (Value::F32(l), _) => l == other,
-            (Value::F64(l), _) => l == other,
-            (Value::Date(l), Value::Timestamp(r)) => l
-                .and_hms_opt(0, 0, 0)
-                .map(|date_time| &date_time == r)
-                .unwrap_or(false),
-            (Value::Timestamp(l), Value::Date(r)) => r
-                .and_hms_opt(0, 0, 0)
-                .map(|date_time| l == &date_time)
-                .unwrap_or(false),
-            (Value::Null, Value::Null) => false,
-            _ => self == other,
+            (Value::I8(l), _) => Value::Bool(l == other),
+            (Value::I16(l), _) => Value::Bool(l == other),
+            (Value::I32(l), _) => Value::Bool(l == other),
+            (Value::I64(l), _) => Value::Bool(l == other),
+            (Value::I128(l), _) => Value::Bool(l == other),
+            (Value::U8(l), _) => Value::Bool(l == other),
+            (Value::U16(l), _) => Value::Bool(l == other),
+            (Value::U32(l), _) => Value::Bool(l == other),
+            (Value::U64(l), _) => Value::Bool(l == other),
+            (Value::U128(l), _) => Value::Bool(l == other),
+            (Value::F32(l), _) => Value::Bool(l == other),
+            (Value::F64(l), _) => Value::Bool(l == other),
+            (Value::Date(l), Value::Timestamp(r)) => Value::Bool(
+                l.and_hms_opt(0, 0, 0)
+                    .map(|date_time| &date_time == r)
+                    .unwrap_or(false),
+            ),
+            (Value::Timestamp(l), Value::Date(r)) => Value::Bool(
+                r.and_hms_opt(0, 0, 0)
+                    .map(|date_time| l == &date_time)
+                    .unwrap_or(false),
+            ),
+            (Value::Null, _) | (_, Value::Null) => Value::Null,
+            _ => Value::Bool(self == other),
         }
     }
 
@@ -900,52 +902,65 @@ mod tests {
         let inet = |v: &str| Inet(IpAddr::from_str(v).unwrap());
 
         assert_eq!(Null, Null);
-        assert!(!Null.evaluate_eq(&Null));
-        assert!(Bool(true).evaluate_eq(&Bool(true)));
-        assert!(I8(1).evaluate_eq(&I8(1)));
-        assert!(I16(1).evaluate_eq(&I16(1)));
-        assert!(I32(1).evaluate_eq(&I32(1)));
-        assert!(I64(1).evaluate_eq(&I64(1)));
-        assert!(I128(1).evaluate_eq(&I128(1)));
-        assert!(U8(1).evaluate_eq(&U8(1)));
-        assert!(U16(1).evaluate_eq(&U16(1)));
-        assert!(U32(1).evaluate_eq(&U32(1)));
-        assert!(U64(1).evaluate_eq(&U64(1)));
-        assert!(U128(1).evaluate_eq(&U128(1)));
-        assert!(I64(1).evaluate_eq(&F64(1.0)));
-        assert!(F32(1.0_f32).evaluate_eq(&I64(1)));
-        assert!(F32(6.11_f32).evaluate_eq(&F64(6.11)));
-        assert!(F64(1.0).evaluate_eq(&I64(1)));
-        assert!(F64(6.11).evaluate_eq(&F64(6.11)));
-        assert!(Str("Glue".to_owned()).evaluate_eq(&Str("Glue".to_owned())));
-        assert!(bytea("1004").evaluate_eq(&bytea("1004")));
-        assert!(inet("::1").evaluate_eq(&inet("::1")));
-        assert!(Interval(Interval::Month(1)).evaluate_eq(&Interval(Interval::Month(1))));
-        assert!(
+        assert_eq!(Null, Null.evaluate_eq(&Null));
+        assert_eq!(Bool(true), Bool(true).evaluate_eq(&Bool(true)));
+        assert_eq!(Bool(true), I8(1).evaluate_eq(&I8(1)));
+        assert_eq!(Bool(true), I16(1).evaluate_eq(&I16(1)));
+        assert_eq!(Bool(true), I32(1).evaluate_eq(&I32(1)));
+        assert_eq!(Bool(true), I64(1).evaluate_eq(&I64(1)));
+        assert_eq!(Bool(true), I128(1).evaluate_eq(&I128(1)));
+        assert_eq!(Bool(true), U8(1).evaluate_eq(&U8(1)));
+        assert_eq!(Bool(true), U16(1).evaluate_eq(&U16(1)));
+        assert_eq!(Bool(true), U32(1).evaluate_eq(&U32(1)));
+        assert_eq!(Bool(true), U64(1).evaluate_eq(&U64(1)));
+        assert_eq!(Bool(true), U128(1).evaluate_eq(&U128(1)));
+        assert_eq!(Bool(true), I64(1).evaluate_eq(&F64(1.0)));
+        assert_eq!(Bool(true), F32(1.0_f32).evaluate_eq(&I64(1)));
+        assert_eq!(Bool(true), F32(6.11_f32).evaluate_eq(&F64(6.11)));
+        assert_eq!(Bool(true), F64(1.0).evaluate_eq(&I64(1)));
+        assert_eq!(Bool(true), F64(6.11).evaluate_eq(&F64(6.11)));
+        assert_eq!(
+            Bool(true),
+            Str("Glue".to_owned()).evaluate_eq(&Str("Glue".to_owned()))
+        );
+        assert_eq!(Bool(true), bytea("1004").evaluate_eq(&bytea("1004")));
+        assert_eq!(Bool(true), inet("::1").evaluate_eq(&inet("::1")));
+        assert_eq!(
+            Bool(true),
+            Interval(Interval::Month(1)).evaluate_eq(&Interval(Interval::Month(1)))
+        );
+        assert_eq!(
+            Bool(true),
             Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap())
                 .evaluate_eq(&Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap()))
         );
-        assert!(decimal(1).evaluate_eq(&decimal(1)));
-        assert!(
+        assert_eq!(Bool(true), decimal(1).evaluate_eq(&decimal(1)));
+        assert_eq!(
+            Bool(true),
             Date("2020-05-01".parse().unwrap()).evaluate_eq(&Date("2020-05-01".parse().unwrap()))
         );
-        assert!(
+        assert_eq!(
+            Bool(true),
             Timestamp("2020-05-01T00:00:00".parse::<NaiveDateTime>().unwrap()).evaluate_eq(
                 &Timestamp("2020-05-01T00:00:00".parse::<NaiveDateTime>().unwrap())
             )
         );
-        assert!(
+        assert_eq!(
+            Bool(true),
             Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()).evaluate_eq(&Uuid(
                 parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()
             ))
         );
-        assert!(Point(Point::new(1.0, 2.0)).evaluate_eq(&Point(Point::new(1.0, 2.0))));
+        assert_eq!(
+            Bool(true),
+            Point(Point::new(1.0, 2.0)).evaluate_eq(&Point(Point::new(1.0, 2.0)))
+        );
 
         let date = Date("2020-05-01".parse().unwrap());
         let timestamp = Timestamp("2020-05-01T00:00:00".parse::<NaiveDateTime>().unwrap());
 
-        assert!(date.evaluate_eq(&timestamp));
-        assert!(timestamp.evaluate_eq(&date));
+        assert_eq!(Bool(true), date.evaluate_eq(&timestamp));
+        assert_eq!(Bool(true), timestamp.evaluate_eq(&date));
     }
 
     #[test]
@@ -1113,7 +1128,7 @@ mod tests {
 
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
-                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c));
+                assert_eq!(Bool(true), $a.$op(&$b).unwrap().evaluate_eq(&$c));
             };
         }
 
@@ -1897,7 +1912,7 @@ mod tests {
 
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
-                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c));
+                assert_eq!(Bool(true), $a.$op(&$b).unwrap().evaluate_eq(&$c));
             };
         }
 
@@ -2059,7 +2074,7 @@ mod tests {
 
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
-                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c));
+                assert_eq!(Bool(true), $a.$op(&$b).unwrap().evaluate_eq(&$c));
             };
         }
 
@@ -2681,7 +2696,7 @@ mod tests {
     fn bitwise_and() {
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
-                assert!($a.$op(&$b).unwrap().evaluate_eq(&$c));
+                assert_eq!(Bool(true), $a.$op(&$b).unwrap().evaluate_eq(&$c));
             };
         }
 

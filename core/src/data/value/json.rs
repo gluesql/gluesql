@@ -274,42 +274,50 @@ mod tests {
     #[test]
     fn json_to_value() {
         assert!(Value::try_from(JsonValue::Null).unwrap().is_null());
-        assert!(
+        assert_eq!(
+            Value::Bool(true),
             Value::try_from(JsonValue::Bool(false))
                 .unwrap()
                 .evaluate_eq(&Value::Bool(false))
         );
-        assert!(
+        assert_eq!(
+            Value::Bool(true),
             Value::try_from(JsonValue::Number(54321.into()))
                 .unwrap()
                 .evaluate_eq(&Value::I32(54321))
         );
-        assert!(
+        assert_eq!(
+            Value::Bool(true),
             Value::try_from(JsonValue::Number(54321.into()))
                 .unwrap()
                 .evaluate_eq(&Value::I64(54321))
         );
-        assert!(
+        assert_eq!(
+            Value::Bool(true),
             Value::try_from(JsonValue::Number(54321.into()))
                 .unwrap()
                 .evaluate_eq(&Value::I128(54321))
         );
-        assert!(
+        assert_eq!(
+            Value::Bool(true),
             Value::try_from(JsonValue::Number(JsonNumber::from_f64(3.21).unwrap()))
                 .unwrap()
                 .evaluate_eq(&Value::F64(3.21))
         );
-        assert!(
+        assert_eq!(
+            Value::Bool(true),
             Value::try_from(JsonValue::String("world".to_owned()))
                 .unwrap()
                 .evaluate_eq(&Value::Str("world".to_owned()))
         );
-        assert!(
+        assert_eq!(
+            Value::Bool(true),
             Value::try_from(JsonValue::Array(vec![JsonValue::Bool(true)]))
                 .unwrap()
                 .evaluate_eq(&Value::List(vec![Value::Bool(true)]))
         );
-        assert!(
+        assert_eq!(
+            Value::Bool(true),
             Value::try_from(json!({ "a": true }))
                 .unwrap()
                 .evaluate_eq(&Value::Map(

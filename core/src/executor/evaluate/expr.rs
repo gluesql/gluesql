@@ -46,8 +46,8 @@ pub fn binary_op<'a>(
         BinaryOperator::Divide => l.divide(&r),
         BinaryOperator::Modulo => l.modulo(&r),
         BinaryOperator::StringConcat => l.concat(r),
-        BinaryOperator::Eq => cmp!(l.evaluate_eq(&r)),
-        BinaryOperator::NotEq => cmp!(!l.evaluate_eq(&r)),
+        BinaryOperator::Eq => Ok(l.evaluate_eq(&r)),
+        BinaryOperator::NotEq => l.evaluate_eq(&r).unary_not(),
         BinaryOperator::Lt => cmp!(l.evaluate_cmp(&r) == Some(Ordering::Less)),
         BinaryOperator::LtEq => cmp!(matches!(
             l.evaluate_cmp(&r),
