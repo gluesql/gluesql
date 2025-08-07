@@ -33,7 +33,7 @@ impl Tester<RedisStorage> for RedisStorageTester {
         let key_iter: Vec<String> = storage
             .conn
             .borrow_mut()
-            .scan_match(format!("{}#*", namespace))
+            .scan_match(&format!("{}#*", namespace))
             .unwrap()
             .collect();
         for key in key_iter {
