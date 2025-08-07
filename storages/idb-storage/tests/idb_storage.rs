@@ -30,3 +30,18 @@ impl Tester<IdbStorage> for IdbStorageTester {
 
 generate_store_tests!(wasm_bindgen_test, IdbStorageTester);
 generate_alter_table_tests!(wasm_bindgen_test, IdbStorageTester);
+
+#[wasm_bindgen_test]
+async fn create_idb_storage_twice_with_same_namespace() {
+    let namespace = "idb_storage_twice";
+
+    let storage = IdbStorage::new(Some(namespace.to_owned()))
+        .await
+        .expect("first open should succeed");
+    drop(storage);
+
+    let storage = IdbStorage::new(Some(namespace.to_owned()))
+        .await
+        .expect("second open should succeed");
+    storage.delete().await.expect("delete should succeed");
+}

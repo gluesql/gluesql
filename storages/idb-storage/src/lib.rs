@@ -45,7 +45,7 @@ impl IdbStorage {
         let namespace = namespace.as_deref().unwrap_or(DEFAULT_NAMESPACE).to_owned();
 
         let error = Arc::new(Mutex::new(None));
-        let open_request = {
+        let database = {
             let error = Arc::clone(&error);
             let mut open_request = factory.open(namespace.as_str(), None).err_into()?;
             open_request.on_upgrade_needed(move |event| {
@@ -83,10 +83,8 @@ impl IdbStorage {
                 }
             });
 
-            open_request
+            open_request.await.err_into()?
         };
-
-        let database = open_request.await.err_into()?;
         if let Some(e) = Arc::try_unwrap(error)
             .map_err(|_| Error::StorageMsg("infallible - Arc::try_unwrap failed".to_owned()))?
             .into_inner()
