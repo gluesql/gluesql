@@ -59,12 +59,12 @@ impl<T> Vector<T> {
         self.0.get(i)
     }
 
-    pub fn len(&self) -> usize {
-        self.0.len()
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
+    pub fn len(&self) -> usize {
+        self.0.len()
     }
 }
 
@@ -109,18 +109,23 @@ mod tests {
     use super::Vector;
 
     #[test]
-    fn len() {
-        let vector = Vector::new().push(1).push(2).push(3);
+    fn test_len() {
+        let mut vector = Vector::new();
+        assert_eq!(vector.len(), 0);
 
-        assert_eq!(3, vector.len());
+        vector = vector.push(1);
+        assert_eq!(vector.len(), 1);
+
+        vector = vector.push(2);
+        assert_eq!(vector.len(), 2);
     }
 
     #[test]
-    fn is_empty() {
-        let vector = Vector::<i32>::new();
+    fn test_is_empty() {
+        let mut vector = Vector::new();
         assert!(vector.is_empty());
 
-        let vector = vector.push(1);
+        vector = vector.push(1);
         assert!(!vector.is_empty());
     }
 }
