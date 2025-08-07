@@ -149,7 +149,7 @@ async fn drop_column_schemaless_row_error() {
     assert_eq!(
         result,
         Err(Error::StorageMsg(
-            "[RedisStorage] conflict - add_column failed: schemaless row found".to_owned(),
+            "[RedisStorage] conflict - drop_column failed: schemaless row found".to_owned(),
         ))
     );
 }
