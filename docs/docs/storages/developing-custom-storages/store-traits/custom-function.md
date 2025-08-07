@@ -15,7 +15,7 @@ There are two methods available:
 2. `fetch_all_functions`: This method retrieves all custom functions stored in the storage system.
 
 ```rust
-#[async_trait(?Send)]
+#[async_trait]
 pub trait CustomFunction {
     async fn fetch_function(&self, _func_name: &str) -> Result<Option<&StructCustomFunction>>;
 

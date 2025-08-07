@@ -10,7 +10,7 @@ use {
     async_trait::async_trait,
 };
 
-#[async_trait(?Send)]
+#[async_trait]
 pub trait Execute<T: GStore + GStoreMut>
 where
     Self: Sized + Build,
@@ -22,8 +22,8 @@ where
     }
 }
 
-#[async_trait(?Send)]
 impl<T: GStore + GStoreMut, B: Build> Execute<T> for B {}
+#[async_trait]
 
 impl Build for Statement {
     fn build(self) -> Result<Statement> {

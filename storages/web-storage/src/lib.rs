@@ -86,7 +86,7 @@ impl WebStorage {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Store for WebStorage {
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         let mut table_names: Vec<String> = self.get(TABLE_NAMES_PATH)?.unwrap_or_default();
@@ -140,7 +140,7 @@ impl Store for WebStorage {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl StoreMut for WebStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let mut table_names: Vec<String> = self.get(TABLE_NAMES_PATH)?.unwrap_or_default();

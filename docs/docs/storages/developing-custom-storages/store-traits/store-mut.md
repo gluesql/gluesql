@@ -21,7 +21,7 @@ Here are the five methods required to implement the `StoreMut` trait:
 ```rust
 /// By implementing `StoreMut` trait,
 /// you can run `INSERT`, `CREATE TABLE`, `DELETE`, `UPDATE` and `DROP TABLE` queries.
-#[async_trait(?Send)]
+#[async_trait]
 pub trait StoreMut {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()>;
 

@@ -17,7 +17,7 @@ Similar to the `Store` & `StoreMut` combination, if you implement the `AlterTabl
 4. `drop_column`: Corresponds to the SQL statement `ALTER TABLE {table-name} DROP COLUMN {col}`. This method removes a column from a table.
 
 ```rust
-#[async_trait(?Send)]
+#[async_trait]
 pub trait AlterTable {
     async fn rename_schema(&mut self, _table_name: &str, _new_table_name: &str) -> Result<()>;
 

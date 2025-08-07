@@ -35,13 +35,13 @@ pub struct MockStorage {
     schema_map: HashMap<String, Schema>,
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl CustomFunction for MockStorage {}
 
-#[async_trait(?Send)]
+#[async_trait]
 impl CustomFunctionMut for MockStorage {}
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Store for MockStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         if table_name == "__Err__" {
@@ -75,7 +75,7 @@ impl Store for MockStorage {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl StoreMut for MockStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let table_name = schema.table_name.clone();

@@ -10,7 +10,7 @@ use {
     std::{ffi::OsStr, fs},
 };
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Store for FileStorage {
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         let mut schemas = fs::read_dir(&self.path)
