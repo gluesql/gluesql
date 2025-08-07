@@ -43,7 +43,7 @@ impl RedisStorage {
     /// Redis documentation recommends to use ':' as a separator for namespace and table-name.
     /// But it is not a good idea when using serde_json to serialize/deserialize a key.
     /// JSON uses ':' as a separator for key and value. So it conflicts with the JSON format.
-    /// Therefore I use '#' as a separator: "namespace"#"table-name"#"key"#"value".
+    /// Therefore I use '#' as a separator: "namespace"#"data"#"table-name"#"key".
     ///
     fn redis_generate_key(namespace: &str, table_name: &str, key: &Key) -> Result<String> {
         let k = serde_json::to_string(key).map_err(|e| {
@@ -52,7 +52,7 @@ impl RedisStorage {
                 key, e
             ))
         })?;
-        Ok(format!("{}#{}#{}", namespace, table_name, k))
+        Ok(format!("{}#data#{}#{}", namespace, table_name, k))
     }
 
     ///
@@ -60,7 +60,7 @@ impl RedisStorage {
     ///
     pub fn redis_parse_key(redis_key: &str) -> Result<Key> {
         let split_key = redis_key.split('#').collect::<Vec<&str>>();
-        serde_json::from_str(split_key[2]).map_err(|e| {
+        serde_json::from_str(split_key[3]).map_err(|e| {
             Error::StorageMsg(format!(
                 "[RedisStorage] failed to deserialize key: key={} error={}",
                 redis_key, e
@@ -76,18 +76,18 @@ impl RedisStorage {
         // similar table-names such like Test, TestA and TestB.
         // When scanning Test, it gets all data from Test, TestA and TestB.
         // Therefore it is very important to use the # twice.
-        format!("{}#{}#*", namespace, tablename)
+        format!("{}#data#{}#*", namespace, tablename)
     }
 
     ///
     /// Make a key pattern to do scan and get all schemas in the namespace
     ///
     fn redis_generate_schema_key(namespace: &str, table_name: &str) -> String {
-        format!("#schema#{}#{}#", namespace, table_name)
+        format!("{}#schema#{}#", namespace, table_name)
     }
 
     fn redis_generate_scan_schema_key(namespace: &str) -> String {
-        format!("#schema#{}#*", namespace)
+        format!("{}#schema#*", namespace)
     }
 
     fn redis_generate_metadata_key(
@@ -95,15 +95,15 @@ impl RedisStorage {
         tablename: &str,
         metadata_name: &str,
     ) -> String {
-        format!("#metadata#{}#{}#{}#", namespace, tablename, metadata_name)
+        format!("{}#metadata#{}#{}#", namespace, tablename, metadata_name)
     }
 
     fn redis_generate_scan_metadata_key(namespace: &str, tablename: &str) -> String {
-        format!("#metadata#{}#{}#*", namespace, tablename)
+        format!("{}#metadata#{}#*", namespace, tablename)
     }
 
     fn redis_generate_scan_all_metadata_key(namespace: &str) -> String {
-        format!("#metadata#{}#*", namespace)
+        format!("{}#metadata#*", namespace)
     }
 
     fn redis_execute_get(&mut self, key: &str) -> Result<Option<String>> {
