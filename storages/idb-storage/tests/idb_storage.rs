@@ -30,3 +30,17 @@ impl Tester<IdbStorage> for IdbStorageTester {
 
 generate_store_tests!(wasm_bindgen_test, IdbStorageTester);
 generate_alter_table_tests!(wasm_bindgen_test, IdbStorageTester);
+
+#[wasm_bindgen_test]
+async fn multiple_instances() {
+    {
+        let _ = IdbStorage::new(Some("multiple_instances".to_owned()))
+            .await
+            .unwrap();
+    }
+    {
+        let _ = IdbStorage::new(Some("multiple_instances".to_owned()))
+            .await
+            .unwrap();
+    }
+}
