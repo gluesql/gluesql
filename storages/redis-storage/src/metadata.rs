@@ -42,17 +42,16 @@ impl Metadata for RedisStorage {
                     ))
                 })?;
 
-                // [0]: empty because key starts with '#'
+                // [0]: namespace
                 // [1]: 'metadata'
-                // [2]: namespace
-                // [3]: tablename
-                // [4]: metadata_name
+                // [2]: tablename
+                // [3]: metadata_name
                 let tokens = redis_key.split('#').collect::<Vec<&str>>();
-                if let Some(meta_table) = all_metadata.get_mut(tokens[3]) {
-                    meta_table.insert(tokens[4].to_owned(), value);
+                if let Some(meta_table) = all_metadata.get_mut(tokens[2]) {
+                    meta_table.insert(tokens[3].to_owned(), value);
                 } else {
-                    let meta_table = HashMap::from([(tokens[4].to_owned(), value)]);
-                    let meta = HashMap::from([(tokens[3].to_owned(), meta_table)]);
+                    let meta_table = HashMap::from([(tokens[3].to_owned(), value)]);
+                    let meta = HashMap::from([(tokens[2].to_owned(), meta_table)]);
                     all_metadata.extend(meta);
                 }
             }
