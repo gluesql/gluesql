@@ -397,6 +397,15 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
 
             return evaluate_inner(storage, context, None, body).await;
         }
+        Function::Iif { cond, then, else_result } => {
+            let cond = eval(cond).await?;
+            let cond: bool = cond.try_into()?;
+            if cond {
+                return eval(then).await;
+            } else {
+                return eval(else_result).await;
+            }
+        }
         Function::ConcatWs { separator, exprs } => {
             let separator = eval(separator).await?;
             let exprs = stream::iter(exprs).then(eval).try_collect().await?;

@@ -27,6 +27,7 @@ pub mod greatest;
 pub mod hex;
 pub mod ifnull;
 pub mod initcap;
+pub mod iif;
 pub mod is_empty;
 pub mod keys;
 pub mod last_day;
