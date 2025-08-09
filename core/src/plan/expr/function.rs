@@ -183,6 +183,11 @@ impl Function {
                 start: expr2,
                 count: Some(expr3),
             }
+            | Self::Iif {
+                cond: expr,
+                then: expr2,
+                else_result: expr3,
+            }
             | Self::Replace {
                 expr,
                 old: expr2,

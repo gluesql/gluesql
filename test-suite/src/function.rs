@@ -26,6 +26,7 @@ pub mod geometry;
 pub mod greatest;
 pub mod hex;
 pub mod ifnull;
+pub mod iif;
 pub mod initcap;
 pub mod is_empty;
 pub mod keys;
