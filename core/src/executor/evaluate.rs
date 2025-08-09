@@ -397,7 +397,11 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
 
             return evaluate_inner(storage, context, None, body).await;
         }
-        Function::Iif { cond, then, else_result } => {
+        Function::Iif {
+            cond,
+            then,
+            else_result,
+        } => {
             let cond = eval(cond).await?;
             let cond: bool = cond.try_into()?;
             if cond {

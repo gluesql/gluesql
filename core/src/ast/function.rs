@@ -304,7 +304,12 @@ impl ToSql for Function {
                 then,
                 else_result,
             } => {
-                format!("IIF({}, {}, {})", cond.to_sql(), then.to_sql(), else_result.to_sql())
+                format!(
+                    "IIF({}, {}, {})",
+                    cond.to_sql(),
+                    then.to_sql(),
+                    else_result.to_sql()
+                )
             }
             Function::NullIf { expr1, expr2 } => {
                 format!("NULLIF({}, {})", expr1.to_sql(), expr2.to_sql())

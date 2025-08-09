@@ -271,7 +271,11 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             let cond = translate_expr(args[0])?;
             let then = translate_expr(args[1])?;
             let else_result = translate_expr(args[2])?;
-            Ok(Expr::Function(Box::new(Function::Iif { cond, then, else_result })))
+            Ok(Expr::Function(Box::new(Function::Iif {
+                cond,
+                then,
+                else_result,
+            })))
         }
         "FIND_IDX" => {
             check_len_range(name, args.len(), 2, 3)?;

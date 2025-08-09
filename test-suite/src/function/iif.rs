@@ -1,12 +1,7 @@
 use {
     crate::*,
     bigdecimal::BigDecimal,
-    gluesql_core::{
-        data::Literal,
-        error::EvaluateError,
-        error::TranslateError,
-        prelude::Value::*,
-    },
+    gluesql_core::{data::Literal, error::EvaluateError, error::TranslateError, prelude::Value::*},
     std::borrow::Cow,
 };
 
@@ -56,4 +51,4 @@ test_case!(iif, {
         .into()),
     )
     .await;
-}); 
+});

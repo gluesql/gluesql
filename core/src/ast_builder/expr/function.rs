@@ -196,11 +196,19 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
                 let then = then.try_into()?;
                 Ok(Function::IfNull { expr, then })
             }
-            FunctionNode::Iif { cond, then, else_result } => {
+            FunctionNode::Iif {
+                cond,
+                then,
+                else_result,
+            } => {
                 let cond = cond.try_into()?;
                 let then = then.try_into()?;
                 let else_result = else_result.try_into()?;
-                Ok(Function::Iif { cond, then, else_result })
+                Ok(Function::Iif {
+                    cond,
+                    then,
+                    else_result,
+                })
             }
             FunctionNode::NullIf { expr1, expr2 } => {
                 let expr1 = expr1.try_into()?;
@@ -433,7 +441,11 @@ impl<'a> ExprNode<'a> {
     pub fn ifnull<T: Into<ExprNode<'a>>>(self, another: T) -> ExprNode<'a> {
         ifnull(self, another)
     }
-    pub fn iif<T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(self, then_: T, else_: U) -> ExprNode<'a> {
+    pub fn iif<T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
+        self,
+        then_: T,
+        else_: U,
+    ) -> ExprNode<'a> {
         iif(self, then_, else_)
     }
     pub fn nullif<T: Into<ExprNode<'a>>>(self, another: T) -> ExprNode<'a> {
@@ -618,7 +630,11 @@ pub fn ifnull<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(expr: T, then: U
     }))
 }
 
-pub fn iif<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>, V: Into<ExprNode<'a>>>(cond: T, then_: U, else_: V) -> ExprNode<'a> {
+pub fn iif<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>, V: Into<ExprNode<'a>>>(
+    cond: T,
+    then_: U,
+    else_: V,
+) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Iif {
         cond: cond.into(),
         then: then_.into(),
