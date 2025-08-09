@@ -54,6 +54,14 @@ test_case!(max, {
             "SELECT SUM(quantity) * 2 + MAX(quantity) - 3 / 1 FROM Item",
             select!("SUM(quantity) * 2 + MAX(quantity) - 3 / 1"; I64; 116),
         ),
+        (
+            "SELECT MAX(DISTINCT id) FROM Item",
+            select!("MAX(DISTINCT id)"; I64; 5),
+        ),
+        (
+            "SELECT MAX(DISTINCT age) FROM Item",
+            select!("MAX(DISTINCT age)"; I64; 90),
+        ),
     ];
 
     for (sql, expected) in test_cases {

@@ -568,6 +568,7 @@ mod tests {
                 columns: None,
                 source: Some(Box::new(Query {
                     body: SetExpr::Select(Box::new(Select {
+                        distinct: false,
                         projection: vec![
                             SelectItem::Expr {
                                 expr: Expr::Identifier("id".to_owned()),

@@ -217,6 +217,7 @@ mod tests {
                 },
             };
             let select = Select {
+                distinct: false,
                 projection: SelectItemList::from("*").try_into().unwrap(),
                 from: TableWithJoins {
                     relation: TableFactor::Table {

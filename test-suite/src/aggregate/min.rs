@@ -65,6 +65,14 @@ test_case!(min, {
                 1
             ),
         ),
+        (
+            "SELECT MIN(DISTINCT id) FROM Item",
+            select!("MIN(DISTINCT id)"; I64; 1),
+        ),
+        (
+            "SELECT MIN(DISTINCT age) FROM Item",
+            select!("MIN(DISTINCT age)"; I64; 3),
+        ),
     ];
 
     for (sql, expected) in test_cases {

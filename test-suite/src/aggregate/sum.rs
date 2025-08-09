@@ -82,6 +82,14 @@ test_case!(sum, {
                 28
             ),
         ),
+        (
+            "SELECT SUM(DISTINCT id) FROM Item",
+            select!("SUM(DISTINCT id)"; I64; 15),
+        ),
+        (
+            "SELECT SUM(DISTINCT age) FROM Item",
+            select_with_null!("SUM(DISTINCT age)"; Null),
+        ),
     ];
 
     for (sql, expected) in test_cases {
