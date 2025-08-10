@@ -8,7 +8,6 @@ use {
     },
     futures::stream::{self, StreamExt, TryStreamExt},
     im_rc::{HashMap, HashSet},
-    itertools::Itertools,
     std::{cmp::Ordering, rc::Rc},
     utils::{IndexMap, Vector},
 };
@@ -222,7 +221,23 @@ impl<'a, T: GStore> State<'a, T> {
             values, contexts, ..
         } = self;
 
-        stream::iter(values.into_iter().chunks(size).into_iter().enumerate())
+        let mut values_iter = values.into_iter();
+        let mut i = 0;
+
+        let groups = std::iter::from_fn(move || {
+            let entries: Vec<_> = values_iter.by_ref().take(size).collect();
+
+            if entries.is_empty() {
+                None
+            } else {
+                let index = i;
+                i += 1;
+
+                Some((index, entries))
+            }
+        });
+
+        stream::iter(groups)
             .then(|(i, entries)| {
                 let next = contexts.get(i).map(Rc::clone);
 
