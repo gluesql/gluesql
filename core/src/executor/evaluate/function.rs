@@ -1100,7 +1100,7 @@ pub fn instr<'a>(
         Value::Str(s) => s,
         value => match value.cast(&DataType::Text) {
             Ok(Value::Str(s)) => s,
-            _ => return Err(EvaluateError::FunctionRequiresStringValue("INSTR".to_string()).into()).into_control_flow(),
+            _ => return Err(EvaluateError::FunctionRequiresStringValue("INSTR".to_owned()).into()).into_control_flow(),
         }
     };
 
@@ -1108,7 +1108,7 @@ pub fn instr<'a>(
         Value::Str(s) => s,
         value => match value.cast(&DataType::Text) {
             Ok(Value::Str(s)) => s,
-            _ => return Err(EvaluateError::FunctionRequiresStringValue("INSTR".to_string()).into()).into_control_flow(),
+            _ => return Err(EvaluateError::FunctionRequiresStringValue("INSTR".to_owned()).into()).into_control_flow(),
         }
     };
 
