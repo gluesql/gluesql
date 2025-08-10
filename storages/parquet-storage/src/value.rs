@@ -88,7 +88,7 @@ impl ParquetField {
                             DataType::Map => {
                                 let map: HashMap<String, Value> =
                                     bincode::deserialize(v.data()).map_storage_err()?;
-                                return Ok(Value::Map(map));
+                                return Ok(Value::Map(map.into_iter().collect()));
                             }
                             DataType::List => {
                                 let list: Vec<Value> =
@@ -120,7 +120,7 @@ impl ParquetField {
                     let value: Value = ParquetField(field.clone()).to_value(schema, idx)?;
                     map.insert(name.clone(), value);
                 }
-                Ok(Value::Map(map))
+                Ok(Value::Map(map.into_iter().collect()))
             }
             Field::ListInternal(v) => {
                 let mut list = Vec::new();
@@ -182,7 +182,7 @@ impl ParquetField {
                         }
                     }
                 }
-                Ok(Value::Map(result_map))
+                Ok(Value::Map(result_map.into_iter().collect()))
             }
             Field::Null => Ok(Value::Null),
         }

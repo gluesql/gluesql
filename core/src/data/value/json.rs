@@ -4,38 +4,38 @@ use {
     chrono::{TimeZone, offset::Utc},
     core::str::FromStr,
     serde_json::{Map as JsonMap, Number as JsonNumber, Value as JsonValue},
-    std::collections::HashMap,
+    std::collections::BTreeMap,
     uuid::Uuid,
 };
 
-pub trait HashMapJsonExt {
-    fn parse_json_object(value: &str) -> Result<HashMap<String, Value>>;
+pub trait BTreeMapJsonExt {
+    fn parse_json_object(value: &str) -> Result<BTreeMap<String, Value>>;
 
-    fn try_from_json_map(json_map: JsonMap<String, JsonValue>) -> Result<HashMap<String, Value>>;
+    fn try_from_json_map(json_map: JsonMap<String, JsonValue>) -> Result<BTreeMap<String, Value>>;
 }
 
-impl HashMapJsonExt for HashMap<String, Value> {
-    fn parse_json_object(value: &str) -> Result<HashMap<String, Value>> {
+impl BTreeMapJsonExt for BTreeMap<String, Value> {
+    fn parse_json_object(value: &str) -> Result<BTreeMap<String, Value>> {
         let value = serde_json::from_str(value)
             .map_err(|_| ValueError::InvalidJsonString(value.to_owned()))?;
 
         match value {
-            JsonValue::Object(json_map) => HashMap::try_from_json_map(json_map),
+            JsonValue::Object(json_map) => BTreeMap::try_from_json_map(json_map),
             _ => Err(ValueError::JsonObjectTypeRequired.into()),
         }
     }
 
-    fn try_from_json_map(json_map: JsonMap<String, JsonValue>) -> Result<HashMap<String, Value>> {
+    fn try_from_json_map(json_map: JsonMap<String, JsonValue>) -> Result<BTreeMap<String, Value>> {
         json_map
             .into_iter()
             .map(|(key, value)| value.try_into().map(|value| (key, value)))
-            .collect::<Result<HashMap<String, Value>>>()
+            .collect::<Result<BTreeMap<String, Value>>>()
     }
 }
 
 impl Value {
     pub fn parse_json_map(value: &str) -> Result<Value> {
-        HashMap::parse_json_object(value).map(Value::Map)
+        BTreeMap::parse_json_object(value).map(Value::Map)
     }
 
     pub fn parse_json_list(value: &str) -> Result<Value> {
@@ -124,7 +124,7 @@ impl TryFrom<JsonValue> for Value {
             JsonValue::Object(json_map) => json_map
                 .into_iter()
                 .map(|(key, value)| value.try_into().map(|value| (key, value)))
-                .collect::<Result<HashMap<String, Value>>>()
+                .collect::<Result<BTreeMap<String, Value>>>()
                 .map(Value::Map),
         }
     }

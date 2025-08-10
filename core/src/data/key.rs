@@ -382,7 +382,7 @@ mod tests {
         chrono::{DateTime, NaiveDate, NaiveTime},
         futures::executor::block_on,
         rust_decimal::Decimal,
-        std::{cmp::Ordering, collections::HashMap, net::IpAddr, str::FromStr},
+        std::{cmp::Ordering, collections::BTreeMap, net::IpAddr, str::FromStr},
     };
 
     fn convert(sql: &str) -> Result<Key> {
@@ -442,7 +442,7 @@ mod tests {
 
         // Error
         assert_eq!(
-            Key::try_from(Value::Map(HashMap::default())),
+            Key::try_from(Value::Map(BTreeMap::default())),
             Err(KeyError::MapTypeKeyNotSupported.into())
         );
         assert_eq!(

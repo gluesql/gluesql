@@ -13,7 +13,6 @@ use {
     serde::Serialize,
     std::{borrow::Cow, fmt::Debug, rc::Rc},
     thiserror::Error,
-    utils::HashMapExt,
 };
 
 #[derive(Error, Serialize, Debug, PartialEq, Eq)]
@@ -177,7 +176,9 @@ impl<'a, T: GStore> Update<'a, T> {
                     .into_iter()
                     .map(|(id, value)| (id.to_owned(), value));
 
-                Row::Map(values.concat(assignments))
+                let mut new_values = values;
+                new_values.extend(assignments);
+                Row::Map(new_values)
             }
         })
     }

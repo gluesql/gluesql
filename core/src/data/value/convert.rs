@@ -1058,11 +1058,14 @@ impl TryFrom<&Value> for Point {
 mod tests {
     use {
         super::{ConvertError, Result, Value},
-        crate::{ast::DataType, data::Interval as I, data::Point, data::point},
+        crate::{
+            ast::DataType,
+            data::{Interval as I, Point, point},
+        },
         chrono::{self, NaiveDate, NaiveDateTime, NaiveTime},
         rust_decimal::Decimal,
         std::{
-            collections::HashMap,
+            collections::BTreeMap,
             net::{IpAddr, Ipv4Addr, Ipv6Addr},
             str::FromStr,
         },
@@ -1118,10 +1121,10 @@ mod tests {
             Value::Uuid(195965723427462096757863453463987888808),
             "936da01f-9abd-4d9d-80c7-02af85c822a8"
         );
-        test!(Value::Map(HashMap::new()), "{}");
+        test!(Value::Map(BTreeMap::new()), "{}");
         test!(Value::List(Vec::new()), "[]");
 
-        let mut map = HashMap::new();
+        let mut map = BTreeMap::new();
         map.insert("abc".to_owned(), Value::I32(123));
         test!(Value::Map(map), "{\"abc\":123}");
         test!(Value::List(vec![Value::I32(1), Value::I32(2)]), "[1,2]");
@@ -1207,7 +1210,7 @@ mod tests {
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
         err!(Value::Uuid(195965723427462096757863453463987888808));
-        err!(Value::Map(HashMap::new()));
+        err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Point(point::Point::new(1.0313, 2.0314)));
         err!(Value::Null);
@@ -1271,7 +1274,7 @@ mod tests {
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
         err!(Value::Uuid(195965723427462096757863453463987888808));
-        err!(Value::Map(HashMap::new()));
+        err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Point(point::Point::new(1.0313, 2.0314)));
         err!(Value::Null);
@@ -1337,7 +1340,7 @@ mod tests {
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
         err!(Value::Uuid(195965723427462096757863453463987888808));
-        err!(Value::Map(HashMap::new()));
+        err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Point(point::Point::new(1.0313, 2.0314)));
         err!(Value::Null);
@@ -1403,7 +1406,7 @@ mod tests {
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
         err!(Value::Uuid(195965723427462096757863453463987888808));
-        err!(Value::Map(HashMap::new()));
+        err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Point(point::Point::new(1.0313, 2.0314)));
         err!(Value::Null);
@@ -1466,7 +1469,7 @@ mod tests {
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
         err!(Value::Uuid(195965723427462096757863453463987888808));
-        err!(Value::Map(HashMap::new()));
+        err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Point(point::Point::new(1.0313, 2.0314)));
         err!(Value::Null);
@@ -1526,7 +1529,7 @@ mod tests {
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
         err!(Value::Uuid(195965723427462096757863453463987888808));
-        err!(Value::Map(HashMap::new()));
+        err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Point(point::Point::new(1.0313, 2.0314)));
         err!(Value::Null);
@@ -1596,7 +1599,7 @@ mod tests {
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
         err!(Value::Uuid(195965723427462096757863453463987888808));
-        err!(Value::Map(HashMap::new()));
+        err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Point(point::Point::new(1.0313, 2.0314)));
         err!(Value::Null);
@@ -1662,7 +1665,7 @@ mod tests {
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
         err!(Value::Uuid(195965723427462096757863453463987888808));
-        err!(Value::Map(HashMap::new()));
+        err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Null);
     }
@@ -1725,7 +1728,7 @@ mod tests {
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
         err!(Value::Uuid(195965723427462096757863453463987888808));
-        err!(Value::Map(HashMap::new()));
+        err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Null);
 
@@ -1791,7 +1794,7 @@ mod tests {
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
         err!(Value::Uuid(195965723427462096757863453463987888808));
-        err!(Value::Map(HashMap::new()));
+        err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Point(point::Point::new(1.0313, 2.0314)));
         err!(Value::Null);
@@ -1848,7 +1851,7 @@ mod tests {
         err!(Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)));
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
-        err!(Value::Map(HashMap::new()));
+        err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Null);
 
@@ -1913,7 +1916,7 @@ mod tests {
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
         err!(Value::Uuid(195965723427462096757863453463987888808));
-        err!(Value::Map(HashMap::new()));
+        err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Null);
     }
@@ -1968,7 +1971,7 @@ mod tests {
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
         err!(Value::Uuid(195965723427462096757863453463987888808));
-        err!(Value::Map(HashMap::new()));
+        err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Point(point::Point::new(1.0313, 2.0314)));
         err!(Value::Null);
@@ -2032,7 +2035,7 @@ mod tests {
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
         err!(Value::Uuid(195965723427462096757863453463987888808));
-        err!(Value::Map(HashMap::new()));
+        err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Point(point::Point::new(1.0313, 2.0314)));
         err!(Value::Null);
@@ -2089,7 +2092,7 @@ mod tests {
         err!(Value::Time(time(10, 0, 0, 0)));
         err!(Value::Interval(I::Month(1)));
         err!(Value::Uuid(195965723427462096757863453463987888808));
-        err!(Value::Map(HashMap::new()));
+        err!(Value::Map(BTreeMap::new()));
         err!(Value::List(Vec::new()));
         err!(Value::Null);
     }

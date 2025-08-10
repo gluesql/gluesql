@@ -10,7 +10,7 @@ use {
     core::ops::Sub,
     rust_decimal::Decimal,
     serde::{Deserialize, Serialize},
-    std::{cmp::Ordering, collections::HashMap, fmt::Debug, net::IpAddr},
+    std::{cmp::Ordering, collections::BTreeMap, fmt::Debug, net::IpAddr},
 };
 
 mod binary_op;
@@ -26,7 +26,7 @@ mod uuid;
 pub use {
     convert::ConvertError,
     error::{NumericBinaryOperator, ValueError},
-    json::HashMapJsonExt,
+    json::BTreeMapJsonExt,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -53,7 +53,7 @@ pub enum Value {
     Time(NaiveTime),
     Interval(Interval),
     Uuid(u128),
-    Map(HashMap<String, Value>),
+    Map(BTreeMap<String, Value>),
     List(Vec<Value>),
     Point(Point),
     Null,
