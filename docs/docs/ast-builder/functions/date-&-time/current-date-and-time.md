@@ -1,6 +1,6 @@
 # Current Date and Time
 
-GlueSQL provides a function to get the current date and time: `now`, `current_date`, `current_time`.
+GlueSQL provides a function to get the current date and time: `now`.
 
 ## Now - now
 

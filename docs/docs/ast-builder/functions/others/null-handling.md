@@ -1,6 +1,6 @@
 # Null Handling 
 
-In some cases, you may need to handle `NULL` values in your database. GlueSQL provides functions called `ifnull` and `nullif` to handle these cases.
+In some cases, you may need to handle `NULL` values in your database. GlueSQL provides a function called `ifnull` to handle these cases.
 
 ## IFNULL - ifnull
 
