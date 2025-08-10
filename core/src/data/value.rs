@@ -15,6 +15,7 @@ use {
         collections::{BTreeMap, HashMap},
         fmt::Debug,
         hash::{Hash, Hasher},
+        mem::discriminant,
         net::IpAddr,
     },
 };
@@ -908,12 +909,12 @@ impl Eq for Value {}
 
 impl Hash for Value {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        const CANONICAL_F32_NAN: u32 = 0x7fc00000;
-        const CANONICAL_F64_NAN: u64 = 0x7ff8000000000000;
-        const CANONICAL_F32_ZERO: u32 = 0;
-        const CANONICAL_F64_ZERO: u64 = 0;
+        const CANONICAL_F32_NAN_BITS: u32 = 0x7fc00000;
+        const CANONICAL_F64_NAN_BITS: u64 = 0x7ff8000000000000;
+        const CANONICAL_F32_ZERO_BITS: u32 = 0;
+        const CANONICAL_F64_ZERO_BITS: u64 = 0;
 
-        std::mem::discriminant(self).hash(state);
+        discriminant(self).hash(state);
 
         match self {
             Value::Bool(v) => v.hash(state),
@@ -930,18 +931,18 @@ impl Hash for Value {
 
             Value::F32(v) => {
                 if v.is_nan() {
-                    CANONICAL_F32_NAN.hash(state);
+                    CANONICAL_F32_NAN_BITS.hash(state);
                 } else if *v == 0.0f32 {
-                    CANONICAL_F32_ZERO.hash(state);
+                    CANONICAL_F32_ZERO_BITS.hash(state);
                 } else {
                     v.to_bits().hash(state);
                 }
             }
             Value::F64(v) => {
                 if v.is_nan() {
-                    CANONICAL_F64_NAN.hash(state);
+                    CANONICAL_F64_NAN_BITS.hash(state);
                 } else if *v == 0.0f64 {
-                    CANONICAL_F64_ZERO.hash(state);
+                    CANONICAL_F64_ZERO_BITS.hash(state);
                 } else {
                     v.to_bits().hash(state);
                 }
@@ -2932,7 +2933,7 @@ mod tests {
     }
 
     #[test]
-    fn hash_consistency() {
+    fn hash() {
         use {
             super::Interval,
             crate::data::point::Point,
@@ -2973,9 +2974,7 @@ mod tests {
         let neg_one_f64 = F64(-1.0);
         assert_ne!(hash_value(&one_f64), hash_value(&neg_one_f64),);
 
-        // Hash and Eq consistency: if a == b, then hash(a) == hash(b)
         let values_equal = [
-            // Integer types
             (I8(42), I8(42)),
             (I16(42), I16(42)),
             (I32(42), I32(42)),
@@ -2988,16 +2987,11 @@ mod tests {
             (U128(42), U128(42)),
             (F32(PI_F32), F32(PI_F32)),
             (F64(PI_F64), F64(PI_F64)),
-            // Decimal
             (Decimal(Decimal::new(314, 2)), Decimal(Decimal::new(314, 2))),
-            // Boolean
             (Bool(true), Bool(true)),
             (Bool(false), Bool(false)),
-            // String
             (Str("test".to_owned()), Str("test".to_owned())),
-            // Bytea
             (Bytea(vec![1, 2, 3]), Bytea(vec![1, 2, 3])),
-            // Inet
             (
                 Inet(IpAddr::from_str("127.0.0.1").unwrap()),
                 Inet(IpAddr::from_str("127.0.0.1").unwrap()),
@@ -3006,12 +3000,10 @@ mod tests {
                 Inet(IpAddr::from_str("::1").unwrap()),
                 Inet(IpAddr::from_str("::1").unwrap()),
             ),
-            // Date
             (
                 Date(NaiveDate::from_ymd_opt(2025, 8, 6).unwrap()),
                 Date(NaiveDate::from_ymd_opt(2025, 8, 6).unwrap()),
             ),
-            // Timestamp
             (
                 Timestamp(
                     NaiveDate::from_ymd_opt(2025, 8, 6)
@@ -3026,18 +3018,13 @@ mod tests {
                         .unwrap(),
                 ),
             ),
-            // Time
             (
                 Time(NaiveTime::from_hms_opt(10, 30, 0).unwrap()),
                 Time(NaiveTime::from_hms_opt(10, 30, 0).unwrap()),
             ),
-            // Interval
             (Interval(Interval::hours(5)), Interval(Interval::hours(5))),
-            // UUID
             (Uuid(123456789), Uuid(123456789)),
-            // List
             (List(vec![I64(1), I64(2)]), List(vec![I64(1), I64(2)])),
-            // Null
             (Null, Null),
         ];
 
@@ -3046,53 +3033,77 @@ mod tests {
             assert_eq!(hash_value(&a), hash_value(&b), "{:?} vs {:?}", a, b);
         }
 
-        // Map hash consistency (sorted by key) - test cases
-        let map_test_cases = [
-            // Test case 1: Different insertion order should hash the same
-            {
-                let mut map1 = HashMap::new();
-                map1.insert("b".to_owned(), I64(2));
-                map1.insert("a".to_owned(), I64(1));
+        let map_test_cases = [{
+            let mut map1 = HashMap::new();
+            map1.insert("b".to_owned(), I64(2));
+            map1.insert("a".to_owned(), I64(1));
 
-                let mut map2 = HashMap::new();
-                map2.insert("a".to_owned(), I64(1));
-                map2.insert("b".to_owned(), I64(2));
+            let mut map2 = HashMap::new();
+            map2.insert("a".to_owned(), I64(1));
+            map2.insert("b".to_owned(), I64(2));
 
-                (super::Value::Map(map1), super::Value::Map(map2))
-            },
-        ];
+            (super::Value::Map(map1), super::Value::Map(map2))
+        }];
 
         for (value_map1, value_map2) in map_test_cases {
             assert_eq!(value_map1, value_map2);
             assert_eq!(hash_value(&value_map1), hash_value(&value_map2));
         }
 
-        let point_test_cases = [(Point(Point::new(1.0, 2.0)), Point(Point::new(1.0, 2.0)))];
+        const CANONICAL_F64_NAN_BITS: u64 = 0x7ff8000000000000;
+        const CANONICAL_F32_NAN_BITS: u32 = 0x7fc00000;
+        const CANONICAL_F32_ZERO_BITS: u32 = 0;
+        const CANONICAL_F64_ZERO_BITS: u64 = 0;
+        let point_test_cases = [
+            (Point(Point::new(1.0, 2.0)), Point(Point::new(1.0, 2.0))),
+            (Point(Point::new(0.0, 1.0)), Point(Point::new(-0.0, 1.0))),
+            (Point(Point::new(1.0, 0.0)), Point(Point::new(1.0, -0.0))),
+            (
+                Point(Point::new(1.0, f64::NAN)),
+                Point(Point::new(1.0, f64::from_bits(CANONICAL_F64_NAN_BITS))),
+            ),
+            (
+                Point(Point::new(f64::NAN, 1.0)),
+                Point(Point::new(f64::from_bits(CANONICAL_F64_NAN_BITS), 1.0)),
+            ),
+            (
+                Point(Point::new(f64::NAN, f64::NAN)),
+                Point(Point::new(
+                    f64::from_bits(CANONICAL_F64_NAN_BITS),
+                    f64::from_bits(CANONICAL_F64_NAN_BITS),
+                )),
+            ),
+            (
+                Point(Point::new(1.0, 0.0_f64)),
+                Point(Point::new(1.0, f64::from_bits(CANONICAL_F64_ZERO_BITS))),
+            ),
+            (
+                Point(Point::new(1.0, -0.0_f64)),
+                Point(Point::new(1.0, f64::from_bits(CANONICAL_F64_ZERO_BITS))),
+            ),
+        ];
 
         for (point1, point2) in point_test_cases {
-            assert_eq!(point1, point2);
             assert_eq!(hash_value(&point1), hash_value(&point2));
         }
 
-        // Float special cases: Different NaN bit patterns should hash consistently
+        assert_eq!(hash_value(&F32(0.0)), hash_value(&F32(-0.0)));
+        assert_eq!(hash_value(&F64(0.0)), hash_value(&F64(-0.0)));
         assert_eq!(
             hash_value(&F32(f32::NAN)),
-            hash_value(&F32(f32::from_bits(0x7fc00001)))
+            hash_value(&F32(f32::from_bits(CANONICAL_F32_NAN_BITS)))
         );
         assert_eq!(
             hash_value(&F64(f64::NAN)),
-            hash_value(&F64(f64::from_bits(0x7ff8000000000001)))
-        );
-        assert_eq!(hash_value(&F32(0.0)), hash_value(&F32(-0.0)));
-        assert_eq!(hash_value(&F64(0.0)), hash_value(&F64(-0.0)));
-
-        assert_eq!(
-            hash_value(&Point(Point::new(f64::NAN, 1.0))),
-            hash_value(&Point(Point::new(f64::NAN, 1.0)))
+            hash_value(&F64(f64::from_bits(CANONICAL_F64_NAN_BITS)))
         );
         assert_eq!(
-            hash_value(&Point(Point::new(0.0, 1.0))),
-            hash_value(&Point(Point::new(-0.0, 1.0)))
+            hash_value(&F32(f32::from_bits(CANONICAL_F32_ZERO_BITS))),
+            hash_value(&F32(0.0))
+        );
+        assert_eq!(
+            hash_value(&F64(f64::from_bits(CANONICAL_F64_ZERO_BITS))),
+            hash_value(&F64(0.0))
         );
 
         // NaN as HashMap key
@@ -3103,7 +3114,7 @@ mod tests {
     }
 
     #[test]
-    fn eq_consistency() {
+    fn eq() {
         use {
             super::Interval,
             crate::data::point::Point,
@@ -3112,7 +3123,6 @@ mod tests {
             std::{collections::HashMap, net::IpAddr, str::FromStr},
         };
 
-        // Test all Value variants equality + Float special cases
         let test_cases = [
             (Bool(true), Bool(true), true),
             (Bool(true), Bool(false), false),
@@ -3181,11 +3191,17 @@ mod tests {
         assert_eq!(F64(0.0), F64(-0.0));
         assert_eq!(F32(f32::from_bits(0x7fc00001)), F32(f32::NAN));
 
+        // Point equality coverage - all PartialEq branches
         assert_eq!(
             Point(Point::new(f64::NAN, 1.0)),
             Point(Point::new(f64::NAN, 1.0))
-        );
-        assert_eq!(Point(Point::new(0.0, 1.0)), Point(Point::new(-0.0, 1.0)));
+        ); // x.is_nan() && other.x.is_nan()
+        assert_eq!(
+            Point(Point::new(1.0, f64::NAN)),
+            Point(Point::new(1.0, f64::NAN))
+        ); // y.is_nan() && other.y.is_nan()
+        assert_eq!(Point(Point::new(0.0, 1.0)), Point(Point::new(-0.0, 1.0))); // x == 0.0 && other.x == 0.0
+        assert_eq!(Point(Point::new(1.0, 0.0)), Point(Point::new(1.0, -0.0))); // y == 0.0 && other.y == 0.0
 
         // Map equality
         let mut map1 = HashMap::new();

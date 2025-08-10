@@ -59,21 +59,21 @@ impl Eq for Point {}
 
 impl Hash for Point {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        const CANONICAL_NAN: u64 = 0x7ff8000000000000;
-        const CANONICAL_ZERO: u64 = 0x0000000000000000;
+        const CANONICAL_F64_NAN_BITS: u64 = 0x7ff8000000000000;
+        const CANONICAL_F64_ZERO_BITS: u64 = 0;
 
         let x_bits = if self.x.is_nan() {
-            CANONICAL_NAN
+            CANONICAL_F64_NAN_BITS
         } else if self.x == 0.0 {
-            CANONICAL_ZERO
+            CANONICAL_F64_ZERO_BITS
         } else {
             self.x.to_bits()
         };
 
         let y_bits = if self.y.is_nan() {
-            CANONICAL_NAN
+            CANONICAL_F64_NAN_BITS
         } else if self.y == 0.0 {
-            CANONICAL_ZERO
+            CANONICAL_F64_ZERO_BITS
         } else {
             self.y.to_bits()
         };
