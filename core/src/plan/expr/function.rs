@@ -217,6 +217,7 @@ impl Function {
                 end_index: expr3,
                 values: Some(expr4),
             } => Exprs::Quadruple([expr, expr2, expr3, expr4].into_iter()),
+            Self::Instr { string, substring } => Exprs::Double([string, substring].into_iter()),
         }
     }
 }
