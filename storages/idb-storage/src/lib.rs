@@ -96,11 +96,10 @@ impl IdbStorage {
         };
 
         let database = open_request.await.err_into()?;
-        if let Some(e) = Arc::try_unwrap(error)
-            .map_err(|_| Error::StorageMsg("infallible - Arc::try_unwrap failed".to_owned()))?
-            .into_inner()
-            .err_into()?
-        {
+        let mut error = error
+            .lock()
+            .map_err(|_| Error::StorageMsg("infallible - lock acquire failed".to_owned()))?;
+        if let Some(e) = error.take() {
             return Err(e);
         }
 
@@ -197,11 +196,10 @@ impl IdbStorage {
         };
 
         self.database = open_request.into_future().send_wrapper().await.err_into()?;
-        if let Some(e) = Arc::try_unwrap(error)
-            .map_err(|_| Error::StorageMsg("infallible - Arc::try_unwrap failed".to_owned()))?
-            .into_inner()
-            .err_into()?
-        {
+        let mut error = error
+            .lock()
+            .map_err(|_| Error::StorageMsg("infallible - lock acquire failed".to_owned()))?;
+        if let Some(e) = error.take() {
             return Err(e);
         }
 
