@@ -270,20 +270,20 @@ macro_rules! generate_store_tests {
             ast_builder::function::text::padding
         );
         glue!(
-            ast_builder_function_other_coalesce,
-            ast_builder::function::other::coalesce
+            ast_builder_function_reference_coalesce,
+            ast_builder::function::reference::coalesce
         );
         glue!(
-            ast_builder_function_other_ifnull,
-            ast_builder::function::other::ifnull
+            ast_builder_function_reference_ifnull,
+            ast_builder::function::reference::ifnull
         );
         glue!(
-            ast_builder_function_other_nullif,
-            ast_builder::function::other::nullif
+            ast_builder_function_reference_nullif,
+            ast_builder::function::reference::nullif
         );
         glue!(
-            ast_builder_function_other_generate_uuid,
-            ast_builder::function::other::generate_uuid
+            ast_builder_function_reference_generate_uuid,
+            ast_builder::function::reference::generate_uuid
         );
         glue!(
             ast_builder_function_datetime_conversion,
@@ -310,16 +310,16 @@ macro_rules! generate_store_tests {
             ast_builder::function::datetime::current_date_and_time
         );
         glue!(
-            ast_builder_function_datetime_current_date,
-            ast_builder::function::datetime::current_date
+            ast_builder_function_reference_current_date,
+            ast_builder::function::reference::current_date
         );
         glue!(
-            ast_builder_function_datetime_current_time,
-            ast_builder::function::datetime::current_time
+            ast_builder_function_reference_current_time,
+            ast_builder::function::reference::current_time
         );
         glue!(
-            ast_builder_function_datetime_current_timestamp,
-            ast_builder::function::datetime::current_timestamp
+            ast_builder_function_reference_current_timestamp,
+            ast_builder::function::reference::current_timestamp
         );
         glue!(
             ast_builder_function_text_position_and_indexing,
