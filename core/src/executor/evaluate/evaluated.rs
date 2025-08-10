@@ -2,10 +2,10 @@ use {
     super::error::EvaluateError,
     crate::{
         ast::{BinaryOperator, DataType, TrimWhereField},
-        data::{Key, Literal, Value, value::HashMapJsonExt},
+        data::{Key, Literal, Value, value::BTreeMapJsonExt},
         result::{Error, Result},
     },
-    std::{borrow::Cow, cmp::Ordering, collections::HashMap, ops::Range},
+    std::{borrow::Cow, cmp::Ordering, collections::BTreeMap, ops::Range},
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -73,19 +73,19 @@ impl TryFrom<Evaluated<'_>> for bool {
     }
 }
 
-impl TryFrom<Evaluated<'_>> for HashMap<String, Value> {
+impl TryFrom<Evaluated<'_>> for BTreeMap<String, Value> {
     type Error = Error;
 
-    fn try_from(evaluated: Evaluated<'_>) -> Result<HashMap<String, Value>> {
+    fn try_from(evaluated: Evaluated<'_>) -> Result<BTreeMap<String, Value>> {
         match evaluated {
-            Evaluated::Literal(Literal::Text(v)) => HashMap::parse_json_object(v.as_ref()),
+            Evaluated::Literal(Literal::Text(v)) => BTreeMap::parse_json_object(v.as_ref()),
             Evaluated::Literal(v) => {
                 Err(EvaluateError::TextLiteralRequired(format!("{v:?}")).into())
             }
-            Evaluated::Value(Value::Str(v)) => HashMap::parse_json_object(v.as_str()),
+            Evaluated::Value(Value::Str(v)) => BTreeMap::parse_json_object(v.as_str()),
             Evaluated::Value(Value::Map(v)) => Ok(v),
             Evaluated::Value(v) => Err(EvaluateError::MapOrStringValueRequired(v.into()).into()),
-            Evaluated::StrSlice { source, range } => HashMap::parse_json_object(&source[range]),
+            Evaluated::StrSlice { source, range } => BTreeMap::parse_json_object(&source[range]),
         }
     }
 }

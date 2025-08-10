@@ -7,7 +7,7 @@ use {
         prelude::{DataType, Error, Result},
     },
     parquet::record::Field,
-    std::collections::HashMap,
+    std::collections::BTreeMap,
 };
 
 #[derive(Debug)]
@@ -86,7 +86,7 @@ impl ParquetField {
                                 return Ok(Value::Decimal(decimal));
                             }
                             DataType::Map => {
-                                let map: HashMap<String, Value> =
+                                let map: BTreeMap<String, Value> =
                                     bincode::deserialize(v.data()).map_storage_err()?;
                                 return Ok(Value::Map(map));
                             }
@@ -115,7 +115,7 @@ impl ParquetField {
                 Ok(Value::Date(result_date))
             }
             Field::Group(v) => {
-                let mut map = HashMap::new();
+                let mut map = BTreeMap::new();
                 for (name, field) in v.get_column_iter() {
                     let value: Value = ParquetField(field.clone()).to_value(schema, idx)?;
                     map.insert(name.clone(), value);
@@ -165,7 +165,7 @@ impl ParquetField {
                 }
             }
             Field::MapInternal(m) => {
-                let mut result_map = HashMap::new();
+                let mut result_map = BTreeMap::new();
                 for (key_field, value_field) in m.entries() {
                     match key_field {
                         Field::Str(key_str) => {

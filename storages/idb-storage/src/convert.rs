@@ -8,7 +8,7 @@ use {
         store::DataRow,
     },
     serde_json::Value as JsonValue,
-    std::collections::HashMap,
+    std::collections::BTreeMap,
     wasm_bindgen::JsValue,
 };
 
@@ -37,7 +37,7 @@ pub fn convert(value: JsValue, column_defs: Option<&[ColumnDef]>) -> Result<Data
         (JsonValue::Object(json_map), None) => json_map
             .into_iter()
             .map(|(key, value)| value.try_into().map(|value| (key, value)))
-            .collect::<Result<HashMap<String, Value>>>()
+            .collect::<Result<BTreeMap<String, Value>>>()
             .map(DataRow::Map),
         (value, _) => Err(Error::StorageMsg(format!(
             "conflict - unsupported value stored: {value:?}"

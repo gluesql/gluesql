@@ -10,7 +10,7 @@ use {
     },
     mongodb::bson::{self, Binary, Bson, DateTime, Decimal128, Document, doc},
     rust_decimal::Decimal,
-    std::collections::HashMap,
+    std::collections::BTreeMap,
 };
 
 type Result<T> = std::result::Result<T, MongoStorageError>;
@@ -27,7 +27,7 @@ impl IntoValue for Bson {
             Bson::Document(d) => Value::Map(
                 d.into_iter()
                     .map(|(k, v)| Ok((k, v.into_value_schemaless()?)))
-                    .collect::<Result<HashMap<_, _>>>()?,
+                    .collect::<Result<BTreeMap<_, _>>>()?,
             ),
             Bson::Boolean(b) => Value::Bool(b),
             Bson::Int32(i) => Value::I32(i),
@@ -102,7 +102,7 @@ impl IntoValue for Bson {
             (Bson::Document(d), _) => Value::Map(
                 d.into_iter()
                     .map(|(k, v)| Ok((k, v.into_value(data_type)?)))
-                    .collect::<Result<HashMap<_, _>>>()?,
+                    .collect::<Result<BTreeMap<_, _>>>()?,
             ),
             (Bson::Boolean(b), _) => Value::Bool(b),
             (Bson::RegularExpression(regex), _) => {
@@ -167,7 +167,7 @@ impl IntoValue for Bson {
             (Bson::DateTime(dt), _) => Value::Date(dt.to_chrono().date_naive()),
             (Bson::JavaScriptCode(code), _) => Value::Str(code),
             (Bson::JavaScriptCodeWithScope(bson::JavaScriptCodeWithScope { code, scope }), _) => {
-                Value::Map(HashMap::from([
+                Value::Map(BTreeMap::from([
                     ("code".to_owned(), Value::Str(code)),
                     (
                         "scope".to_owned(),
