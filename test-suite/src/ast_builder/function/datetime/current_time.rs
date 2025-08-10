@@ -1,9 +1,6 @@
 use {
     crate::*,
-    gluesql_core::{
-        ast_builder::*,
-        prelude::{Payload},
-    },
+    gluesql_core::{ast_builder::*, prelude::Payload},
 };
 
 test_case!(current_time, {
@@ -20,9 +17,7 @@ test_case!(current_time, {
 
     let actual = table("Record")
         .insert()
-        .values(vec![
-            "1, CURRENT_TIME()",
-        ])
+        .values(vec!["1, CURRENT_TIME()"])
         .execute(glue)
         .await;
     let expected = Ok(Payload::Insert(1));

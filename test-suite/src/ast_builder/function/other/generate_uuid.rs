@@ -3,7 +3,6 @@ use {
     gluesql_core::{
         ast_builder::{function as f, *},
         executor::Payload,
-        prelude::Value::*,
     },
 };
 
@@ -23,9 +22,7 @@ test_case!(generate_uuid, {
     let actual = table("Foo")
         .insert()
         .columns("id")
-        .values(vec![
-            vec![f::generate_uuid()]
-        ])
+        .values(vec![vec![f::generate_uuid()]])
         .execute(glue)
         .await;
     let expected = Ok(Payload::Insert(1));
