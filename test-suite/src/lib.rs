@@ -18,6 +18,7 @@ pub mod default;
 pub mod delete;
 pub mod dictionary;
 pub mod dictionary_index;
+pub mod expr;
 pub mod filter;
 pub mod foreign_key;
 pub mod function;
@@ -206,6 +207,7 @@ macro_rules! generate_store_tests {
         glue!(bytea, data_type::bytea::bytea);
         glue!(inet, data_type::inet::inet);
         glue!(point, data_type::point::point);
+        glue!(null, data_type::null::null);
         glue!(synthesize, synthesize::synthesize);
         glue!(validate_unique, validate::unique::unique);
         glue!(validate_types, validate::types::types);
@@ -317,6 +319,9 @@ macro_rules! generate_store_tests {
         glue!(schemaless_error, schemaless::error);
 
         glue!(store_insert_schema, store::insert_schema::insert_schema);
+
+        glue!(expr_between, expr::between::between);
+        glue!(expr_in_list, expr::in_list::in_list);
     };
 }
 

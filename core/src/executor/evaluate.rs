@@ -169,6 +169,10 @@ where
             let negated = *negated;
             let target = eval(expr).await?;
 
+            if target.is_null() {
+                return Ok(target);
+            }
+
             let matched = try_join_all(list.iter().map(eval))
                 .await?
                 .into_iter()
