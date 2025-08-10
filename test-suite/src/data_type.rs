@@ -11,6 +11,7 @@ pub mod int8;
 pub mod interval;
 pub mod list;
 pub mod map;
+pub mod null;
 pub mod point;
 pub mod sql_types;
 pub mod time;

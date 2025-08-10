@@ -296,6 +296,15 @@ impl<'a> Evaluated<'a> {
         }
     }
 
+    pub fn unary_not(self) -> Result<Evaluated<'a>> {
+        if self.is_null() {
+            Ok(self)
+        } else {
+            self.try_into()
+                .map(|v: bool| Evaluated::Value(Value::Bool(!v)))
+        }
+    }
+
     pub fn unary_factorial(&self) -> Result<Evaluated<'a>> {
         match self {
             Evaluated::Literal(v) => Value::try_from(v).and_then(|v| v.unary_factorial()),
