@@ -719,6 +719,11 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             f::splice(name, list_data, begin_index, end_index, values)
         }
         Function::Dedup(list) => f::dedup(eval(list).await?),
+        Function::Instr { string, substring } => {
+            let string = eval(string).await?;
+            let substring = eval(substring).await?;
+            f::instr(&name, string, substring)
+        }
     };
 
     match result {
