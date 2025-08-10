@@ -405,7 +405,10 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             let string = translate_expr(args[0])?;
             let substring = translate_expr(args[1])?;
 
-            Ok(Expr::Function(Box::new(Function::Instr { string, substring })))
+            Ok(Expr::Function(Box::new(Function::Instr {
+                string,
+                substring,
+            })))
         }
         "GCD" => {
             check_len(name, args.len(), 2)?;

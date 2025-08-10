@@ -686,7 +686,10 @@ pub fn current_time<'a>() -> ExprNode<'a> {
 pub fn current_timestamp<'a>() -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::CurrentTimestamp))
 }
-pub fn instr<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(string: T, substring: U) -> ExprNode<'a> {
+pub fn instr<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
+    string: T,
+    substring: U,
+) -> ExprNode<'a> {
     let string = string.into();
     let substring = substring.into();
     ExprNode::Function(Box::new(FunctionNode::Instr { string, substring }))

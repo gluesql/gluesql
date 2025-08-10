@@ -1095,27 +1095,31 @@ pub fn instr<'a>(
     substring: Evaluated<'_>,
 ) -> ControlFlow<Evaluated<'a>> {
     use std::ops::ControlFlow::Continue;
-    
+
     let string_val = match string.try_into().break_if_null()? {
         Value::Str(s) => s,
         value => match value.cast(&DataType::Text) {
             Ok(Value::Str(s)) => s,
-            _ => return Err(EvaluateError::FunctionRequiresStringValue("INSTR".to_owned()).into()).into_control_flow(),
-        }
+            _ => {
+                return Err(EvaluateError::FunctionRequiresStringValue("INSTR".to_owned()).into())
+                    .into_control_flow();
+            }
+        },
     };
 
     let substring_val = match substring.try_into().break_if_null()? {
         Value::Str(s) => s,
         value => match value.cast(&DataType::Text) {
             Ok(Value::Str(s)) => s,
-            _ => return Err(EvaluateError::FunctionRequiresStringValue("INSTR".to_owned()).into()).into_control_flow(),
-        }
+            _ => {
+                return Err(EvaluateError::FunctionRequiresStringValue("INSTR".to_owned()).into())
+                    .into_control_flow();
+            }
+        },
     };
 
     let position = match string_val.find(&substring_val) {
-        Some(index) => {
-            (index + 1) as i64
-        }
+        Some(index) => (index + 1) as i64,
         None => 0,
     };
 
