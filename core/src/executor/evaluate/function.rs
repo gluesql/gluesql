@@ -767,6 +767,24 @@ pub fn greatest(name: String, exprs: Vec<Evaluated<'_>>) -> Result<Evaluated<'_>
         .ok_or(EvaluateError::FunctionRequiresAtLeastOneArgument(name.to_owned()).into())
 }
 
+pub fn least(name: String, exprs: Vec<Evaluated<'_>>) -> Result<Evaluated<'_>> {
+    exprs
+        .into_iter()
+        .try_fold(None, |least, expr| -> Result<_> {
+            let least = match least {
+                Some(least) => least,
+                None => return Ok(Some(expr)),
+            };
+
+            match least.evaluate_cmp(&expr) {
+                Some(std::cmp::Ordering::Greater) => Ok(Some(expr)),
+                Some(_) => Ok(Some(least)),
+                None => Err(EvaluateError::NonComparableArgumentError(name.to_owned()).into()),
+            }
+        })?
+        .ok_or(EvaluateError::FunctionRequiresAtLeastOneArgument(name.to_owned()).into())
+}
+
 pub fn format<'a>(
     name: String,
     expr: Evaluated<'_>,
