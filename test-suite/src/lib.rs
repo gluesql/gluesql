@@ -271,11 +271,19 @@ macro_rules! generate_store_tests {
         );
         glue!(
             ast_builder_function_other_coalesce,
-            ast_builder::function::other::coalesce::coalesce
+            ast_builder::function::other::coalesce
         );
         glue!(
             ast_builder_function_other_ifnull,
-            ast_builder::function::other::ifnull::ifnull
+            ast_builder::function::other::ifnull
+        );
+        glue!(
+            ast_builder_function_other_nullif,
+            ast_builder::function::other::nullif
+        );
+        glue!(
+            ast_builder_function_other_generate_uuid,
+            ast_builder::function::other::generate_uuid
         );
         glue!(
             ast_builder_function_datetime_conversion,
@@ -300,6 +308,18 @@ macro_rules! generate_store_tests {
         glue!(
             ast_builder_function_datetime_current_date_and_time,
             ast_builder::function::datetime::current_date_and_time
+        );
+        glue!(
+            ast_builder_function_datetime_current_date,
+            ast_builder::function::datetime::current_date
+        );
+        glue!(
+            ast_builder_function_datetime_current_time,
+            ast_builder::function::datetime::current_time
+        );
+        glue!(
+            ast_builder_function_datetime_current_timestamp,
+            ast_builder::function::datetime::current_timestamp
         );
         glue!(
             ast_builder_function_text_position_and_indexing,
