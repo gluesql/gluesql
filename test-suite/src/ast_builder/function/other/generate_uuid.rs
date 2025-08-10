@@ -1,6 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
+        ast::DataType,
         ast_builder::{function as f, *},
         executor::Payload,
     },
@@ -27,4 +28,7 @@ test_case!(generate_uuid, {
         .await;
     let expected = Ok(Payload::Insert(1));
     assert_eq!(actual, expected, "insert into Foo");
+
+    let actual = values(vec![vec![f::generate_uuid()]]).execute(glue).await;
+    type_match(&[DataType::Uuid], actual);
 });
