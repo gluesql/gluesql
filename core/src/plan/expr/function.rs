@@ -211,6 +211,7 @@ impl Function {
                 Exprs::VariableArgsWithSingle(once(separator).chain(exprs.iter()))
             }
             Self::Greatest(exprs) => Exprs::VariableArgs(exprs.iter()),
+            Self::Least(exprs) => Exprs::VariableArgs(exprs.iter()),
             Self::Splice {
                 list_data: expr,
                 begin_index: expr2,
