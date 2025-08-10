@@ -962,7 +962,7 @@ impl Hash for Value {
             }
             Value::List(list) => list.hash(state),
 
-            Value::Point(p) => format!("{:?}", p).hash(state),
+            Value::Point(p) => p.hash(state),
             Value::Null => {
                 // Null gets its own unique hash based on discriminant only
                 // No additional data needed since discriminant already makes it unique
@@ -3086,6 +3086,15 @@ mod tests {
         assert_eq!(hash_value(&F32(0.0)), hash_value(&F32(-0.0)));
         assert_eq!(hash_value(&F64(0.0)), hash_value(&F64(-0.0)));
 
+        assert_eq!(
+            hash_value(&Point(Point::new(f64::NAN, 1.0))),
+            hash_value(&Point(Point::new(f64::NAN, 1.0)))
+        );
+        assert_eq!(
+            hash_value(&Point(Point::new(0.0, 1.0))),
+            hash_value(&Point(Point::new(-0.0, 1.0)))
+        );
+
         // NaN as HashMap key
         let mut map = HashMap::new();
         let nan_key = F32(f32::NAN);
@@ -3171,6 +3180,12 @@ mod tests {
         assert_eq!(F32(0.0), F32(-0.0));
         assert_eq!(F64(0.0), F64(-0.0));
         assert_eq!(F32(f32::from_bits(0x7fc00001)), F32(f32::NAN));
+
+        assert_eq!(
+            Point(Point::new(f64::NAN, 1.0)),
+            Point(Point::new(f64::NAN, 1.0))
+        );
+        assert_eq!(Point(Point::new(0.0, 1.0)), Point(Point::new(-0.0, 1.0)));
 
         // Map equality
         let mut map1 = HashMap::new();
