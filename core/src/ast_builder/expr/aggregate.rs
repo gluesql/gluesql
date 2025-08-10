@@ -60,25 +60,25 @@ impl<'a> TryFrom<AggregateNode<'a>> for Aggregate {
         match aggr_node {
             AggregateNode::Count(count_arg_expr_node, distinct) => count_arg_expr_node
                 .try_into()
-                .map(|expr| Aggregate::Count { expr, distinct }),
+                .map(|expr| Aggregate::count(expr, distinct)),
             AggregateNode::Sum(expr_node, distinct) => expr_node
                 .try_into()
-                .map(|expr| Aggregate::Sum { expr, distinct }),
+                .map(|expr| Aggregate::sum(expr, distinct)),
             AggregateNode::Min(expr_node, distinct) => expr_node
                 .try_into()
-                .map(|expr| Aggregate::Min { expr, distinct }),
+                .map(|expr| Aggregate::min(expr, distinct)),
             AggregateNode::Max(expr_node, distinct) => expr_node
                 .try_into()
-                .map(|expr| Aggregate::Max { expr, distinct }),
+                .map(|expr| Aggregate::max(expr, distinct)),
             AggregateNode::Avg(expr_node, distinct) => expr_node
                 .try_into()
-                .map(|expr| Aggregate::Avg { expr, distinct }),
+                .map(|expr| Aggregate::avg(expr, distinct)),
             AggregateNode::Variance(expr_node, distinct) => expr_node
                 .try_into()
-                .map(|expr| Aggregate::Variance { expr, distinct }),
+                .map(|expr| Aggregate::variance(expr, distinct)),
             AggregateNode::Stdev(expr_node, distinct) => expr_node
                 .try_into()
-                .map(|expr| Aggregate::Stdev { expr, distinct }),
+                .map(|expr| Aggregate::stdev(expr, distinct)),
         }
     }
 }

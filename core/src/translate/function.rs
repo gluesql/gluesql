@@ -234,51 +234,20 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             SqlFunctionArgExpr::Wildcard => CountArgExpr::Wildcard,
         };
 
-        return Ok(Expr::Aggregate(Box::new(Aggregate::Count {
-            expr: count_arg,
-            distinct,
-        })));
+        return Ok(Expr::Aggregate(Box::new(Aggregate::count(
+            count_arg, distinct,
+        ))));
     }
 
     let args = translate_function_arg_exprs(function_arg_exprs)?;
 
     match name.as_str() {
-        "SUM" => translate_aggregate_one_arg(
-            |expr, distinct| Aggregate::Sum { expr, distinct },
-            args,
-            name,
-            distinct,
-        ),
-        "MIN" => translate_aggregate_one_arg(
-            |expr, distinct| Aggregate::Min { expr, distinct },
-            args,
-            name,
-            distinct,
-        ),
-        "MAX" => translate_aggregate_one_arg(
-            |expr, distinct| Aggregate::Max { expr, distinct },
-            args,
-            name,
-            distinct,
-        ),
-        "AVG" => translate_aggregate_one_arg(
-            |expr, distinct| Aggregate::Avg { expr, distinct },
-            args,
-            name,
-            distinct,
-        ),
-        "VARIANCE" => translate_aggregate_one_arg(
-            |expr, distinct| Aggregate::Variance { expr, distinct },
-            args,
-            name,
-            distinct,
-        ),
-        "STDEV" => translate_aggregate_one_arg(
-            |expr, distinct| Aggregate::Stdev { expr, distinct },
-            args,
-            name,
-            distinct,
-        ),
+        "SUM" => translate_aggregate_one_arg(Aggregate::sum, args, name, distinct),
+        "MIN" => translate_aggregate_one_arg(Aggregate::min, args, name, distinct),
+        "MAX" => translate_aggregate_one_arg(Aggregate::max, args, name, distinct),
+        "AVG" => translate_aggregate_one_arg(Aggregate::avg, args, name, distinct),
+        "VARIANCE" => translate_aggregate_one_arg(Aggregate::variance, args, name, distinct),
+        "STDEV" => translate_aggregate_one_arg(Aggregate::stdev, args, name, distinct),
         "COALESCE" => {
             let exprs = args
                 .into_iter()

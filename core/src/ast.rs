@@ -11,7 +11,7 @@ pub use {
     data_type::DataType,
     ddl::*,
     expr::Expr,
-    function::{Aggregate, CountArgExpr, Function},
+    function::{Aggregate, AggregateFunction, CountArgExpr, Function},
     operator::*,
     query::*,
 };
