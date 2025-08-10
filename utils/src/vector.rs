@@ -58,6 +58,14 @@ impl<T> Vector<T> {
     pub fn get(&self, i: usize) -> Option<&T> {
         self.0.get(i)
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
 }
 
 impl<T> Default for Vector<T> {
@@ -93,5 +101,31 @@ impl<T> From<Vec<T>> for Vector<T> {
 impl<T> From<Vector<T>> for Vec<T> {
     fn from(vector: Vector<T>) -> Self {
         vector.0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Vector;
+
+    #[test]
+    fn test_len() {
+        let mut vector = Vector::new();
+        assert_eq!(vector.len(), 0);
+
+        vector = vector.push(1);
+        assert_eq!(vector.len(), 1);
+
+        vector = vector.push(2);
+        assert_eq!(vector.len(), 2);
+    }
+
+    #[test]
+    fn test_is_empty() {
+        let mut vector = Vector::new();
+        assert!(vector.is_empty());
+
+        vector = vector.push(1);
+        assert!(!vector.is_empty());
     }
 }

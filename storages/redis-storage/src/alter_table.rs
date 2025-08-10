@@ -220,7 +220,7 @@ impl AlterTable for RedisStorage {
                                 }
                                 DataRow::Map(_) => {
                                     return Err(Error::StorageMsg(
-                                    "[RedisStorage] conflict - add_column failed: schemaless row found".to_owned(),
+                                    "[RedisStorage] conflict - drop_column failed: schemaless row found".to_owned(),
                                 ));
                                 }
                             }

@@ -12,7 +12,7 @@ use {
     serde::{Deserialize, Serialize},
     std::{
         cmp::Ordering,
-        collections::{BTreeMap, HashMap},
+        collections::BTreeMap,
         fmt::Debug,
         hash::{Hash, Hasher},
         mem::discriminant,
@@ -33,7 +33,7 @@ mod uuid;
 pub use {
     convert::ConvertError,
     error::{NumericBinaryOperator, ValueError},
-    json::HashMapJsonExt,
+    json::BTreeMapJsonExt,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -60,7 +60,7 @@ pub enum Value {
     Time(NaiveTime),
     Interval(Interval),
     Uuid(u128),
-    Map(HashMap<String, Value>),
+    Map(BTreeMap<String, Value>),
     List(Vec<Value>),
     Point(Point),
     Null,
@@ -989,7 +989,7 @@ mod tests {
         crate::data::{NumericBinaryOperator, ValueError, point::Point, value::uuid::parse_uuid},
         chrono::{NaiveDate, NaiveTime},
         rust_decimal::Decimal,
-        std::{net::IpAddr, str::FromStr},
+        std::{collections::HashMap, net::IpAddr, str::FromStr},
     };
 
     fn time(hour: u32, min: u32, sec: u32) -> NaiveTime {
@@ -2940,7 +2940,7 @@ mod tests {
             chrono::{NaiveDate, NaiveTime},
             rust_decimal::Decimal,
             std::{
-                collections::HashMap,
+                collections::BTreeMap,
                 collections::hash_map::DefaultHasher,
                 f32::consts::PI as PI_F32,
                 f64::consts::PI as PI_F64,
@@ -3034,11 +3034,11 @@ mod tests {
         }
 
         let map_test_cases = [{
-            let mut map1 = HashMap::new();
+            let mut map1 = BTreeMap::new();
             map1.insert("b".to_owned(), I64(2));
             map1.insert("a".to_owned(), I64(1));
 
-            let mut map2 = HashMap::new();
+            let mut map2 = BTreeMap::new();
             map2.insert("a".to_owned(), I64(1));
             map2.insert("b".to_owned(), I64(2));
 
@@ -3108,9 +3108,11 @@ mod tests {
 
         // NaN as HashMap key
         let mut map = HashMap::new();
-        let nan_key = F32(f32::NAN);
-        map.insert(nan_key.clone(), "test");
-        assert_eq!(map.get(&F32(f32::from_bits(0x7fc00001))), Some(&"test"));
+        map.insert(F32(f32::NAN), "test");
+        assert_eq!(
+            map.get(&F32(f32::from_bits(CANONICAL_F32_NAN_BITS))),
+            Some(&"test")
+        );
     }
 
     #[test]
@@ -3120,7 +3122,7 @@ mod tests {
             crate::data::point::Point,
             chrono::{NaiveDate, NaiveTime},
             rust_decimal::Decimal,
-            std::{collections::HashMap, net::IpAddr, str::FromStr},
+            std::{collections::BTreeMap, net::IpAddr, str::FromStr},
         };
 
         let test_cases = [
@@ -3191,22 +3193,20 @@ mod tests {
         assert_eq!(F64(0.0), F64(-0.0));
         assert_eq!(F32(f32::from_bits(0x7fc00001)), F32(f32::NAN));
 
-        // Point equality coverage - all PartialEq branches
         assert_eq!(
             Point(Point::new(f64::NAN, 1.0)),
             Point(Point::new(f64::NAN, 1.0))
-        ); // x.is_nan() && other.x.is_nan()
+        );
         assert_eq!(
             Point(Point::new(1.0, f64::NAN)),
             Point(Point::new(1.0, f64::NAN))
-        ); // y.is_nan() && other.y.is_nan()
-        assert_eq!(Point(Point::new(0.0, 1.0)), Point(Point::new(-0.0, 1.0))); // x == 0.0 && other.x == 0.0
-        assert_eq!(Point(Point::new(1.0, 0.0)), Point(Point::new(1.0, -0.0))); // y == 0.0 && other.y == 0.0
+        );
+        assert_eq!(Point(Point::new(0.0, 1.0)), Point(Point::new(-0.0, 1.0)));
+        assert_eq!(Point(Point::new(1.0, 0.0)), Point(Point::new(1.0, -0.0)));
 
-        // Map equality
-        let mut map1 = HashMap::new();
+        let mut map1 = BTreeMap::new();
         map1.insert("a".to_owned(), I64(1));
-        let mut map2 = HashMap::new();
+        let mut map2 = BTreeMap::new();
         map2.insert("a".to_owned(), I64(1));
         assert_eq!(Map(map1), Map(map2));
     }

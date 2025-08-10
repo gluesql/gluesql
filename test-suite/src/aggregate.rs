@@ -1,6 +1,7 @@
 pub mod avg;
 pub mod count;
 pub mod error;
+pub mod expr;
 pub mod group_by;
 pub mod max;
 pub mod min;

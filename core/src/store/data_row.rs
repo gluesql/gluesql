@@ -4,13 +4,13 @@ use {
         executor::RowContext,
     },
     serde::{Deserialize, Serialize},
-    std::collections::HashMap,
+    std::collections::BTreeMap,
 };
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum DataRow {
     Vec(Vec<Value>),
-    Map(HashMap<String, Value>),
+    Map(BTreeMap<String, Value>),
 }
 
 impl From<Row> for DataRow {

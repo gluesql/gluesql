@@ -15,7 +15,12 @@ use {
         stream::{self, Stream, StreamExt, TryStreamExt, empty, once},
     },
     itertools::Itertools,
-    std::{borrow::Cow, collections::HashMap, pin::Pin, rc::Rc},
+    std::{
+        borrow::Cow,
+        collections::{BTreeMap, HashMap},
+        pin::Pin,
+        rc::Rc,
+    },
     utils::OrStream,
 };
 
@@ -101,7 +106,7 @@ async fn join<'a, T: GStore>(
                     columns: Rc::clone(columns),
                     values: columns.iter().map(|_| Value::Null).collect(),
                 },
-                None => Row::Map(HashMap::new()),
+                None => Row::Map(BTreeMap::new()),
             };
 
             Rc::new(RowContext::new(

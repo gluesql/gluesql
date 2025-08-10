@@ -2,13 +2,13 @@ use {
     super::{Value, ValueError},
     crate::result::Result,
     std::{
-        collections::HashMap,
+        collections::BTreeMap,
         ops::ControlFlow::{Break, Continue},
     },
 };
 
 enum Selectable<'a> {
-    Map(&'a HashMap<String, Value>),
+    Map(&'a BTreeMap<String, Value>),
     List(&'a Vec<Value>),
     Other(&'a Value),
 }
