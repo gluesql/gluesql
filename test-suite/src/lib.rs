@@ -305,6 +305,22 @@ macro_rules! generate_store_tests {
             ast_builder::function::datetime::current_date_and_time
         );
         glue!(
+            ast_builder_function_reference_current_date,
+            ast_builder::function::reference::current_date
+        );
+        glue!(
+            ast_builder_function_reference_current_time,
+            ast_builder::function::reference::current_time
+        );
+        glue!(
+            ast_builder_function_reference_current_timestamp,
+            ast_builder::function::reference::current_timestamp
+        );
+        glue!(
+            ast_builder_function_reference_generate_uuid,
+            ast_builder::function::reference::generate_uuid
+        );
+        glue!(
             ast_builder_function_text_position_and_indexing,
             ast_builder::function::text::position_and_indexing
         );
