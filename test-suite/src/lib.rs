@@ -281,6 +281,10 @@ macro_rules! generate_store_tests {
             ast_builder::function::other::ifnull::ifnull
         );
         glue!(
+            ast_builder_function_other_nullif,
+            ast_builder::function::other::nullif::nullif
+        );
+        glue!(
             ast_builder_function_datetime_conversion,
             ast_builder::function::datetime::conversion
         );
