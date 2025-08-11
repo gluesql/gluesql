@@ -22,7 +22,12 @@ use {
     },
     futures::stream::{StreamExt, TryStreamExt},
     serde::{Deserialize, Serialize},
-    std::{collections::HashMap, env::var, fmt::Debug, sync::Arc},
+    std::{
+        collections::{BTreeMap, HashMap},
+        env::var,
+        fmt::Debug,
+        sync::Arc,
+    },
     thiserror::Error as ThisError,
 };
 
@@ -41,7 +46,7 @@ pub enum Payload {
         labels: Vec<String>,
         rows: Vec<Vec<Value>>,
     },
-    SelectMap(Vec<HashMap<String, Value>>),
+    SelectMap(Vec<BTreeMap<String, Value>>),
     Delete(usize),
     Update(usize),
     DropTable(usize),

@@ -1,6 +1,6 @@
 use {
     crate::data::{Row, Value},
-    std::{borrow::Cow, collections::HashMap, fmt::Debug, sync::Arc},
+    std::{borrow::Cow, collections::BTreeMap, fmt::Debug, sync::Arc},
 };
 
 #[derive(Debug)]
@@ -14,7 +14,7 @@ pub enum RowContext<'a> {
         columns: &'a [String],
         values: &'a [Value],
     },
-    RefMapData(&'a HashMap<String, Value>),
+    RefMapData(&'a BTreeMap<String, Value>),
     Bridge {
         left: Arc<RowContext<'a>>,
         right: Arc<RowContext<'a>>,

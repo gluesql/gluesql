@@ -10,7 +10,14 @@ use {
     core::ops::Sub,
     rust_decimal::Decimal,
     serde::{Deserialize, Serialize},
-    std::{cmp::Ordering, collections::HashMap, fmt::Debug, net::IpAddr},
+    std::{
+        cmp::Ordering,
+        collections::BTreeMap,
+        fmt::Debug,
+        hash::{Hash, Hasher},
+        mem::discriminant,
+        net::IpAddr,
+    },
 };
 
 mod binary_op;
@@ -26,10 +33,10 @@ mod uuid;
 pub use {
     convert::ConvertError,
     error::{NumericBinaryOperator, ValueError},
-    json::HashMapJsonExt,
+    json::BTreeMapJsonExt,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Value {
     Bool(bool),
     I8(i8),
@@ -53,7 +60,7 @@ pub enum Value {
     Time(NaiveTime),
     Interval(Interval),
     Uuid(u128),
-    Map(HashMap<String, Value>),
+    Map(BTreeMap<String, Value>),
     List(Vec<Value>),
     Point(Point),
     Null,
@@ -860,6 +867,103 @@ impl Value {
     }
 }
 
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Value::Bool(a), Value::Bool(b)) => a == b,
+            (Value::I8(a), Value::I8(b)) => a == b,
+            (Value::I16(a), Value::I16(b)) => a == b,
+            (Value::I32(a), Value::I32(b)) => a == b,
+            (Value::I64(a), Value::I64(b)) => a == b,
+            (Value::I128(a), Value::I128(b)) => a == b,
+            (Value::U8(a), Value::U8(b)) => a == b,
+            (Value::U16(a), Value::U16(b)) => a == b,
+            (Value::U32(a), Value::U32(b)) => a == b,
+            (Value::U64(a), Value::U64(b)) => a == b,
+            (Value::U128(a), Value::U128(b)) => a == b,
+            (Value::F32(a), Value::F32(b)) => (a.is_nan() && b.is_nan()) || a == b,
+            (Value::F64(a), Value::F64(b)) => (a.is_nan() && b.is_nan()) || a == b,
+            (Value::Decimal(a), Value::Decimal(b)) => a == b,
+            (Value::Str(a), Value::Str(b)) => a == b,
+            (Value::Bytea(a), Value::Bytea(b)) => a == b,
+            (Value::Inet(a), Value::Inet(b)) => a == b,
+            (Value::Date(a), Value::Date(b)) => a == b,
+            (Value::Timestamp(a), Value::Timestamp(b)) => a == b,
+            (Value::Time(a), Value::Time(b)) => a == b,
+            (Value::Interval(a), Value::Interval(b)) => a == b,
+            (Value::Uuid(a), Value::Uuid(b)) => a == b,
+            (Value::Map(a), Value::Map(b)) => a == b,
+            (Value::List(a), Value::List(b)) => a == b,
+            (Value::Point(a), Value::Point(b)) => a == b,
+            (Value::Null, Value::Null) => true,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Value {}
+
+impl Hash for Value {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        const CANONICAL_F32_NAN_BITS: u32 = 0x7fc00000;
+        const CANONICAL_F64_NAN_BITS: u64 = 0x7ff8000000000000;
+        const CANONICAL_F32_ZERO_BITS: u32 = 0;
+        const CANONICAL_F64_ZERO_BITS: u64 = 0;
+
+        discriminant(self).hash(state);
+
+        match self {
+            Value::Bool(v) => v.hash(state),
+            Value::I8(v) => v.hash(state),
+            Value::I16(v) => v.hash(state),
+            Value::I32(v) => v.hash(state),
+            Value::I64(v) => v.hash(state),
+            Value::I128(v) => v.hash(state),
+            Value::U8(v) => v.hash(state),
+            Value::U16(v) => v.hash(state),
+            Value::U32(v) => v.hash(state),
+            Value::U64(v) => v.hash(state),
+            Value::U128(v) => v.hash(state),
+            Value::F32(v) => {
+                if v.is_nan() {
+                    CANONICAL_F32_NAN_BITS.hash(state);
+                } else if *v == 0.0f32 {
+                    CANONICAL_F32_ZERO_BITS.hash(state);
+                } else {
+                    v.to_bits().hash(state);
+                }
+            }
+            Value::F64(v) => {
+                if v.is_nan() {
+                    CANONICAL_F64_NAN_BITS.hash(state);
+                } else if *v == 0.0f64 {
+                    CANONICAL_F64_ZERO_BITS.hash(state);
+                } else {
+                    v.to_bits().hash(state);
+                }
+            }
+            Value::Decimal(v) => v.hash(state),
+            Value::Str(v) => v.hash(state),
+            Value::Bytea(v) => v.hash(state),
+            Value::Inet(v) => v.hash(state),
+            Value::Date(v) => v.hash(state),
+            Value::Timestamp(v) => v.hash(state),
+            Value::Time(v) => v.hash(state),
+            Value::Interval(v) => v.hash(state),
+            Value::Uuid(v) => v.hash(state),
+            Value::Map(map) => {
+                map.hash(state);
+            }
+            Value::List(list) => list.hash(state),
+            Value::Point(p) => p.hash(state),
+            Value::Null => {
+                // Null gets its own unique hash based on discriminant only
+                // No additional data needed since discriminant already makes it unique
+            }
+        }
+    }
+}
+
 fn str_position(from_str: &str, sub_str: &str) -> usize {
     if from_str.is_empty() || sub_str.is_empty() {
         return 0;
@@ -877,7 +981,7 @@ mod tests {
         crate::data::{NumericBinaryOperator, ValueError, point::Point, value::uuid::parse_uuid},
         chrono::{NaiveDate, NaiveTime},
         rust_decimal::Decimal,
-        std::{net::IpAddr, str::FromStr},
+        std::{collections::HashMap, net::IpAddr, str::FromStr},
     };
 
     fn time(hour: u32, min: u32, sec: u32) -> NaiveTime {
@@ -2818,5 +2922,284 @@ mod tests {
         assert_eq!(map.get_type(), Some(D::Map));
         assert_eq!(list.get_type(), Some(D::List));
         assert_eq!(Null.get_type(), None);
+    }
+
+    #[test]
+    fn hash() {
+        use {
+            super::Interval,
+            crate::data::point::Point,
+            chrono::{NaiveDate, NaiveTime},
+            rust_decimal::Decimal,
+            std::{
+                collections::BTreeMap,
+                collections::hash_map::DefaultHasher,
+                f32::consts::PI as PI_F32,
+                f64::consts::PI as PI_F64,
+                hash::{Hash, Hasher},
+                net::IpAddr,
+                str::FromStr,
+            },
+        };
+
+        fn hash_value<T: Hash>(t: &T) -> u64 {
+            let mut hasher = DefaultHasher::new();
+            t.hash(&mut hasher);
+            hasher.finish()
+        }
+
+        // Float zero normalization: 0.0 and -0.0 should hash the same
+        let zero_pos_f32 = F32(0.0);
+        let zero_neg_f32 = F32(-0.0);
+        assert_eq!(hash_value(&zero_pos_f32), hash_value(&zero_neg_f32),);
+
+        let zero_pos_f64 = F64(0.0);
+        let zero_neg_f64 = F64(-0.0);
+        assert_eq!(hash_value(&zero_pos_f64), hash_value(&zero_neg_f64),);
+
+        // Non-zero floats should hash differently
+        let one_f32 = F32(1.0);
+        let neg_one_f32 = F32(-1.0);
+        assert_ne!(hash_value(&one_f32), hash_value(&neg_one_f32),);
+
+        let one_f64 = F64(1.0);
+        let neg_one_f64 = F64(-1.0);
+        assert_ne!(hash_value(&one_f64), hash_value(&neg_one_f64),);
+
+        let values_equal = [
+            (I8(42), I8(42)),
+            (I16(42), I16(42)),
+            (I32(42), I32(42)),
+            (I64(42), I64(42)),
+            (I128(42), I128(42)),
+            (U8(42), U8(42)),
+            (U16(42), U16(42)),
+            (U32(42), U32(42)),
+            (U64(42), U64(42)),
+            (U128(42), U128(42)),
+            (F32(PI_F32), F32(PI_F32)),
+            (F64(PI_F64), F64(PI_F64)),
+            (Decimal(Decimal::new(314, 2)), Decimal(Decimal::new(314, 2))),
+            (Bool(true), Bool(true)),
+            (Bool(false), Bool(false)),
+            (Str("test".to_owned()), Str("test".to_owned())),
+            (Bytea(vec![1, 2, 3]), Bytea(vec![1, 2, 3])),
+            (
+                Inet(IpAddr::from_str("127.0.0.1").unwrap()),
+                Inet(IpAddr::from_str("127.0.0.1").unwrap()),
+            ),
+            (
+                Inet(IpAddr::from_str("::1").unwrap()),
+                Inet(IpAddr::from_str("::1").unwrap()),
+            ),
+            (
+                Date(NaiveDate::from_ymd_opt(2025, 8, 6).unwrap()),
+                Date(NaiveDate::from_ymd_opt(2025, 8, 6).unwrap()),
+            ),
+            (
+                Timestamp(
+                    NaiveDate::from_ymd_opt(2025, 8, 6)
+                        .unwrap()
+                        .and_hms_opt(10, 30, 0)
+                        .unwrap(),
+                ),
+                Timestamp(
+                    NaiveDate::from_ymd_opt(2025, 8, 6)
+                        .unwrap()
+                        .and_hms_opt(10, 30, 0)
+                        .unwrap(),
+                ),
+            ),
+            (
+                Time(NaiveTime::from_hms_opt(10, 30, 0).unwrap()),
+                Time(NaiveTime::from_hms_opt(10, 30, 0).unwrap()),
+            ),
+            (Interval(Interval::hours(5)), Interval(Interval::hours(5))),
+            (Uuid(123456789), Uuid(123456789)),
+            (List(vec![I64(1), I64(2)]), List(vec![I64(1), I64(2)])),
+            (Null, Null),
+        ];
+
+        for (a, b) in values_equal {
+            assert_eq!(a, b);
+            assert_eq!(hash_value(&a), hash_value(&b), "{:?} vs {:?}", a, b);
+        }
+
+        let map_test_cases = [{
+            let mut map1 = BTreeMap::new();
+            map1.insert("b".to_owned(), I64(2));
+            map1.insert("a".to_owned(), I64(1));
+
+            let mut map2 = BTreeMap::new();
+            map2.insert("a".to_owned(), I64(1));
+            map2.insert("b".to_owned(), I64(2));
+
+            (super::Value::Map(map1), super::Value::Map(map2))
+        }];
+
+        for (value_map1, value_map2) in map_test_cases {
+            assert_eq!(value_map1, value_map2);
+            assert_eq!(hash_value(&value_map1), hash_value(&value_map2));
+        }
+
+        const CANONICAL_F64_NAN_BITS: u64 = 0x7ff8000000000000;
+        const CANONICAL_F32_NAN_BITS: u32 = 0x7fc00000;
+        const CANONICAL_F32_ZERO_BITS: u32 = 0;
+        const CANONICAL_F64_ZERO_BITS: u64 = 0;
+        let point_test_cases = [
+            (Point(Point::new(1.0, 2.0)), Point(Point::new(1.0, 2.0))),
+            (Point(Point::new(0.0, 1.0)), Point(Point::new(-0.0, 1.0))),
+            (Point(Point::new(1.0, 0.0)), Point(Point::new(1.0, -0.0))),
+            (
+                Point(Point::new(1.0, f64::NAN)),
+                Point(Point::new(1.0, f64::from_bits(CANONICAL_F64_NAN_BITS))),
+            ),
+            (
+                Point(Point::new(f64::NAN, 1.0)),
+                Point(Point::new(f64::from_bits(CANONICAL_F64_NAN_BITS), 1.0)),
+            ),
+            (
+                Point(Point::new(f64::NAN, f64::NAN)),
+                Point(Point::new(
+                    f64::from_bits(CANONICAL_F64_NAN_BITS),
+                    f64::from_bits(CANONICAL_F64_NAN_BITS),
+                )),
+            ),
+            (
+                Point(Point::new(1.0, 0.0_f64)),
+                Point(Point::new(1.0, f64::from_bits(CANONICAL_F64_ZERO_BITS))),
+            ),
+            (
+                Point(Point::new(1.0, -0.0_f64)),
+                Point(Point::new(1.0, f64::from_bits(CANONICAL_F64_ZERO_BITS))),
+            ),
+        ];
+
+        for (point1, point2) in point_test_cases {
+            assert_eq!(hash_value(&point1), hash_value(&point2));
+        }
+
+        assert_eq!(hash_value(&F32(0.0)), hash_value(&F32(-0.0)));
+        assert_eq!(hash_value(&F64(0.0)), hash_value(&F64(-0.0)));
+        assert_eq!(
+            hash_value(&F32(f32::NAN)),
+            hash_value(&F32(f32::from_bits(CANONICAL_F32_NAN_BITS)))
+        );
+        assert_eq!(
+            hash_value(&F64(f64::NAN)),
+            hash_value(&F64(f64::from_bits(CANONICAL_F64_NAN_BITS)))
+        );
+        assert_eq!(
+            hash_value(&F32(f32::from_bits(CANONICAL_F32_ZERO_BITS))),
+            hash_value(&F32(0.0))
+        );
+        assert_eq!(
+            hash_value(&F64(f64::from_bits(CANONICAL_F64_ZERO_BITS))),
+            hash_value(&F64(0.0))
+        );
+
+        // NaN as HashMap key
+        let mut map = HashMap::new();
+        map.insert(F32(f32::NAN), "test");
+        assert_eq!(
+            map.get(&F32(f32::from_bits(CANONICAL_F32_NAN_BITS))),
+            Some(&"test")
+        );
+    }
+
+    #[test]
+    fn eq() {
+        use {
+            super::Interval,
+            crate::data::point::Point,
+            chrono::{NaiveDate, NaiveTime},
+            rust_decimal::Decimal,
+            std::{collections::BTreeMap, net::IpAddr, str::FromStr},
+        };
+
+        let test_cases = [
+            (Bool(true), Bool(true), true),
+            (Bool(true), Bool(false), false),
+            (I8(42), I8(42), true),
+            (I16(42), I16(42), true),
+            (I32(42), I32(42), true),
+            (I64(42), I64(42), true),
+            (I128(42), I128(42), true),
+            (U8(42), U8(42), true),
+            (U16(42), U16(42), true),
+            (U32(42), U32(42), true),
+            (U64(42), U64(42), true),
+            (U128(42), U128(42), true),
+            (F32(1.5), F32(1.5), true),
+            (F64(1.5), F64(1.5), true),
+            (
+                Decimal(Decimal::new(314, 2)),
+                Decimal(Decimal::new(314, 2)),
+                true,
+            ),
+            (Str("test".to_owned()), Str("test".to_owned()), true),
+            (Bytea(vec![1, 2, 3]), Bytea(vec![1, 2, 3]), true),
+            (
+                Inet(IpAddr::from_str("127.0.0.1").unwrap()),
+                Inet(IpAddr::from_str("127.0.0.1").unwrap()),
+                true,
+            ),
+            (
+                Date(NaiveDate::from_ymd_opt(2025, 1, 1).unwrap()),
+                Date(NaiveDate::from_ymd_opt(2025, 1, 1).unwrap()),
+                true,
+            ),
+            (
+                Time(NaiveTime::from_hms_opt(10, 30, 0).unwrap()),
+                Time(NaiveTime::from_hms_opt(10, 30, 0).unwrap()),
+                true,
+            ),
+            (
+                Interval(Interval::hours(5)),
+                Interval(Interval::hours(5)),
+                true,
+            ),
+            (Uuid(123456789), Uuid(123456789), true),
+            (List(vec![I64(1), I64(2)]), List(vec![I64(1), I64(2)]), true),
+            (
+                Point(Point::new(1.0, 2.0)),
+                Point(Point::new(1.0, 2.0)),
+                true,
+            ),
+            (Null, Null, true),
+        ];
+
+        for (a, b, expected) in test_cases {
+            assert_eq!(a == b, expected);
+        }
+
+        // Different types are not equal
+        assert_ne!(Bool(true), I32(1));
+        assert_ne!(F32(1.0), F64(1.0));
+        assert_ne!(Null, Bool(false));
+
+        // Float special cases: NaN == NaN, +0.0 == -0.0
+        assert_eq!(F32(f32::NAN), F32(f32::NAN));
+        assert_eq!(F64(f64::NAN), F64(f64::NAN));
+        assert_eq!(F32(0.0), F32(-0.0));
+        assert_eq!(F64(0.0), F64(-0.0));
+        assert_eq!(F32(f32::from_bits(0x7fc00001)), F32(f32::NAN));
+
+        assert_eq!(
+            Point(Point::new(f64::NAN, 1.0)),
+            Point(Point::new(f64::NAN, 1.0))
+        );
+        assert_eq!(
+            Point(Point::new(1.0, f64::NAN)),
+            Point(Point::new(1.0, f64::NAN))
+        );
+        assert_eq!(Point(Point::new(0.0, 1.0)), Point(Point::new(-0.0, 1.0)));
+        assert_eq!(Point(Point::new(1.0, 0.0)), Point(Point::new(1.0, -0.0)));
+
+        let mut map1 = BTreeMap::new();
+        map1.insert("a".to_owned(), I64(1));
+        let mut map2 = BTreeMap::new();
+        map2.insert("a".to_owned(), I64(1));
+        assert_eq!(Map(map1), Map(map2));
     }
 }

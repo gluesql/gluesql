@@ -28,7 +28,7 @@ pub struct Item {
 pub struct MemoryStorage {
     pub id_counter: i64,
     pub items: HashMap<String, Item>,
-    pub metadata: HashMap<String, HashMap<String, Value>>,
+    pub metadata: HashMap<String, BTreeMap<String, Value>>,
     pub functions: HashMap<String, StructCustomFunction>,
 }
 
@@ -107,7 +107,7 @@ impl Store for MemoryStorage {
 #[async_trait]
 impl StoreMut for MemoryStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
-        let created = HashMap::from([(
+        let created = BTreeMap::from([(
             "CREATED".to_owned(),
             Value::Timestamp(Utc::now().naive_utc()),
         )]);

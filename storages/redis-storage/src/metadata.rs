@@ -7,13 +7,13 @@ use {
         store::{MetaIter, Metadata},
     },
     redis::Commands,
-    std::collections::HashMap,
+    std::collections::BTreeMap,
 };
 
 #[async_trait]
 impl Metadata for RedisStorage {
     async fn scan_table_meta(&self) -> Result<MetaIter> {
-        let mut all_metadata: HashMap<String, HashMap<String, Value>> = HashMap::new();
+        let mut all_metadata: BTreeMap<String, BTreeMap<String, Value>> = BTreeMap::new();
         let metadata_scan_key = Self::redis_generate_scan_all_metadata_key(&self.namespace);
         let redis_keys: Vec<String> = {
             let mut conn = self.conn.lock().unwrap();
@@ -53,8 +53,8 @@ impl Metadata for RedisStorage {
                 if let Some(meta_table) = all_metadata.get_mut(tokens[3]) {
                     meta_table.insert(tokens[4].to_owned(), value);
                 } else {
-                    let meta_table = HashMap::from([(tokens[4].to_owned(), value)]);
-                    let meta = HashMap::from([(tokens[3].to_owned(), meta_table)]);
+                    let meta_table = BTreeMap::from([(tokens[4].to_owned(), value)]);
+                    let meta = BTreeMap::from([(tokens[3].to_owned(), meta_table)]);
                     all_metadata.extend(meta);
                 }
             }

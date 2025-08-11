@@ -10,14 +10,14 @@ use {
     error::{JsonStorageError, OptionExt, ResultExt},
     gluesql_core::{
         ast::ColumnUniqueOption,
-        data::{Key, Schema, value::HashMapJsonExt},
+        data::{Key, Schema, value::BTreeMapJsonExt},
         error::{Error, Result},
         store::{DataRow, Metadata},
     },
     iter_enum::Iterator,
     serde_json::Value as JsonValue,
     std::{
-        collections::HashMap,
+        collections::BTreeMap,
         fs::{self, File},
         io::{self, BufRead, Read},
         path::{Path, PathBuf},
@@ -126,13 +126,13 @@ impl JsonStorage {
                     JsonValue::Array(values) => values
                         .into_iter()
                         .map(|value| match value {
-                            JsonValue::Object(json_map) => HashMap::try_from_json_map(json_map),
+                            JsonValue::Object(json_map) => BTreeMap::try_from_json_map(json_map),
                             _ => Err(Error::StorageMsg(
                                 JsonStorageError::JsonObjectTypeRequired.to_string(),
                             )),
                         })
                         .collect::<Result<Vec<_>>>(),
-                    JsonValue::Object(json_map) => Ok(vec![HashMap::try_from_json_map(json_map)?]),
+                    JsonValue::Object(json_map) => Ok(vec![BTreeMap::try_from_json_map(json_map)?]),
                     _ => Err(Error::StorageMsg(
                         JsonStorageError::JsonArrayTypeRequired.to_string(),
                     )),
@@ -143,7 +143,7 @@ impl JsonStorage {
             Err(_) => {
                 let jsonl_path = self.jsonl_path(table_name);
                 let lines = read_lines(jsonl_path).map_storage_err()?;
-                let jsons = lines.map(|line| HashMap::parse_json_object(&line.map_storage_err()?));
+                let jsons = lines.map(|line| BTreeMap::parse_json_object(&line.map_storage_err()?));
 
                 Extension::Jsonl(jsons)
             }

@@ -5,7 +5,7 @@ use {
     },
     gluesql_csv_storage::CsvStorage,
     rust_decimal_macros::dec,
-    std::collections::HashMap,
+    std::collections::BTreeMap,
 };
 
 macro_rules! date {
@@ -66,7 +66,7 @@ async fn types_only() {
     .map(|row| {
         row.into_iter()
             .map(|(k, v)| (k.to_owned(), v))
-            .collect::<HashMap<_, _>>()
+            .collect::<BTreeMap<_, _>>()
     })
     .collect::<Vec<_>>();
     let expected = Payload::SelectMap(expected);

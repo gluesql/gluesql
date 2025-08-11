@@ -9,7 +9,7 @@ use {
         store::{AlterTable, DataRow},
     },
     gluesql_redis_storage::RedisStorage,
-    std::{collections::HashMap, env, fs},
+    std::{collections::BTreeMap, env, fs},
 };
 
 fn get_config() -> (String, u16) {
@@ -42,7 +42,7 @@ async fn add_column_schemaless_row_error() {
         "dummy",
         serde_json::to_string(&Key::I64(1)).unwrap()
     );
-    let mut map = HashMap::new();
+    let mut map = BTreeMap::new();
     map.insert("id".to_owned(), Value::I64(1));
     let row = DataRow::Map(map);
     let value = serde_json::to_string(&row).unwrap();
@@ -134,7 +134,7 @@ async fn drop_column_schemaless_row_error() {
         "dummy",
         serde_json::to_string(&Key::I64(1)).unwrap()
     );
-    let mut map = HashMap::new();
+    let mut map = BTreeMap::new();
     map.insert("id".to_owned(), Value::I64(1));
     map.insert("foo".to_owned(), Value::I64(10));
     let row = DataRow::Map(map);

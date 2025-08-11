@@ -14,7 +14,7 @@ use {
     },
     serde_json::from_str,
     std::{
-        collections::HashMap,
+        collections::BTreeMap,
         fs::{self, File},
         path::{Path, PathBuf},
     },
@@ -160,7 +160,7 @@ impl ParquetStorage {
             let tmp_schema = Self::generate_temp_schema();
             for record in row_iter {
                 let record: Row = record.map_storage_err()?;
-                let mut data_map = HashMap::new();
+                let mut data_map = BTreeMap::new();
 
                 for (_, field) in record.get_column_iter() {
                     let value = ParquetField(field.clone()).to_value(&tmp_schema, 0)?;

@@ -4,7 +4,7 @@ use {
     bson::{Bson, doc},
     gluesql_core::prelude::{Glue, Payload, Value},
     gluesql_mongo_storage::{MongoStorage, utils::Validator},
-    std::{collections::HashMap, vec},
+    std::{collections::BTreeMap, vec},
 };
 
 #[tokio::test]
@@ -78,14 +78,14 @@ async fn mongo_types() {
             ],
             rows: vec![vec![
                 Value::Str("function add(a, b) { return a + b; }".to_owned()),
-                Value::Map(HashMap::from([
+                Value::Map(BTreeMap::from([
                     (
                         "code".to_owned(),
                         Value::Str("function sub(a, b) { return a - b; }".to_owned()),
                     ),
                     (
                         "scope".to_owned(),
-                        Value::Map(HashMap::from([
+                        Value::Map(BTreeMap::from([
                             ("a".to_owned(), Value::I32(1)),
                             ("b".to_owned(), Value::I32(2)),
                         ])),
