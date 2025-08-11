@@ -928,7 +928,6 @@ impl Hash for Value {
             Value::U32(v) => v.hash(state),
             Value::U64(v) => v.hash(state),
             Value::U128(v) => v.hash(state),
-
             Value::F32(v) => {
                 if v.is_nan() {
                     CANONICAL_F32_NAN_BITS.hash(state);
@@ -956,13 +955,10 @@ impl Hash for Value {
             Value::Time(v) => v.hash(state),
             Value::Interval(v) => v.hash(state),
             Value::Uuid(v) => v.hash(state),
-
             Value::Map(map) => {
-                let sorted_map: BTreeMap<_, _> = map.iter().collect();
-                sorted_map.hash(state);
+                map.hash(state);
             }
             Value::List(list) => list.hash(state),
-
             Value::Point(p) => p.hash(state),
             Value::Null => {
                 // Null gets its own unique hash based on discriminant only

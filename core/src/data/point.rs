@@ -45,13 +45,9 @@ impl Point {
 
 impl PartialEq for Point {
     fn eq(&self, other: &Self) -> bool {
-        let x_eq = (self.x.is_nan() && other.x.is_nan())
-            || (self.x == 0.0 && other.x == 0.0)
-            || self.x == other.x;
-        let y_eq = (self.y.is_nan() && other.y.is_nan())
-            || (self.y == 0.0 && other.y == 0.0)
-            || self.y == other.y;
-        x_eq && y_eq
+        let points_equal = |a: f64, b: f64| (a.is_nan() && b.is_nan()) || a == b;
+
+        points_equal(self.x, other.x) && points_equal(self.y, other.y)
     }
 }
 
@@ -62,21 +58,19 @@ impl Hash for Point {
         const CANONICAL_F64_NAN_BITS: u64 = 0x7ff8000000000000;
         const CANONICAL_F64_ZERO_BITS: u64 = 0;
 
-        let x_bits = if self.x.is_nan() {
-            CANONICAL_F64_NAN_BITS
-        } else if self.x == 0.0 {
-            CANONICAL_F64_ZERO_BITS
-        } else {
-            self.x.to_bits()
-        };
+        #[inline]
+        fn normalize_nan_and_zero(x: f64) -> u64 {
+            if x.is_nan() {
+                CANONICAL_F64_NAN_BITS
+            } else if x == 0.0 {
+                CANONICAL_F64_ZERO_BITS
+            } else {
+                x.to_bits()
+            }
+        }
 
-        let y_bits = if self.y.is_nan() {
-            CANONICAL_F64_NAN_BITS
-        } else if self.y == 0.0 {
-            CANONICAL_F64_ZERO_BITS
-        } else {
-            self.y.to_bits()
-        };
+        let x_bits = normalize_nan_and_zero(self.x);
+        let y_bits = normalize_nan_and_zero(self.y);
 
         x_bits.hash(state);
         y_bits.hash(state);
