@@ -881,12 +881,8 @@ impl PartialEq for Value {
             (Value::U32(a), Value::U32(b)) => a == b,
             (Value::U64(a), Value::U64(b)) => a == b,
             (Value::U128(a), Value::U128(b)) => a == b,
-            (Value::F32(a), Value::F32(b)) => {
-                (a.is_nan() && b.is_nan()) || (*a == 0.0 && *b == 0.0) || a == b
-            }
-            (Value::F64(a), Value::F64(b)) => {
-                (a.is_nan() && b.is_nan()) || (*a == 0.0 && *b == 0.0) || a == b
-            }
+            (Value::F32(a), Value::F32(b)) => (a.is_nan() && b.is_nan()) || a == b,
+            (Value::F64(a), Value::F64(b)) => (a.is_nan() && b.is_nan()) || a == b,
             (Value::Decimal(a), Value::Decimal(b)) => a == b,
             (Value::Str(a), Value::Str(b)) => a == b,
             (Value::Bytea(a), Value::Bytea(b)) => a == b,
