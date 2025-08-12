@@ -562,37 +562,34 @@ impl Aggregate {
     }
 }
 
+impl AggregateFunction {
+    fn to_sql_with_distinct(&self, distinct: bool) -> String {
+        let (name, arg) = match self {
+            AggregateFunction::Count(expr) => ("COUNT", expr.to_sql()),
+            AggregateFunction::Sum(expr) => ("SUM", expr.to_sql()),
+            AggregateFunction::Max(expr) => ("MAX", expr.to_sql()),
+            AggregateFunction::Min(expr) => ("MIN", expr.to_sql()),
+            AggregateFunction::Avg(expr) => ("AVG", expr.to_sql()),
+            AggregateFunction::Variance(expr) => ("VARIANCE", expr.to_sql()),
+            AggregateFunction::Stdev(expr) => ("STDEV", expr.to_sql()),
+        };
+        if distinct {
+            format!("{name}(DISTINCT {arg})")
+        } else {
+            format!("{name}({arg})")
+        }
+    }
+}
+
 impl ToSql for AggregateFunction {
     fn to_sql(&self) -> String {
-        match self {
-            AggregateFunction::Count(expr) => format!("COUNT({})", expr.to_sql()),
-            AggregateFunction::Sum(expr) => format!("SUM({})", expr.to_sql()),
-            AggregateFunction::Max(expr) => format!("MAX({})", expr.to_sql()),
-            AggregateFunction::Min(expr) => format!("MIN({})", expr.to_sql()),
-            AggregateFunction::Avg(expr) => format!("AVG({})", expr.to_sql()),
-            AggregateFunction::Variance(expr) => format!("VARIANCE({})", expr.to_sql()),
-            AggregateFunction::Stdev(expr) => format!("STDEV({})", expr.to_sql()),
-        }
+        self.to_sql_with_distinct(false)
     }
 }
 
 impl ToSql for Aggregate {
     fn to_sql(&self) -> String {
-        if self.distinct {
-            match &self.func {
-                AggregateFunction::Count(expr) => format!("COUNT(DISTINCT {})", expr.to_sql()),
-                AggregateFunction::Sum(expr) => format!("SUM(DISTINCT {})", expr.to_sql()),
-                AggregateFunction::Max(expr) => format!("MAX(DISTINCT {})", expr.to_sql()),
-                AggregateFunction::Min(expr) => format!("MIN(DISTINCT {})", expr.to_sql()),
-                AggregateFunction::Avg(expr) => format!("AVG(DISTINCT {})", expr.to_sql()),
-                AggregateFunction::Variance(expr) => {
-                    format!("VARIANCE(DISTINCT {})", expr.to_sql())
-                }
-                AggregateFunction::Stdev(expr) => format!("STDEV(DISTINCT {})", expr.to_sql()),
-            }
-        } else {
-            self.func.to_sql()
-        }
+        self.func.to_sql_with_distinct(self.distinct)
     }
 }
 
