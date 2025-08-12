@@ -581,12 +581,6 @@ impl AggregateFunction {
     }
 }
 
-impl ToSql for AggregateFunction {
-    fn to_sql(&self) -> String {
-        self.to_sql_with_distinct(false)
-    }
-}
-
 impl ToSql for Aggregate {
     fn to_sql(&self) -> String {
         self.func.to_sql_with_distinct(self.distinct)
@@ -1500,6 +1494,11 @@ mod tests {
         assert_eq!(
             "COUNT(*)",
             Expr::Aggregate(Box::new(Aggregate::count(CountArgExpr::Wildcard, false))).to_sql()
+        );
+
+        assert_eq!(
+            "COUNT(DISTINCT *)",
+            Expr::Aggregate(Box::new(Aggregate::count(CountArgExpr::Wildcard, true))).to_sql()
         );
 
         assert_eq!(
