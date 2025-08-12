@@ -9,7 +9,7 @@ use {
     futures::stream::{self, StreamExt, TryStreamExt},
     im_rc::{HashMap, HashSet},
     itertools::Itertools,
-    std::{cmp::Ordering, iter::once, rc::Rc},
+    std::{cmp::Ordering, rc::Rc},
     utils::{IndexMap, Vector},
 };
 
@@ -62,12 +62,12 @@ impl AggrValue {
         new_value: &Value,
     ) -> (bool, Option<HashSet<Value>>) {
         match distinct_values {
-            Some(set) => {
+            Some(mut set) => {
                 if set.contains(new_value) {
                     (false, Some(set))
                 } else {
-                    let new_set = set.into_iter().chain(once(new_value.clone())).collect();
-                    (true, Some(new_set))
+                    set.insert(new_value.clone());
+                    (true, Some(set))
                 }
             }
             None => (true, None),
