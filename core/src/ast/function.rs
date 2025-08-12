@@ -61,6 +61,11 @@ pub enum Function {
         expr: Expr,
         then: Expr,
     },
+    Iif {
+        cond: Expr,
+        then: Expr,
+        else_result: Expr,
+    },
     NullIf {
         expr1: Expr,
         expr2: Expr,
@@ -293,6 +298,18 @@ impl ToSql for Function {
             }
             Function::IfNull { expr, then } => {
                 format!("IFNULL({}, {})", expr.to_sql(), then.to_sql())
+            }
+            Function::Iif {
+                cond,
+                then,
+                else_result,
+            } => {
+                format!(
+                    "IIF({}, {}, {})",
+                    cond.to_sql(),
+                    then.to_sql(),
+                    else_result.to_sql()
+                )
             }
             Function::NullIf { expr1, expr2 } => {
                 format!("NULLIF({}, {})", expr1.to_sql(), expr2.to_sql())
@@ -1308,6 +1325,16 @@ mod tests {
             &Expr::Function(Box::new(Function::Take {
                 expr: Expr::Identifier("list".to_owned()),
                 size: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("3").unwrap()))
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"IIF("cond", "then", "else_result")"#,
+            &Expr::Function(Box::new(Function::Iif {
+                cond: Expr::Identifier("cond".to_owned()),
+                then: Expr::Identifier("then".to_owned()),
+                else_result: Expr::Identifier("else_result".to_owned())
             }))
             .to_sql()
         );

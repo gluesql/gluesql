@@ -12,6 +12,11 @@ pub enum FunctionNode<'a> {
         expr: ExprNode<'a>,
         then: ExprNode<'a>,
     },
+    Iif {
+        cond: ExprNode<'a>,
+        then: ExprNode<'a>,
+        else_result: ExprNode<'a>,
+    },
     NullIf {
         expr1: ExprNode<'a>,
         expr2: ExprNode<'a>,
@@ -190,6 +195,20 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
                 let expr = expr.try_into()?;
                 let then = then.try_into()?;
                 Ok(Function::IfNull { expr, then })
+            }
+            FunctionNode::Iif {
+                cond,
+                then,
+                else_result,
+            } => {
+                let cond = cond.try_into()?;
+                let then = then.try_into()?;
+                let else_result = else_result.try_into()?;
+                Ok(Function::Iif {
+                    cond,
+                    then,
+                    else_result,
+                })
             }
             FunctionNode::NullIf { expr1, expr2 } => {
                 let expr1 = expr1.try_into()?;
@@ -422,6 +441,13 @@ impl<'a> ExprNode<'a> {
     pub fn ifnull<T: Into<ExprNode<'a>>>(self, another: T) -> ExprNode<'a> {
         ifnull(self, another)
     }
+    pub fn iif<T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
+        self,
+        then_: T,
+        else_: U,
+    ) -> ExprNode<'a> {
+        iif(self, then_, else_)
+    }
     pub fn nullif<T: Into<ExprNode<'a>>>(self, another: T) -> ExprNode<'a> {
         nullif(self, another)
     }
@@ -603,6 +629,19 @@ pub fn ifnull<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(expr: T, then: U
         then: then.into(),
     }))
 }
+
+pub fn iif<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>, V: Into<ExprNode<'a>>>(
+    cond: T,
+    then_: U,
+    else_: V,
+) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Iif {
+        cond: cond.into(),
+        then: then_.into(),
+        else_result: else_.into(),
+    }))
+}
+
 pub fn nullif<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
     expr1: T,
     expr2: U,

@@ -124,6 +124,7 @@ macro_rules! generate_store_tests {
         glue!(function_concat, function::concat::concat);
         glue!(function_concat_ws, function::concat_ws::concat_ws);
         glue!(function_ifnull, function::ifnull::ifnull);
+        glue!(function_iif, function::iif::iif);
         glue!(function_is_empty, function::is_empty::is_empty);
         glue!(function_math_function_asin, function::math_function::asin);
         glue!(function_math_function_acos, function::math_function::acos);
