@@ -78,9 +78,7 @@ impl AggrValue {
         let value = value.clone();
 
         Ok(match &aggr.func {
-            AggregateFunction::Count {
-                expr: CountArgExpr::Wildcard,
-            } => {
+            AggregateFunction::Count(CountArgExpr::Wildcard) => {
                 let distinct_values = aggr.distinct.then(|| HashSet::from(&[value][..]));
 
                 AggrValue::Count {
@@ -89,9 +87,7 @@ impl AggrValue {
                     distinct_values,
                 }
             }
-            AggregateFunction::Count {
-                expr: CountArgExpr::Expr(_),
-            } => {
+            AggregateFunction::Count(CountArgExpr::Expr(_)) => {
                 let mut distinct_values = if aggr.distinct {
                     Some(HashSet::new())
                 } else {
@@ -110,7 +106,7 @@ impl AggrValue {
                     distinct_values,
                 }
             }
-            AggregateFunction::Sum { expr: _ } => {
+            AggregateFunction::Sum(_) => {
                 let mut distinct_values = if aggr.distinct {
                     Some(HashSet::new())
                 } else {
@@ -126,7 +122,7 @@ impl AggrValue {
                     distinct_values,
                 }
             }
-            AggregateFunction::Min { expr: _ } => {
+            AggregateFunction::Min(_) => {
                 let mut distinct_values = if aggr.distinct {
                     Some(HashSet::new())
                 } else {
@@ -142,7 +138,7 @@ impl AggrValue {
                     distinct_values,
                 }
             }
-            AggregateFunction::Max { expr: _ } => {
+            AggregateFunction::Max(_) => {
                 let mut distinct_values = if aggr.distinct {
                     Some(HashSet::new())
                 } else {
@@ -158,7 +154,7 @@ impl AggrValue {
                     distinct_values,
                 }
             }
-            AggregateFunction::Avg { expr: _ } => {
+            AggregateFunction::Avg(_) => {
                 let mut distinct_values = if aggr.distinct {
                     Some(HashSet::new())
                 } else {
@@ -175,7 +171,7 @@ impl AggrValue {
                     distinct_values,
                 }
             }
-            AggregateFunction::Variance { expr: _ } => {
+            AggregateFunction::Variance(_) => {
                 let mut distinct_values = if aggr.distinct {
                     Some(HashSet::new())
                 } else {
@@ -193,7 +189,7 @@ impl AggrValue {
                     distinct_values,
                 }
             }
-            AggregateFunction::Stdev { expr: _ } => {
+            AggregateFunction::Stdev(_) => {
                 let mut distinct_values = if aggr.distinct {
                     Some(HashSet::new())
                 } else {
@@ -486,9 +482,7 @@ impl<'a, T: GStore> State<'a, T> {
         aggr: &'a Aggregate,
     ) -> Result<State<'a, T>> {
         let value = match &aggr.func {
-            AggregateFunction::Count {
-                expr: CountArgExpr::Wildcard,
-            } => {
+            AggregateFunction::Count(CountArgExpr::Wildcard) => {
                 if aggr.distinct {
                     // For COUNT(DISTINCT *), we need to use all column values as a composite value
                     let context = filter_context.as_ref().expect(
@@ -501,19 +495,15 @@ impl<'a, T: GStore> State<'a, T> {
                     Value::Null
                 }
             }
-            AggregateFunction::Count {
-                expr: CountArgExpr::Expr(expr),
-            }
-            | AggregateFunction::Sum { expr }
-            | AggregateFunction::Min { expr }
-            | AggregateFunction::Max { expr }
-            | AggregateFunction::Avg { expr }
-            | AggregateFunction::Variance { expr }
-            | AggregateFunction::Stdev { expr } => {
-                evaluate(self.storage, filter_context, None, expr)
-                    .await?
-                    .try_into()?
-            }
+            AggregateFunction::Count(CountArgExpr::Expr(expr))
+            | AggregateFunction::Sum(expr)
+            | AggregateFunction::Min(expr)
+            | AggregateFunction::Max(expr)
+            | AggregateFunction::Avg(expr)
+            | AggregateFunction::Variance(expr)
+            | AggregateFunction::Stdev(expr) => evaluate(self.storage, filter_context, None, expr)
+                .await?
+                .try_into()?,
         };
         let aggr_value = match self.get(aggr) {
             Some((index, _)) if self.index <= *index => None,

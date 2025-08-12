@@ -513,13 +513,13 @@ impl ToSql for Function {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AggregateFunction {
-    Count { expr: CountArgExpr },
-    Sum { expr: Expr },
-    Max { expr: Expr },
-    Min { expr: Expr },
-    Avg { expr: Expr },
-    Variance { expr: Expr },
-    Stdev { expr: Expr },
+    Count(CountArgExpr),
+    Sum(Expr),
+    Max(Expr),
+    Min(Expr),
+    Avg(Expr),
+    Variance(Expr),
+    Stdev(Expr),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -534,44 +534,44 @@ impl Aggregate {
     }
 
     pub fn count(expr: CountArgExpr, distinct: bool) -> Self {
-        Self::new(AggregateFunction::Count { expr }, distinct)
+        Self::new(AggregateFunction::Count(expr), distinct)
     }
 
     pub fn sum(expr: Expr, distinct: bool) -> Self {
-        Self::new(AggregateFunction::Sum { expr }, distinct)
+        Self::new(AggregateFunction::Sum(expr), distinct)
     }
 
     pub fn max(expr: Expr, distinct: bool) -> Self {
-        Self::new(AggregateFunction::Max { expr }, distinct)
+        Self::new(AggregateFunction::Max(expr), distinct)
     }
 
     pub fn min(expr: Expr, distinct: bool) -> Self {
-        Self::new(AggregateFunction::Min { expr }, distinct)
+        Self::new(AggregateFunction::Min(expr), distinct)
     }
 
     pub fn avg(expr: Expr, distinct: bool) -> Self {
-        Self::new(AggregateFunction::Avg { expr }, distinct)
+        Self::new(AggregateFunction::Avg(expr), distinct)
     }
 
     pub fn variance(expr: Expr, distinct: bool) -> Self {
-        Self::new(AggregateFunction::Variance { expr }, distinct)
+        Self::new(AggregateFunction::Variance(expr), distinct)
     }
 
     pub fn stdev(expr: Expr, distinct: bool) -> Self {
-        Self::new(AggregateFunction::Stdev { expr }, distinct)
+        Self::new(AggregateFunction::Stdev(expr), distinct)
     }
 }
 
 impl ToSql for AggregateFunction {
     fn to_sql(&self) -> String {
         match self {
-            AggregateFunction::Count { expr } => format!("COUNT({})", expr.to_sql()),
-            AggregateFunction::Sum { expr } => format!("SUM({})", expr.to_sql()),
-            AggregateFunction::Max { expr } => format!("MAX({})", expr.to_sql()),
-            AggregateFunction::Min { expr } => format!("MIN({})", expr.to_sql()),
-            AggregateFunction::Avg { expr } => format!("AVG({})", expr.to_sql()),
-            AggregateFunction::Variance { expr } => format!("VARIANCE({})", expr.to_sql()),
-            AggregateFunction::Stdev { expr } => format!("STDEV({})", expr.to_sql()),
+            AggregateFunction::Count(expr) => format!("COUNT({})", expr.to_sql()),
+            AggregateFunction::Sum(expr) => format!("SUM({})", expr.to_sql()),
+            AggregateFunction::Max(expr) => format!("MAX({})", expr.to_sql()),
+            AggregateFunction::Min(expr) => format!("MIN({})", expr.to_sql()),
+            AggregateFunction::Avg(expr) => format!("AVG({})", expr.to_sql()),
+            AggregateFunction::Variance(expr) => format!("VARIANCE({})", expr.to_sql()),
+            AggregateFunction::Stdev(expr) => format!("STDEV({})", expr.to_sql()),
         }
     }
 }
@@ -580,15 +580,15 @@ impl ToSql for Aggregate {
     fn to_sql(&self) -> String {
         if self.distinct {
             match &self.func {
-                AggregateFunction::Count { expr } => format!("COUNT(DISTINCT {})", expr.to_sql()),
-                AggregateFunction::Sum { expr } => format!("SUM(DISTINCT {})", expr.to_sql()),
-                AggregateFunction::Max { expr } => format!("MAX(DISTINCT {})", expr.to_sql()),
-                AggregateFunction::Min { expr } => format!("MIN(DISTINCT {})", expr.to_sql()),
-                AggregateFunction::Avg { expr } => format!("AVG(DISTINCT {})", expr.to_sql()),
-                AggregateFunction::Variance { expr } => {
+                AggregateFunction::Count(expr) => format!("COUNT(DISTINCT {})", expr.to_sql()),
+                AggregateFunction::Sum(expr) => format!("SUM(DISTINCT {})", expr.to_sql()),
+                AggregateFunction::Max(expr) => format!("MAX(DISTINCT {})", expr.to_sql()),
+                AggregateFunction::Min(expr) => format!("MIN(DISTINCT {})", expr.to_sql()),
+                AggregateFunction::Avg(expr) => format!("AVG(DISTINCT {})", expr.to_sql()),
+                AggregateFunction::Variance(expr) => {
                     format!("VARIANCE(DISTINCT {})", expr.to_sql())
                 }
-                AggregateFunction::Stdev { expr } => format!("STDEV(DISTINCT {})", expr.to_sql()),
+                AggregateFunction::Stdev(expr) => format!("STDEV(DISTINCT {})", expr.to_sql()),
             }
         } else {
             self.func.to_sql()
