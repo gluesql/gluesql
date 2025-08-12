@@ -22,5 +22,5 @@ pub use {
     schema::{Schema, SchemaIndex, SchemaIndexOrd, SchemaParseError},
     string_ext::{StringExt, StringExtError},
     table::{TableError, get_alias, get_index},
-    value::{ConvertError, HashMapJsonExt, NumericBinaryOperator, Value, ValueError},
+    value::{BTreeMapJsonExt, ConvertError, NumericBinaryOperator, Value, ValueError},
 };

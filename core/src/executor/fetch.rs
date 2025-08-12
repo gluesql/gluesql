@@ -20,7 +20,7 @@ use {
         stream::{self, Stream, StreamExt, TryStreamExt},
     },
     serde::Serialize,
-    std::{borrow::Cow, collections::HashMap, fmt::Debug, iter, rc::Rc},
+    std::{borrow::Cow, collections::BTreeMap, fmt::Debug, iter, rc::Rc},
     thiserror::Error as ThisError,
 };
 
@@ -248,7 +248,7 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                         let table_metas = storage
                             .scan_table_meta()
                             .await?
-                            .collect::<Result<HashMap<_, _>>>()?;
+                            .collect::<Result<BTreeMap<_, _>>>()?;
                         let rows = schemas.into_iter().flat_map(move |schema| {
                             let meta = table_metas
                                 .iter()
@@ -257,16 +257,16 @@ pub async fn fetch_relation_rows<'a, T: GStore>(
                                 })
                                 .unwrap_or_default();
 
-                            let table_rows = HashMap::from([
+                            let table_rows = BTreeMap::from([
                                 ("OBJECT_NAME".to_owned(), Value::Str(schema.table_name)),
                                 ("OBJECT_TYPE".to_owned(), Value::Str("TABLE".to_owned())),
                             ])
                             .into_iter()
                             .chain(meta)
-                            .collect::<HashMap<_, _>>();
+                            .collect::<BTreeMap<_, _>>();
 
                             let index_rows = schema.indexes.into_iter().map(|index| {
-                                HashMap::from([
+                                BTreeMap::from([
                                     ("OBJECT_NAME".to_owned(), Value::Str(index.name)),
                                     ("OBJECT_TYPE".to_owned(), Value::Str("INDEX".to_owned())),
                                 ])

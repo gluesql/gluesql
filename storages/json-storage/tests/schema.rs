@@ -1,6 +1,6 @@
 use {
     gluesql_core::{
-        data::{Interval, value::HashMapJsonExt},
+        data::{Interval, value::BTreeMapJsonExt},
         prelude::{
             Glue,
             Value::{self, *},
@@ -8,7 +8,7 @@ use {
     },
     gluesql_json_storage::JsonStorage,
     std::{
-        collections::HashMap,
+        collections::BTreeMap,
         net::{IpAddr, Ipv4Addr},
     },
     test_suite::{concat_with, concat_with_null, row, select, select_with_null, stringify_label},
@@ -29,7 +29,7 @@ async fn json_schema() {
     let parse_uuid = |v| UUID::parse_str(v).unwrap().as_u128();
     let bytea = |v| hex::decode(v).unwrap();
     let ip = |a, b, c, d| IpAddr::V4(Ipv4Addr::new(a, b, c, d));
-    let m = |s: &str| HashMap::parse_json_object(s).unwrap();
+    let m = |s: &str| BTreeMap::parse_json_object(s).unwrap();
     let l = |s: &str| Value::parse_json_list(s).unwrap();
 
     let cases = vec![

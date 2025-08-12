@@ -133,7 +133,7 @@ mod tests {
         bigdecimal::{BigDecimal, FromPrimitive},
         chrono::{NaiveDate, NaiveTime},
         rust_decimal::Decimal,
-        std::collections::HashMap,
+        std::collections::BTreeMap,
     };
 
     #[test]
@@ -274,7 +274,7 @@ mod tests {
             )))
         );
         assert_eq!(
-            Value::Map(HashMap::from([("a".to_owned(), Value::Bool(true))])).try_into(),
+            Value::Map(BTreeMap::from([("a".to_owned(), Value::Bool(true))])).try_into(),
             Ok(Expr::Literal(AstLiteral::QuotedString(
                 "{\"a\":true}".to_owned()
             )))

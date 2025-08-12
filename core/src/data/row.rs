@@ -1,7 +1,7 @@
 use {
     crate::{data::Value, executor::RowContext, result::Result},
     serde::Serialize,
-    std::{collections::HashMap, fmt::Debug, rc::Rc},
+    std::{collections::BTreeMap, fmt::Debug, rc::Rc},
     thiserror::Error,
 };
 
@@ -20,7 +20,7 @@ pub enum Row {
         columns: Rc<[String]>,
         values: Vec<Value>,
     },
-    Map(HashMap<String, Value>),
+    Map(BTreeMap<String, Value>),
 }
 
 impl Row {
@@ -54,7 +54,7 @@ impl Row {
         }
     }
 
-    pub fn try_into_map(self) -> Result<HashMap<String, Value>> {
+    pub fn try_into_map(self) -> Result<BTreeMap<String, Value>> {
         match self {
             Self::Vec { .. } => Err(RowError::ConflictOnUnexpectedVecRowFound.into()),
             Self::Map(values) => Ok(values),
