@@ -273,12 +273,12 @@ macro_rules! generate_store_tests {
             ast_builder::function::text::padding
         );
         glue!(
-            ast_builder_function_other_coalesce,
-            ast_builder::function::other::coalesce::coalesce
+            ast_builder_function_reference_coalesce,
+            ast_builder::function::reference::coalesce
         );
         glue!(
-            ast_builder_function_other_ifnull,
-            ast_builder::function::other::ifnull::ifnull
+            ast_builder_function_reference_ifnull,
+            ast_builder::function::reference::ifnull
         );
         glue!(
             ast_builder_function_datetime_conversion,
