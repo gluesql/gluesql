@@ -175,9 +175,7 @@ where
 
             stream::iter(list)
                 .then(eval)
-                .try_filter(|evaluated| {
-                    ready(evaluated.evaluate_eq(&target).try_into().unwrap_or(false))
-                })
+                .try_filter(|evaluated| ready(evaluated.evaluate_eq(&target).is_true()))
                 .try_next()
                 .await
                 .map(|v| v.is_some() ^ negated)
@@ -208,9 +206,7 @@ where
 
                     Ok(Evaluated::Value(value))
                 })
-                .try_filter(|evaluated| {
-                    ready(evaluated.evaluate_eq(&target).try_into().unwrap_or(false))
-                })
+                .try_filter(|evaluated| ready(evaluated.evaluate_eq(&target).is_true()))
                 .try_next()
                 .await
                 .map(|v| v.is_some() ^ negated)
@@ -239,7 +235,10 @@ where
             let evaluated = target.like(pattern, true)?;
 
             Ok(match negated {
-                true => evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false))),
+                true => {
+                    let t = evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false)));
+                    Evaluated::Value(Value::from(t))
+                }
                 false => evaluated,
             })
         }
@@ -253,7 +252,10 @@ where
             let evaluated = target.like(pattern, false)?;
 
             Ok(match negated {
-                true => evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false))),
+                true => {
+                    let t = evaluated.evaluate_eq(&Evaluated::Literal(Literal::Boolean(false)));
+                    Evaluated::Value(Value::from(t))
+                }
                 false => evaluated,
             })
         }
@@ -292,7 +294,7 @@ where
             for (when, then) in when_then.iter() {
                 let when = eval(when).await?;
 
-                if when.evaluate_eq(&operand).try_into()? {
+                if when.evaluate_eq(&operand).is_true() {
                     return eval(then).await;
                 }
             }

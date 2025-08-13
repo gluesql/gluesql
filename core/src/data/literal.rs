@@ -9,6 +9,7 @@ use {
     serde::Serialize,
     std::{borrow::Cow, cmp::Ordering, convert::TryFrom, fmt::Debug},
     thiserror::Error,
+    utils::Tribool,
 };
 
 #[derive(Error, Serialize, Debug, PartialEq, Eq)]
@@ -91,10 +92,10 @@ fn unsupported_binary_op(left: &Literal, op: BinaryOperator, right: &Literal) ->
 }
 
 impl<'a> Literal<'a> {
-    pub fn evaluate_eq(&self, other: &Literal<'_>) -> Self {
+    pub fn evaluate_eq(&self, other: &Literal<'_>) -> Tribool {
         match (self, other) {
-            (Null, _) | (_, Null) => Null,
-            _ => Boolean(self == other),
+            (Null, _) | (_, Null) => Tribool::Null,
+            _ => Tribool::from(self == other),
         }
     }
 
@@ -271,6 +272,7 @@ impl<'a> Literal<'a> {
 
 #[cfg(test)]
 mod tests {
+    use utils::Tribool;
     use {
         super::Literal::*,
         crate::ast::BinaryOperator,
@@ -529,30 +531,29 @@ mod tests {
             };
         }
 
-        //Boolean
-        assert_eq!(Boolean(true), Boolean(true).evaluate_eq(&Boolean(true)));
-        assert_eq!(Boolean(false), Boolean(true).evaluate_eq(&Boolean(false)));
+        assert_eq!(Tribool::True, Boolean(true).evaluate_eq(&Boolean(true)));
+        assert_eq!(Tribool::False, Boolean(true).evaluate_eq(&Boolean(false)));
         //Number
-        assert_eq!(Boolean(true), num!("123").evaluate_eq(&num!("123")));
-        assert_eq!(Boolean(true), num!("12.0").evaluate_eq(&num!("12.0")));
-        assert_eq!(Boolean(true), num!("12.0").evaluate_eq(&num!("12")));
-        assert_eq!(Boolean(false), num!("12.0").evaluate_eq(&num!("12.123")));
-        assert_eq!(Boolean(false), num!("123").evaluate_eq(&num!("12.3")));
-        assert_eq!(Boolean(false), num!("123").evaluate_eq(&text!("Foo")));
-        assert_eq!(Null, num!("123").evaluate_eq(&Null));
+        assert_eq!(Tribool::True, num!("123").evaluate_eq(&num!("123")));
+        assert_eq!(Tribool::True, num!("12.0").evaluate_eq(&num!("12.0")));
+        assert_eq!(Tribool::True, num!("12.0").evaluate_eq(&num!("12")));
+        assert_eq!(Tribool::False, num!("12.0").evaluate_eq(&num!("12.123")));
+        assert_eq!(Tribool::False, num!("123").evaluate_eq(&num!("12.3")));
+        assert_eq!(Tribool::False, num!("123").evaluate_eq(&text!("Foo")));
+        assert_eq!(Tribool::Null, num!("123").evaluate_eq(&Null));
         //Text
-        assert_eq!(Boolean(true), text!("Foo").evaluate_eq(&text!("Foo")));
-        assert_eq!(Boolean(false), text!("Foo").evaluate_eq(&text!("Bar")));
-        assert_eq!(Null, text!("Foo").evaluate_eq(&Null));
+        assert_eq!(Tribool::True, text!("Foo").evaluate_eq(&text!("Foo")));
+        assert_eq!(Tribool::False, text!("Foo").evaluate_eq(&text!("Bar")));
+        assert_eq!(Tribool::Null, text!("Foo").evaluate_eq(&Null));
         //Bytea
         assert_eq!(
-            Boolean(true),
+            Tribool::True,
             bytea!("12A456").evaluate_eq(&bytea!("12A456"))
         );
-        assert_eq!(Boolean(false), bytea!("1230").evaluate_eq(&num!("1230")));
-        assert_eq!(Null, bytea!("12").evaluate_eq(&Null));
+        assert_eq!(Tribool::False, bytea!("1230").evaluate_eq(&num!("1230")));
+        assert_eq!(Tribool::Null, bytea!("12").evaluate_eq(&Null));
         // Null
-        assert_eq!(Null, Null.evaluate_eq(&Null));
+        assert_eq!(Tribool::Null, Null.evaluate_eq(&Null));
     }
 
     #[test]

@@ -18,6 +18,7 @@ use {
         mem::discriminant,
         net::IpAddr,
     },
+    utils::Tribool,
 };
 
 mod binary_op;
@@ -66,33 +67,44 @@ pub enum Value {
     Null,
 }
 
+impl From<Tribool> for Value {
+    fn from(t: Tribool) -> Self {
+        match t {
+            Tribool::True => Value::Bool(true),
+            Tribool::False => Value::Bool(false),
+            Tribool::Null => Value::Null,
+        }
+    }
+}
+
 impl Value {
-    pub fn evaluate_eq(&self, other: &Value) -> Self {
+    pub fn evaluate_eq(&self, other: &Value) -> Tribool {
+        use Value::*;
         match (self, other) {
-            (Value::I8(l), _) => Value::Bool(l == other),
-            (Value::I16(l), _) => Value::Bool(l == other),
-            (Value::I32(l), _) => Value::Bool(l == other),
-            (Value::I64(l), _) => Value::Bool(l == other),
-            (Value::I128(l), _) => Value::Bool(l == other),
-            (Value::U8(l), _) => Value::Bool(l == other),
-            (Value::U16(l), _) => Value::Bool(l == other),
-            (Value::U32(l), _) => Value::Bool(l == other),
-            (Value::U64(l), _) => Value::Bool(l == other),
-            (Value::U128(l), _) => Value::Bool(l == other),
-            (Value::F32(l), _) => Value::Bool(l == other),
-            (Value::F64(l), _) => Value::Bool(l == other),
-            (Value::Date(l), Value::Timestamp(r)) => Value::Bool(
+            (Null, _) | (_, Null) => Tribool::Null,
+            (I8(l), _) => Tribool::from(l == other),
+            (I16(l), _) => Tribool::from(l == other),
+            (I32(l), _) => Tribool::from(l == other),
+            (I64(l), _) => Tribool::from(l == other),
+            (I128(l), _) => Tribool::from(l == other),
+            (U8(l), _) => Tribool::from(l == other),
+            (U16(l), _) => Tribool::from(l == other),
+            (U32(l), _) => Tribool::from(l == other),
+            (U64(l), _) => Tribool::from(l == other),
+            (U128(l), _) => Tribool::from(l == other),
+            (F32(l), _) => Tribool::from(l == other),
+            (F64(l), _) => Tribool::from(l == other),
+            (Date(l), Timestamp(r)) => Tribool::from(
                 l.and_hms_opt(0, 0, 0)
                     .map(|date_time| &date_time == r)
                     .unwrap_or(false),
             ),
-            (Value::Timestamp(l), Value::Date(r)) => Value::Bool(
+            (Timestamp(l), Date(r)) => Tribool::from(
                 r.and_hms_opt(0, 0, 0)
                     .map(|date_time| l == &date_time)
                     .unwrap_or(false),
             ),
-            (Value::Null, _) | (_, Value::Null) => Value::Null,
-            _ => Value::Bool(self == other),
+            _ => Tribool::from(self == other),
         }
     }
 
@@ -997,6 +1009,7 @@ mod tests {
     #[allow(clippy::eq_op)]
     #[test]
     fn evaluate_eq() {
+        use utils::Tribool;
         use {
             super::Interval,
             chrono::{NaiveDateTime, NaiveTime},
@@ -1005,66 +1018,66 @@ mod tests {
         let bytea = |v: &str| Bytea(hex::decode(v).unwrap());
         let inet = |v: &str| Inet(IpAddr::from_str(v).unwrap());
 
-        assert_eq!(Null, Null);
-        assert_eq!(Null, Null.evaluate_eq(&Null));
-        assert_eq!(Bool(true), Bool(true).evaluate_eq(&Bool(true)));
-        assert_eq!(Bool(true), I8(1).evaluate_eq(&I8(1)));
-        assert_eq!(Bool(true), I16(1).evaluate_eq(&I16(1)));
-        assert_eq!(Bool(true), I32(1).evaluate_eq(&I32(1)));
-        assert_eq!(Bool(true), I64(1).evaluate_eq(&I64(1)));
-        assert_eq!(Bool(true), I128(1).evaluate_eq(&I128(1)));
-        assert_eq!(Bool(true), U8(1).evaluate_eq(&U8(1)));
-        assert_eq!(Bool(true), U16(1).evaluate_eq(&U16(1)));
-        assert_eq!(Bool(true), U32(1).evaluate_eq(&U32(1)));
-        assert_eq!(Bool(true), U64(1).evaluate_eq(&U64(1)));
-        assert_eq!(Bool(true), U128(1).evaluate_eq(&U128(1)));
-        assert_eq!(Bool(true), I64(1).evaluate_eq(&F64(1.0)));
-        assert_eq!(Bool(true), F32(1.0_f32).evaluate_eq(&I64(1)));
-        assert_eq!(Bool(true), F32(6.11_f32).evaluate_eq(&F64(6.11)));
-        assert_eq!(Bool(true), F64(1.0).evaluate_eq(&I64(1)));
-        assert_eq!(Bool(true), F64(6.11).evaluate_eq(&F64(6.11)));
+        assert_eq!(Tribool::Null, Tribool::Null); // structural equality
+        assert_eq!(Tribool::Null, Null.evaluate_eq(&Null));
+        assert_eq!(Tribool::True, Bool(true).evaluate_eq(&Bool(true)));
+        assert_eq!(Tribool::True, I8(1).evaluate_eq(&I8(1)));
+        assert_eq!(Tribool::True, I16(1).evaluate_eq(&I16(1)));
+        assert_eq!(Tribool::True, I32(1).evaluate_eq(&I32(1)));
+        assert_eq!(Tribool::True, I64(1).evaluate_eq(&I64(1)));
+        assert_eq!(Tribool::True, I128(1).evaluate_eq(&I128(1)));
+        assert_eq!(Tribool::True, U8(1).evaluate_eq(&U8(1)));
+        assert_eq!(Tribool::True, U16(1).evaluate_eq(&U16(1)));
+        assert_eq!(Tribool::True, U32(1).evaluate_eq(&U32(1)));
+        assert_eq!(Tribool::True, U64(1).evaluate_eq(&U64(1)));
+        assert_eq!(Tribool::True, U128(1).evaluate_eq(&U128(1)));
+        assert_eq!(Tribool::True, I64(1).evaluate_eq(&F64(1.0)));
+        assert_eq!(Tribool::True, F32(1.0_f32).evaluate_eq(&I64(1)));
+        assert_eq!(Tribool::True, F32(6.11_f32).evaluate_eq(&F64(6.11)));
+        assert_eq!(Tribool::True, F64(1.0).evaluate_eq(&I64(1)));
+        assert_eq!(Tribool::True, F64(6.11).evaluate_eq(&F64(6.11)));
         assert_eq!(
-            Bool(true),
+            Tribool::True,
             Str("Glue".to_owned()).evaluate_eq(&Str("Glue".to_owned()))
         );
-        assert_eq!(Bool(true), bytea("1004").evaluate_eq(&bytea("1004")));
-        assert_eq!(Bool(true), inet("::1").evaluate_eq(&inet("::1")));
+        assert_eq!(Tribool::True, bytea("1004").evaluate_eq(&bytea("1004")));
+        assert_eq!(Tribool::True, inet("::1").evaluate_eq(&inet("::1")));
         assert_eq!(
-            Bool(true),
+            Tribool::True,
             Interval(Interval::Month(1)).evaluate_eq(&Interval(Interval::Month(1)))
         );
         assert_eq!(
-            Bool(true),
+            Tribool::True,
             Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap())
                 .evaluate_eq(&Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap()))
         );
-        assert_eq!(Bool(true), decimal(1).evaluate_eq(&decimal(1)));
+        assert_eq!(Tribool::True, decimal(1).evaluate_eq(&decimal(1)));
         assert_eq!(
-            Bool(true),
+            Tribool::True,
             Date("2020-05-01".parse().unwrap()).evaluate_eq(&Date("2020-05-01".parse().unwrap()))
         );
         assert_eq!(
-            Bool(true),
+            Tribool::True,
             Timestamp("2020-05-01T00:00:00".parse::<NaiveDateTime>().unwrap()).evaluate_eq(
                 &Timestamp("2020-05-01T00:00:00".parse::<NaiveDateTime>().unwrap())
             )
         );
         assert_eq!(
-            Bool(true),
+            Tribool::True,
             Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()).evaluate_eq(&Uuid(
                 parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()
             ))
         );
         assert_eq!(
-            Bool(true),
+            Tribool::True,
             Point(Point::new(1.0, 2.0)).evaluate_eq(&Point(Point::new(1.0, 2.0)))
         );
 
         let date = Date("2020-05-01".parse().unwrap());
         let timestamp = Timestamp("2020-05-01T00:00:00".parse::<NaiveDateTime>().unwrap());
 
-        assert_eq!(Bool(true), date.evaluate_eq(&timestamp));
-        assert_eq!(Bool(true), timestamp.evaluate_eq(&date));
+        assert_eq!(Tribool::True, date.evaluate_eq(&timestamp));
+        assert_eq!(Tribool::True, timestamp.evaluate_eq(&date));
     }
 
     #[test]
@@ -1230,9 +1243,10 @@ mod tests {
     fn arithmetic() {
         use chrono::{NaiveDate, NaiveTime};
 
+        use utils::Tribool::True;
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
-                assert_eq!(Bool(true), $a.$op(&$b).unwrap().evaluate_eq(&$c));
+                assert_eq!(True, $a.$op(&$b).unwrap().evaluate_eq(&$c));
             };
         }
 
@@ -2014,9 +2028,10 @@ mod tests {
     fn bitwise_shift_left() {
         use {super::convert::ConvertError, crate::ast::DataType};
 
+        use utils::Tribool::True;
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
-                assert_eq!(Bool(true), $a.$op(&$b).unwrap().evaluate_eq(&$c));
+                assert_eq!(True, $a.$op(&$b).unwrap().evaluate_eq(&$c));
             };
         }
 
@@ -2176,9 +2191,10 @@ mod tests {
     fn bitwise_shift_right() {
         use {super::convert::ConvertError, crate::ast::DataType};
 
+        use utils::Tribool::True;
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
-                assert_eq!(Bool(true), $a.$op(&$b).unwrap().evaluate_eq(&$c));
+                assert_eq!(True, $a.$op(&$b).unwrap().evaluate_eq(&$c));
             };
         }
 
@@ -2798,9 +2814,10 @@ mod tests {
 
     #[test]
     fn bitwise_and() {
+        use utils::Tribool::True;
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
-                assert_eq!(Bool(true), $a.$op(&$b).unwrap().evaluate_eq(&$c));
+                assert_eq!(True, $a.$op(&$b).unwrap().evaluate_eq(&$c));
             };
         }
 
