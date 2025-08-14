@@ -4,7 +4,7 @@
 [![GitHub](https://img.shields.io/github/stars/gluesql/gluesql)](https://github.com/gluesql/gluesql)
 [![LICENSE](https://img.shields.io/crates/l/gluesql.svg)](https://github.com/gluesql/gluesql/blob/main/LICENSE)
 [![Chat](https://img.shields.io/discord/780298017940176946)](https://discord.gg/C6TDEgzDzY)
-[![Coverage Status](https://coveralls.io/repos/github/gluesql/gluesql/badge.svg?branch=main)](https://coveralls.io/github/gluesql/gluesql?branch=main)
+![Codecov](https://img.shields.io/codecov/c/github/gluesql/gluesql)
 
 GlueSQL.js is a SQL database for web browsers and Node.js. It works as an embedded database and entirely runs in the browser.
 GlueSQL.js supports in-memory storage backend, localStorage, sessionStorage and indexedDB backend supports.
