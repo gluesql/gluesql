@@ -60,7 +60,7 @@ jobs:
           flags: rust
           fail_ci_if_error: true
       - name: Coveralls
+        continue-on-error: true
         uses: coverallsapp/github-action@master
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          fail-on-error: false
