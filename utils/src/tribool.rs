@@ -36,3 +36,40 @@ impl From<bool> for Tribool {
         if v { Self::True } else { Self::False }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tribool() {
+        let t = Tribool::True;
+        let f = Tribool::False;
+        let n = Tribool::Null;
+
+        assert!(t.is_true());
+        assert!(!t.is_false());
+        assert!(!t.is_null());
+
+        assert!(!f.is_true());
+        assert!(f.is_false());
+        assert!(!f.is_null());
+
+        assert!(!n.is_true());
+        assert!(!n.is_false());
+        assert!(n.is_null());
+    }
+
+    #[test]
+    fn test_conversion_from_bool() {
+        assert_eq!(Tribool::from(true), Tribool::True);
+        assert_eq!(Tribool::from(false), Tribool::False);
+    }
+
+    #[test]
+    fn test_not_operator() {
+        assert_eq!(!Tribool::True, Tribool::False);
+        assert_eq!(!Tribool::False, Tribool::True);
+        assert_eq!(!Tribool::Null, Tribool::Null);
+    }
+}

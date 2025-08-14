@@ -639,6 +639,18 @@ mod tests {
             True,
             Value::Uuid(uuid).evaluate_eq_with_literal(text!(uuid_text))
         );
+        // NULL-handling
+        assert_eq!(Null, Value::Null.evaluate_eq_with_literal(&Literal::Null));
+        assert_eq!(Null, Value::Null.evaluate_eq_with_literal(text!("STRING")));
+        assert_eq!(Null, Value::Null.evaluate_eq_with_literal(num!("123.456")));
+        assert_eq!(
+            Null,
+            Value::I128(1024).evaluate_eq_with_literal(&Literal::Null)
+        );
+        assert_eq!(
+            Null,
+            Value::Str("STRING".into()).evaluate_eq_with_literal(&Literal::Null)
+        );
     }
 
     #[test]

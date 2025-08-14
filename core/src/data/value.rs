@@ -3234,4 +3234,13 @@ mod tests {
         map2.insert("a".to_owned(), I64(1));
         assert_eq!(Map(map1), Map(map2));
     }
+
+    #[test]
+    fn test_conversion_from_tribool() {
+        use {super::Value, utils::Tribool};
+
+        assert_eq!(Value::from(Tribool::True), Value::Bool(true));
+        assert_eq!(Value::from(Tribool::False), Value::Bool(false));
+        assert_eq!(Value::from(Tribool::Null), Value::Null);
+    }
 }
