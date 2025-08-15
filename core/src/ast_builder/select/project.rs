@@ -248,6 +248,7 @@ mod tests {
                 },
             };
             let select = Select {
+                distinct: false,
                 projection: SelectItemList::from("Player.name, PlayerItem.name")
                     .try_into()
                     .unwrap(),

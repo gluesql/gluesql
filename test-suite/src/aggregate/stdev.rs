@@ -1,4 +1,4 @@
-use {crate::*, gluesql_core::prelude::Value::*};
+use {crate::*, gluesql_core::prelude::Value::*, std::f64::consts::SQRT_2};
 
 test_case!(stdev, {
     let g = get_tester!();
@@ -38,6 +38,14 @@ test_case!(stdev, {
                 F64;
                 0.8
             ),
+        ),
+        (
+            "SELECT STDEV(DISTINCT id) FROM Item",
+            select!("STDEV(DISTINCT id)"; F64; SQRT_2),
+        ),
+        (
+            "SELECT STDEV(DISTINCT age) FROM Item",
+            select_with_null!("STDEV(DISTINCT age)"; Null),
         ),
     ];
 

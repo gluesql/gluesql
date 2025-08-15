@@ -74,6 +74,10 @@ test_case!(migrate, {
             "TRUNCATE TABLE ProjectUser;",
             TranslateError::UnsupportedStatement("TRUNCATE TABLE ProjectUser".to_owned()).into(),
         ),
+        (
+            "SELECT DISTINCT ON (id) id, num, name FROM Test;",
+            TranslateError::SelectDistinctOnNotSupported.into(),
+        ),
     ];
 
     for (sql, error) in error_cases {

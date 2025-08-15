@@ -443,6 +443,7 @@ mod tests {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 subquery: Box::new(Query {
                     body: SetExpr::Select(Box::new(Select {
+                        distinct: false,
                         projection: vec![SelectItem::Wildcard],
                         from: TableWithJoins {
                             relation: TableFactor::Table {
@@ -471,6 +472,7 @@ mod tests {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 subquery: Box::new(Query {
                     body: SetExpr::Select(Box::new(Select {
+                        distinct: false,
                         projection: vec![SelectItem::Wildcard],
                         from: TableWithJoins {
                             relation: TableFactor::Table {
@@ -498,6 +500,7 @@ mod tests {
             Expr::Exists {
                 subquery: Box::new(Query {
                     body: SetExpr::Select(Box::new(Select {
+                        distinct: false,
                         projection: vec![SelectItem::Wildcard],
                         from: TableWithJoins {
                             relation: TableFactor::Table {
@@ -525,6 +528,7 @@ mod tests {
             Expr::Exists {
                 subquery: Box::new(Query {
                     body: SetExpr::Select(Box::new(Select {
+                        distinct: false,
                         projection: vec![SelectItem::Wildcard],
                         from: TableWithJoins {
                             relation: TableFactor::Table {
@@ -551,6 +555,7 @@ mod tests {
             r#"(SELECT * FROM "FOO")"#,
             Expr::Subquery(Box::new(Query {
                 body: SetExpr::Select(Box::new(Select {
+                    distinct: false,
                     projection: vec![SelectItem::Wildcard],
                     from: TableWithJoins {
                         relation: TableFactor::Table {

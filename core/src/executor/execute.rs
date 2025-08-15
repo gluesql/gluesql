@@ -301,6 +301,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
         Statement::ShowIndexes(table_name) => {
             let query = Query {
                 body: SetExpr::Select(Box::new(crate::ast::Select {
+                    distinct: false,
                     projection: vec![SelectItem::Wildcard],
                     from: TableWithJoins {
                         relation: TableFactor::Dictionary {
@@ -344,6 +345,7 @@ async fn execute_inner<T: GStore + GStoreMut>(
             Variable::Tables => {
                 let query = Query {
                     body: SetExpr::Select(Box::new(crate::ast::Select {
+                        distinct: false,
                         projection: vec![SelectItem::Expr {
                             expr: Expr::Identifier("TABLE_NAME".to_owned()),
                             label: "TABLE_NAME".to_owned(),
