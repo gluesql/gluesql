@@ -14,7 +14,7 @@ use {
     uuid::Uuid,
 };
 
-#[async_trait(?Send)]
+#[async_trait]
 impl StoreMut for FileStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let table_name = schema.table_name.clone();

@@ -38,7 +38,7 @@ pub enum IndexError {
     ConflictOnIndexDataDeleteSync,
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 pub trait Index {
     async fn scan_indexed_data<'a>(
         &'a self,
@@ -53,7 +53,7 @@ pub trait Index {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 pub trait IndexMut {
     async fn create_index(
         &mut self,

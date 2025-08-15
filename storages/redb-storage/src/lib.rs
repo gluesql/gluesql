@@ -30,7 +30,7 @@ impl RedbStorage {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Store for RedbStorage {
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         self.0.fetch_all_schemas().map_err(Into::into)
@@ -49,7 +49,7 @@ impl Store for RedbStorage {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl StoreMut for RedbStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         self.0.insert_schema(schema).await.map_err(Into::into)
@@ -81,7 +81,7 @@ impl StoreMut for RedbStorage {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Transaction for RedbStorage {
     async fn begin(&mut self, autocommit: bool) -> Result<bool> {
         self.0.begin(autocommit).map_err(Into::into)

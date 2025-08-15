@@ -11,7 +11,7 @@ use {
 
 // Index is one of MUST-be-implemented traits.
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Index for RedisStorage {
     async fn scan_indexed_data<'a>(
         &'a self,
@@ -26,7 +26,7 @@ impl Index for RedisStorage {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl IndexMut for RedisStorage {
     async fn create_index(
         &mut self,

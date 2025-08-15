@@ -3,7 +3,7 @@ use {
     async_trait::async_trait,
 };
 
-#[async_trait(?Send)]
+#[async_trait]
 pub trait Transaction {
     async fn begin(&mut self, autocommit: bool) -> Result<bool> {
         if autocommit {
