@@ -302,6 +302,38 @@ pub fn replace<'a>(
     Continue(Evaluated::Value(Value::Str(value)))
 }
 
+pub fn unhex<'a>(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    let unhex_result = match expr.try_into().break_if_null()? {
+        Value::Str(s) => {
+            let hex_str = if s.starts_with("0x") || s.starts_with("0X") {
+                &s[2..]
+            } else {
+                &s
+            };
+
+            if hex_str.len() % 2 != 0 {
+                return Err(EvaluateError::InvalidHexadecimal(s).into()).into_control_flow();
+            }
+
+            match hex::decode(hex_str) {
+                Ok(bytes) => match String::from_utf8(bytes.clone()) {
+                    Ok(s) => s,
+                    Err(_) => String::from_utf8_lossy(&bytes).to_string(),
+                },
+                Err(_) => {
+                    return Err(EvaluateError::InvalidHexadecimal(s).into()).into_control_flow();
+                }
+            }
+        }
+        _ => {
+            return Err(EvaluateError::FunctionRequiresStringValue(name).into())
+                .into_control_flow();
+        }
+    };
+
+    Continue(Evaluated::Value(Value::Str(unhex_result)))
+}
+
 pub fn ascii<'a>(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     let string = eval_to_str(&name, expr)?;
     let mut iter = string.chars();
