@@ -1,5 +1,5 @@
 use {
-    super::{Expr, IndexOperator, ToSqlUnquoted},
+    super::{DataType, Expr, IndexOperator, ToSqlUnquoted},
     crate::ast::ToSql,
     itertools::Itertools,
     serde::{Deserialize, Serialize},
@@ -48,7 +48,10 @@ pub struct TableWithJoins {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum IndexItem {
-    PrimaryKey(Expr),
+    PrimaryKey {
+        data_type: DataType,
+        expr: Expr,
+    },
     NonClustered {
         name: String,
         asc: Option<bool>,

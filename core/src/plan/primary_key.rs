@@ -2,8 +2,8 @@ use {
     super::{context::Context, evaluable::check_expr as check_evaluable, planner::Planner},
     crate::{
         ast::{
-            BinaryOperator, Expr, IndexItem, Query, Select, SetExpr, Statement, TableFactor,
-            TableWithJoins,
+            BinaryOperator, ColumnDef, ColumnUniqueOption, DataType, Expr, IndexItem, Query,
+            Select, SetExpr, Statement, TableAlias, TableFactor, TableWithJoins,
         },
         data::Schema,
     },
@@ -25,6 +25,52 @@ pub fn plan(schema_map: &HashMap<String, Schema>, statement: Statement) -> State
 
 struct PrimaryKeyPlanner<'a> {
     schema_map: &'a HashMap<String, Schema>,
+}
+
+impl<'a> PrimaryKeyPlanner<'a> {
+    fn alias_map(table_with_joins: &TableWithJoins) -> HashMap<String, String> {
+        fn insert(map: &mut HashMap<String, String>, factor: &TableFactor) {
+            if let TableFactor::Table { name, alias, .. } = factor {
+                let key = alias
+                    .as_ref()
+                    .map(|TableAlias { name, .. }| name.clone())
+                    .unwrap_or_else(|| name.clone());
+                map.insert(key, name.clone());
+            }
+        }
+
+        let mut map = HashMap::new();
+        insert(&mut map, &table_with_joins.relation);
+        for join in &table_with_joins.joins {
+            insert(&mut map, &join.relation);
+        }
+        map
+    }
+
+    fn find_pk_data_type(
+        &self,
+        alias_map: &HashMap<String, String>,
+        alias: Option<&str>,
+        ident: &str,
+    ) -> Option<DataType> {
+        let tables: Vec<&String> = match alias {
+            Some(a) => alias_map.get(a).into_iter().collect(),
+            None => alias_map.values().collect(),
+        };
+
+        for table_name in tables {
+            if let Some(schema) = self.get_schema(table_name) {
+                if let Some(column_defs) = &schema.column_defs {
+                    if let Some(ColumnDef { data_type, .. }) = column_defs.iter().find(|c| {
+                        c.name == ident && c.unique == Some(ColumnUniqueOption { is_primary: true })
+                    }) {
+                        return Some(data_type.clone());
+                    }
+                }
+            }
+        }
+        None
+    }
 }
 
 impl<'a> Planner<'a> for PrimaryKeyPlanner<'a> {
@@ -56,6 +102,7 @@ enum PrimaryKey {
 
 impl<'a> PrimaryKeyPlanner<'a> {
     fn select(&self, outer_context: Option<Rc<Context<'a>>>, select: Select) -> Select {
+        let alias_map = Self::alias_map(&select.from);
         let current_context = self.update_context(None, &select.from.relation);
         let current_context = select
             .from
@@ -67,7 +114,7 @@ impl<'a> PrimaryKeyPlanner<'a> {
 
         let (index, selection) = select
             .selection
-            .map(|expr| self.expr(outer_context, current_context, expr))
+            .map(|expr| self.expr(&alias_map, outer_context, current_context, expr))
             .map(|primary_key| match primary_key {
                 PrimaryKey::Found { index_item, expr } => (Some(index_item), expr),
                 PrimaryKey::NotFound(expr) => (None, Some(expr)),
@@ -100,6 +147,7 @@ impl<'a> PrimaryKeyPlanner<'a> {
 
     fn expr(
         &self,
+        alias_map: &HashMap<String, String>,
         outer_context: Option<Rc<Context<'a>>>,
         current_context: Option<Rc<Context<'a>>>,
         expr: Expr,
@@ -131,7 +179,26 @@ impl<'a> PrimaryKeyPlanner<'a> {
                 && check_evaluable(current_context.as_ref().map(Rc::clone), &key)
                 && check_evaluable(None, &value) =>
             {
-                let index_item = IndexItem::PrimaryKey(*value);
+                let (alias, ident) = match key.as_ref() {
+                    Expr::Identifier(ident) => (None, ident.as_str()),
+                    Expr::CompoundIdentifier { alias, ident } => {
+                        (Some(alias.as_str()), ident.as_str())
+                    }
+                    _ => {
+                        return PrimaryKey::NotFound(Expr::BinaryOp {
+                            left: key,
+                            op: BinaryOperator::Eq,
+                            right: value,
+                        });
+                    }
+                };
+                let data_type = self
+                    .find_pk_data_type(alias_map, alias, ident)
+                    .unwrap_or(DataType::Int);
+                let index_item = IndexItem::PrimaryKey {
+                    data_type,
+                    expr: *value,
+                };
 
                 PrimaryKey::Found {
                     index_item,
@@ -144,6 +211,7 @@ impl<'a> PrimaryKeyPlanner<'a> {
                 right,
             } => {
                 let primary_key = self.expr(
+                    alias_map,
                     outer_context.as_ref().map(Rc::clone),
                     current_context.as_ref().map(Rc::clone),
                     *left,
@@ -168,7 +236,7 @@ impl<'a> PrimaryKeyPlanner<'a> {
                     PrimaryKey::NotFound(expr) => expr,
                 };
 
-                match self.expr(outer_context, current_context, *right) {
+                match self.expr(alias_map, outer_context, current_context, *right) {
                     PrimaryKey::Found { index_item, expr } => {
                         let expr = match expr {
                             Some(right) => Expr::BinaryOp {
@@ -195,7 +263,8 @@ impl<'a> PrimaryKeyPlanner<'a> {
                     }
                 }
             }
-            Expr::Nested(expr) => match self.expr(outer_context, current_context, *expr) {
+            Expr::Nested(expr) => match self.expr(alias_map, outer_context, current_context, *expr)
+            {
                 PrimaryKey::Found { index_item, expr } => {
                     let expr = expr.map(Box::new).map(Expr::Nested);
 
@@ -219,9 +288,9 @@ mod tests {
         super::plan as plan_primary_key,
         crate::{
             ast::{
-                AstLiteral, BinaryOperator, Expr, IndexItem, Join, JoinConstraint, JoinExecutor,
-                JoinOperator, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
-                TableWithJoins, Values,
+                AstLiteral, BinaryOperator, DataType, Expr, IndexItem, Join, JoinConstraint,
+                JoinExecutor, JoinOperator, Query, Select, SelectItem, SetExpr, Statement,
+                TableFactor, TableWithJoins, Values,
             },
             mock::{MockStorage, run},
             parse_sql::{parse, parse_expr},
@@ -271,7 +340,10 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
+                    index: Some(IndexItem::PrimaryKey {
+                        data_type: DataType::Int,
+                        expr: expr("1"),
+                    }),
                 },
                 joins: Vec::new(),
             },
@@ -289,7 +361,10 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
+                    index: Some(IndexItem::PrimaryKey {
+                        data_type: DataType::Int,
+                        expr: expr("1"),
+                    }),
                 },
                 joins: Vec::new(),
             },
@@ -307,7 +382,10 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
+                    index: Some(IndexItem::PrimaryKey {
+                        data_type: DataType::Int,
+                        expr: expr("1"),
+                    }),
                 },
                 joins: Vec::new(),
             },
@@ -331,7 +409,10 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
+                    index: Some(IndexItem::PrimaryKey {
+                        data_type: DataType::Int,
+                        expr: expr("1"),
+                    }),
                 },
                 joins: Vec::new(),
             },
@@ -364,7 +445,10 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
+                    index: Some(IndexItem::PrimaryKey {
+                        data_type: DataType::Int,
+                        expr: expr("1"),
+                    }),
                 },
                 joins: Vec::new(),
             },
@@ -396,7 +480,10 @@ mod tests {
                 relation: TableFactor::Table {
                     name: "Player".to_owned(),
                     alias: None,
-                    index: Some(IndexItem::PrimaryKey(expr("1"))),
+                    index: Some(IndexItem::PrimaryKey {
+                        data_type: DataType::Int,
+                        expr: expr("1"),
+                    }),
                 },
                 joins: vec![Join {
                     relation: TableFactor::Table {
@@ -454,7 +541,10 @@ mod tests {
                         relation: TableFactor::Table {
                             name: "Player".to_owned(),
                             alias: None,
-                            index: Some(IndexItem::PrimaryKey(expr("1"))),
+                            index: Some(IndexItem::PrimaryKey {
+                                data_type: DataType::Int,
+                                expr: expr("1"),
+                            }),
                         },
                         joins: Vec::new(),
                     },
@@ -638,5 +728,60 @@ mod tests {
             having: None,
         });
         assert_eq!(actual, expected, "nested:\n{sql}");
+    }
+
+    #[test]
+    fn find_pk_data_type() {
+        let storage = run("CREATE TABLE Player (
+                id INTEGER PRIMARY KEY,
+                name TEXT
+            );
+            CREATE TABLE Item (
+                seq TEXT PRIMARY KEY,
+                amount INTEGER
+            );
+            CREATE TABLE Log (
+                id INTEGER,
+                note TEXT
+            );");
+
+        let parsed = parse("SELECT * FROM Player p JOIN Item i ON True JOIN Log l ON True")
+            .expect("select")
+            .into_iter()
+            .next()
+            .unwrap();
+        let statement = translate(&parsed).unwrap();
+        let schema_map = block_on(fetch_schema_map(&storage, &statement)).unwrap();
+        let planner = super::PrimaryKeyPlanner {
+            schema_map: &schema_map,
+        };
+
+        if let Statement::Query(Query {
+            body: SetExpr::Select(select),
+            ..
+        }) = statement
+        {
+            let alias_map = super::PrimaryKeyPlanner::alias_map(&select.from);
+
+            assert_eq!(
+                planner.find_pk_data_type(&alias_map, Some("p"), "id"),
+                Some(DataType::Int)
+            );
+            assert_eq!(
+                planner.find_pk_data_type(&alias_map, Some("i"), "seq"),
+                Some(DataType::Text)
+            );
+            assert_eq!(planner.find_pk_data_type(&alias_map, Some("x"), "id"), None);
+            assert_eq!(
+                planner.find_pk_data_type(&alias_map, None, "seq"),
+                Some(DataType::Text)
+            );
+            assert_eq!(
+                planner.find_pk_data_type(&alias_map, Some("p"), "name"),
+                None
+            );
+        } else {
+            unreachable!();
+        }
     }
 }
