@@ -16,7 +16,7 @@ use {
     gluesql_core::{
         ast::{Expr, SetExpr, Statement, ToSql, Values},
         data::Value,
-        store::{DataRow, GStore, GStoreMut, Store, Transaction},
+        store::{DataRow, GStore, GStoreMut},
     },
     gluesql_csv_storage::CsvStorage,
     gluesql_file_storage::FileStorage,
@@ -53,7 +53,8 @@ struct Args {
     path: Option<PathBuf>,
 }
 
-#[derive(clap::ValueEnum, Debug, Clone)]
+#[derive(clap::ValueEnum, Debug, Clone, strum_macros::Display)]
+#[strum(serialize_all = "lowercase")]
 enum Storage {
     Memory,
     Sled,
@@ -76,6 +77,11 @@ pub fn run() -> Result<()> {
         }
         (Some(_), Some(Storage::Memory), _) => {
             panic!("failed to load memory-storage: it should be without path");
+        }
+        (Some(path), Some(storage), Some(dump_path)) => {
+            println!("[{}-storage] connected to {}", storage, path);
+
+            dump_database(storage, Some(path), dump_path)?;
         }
         (Some(path), Some(Storage::Sled), _) => {
             println!("[sled-storage] connected to {}", path);
@@ -125,12 +131,7 @@ pub fn run() -> Result<()> {
                 args.execute,
             );
         }
-        (Some(path), None, Some(dump_path)) => {
-            let mut storage = SledStorage::new(path).expect("failed to load sled-storage");
-
-            dump_database(&mut storage, dump_path)?;
-        }
-        (None, Some(_), _) | (Some(_), None, None) => {
+        (None, Some(_), _) | (Some(_), None, _) => {
             panic!("both path and storage should be specified");
         }
     }
@@ -153,7 +154,7 @@ pub fn run() -> Result<()> {
     Ok(())
 }
 
-pub fn dump_database(storage: &mut SledStorage, dump_path: PathBuf) -> Result<()> {
+pub fn dump_storage<T: GStore + GStoreMut>(storage: &mut T, dump_path: PathBuf) -> Result<()> {
     let file = File::create(dump_path)?;
 
     block_on(async {
@@ -206,4 +207,47 @@ pub fn dump_database(storage: &mut SledStorage, dump_path: PathBuf) -> Result<()
 
         Ok(())
     })
+}
+
+fn dump_database(storage: Storage, path: Option<&str>, dump_path: PathBuf) -> Result<()> {
+    match storage {
+        Storage::Memory => {
+            if path.is_some() {
+                panic!("failed to load memory-storage: it should be without path");
+            }
+
+            let mut storage = MemoryStorage::default();
+            dump_storage(&mut storage, dump_path)
+        }
+        Storage::Sled => {
+            let path = path.expect("both path and storage should be specified");
+            let mut storage = SledStorage::new(path).expect("failed to load sled-storage");
+            dump_storage(&mut storage, dump_path)
+        }
+        Storage::Redb => {
+            let path = path.expect("both path and storage should be specified");
+            let mut storage = RedbStorage::new(path).expect("failed to load redb-storage");
+            dump_storage(&mut storage, dump_path)
+        }
+        Storage::Json => {
+            let path = path.expect("both path and storage should be specified");
+            let mut storage = JsonStorage::new(path).expect("failed to load json-storage");
+            dump_storage(&mut storage, dump_path)
+        }
+        Storage::Csv => {
+            let path = path.expect("both path and storage should be specified");
+            let mut storage = CsvStorage::new(path).expect("failed to load csv-storage");
+            dump_storage(&mut storage, dump_path)
+        }
+        Storage::Parquet => {
+            let path = path.expect("both path and storage should be specified");
+            let mut storage = ParquetStorage::new(path).expect("failed to load parquet-storage");
+            dump_storage(&mut storage, dump_path)
+        }
+        Storage::File => {
+            let path = path.expect("both path and storage should be specified");
+            let mut storage = FileStorage::new(path).expect("failed to load file-storage");
+            dump_storage(&mut storage, dump_path)
+        }
+    }
 }
