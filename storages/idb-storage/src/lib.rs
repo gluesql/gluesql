@@ -610,5 +610,13 @@ impl Metadata for IdbStorage {}
 impl gluesql_core::store::CustomFunction for IdbStorage {}
 impl gluesql_core::store::CustomFunctionMut for IdbStorage {}
 
+/// `IdbStorage` holds `web_sys` types that are not `Send` by default, but it
+/// is used only on `wasm32` targets where execution happens on a single
+/// thread. No concurrent access can occur, so it is safe to move
+/// `IdbStorage` between threads.
 unsafe impl Send for IdbStorage {}
+
+/// WebAssembly runs `IdbStorage` on a single thread, preventing concurrent
+/// access. This makes it safe to share references to `IdbStorage` across
+/// threads even though the underlying types are not `Sync`.
 unsafe impl Sync for IdbStorage {}
