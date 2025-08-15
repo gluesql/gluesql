@@ -665,6 +665,14 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 .collect::<Result<Vec<_>>>()?;
             Ok(Expr::Function(Box::new(Function::Greatest(exprs))))
         }
+        "LEAST" => {
+            check_len_min(name, args.len(), 2)?;
+            let exprs = args
+                .into_iter()
+                .map(translate_expr)
+                .collect::<Result<Vec<_>>>()?;
+            Ok(Expr::Function(Box::new(Function::Least(exprs))))
+        }
         "ENTRIES" => {
             check_len(name, args.len(), 1)?;
 
