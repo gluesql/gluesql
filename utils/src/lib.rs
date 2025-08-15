@@ -3,6 +3,10 @@
 mod hashmap;
 mod indexmap;
 mod or_stream;
+mod tribool;
 mod vector;
 
-pub use {self::indexmap::IndexMap, hashmap::HashMapExt, or_stream::OrStream, vector::Vector};
+pub use {
+    self::indexmap::IndexMap, hashmap::HashMapExt, or_stream::OrStream, tribool::Tribool,
+    vector::Vector,
+};
