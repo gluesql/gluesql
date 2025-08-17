@@ -2,8 +2,10 @@ use {
     crate::{
         ast::{Aggregate, AggregateFunction, CountArgExpr, DataType},
         data::{Key, Value},
-        error::Error,
-        executor::{context::RowContext, evaluate::evaluate},
+        executor::{
+            context::RowContext,
+            evaluate::{EvaluateError, evaluate},
+        },
         result::Result,
         store::GStore,
     },
@@ -484,9 +486,7 @@ impl<'a, T: GStore> State<'a, T> {
             AggregateFunction::Count(CountArgExpr::Wildcard) => {
                 if aggr.distinct {
                     let context = filter_context.as_ref().ok_or_else(|| {
-                        Error::StorageMsg(
-                            "filter_context is required for COUNT(DISTINCT *)".to_owned(),
-                        )
+                        EvaluateError::FilterContextRequiredForAggregate(aggr.clone())
                     })?;
                     let entries = context.get_all_entries();
                     let values: Vec<Value> = entries.into_iter().map(|(_, v)| v).collect();
