@@ -1,5 +1,5 @@
 use {
-    crate::RedisStorage,
+    crate::{RedisStorage, mutex::MutexExt},
     async_trait::async_trait,
     gluesql_core::{
         data::Value,
@@ -10,31 +10,34 @@ use {
     std::collections::BTreeMap,
 };
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Metadata for RedisStorage {
     async fn scan_table_meta(&self) -> Result<MetaIter> {
         let mut all_metadata: BTreeMap<String, BTreeMap<String, Value>> = BTreeMap::new();
         let metadata_scan_key = Self::redis_generate_scan_all_metadata_key(&self.namespace);
-        let redis_keys: Vec<String> = self
-            .conn
-            .borrow_mut()
-            .scan_match(&metadata_scan_key)
-            .map(|iter| iter.collect::<Vec<String>>())
-            .map_err(|_| {
-                Error::StorageMsg(format!(
-                    "[RedisStorage] failed to scan metadata: namespace={}",
-                    self.namespace
-                ))
-            })?;
+        let redis_keys: Vec<String> = {
+            let mut conn = self.conn.lock_err()?;
+            conn.scan_match(&metadata_scan_key)
+                .map(|iter| iter.collect::<Vec<String>>())
+                .map_err(|_| {
+                    Error::StorageMsg(format!(
+                        "[RedisStorage] failed to scan metadata: namespace={}",
+                        self.namespace
+                    ))
+                })?
+        };
 
         // Then read all values of the table
         for redis_key in redis_keys.into_iter() {
             // Another client just has removed the value with the key.
             // It's not a problem. Just ignore it.
-            if let Ok(value) = redis::cmd("GET")
-                .arg(&redis_key)
-                .query::<String>(&mut self.conn.borrow_mut())
-            {
+            let value = {
+                let mut conn = self.conn.lock_err()?;
+                redis::cmd("GET")
+                    .arg(&redis_key)
+                    .query::<String>(&mut *conn)
+            };
+            if let Ok(value) = value {
                 let value: Value = serde_json::from_str::<Value>(&value).map_err(|e| {
                     Error::StorageMsg(format!(
                         "[RedisStorage] failed to deserialize value: key={} error={}",

@@ -29,7 +29,7 @@ use {
     },
 };
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Store for MongoStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         self.fetch_schemas_iter(Some(table_name))

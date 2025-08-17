@@ -1,7 +1,7 @@
 use {
     crate::{data::Value, executor::RowContext, result::Result},
     serde::Serialize,
-    std::{collections::BTreeMap, fmt::Debug, rc::Rc},
+    std::{collections::BTreeMap, fmt::Debug, sync::Arc},
     thiserror::Error,
 };
 
@@ -17,7 +17,7 @@ pub enum RowError {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Row {
     Vec {
-        columns: Rc<[String]>,
+        columns: Arc<[String]>,
         values: Vec<Value>,
     },
     Map(BTreeMap<String, Value>),

@@ -7,7 +7,7 @@ use {
     },
 };
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Metadata for MemoryStorage {
     async fn scan_table_meta(&self) -> Result<MetaIter> {
         let meta = self.metadata.clone().into_iter().map(Ok);

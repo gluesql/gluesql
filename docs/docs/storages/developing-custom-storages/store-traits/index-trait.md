@@ -19,7 +19,7 @@ There is one method to implement for the `Index` trait:
 1. `scan_indexed_data`: This method retrieves indexed data from the storage system using the provided table name, index name, sorting order, and comparison value.
 
 ```rust
-#[async_trait(?Send)]
+#[async_trait]
 pub trait Index {
     async fn scan_indexed_data(
         &self,

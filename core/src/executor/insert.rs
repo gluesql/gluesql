@@ -12,7 +12,7 @@ use {
     },
     futures::stream::{self, StreamExt, TryStreamExt},
     serde::Serialize,
-    std::{fmt::Debug, rc::Rc},
+    std::{fmt::Debug, sync::Arc},
     thiserror::Error as ThisError,
 };
 
@@ -115,13 +115,13 @@ async fn fetch_vec_rows<T: GStore>(
     source: &Query,
     foreign_keys: Vec<ForeignKey>,
 ) -> Result<RowsData> {
-    let labels = Rc::from(
+    let labels = Arc::from(
         column_defs
             .iter()
             .map(|column_def| column_def.name.to_owned())
             .collect::<Vec<_>>(),
     );
-    let column_defs = Rc::from(column_defs);
+    let column_defs = Arc::from(column_defs);
     let column_validation = ColumnValidation::All(&column_defs);
 
     #[derive(futures_enum::Stream)]
@@ -134,8 +134,8 @@ async fn fetch_vec_rows<T: GStore>(
         SetExpr::Values(Values(values_list)) => {
             let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref()).await?;
             let rows = stream::iter(values_list).then(|values| {
-                let column_defs = Rc::clone(&column_defs);
-                let labels = Rc::clone(&labels);
+                let column_defs = Arc::clone(&column_defs);
+                let labels = Arc::clone(&labels);
 
                 async move {
                     Ok(Row::Vec {
@@ -207,7 +207,7 @@ async fn fetch_vec_rows<T: GStore>(
 
 async fn validate_foreign_key<T: GStore>(
     storage: &T,
-    column_defs: &Rc<[ColumnDef]>,
+    column_defs: &Arc<[ColumnDef]>,
     foreign_keys: Vec<ForeignKey>,
     rows: &[Vec<Value>],
 ) -> Result<()> {
