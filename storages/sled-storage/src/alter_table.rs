@@ -23,7 +23,7 @@ use {
 #[async_trait]
 impl AlterTable for SledStorage {
     async fn rename_schema(&mut self, table_name: &str, new_table_name: &str) -> Result<()> {
-        let prefix = format!("data/{}/", table_name);
+        let prefix = format!("data/{table_name}/");
         let items = self
             .tree
             .scan_prefix(prefix.as_bytes())
@@ -77,7 +77,7 @@ impl AlterTable for SledStorage {
             let value = bincode::serialize(&new_snapshot)
                 .map_err(err_into)
                 .map_err(ConflictableTransactionError::Abort)?;
-            let new_schema_key = format!("schema/{}", new_table_name);
+            let new_schema_key = format!("schema/{new_table_name}");
             tree.insert(new_schema_key.as_bytes(), value)?;
 
             // replace data
@@ -241,7 +241,7 @@ impl AlterTable for SledStorage {
     }
 
     async fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
-        let prefix = format!("data/{}/", table_name);
+        let prefix = format!("data/{table_name}/");
         let items = self
             .tree
             .scan_prefix(prefix.as_bytes())
@@ -397,7 +397,7 @@ impl AlterTable for SledStorage {
         column_name: &str,
         if_exists: bool,
     ) -> Result<()> {
-        let prefix = format!("data/{}/", table_name);
+        let prefix = format!("data/{table_name}/");
         let items = self
             .tree
             .scan_prefix(prefix.as_bytes())

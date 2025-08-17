@@ -6,6 +6,7 @@ mod metadata;
 mod mutex;
 mod transaction;
 
+use mutex::MutexExt;
 use {
     async_trait::async_trait,
     futures::stream::iter,
@@ -19,8 +20,6 @@ use {
     std::{collections::BTreeMap, sync::Mutex},
 };
 
-use mutex::MutexExt;
-
 pub struct RedisStorage {
     pub namespace: String,
     pub conn: Mutex<Connection>,
@@ -28,7 +27,7 @@ pub struct RedisStorage {
 
 impl RedisStorage {
     pub fn new(namespace: &str, url: &str, port: u16) -> Self {
-        let redis_url = format!("redis://{}:{}", url, port);
+        let redis_url = format!("redis://{url}:{port}");
         let conn = redis::Client::open(redis_url)
             .expect("Invalid connection URL")
             .get_connection()
@@ -51,11 +50,10 @@ impl RedisStorage {
     fn redis_generate_key(namespace: &str, table_name: &str, key: &Key) -> Result<String> {
         let k = serde_json::to_string(key).map_err(|e| {
             Error::StorageMsg(format!(
-                "[RedisStorage] failed to serialize key key:{:?}, error={}",
-                key, e
+                "[RedisStorage] failed to serialize key key:{key:?}, error={e}"
             ))
         })?;
-        Ok(format!("{}#{}#{}", namespace, table_name, k))
+        Ok(format!("{namespace}#{table_name}#{k}"))
     }
 
     ///
@@ -65,8 +63,7 @@ impl RedisStorage {
         let split_key = redis_key.split('#').collect::<Vec<&str>>();
         serde_json::from_str(split_key[2]).map_err(|e| {
             Error::StorageMsg(format!(
-                "[RedisStorage] failed to deserialize key: key={} error={}",
-                redis_key, e
+                "[RedisStorage] failed to deserialize key: key={redis_key} error={e}"
             ))
         })
     }
@@ -79,18 +76,18 @@ impl RedisStorage {
         // similar table-names such like Test, TestA and TestB.
         // When scanning Test, it gets all data from Test, TestA and TestB.
         // Therefore it is very important to use the # twice.
-        format!("{}#{}#*", namespace, tablename)
+        format!("{namespace}#{tablename}#*")
     }
 
     ///
     /// Make a key pattern to do scan and get all schemas in the namespace
     ///
     fn redis_generate_schema_key(namespace: &str, table_name: &str) -> String {
-        format!("#schema#{}#{}#", namespace, table_name)
+        format!("#schema#{namespace}#{table_name}#")
     }
 
     fn redis_generate_scan_schema_key(namespace: &str) -> String {
-        format!("#schema#{}#*", namespace)
+        format!("#schema#{namespace}#*")
     }
 
     fn redis_generate_metadata_key(
@@ -98,15 +95,15 @@ impl RedisStorage {
         tablename: &str,
         metadata_name: &str,
     ) -> String {
-        format!("#metadata#{}#{}#{}#", namespace, tablename, metadata_name)
+        format!("#metadata#{namespace}#{tablename}#{metadata_name}#")
     }
 
     fn redis_generate_scan_metadata_key(namespace: &str, tablename: &str) -> String {
-        format!("#metadata#{}#{}#*", namespace, tablename)
+        format!("#metadata#{namespace}#{tablename}#*")
     }
 
     fn redis_generate_scan_all_metadata_key(namespace: &str) -> String {
-        format!("#metadata#{}#*", namespace)
+        format!("#metadata#{namespace}#*")
     }
 
     fn redis_execute_get(&mut self, key: &str) -> Result<Option<String>> {
@@ -116,8 +113,7 @@ impl RedisStorage {
             .query::<String>(&mut *conn)
             .map_err(|e| {
                 Error::StorageMsg(format!(
-                    "[RedisStorage] failed to execute GET: key={} error={}",
-                    key, e
+                    "[RedisStorage] failed to execute GET: key={key} error={e}"
                 ))
             })?;
 
@@ -132,8 +128,7 @@ impl RedisStorage {
             .query::<()>(&mut *conn)
             .map_err(|e| {
                 Error::StorageMsg(format!(
-                    "[RedisStorage] failed to execute SET: key={} value={} error={}",
-                    key, value, e
+                    "[RedisStorage] failed to execute SET: key={key} value={value} error={e}"
                 ))
             })?;
 
@@ -147,8 +142,7 @@ impl RedisStorage {
             .query::<()>(&mut *conn)
             .map_err(|e| {
                 Error::StorageMsg(format!(
-                    "[RedisStorage] failed to execute DEL: key={} error={}",
-                    key, e
+                    "[RedisStorage] failed to execute DEL: key={key} error={e}"
                 ))
             })?;
 
@@ -163,8 +157,7 @@ impl RedisStorage {
                 .map(|iter| iter.collect::<Vec<String>>())
                 .map_err(|e| {
                     Error::StorageMsg(format!(
-                        "[RedisStorage] failed to scan data: key={} error={}",
-                        key, e
+                        "[RedisStorage] failed to scan data: key={key} error={e}"
                     ))
                 })?
         };
@@ -175,8 +168,7 @@ impl RedisStorage {
     pub fn redis_store_schema(&mut self, schema: &Schema) -> Result<()> {
         let schema_value = serde_json::to_string(schema).map_err(|e| {
             Error::StorageMsg(format!(
-                "[RedisStorage] failed to serialize schema={:?} error={}",
-                schema, e
+                "[RedisStorage] failed to serialize schema={schema:?} error={e}"
             ))
         })?;
         let schema_key = Self::redis_generate_schema_key(&self.namespace, &schema.table_name);
@@ -191,8 +183,7 @@ impl RedisStorage {
         if let Ok(Some(schema_value)) = self.redis_execute_get(&schema_key) {
             let schema = serde_json::from_str::<Schema>(&schema_value).map_err(|e| {
                 Error::StorageMsg(format!(
-                    "[RedisStorage] failed to deserialize schema={:?} error={}",
-                    schema_value, e
+                    "[RedisStorage] failed to deserialize schema={schema_value:?} error={e}"
                 ))
             })?;
             if schema.table_name == table_name {
@@ -269,8 +260,7 @@ impl Store for RedisStorage {
                 serde_json::from_str::<Schema>(&value)
                     .map_err(|e| {
                         Error::StorageMsg(format!(
-                            "[RedisStorage] failed to deserialize schema={} error={}",
-                            value, e
+                            "[RedisStorage] failed to deserialize schema={value} error={e}"
                         ))
                     })
                     .map(|schema| schemas.push(schema))?;
@@ -312,8 +302,7 @@ impl Store for RedisStorage {
                 serde_json::from_str::<Schema>(&value)
                     .map_err(|e| {
                         Error::StorageMsg(format!(
-                            "[RedisStorage] failed to deserialize schema={} error={}",
-                            value, e
+                            "[RedisStorage] failed to deserialize schema={value} error={e}"
                         ))
                     })
                     .map(|schema| {
@@ -342,8 +331,7 @@ impl Store for RedisStorage {
             return serde_json::from_str::<DataRow>(&value)
                 .map_err(|e| {
                     Error::StorageMsg(format!(
-                        "[RedisStorage] failed to deserialize value={} error={:?}",
-                        value, e
+                        "[RedisStorage] failed to deserialize value={value} error={e:?}"
                     ))
                 })
                 .map(Some);
@@ -382,15 +370,13 @@ impl Store for RedisStorage {
 
             let key = Self::redis_parse_key(&redis_key).map_err(|e| {
                 Error::StorageMsg(format!(
-                    "[RedisStorage] Wrong key format: key={} error={}",
-                    redis_key, e
+                    "[RedisStorage] Wrong key format: key={redis_key} error={e}"
                 ))
             })?;
 
             let row = serde_json::from_str::<DataRow>(&value).map_err(|e| {
                 Error::StorageMsg(format!(
-                    "[RedisStorage] failed to deserialize value={} error={:?}",
-                    value, e
+                    "[RedisStorage] failed to deserialize value={value} error={e:?}"
                 ))
             })?;
 
@@ -407,8 +393,7 @@ impl StoreMut for RedisStorage {
         let current_time = Value::Timestamp(Utc::now().naive_utc());
         let current_time_value = serde_json::to_string(&current_time).map_err(|e| {
             Error::StorageMsg(format!(
-                "[RedisStorage] failed to serialize metadata={:?} error={}",
-                current_time, e
+                "[RedisStorage] failed to serialize metadata={current_time:?} error={e}"
             ))
         })?;
         let metadata_key =
@@ -420,8 +405,7 @@ impl StoreMut for RedisStorage {
             Self::redis_generate_metadata_key(&self.namespace, &table_name, "CREATED");
         let metadata_value = serde_json::to_string(&current_time).map_err(|e| {
             Error::StorageMsg(format!(
-                "[RedisStorage] failed to serialize metadata={:?} error={}",
-                current_time, e
+                "[RedisStorage] failed to serialize metadata={current_time:?} error={e}"
             ))
         })?;
         self.redis_execute_set(&metadata_key, &metadata_value)?;
@@ -477,8 +461,7 @@ impl StoreMut for RedisStorage {
             let redis_key = Self::redis_generate_key(&self.namespace, table_name, &key)?;
             let value = serde_json::to_string(&row).map_err(|e| {
                 Error::StorageMsg(format!(
-                    "[RedisStorage] failed to serialize row={:?} error={}",
-                    row, e
+                    "[RedisStorage] failed to serialize row={row:?} error={e}"
                 ))
             })?;
 
@@ -493,8 +476,7 @@ impl StoreMut for RedisStorage {
             let redis_key = Self::redis_generate_key(&self.namespace, table_name, &key)?;
             let value = serde_json::to_string(&row).map_err(|e| {
                 Error::StorageMsg(format!(
-                    "[RedisStorage] failed to serialize row={:?} error={}",
-                    row, e
+                    "[RedisStorage] failed to serialize row={row:?} error={e}"
                 ))
             })?;
             self.redis_execute_set(&redis_key, &value)?;

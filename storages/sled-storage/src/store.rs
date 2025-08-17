@@ -48,7 +48,7 @@ impl Store for SledStorage {
         };
         let lock_txid = lock::fetch(&self.tree, txid, created_at, self.tx_timeout)?;
 
-        let key = format!("schema/{}", table_name);
+        let key = format!("schema/{table_name}");
         let schema = self
             .tree
             .get(key.as_bytes())

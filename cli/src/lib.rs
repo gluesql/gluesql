@@ -78,7 +78,7 @@ pub fn run() -> Result<()> {
             panic!("failed to load memory-storage: it should be without path");
         }
         (Some(path), Some(Storage::Sled), _) => {
-            println!("[sled-storage] connected to {}", path);
+            println!("[sled-storage] connected to {path}");
 
             run(
                 SledStorage::new(path).expect("failed to load sled-storage"),
@@ -86,7 +86,7 @@ pub fn run() -> Result<()> {
             );
         }
         (Some(path), Some(Storage::Redb), _) => {
-            println!("[redb-storage] connected to {}", path);
+            println!("[redb-storage] connected to {path}");
 
             run(
                 RedbStorage::new(path).expect("failed to load redb-storage"),
@@ -94,7 +94,7 @@ pub fn run() -> Result<()> {
             );
         }
         (Some(path), Some(Storage::Json), _) => {
-            println!("[json-storage] connected to {}", path);
+            println!("[json-storage] connected to {path}");
 
             run(
                 JsonStorage::new(path).expect("failed to load json-storage"),
@@ -102,7 +102,7 @@ pub fn run() -> Result<()> {
             );
         }
         (Some(path), Some(Storage::Csv), _) => {
-            println!("[csv-storage] connected to {}", path);
+            println!("[csv-storage] connected to {path}");
 
             run(
                 CsvStorage::new(path).expect("failed to load csv-storage"),
@@ -110,7 +110,7 @@ pub fn run() -> Result<()> {
             );
         }
         (Some(path), Some(Storage::Parquet), _) => {
-            println!("[parquet-storage] connected to {}", path);
+            println!("[parquet-storage] connected to {path}");
 
             run(
                 ParquetStorage::new(path).expect("failed to load parquet-storage"),
@@ -118,7 +118,7 @@ pub fn run() -> Result<()> {
             );
         }
         (Some(path), Some(Storage::File), _) => {
-            println!("[file-storage] connected to {}", path);
+            println!("[file-storage] connected to {path}");
 
             run(
                 FileStorage::new(path).expect("failed to load file-storage"),
@@ -141,12 +141,12 @@ pub fn run() -> Result<()> {
 
         if let Some(path) = input {
             if let Err(e) = cli.load(path.as_path()) {
-                println!("[error] {}\n", e);
+                println!("[error] {e}\n");
             };
         }
 
         if let Err(e) = cli.run() {
-            eprintln!("{}", e);
+            eprintln!("{e}");
         }
     }
 
@@ -198,7 +198,7 @@ pub fn dump_database(storage: &mut SledStorage, dump_path: PathBuf) -> Result<()
                 }
                 .to_sql();
 
-                writeln!(&file, "{}", insert_statement)?;
+                writeln!(&file, "{insert_statement}")?;
             }
 
             writeln!(&file)?;

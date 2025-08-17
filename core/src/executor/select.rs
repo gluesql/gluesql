@@ -50,7 +50,7 @@ fn apply_distinct(rows: Vec<Row>) -> Vec<Row> {
 async fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> Result<(Vec<Row>, Vec<String>)> {
     let first_len = exprs_list[0].len();
     let labels = (1..=first_len)
-        .map(|i| format!("column{}", i))
+        .map(|i| format!("column{i}"))
         .collect::<Vec<_>>();
     let columns = Arc::from(labels.clone());
 

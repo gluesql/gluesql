@@ -19,7 +19,7 @@ struct FileGuard {
 impl Drop for FileGuard {
     fn drop(&mut self) {
         if let Err(err) = fs::remove_file(&self.path) {
-            eprintln!("Failed to remove file: {:?}", err);
+            eprintln!("Failed to remove file: {err:?}");
         }
     }
 }

@@ -316,8 +316,8 @@ impl SelectItem {
                 }
             }
             SelectItem::QualifiedWildcard(obj) => match quoted {
-                true => format!(r#""{}".*"#, obj),
-                false => format!("{}.*", obj),
+                true => format!(r#""{obj}".*"#),
+                false => format!("{obj}.*"),
             },
             SelectItem::Wildcard => "*".to_owned(),
         }
@@ -551,8 +551,8 @@ impl OrderByExpr {
         };
 
         match asc {
-            Some(true) => format!("{} ASC", expr),
-            Some(false) => format!("{} DESC", expr),
+            Some(true) => format!("{expr} ASC"),
+            Some(false) => format!("{expr} DESC"),
             None => expr,
         }
     }

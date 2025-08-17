@@ -40,8 +40,7 @@ impl Metadata for RedisStorage {
             if let Ok(value) = value {
                 let value: Value = serde_json::from_str::<Value>(&value).map_err(|e| {
                     Error::StorageMsg(format!(
-                        "[RedisStorage] failed to deserialize value: key={} error={}",
-                        redis_key, e
+                        "[RedisStorage] failed to deserialize value: key={redis_key} error={e}"
                     ))
                 })?;
 

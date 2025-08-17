@@ -273,7 +273,7 @@ impl Interval {
                 match (nums.first(), nums.get(1)) {
                     (Some(days), Some(time)) => {
                         let days = parse_integer(days)?;
-                        let time = format!("{}:00", time);
+                        let time = format!("{time}:00");
 
                         Interval::days(days)
                             .add(&parse_time(&time)?)
@@ -296,18 +296,16 @@ impl Interval {
                     _ => Err(IntervalError::FailedToParseDayToSecond(value.to_owned()).into()),
                 }
             }
-            (Some(Hour), Some(Minute)) => parse_time(&format!("{}:00", value)),
+            (Some(Hour), Some(Minute)) => parse_time(&format!("{value}:00")),
             (Some(Hour), Some(Second)) => parse_time(value),
             (Some(Minute), Some(Second)) => {
                 let time = value.trim_start_matches('-');
 
-                parse_time(&format!("00:{}", time)).map(|v| sign * v)
+                parse_time(&format!("00:{time}")).map(|v| sign * v)
             }
-            (Some(from), Some(to)) => Err(IntervalError::UnsupportedRange(
-                format!("{:?}", from),
-                format!("{:?}", to),
-            )
-            .into()),
+            (Some(from), Some(to)) => {
+                Err(IntervalError::UnsupportedRange(format!("{from:?}"), format!("{to:?}")).into())
+            }
             (None, _) => Err(IntervalError::Unreachable.into()),
         }
     }

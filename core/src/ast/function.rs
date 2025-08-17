@@ -392,7 +392,7 @@ impl ToSql for Function {
                     .map(ToSql::to_sql)
                     .collect::<Vec<_>>()
                     .join(", ");
-                format!("GREATEST({})", items)
+                format!("GREATEST({items})")
             }
             Function::Format { expr, format } => {
                 format!("FORMAT({}, {})", expr.to_sql(), format.to_sql())

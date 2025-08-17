@@ -288,8 +288,8 @@ impl ToSql for Statement {
             Statement::DropFunction { if_exists, names } => {
                 let names = names.join(", ");
                 match if_exists {
-                    true => format!("DROP FUNCTION IF EXISTS {};", names),
-                    false => format!("DROP FUNCTION {};", names),
+                    true => format!("DROP FUNCTION IF EXISTS {names};"),
+                    false => format!("DROP FUNCTION {names};"),
                 }
             }
             Statement::CreateIndex {
@@ -339,13 +339,7 @@ impl ToSql for ForeignKey {
         } = self;
 
         format!(
-            r#"CONSTRAINT "{}" FOREIGN KEY ("{}") REFERENCES "{}" ("{}") ON DELETE {} ON UPDATE {}"#,
-            name,
-            referencing_column_name,
-            referenced_table_name,
-            referenced_column_name,
-            on_delete,
-            on_update
+            r#"CONSTRAINT "{name}" FOREIGN KEY ("{referencing_column_name}") REFERENCES "{referenced_table_name}" ("{referenced_column_name}") ON DELETE {on_delete} ON UPDATE {on_update}"#
         )
     }
 }

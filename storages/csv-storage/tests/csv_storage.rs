@@ -13,7 +13,7 @@ impl Tester<CsvStorage> for CsvTester {
         let path = format!("tmp/{namespace}");
 
         if let Err(e) = remove_dir_all(&path) {
-            println!("fs::remove_file {:?}", e);
+            println!("fs::remove_file {e:?}");
         };
 
         let storage = CsvStorage::new(&path).expect("CsvStorage::new");

@@ -368,14 +368,14 @@ impl Value {
                 .sub(*b)
                 .num_microseconds()
                 .ok_or_else(|| {
-                    ValueError::UnreachableIntegerOverflow(format!("{:?} - {:?}", a, b)).into()
+                    ValueError::UnreachableIntegerOverflow(format!("{a:?} - {b:?}")).into()
                 })
                 .map(|v| Interval(I::microseconds(v))),
             (Time(a), Time(b)) => a
                 .sub(*b)
                 .num_microseconds()
                 .ok_or_else(|| {
-                    ValueError::UnreachableIntegerOverflow(format!("{:?} - {:?}", a, b)).into()
+                    ValueError::UnreachableIntegerOverflow(format!("{a:?} - {b:?}")).into()
                 })
                 .map(|v| Interval(I::microseconds(v))),
             (Time(a), Interval(b)) => b.subtract_from_time(a).map(Time),
@@ -3054,7 +3054,7 @@ mod tests {
 
         for (a, b) in values_equal {
             assert_eq!(a, b);
-            assert_eq!(hash_value(&a), hash_value(&b), "{:?} vs {:?}", a, b);
+            assert_eq!(hash_value(&a), hash_value(&b), "{a:?} vs {b:?}");
         }
 
         let map_test_cases = [{

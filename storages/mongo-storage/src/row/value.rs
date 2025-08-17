@@ -108,7 +108,7 @@ impl IntoValue for Bson {
             (Bson::RegularExpression(regex), _) => {
                 let pattern = regex.pattern;
                 let options = regex.options;
-                Value::Str(format!("/{}/{}", pattern, options))
+                Value::Str(format!("/{pattern}/{options}"))
             }
             (Bson::Int32(i), DataType::Uint8) => Value::U8(
                 i.try_into()
