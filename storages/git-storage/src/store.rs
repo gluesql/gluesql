@@ -8,7 +8,7 @@ use {
     },
 };
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Store for GitStorage {
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         self.get_store().fetch_all_schemas().await

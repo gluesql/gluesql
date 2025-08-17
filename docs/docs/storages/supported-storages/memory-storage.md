@@ -31,12 +31,12 @@ This structure defines the `Item` and `MemoryStorage` structs. `Item` struct hol
 Below are the implementations of the `Store` and `StoreMut` traits for `MemoryStorage`:
 
 ```rust
-#[async_trait(?Send)]
+#[async_trait]
 impl Store for MemoryStorage {
     // Code for fetching schemas and data
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl StoreMut for MemoryStorage {
     // Code for manipulating schemas and data
 }

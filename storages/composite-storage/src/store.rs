@@ -9,7 +9,7 @@ use {
     },
 };
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Store for CompositeStorage {
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
         let schemas = stream::iter(self.storages.values())

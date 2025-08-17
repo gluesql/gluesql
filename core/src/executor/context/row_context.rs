@@ -1,6 +1,6 @@
 use {
     crate::data::{Row, Value},
-    std::{borrow::Cow, collections::BTreeMap, fmt::Debug, rc::Rc},
+    std::{borrow::Cow, collections::BTreeMap, fmt::Debug, sync::Arc},
 };
 
 #[derive(Debug)]
@@ -8,7 +8,7 @@ pub enum RowContext<'a> {
     Data {
         table_alias: &'a str,
         row: Cow<'a, Row>,
-        next: Option<Rc<RowContext<'a>>>,
+        next: Option<Arc<RowContext<'a>>>,
     },
     RefVecData {
         columns: &'a [String],
@@ -16,13 +16,13 @@ pub enum RowContext<'a> {
     },
     RefMapData(&'a BTreeMap<String, Value>),
     Bridge {
-        left: Rc<RowContext<'a>>,
-        right: Rc<RowContext<'a>>,
+        left: Arc<RowContext<'a>>,
+        right: Arc<RowContext<'a>>,
     },
 }
 
 impl<'a> RowContext<'a> {
-    pub fn new(table_alias: &'a str, row: Cow<'a, Row>, next: Option<Rc<RowContext<'a>>>) -> Self {
+    pub fn new(table_alias: &'a str, row: Cow<'a, Row>, next: Option<Arc<RowContext<'a>>>) -> Self {
         Self::Data {
             table_alias,
             row,
@@ -30,7 +30,7 @@ impl<'a> RowContext<'a> {
         }
     }
 
-    pub fn concat(left: Rc<RowContext<'a>>, right: Rc<RowContext<'a>>) -> Self {
+    pub fn concat(left: Arc<RowContext<'a>>, right: Arc<RowContext<'a>>) -> Self {
         Self::Bridge { left, right }
     }
 

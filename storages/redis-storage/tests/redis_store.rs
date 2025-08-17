@@ -30,17 +30,20 @@ impl Tester<RedisStorage> for RedisStorageTester {
         // MUST clear namespace before test
         // DO NOT USE FLUSHALL command because it also flushes all namespaces of other clients.
         // It must clear only its own namespace.
-        let key_iter: Vec<String> = storage
-            .conn
-            .borrow_mut()
-            .scan_match(&format!("{}#*", namespace))
-            .unwrap()
-            .collect();
+        let key_iter: Vec<String> = {
+            let mut conn = storage.conn.lock().unwrap();
+            conn.scan_match(&format!("{}#*", namespace))
+                .unwrap()
+                .collect()
+        };
         for key in key_iter {
-            let _: () = redis::cmd("DEL")
-                .arg(&key)
-                .query(&mut storage.conn.borrow_mut())
-                .unwrap_or_else(|_| panic!("failed to execute DEL for key={}", key));
+            let _: () = {
+                let mut conn = storage.conn.lock().unwrap();
+                redis::cmd("DEL")
+                    .arg(&key)
+                    .query(&mut *conn)
+                    .unwrap_or_else(|_| panic!("failed to execute DEL for key={}", key))
+            };
         }
 
         let glue = Glue::new(storage);

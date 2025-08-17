@@ -1,15 +1,15 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub enum Context<'a> {
     Data {
         alias: String,
         columns: Vec<&'a str>,
         primary_key: Option<&'a str>,
-        next: Option<Rc<Context<'a>>>,
+        next: Option<Arc<Context<'a>>>,
     },
     Bridge {
-        left: Rc<Context<'a>>,
-        right: Rc<Context<'a>>,
+        left: Arc<Context<'a>>,
+        right: Arc<Context<'a>>,
     },
 }
 
@@ -18,7 +18,7 @@ impl<'a> Context<'a> {
         alias: String,
         columns: Vec<&'a str>,
         primary_key: Option<&'a str>,
-        next: Option<Rc<Context<'a>>>,
+        next: Option<Arc<Context<'a>>>,
     ) -> Self {
         Context::Data {
             alias,
@@ -29,11 +29,11 @@ impl<'a> Context<'a> {
     }
 
     pub fn concat(
-        left: Option<Rc<Context<'a>>>,
-        right: Option<Rc<Context<'a>>>,
-    ) -> Option<Rc<Self>> {
+        left: Option<Arc<Context<'a>>>,
+        right: Option<Arc<Context<'a>>>,
+    ) -> Option<Arc<Self>> {
         match (left, right) {
-            (Some(left), Some(right)) => Some(Rc::new(Self::Bridge { left, right })),
+            (Some(left), Some(right)) => Some(Arc::new(Self::Bridge { left, right })),
             (context @ Some(_), None) | (None, context @ Some(_)) => context,
             (None, None) => None,
         }

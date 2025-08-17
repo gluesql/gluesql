@@ -19,7 +19,7 @@ use {
     },
 };
 
-#[async_trait(?Send)]
+#[async_trait]
 impl StoreMut for JsonStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let data_path = self.jsonl_path(schema.table_name.as_str());

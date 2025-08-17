@@ -5,7 +5,7 @@ use {
         data::Schema,
         result::Result,
     },
-    std::{collections::HashMap, rc::Rc},
+    std::{collections::HashMap, sync::Arc},
 };
 
 type SchemaMap = HashMap<String, Schema>;
@@ -44,22 +44,25 @@ pub fn validate(schema_map: &SchemaMap, statement: &Statement) -> Result<()> {
 enum Context<'a> {
     Data {
         labels: Option<Vec<&'a str>>,
-        next: Option<Rc<Context<'a>>>,
+        next: Option<Arc<Context<'a>>>,
     },
     Bridge {
-        left: Rc<Context<'a>>,
-        right: Rc<Context<'a>>,
+        left: Arc<Context<'a>>,
+        right: Arc<Context<'a>>,
     },
 }
 
 impl<'a> Context<'a> {
-    fn new(labels: Option<Vec<&'a str>>, next: Option<Rc<Context<'a>>>) -> Self {
+    fn new(labels: Option<Vec<&'a str>>, next: Option<Arc<Context<'a>>>) -> Self {
         Self::Data { labels, next }
     }
 
-    fn concat(left: Option<Rc<Context<'a>>>, right: Option<Rc<Context<'a>>>) -> Option<Rc<Self>> {
+    fn concat(
+        left: Option<Arc<Context<'a>>>,
+        right: Option<Arc<Context<'a>>>,
+    ) -> Option<Arc<Self>> {
         match (left, right) {
-            (Some(left), Some(right)) => Some(Rc::new(Self::Bridge { left, right })),
+            (Some(left), Some(right)) => Some(Arc::new(Self::Bridge { left, right })),
             (context @ Some(_), None) | (None, context @ Some(_)) => context,
             (None, None) => None,
         }
@@ -109,7 +112,10 @@ fn get_labels(schema: &Schema) -> Option<Vec<&str>> {
     })
 }
 
-fn contextualize_query<'a>(schema_map: &'a SchemaMap, query: &'a Query) -> Option<Rc<Context<'a>>> {
+fn contextualize_query<'a>(
+    schema_map: &'a SchemaMap,
+    query: &'a Query,
+) -> Option<Arc<Context<'a>>> {
     let Query { body, .. } = query;
     match body {
         SetExpr::Select(select) => {
@@ -129,11 +135,11 @@ fn contextualize_query<'a>(schema_map: &'a SchemaMap, query: &'a Query) -> Optio
 fn contextualize_table_factor<'a>(
     schema_map: &'a SchemaMap,
     table_factor: &'a TableFactor,
-) -> Option<Rc<Context<'a>>> {
+) -> Option<Arc<Context<'a>>> {
     match table_factor {
         TableFactor::Table { name, .. } => {
             let schema = schema_map.get(name);
-            schema.map(|schema| Rc::from(Context::new(get_labels(schema), None)))
+            schema.map(|schema| Arc::from(Context::new(get_labels(schema), None)))
         }
         TableFactor::Derived { subquery, .. } => contextualize_query(schema_map, subquery),
         TableFactor::Series { .. } | TableFactor::Dictionary { .. } => None,

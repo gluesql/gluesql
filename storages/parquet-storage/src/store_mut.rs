@@ -60,7 +60,7 @@ lazy_static! {
     };
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl StoreMut for ParquetStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let data_path = self.data_path(schema.table_name.as_str());
