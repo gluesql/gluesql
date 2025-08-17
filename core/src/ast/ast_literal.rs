@@ -2,6 +2,7 @@ use {
     crate::ast::ToSql,
     bigdecimal::BigDecimal,
     serde::{Deserialize, Serialize},
+    sqlparser::ast::Value as SqlValue,
     strum_macros::Display,
 };
 
@@ -17,14 +18,11 @@ pub enum AstLiteral {
 impl ToSql for AstLiteral {
     fn to_sql(&self) -> String {
         match self {
-            AstLiteral::Boolean(b) => b.to_string().to_uppercase(),
-            AstLiteral::Number(n) => n.to_string(),
-            AstLiteral::QuotedString(qs) => {
-                let escaped = qs.replace('\'', "''");
-                format!("'{escaped}'")
-            }
-            AstLiteral::HexString(hs) => format!("'{hs}'"),
-            AstLiteral::Null => "NULL".to_owned(),
+            AstLiteral::Boolean(b) => SqlValue::Boolean(*b).to_string().to_uppercase(),
+            AstLiteral::Number(n) => SqlValue::Number(n.clone(), false).to_string(),
+            AstLiteral::QuotedString(qs) => SqlValue::SingleQuotedString(qs.to_owned()).to_string(),
+            AstLiteral::HexString(hs) => SqlValue::HexStringLiteral(hs.to_owned()).to_string(),
+            AstLiteral::Null => SqlValue::Null.to_string(),
         }
     }
 }
@@ -67,6 +65,7 @@ mod tests {
             "'can''t'",
             AstLiteral::QuotedString("can't".to_owned()).to_sql()
         );
+        assert_eq!("X'1A2B'", AstLiteral::HexString("1A2B".to_owned()).to_sql());
         assert_eq!("NULL", AstLiteral::Null.to_sql());
     }
 }
