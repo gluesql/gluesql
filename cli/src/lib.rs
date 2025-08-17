@@ -14,7 +14,7 @@ use {
         stream::{StreamExt, TryStreamExt},
     },
     gluesql_core::{
-        ast::{Expr, SetExpr, Statement, ToSql, Values},
+        ast::{Expr, ToSql},
         data::Value,
         store::{DataRow, GStore, GStoreMut, Store, Transaction},
     },
@@ -172,7 +172,7 @@ pub fn dump_database(storage: &mut SledStorage, dump_path: PathBuf) -> Result<()
                 let exprs_list = rows
                     .into_iter()
                     .map(|result| {
-                        result.map(|data_row| {
+                        result.and_then(|data_row| {
                             let values = match data_row {
                                 DataRow::Vec(values) => values,
                                 DataRow::Map(values) => vec![Value::Map(values)],
@@ -180,23 +180,27 @@ pub fn dump_database(storage: &mut SledStorage, dump_path: PathBuf) -> Result<()
 
                             values
                                 .into_iter()
-                                .map(|value| Ok(Expr::try_from(value)?))
-                                .collect::<Result<Vec<_>>>()
-                        })?
+                                .map(Expr::try_from)
+                                .collect::<std::result::Result<Vec<_>, _>>()
+                        })
                     })
-                    .collect::<Result<Vec<_>, _>>()?;
+                    .collect::<std::result::Result<Vec<_>, _>>()?;
 
-                let insert_statement = Statement::Insert {
-                    table_name: schema.table_name.clone(),
-                    columns: Vec::new(),
-                    source: gluesql_core::ast::Query {
-                        body: SetExpr::Values(Values(exprs_list)),
-                        order_by: Vec::new(),
-                        limit: None,
-                        offset: None,
-                    },
-                }
-                .to_sql();
+                let values = exprs_list
+                    .into_iter()
+                    .map(|exprs| {
+                        let row = exprs
+                            .into_iter()
+                            .map(|expr| expr.to_sql())
+                            .collect::<Vec<_>>()
+                            .join(", ");
+                        format!("({row})")
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+
+                let insert_statement =
+                    format!(r#"INSERT INTO "{}" VALUES {values};"#, schema.table_name);
 
                 writeln!(&file, "{insert_statement}")?;
             }
