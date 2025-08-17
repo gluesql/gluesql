@@ -3,6 +3,7 @@
 mod alter_table;
 mod index;
 mod metadata;
+mod mutex;
 mod transaction;
 
 use {
@@ -17,6 +18,8 @@ use {
     redis::{Commands, Connection},
     std::{collections::BTreeMap, sync::Mutex},
 };
+
+use mutex::MutexExt;
 
 pub struct RedisStorage {
     pub namespace: String,
@@ -107,9 +110,10 @@ impl RedisStorage {
     }
 
     fn redis_execute_get(&mut self, key: &str) -> Result<Option<String>> {
+        let mut conn = self.conn.lock_err()?;
         let value = redis::cmd("GET")
             .arg(key)
-            .query::<String>(&mut *self.conn.lock().unwrap())
+            .query::<String>(&mut *conn)
             .map_err(|e| {
                 Error::StorageMsg(format!(
                     "[RedisStorage] failed to execute GET: key={} error={}",
@@ -121,10 +125,11 @@ impl RedisStorage {
     }
 
     fn redis_execute_set(&mut self, key: &str, value: &str) -> Result<()> {
+        let mut conn = self.conn.lock_err()?;
         redis::cmd("SET")
             .arg(key)
             .arg(value)
-            .query::<()>(&mut *self.conn.lock().unwrap())
+            .query::<()>(&mut *conn)
             .map_err(|e| {
                 Error::StorageMsg(format!(
                     "[RedisStorage] failed to execute SET: key={} value={} error={}",
@@ -136,9 +141,10 @@ impl RedisStorage {
     }
 
     pub fn redis_execute_del(&mut self, key: &str) -> Result<()> {
+        let mut conn = self.conn.lock_err()?;
         redis::cmd("DEL")
             .arg(key)
-            .query::<()>(&mut *self.conn.lock().unwrap())
+            .query::<()>(&mut *conn)
             .map_err(|e| {
                 Error::StorageMsg(format!(
                     "[RedisStorage] failed to execute DEL: key={} error={}",
@@ -152,7 +158,7 @@ impl RedisStorage {
     pub fn redis_execute_scan(&mut self, table_name: &str) -> Result<Vec<String>> {
         let key = Self::redis_generate_scankey(&self.namespace, table_name);
         let redis_keys: Vec<String> = {
-            let mut conn = self.conn.lock().unwrap();
+            let mut conn = self.conn.lock_err()?;
             conn.scan_match(&key)
                 .map(|iter| iter.collect::<Vec<String>>())
                 .map_err(|e| {
@@ -237,7 +243,7 @@ impl Store for RedisStorage {
         let mut schemas = Vec::<Schema>::new();
         let scan_schema_key = Self::redis_generate_scan_schema_key(&self.namespace);
         let redis_keys: Vec<String> = {
-            let mut conn = self.conn.lock().unwrap();
+            let mut conn = self.conn.lock_err()?;
             conn.scan_match(&scan_schema_key)
                 .map(|iter| iter.collect::<Vec<String>>())
                 .map_err(|e| {
@@ -252,12 +258,14 @@ impl Store for RedisStorage {
         for redis_key in redis_keys.into_iter() {
             // Another client just has removed the value with the key.
             // It's not a problem. Just ignore it.
-            if let Ok(value) = {
-                let mut conn = self.conn.lock().unwrap();
+            let value = {
+                let mut conn = self.conn.lock_err()?;
                 redis::cmd("GET")
                     .arg(&redis_key)
                     .query::<String>(&mut *conn)
-            } {
+            };
+
+            if let Ok(value) = value {
                 serde_json::from_str::<Schema>(&value)
                     .map_err(|e| {
                         Error::StorageMsg(format!(
@@ -278,7 +286,7 @@ impl Store for RedisStorage {
         let mut found = None;
         let scan_schema_key = Self::redis_generate_scan_schema_key(&self.namespace);
         let redis_keys: Vec<String> = {
-            let mut conn = self.conn.lock().unwrap();
+            let mut conn = self.conn.lock_err()?;
             conn.scan_match(&scan_schema_key)
                 .map(|iter| iter.collect::<Vec<String>>())
                 .map_err(|e| {
@@ -293,12 +301,14 @@ impl Store for RedisStorage {
         for redis_key in redis_keys.into_iter() {
             // Another client just has removed the value with the key.
             // It's not a problem. Just ignore it.
-            if let Ok(value) = {
-                let mut conn = self.conn.lock().unwrap();
+            let value = {
+                let mut conn = self.conn.lock_err()?;
                 redis::cmd("GET")
                     .arg(&redis_key)
                     .query::<String>(&mut *conn)
-            } {
+            };
+
+            if let Ok(value) = value {
                 serde_json::from_str::<Schema>(&value)
                     .map_err(|e| {
                         Error::StorageMsg(format!(
@@ -324,10 +334,11 @@ impl Store for RedisStorage {
     async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {
         let key = Self::redis_generate_key(&self.namespace, table_name, key)?;
         // It's not a problem if the value with the key is removed by another client.
-        if let Ok(value) = {
-            let mut conn = self.conn.lock().unwrap();
+        let value = {
+            let mut conn = self.conn.lock_err()?;
             redis::cmd("GET").arg(&key).query::<String>(&mut *conn)
-        } {
+        };
+        if let Ok(value) = value {
             return serde_json::from_str::<DataRow>(&value)
                 .map_err(|e| {
                     Error::StorageMsg(format!(
@@ -343,7 +354,7 @@ impl Store for RedisStorage {
     async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
         // First read all keys of the table
         let redis_keys: Vec<String> = {
-            let mut conn = self.conn.lock().unwrap();
+            let mut conn = self.conn.lock_err()?;
             conn.scan_match(Self::redis_generate_scankey(&self.namespace, table_name))
                 .map(|iter| iter.collect::<Vec<String>>())
                 .map_err(|e| {
@@ -354,37 +365,38 @@ impl Store for RedisStorage {
                 })?
         };
 
-        let rows = redis_keys
-            .into_iter()
-            .filter_map(|redis_key| {
-                // Another client just has removed the value with the key.
-                // It's not a problem. Just ignore it.
-                let value = {
-                    let mut conn = self.conn.lock().unwrap();
-                    redis::cmd("GET")
-                        .arg(&redis_key)
-                        .query::<String>(&mut *conn)
-                        .ok()
-                };
-                value.map(|value| (redis_key, value))
-            })
-            .map(|(redis_key, value)| {
-                let key = Self::redis_parse_key(&redis_key).map_err(|e| {
-                    Error::StorageMsg(format!(
-                        "[RedisStorage] Wrong key format: key={} error={}",
-                        redis_key, e
-                    ))
-                })?;
+        let mut rows = BTreeMap::new();
+        for redis_key in redis_keys.into_iter() {
+            // Another client just has removed the value with the key.
+            // It's not a problem. Just ignore it.
+            let value = {
+                let mut conn = self.conn.lock_err()?;
+                redis::cmd("GET")
+                    .arg(&redis_key)
+                    .query::<String>(&mut *conn)
+            };
+            let value = match value {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
 
-                let row = serde_json::from_str::<DataRow>(&value).map_err(|e| {
-                    Error::StorageMsg(format!(
-                        "[RedisStorage] failed to deserialize value={} error={:?}",
-                        value, e
-                    ))
-                })?;
-                Ok((key, row))
-            })
-            .collect::<Result<BTreeMap<Key, DataRow>>>()?;
+            let key = Self::redis_parse_key(&redis_key).map_err(|e| {
+                Error::StorageMsg(format!(
+                    "[RedisStorage] Wrong key format: key={} error={}",
+                    redis_key, e
+                ))
+            })?;
+
+            let row = serde_json::from_str::<DataRow>(&value).map_err(|e| {
+                Error::StorageMsg(format!(
+                    "[RedisStorage] failed to deserialize value={} error={:?}",
+                    value, e
+                ))
+            })?;
+
+            rows.insert(key, row);
+        }
+
         Ok(Box::pin(iter(rows.into_iter().map(Ok))))
     }
 }
@@ -429,7 +441,7 @@ impl StoreMut for RedisStorage {
         // delete metadata
         let metadata_scan_key = Self::redis_generate_scan_metadata_key(&self.namespace, table_name);
         let metadata_redis_keys: Vec<String> = {
-            let mut conn = self.conn.lock().unwrap();
+            let mut conn = self.conn.lock_err()?;
             conn.scan_match(&metadata_scan_key)
                 .map(|iter| iter.collect::<Vec<String>>())
                 .map_err(|e| {
@@ -453,7 +465,7 @@ impl StoreMut for RedisStorage {
             // Even multiple clients can get an unique value with INCR command.
             // and a shared key "globalkey"
             let k = {
-                let mut conn = self.conn.lock().unwrap();
+                let mut conn = self.conn.lock_err()?;
                 redis::cmd("INCR")
                     .arg("globalkey")
                     .query::<i64>(&mut *conn)
