@@ -48,16 +48,33 @@ impl Schema {
             comment,
         } = self;
 
-        let create_table = Statement::CreateTable {
-            if_not_exists: false,
-            name: table_name.to_owned(),
-            columns: column_defs.to_owned(),
-            engine: engine.to_owned(),
-            comment: comment.to_owned(),
-            source: None,
-            foreign_keys: foreign_keys.to_owned(),
-        }
-        .to_sql();
+        let columns = column_defs.as_ref().map(|column_defs| {
+            let foreign_keys = foreign_keys.iter().map(ToSql::to_sql);
+            let body = column_defs
+                .iter()
+                .map(ToSql::to_sql)
+                .chain(foreign_keys)
+                .collect::<Vec<_>>()
+                .join(", ");
+
+            format!("({body})")
+        });
+        let engine = engine.as_ref().map(|engine| format!(" ENGINE = {engine}"));
+        let comment = comment
+            .as_ref()
+            .map(|comment| format!(" COMMENT = '{comment}'"));
+
+        let create_table = vec![
+            Some(format!(r#"CREATE TABLE \"{table_name}\""#)),
+            columns,
+            engine,
+            comment,
+        ]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>()
+        .join(" ")
+            + ";";
 
         let create_indexes = indexes.iter().map(|SchemaIndex { name, expr, .. }| {
             let expr = expr.to_sql();

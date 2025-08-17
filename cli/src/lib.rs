@@ -14,7 +14,7 @@ use {
         stream::{StreamExt, TryStreamExt},
     },
     gluesql_core::{
-        ast::{Expr, SetExpr, Statement, ToSql, Values},
+        ast::{Expr, ToSql},
         data::Value,
         store::{DataRow, GStore, GStoreMut, Store, Transaction},
     },
@@ -186,17 +186,21 @@ pub fn dump_database(storage: &mut SledStorage, dump_path: PathBuf) -> Result<()
                     })
                     .collect::<Result<Vec<_>, _>>()?;
 
-                let insert_statement = Statement::Insert {
-                    table_name: schema.table_name.clone(),
-                    columns: Vec::new(),
-                    source: gluesql_core::ast::Query {
-                        body: SetExpr::Values(Values(exprs_list)),
-                        order_by: Vec::new(),
-                        limit: None,
-                        offset: None,
-                    },
-                }
-                .to_sql();
+                let values = exprs_list
+                    .into_iter()
+                    .map(|exprs| {
+                        let row = exprs
+                            .into_iter()
+                            .map(|expr| expr.to_sql())
+                            .collect::<Vec<_>>()
+                            .join(", ");
+                        format!("({row})")
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+
+                let insert_statement =
+                    format!("INSERT INTO \"{}\" VALUES {values};", schema.table_name);
 
                 writeln!(&file, "{}", insert_statement)?;
             }
