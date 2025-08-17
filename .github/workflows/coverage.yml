@@ -62,10 +62,6 @@ jobs:
         run: |
           mkdir -p gluesql.github.io/coverage/$BRANCH_NAME/$COMMIT_SHA
           cp coverage/lcov.info gluesql.github.io/coverage/$BRANCH_NAME/$COMMIT_SHA/lcov.info
-      - name: Prepare git
-        run: |
-          git config --global --replace-all user.email "taehoon.moon@outlook.com"
-          git config --global --replace-all user.name "Taehoon Moon (Bot)"
       - name: Commit and push coverage
         run: |
           cd gluesql.github.io
