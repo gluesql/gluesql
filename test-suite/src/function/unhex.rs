@@ -46,6 +46,22 @@ test_case!(unhex, {
             )),
         ),
         (
+            "SELECT UNHEX('0X414243') AS unhex",
+            Ok(select!(
+                unhex
+                Str;
+                "ABC".to_string()
+            )),
+        ),
+        (
+            "SELECT UNHEX('4a4B') AS unhex",
+            Ok(select!(
+                unhex
+                Str;
+                "JK".to_string()
+            )),
+        ),
+        (
             "SELECT UNHEX(NULL) AS unhex",
             Ok(select_with_null!(unhex; Null)),
         ),
@@ -65,6 +81,10 @@ test_case!(unhex, {
                 found: 0,
             }
             .into()),
+        ),
+        (
+            "SELECT UNHEX('A') AS unhex",
+            Err(EvaluateError::InvalidHexadecimal("A".to_owned()).into()),
         ),
         (
             "SELECT UNHEX([1, 2, 3]) AS unhex",
