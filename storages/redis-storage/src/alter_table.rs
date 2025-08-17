@@ -1,5 +1,5 @@
 use {
-    super::RedisStorage,
+    super::{RedisStorage, mutex::MutexExt},
     async_trait::async_trait,
     gluesql_core::{
         ast::ColumnDef,
@@ -117,7 +117,7 @@ impl AlterTable for RedisStorage {
             // Otherwise, it will cause a mutable reference conflict.
             let scan_key = Self::redis_generate_scankey(&self.namespace, table_name);
             let key_iter: Vec<String> = {
-                let mut conn = self.conn.lock().unwrap();
+                let mut conn = self.conn.lock_err()?;
                 conn.scan_match(&scan_key)
                     .map(|iter| iter.collect::<Vec<String>>())
                     .map_err(|_| {
@@ -130,7 +130,7 @@ impl AlterTable for RedisStorage {
 
             for key in key_iter {
                 let value = {
-                    let mut conn = self.conn.lock().unwrap();
+                    let mut conn = self.conn.lock_err()?;
                     redis::cmd("GET")
                         .arg(&key)
                         .query::<String>(&mut *conn)
@@ -167,7 +167,7 @@ impl AlterTable for RedisStorage {
                     ))
                 })?;
                 let _: () = {
-                    let mut conn = self.conn.lock().unwrap();
+                    let mut conn = self.conn.lock_err()?;
                     redis::cmd("SET")
                         .arg(&key)
                         .arg(new_value)
