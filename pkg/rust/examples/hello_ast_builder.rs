@@ -59,7 +59,7 @@ mod hello_ast_builder {
         */
         let rows = match result {
             Payload::Select { labels: _, rows } => rows,
-            _ => panic!("Unexpected result: {:?}", result),
+            _ => panic!("Unexpected result: {result:?}"),
         };
 
         let first_row = &rows[0];
@@ -70,10 +70,10 @@ mod hello_ast_builder {
         */
         let to_greet = match first_value {
             Value::Str(to_greet) => to_greet,
-            value => panic!("Unexpected type: {:?}", value),
+            value => panic!("Unexpected type: {value:?}"),
         };
 
-        println!("Hello {}!", to_greet); // Will always output "Hello AST Builder!"
+        println!("Hello {to_greet}!"); // Will always output "Hello AST Builder!"
     }
 }
 

@@ -516,7 +516,7 @@ where
                     )
                     .into());
                 }
-                let labels = (alias_len + 1..=total_len).map(|i| format!("column{}", i));
+                let labels = (alias_len + 1..=total_len).map(|i| format!("column{i}"));
                 let labels = alias_columns
                     .iter()
                     .cloned()

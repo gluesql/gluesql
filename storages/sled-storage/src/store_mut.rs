@@ -69,7 +69,7 @@ impl StoreMut for SledStorage {
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
-        let prefix = format!("data/{}/", table_name);
+        let prefix = format!("data/{table_name}/");
         let items = self
             .tree
             .scan_prefix(prefix.as_bytes())
@@ -87,7 +87,7 @@ impl StoreMut for SledStorage {
                 }
             };
 
-            let key = format!("schema/{}", table_name);
+            let key = format!("schema/{table_name}");
             let temp_key = key::temp_schema(txid, table_name);
 
             let snapshot: Option<Snapshot<Schema>> = tree

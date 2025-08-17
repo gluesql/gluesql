@@ -22,6 +22,7 @@ pub enum SetExpr {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Select {
+    pub distinct: bool,
     pub projection: Vec<SelectItem>,
     pub from: TableWithJoins,
     /// WHERE
@@ -235,6 +236,7 @@ impl Select {
         };
 
         let Select {
+            distinct,
             projection,
             from,
             selection,
@@ -267,11 +269,18 @@ impl Select {
             .filter(|sql| !sql.is_empty())
             .join(" ");
 
+        let distinct = if *distinct { "DISTINCT " } else { "" };
+
         if condition.is_empty() {
-            format!("SELECT {projection} FROM {}", from.to_sql_with(quoted))
+            format!(
+                "SELECT {}{projection} FROM {}",
+                distinct,
+                from.to_sql_with(quoted)
+            )
         } else {
             format!(
-                "SELECT {projection} FROM {} {condition}",
+                "SELECT {}{projection} FROM {} {condition}",
+                distinct,
                 from.to_sql_with(quoted)
             )
         }
@@ -307,8 +316,8 @@ impl SelectItem {
                 }
             }
             SelectItem::QualifiedWildcard(obj) => match quoted {
-                true => format!(r#""{}".*"#, obj),
-                false => format!("{}.*", obj),
+                true => format!(r#""{obj}".*"#),
+                false => format!("{obj}.*"),
             },
             SelectItem::Wildcard => "*".to_owned(),
         }
@@ -542,8 +551,8 @@ impl OrderByExpr {
         };
 
         match asc {
-            Some(true) => format!("{} ASC", expr),
-            Some(false) => format!("{} DESC", expr),
+            Some(true) => format!("{expr} ASC"),
+            Some(false) => format!("{expr} DESC"),
             None => expr,
         }
     }
@@ -614,6 +623,7 @@ mod tests {
             r#"SELECT * FROM "FOO" AS "F" ORDER BY "name" ASC LIMIT 10 OFFSET 3"#.to_owned();
         let expected = Query {
             body: SetExpr::Select(Box::new(Select {
+                distinct: false,
                 projection: vec![SelectItem::Wildcard],
                 from: TableWithJoins {
                     relation: TableFactor::Table {
@@ -651,6 +661,7 @@ mod tests {
         let actual = "SELECT * FROM FOO AS F ORDER BY name ASC LIMIT 10 OFFSET 3".to_owned();
         let expected = Query {
             body: SetExpr::Select(Box::new(Select {
+                distinct: false,
                 projection: vec![SelectItem::Wildcard],
                 from: TableWithJoins {
                     relation: TableFactor::Table {
@@ -683,6 +694,7 @@ mod tests {
     fn to_sql_set_expr() {
         let actual = r#"SELECT * FROM "FOO" AS "F" INNER JOIN "PlayerItem""#.to_owned();
         let expected = SetExpr::Select(Box::new(Select {
+            distinct: false,
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
@@ -731,6 +743,7 @@ mod tests {
     fn to_sql_unquoted_set_expr() {
         let actual = "SELECT * FROM FOO AS F INNER JOIN PlayerItem".to_owned();
         let expected = SetExpr::Select(Box::new(Select {
+            distinct: false,
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
@@ -794,6 +807,7 @@ mod tests {
         let actual =
             r#"SELECT * FROM "FOO" AS "F" GROUP BY "name" HAVING "name" = 'glue'"#.to_owned();
         let expected = Select {
+            distinct: false,
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
@@ -819,6 +833,7 @@ mod tests {
 
         let actual = r#"SELECT * FROM "FOO" WHERE "name" = 'glue'"#.to_owned();
         let expected = Select {
+            distinct: false,
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
@@ -844,6 +859,7 @@ mod tests {
     fn to_sql_unquoted_select() {
         let actual = "SELECT * FROM FOO AS F GROUP BY name HAVING name = 'glue'".to_owned();
         let expected = Select {
+            distinct: false,
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
@@ -869,6 +885,7 @@ mod tests {
 
         let actual = "SELECT * FROM FOO WHERE name = 'glue'".to_owned();
         let expected = Select {
+            distinct: false,
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
@@ -978,6 +995,7 @@ mod tests {
         let expected = TableFactor::Derived {
             subquery: Query {
                 body: SetExpr::Select(Box::new(Select {
+                    distinct: false,
                     projection: vec![SelectItem::Wildcard],
                     from: TableWithJoins {
                         relation: TableFactor::Table {
@@ -1044,6 +1062,7 @@ mod tests {
         let expected = TableFactor::Derived {
             subquery: Query {
                 body: SetExpr::Select(Box::new(Select {
+                    distinct: false,
                     projection: vec![SelectItem::Wildcard],
                     from: TableWithJoins {
                         relation: TableFactor::Table {

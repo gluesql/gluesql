@@ -85,9 +85,9 @@ impl<'a> TryFrom<&'a AstLiteral> for Literal<'a> {
 
 fn unsupported_binary_op(left: &Literal, op: BinaryOperator, right: &Literal) -> LiteralError {
     LiteralError::UnsupportedBinaryOperation {
-        left: format!("{:?}", left),
+        left: format!("{left:?}"),
         op,
-        right: format!("{:?}", right),
+        right: format!("{right:?}"),
     }
 }
 
@@ -186,9 +186,9 @@ impl<'a> Literal<'a> {
             (Number(l), Number(r)) => match (l.to_i64(), r.to_i64()) {
                 (Some(l), Some(r)) => Ok(Number(Cow::Owned(BigDecimal::from(l & r)))),
                 _ => Err(LiteralError::UnsupportedBinaryOperation {
-                    left: format!("{:?}", self),
+                    left: format!("{self:?}"),
                     op: BinaryOperator::BitwiseAnd,
-                    right: format!("{:?}", other),
+                    right: format!("{other:?}"),
                 }
                 .into()),
             },
@@ -261,8 +261,8 @@ impl<'a> Literal<'a> {
         match (self, other) {
             (Text(l), Text(r)) => l.like(r, case_sensitive).map(Boolean),
             _ => Err(LiteralError::LikeOnNonString {
-                base: format!("{:?}", self),
-                pattern: format!("{:?}", other),
+                base: format!("{self:?}"),
+                pattern: format!("{other:?}"),
                 case_sensitive,
             }
             .into()),
@@ -507,7 +507,7 @@ mod tests {
             Err(LiteralError::UnsupportedBinaryOperation {
                 left: format!("{:?}", num!("12")),
                 op: BinaryOperator::Modulo,
-                right: format!("{:?}", text)
+                right: format!("{text:?}")
             }
             .into())
         )

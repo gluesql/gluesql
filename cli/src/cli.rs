@@ -165,7 +165,7 @@ where
         match block_on(self.glue.execute(sql)) {
             Ok(payloads) => self.print.payloads(&payloads)?,
             Err(e) => {
-                println!("[error] {}\n", e);
+                println!("[error] {e}\n");
             }
         };
 
@@ -179,7 +179,7 @@ where
             match block_on(self.glue.execute(sql)) {
                 Ok(payloads) => self.print.payloads(&payloads)?,
                 Err(e) => {
-                    println!("[error] {}\n", e);
+                    println!("[error] {e}\n");
                     break;
                 }
             }

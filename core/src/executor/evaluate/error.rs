@@ -89,6 +89,9 @@ pub enum EvaluateError {
     #[error("unreachable empty aggregate value: {0:?}")]
     UnreachableEmptyAggregateValue(Aggregate),
 
+    #[error("filter context is required for aggregate function: {0:?}")]
+    FilterContextRequiredForAggregate(Aggregate),
+
     #[error("incompatible bit operation between {0} and {1}")]
     IncompatibleBitOperation(String, String),
 
@@ -187,6 +190,6 @@ fn error_serialize<S>(error: &chrono::format::ParseError, serializer: S) -> Resu
 where
     S: Serializer,
 {
-    let display = format!("{}", error);
+    let display = format!("{error}");
     serializer.serialize_str(&display)
 }

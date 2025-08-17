@@ -249,7 +249,7 @@ impl Value {
             (_, Literal::Null) => Ok(Value::Null),
             _ => Err(ValueError::IncompatibleLiteralForDataType {
                 data_type: data_type.clone(),
-                literal: format!("{:?}", literal),
+                literal: format!("{literal:?}"),
             }
             .into()),
         }
@@ -505,7 +505,7 @@ impl Value {
             (DataType::List, Literal::Text(v)) => Value::parse_json_list(v),
             _ => Err(ValueError::UnimplementedLiteralCast {
                 data_type: data_type.clone(),
-                literal: format!("{:?}", literal),
+                literal: format!("{literal:?}"),
             }
             .into()),
         }

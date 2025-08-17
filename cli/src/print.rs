@@ -282,7 +282,7 @@ impl<'a, W: Write> Print<W> {
         }
         let table = self.build_table(table);
 
-        writeln!(self.output, "{}\n", table)
+        writeln!(self.output, "{table}\n")
     }
 
     pub fn spool_on<P: AsRef<Path>>(&mut self, filename: P) -> IOResult<()> {

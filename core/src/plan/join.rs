@@ -62,6 +62,7 @@ impl<'a> Planner<'a> for JoinPlanner<'a> {
 impl<'a> JoinPlanner<'a> {
     fn select(&self, outer_context: Option<Arc<Context<'a>>>, select: Select) -> Select {
         let Select {
+            distinct,
             projection,
             from,
             selection,
@@ -73,6 +74,7 @@ impl<'a> JoinPlanner<'a> {
         let selection = selection.map(|expr| self.subquery_expr(outer_context, expr));
 
         Select {
+            distinct,
             projection,
             from,
             selection,
@@ -753,9 +755,9 @@ mod tests {
         );
 
         let sql = "
-            SELECT * 
+            SELECT *
             FROM Player
-            JOIN PlayerItem ON 
+            JOIN PlayerItem ON
                 (SELECT * FROM Player JOIN PlayerItem ON Player.id = PlayerItem.user_id)
         ";
         let actual = plan_join(&storage, sql);
@@ -776,7 +778,7 @@ mod tests {
             FROM Player
             JOIN PlayerItem ON
                 1 IN (SELECT * FROM PlayerItem JOIN Player ON PlayerItem.user_id = Player.id)
-            WHERE True    
+            WHERE True
         ";
         let actual = plan_join(&storage, sql);
         let expected = table("Player")
@@ -800,7 +802,7 @@ mod tests {
             FROM Player
             JOIN PlayerItem ON
                 EXISTS (SELECT * FROM PlayerItem JOIN Player ON PlayerItem.user_id = Player.id WHERE Player.id > 3)
-            WHERE True    
+            WHERE True
         ";
         let actual = plan_join(&storage, sql);
         let expected = table("Player")
@@ -880,7 +882,7 @@ mod tests {
         let sql = format!(
             "
             SELECT * FROM Player
-            WHERE 
+            WHERE
                 ({subquery_sql}) IS NULL
                 OR
                 ({subquery_sql}) IS NOT NULL

@@ -16,7 +16,7 @@ impl Tester<FileStorage> for FileStorageTester {
         let path = format!("tmp/{namespace}");
 
         if let Err(e) = remove_dir_all(&path) {
-            println!("fs::remove_file {:?}", e);
+            println!("fs::remove_file {e:?}");
         };
 
         let storage = FileStorage::new(&path).expect("FileStorage::new");

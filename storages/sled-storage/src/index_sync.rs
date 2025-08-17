@@ -286,7 +286,7 @@ async fn evaluate_index_key(
 }
 
 pub fn build_index_key_prefix(table_name: &str, index_name: &str) -> Vec<u8> {
-    format!("index/{}/{}/", table_name, index_name).into_bytes()
+    format!("index/{table_name}/{index_name}/").into_bytes()
 }
 
 pub fn build_index_key(table_name: &str, index_name: &str, value: Value) -> Result<Vec<u8>> {

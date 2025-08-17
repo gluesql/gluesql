@@ -10,12 +10,12 @@ struct SledTester {
 #[async_trait(?Send)]
 impl Tester<SledStorage> for SledTester {
     async fn new(namespace: &str) -> Self {
-        let path = format!("data/{}", namespace);
+        let path = format!("data/{namespace}");
 
         match std::fs::remove_dir_all(&path) {
             Ok(()) => (),
             Err(e) => {
-                println!("fs::remove_file {:?}", e);
+                println!("fs::remove_file {e:?}");
             }
         }
 

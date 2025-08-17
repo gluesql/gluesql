@@ -74,6 +74,7 @@ fn check_query(context: Option<Arc<Context<'_>>>, query: &Query) -> bool {
 
 fn check_select(context: Option<Arc<Context<'_>>>, select: &Select) -> bool {
     let Select {
+        distinct: _,
         projection,
         from,
         selection,

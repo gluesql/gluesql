@@ -11,7 +11,7 @@ pub use {
     data_type::DataType,
     ddl::*,
     expr::Expr,
-    function::{Aggregate, CountArgExpr, Function},
+    function::{Aggregate, AggregateFunction, CountArgExpr, Function},
     operator::*,
     query::*,
 };
@@ -172,13 +172,7 @@ impl ToSql for ForeignKey {
         } = self;
 
         format!(
-            r#"CONSTRAINT "{}" FOREIGN KEY ("{}") REFERENCES "{}" ("{}") ON DELETE {} ON UPDATE {}"#,
-            name,
-            referencing_column_name,
-            referenced_table_name,
-            referenced_column_name,
-            on_delete,
-            on_update
+            r#"CONSTRAINT "{name}" FOREIGN KEY ("{referencing_column_name}") REFERENCES "{referenced_table_name}" ("{referenced_column_name}") ON DELETE {on_delete} ON UPDATE {on_update}"#
         )
     }
 }

@@ -81,20 +81,20 @@ impl<'a> TryFrom<ParquetSchemaType<'a>> for ColumnDef {
         if let Some(metadata) = parquet_col_def.get_metadata().as_deref() {
             for kv in metadata.iter() {
                 match kv.key.as_str() {
-                    k if k == format!("unique_option{}", name) => match kv.value.as_deref() {
+                    k if k == format!("unique_option{name}") => match kv.value.as_deref() {
                         Some("primary_key") => {
                             unique = Some(ColumnUniqueOption { is_primary: true });
                         }
                         _ => unique = Some(ColumnUniqueOption { is_primary: false }),
                     },
-                    k if k == format!("data_type{}", name) => {
+                    k if k == format!("data_type{name}") => {
                         if let Some(value) = kv.value.as_deref() {
                             if let Some(mapped_data_type) = map_parquet_to_gluesql(value) {
                                 data_type = mapped_data_type.clone();
                             }
                         }
                     }
-                    k if k == format!("default_{}", name) => {
+                    k if k == format!("default_{name}") => {
                         if let Some(value) = &kv.value {
                             let parsed = parse_expr(value.clone())?;
                             let tran = translate_expr(&parsed)?;
@@ -102,7 +102,7 @@ impl<'a> TryFrom<ParquetSchemaType<'a>> for ColumnDef {
                             default = Some(tran);
                         }
                     }
-                    k if k == format!("comment_{}", name) => {
+                    k if k == format!("comment_{name}") => {
                         if let Some(value) = &kv.value {
                             comment = Some(value.clone());
                         }
