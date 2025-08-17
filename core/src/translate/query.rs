@@ -271,9 +271,7 @@ fn translate_join(sql_join: &SqlJoin) -> Result<Join> {
         SqlJoinOperator::LeftOuter(sql_join_constraint) => {
             translate_constraint(sql_join_constraint).map(JoinOperator::LeftOuter)
         }
-        _ => {
-            Err(TranslateError::UnsupportedJoinOperator(format!("{:?}", sql_join_operator)).into())
-        }
+        _ => Err(TranslateError::UnsupportedJoinOperator(format!("{sql_join_operator:?}")).into()),
     }?;
 
     Ok(Join {

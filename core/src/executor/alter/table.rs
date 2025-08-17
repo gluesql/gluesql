@@ -300,7 +300,7 @@ mod tests {
         };
 
         assert_eq!(
-            format!("{}", referencing),
+            format!("{referencing}"),
             r#"CONSTRAINT "FK_referenced_id-Referenced_id" FOREIGN KEY ("referenced_id") REFERENCES "Referenced" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION on table "Referencing""#
         );
     }

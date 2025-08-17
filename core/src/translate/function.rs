@@ -227,7 +227,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             SqlFunctionArgExpr::Expr(expr) => CountArgExpr::Expr(translate_expr(expr)?),
             SqlFunctionArgExpr::QualifiedWildcard(idents) => {
                 let table_name = translate_object_name(idents)?;
-                let idents = format!("{}.*", table_name);
+                let idents = format!("{table_name}.*");
 
                 return Err(TranslateError::QualifiedWildcardInCountNotSupported(idents).into());
             }

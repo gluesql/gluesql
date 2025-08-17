@@ -13,7 +13,7 @@ impl Tester<JsonStorage> for JsonTester {
         let path = format!("tmp/{namespace}");
 
         if let Err(e) = remove_dir_all(&path) {
-            println!("fs::remove_file {:?}", e);
+            println!("fs::remove_file {e:?}");
         };
 
         let storage = JsonStorage::new(&path).expect("JsonStorage::new");

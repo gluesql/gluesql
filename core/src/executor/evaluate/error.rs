@@ -190,6 +190,6 @@ fn error_serialize<S>(error: &chrono::format::ParseError, serializer: S) -> Resu
 where
     S: Serializer,
 {
-    let display = format!("{}", error);
+    let display = format!("{error}");
     serializer.serialize_str(&display)
 }

@@ -339,7 +339,7 @@ pub fn md5<'a>(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> 
     let mut hasher = Md5::new();
     hasher.update(string.as_bytes());
     let result = hasher.finalize();
-    let result = format!("{:x}", result);
+    let result = format!("{result:x}");
 
     Continue(Evaluated::Value(Value::Str(result)))
 }

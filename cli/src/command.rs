@@ -120,7 +120,7 @@ impl Command {
                 ".functions" => Ok(Self::Execute("SHOW FUNCTIONS".to_owned())),
                 ".columns" => match params.get(1) {
                     Some(table_name) => {
-                        Ok(Self::Execute(format!("SHOW COLUMNS FROM {}", table_name)))
+                        Ok(Self::Execute(format!("SHOW COLUMNS FROM {table_name}")))
                     }
                     None => Err(CommandError::LackOfTable),
                 },

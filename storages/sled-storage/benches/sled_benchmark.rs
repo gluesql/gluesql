@@ -92,7 +92,7 @@ pub fn bench_select(c: &mut Criterion) {
 
     c.bench_function("select_one", |b| {
         b.iter(|| {
-            let query_str = format!("SELECT * FROM Testing WHERE id = {}", id);
+            let query_str = format!("SELECT * FROM Testing WHERE id = {id}");
 
             id += 1;
             if id >= ITEM_SIZE {
@@ -171,7 +171,7 @@ pub fn bench_select_tainted(c: &mut Criterion) {
 
     c.bench_function("select_one_tainted", |b| {
         b.iter(|| {
-            let query_str = format!("SELECT * FROM Testing WHERE id = {}", id);
+            let query_str = format!("SELECT * FROM Testing WHERE id = {id}");
 
             id += 1;
             if id >= ITEM_SIZE {

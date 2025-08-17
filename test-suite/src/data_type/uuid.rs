@@ -35,7 +35,7 @@ test_case!(uuid, {
         }
 
         let glue = g.get_glue();
-        let sql = format!("SELECT id FROM posts WHERE id = '{uuid}';", uuid = uuid);
+        let sql = format!("SELECT id FROM posts WHERE id = '{uuid}';");
         let payload = glue.execute(sql).await.unwrap();
 
         assert_eq!(payload, vec![select!( id Uuid; uuid.as_u128() )]);

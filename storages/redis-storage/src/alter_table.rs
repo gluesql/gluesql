@@ -122,8 +122,7 @@ impl AlterTable for RedisStorage {
                     .map(|iter| iter.collect::<Vec<String>>())
                     .map_err(|_| {
                         Error::StorageMsg(format!(
-                            "[RedisStorage] failed to execute SCAN: key={}",
-                            scan_key
+                            "[RedisStorage] failed to execute SCAN: key={scan_key}"
                         ))
                     })?
             };
@@ -136,16 +135,14 @@ impl AlterTable for RedisStorage {
                         .query::<String>(&mut *conn)
                         .map_err(|_| {
                             Error::StorageMsg(format!(
-                                "[RedisStorage] failed to execute GET: key={}",
-                                key
+                                "[RedisStorage] failed to execute GET: key={key}"
                             ))
                         })?
                 };
 
                 let mut row: DataRow = serde_json::from_str(&value).map_err(|e| {
                     Error::StorageMsg(format!(
-                        "[RedisStorage] failed to deserialize value={} error={}",
-                        value, e
+                        "[RedisStorage] failed to deserialize value={value} error={e}"
                     ))
                 })?;
                 match &mut row {
@@ -162,8 +159,7 @@ impl AlterTable for RedisStorage {
 
                 let new_value = serde_json::to_string(&row).map_err(|_e| {
                     Error::StorageMsg(format!(
-                        "[RedisStorage] failed to serialize row={:?} error={}",
-                        row, _e
+                        "[RedisStorage] failed to serialize row={row:?} error={_e}"
                     ))
                 })?;
                 let _: () = {
@@ -174,8 +170,7 @@ impl AlterTable for RedisStorage {
                         .query(&mut *conn)
                         .map_err(|_| {
                             Error::StorageMsg(format!(
-                                "[RedisStorage] add_column: failed to execute SET for row={:?}",
-                                row
+                                "[RedisStorage] add_column: failed to execute SET for row={row:?}"
                             ))
                         })?
                 };
@@ -216,8 +211,7 @@ impl AlterTable for RedisStorage {
                         if let Some(value) = self.redis_execute_get(&key)? {
                             let mut row: DataRow = serde_json::from_str(&value).map_err(|e| {
                                 Error::StorageMsg(format!(
-                                    "[RedisStorage] failed to deserialize value={} error={}",
-                                    value, e
+                                    "[RedisStorage] failed to deserialize value={value} error={e}"
                                 ))
                             })?;
                             match &mut row {
@@ -233,8 +227,7 @@ impl AlterTable for RedisStorage {
 
                             let new_value = serde_json::to_string(&row).map_err(|e| {
                                 Error::StorageMsg(format!(
-                                    "[RedisStorage] failed to serialize row={:?} error={}",
-                                    row, e
+                                    "[RedisStorage] failed to serialize row={row:?} error={e}"
                                 ))
                             })?;
                             self.redis_execute_set(&key, &new_value)?;

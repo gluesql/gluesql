@@ -248,7 +248,7 @@ impl Expr {
                     .map(|e| e.to_sql_with(quoted))
                     .collect::<Vec<_>>()
                     .join(", ");
-                format!("[{}]", elem)
+                format!("[{elem}]")
             }
             Expr::Subquery(query) => format!("({})", query.to_sql()),
             Expr::Interval {

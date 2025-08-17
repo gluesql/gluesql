@@ -13,7 +13,7 @@ impl Tester<ParquetStorage> for ParquetTester {
         let path: String = format!("tmp/{namespace}");
 
         if let Err(e) = remove_dir_all(&path) {
-            println!("fs::remove_file {:?}", e);
+            println!("fs::remove_file {e:?}");
         }
         let storage = ParquetStorage::new(&path).expect("ParquetStorage::new");
         let glue = Glue::new(storage);

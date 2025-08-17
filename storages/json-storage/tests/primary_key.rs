@@ -12,7 +12,7 @@ use {
 async fn json_primary_key() {
     let path = "tmp/json_primary_key/";
     if let Err(e) = remove_dir_all(path) {
-        println!("fs::remove_file {:?}", e);
+        println!("fs::remove_file {e:?}");
     };
     let json_storage = JsonStorage::new(path).unwrap();
     let mut glue = Glue::new(json_storage);

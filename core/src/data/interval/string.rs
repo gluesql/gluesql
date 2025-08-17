@@ -41,9 +41,9 @@ impl Interval {
                 let month = v % 12;
 
                 match (year, month) {
-                    (_, 0) if year != 0 => format!("'{}{}' YEAR", sign, year),
-                    (0, _) => format!("'{}{}' MONTH", sign, month),
-                    _ => format!("'{}{}-{}' YEAR TO MONTH", sign, year, month),
+                    (_, 0) if year != 0 => format!("'{sign}{year}' YEAR"),
+                    (0, _) => format!("'{sign}{month}' MONTH"),
+                    _ => format!("'{sign}{year}-{month}' YEAR TO MONTH"),
                 }
             }
             Interval::Microsecond(v) => {

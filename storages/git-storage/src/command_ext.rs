@@ -17,8 +17,8 @@ impl CommandExt for Command {
             let stderr = String::from_utf8_lossy(&output.stderr);
 
             let out_and_err = [
-                (!stdout.is_empty()).then(|| format!("[stdout] {}", stdout)),
-                (!stderr.is_empty()).then(|| format!("[stderr] {}", stderr)),
+                (!stdout.is_empty()).then(|| format!("[stdout] {stdout}")),
+                (!stderr.is_empty()).then(|| format!("[stderr] {stderr}")),
             ]
             .into_iter()
             .flatten()

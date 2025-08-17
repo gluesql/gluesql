@@ -175,8 +175,7 @@ impl ParquetField {
                         }
                         _ => {
                             return Err(ParquetStorageError::UnexpectedKeyTypeForMap(format!(
-                                "{:?}",
-                                key_field
+                                "{key_field:?}"
                             ))
                             .into());
                         }
