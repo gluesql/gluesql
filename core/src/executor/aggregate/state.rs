@@ -2,6 +2,7 @@ use {
     crate::{
         ast::{Aggregate, AggregateFunction, CountArgExpr, DataType},
         data::{Key, Value},
+        error::Error,
         executor::{context::RowContext, evaluate::evaluate},
         result::Result,
         store::GStore,
@@ -482,10 +483,11 @@ impl<'a, T: GStore> State<'a, T> {
         let value = match &aggr.func {
             AggregateFunction::Count(CountArgExpr::Wildcard) => {
                 if aggr.distinct {
-                    // For COUNT(DISTINCT *), we need to use all column values as a composite value
-                    let context = filter_context.as_ref().expect(
-                        "filter_context should always be Some in current GlueSQL architecture",
-                    );
+                    let context = filter_context.as_ref().ok_or_else(|| {
+                        Error::StorageMsg(
+                            "filter_context is required for COUNT(DISTINCT *)".to_owned(),
+                        )
+                    })?;
                     let entries = context.get_all_entries();
                     let values: Vec<Value> = entries.into_iter().map(|(_, v)| v).collect();
                     Value::List(values)
