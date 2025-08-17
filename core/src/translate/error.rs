@@ -5,8 +5,8 @@ pub enum TranslateError {
     #[error("unimplemented - select on two or more than tables are not supported")]
     TooManyTables,
 
-    #[error("unimplemented - select distinct is not supported")]
-    SelectDistinctNotSupported,
+    #[error("unimplemented - SELECT DISTINCT ON is not supported")]
+    SelectDistinctOnNotSupported,
 
     #[error("unimplemented - composite index is not supported")]
     CompositeIndexNotSupported,

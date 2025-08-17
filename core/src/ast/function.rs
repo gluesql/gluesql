@@ -512,7 +512,7 @@ impl ToSql for Function {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum Aggregate {
+pub enum AggregateFunction {
     Count(CountArgExpr),
     Sum(Expr),
     Max(Expr),
@@ -522,17 +522,68 @@ pub enum Aggregate {
     Stdev(Expr),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Aggregate {
+    pub func: AggregateFunction,
+    pub distinct: bool,
+}
+
+impl Aggregate {
+    pub fn new(func: AggregateFunction, distinct: bool) -> Self {
+        Self { func, distinct }
+    }
+
+    pub fn count(expr: CountArgExpr, distinct: bool) -> Self {
+        Self::new(AggregateFunction::Count(expr), distinct)
+    }
+
+    pub fn sum(expr: Expr, distinct: bool) -> Self {
+        Self::new(AggregateFunction::Sum(expr), distinct)
+    }
+
+    pub fn max(expr: Expr, distinct: bool) -> Self {
+        Self::new(AggregateFunction::Max(expr), distinct)
+    }
+
+    pub fn min(expr: Expr, distinct: bool) -> Self {
+        Self::new(AggregateFunction::Min(expr), distinct)
+    }
+
+    pub fn avg(expr: Expr, distinct: bool) -> Self {
+        Self::new(AggregateFunction::Avg(expr), distinct)
+    }
+
+    pub fn variance(expr: Expr, distinct: bool) -> Self {
+        Self::new(AggregateFunction::Variance(expr), distinct)
+    }
+
+    pub fn stdev(expr: Expr, distinct: bool) -> Self {
+        Self::new(AggregateFunction::Stdev(expr), distinct)
+    }
+}
+
+impl AggregateFunction {
+    fn to_sql_with_distinct(&self, distinct: bool) -> String {
+        let (name, arg) = match self {
+            AggregateFunction::Count(expr) => ("COUNT", expr.to_sql()),
+            AggregateFunction::Sum(expr) => ("SUM", expr.to_sql()),
+            AggregateFunction::Max(expr) => ("MAX", expr.to_sql()),
+            AggregateFunction::Min(expr) => ("MIN", expr.to_sql()),
+            AggregateFunction::Avg(expr) => ("AVG", expr.to_sql()),
+            AggregateFunction::Variance(expr) => ("VARIANCE", expr.to_sql()),
+            AggregateFunction::Stdev(expr) => ("STDEV", expr.to_sql()),
+        };
+        if distinct {
+            format!("{name}(DISTINCT {arg})")
+        } else {
+            format!("{name}({arg})")
+        }
+    }
+}
+
 impl ToSql for Aggregate {
     fn to_sql(&self) -> String {
-        match self {
-            Aggregate::Count(cae) => format!("COUNT({})", cae.to_sql()),
-            Aggregate::Sum(e) => format!("SUM({})", e.to_sql()),
-            Aggregate::Max(e) => format!("MAX({})", e.to_sql()),
-            Aggregate::Min(e) => format!("MIN({})", e.to_sql()),
-            Aggregate::Avg(e) => format!("AVG({})", e.to_sql()),
-            Aggregate::Variance(e) => format!("VARIANCE({})", e.to_sql()),
-            Aggregate::Stdev(e) => format!("STDEV({})", e.to_sql()),
-        }
+        self.func.to_sql_with_distinct(self.distinct)
     }
 }
 
@@ -1424,43 +1475,128 @@ mod tests {
     fn to_sql_aggregate() {
         assert_eq!(
             r#"MAX("id")"#,
-            Expr::Aggregate(Box::new(Aggregate::Max(Expr::Identifier("id".to_owned())))).to_sql()
+            Expr::Aggregate(Box::new(Aggregate::max(
+                Expr::Identifier("id".to_owned()),
+                false
+            )))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"MAX(DISTINCT "id")"#,
+            Expr::Aggregate(Box::new(Aggregate::max(
+                Expr::Identifier("id".to_owned()),
+                true
+            )))
+            .to_sql()
         );
 
         assert_eq!(
             "COUNT(*)",
-            Expr::Aggregate(Box::new(Aggregate::Count(CountArgExpr::Wildcard))).to_sql()
+            Expr::Aggregate(Box::new(Aggregate::count(CountArgExpr::Wildcard, false))).to_sql()
+        );
+
+        assert_eq!(
+            "COUNT(DISTINCT *)",
+            Expr::Aggregate(Box::new(Aggregate::count(CountArgExpr::Wildcard, true))).to_sql()
+        );
+
+        assert_eq!(
+            r#"COUNT(DISTINCT "id")"#,
+            Expr::Aggregate(Box::new(Aggregate::count(
+                CountArgExpr::Expr(Expr::Identifier("id".to_owned())),
+                true
+            )))
+            .to_sql()
         );
 
         assert_eq!(
             r#"MIN("id")"#,
-            Expr::Aggregate(Box::new(Aggregate::Min(Expr::Identifier("id".to_owned())))).to_sql()
+            Expr::Aggregate(Box::new(Aggregate::min(
+                Expr::Identifier("id".to_owned()),
+                false
+            )))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"MIN(DISTINCT "id")"#,
+            Expr::Aggregate(Box::new(Aggregate::min(
+                Expr::Identifier("id".to_owned()),
+                true
+            )))
+            .to_sql()
         );
 
         assert_eq!(
             r#"SUM("price")"#,
-            &Expr::Aggregate(Box::new(Aggregate::Sum(Expr::Identifier(
-                "price".to_owned()
-            ))))
+            Expr::Aggregate(Box::new(Aggregate::sum(
+                Expr::Identifier("price".to_owned()),
+                false
+            )))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"SUM(DISTINCT "price")"#,
+            Expr::Aggregate(Box::new(Aggregate::sum(
+                Expr::Identifier("price".to_owned()),
+                true
+            )))
             .to_sql()
         );
 
         assert_eq!(
             r#"AVG("pay")"#,
-            &Expr::Aggregate(Box::new(Aggregate::Avg(Expr::Identifier("pay".to_owned())))).to_sql()
-        );
-        assert_eq!(
-            r#"VARIANCE("pay")"#,
-            &Expr::Aggregate(Box::new(Aggregate::Variance(Expr::Identifier(
-                "pay".to_owned()
-            ))))
+            Expr::Aggregate(Box::new(Aggregate::avg(
+                Expr::Identifier("pay".to_owned()),
+                false
+            )))
             .to_sql()
         );
+
+        assert_eq!(
+            r#"AVG(DISTINCT "pay")"#,
+            Expr::Aggregate(Box::new(Aggregate::avg(
+                Expr::Identifier("pay".to_owned()),
+                true
+            )))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"VARIANCE("pay")"#,
+            Expr::Aggregate(Box::new(Aggregate::variance(
+                Expr::Identifier("pay".to_owned()),
+                false
+            )))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"VARIANCE(DISTINCT "pay")"#,
+            Expr::Aggregate(Box::new(Aggregate::variance(
+                Expr::Identifier("pay".to_owned()),
+                true
+            )))
+            .to_sql()
+        );
+
         assert_eq!(
             r#"STDEV("total")"#,
-            &Expr::Aggregate(Box::new(Aggregate::Stdev(Expr::Identifier(
-                "total".to_owned()
-            ))))
+            Expr::Aggregate(Box::new(Aggregate::stdev(
+                Expr::Identifier("total".to_owned()),
+                false
+            )))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"STDEV(DISTINCT "total")"#,
+            Expr::Aggregate(Box::new(Aggregate::stdev(
+                Expr::Identifier("total".to_owned()),
+                true
+            )))
             .to_sql()
         );
     }

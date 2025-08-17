@@ -171,4 +171,58 @@ test_case!(select, {
         "Pineapple".to_owned()      40
     ));
     assert_eq!(actual, expected, "offset, limit");
+
+    // distinct
+    let actual = table("Item")
+        .select()
+        .distinct()
+        .project("category_id")
+        .order_by("category_id")
+        .execute(glue)
+        .await;
+    let expected = Ok(select!(
+        category_id
+        I64;
+        1;
+        2;
+        3
+    ));
+    assert_eq!(actual, expected, "distinct");
+
+    // distinct with multiple columns
+    let actual = table("Item")
+        .select()
+        .distinct()
+        .project("category_id, price")
+        .order_by("category_id, price")
+        .execute(glue)
+        .await;
+    let expected = Ok(select!(
+        category_id | price
+        I64         | I64;
+        1             30;
+        1             40;
+        2             90;
+        3             25;
+        3             60
+    ));
+    assert_eq!(actual, expected, "distinct with multiple columns");
+
+    // distinct * (all columns)
+    let actual = table("Item")
+        .select()
+        .distinct()
+        .project("*")
+        .execute(glue)
+        .await;
+    let expected = Ok(select!(
+        id | category_id | name | price
+        I64 | I64 | Str | I64;
+        100 1 "Pineapple".to_owned() 40;
+        200 2 "Pork belly".to_owned() 90;
+        300 1 "Strawberry".to_owned() 30;
+        400 3 "Coffee".to_owned() 25;
+        500 3 "Orange juice".to_owned() 60
+    ));
+    assert_eq!(actual, expected, "distinct * (all columns)");
 });

@@ -94,6 +94,7 @@ async fn scan_query<T: Store>(storage: &T, query: &Query) -> Result<HashMap<Stri
 
 async fn scan_select<T: Store>(storage: &T, select: &Select) -> Result<HashMap<String, Schema>> {
     let Select {
+        distinct: _,
         projection,
         from,
         selection,

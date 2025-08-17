@@ -2,7 +2,6 @@ mod error;
 mod project;
 
 pub use error::SelectError;
-
 use {
     self::project::Project,
     super::{
@@ -23,9 +22,30 @@ use {
     },
     async_recursion::async_recursion,
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
-    std::{borrow::Cow, sync::Arc},
+    std::{
+        borrow::Cow,
+        collections::{BTreeMap, HashSet},
+        sync::Arc,
+    },
     utils::Vector,
 };
+
+fn apply_distinct(rows: Vec<Row>) -> Vec<Row> {
+    let mut seen = HashSet::new();
+
+    rows.into_iter()
+        .filter(|row| {
+            let key = match row {
+                Row::Vec { values, .. } => values.clone(),
+                Row::Map(map) => {
+                    let sorted_map: BTreeMap<_, _> = map.iter().collect();
+                    sorted_map.into_values().cloned().collect()
+                }
+            };
+            seen.insert(key)
+        })
+        .collect()
+}
 
 async fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> Result<(Vec<Row>, Vec<String>)> {
     let first_len = exprs_list[0].len();
@@ -118,6 +138,7 @@ where
     }
 
     let Select {
+        distinct,
         from: table_with_joins,
         selection: where_clause,
         projection,
@@ -208,7 +229,15 @@ where
     });
 
     let rows = sort.apply(rows, get_alias(relation)).await?;
-    let rows = limit.apply(rows);
+
+    let rows: Box<dyn Stream<Item = Result<crate::data::Row>> + Unpin + Send> = if *distinct {
+        let all_rows: Vec<crate::data::Row> = rows.try_collect().await?;
+        let unique_rows = apply_distinct(all_rows);
+        let unique_stream = stream::iter(unique_rows.into_iter().map(Ok));
+        Box::new(limit.apply(unique_stream))
+    } else {
+        Box::new(limit.apply(rows))
+    };
     let labels = labels.map(|labels| labels.iter().cloned().collect());
 
     Ok((labels, Row::Select(rows)))

@@ -18,6 +18,7 @@ pub mod default;
 pub mod delete;
 pub mod dictionary;
 pub mod dictionary_index;
+pub mod distinct;
 pub mod expr;
 pub mod filter;
 pub mod foreign_key;
@@ -187,6 +188,7 @@ macro_rules! generate_store_tests {
         glue!(order_by, order_by::order_by);
         glue!(sql_types, data_type::sql_types::sql_types);
         glue!(show_columns, show_columns::show_columns);
+        glue!(distinct, distinct::distinct);
         glue!(int8, data_type::int8::int8);
         glue!(int16, data_type::int16::int16);
         glue!(int32, data_type::int32::int32);

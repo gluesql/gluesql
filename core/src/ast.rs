@@ -11,7 +11,7 @@ pub use {
     data_type::DataType,
     ddl::*,
     expr::Expr,
-    function::{Aggregate, CountArgExpr, Function},
+    function::{Aggregate, AggregateFunction, CountArgExpr, Function},
     operator::*,
     query::*,
 };
@@ -568,6 +568,7 @@ mod tests {
                 columns: None,
                 source: Some(Box::new(Query {
                     body: SetExpr::Select(Box::new(Select {
+                        distinct: false,
                         projection: vec![
                             SelectItem::Expr {
                                 expr: Expr::Identifier("id".to_owned()),
