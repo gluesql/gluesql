@@ -303,7 +303,7 @@ pub fn replace<'a>(
 }
 
 pub fn unhex<'a>(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    let unhex_result = match expr.try_into().break_if_null()? {
+    let bytes = match expr.try_into().break_if_null()? {
         Value::Str(s) => {
             let hex_str = if s.starts_with("0x") || s.starts_with("0X") {
                 &s[2..]
@@ -311,15 +311,14 @@ pub fn unhex<'a>(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>
                 &s
             };
 
-            if hex_str.len() % 2 != 0 {
-                return Err(EvaluateError::InvalidHexadecimal(s).into()).into_control_flow();
-            }
+            let padded_hex_str = if hex_str.len() % 2 != 0 {
+                format!("0{}", hex_str)
+            } else {
+                hex_str.to_owned()
+            };
 
-            match hex::decode(hex_str) {
-                Ok(bytes) => match String::from_utf8(bytes.clone()) {
-                    Ok(s) => s,
-                    Err(_) => String::from_utf8_lossy(&bytes).to_string(),
-                },
+            match hex::decode(padded_hex_str) {
+                Ok(bytes) => bytes,
                 Err(_) => {
                     return Err(EvaluateError::InvalidHexadecimal(s).into()).into_control_flow();
                 }
@@ -331,7 +330,7 @@ pub fn unhex<'a>(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>
         }
     };
 
-    Continue(Evaluated::Value(Value::Str(unhex_result)))
+    Continue(Evaluated::Value(Value::Bytea(bytes)))
 }
 
 pub fn ascii<'a>(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
