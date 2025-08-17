@@ -172,7 +172,7 @@ pub fn dump_database(storage: &mut SledStorage, dump_path: PathBuf) -> Result<()
                 let exprs_list = rows
                     .into_iter()
                     .map(|result| {
-                        result.map(|data_row| {
+                        result.and_then(|data_row| {
                             let values = match data_row {
                                 DataRow::Vec(values) => values,
                                 DataRow::Map(values) => vec![Value::Map(values)],
@@ -180,11 +180,11 @@ pub fn dump_database(storage: &mut SledStorage, dump_path: PathBuf) -> Result<()
 
                             values
                                 .into_iter()
-                                .map(|value| Ok(Expr::try_from(value)?))
-                                .collect::<Result<Vec<_>>>()
-                        })?
+                                .map(Expr::try_from)
+                                .collect::<std::result::Result<Vec<_>, _>>()
+                        })
                     })
-                    .collect::<Result<Vec<_>, _>>()?;
+                    .collect::<std::result::Result<Vec<_>, _>>()?;
 
                 let values = exprs_list
                     .into_iter()
@@ -200,7 +200,7 @@ pub fn dump_database(storage: &mut SledStorage, dump_path: PathBuf) -> Result<()
                     .join(", ");
 
                 let insert_statement =
-                    format!("INSERT INTO \"{}\" VALUES {values};", schema.table_name);
+                    format!(r#"INSERT INTO "{}" VALUES {values};"#, schema.table_name);
 
                 writeln!(&file, "{}", insert_statement)?;
             }

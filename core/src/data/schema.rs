@@ -65,7 +65,7 @@ impl Schema {
             .map(|comment| format!(" COMMENT = '{comment}'"));
 
         let create_table = vec![
-            Some(format!(r#"CREATE TABLE \"{table_name}\""#)),
+            Some(format!(r#"CREATE TABLE "{table_name}""#)),
             columns,
             engine,
             comment,
