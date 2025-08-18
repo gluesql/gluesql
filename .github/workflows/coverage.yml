@@ -58,14 +58,14 @@ jobs:
           echo "COMMIT_SHA=${{ github.sha }}" >> $GITHUB_ENV
       - name: Clone gluesql.org
         run: git clone https://github.com/gluesql/gluesql.github.io.git && cd gluesql.github.io && git checkout gh-pages
-      - name: Copy coverage report
+      - name: Compress and copy coverage report
         run: |
           mkdir -p gluesql.github.io/coverage/$BRANCH_NAME/$COMMIT_SHA
-          cp coverage/lcov.info gluesql.github.io/coverage/$BRANCH_NAME/$COMMIT_SHA/lcov.info
+          xz -T0 -9e -c coverage/lcov.info > gluesql.github.io/coverage/$BRANCH_NAME/$COMMIT_SHA/lcov.info.xz
       - name: Commit and push coverage
         run: |
           cd gluesql.github.io
-          git add coverage/$BRANCH_NAME/$COMMIT_SHA/lcov.info
+          git add coverage/$BRANCH_NAME/$COMMIT_SHA/lcov.info.xz
           git commit -m "Coverage: $BRANCH_NAME@$COMMIT_SHA"
           git push https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/gluesql.github.io.git gh-pages
       - name: Upload coverage to Codecov
