@@ -18,21 +18,6 @@ pub fn expr(sql: &str) -> Expr {
     translate_expr(&parsed).unwrap()
 }
 
-pub async fn run<T: GStore + GStoreMut>(
-    sql: &str,
-    glue: &mut Glue<T>,
-    indexes: Option<Vec<IndexItem>>,
-) -> Result<Payload> {
-    println!("[SQL] {sql}");
-    let parsed = parse(sql)?;
-    let statement = translate(&parsed[0])?;
-    let statement = plan(&glue.storage, statement).await?;
-
-    test_indexes(&statement, indexes);
-
-    glue.execute_stmt(&statement).await
-}
-
 pub fn test_indexes(statement: &Statement, indexes: Option<Vec<IndexItem>>) {
     if let Some(expected) = indexes {
         let found = find_indexes(statement);
