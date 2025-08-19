@@ -65,24 +65,24 @@ jobs:
         if: ${{ github.event_name == 'pull_request' }}
         run: |
           mkdir -p gluesql.github.io/coverage/pr/$PR_NUMBER
-          xz -T0 -9e -c coverage/lcov.info > gluesql.github.io/coverage/pr/$PR_NUMBER/lcov.info.xz
+          xz -T0 -9e -c coverage/lcov.info > gluesql.github.io/coverage/pr/$PR_NUMBER/$COMMIT_SHA-lcov.info.xz
       - name: Compress and copy coverage report (main)
         if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
         run: |
-          mkdir -p gluesql.github.io/coverage/main/$COMMIT_SHA
-          xz -T0 -9e -c coverage/lcov.info > gluesql.github.io/coverage/main/$COMMIT_SHA/lcov.info.xz
+          mkdir -p gluesql.github.io/coverage/pr/main
+          xz -T0 -9e -c coverage/lcov.info > gluesql.github.io/coverage/pr/main/$COMMIT_SHA-lcov.info.xz
       - name: Commit and push coverage (PR)
         if: ${{ github.event_name == 'pull_request' }}
         run: |
           cd gluesql.github.io
-          git add coverage/pr/$PR_NUMBER/lcov.info.xz
+          git add coverage/pr/$PR_NUMBER/$COMMIT_SHA-lcov.info.xz
           git commit -m "Coverage: PR$PR_NUMBER@$COMMIT_SHA"
           git push https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/gluesql.github.io.git gh-pages
       - name: Commit and push coverage (main)
         if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
         run: |
           cd gluesql.github.io
-          git add coverage/main/$COMMIT_SHA/lcov.info.xz
+          git add coverage/pr/main/$COMMIT_SHA-lcov.info.xz
           git commit -m "Coverage: main@$COMMIT_SHA"
           git push https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/gluesql.github.io.git gh-pages
       - name: Upload coverage to Codecov
