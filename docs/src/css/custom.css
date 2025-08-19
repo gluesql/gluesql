@@ -51,3 +51,13 @@ h3, h4, h5, h6 {
 footer.footer--dark {
   background-color: #2a3439;
 }
+
+/* Highlight opened files in collapsible sections */
+details > summary {
+  cursor: pointer;
+}
+
+details[open] > summary {
+  font-weight: 600;
+  color: var(--ifm-color-primary);
+}
