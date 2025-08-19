@@ -53,24 +53,37 @@ jobs:
             --excl-line "(#\\[derive\\()|(^\s*.await[;,]?$)|(^test_case\!\([\d\w]+,)" \
             -o ./coverage/lcov.info
       - name: Set coverage env vars
-        if: ${{ github.event_name == 'pull_request' }}
         run: |
-          echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
           echo "COMMIT_SHA=${{ github.sha }}" >> $GITHUB_ENV
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+          fi
       - name: Clone gluesql.org
-        if: ${{ github.event_name == 'pull_request' }}
+        if: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_name == 'main') }}
         run: git clone https://github.com/gluesql/gluesql.github.io.git && cd gluesql.github.io && git checkout gh-pages
-      - name: Compress and copy coverage report
+      - name: Compress and copy coverage report (PR)
         if: ${{ github.event_name == 'pull_request' }}
         run: |
           mkdir -p gluesql.github.io/coverage/pr/$PR_NUMBER
           xz -T0 -9e -c coverage/lcov.info > gluesql.github.io/coverage/pr/$PR_NUMBER/lcov.info.xz
-      - name: Commit and push coverage
+      - name: Compress and copy coverage report (main)
+        if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+        run: |
+          mkdir -p gluesql.github.io/coverage/main/$COMMIT_SHA
+          xz -T0 -9e -c coverage/lcov.info > gluesql.github.io/coverage/main/$COMMIT_SHA/lcov.info.xz
+      - name: Commit and push coverage (PR)
         if: ${{ github.event_name == 'pull_request' }}
         run: |
           cd gluesql.github.io
           git add coverage/pr/$PR_NUMBER/lcov.info.xz
           git commit -m "Coverage: PR$PR_NUMBER@$COMMIT_SHA"
+          git push https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/gluesql.github.io.git gh-pages
+      - name: Commit and push coverage (main)
+        if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+        run: |
+          cd gluesql.github.io
+          git add coverage/main/$COMMIT_SHA/lcov.info.xz
+          git commit -m "Coverage: main@$COMMIT_SHA"
           git push https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/gluesql.github.io.git gh-pages
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
