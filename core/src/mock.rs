@@ -113,6 +113,7 @@ mod tests {
         assert!(block_on(storage.scan_data("Foo")).is_err());
         assert!(block_on(storage.fetch_data("Foo", &Key::None)).is_err());
         assert!(block_on(storage.fetch_schema("__Err__")).is_err());
+        assert!(block_on(storage.fetch_all_schemas()).is_err());
         assert!(block_on(storage.delete_schema("Foo")).is_err());
         assert!(block_on(storage.append_data("Foo", Vec::new())).is_err());
         assert!(block_on(storage.insert_data("Foo", Vec::new())).is_err());
