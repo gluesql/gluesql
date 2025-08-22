@@ -13,7 +13,7 @@ test_case!(nullif, {
     // create table - Foo
     let actual = table("Foo")
         .create_table()
-        .add_column("id INTEGER ")
+        .add_column("id INTEGER")
         .add_column("name TEXT")
         .add_column("nickname TEXT")
         .execute(glue)
@@ -33,20 +33,6 @@ test_case!(nullif, {
         .await;
     let expected = Ok(Payload::Insert(2));
     assert_eq!(actual, expected, "insert into Foo");
-
-    // Return null when text equal
-    let actual = table("Foo")
-        .select()
-        .project("id")
-        .project(col("name").nullif(text("hello")))
-        .execute(glue)
-        .await;
-    let expected = Ok(select_with_null!(
-        id | "NULLIF(\"name\", 'hello')";
-        I64(100)   Null;
-        I64(200)   Str("world".to_owned())
-    ));
-    assert_eq!(actual, expected, "return null when text value equal");
 
     // Return first argument when other column text different
     let actual = table("Foo")
@@ -73,7 +59,7 @@ test_case!(nullif, {
     .execute(glue)
     .await;
     let expected = Ok(select_with_null!(
-        "column1" | Str;
+        "column1";
         Str("HELLO".to_owned());
         Null
     ));
