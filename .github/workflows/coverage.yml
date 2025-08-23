@@ -85,7 +85,9 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           ENCODED_TIMESTAMP=${TIMESTAMP//:/%3A}
-          gh pr comment $PR_NUMBER --body "Coverage report: https://gluesql.org/coverage/?path=pr/$PR_NUMBER/$ENCODED_TIMESTAMP.${COMMIT_SHA}.lcov.info.xz"
+          URL="https://gluesql.org/coverage/?path=pr/$PR_NUMBER/$ENCODED_TIMESTAMP.${COMMIT_SHA}.lcov.info.xz"
+          MESSAGE="### Coverage Report\n\n- **Commit:** \`$COMMIT_SHA\`\n- **Timestamp:** \`$TIMESTAMP\`\n- **Report:** [View report]($URL)"
+          gh pr comment "$PR_NUMBER" --body "$MESSAGE"
       - name: Publish coverage to gluesql.github.io
         if: ${{ github.repository == 'gluesql/gluesql' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: |
