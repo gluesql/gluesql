@@ -83,7 +83,7 @@ jobs:
         if: ${{ github.repository == 'gluesql/gluesql' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: |
           # Clone docs repo
-          git clone https://github.com/gluesql/gluesql.github.io.git
+          gh repo clone gluesql/gluesql.github.io
           cd gluesql.github.io
           git checkout gh-pages
 
@@ -94,7 +94,7 @@ jobs:
           # Commit and push
           git add coverage/main/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
           git commit -m "Coverage: main@$COMMIT_SHA"
-          git push https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/gluesql.github.io.git gh-pages
+          git push
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
