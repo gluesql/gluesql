@@ -56,6 +56,7 @@ jobs:
         run: |
           echo "COMMIT_SHA=${{ github.sha }}" >> $GITHUB_ENV
           echo "BRANCH_NAME=$(echo ${{ github.ref_name }} | tr '/' '-')" >> $GITHUB_ENV
+          echo "TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_ENV
       - name: Compress coverage report
         run: xz -T0 -9e -c coverage/lcov.info > coverage/lcov.info.xz
       - name: Upload coverage artifact
@@ -71,11 +72,11 @@ jobs:
           git checkout gh-pages
 
           # Copy coverage report
-          mkdir -p coverage/${{ github.event.pull_request.number }}
-          cp ../coverage/lcov.info.xz coverage/${{ github.event.pull_request.number }}/${COMMIT_SHA}.lcov.info.xz
+          mkdir -p coverage/pr/${{ github.event.pull_request.number }}
+          cp ../coverage/lcov.info.xz coverage/pr/${{ github.event.pull_request.number }}/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
 
           # Commit and push
-          git add coverage/${{ github.event.pull_request.number }}/${COMMIT_SHA}.lcov.info.xz
+          git add coverage/pr/${{ github.event.pull_request.number }}/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
           git commit -m "Coverage: PR#${{ github.event.pull_request.number }}@$COMMIT_SHA"
           git push
       - name: Publish coverage to gluesql.github.io
@@ -88,10 +89,10 @@ jobs:
 
           # Copy coverage report
           mkdir -p coverage/main
-          cp ../coverage/lcov.info.xz coverage/main/$COMMIT_SHA.lcov.info.xz
+          cp ../coverage/lcov.info.xz coverage/main/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
 
           # Commit and push
-          git add coverage/main/$COMMIT_SHA.lcov.info.xz
+          git add coverage/main/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
           git commit -m "Coverage: main@$COMMIT_SHA"
           git push https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/gluesql.github.io.git gh-pages
       - name: Upload coverage to Codecov
