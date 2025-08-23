@@ -91,13 +91,13 @@ jobs:
           ENCODED_TIMESTAMP=${TIMESTAMP//:/%3A}
           URL="https://gluesql.org/coverage/?path=pr/$PR_NUMBER/$ENCODED_TIMESTAMP.${COMMIT_SHA}.lcov.info.xz"
           MESSAGE=$(cat <<EOF
-### Coverage Report
+            ### Coverage Report
 
-- **Commit:** \`$COMMIT_SHA\`
-- **Timestamp:** \`$TIMESTAMP\`
-- **Report:** [View report]($URL)
-EOF
-)
+            - **Commit:** \`$COMMIT_SHA\`
+            - **Timestamp:** \`$TIMESTAMP\`
+            - **Report:** [View report]($URL)
+          EOF
+          )
           gh pr comment "$PR_NUMBER" --body "$MESSAGE"
       - name: Publish coverage to gluesql.github.io
         if: ${{ github.repository == 'gluesql/gluesql' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
