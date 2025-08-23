@@ -79,6 +79,13 @@ jobs:
           git add coverage/pr/${{ github.event.pull_request.number }}/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
           git commit -m "Coverage: PR#${{ github.event.pull_request.number }}@$COMMIT_SHA"
           git push
+      - name: Comment coverage link on PR
+        if: ${{ github.repository == 'gluesql/gluesql' && github.event_name == 'pull_request' }}
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          ENCODED_TIMESTAMP=${TIMESTAMP//:/%3A}
+          gh pr comment $PR_NUMBER --body "Coverage report: https://gluesql.org/coverage/?path=pr/$PR_NUMBER/$ENCODED_TIMESTAMP.${COMMIT_SHA}.lcov.info.xz"
       - name: Publish coverage to gluesql.github.io
         if: ${{ github.repository == 'gluesql/gluesql' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: |
