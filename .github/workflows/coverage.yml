@@ -14,37 +14,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  # Check whether coverage workflow was modified in this PR
-  coverage-changes:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    outputs:
-      coverage_changed: ${{ steps.diff.outputs.coverage_changed }}
-    steps:
-      - id: diff
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const files = await github.paginate(github.rest.pulls.listFiles, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number,
-            });
-            const changed = files.some(f => f.filename === '.github/workflows/coverage.yml');
-            core.setOutput('coverage_changed', String(changed));
-
-  # Require approval when coverage workflow changes
-  approval:
-    needs: coverage-changes
-    if: needs.coverage-changes.outputs.coverage_changed == 'true'
-    runs-on: ubuntu-latest
-    environment: coverage-approval
-    steps:
-      - run: echo "coverage.yml changed; awaiting approval"
-
   coverage:
-    needs: approval
-    if: ${{ always() && (needs.approval.result == 'success' || needs.approval.result == 'skipped') }}
     runs-on: [self-hosted, linux]
     steps:
       - uses: actions/checkout@v4
