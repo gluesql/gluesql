@@ -490,6 +490,10 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
 
             return expr.substr(name, start, count);
         }
+        Function::Unhex(expr) => {
+            let expr = eval(expr).await?;
+            f::unhex(name, expr)
+        }
         Function::Ascii(expr) => f::ascii(name, eval(expr).await?),
         Function::Chr(expr) => f::chr(name, eval(expr).await?),
         Function::Md5(expr) => f::md5(name, eval(expr).await?),
