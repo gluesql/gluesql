@@ -154,12 +154,6 @@ pub enum Variable {
     Version,
 }
 
-impl ToSql for Assignment {
-    fn to_sql(&self) -> String {
-        format!(r#""{}" = {}"#, self.id, self.value.to_sql())
-    }
-}
-
 impl ToSql for ForeignKey {
     fn to_sql(&self) -> String {
         let ForeignKey {
