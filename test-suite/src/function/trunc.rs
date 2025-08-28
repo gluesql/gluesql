@@ -4,6 +4,7 @@ use {
         error::{EvaluateError, TranslateError},
         prelude::Value::*,
     },
+    rust_decimal::prelude::Decimal as D,
 };
 
 test_case!(trunc, {
@@ -33,6 +34,20 @@ test_case!(trunc, {
             "trunc1" | "trunc2";
             I64 | I64;
             -42 42
+        )),
+    )
+    .await;
+
+    g.named_test(
+        "truncate decimals",
+        "SELECT
+                TRUNC(CAST('-42.8' AS DECIMAL)) AS trunc1,
+                TRUNC(CAST('42.8' AS DECIMAL)) AS trunc2
+            ;",
+        Ok(select!(
+            "trunc1" | "trunc2";
+            Decimal | Decimal;
+            D::new(-42, 0) D::new(42, 0)
         )),
     )
     .await;
