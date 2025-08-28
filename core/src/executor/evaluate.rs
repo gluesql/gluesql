@@ -561,6 +561,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
 
             f::lcm(name, left, right)
         }
+        Function::Trunc(expr) => f::trunc(name, eval(expr).await?),
 
         // --- spatial ---
         Function::Point { x, y } => {

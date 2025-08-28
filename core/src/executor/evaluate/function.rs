@@ -458,6 +458,10 @@ pub fn exp<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     eval_to_float(&name, n).map(|n| Evaluated::Value(Value::F64(n.exp())))
 }
 
+pub fn trunc<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    eval_to_float(&name, n).map(|n| Evaluated::Value(Value::F64(n.trunc())))
+}
+
 pub fn log<'a>(
     name: String,
     antilog: Evaluated<'_>,

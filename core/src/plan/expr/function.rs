@@ -69,6 +69,7 @@ impl Function {
             | Self::Dedup(expr)
             | Self::Entries(expr)
             | Self::Keys(expr)
+            | Self::Trunc(expr)
             | Self::Values(expr) => Exprs::Single([expr].into_iter()),
             Self::Left { expr, size: expr2 }
             | Self::Right { expr, size: expr2 }
@@ -304,6 +305,7 @@ mod tests {
         test(r#"SIGN(-3.0)"#, &["-3.0"]);
 
         test(r#"DEDUP(list)"#, &["list"]);
+        test(r#"TRUNC(42.8)"#, &["42.8"]);
 
         // Double
         test(r#"LEFT("hello", 2)"#, &[r#""hello""#, "2"]);
