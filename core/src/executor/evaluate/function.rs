@@ -474,7 +474,8 @@ pub fn trunc<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
         Value::F32(v) => Value::F32(v.trunc()),
         Value::F64(v) => Value::F64(v.trunc()),
         _ => {
-            return Err(EvaluateError::FunctionRequiresFloatValue(name).into()).into_control_flow();
+            return Err(EvaluateError::FunctionRequiresFloatOrIntegerValue(name).into())
+                .into_control_flow();
         }
     };
 
