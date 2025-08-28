@@ -459,7 +459,26 @@ pub fn exp<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
 }
 
 pub fn trunc<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
-    eval_to_float(&name, n).map(|n| Evaluated::Value(Value::F64(n.trunc())))
+    let value = match n.try_into().break_if_null()? {
+        Value::I8(v) => Value::I8(v),
+        Value::I16(v) => Value::I16(v),
+        Value::I32(v) => Value::I32(v),
+        Value::I64(v) => Value::I64(v),
+        Value::I128(v) => Value::I128(v),
+        Value::U8(v) => Value::U8(v),
+        Value::U16(v) => Value::U16(v),
+        Value::U32(v) => Value::U32(v),
+        Value::U64(v) => Value::U64(v),
+        Value::U128(v) => Value::U128(v),
+        Value::Decimal(v) => Value::Decimal(v.trunc()),
+        Value::F32(v) => Value::F32(v.trunc()),
+        Value::F64(v) => Value::F64(v.trunc()),
+        _ => {
+            return Err(EvaluateError::FunctionRequiresFloatValue(name).into()).into_control_flow();
+        }
+    };
+
+    Continue(Evaluated::Value(value))
 }
 
 pub fn log<'a>(
