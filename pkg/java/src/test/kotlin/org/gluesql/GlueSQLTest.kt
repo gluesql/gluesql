@@ -1,4 +1,4 @@
-package org.gluesql.org.gluesql
+package org.gluesql
 
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
