@@ -83,5 +83,5 @@ jobs:
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-${{ env.BRANCH_NAME }}-${{ env.COMMIT_SHA }}
+          name: coverage-${{ replace(env.BRANCH_NAME, '/', '-') }}-${{ env.COMMIT_SHA }}
           path: coverage/lcov.info.xz
