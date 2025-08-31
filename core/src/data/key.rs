@@ -24,6 +24,9 @@ pub enum KeyError {
 
     #[error("POINT data type cannot be used as Key")]
     PointTypeKeyNotSupported,
+
+    #[error("FLOAT_VECTOR data type cannot be used as Key")]
+    FloatVectorTypeKeyNotSupported,
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug, Serialize, Deserialize)]
@@ -135,6 +138,7 @@ impl TryFrom<Value> for Key {
             Map(_) => Err(KeyError::MapTypeKeyNotSupported.into()),
             List(_) => Err(KeyError::ListTypeKeyNotSupported.into()),
             Point(_) => Err(KeyError::PointTypeKeyNotSupported.into()),
+            FloatVector(_) => Err(KeyError::FloatVectorTypeKeyNotSupported.into()),
         }
     }
 }

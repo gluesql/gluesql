@@ -241,6 +241,7 @@ impl Value {
             (DataType::Uuid, Literal::Bytea(v)) => parse_uuid(&hex::encode(v)).map(Value::Uuid),
             (DataType::Map, Literal::Text(v)) => Value::parse_json_map(v),
             (DataType::List, Literal::Text(v)) => Value::parse_json_list(v),
+            (DataType::FloatVector, Literal::Text(v)) => Value::parse_json_vector(v),
             (DataType::Decimal, Literal::Number(v)) => v
                 .to_string()
                 .parse::<Decimal>()
@@ -503,6 +504,7 @@ impl Value {
                 .map_err(|_| ValueError::FailedToParsePoint(v.to_string()).into()),
             (DataType::Map, Literal::Text(v)) => Value::parse_json_map(v),
             (DataType::List, Literal::Text(v)) => Value::parse_json_list(v),
+            (DataType::FloatVector, Literal::Text(v)) => Value::parse_json_vector(v),
             _ => Err(ValueError::UnimplementedLiteralCast {
                 data_type: data_type.clone(),
                 literal: format!("{literal:?}"),
@@ -1171,5 +1173,11 @@ mod tests {
             text!(r#"[ 1, 2, 3 ]"#),
             Value::parse_json_list(r#"[ 1, 2, 3 ]"#).unwrap()
         );
+        // Test FloatVector casting separately due to complex comparison issues
+        let vector_result = Value::try_cast_from_literal(&DataType::FloatVector, &text!(r#"[1.0, 2.0, 3.0]"#));
+        assert!(vector_result.is_ok());
+        if let Ok(Value::FloatVector(vec)) = vector_result {
+            assert_eq!(vec.data(), &[1.0, 2.0, 3.0]);
+        }
     }
 }

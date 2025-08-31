@@ -48,6 +48,43 @@ impl Value {
 
         value.try_into()
     }
+
+    pub fn parse_json_vector(value: &str) -> Result<Value> {
+        use crate::data::FloatVector;
+        
+        let json_value = serde_json::from_str(value)
+            .map_err(|_| ValueError::InvalidJsonString(value.to_owned()))?;
+
+        if !matches!(json_value, JsonValue::Array(_)) {
+            return Err(ValueError::JsonArrayTypeRequired.into());
+        }
+
+        if let JsonValue::Array(arr) = json_value {
+            let mut float_data = Vec::new();
+            
+            for item in arr {
+                match item {
+                    JsonValue::Number(n) => {
+                        if let Some(f) = n.as_f64() {
+                            float_data.push(f as f32);
+                        } else {
+                            return Err(ValueError::InvalidFloatVector("Array contains non-numeric value".to_string()).into());
+                        }
+                    }
+                    _ => {
+                        return Err(ValueError::InvalidFloatVector("Array contains non-numeric value".to_string()).into());
+                    }
+                }
+            }
+            
+            let vector = FloatVector::new(float_data)
+                .map_err(|e| ValueError::InvalidFloatVector(e.to_string()))?;
+            
+            Ok(Value::FloatVector(vector))
+        } else {
+            Err(ValueError::JsonArrayTypeRequired.into())
+        }
+    }
 }
 
 impl TryFrom<Value> for JsonValue {
@@ -94,6 +131,12 @@ impl TryFrom<Value> for JsonValue {
                 .collect::<Result<Vec<JsonValue>>>()
                 .map(|v| v.into()),
             Value::Point(v) => Ok(v.to_string().into()),
+            Value::FloatVector(v) => Ok(v
+                .data()
+                .iter()
+                .map(|&f| JsonValue::from(f))
+                .collect::<Vec<JsonValue>>()
+                .into()),
             Value::Null => Ok(JsonValue::Null),
         }
     }
@@ -150,6 +193,45 @@ mod tests {
             Value::parse_json_list(r#"{ "a": 30 }"#),
             Err(ValueError::JsonArrayTypeRequired.into())
         );
+    }
+
+    #[test]
+    fn parse_json_vector() {
+        
+        // Test valid float array
+        let result = Value::parse_json_vector("[1.0, 2.0, 3.0]").unwrap();
+        if let Value::FloatVector(vec) = result {
+            assert_eq!(vec.data(), &[1.0, 2.0, 3.0]);
+            assert_eq!(vec.dimension(), 3);
+        } else {
+            panic!("Expected FloatVector value");
+        }
+
+        // Test mixed numbers (integers should convert to floats)
+        let result = Value::parse_json_vector("[1, 2.5, 3]").unwrap();
+        if let Value::FloatVector(vec) = result {
+            assert_eq!(vec.data(), &[1.0, 2.5, 3.0]);
+        } else {
+            panic!("Expected FloatVector value");
+        }
+
+        // Test invalid: non-array input
+        assert!(matches!(
+            Value::parse_json_vector(r#"{"a": 1}"#),
+            Err(_)
+        ));
+
+        // Test invalid: array with non-numeric values
+        assert!(matches!(
+            Value::parse_json_vector(r#"[1.0, "hello", 3.0]"#),
+            Err(_)
+        ));
+
+        // Test empty array (should fail)
+        assert!(matches!(
+            Value::parse_json_vector("[]"),
+            Err(_)
+        ));
     }
 
     #[test]

@@ -267,6 +267,15 @@ impl IntoBson for Value {
             }
 
             Value::Interval(val) => Ok(Bson::String(val.to_sql_str())),
+            Value::FloatVector(val) => {
+                let bson = val
+                    .data()
+                    .iter()
+                    .map(|&f| Bson::Double(f.into()))
+                    .collect::<Vec<_>>();
+
+                Ok(Bson::Array(bson))
+            }
         }
     }
 }
