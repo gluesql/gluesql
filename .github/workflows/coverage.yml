@@ -27,6 +27,10 @@ jobs:
           - 27017:27017
     steps:
       - uses: actions/checkout@v4
+      - name: Configure git user
+        run: |
+          git config --global user.email "ci@example.com"
+          git config --global user.name "CI"
       - run: rustup component add llvm-tools-preview
       - run: cargo install grcov
       - name: clean
