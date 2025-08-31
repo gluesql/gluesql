@@ -22,6 +22,8 @@ jobs:
     runs-on: [self-hosted, linux]
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.pr-commit || github.sha }}
       - run: rustup component add llvm-tools-preview
       - run: cargo install grcov
       - name: clean
