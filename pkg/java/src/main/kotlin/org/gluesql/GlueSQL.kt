@@ -1,6 +1,7 @@
 package org.gluesql
 
 import kotlinx.coroutines.*
+import kotlinx.coroutines.future.future
 import uniffi.gluesql.*
 
 class GlueSQL(storage: Storage) {
@@ -21,7 +22,8 @@ class GlueSQL(storage: Storage) {
         }
     }
 
-    fun queryBlocking(sql: String): List<QueryResult> = runBlocking {
-        query(sql)
-    }
+    @OptIn(DelicateCoroutinesApi::class)
+    fun queryFuture(sql: String) = GlobalScope.future { query(sql) }
+
+    fun queryBlocking(sql: String) = runBlocking { query(sql) }
 }
