@@ -8,7 +8,6 @@ mod point;
 mod row;
 mod string_ext;
 mod table;
-mod vector_index;
 
 pub mod schema;
 pub mod value;
@@ -26,5 +25,4 @@ pub use {
     string_ext::{StringExt, StringExtError},
     table::{TableError, get_alias, get_index},
     value::{BTreeMapJsonExt, ConvertError, NumericBinaryOperator, Value, ValueError},
-    vector_index::{VectorIndex, VectorIndexType, IndexStats, LSHIndex, DistanceRangeIndex},
 };
