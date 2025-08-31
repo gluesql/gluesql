@@ -1104,10 +1104,12 @@ impl TryFrom<&Value> for crate::data::FloatVector {
                     .collect();
                 
                 match floats {
-                    Ok(float_vec) => crate::data::FloatVector::new(float_vec).map_err(|_| ConvertError {
-                        value: v.clone(),
-                        data_type: DataType::FloatVector,
-                    })?,
+                    Ok(float_vec) => {
+                        crate::data::FloatVector::new(float_vec).map_err(|_| ConvertError {
+                            value: v.clone(),
+                            data_type: DataType::FloatVector,
+                        })?
+                    }
                     Err(_) => {
                         return Err(ConvertError {
                             value: v.clone(),
