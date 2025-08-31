@@ -1,0 +1,25 @@
+name: Coverage PR Intake
+
+on:
+  pull_request_target:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+
+jobs:
+  intake:
+    name: PR Intake (GitHub-hosted)
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Signal intake
+        run: echo "Coverage PR Intake for PR #${{ github.event.pull_request.number }}"
+
+  coverage:
+    name: Run coverage workflow
+    needs: intake
+    uses: gluesql/gluesql/.github/workflows/coverage.yml@main
+    with:
+      pr-number: ${{ github.event.pull_request.number }}
+      pr-commit: ${{ github.event.pull_request.head.sha }}
+    secrets: inherit
