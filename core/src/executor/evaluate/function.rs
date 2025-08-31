@@ -2,7 +2,7 @@ use {
     super::{EvaluateError, Evaluated},
     crate::{
         ast::DateTimeField,
-        data::{Key, Point, Value},
+        data::{FloatVector, Key, Point, Value},
         result::{Error, Result},
     },
     chrono::{Datelike, Duration, Months},
@@ -140,6 +140,15 @@ fn eval_to_point(name: &str, evaluated: Evaluated<'_>) -> ControlFlow<Point> {
         Value::Point(v) => Continue(v),
         _ => Break(BreakCase::Err(
             EvaluateError::FunctionRequiresPointValue(name.to_owned()).into(),
+        )),
+    }
+}
+
+fn eval_to_float_vector(name: &str, evaluated: Evaluated<'_>) -> ControlFlow<FloatVector> {
+    match evaluated.try_into().break_if_null()? {
+        Value::FloatVector(v) => Continue(v),
+        _ => Break(BreakCase::Err(
+            EvaluateError::FunctionRequiresFloatVectorValue(name.to_owned()).into(),
         )),
     }
 }
@@ -1096,5 +1105,136 @@ pub fn dedup<'a>(list: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
             Continue(Evaluated::Value(Value::List(list)))
         }
         _ => Err(EvaluateError::ListTypeRequired.into()).into_control_flow(),
+    }
+}
+
+// --- vector functions ---
+pub fn vector_dot<'a>(
+    name: &str,
+    left: Evaluated<'_>,
+    right: Evaluated<'_>,
+) -> ControlFlow<Evaluated<'a>> {
+    let left_vec = eval_to_float_vector(name, left)?;
+    let right_vec = eval_to_float_vector(name, right)?;
+    
+    match left_vec.dot_product(&right_vec) {
+        Ok(result) => Continue(Evaluated::Value(Value::F32(result))),
+        Err(err) => Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: {}", name, err)).into())),
+    }
+}
+
+pub fn vector_magnitude<'a>(
+    name: &str,
+    vector: Evaluated<'_>,
+) -> ControlFlow<Evaluated<'a>> {
+    let vec = eval_to_float_vector(name, vector)?;
+    Continue(Evaluated::Value(Value::F32(vec.magnitude())))
+}
+
+pub fn vector_normalize<'a>(
+    name: &str,
+    vector: Evaluated<'_>,
+) -> ControlFlow<Evaluated<'a>> {
+    let vec = eval_to_float_vector(name, vector)?;
+    
+    match vec.normalize() {
+        Ok(normalized) => Continue(Evaluated::Value(Value::FloatVector(normalized))),
+        Err(err) => Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: {}", name, err)).into())),
+    }
+}
+
+pub fn vector_add<'a>(
+    name: &str,
+    left: Evaluated<'_>,
+    right: Evaluated<'_>,
+) -> ControlFlow<Evaluated<'a>> {
+    let left_vec = eval_to_float_vector(name, left)?;
+    let right_vec = eval_to_float_vector(name, right)?;
+    
+    match left_vec.add(&right_vec) {
+        Ok(result) => Continue(Evaluated::Value(Value::FloatVector(result))),
+        Err(err) => Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: {}", name, err)).into())),
+    }
+}
+
+pub fn vector_sub<'a>(
+    name: &str,
+    left: Evaluated<'_>,
+    right: Evaluated<'_>,
+) -> ControlFlow<Evaluated<'a>> {
+    let left_vec = eval_to_float_vector(name, left)?;
+    let right_vec = eval_to_float_vector(name, right)?;
+    
+    match left_vec.subtract(&right_vec) {
+        Ok(result) => Continue(Evaluated::Value(Value::FloatVector(result))),
+        Err(err) => Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: {}", name, err)).into())),
+    }
+}
+
+pub fn vector_scalar_mul<'a>(
+    name: &str,
+    vector: Evaluated<'_>,
+    scalar: Evaluated<'_>,
+) -> ControlFlow<Evaluated<'a>> {
+    let vec = eval_to_float_vector(name, vector)?;
+    let scalar_val = eval_to_float(name, scalar)?;
+    
+    match vec.scalar_multiply(scalar_val as f32) {
+        Ok(result) => Continue(Evaluated::Value(Value::FloatVector(result))),
+        Err(err) => Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: {}", name, err)).into())),
+    }
+}
+
+pub fn vector_euclidean_dist<'a>(
+    name: &str,
+    left: Evaluated<'_>,
+    right: Evaluated<'_>,
+) -> ControlFlow<Evaluated<'a>> {
+    let left_vec = eval_to_float_vector(name, left)?;
+    let right_vec = eval_to_float_vector(name, right)?;
+    
+    match left_vec.euclidean_distance(&right_vec) {
+        Ok(result) => Continue(Evaluated::Value(Value::F32(result))),
+        Err(err) => Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: {}", name, err)).into())),
+    }
+}
+
+pub fn vector_cosine_sim<'a>(
+    name: &str,
+    left: Evaluated<'_>,
+    right: Evaluated<'_>,
+) -> ControlFlow<Evaluated<'a>> {
+    let left_vec = eval_to_float_vector(name, left)?;
+    let right_vec = eval_to_float_vector(name, right)?;
+    
+    match left_vec.cosine_similarity(&right_vec) {
+        Ok(result) => Continue(Evaluated::Value(Value::F32(result))),
+        Err(err) => Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: {}", name, err)).into())),
+    }
+}
+
+pub fn vector_dimension<'a>(
+    name: &str,
+    vector: Evaluated<'_>,
+) -> ControlFlow<Evaluated<'a>> {
+    let vec = eval_to_float_vector(name, vector)?;
+    Continue(Evaluated::Value(Value::I64(vec.dimension() as i64)))
+}
+
+pub fn vector_at<'a>(
+    name: &str,
+    vector: Evaluated<'_>,
+    index: Evaluated<'_>,
+) -> ControlFlow<Evaluated<'a>> {
+    let vec = eval_to_float_vector(name, vector)?;
+    let idx = eval_to_int(name, index)?;
+    
+    if idx < 0 {
+        Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: Index cannot be negative", name)).into()))
+    } else {
+        match vec.get(idx as usize) {
+            Some(value) => Continue(Evaluated::Value(Value::F32(value))),
+            None => Continue(Evaluated::Value(Value::Null)),
+        }
     }
 }

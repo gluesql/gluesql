@@ -723,6 +723,55 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             f::splice(name, list_data, begin_index, end_index, values)
         }
         Function::Dedup(list) => f::dedup(eval(list).await?),
+        
+        // --- vector functions ---
+        Function::VectorDot { left, right } => {
+            let left = eval(left).await?;
+            let right = eval(right).await?;
+            f::vector_dot(&name, left, right)
+        }
+        Function::VectorMagnitude(vector) => {
+            let vector = eval(vector).await?;
+            f::vector_magnitude(&name, vector)
+        }
+        Function::VectorNormalize(vector) => {
+            let vector = eval(vector).await?;
+            f::vector_normalize(&name, vector)
+        }
+        Function::VectorAdd { left, right } => {
+            let left = eval(left).await?;
+            let right = eval(right).await?;
+            f::vector_add(&name, left, right)
+        }
+        Function::VectorSub { left, right } => {
+            let left = eval(left).await?;
+            let right = eval(right).await?;
+            f::vector_sub(&name, left, right)
+        }
+        Function::VectorScalarMul { vector, scalar } => {
+            let vector = eval(vector).await?;
+            let scalar = eval(scalar).await?;
+            f::vector_scalar_mul(&name, vector, scalar)
+        }
+        Function::VectorEuclideanDist { left, right } => {
+            let left = eval(left).await?;
+            let right = eval(right).await?;
+            f::vector_euclidean_dist(&name, left, right)
+        }
+        Function::VectorCosineSim { left, right } => {
+            let left = eval(left).await?;
+            let right = eval(right).await?;
+            f::vector_cosine_sim(&name, left, right)
+        }
+        Function::VectorDimension(vector) => {
+            let vector = eval(vector).await?;
+            f::vector_dimension(&name, vector)
+        }
+        Function::VectorAt { vector, index } => {
+            let vector = eval(vector).await?;
+            let index = eval(index).await?;
+            f::vector_at(&name, vector, index)
+        }
     };
 
     match result {

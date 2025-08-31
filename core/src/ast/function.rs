@@ -218,6 +218,37 @@ pub enum Function {
         values: Option<Expr>,
     },
     Dedup(Expr),
+    VectorDot {
+        left: Expr,
+        right: Expr,
+    },
+    VectorMagnitude(Expr),
+    VectorNormalize(Expr),
+    VectorAdd {
+        left: Expr,
+        right: Expr,
+    },
+    VectorSub {
+        left: Expr,
+        right: Expr,
+    },
+    VectorScalarMul {
+        vector: Expr,
+        scalar: Expr,
+    },
+    VectorEuclideanDist {
+        left: Expr,
+        right: Expr,
+    },
+    VectorCosineSim {
+        left: Expr,
+        right: Expr,
+    },
+    VectorDimension(Expr),
+    VectorAt {
+        vector: Expr,
+        index: Expr,
+    },
 }
 
 impl ToSql for Function {
@@ -507,6 +538,30 @@ impl ToSql for Function {
                 ),
             },
             Function::Dedup(list) => format!("DEDUP({})", list.to_sql()),
+            Function::VectorDot { left, right } => {
+                format!("VECTOR_DOT({}, {})", left.to_sql(), right.to_sql())
+            }
+            Function::VectorMagnitude(vector) => format!("VECTOR_MAGNITUDE({})", vector.to_sql()),
+            Function::VectorNormalize(vector) => format!("VECTOR_NORMALIZE({})", vector.to_sql()),
+            Function::VectorAdd { left, right } => {
+                format!("VECTOR_ADD({}, {})", left.to_sql(), right.to_sql())
+            }
+            Function::VectorSub { left, right } => {
+                format!("VECTOR_SUB({}, {})", left.to_sql(), right.to_sql())
+            }
+            Function::VectorScalarMul { vector, scalar } => {
+                format!("VECTOR_SCALAR_MUL({}, {})", vector.to_sql(), scalar.to_sql())
+            }
+            Function::VectorEuclideanDist { left, right } => {
+                format!("VECTOR_EUCLIDEAN_DIST({}, {})", left.to_sql(), right.to_sql())
+            }
+            Function::VectorCosineSim { left, right } => {
+                format!("VECTOR_COSINE_SIM({}, {})", left.to_sql(), right.to_sql())
+            }
+            Function::VectorDimension(vector) => format!("VECTOR_DIMENSION({})", vector.to_sql()),
+            Function::VectorAt { vector, index } => {
+                format!("VECTOR_AT({}, {})", vector.to_sql(), index.to_sql())
+            }
         }
     }
 }

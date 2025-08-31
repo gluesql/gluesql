@@ -714,6 +714,52 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             let list = translate_expr(args[0])?;
             Ok(Expr::Function(Box::new(Function::Dedup(list))))
         }
+        // --- vector functions ---
+        "VECTOR_DOT" => {
+            check_len(name, args.len(), 2)?;
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::VectorDot { left, right })))
+        }
+        "VECTOR_MAGNITUDE" => translate_function_one_arg(Function::VectorMagnitude, args, name),
+        "VECTOR_NORMALIZE" => translate_function_one_arg(Function::VectorNormalize, args, name),
+        "VECTOR_ADD" => {
+            check_len(name, args.len(), 2)?;
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::VectorAdd { left, right })))
+        }
+        "VECTOR_SUB" => {
+            check_len(name, args.len(), 2)?;
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::VectorSub { left, right })))
+        }
+        "VECTOR_SCALAR_MUL" => {
+            check_len(name, args.len(), 2)?;
+            let vector = translate_expr(args[0])?;
+            let scalar = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::VectorScalarMul { vector, scalar })))
+        }
+        "VECTOR_EUCLIDEAN_DIST" => {
+            check_len(name, args.len(), 2)?;
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::VectorEuclideanDist { left, right })))
+        }
+        "VECTOR_COSINE_SIM" => {
+            check_len(name, args.len(), 2)?;
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::VectorCosineSim { left, right })))
+        }
+        "VECTOR_DIMENSION" => translate_function_one_arg(Function::VectorDimension, args, name),
+        "VECTOR_AT" => {
+            check_len(name, args.len(), 2)?;
+            let vector = translate_expr(args[0])?;
+            let index = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::VectorAt { vector, index })))
+        }
         _ => {
             let exprs = args
                 .into_iter()
