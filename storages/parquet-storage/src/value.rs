@@ -73,6 +73,10 @@ impl ParquetField {
                                 let uint128 = bincode::deserialize(v.data()).map_storage_err()?;
                                 return Ok(Value::U128(uint128));
                             }
+                            DataType::FloatVector => {
+                                let float_vector = bincode::deserialize(v.data()).map_storage_err()?;
+                                return Ok(Value::FloatVector(float_vector));
+                            }
                             DataType::Int128 => {
                                 let int128 = bincode::deserialize(v.data()).map_storage_err()?;
                                 return Ok(Value::I128(int128));

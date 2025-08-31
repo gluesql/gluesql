@@ -379,6 +379,12 @@ impl ParquetStorage {
                                     .write_batch(&[serialized.into()], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
+                            (Value::FloatVector(float_vector), ColumnWriter::ByteArrayColumnWriter(typed)) => {
+                                let serialized = bincode::serialize(&float_vector).map_storage_err()?;
+                                typed
+                                    .write_batch(&[serialized.into()], Some(&[1]), None)
+                                    .map_storage_err()?;
+                            }
                             _ => return Err(
                                 ParquetStorageError::UnreachableGlueSqlValueTypeForParquetWriter
                                     .into(),

@@ -3,7 +3,7 @@ use {
     gluesql_core::{
         ast::{Expr, ToSql},
         chrono::{NaiveDate, NaiveDateTime, TimeZone, Utc},
-        data::{Interval, Point, Value},
+        data::{FloatVector, Interval, Point, Value},
         parse_sql::parse_interval,
         prelude::DataType,
         translate::translate_expr,
@@ -79,6 +79,22 @@ impl IntoValue for Bson {
                 }
             }
             (Bson::String(string), _) => Value::Str(string),
+            (Bson::Array(array), DataType::FloatVector) => {
+                let floats: Result<Vec<f32>> = array
+                    .into_iter()
+                    .map(|bson| match bson {
+                        Bson::Double(f) => Ok(f as f32),
+                        Bson::Int32(i) => Ok(i as f32),
+                        Bson::Int64(i) => Ok(i as f32),
+                        _ => Err(MongoStorageError::UnsupportedBsonType),
+                    })
+                    .collect();
+                
+                let floats = floats?;
+                let float_vector = FloatVector::new(floats)
+                    .map_err(|_| MongoStorageError::UnsupportedBsonType)?;
+                Value::FloatVector(float_vector)
+            }
             (Bson::Array(array), _) => {
                 let values = array
                     .into_iter()
