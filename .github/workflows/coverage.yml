@@ -15,19 +15,30 @@ env:
 
 jobs:
   coverage:
-    runs-on: [self-hosted, linux]
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+      mongo:
+        image: mongo
+        ports:
+          - 27017:27017
     steps:
       - uses: actions/checkout@v4
+      - name: Configure git user
+        run: |
+          git config --global user.email "ci@example.com"
+          git config --global user.name "CI"
       - run: rustup component add llvm-tools-preview
       - run: cargo install grcov
       - name: clean
         run: |
           cargo clean
-          rm -rf ./target/debug/deps/gluesql*
-          rm *.profraw && rm **/*.profraw
-          cd storages/csv-storage && rm -rf ./tmp && cd ../..
-          cd storages/json-storage && rm -rf ./tmp && cd ../..
-          redis-cli flushall
+          find . -name '*.profraw' -delete
+          rm -rf storages/csv-storage/tmp
+          rm -rf storages/json-storage/tmp
       - name: build
         env:
           RUSTFLAGS: -Cinstrument-coverage
