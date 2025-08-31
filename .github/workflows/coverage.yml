@@ -5,10 +5,14 @@ on:
     branches: [main, release-*]
     paths-ignore:
       - "docs/**"
-  pull_request:
-    branches: [main]
-    paths-ignore:
-      - "docs/**"
+  workflow_call:
+    inputs:
+      pr-number:
+        required: false
+        type: string
+      pr-commit:
+        required: false
+        type: string
 
 env:
   CARGO_TERM_COLOR: always
@@ -18,6 +22,8 @@ jobs:
     runs-on: [self-hosted, linux]
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.pr-commit || github.sha }}
       - run: rustup component add llvm-tools-preview
       - run: cargo install grcov
       - name: clean
@@ -52,6 +58,69 @@ jobs:
             --ignore "cli/src/{cli,helper,lib,main}.rs" \
             --excl-line "(#\\[derive\\()|(^\s*.await[;,]?$)|(^test_case\!\([\d\w]+,)" \
             -o ./coverage/lcov.info
+      - name: Set coverage env vars
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_call" ]; then
+            echo "PR_NUMBER=${{ inputs.pr-number }}" >> $GITHUB_ENV
+            echo "COMMIT_SHA=${{ inputs.pr-commit }}" >> $GITHUB_ENV
+            echo "BRANCH_NAME=pr-${{ inputs.pr-number }}" >> $GITHUB_ENV
+          else
+            echo "COMMIT_SHA=${{ github.sha }}" >> $GITHUB_ENV
+            echo "BRANCH_NAME=$(echo ${{ github.ref_name }} | tr '/' '-')" >> $GITHUB_ENV
+          fi
+          echo "TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_ENV
+      - name: Compress coverage report
+        run: xz -T0 -9e -c coverage/lcov.info > coverage/lcov.info.xz
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ env.BRANCH_NAME }}-${{ env.COMMIT_SHA }}
+          path: coverage/lcov.info.xz
+      - name: Publish PR coverage to gluesql.github.io
+        if: github.repository == 'gluesql/gluesql' && inputs.pr-number != ''
+        run: |
+          gh repo clone gluesql/gluesql.github.io
+          cd gluesql.github.io
+          git checkout gh-pages
+
+          # Copy coverage report
+          mkdir -p coverage/pr/${PR_NUMBER}
+          cp ../coverage/lcov.info.xz coverage/pr/${PR_NUMBER}/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
+
+          # Commit and push
+          git add coverage/pr/${PR_NUMBER}/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
+          git commit -m "Coverage: PR#${PR_NUMBER}@$COMMIT_SHA"
+          git push
+      - name: Comment coverage link on PR
+        if: github.repository == 'gluesql/gluesql' && inputs.pr-number != ''
+        run: |
+          ENCODED_TIMESTAMP=${TIMESTAMP//:/%3A}
+          URL="https://gluesql.org/coverage/?path=pr/$PR_NUMBER/$ENCODED_TIMESTAMP.${COMMIT_SHA}.lcov.info.xz"
+          MESSAGE=$(cat <<EOF
+            ### Coverage Report
+
+            - **Commit:** \`$COMMIT_SHA\`
+            - **Timestamp:** \`$TIMESTAMP\`
+            - **Report:** [View report]($URL)
+          EOF
+          )
+          gh pr comment "$PR_NUMBER" --body "$MESSAGE"
+      - name: Publish coverage to gluesql.github.io
+        if: ${{ github.repository == 'gluesql/gluesql' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        run: |
+          # Clone docs repo
+          gh repo clone gluesql/gluesql.github.io
+          cd gluesql.github.io
+          git checkout gh-pages
+
+          # Copy coverage report
+          mkdir -p coverage/main
+          cp ../coverage/lcov.info.xz coverage/main/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
+
+          # Commit and push
+          git add coverage/main/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
+          git commit -m "Coverage: main@$COMMIT_SHA"
+          git push
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
