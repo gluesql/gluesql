@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use tokio::runtime::Runtime;
 
 use gluesql_core::prelude::{
     Payload as CorePayload, PayloadVariable, execute, parse, plan, translate,
@@ -151,13 +150,10 @@ pub enum StorageBackend {
 
 pub struct Glue {
     storage: StorageBackend,
-    runtime: Arc<Runtime>,
 }
 
 impl Glue {
     pub fn new(storage: Storage) -> Result<Self, GlueSQLError> {
-        let runtime = Arc::new(Runtime::new().expect("Failed to create async runtime"));
-
         let storage_backend = match storage {
             Storage::Memory => {
                 StorageBackend::Memory(Arc::new(tokio::sync::Mutex::new(MemoryStorage::default())))
@@ -189,70 +185,65 @@ impl Glue {
 
         Ok(Self {
             storage: storage_backend,
-            runtime,
         })
     }
 
-    pub fn query(&self, sql: String) -> Result<Vec<String>, GlueSQLError> {
-        let runtime = Arc::clone(&self.runtime);
+    pub async fn query(&self, sql: String) -> Result<Vec<String>, GlueSQLError> {
+        let queries = parse(&sql).map_err(|e| GlueSQLError::ParseError(e.to_string()))?;
 
-        runtime.block_on(async {
-            let queries = parse(&sql).map_err(|e| GlueSQLError::ParseError(e.to_string()))?;
+        let mut results = Vec::new();
 
-            let mut results = Vec::new();
+        for query in queries {
+            let statement =
+                translate(&query).map_err(|e| GlueSQLError::TranslateError(e.to_string()))?;
 
-            for query in queries {
-                let statement =
-                    translate(&query).map_err(|e| GlueSQLError::TranslateError(e.to_string()))?;
+            let payload = match &self.storage {
+                StorageBackend::Memory(storage) => {
+                    let mut storage_guard = storage.lock().await;
+                    let planned_statement = plan(&*storage_guard, statement)
+                        .await
+                        .map_err(|e| GlueSQLError::PlanError(e.to_string()))?;
+                    execute(&mut *storage_guard, &planned_statement)
+                        .await
+                        .map_err(|e| GlueSQLError::ExecuteError(e.to_string()))?
+                }
+                StorageBackend::Json(storage) => {
+                    let mut storage_guard = storage.lock().await;
+                    let planned_statement = plan(&*storage_guard, statement)
+                        .await
+                        .map_err(|e| GlueSQLError::PlanError(e.to_string()))?;
+                    execute(&mut *storage_guard, &planned_statement)
+                        .await
+                        .map_err(|e| GlueSQLError::ExecuteError(e.to_string()))?
+                }
+                StorageBackend::SharedMemory(storage) => {
+                    let mut storage_guard = storage.lock().await;
+                    let planned_statement = plan(&*storage_guard, statement)
+                        .await
+                        .map_err(|e| GlueSQLError::PlanError(e.to_string()))?;
+                    execute(&mut *storage_guard, &planned_statement)
+                        .await
+                        .map_err(|e| GlueSQLError::ExecuteError(e.to_string()))?
+                }
+                StorageBackend::Sled(storage) => {
+                    let mut storage_guard = storage.lock().await;
+                    let planned_statement = plan(&*storage_guard, statement)
+                        .await
+                        .map_err(|e| GlueSQLError::PlanError(e.to_string()))?;
+                    execute(&mut *storage_guard, &planned_statement)
+                        .await
+                        .map_err(|e| GlueSQLError::ExecuteError(e.to_string()))?
+                }
+            };
 
-                let payload = match &self.storage {
-                    StorageBackend::Memory(storage) => {
-                        let mut storage_guard = storage.lock().await;
-                        let planned_statement = plan(&*storage_guard, statement)
-                            .await
-                            .map_err(|e| GlueSQLError::PlanError(e.to_string()))?;
-                        execute(&mut *storage_guard, &planned_statement)
-                            .await
-                            .map_err(|e| GlueSQLError::ExecuteError(e.to_string()))?
-                    }
-                    StorageBackend::Json(storage) => {
-                        let mut storage_guard = storage.lock().await;
-                        let planned_statement = plan(&*storage_guard, statement)
-                            .await
-                            .map_err(|e| GlueSQLError::PlanError(e.to_string()))?;
-                        execute(&mut *storage_guard, &planned_statement)
-                            .await
-                            .map_err(|e| GlueSQLError::ExecuteError(e.to_string()))?
-                    }
-                    StorageBackend::SharedMemory(storage) => {
-                        let mut storage_guard = storage.lock().await;
-                        let planned_statement = plan(&*storage_guard, statement)
-                            .await
-                            .map_err(|e| GlueSQLError::PlanError(e.to_string()))?;
-                        execute(&mut *storage_guard, &planned_statement)
-                            .await
-                            .map_err(|e| GlueSQLError::ExecuteError(e.to_string()))?
-                    }
-                    StorageBackend::Sled(storage) => {
-                        let mut storage_guard = storage.lock().await;
-                        let planned_statement = plan(&*storage_guard, statement)
-                            .await
-                            .map_err(|e| GlueSQLError::PlanError(e.to_string()))?;
-                        execute(&mut *storage_guard, &planned_statement)
-                            .await
-                            .map_err(|e| GlueSQLError::ExecuteError(e.to_string()))?
-                    }
-                };
+            let converted = convert_payload(payload);
+            results.push(
+                serde_json::to_string(&converted)
+                    .map_err(|e| GlueSQLError::ValueError(e.to_string()))?,
+            );
+        }
 
-                let converted = convert_payload(payload);
-                results.push(
-                    serde_json::to_string(&converted)
-                        .map_err(|e| GlueSQLError::ValueError(e.to_string()))?,
-                );
-            }
-
-            Ok(results)
-        })
+        Ok(results)
     }
 }
 

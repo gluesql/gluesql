@@ -26,6 +26,6 @@ interface Storage {
 interface Glue {
     [Throws=GlueSQLError]
     constructor(Storage storage);
-    [Throws=GlueSQLError]
+    [Throws=GlueSQLError, Async]
     sequence<string> query(string sql);
 };

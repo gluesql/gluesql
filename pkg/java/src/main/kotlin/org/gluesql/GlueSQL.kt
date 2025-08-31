@@ -13,10 +13,10 @@ class GlueSQL(storage: Storage) {
     }
     private val gson = Gson()
     
-    suspend fun query(sql: String): List<QueryResult> = withContext(Dispatchers.IO) {
+    suspend fun query(sql: String): List<QueryResult> {
         try {
             val results = glue.query(sql)
-            results.map { jsonString ->
+            return results.map { jsonString ->
                 val payloadType = object : TypeToken<Map<String, Any>>() {}.type
                 val payloadData = gson.fromJson<Map<String, Any>>(jsonString, payloadType)
                 QueryResult.fromPayload(payloadData)
@@ -25,7 +25,7 @@ class GlueSQL(storage: Storage) {
             throw GlueSQLException(e.message ?: "Unknown GlueSQL error", e)
         }
     }
-    
+
     fun queryBlocking(sql: String): List<QueryResult> = runBlocking {
         query(sql)
     }
