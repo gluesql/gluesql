@@ -1,9 +1,6 @@
 use {
     crate::*,
-    gluesql_core::{
-        error::ValueError,
-        prelude::Value::*,
-    },
+    gluesql_core::{error::ValueError, prelude::Value::*},
 };
 
 test_case!(float_vector, {
@@ -42,7 +39,8 @@ INSERT INTO vectors VALUES
     .await;
 
     // Test CAST operation - just verify it doesn't error
-    g.run("SELECT CAST('[5.0, 6.0, 7.0]' AS FLOAT_VECTOR) as vector").await;
+    g.run("SELECT CAST('[5.0, 6.0, 7.0]' AS FLOAT_VECTOR) as vector")
+        .await;
 
     // Test basic vector query (Note: exact vector equality comparisons have precision issues)
     // Instead test that we can query by ID to verify vector insertion worked
@@ -59,29 +57,26 @@ INSERT INTO vectors VALUES
     // Test invalid vector format (should fail)
     g.test(
         "INSERT INTO vectors VALUES (4, '[1.0, not_a_number, 3.0]')",
-        Err(ValueError::InvalidJsonString("[1.0, not_a_number, 3.0]".to_string()).into()),
+        Err(ValueError::InvalidJsonString("[1.0, not_a_number, 3.0]".to_owned()).into()),
     )
     .await;
 
     // Test empty vector (should fail)
     g.test(
         "INSERT INTO vectors VALUES (5, '[]')",
-        Err(ValueError::InvalidFloatVector("Vector cannot be empty".to_string()).into()),
+        Err(ValueError::InvalidFloatVector("Vector cannot be empty".to_owned()).into()),
     )
     .await;
 
     // Test non-array format (should fail)
     g.test(
         "INSERT INTO vectors VALUES (6, 'not_an_array')",
-        Err(ValueError::InvalidJsonString("not_an_array".to_string()).into()),
+        Err(ValueError::InvalidJsonString("not_an_array".to_owned()).into()),
     )
     .await;
 
     // Test mixed number types (integers and floats)
-    g.run(
-        "INSERT INTO vectors VALUES (7, '[1, 2.5, 3]')"
-    )
-    .await;
+    g.run("INSERT INTO vectors VALUES (7, '[1, 2.5, 3]')").await;
 
     // Verify the mixed number type insertion worked
     g.test(
@@ -96,11 +91,17 @@ INSERT INTO vectors VALUES
 
     // Test large dimension vector (within limits)
     let large_vector: Vec<f32> = (0..10).map(|i| i as f32 * 0.1).collect();
-    let large_vector_str = format!("[{}]", large_vector.iter().map(|f| f.to_string()).collect::<Vec<_>>().join(", "));
-    
+    let large_vector_str = format!(
+        "[{}]",
+        large_vector
+            .iter()
+            .map(|f| f.to_string())
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+
     g.run(&format!(
-        "INSERT INTO vectors VALUES (8, '{}')",
-        large_vector_str
+        "INSERT INTO vectors VALUES (8, '{large_vector_str}')"
     ))
     .await;
 
@@ -120,11 +121,13 @@ test_case!(float_vector_data_type_validation, {
     let g = get_tester!();
 
     // Test data type validation
-    g.run("CREATE TABLE typed_vectors (id INTEGER, vec FLOAT_VECTOR)").await;
-    
+    g.run("CREATE TABLE typed_vectors (id INTEGER, vec FLOAT_VECTOR)")
+        .await;
+
     // Valid insertion
-    g.run("INSERT INTO typed_vectors VALUES (1, '[1.0, 2.0]')").await;
-    
+    g.run("INSERT INTO typed_vectors VALUES (1, '[1.0, 2.0]')")
+        .await;
+
     // Test that the data type is enforced - just count to verify
     g.test(
         "SELECT COUNT(*) as count FROM typed_vectors WHERE id = 1",
@@ -140,8 +143,10 @@ test_case!(float_vector_data_type_validation, {
 test_case!(float_vector_json_serialization, {
     let g = get_tester!();
 
-    g.run("CREATE TABLE json_vectors (id INTEGER, data FLOAT_VECTOR)").await;
-    g.run("INSERT INTO json_vectors VALUES (1, '[1.5, 2.5, 3.5]')").await;
+    g.run("CREATE TABLE json_vectors (id INTEGER, data FLOAT_VECTOR)")
+        .await;
+    g.run("INSERT INTO json_vectors VALUES (1, '[1.5, 2.5, 3.5]')")
+        .await;
 
     // The vector should be properly serialized and deserialized - just count to verify
     g.test(
@@ -158,8 +163,10 @@ test_case!(float_vector_json_serialization, {
 test_case!(vector_functions_basic, {
     let g = get_tester!();
 
-    g.run("CREATE TABLE vectors (id INTEGER, vec FLOAT_VECTOR)").await;
-    g.run("INSERT INTO vectors VALUES (1, '[3.0, 4.0]'), (2, '[1.0, 1.0, 1.0]')").await;
+    g.run("CREATE TABLE vectors (id INTEGER, vec FLOAT_VECTOR)")
+        .await;
+    g.run("INSERT INTO vectors VALUES (1, '[3.0, 4.0]'), (2, '[1.0, 1.0, 1.0]')")
+        .await;
 
     // Test VECTOR_MAGNITUDE
     g.test(
@@ -261,7 +268,8 @@ test_case!(vector_functions_distance, {
 test_case!(vector_functions_with_tables, {
     let g = get_tester!();
 
-    g.run("CREATE TABLE embeddings (id INTEGER, vec1 FLOAT_VECTOR, vec2 FLOAT_VECTOR)").await;
+    g.run("CREATE TABLE embeddings (id INTEGER, vec1 FLOAT_VECTOR, vec2 FLOAT_VECTOR)")
+        .await;
     g.run("INSERT INTO embeddings VALUES (1, '[1.0, 0.0]', '[0.0, 1.0]'), (2, '[1.0, 1.0]', '[1.0, 1.0]')").await;
 
     // Test vector operations on table columns
@@ -282,7 +290,7 @@ test_case!(vector_functions_with_tables, {
         Ok(select!(
             id  | distance
             I64 | F32;
-            1     1.4142135  // sqrt(2) ≈ 1.414
+            1     std::f32::consts::SQRT_2  // sqrt(2)
         )),
     )
     .await;
@@ -376,13 +384,19 @@ test_case!(vector_functions_advanced_distances, {
 test_case!(vector_functions_advanced_with_tables, {
     let g = get_tester!();
 
-    g.run("CREATE TABLE similarity_search (id INTEGER, query_vec FLOAT_VECTOR, doc_vec FLOAT_VECTOR)").await;
-    g.run(r#"
+    g.run(
+        "CREATE TABLE similarity_search (id INTEGER, query_vec FLOAT_VECTOR, doc_vec FLOAT_VECTOR)",
+    )
+    .await;
+    g.run(
+        r#"
         INSERT INTO similarity_search VALUES 
         (1, '[1.0, 0.0, 1.0]', '[1.0, 1.0, 0.0]'),
         (2, '[2.0, 3.0, 1.0]', '[1.0, 2.0, 3.0]'),
         (3, '[0.0, 1.0, 0.0]', '[1.0, 0.0, 1.0]')
-    "#).await;
+    "#,
+    )
+    .await;
 
     // Test ordering by Manhattan distance
     g.test(
@@ -396,7 +410,7 @@ test_case!(vector_functions_advanced_with_tables, {
             id  | distance
             I64 | F32;
             1     2.0;      // closest
-            3     3.0       // second closest  
+            3     3.0       // second closest
         )),
     )
     .await;
@@ -412,7 +426,7 @@ test_case!(vector_functions_advanced_with_tables, {
         Ok(select!(
             id  | similarity
             I64 | F32;
-            2     0.7857142;  // highest similarity  
+            2     0.7857142;  // highest similarity
             1     0.50000006  // second highest (just above threshold)
         )),
     )

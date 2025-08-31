@@ -719,7 +719,10 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             check_len(name, args.len(), 2)?;
             let left = translate_expr(args[0])?;
             let right = translate_expr(args[1])?;
-            Ok(Expr::Function(Box::new(Function::VectorDot { left, right })))
+            Ok(Expr::Function(Box::new(Function::VectorDot {
+                left,
+                right,
+            })))
         }
         "VECTOR_MAGNITUDE" => translate_function_one_arg(Function::VectorMagnitude, args, name),
         "VECTOR_NORMALIZE" => translate_function_one_arg(Function::VectorNormalize, args, name),
@@ -727,75 +730,112 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             check_len(name, args.len(), 2)?;
             let left = translate_expr(args[0])?;
             let right = translate_expr(args[1])?;
-            Ok(Expr::Function(Box::new(Function::VectorAdd { left, right })))
+            Ok(Expr::Function(Box::new(Function::VectorAdd {
+                left,
+                right,
+            })))
         }
         "VECTOR_SUB" => {
             check_len(name, args.len(), 2)?;
             let left = translate_expr(args[0])?;
             let right = translate_expr(args[1])?;
-            Ok(Expr::Function(Box::new(Function::VectorSub { left, right })))
+            Ok(Expr::Function(Box::new(Function::VectorSub {
+                left,
+                right,
+            })))
         }
         "VECTOR_SCALAR_MUL" => {
             check_len(name, args.len(), 2)?;
             let vector = translate_expr(args[0])?;
             let scalar = translate_expr(args[1])?;
-            Ok(Expr::Function(Box::new(Function::VectorScalarMul { vector, scalar })))
+            Ok(Expr::Function(Box::new(Function::VectorScalarMul {
+                vector,
+                scalar,
+            })))
         }
         "VECTOR_EUCLIDEAN_DIST" => {
             check_len(name, args.len(), 2)?;
             let left = translate_expr(args[0])?;
             let right = translate_expr(args[1])?;
-            Ok(Expr::Function(Box::new(Function::VectorEuclideanDist { left, right })))
+            Ok(Expr::Function(Box::new(Function::VectorEuclideanDist {
+                left,
+                right,
+            })))
         }
         "VECTOR_COSINE_SIM" => {
             check_len(name, args.len(), 2)?;
             let left = translate_expr(args[0])?;
             let right = translate_expr(args[1])?;
-            Ok(Expr::Function(Box::new(Function::VectorCosineSim { left, right })))
+            Ok(Expr::Function(Box::new(Function::VectorCosineSim {
+                left,
+                right,
+            })))
         }
         "VECTOR_DIMENSION" => translate_function_one_arg(Function::VectorDimension, args, name),
         "VECTOR_AT" => {
             check_len(name, args.len(), 2)?;
             let vector = translate_expr(args[0])?;
             let index = translate_expr(args[1])?;
-            Ok(Expr::Function(Box::new(Function::VectorAt { vector, index })))
+            Ok(Expr::Function(Box::new(Function::VectorAt {
+                vector,
+                index,
+            })))
         }
         "VECTOR_MANHATTAN_DIST" => {
             check_len(name, args.len(), 2)?;
             let left = translate_expr(args[0])?;
             let right = translate_expr(args[1])?;
-            Ok(Expr::Function(Box::new(Function::VectorManhattanDist { left, right })))
+            Ok(Expr::Function(Box::new(Function::VectorManhattanDist {
+                left,
+                right,
+            })))
         }
         "VECTOR_CHEBYSHEV_DIST" => {
             check_len(name, args.len(), 2)?;
             let left = translate_expr(args[0])?;
             let right = translate_expr(args[1])?;
-            Ok(Expr::Function(Box::new(Function::VectorChebyshevDist { left, right })))
+            Ok(Expr::Function(Box::new(Function::VectorChebyshevDist {
+                left,
+                right,
+            })))
         }
         "VECTOR_HAMMING_DIST" => {
             check_len(name, args.len(), 2)?;
             let left = translate_expr(args[0])?;
             let right = translate_expr(args[1])?;
-            Ok(Expr::Function(Box::new(Function::VectorHammingDist { left, right })))
+            Ok(Expr::Function(Box::new(Function::VectorHammingDist {
+                left,
+                right,
+            })))
         }
         "VECTOR_JACCARD_SIM" => {
             check_len(name, args.len(), 2)?;
             let left = translate_expr(args[0])?;
             let right = translate_expr(args[1])?;
-            Ok(Expr::Function(Box::new(Function::VectorJaccardSim { left, right })))
+            Ok(Expr::Function(Box::new(Function::VectorJaccardSim {
+                left,
+                right,
+            })))
         }
         "VECTOR_MINKOWSKI_DIST" => {
             check_len(name, args.len(), 3)?;
             let left = translate_expr(args[0])?;
             let right = translate_expr(args[1])?;
             let p = translate_expr(args[2])?;
-            Ok(Expr::Function(Box::new(Function::VectorMinkowskiDist { left, right, p })))
+            Ok(Expr::Function(Box::new(Function::VectorMinkowskiDist {
+                left,
+                right,
+                p,
+            })))
         }
         "VECTOR_CANBERRA_DIST" => {
             check_len(name, args.len(), 2)?;
             let left = translate_expr(args[0])?;
             let right = translate_expr(args[1])?;
-            Ok(Expr::Function(Box::new(Function::VectorCanberraDist { left, right })))
+            Ok(Expr::Function(Box::new(Function::VectorCanberraDist {
+                left,
+                right,
+            })))
         }
         _ => {
             let exprs = args

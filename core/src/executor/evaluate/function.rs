@@ -152,7 +152,10 @@ fn eval_to_float_vector(name: &str, evaluated: Evaluated<'_>) -> ControlFlow<Flo
             match Value::parse_json_vector(&s) {
                 Ok(Value::FloatVector(v)) => Continue(v),
                 _ => Break(BreakCase::Err(
-                    EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: Invalid vector format '{}'", name, s)).into(),
+                    EvaluateError::FunctionRequiresFloatVectorValue(format!(
+                        "{name}: Invalid vector format '{s}'"
+                    ))
+                    .into(),
                 )),
             }
         }
@@ -1125,30 +1128,28 @@ pub fn vector_dot<'a>(
 ) -> ControlFlow<Evaluated<'a>> {
     let left_vec = eval_to_float_vector(name, left)?;
     let right_vec = eval_to_float_vector(name, right)?;
-    
+
     match left_vec.dot_product(&right_vec) {
         Ok(result) => Continue(Evaluated::Value(Value::F32(result))),
-        Err(err) => Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: {}", name, err)).into())),
+        Err(err) => Break(BreakCase::Err(
+            EvaluateError::FunctionRequiresFloatVectorValue(format!("{name}: {err}")).into(),
+        )),
     }
 }
 
-pub fn vector_magnitude<'a>(
-    name: &str,
-    vector: Evaluated<'_>,
-) -> ControlFlow<Evaluated<'a>> {
+pub fn vector_magnitude<'a>(name: &str, vector: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     let vec = eval_to_float_vector(name, vector)?;
     Continue(Evaluated::Value(Value::F32(vec.magnitude())))
 }
 
-pub fn vector_normalize<'a>(
-    name: &str,
-    vector: Evaluated<'_>,
-) -> ControlFlow<Evaluated<'a>> {
+pub fn vector_normalize<'a>(name: &str, vector: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     let vec = eval_to_float_vector(name, vector)?;
-    
+
     match vec.normalize() {
         Ok(normalized) => Continue(Evaluated::Value(Value::FloatVector(normalized))),
-        Err(err) => Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: {}", name, err)).into())),
+        Err(err) => Break(BreakCase::Err(
+            EvaluateError::FunctionRequiresFloatVectorValue(format!("{name}: {err}")).into(),
+        )),
     }
 }
 
@@ -1159,10 +1160,12 @@ pub fn vector_add<'a>(
 ) -> ControlFlow<Evaluated<'a>> {
     let left_vec = eval_to_float_vector(name, left)?;
     let right_vec = eval_to_float_vector(name, right)?;
-    
+
     match left_vec.add(&right_vec) {
         Ok(result) => Continue(Evaluated::Value(Value::FloatVector(result))),
-        Err(err) => Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: {}", name, err)).into())),
+        Err(err) => Break(BreakCase::Err(
+            EvaluateError::FunctionRequiresFloatVectorValue(format!("{name}: {err}")).into(),
+        )),
     }
 }
 
@@ -1173,10 +1176,12 @@ pub fn vector_sub<'a>(
 ) -> ControlFlow<Evaluated<'a>> {
     let left_vec = eval_to_float_vector(name, left)?;
     let right_vec = eval_to_float_vector(name, right)?;
-    
+
     match left_vec.subtract(&right_vec) {
         Ok(result) => Continue(Evaluated::Value(Value::FloatVector(result))),
-        Err(err) => Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: {}", name, err)).into())),
+        Err(err) => Break(BreakCase::Err(
+            EvaluateError::FunctionRequiresFloatVectorValue(format!("{name}: {err}")).into(),
+        )),
     }
 }
 
@@ -1187,10 +1192,12 @@ pub fn vector_scalar_mul<'a>(
 ) -> ControlFlow<Evaluated<'a>> {
     let vec = eval_to_float_vector(name, vector)?;
     let scalar_val = eval_to_float(name, scalar)?;
-    
+
     match vec.scalar_multiply(scalar_val as f32) {
         Ok(result) => Continue(Evaluated::Value(Value::FloatVector(result))),
-        Err(err) => Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: {}", name, err)).into())),
+        Err(err) => Break(BreakCase::Err(
+            EvaluateError::FunctionRequiresFloatVectorValue(format!("{name}: {err}")).into(),
+        )),
     }
 }
 
@@ -1201,10 +1208,12 @@ pub fn vector_euclidean_dist<'a>(
 ) -> ControlFlow<Evaluated<'a>> {
     let left_vec = eval_to_float_vector(name, left)?;
     let right_vec = eval_to_float_vector(name, right)?;
-    
+
     match left_vec.euclidean_distance(&right_vec) {
         Ok(result) => Continue(Evaluated::Value(Value::F32(result))),
-        Err(err) => Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: {}", name, err)).into())),
+        Err(err) => Break(BreakCase::Err(
+            EvaluateError::FunctionRequiresFloatVectorValue(format!("{name}: {err}")).into(),
+        )),
     }
 }
 
@@ -1215,17 +1224,16 @@ pub fn vector_cosine_sim<'a>(
 ) -> ControlFlow<Evaluated<'a>> {
     let left_vec = eval_to_float_vector(name, left)?;
     let right_vec = eval_to_float_vector(name, right)?;
-    
+
     match left_vec.cosine_similarity(&right_vec) {
         Ok(result) => Continue(Evaluated::Value(Value::F32(result))),
-        Err(err) => Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: {}", name, err)).into())),
+        Err(err) => Break(BreakCase::Err(
+            EvaluateError::FunctionRequiresFloatVectorValue(format!("{name}: {err}")).into(),
+        )),
     }
 }
 
-pub fn vector_dimension<'a>(
-    name: &str,
-    vector: Evaluated<'_>,
-) -> ControlFlow<Evaluated<'a>> {
+pub fn vector_dimension<'a>(name: &str, vector: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     let vec = eval_to_float_vector(name, vector)?;
     Continue(Evaluated::Value(Value::I64(vec.dimension() as i64)))
 }
@@ -1237,9 +1245,14 @@ pub fn vector_at<'a>(
 ) -> ControlFlow<Evaluated<'a>> {
     let vec = eval_to_float_vector(name, vector)?;
     let idx = eval_to_int(name, index)?;
-    
+
     if idx < 0 {
-        Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: Index cannot be negative", name)).into()))
+        Break(BreakCase::Err(
+            EvaluateError::FunctionRequiresFloatVectorValue(format!(
+                "{name}: Index cannot be negative"
+            ))
+            .into(),
+        ))
     } else {
         match vec.get(idx as usize) {
             Some(value) => Continue(Evaluated::Value(Value::F32(value))),
@@ -1255,10 +1268,12 @@ pub fn vector_manhattan_dist<'a>(
 ) -> ControlFlow<Evaluated<'a>> {
     let left_vec = eval_to_float_vector(name, left)?;
     let right_vec = eval_to_float_vector(name, right)?;
-    
+
     match left_vec.manhattan_distance(&right_vec) {
         Ok(result) => Continue(Evaluated::Value(Value::F32(result))),
-        Err(err) => Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: {}", name, err)).into())),
+        Err(err) => Break(BreakCase::Err(
+            EvaluateError::FunctionRequiresFloatVectorValue(format!("{name}: {err}")).into(),
+        )),
     }
 }
 
@@ -1269,10 +1284,12 @@ pub fn vector_chebyshev_dist<'a>(
 ) -> ControlFlow<Evaluated<'a>> {
     let left_vec = eval_to_float_vector(name, left)?;
     let right_vec = eval_to_float_vector(name, right)?;
-    
+
     match left_vec.chebyshev_distance(&right_vec) {
         Ok(result) => Continue(Evaluated::Value(Value::F32(result))),
-        Err(err) => Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: {}", name, err)).into())),
+        Err(err) => Break(BreakCase::Err(
+            EvaluateError::FunctionRequiresFloatVectorValue(format!("{name}: {err}")).into(),
+        )),
     }
 }
 
@@ -1283,10 +1300,12 @@ pub fn vector_hamming_dist<'a>(
 ) -> ControlFlow<Evaluated<'a>> {
     let left_vec = eval_to_float_vector(name, left)?;
     let right_vec = eval_to_float_vector(name, right)?;
-    
+
     match left_vec.hamming_distance(&right_vec) {
         Ok(result) => Continue(Evaluated::Value(Value::I64(result as i64))),
-        Err(err) => Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: {}", name, err)).into())),
+        Err(err) => Break(BreakCase::Err(
+            EvaluateError::FunctionRequiresFloatVectorValue(format!("{name}: {err}")).into(),
+        )),
     }
 }
 
@@ -1297,10 +1316,12 @@ pub fn vector_jaccard_sim<'a>(
 ) -> ControlFlow<Evaluated<'a>> {
     let left_vec = eval_to_float_vector(name, left)?;
     let right_vec = eval_to_float_vector(name, right)?;
-    
+
     match left_vec.jaccard_similarity(&right_vec) {
         Ok(result) => Continue(Evaluated::Value(Value::F32(result))),
-        Err(err) => Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: {}", name, err)).into())),
+        Err(err) => Break(BreakCase::Err(
+            EvaluateError::FunctionRequiresFloatVectorValue(format!("{name}: {err}")).into(),
+        )),
     }
 }
 
@@ -1313,10 +1334,12 @@ pub fn vector_minkowski_dist<'a>(
     let left_vec = eval_to_float_vector(name, left)?;
     let right_vec = eval_to_float_vector(name, right)?;
     let p_val = eval_to_float(name, p)?;
-    
+
     match left_vec.minkowski_distance(&right_vec, p_val as f32) {
         Ok(result) => Continue(Evaluated::Value(Value::F32(result))),
-        Err(err) => Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: {}", name, err)).into())),
+        Err(err) => Break(BreakCase::Err(
+            EvaluateError::FunctionRequiresFloatVectorValue(format!("{name}: {err}")).into(),
+        )),
     }
 }
 
@@ -1327,9 +1350,11 @@ pub fn vector_canberra_dist<'a>(
 ) -> ControlFlow<Evaluated<'a>> {
     let left_vec = eval_to_float_vector(name, left)?;
     let right_vec = eval_to_float_vector(name, right)?;
-    
+
     match left_vec.canberra_distance(&right_vec) {
         Ok(result) => Continue(Evaluated::Value(Value::F32(result))),
-        Err(err) => Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: {}", name, err)).into())),
+        Err(err) => Break(BreakCase::Err(
+            EvaluateError::FunctionRequiresFloatVectorValue(format!("{name}: {err}")).into(),
+        )),
     }
 }

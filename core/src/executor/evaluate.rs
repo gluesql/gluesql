@@ -723,7 +723,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             f::splice(name, list_data, begin_index, end_index, values)
         }
         Function::Dedup(list) => f::dedup(eval(list).await?),
-        
+
         // --- vector functions ---
         Function::VectorDot { left, right } => {
             let left = eval(left).await?;

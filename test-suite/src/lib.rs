@@ -196,15 +196,42 @@ macro_rules! generate_store_tests {
         glue!(int128, data_type::int128::int128);
         glue!(float32, data_type::float32::float32);
         glue!(float_vector, data_type::float_vector::float_vector);
-        glue!(float_vector_data_type_validation, data_type::float_vector::float_vector_data_type_validation);
-        glue!(float_vector_json_serialization, data_type::float_vector::float_vector_json_serialization);
-        glue!(vector_functions_basic, data_type::float_vector::vector_functions_basic);
-        glue!(vector_functions_arithmetic, data_type::float_vector::vector_functions_arithmetic);
-        glue!(vector_functions_distance, data_type::float_vector::vector_functions_distance);
-        glue!(vector_functions_with_tables, data_type::float_vector::vector_functions_with_tables);
-        glue!(vector_functions_normalize, data_type::float_vector::vector_functions_normalize);
-        glue!(vector_functions_advanced_distances, data_type::float_vector::vector_functions_advanced_distances);
-        glue!(vector_functions_advanced_with_tables, data_type::float_vector::vector_functions_advanced_with_tables);
+        glue!(
+            float_vector_data_type_validation,
+            data_type::float_vector::float_vector_data_type_validation
+        );
+        glue!(
+            float_vector_json_serialization,
+            data_type::float_vector::float_vector_json_serialization
+        );
+        glue!(
+            vector_functions_basic,
+            data_type::float_vector::vector_functions_basic
+        );
+        glue!(
+            vector_functions_arithmetic,
+            data_type::float_vector::vector_functions_arithmetic
+        );
+        glue!(
+            vector_functions_distance,
+            data_type::float_vector::vector_functions_distance
+        );
+        glue!(
+            vector_functions_with_tables,
+            data_type::float_vector::vector_functions_with_tables
+        );
+        glue!(
+            vector_functions_normalize,
+            data_type::float_vector::vector_functions_normalize
+        );
+        glue!(
+            vector_functions_advanced_distances,
+            data_type::float_vector::vector_functions_advanced_distances
+        );
+        glue!(
+            vector_functions_advanced_with_tables,
+            data_type::float_vector::vector_functions_advanced_with_tables
+        );
         glue!(uint16, data_type::uint16::uint16);
         glue!(uint8, data_type::uint8::uint8);
         glue!(uint64, data_type::uint64::uint64);

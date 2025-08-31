@@ -170,18 +170,54 @@ impl Function {
                 geometry2: expr2,
             }
             | Self::AddMonth { expr, size: expr2 }
-            | Self::VectorDot { left: expr, right: expr2 }
-            | Self::VectorAdd { left: expr, right: expr2 }
-            | Self::VectorSub { left: expr, right: expr2 }
-            | Self::VectorScalarMul { vector: expr, scalar: expr2 }
-            | Self::VectorEuclideanDist { left: expr, right: expr2 }
-            | Self::VectorCosineSim { left: expr, right: expr2 }
-            | Self::VectorAt { vector: expr, index: expr2 }
-            | Self::VectorManhattanDist { left: expr, right: expr2 }
-            | Self::VectorChebyshevDist { left: expr, right: expr2 }
-            | Self::VectorHammingDist { left: expr, right: expr2 }
-            | Self::VectorJaccardSim { left: expr, right: expr2 }
-            | Self::VectorCanberraDist { left: expr, right: expr2 } => Exprs::Double([expr, expr2].into_iter()),
+            | Self::VectorDot {
+                left: expr,
+                right: expr2,
+            }
+            | Self::VectorAdd {
+                left: expr,
+                right: expr2,
+            }
+            | Self::VectorSub {
+                left: expr,
+                right: expr2,
+            }
+            | Self::VectorScalarMul {
+                vector: expr,
+                scalar: expr2,
+            }
+            | Self::VectorEuclideanDist {
+                left: expr,
+                right: expr2,
+            }
+            | Self::VectorCosineSim {
+                left: expr,
+                right: expr2,
+            }
+            | Self::VectorAt {
+                vector: expr,
+                index: expr2,
+            }
+            | Self::VectorManhattanDist {
+                left: expr,
+                right: expr2,
+            }
+            | Self::VectorChebyshevDist {
+                left: expr,
+                right: expr2,
+            }
+            | Self::VectorHammingDist {
+                left: expr,
+                right: expr2,
+            }
+            | Self::VectorJaccardSim {
+                left: expr,
+                right: expr2,
+            }
+            | Self::VectorCanberraDist {
+                left: expr,
+                right: expr2,
+            } => Exprs::Double([expr, expr2].into_iter()),
 
             Self::Lpad {
                 expr,

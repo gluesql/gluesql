@@ -575,10 +575,18 @@ impl ToSql for Function {
                 format!("VECTOR_SUB({}, {})", left.to_sql(), right.to_sql())
             }
             Function::VectorScalarMul { vector, scalar } => {
-                format!("VECTOR_SCALAR_MUL({}, {})", vector.to_sql(), scalar.to_sql())
+                format!(
+                    "VECTOR_SCALAR_MUL({}, {})",
+                    vector.to_sql(),
+                    scalar.to_sql()
+                )
             }
             Function::VectorEuclideanDist { left, right } => {
-                format!("VECTOR_EUCLIDEAN_DIST({}, {})", left.to_sql(), right.to_sql())
+                format!(
+                    "VECTOR_EUCLIDEAN_DIST({}, {})",
+                    left.to_sql(),
+                    right.to_sql()
+                )
             }
             Function::VectorCosineSim { left, right } => {
                 format!("VECTOR_COSINE_SIM({}, {})", left.to_sql(), right.to_sql())
@@ -588,10 +596,18 @@ impl ToSql for Function {
                 format!("VECTOR_AT({}, {})", vector.to_sql(), index.to_sql())
             }
             Function::VectorManhattanDist { left, right } => {
-                format!("VECTOR_MANHATTAN_DIST({}, {})", left.to_sql(), right.to_sql())
+                format!(
+                    "VECTOR_MANHATTAN_DIST({}, {})",
+                    left.to_sql(),
+                    right.to_sql()
+                )
             }
             Function::VectorChebyshevDist { left, right } => {
-                format!("VECTOR_CHEBYSHEV_DIST({}, {})", left.to_sql(), right.to_sql())
+                format!(
+                    "VECTOR_CHEBYSHEV_DIST({}, {})",
+                    left.to_sql(),
+                    right.to_sql()
+                )
             }
             Function::VectorHammingDist { left, right } => {
                 format!("VECTOR_HAMMING_DIST({}, {})", left.to_sql(), right.to_sql())
@@ -600,10 +616,19 @@ impl ToSql for Function {
                 format!("VECTOR_JACCARD_SIM({}, {})", left.to_sql(), right.to_sql())
             }
             Function::VectorMinkowskiDist { left, right, p } => {
-                format!("VECTOR_MINKOWSKI_DIST({}, {}, {})", left.to_sql(), right.to_sql(), p.to_sql())
+                format!(
+                    "VECTOR_MINKOWSKI_DIST({}, {}, {})",
+                    left.to_sql(),
+                    right.to_sql(),
+                    p.to_sql()
+                )
             }
             Function::VectorCanberraDist { left, right } => {
-                format!("VECTOR_CANBERRA_DIST({}, {})", left.to_sql(), right.to_sql())
+                format!(
+                    "VECTOR_CANBERRA_DIST({}, {})",
+                    left.to_sql(),
+                    right.to_sql()
+                )
             }
         }
     }
