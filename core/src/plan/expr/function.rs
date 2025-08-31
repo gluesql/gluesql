@@ -176,7 +176,12 @@ impl Function {
             | Self::VectorScalarMul { vector: expr, scalar: expr2 }
             | Self::VectorEuclideanDist { left: expr, right: expr2 }
             | Self::VectorCosineSim { left: expr, right: expr2 }
-            | Self::VectorAt { vector: expr, index: expr2 } => Exprs::Double([expr, expr2].into_iter()),
+            | Self::VectorAt { vector: expr, index: expr2 }
+            | Self::VectorManhattanDist { left: expr, right: expr2 }
+            | Self::VectorChebyshevDist { left: expr, right: expr2 }
+            | Self::VectorHammingDist { left: expr, right: expr2 }
+            | Self::VectorJaccardSim { left: expr, right: expr2 }
+            | Self::VectorCanberraDist { left: expr, right: expr2 } => Exprs::Double([expr, expr2].into_iter()),
 
             Self::Lpad {
                 expr,
@@ -213,6 +218,11 @@ impl Function {
                 begin_index: expr2,
                 end_index: expr3,
                 values: None,
+            }
+            | Self::VectorMinkowskiDist {
+                left: expr,
+                right: expr2,
+                p: expr3,
             } => Exprs::Triple([expr, expr2, expr3].into_iter()),
             Self::Custom { name: _, exprs } => Exprs::VariableArgs(exprs.iter()),
             Self::Coalesce(exprs) => Exprs::VariableArgs(exprs.iter()),

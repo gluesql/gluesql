@@ -760,6 +760,43 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             let index = translate_expr(args[1])?;
             Ok(Expr::Function(Box::new(Function::VectorAt { vector, index })))
         }
+        "VECTOR_MANHATTAN_DIST" => {
+            check_len(name, args.len(), 2)?;
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::VectorManhattanDist { left, right })))
+        }
+        "VECTOR_CHEBYSHEV_DIST" => {
+            check_len(name, args.len(), 2)?;
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::VectorChebyshevDist { left, right })))
+        }
+        "VECTOR_HAMMING_DIST" => {
+            check_len(name, args.len(), 2)?;
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::VectorHammingDist { left, right })))
+        }
+        "VECTOR_JACCARD_SIM" => {
+            check_len(name, args.len(), 2)?;
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::VectorJaccardSim { left, right })))
+        }
+        "VECTOR_MINKOWSKI_DIST" => {
+            check_len(name, args.len(), 3)?;
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+            let p = translate_expr(args[2])?;
+            Ok(Expr::Function(Box::new(Function::VectorMinkowskiDist { left, right, p })))
+        }
+        "VECTOR_CANBERRA_DIST" => {
+            check_len(name, args.len(), 2)?;
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::VectorCanberraDist { left, right })))
+        }
         _ => {
             let exprs = args
                 .into_iter()

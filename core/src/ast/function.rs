@@ -249,6 +249,31 @@ pub enum Function {
         vector: Expr,
         index: Expr,
     },
+    VectorManhattanDist {
+        left: Expr,
+        right: Expr,
+    },
+    VectorChebyshevDist {
+        left: Expr,
+        right: Expr,
+    },
+    VectorHammingDist {
+        left: Expr,
+        right: Expr,
+    },
+    VectorJaccardSim {
+        left: Expr,
+        right: Expr,
+    },
+    VectorMinkowskiDist {
+        left: Expr,
+        right: Expr,
+        p: Expr,
+    },
+    VectorCanberraDist {
+        left: Expr,
+        right: Expr,
+    },
 }
 
 impl ToSql for Function {
@@ -561,6 +586,24 @@ impl ToSql for Function {
             Function::VectorDimension(vector) => format!("VECTOR_DIMENSION({})", vector.to_sql()),
             Function::VectorAt { vector, index } => {
                 format!("VECTOR_AT({}, {})", vector.to_sql(), index.to_sql())
+            }
+            Function::VectorManhattanDist { left, right } => {
+                format!("VECTOR_MANHATTAN_DIST({}, {})", left.to_sql(), right.to_sql())
+            }
+            Function::VectorChebyshevDist { left, right } => {
+                format!("VECTOR_CHEBYSHEV_DIST({}, {})", left.to_sql(), right.to_sql())
+            }
+            Function::VectorHammingDist { left, right } => {
+                format!("VECTOR_HAMMING_DIST({}, {})", left.to_sql(), right.to_sql())
+            }
+            Function::VectorJaccardSim { left, right } => {
+                format!("VECTOR_JACCARD_SIM({}, {})", left.to_sql(), right.to_sql())
+            }
+            Function::VectorMinkowskiDist { left, right, p } => {
+                format!("VECTOR_MINKOWSKI_DIST({}, {}, {})", left.to_sql(), right.to_sql(), p.to_sql())
+            }
+            Function::VectorCanberraDist { left, right } => {
+                format!("VECTOR_CANBERRA_DIST({}, {})", left.to_sql(), right.to_sql())
             }
         }
     }

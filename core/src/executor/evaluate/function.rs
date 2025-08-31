@@ -147,6 +147,15 @@ fn eval_to_point(name: &str, evaluated: Evaluated<'_>) -> ControlFlow<Point> {
 fn eval_to_float_vector(name: &str, evaluated: Evaluated<'_>) -> ControlFlow<FloatVector> {
     match evaluated.try_into().break_if_null()? {
         Value::FloatVector(v) => Continue(v),
+        Value::Str(s) => {
+            // Try to parse string as vector literal like "[1.0, 2.0, 3.0]"
+            match Value::parse_json_vector(&s) {
+                Ok(Value::FloatVector(v)) => Continue(v),
+                _ => Break(BreakCase::Err(
+                    EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: Invalid vector format '{}'", name, s)).into(),
+                )),
+            }
+        }
         _ => Break(BreakCase::Err(
             EvaluateError::FunctionRequiresFloatVectorValue(name.to_owned()).into(),
         )),
@@ -1236,5 +1245,91 @@ pub fn vector_at<'a>(
             Some(value) => Continue(Evaluated::Value(Value::F32(value))),
             None => Continue(Evaluated::Value(Value::Null)),
         }
+    }
+}
+
+pub fn vector_manhattan_dist<'a>(
+    name: &str,
+    left: Evaluated<'_>,
+    right: Evaluated<'_>,
+) -> ControlFlow<Evaluated<'a>> {
+    let left_vec = eval_to_float_vector(name, left)?;
+    let right_vec = eval_to_float_vector(name, right)?;
+    
+    match left_vec.manhattan_distance(&right_vec) {
+        Ok(result) => Continue(Evaluated::Value(Value::F32(result))),
+        Err(err) => Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: {}", name, err)).into())),
+    }
+}
+
+pub fn vector_chebyshev_dist<'a>(
+    name: &str,
+    left: Evaluated<'_>,
+    right: Evaluated<'_>,
+) -> ControlFlow<Evaluated<'a>> {
+    let left_vec = eval_to_float_vector(name, left)?;
+    let right_vec = eval_to_float_vector(name, right)?;
+    
+    match left_vec.chebyshev_distance(&right_vec) {
+        Ok(result) => Continue(Evaluated::Value(Value::F32(result))),
+        Err(err) => Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: {}", name, err)).into())),
+    }
+}
+
+pub fn vector_hamming_dist<'a>(
+    name: &str,
+    left: Evaluated<'_>,
+    right: Evaluated<'_>,
+) -> ControlFlow<Evaluated<'a>> {
+    let left_vec = eval_to_float_vector(name, left)?;
+    let right_vec = eval_to_float_vector(name, right)?;
+    
+    match left_vec.hamming_distance(&right_vec) {
+        Ok(result) => Continue(Evaluated::Value(Value::I64(result as i64))),
+        Err(err) => Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: {}", name, err)).into())),
+    }
+}
+
+pub fn vector_jaccard_sim<'a>(
+    name: &str,
+    left: Evaluated<'_>,
+    right: Evaluated<'_>,
+) -> ControlFlow<Evaluated<'a>> {
+    let left_vec = eval_to_float_vector(name, left)?;
+    let right_vec = eval_to_float_vector(name, right)?;
+    
+    match left_vec.jaccard_similarity(&right_vec) {
+        Ok(result) => Continue(Evaluated::Value(Value::F32(result))),
+        Err(err) => Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: {}", name, err)).into())),
+    }
+}
+
+pub fn vector_minkowski_dist<'a>(
+    name: &str,
+    left: Evaluated<'_>,
+    right: Evaluated<'_>,
+    p: Evaluated<'_>,
+) -> ControlFlow<Evaluated<'a>> {
+    let left_vec = eval_to_float_vector(name, left)?;
+    let right_vec = eval_to_float_vector(name, right)?;
+    let p_val = eval_to_float(name, p)?;
+    
+    match left_vec.minkowski_distance(&right_vec, p_val as f32) {
+        Ok(result) => Continue(Evaluated::Value(Value::F32(result))),
+        Err(err) => Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: {}", name, err)).into())),
+    }
+}
+
+pub fn vector_canberra_dist<'a>(
+    name: &str,
+    left: Evaluated<'_>,
+    right: Evaluated<'_>,
+) -> ControlFlow<Evaluated<'a>> {
+    let left_vec = eval_to_float_vector(name, left)?;
+    let right_vec = eval_to_float_vector(name, right)?;
+    
+    match left_vec.canberra_distance(&right_vec) {
+        Ok(result) => Continue(Evaluated::Value(Value::F32(result))),
+        Err(err) => Break(BreakCase::Err(EvaluateError::FunctionRequiresFloatVectorValue(format!("{}: {}", name, err)).into())),
     }
 }

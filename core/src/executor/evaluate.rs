@@ -772,6 +772,37 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             let index = eval(index).await?;
             f::vector_at(&name, vector, index)
         }
+        Function::VectorManhattanDist { left, right } => {
+            let left = eval(left).await?;
+            let right = eval(right).await?;
+            f::vector_manhattan_dist(&name, left, right)
+        }
+        Function::VectorChebyshevDist { left, right } => {
+            let left = eval(left).await?;
+            let right = eval(right).await?;
+            f::vector_chebyshev_dist(&name, left, right)
+        }
+        Function::VectorHammingDist { left, right } => {
+            let left = eval(left).await?;
+            let right = eval(right).await?;
+            f::vector_hamming_dist(&name, left, right)
+        }
+        Function::VectorJaccardSim { left, right } => {
+            let left = eval(left).await?;
+            let right = eval(right).await?;
+            f::vector_jaccard_sim(&name, left, right)
+        }
+        Function::VectorMinkowskiDist { left, right, p } => {
+            let left = eval(left).await?;
+            let right = eval(right).await?;
+            let p = eval(p).await?;
+            f::vector_minkowski_dist(&name, left, right, p)
+        }
+        Function::VectorCanberraDist { left, right } => {
+            let left = eval(left).await?;
+            let right = eval(right).await?;
+            f::vector_canberra_dist(&name, left, right)
+        }
     };
 
     match result {
