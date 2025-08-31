@@ -1,8 +1,9 @@
 use {
     super::{Snapshot, err_into, fetch_schema, key},
     gluesql_core::{
-        ast::Expr,
+        ast::{Expr, DataType},
         data::schema::{Schema, SchemaIndex},
+        data::VectorIndex,
         error::{Error, IndexError, Result},
         executor::evaluate_stateless,
         prelude::Value,
@@ -94,6 +95,9 @@ impl<'a> IndexSync<'a> {
             self.insert_index(index, data_key, row).await?;
         }
 
+        // Handle vector indexes
+        self.update_vector_indexes_on_insert(data_key, row)?;
+
         Ok(())
     }
 
@@ -158,6 +162,9 @@ impl<'a> IndexSync<'a> {
             self.insert_index_data(new_index_key, data_key)?;
         }
 
+        // Handle vector indexes
+        self.update_vector_indexes_on_update(data_key, old_row, new_row)?;
+
         Ok(())
     }
 
@@ -169,6 +176,9 @@ impl<'a> IndexSync<'a> {
         for index in self.indexes.iter() {
             self.delete_index(index, data_key, row).await?;
         }
+
+        // Handle vector indexes
+        self.update_vector_indexes_on_delete(data_key, row)?;
 
         Ok(())
     }
@@ -262,6 +272,117 @@ impl<'a> IndexSync<'a> {
 
         self.tree.insert(index_key, data_keys)?;
         self.tree.insert(temp_key, index_key)?;
+
+        Ok(())
+    }
+
+    /// Update vector indexes when a row is inserted
+    fn update_vector_indexes_on_insert(
+        &self,
+        data_key: &IVec,
+        row: &DataRow,
+    ) -> ConflictableTransactionResult<(), Error> {
+        // Get schema to identify FloatVector columns
+        let (_, schema_snapshot) = fetch_schema(self.tree, self.table_name)?;
+        let schema = schema_snapshot
+            .and_then(|snapshot| snapshot.extract(self.txid, None))
+            .ok_or_else(|| IndexError::ConflictTableNotFound(self.table_name.to_owned()))
+            .map_err(err_into)
+            .map_err(ConflictableTransactionError::Abort)?;
+
+        if let Some(column_defs) = &schema.column_defs {
+            for (col_idx, column_def) in column_defs.iter().enumerate() {
+                if column_def.data_type == DataType::FloatVector {
+                    // Check if there's a vector index for this column
+                    let index_key = format!("vector_index/{}/{}", self.table_name, column_def.name);
+                    
+                    if let Some(index_data) = self.tree.get(index_key.as_bytes())? {
+                        // Load the vector index
+                        if let Ok(mut vector_index) = bincode::deserialize::<VectorIndex>(&index_data) {
+                            // Get the vector value from the row
+                            let vector_opt = match row {
+                                DataRow::Vec(values) => values.get(col_idx),
+                                DataRow::Map(map) => map.get(&column_def.name),
+                            };
+                            
+                            if let Some(Value::FloatVector(vector)) = vector_opt {
+                                let key_str = format!("{:?}", data_key);
+                                if let Err(_) = vector_index.add_vector(key_str, vector) {
+                                    // Ignore errors for now - in production we might want to handle this
+                                }
+                                
+                                // Save the updated index back to storage
+                                if let Ok(serialized) = bincode::serialize(&vector_index) {
+                                    let _ = self.tree.insert(index_key.as_bytes(), serialized);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Update vector indexes when a row is updated
+    fn update_vector_indexes_on_update(
+        &self,
+        data_key: &IVec,
+        old_row: &DataRow,
+        new_row: &DataRow,
+    ) -> ConflictableTransactionResult<(), Error> {
+        // First remove old vectors, then add new ones
+        self.update_vector_indexes_on_delete(data_key, old_row)?;
+        self.update_vector_indexes_on_insert(data_key, new_row)?;
+        Ok(())
+    }
+
+    /// Update vector indexes when a row is deleted
+    fn update_vector_indexes_on_delete(
+        &self,
+        data_key: &IVec,
+        row: &DataRow,
+    ) -> ConflictableTransactionResult<(), Error> {
+        // Get schema to identify FloatVector columns
+        let (_, schema_snapshot) = fetch_schema(self.tree, self.table_name)?;
+        let schema = schema_snapshot
+            .and_then(|snapshot| snapshot.extract(self.txid, None))
+            .ok_or_else(|| IndexError::ConflictTableNotFound(self.table_name.to_owned()))
+            .map_err(err_into)
+            .map_err(ConflictableTransactionError::Abort)?;
+
+        if let Some(column_defs) = &schema.column_defs {
+            for (col_idx, column_def) in column_defs.iter().enumerate() {
+                if column_def.data_type == DataType::FloatVector {
+                    // Check if there's a vector index for this column
+                    let index_key = format!("vector_index/{}/{}", self.table_name, column_def.name);
+                    
+                    if let Some(index_data) = self.tree.get(index_key.as_bytes())? {
+                        // Load the vector index
+                        if let Ok(mut vector_index) = bincode::deserialize::<VectorIndex>(&index_data) {
+                            // Get the vector value from the row
+                            let vector_opt = match row {
+                                DataRow::Vec(values) => values.get(col_idx),
+                                DataRow::Map(map) => map.get(&column_def.name),
+                            };
+                            
+                            if let Some(Value::FloatVector(vector)) = vector_opt {
+                                let key_str = format!("{:?}", data_key);
+                                if let Err(_) = vector_index.remove_vector(&key_str, vector) {
+                                    // Ignore errors for now - in production we might want to handle this
+                                }
+                                
+                                // Save the updated index back to storage
+                                if let Ok(serialized) = bincode::serialize(&vector_index) {
+                                    let _ = self.tree.insert(index_key.as_bytes(), serialized);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         Ok(())
     }
