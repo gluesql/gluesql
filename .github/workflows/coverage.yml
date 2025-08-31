@@ -16,6 +16,9 @@ env:
 jobs:
   coverage:
     runs-on: ubuntu-latest
+    env:
+      BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+      COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     services:
       redis:
         image: redis
@@ -75,3 +78,10 @@ jobs:
         uses: coverallsapp/github-action@master
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Compress coverage report
+        run: xz -T0 -9e -c coverage/lcov.info > coverage/lcov.info.xz
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ env.BRANCH_NAME }}-${{ env.COMMIT_SHA }}
+          path: coverage/lcov.info.xz
