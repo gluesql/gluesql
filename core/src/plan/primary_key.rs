@@ -7,7 +7,7 @@ use {
         },
         data::Schema,
     },
-    std::{collections::HashMap, rc::Rc},
+    std::{collections::HashMap, sync::Arc},
 };
 
 pub fn plan(schema_map: &HashMap<String, Schema>, statement: Statement) -> Statement {
@@ -28,7 +28,7 @@ struct PrimaryKeyPlanner<'a> {
 }
 
 impl<'a> Planner<'a> for PrimaryKeyPlanner<'a> {
-    fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: Query) -> Query {
+    fn query(&self, outer_context: Option<Arc<Context<'a>>>, query: Query) -> Query {
         let body = match query.body {
             SetExpr::Select(select) => {
                 let select = self.select(outer_context, *select);
@@ -55,7 +55,7 @@ enum PrimaryKey {
 }
 
 impl<'a> PrimaryKeyPlanner<'a> {
-    fn select(&self, outer_context: Option<Rc<Context<'a>>>, select: Select) -> Select {
+    fn select(&self, outer_context: Option<Arc<Context<'a>>>, select: Select) -> Select {
         let current_context = self.update_context(None, &select.from.relation);
         let current_context = select
             .from
@@ -100,8 +100,8 @@ impl<'a> PrimaryKeyPlanner<'a> {
 
     fn expr(
         &self,
-        outer_context: Option<Rc<Context<'a>>>,
-        current_context: Option<Rc<Context<'a>>>,
+        outer_context: Option<Arc<Context<'a>>>,
+        current_context: Option<Arc<Context<'a>>>,
         expr: Expr,
     ) -> PrimaryKey {
         let check_primary_key = |key: &Expr| {
@@ -128,7 +128,7 @@ impl<'a> PrimaryKeyPlanner<'a> {
                 op: BinaryOperator::Eq,
                 right: key,
             } if check_primary_key(key.as_ref())
-                && check_evaluable(current_context.as_ref().map(Rc::clone), &key)
+                && check_evaluable(current_context.as_ref().map(Arc::clone), &key)
                 && check_evaluable(None, &value) =>
             {
                 let index_item = IndexItem::PrimaryKey(*value);
@@ -144,8 +144,8 @@ impl<'a> PrimaryKeyPlanner<'a> {
                 right,
             } => {
                 let primary_key = self.expr(
-                    outer_context.as_ref().map(Rc::clone),
-                    current_context.as_ref().map(Rc::clone),
+                    outer_context.as_ref().map(Arc::clone),
+                    current_context.as_ref().map(Arc::clone),
                     *left,
                 );
 
@@ -266,6 +266,7 @@ mod tests {
         let sql = "SELECT * FROM Player WHERE id = 1;";
         let actual = plan(&storage, sql);
         let expected = select(Select {
+            distinct: false,
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
@@ -284,6 +285,7 @@ mod tests {
         let sql = "SELECT * FROM Player WHERE 1 = id;";
         let actual = plan(&storage, sql);
         let expected = select(Select {
+            distinct: false,
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
@@ -302,6 +304,7 @@ mod tests {
         let sql = "SELECT * FROM Player WHERE id = 1 AND True;";
         let actual = plan(&storage, sql);
         let expected = select(Select {
+            distinct: false,
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
@@ -326,6 +329,7 @@ mod tests {
         ";
         let actual = plan(&storage, sql);
         let expected = select(Select {
+            distinct: false,
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
@@ -359,6 +363,7 @@ mod tests {
         ";
         let actual = plan(&storage, sql);
         let expected = select(Select {
+            distinct: false,
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
@@ -391,6 +396,7 @@ mod tests {
         let sql = "SELECT * FROM Player JOIN Badge WHERE Player.id = 1";
         let actual = plan(&storage, sql);
         let expected = select(Select {
+            distinct: false,
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
@@ -417,6 +423,7 @@ mod tests {
         let sql = "SELECT * FROM Player JOIN Badge WHERE Player.id = Badge.user_id";
         let actual = plan(&storage, sql);
         let expected = select(Select {
+            distinct: false,
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
@@ -449,6 +456,7 @@ mod tests {
         let expected = {
             let subquery = Query {
                 body: SetExpr::Select(Box::new(Select {
+                    distinct: false,
                     projection: vec![SelectItem::Wildcard],
                     from: TableWithJoins {
                         relation: TableFactor::Table {
@@ -468,6 +476,7 @@ mod tests {
             };
 
             select(Select {
+                distinct: false,
                 projection: vec![SelectItem::Wildcard],
                 from: TableWithJoins {
                     relation: TableFactor::Table {
@@ -503,6 +512,7 @@ mod tests {
         let expected = {
             let subquery = Query {
                 body: SetExpr::Select(Box::new(Select {
+                    distinct: false,
                     projection: vec![SelectItem::Expr {
                         expr: Expr::Identifier("name".to_owned()),
                         label: "name".to_owned(),
@@ -525,6 +535,7 @@ mod tests {
             };
 
             select(Select {
+                distinct: false,
                 projection: vec![SelectItem::Wildcard],
                 from: TableWithJoins {
                     relation: TableFactor::Table {
@@ -554,6 +565,7 @@ mod tests {
         let expected = {
             let subquery = Query {
                 body: SetExpr::Select(Box::new(Select {
+                    distinct: false,
                     projection: vec![SelectItem::Expr {
                         expr: Expr::Identifier("id".to_owned()),
                         label: "id".to_owned(),
@@ -576,6 +588,7 @@ mod tests {
             };
 
             select(Select {
+                distinct: false,
                 projection: vec![SelectItem::Wildcard],
                 from: TableWithJoins {
                     relation: TableFactor::Table {
@@ -624,6 +637,7 @@ mod tests {
         let sql = "SELECT * FROM Player WHERE (name);";
         let actual = plan(&storage, sql);
         let expected = select(Select {
+            distinct: false,
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {

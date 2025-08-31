@@ -61,15 +61,13 @@ impl TryFrom<Evaluated<'_>> for bool {
         match e {
             Evaluated::Literal(Literal::Boolean(v)) => Ok(v),
             Evaluated::Literal(v) => {
-                Err(EvaluateError::BooleanTypeRequired(format!("{:?}", v)).into())
+                Err(EvaluateError::BooleanTypeRequired(format!("{v:?}")).into())
             }
             Evaluated::StrSlice { source, range } => {
                 Err(EvaluateError::BooleanTypeRequired(source[range].to_owned()).into())
             }
             Evaluated::Value(Value::Bool(v)) => Ok(v),
-            Evaluated::Value(v) => {
-                Err(EvaluateError::BooleanTypeRequired(format!("{:?}", v)).into())
-            }
+            Evaluated::Value(v) => Err(EvaluateError::BooleanTypeRequired(format!("{v:?}")).into()),
         }
     }
 }
@@ -112,9 +110,9 @@ where
         }
         (Evaluated::Value(l), Evaluated::Value(r)) => value_op(l, r).map(Evaluated::Value),
         (l, r) => Err(EvaluateError::UnsupportedBinaryOperation {
-            left: format!("{:?}", l),
+            left: format!("{l:?}"),
             op,
-            right: format!("{:?}", r),
+            right: format!("{r:?}"),
         }
         .into()),
     }

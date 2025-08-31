@@ -24,7 +24,7 @@ use {
     },
 };
 
-type RowIter = Box<dyn Iterator<Item = Result<(Key, DataRow)>>>;
+type RowIter = Box<dyn Iterator<Item = Result<(Key, DataRow)>> + Send>;
 
 #[derive(Clone, Debug)]
 pub struct JsonStorage {

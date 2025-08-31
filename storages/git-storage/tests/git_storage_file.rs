@@ -16,7 +16,7 @@ impl Tester<GitStorage> for GitStorageTester {
         let path = format!("tmp/git_storage_file/{namespace}");
 
         if let Err(e) = remove_dir_all(&path) {
-            println!("fs::remove_file {:?}", e);
+            println!("fs::remove_file {e:?}");
         };
 
         let storage = GitStorage::init(&path, StorageType::File).expect("GitStorage::init - File");

@@ -7,7 +7,7 @@ use {
     },
 };
 
-#[async_trait(?Send)]
+#[async_trait]
 impl Transaction for CompositeStorage {
     async fn begin(&mut self, autocommit: bool) -> Result<bool> {
         if autocommit {

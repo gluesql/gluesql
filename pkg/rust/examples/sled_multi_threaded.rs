@@ -54,18 +54,18 @@ mod sled_multi_threaded {
 
         let rows = match &payloads[0] {
             Payload::Select { rows, .. } => rows,
-            _ => panic!("Unexpected result: {:?}", payloads),
+            _ => panic!("Unexpected result: {payloads:?}"),
         };
 
         let first_row = &rows[0];
         let first_value = first_row.iter().next().unwrap();
         let to_greet = match first_value {
             Value::Str(to_greet) => to_greet,
-            value => panic!("Unexpected type: {:?}", value),
+            value => panic!("Unexpected type: {value:?}"),
         };
 
         // Will typically output "Hello Foo!" but will sometimes output "Hello World!"; depends on which thread finished first.
-        println!("Hello {}!", to_greet);
+        println!("Hello {to_greet}!");
     }
 }
 

@@ -13,14 +13,14 @@ test_case!(inline_view, {
         (
             "CREATE TABLE InnerTable (
                 id INTEGER,
-                name TEXT 
+                name TEXT
             )",
             Ok(Payload::Create),
         ),
         (
             "CREATE TABLE OuterTable (
                 id INTEGER,
-                name TEXT 
+                name TEXT
             )",
             Ok(Payload::Create),
         ),
@@ -119,7 +119,7 @@ test_case!(inline_view, {
             JOIN (
                 SELECT id, name
                 FROM InnerTable
-                WHERE id = 1 
+                WHERE id = 1
             ) AS InlineView ON OuterTable.id = InlineView.id",
             Ok(select!(
                 id  | name                | id  | name
@@ -142,7 +142,7 @@ test_case!(inline_view, {
         ),
         (
             // join - QualifiedWildcard at inner projection
-            "SELECT * 
+            "SELECT *
             FROM OuterTable JOIN (
                 SELECT InnerTable.* FROM InnerTable
             ) AS InlineView ON OuterTable.id = InlineView.id",
@@ -168,11 +168,11 @@ test_case!(inline_view, {
         ),
         (
             // join - inline view more than twice
-            "SELECT * 
+            "SELECT *
             FROM OuterTable
             JOIN (
-                SELECT OuterTable.id, OuterTable.name 
-                FROM OuterTable 
+                SELECT OuterTable.id, OuterTable.name
+                FROM OuterTable
                 JOIN (
                     SELECT * FROM InnerTable
                 ) AS InlineView ON OuterTable.id = InlineView.id
@@ -251,16 +251,21 @@ test_case!(inline_view, {
             Err(TranslateError::TooManyTables.into()),
         ),
         (
-            // unsupported select distinct
+            // select distinct
             "SELECT DISTINCT id FROM OuterTable",
-            Err(TranslateError::SelectDistinctNotSupported.into()),
+            Ok(select!(
+                id
+                I64;
+                1;
+                2
+            )),
         ),
         (
             // inline view subquery + join with inline view
             "SELECT *
             FROM (
                 SELECT *
-                FROM InnerTable 
+                FROM InnerTable
             ) AS InlineView
             Join OuterTable ON InlineView.id = OuterTable.id",
             Ok(select!(

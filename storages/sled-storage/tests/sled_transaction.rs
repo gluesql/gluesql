@@ -46,7 +46,7 @@ macro_rules! test_idx {
 
 #[tokio::test]
 async fn sled_transaction_basic() {
-    let path = &format!("{}/basic", PATH_PREFIX);
+    let path = &format!("{PATH_PREFIX}/basic");
     fs::remove_dir_all(path).unwrap_or(());
 
     let storage = SledStorage::new(path).unwrap();
@@ -78,7 +78,7 @@ async fn sled_transaction_basic() {
 
 #[tokio::test]
 async fn sled_transaction_read_uncommitted() {
-    let path = &format!("{}/read_uncommitted", PATH_PREFIX);
+    let path = &format!("{PATH_PREFIX}/read_uncommitted");
     fs::remove_dir_all(path).unwrap_or(());
 
     let storage1 = SledStorage::new(path).unwrap();
@@ -105,7 +105,7 @@ async fn sled_transaction_read_uncommitted() {
 
 #[tokio::test]
 async fn sled_transaction_read_committed() {
-    let path = &format!("{}/read_committed", PATH_PREFIX);
+    let path = &format!("{PATH_PREFIX}/read_committed");
     fs::remove_dir_all(path).unwrap_or(());
 
     let storage1 = SledStorage::new(path).unwrap();
@@ -134,7 +134,7 @@ async fn sled_transaction_read_committed() {
 
 #[tokio::test]
 async fn sled_transaction_schema_mut() {
-    let path = &format!("{}/transaction_schema_mut", PATH_PREFIX);
+    let path = &format!("{PATH_PREFIX}/transaction_schema_mut");
     fs::remove_dir_all(path).unwrap_or(());
 
     let storage1 = SledStorage::new(path).unwrap();
@@ -177,7 +177,7 @@ async fn sled_transaction_schema_mut() {
 
 #[tokio::test]
 async fn sled_transaction_data_mut() {
-    let path = &format!("{}/transaction_data_mut", PATH_PREFIX);
+    let path = &format!("{PATH_PREFIX}/transaction_data_mut");
     fs::remove_dir_all(path).unwrap_or(());
 
     let storage1 = SledStorage::new(path).unwrap();
@@ -254,7 +254,7 @@ async fn sled_transaction_data_mut() {
 async fn sled_transaction_index_mut() {
     use ast::IndexOperator::Eq;
 
-    let path = &format!("{}/transaction_index_mut", PATH_PREFIX);
+    let path = &format!("{PATH_PREFIX}/transaction_index_mut");
     fs::remove_dir_all(path).unwrap_or(());
 
     let storage1 = SledStorage::new(path).unwrap();
@@ -333,7 +333,7 @@ async fn sled_transaction_index_mut() {
 
 #[tokio::test]
 async fn sled_transaction_gc() {
-    let path = &format!("{}/transaction_gc", PATH_PREFIX);
+    let path = &format!("{PATH_PREFIX}/transaction_gc");
     fs::remove_dir_all(path).unwrap_or(());
 
     let storage1 = SledStorage::new(path).unwrap();
@@ -414,7 +414,7 @@ mod timeout_tests {
 
     #[tokio::test]
     async fn sled_transaction_timeout_store() {
-        let path = &format!("{}/transaction_timeout_store", PATH_PREFIX);
+        let path = &format!("{PATH_PREFIX}/transaction_timeout_store");
         fs::remove_dir_all(path).unwrap_or(());
 
         let mut storage1 = SledStorage::new(path).unwrap();
@@ -537,7 +537,7 @@ mod timeout_tests {
 
     #[tokio::test]
     async fn sled_transaction_timeout_alter() {
-        let path = &format!("{}/transaction_timeout_alter", PATH_PREFIX);
+        let path = &format!("{PATH_PREFIX}/transaction_timeout_alter");
         fs::remove_dir_all(path).unwrap_or(());
 
         let mut storage1 = SledStorage::new(path).unwrap();
@@ -611,7 +611,7 @@ mod timeout_tests {
     async fn sled_transaction_timeout_index() {
         use crate::ast::IndexOperator::Eq;
 
-        let path = &format!("{}/transaction_timeout_index", PATH_PREFIX);
+        let path = &format!("{PATH_PREFIX}/transaction_timeout_index");
         fs::remove_dir_all(path).unwrap_or(());
 
         let mut storage1 = SledStorage::new(path).unwrap();
@@ -726,7 +726,7 @@ async fn sled_transaction_dictionary() {
         };
     }
 
-    let path = &format!("{}/dictionary", PATH_PREFIX);
+    let path = &format!("{PATH_PREFIX}/dictionary");
     fs::remove_dir_all(path).unwrap_or(());
 
     let storage = SledStorage::new(path).unwrap();

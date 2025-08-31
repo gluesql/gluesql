@@ -93,7 +93,7 @@ impl ToSql for ColumnDef {
             let unique = unique.as_ref().map(ToSql::to_sql);
             let comment = comment
                 .as_ref()
-                .map(|comment| format!("COMMENT '{}'", comment));
+                .map(|comment| format!("COMMENT '{comment}'"));
 
             [Some(column_def), default, unique, comment]
                 .into_iter()

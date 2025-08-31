@@ -39,6 +39,14 @@ test_case!(avg, {
                 3.0         9.4
             ),
         ),
+        (
+            "SELECT AVG(DISTINCT id) FROM Item",
+            select!("AVG(DISTINCT id)"; F64; 3.0),
+        ),
+        (
+            "SELECT AVG(DISTINCT age) FROM Item",
+            select_with_null!("AVG(DISTINCT age)"; Null),
+        ),
     ];
 
     for (sql, expected) in test_cases {

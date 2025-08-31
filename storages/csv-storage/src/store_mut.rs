@@ -20,7 +20,7 @@ use {
     },
 };
 
-#[async_trait(?Send)]
+#[async_trait]
 impl StoreMut for CsvStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let schema_path = self.schema_path(schema.table_name.as_str());

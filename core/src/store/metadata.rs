@@ -7,7 +7,7 @@ use {
 type ObjectName = String;
 pub type MetaIter = Box<dyn Iterator<Item = Result<(ObjectName, BTreeMap<String, Value>)>>>;
 
-#[async_trait(?Send)]
+#[async_trait]
 pub trait Metadata {
     async fn scan_table_meta(&self) -> Result<MetaIter> {
         Ok(Box::new(empty()))

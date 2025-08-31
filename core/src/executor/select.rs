@@ -2,7 +2,6 @@ mod error;
 mod project;
 
 pub use error::SelectError;
-
 use {
     self::project::Project,
     super::{
@@ -23,16 +22,37 @@ use {
     },
     async_recursion::async_recursion,
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
-    std::{borrow::Cow, rc::Rc},
+    std::{
+        borrow::Cow,
+        collections::{BTreeMap, HashSet},
+        sync::Arc,
+    },
     utils::Vector,
 };
+
+fn apply_distinct(rows: Vec<Row>) -> Vec<Row> {
+    let mut seen = HashSet::new();
+
+    rows.into_iter()
+        .filter(|row| {
+            let key = match row {
+                Row::Vec { values, .. } => values.clone(),
+                Row::Map(map) => {
+                    let sorted_map: BTreeMap<_, _> = map.iter().collect();
+                    sorted_map.into_values().cloned().collect()
+                }
+            };
+            seen.insert(key)
+        })
+        .collect()
+}
 
 async fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> Result<(Vec<Row>, Vec<String>)> {
     let first_len = exprs_list[0].len();
     let labels = (1..=first_len)
-        .map(|i| format!("column{}", i))
+        .map(|i| format!("column{i}"))
         .collect::<Vec<_>>();
-    let columns = Rc::from(labels.clone());
+    let columns = Arc::from(labels.clone());
 
     let mut column_types = vec![None; first_len];
     let mut rows = Vec::with_capacity(exprs_list.len());
@@ -61,7 +81,7 @@ async fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> Result<(Vec<Row>, Vec<Str
         }
 
         rows.push(Row::Vec {
-            columns: Rc::clone(&columns),
+            columns: Arc::clone(&columns),
             values,
         });
     }
@@ -99,12 +119,15 @@ async fn sort_stateless(rows: Vec<Row>, order_by: &[OrderByExpr]) -> Result<Vec<
     Ok(sorted)
 }
 
-#[async_recursion(?Send)]
+#[async_recursion]
 pub async fn select_with_labels<'a, T>(
     storage: &'a T,
     query: &'a Query,
-    filter_context: Option<Rc<RowContext<'a>>>,
-) -> Result<(Option<Vec<String>>, impl Stream<Item = Result<Row>> + 'a)>
+    filter_context: Option<Arc<RowContext<'a>>>,
+) -> Result<(
+    Option<Vec<String>>,
+    impl Stream<Item = Result<Row>> + Send + 'a,
+)>
 where
     T: GStore,
 {
@@ -115,6 +138,7 @@ where
     }
 
     let Select {
+        distinct,
         from: table_with_joins,
         selection: where_clause,
         projection,
@@ -143,27 +167,27 @@ where
             Ok(RowContext::new(alias, Cow::Owned(row), None))
         });
 
-    let join = Join::new(storage, joins, filter_context.as_ref().map(Rc::clone));
-    let filter = Rc::new(Filter::new(
+    let join = Join::new(storage, joins, filter_context.as_ref().map(Arc::clone));
+    let filter = Arc::new(Filter::new(
         storage,
         where_clause.as_ref(),
-        filter_context.as_ref().map(Rc::clone),
+        filter_context.as_ref().map(Arc::clone),
         None,
     ));
     let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref()).await?;
     let sort = Sort::new(
         storage,
-        filter_context.as_ref().map(Rc::clone),
+        filter_context.as_ref().map(Arc::clone),
         &query.order_by,
     );
 
     let rows = join.apply(rows).await?;
     let rows = rows.try_filter_map(move |project_context| {
-        let filter = Rc::clone(&filter);
+        let filter = Arc::clone(&filter);
 
         async move {
             filter
-                .check(Rc::clone(&project_context))
+                .check(Arc::clone(&project_context))
                 .await
                 .map(|pass| pass.then_some(project_context))
         }
@@ -174,26 +198,30 @@ where
         projection,
         group_by,
         having.as_ref(),
-        filter_context.as_ref().map(Rc::clone),
+        filter_context.as_ref().map(Arc::clone),
         rows,
     )
     .await?;
 
     let labels = fetch_labels(storage, relation, joins, projection)
         .await?
-        .map(Rc::from);
+        .map(Arc::from);
 
-    let project = Rc::new(Project::new(storage, filter_context, projection));
-    let project_labels = labels.as_ref().map(Rc::clone);
+    let project = Arc::new(Project::new(storage, filter_context, projection));
+    let project_labels = labels.as_ref().map(Arc::clone);
     let rows = rows.and_then(move |aggregate_context| {
-        let labels = project_labels.as_ref().map(Rc::clone);
-        let project = Rc::clone(&project);
+        let labels = project_labels.as_ref().map(Arc::clone);
+        let project = Arc::clone(&project);
         let AggregateContext { aggregated, next } = aggregate_context;
-        let aggregated = aggregated.map(Rc::new);
+        let aggregated = aggregated.map(Arc::new);
 
         async move {
             let row = project
-                .apply(aggregated.as_ref().map(Rc::clone), labels, Rc::clone(&next))
+                .apply(
+                    aggregated.as_ref().map(Arc::clone),
+                    labels,
+                    Arc::clone(&next),
+                )
                 .await?;
 
             Ok((aggregated, next, row))
@@ -201,17 +229,28 @@ where
     });
 
     let rows = sort.apply(rows, get_alias(relation)).await?;
-    let rows = limit.apply(rows);
+
+    let rows: Box<dyn Stream<Item = Result<crate::data::Row>> + Unpin + Send> = if *distinct {
+        let all_rows: Vec<crate::data::Row> = rows.try_collect().await?;
+        let unique_rows = apply_distinct(all_rows);
+        let unique_stream = stream::iter(unique_rows.into_iter().map(Ok));
+        Box::new(limit.apply(unique_stream))
+    } else {
+        Box::new(limit.apply(rows))
+    };
     let labels = labels.map(|labels| labels.iter().cloned().collect());
 
     Ok((labels, Row::Select(rows)))
 }
 
-pub async fn select<'a, T: GStore>(
+pub async fn select<'a, T>(
     storage: &'a T,
     query: &'a Query,
-    filter_context: Option<Rc<RowContext<'a>>>,
-) -> Result<impl Stream<Item = Result<Row>> + 'a> {
+    filter_context: Option<Arc<RowContext<'a>>>,
+) -> Result<impl Stream<Item = Result<Row>> + Send + 'a>
+where
+    T: GStore,
+{
     select_with_labels(storage, query, filter_context)
         .await
         .map(|(_, rows)| rows)
