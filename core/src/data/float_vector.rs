@@ -463,7 +463,12 @@ mod tests {
 
         // Test that results are consistent
         let dot_result = vec1.dot_product(&vec2).unwrap();
-        let expected_dot: f32 = vec1.data.iter().zip(vec2.data.iter()).map(|(a, b)| a * b).sum();
+        let expected_dot: f32 = vec1
+            .data
+            .iter()
+            .zip(vec2.data.iter())
+            .map(|(a, b)| a * b)
+            .sum();
         assert!((dot_result - expected_dot).abs() < 1e-6);
     }
 }

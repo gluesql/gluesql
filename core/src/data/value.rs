@@ -240,7 +240,8 @@ impl Value {
             | (DataType::Timestamp, Value::Timestamp(_))
             | (DataType::Time, Value::Time(_))
             | (DataType::Interval, Value::Interval(_))
-            | (DataType::Uuid, Value::Uuid(_)) => Ok(self.clone()),
+            | (DataType::Uuid, Value::Uuid(_))
+            | (DataType::FloatVector, Value::FloatVector(_)) => Ok(self.clone()),
 
             (_, Value::Null) => Ok(Value::Null),
 
@@ -277,6 +278,9 @@ impl Value {
                 .map(Value::Bytea),
             (DataType::List, Value::Str(value)) => Self::parse_json_list(value),
             (DataType::Map, Value::Str(value)) => Self::parse_json_map(value),
+            (DataType::FloatVector, Value::Str(value)) => Self::parse_json_vector(value),
+
+            (DataType::FloatVector, value) => Ok(value.try_into().map(Value::FloatVector)?),
 
             _ => Err(ValueError::UnimplementedCast {
                 value: self.clone(),
