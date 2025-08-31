@@ -1,0 +1,38 @@
+[package]
+name = "gluesql-java"
+authors = ["Junghoon Ban <junghoon.ban@gmail.com>"]
+version.workspace = true
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation.workspace = true
+
+[lib]
+name = "gluesql_java"
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+
+[dependencies]
+gluesql-core.workspace = true
+gluesql_memory_storage.workspace = true
+gluesql-json-storage.workspace = true
+gluesql_sled_storage.workspace = true
+gluesql-shared-memory-storage.workspace = true
+
+uniffi = { version = "0.29", features = ["cli"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "sync"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2.0.16"
+
+[build-dependencies]
+uniffi = { version = "0.29", features = ["build"] }
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "uniffi-bindgen.rs"
+
+[dev-dependencies]
