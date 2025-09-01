@@ -22,10 +22,8 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
-    systemProperty("java.library.path", "${projectDir}/../../target/debug:${projectDir}/../../target/debug/deps")
-    systemProperty("jna.library.path", "${projectDir}/../../target/debug:${projectDir}/../../target/debug/deps")
-    systemProperty("uniffi.component.gluesql.libraryOverride", "gluesql_java")
-    environment("DYLD_LIBRARY_PATH", "${projectDir}/../../target/debug:${projectDir}/../../target/debug/deps")
+    dependsOn(buildRustLib)
+    systemProperty("jna.library.path", "${projectDir}/../../target/debug")
 }
 
 
@@ -61,6 +59,7 @@ val generateBindings = tasks.register("generateBindings") {
                 "cargo", "run", "--bin", "uniffi-bindgen", "generate",
                 "--language", "kotlin",
                 "--out-dir", generatedDir.absolutePath,
+                "--config", "uniffi.toml",
                 "src/gluesql.udl"
             )
         }

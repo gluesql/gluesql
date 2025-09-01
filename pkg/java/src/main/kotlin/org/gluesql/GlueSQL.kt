@@ -2,7 +2,7 @@ package org.gluesql
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.future.future
-import uniffi.gluesql.*
+import org.gluesql.uniffi.*
 
 class GlueSQL(storage: Storage) {
     private val glue = try {

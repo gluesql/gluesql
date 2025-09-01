@@ -3,7 +3,7 @@ package org.gluesql
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 import kotlinx.coroutines.runBlocking
-import uniffi.gluesql.Storage
+import org.gluesql.uniffi.Storage
 
 class GlueSQLTest {
     private fun createGlue() = GlueSQL(Storage.Memory)
