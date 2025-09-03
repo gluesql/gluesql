@@ -80,8 +80,10 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Compress coverage report
         run: xz -T0 -9e -c coverage/lcov.info > coverage/lcov.info.xz
+      - name: Sanitize branch name
+        run: echo "SANITIZED_BRANCH_NAME=${BRANCH_NAME//\//-}" >> $GITHUB_ENV
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-${{ replace(env.BRANCH_NAME, '/', '-') }}-${{ env.COMMIT_SHA }}
+          name: coverage-${{ env.SANITIZED_BRANCH_NAME }}-${{ env.COMMIT_SHA }}
           path: coverage/lcov.info.xz
