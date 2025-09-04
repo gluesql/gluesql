@@ -218,6 +218,7 @@ pub enum Function {
         values: Option<Expr>,
     },
     Dedup(Expr),
+    Trunc(Expr),
 }
 
 impl ToSql for Function {
@@ -507,6 +508,7 @@ impl ToSql for Function {
                 ),
             },
             Function::Dedup(list) => format!("DEDUP({})", list.to_sql()),
+            Function::Trunc(e) => format!("TRUNC({})", e.to_sql()),
         }
     }
 }
@@ -1468,7 +1470,15 @@ mod tests {
                 "list".to_owned()
             ))))
             .to_sql(),
-        )
+        );
+
+        assert_eq!(
+            r#"TRUNC("num")"#,
+            &Expr::Function(Box::new(Function::Trunc(Expr::Identifier(
+                "num".to_owned()
+            ))))
+            .to_sql()
+        );
     }
 
     #[test]

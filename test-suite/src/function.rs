@@ -57,5 +57,6 @@ pub mod substr;
 pub mod take;
 pub mod to_date;
 pub mod trim;
+pub mod trunc;
 pub mod upper_lower;
 pub mod values;

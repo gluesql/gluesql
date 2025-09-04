@@ -714,6 +714,11 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             let list = translate_expr(args[0])?;
             Ok(Expr::Function(Box::new(Function::Dedup(list))))
         }
+        "TRUNC" => {
+            check_len(name, args.len(), 1)?;
+            let expr = translate_expr(args[0])?;
+            Ok(Expr::Function(Box::new(Function::Trunc(expr))))
+        }
         _ => {
             let exprs = args
                 .into_iter()
