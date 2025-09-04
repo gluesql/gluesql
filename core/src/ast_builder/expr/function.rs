@@ -141,6 +141,7 @@ pub enum FunctionNode<'a> {
         from_expr: ExprNode<'a>,
         sub_expr: ExprNode<'a>,
     },
+    Unhex(ExprNode<'a>),
     FindIdx {
         from_expr: ExprNode<'a>,
         sub_expr: ExprNode<'a>,
@@ -372,6 +373,10 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
             FunctionNode::Extract { field, expr } => {
                 let expr = expr.try_into()?;
                 Ok(Function::Extract { field, expr })
+            }
+            FunctionNode::Unhex(expr) => {
+                let expr = expr.try_into()?;
+                Ok(Function::Unhex(expr))
             }
             FunctionNode::Ascii(expr) => expr.try_into().map(Function::Ascii),
             FunctionNode::Chr(expr) => expr.try_into().map(Function::Chr),
@@ -929,6 +934,10 @@ pub fn extract<'a, T: Into<ExprNode<'a>>>(field: DateTimeField, expr: T) -> Expr
         field,
         expr: expr.into(),
     }))
+}
+
+pub fn unhex<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Unhex(expr.into())))
 }
 
 pub fn ascii<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
@@ -1702,6 +1711,17 @@ mod tests {
 
         let actual = f::extract(DateTimeField::Year, expr("date"));
         let expected = "EXTRACT(YEAR FROM date)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_unhex() {
+        let actual = f::unhex(text("476C756553514C"));
+        let expected = "UNHEX('476C756553514C')";
+        test_expr(actual, expected);
+
+        let actual = f::unhex(expr("FF"));
+        let expected = "UNHEX(FF)";
         test_expr(actual, expected);
     }
 
