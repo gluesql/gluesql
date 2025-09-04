@@ -197,6 +197,9 @@ pub enum ValueError {
     #[error("selector requires MAP or LIST types")]
     SelectorRequiresMapOrListTypes,
 
+    #[error("invalid float vector: {0}")]
+    InvalidFloatVector(String),
+
     #[error("overflow occurred: {lhs:?} {operator} {rhs:?}")]
     BinaryOperationOverflow {
         lhs: Value,

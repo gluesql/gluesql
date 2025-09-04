@@ -1,5 +1,5 @@
 use {
-    super::{Interval, Key, StringExt},
+    super::{FloatVector, Interval, Key, StringExt},
     crate::{
         ast::{DataType, DateTimeField},
         data::point::Point,
@@ -64,6 +64,7 @@ pub enum Value {
     Map(BTreeMap<String, Value>),
     List(Vec<Value>),
     Point(Point),
+    FloatVector(FloatVector),
     Null,
 }
 
@@ -188,6 +189,7 @@ impl Value {
             Value::Map(_) => Some(DataType::Map),
             Value::List(_) => Some(DataType::List),
             Value::Point(_) => Some(DataType::Point),
+            Value::FloatVector(_) => Some(DataType::FloatVector),
             Value::Null => None,
         }
     }
@@ -238,7 +240,8 @@ impl Value {
             | (DataType::Timestamp, Value::Timestamp(_))
             | (DataType::Time, Value::Time(_))
             | (DataType::Interval, Value::Interval(_))
-            | (DataType::Uuid, Value::Uuid(_)) => Ok(self.clone()),
+            | (DataType::Uuid, Value::Uuid(_))
+            | (DataType::FloatVector, Value::FloatVector(_)) => Ok(self.clone()),
 
             (_, Value::Null) => Ok(Value::Null),
 
@@ -275,6 +278,9 @@ impl Value {
                 .map(Value::Bytea),
             (DataType::List, Value::Str(value)) => Self::parse_json_list(value),
             (DataType::Map, Value::Str(value)) => Self::parse_json_map(value),
+            (DataType::FloatVector, Value::Str(value)) => Self::parse_json_vector(value),
+
+            (DataType::FloatVector, value) => Ok(value.try_into().map(Value::FloatVector)?),
 
             _ => Err(ValueError::UnimplementedCast {
                 value: self.clone(),
@@ -970,6 +976,18 @@ impl Hash for Value {
             }
             Value::List(list) => list.hash(state),
             Value::Point(p) => p.hash(state),
+            Value::FloatVector(v) => {
+                // Hash vector data using canonical representation
+                for &f in v.data() {
+                    if f.is_nan() {
+                        CANONICAL_F32_NAN_BITS.hash(state);
+                    } else if f == 0.0f32 {
+                        CANONICAL_F32_ZERO_BITS.hash(state);
+                    } else {
+                        f.to_bits().hash(state);
+                    }
+                }
+            }
             Value::Null => {
                 // Null gets its own unique hash based on discriminant only
                 // No additional data needed since discriminant already makes it unique

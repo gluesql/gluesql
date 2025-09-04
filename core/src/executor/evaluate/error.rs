@@ -41,6 +41,9 @@ pub enum EvaluateError {
     #[error("function requires point value: {0}")]
     FunctionRequiresPointValue(String),
 
+    #[error("function requires float vector value: {0}")]
+    FunctionRequiresFloatVectorValue(String),
+
     #[error("function requires date or datetime value: {0}")]
     FunctionRequiresDateOrDateTimeValue(String),
 

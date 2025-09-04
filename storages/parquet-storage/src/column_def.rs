@@ -38,6 +38,7 @@ lazy_static! {
         m.insert("List", DataType::List);
         m.insert("Decimal", DataType::Decimal);
         m.insert("Point", DataType::Point);
+        m.insert("FloatVector", DataType::FloatVector);
         m
     };
 }
