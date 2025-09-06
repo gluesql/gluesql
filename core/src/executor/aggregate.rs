@@ -4,12 +4,12 @@ use {
     self::state::State,
     super::{
         context::{AggregateContext, RowContext},
-        evaluate::{Evaluated, evaluate},
+        evaluate::evaluate,
         filter::check_expr,
     },
     crate::{
         ast::{Expr, SelectItem},
-        data::Key,
+        data::Value,
         result::Result,
         store::GStore,
     },
@@ -70,18 +70,17 @@ pub async fn apply<'a, T: GStore, U: Stream<Item = Result<Arc<RowContext<'a>>>> 
                 };
                 let filter_context = Some(filter_context);
 
-                let evaluated: Vec<Evaluated<'_>> = stream::iter(group_by.iter())
+                let group = stream::iter(group_by.iter())
                     .then(|expr| {
                         let filter_clone = filter_context.as_ref().map(Arc::clone);
-                        async move { evaluate(storage, filter_clone, None, expr).await }
+                        async move {
+                            evaluate(storage, filter_clone, None, expr)
+                                .await?
+                                .try_into()
+                        }
                     })
-                    .try_collect::<Vec<_>>()
+                    .try_collect::<Vec<Value>>()
                     .await?;
-
-                let group = evaluated
-                    .iter()
-                    .map(Key::try_from)
-                    .collect::<Result<Vec<Key>>>()?;
 
                 let state = state.apply(index, group, Arc::clone(&project_context));
                 let state = stream::iter(fields)
