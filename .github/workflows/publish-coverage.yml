@@ -33,7 +33,6 @@ jobs:
         with:
           name: coverage-${{ steps.sanitize.outputs.value }}-${{ env.COMMIT_SHA }}
           run-id: ${{ github.event.workflow_run.id }}
-          if-no-files-found: error
       - name: Set timestamp
         run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H%M%SZ')" >> $GITHUB_ENV
       - name: Publish coverage to gluesql.github.io
