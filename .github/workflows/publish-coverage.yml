@@ -13,8 +13,9 @@ jobs:
       github.repository == 'gluesql/gluesql'
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      pull-requests: write
+      actions: read
+      contents: read
+      issues: write
     env:
       BRANCH_NAME: ${{ github.event.workflow_run.head_branch }}
       COMMIT_SHA: ${{ github.event.workflow_run.head_sha }}
@@ -25,12 +26,14 @@ jobs:
           git config --global user.email "ci@example.com"
           git config --global user.name "CI"
       - name: Sanitize branch name
-        run: echo "SANITIZED_BRANCH_NAME=${BRANCH_NAME//\//-}" >> $GITHUB_ENV
+        id: sanitize
+        run: echo "value=${BRANCH_NAME//\//-}" >> $GITHUB_OUTPUT
       - name: Download coverage artifact
         uses: actions/download-artifact@v4
         with:
-          name: coverage-${{ env.SANITIZED_BRANCH_NAME }}-${{ env.COMMIT_SHA }}
+          name: coverage-${{ steps.sanitize.outputs.value }}-${{ env.COMMIT_SHA }}
           run-id: ${{ github.event.workflow_run.id }}
+          if-no-files-found: error
       - name: Set timestamp
         run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H%M%SZ')" >> $GITHUB_ENV
       - name: Publish coverage to gluesql.github.io

@@ -94,9 +94,10 @@ jobs:
           git commit -m "Coverage: main@${COMMIT_SHA}"
           git push https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/gluesql.github.io.git
       - name: Sanitize branch name
-        run: echo "SANITIZED_BRANCH_NAME=${BRANCH_NAME//\//-}" >> $GITHUB_ENV
+        id: sanitize
+        run: echo "value=${BRANCH_NAME//\//-}" >> $GITHUB_OUTPUT
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-${{ env.SANITIZED_BRANCH_NAME }}-${{ env.COMMIT_SHA }}
+          name: coverage-${{ steps.sanitize.outputs.value }}-${{ env.COMMIT_SHA }}
           path: coverage/lcov.info.xz
