@@ -85,40 +85,6 @@ jobs:
         run: xz -T0 -9e -c coverage/lcov.info > coverage/lcov.info.xz
       - name: Set timestamp
         run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
-      - name: Publish PR coverage to gluesql.github.io
-        if: github.repository == 'gluesql/gluesql' && github.event_name == 'pull_request'
-        env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          git clone https://github.com/gluesql/gluesql.github.io.git
-          cd gluesql.github.io
-          git checkout gh-pages
-          mkdir -p coverage/pr/${PR_NUMBER}
-          cp ../coverage/lcov.info.xz coverage/pr/${PR_NUMBER}/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
-          git add coverage/pr/${PR_NUMBER}/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
-          git commit -m "Coverage: PR#${PR_NUMBER}@${COMMIT_SHA}"
-          git push https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/gluesql.github.io.git
-      - name: Comment coverage link on PR
-        if: github.repository == 'gluesql/gluesql' && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const prNumber = context.issue.number;
-            const encodedTimestamp = process.env.TIMESTAMP.replace(/:/g, '%3A');
-            const url = `https://gluesql.org/coverage/?path=pr/${prNumber}/${encodedTimestamp}.${process.env.COMMIT_SHA}.lcov.info.xz`;
-            const body = [
-              '### Coverage Report',
-              '',
-              `- **Commit:** \`${process.env.COMMIT_SHA}\``,
-              `- **Timestamp:** \`${process.env.TIMESTAMP}\``,
-              `- **Report:** [View report](${url})`
-            ].join('\n');
-            await github.rest.issues.createComment({
-              issue_number: prNumber,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body
-            });
       - name: Publish coverage to gluesql.github.io
         if: github.repository == 'gluesql/gluesql' && github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
