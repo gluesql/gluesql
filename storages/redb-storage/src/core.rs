@@ -131,23 +131,23 @@ impl StorageCore {
     }
 
     pub fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
-        if let TransactionState::Active { autocommit, txn } = &self.state {
-            if !autocommit {
-                let table_def = self.data_table_def(table_name)?;
-                let table = txn.open_table(table_def)?;
+        if let TransactionState::Active { autocommit, txn } = &self.state
+            && !autocommit
+        {
+            let table_def = self.data_table_def(table_name)?;
+            let table = txn.open_table(table_def)?;
 
-                let rows: Vec<_> = table
-                    .iter()?
-                    .map(|entry| {
-                        let value = entry?.1.value();
-                        let (key, row): (Key, DataRow) = deserialize(&value)?;
+            let rows: Vec<_> = table
+                .iter()?
+                .map(|entry| {
+                    let value = entry?.1.value();
+                    let (key, row): (Key, DataRow) = deserialize(&value)?;
 
-                        Ok((key, row))
-                    })
-                    .collect::<Result<_>>()?;
+                    Ok((key, row))
+                })
+                .collect::<Result<_>>()?;
 
-                return Ok(Box::pin(iter(rows.into_iter().map(Ok))));
-            }
+            return Ok(Box::pin(iter(rows.into_iter().map(Ok))));
         }
 
         let read_txn = self.db.begin_read()?;
