@@ -81,7 +81,7 @@ jobs:
       - name: Compress coverage report
         run: xz -T0 -9e -c coverage/lcov.info > coverage/lcov.info.xz
       - name: Set timestamp
-        run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
+        run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H%M%SZ')" >> $GITHUB_ENV
       - name: Publish coverage to gluesql.github.io
         if: github.repository == 'gluesql/gluesql' && github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
