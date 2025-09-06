@@ -1,0 +1,65 @@
+name: Publish Coverage
+
+on:
+  workflow_run:
+    workflows: ["Coverage"]
+    types: [completed]
+
+jobs:
+  publish:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.repository == 'gluesql/gluesql'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      BRANCH_NAME: ${{ github.event.workflow_run.head_branch }}
+      COMMIT_SHA: ${{ github.event.workflow_run.head_sha }}
+      PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+    steps:
+      - name: Configure git user
+        run: |
+          git config --global user.email "ci@example.com"
+          git config --global user.name "CI"
+      - name: Sanitize branch name
+        run: echo "SANITIZED_BRANCH_NAME=${BRANCH_NAME//\//-}" >> $GITHUB_ENV
+      - name: Download coverage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-${{ env.SANITIZED_BRANCH_NAME }}-${{ env.COMMIT_SHA }}
+          run-id: ${{ github.event.workflow_run.id }}
+      - name: Set timestamp
+        run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
+      - name: Publish coverage to gluesql.github.io
+        run: |
+          git clone https://github.com/gluesql/gluesql.github.io.git
+          cd gluesql.github.io
+          git checkout gh-pages
+          mkdir -p coverage/pr/${PR_NUMBER}
+          cp ../coverage/lcov.info.xz coverage/pr/${PR_NUMBER}/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
+          git add coverage/pr/${PR_NUMBER}/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
+          git commit -m "Coverage: PR#${PR_NUMBER}@${COMMIT_SHA}"
+          git push https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/gluesql.github.io.git
+      - name: Comment coverage link on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = process.env.PR_NUMBER;
+            const encodedTimestamp = process.env.TIMESTAMP.replace(/:/g, '%3A');
+            const url = `https://gluesql.org/coverage/?path=pr/${prNumber}/${encodedTimestamp}.${process.env.COMMIT_SHA}.lcov.info.xz`;
+            const body = [
+              '### Coverage Report',
+              '',
+              `- **Commit:** \`${process.env.COMMIT_SHA}\``,
+              `- **Timestamp:** \`${process.env.TIMESTAMP}\``,
+              `- **Report:** [View report](${url})`
+            ].join('\n');
+            await github.rest.issues.createComment({
+              issue_number: prNumber,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body
+            });
