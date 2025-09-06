@@ -15,9 +15,6 @@ env:
 
 jobs:
   coverage:
-    permissions:
-      contents: read
-      pull-requests: write
     runs-on: ubuntu-latest
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
