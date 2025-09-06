@@ -15,6 +15,9 @@ env:
 
 jobs:
   coverage:
+    permissions:
+      contents: read
+      pull-requests: write
     runs-on: ubuntu-latest
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
@@ -87,7 +90,7 @@ jobs:
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          gh repo clone gluesql/gluesql.github.io
+          git clone https://github.com/gluesql/gluesql.github.io.git
           cd gluesql.github.io
           git checkout gh-pages
           mkdir -p coverage/pr/${PR_NUMBER}
@@ -97,18 +100,29 @@ jobs:
           git push https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/gluesql.github.io.git
       - name: Comment coverage link on PR
         if: github.repository == 'gluesql/gluesql' && github.event_name == 'pull_request'
-        env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          ENCODED_TIMESTAMP=${TIMESTAMP//:/%3A}
-          URL="https://gluesql.org/coverage/?path=pr/$PR_NUMBER/$ENCODED_TIMESTAMP.${COMMIT_SHA}.lcov.info.xz"
-          MESSAGE="### Coverage Report\n\n- **Commit:** \`$COMMIT_SHA\`\n- **Timestamp:** \`$TIMESTAMP\`\n- **Report:** [View report]($URL)"
-          gh pr comment "$PR_NUMBER" --body "$MESSAGE"
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.issue.number;
+            const encodedTimestamp = process.env.TIMESTAMP.replace(/:/g, '%3A');
+            const url = `https://gluesql.org/coverage/?path=pr/${prNumber}/${encodedTimestamp}.${process.env.COMMIT_SHA}.lcov.info.xz`;
+            const body = [
+              '### Coverage Report',
+              '',
+              `- **Commit:** \`${process.env.COMMIT_SHA}\``,
+              `- **Timestamp:** \`${process.env.TIMESTAMP}\``,
+              `- **Report:** [View report](${url})`
+            ].join('\n');
+            await github.rest.issues.createComment({
+              issue_number: prNumber,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body
+            });
       - name: Publish coverage to gluesql.github.io
         if: github.repository == 'gluesql/gluesql' && github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          gh repo clone gluesql/gluesql.github.io
+          git clone https://github.com/gluesql/gluesql.github.io.git
           cd gluesql.github.io
           git checkout gh-pages
           mkdir -p coverage/main
