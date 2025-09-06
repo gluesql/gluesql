@@ -32,7 +32,7 @@ jobs:
           name: coverage-${{ env.SANITIZED_BRANCH_NAME }}-${{ env.COMMIT_SHA }}
           run-id: ${{ github.event.workflow_run.id }}
       - name: Set timestamp
-        run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
+        run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H%M%SZ')" >> $GITHUB_ENV
       - name: Publish coverage to gluesql.github.io
         run: |
           git clone https://github.com/gluesql/gluesql.github.io.git
@@ -48,8 +48,7 @@ jobs:
         with:
           script: |
             const prNumber = process.env.PR_NUMBER;
-            const encodedTimestamp = process.env.TIMESTAMP.replace(/:/g, '%3A');
-            const url = `https://gluesql.org/coverage/?path=pr/${prNumber}/${encodedTimestamp}.${process.env.COMMIT_SHA}.lcov.info.xz`;
+            const url = `https://gluesql.org/coverage/?path=pr/${prNumber}/${process.env.TIMESTAMP}.${process.env.COMMIT_SHA}.lcov.info.xz`;
             const body = [
               '### Coverage Report',
               '',
