@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        error::{KeyError, ValueError},
+        error::ValueError,
         prelude::Value::{self, *},
     },
 };
@@ -135,7 +135,7 @@ INSERT INTO ListType2 VALUES
 
     g.test(
         r#"SELECT id FROM ListType GROUP BY items"#,
-        Err(KeyError::ListTypeKeyNotSupported.into()),
+        Ok(select!(id; I64; 1; 2; 3)),
     )
     .await;
     g.test(
