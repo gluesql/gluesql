@@ -88,10 +88,10 @@ impl<'a> TryFrom<ParquetSchemaType<'a>> for ColumnDef {
                         _ => unique = Some(ColumnUniqueOption { is_primary: false }),
                     },
                     k if k == format!("data_type{name}") => {
-                        if let Some(value) = kv.value.as_deref() {
-                            if let Some(mapped_data_type) = map_parquet_to_gluesql(value) {
-                                data_type = mapped_data_type.clone();
-                            }
+                        if let Some(value) = kv.value.as_deref()
+                            && let Some(mapped_data_type) = map_parquet_to_gluesql(value)
+                        {
+                            data_type = mapped_data_type.clone();
                         }
                     }
                     k if k == format!("default_{name}") => {
