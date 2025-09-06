@@ -4,21 +4,40 @@ on:
   workflow_run:
     workflows: ["Coverage"]
     types: [completed]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "ID of the Coverage workflow run"
+        required: true
+      branch_name:
+        description: "Branch name of the coverage run"
+        required: true
+      commit_sha:
+        description: "Commit SHA of the coverage run"
+        required: true
+      pr_number:
+        description: "Pull request number"
+        required: true
 
 jobs:
   publish:
     if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'pull_request' &&
-      github.repository == 'gluesql/gluesql'
+      github.repository == 'gluesql/gluesql' &&
+      (
+        (github.event_name == 'workflow_run' &&
+         github.event.workflow_run.conclusion == 'success' &&
+         github.event.workflow_run.event == 'pull_request') ||
+        github.event_name == 'workflow_dispatch'
+      )
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
     env:
-      BRANCH_NAME: ${{ github.event.workflow_run.head_branch }}
-      COMMIT_SHA: ${{ github.event.workflow_run.head_sha }}
-      PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+      BRANCH_NAME: ${{ github.event.workflow_run.head_branch || github.event.inputs.branch_name }}
+      COMMIT_SHA: ${{ github.event.workflow_run.head_sha || github.event.inputs.commit_sha }}
+      PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number || github.event.inputs.pr_number }}
+      RUN_ID: ${{ github.event.workflow_run.id || github.event.inputs.run_id }}
     steps:
       - name: Configure git user
         run: |
@@ -30,7 +49,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: coverage-${{ env.SANITIZED_BRANCH_NAME }}-${{ env.COMMIT_SHA }}
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ env.RUN_ID }}
       - name: Set timestamp
         run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H%M%SZ')" >> $GITHUB_ENV
       - name: Publish coverage to gluesql.github.io
