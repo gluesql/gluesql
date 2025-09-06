@@ -41,6 +41,7 @@ jobs:
           git clone https://github.com/gluesql/gluesql.github.io.git
           cd gluesql.github.io
           git checkout gh-pages
+          git pull --rebase origin gh-pages
           mkdir -p coverage/pr/${PR_NUMBER}
           cp ../coverage/lcov.info.xz coverage/pr/${PR_NUMBER}/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
           git add coverage/pr/${PR_NUMBER}/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
