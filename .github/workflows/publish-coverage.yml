@@ -17,7 +17,6 @@ jobs:
       contents: read
       issues: write
     env:
-      BRANCH_NAME: ${{ github.event.workflow_run.head_branch }}
       COMMIT_SHA: ${{ github.event.workflow_run.head_sha }}
       PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
     steps:
@@ -25,14 +24,12 @@ jobs:
         run: |
           git config --global user.email "ci@example.com"
           git config --global user.name "CI"
-      - name: Sanitize branch name
-        id: sanitize
-        run: echo "value=${BRANCH_NAME//\//-}" >> $GITHUB_OUTPUT
       - name: Download coverage artifact
         uses: actions/download-artifact@v4
         with:
-          name: coverage-${{ steps.sanitize.outputs.value }}-${{ env.COMMIT_SHA }}
+          name: coverage
           run-id: ${{ github.event.workflow_run.id }}
+          path: .
       - name: Set timestamp
         run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H%M%SZ')" >> $GITHUB_ENV
       - name: Publish coverage to gluesql.github.io
