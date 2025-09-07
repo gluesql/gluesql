@@ -96,6 +96,23 @@ jobs:
           run-id: ${{ env.RUN_ID }}
           path: .
           github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Normalize downloaded artifact path
+        run: |
+          set -euo pipefail
+          mkdir -p coverage
+          if [ -f "./coverage/lcov.info.xz" ]; then
+            echo "Found ./coverage/lcov.info.xz"
+          else
+            found=$(find . -maxdepth 3 -type f -name lcov.info.xz | head -n1 || true)
+            if [ -n "$found" ]; then
+              echo "Moving $found -> ./coverage/lcov.info.xz"
+              mv "$found" ./coverage/lcov.info.xz
+            else
+              echo "lcov.info.xz not found after download"
+              find . -maxdepth 3 -type f | sed 's/^/FILE: /'
+              exit 1
+            fi
+          fi
       - name: Set timestamp
         run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H%M%SZ')" >> $GITHUB_ENV
       - name: Publish coverage to gluesql.github.io
