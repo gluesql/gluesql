@@ -42,6 +42,15 @@ jobs:
         run: |
           git config --global user.email "ci@example.com"
           git config --global user.name "CI"
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.COVERAGE_APP_ID }}
+          installation-id: ${{ secrets.COVERAGE_APP_INSTALLATION_ID }}
+          private-key: ${{ secrets.COVERAGE_APP_PRIVATE_KEY }}
+          owner: gluesql
+          repositories: gluesql, gluesql.github.io
       - name: Set variables for workflow_dispatch
         if: github.event_name == 'workflow_dispatch'
         run: |
@@ -76,11 +85,11 @@ jobs:
           cp ../coverage/lcov.info.xz coverage/pr/${PR_NUMBER}/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
           git add coverage/pr/${PR_NUMBER}/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
           git commit -m "Coverage: PR#${PR_NUMBER}@${COMMIT_SHA}"
-          git push https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/gluesql.github.io.git
+          git push https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/gluesql/gluesql.github.io.git
       - name: Comment coverage link on PR
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GLUESQL_ORG }}
+          github-token: ${{ steps.app-token.outputs.token }}
           script: |
             const prNumber = process.env.PR_NUMBER;
             const url = `https://gluesql.org/coverage/?path=pr/${prNumber}/${process.env.TIMESTAMP}.${process.env.COMMIT_SHA}.lcov.info.xz`;
