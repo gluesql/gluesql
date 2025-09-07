@@ -70,16 +70,14 @@ jobs:
           mkdir -p coverage
           if [ -f "./coverage/lcov.info.xz" ]; then
             echo "Found ./coverage/lcov.info.xz"
+          elif [ -f "./coverage/coverage/lcov.info.xz" ]; then
+            echo "Found ./coverage/coverage/lcov.info.xz; moving to ./coverage/lcov.info.xz"
+            mv ./coverage/coverage/lcov.info.xz ./coverage/lcov.info.xz
+            rmdir ./coverage/coverage || true
           else
-            found=$(find . -maxdepth 3 -type f -name lcov.info.xz | head -n1 || true)
-            if [ -n "$found" ]; then
-              echo "Moving $found -> ./coverage/lcov.info.xz"
-              mv "$found" ./coverage/lcov.info.xz
-            else
-              echo "lcov.info.xz not found after download"
-              find . -maxdepth 3 -type f | sed 's/^/FILE: /'
-              exit 1
-            fi
+            echo "lcov.info.xz not found at expected locations"
+            find . -maxdepth 3 -type f -name lcov.info.xz -print | sed 's/^/FOUND: /' || true
+            exit 1
           fi
       - name: Set timestamp
         run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H%M%SZ')" >> $GITHUB_ENV
