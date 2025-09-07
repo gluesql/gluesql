@@ -95,6 +95,7 @@ jobs:
           name: ${{ env.ARTIFACT_NAME }}
           run-id: ${{ env.RUN_ID }}
           path: .
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Set timestamp
         run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H%M%SZ')" >> $GITHUB_ENV
       - name: Publish coverage to gluesql.github.io
