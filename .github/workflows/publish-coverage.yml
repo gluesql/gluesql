@@ -62,19 +62,9 @@ jobs:
         with:
           name: ${{ env.ARTIFACT_NAME }}
           run-id: ${{ env.RUN_ID }}
-          path: .
+          path: coverage
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Normalize downloaded artifact path
-        run: |
-          set -euo pipefail
-          # Expect the artifact to extract to ./coverage/lcov.info.xz
-          if [ -f ./coverage/lcov.info.xz ]; then
-            echo "Found ./coverage/lcov.info.xz"
-          else
-            echo "coverage/lcov.info.xz not found after download"
-            find . -maxdepth 3 -type f -name lcov.info.xz -print | sed 's/^/FOUND: /' || true
-            exit 1
-          fi
+      # No normalization needed: file will be at ./coverage/lcov.info.xz
       - name: Set timestamp
         run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H%M%SZ')" >> $GITHUB_ENV
       - name: Publish coverage to gluesql.github.io
