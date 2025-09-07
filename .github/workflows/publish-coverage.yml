@@ -37,7 +37,6 @@ jobs:
     permissions:
       actions: read
       contents: read
-      issues: write
     steps:
       - name: Configure git user
         run: |
