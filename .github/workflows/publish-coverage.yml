@@ -37,7 +37,6 @@ jobs:
     permissions:
       actions: read
       contents: read
-      issues: write
     steps:
       - name: Configure git user
         run: |
@@ -62,7 +61,9 @@ jobs:
         with:
           name: ${{ env.ARTIFACT_NAME }}
           run-id: ${{ env.RUN_ID }}
-          path: .
+          path: coverage
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      # No normalization needed: file will be at ./coverage/lcov.info.xz
       - name: Set timestamp
         run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H%M%SZ')" >> $GITHUB_ENV
       - name: Publish coverage to gluesql.github.io
@@ -79,6 +80,7 @@ jobs:
       - name: Comment coverage link on PR
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GLUESQL_ORG }}
           script: |
             const prNumber = process.env.PR_NUMBER;
             const url = `https://gluesql.org/coverage/?path=pr/${prNumber}/${process.env.TIMESTAMP}.${process.env.COMMIT_SHA}.lcov.info.xz`;
