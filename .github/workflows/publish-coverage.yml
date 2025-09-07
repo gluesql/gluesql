@@ -17,7 +17,6 @@ jobs:
       contents: read
       issues: write
     env:
-      BRANCH_NAME: ${{ github.event.workflow_run.head_branch }}
       COMMIT_SHA: ${{ github.event.workflow_run.head_sha }}
       PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
     steps:
