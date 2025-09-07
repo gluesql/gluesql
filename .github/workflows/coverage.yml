@@ -89,6 +89,8 @@ jobs:
           app-id: ${{ secrets.COVERAGE_APP_ID }}
           installation-id: ${{ secrets.COVERAGE_APP_INSTALLATION_ID }}
           private-key: ${{ secrets.COVERAGE_APP_PRIVATE_KEY }}
+          owner: gluesql
+          repositories: gluesql, gluesql.github.io
       - name: Publish coverage to gluesql.github.io
         if: github.repository == 'gluesql/gluesql' && github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
