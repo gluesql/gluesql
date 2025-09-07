@@ -59,8 +59,7 @@ val generateBindings = tasks.register("generateBindings") {
                 "cargo", "run", "--bin", "uniffi-bindgen", "generate",
                 "--language", "kotlin",
                 "--out-dir", generatedDir.absolutePath,
-                "--config", "uniffi.toml",
-                "src/gluesql.udl"
+                "--library", "../../target/debug/libgluesql_java.dylib"
             )
         }
     }

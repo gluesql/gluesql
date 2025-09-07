@@ -1554,11 +1554,13 @@ dependencies = [
  "gluesql-shared-memory-storage",
  "gluesql_memory_storage",
  "gluesql_sled_storage",
+ "hex",
  "serde",
  "serde_json",
  "thiserror 2.0.17",
  "tokio",
  "uniffi",
+ "uuid",
 ]
 
 [[package]]

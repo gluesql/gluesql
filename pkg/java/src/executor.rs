@@ -2,8 +2,8 @@ use gluesql_core::ast::Statement;
 use gluesql_core::prelude::{execute, parse, plan, translate};
 
 use crate::error::GlueSQLError;
-use crate::payload::convert_payload;
 use crate::storage::StorageBackend;
+use crate::uniffi_types::QueryResult;
 
 pub struct QueryExecutor;
 
@@ -11,7 +11,7 @@ impl QueryExecutor {
     pub async fn execute_query(
         storage: &StorageBackend,
         sql: String,
-    ) -> Result<Vec<String>, GlueSQLError> {
+    ) -> Result<Vec<QueryResult>, GlueSQLError> {
         let queries = parse(&sql).map_err(|e| GlueSQLError::ParseError(e.to_string()))?;
 
         let mut results = Vec::new();
@@ -21,11 +21,8 @@ impl QueryExecutor {
                 translate(&query).map_err(|e| GlueSQLError::TranslateError(e.to_string()))?;
 
             let payload = Self::execute_statement(storage, statement).await?;
-            let converted = convert_payload(payload);
-            results.push(
-                serde_json::to_string(&converted)
-                    .map_err(|e| GlueSQLError::ValueError(e.to_string()))?,
-            );
+            let result = QueryResult::from(payload);
+            results.push(result);
         }
 
         Ok(results)

@@ -7,11 +7,13 @@ use gluesql_sled_storage::{SledStorage, sled::Config};
 
 use crate::error::GlueSQLError;
 
+#[derive(uniffi::Record)]
 pub struct SledConfig {
     pub path: Option<String>,
     pub mode: Option<String>,
 }
 
+#[derive(uniffi::Enum)]
 pub enum Storage {
     Memory,
     Json {

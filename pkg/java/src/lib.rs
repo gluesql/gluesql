@@ -1,19 +1,25 @@
 mod error;
 mod executor;
-mod payload;
 mod storage;
+mod uniffi_types;
 
 pub use error::GlueSQLError;
-pub use payload::Payload;
 pub use storage::{SledConfig, Storage, StorageBackend};
+pub use uniffi_types::{
+    CreateResult, DeleteResult, DropTableResult, InsertResult, QueryResult, SelectResult,
+    ShowColumnsResult, ShowVariableResult, SqlValue, UpdateResult,
+};
 
 use executor::QueryExecutor;
 
+#[derive(uniffi::Object)]
 pub struct Glue {
     storage: StorageBackend,
 }
 
+#[uniffi::export]
 impl Glue {
+    #[uniffi::constructor]
     pub fn new(storage: Storage) -> Result<Self, GlueSQLError> {
         let storage_backend = StorageBackend::new(storage)?;
         Ok(Self {
@@ -21,9 +27,9 @@ impl Glue {
         })
     }
 
-    pub async fn query(&self, sql: String) -> Result<Vec<String>, GlueSQLError> {
+    pub async fn query(&self, sql: String) -> Result<Vec<QueryResult>, GlueSQLError> {
         QueryExecutor::execute_query(&self.storage, sql).await
     }
 }
 
-uniffi::include_scaffolding!("gluesql");
+uniffi::setup_scaffolding!();

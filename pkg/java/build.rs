@@ -1,3 +1,3 @@
 fn main() {
-    uniffi::generate_scaffolding("src/gluesql.udl").unwrap();
+    // Proc-macro based uniffi doesn't need build.rs scaffolding generation
 }

@@ -1,4 +1,5 @@
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, uniffi::Error)]
+#[uniffi(flat_error)]
 pub enum GlueSQLError {
     #[error("Storage error: {0}")]
     StorageError(String),
