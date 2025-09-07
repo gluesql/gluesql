@@ -76,11 +76,11 @@ jobs:
           cp ../coverage/lcov.info.xz coverage/pr/${PR_NUMBER}/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
           git add coverage/pr/${PR_NUMBER}/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
           git commit -m "Coverage: PR#${PR_NUMBER}@${COMMIT_SHA}"
-          git push https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/gluesql.github.io.git
+          git push https://panarch:${{ secrets.NEW_GLUESQL_ORG }}@github.com/gluesql/gluesql.github.io.git
       - name: Comment coverage link on PR
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GLUESQL_ORG }}
+          github-token: ${{ secrets.NEW_GLUESQL_ORG }}
           script: |
             const prNumber = process.env.PR_NUMBER;
             const url = `https://gluesql.org/coverage/?path=pr/${prNumber}/${process.env.TIMESTAMP}.${process.env.COMMIT_SHA}.lcov.info.xz`;

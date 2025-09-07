@@ -91,7 +91,7 @@ jobs:
           cp ../coverage/lcov.info.xz coverage/main/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
           git add coverage/main/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
           git commit -m "Coverage: main@${COMMIT_SHA}"
-          git push https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/gluesql.github.io.git
+          git push https://panarch:${{ secrets.NEW_GLUESQL_ORG }}@github.com/gluesql/gluesql.github.io.git
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
