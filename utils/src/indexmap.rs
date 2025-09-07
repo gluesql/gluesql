@@ -1,6 +1,6 @@
 use {
+    core::hash::Hash,
     indexmap::map::{IntoIter, Keys},
-    std::{cmp::Eq, hash::Hash},
 };
 
 /// HashMap which provides
