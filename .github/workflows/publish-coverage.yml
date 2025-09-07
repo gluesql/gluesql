@@ -79,6 +79,8 @@ jobs:
             }
       - name: Debug - Try direct download via REST (status only)
         if: env.ARTIFACT_ID != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -eu
           echo "RUN_ID=$RUN_ID ARTIFACT_ID=$ARTIFACT_ID"
