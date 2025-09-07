@@ -129,6 +129,7 @@ jobs:
       - name: Comment coverage link on PR
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GLUESQL_ORG }}
           script: |
             const prNumber = process.env.PR_NUMBER;
             const url = `https://gluesql.org/coverage/?path=pr/${prNumber}/${process.env.TIMESTAMP}.${process.env.COMMIT_SHA}.lcov.info.xz`;
