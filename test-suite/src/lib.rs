@@ -174,6 +174,7 @@ macro_rules! generate_store_tests {
         glue!(function_values, function::values::values);
         glue!(function_nullif, function::nullif::nullif);
         glue!(function_hex, function::hex::hex);
+        glue!(function_trunc, function::trunc::trunc);
         glue!(join, join::join);
         glue!(join_project, join::project);
         glue!(migrate, migrate::migrate);
