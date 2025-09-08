@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        error::{EvaluateError, KeyError, ValueError},
+        error::{EvaluateError, ValueError},
         prelude::Value::{self, *},
     },
 };
@@ -153,7 +153,7 @@ INSERT INTO MapType2 VALUES
     .await;
     g.test(
         "SELECT id FROM MapType GROUP BY nested",
-        Err(KeyError::MapTypeKeyNotSupported.into()),
+        Ok(select!(id; I64; 1; 2; 3)),
     )
     .await;
     g.test(
