@@ -145,7 +145,7 @@ fn eval_to_point(name: &str, evaluated: Evaluated<'_>) -> ControlFlow<Point> {
 }
 
 // --- text ---
-pub fn concat(exprs: Vec<Evaluated<'_>>) -> ControlFlow<Evaluated> {
+pub fn concat(exprs: Vec<Evaluated<'_>>) -> ControlFlow<Evaluated<'_>> {
     let value = exprs
         .into_iter()
         .try_fold(None, |left: Option<Evaluated>, right| match left {

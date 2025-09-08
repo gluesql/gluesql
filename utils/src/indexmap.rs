@@ -23,7 +23,7 @@ impl<K: Hash + Eq, V> IndexMap<K, V> {
         self.0.get(key)
     }
 
-    pub fn keys(&self) -> Keys<K, V> {
+    pub fn keys(&self) -> Keys<'_, K, V> {
         self.0.keys()
     }
 

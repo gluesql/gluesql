@@ -97,10 +97,10 @@ impl AggrValue {
                     None
                 };
 
-                if let Some(ref mut set) = distinct_values {
-                    if !value.is_null() {
-                        set.insert(value.clone());
-                    }
+                if let Some(ref mut set) = distinct_values
+                    && !value.is_null()
+                {
+                    set.insert(value.clone());
                 }
 
                 AggrValue::Count {

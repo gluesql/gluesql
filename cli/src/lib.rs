@@ -139,11 +139,11 @@ pub fn run() -> Result<()> {
         let output = std::io::stdout();
         let mut cli = Cli::new(storage, output);
 
-        if let Some(path) = input {
-            if let Err(e) = cli.load(path.as_path()) {
-                println!("[error] {e}\n");
-            };
-        }
+        if let Some(path) = input
+            && let Err(e) = cli.load(path.as_path())
+        {
+            println!("[error] {e}\n");
+        };
 
         if let Err(e) = cli.run() {
             eprintln!("{e}");
