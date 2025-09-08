@@ -553,6 +553,11 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::AddMonth { expr, size })))
         }
+        "UNHEX" => {
+            check_len(name, args.len(), 1)?;
+            let expr = translate_expr(args[0])?;
+            Ok(Expr::Function(Box::new(Function::Unhex(expr))))
+        }
         "ASCII" => {
             check_len(name, args.len(), 1)?;
 
