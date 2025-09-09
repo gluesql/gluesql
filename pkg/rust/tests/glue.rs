@@ -1,7 +1,7 @@
 #![cfg(any(feature = "gluesql_memory_storage", feature = "gluesql_sled_storage"))]
 use {
     futures::executor::block_on,
-    gluesql::{FromGlueRow, row::SelectResultExt},
+    gluesql::{FromGlueRow, core::row_conversion::SelectResultExt},
     gluesql_core::{
         executor::Payload,
         prelude::Glue,
@@ -52,8 +52,16 @@ async fn basic<T: GStore + GStoreMut>(mut glue: Glue<T>) {
     assert_eq!(
         rows,
         vec![
-            ApiRow { id: 1, name: "test1".into(), is: true },
-            ApiRow { id: 2, name: "test2".into(), is: false },
+            ApiRow {
+                id: 1,
+                name: "test1".into(),
+                is: true
+            },
+            ApiRow {
+                id: 2,
+                name: "test2".into(),
+                is: false
+            },
         ]
     );
 }

@@ -12,11 +12,6 @@ pub mod core {
 // Re-export the derive macro so users can `use gluesql::FromGlueRow`.
 pub use gluesql_macros::FromGlueRow;
 
-// Expose row utilities under `gluesql::row`.
-pub mod row {
-    pub use gluesql_core::row::*;
-}
-
 #[cfg(feature = "gluesql_memory_storage")]
 pub use gluesql_memory_storage;
 

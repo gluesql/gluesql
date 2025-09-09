@@ -1,10 +1,12 @@
 use gluesql::FromGlueRow;
-use gluesql::row::{Payload, SelectExt, SelectResultExt, Value};
+use gluesql::core::data::Value;
+use gluesql::core::executor::Payload;
+use gluesql::core::row_conversion::{SelectExt, SelectResultExt};
 
-use std::collections::BTreeMap;
-use std::net::{IpAddr, Ipv4Addr};
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 use rust_decimal::Decimal;
+use std::collections::BTreeMap;
+use std::net::{IpAddr, Ipv4Addr};
 
 #[derive(Debug, PartialEq, FromGlueRow)]
 struct User {
@@ -19,12 +21,23 @@ fn rows_as_ok() {
         labels: vec!["id".into(), "name".into(), "email".into()],
         rows: vec![
             vec![Value::I64(1), Value::Str("A".into()), Value::Null],
-            vec![Value::I64(2), Value::Str("B".into()), Value::Str("b@x.com".into())],
+            vec![
+                Value::I64(2),
+                Value::Str("B".into()),
+                Value::Str("b@x.com".into()),
+            ],
         ],
     };
     let v: Vec<User> = payload.rows_as::<User>().unwrap();
     assert_eq!(v.len(), 2);
-    assert_eq!(v[0], User { id: 1, name: "A".into(), email: None });
+    assert_eq!(
+        v[0],
+        User {
+            id: 1,
+            name: "A".into(),
+            email: None
+        }
+    );
     assert_eq!(v[1].email.as_deref(), Some("b@x.com"));
 }
 
@@ -101,12 +114,32 @@ fn all_types_ok() {
 
     let payload = Payload::Select {
         labels: vec![
-            "i8_".into(), "i16_".into(), "i32_".into(), "i64_".into(), "i128_".into(),
-            "u8_".into(), "u16_".into(), "u32_".into(), "u64_".into(), "u128_".into(),
-            "f32_".into(), "f64_".into(), "b_".into(), "s_".into(), "bytes_".into(),
-            "ip_".into(), "date_".into(), "ts_".into(), "time_".into(), "dec_".into(),
-            "interval_".into(), "map_".into(), "list_".into(), "point_".into(),
-            "opt_s_none".into(), "opt_i64_some".into(),
+            "i8_".into(),
+            "i16_".into(),
+            "i32_".into(),
+            "i64_".into(),
+            "i128_".into(),
+            "u8_".into(),
+            "u16_".into(),
+            "u32_".into(),
+            "u64_".into(),
+            "u128_".into(),
+            "f32_".into(),
+            "f64_".into(),
+            "b_".into(),
+            "s_".into(),
+            "bytes_".into(),
+            "ip_".into(),
+            "date_".into(),
+            "ts_".into(),
+            "time_".into(),
+            "dec_".into(),
+            "interval_".into(),
+            "map_".into(),
+            "list_".into(),
+            "point_".into(),
+            "opt_s_none".into(),
+            "opt_i64_some".into(),
         ],
         rows: vec![vec![
             Value::I8(-1),

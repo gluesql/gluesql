@@ -1,5 +1,7 @@
 use gluesql::FromGlueRow;
-use gluesql::row::{Payload, RowConversionError, SelectExt, Value};
+use gluesql::core::data::Value;
+use gluesql::core::executor::Payload;
+use gluesql::core::row_conversion::{RowConversionError, SelectExt};
 
 #[allow(dead_code)]
 #[derive(Debug, FromGlueRow)]

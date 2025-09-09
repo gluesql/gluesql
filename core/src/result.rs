@@ -1,5 +1,5 @@
+use crate::row_conversion::RowConversionError;
 use {serde::Serialize, std::fmt::Debug, thiserror::Error as ThisError};
-use crate::row::RowConversionError;
 
 pub use crate::{
     ast_builder::AstBuilderError,

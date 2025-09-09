@@ -1,5 +1,4 @@
 // Purposefully avoid importing Value/Payload to allow re-exports below without name clashes.
-
 use serde::Serialize;
 
 #[derive(Debug, thiserror::Error, PartialEq, Serialize)]
@@ -27,7 +26,10 @@ pub enum RowConversionError {
 }
 
 pub trait FromGlueRow: Sized {
-    fn from_glue_row(labels: &[String], row: &[crate::data::Value]) -> Result<Self, RowConversionError>;
+    fn from_glue_row(
+        labels: &[String],
+        row: &[crate::data::Value],
+    ) -> Result<Self, RowConversionError>;
 
     // performance helpers implemented by derive
     fn __glue_fields() -> &'static [(&'static str, &'static str)];
@@ -114,10 +116,6 @@ impl SelectExt for Vec<crate::executor::Payload> {
         }
     }
 }
-
-// Re-export core types for convenience under gluesql::row
-pub use crate::data::Value;
-pub use crate::executor::Payload;
 
 // Convenience: allow chaining directly on execute() results (Result<Payloads, Error>)
 pub trait SelectResultExt {

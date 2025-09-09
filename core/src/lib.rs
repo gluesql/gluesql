@@ -13,7 +13,7 @@ pub mod data;
 pub mod executor;
 pub mod parse_sql;
 pub mod plan;
-pub mod row;
+pub mod row_conversion;
 pub mod store;
 pub mod translate;
 

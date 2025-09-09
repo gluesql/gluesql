@@ -9,8 +9,8 @@ struct User {
 
 #[test]
 fn end_to_end_with_memory_storage() {
+    use gluesql::core::row_conversion::SelectResultExt;
     use gluesql::prelude::{Glue, MemoryStorage};
-    use gluesql::row::SelectResultExt;
 
     let fut = async move {
         let storage = MemoryStorage::default();
@@ -26,7 +26,7 @@ fn end_to_end_with_memory_storage() {
         .await
         .unwrap();
 
-        use gluesql::row::SelectExt;
+        // SelectExt not needed here as we convert on Result via SelectResultExt
         let users: Vec<User> = glue
             .execute("SELECT id, name, email FROM users;")
             .await
