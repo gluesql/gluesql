@@ -30,69 +30,74 @@ impl RedbStorage {
     }
 }
 
+fn run_blocking<F, R>(f: F) -> R
+where
+    F: FnOnce() -> R,
+{
+    use tokio::runtime::{Handle, RuntimeFlavor};
+
+    match Handle::try_current() {
+        Ok(handle) if handle.runtime_flavor() == RuntimeFlavor::MultiThread => {
+            tokio::task::block_in_place(f)
+        }
+        _ => f(),
+    }
+}
+
 #[async_trait]
 impl Store for RedbStorage {
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
-        self.0.fetch_all_schemas().map_err(Into::into)
+        run_blocking(|| self.0.fetch_all_schemas()).map_err(Into::into)
     }
 
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
-        self.0.fetch_schema(table_name).map_err(Into::into)
+        run_blocking(|| self.0.fetch_schema(table_name)).map_err(Into::into)
     }
 
     async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {
-        self.0.fetch_data(table_name, key).map_err(Into::into)
+        run_blocking(|| self.0.fetch_data(table_name, key)).map_err(Into::into)
     }
 
     async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
-        self.0.scan_data(table_name).map_err(Into::into)
+        run_blocking(|| self.0.scan_data(table_name)).map_err(Into::into)
     }
 }
 
 #[async_trait]
 impl StoreMut for RedbStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
-        self.0.insert_schema(schema).await.map_err(Into::into)
+        run_blocking(|| self.0.insert_schema(schema)).map_err(Into::into)
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
-        self.0.delete_schema(table_name).await.map_err(Into::into)
+        run_blocking(|| self.0.delete_schema(table_name)).map_err(Into::into)
     }
 
     async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
-        self.0
-            .append_data(table_name, rows)
-            .await
-            .map_err(Into::into)
+        run_blocking(move || self.0.append_data(table_name, rows)).map_err(Into::into)
     }
 
     async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
-        self.0
-            .insert_data(table_name, rows)
-            .await
-            .map_err(Into::into)
+        run_blocking(move || self.0.insert_data(table_name, rows)).map_err(Into::into)
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
-        self.0
-            .delete_data(table_name, keys)
-            .await
-            .map_err(Into::into)
+        run_blocking(move || self.0.delete_data(table_name, keys)).map_err(Into::into)
     }
 }
 
 #[async_trait]
 impl Transaction for RedbStorage {
     async fn begin(&mut self, autocommit: bool) -> Result<bool> {
-        self.0.begin(autocommit).map_err(Into::into)
+        run_blocking(|| self.0.begin(autocommit)).map_err(Into::into)
     }
 
     async fn rollback(&mut self) -> Result<()> {
-        self.0.rollback().map_err(Into::into)
+        run_blocking(|| self.0.rollback()).map_err(Into::into)
     }
 
     async fn commit(&mut self) -> Result<()> {
-        self.0.commit().map_err(Into::into)
+        run_blocking(|| self.0.commit()).map_err(Into::into)
     }
 }
 
