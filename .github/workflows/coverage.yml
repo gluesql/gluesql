@@ -72,7 +72,7 @@ jobs:
           rm -rf ~/.cargo/registry ~/.cargo/git || true
       - name: Run grcov
         run: |
-          grcov coverage/profraw \
+          grcov . \
             --binary-path ./target/debug/ \
             -s . \
             -t lcov \
