@@ -1,12 +1,6 @@
-use {
-    gluesql::{
-        FromGlueRow,
-        core::{
-            data::Value,
-            executor::Payload,
-            row_conversion::SelectExt,
-        },
-    },
+use gluesql::{
+    FromGlueRow,
+    core::{data::Value, executor::Payload, row_conversion::SelectExt},
 };
 
 #[derive(Debug, PartialEq, FromGlueRow)]
@@ -24,4 +18,3 @@ fn rows_as_zero_rows_returns_empty() {
     let rows: Vec<OnlyId> = payload.rows_as::<OnlyId>().unwrap();
     assert!(rows.is_empty());
 }
-

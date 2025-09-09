@@ -9,7 +9,10 @@ struct User {
 
 #[test]
 fn end_to_end_with_memory_storage() {
-    use { gluesql::{ core::row_conversion::SelectResultExt, prelude::{Glue, MemoryStorage} } };
+    use gluesql::{
+        core::row_conversion::SelectResultExt,
+        prelude::{Glue, MemoryStorage},
+    };
 
     let fut = async move {
         let storage = MemoryStorage::default();

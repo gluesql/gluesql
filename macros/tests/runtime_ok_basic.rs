@@ -9,7 +9,10 @@ use {
         },
     },
     rust_decimal::Decimal,
-    std::{collections::BTreeMap, net::{IpAddr, Ipv4Addr}},
+    std::{
+        collections::BTreeMap,
+        net::{IpAddr, Ipv4Addr},
+    },
 };
 
 #[derive(Debug, PartialEq, FromGlueRow)]
@@ -203,4 +206,3 @@ fn all_types_ok() {
     assert_eq!(row.opt_s_none, None);
     assert_eq!(row.opt_i64_some, Some(42));
 }
-
