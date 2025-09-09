@@ -11,6 +11,7 @@ pub use crate::{
         SortError, UpdateError, ValidateError,
     },
     plan::PlanError,
+    row_conversion::RowConversionError,
     store::{AlterTableError, IndexError},
     translate::TranslateError,
 };
@@ -73,6 +74,9 @@ pub enum Error {
     Plan(#[from] PlanError),
     #[error("schema-parse: {0}")]
     Schema(#[from] SchemaParseError),
+
+    #[error("row-conversion: {0}")]
+    RowConversion(#[from] RowConversionError),
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

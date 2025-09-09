@@ -1,0 +1,22 @@
+error: Unsupported field type for FromGlueRow: `& 'a str`. Supported: direct matches of Value variants (integers, floats, bool, String, Decimal, Vec<u8>, IpAddr, chrono NaiveDate/NaiveDateTime/NaiveTime, Interval, u128 for Uuid, BTreeMap<String, Value>, Vec<Value>, Point) and Option<T> of those.
+ --> tests/compile-fail/unsupported_ref_str.rs:5:8
+  |
+5 |     v: &'a str,
+  |        ^
+
+error[E0726]: implicit elided lifetime not allowed here
+ --> tests/compile-fail/unsupported_ref_str.rs:4:8
+  |
+4 | struct S<'a> {
+  |        ^ expected lifetime parameter
+  |
+help: indicate the anonymous lifetime
+  |
+4 | struct S<'_><'a> {
+  |         ++++
+
+error[E0601]: `main` function not found in crate `$CRATE`
+ --> tests/compile-fail/unsupported_ref_str.rs:6:2
+  |
+6 | }
+  |  ^ consider adding a `main` function to `$DIR/tests/compile-fail/unsupported_ref_str.rs`

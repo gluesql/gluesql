@@ -1,0 +1,11 @@
+error: expected attribute arguments in parentheses: #[glue(...)]
+ --> tests/compile-fail/bad_attr_parse.rs:5:7
+  |
+5 |     #[glue]
+  |       ^^^^
+
+error[E0601]: `main` function not found in crate `$CRATE`
+ --> tests/compile-fail/bad_attr_parse.rs:7:2
+  |
+7 | }
+  |  ^ consider adding a `main` function to `$DIR/tests/compile-fail/bad_attr_parse.rs`

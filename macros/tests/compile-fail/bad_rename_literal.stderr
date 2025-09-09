@@ -1,0 +1,11 @@
+error: expected string literal for rename
+ --> tests/compile-fail/bad_rename_literal.rs:5:21
+  |
+5 |     #[glue(rename = 123)]
+  |                     ^^^
+
+error[E0601]: `main` function not found in crate `$CRATE`
+ --> tests/compile-fail/bad_rename_literal.rs:7:2
+  |
+7 | }
+  |  ^ consider adding a `main` function to `$DIR/tests/compile-fail/bad_rename_literal.rs`
