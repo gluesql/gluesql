@@ -1,4 +1,5 @@
 use {serde::Serialize, std::fmt::Debug, thiserror::Error as ThisError};
+use crate::row::RowConversionError;
 
 pub use crate::{
     ast_builder::AstBuilderError,
@@ -73,6 +74,9 @@ pub enum Error {
     Plan(#[from] PlanError),
     #[error("schema-parse: {0}")]
     Schema(#[from] SchemaParseError),
+
+    #[error("row-conversion: {0}")]
+    RowConversion(#[from] RowConversionError),
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

@@ -3,6 +3,7 @@ resolver = "2"
 members = [
   "cli",
   "core",
+  "macros",
   "pkg/rust",
   "pkg/javascript",
   "pkg/python",

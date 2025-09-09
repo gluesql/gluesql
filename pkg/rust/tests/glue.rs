@@ -1,9 +1,10 @@
 #![cfg(any(feature = "gluesql_memory_storage", feature = "gluesql_sled_storage"))]
 use {
     futures::executor::block_on,
+    gluesql::{FromGlueRow, row::SelectResultExt},
     gluesql_core::{
         executor::Payload,
-        prelude::{Glue, Value},
+        prelude::Glue,
         store::{GStore, GStoreMut},
     },
 };
@@ -35,23 +36,25 @@ async fn basic<T: GStore + GStoreMut>(mut glue: Glue<T>) {
         Ok(vec![Payload::Insert(2)])
     );
 
+    // Demonstrate FromGlueRow derive + Payload conversion to struct
+    #[derive(Debug, PartialEq, FromGlueRow)]
+    struct ApiRow {
+        id: i64,
+        name: String,
+        is: bool,
+    }
+
+    let rows: Vec<ApiRow> = glue
+        .execute("SELECT id, name, is FROM api_test")
+        .await
+        .rows_as::<ApiRow>()
+        .unwrap();
     assert_eq!(
-        glue.execute("SELECT id, name, is FROM api_test").await,
-        Ok(vec![Payload::Select {
-            labels: vec![String::from("id"), String::from("name"), String::from("is")],
-            rows: vec![
-                vec![
-                    Value::I64(1),
-                    Value::Str(String::from("test1")),
-                    Value::Bool(true)
-                ],
-                vec![
-                    Value::I64(2),
-                    Value::Str(String::from("test2")),
-                    Value::Bool(false)
-                ],
-            ]
-        }])
+        rows,
+        vec![
+            ApiRow { id: 1, name: "test1".into(), is: true },
+            ApiRow { id: 2, name: "test2".into(), is: false },
+        ]
     );
 }
 

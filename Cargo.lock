@@ -1255,6 +1255,7 @@ dependencies = [
  "gluesql-git-storage",
  "gluesql-idb-storage",
  "gluesql-json-storage",
+ "gluesql-macros",
  "gluesql-mongo-storage",
  "gluesql-parquet-storage",
  "gluesql-redb-storage",
@@ -1438,6 +1439,19 @@ dependencies = [
  "thiserror 1.0.63",
  "tokio",
  "uuid",
+]
+
+[[package]]
+name = "gluesql-macros"
+version = "0.17.0"
+dependencies = [
+ "chrono",
+ "futures",
+ "gluesql",
+ "proc-macro2",
+ "quote",
+ "rust_decimal",
+ "syn 2.0.89",
 ]
 
 [[package]]
