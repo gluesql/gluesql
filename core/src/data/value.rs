@@ -915,6 +915,7 @@ impl PartialEq for Value {
             (Value::Map(a), Value::Map(b)) => a == b,
             (Value::List(a), Value::List(b)) => a == b,
             (Value::Point(a), Value::Point(b)) => a == b,
+            (Value::FloatVector(a), Value::FloatVector(b)) => a == b,
             (Value::Null, Value::Null) => true,
             _ => false,
         }
@@ -2622,6 +2623,71 @@ mod tests {
     }
 
     #[test]
+    fn cast_float_vector() {
+        use {
+            crate::{ast::DataType, data::{FloatVector, value::ConvertError}, prelude::Value},
+        };
+
+        macro_rules! cast {
+            ($input: expr => $data_type: expr, $expected: expr) => {
+                let found = $input.cast(&$data_type).unwrap();
+                assert_eq!($expected, found);
+            };
+        }
+
+        let float_vector = |data: Vec<f32>| Value::FloatVector(FloatVector::new(data).unwrap());
+
+        // FloatVector identity casting
+        cast!(float_vector(vec![1.0, 2.0, 3.0]) => DataType::FloatVector, float_vector(vec![1.0, 2.0, 3.0]));
+        
+        // String to FloatVector casting
+        cast!(Value::Str("[1.0, 2.0, 3.0]".to_owned()) => DataType::FloatVector, float_vector(vec![1.0, 2.0, 3.0]));
+        cast!(Value::Str("[1, 2.5, 3]".to_owned()) => DataType::FloatVector, float_vector(vec![1.0, 2.5, 3.0]));
+        cast!(Value::Str("[1.5]".to_owned()) => DataType::FloatVector, float_vector(vec![1.5]));
+        
+        // List to FloatVector casting
+        cast!(Value::List(vec![Value::F32(1.0), Value::F32(2.0)]) => DataType::FloatVector, float_vector(vec![1.0, 2.0]));
+        cast!(Value::List(vec![Value::F64(1.5), Value::F64(2.5)]) => DataType::FloatVector, float_vector(vec![1.5, 2.5]));
+        cast!(Value::List(vec![Value::I32(1), Value::I32(2)]) => DataType::FloatVector, float_vector(vec![1.0, 2.0]));
+        cast!(Value::List(vec![Value::I64(1), Value::F32(2.5), Value::U32(3)]) => DataType::FloatVector, float_vector(vec![1.0, 2.5, 3.0]));
+        
+        // Null casting
+        cast!(Value::Null => DataType::FloatVector, Value::Null);
+
+        // FloatVector casting error cases
+        assert_eq!(
+            Value::Str("not_json".to_owned()).cast(&DataType::FloatVector),
+            Err(ValueError::InvalidJsonString("not_json".to_owned()).into()),
+        );
+        
+        assert_eq!(
+            Value::Str("[]".to_owned()).cast(&DataType::FloatVector),
+            Err(ValueError::InvalidFloatVector("Vector cannot be empty".to_owned()).into()),
+        );
+        
+        assert_eq!(
+            Value::Str(r#"{"a": 1}"#.to_owned()).cast(&DataType::FloatVector),
+            Err(ValueError::JsonArrayTypeRequired.into()),
+        );
+        
+        assert_eq!(
+            Value::List(vec![]).cast(&DataType::FloatVector),
+            Err(ConvertError {
+                value: Value::List(vec![]),
+                data_type: DataType::FloatVector,
+            }.into()),
+        );
+        
+        assert_eq!(
+            Value::List(vec![Value::Str("hello".to_owned())]).cast(&DataType::FloatVector),
+            Err(ConvertError {
+                value: Value::List(vec![Value::Str("hello".to_owned())]),
+                data_type: DataType::FloatVector,
+            }.into()),
+        );
+    }
+
+    #[test]
     fn concat() {
         assert_eq!(
             Str("A".to_owned()).concat(Str("B".to_owned())),
@@ -2925,7 +2991,7 @@ mod tests {
     fn get_type() {
         use {
             super::Value,
-            crate::{ast::DataType as D, data::Interval as I, data::Point},
+            crate::{ast::DataType as D, data::{Interval as I, Point, FloatVector}},
             chrono::{NaiveDate, NaiveTime},
         };
 
@@ -2945,6 +3011,7 @@ mod tests {
         let list = Value::parse_json_list(r#"[ true ]"#).unwrap();
         let bytea = Bytea(hex::decode("9001").unwrap());
         let inet = Inet(IpAddr::from_str("::1").unwrap());
+        let float_vector = FloatVector(FloatVector::new(vec![1.0, 2.0, 3.0]).unwrap());
 
         assert_eq!(I8(1).get_type(), Some(D::Int8));
         assert_eq!(I16(1).get_type(), Some(D::Int16));
@@ -2971,6 +3038,7 @@ mod tests {
         assert_eq!(point.get_type(), Some(D::Point));
         assert_eq!(map.get_type(), Some(D::Map));
         assert_eq!(list.get_type(), Some(D::List));
+        assert_eq!(float_vector.get_type(), Some(D::FloatVector));
         assert_eq!(Null.get_type(), None);
     }
 
@@ -3155,6 +3223,49 @@ mod tests {
             map.get(&F32(f32::from_bits(CANONICAL_F32_NAN_BITS))),
             Some(&"test")
         );
+    }
+
+    #[test]
+    fn hash_float_vector() {
+        use {
+            crate::data::FloatVector,
+            std::{
+                collections::hash_map::DefaultHasher,
+                hash::{Hash, Hasher},
+            },
+        };
+
+        fn hash_value<T: Hash>(t: &T) -> u64 {
+            let mut hasher = DefaultHasher::new();
+            t.hash(&mut hasher);
+            hasher.finish()
+        }
+
+        let float_vector = |data: Vec<f32>| FloatVector(FloatVector::new(data).unwrap());
+        
+        // Test identical vectors hash the same
+        let vec1 = float_vector(vec![1.0, 2.0, 3.0]);
+        let vec2 = float_vector(vec![1.0, 2.0, 3.0]);
+        assert_eq!(hash_value(&vec1), hash_value(&vec2));
+        
+        // Test different vectors hash differently
+        let vec3 = float_vector(vec![1.0, 2.0, 4.0]);
+        assert_ne!(hash_value(&vec1), hash_value(&vec3));
+        
+        // Test zero normalization in vectors: [0.0, 1.0] and [-0.0, 1.0] should hash the same
+        let vec_zero_pos = float_vector(vec![0.0, 1.0]);
+        let vec_zero_neg = float_vector(vec![-0.0, 1.0]);
+        assert_eq!(hash_value(&vec_zero_pos), hash_value(&vec_zero_neg));
+        
+        // Test different order vectors hash differently
+        let vec_order1 = float_vector(vec![1.0, 2.0]);
+        let vec_order2 = float_vector(vec![2.0, 1.0]);
+        assert_ne!(hash_value(&vec_order1), hash_value(&vec_order2));
+        
+        // Test single element vectors
+        let vec_single1 = float_vector(vec![5.0]);
+        let vec_single2 = float_vector(vec![5.0]);
+        assert_eq!(hash_value(&vec_single1), hash_value(&vec_single2));
     }
 
     #[test]

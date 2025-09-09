@@ -231,6 +231,21 @@ mod tests {
     }
 
     #[test]
+    fn value_to_json_float_vector() {
+        use crate::data::FloatVector;
+        
+        // Test FloatVector to JSON conversion 
+        let float_vector = Value::FloatVector(FloatVector::new(vec![1.0, 2.5, 3.0]).unwrap());
+        let json_result: JsonValue = float_vector.try_into().unwrap();
+        assert_eq!(json_result, json!([1.0, 2.5, 3.0]));
+
+        // Test single element FloatVector
+        let single_float_vector = Value::FloatVector(FloatVector::new(vec![42.5]).unwrap());
+        let json_result: JsonValue = single_float_vector.try_into().unwrap();
+        assert_eq!(json_result, json!([42.5]));
+    }
+
+    #[test]
     fn value_to_json() {
         assert_eq!(Value::Bool(true).try_into(), Ok(JsonValue::Bool(true)));
         assert_eq!(Value::I8(16).try_into(), Ok(JsonValue::Number(16.into())));

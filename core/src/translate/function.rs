@@ -856,6 +856,49 @@ mod tests {
     };
 
     #[test]
+    fn vector_functions() {
+        use crate::ast::AstLiteral;
+        use bigdecimal::BigDecimal;
+        use std::str::FromStr;
+        
+        let expr = |sql| parse_expr(sql).and_then(|parsed| translate_expr(&parsed));
+        
+        // Test vector function parsing
+        let actual = expr("VECTOR_MAGNITUDE('[1.0, 2.0, 3.0]')");
+        let expected = Ok(Expr::Function(Box::new(Function::VectorMagnitude(
+            Expr::Literal(AstLiteral::QuotedString("[1.0, 2.0, 3.0]".to_owned()))
+        ))));
+        assert_eq!(actual, expected);
+        
+        // Test vector function with wrong argument count
+        let actual = expr("VECTOR_DOT('[1.0, 2.0]')");
+        let expected = Err(TranslateError::FunctionArgsLengthNotMatching {
+            name: "VECTOR_DOT".to_owned(),
+            found: 1,
+            expected: 2,
+        }.into());
+        assert_eq!(actual, expected);
+        
+        // Test Minkowski distance with correct argument count
+        let actual = expr("VECTOR_MINKOWSKI_DIST('[1.0, 2.0]', '[3.0, 4.0]', 2.0)");
+        let expected = Ok(Expr::Function(Box::new(Function::VectorMinkowskiDist {
+            left: Expr::Literal(AstLiteral::QuotedString("[1.0, 2.0]".to_owned())),
+            right: Expr::Literal(AstLiteral::QuotedString("[3.0, 4.0]".to_owned())),
+            p: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2.0").unwrap())),
+        })));
+        assert_eq!(actual, expected);
+        
+        // Test Minkowski distance with wrong argument count
+        let actual = expr("VECTOR_MINKOWSKI_DIST('[1.0, 2.0]', '[3.0, 4.0]')");
+        let expected = Err(TranslateError::FunctionArgsLengthNotMatching {
+            name: "VECTOR_MINKOWSKI_DIST".to_owned(),
+            found: 2,
+            expected: 3,
+        }.into());
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
     fn cast() {
         let expr = |sql| parse_expr(sql).and_then(|parsed| translate_expr(&parsed));
 

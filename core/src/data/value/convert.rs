@@ -2347,4 +2347,79 @@ mod tests {
 
         err!(&Value::Date(date(2021, 11, 20)));
     }
+
+    #[test]
+    fn try_into_float_vector() {
+        use crate::data::FloatVector;
+
+        macro_rules! test {
+            ($from: expr, $to: expr) => {
+                assert_eq!((&$from).try_into() as Result<FloatVector>, $to);
+                assert_eq!(FloatVector::try_from(&$from), $to);
+            };
+        }
+
+        macro_rules! err {
+            ($from: expr) => {
+                test!(
+                    $from,
+                    Err(ConvertError {
+                        value: $from.clone(),
+                        data_type: DataType::FloatVector,
+                    })
+                )
+            };
+        }
+
+        // Test direct FloatVector value
+        let vector = FloatVector::new(vec![1.0, 2.0, 3.0]).unwrap();
+        test!(Value::FloatVector(vector.clone()), Ok(vector.clone()));
+
+        // Test string literals
+        test!(
+            Value::Str("[1.0, 2.0, 3.0]".to_owned()),
+            Ok(FloatVector::new(vec![1.0, 2.0, 3.0]).unwrap())
+        );
+        test!(
+            Value::Str("[1, 2.5, 3]".to_owned()),
+            Ok(FloatVector::new(vec![1.0, 2.5, 3.0]).unwrap())
+        );
+
+        // Test Value::List conversion
+        test!(
+            Value::List(vec![Value::F32(1.0), Value::F32(2.0), Value::F32(3.0)]),
+            Ok(FloatVector::new(vec![1.0, 2.0, 3.0]).unwrap())
+        );
+        test!(
+            Value::List(vec![Value::F64(1.5), Value::F64(2.5)]),
+            Ok(FloatVector::new(vec![1.5, 2.5]).unwrap())
+        );
+        test!(
+            Value::List(vec![Value::I32(1), Value::I32(2), Value::I32(3)]),
+            Ok(FloatVector::new(vec![1.0, 2.0, 3.0]).unwrap())
+        );
+        test!(
+            Value::List(vec![Value::I64(1), Value::F32(2.5), Value::U32(3)]),
+            Ok(FloatVector::new(vec![1.0, 2.5, 3.0]).unwrap())
+        );
+
+        // Test error cases - invalid string formats
+        err!(Value::Str("not_json".to_owned()));
+        err!(Value::Str("{\"a\": 1}".to_owned())); // Object, not array
+        err!(Value::Str("[1.0, \"hello\", 3.0]".to_owned())); // Non-numeric in array
+        err!(Value::Str("[]".to_owned())); // Empty vector
+
+        // Test error cases - invalid list contents
+        err!(Value::List(vec![Value::Str("hello".to_owned())])); // Non-numeric value
+        err!(Value::List(vec![Value::Bool(true), Value::F32(1.0)])); // Mixed with bool
+        err!(Value::List(vec![])); // Empty list
+
+        // Test error cases - incompatible value types
+        err!(Value::Bool(true));
+        err!(Value::I32(123));
+        err!(Value::Date(date(2021, 11, 20)));
+        err!(Value::Map(std::collections::BTreeMap::new()));
+        err!(Value::Null);
+        err!(Value::Bytea(vec![1, 2, 3]));
+    }
 }
