@@ -11,13 +11,14 @@ struct Dummy {
 
 impl FromGlueRow for Dummy {
     fn from_glue_row(labels: &[String], row: &[Value]) -> Result<Self, RowConversionError> {
-        let pos = labels
-            .iter()
-            .position(|l| l == "id")
-            .ok_or(RowConversionError::MissingColumn {
-                field: "id",
-                column: "id",
-            })?;
+        let pos =
+            labels
+                .iter()
+                .position(|l| l == "id")
+                .ok_or(RowConversionError::MissingColumn {
+                    field: "id",
+                    column: "id",
+                })?;
         match &row[pos] {
             Value::Null => Err(RowConversionError::NullNotAllowed {
                 field: "id",
