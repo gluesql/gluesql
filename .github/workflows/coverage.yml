@@ -33,10 +33,16 @@ jobs:
         continue-on-error: true
         run: |
           echo "Freeing disk space..."
+          echo "Disk before:"
+          df -h
           sudo rm -rf /usr/local/lib/android || true
           sudo rm -rf /usr/share/dotnet || true
           sudo rm -rf /opt/ghc || true
-          docker image prune -af || true
+          if command -v docker >/dev/null 2>&1; then
+            timeout 60 docker image prune -af || true
+          fi
+          echo "Disk after:"
+          df -h
       - name: Configure git user
         run: |
           git config --global user.email "ci@example.com"
