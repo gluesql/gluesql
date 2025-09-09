@@ -428,4 +428,82 @@ mod tests {
                 .contains("FromGlueRow supports only named fields")
         );
     }
+
+    #[test]
+    fn glue_rename_ok_some_and_ok_none() {
+        let di: syn::DeriveInput = parse_quote! {
+            struct S {
+                #[glue(rename = "col")] a: i64,
+                #[glue(other = "x")] b: String,
+            }
+        };
+        let _ = expand_from_glue_row(di).expect("expand ok");
+    }
+
+    #[test]
+    fn glue_rename_parse_error_missing_args() {
+        let di: syn::DeriveInput = parse_quote! {
+            struct S { #[glue] a: i64 }
+        };
+        let err = expand_from_glue_row(di).unwrap_err();
+        let s = err.to_string();
+        assert!(!s.is_empty(), "unexpected empty error message");
+    }
+
+    #[test]
+    fn glue_rename_wrong_literal_type() {
+        let di: syn::DeriveInput = parse_quote! {
+            struct S { #[glue(rename = 123)] a: i64 }
+        };
+        let err = expand_from_glue_row(di).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("expected string literal for rename")
+        );
+    }
+
+    #[test]
+    fn match_expected_all_types_and_options_expand() {
+        let di: syn::DeriveInput = parse_quote! {
+            struct All {
+                i8_: i8,
+                i16_: i16,
+                i32_: i32,
+                i64_: i64,
+                i128_: i128,
+                u8_: u8,
+                u16_: u16,
+                u32_: u32,
+                u64_: u64,
+                u128_: u128,
+                f32_: f32,
+                f64_: f64,
+                b_: bool,
+                s_: String,
+                dec_: Decimal,
+                bytes_: Vec<u8>,
+                ip_: IpAddr,
+                date_: NaiveDate,
+                ts_: NaiveDateTime,
+                time_: NaiveTime,
+                interval_: Interval,
+                map_: BTreeMap<String, Value>,
+                list_: Vec<Value>,
+                point_: Point,
+                opt_s: Option<String>,
+                opt_i64: Option<i64>,
+            }
+        };
+        let _ = expand_from_glue_row(di).expect("expand ok");
+    }
+
+    #[test]
+    fn unsupported_type_path_emits_compile_error_tokens() {
+        let di: syn::DeriveInput = parse_quote! {
+            struct S<'a> { v: &'a str }
+        };
+        let ts = expand_from_glue_row(di).expect("expand ok");
+        let s = ts.to_string();
+        assert!(s.contains("Unsupported field type for FromGlueRow"));
+    }
 }
