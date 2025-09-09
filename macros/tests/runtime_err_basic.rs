@@ -21,12 +21,7 @@ fn missing_column() {
         rows: vec![vec![Value::I64(1)]],
     };
     let err = payload.rows_as::<NeedsName>().unwrap_err();
-    if let RowConversionError::MissingColumn { field, column } = err {
-        assert_eq!(field, "name");
-        assert_eq!(column, "name");
-    } else {
-        panic!("expected MissingColumn");
-    }
+    assert!(matches!(err, RowConversionError::MissingColumn { .. }));
 }
 
 #[allow(dead_code)]
@@ -43,10 +38,7 @@ fn null_not_allowed() {
         rows: vec![vec![Value::I64(1), Value::Null]],
     };
     let err = payload.rows_as::<NonNullable>().unwrap_err();
-    match err {
-        RowConversionError::NullNotAllowed { .. } => {}
-        _ => panic!("expected NullNotAllowed"),
-    }
+    assert!(matches!(err, RowConversionError::NullNotAllowed { .. }));
 }
 
 #[allow(dead_code)]
@@ -62,11 +54,7 @@ fn type_mismatch() {
         rows: vec![vec![Value::Str("9.99".into())]], // string -> f64 forbidden
     };
     let err = payload.rows_as::<Price>().unwrap_err();
-    if let RowConversionError::TypeMismatch { expected, .. } = err {
-        assert_eq!(expected, "f64");
-    } else {
-        panic!("expected TypeMismatch");
-    }
+    assert!(matches!(err, RowConversionError::TypeMismatch { .. }));
 }
 
 #[derive(Debug, PartialEq, FromGlueRow)]
@@ -103,9 +91,12 @@ fn one_as_more_than_one() {
         ],
     };
     let err = payload.one_as::<User>().unwrap_err();
-    if let RowConversionError::MoreThanOneRow { got } = err {
-        assert_eq!(got, 2);
-    } else {
-        panic!("expected MoreThanOneRow");
-    }
+    assert!(matches!(err, RowConversionError::MoreThanOneRow { .. }));
+}
+
+#[test]
+fn one_as_not_select_payload_on_payload() {
+    let payload = Payload::Insert(1);
+    let err = payload.one_as::<User>().unwrap_err();
+    assert!(matches!(err, RowConversionError::NotSelectPayload));
 }

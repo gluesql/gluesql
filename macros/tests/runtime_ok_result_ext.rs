@@ -26,8 +26,36 @@ fn result_rows_as_not_select_payload_maps_error() {
 
     let res: Result<Vec<Payload>, Error> = Ok(vec![Payload::Insert(1)]);
     let err = res.rows_as::<User>().unwrap_err();
-    match err {
-        CoreError::RowConversion(RowConversionError::NotSelectPayload) => {}
-        other => panic!("unexpected error: {other:?}"),
-    }
+    assert!(matches!(
+        err,
+        CoreError::RowConversion(RowConversionError::NotSelectPayload)
+    ));
+}
+
+#[test]
+fn result_rows_as_err_passthrough_vec() {
+    let res: Result<Vec<Payload>, Error> = Err(Error::StorageMsg("x".into()));
+    let got = res.rows_as::<User>().unwrap_err();
+    assert!(matches!(got, Error::StorageMsg(_)));
+}
+
+#[test]
+fn result_one_as_err_passthrough_vec() {
+    let res: Result<Vec<Payload>, Error> = Err(Error::StorageMsg("y".into()));
+    let got = res.one_as::<User>().unwrap_err();
+    assert!(matches!(got, Error::StorageMsg(_)));
+}
+
+#[test]
+fn result_rows_as_err_passthrough_single() {
+    let res: Result<Payload, Error> = Err(Error::StorageMsg("z".into()));
+    let got = res.rows_as::<User>().unwrap_err();
+    assert!(matches!(got, Error::StorageMsg(_)));
+}
+
+#[test]
+fn result_one_as_err_passthrough_single() {
+    let res: Result<Payload, Error> = Err(Error::StorageMsg("w".into()));
+    let got = res.one_as::<User>().unwrap_err();
+    assert!(matches!(got, Error::StorageMsg(_)));
 }

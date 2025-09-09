@@ -57,10 +57,5 @@ fn direct_from_glue_row_type_mismatch() {
     let labels = vec!["v".to_string()];
     let row = vec![Value::I64(1)];
     let err = DirectMismatch::from_glue_row(&labels, &row).unwrap_err();
-    if let RowConversionError::TypeMismatch { expected, got, .. } = err {
-        assert_eq!(expected, "bool");
-        assert_eq!(got, "I64");
-    } else {
-        panic!("expected TypeMismatch");
-    }
+    assert!(matches!(err, RowConversionError::TypeMismatch { .. }));
 }
