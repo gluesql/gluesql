@@ -5,7 +5,7 @@ use {
         core::{
             data::Value,
             executor::Payload,
-            row_conversion::{SelectExt, SelectResultExt},
+            row_conversion::SelectExt,
         },
     },
     rust_decimal::Decimal,
