@@ -12,6 +12,7 @@ documentation.workspace = true
 gluesql-core.workspace = true
 redb = "2.6"
 async-trait = "0.1"
+tokio = { version = "1", features = ["rt-multi-thread"] }
 serde = { version = "1", features = ["derive"] }
 futures = "0.3"
 thiserror = "2.0.3"
@@ -21,4 +22,4 @@ async-stream = "0.3.6"
 
 [dev-dependencies]
 test-suite.workspace = true
-tokio = { version = "1", features = ["rt", "macros"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
