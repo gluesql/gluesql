@@ -187,7 +187,7 @@ fn all_types_ok() {
     assert_eq!(row.u128_, 5);
     assert_eq!(row.f32_, 1.25);
     assert_eq!(row.f64_, 2.5);
-    assert_eq!(row.b_, true);
+    assert!(row.b_);
     assert_eq!(row.s_, "hello".to_string());
     assert_eq!(row.bytes_, vec![1, 2, 3]);
     assert_eq!(row.ip_, IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)));

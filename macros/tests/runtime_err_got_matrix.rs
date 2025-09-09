@@ -7,6 +7,7 @@ use gluesql::{
     },
 };
 
+#[allow(dead_code)]
 #[derive(Debug, FromGlueRow)]
 struct BoolField {
     v: bool,
@@ -27,6 +28,7 @@ fn got_i64_expected_bool() {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, FromGlueRow)]
 struct StringField {
     v: String,
@@ -47,6 +49,7 @@ fn got_i64_expected_string() {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, FromGlueRow)]
 struct F64Field {
     v: f64,
@@ -67,6 +70,7 @@ fn got_str_expected_f64() {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, FromGlueRow)]
 struct DecimalField {
     v: rust_decimal::Decimal,
@@ -87,6 +91,7 @@ fn got_str_expected_decimal() {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, FromGlueRow)]
 struct IpField {
     v: std::net::IpAddr,
@@ -107,6 +112,7 @@ fn got_bool_expected_ip() {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, FromGlueRow)]
 struct DateField {
     v: chrono::NaiveDate,
@@ -129,6 +135,7 @@ fn got_time_expected_date() {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, FromGlueRow)]
 struct TimeField {
     v: chrono::NaiveTime,
@@ -149,6 +156,7 @@ fn got_list_expected_time() {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, FromGlueRow)]
 struct IntervalField {
     v: gluesql::core::data::Interval,
@@ -169,6 +177,7 @@ fn got_u64_expected_interval() {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, FromGlueRow)]
 struct MapField {
     v: std::collections::BTreeMap<String, Value>,
@@ -189,6 +198,7 @@ fn got_bool_expected_map() {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, FromGlueRow)]
 struct ListField {
     v: Vec<Value>,

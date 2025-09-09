@@ -30,6 +30,7 @@ fn direct_from_glue_row_rename_ok() {
     assert_eq!(v, DirectRename { id: 77 });
 }
 
+#[allow(dead_code)]
 #[derive(Debug, FromGlueRow)]
 struct DirectNonNull {
     v: String,
@@ -44,6 +45,7 @@ fn direct_from_glue_row_null_not_allowed() {
     assert!(matches!(err, RowConversionError::NullNotAllowed { .. }));
 }
 
+#[allow(dead_code)]
 #[derive(Debug, FromGlueRow)]
 struct DirectMismatch {
     v: bool,
