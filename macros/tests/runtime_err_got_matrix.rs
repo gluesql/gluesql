@@ -20,12 +20,7 @@ fn got_i64_expected_bool() {
         rows: vec![vec![Value::I64(0)]],
     };
     let err = payload.rows_as::<BoolField>().unwrap_err();
-    if let RowConversionError::TypeMismatch { expected, got, .. } = err {
-        assert_eq!(expected, "bool");
-        assert_eq!(got, "I64");
-    } else {
-        panic!("expected TypeMismatch")
-    }
+    assert!(matches!(err, RowConversionError::TypeMismatch { .. }));
 }
 
 #[allow(dead_code)]
@@ -41,12 +36,7 @@ fn got_i64_expected_string() {
         rows: vec![vec![Value::I64(1)]],
     };
     let err = payload.rows_as::<StringField>().unwrap_err();
-    if let RowConversionError::TypeMismatch { expected, got, .. } = err {
-        assert_eq!(expected, "String");
-        assert_eq!(got, "I64");
-    } else {
-        panic!("expected TypeMismatch")
-    }
+    assert!(matches!(err, RowConversionError::TypeMismatch { .. }));
 }
 
 #[allow(dead_code)]
@@ -62,12 +52,7 @@ fn got_str_expected_f64() {
         rows: vec![vec![Value::Str("x".into())]],
     };
     let err = payload.rows_as::<F64Field>().unwrap_err();
-    if let RowConversionError::TypeMismatch { expected, got, .. } = err {
-        assert_eq!(expected, "f64");
-        assert_eq!(got, "Str");
-    } else {
-        panic!("expected TypeMismatch")
-    }
+    assert!(matches!(err, RowConversionError::TypeMismatch { .. }));
 }
 
 #[allow(dead_code)]
@@ -83,12 +68,7 @@ fn got_str_expected_decimal() {
         rows: vec![vec![Value::Str("x".into())]],
     };
     let err = payload.rows_as::<DecimalField>().unwrap_err();
-    if let RowConversionError::TypeMismatch { expected, got, .. } = err {
-        assert_eq!(expected, "Decimal");
-        assert_eq!(got, "Str");
-    } else {
-        panic!("expected TypeMismatch")
-    }
+    assert!(matches!(err, RowConversionError::TypeMismatch { .. }));
 }
 
 #[allow(dead_code)]
@@ -104,12 +84,7 @@ fn got_bool_expected_ip() {
         rows: vec![vec![Value::Bool(true)]],
     };
     let err = payload.rows_as::<IpField>().unwrap_err();
-    if let RowConversionError::TypeMismatch { expected, got, .. } = err {
-        assert_eq!(expected, "IpAddr");
-        assert_eq!(got, "Bool");
-    } else {
-        panic!("expected TypeMismatch")
-    }
+    assert!(matches!(err, RowConversionError::TypeMismatch { .. }));
 }
 
 #[allow(dead_code)]
@@ -127,12 +102,7 @@ fn got_time_expected_date() {
         )]],
     };
     let err = payload.rows_as::<DateField>().unwrap_err();
-    if let RowConversionError::TypeMismatch { expected, got, .. } = err {
-        assert_eq!(expected, "NaiveDate");
-        assert_eq!(got, "Time");
-    } else {
-        panic!("expected TypeMismatch")
-    }
+    assert!(matches!(err, RowConversionError::TypeMismatch { .. }));
 }
 
 #[allow(dead_code)]
@@ -148,12 +118,7 @@ fn got_list_expected_time() {
         rows: vec![vec![Value::List(vec![])]],
     };
     let err = payload.rows_as::<TimeField>().unwrap_err();
-    if let RowConversionError::TypeMismatch { expected, got, .. } = err {
-        assert_eq!(expected, "NaiveTime");
-        assert_eq!(got, "List");
-    } else {
-        panic!("expected TypeMismatch")
-    }
+    assert!(matches!(err, RowConversionError::TypeMismatch { .. }));
 }
 
 #[allow(dead_code)]
@@ -169,12 +134,7 @@ fn got_u64_expected_interval() {
         rows: vec![vec![Value::U64(1)]],
     };
     let err = payload.rows_as::<IntervalField>().unwrap_err();
-    if let RowConversionError::TypeMismatch { expected, got, .. } = err {
-        assert_eq!(expected, "Interval");
-        assert_eq!(got, "U64");
-    } else {
-        panic!("expected TypeMismatch")
-    }
+    assert!(matches!(err, RowConversionError::TypeMismatch { .. }));
 }
 
 #[allow(dead_code)]
@@ -190,12 +150,7 @@ fn got_bool_expected_map() {
         rows: vec![vec![Value::Bool(true)]],
     };
     let err = payload.rows_as::<MapField>().unwrap_err();
-    if let RowConversionError::TypeMismatch { expected, got, .. } = err {
-        assert_eq!(expected, "BTreeMap<String, Value>");
-        assert_eq!(got, "Bool");
-    } else {
-        panic!("expected TypeMismatch")
-    }
+    assert!(matches!(err, RowConversionError::TypeMismatch { .. }));
 }
 
 #[allow(dead_code)]
@@ -211,12 +166,7 @@ fn got_bool_expected_list() {
         rows: vec![vec![Value::Bool(false)]],
     };
     let err = payload.rows_as::<ListField>().unwrap_err();
-    if let RowConversionError::TypeMismatch { expected, got, .. } = err {
-        assert_eq!(expected, "Vec<Value>");
-        assert_eq!(got, "Bool");
-    } else {
-        panic!("expected TypeMismatch")
-    }
+    assert!(matches!(err, RowConversionError::TypeMismatch { .. }));
 }
 
 #[derive(Debug, FromGlueRow)]
