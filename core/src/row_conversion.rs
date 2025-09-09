@@ -72,15 +72,11 @@ impl SelectExt for crate::executor::Payload {
     }
 
     fn one_as<T: FromGlueRow>(self) -> Result<T, RowConversionError> {
-        let rows = self.rows_as::<T>();
-        match rows {
-            Err(RowConversionError::NotSelectPayload) => Err(RowConversionError::NotSelectPayload),
-            Err(e) => Err(e),
-            Ok(mut v) => match v.len() {
-                0 => Err(RowConversionError::NotFound),
-                1 => Ok(v.remove(0)),
-                n => Err(RowConversionError::MoreThanOneRow { got: n }),
-            },
+        let mut v = self.rows_as::<T>()?;
+        match v.len() {
+            0 => Err(RowConversionError::NotFound),
+            1 => Ok(v.remove(0)),
+            n => Err(RowConversionError::MoreThanOneRow { got: n }),
         }
     }
 }
@@ -125,32 +121,20 @@ pub trait SelectResultExt {
 
 impl SelectResultExt for crate::result::Result<Vec<crate::executor::Payload>> {
     fn rows_as<T: FromGlueRow>(self) -> crate::result::Result<Vec<T>> {
-        match self {
-            Ok(payloads) => SelectExt::rows_as::<T>(payloads).map_err(Into::into),
-            Err(e) => Err(e),
-        }
+        self.and_then(|payloads| SelectExt::rows_as::<T>(payloads).map_err(Into::into))
     }
 
     fn one_as<T: FromGlueRow>(self) -> crate::result::Result<T> {
-        match self {
-            Ok(payloads) => SelectExt::one_as::<T>(payloads).map_err(Into::into),
-            Err(e) => Err(e),
-        }
+        self.and_then(|payloads| SelectExt::one_as::<T>(payloads).map_err(Into::into))
     }
 }
 
 impl SelectResultExt for crate::result::Result<crate::executor::Payload> {
     fn rows_as<T: FromGlueRow>(self) -> crate::result::Result<Vec<T>> {
-        match self {
-            Ok(payload) => SelectExt::rows_as::<T>(payload).map_err(Into::into),
-            Err(e) => Err(e),
-        }
+        self.and_then(|payload| SelectExt::rows_as::<T>(payload).map_err(Into::into))
     }
 
     fn one_as<T: FromGlueRow>(self) -> crate::result::Result<T> {
-        match self {
-            Ok(payload) => SelectExt::one_as::<T>(payload).map_err(Into::into),
-            Err(e) => Err(e),
-        }
+        self.and_then(|payload| SelectExt::one_as::<T>(payload).map_err(Into::into))
     }
 }
