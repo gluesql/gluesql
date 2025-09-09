@@ -226,6 +226,27 @@ mod tests {
         assert_eq!(rows, Dummy { id: 9 });
     }
 
+    // Exercise from_glue_row_with_idx error branches via Payload::Select path
+    #[test]
+    fn rows_as_with_idx_null_not_allowed() {
+        let payload = Payload::Select {
+            labels: vec!["id".to_owned()],
+            rows: vec![vec![Value::Null]],
+        };
+        let err = payload.rows_as::<Dummy>().unwrap_err();
+        assert!(matches!(err, RowConversionError::NullNotAllowed { .. }));
+    }
+
+    #[test]
+    fn rows_as_with_idx_type_mismatch() {
+        let payload = Payload::Select {
+            labels: vec!["id".to_owned()],
+            rows: vec![vec![Value::Str("x".into())]],
+        };
+        let err = payload.rows_as::<Dummy>().unwrap_err();
+        assert!(matches!(err, RowConversionError::TypeMismatch { .. }));
+    }
+
     // Directly exercise Dummy::from_glue_row to cover its branches
     #[test]
     fn dummy_from_glue_row_ok() {
