@@ -35,13 +35,6 @@ jobs:
           git config --global user.name "CI"
       - run: rustup component add llvm-tools-preview
       - run: cargo install grcov
-      - name: clean
-        run: |
-          cargo clean
-          find . -name '*.profraw' -delete
-          rm -rf storages/csv-storage/tmp
-          rm -rf storages/json-storage/tmp
-      # Build step removed to save disk; cargo test will build everything
       - name: test
         env:
           RUSTFLAGS: -Cinstrument-coverage
