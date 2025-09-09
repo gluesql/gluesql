@@ -35,4 +35,3 @@ fn vec_payload_picks_last_select_or_errors() {
 
     assert_eq!(rows, User { id: 9 });
 }
-

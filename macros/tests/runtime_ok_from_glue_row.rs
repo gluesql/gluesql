@@ -62,4 +62,3 @@ fn direct_from_glue_row_type_mismatch() {
         panic!("expected TypeMismatch");
     }
 }
-

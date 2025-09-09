@@ -1,11 +1,6 @@
 use gluesql::{
     FromGlueRow,
-    core::{
-        data::Value,
-        error::Error,
-        executor::Payload,
-        row_conversion::SelectResultExt,
-    },
+    core::{data::Value, error::Error, executor::Payload, row_conversion::SelectResultExt},
 };
 
 #[derive(Debug, PartialEq, FromGlueRow)]
@@ -36,4 +31,3 @@ fn result_rows_as_not_select_payload_maps_error() {
         other => panic!("unexpected error: {other:?}"),
     }
 }
-

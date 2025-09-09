@@ -2,11 +2,7 @@ use {
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     gluesql::{
         FromGlueRow,
-        core::{
-            data::Value,
-            executor::Payload,
-            row_conversion::SelectExt,
-        },
+        core::{data::Value, executor::Payload, row_conversion::SelectExt},
     },
     rust_decimal::Decimal,
     std::{

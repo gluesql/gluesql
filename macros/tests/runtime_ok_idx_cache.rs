@@ -1,4 +1,7 @@
-use gluesql::{FromGlueRow, core::{executor::Payload, row_conversion::SelectExt}};
+use gluesql::{
+    FromGlueRow,
+    core::{executor::Payload, row_conversion::SelectExt},
+};
 
 #[derive(Debug, PartialEq, FromGlueRow)]
 struct OnlyId {
