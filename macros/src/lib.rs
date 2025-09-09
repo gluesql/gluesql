@@ -143,8 +143,6 @@ pub fn derive_from_glue_row(input: TokenStream) -> TokenStream {
     }
 }
 
-// tests are defined at the end of the file to satisfy clippy::items-after-test-module
-
 fn parse_glue_rename(attr: &Attribute) -> Option<Result<Option<String>, syn::Error>> {
     if !attr.path().is_ident("glue") {
         return None;
