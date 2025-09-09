@@ -29,22 +29,47 @@ jobs:
           - 27017:27017
     steps:
       - uses: actions/checkout@v4
+      - name: Free disk space (pre-build)
+        continue-on-error: true
+        run: |
+          echo "Freeing disk space..."
+          sudo rm -rf /usr/local/lib/android || true
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /opt/ghc || true
+          docker image prune -af || true
       - name: Configure git user
         run: |
           git config --global user.email "ci@example.com"
           git config --global user.name "CI"
       - run: rustup component add llvm-tools-preview
-      - run: cargo install grcov
+      - name: Install grcov (prebuilt)
+        uses: taiki-e/install-action@v2
+        with:
+          tool: grcov@0.10.5
+      - name: Prepare coverage dirs
+        run: |
+          mkdir -p coverage/profraw
       - name: test
         env:
           RUSTFLAGS: -Cinstrument-coverage
-          LLVM_PROFILE_FILE: gluesql-%p-%m.profraw
+          LLVM_PROFILE_FILE: coverage/profraw/%p-%m.profraw
           GIT_REMOTE: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
         run: GIT_REMOTE=$GIT_REMOTE cargo test --all-features --verbose
+      - name: Merge coverage profiles and free space
+        run: |
+          echo "Merging coverage profiles..."
+          LLVM_BIN=$(rustc --print sysroot)/lib/rustlib/$(rustc -vV | sed -n 's|host: ||p')/bin
+          "$LLVM_BIN/llvm-profdata" merge -sparse coverage/profraw/*.profraw -o coverage/merged.profdata
+          echo "Removing raw profiles to free space..."
+          rm -f coverage/profraw/*.profraw || true
+          echo "Removing incremental build artifacts to free space..."
+          rm -rf target/debug/incremental || true
+          echo "Removing Cargo registry/git caches to free space..."
+          rm -rf ~/.cargo/registry ~/.cargo/git || true
       - name: Run grcov
         run: |
           mkdir coverage
-          grcov . \
+          grcov coverage/merged.profdata \
             --binary-path ./target/debug/ \
             -s . \
             -t lcov \
@@ -68,7 +93,9 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Compress coverage report
-        run: xz -T0 -9e -c coverage/lcov.info > coverage/lcov.info.xz
+        run: |
+          xz -T0 -9e -c coverage/lcov.info > coverage/lcov.info.xz
+          rm -f coverage/lcov.info
       - name: Set timestamp
         run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H%M%SZ')" >> $GITHUB_ENV
       - name: Create GitHub App token
