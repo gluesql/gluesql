@@ -1,7 +1,11 @@
-use gluesql::FromGlueRow;
-use gluesql::core::data::Value;
-use gluesql::core::executor::Payload;
-use gluesql::core::row_conversion::{RowConversionError, SelectExt};
+use gluesql::{
+    FromGlueRow,
+    core::{
+        data::Value,
+        executor::Payload,
+        row_conversion::{RowConversionError, SelectExt},
+    },
+};
 
 #[allow(dead_code)]
 #[derive(Debug, FromGlueRow)]

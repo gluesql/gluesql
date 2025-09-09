@@ -1,4 +1,3 @@
-use crate::row_conversion::RowConversionError;
 use {serde::Serialize, std::fmt::Debug, thiserror::Error as ThisError};
 
 pub use crate::{
@@ -12,6 +11,7 @@ pub use crate::{
         SortError, UpdateError, ValidateError,
     },
     plan::PlanError,
+    row_conversion::RowConversionError,
     store::{AlterTableError, IndexError},
     translate::TranslateError,
 };

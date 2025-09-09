@@ -1,8 +1,10 @@
-use proc_macro::TokenStream;
-use quote::quote;
-use syn::{
-    Attribute, Data, DeriveInput, Expr, ExprLit, Fields, Lit, MetaNameValue, Type,
-    parse_macro_input, spanned::Spanned,
+use {
+    proc_macro::TokenStream,
+    quote::quote,
+    syn::{
+        Attribute, Data, DeriveInput, Expr, ExprLit, Fields, Lit, MetaNameValue, Type,
+        parse_macro_input, spanned::Spanned,
+    },
 };
 
 #[proc_macro_derive(FromGlueRow, attributes(glue))]

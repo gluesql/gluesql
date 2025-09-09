@@ -1,12 +1,16 @@
-use gluesql::FromGlueRow;
-use gluesql::core::data::Value;
-use gluesql::core::executor::Payload;
-use gluesql::core::row_conversion::{SelectExt, SelectResultExt};
-
-use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
-use rust_decimal::Decimal;
-use std::collections::BTreeMap;
-use std::net::{IpAddr, Ipv4Addr};
+use {
+    chrono::{NaiveDate, NaiveDateTime, NaiveTime},
+    gluesql::{
+        FromGlueRow,
+        core::{
+            data::Value,
+            executor::Payload,
+            row_conversion::{SelectExt, SelectResultExt},
+        },
+    },
+    rust_decimal::Decimal,
+    std::{collections::BTreeMap, net::{IpAddr, Ipv4Addr}},
+};
 
 #[derive(Debug, PartialEq, FromGlueRow)]
 struct User {
