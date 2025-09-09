@@ -225,4 +225,37 @@ mod tests {
 
         assert_eq!(rows, Dummy { id: 9 });
     }
+
+    // Directly exercise Dummy::from_glue_row to cover its branches
+    #[test]
+    fn dummy_from_glue_row_ok() {
+        let labels = vec!["id".to_owned()];
+        let row = vec![Value::I64(3)];
+        let got = Dummy::from_glue_row(&labels, &row).unwrap();
+        assert_eq!(got, Dummy { id: 3 });
+    }
+
+    #[test]
+    fn dummy_from_glue_row_missing_column() {
+        let labels = vec!["other".to_owned()];
+        let row = vec![Value::I64(1)];
+        let err = Dummy::from_glue_row(&labels, &row).unwrap_err();
+        assert!(matches!(err, RowConversionError::MissingColumn { .. }));
+    }
+
+    #[test]
+    fn dummy_from_glue_row_null_not_allowed() {
+        let labels = vec!["id".to_owned()];
+        let row = vec![Value::Null];
+        let err = Dummy::from_glue_row(&labels, &row).unwrap_err();
+        assert!(matches!(err, RowConversionError::NullNotAllowed { .. }));
+    }
+
+    #[test]
+    fn dummy_from_glue_row_type_mismatch() {
+        let labels = vec!["id".to_owned()];
+        let row = vec![Value::Str("x".into())];
+        let err = Dummy::from_glue_row(&labels, &row).unwrap_err();
+        assert!(matches!(err, RowConversionError::TypeMismatch { .. }));
+    }
 }
