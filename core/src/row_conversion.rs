@@ -1,4 +1,3 @@
-// Purposefully avoid importing Value/Payload to allow re-exports below without name clashes.
 use serde::Serialize;
 
 #[derive(Debug, thiserror::Error, PartialEq, Serialize)]
