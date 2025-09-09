@@ -7,27 +7,28 @@ use {
     },
 };
 
-#[proc_macro_derive(FromGlueRow, attributes(glue))]
-pub fn derive_from_glue_row(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
+// Testable helper: build implementation or return a syn::Error for invalid inputs.
+fn expand_from_glue_row(input: DeriveInput) -> Result<proc_macro2::TokenStream, syn::Error> {
     let input_span = input.span();
 
     let ident = input.ident.clone();
     let data = match input.data {
         Data::Struct(s) => s,
         _ => {
-            return syn::Error::new(input_span, "FromGlueRow can only be derived for structs")
-                .to_compile_error()
-                .into();
+            return Err(syn::Error::new(
+                input_span,
+                "FromGlueRow can only be derived for structs",
+            ));
         }
     };
 
     let fields = match data.fields {
         Fields::Named(f) => f.named,
         _ => {
-            return syn::Error::new(input_span, "FromGlueRow supports only named fields")
-                .to_compile_error()
-                .into();
+            return Err(syn::Error::new(
+                input_span,
+                "FromGlueRow supports only named fields",
+            ));
         }
     };
 
@@ -48,7 +49,7 @@ pub fn derive_from_glue_row(input: TokenStream) -> TokenStream {
                 match res {
                     Ok(Some(name)) => rename = Some(name),
                     Ok(None) => {}
-                    Err(e) => return e.to_compile_error().into(),
+                    Err(e) => return Err(e),
                 }
             }
         }
@@ -130,8 +131,19 @@ pub fn derive_from_glue_row(input: TokenStream) -> TokenStream {
         }
     };
 
-    TokenStream::from(expanded)
+    Ok(expanded)
 }
+
+#[proc_macro_derive(FromGlueRow, attributes(glue))]
+pub fn derive_from_glue_row(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    match expand_from_glue_row(input) {
+        Ok(ts) => TokenStream::from(ts),
+        Err(e) => e.to_compile_error().into(),
+    }
+}
+
+// tests are defined at the end of the file to satisfy clippy::items-after-test-module
 
 fn parse_glue_rename(attr: &Attribute) -> Option<Result<Option<String>, syn::Error>> {
     if !attr.path().is_ident("glue") {
@@ -386,4 +398,34 @@ fn match_expected(
         syn::Error::new(base_ty.span(), &msg).to_compile_error(),
         syn::Error::new(base_ty.span(), &msg).to_compile_error(),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::expand_from_glue_row;
+    use syn::parse_quote;
+
+    #[test]
+    fn non_struct_input_returns_error() {
+        let di: syn::DeriveInput = parse_quote! {
+            enum E { A }
+        };
+        let err = expand_from_glue_row(di).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("FromGlueRow can only be derived for structs")
+        );
+    }
+
+    #[test]
+    fn non_named_fields_struct_returns_error() {
+        let di: syn::DeriveInput = parse_quote! {
+            struct T(i32);
+        };
+        let err = expand_from_glue_row(di).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("FromGlueRow supports only named fields")
+        );
+    }
 }
