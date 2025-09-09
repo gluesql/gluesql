@@ -1,9 +1,11 @@
-use gluesql::{
-    FromGlueRow,
-    core::{
-        data::Value,
-        executor::Payload,
-        row_conversion::{RowConversionError, SelectExt},
+use {
+    gluesql::{
+        FromGlueRow,
+        core::{
+            data::Value,
+            executor::Payload,
+            row_conversion::{RowConversionError, SelectExt},
+        },
     },
 };
 
@@ -109,3 +111,4 @@ fn one_as_more_than_one() {
         panic!("expected MoreThanOneRow");
     }
 }
+

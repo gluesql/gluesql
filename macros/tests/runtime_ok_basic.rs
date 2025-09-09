@@ -203,3 +203,4 @@ fn all_types_ok() {
     assert_eq!(row.opt_s_none, None);
     assert_eq!(row.opt_i64_some, Some(42));
 }
+
