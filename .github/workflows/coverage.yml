@@ -68,7 +68,6 @@ jobs:
           rm -rf ~/.cargo/registry ~/.cargo/git || true
       - name: Run grcov
         run: |
-          mkdir coverage
           grcov coverage/merged.profdata \
             --binary-path ./target/debug/ \
             -s . \
