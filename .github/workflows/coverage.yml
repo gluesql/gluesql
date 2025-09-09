@@ -41,10 +41,7 @@ jobs:
           find . -name '*.profraw' -delete
           rm -rf storages/csv-storage/tmp
           rm -rf storages/json-storage/tmp
-      - name: build
-        env:
-          RUSTFLAGS: -Cinstrument-coverage
-        run: cargo build --verbose
+      # Build step removed to save disk; cargo test will build everything
       - name: test
         env:
           RUSTFLAGS: -Cinstrument-coverage
