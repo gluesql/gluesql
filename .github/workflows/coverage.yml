@@ -60,15 +60,13 @@ jobs:
           echo "Merging coverage profiles..."
           LLVM_BIN=$(rustc --print sysroot)/lib/rustlib/$(rustc -vV | sed -n 's|host: ||p')/bin
           "$LLVM_BIN/llvm-profdata" merge -sparse coverage/profraw/*.profraw -o coverage/merged.profdata
-          echo "Removing raw profiles to free space..."
-          rm -f coverage/profraw/*.profraw || true
           echo "Removing incremental build artifacts to free space..."
           rm -rf target/debug/incremental || true
           echo "Removing Cargo registry/git caches to free space..."
           rm -rf ~/.cargo/registry ~/.cargo/git || true
       - name: Run grcov
         run: |
-          grcov coverage/merged.profdata \
+          grcov coverage/profraw \
             --binary-path ./target/debug/ \
             -s . \
             -t lcov \
@@ -79,6 +77,11 @@ jobs:
             --ignore "cli/src/{cli,helper,lib,main}.rs" \
             --excl-line "(#\\[derive\\()|(^\s*.await[;,]?$)|(^test_case\!\([\d\w]+,)" \
             -o ./coverage/lcov.info
+      - name: Cleanup raw and merged profiles
+        if: always()
+        run: |
+          rm -f coverage/profraw/*.profraw || true
+          rm -f coverage/merged.profdata || true
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
