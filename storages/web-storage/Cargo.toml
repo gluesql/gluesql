@@ -12,9 +12,9 @@ documentation.workspace = true
 gluesql-core.workspace = true
 async-trait = "0.1"
 serde = { version = "1", features = ["derive"] }
-gloo-storage = "0.2.2"
+gloo-storage = "0.3.0"
 uuid = { version = "1.2.2", features = ["v4", "v7"] }
-web-sys = { version = "0.3.60" }
+web-sys = { version = "0.3.78" }
 futures = "0.3"
 
 [dev-dependencies]
