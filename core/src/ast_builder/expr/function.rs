@@ -175,6 +175,63 @@ pub enum FunctionNode<'a> {
     Entries(ExprNode<'a>),
     Keys(ExprNode<'a>),
     Values(ExprNode<'a>),
+    // Vector functions
+    VectorDot {
+        left: ExprNode<'a>,
+        right: ExprNode<'a>,
+    },
+    VectorMagnitude(ExprNode<'a>),
+    VectorNormalize(ExprNode<'a>),
+    VectorAdd {
+        left: ExprNode<'a>,
+        right: ExprNode<'a>,
+    },
+    VectorSub {
+        left: ExprNode<'a>,
+        right: ExprNode<'a>,
+    },
+    VectorScalarMul {
+        vector: ExprNode<'a>,
+        scalar: ExprNode<'a>,
+    },
+    VectorEuclideanDist {
+        left: ExprNode<'a>,
+        right: ExprNode<'a>,
+    },
+    VectorCosineSim {
+        left: ExprNode<'a>,
+        right: ExprNode<'a>,
+    },
+    VectorDimension(ExprNode<'a>),
+    VectorAt {
+        vector: ExprNode<'a>,
+        index: ExprNode<'a>,
+    },
+    VectorManhattanDist {
+        left: ExprNode<'a>,
+        right: ExprNode<'a>,
+    },
+    VectorChebyshevDist {
+        left: ExprNode<'a>,
+        right: ExprNode<'a>,
+    },
+    VectorHammingDist {
+        left: ExprNode<'a>,
+        right: ExprNode<'a>,
+    },
+    VectorJaccardSim {
+        left: ExprNode<'a>,
+        right: ExprNode<'a>,
+    },
+    VectorMinkowskiDist {
+        left: ExprNode<'a>,
+        right: ExprNode<'a>,
+        p: ExprNode<'a>,
+    },
+    VectorCanberraDist {
+        left: ExprNode<'a>,
+        right: ExprNode<'a>,
+    },
 }
 
 impl<'a> TryFrom<FunctionNode<'a>> for Function {
@@ -402,6 +459,76 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
             FunctionNode::Entries(expr) => expr.try_into().map(Function::Entries),
             FunctionNode::Keys(expr) => expr.try_into().map(Function::Keys),
             FunctionNode::Values(expr) => expr.try_into().map(Function::Values),
+            // Vector functions
+            FunctionNode::VectorDot { left, right } => {
+                let left = left.try_into()?;
+                let right = right.try_into()?;
+                Ok(Function::VectorDot { left, right })
+            }
+            FunctionNode::VectorMagnitude(expr) => expr.try_into().map(Function::VectorMagnitude),
+            FunctionNode::VectorNormalize(expr) => expr.try_into().map(Function::VectorNormalize),
+            FunctionNode::VectorAdd { left, right } => {
+                let left = left.try_into()?;
+                let right = right.try_into()?;
+                Ok(Function::VectorAdd { left, right })
+            }
+            FunctionNode::VectorSub { left, right } => {
+                let left = left.try_into()?;
+                let right = right.try_into()?;
+                Ok(Function::VectorSub { left, right })
+            }
+            FunctionNode::VectorScalarMul { vector, scalar } => {
+                let vector = vector.try_into()?;
+                let scalar = scalar.try_into()?;
+                Ok(Function::VectorScalarMul { vector, scalar })
+            }
+            FunctionNode::VectorEuclideanDist { left, right } => {
+                let left = left.try_into()?;
+                let right = right.try_into()?;
+                Ok(Function::VectorEuclideanDist { left, right })
+            }
+            FunctionNode::VectorCosineSim { left, right } => {
+                let left = left.try_into()?;
+                let right = right.try_into()?;
+                Ok(Function::VectorCosineSim { left, right })
+            }
+            FunctionNode::VectorDimension(expr) => expr.try_into().map(Function::VectorDimension),
+            FunctionNode::VectorAt { vector, index } => {
+                let vector = vector.try_into()?;
+                let index = index.try_into()?;
+                Ok(Function::VectorAt { vector, index })
+            }
+            FunctionNode::VectorManhattanDist { left, right } => {
+                let left = left.try_into()?;
+                let right = right.try_into()?;
+                Ok(Function::VectorManhattanDist { left, right })
+            }
+            FunctionNode::VectorChebyshevDist { left, right } => {
+                let left = left.try_into()?;
+                let right = right.try_into()?;
+                Ok(Function::VectorChebyshevDist { left, right })
+            }
+            FunctionNode::VectorHammingDist { left, right } => {
+                let left = left.try_into()?;
+                let right = right.try_into()?;
+                Ok(Function::VectorHammingDist { left, right })
+            }
+            FunctionNode::VectorJaccardSim { left, right } => {
+                let left = left.try_into()?;
+                let right = right.try_into()?;
+                Ok(Function::VectorJaccardSim { left, right })
+            }
+            FunctionNode::VectorMinkowskiDist { left, right, p } => {
+                let left = left.try_into()?;
+                let right = right.try_into()?;
+                let p = p.try_into()?;
+                Ok(Function::VectorMinkowskiDist { left, right, p })
+            }
+            FunctionNode::VectorCanberraDist { left, right } => {
+                let left = left.try_into()?;
+                let right = right.try_into()?;
+                Ok(Function::VectorCanberraDist { left, right })
+            }
         }
     }
 }
@@ -582,6 +709,55 @@ impl<'a> ExprNode<'a> {
     }
     pub fn values(self) -> ExprNode<'a> {
         values(self)
+    }
+    // Vector function methods
+    pub fn vector_dot<T: Into<ExprNode<'a>>>(self, right: T) -> ExprNode<'a> {
+        vector_dot(self, right)
+    }
+    pub fn vector_magnitude(self) -> ExprNode<'a> {
+        vector_magnitude(self)
+    }
+    pub fn vector_normalize(self) -> ExprNode<'a> {
+        vector_normalize(self)
+    }
+    pub fn vector_add<T: Into<ExprNode<'a>>>(self, right: T) -> ExprNode<'a> {
+        vector_add(self, right)
+    }
+    pub fn vector_sub<T: Into<ExprNode<'a>>>(self, right: T) -> ExprNode<'a> {
+        vector_sub(self, right)
+    }
+    pub fn vector_scalar_mul<T: Into<ExprNode<'a>>>(self, scalar: T) -> ExprNode<'a> {
+        vector_scalar_mul(self, scalar)
+    }
+    pub fn vector_euclidean_dist<T: Into<ExprNode<'a>>>(self, right: T) -> ExprNode<'a> {
+        vector_euclidean_dist(self, right)
+    }
+    pub fn vector_cosine_sim<T: Into<ExprNode<'a>>>(self, right: T) -> ExprNode<'a> {
+        vector_cosine_sim(self, right)
+    }
+    pub fn vector_dimension(self) -> ExprNode<'a> {
+        vector_dimension(self)
+    }
+    pub fn vector_at<T: Into<ExprNode<'a>>>(self, index: T) -> ExprNode<'a> {
+        vector_at(self, index)
+    }
+    pub fn vector_manhattan_dist<T: Into<ExprNode<'a>>>(self, right: T) -> ExprNode<'a> {
+        vector_manhattan_dist(self, right)
+    }
+    pub fn vector_chebyshev_dist<T: Into<ExprNode<'a>>>(self, right: T) -> ExprNode<'a> {
+        vector_chebyshev_dist(self, right)
+    }
+    pub fn vector_hamming_dist<T: Into<ExprNode<'a>>>(self, right: T) -> ExprNode<'a> {
+        vector_hamming_dist(self, right)
+    }
+    pub fn vector_jaccard_sim<T: Into<ExprNode<'a>>>(self, right: T) -> ExprNode<'a> {
+        vector_jaccard_sim(self, right)
+    }
+    pub fn vector_minkowski_dist<T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(self, right: T, p: U) -> ExprNode<'a> {
+        vector_minkowski_dist(self, right, p)
+    }
+    pub fn vector_canberra_dist<T: Into<ExprNode<'a>>>(self, right: T) -> ExprNode<'a> {
+        vector_canberra_dist(self, right)
     }
 }
 
@@ -998,6 +1174,151 @@ pub fn keys<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
 
 pub fn values<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Values(expr.into())))
+}
+
+// Vector function builders
+pub fn vector_dot<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
+    left: T,
+    right: U,
+) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::VectorDot {
+        left: left.into(),
+        right: right.into(),
+    }))
+}
+
+pub fn vector_magnitude<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::VectorMagnitude(expr.into())))
+}
+
+pub fn vector_normalize<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::VectorNormalize(expr.into())))
+}
+
+pub fn vector_add<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
+    left: T,
+    right: U,
+) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::VectorAdd {
+        left: left.into(),
+        right: right.into(),
+    }))
+}
+
+pub fn vector_sub<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
+    left: T,
+    right: U,
+) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::VectorSub {
+        left: left.into(),
+        right: right.into(),
+    }))
+}
+
+pub fn vector_scalar_mul<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
+    vector: T,
+    scalar: U,
+) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::VectorScalarMul {
+        vector: vector.into(),
+        scalar: scalar.into(),
+    }))
+}
+
+pub fn vector_euclidean_dist<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
+    left: T,
+    right: U,
+) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::VectorEuclideanDist {
+        left: left.into(),
+        right: right.into(),
+    }))
+}
+
+pub fn vector_cosine_sim<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
+    left: T,
+    right: U,
+) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::VectorCosineSim {
+        left: left.into(),
+        right: right.into(),
+    }))
+}
+
+pub fn vector_dimension<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::VectorDimension(expr.into())))
+}
+
+pub fn vector_at<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
+    vector: T,
+    index: U,
+) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::VectorAt {
+        vector: vector.into(),
+        index: index.into(),
+    }))
+}
+
+pub fn vector_manhattan_dist<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
+    left: T,
+    right: U,
+) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::VectorManhattanDist {
+        left: left.into(),
+        right: right.into(),
+    }))
+}
+
+pub fn vector_chebyshev_dist<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
+    left: T,
+    right: U,
+) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::VectorChebyshevDist {
+        left: left.into(),
+        right: right.into(),
+    }))
+}
+
+pub fn vector_hamming_dist<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
+    left: T,
+    right: U,
+) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::VectorHammingDist {
+        left: left.into(),
+        right: right.into(),
+    }))
+}
+
+pub fn vector_jaccard_sim<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
+    left: T,
+    right: U,
+) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::VectorJaccardSim {
+        left: left.into(),
+        right: right.into(),
+    }))
+}
+
+pub fn vector_minkowski_dist<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>, V: Into<ExprNode<'a>>>(
+    left: T,
+    right: U,
+    p: V,
+) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::VectorMinkowskiDist {
+        left: left.into(),
+        right: right.into(),
+        p: p.into(),
+    }))
+}
+
+pub fn vector_canberra_dist<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
+    left: T,
+    right: U,
+) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::VectorCanberraDist {
+        left: left.into(),
+        right: right.into(),
+    }))
 }
 
 #[cfg(test)]
@@ -1861,6 +2182,183 @@ mod tests {
 
         let actual = col("map").keys();
         let expected = "KEYS(map)";
+        test_expr(actual, expected);
+    }
+
+    // Vector function tests
+    #[test]
+    fn function_vector_dot() {
+        let actual = f::vector_dot(col("vec1"), col("vec2"));
+        let expected = "VECTOR_DOT(vec1, vec2)";
+        test_expr(actual, expected);
+
+        let actual = col("vec1").vector_dot(col("vec2"));
+        let expected = "VECTOR_DOT(vec1, vec2)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_vector_magnitude() {
+        let actual = f::vector_magnitude(col("vector"));
+        let expected = "VECTOR_MAGNITUDE(vector)";
+        test_expr(actual, expected);
+
+        let actual = col("vector").vector_magnitude();
+        let expected = "VECTOR_MAGNITUDE(vector)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_vector_normalize() {
+        let actual = f::vector_normalize(col("vector"));
+        let expected = "VECTOR_NORMALIZE(vector)";
+        test_expr(actual, expected);
+
+        let actual = col("vector").vector_normalize();
+        let expected = "VECTOR_NORMALIZE(vector)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_vector_add() {
+        let actual = f::vector_add(col("vec1"), col("vec2"));
+        let expected = "VECTOR_ADD(vec1, vec2)";
+        test_expr(actual, expected);
+
+        let actual = col("vec1").vector_add(col("vec2"));
+        let expected = "VECTOR_ADD(vec1, vec2)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_vector_sub() {
+        let actual = f::vector_sub(col("vec1"), col("vec2"));
+        let expected = "VECTOR_SUB(vec1, vec2)";
+        test_expr(actual, expected);
+
+        let actual = col("vec1").vector_sub(col("vec2"));
+        let expected = "VECTOR_SUB(vec1, vec2)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_vector_scalar_mul() {
+        let actual = f::vector_scalar_mul(col("vector"), num(2.0));
+        let expected = "VECTOR_SCALAR_MUL(vector, 2)";
+        test_expr(actual, expected);
+
+        let actual = col("vector").vector_scalar_mul(num(2.0));
+        let expected = "VECTOR_SCALAR_MUL(vector, 2)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_vector_euclidean_dist() {
+        let actual = f::vector_euclidean_dist(col("vec1"), col("vec2"));
+        let expected = "VECTOR_EUCLIDEAN_DIST(vec1, vec2)";
+        test_expr(actual, expected);
+
+        let actual = col("vec1").vector_euclidean_dist(col("vec2"));
+        let expected = "VECTOR_EUCLIDEAN_DIST(vec1, vec2)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_vector_cosine_sim() {
+        let actual = f::vector_cosine_sim(col("vec1"), col("vec2"));
+        let expected = "VECTOR_COSINE_SIM(vec1, vec2)";
+        test_expr(actual, expected);
+
+        let actual = col("vec1").vector_cosine_sim(col("vec2"));
+        let expected = "VECTOR_COSINE_SIM(vec1, vec2)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_vector_dimension() {
+        let actual = f::vector_dimension(col("vector"));
+        let expected = "VECTOR_DIMENSION(vector)";
+        test_expr(actual, expected);
+
+        let actual = col("vector").vector_dimension();
+        let expected = "VECTOR_DIMENSION(vector)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_vector_at() {
+        let actual = f::vector_at(col("vector"), num(1));
+        let expected = "VECTOR_AT(vector, 1)";
+        test_expr(actual, expected);
+
+        let actual = col("vector").vector_at(num(1));
+        let expected = "VECTOR_AT(vector, 1)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_vector_manhattan_dist() {
+        let actual = f::vector_manhattan_dist(col("vec1"), col("vec2"));
+        let expected = "VECTOR_MANHATTAN_DIST(vec1, vec2)";
+        test_expr(actual, expected);
+
+        let actual = col("vec1").vector_manhattan_dist(col("vec2"));
+        let expected = "VECTOR_MANHATTAN_DIST(vec1, vec2)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_vector_chebyshev_dist() {
+        let actual = f::vector_chebyshev_dist(col("vec1"), col("vec2"));
+        let expected = "VECTOR_CHEBYSHEV_DIST(vec1, vec2)";
+        test_expr(actual, expected);
+
+        let actual = col("vec1").vector_chebyshev_dist(col("vec2"));
+        let expected = "VECTOR_CHEBYSHEV_DIST(vec1, vec2)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_vector_hamming_dist() {
+        let actual = f::vector_hamming_dist(col("vec1"), col("vec2"));
+        let expected = "VECTOR_HAMMING_DIST(vec1, vec2)";
+        test_expr(actual, expected);
+
+        let actual = col("vec1").vector_hamming_dist(col("vec2"));
+        let expected = "VECTOR_HAMMING_DIST(vec1, vec2)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_vector_jaccard_sim() {
+        let actual = f::vector_jaccard_sim(col("vec1"), col("vec2"));
+        let expected = "VECTOR_JACCARD_SIM(vec1, vec2)";
+        test_expr(actual, expected);
+
+        let actual = col("vec1").vector_jaccard_sim(col("vec2"));
+        let expected = "VECTOR_JACCARD_SIM(vec1, vec2)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_vector_minkowski_dist() {
+        let actual = f::vector_minkowski_dist(col("vec1"), col("vec2"), num(2.0));
+        let expected = "VECTOR_MINKOWSKI_DIST(vec1, vec2, 2)";
+        test_expr(actual, expected);
+
+        let actual = col("vec1").vector_minkowski_dist(col("vec2"), num(2.0));
+        let expected = "VECTOR_MINKOWSKI_DIST(vec1, vec2, 2)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_vector_canberra_dist() {
+        let actual = f::vector_canberra_dist(col("vec1"), col("vec2"));
+        let expected = "VECTOR_CANBERRA_DIST(vec1, vec2)";
+        test_expr(actual, expected);
+
+        let actual = col("vec1").vector_canberra_dist(col("vec2"));
+        let expected = "VECTOR_CANBERRA_DIST(vec1, vec2)";
         test_expr(actual, expected);
     }
 }
