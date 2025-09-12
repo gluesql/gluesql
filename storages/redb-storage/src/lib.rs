@@ -52,32 +52,23 @@ impl Store for RedbStorage {
 #[async_trait]
 impl StoreMut for RedbStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
-        self.0.insert_schema(schema).await.map_err(Into::into)
+        self.0.insert_schema(schema).map_err(Into::into)
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
-        self.0.delete_schema(table_name).await.map_err(Into::into)
+        self.0.delete_schema(table_name).map_err(Into::into)
     }
 
     async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
-        self.0
-            .append_data(table_name, rows)
-            .await
-            .map_err(Into::into)
+        self.0.append_data(table_name, rows).map_err(Into::into)
     }
 
     async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
-        self.0
-            .insert_data(table_name, rows)
-            .await
-            .map_err(Into::into)
+        self.0.insert_data(table_name, rows).map_err(Into::into)
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
-        self.0
-            .delete_data(table_name, keys)
-            .await
-            .map_err(Into::into)
+        self.0.delete_data(table_name, keys).map_err(Into::into)
     }
 }
 
