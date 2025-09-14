@@ -381,6 +381,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             Ok(Expr::Function(Box::new(Function::Rand(v))))
         }
         "ROUND" => translate_function_one_arg(Function::Round, args, name),
+        "TRUNC" => translate_function_one_arg(Function::Trunc, args, name),
         "EXP" => translate_function_one_arg(Function::Exp, args, name),
         "LN" => translate_function_one_arg(Function::Ln, args, name),
         "LOG" => {

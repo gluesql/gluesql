@@ -39,6 +39,7 @@ impl Function {
             | Self::Ceil(expr)
             | Self::Rand(Some(expr))
             | Self::Round(expr)
+            | Self::Trunc(expr)
             | Self::Floor(expr)
             | Self::Exp(expr)
             | Self::Ln(expr)
@@ -273,6 +274,7 @@ mod tests {
         test("CEIL(1.23)", &["1.23"]);
         test("Rand(1.23)", &["1.23"]);
         test("ROUND(1.23)", &["1.23"]);
+        test("TRUNC(1.23)", &["1.23"]);
         test("FLOOR(1.23)", &["1.23"]);
         test("EXP(1.23)", &["1.23"]);
         test("LN(col + 1)", &["col + 1"]);
