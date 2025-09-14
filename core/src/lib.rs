@@ -26,6 +26,7 @@ pub mod prelude {
         parse_sql::parse,
         plan::plan,
         result::{Error, Result},
+        row_conversion::{SelectExt, SelectResultExt},
         translate::translate,
     };
 }

@@ -1,11 +1,10 @@
 #![cfg(any(feature = "gluesql_memory_storage", feature = "gluesql_sled_storage"))]
 use {
     futures::executor::block_on,
-    gluesql::{FromGlueRow, core::row_conversion::SelectResultExt},
-    gluesql_core::{
-        executor::Payload,
-        prelude::Glue,
-        store::{GStore, GStoreMut},
+    gluesql::{
+        FromGlueRow,
+        core::store::{GStore, GStoreMut},
+        prelude::*,
     },
 };
 
