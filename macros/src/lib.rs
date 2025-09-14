@@ -964,4 +964,38 @@ mod tests {
         let s = ts.to_string();
         assert!(s.contains("Unsupported field type for FromGlueRow"));
     }
+
+    #[test]
+    fn non_glue_attribute_is_ignored() {
+        // parse_glue_rename should return None for non-`glue` attributes
+        let di: syn::DeriveInput = parse_quote! {
+            struct S {
+                #[doc = "field doc"]
+                a: i64,
+            }
+        };
+        let _ = expand_from_glue_row(di).expect("expand ok");
+    }
+
+    #[test]
+    fn unsupported_btreemap_missing_generic_arg() {
+        // Triggers get_btreemap_types to return None (missing second generic arg)
+        let di: syn::DeriveInput = parse_quote! {
+            struct S { v: std::collections::BTreeMap<String> }
+        };
+        let ts = expand_from_glue_row(di).expect("expand ok");
+        let s = ts.to_string();
+        assert!(s.contains("Unsupported field type for FromGlueRow"));
+    }
+
+    #[test]
+    fn unsupported_hashmap_missing_generic_arg() {
+        // Triggers get_hashmap_types to return None (missing second generic arg)
+        let di: syn::DeriveInput = parse_quote! {
+            struct S { v: std::collections::HashMap<String> }
+        };
+        let ts = expand_from_glue_row(di).expect("expand ok");
+        let s = ts.to_string();
+        assert!(s.contains("Unsupported field type for FromGlueRow"));
+    }
 }
