@@ -6,7 +6,6 @@ use gluesql::{
 #[derive(Debug, PartialEq, FromGlueRow)]
 struct UnknownAttrIgnored {
     // Unknown key should be ignored by the macro (Ok(None) path)
-    #[allow(dead_code)]
     #[glue(not_rename = "ignored")]
     id: i64,
 }
