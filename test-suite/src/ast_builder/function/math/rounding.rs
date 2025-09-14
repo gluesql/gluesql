@@ -82,4 +82,22 @@ test_case!(rounding, {
         4     7.0                   7.0
     ));
     assert_eq!(actual, expected, "round");
+
+    //trunc
+    let actual = table("Number")
+        .select()
+        .project("id")
+        .project(f::trunc("number"))
+        .project(col("number").trunc())
+        .execute(glue)
+        .await;
+    let expected = Ok(select!(
+        id  | "TRUNC(\"number\")" | "TRUNC(\"number\")"
+        I64 | F64                 | F64;
+        1     0.0                   0.0;
+        2     0.0                   0.0;
+        3     10.0                  10.0;
+        4     6.0                   6.0
+    ));
+    assert_eq!(actual, expected, "trunc");
 });
