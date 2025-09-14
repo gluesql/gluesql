@@ -225,6 +225,18 @@ fn is_vec_of_value(ty: &Type) -> bool {
     false
 }
 
+fn get_vec_inner_type(ty: &Type) -> Option<&Type> {
+    if let Type::Path(tp) = ty
+        && let Some(seg) = tp.path.segments.last()
+        && seg.ident == "Vec"
+        && let syn::PathArguments::AngleBracketed(args) = &seg.arguments
+        && let Some(syn::GenericArgument::Type(inner)) = args.args.first()
+    {
+        return Some(inner);
+    }
+    None
+}
+
 fn is_btreemap_string_value(ty: &Type) -> bool {
     if let Type::Path(tp) = ty
         && let Some(seg) = tp.path.segments.last()
@@ -401,6 +413,89 @@ fn match_expected(
     }
     if is_vec_of_value(base_ty) {
         return arms_clone!(List, "Vec<Value>");
+    }
+    // Support Vec<T> from Value::List by converting each element
+    if let Some(inner) = get_vec_inner_type(base_ty)
+        && !is_type(inner, "u8")
+        && !last_ident_is(inner, "Value")
+    {
+        let expected_str = format!("Vec<{}>", quote! { #inner });
+        let expected_lit = syn::LitStr::new(&expected_str, base_ty.span());
+
+        // String inner uses `String::from(&Value)`; others use `TryFrom<&Value>`
+        let elem_from_value = if is_string_type(inner) {
+            quote! { ::std::string::String::from(__item) }
+        } else {
+            quote! {
+                <#inner as ::core::convert::TryFrom<&::gluesql::core::data::Value>>::try_from(__item)
+                    .map_err(|_| {
+                        let __got: &str = #got_str;
+                        ::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                            field: Some(#field_name_literal),
+                            column: Some(__labels[__idx].clone()),
+                            expected: #expected_lit,
+                            got: __got,
+                        }
+                    })?
+            }
+        };
+
+        let by_ref = quote! {
+            if let ::gluesql::core::data::Value::List(__list) = __v {
+                let mut __out: ::std::vec::Vec<#inner> = ::std::vec::Vec::with_capacity(__list.len());
+                for __item in __list.iter() {
+                    let __elem: #inner = { #elem_from_value };
+                    __out.push(__elem);
+                }
+                __out
+            } else {
+                let __got: &str = #got_str;
+                return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                    field: Some(#field_name_literal),
+                    column: Some(__labels[__idx].clone()),
+                    expected: #expected_lit,
+                    got: __got,
+                });
+            }
+        };
+
+        let elem_from_value_idx = if is_string_type(inner) {
+            quote! { ::std::string::String::from(__item) }
+        } else {
+            quote! {
+                <#inner as ::core::convert::TryFrom<&::gluesql::core::data::Value>>::try_from(__item)
+                    .map_err(|_| {
+                        let __got: &str = #got_str;
+                        ::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                            field: Some(#field_name_literal),
+                            column: Some(#column_name.to_string()),
+                            expected: #expected_lit,
+                            got: __got,
+                        }
+                    })?
+            }
+        };
+
+        let by_idx = quote! {
+            if let ::gluesql::core::data::Value::List(__list) = __v {
+                let mut __out: ::std::vec::Vec<#inner> = ::std::vec::Vec::with_capacity(__list.len());
+                for __item in __list.iter() {
+                    let __elem: #inner = { #elem_from_value_idx };
+                    __out.push(__elem);
+                }
+                __out
+            } else {
+                let __got: &str = #got_str;
+                return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                    field: Some(#field_name_literal),
+                    column: Some(#column_name.to_string()),
+                    expected: #expected_lit,
+                    got: __got,
+                });
+            }
+        };
+
+        return ("Vec<_>", by_ref, by_idx);
     }
     if last_ident_is(base_ty, "Point") {
         return arms_clone!(Point, "Point");
