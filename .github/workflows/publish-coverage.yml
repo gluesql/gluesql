@@ -100,9 +100,24 @@ jobs:
               `- **Timestamp:** \`${process.env.TIMESTAMP}\``,
               `- **Report:** [View report](${url})`
             ].join('\n');
-            await github.rest.issues.createComment({
+            const { data: comments } = await github.rest.issues.listComments({
               issue_number: prNumber,
               owner: context.repo.owner,
-              repo: context.repo.repo,
-              body
+              repo: context.repo.repo
             });
+            const comment = comments.find(c => c.body.startsWith('### Coverage Report'));
+            if (comment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: comment.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: prNumber,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body
+              });
+            }
