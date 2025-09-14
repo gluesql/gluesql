@@ -354,22 +354,22 @@ fn match_expected(
         return arms_copy!(Bool, "bool");
     }
     if is_string_type(base_ty) {
-        // Accept Value::Str as before, and also allow Date/Timestamp/Time to convert into String
+        // Accept Value::Str as before, plus Date/Time, and format Timestamp to RFC3339 with trailing 'Z'
         let by_ref = quote! {
             match __v {
                 ::gluesql::core::data::Value::Str(v) => v.clone(),
-                ::gluesql::core::data::Value::Date(_)
-                | ::gluesql::core::data::Value::Timestamp(_)
-                | ::gluesql::core::data::Value::Time(_) => ::std::string::String::from(__v),
+                ::gluesql::core::data::Value::Date(v) => v.to_string(),
+                ::gluesql::core::data::Value::Time(v) => v.to_string(),
+                ::gluesql::core::data::Value::Timestamp(v) => v.format("%Y-%m-%dT%H:%M:%S%.fZ").to_string(),
                 _ => { let __got: &str = #got_str; return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch { field: Some(#field_name_literal), column: Some(__labels[__idx].clone()), expected: "String", got: __got }) }
             }
         };
         let by_idx = quote! {
             match __v {
                 ::gluesql::core::data::Value::Str(v) => v.clone(),
-                ::gluesql::core::data::Value::Date(_)
-                | ::gluesql::core::data::Value::Timestamp(_)
-                | ::gluesql::core::data::Value::Time(_) => ::std::string::String::from(__v),
+                ::gluesql::core::data::Value::Date(v) => v.to_string(),
+                ::gluesql::core::data::Value::Time(v) => v.to_string(),
+                ::gluesql::core::data::Value::Timestamp(v) => v.format("%Y-%m-%dT%H:%M:%S%.fZ").to_string(),
                 _ => { let __got: &str = #got_str; return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch { field: Some(#field_name_literal), column: Some(#column_name.to_string()), expected: "String", got: __got }) }
             }
         };
