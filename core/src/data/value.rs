@@ -2539,7 +2539,7 @@ mod tests {
                 .and_hms_opt(12, 34, 50)
                 .unwrap(),
         );
-        cast!(timestamp     => Text, Str("2021-05-01T12:34:50Z".to_owned()));
+        cast!(timestamp     => Text, Str("2021-05-01 12:34:50".to_owned()));
         cast!(Null          => Text, Null);
 
         // Date

@@ -4,7 +4,7 @@ use {
         date::{parse_date, parse_time, parse_timestamp},
     },
     crate::{ast::DataType, data::Point},
-    chrono::{NaiveDate, NaiveDateTime, NaiveTime, SecondsFormat, TimeZone, Utc},
+    chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     rust_decimal::prelude::{Decimal, FromPrimitive, FromStr, ToPrimitive},
     serde::Serialize,
     std::net::IpAddr,
@@ -57,9 +57,7 @@ impl From<&Value> for String {
             Value::F32(value) => value.to_string(),
             Value::F64(value) => value.to_string(),
             Value::Date(value) => value.to_string(),
-            Value::Timestamp(value) => Utc
-                .from_utc_datetime(value)
-                .to_rfc3339_opts(SecondsFormat::AutoSi, true),
+            Value::Timestamp(value) => value.to_string(),
             Value::Time(value) => value.to_string(),
             Value::Interval(value) => value.to_sql_str(),
             Value::Uuid(value) => Uuid::from_u128(*value).to_string(),
@@ -1115,7 +1113,7 @@ mod tests {
         test!(Value::Date(date(2021, 11, 20)), "2021-11-20");
         test!(
             Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)),
-            "2021-11-20T10:00:00Z"
+            "2021-11-20 10:00:00"
         );
         test!(Value::Time(time(10, 0, 0, 0)), "10:00:00");
         test!(Value::Interval(I::Month(1)), I::Month(1).to_sql_str());
