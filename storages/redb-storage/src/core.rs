@@ -169,7 +169,7 @@ impl StorageCore {
 
 // StoreMut
 impl StorageCore {
-    pub async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
+    pub fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let data_def = self.data_table_def(&schema.table_name)?;
         let txn = self.txn_mut()?;
         let mut table = txn.open_table(SCHEMA_TABLE)?;
@@ -180,7 +180,7 @@ impl StorageCore {
         Ok(())
     }
 
-    pub async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
+    pub fn delete_schema(&mut self, table_name: &str) -> Result<()> {
         let table_def = self.data_table_def(table_name)?;
         let txn = self.txn_mut()?;
         let mut table = txn.open_table(SCHEMA_TABLE)?;
@@ -190,7 +190,7 @@ impl StorageCore {
         Ok(())
     }
 
-    pub async fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
+    pub fn append_data(&mut self, table_name: &str, rows: Vec<DataRow>) -> Result<()> {
         let table_def = self.data_table_def(table_name)?;
         let txn = self.txn_mut()?;
         let mut table = txn.open_table(table_def)?;
@@ -206,7 +206,7 @@ impl StorageCore {
         Ok(())
     }
 
-    pub async fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
+    pub fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, DataRow)>) -> Result<()> {
         let table_def = self.data_table_def(table_name)?;
         let txn = self.txn_mut()?;
         let mut table = txn.open_table(table_def)?;
@@ -221,7 +221,7 @@ impl StorageCore {
         Ok(())
     }
 
-    pub async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
+    pub fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
         let table_def = self.data_table_def(table_name)?;
         let txn = self.txn_mut()?;
         let mut table = txn.open_table(table_def)?;
