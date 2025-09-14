@@ -255,6 +255,22 @@ fn is_btreemap_string_value(ty: &Type) -> bool {
     false
 }
 
+fn get_btreemap_types(ty: &Type) -> Option<(&Type, &Type)> {
+    if let Type::Path(tp) = ty
+        && let Some(seg) = tp.path.segments.last()
+        && seg.ident == "BTreeMap"
+        && let syn::PathArguments::AngleBracketed(args) = &seg.arguments
+    {
+        let mut it = args.args.iter();
+        if let (Some(syn::GenericArgument::Type(k)), Some(syn::GenericArgument::Type(v))) =
+            (it.next(), it.next())
+        {
+            return Some((k, v));
+        }
+    }
+    None
+}
+
 fn match_expected(
     base_ty: &Type,
     field_name_literal: &str,
@@ -410,6 +426,88 @@ fn match_expected(
     }
     if is_btreemap_string_value(base_ty) {
         return arms_clone!(Map, "BTreeMap<String, Value>");
+    }
+    // Support BTreeMap<String, T> from Value::Map by converting each value
+    if let Some((k_ty, v_ty)) = get_btreemap_types(base_ty)
+        && is_string_type(k_ty)
+        && !last_ident_is(v_ty, "Value")
+    {
+        let expected_str = format!("BTreeMap<String, {}>", quote! { #v_ty });
+        let expected_lit = syn::LitStr::new(&expected_str, base_ty.span());
+
+        let val_from_value = if is_string_type(v_ty) {
+            quote! { ::std::string::String::from(__item) }
+        } else {
+            quote! {
+                <#v_ty as ::core::convert::TryFrom<&::gluesql::core::data::Value>>::try_from(__item)
+                    .map_err(|_| {
+                        let __got: &str = #got_str;
+                        ::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                            field: Some(#field_name_literal),
+                            column: Some(__labels[__idx].clone()),
+                            expected: #expected_lit,
+                            got: __got,
+                        }
+                    })?
+            }
+        };
+
+        let by_ref = quote! {
+            if let ::gluesql::core::data::Value::Map(__map) = __v {
+                let mut __out: ::std::collections::BTreeMap<::std::string::String, #v_ty> = ::std::collections::BTreeMap::new();
+                for (__k, __item) in __map.iter() {
+                    let __val: #v_ty = { #val_from_value };
+                    __out.insert(__k.clone(), __val);
+                }
+                __out
+            } else {
+                let __got: &str = #got_str;
+                return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                    field: Some(#field_name_literal),
+                    column: Some(__labels[__idx].clone()),
+                    expected: #expected_lit,
+                    got: __got,
+                });
+            }
+        };
+
+        let val_from_value_idx = if is_string_type(v_ty) {
+            quote! { ::std::string::String::from(__item) }
+        } else {
+            quote! {
+                <#v_ty as ::core::convert::TryFrom<&::gluesql::core::data::Value>>::try_from(__item)
+                    .map_err(|_| {
+                        let __got: &str = #got_str;
+                        ::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                            field: Some(#field_name_literal),
+                            column: Some(#column_name.to_string()),
+                            expected: #expected_lit,
+                            got: __got,
+                        }
+                    })?
+            }
+        };
+
+        let by_idx = quote! {
+            if let ::gluesql::core::data::Value::Map(__map) = __v {
+                let mut __out: ::std::collections::BTreeMap<::std::string::String, #v_ty> = ::std::collections::BTreeMap::new();
+                for (__k, __item) in __map.iter() {
+                    let __val: #v_ty = { #val_from_value_idx };
+                    __out.insert(__k.clone(), __val);
+                }
+                __out
+            } else {
+                let __got: &str = #got_str;
+                return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                    field: Some(#field_name_literal),
+                    column: Some(#column_name.to_string()),
+                    expected: #expected_lit,
+                    got: __got,
+                });
+            }
+        };
+
+        return ("BTreeMap<_, _>", by_ref, by_idx);
     }
     if is_vec_of_value(base_ty) {
         return arms_clone!(List, "Vec<Value>");
