@@ -354,7 +354,26 @@ fn match_expected(
         return arms_copy!(Bool, "bool");
     }
     if is_string_type(base_ty) {
-        return arms_clone!(Str, "String");
+        // Accept Value::Str as before, and also allow Date/Timestamp/Time to convert into String
+        let by_ref = quote! {
+            match __v {
+                ::gluesql::core::data::Value::Str(v) => v.clone(),
+                ::gluesql::core::data::Value::Date(_)
+                | ::gluesql::core::data::Value::Timestamp(_)
+                | ::gluesql::core::data::Value::Time(_) => ::std::string::String::from(__v),
+                _ => { let __got: &str = #got_str; return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch { field: Some(#field_name_literal), column: Some(__labels[__idx].clone()), expected: "String", got: __got }) }
+            }
+        };
+        let by_idx = quote! {
+            match __v {
+                ::gluesql::core::data::Value::Str(v) => v.clone(),
+                ::gluesql::core::data::Value::Date(_)
+                | ::gluesql::core::data::Value::Timestamp(_)
+                | ::gluesql::core::data::Value::Time(_) => ::std::string::String::from(__v),
+                _ => { let __got: &str = #got_str; return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch { field: Some(#field_name_literal), column: Some(#column_name.to_string()), expected: "String", got: __got }) }
+            }
+        };
+        return ("String", by_ref, by_idx);
     }
     if last_ident_is(base_ty, "Decimal") {
         return arms_clone!(Decimal, "Decimal");
