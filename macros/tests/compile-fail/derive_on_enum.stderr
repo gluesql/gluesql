@@ -1,0 +1,11 @@
+error: FromGlueRow can only be derived for structs
+ --> tests/compile-fail/derive_on_enum.rs:4:1
+  |
+4 | enum E {
+  | ^^^^
+
+error[E0601]: `main` function not found in crate `$CRATE`
+ --> tests/compile-fail/derive_on_enum.rs:6:2
+  |
+6 | }
+  |  ^ consider adding a `main` function to `$DIR/tests/compile-fail/derive_on_enum.rs`

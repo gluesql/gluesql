@@ -1,0 +1,11 @@
+error: FromGlueRow supports only named fields
+ --> tests/compile-fail/tuple_struct.rs:4:1
+  |
+4 | struct T(i32);
+  | ^^^^^^
+
+error[E0601]: `main` function not found in crate `$CRATE`
+ --> tests/compile-fail/tuple_struct.rs:4:15
+  |
+4 | struct T(i32);
+  |               ^ consider adding a `main` function to `$DIR/tests/compile-fail/tuple_struct.rs`
