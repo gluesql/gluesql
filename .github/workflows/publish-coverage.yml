@@ -94,7 +94,7 @@ jobs:
             const prNumber = process.env.PR_NUMBER;
             const url = `https://gluesql.org/coverage/?path=pr/${prNumber}/${process.env.TIMESTAMP}.${process.env.COMMIT_SHA}.lcov.info.xz`;
             const body = [
-              '### Coverage Report',
+              '### GlueSQL Coverage Report',
               '',
               `- **Commit:** \`${process.env.COMMIT_SHA}\``,
               `- **Timestamp:** \`${process.env.TIMESTAMP}\``,
@@ -109,7 +109,7 @@ jobs:
                 per_page: 100,
               },
             );
-            const comment = comments.find(c => c.body.startsWith('### Coverage Report'));
+            const comment = comments.find(c => c.body.startsWith('### GlueSQL Coverage Report'));
             if (comment) {
               await github.rest.issues.updateComment({
                 owner: context.repo.owner,
