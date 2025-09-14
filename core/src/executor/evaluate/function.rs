@@ -442,6 +442,10 @@ pub fn round<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     eval_to_float(&name, n).map(|n| Evaluated::Value(Value::F64(n.round())))
 }
 
+pub fn trunc<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    eval_to_float(&name, n).map(|n| Evaluated::Value(Value::F64(n.trunc())))
+}
+
 pub fn floor<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     eval_to_float(&name, n).map(|n| Evaluated::Value(Value::F64(n.floor())))
 }
