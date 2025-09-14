@@ -19,6 +19,7 @@ pub enum FunctionNode<'a> {
     Ceil(ExprNode<'a>),
     Rand(Option<ExprNode<'a>>),
     Round(ExprNode<'a>),
+    Trunc(ExprNode<'a>),
     Floor(ExprNode<'a>),
     Asin(ExprNode<'a>),
     Acos(ExprNode<'a>),
@@ -201,6 +202,7 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
                 expr_node.map(TryInto::try_into).transpose()?,
             )),
             FunctionNode::Round(expr_node) => expr_node.try_into().map(Function::Round),
+            FunctionNode::Trunc(expr_node) => expr_node.try_into().map(Function::Trunc),
             FunctionNode::Floor(expr_node) => expr_node.try_into().map(Function::Floor),
             FunctionNode::Asin(expr_node) => expr_node.try_into().map(Function::Asin),
             FunctionNode::Acos(expr_node) => expr_node.try_into().map(Function::Acos),
@@ -434,6 +436,9 @@ impl<'a> ExprNode<'a> {
     pub fn round(self) -> ExprNode<'a> {
         round(self)
     }
+    pub fn trunc(self) -> ExprNode<'a> {
+        trunc(self)
+    }
     pub fn floor(self) -> ExprNode<'a> {
         floor(self)
     }
@@ -620,6 +625,9 @@ pub fn rand(expr: Option<ExprNode>) -> ExprNode {
 }
 pub fn round<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Round(expr.into())))
+}
+pub fn trunc<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::Trunc(expr.into())))
 }
 pub fn coalesce<'a, T: Into<ExprList<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Coalesce(expr.into())))
@@ -1086,6 +1094,17 @@ mod tests {
 
         let actual = expr("base - 10").round();
         let expected = "ROUND(base - 10)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_trunc() {
+        let actual = f::trunc(col("num"));
+        let expected = "trunc(num)";
+        test_expr(actual, expected);
+
+        let actual = expr("base - 10").trunc();
+        let expected = "TRUNC(base - 10)";
         test_expr(actual, expected);
     }
 
