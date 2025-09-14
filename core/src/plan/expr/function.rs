@@ -47,6 +47,7 @@ impl Function {
             | Self::Sqrt(expr)
             | Self::Abs(expr)
             | Self::Sign(expr)
+            | Self::Unhex(expr)
             | Self::Ascii(expr)
             | Self::Chr(expr)
             | Self::Md5(expr)
@@ -260,6 +261,8 @@ mod tests {
 
         // Single
         test("LOWER(id)", &["id"]);
+        test("UNHEX('4142')", &["'4142'"]);
+        test("UNHEX('476C756553514C')", &["'476C756553514C'"]);
         test("INITCAP(id)", &["id"]);
         test(r#"UPPER("Hello")"#, &[r#""Hello""#]);
         test("SIN(3.14)", &["3.14"]);

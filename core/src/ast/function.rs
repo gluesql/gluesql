@@ -167,6 +167,7 @@ pub enum Function {
         sub_expr: Expr,
         start: Option<Expr>,
     },
+    Unhex(Expr),
     Ascii(Expr),
     Chr(Expr),
     Md5(Expr),
@@ -426,6 +427,7 @@ impl ToSql for Function {
             Function::Extract { field, expr } => {
                 format!("EXTRACT({field} FROM {})", expr.to_sql())
             }
+            Function::Unhex(e) => format!("UNHEX({})", e.to_sql()),
             Function::Ascii(e) => format!("ASCII({})", e.to_sql()),
             Function::Chr(e) => format!("CHR({})", e.to_sql()),
             Function::Md5(e) => format!("MD5({})", e.to_sql()),
@@ -1247,6 +1249,22 @@ mod tests {
                 sub_expr: Expr::Literal(AstLiteral::QuotedString("goat".to_owned())),
                 start: None
             }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            "UNHEX(10)",
+            &Expr::Function(Box::new(Function::Unhex(Expr::Literal(
+                AstLiteral::Number(BigDecimal::from_str("10").unwrap())
+            ))))
+            .to_sql()
+        );
+
+        assert_eq!(
+            "UNHEX('GlueSQL')",
+            &Expr::Function(Box::new(Function::Unhex(Expr::Literal(
+                AstLiteral::QuotedString("GlueSQL".to_owned())
+            ))))
             .to_sql()
         );
 
