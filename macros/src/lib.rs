@@ -943,6 +943,19 @@ mod tests {
     }
 
     #[test]
+    fn match_expected_maps_and_nested_options_expand() {
+        let di: syn::DeriveInput = parse_quote! {
+            struct M {
+                hm_val: std::collections::HashMap<String, Value>,
+                hm_opt: std::collections::HashMap<String, Option<i64>>,
+                bm_opt: std::collections::BTreeMap<String, Option<String>>,
+                vv: Vec<Vec<i64>>,
+            }
+        };
+        let _ = expand_from_glue_row(di).expect("expand ok");
+    }
+
+    #[test]
     fn unsupported_type_path_emits_compile_error_tokens() {
         let di: syn::DeriveInput = parse_quote! {
             struct S<'a> { v: &'a str }
