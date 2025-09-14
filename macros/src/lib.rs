@@ -271,6 +271,22 @@ fn get_btreemap_types(ty: &Type) -> Option<(&Type, &Type)> {
     None
 }
 
+fn get_hashmap_types(ty: &Type) -> Option<(&Type, &Type)> {
+    if let Type::Path(tp) = ty
+        && let Some(seg) = tp.path.segments.last()
+        && seg.ident == "HashMap"
+        && let syn::PathArguments::AngleBracketed(args) = &seg.arguments
+    {
+        let mut it = args.args.iter();
+        if let (Some(syn::GenericArgument::Type(k)), Some(syn::GenericArgument::Type(v))) =
+            (it.next(), it.next())
+        {
+            return Some((k, v));
+        }
+    }
+    None
+}
+
 fn match_expected(
     base_ty: &Type,
     field_name_literal: &str,
@@ -427,7 +443,7 @@ fn match_expected(
     if is_btreemap_string_value(base_ty) {
         return arms_clone!(Map, "BTreeMap<String, Value>");
     }
-    // Support BTreeMap<String, T> from Value::Map by converting each value
+    // Support BTreeMap<String, T> from Value::Map by converting each value (recursively)
     if let Some((k_ty, v_ty)) = get_btreemap_types(base_ty)
         && is_string_type(k_ty)
         && !last_ident_is(v_ty, "Value")
@@ -435,84 +451,271 @@ fn match_expected(
         let expected_str = format!("BTreeMap<String, {}>", quote! { #v_ty });
         let expected_lit = syn::LitStr::new(&expected_str, base_ty.span());
 
-        let val_from_value = if is_string_type(v_ty) {
-            quote! { ::std::string::String::from(__item) }
+        let (is_opt_val, val_base_ty) = match get_option_inner_type(v_ty) {
+            Some(inner) => (true, inner),
+            None => (false, v_ty),
+        };
+        let (_inner_exp_s, inner_by_ref, inner_by_idx) =
+            match_expected(val_base_ty, field_name_literal, column_name);
+
+        let by_ref = if is_opt_val {
+            quote! {
+                if let ::gluesql::core::data::Value::Map(__map) = __v {
+                    let mut __out: ::std::collections::BTreeMap<::std::string::String, #v_ty> = ::std::collections::BTreeMap::new();
+                    for (__k, __item) in __map.iter() {
+                        let __val: #v_ty = match __item {
+                            ::gluesql::core::data::Value::Null => None,
+                            __item => {
+                                let __v = __item;
+                                Some({ #inner_by_ref })
+                            }
+                        };
+                        __out.insert(__k.clone(), __val);
+                    }
+                    __out
+                } else {
+                    let __got: &str = #got_str;
+                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                        field: Some(#field_name_literal),
+                        column: Some(__labels[__idx].clone()),
+                        expected: #expected_lit,
+                        got: __got,
+                    });
+                }
+            }
         } else {
             quote! {
-                <#v_ty as ::core::convert::TryFrom<&::gluesql::core::data::Value>>::try_from(__item)
-                    .map_err(|_| {
-                        let __got: &str = #got_str;
-                        ::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
-                            field: Some(#field_name_literal),
-                            column: Some(__labels[__idx].clone()),
-                            expected: #expected_lit,
-                            got: __got,
-                        }
-                    })?
-            }
-        };
-
-        let by_ref = quote! {
-            if let ::gluesql::core::data::Value::Map(__map) = __v {
-                let mut __out: ::std::collections::BTreeMap<::std::string::String, #v_ty> = ::std::collections::BTreeMap::new();
-                for (__k, __item) in __map.iter() {
-                    let __val: #v_ty = { #val_from_value };
-                    __out.insert(__k.clone(), __val);
+                if let ::gluesql::core::data::Value::Map(__map) = __v {
+                    let mut __out: ::std::collections::BTreeMap<::std::string::String, #v_ty> = ::std::collections::BTreeMap::new();
+                    for (__k, __item) in __map.iter() {
+                        let __val: #v_ty = {
+                            let __v = __item;
+                            { #inner_by_ref }
+                        };
+                        __out.insert(__k.clone(), __val);
+                    }
+                    __out
+                } else {
+                    let __got: &str = #got_str;
+                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                        field: Some(#field_name_literal),
+                        column: Some(__labels[__idx].clone()),
+                        expected: #expected_lit,
+                        got: __got,
+                    });
                 }
-                __out
-            } else {
-                let __got: &str = #got_str;
-                return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
-                    field: Some(#field_name_literal),
-                    column: Some(__labels[__idx].clone()),
-                    expected: #expected_lit,
-                    got: __got,
-                });
             }
         };
 
-        let val_from_value_idx = if is_string_type(v_ty) {
-            quote! { ::std::string::String::from(__item) }
+        let by_idx = if is_opt_val {
+            quote! {
+                if let ::gluesql::core::data::Value::Map(__map) = __v {
+                    let mut __out: ::std::collections::BTreeMap<::std::string::String, #v_ty> = ::std::collections::BTreeMap::new();
+                    for (__k, __item) in __map.iter() {
+                        let __val: #v_ty = match __item {
+                            ::gluesql::core::data::Value::Null => None,
+                            __item => {
+                                let __v = __item;
+                                Some({ #inner_by_idx })
+                            }
+                        };
+                        __out.insert(__k.clone(), __val);
+                    }
+                    __out
+                } else {
+                    let __got: &str = #got_str;
+                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                        field: Some(#field_name_literal),
+                        column: Some(#column_name.to_string()),
+                        expected: #expected_lit,
+                        got: __got,
+                    });
+                }
+            }
         } else {
             quote! {
-                <#v_ty as ::core::convert::TryFrom<&::gluesql::core::data::Value>>::try_from(__item)
-                    .map_err(|_| {
-                        let __got: &str = #got_str;
-                        ::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
-                            field: Some(#field_name_literal),
-                            column: Some(#column_name.to_string()),
-                            expected: #expected_lit,
-                            got: __got,
-                        }
-                    })?
-            }
-        };
-
-        let by_idx = quote! {
-            if let ::gluesql::core::data::Value::Map(__map) = __v {
-                let mut __out: ::std::collections::BTreeMap<::std::string::String, #v_ty> = ::std::collections::BTreeMap::new();
-                for (__k, __item) in __map.iter() {
-                    let __val: #v_ty = { #val_from_value_idx };
-                    __out.insert(__k.clone(), __val);
+                if let ::gluesql::core::data::Value::Map(__map) = __v {
+                    let mut __out: ::std::collections::BTreeMap<::std::string::String, #v_ty> = ::std::collections::BTreeMap::new();
+                    for (__k, __item) in __map.iter() {
+                        let __val: #v_ty = {
+                            let __v = __item;
+                            { #inner_by_idx }
+                        };
+                        __out.insert(__k.clone(), __val);
+                    }
+                    __out
+                } else {
+                    let __got: &str = #got_str;
+                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                        field: Some(#field_name_literal),
+                        column: Some(#column_name.to_string()),
+                        expected: #expected_lit,
+                        got: __got,
+                    });
                 }
-                __out
-            } else {
-                let __got: &str = #got_str;
-                return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
-                    field: Some(#field_name_literal),
-                    column: Some(#column_name.to_string()),
-                    expected: #expected_lit,
-                    got: __got,
-                });
             }
         };
 
         return ("BTreeMap<_, _>", by_ref, by_idx);
     }
+
+    // Support HashMap<String, T> from Value::Map by converting each value
+    if let Some((k_ty, v_ty)) = get_hashmap_types(base_ty)
+        && is_string_type(k_ty)
+    {
+        // Special case: HashMap<String, Value>
+        if last_ident_is(v_ty, "Value") {
+            let by_ref = quote! {
+                if let ::gluesql::core::data::Value::Map(__map) = __v {
+                    let mut __out: ::std::collections::HashMap<::std::string::String, ::gluesql::core::data::Value> = ::std::collections::HashMap::with_capacity(__map.len());
+                    for (__k, __item) in __map.iter() {
+                        __out.insert(__k.clone(), __item.clone());
+                    }
+                    __out
+                } else {
+                    let __got: &str = #got_str;
+                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                        field: Some(#field_name_literal),
+                        column: Some(__labels[__idx].clone()),
+                        expected: "HashMap<String, Value>",
+                        got: __got,
+                    });
+                }
+            };
+            let by_idx = quote! {
+                if let ::gluesql::core::data::Value::Map(__map) = __v {
+                    let mut __out: ::std::collections::HashMap<::std::string::String, ::gluesql::core::data::Value> = ::std::collections::HashMap::with_capacity(__map.len());
+                    for (__k, __item) in __map.iter() {
+                        __out.insert(__k.clone(), __item.clone());
+                    }
+                    __out
+                } else {
+                    let __got: &str = #got_str;
+                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                        field: Some(#field_name_literal),
+                        column: Some(#column_name.to_string()),
+                        expected: "HashMap<String, Value>",
+                        got: __got,
+                    });
+                }
+            };
+            return ("HashMap<_, _>", by_ref, by_idx);
+        }
+
+        let expected_str = format!("HashMap<String, {}>", quote! { #v_ty });
+        let expected_lit = syn::LitStr::new(&expected_str, base_ty.span());
+
+        let (is_opt_val, val_base_ty) = match get_option_inner_type(v_ty) {
+            Some(inner) => (true, inner),
+            None => (false, v_ty),
+        };
+        let (_inner_exp_s, inner_by_ref, inner_by_idx) =
+            match_expected(val_base_ty, field_name_literal, column_name);
+
+        let by_ref = if is_opt_val {
+            quote! {
+                if let ::gluesql::core::data::Value::Map(__map) = __v {
+                    let mut __out: ::std::collections::HashMap<::std::string::String, #v_ty> = ::std::collections::HashMap::with_capacity(__map.len());
+                    for (__k, __item) in __map.iter() {
+                        let __val: #v_ty = match __item {
+                            ::gluesql::core::data::Value::Null => None,
+                            __item => {
+                                let __v = __item;
+                                Some({ #inner_by_ref })
+                            }
+                        };
+                        __out.insert(__k.clone(), __val);
+                    }
+                    __out
+                } else {
+                    let __got: &str = #got_str;
+                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                        field: Some(#field_name_literal),
+                        column: Some(__labels[__idx].clone()),
+                        expected: #expected_lit,
+                        got: __got,
+                    });
+                }
+            }
+        } else {
+            quote! {
+                if let ::gluesql::core::data::Value::Map(__map) = __v {
+                    let mut __out: ::std::collections::HashMap<::std::string::String, #v_ty> = ::std::collections::HashMap::with_capacity(__map.len());
+                    for (__k, __item) in __map.iter() {
+                        let __val: #v_ty = {
+                            let __v = __item;
+                            { #inner_by_ref }
+                        };
+                        __out.insert(__k.clone(), __val);
+                    }
+                    __out
+                } else {
+                    let __got: &str = #got_str;
+                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                        field: Some(#field_name_literal),
+                        column: Some(__labels[__idx].clone()),
+                        expected: #expected_lit,
+                        got: __got,
+                    });
+                }
+            }
+        };
+
+        let by_idx = if is_opt_val {
+            quote! {
+                if let ::gluesql::core::data::Value::Map(__map) = __v {
+                    let mut __out: ::std::collections::HashMap<::std::string::String, #v_ty> = ::std::collections::HashMap::with_capacity(__map.len());
+                    for (__k, __item) in __map.iter() {
+                        let __val: #v_ty = match __item {
+                            ::gluesql::core::data::Value::Null => None,
+                            __item => {
+                                let __v = __item;
+                                Some({ #inner_by_idx })
+                            }
+                        };
+                        __out.insert(__k.clone(), __val);
+                    }
+                    __out
+                } else {
+                    let __got: &str = #got_str;
+                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                        field: Some(#field_name_literal),
+                        column: Some(#column_name.to_string()),
+                        expected: #expected_lit,
+                        got: __got,
+                    });
+                }
+            }
+        } else {
+            quote! {
+                if let ::gluesql::core::data::Value::Map(__map) = __v {
+                    let mut __out: ::std::collections::HashMap<::std::string::String, #v_ty> = ::std::collections::HashMap::with_capacity(__map.len());
+                    for (__k, __item) in __map.iter() {
+                        let __val: #v_ty = {
+                            let __v = __item;
+                            { #inner_by_idx }
+                        };
+                        __out.insert(__k.clone(), __val);
+                    }
+                    __out
+                } else {
+                    let __got: &str = #got_str;
+                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                        field: Some(#field_name_literal),
+                        column: Some(#column_name.to_string()),
+                        expected: #expected_lit,
+                        got: __got,
+                    });
+                }
+            }
+        };
+
+        return ("HashMap<_, _>", by_ref, by_idx);
+    }
     if is_vec_of_value(base_ty) {
         return arms_clone!(List, "Vec<Value>");
     }
-    // Support Vec<T> from Value::List by converting each element
+    // Support Vec<T> from Value::List by converting each element (recursively)
     if let Some(inner) = get_vec_inner_type(base_ty)
         && !is_type(inner, "u8")
         && !last_ident_is(inner, "Value")
@@ -520,76 +723,108 @@ fn match_expected(
         let expected_str = format!("Vec<{}>", quote! { #inner });
         let expected_lit = syn::LitStr::new(&expected_str, base_ty.span());
 
-        // String inner uses `String::from(&Value)`; others use `TryFrom<&Value>`
-        let elem_from_value = if is_string_type(inner) {
-            quote! { ::std::string::String::from(__item) }
+        let (is_opt_elem, elem_base_ty) = match get_option_inner_type(inner) {
+            Some(inner2) => (true, inner2),
+            None => (false, inner),
+        };
+        let (_inner_exp_s, inner_by_ref, inner_by_idx) =
+            match_expected(elem_base_ty, field_name_literal, column_name);
+
+        let by_ref = if is_opt_elem {
+            quote! {
+                if let ::gluesql::core::data::Value::List(__list) = __v {
+                    let mut __out: ::std::vec::Vec<#inner> = ::std::vec::Vec::with_capacity(__list.len());
+                    for __item in __list.iter() {
+                        let __elem: #inner = match __item {
+                            ::gluesql::core::data::Value::Null => None,
+                            __item => {
+                                let __v = __item;
+                                Some({ #inner_by_ref })
+                            }
+                        };
+                        __out.push(__elem);
+                    }
+                    __out
+                } else {
+                    let __got: &str = #got_str;
+                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                        field: Some(#field_name_literal),
+                        column: Some(__labels[__idx].clone()),
+                        expected: #expected_lit,
+                        got: __got,
+                    });
+                }
+            }
         } else {
             quote! {
-                <#inner as ::core::convert::TryFrom<&::gluesql::core::data::Value>>::try_from(__item)
-                    .map_err(|_| {
-                        let __got: &str = #got_str;
-                        ::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
-                            field: Some(#field_name_literal),
-                            column: Some(__labels[__idx].clone()),
-                            expected: #expected_lit,
-                            got: __got,
-                        }
-                    })?
-            }
-        };
-
-        let by_ref = quote! {
-            if let ::gluesql::core::data::Value::List(__list) = __v {
-                let mut __out: ::std::vec::Vec<#inner> = ::std::vec::Vec::with_capacity(__list.len());
-                for __item in __list.iter() {
-                    let __elem: #inner = { #elem_from_value };
-                    __out.push(__elem);
+                if let ::gluesql::core::data::Value::List(__list) = __v {
+                    let mut __out: ::std::vec::Vec<#inner> = ::std::vec::Vec::with_capacity(__list.len());
+                    for __item in __list.iter() {
+                        let __elem: #inner = {
+                            let __v = __item;
+                            { #inner_by_ref }
+                        };
+                        __out.push(__elem);
+                    }
+                    __out
+                } else {
+                    let __got: &str = #got_str;
+                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                        field: Some(#field_name_literal),
+                        column: Some(__labels[__idx].clone()),
+                        expected: #expected_lit,
+                        got: __got,
+                    });
                 }
-                __out
-            } else {
-                let __got: &str = #got_str;
-                return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
-                    field: Some(#field_name_literal),
-                    column: Some(__labels[__idx].clone()),
-                    expected: #expected_lit,
-                    got: __got,
-                });
             }
         };
 
-        let elem_from_value_idx = if is_string_type(inner) {
-            quote! { ::std::string::String::from(__item) }
+        let by_idx = if is_opt_elem {
+            quote! {
+                if let ::gluesql::core::data::Value::List(__list) = __v {
+                    let mut __out: ::std::vec::Vec<#inner> = ::std::vec::Vec::with_capacity(__list.len());
+                    for __item in __list.iter() {
+                        let __elem: #inner = match __item {
+                            ::gluesql::core::data::Value::Null => None,
+                            __item => {
+                                let __v = __item;
+                                Some({ #inner_by_idx })
+                            }
+                        };
+                        __out.push(__elem);
+                    }
+                    __out
+                } else {
+                    let __got: &str = #got_str;
+                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                        field: Some(#field_name_literal),
+                        column: Some(#column_name.to_string()),
+                        expected: #expected_lit,
+                        got: __got,
+                    });
+                }
+            }
         } else {
             quote! {
-                <#inner as ::core::convert::TryFrom<&::gluesql::core::data::Value>>::try_from(__item)
-                    .map_err(|_| {
-                        let __got: &str = #got_str;
-                        ::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
-                            field: Some(#field_name_literal),
-                            column: Some(#column_name.to_string()),
-                            expected: #expected_lit,
-                            got: __got,
-                        }
-                    })?
-            }
-        };
-
-        let by_idx = quote! {
-            if let ::gluesql::core::data::Value::List(__list) = __v {
-                let mut __out: ::std::vec::Vec<#inner> = ::std::vec::Vec::with_capacity(__list.len());
-                for __item in __list.iter() {
-                    let __elem: #inner = { #elem_from_value_idx };
-                    __out.push(__elem);
+                if let ::gluesql::core::data::Value::List(__list) = __v {
+                    let mut __out: ::std::vec::Vec<#inner> = ::std::vec::Vec::with_capacity(__list.len());
+                    for __item in __list.iter() {
+                        let __elem: #inner = {
+                            let __v = __item;
+                            { #inner_by_idx }
+                        };
+                        __out.push(__elem);
+                    }
+                    __out
+                } else {
+                    let __got: &str = #got_str;
+                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                        field: Some(#field_name_literal),
+                        column: Some(#column_name.to_string()),
+                        expected: #expected_lit,
+                        got: __got,
+                    });
                 }
-                __out
-            } else {
-                let __got: &str = #got_str;
-                return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
-                    field: Some(#field_name_literal),
-                    column: Some(#column_name.to_string()),
-                    expected: #expected_lit,
-                    got: __got,
-                });
             }
         };
 

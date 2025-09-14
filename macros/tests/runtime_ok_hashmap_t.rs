@@ -4,13 +4,14 @@ use gluesql::{
 };
 
 #[derive(Debug, PartialEq, FromGlueRow)]
-struct MapStr {
-    v: std::collections::BTreeMap<String, String>,
+struct HMapStr {
+    v: std::collections::HashMap<String, String>,
 }
 
 #[test]
-fn map_of_str_to_btreemap_string_string() {
-    let mut m = std::collections::BTreeMap::new();
+fn map_of_str_to_hashmap_string_string() {
+    use std::collections::BTreeMap;
+    let mut m = BTreeMap::new();
     m.insert("a".to_string(), Value::Str("1".into()));
     m.insert("b".to_string(), Value::Str("2".into()));
 
@@ -19,21 +20,22 @@ fn map_of_str_to_btreemap_string_string() {
         rows: vec![vec![Value::Map(m)]],
     };
 
-    let rows: Vec<MapStr> = payload.rows_as::<MapStr>().unwrap();
-    let mut expected = std::collections::BTreeMap::new();
+    let rows: Vec<HMapStr> = payload.rows_as::<HMapStr>().unwrap();
+    let mut expected = std::collections::HashMap::new();
     expected.insert("a".to_string(), "1".to_string());
     expected.insert("b".to_string(), "2".to_string());
     assert_eq!(rows[0].v, expected);
 }
 
 #[derive(Debug, PartialEq, FromGlueRow)]
-struct MapI64 {
-    v: std::collections::BTreeMap<String, i64>,
+struct HMapI64 {
+    v: std::collections::HashMap<String, i64>,
 }
 
 #[test]
-fn map_of_i64_to_btreemap_string_i64() {
-    let mut m = std::collections::BTreeMap::new();
+fn map_of_i64_to_hashmap_string_i64() {
+    use std::collections::BTreeMap;
+    let mut m = BTreeMap::new();
     m.insert("x".to_string(), Value::I64(10));
     m.insert("y".to_string(), Value::I64(20));
 
@@ -42,8 +44,8 @@ fn map_of_i64_to_btreemap_string_i64() {
         rows: vec![vec![Value::Map(m)]],
     };
 
-    let rows: Vec<MapI64> = payload.rows_as::<MapI64>().unwrap();
-    let mut expected = std::collections::BTreeMap::new();
+    let rows: Vec<HMapI64> = payload.rows_as::<HMapI64>().unwrap();
+    let mut expected = std::collections::HashMap::new();
     expected.insert("x".to_string(), 10);
     expected.insert("y".to_string(), 20);
     assert_eq!(rows[0].v, expected);
