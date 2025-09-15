@@ -9,6 +9,15 @@ repository.workspace = true
 documentation.workspace = true
 
 [dependencies]
-indexmap = "1"
+indexmap = { version = "1", default-features = false }
 pin-project = "1"
-futures = "0.3"
+futures = { version = "0.3", default-features = false, features = ["alloc"] }
+
+[features]
+default = ["std"]
+std = [
+    "futures/std",
+    "futures/async-await",
+    "futures/executor",
+    "indexmap/std",
+]

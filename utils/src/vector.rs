@@ -1,4 +1,5 @@
-use std::{convert::From, vec::IntoIter};
+use alloc::{vec, vec::IntoIter, vec::Vec};
+use core::{cmp::Ordering, iter::FromIterator};
 
 pub struct Vector<T>(Vec<T>);
 
@@ -33,7 +34,7 @@ impl<T> Vector<T> {
 
     pub fn sort(mut self) -> Self
     where
-        T: std::cmp::Ord,
+        T: core::cmp::Ord,
     {
         self.0.sort();
 
@@ -42,7 +43,7 @@ impl<T> Vector<T> {
 
     pub fn sort_by<F>(mut self, compare: F) -> Self
     where
-        F: FnMut(&T, &T) -> std::cmp::Ordering,
+        F: FnMut(&T, &T) -> Ordering,
     {
         self.0.sort_by(compare);
 

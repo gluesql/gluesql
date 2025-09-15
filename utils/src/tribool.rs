@@ -19,7 +19,7 @@ impl Tribool {
     }
 }
 
-impl std::ops::Not for Tribool {
+impl core::ops::Not for Tribool {
     type Output = Self;
 
     fn not(self) -> Self::Output {

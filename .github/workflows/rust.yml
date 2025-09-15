@@ -132,3 +132,13 @@ jobs:
           cargo run --package gluesql --example sled_multi_threaded
           cargo run --package gluesql --example using_config
           cargo run --package gluesql --example hello_ast_builder
+
+  utils_no_std:
+    name: Utils no_std
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - run: |
+          cd utils
+          cargo check --verbose --no-default-features
