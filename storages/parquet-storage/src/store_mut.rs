@@ -56,6 +56,7 @@ lazy_static! {
         m.insert(DataType::List, "List");
         m.insert(DataType::Decimal, "Decimal");
         m.insert(DataType::Point, "Point");
+        m.insert(DataType::FloatVector, "FloatVector");
         m
     };
 }
@@ -379,6 +380,16 @@ impl ParquetStorage {
                                     .write_batch(&[serialized.into()], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
+                            (
+                                Value::FloatVector(float_vector),
+                                ColumnWriter::ByteArrayColumnWriter(typed),
+                            ) => {
+                                let serialized =
+                                    bincode::serialize(&float_vector).map_storage_err()?;
+                                typed
+                                    .write_batch(&[serialized.into()], Some(&[1]), None)
+                                    .map_storage_err()?;
+                            }
                             _ => return Err(
                                 ParquetStorageError::UnreachableGlueSqlValueTypeForParquetWriter
                                     .into(),
@@ -549,6 +560,7 @@ impl ParquetStorage {
             DataType::Decimal => Ok((Type::BYTE_ARRAY, None)),
             DataType::Timestamp => Ok((Type::BYTE_ARRAY, None)),
             DataType::Bytea => Ok((Type::BYTE_ARRAY, None)),
+            DataType::FloatVector => Ok((Type::BYTE_ARRAY, None)),
         }
     }
 }
