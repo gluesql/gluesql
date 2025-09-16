@@ -1,6 +1,6 @@
 use {
     super::{
-        TranslateError, function::translate_function_arg_exprs, translate_expr, translate_idents,
+        TranslateError, function::translate_function_arg_exprs, translate_expr,
         translate_object_name, translate_order_by_expr,
     },
     crate::{
@@ -15,8 +15,8 @@ use {
         GroupByExpr as SqlGroupByExpr, Join as SqlJoin, JoinConstraint as SqlJoinConstraint,
         JoinOperator as SqlJoinOperator, Query as SqlQuery, Select as SqlSelect,
         SelectItem as SqlSelectItem, SetExpr as SqlSetExpr, TableAlias as SqlTableAlias,
-        TableFactor as SqlTableFactor, TableFunctionArgs as SqlTableFunctionArgs,
-        TableWithJoins as SqlTableWithJoins,
+        TableAliasColumnDef as SqlTableAliasColumnDef, TableFactor as SqlTableFactor,
+        TableFunctionArgs as SqlTableFunctionArgs, TableWithJoins as SqlTableWithJoins,
     },
 };
 
@@ -156,12 +156,19 @@ fn translate_table_with_joins(sql_table_with_joins: &SqlTableWithJoins) -> Resul
     })
 }
 
+fn translate_alias_columns(columns: &[SqlTableAliasColumnDef]) -> Vec<String> {
+    columns
+        .iter()
+        .map(|SqlTableAliasColumnDef { name, .. }| name.value.to_owned())
+        .collect()
+}
+
 fn translate_table_alias(alias: &Option<SqlTableAlias>) -> Option<TableAlias> {
     alias
         .as_ref()
         .map(|SqlTableAlias { name, columns }| TableAlias {
             name: name.value.to_owned(),
-            columns: translate_idents(columns),
+            columns: translate_alias_columns(columns),
         })
 }
 
@@ -170,7 +177,7 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
         let function_arg_exprs = args
             .iter()
             .map(|arg| match arg {
-                SqlFunctionArg::Named { .. } => {
+                SqlFunctionArg::Named { .. } | SqlFunctionArg::ExprNamed { .. } => {
                     Err(TranslateError::NamedFunctionArgNotSupported.into())
                 }
                 SqlFunctionArg::Unnamed(arg_expr) => Ok(arg_expr),
@@ -228,7 +235,7 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
                     subquery: translate_query(subquery)?,
                     alias: TableAlias {
                         name: alias.name.value.to_owned(),
-                        columns: translate_idents(&alias.columns),
+                        columns: translate_alias_columns(&alias.columns),
                     },
                 })
             } else {
