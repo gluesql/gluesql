@@ -47,28 +47,24 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             table,
             ..
         }) => {
-            if returning.is_some() {
-                return Err(TranslateError::UnsupportedInsertOption("RETURNING clause").into());
-            }
+            let violation = if returning.is_some() {
+                Some("RETURNING clause")
+            } else if on.is_some() {
+                Some("ON CONFLICT clause")
+            } else if table_alias.is_some() {
+                Some("table alias")
+            } else if partitioned.is_some() {
+                Some("PARTITION clause")
+            } else if *overwrite {
+                Some("OVERWRITE clause")
+            } else if *table {
+                Some("TABLE keyword")
+            } else {
+                None
+            };
 
-            if on.is_some() {
-                return Err(TranslateError::UnsupportedInsertOption("ON CONFLICT clause").into());
-            }
-
-            if table_alias.is_some() {
-                return Err(TranslateError::UnsupportedInsertOption("table alias").into());
-            }
-
-            if partitioned.is_some() {
-                return Err(TranslateError::UnsupportedInsertOption("PARTITION clause").into());
-            }
-
-            if *overwrite {
-                return Err(TranslateError::UnsupportedInsertOption("OVERWRITE clause").into());
-            }
-
-            if *table {
-                return Err(TranslateError::UnsupportedInsertOption("TABLE keyword").into());
+            if let Some(reason) = violation {
+                return Err(TranslateError::UnsupportedInsertOption(reason).into());
             }
 
             let table_name = translate_object_name(table_name)?;
@@ -97,12 +93,16 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             returning,
             ..
         } => {
-            if from.is_some() {
-                return Err(TranslateError::UnsupportedUpdateOption("FROM clause").into());
-            }
+            let violation = if from.is_some() {
+                Some("FROM clause")
+            } else if returning.is_some() {
+                Some("RETURNING clause")
+            } else {
+                None
+            };
 
-            if returning.is_some() {
-                return Err(TranslateError::UnsupportedUpdateOption("RETURNING clause").into());
+            if let Some(reason) = violation {
+                return Err(TranslateError::UnsupportedUpdateOption(reason).into());
             }
 
             Ok(Statement::Update {
@@ -124,24 +124,22 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             limit,
             ..
         }) => {
-            if !tables.is_empty() {
-                return Err(TranslateError::UnsupportedDeleteOption("multiple tables").into());
-            }
+            let violation = if !tables.is_empty() {
+                Some("multiple tables")
+            } else if using.is_some() {
+                Some("USING clause")
+            } else if returning.is_some() {
+                Some("RETURNING clause")
+            } else if !order_by.is_empty() {
+                Some("ORDER BY clause")
+            } else if limit.is_some() {
+                Some("LIMIT clause")
+            } else {
+                None
+            };
 
-            if using.is_some() {
-                return Err(TranslateError::UnsupportedDeleteOption("USING clause").into());
-            }
-
-            if returning.is_some() {
-                return Err(TranslateError::UnsupportedDeleteOption("RETURNING clause").into());
-            }
-
-            if !order_by.is_empty() {
-                return Err(TranslateError::UnsupportedDeleteOption("ORDER BY clause").into());
-            }
-
-            if limit.is_some() {
-                return Err(TranslateError::UnsupportedDeleteOption("LIMIT clause").into());
+            if let Some(reason) = violation {
+                return Err(TranslateError::UnsupportedDeleteOption(reason).into());
             }
 
             let from = match from {
@@ -482,134 +480,126 @@ pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Fo
 mod tests {
     use {super::*, crate::parse_sql::parse};
 
+    fn translate_one(sql: &str) -> crate::result::Result<Statement> {
+        parse(sql).and_then(|parsed| translate(&parsed[0]))
+    }
+
+    fn assert_translate_error(sql: &str, error: TranslateError) {
+        let actual = translate_one(sql);
+        let expected = Err::<Statement, _>(error.into());
+        assert_eq!(actual, expected);
+    }
+
     #[test]
     fn statement() {
-        let sql = "INSERT INTO Foo DEFAULT VALUES";
-        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
-        let expected =
-            Err(TranslateError::DefaultValuesOnInsertNotSupported("Foo".to_owned()).into());
-
-        assert_eq!(actual, expected);
+        assert_translate_error(
+            "INSERT INTO Foo DEFAULT VALUES",
+            TranslateError::DefaultValuesOnInsertNotSupported("Foo".to_owned()),
+        );
     }
 
     #[test]
     fn test_tuple_assignment_on_update_not_supported() {
-        let sql = "UPDATE Foo SET (a, b) = (1, 2)";
-        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
-        let expected = Err(TranslateError::TupleAssignmentOnUpdateNotSupported(
-            "(a, b) = (1, 2)".to_owned(),
-        )
-        .into());
-
-        assert_eq!(actual, expected);
+        assert_translate_error(
+            "UPDATE Foo SET (a, b) = (1, 2)",
+            TranslateError::TupleAssignmentOnUpdateNotSupported("(a, b) = (1, 2)".to_owned()),
+        );
     }
 
     #[test]
     fn insert_returning_not_supported() {
-        let sql = "INSERT INTO Foo VALUES (1) RETURNING *";
-        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
-        let expected = Err(TranslateError::UnsupportedInsertOption("RETURNING clause").into());
-
-        assert_eq!(actual, expected);
+        assert_translate_error(
+            "INSERT INTO Foo VALUES (1) RETURNING *",
+            TranslateError::UnsupportedInsertOption("RETURNING clause"),
+        );
     }
 
     #[test]
     fn insert_on_conflict_not_supported() {
-        let sql = "INSERT INTO Foo VALUES (1) ON CONFLICT DO NOTHING";
-        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
-        let expected = Err(TranslateError::UnsupportedInsertOption("ON CONFLICT clause").into());
-
-        assert_eq!(actual, expected);
+        assert_translate_error(
+            "INSERT INTO Foo VALUES (1) ON CONFLICT DO NOTHING",
+            TranslateError::UnsupportedInsertOption("ON CONFLICT clause"),
+        );
     }
 
     #[test]
     fn insert_table_alias_not_supported() {
-        let sql = "INSERT INTO Foo AS f VALUES (1)";
-        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
-        let expected = Err(TranslateError::UnsupportedInsertOption("table alias").into());
-
-        assert_eq!(actual, expected);
+        assert_translate_error(
+            "INSERT INTO Foo AS f VALUES (1)",
+            TranslateError::UnsupportedInsertOption("table alias"),
+        );
     }
 
     #[test]
     fn insert_partition_not_supported() {
-        let sql = "INSERT INTO Foo PARTITION (bar = 1) VALUES (1)";
-        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
-        let expected = Err(TranslateError::UnsupportedInsertOption("PARTITION clause").into());
-
-        assert_eq!(actual, expected);
+        assert_translate_error(
+            "INSERT INTO Foo PARTITION (bar = 1) VALUES (1)",
+            TranslateError::UnsupportedInsertOption("PARTITION clause"),
+        );
     }
 
     #[test]
     fn insert_overwrite_not_supported() {
-        let sql = "INSERT OVERWRITE TABLE Foo VALUES (1)";
-        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
-        let expected = Err(TranslateError::UnsupportedInsertOption("OVERWRITE clause").into());
-
-        assert_eq!(actual, expected);
+        assert_translate_error(
+            "INSERT OVERWRITE TABLE Foo VALUES (1)",
+            TranslateError::UnsupportedInsertOption("OVERWRITE clause"),
+        );
     }
 
     #[test]
     fn insert_table_keyword_not_supported() {
-        let sql = "INSERT TABLE Foo VALUES (1)";
-        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
         #[allow(deprecated)]
-        let expected = Err(TranslateError::UnsupportedInsertOption("TABLE keyword").into());
-
-        assert_eq!(actual, expected);
+        assert_translate_error(
+            "INSERT TABLE Foo VALUES (1)",
+            TranslateError::UnsupportedInsertOption("TABLE keyword"),
+        );
     }
 
     #[test]
     fn update_from_not_supported() {
-        let sql = "UPDATE Foo SET id = 1 FROM Bar";
-        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
-        let expected = Err(TranslateError::UnsupportedUpdateOption("FROM clause").into());
-
-        assert_eq!(actual, expected);
+        assert_translate_error(
+            "UPDATE Foo SET id = 1 FROM Bar",
+            TranslateError::UnsupportedUpdateOption("FROM clause"),
+        );
     }
 
     #[test]
     fn update_returning_not_supported() {
-        let sql = "UPDATE Foo SET id = 1 WHERE id = 1 RETURNING *";
-        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
-        let expected = Err(TranslateError::UnsupportedUpdateOption("RETURNING clause").into());
-
-        assert_eq!(actual, expected);
+        assert_translate_error(
+            "UPDATE Foo SET id = 1 WHERE id = 1 RETURNING *",
+            TranslateError::UnsupportedUpdateOption("RETURNING clause"),
+        );
     }
 
     #[test]
     fn delete_using_not_supported() {
-        let sql = "DELETE FROM Foo USING Bar";
-        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
-        let expected = Err(TranslateError::UnsupportedDeleteOption("USING clause").into());
-
-        assert_eq!(actual, expected);
+        assert_translate_error(
+            "DELETE FROM Foo USING Bar",
+            TranslateError::UnsupportedDeleteOption("USING clause"),
+        );
     }
 
     #[test]
     fn delete_returning_not_supported() {
-        let sql = "DELETE FROM Foo WHERE id = 1 RETURNING *";
-        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
-        let expected = Err(TranslateError::UnsupportedDeleteOption("RETURNING clause").into());
-
-        assert_eq!(actual, expected);
+        assert_translate_error(
+            "DELETE FROM Foo WHERE id = 1 RETURNING *",
+            TranslateError::UnsupportedDeleteOption("RETURNING clause"),
+        );
     }
 
     #[test]
     fn delete_order_by_not_supported() {
-        let sql = "DELETE FROM Foo WHERE id = 1 ORDER BY id";
-        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
-        let expected = Err(TranslateError::UnsupportedDeleteOption("ORDER BY clause").into());
-
-        assert_eq!(actual, expected);
+        assert_translate_error(
+            "DELETE FROM Foo WHERE id = 1 ORDER BY id",
+            TranslateError::UnsupportedDeleteOption("ORDER BY clause"),
+        );
     }
 
     #[test]
     fn delete_limit_not_supported() {
-        let sql = "DELETE FROM Foo WHERE id = 1 LIMIT 1";
-        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
-        let expected = Err(TranslateError::UnsupportedDeleteOption("LIMIT clause").into());
-
-        assert_eq!(actual, expected);
+        assert_translate_error(
+            "DELETE FROM Foo WHERE id = 1 LIMIT 1",
+            TranslateError::UnsupportedDeleteOption("LIMIT clause"),
+        );
     }
 }
