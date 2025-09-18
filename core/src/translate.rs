@@ -42,6 +42,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             returning,
             on,
             table_alias,
+            partitioned,
             ..
         }) => {
             if returning.is_some() {
@@ -54,6 +55,10 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
 
             if table_alias.is_some() {
                 return Err(TranslateError::UnsupportedInsertOption("table alias").into());
+            }
+
+            if partitioned.is_some() {
+                return Err(TranslateError::UnsupportedInsertOption("PARTITION clause").into());
             }
 
             let table_name = translate_object_name(table_name)?;
@@ -473,6 +478,15 @@ mod tests {
         let sql = "INSERT INTO Foo AS f VALUES (1)";
         let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
         let expected = Err(TranslateError::UnsupportedInsertOption("table alias").into());
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn insert_partition_not_supported() {
+        let sql = "INSERT INTO Foo PARTITION (bar = 1) VALUES (1)";
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+        let expected = Err(TranslateError::UnsupportedInsertOption("PARTITION clause").into());
 
         assert_eq!(actual, expected);
     }
