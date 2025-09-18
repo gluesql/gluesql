@@ -480,12 +480,8 @@ pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Fo
 mod tests {
     use {super::*, crate::parse_sql::parse};
 
-    fn translate_one(sql: &str) -> crate::result::Result<Statement> {
-        parse(sql).and_then(|parsed| translate(&parsed[0]))
-    }
-
     fn assert_translate_error(sql: &str, error: TranslateError) {
-        let actual = translate_one(sql);
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
         let expected = Err::<Statement, _>(error.into());
         assert_eq!(actual, expected);
     }
