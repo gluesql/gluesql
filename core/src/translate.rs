@@ -39,16 +39,24 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             table_name,
             columns,
             source,
+            returning,
             ..
         }) => {
+            if returning.is_some() {
+                return Err(TranslateError::UnsupportedInsertOption("RETURNING clause").into());
+            }
+
             let table_name = translate_object_name(table_name)?;
             let columns = translate_idents(columns);
-            let source = source
-                .as_deref()
-                .ok_or_else(|| {
-                    TranslateError::DefaultValuesOnInsertNotSupported(table_name.clone()).into()
-                })
-                .and_then(translate_query)?;
+            let source = match source.as_deref() {
+                Some(query) => translate_query(query)?,
+                None => {
+                    return Err(TranslateError::DefaultValuesOnInsertNotSupported(
+                        table_name.clone(),
+                    )
+                    .into());
+                }
+            };
 
             Ok(Statement::Insert {
                 table_name,
@@ -428,6 +436,15 @@ mod tests {
             "(a, b) = (1, 2)".to_owned(),
         )
         .into());
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn insert_returning_not_supported() {
+        let sql = "INSERT INTO Foo VALUES (1) RETURNING *";
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+        let expected = Err(TranslateError::UnsupportedInsertOption("RETURNING clause").into());
 
         assert_eq!(actual, expected);
     }

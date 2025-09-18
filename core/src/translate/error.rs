@@ -68,6 +68,9 @@ pub enum TranslateError {
     #[error("unsupported unnamed index")]
     UnsupportedUnnamedIndex,
 
+    #[error("unsupported INSERT option: {0}")]
+    UnsupportedInsertOption(&'static str),
+
     #[error(
         "unsupported trim chars: expected: `TRIM((BOTH | LEADING | TRAILING) <text> FROM <expr>)`, got: `TRIM(<expr> [<chars>, ..])` syntax"
     )]
