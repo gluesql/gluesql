@@ -44,8 +44,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             table_alias,
             partitioned,
             overwrite,
-            ignore,
-            priority,
+            table,
             ..
         }) => {
             if returning.is_some() {
@@ -68,12 +67,8 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 return Err(TranslateError::UnsupportedInsertOption("OVERWRITE clause").into());
             }
 
-            if *ignore {
-                return Err(TranslateError::UnsupportedInsertOption("IGNORE keyword").into());
-            }
-
-            if priority.is_some() {
-                return Err(TranslateError::UnsupportedInsertOption("PRIORITY option").into());
+            if *table {
+                return Err(TranslateError::UnsupportedInsertOption("TABLE keyword").into());
             }
 
             let table_name = translate_object_name(table_name)?;
@@ -516,32 +511,13 @@ mod tests {
     }
 
     #[test]
-    fn insert_ignore_not_supported() {
-        let mut parsed = parse("INSERT INTO Foo VALUES (1)").expect("insert parse");
-        let SqlStatement::Insert(mut insert) = parsed.remove(0) else {
-            panic!("expected insert statement");
-        };
-        insert.ignore = true;
-        let statement = SqlStatement::Insert(insert);
-        let actual = translate(&statement);
-        let expected = Err(TranslateError::UnsupportedInsertOption("IGNORE keyword").into());
+    fn insert_table_keyword_not_supported() {
+        let sql = "INSERT TABLE Foo VALUES (1)";
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+        #[allow(deprecated)]
+        let expected = Err(TranslateError::UnsupportedInsertOption("TABLE keyword").into());
 
         assert_eq!(actual, expected);
     }
 
-    #[test]
-    fn insert_priority_not_supported() {
-        use sqlparser::ast::MysqlInsertPriority;
-
-        let mut parsed = parse("INSERT INTO Foo VALUES (1)").expect("insert parse");
-        let SqlStatement::Insert(mut insert) = parsed.remove(0) else {
-            panic!("expected insert statement");
-        };
-        insert.priority = Some(MysqlInsertPriority::LowPriority);
-        let statement = SqlStatement::Insert(insert);
-        let actual = translate(&statement);
-        let expected = Err(TranslateError::UnsupportedInsertOption("PRIORITY option").into());
-
-        assert_eq!(actual, expected);
-    }
 }
