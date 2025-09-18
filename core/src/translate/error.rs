@@ -71,6 +71,12 @@ pub enum TranslateError {
     #[error("unsupported INSERT option: {0}")]
     UnsupportedInsertOption(&'static str),
 
+    #[error("unsupported UPDATE option: {0}")]
+    UnsupportedUpdateOption(&'static str),
+
+    #[error("unsupported DELETE option: {0}")]
+    UnsupportedDeleteOption(&'static str),
+
     #[error(
         "unsupported trim chars: expected: `TRIM((BOTH | LEADING | TRAILING) <text> FROM <expr>)`, got: `TRIM(<expr> [<chars>, ..])` syntax"
     )]

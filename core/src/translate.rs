@@ -93,18 +93,57 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             table,
             assignments,
             selection,
+            from,
+            returning,
             ..
-        } => Ok(Statement::Update {
-            table_name: translate_table_with_join(table)?,
-            assignments: assignments
-                .iter()
-                .map(translate_assignment)
-                .collect::<Result<_>>()?,
-            selection: selection.as_ref().map(translate_expr).transpose()?,
-        }),
+        } => {
+            if from.is_some() {
+                return Err(TranslateError::UnsupportedUpdateOption("FROM clause").into());
+            }
+
+            if returning.is_some() {
+                return Err(TranslateError::UnsupportedUpdateOption("RETURNING clause").into());
+            }
+
+            Ok(Statement::Update {
+                table_name: translate_table_with_join(table)?,
+                assignments: assignments
+                    .iter()
+                    .map(translate_assignment)
+                    .collect::<Result<_>>()?,
+                selection: selection.as_ref().map(translate_expr).transpose()?,
+            })
+        }
         SqlStatement::Delete(SqlDelete {
-            from, selection, ..
+            tables,
+            from,
+            using,
+            selection,
+            returning,
+            order_by,
+            limit,
+            ..
         }) => {
+            if !tables.is_empty() {
+                return Err(TranslateError::UnsupportedDeleteOption("multiple tables").into());
+            }
+
+            if using.is_some() {
+                return Err(TranslateError::UnsupportedDeleteOption("USING clause").into());
+            }
+
+            if returning.is_some() {
+                return Err(TranslateError::UnsupportedDeleteOption("RETURNING clause").into());
+            }
+
+            if !order_by.is_empty() {
+                return Err(TranslateError::UnsupportedDeleteOption("ORDER BY clause").into());
+            }
+
+            if limit.is_some() {
+                return Err(TranslateError::UnsupportedDeleteOption("LIMIT clause").into());
+            }
+
             let from = match from {
                 SqlFromTable::WithFromKeyword(from) => from,
                 SqlFromTable::WithoutKeyword(_) => {
@@ -520,4 +559,57 @@ mod tests {
         assert_eq!(actual, expected);
     }
 
+    #[test]
+    fn update_from_not_supported() {
+        let sql = "UPDATE Foo SET id = 1 FROM Bar";
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+        let expected = Err(TranslateError::UnsupportedUpdateOption("FROM clause").into());
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn update_returning_not_supported() {
+        let sql = "UPDATE Foo SET id = 1 WHERE id = 1 RETURNING *";
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+        let expected = Err(TranslateError::UnsupportedUpdateOption("RETURNING clause").into());
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn delete_using_not_supported() {
+        let sql = "DELETE FROM Foo USING Bar";
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+        let expected = Err(TranslateError::UnsupportedDeleteOption("USING clause").into());
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn delete_returning_not_supported() {
+        let sql = "DELETE FROM Foo WHERE id = 1 RETURNING *";
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+        let expected = Err(TranslateError::UnsupportedDeleteOption("RETURNING clause").into());
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn delete_order_by_not_supported() {
+        let sql = "DELETE FROM Foo WHERE id = 1 ORDER BY id";
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+        let expected = Err(TranslateError::UnsupportedDeleteOption("ORDER BY clause").into());
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn delete_limit_not_supported() {
+        let sql = "DELETE FROM Foo WHERE id = 1 LIMIT 1";
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+        let expected = Err(TranslateError::UnsupportedDeleteOption("LIMIT clause").into());
+
+        assert_eq!(actual, expected);
+    }
 }
