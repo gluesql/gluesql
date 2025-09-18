@@ -41,6 +41,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             source,
             returning,
             on,
+            table_alias,
             ..
         }) => {
             if returning.is_some() {
@@ -49,6 +50,10 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
 
             if on.is_some() {
                 return Err(TranslateError::UnsupportedInsertOption("ON CONFLICT clause").into());
+            }
+
+            if table_alias.is_some() {
+                return Err(TranslateError::UnsupportedInsertOption("table alias").into());
             }
 
             let table_name = translate_object_name(table_name)?;
@@ -459,6 +464,15 @@ mod tests {
         let sql = "INSERT INTO Foo VALUES (1) ON CONFLICT DO NOTHING";
         let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
         let expected = Err(TranslateError::UnsupportedInsertOption("ON CONFLICT clause").into());
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn insert_table_alias_not_supported() {
+        let sql = "INSERT INTO Foo AS f VALUES (1)";
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+        let expected = Err(TranslateError::UnsupportedInsertOption("table alias").into());
 
         assert_eq!(actual, expected);
     }
