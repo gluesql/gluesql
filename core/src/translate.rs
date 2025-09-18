@@ -40,10 +40,15 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             columns,
             source,
             returning,
+            on,
             ..
         }) => {
             if returning.is_some() {
                 return Err(TranslateError::UnsupportedInsertOption("RETURNING clause").into());
+            }
+
+            if on.is_some() {
+                return Err(TranslateError::UnsupportedInsertOption("ON CONFLICT clause").into());
             }
 
             let table_name = translate_object_name(table_name)?;
@@ -445,6 +450,15 @@ mod tests {
         let sql = "INSERT INTO Foo VALUES (1) RETURNING *";
         let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
         let expected = Err(TranslateError::UnsupportedInsertOption("RETURNING clause").into());
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn insert_on_conflict_not_supported() {
+        let sql = "INSERT INTO Foo VALUES (1) ON CONFLICT DO NOTHING";
+        let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
+        let expected = Err(TranslateError::UnsupportedInsertOption("ON CONFLICT clause").into());
 
         assert_eq!(actual, expected);
     }
