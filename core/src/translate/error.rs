@@ -68,6 +68,21 @@ pub enum TranslateError {
     #[error("unsupported unnamed index")]
     UnsupportedUnnamedIndex,
 
+    #[error("unsupported INSERT option: {0}")]
+    UnsupportedInsertOption(&'static str),
+
+    #[error("unsupported UPDATE option: {0}")]
+    UnsupportedUpdateOption(&'static str),
+
+    #[error("unsupported DELETE option: {0}")]
+    UnsupportedDeleteOption(&'static str),
+
+    #[error("unsupported query option: {0}")]
+    UnsupportedQueryOption(&'static str),
+
+    #[error("unsupported SELECT option: {0}")]
+    UnsupportedSelectOption(&'static str),
+
     #[error(
         "unsupported trim chars: expected: `TRIM((BOTH | LEADING | TRAILING) <text> FROM <expr>)`, got: `TRIM(<expr> [<chars>, ..])` syntax"
     )]

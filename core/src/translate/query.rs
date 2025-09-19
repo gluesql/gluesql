@@ -22,12 +22,29 @@ use {
 
 pub fn translate_query(sql_query: &SqlQuery) -> Result<Query> {
     let SqlQuery {
+        with,
         body,
         order_by,
         limit,
         offset,
+        fetch,
+        locks,
         ..
     } = sql_query;
+
+    let violation = if with.is_some() {
+        Some("WITH clause")
+    } else if fetch.is_some() {
+        Some("FETCH clause")
+    } else if !locks.is_empty() {
+        Some("LOCK clause")
+    } else {
+        None
+    };
+
+    if let Some(reason) = violation {
+        return Err(TranslateError::UnsupportedQueryOption(reason).into());
+    }
 
     let body = translate_set_expr(body)?;
     let order_by = order_by
@@ -69,8 +86,16 @@ fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
         group_by,
         having,
         distinct,
+        into,
+        named_window,
         ..
     } = sql_select;
+
+    if into.is_some() {
+        return Err(TranslateError::UnsupportedSelectOption("INTO clause").into());
+    } else if !named_window.is_empty() {
+        return Err(TranslateError::UnsupportedSelectOption("WINDOW clause").into());
+    }
 
     if from.len() > 1 {
         return Err(TranslateError::TooManyTables.into());
@@ -279,4 +304,63 @@ fn translate_join(sql_join: &SqlJoin) -> Result<Join> {
         join_operator,
         join_executor: JoinExecutor::NestedLoop,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        crate::{parse_sql::parse, result::Error},
+        sqlparser::ast::Statement as SqlStatement,
+    };
+
+    fn assert_query_error(sql: &str, expected: TranslateError) {
+        let mut parsed = parse(sql).expect("parse");
+        let statement = parsed.remove(0);
+        let query = match statement {
+            SqlStatement::Query(query) => query,
+            _ => panic!("expected query statement: {sql}"),
+        };
+
+        let actual = translate_query(&query);
+        let expected = Err::<Query, Error>(Error::Translate(expected));
+        assert_eq!(actual, expected, "translate_query mismatch for `{sql}`");
+    }
+
+    #[test]
+    fn query_options_rejected() {
+        assert_query_error(
+            "WITH t AS (SELECT 1) SELECT * FROM t",
+            TranslateError::UnsupportedQueryOption("WITH clause"),
+        );
+        assert_query_error(
+            "SELECT * FROM Foo FETCH FIRST 1 ROW ONLY",
+            TranslateError::UnsupportedQueryOption("FETCH clause"),
+        );
+        assert_query_error(
+            "SELECT * FROM Foo FOR UPDATE",
+            TranslateError::UnsupportedQueryOption("LOCK clause"),
+        );
+    }
+
+    #[test]
+    fn select_options_rejected() {
+        assert_query_error(
+            "SELECT * INTO Foo FROM Bar",
+            TranslateError::UnsupportedSelectOption("INTO clause"),
+        );
+        assert_query_error(
+            "SELECT * FROM Foo WINDOW w AS (PARTITION BY id)",
+            TranslateError::UnsupportedSelectOption("WINDOW clause"),
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "expected query statement")]
+    fn query_option_helper_panics_on_non_query() {
+        assert_query_error(
+            "INSERT INTO Foo VALUES (1)",
+            TranslateError::UnsupportedQueryOption("unused"),
+        );
+    }
 }
