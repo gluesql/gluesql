@@ -503,68 +503,56 @@ mod tests {
     }
 
     #[test]
-    fn insert_returning_not_supported() {
-        assert_translate_error(
-            "INSERT INTO Foo VALUES (1) RETURNING *",
-            TranslateError::UnsupportedInsertOption("RETURNING clause"),
-        );
+    fn insert_options_not_supported() {
+        let cases = [
+            (
+                "INSERT INTO Foo VALUES (1) RETURNING *",
+                TranslateError::UnsupportedInsertOption("RETURNING clause"),
+            ),
+            (
+                "INSERT INTO Foo VALUES (1) ON CONFLICT DO NOTHING",
+                TranslateError::UnsupportedInsertOption("ON CONFLICT clause"),
+            ),
+            (
+                "INSERT INTO Foo AS f VALUES (1)",
+                TranslateError::UnsupportedInsertOption("table alias"),
+            ),
+            (
+                "INSERT INTO Foo PARTITION (bar = 1) VALUES (1)",
+                TranslateError::UnsupportedInsertOption("PARTITION clause"),
+            ),
+            (
+                "INSERT OVERWRITE TABLE Foo VALUES (1)",
+                TranslateError::UnsupportedInsertOption("OVERWRITE clause"),
+            ),
+            (
+                "INSERT TABLE Foo VALUES (1)",
+                TranslateError::UnsupportedInsertOption("TABLE keyword"),
+            ),
+        ];
+
+        for (sql, err) in cases {
+            #[allow(deprecated)]
+            assert_translate_error(sql, err);
+        }
     }
 
     #[test]
-    fn insert_on_conflict_not_supported() {
-        assert_translate_error(
-            "INSERT INTO Foo VALUES (1) ON CONFLICT DO NOTHING",
-            TranslateError::UnsupportedInsertOption("ON CONFLICT clause"),
-        );
-    }
+    fn update_options_not_supported() {
+        let cases = [
+            (
+                "UPDATE Foo SET id = 1 FROM Bar",
+                TranslateError::UnsupportedUpdateOption("FROM clause"),
+            ),
+            (
+                "UPDATE Foo SET id = 1 WHERE id = 1 RETURNING *",
+                TranslateError::UnsupportedUpdateOption("RETURNING clause"),
+            ),
+        ];
 
-    #[test]
-    fn insert_table_alias_not_supported() {
-        assert_translate_error(
-            "INSERT INTO Foo AS f VALUES (1)",
-            TranslateError::UnsupportedInsertOption("table alias"),
-        );
-    }
-
-    #[test]
-    fn insert_partition_not_supported() {
-        assert_translate_error(
-            "INSERT INTO Foo PARTITION (bar = 1) VALUES (1)",
-            TranslateError::UnsupportedInsertOption("PARTITION clause"),
-        );
-    }
-
-    #[test]
-    fn insert_overwrite_not_supported() {
-        assert_translate_error(
-            "INSERT OVERWRITE TABLE Foo VALUES (1)",
-            TranslateError::UnsupportedInsertOption("OVERWRITE clause"),
-        );
-    }
-
-    #[test]
-    fn insert_table_keyword_not_supported() {
-        #[allow(deprecated)]
-        assert_translate_error(
-            "INSERT TABLE Foo VALUES (1)",
-            TranslateError::UnsupportedInsertOption("TABLE keyword"),
-        );
-    }
-
-    #[test]
-    fn update_from_not_supported() {
-        assert_translate_error(
-            "UPDATE Foo SET id = 1 FROM Bar",
-            TranslateError::UnsupportedUpdateOption("FROM clause"),
-        );
-    }
-
-    #[test]
-    fn update_returning_not_supported() {
-        assert_translate_error(
-            "UPDATE Foo SET id = 1 WHERE id = 1 RETURNING *",
-            TranslateError::UnsupportedUpdateOption("RETURNING clause"),
-        );
+        for (sql, err) in cases {
+            assert_translate_error(sql, err);
+        }
     }
 
     #[test]
