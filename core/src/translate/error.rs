@@ -78,10 +78,10 @@ pub enum TranslateError {
     UnsupportedDeleteOption(&'static str),
 
     #[error("unsupported query option: {0}")]
-    UnsupportedQueryOption(String),
+    UnsupportedQueryOption(&'static str),
 
     #[error("unsupported SELECT option: {0}")]
-    UnsupportedSelectOption(String),
+    UnsupportedSelectOption(&'static str),
 
     #[error(
         "unsupported trim chars: expected: `TRIM((BOTH | LEADING | TRAILING) <text> FROM <expr>)`, got: `TRIM(<expr> [<chars>, ..])` syntax"

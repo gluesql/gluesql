@@ -43,7 +43,7 @@ pub fn translate_query(sql_query: &SqlQuery) -> Result<Query> {
     };
 
     if let Some(reason) = violation {
-        return Err(TranslateError::UnsupportedQueryOption(reason.to_owned()).into());
+        return Err(TranslateError::UnsupportedQueryOption(reason).into());
     }
 
     let body = translate_set_expr(body)?;
@@ -92,9 +92,9 @@ fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
     } = sql_select;
 
     if into.is_some() {
-        return Err(TranslateError::UnsupportedSelectOption("INTO clause".to_owned()).into());
+        return Err(TranslateError::UnsupportedSelectOption("INTO clause").into());
     } else if !named_window.is_empty() {
-        return Err(TranslateError::UnsupportedSelectOption("WINDOW clause".to_owned()).into());
+        return Err(TranslateError::UnsupportedSelectOption("WINDOW clause").into());
     }
 
     if from.len() > 1 {
@@ -331,15 +331,15 @@ mod tests {
     fn query_options_rejected() {
         assert_query_error(
             "WITH t AS (SELECT 1) SELECT * FROM t",
-            TranslateError::UnsupportedQueryOption("WITH clause".to_owned()),
+            TranslateError::UnsupportedQueryOption("WITH clause"),
         );
         assert_query_error(
             "SELECT * FROM Foo FETCH FIRST 1 ROW ONLY",
-            TranslateError::UnsupportedQueryOption("FETCH clause".to_owned()),
+            TranslateError::UnsupportedQueryOption("FETCH clause"),
         );
         assert_query_error(
             "SELECT * FROM Foo FOR UPDATE",
-            TranslateError::UnsupportedQueryOption("LOCK clause".to_owned()),
+            TranslateError::UnsupportedQueryOption("LOCK clause"),
         );
     }
 
@@ -347,11 +347,11 @@ mod tests {
     fn select_options_rejected() {
         assert_query_error(
             "SELECT * INTO Foo FROM Bar",
-            TranslateError::UnsupportedSelectOption("INTO clause".to_owned()),
+            TranslateError::UnsupportedSelectOption("INTO clause"),
         );
         assert_query_error(
             "SELECT * FROM Foo WINDOW w AS (PARTITION BY id)",
-            TranslateError::UnsupportedSelectOption("WINDOW clause".to_owned()),
+            TranslateError::UnsupportedSelectOption("WINDOW clause"),
         );
     }
 }
