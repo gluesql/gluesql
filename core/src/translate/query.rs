@@ -21,6 +21,7 @@ use {
 };
 
 pub fn translate_query(sql_query: &SqlQuery) -> Result<Query> {
+    ensure_query_options_supported(sql_query)?;
     let body = translate_set_expr(&sql_query.body)?;
     let order_by = sql_query
         .order_by
@@ -56,6 +57,7 @@ fn translate_set_expr(sql_set_expr: &SqlSetExpr) -> Result<SetExpr> {
 }
 
 fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
+    ensure_select_options_supported(sql_select)?;
     let SqlSelect {
         projection,
         from,
@@ -63,34 +65,8 @@ fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
         group_by,
         having,
         distinct,
-        into,
-        top,
-        lateral_views,
-        prewhere,
-        cluster_by,
-        distribute_by,
-        sort_by,
-        named_window,
-        qualify,
-        value_table_mode,
-        connect_by,
         ..
     } = sql_select;
-
-    if into.is_some()
-        || top.is_some()
-        || !lateral_views.is_empty()
-        || prewhere.is_some()
-        || !cluster_by.is_empty()
-        || !distribute_by.is_empty()
-        || !sort_by.is_empty()
-        || !named_window.is_empty()
-        || qualify.is_some()
-        || value_table_mode.is_some()
-        || connect_by.is_some()
-    {
-        return Err(TranslateError::UnsupportedSelectOption(sql_select.to_string()).into());
-    }
 
     if from.len() > 1 {
         return Err(TranslateError::TooManyTables.into());
@@ -136,6 +112,40 @@ fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
         group_by: group_by.iter().map(translate_expr).collect::<Result<_>>()?,
         having: having.as_ref().map(translate_expr).transpose()?,
     })
+}
+
+fn ensure_query_options_supported(query: &SqlQuery) -> Result<()> {
+    if query.with.is_some()
+        || !query.limit_by.is_empty()
+        || query.fetch.is_some()
+        || !query.locks.is_empty()
+        || query.for_clause.is_some()
+        || query.settings.is_some()
+        || query.format_clause.is_some()
+    {
+        return Err(TranslateError::UnsupportedQueryOption(query.to_string()).into());
+    }
+
+    Ok(())
+}
+
+fn ensure_select_options_supported(select: &SqlSelect) -> Result<()> {
+    if select.into.is_some()
+        || select.top.is_some()
+        || !select.lateral_views.is_empty()
+        || select.prewhere.is_some()
+        || !select.cluster_by.is_empty()
+        || !select.distribute_by.is_empty()
+        || !select.sort_by.is_empty()
+        || !select.named_window.is_empty()
+        || select.qualify.is_some()
+        || select.value_table_mode.is_some()
+        || select.connect_by.is_some()
+    {
+        return Err(TranslateError::UnsupportedSelectOption(select.to_string()).into());
+    }
+
+    Ok(())
 }
 
 pub fn translate_select_item(sql_select_item: &SqlSelectItem) -> Result<SelectItem> {
@@ -299,4 +309,50 @@ fn translate_join(sql_join: &SqlJoin) -> Result<Join> {
         join_operator,
         join_executor: JoinExecutor::NestedLoop,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        crate::{parse_sql::parse, result::Error},
+        sqlparser::ast::Statement as SqlStatement,
+    };
+
+    fn query_from_sql(sql: &str) -> SqlQuery {
+        let mut parsed = parse(sql).expect("parse");
+        match parsed.remove(0) {
+            SqlStatement::Query(query) => *query,
+            _ => panic!("expected query: {sql}"),
+        }
+    }
+
+    fn assert_query_error(sql: &str) {
+        let query = query_from_sql(sql);
+        match translate_query(&query) {
+            Err(Error::Translate(TranslateError::UnsupportedQueryOption(_))) => {}
+            other => panic!("expected UnsupportedQueryOption, got {other:?} for `{sql}`"),
+        }
+    }
+
+    fn assert_select_error(sql: &str) {
+        let query = query_from_sql(sql);
+        match translate_query(&query) {
+            Err(Error::Translate(TranslateError::UnsupportedSelectOption(_))) => {}
+            other => panic!("expected UnsupportedSelectOption, got {other:?} for `{sql}`"),
+        }
+    }
+
+    #[test]
+    fn query_options_rejected() {
+        assert_query_error("WITH t AS (SELECT 1) SELECT * FROM t");
+        assert_query_error("SELECT * FROM Foo FETCH FIRST 1 ROW ONLY");
+        assert_query_error("SELECT * FROM Foo FOR UPDATE");
+    }
+
+    #[test]
+    fn select_options_rejected() {
+        assert_select_error("SELECT * INTO Foo FROM Bar");
+        assert_select_error("SELECT * FROM Foo WINDOW w AS (PARTITION BY id)");
+    }
 }
