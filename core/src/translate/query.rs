@@ -21,16 +21,38 @@ use {
 };
 
 pub fn translate_query(sql_query: &SqlQuery) -> Result<Query> {
-    ensure_query_options_supported(sql_query)?;
-    let body = translate_set_expr(&sql_query.body)?;
-    let order_by = sql_query
-        .order_by
+    let SqlQuery {
+        with,
+        body,
+        order_by,
+        limit,
+        offset,
+        fetch,
+        locks,
+        ..
+    } = sql_query;
+
+    let violation = if with.is_some() {
+        Some("WITH clause")
+    } else if fetch.is_some() {
+        Some("FETCH clause")
+    } else if !locks.is_empty() {
+        Some("LOCK clause")
+    } else {
+        None
+    };
+
+    if let Some(reason) = violation {
+        return Err(TranslateError::UnsupportedQueryOption(reason.to_owned()).into());
+    }
+
+    let body = translate_set_expr(body)?;
+    let order_by = order_by
         .iter()
         .flat_map(|order_by| order_by.exprs.iter().map(translate_order_by_expr))
         .collect::<Result<_>>()?;
-    let limit = sql_query.limit.as_ref().map(translate_expr).transpose()?;
-    let offset = sql_query
-        .offset
+    let limit = limit.as_ref().map(translate_expr).transpose()?;
+    let offset = offset
         .as_ref()
         .map(|offset| translate_expr(&offset.value))
         .transpose()?;
@@ -57,7 +79,6 @@ fn translate_set_expr(sql_set_expr: &SqlSetExpr) -> Result<SetExpr> {
 }
 
 fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
-    ensure_select_options_supported(sql_select)?;
     let SqlSelect {
         projection,
         from,
@@ -65,8 +86,16 @@ fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
         group_by,
         having,
         distinct,
+        into,
+        named_window,
         ..
     } = sql_select;
+
+    if into.is_some() {
+        return Err(TranslateError::UnsupportedSelectOption("INTO clause".to_owned()).into());
+    } else if !named_window.is_empty() {
+        return Err(TranslateError::UnsupportedSelectOption("WINDOW clause".to_owned()).into());
+    }
 
     if from.len() > 1 {
         return Err(TranslateError::TooManyTables.into());
@@ -112,40 +141,6 @@ fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
         group_by: group_by.iter().map(translate_expr).collect::<Result<_>>()?,
         having: having.as_ref().map(translate_expr).transpose()?,
     })
-}
-
-fn ensure_query_options_supported(query: &SqlQuery) -> Result<()> {
-    if query.with.is_some()
-        || !query.limit_by.is_empty()
-        || query.fetch.is_some()
-        || !query.locks.is_empty()
-        || query.for_clause.is_some()
-        || query.settings.is_some()
-        || query.format_clause.is_some()
-    {
-        return Err(TranslateError::UnsupportedQueryOption(query.to_string()).into());
-    }
-
-    Ok(())
-}
-
-fn ensure_select_options_supported(select: &SqlSelect) -> Result<()> {
-    if select.into.is_some()
-        || select.top.is_some()
-        || !select.lateral_views.is_empty()
-        || select.prewhere.is_some()
-        || !select.cluster_by.is_empty()
-        || !select.distribute_by.is_empty()
-        || !select.sort_by.is_empty()
-        || !select.named_window.is_empty()
-        || select.qualify.is_some()
-        || select.value_table_mode.is_some()
-        || select.connect_by.is_some()
-    {
-        return Err(TranslateError::UnsupportedSelectOption(select.to_string()).into());
-    }
-
-    Ok(())
 }
 
 pub fn translate_select_item(sql_select_item: &SqlSelectItem) -> Result<SelectItem> {
@@ -319,40 +314,44 @@ mod tests {
         sqlparser::ast::Statement as SqlStatement,
     };
 
-    fn query_from_sql(sql: &str) -> SqlQuery {
+    fn assert_query_error(sql: &str, expected: TranslateError) {
         let mut parsed = parse(sql).expect("parse");
-        match parsed.remove(0) {
-            SqlStatement::Query(query) => *query,
-            _ => panic!("expected query: {sql}"),
-        }
-    }
+        let statement = parsed.remove(0);
+        let query = match statement {
+            SqlStatement::Query(query) => query,
+            _ => panic!("expected query statement: {sql}"),
+        };
 
-    fn assert_query_error(sql: &str) {
-        let query = query_from_sql(sql);
-        match translate_query(&query) {
-            Err(Error::Translate(TranslateError::UnsupportedQueryOption(_))) => {}
-            other => panic!("expected UnsupportedQueryOption, got {other:?} for `{sql}`"),
-        }
-    }
-
-    fn assert_select_error(sql: &str) {
-        let query = query_from_sql(sql);
-        match translate_query(&query) {
-            Err(Error::Translate(TranslateError::UnsupportedSelectOption(_))) => {}
-            other => panic!("expected UnsupportedSelectOption, got {other:?} for `{sql}`"),
-        }
+        let actual = translate_query(&query);
+        let expected = Err::<Query, Error>(Error::Translate(expected));
+        assert_eq!(actual, expected, "translate_query mismatch for `{sql}`");
     }
 
     #[test]
     fn query_options_rejected() {
-        assert_query_error("WITH t AS (SELECT 1) SELECT * FROM t");
-        assert_query_error("SELECT * FROM Foo FETCH FIRST 1 ROW ONLY");
-        assert_query_error("SELECT * FROM Foo FOR UPDATE");
+        assert_query_error(
+            "WITH t AS (SELECT 1) SELECT * FROM t",
+            TranslateError::UnsupportedQueryOption("WITH clause".to_owned()),
+        );
+        assert_query_error(
+            "SELECT * FROM Foo FETCH FIRST 1 ROW ONLY",
+            TranslateError::UnsupportedQueryOption("FETCH clause".to_owned()),
+        );
+        assert_query_error(
+            "SELECT * FROM Foo FOR UPDATE",
+            TranslateError::UnsupportedQueryOption("LOCK clause".to_owned()),
+        );
     }
 
     #[test]
     fn select_options_rejected() {
-        assert_select_error("SELECT * INTO Foo FROM Bar");
-        assert_select_error("SELECT * FROM Foo WINDOW w AS (PARTITION BY id)");
+        assert_query_error(
+            "SELECT * INTO Foo FROM Bar",
+            TranslateError::UnsupportedSelectOption("INTO clause".to_owned()),
+        );
+        assert_query_error(
+            "SELECT * FROM Foo WINDOW w AS (PARTITION BY id)",
+            TranslateError::UnsupportedSelectOption("WINDOW clause".to_owned()),
+        );
     }
 }
