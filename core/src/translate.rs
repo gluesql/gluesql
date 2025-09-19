@@ -26,7 +26,7 @@ use {
         CommentDef as SqlCommentDef, CreateFunctionBody as SqlCreateFunctionBody,
         CreateIndex as SqlCreateIndex, CreateTable as SqlCreateTable, Delete as SqlDelete,
         FromTable as SqlFromTable, Ident as SqlIdent, Insert as SqlInsert,
-        ObjectName as SqlObjectName, ObjectType as SqlObjectType,
+        ObjectName as SqlObjectName, ObjectType as SqlObjectType, Query as SqlQuery,
         ReferentialAction as SqlReferentialAction, Statement as SqlStatement,
         TableConstraint as SqlTableConstraint, TableFactor, TableWithJoins,
     },
@@ -34,7 +34,10 @@ use {
 
 pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
     match sql_statement {
-        SqlStatement::Query(query) => translate_query(query).map(Statement::Query),
+        SqlStatement::Query(query) => {
+            reject_query_options(query)?;
+            translate_query(query).map(Statement::Query)
+        }
         SqlStatement::Insert(SqlInsert {
             table_name,
             columns,
@@ -358,6 +361,21 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
     }
 }
 
+fn reject_query_options(query: &SqlQuery) -> Result<()> {
+    if query.with.is_some()
+        || !query.limit_by.is_empty()
+        || query.fetch.is_some()
+        || !query.locks.is_empty()
+        || query.for_clause.is_some()
+        || query.settings.is_some()
+        || query.format_clause.is_some()
+    {
+        return Err(TranslateError::UnsupportedQueryOption(query.to_string()).into());
+    }
+
+    Ok(())
+}
+
 pub fn translate_assignment(sql_assignment: &SqlAssignment) -> Result<Assignment> {
     let SqlAssignment { target, value } = sql_assignment;
 
@@ -478,12 +496,29 @@ pub fn translate_foreign_key(table_constraint: &SqlTableConstraint) -> Result<Fo
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::parse_sql::parse};
+    use {
+        super::*,
+        crate::{parse_sql::parse, result::Error},
+    };
 
     fn assert_translate_error(sql: &str, error: TranslateError) {
         let actual = parse(sql).and_then(|parsed| translate(&parsed[0]));
         let expected = Err::<Statement, _>(error.into());
         assert_eq!(actual, expected);
+    }
+
+    fn assert_query_option_error(sql: &str) {
+        match parse(sql).and_then(|parsed| translate(&parsed[0])) {
+            Err(Error::Translate(TranslateError::UnsupportedQueryOption(_))) => {}
+            other => panic!("expected UnsupportedQueryOption, got {other:?} for `{sql}`"),
+        }
+    }
+
+    fn assert_select_option_error(sql: &str) {
+        match parse(sql).and_then(|parsed| translate(&parsed[0])) {
+            Err(Error::Translate(TranslateError::UnsupportedSelectOption(_))) => {}
+            other => panic!("expected UnsupportedSelectOption, got {other:?} for `{sql}`"),
+        }
     }
 
     #[test]
@@ -597,5 +632,18 @@ mod tests {
             "DELETE FROM Foo WHERE id = 1 LIMIT 1",
             TranslateError::UnsupportedDeleteOption("LIMIT clause"),
         );
+    }
+
+    #[test]
+    fn query_with_options_not_supported() {
+        assert_query_option_error("WITH t AS (SELECT 1) SELECT * FROM t");
+        assert_query_option_error("SELECT * FROM Foo FETCH FIRST 1 ROW ONLY");
+        assert_query_option_error("SELECT * FROM Foo FOR UPDATE");
+    }
+
+    #[test]
+    fn select_with_options_not_supported() {
+        assert_select_option_error("SELECT * INTO Foo FROM Bar");
+        assert_select_option_error("SELECT * FROM Foo WINDOW w AS (PARTITION BY id)");
     }
 }

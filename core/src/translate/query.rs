@@ -21,21 +21,15 @@ use {
 };
 
 pub fn translate_query(sql_query: &SqlQuery) -> Result<Query> {
-    let SqlQuery {
-        body,
-        order_by,
-        limit,
-        offset,
-        ..
-    } = sql_query;
-
-    let body = translate_set_expr(body)?;
-    let order_by = order_by
+    let body = translate_set_expr(&sql_query.body)?;
+    let order_by = sql_query
+        .order_by
         .iter()
         .flat_map(|order_by| order_by.exprs.iter().map(translate_order_by_expr))
         .collect::<Result<_>>()?;
-    let limit = limit.as_ref().map(translate_expr).transpose()?;
-    let offset = offset
+    let limit = sql_query.limit.as_ref().map(translate_expr).transpose()?;
+    let offset = sql_query
+        .offset
         .as_ref()
         .map(|offset| translate_expr(&offset.value))
         .transpose()?;
@@ -69,8 +63,34 @@ fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
         group_by,
         having,
         distinct,
+        into,
+        top,
+        lateral_views,
+        prewhere,
+        cluster_by,
+        distribute_by,
+        sort_by,
+        named_window,
+        qualify,
+        value_table_mode,
+        connect_by,
         ..
     } = sql_select;
+
+    if into.is_some()
+        || top.is_some()
+        || !lateral_views.is_empty()
+        || prewhere.is_some()
+        || !cluster_by.is_empty()
+        || !distribute_by.is_empty()
+        || !sort_by.is_empty()
+        || !named_window.is_empty()
+        || qualify.is_some()
+        || value_table_mode.is_some()
+        || connect_by.is_some()
+    {
+        return Err(TranslateError::UnsupportedSelectOption(sql_select.to_string()).into());
+    }
 
     if from.len() > 1 {
         return Err(TranslateError::TooManyTables.into());
