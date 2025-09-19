@@ -556,40 +556,12 @@ mod tests {
     }
 
     #[test]
-    fn delete_using_not_supported() {
-        assert_translate_error(
-            "DELETE FROM Foo USING Bar",
-            TranslateError::UnsupportedDeleteOption("USING clause"),
-        );
-    }
-
-    #[test]
-    fn delete_returning_not_supported() {
-        assert_translate_error(
-            "DELETE FROM Foo WHERE id = 1 RETURNING *",
-            TranslateError::UnsupportedDeleteOption("RETURNING clause"),
-        );
-    }
-
-    #[test]
-    fn delete_order_by_not_supported() {
-        assert_translate_error(
-            "DELETE FROM Foo WHERE id = 1 ORDER BY id",
-            TranslateError::UnsupportedDeleteOption("ORDER BY clause"),
-        );
-    }
-
-    #[test]
-    fn delete_limit_not_supported() {
-        assert_translate_error(
-            "DELETE FROM Foo WHERE id = 1 LIMIT 1",
-            TranslateError::UnsupportedDeleteOption("LIMIT clause"),
-        );
-    }
-
-    #[test]
     fn delete_options_not_supported() {
         let cases = [
+            (
+                "DELETE FROM Foo USING Bar",
+                TranslateError::UnsupportedDeleteOption("USING clause"),
+            ),
             (
                 "DELETE FROM Foo WHERE id = 1 RETURNING *",
                 TranslateError::UnsupportedDeleteOption("RETURNING clause"),
