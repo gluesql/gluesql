@@ -598,4 +598,26 @@ mod tests {
             TranslateError::UnsupportedDeleteOption("LIMIT clause"),
         );
     }
+
+    #[test]
+    fn delete_options_not_supported() {
+        let cases = [
+            (
+                "DELETE FROM Foo WHERE id = 1 RETURNING *",
+                TranslateError::UnsupportedDeleteOption("RETURNING clause"),
+            ),
+            (
+                "DELETE FROM Foo WHERE id = 1 ORDER BY id",
+                TranslateError::UnsupportedDeleteOption("ORDER BY clause"),
+            ),
+            (
+                "DELETE FROM Foo WHERE id = 1 LIMIT 1",
+                TranslateError::UnsupportedDeleteOption("LIMIT clause"),
+            ),
+        ];
+
+        for (sql, err) in cases {
+            assert_translate_error(sql, err);
+        }
+    }
 }
