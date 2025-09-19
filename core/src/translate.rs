@@ -529,7 +529,6 @@ mod tests {
         ];
 
         for (sql, err) in cases {
-            #[allow(deprecated)]
             assert_translate_error(sql, err);
         }
     }
