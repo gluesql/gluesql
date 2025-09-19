@@ -354,4 +354,13 @@ mod tests {
             TranslateError::UnsupportedSelectOption("WINDOW clause"),
         );
     }
+
+    #[test]
+    #[should_panic(expected = "expected query statement")]
+    fn query_option_helper_panics_on_non_query() {
+        assert_query_error(
+            "INSERT INTO Foo VALUES (1)",
+            TranslateError::UnsupportedQueryOption("unused"),
+        );
+    }
 }

@@ -115,7 +115,6 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             })
         }
         SqlStatement::Delete(SqlDelete {
-            tables,
             from,
             using,
             selection,
@@ -124,9 +123,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             limit,
             ..
         }) => {
-            let violation = if !tables.is_empty() {
-                Some("multiple tables")
-            } else if using.is_some() {
+            let violation = if using.is_some() {
                 Some("USING clause")
             } else if returning.is_some() {
                 Some("RETURNING clause")
