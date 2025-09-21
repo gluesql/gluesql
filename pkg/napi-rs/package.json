@@ -16,7 +16,6 @@
     "webassembly",
     "wasm"
   ],
-  "author": "Taehoon Moon",
   "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/gluesql/gluesql/issues"
@@ -34,7 +33,7 @@
       "x86_64-apple-darwin",
       "x86_64-unknown-linux-gnu",
       "aarch64-apple-darwin",
-      "wasm32-wasi"
+      "wasm32-wasip1-threads"
     ],
     "wasm": {
       "initialMemory": 16777216,
@@ -53,7 +52,7 @@
     "artifacts": "napi artifacts",
     "build": "napi build --platform --release",
     "build:debug": "napi build --platform",
-    "build:wasm": "napi build --platform --target wasm32-wasi --release",
+    "build:wasm": "napi build --platform --target wasm32-wasip1-threads --release",
     "format": "run-p format:prettier format:rs format:toml",
     "format:prettier": "prettier . -w",
     "format:toml": "taplo format",

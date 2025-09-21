@@ -10,5 +10,5 @@
     "allowSyntheticDefaultImports": true
   },
   "include": ["."],
-  "exclude": ["node_modules", "bench", "__test__"]
+  "exclude": ["node_modules", "test"]
 }

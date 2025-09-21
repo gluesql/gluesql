@@ -3,5 +3,6 @@
 export declare class Glue {
   constructor()
   setDefaultEngine(defaultEngine: string): void
+  setDefaultEngine(defaultEngine: string): void
   query(sql: string): Promise<any>
 }

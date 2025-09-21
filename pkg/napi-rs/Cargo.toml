@@ -23,8 +23,8 @@ gluesql-web-storage.workspace = true
 gluesql-idb-storage.workspace = true
 gluesql-composite-storage.workspace = true
 
-napi = { version = "3.0.0", features = ["async", "serde-json"] }
-napi-derive = "3.0.0"
+napi = { version = "3.3.0", features = ["tokio_rt", "serde-json"] }
+napi-derive = "3.2.5"
 
 serde = "1"
 serde_json = "1"
@@ -35,8 +35,11 @@ serde_json = "1"
 # code size when deploying.
 console_error_panic_hook = { version = "0.1.6", optional = true }
 
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
 [build-dependencies]
-napi-build = "2"
+napi-build = "2.2.3"
 
 [profile.release]
 lto = true

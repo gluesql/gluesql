@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      emnapi:
+        specifier: ^1.5.0
+        version: 1.5.0
     devDependencies:
       '@emnapi/core':
         specifier: ^1.5.0
@@ -16,7 +20,10 @@ importers:
         version: 1.5.0
       '@napi-rs/cli':
         specifier: ^3.2.0
-        version: 3.2.0(@emnapi/runtime@1.5.0)
+        version: 3.2.0(@emnapi/runtime@1.5.0)(emnapi@1.5.0)
+      '@napi-rs/wasm-runtime':
+        specifier: ^0.2.0
+        version: 0.2.12
       '@oxc-node/core':
         specifier: ^0.0.32
         version: 0.0.32
@@ -439,6 +446,9 @@ packages:
     resolution: {integrity: sha512-7cmzIu+Vbupriudo7UudoMRH2OA3cTw67vva8MxeoAe5S7vPFI7z0vp0pMXiA25S8IUJefImQ90FeJjl8fjEaQ==}
     engines: {node: '>= 10'}
 
+  '@napi-rs/wasm-runtime@0.2.12':
+    resolution: {integrity: sha512-ZVWUcfwY4E/yPitQJl481FjFo3K22D6qF0DuFH6Y/nbnE11GY5uguDxZMGXPQ8WQ0128MXQD7TnfHyK4oWoIJQ==}
+
   '@napi-rs/wasm-runtime@1.0.5':
     resolution: {integrity: sha512-TBr9Cf9onSAS2LQ2+QHx6XcC6h9+RIzJgbqG3++9TUZSH204AwEy5jg3BTQ0VATsyoGj4ee49tN/y6rvaOOtcg==}
 
@@ -773,6 +783,14 @@ packages:
       supports-color:
         optional: true
 
+  emnapi@1.5.0:
+    resolution: {integrity: sha512-adAaiwTxMnHbq1u2LUf+AfDR5MYrxDVBtezGspxwk5e/Zb6KHkGNdfuMU4JBIVm6ASY06K8KalhOPUht92MsnA==}
+    peerDependencies:
+      node-addon-api: '>= 6.1.0'
+    peerDependenciesMeta:
+      node-addon-api:
+        optional: true
+
   emoji-regex@8.0.0:
     resolution: {integrity: sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==}
 
@@ -1065,7 +1083,7 @@ snapshots:
 
   '@inquirer/type@3.0.8': {}
 
-  '@napi-rs/cli@3.2.0(@emnapi/runtime@1.5.0)':
+  '@napi-rs/cli@3.2.0(@emnapi/runtime@1.5.0)(emnapi@1.5.0)':
     dependencies:
       '@inquirer/prompts': 7.8.6
       '@napi-rs/cross-toolchain': 1.0.3
@@ -1081,6 +1099,7 @@ snapshots:
       typanion: 3.14.0
     optionalDependencies:
       '@emnapi/runtime': 1.5.0
+      emnapi: 1.5.0
     transitivePeerDependencies:
       - '@napi-rs/cross-toolchain-arm64-target-aarch64'
       - '@napi-rs/cross-toolchain-arm64-target-armv7'
@@ -1244,6 +1263,12 @@ snapshots:
       '@napi-rs/tar-win32-arm64-msvc': 1.1.0
       '@napi-rs/tar-win32-ia32-msvc': 1.1.0
       '@napi-rs/tar-win32-x64-msvc': 1.1.0
+
+  '@napi-rs/wasm-runtime@0.2.12':
+    dependencies:
+      '@emnapi/core': 1.5.0
+      '@emnapi/runtime': 1.5.0
+      '@tybys/wasm-util': 0.10.1
 
   '@napi-rs/wasm-runtime@1.0.5':
     dependencies:
@@ -1521,6 +1546,8 @@ snapshots:
   debug@4.4.3:
     dependencies:
       ms: 2.1.3
+
+  emnapi@1.5.0: {}
 
   emoji-regex@8.0.0: {}
 
