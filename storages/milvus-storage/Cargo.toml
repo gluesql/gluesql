@@ -1,0 +1,27 @@
+[package]
+name = "gluesql-milvus-storage"
+authors = [
+    "Chaewon Kim <chaerrypick01@gmail.com>",
+]
+version.workspace = true
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation.workspace = true
+
+[dependencies]
+gluesql-core.workspace = true
+
+async-trait = "0.1"
+futures = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2"
+tokio = { version = "1", features = ["full"] }
+chrono = "0.4"
+milvus-sdk-rust = "0.1.0"
+
+[dev-dependencies]
+test-suite.workspace = true
+tokio-test = "0.4"
