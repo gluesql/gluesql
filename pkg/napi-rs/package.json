@@ -1,38 +1,49 @@
 {
-  "name": "napi-rs",
-  "version": "1.0.0",
-  "description": "Template project for writing node package with napi-rs",
+  "name": "gluesql-napi",
+  "version": "0.17.0",
+  "description": "GlueSQL is quite sticky, it attaches to anywhere - NAPI-RS bindings",
   "main": "index.js",
+  "browser": "browser.js",
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/napi-rs/package-template.git"
+    "url": "git+https://github.com/gluesql/gluesql.git"
   },
-  "license": "MIT",
-  "browser": "browser.js",
   "keywords": [
+    "SQL",
+    "Database",
+    "rust",
     "napi-rs",
-    "NAPI",
-    "N-API",
-    "Rust",
-    "node-addon",
-    "node-addon-api"
+    "webassembly",
+    "wasm"
   ],
+  "author": "Taehoon Moon",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/gluesql/gluesql/issues"
+  },
+  "homepage": "https://gluesql.org/docs",
   "files": [
     "index.d.ts",
     "index.js",
     "browser.js"
   ],
   "napi": {
-    "binaryName": "napi-rs",
+    "binaryName": "gluesql-napi",
     "targets": [
       "x86_64-pc-windows-msvc",
       "x86_64-apple-darwin",
       "x86_64-unknown-linux-gnu",
-      "aarch64-apple-darwin"
-    ]
+      "aarch64-apple-darwin",
+      "wasm32-wasi"
+    ],
+    "wasm": {
+      "initialMemory": 16777216,
+      "maximumMemory": 2147483648,
+      "needsPatchWasmJs": true
+    }
   },
   "engines": {
-    "node": ">= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0"
+    "node": ">= 16.0.0"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
@@ -42,6 +53,7 @@
     "artifacts": "napi artifacts",
     "build": "napi build --platform --release",
     "build:debug": "napi build --platform",
+    "build:wasm": "napi build --platform --target wasm32-wasi --release",
     "format": "run-p format:prettier format:rs format:toml",
     "format:prettier": "prettier . -w",
     "format:toml": "taplo format",
@@ -55,6 +67,7 @@
     "@emnapi/core": "^1.5.0",
     "@emnapi/runtime": "^1.5.0",
     "@napi-rs/cli": "^3.2.0",
+    "@napi-rs/wasm-runtime": "^0.2.0",
     "@oxc-node/core": "^0.0.32",
     "@taplo/cli": "^0.7.0",
     "@tybys/wasm-util": "^0.10.0",

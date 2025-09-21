@@ -1,87 +1,143 @@
-# `@napi-rs/package-template`
+# GlueSQL NAPI-RS Bindings
 
-![https://github.com/napi-rs/package-template/actions](https://github.com/napi-rs/package-template/workflows/CI/badge.svg)
+This package provides NAPI-RS based bindings for GlueSQL, offering both Node.js native modules and WebAssembly support.
 
-> Template project for writing node packages with napi-rs.
+## Migration from wasm-bindgen
 
-# Usage
+This package replaces the previous `wasm-bindgen` based JavaScript bindings with modern NAPI-RS v3 bindings that provide:
 
-1. Click **Use this template**.
-2. **Clone** your project.
-3. Run `yarn install` to install dependencies.
-4. Run `yarn napi rename -n [@your-scope/package-name] -b [binary-name]` command under the project folder to rename your package.
+- Better performance through native Node.js addons
+- WebAssembly support via NAPI-RS v3's WASM target
+- Improved async/await support  
+- Better TypeScript definitions
+- Unified API across Node.js and WASM environments
 
-## Install this test package
-
-```bash
-yarn add @napi-rs/package-template
-```
-
-## Ability
-
-### Build
-
-After `yarn build/npm run build` command, you can see `package-template.[darwin|win32|linux].node` file in project root. This is the native addon built from [lib.rs](./src/lib.rs).
-
-### Test
-
-With [ava](https://github.com/avajs/ava), run `yarn test/npm run test` to testing native addon. You can also switch to another testing framework if you want.
-
-### CI
-
-With GitHub Actions, each commit and pull request will be built and tested automatically in [`node@20`, `@node22`] x [`macOS`, `Linux`, `Windows`] matrix. You will never be afraid of the native addon broken in these platforms.
-
-### Release
-
-Release native package is very difficult in old days. Native packages may ask developers who use it to install `build toolchain` like `gcc/llvm`, `node-gyp` or something more.
-
-With `GitHub actions`, we can easily prebuild a `binary` for major platforms. And with `N-API`, we should never be afraid of **ABI Compatible**.
-
-The other problem is how to deliver prebuild `binary` to users. Downloading it in `postinstall` script is a common way that most packages do it right now. The problem with this solution is it introduced many other packages to download binary that has not been used by `runtime codes`. The other problem is some users may not easily download the binary from `GitHub/CDN` if they are behind a private network (But in most cases, they have a private NPM mirror).
-
-In this package, we choose a better way to solve this problem. We release different `npm packages` for different platforms. And add it to `optionalDependencies` before releasing the `Major` package to npm.
-
-`NPM` will choose which native package should download from `registry` automatically. You can see [npm](./npm) dir for details. And you can also run `yarn add @napi-rs/package-template` to see how it works.
-
-## Develop requirements
-
-- Install the latest `Rust`
-- Install `Node.js@10+` which fully supported `Node-API`
-- Install `yarn@1.x`
-
-## Test in local
-
-- yarn
-- yarn build
-- yarn test
-
-And you will see:
+## Installation
 
 ```bash
-$ ava --verbose
-
-  ✔ sync function from native code
-  ✔ sleep function from native code (201ms)
-  ─
-
-  2 tests passed
-✨  Done in 1.12s.
+npm install gluesql-napi
 ```
 
-## Release package
+## Usage
 
-Ensure you have set your **NPM_TOKEN** in the `GitHub` project setting.
+### Node.js (Native)
 
-In `Settings -> Secrets`, add **NPM_TOKEN** into it.
+```javascript
+const { Glue } = require('gluesql-napi');
 
-When you want to release the package:
+async function example() {
+  const db = new Glue();
+  
+  const result = await db.query(`
+    CREATE TABLE users (id INTEGER, name TEXT);
+    INSERT INTO users VALUES (1, 'Alice'), (2, 'Bob');
+    SELECT * FROM users;
+  `);
+  
+  console.log(result);
+}
+
+example();
+```
+
+### Browser (WebAssembly)
+
+```javascript
+import { Glue } from 'gluesql-napi/browser';
+
+async function example() {
+  const db = new Glue();
+  
+  const result = await db.query(`
+    CREATE TABLE users (id INTEGER, name TEXT);
+    INSERT INTO users VALUES (1, 'Alice'), (2, 'Bob');
+    SELECT * FROM users;
+  `);
+  
+  console.log(result);
+}
+
+example();
+```
+
+## API
+
+### Class: Glue
+
+#### `new Glue()`
+Creates a new GlueSQL instance with memory storage.
+
+#### `glue.query(sql: string): Promise<any>`
+Executes SQL queries and returns results as a JSON array.
+
+#### `glue.setDefaultEngine(engine: string): void` *(Node.js only)*
+Sets the default storage engine. Currently supports:
+- `"memory"` - In-memory storage
+
+## Building from Source
+
+### Prerequisites
+- Node.js 16+
+- Rust toolchain
+- NAPI-RS CLI: `npm install -g @napi-rs/cli`
+
+### Build Commands
 
 ```bash
-npm version [<newversion> | major | minor | patch | premajor | preminor | prepatch | prerelease [--preid=<prerelease-id>] | from-git]
+# Build native addon
+npm run build
 
-git push
+# Build for WebAssembly
+npm run build:wasm
+
+# Development build
+npm run build:debug
 ```
 
-GitHub actions will do the rest job for you.
+## Features
 
-> WARN: Don't run `npm publish` manually.
+- ✅ SQL query execution
+- ✅ Memory storage backend
+- ✅ Async/await support
+- ✅ TypeScript definitions
+- ✅ Node.js native addon
+- ✅ WebAssembly support
+- 🚧 IndexedDB storage (planned)
+- 🚧 Web Storage API (planned)
+
+## Performance
+
+NAPI-RS bindings provide significant performance improvements over wasm-bindgen:
+- Direct native function calls (no JS/WASM boundary overhead)
+- Better memory management
+- Native async/await without polyfills
+- Optimized serialization/deserialization
+
+## Compatibility
+
+- **Node.js**: 16.0.0+ (native addon)
+- **Browsers**: Modern browsers with WebAssembly support
+- **Targets**: x86_64, ARM64 on Windows, macOS, Linux + wasm32-wasi
+
+## Migration Guide
+
+### From wasm-bindgen JavaScript package
+
+```javascript
+// Before (wasm-bindgen)
+import { gluesql } from 'gluesql';
+const db = await gluesql();
+
+// After (NAPI-RS)
+import { Glue } from 'gluesql-napi';
+const db = new Glue();
+```
+
+The query API remains the same:
+```javascript
+const result = await db.query('SELECT * FROM table');
+```
+
+## License
+
+Apache-2.0

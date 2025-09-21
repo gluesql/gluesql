@@ -73,15 +73,15 @@ function requireNative() {
   } else if (process.platform === 'android') {
     if (process.arch === 'arm64') {
       try {
-        return require('./napi-rs.android-arm64.node')
+        return require('./gluesql-napi.android-arm64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('napi-rs-android-arm64')
-        const bindingPackageVersion = require('napi-rs-android-arm64/package.json').version
-        if (bindingPackageVersion !== '1.0.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 1.0.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('gluesql-napi-android-arm64')
+        const bindingPackageVersion = require('gluesql-napi-android-arm64/package.json').version
+        if (bindingPackageVersion !== '0.17.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.17.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -89,15 +89,15 @@ function requireNative() {
       }
     } else if (process.arch === 'arm') {
       try {
-        return require('./napi-rs.android-arm-eabi.node')
+        return require('./gluesql-napi.android-arm-eabi.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('napi-rs-android-arm-eabi')
-        const bindingPackageVersion = require('napi-rs-android-arm-eabi/package.json').version
-        if (bindingPackageVersion !== '1.0.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 1.0.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('gluesql-napi-android-arm-eabi')
+        const bindingPackageVersion = require('gluesql-napi-android-arm-eabi/package.json').version
+        if (bindingPackageVersion !== '0.17.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.17.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -109,15 +109,15 @@ function requireNative() {
   } else if (process.platform === 'win32') {
     if (process.arch === 'x64') {
       try {
-        return require('./napi-rs.win32-x64-msvc.node')
+        return require('./gluesql-napi.win32-x64-msvc.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('napi-rs-win32-x64-msvc')
-        const bindingPackageVersion = require('napi-rs-win32-x64-msvc/package.json').version
-        if (bindingPackageVersion !== '1.0.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 1.0.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('gluesql-napi-win32-x64-msvc')
+        const bindingPackageVersion = require('gluesql-napi-win32-x64-msvc/package.json').version
+        if (bindingPackageVersion !== '0.17.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.17.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -125,15 +125,15 @@ function requireNative() {
       }
     } else if (process.arch === 'ia32') {
       try {
-        return require('./napi-rs.win32-ia32-msvc.node')
+        return require('./gluesql-napi.win32-ia32-msvc.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('napi-rs-win32-ia32-msvc')
-        const bindingPackageVersion = require('napi-rs-win32-ia32-msvc/package.json').version
-        if (bindingPackageVersion !== '1.0.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 1.0.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('gluesql-napi-win32-ia32-msvc')
+        const bindingPackageVersion = require('gluesql-napi-win32-ia32-msvc/package.json').version
+        if (bindingPackageVersion !== '0.17.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.17.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -141,15 +141,15 @@ function requireNative() {
       }
     } else if (process.arch === 'arm64') {
       try {
-        return require('./napi-rs.win32-arm64-msvc.node')
+        return require('./gluesql-napi.win32-arm64-msvc.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('napi-rs-win32-arm64-msvc')
-        const bindingPackageVersion = require('napi-rs-win32-arm64-msvc/package.json').version
-        if (bindingPackageVersion !== '1.0.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 1.0.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('gluesql-napi-win32-arm64-msvc')
+        const bindingPackageVersion = require('gluesql-napi-win32-arm64-msvc/package.json').version
+        if (bindingPackageVersion !== '0.17.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.17.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -160,15 +160,15 @@ function requireNative() {
     }
   } else if (process.platform === 'darwin') {
     try {
-      return require('./napi-rs.darwin-universal.node')
+      return require('./gluesql-napi.darwin-universal.node')
     } catch (e) {
       loadErrors.push(e)
     }
     try {
-      const binding = require('napi-rs-darwin-universal')
-      const bindingPackageVersion = require('napi-rs-darwin-universal/package.json').version
-      if (bindingPackageVersion !== '1.0.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-        throw new Error(`Native binding package version mismatch, expected 1.0.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+      const binding = require('gluesql-napi-darwin-universal')
+      const bindingPackageVersion = require('gluesql-napi-darwin-universal/package.json').version
+      if (bindingPackageVersion !== '0.17.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+        throw new Error(`Native binding package version mismatch, expected 0.17.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
       }
       return binding
     } catch (e) {
@@ -176,15 +176,15 @@ function requireNative() {
     }
     if (process.arch === 'x64') {
       try {
-        return require('./napi-rs.darwin-x64.node')
+        return require('./gluesql-napi.darwin-x64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('napi-rs-darwin-x64')
-        const bindingPackageVersion = require('napi-rs-darwin-x64/package.json').version
-        if (bindingPackageVersion !== '1.0.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 1.0.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('gluesql-napi-darwin-x64')
+        const bindingPackageVersion = require('gluesql-napi-darwin-x64/package.json').version
+        if (bindingPackageVersion !== '0.17.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.17.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -192,15 +192,15 @@ function requireNative() {
       }
     } else if (process.arch === 'arm64') {
       try {
-        return require('./napi-rs.darwin-arm64.node')
+        return require('./gluesql-napi.darwin-arm64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('napi-rs-darwin-arm64')
-        const bindingPackageVersion = require('napi-rs-darwin-arm64/package.json').version
-        if (bindingPackageVersion !== '1.0.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 1.0.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('gluesql-napi-darwin-arm64')
+        const bindingPackageVersion = require('gluesql-napi-darwin-arm64/package.json').version
+        if (bindingPackageVersion !== '0.17.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.17.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -212,15 +212,15 @@ function requireNative() {
   } else if (process.platform === 'freebsd') {
     if (process.arch === 'x64') {
       try {
-        return require('./napi-rs.freebsd-x64.node')
+        return require('./gluesql-napi.freebsd-x64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('napi-rs-freebsd-x64')
-        const bindingPackageVersion = require('napi-rs-freebsd-x64/package.json').version
-        if (bindingPackageVersion !== '1.0.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 1.0.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('gluesql-napi-freebsd-x64')
+        const bindingPackageVersion = require('gluesql-napi-freebsd-x64/package.json').version
+        if (bindingPackageVersion !== '0.17.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.17.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -228,15 +228,15 @@ function requireNative() {
       }
     } else if (process.arch === 'arm64') {
       try {
-        return require('./napi-rs.freebsd-arm64.node')
+        return require('./gluesql-napi.freebsd-arm64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('napi-rs-freebsd-arm64')
-        const bindingPackageVersion = require('napi-rs-freebsd-arm64/package.json').version
-        if (bindingPackageVersion !== '1.0.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 1.0.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('gluesql-napi-freebsd-arm64')
+        const bindingPackageVersion = require('gluesql-napi-freebsd-arm64/package.json').version
+        if (bindingPackageVersion !== '0.17.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.17.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -249,15 +249,15 @@ function requireNative() {
     if (process.arch === 'x64') {
       if (isMusl()) {
         try {
-          return require('./napi-rs.linux-x64-musl.node')
+          return require('./gluesql-napi.linux-x64-musl.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('napi-rs-linux-x64-musl')
-          const bindingPackageVersion = require('napi-rs-linux-x64-musl/package.json').version
-          if (bindingPackageVersion !== '1.0.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-            throw new Error(`Native binding package version mismatch, expected 1.0.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+          const binding = require('gluesql-napi-linux-x64-musl')
+          const bindingPackageVersion = require('gluesql-napi-linux-x64-musl/package.json').version
+          if (bindingPackageVersion !== '0.17.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+            throw new Error(`Native binding package version mismatch, expected 0.17.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
           return binding
         } catch (e) {
@@ -265,15 +265,15 @@ function requireNative() {
         }
       } else {
         try {
-          return require('./napi-rs.linux-x64-gnu.node')
+          return require('./gluesql-napi.linux-x64-gnu.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('napi-rs-linux-x64-gnu')
-          const bindingPackageVersion = require('napi-rs-linux-x64-gnu/package.json').version
-          if (bindingPackageVersion !== '1.0.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-            throw new Error(`Native binding package version mismatch, expected 1.0.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+          const binding = require('gluesql-napi-linux-x64-gnu')
+          const bindingPackageVersion = require('gluesql-napi-linux-x64-gnu/package.json').version
+          if (bindingPackageVersion !== '0.17.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+            throw new Error(`Native binding package version mismatch, expected 0.17.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
           return binding
         } catch (e) {
@@ -283,15 +283,15 @@ function requireNative() {
     } else if (process.arch === 'arm64') {
       if (isMusl()) {
         try {
-          return require('./napi-rs.linux-arm64-musl.node')
+          return require('./gluesql-napi.linux-arm64-musl.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('napi-rs-linux-arm64-musl')
-          const bindingPackageVersion = require('napi-rs-linux-arm64-musl/package.json').version
-          if (bindingPackageVersion !== '1.0.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-            throw new Error(`Native binding package version mismatch, expected 1.0.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+          const binding = require('gluesql-napi-linux-arm64-musl')
+          const bindingPackageVersion = require('gluesql-napi-linux-arm64-musl/package.json').version
+          if (bindingPackageVersion !== '0.17.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+            throw new Error(`Native binding package version mismatch, expected 0.17.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
           return binding
         } catch (e) {
@@ -299,15 +299,15 @@ function requireNative() {
         }
       } else {
         try {
-          return require('./napi-rs.linux-arm64-gnu.node')
+          return require('./gluesql-napi.linux-arm64-gnu.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('napi-rs-linux-arm64-gnu')
-          const bindingPackageVersion = require('napi-rs-linux-arm64-gnu/package.json').version
-          if (bindingPackageVersion !== '1.0.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-            throw new Error(`Native binding package version mismatch, expected 1.0.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+          const binding = require('gluesql-napi-linux-arm64-gnu')
+          const bindingPackageVersion = require('gluesql-napi-linux-arm64-gnu/package.json').version
+          if (bindingPackageVersion !== '0.17.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+            throw new Error(`Native binding package version mismatch, expected 0.17.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
           return binding
         } catch (e) {
@@ -317,15 +317,15 @@ function requireNative() {
     } else if (process.arch === 'arm') {
       if (isMusl()) {
         try {
-          return require('./napi-rs.linux-arm-musleabihf.node')
+          return require('./gluesql-napi.linux-arm-musleabihf.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('napi-rs-linux-arm-musleabihf')
-          const bindingPackageVersion = require('napi-rs-linux-arm-musleabihf/package.json').version
-          if (bindingPackageVersion !== '1.0.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-            throw new Error(`Native binding package version mismatch, expected 1.0.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+          const binding = require('gluesql-napi-linux-arm-musleabihf')
+          const bindingPackageVersion = require('gluesql-napi-linux-arm-musleabihf/package.json').version
+          if (bindingPackageVersion !== '0.17.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+            throw new Error(`Native binding package version mismatch, expected 0.17.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
           return binding
         } catch (e) {
@@ -333,15 +333,15 @@ function requireNative() {
         }
       } else {
         try {
-          return require('./napi-rs.linux-arm-gnueabihf.node')
+          return require('./gluesql-napi.linux-arm-gnueabihf.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('napi-rs-linux-arm-gnueabihf')
-          const bindingPackageVersion = require('napi-rs-linux-arm-gnueabihf/package.json').version
-          if (bindingPackageVersion !== '1.0.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-            throw new Error(`Native binding package version mismatch, expected 1.0.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+          const binding = require('gluesql-napi-linux-arm-gnueabihf')
+          const bindingPackageVersion = require('gluesql-napi-linux-arm-gnueabihf/package.json').version
+          if (bindingPackageVersion !== '0.17.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+            throw new Error(`Native binding package version mismatch, expected 0.17.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
           return binding
         } catch (e) {
@@ -351,15 +351,15 @@ function requireNative() {
     } else if (process.arch === 'loong64') {
       if (isMusl()) {
         try {
-          return require('./napi-rs.linux-loong64-musl.node')
+          return require('./gluesql-napi.linux-loong64-musl.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('napi-rs-linux-loong64-musl')
-          const bindingPackageVersion = require('napi-rs-linux-loong64-musl/package.json').version
-          if (bindingPackageVersion !== '1.0.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-            throw new Error(`Native binding package version mismatch, expected 1.0.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+          const binding = require('gluesql-napi-linux-loong64-musl')
+          const bindingPackageVersion = require('gluesql-napi-linux-loong64-musl/package.json').version
+          if (bindingPackageVersion !== '0.17.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+            throw new Error(`Native binding package version mismatch, expected 0.17.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
           return binding
         } catch (e) {
@@ -367,15 +367,15 @@ function requireNative() {
         }
       } else {
         try {
-          return require('./napi-rs.linux-loong64-gnu.node')
+          return require('./gluesql-napi.linux-loong64-gnu.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('napi-rs-linux-loong64-gnu')
-          const bindingPackageVersion = require('napi-rs-linux-loong64-gnu/package.json').version
-          if (bindingPackageVersion !== '1.0.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-            throw new Error(`Native binding package version mismatch, expected 1.0.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+          const binding = require('gluesql-napi-linux-loong64-gnu')
+          const bindingPackageVersion = require('gluesql-napi-linux-loong64-gnu/package.json').version
+          if (bindingPackageVersion !== '0.17.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+            throw new Error(`Native binding package version mismatch, expected 0.17.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
           return binding
         } catch (e) {
@@ -385,15 +385,15 @@ function requireNative() {
     } else if (process.arch === 'riscv64') {
       if (isMusl()) {
         try {
-          return require('./napi-rs.linux-riscv64-musl.node')
+          return require('./gluesql-napi.linux-riscv64-musl.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('napi-rs-linux-riscv64-musl')
-          const bindingPackageVersion = require('napi-rs-linux-riscv64-musl/package.json').version
-          if (bindingPackageVersion !== '1.0.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-            throw new Error(`Native binding package version mismatch, expected 1.0.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+          const binding = require('gluesql-napi-linux-riscv64-musl')
+          const bindingPackageVersion = require('gluesql-napi-linux-riscv64-musl/package.json').version
+          if (bindingPackageVersion !== '0.17.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+            throw new Error(`Native binding package version mismatch, expected 0.17.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
           return binding
         } catch (e) {
@@ -401,15 +401,15 @@ function requireNative() {
         }
       } else {
         try {
-          return require('./napi-rs.linux-riscv64-gnu.node')
+          return require('./gluesql-napi.linux-riscv64-gnu.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('napi-rs-linux-riscv64-gnu')
-          const bindingPackageVersion = require('napi-rs-linux-riscv64-gnu/package.json').version
-          if (bindingPackageVersion !== '1.0.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-            throw new Error(`Native binding package version mismatch, expected 1.0.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+          const binding = require('gluesql-napi-linux-riscv64-gnu')
+          const bindingPackageVersion = require('gluesql-napi-linux-riscv64-gnu/package.json').version
+          if (bindingPackageVersion !== '0.17.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+            throw new Error(`Native binding package version mismatch, expected 0.17.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
           return binding
         } catch (e) {
@@ -418,15 +418,15 @@ function requireNative() {
       }
     } else if (process.arch === 'ppc64') {
       try {
-        return require('./napi-rs.linux-ppc64-gnu.node')
+        return require('./gluesql-napi.linux-ppc64-gnu.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('napi-rs-linux-ppc64-gnu')
-        const bindingPackageVersion = require('napi-rs-linux-ppc64-gnu/package.json').version
-        if (bindingPackageVersion !== '1.0.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 1.0.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('gluesql-napi-linux-ppc64-gnu')
+        const bindingPackageVersion = require('gluesql-napi-linux-ppc64-gnu/package.json').version
+        if (bindingPackageVersion !== '0.17.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.17.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -434,15 +434,15 @@ function requireNative() {
       }
     } else if (process.arch === 's390x') {
       try {
-        return require('./napi-rs.linux-s390x-gnu.node')
+        return require('./gluesql-napi.linux-s390x-gnu.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('napi-rs-linux-s390x-gnu')
-        const bindingPackageVersion = require('napi-rs-linux-s390x-gnu/package.json').version
-        if (bindingPackageVersion !== '1.0.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 1.0.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('gluesql-napi-linux-s390x-gnu')
+        const bindingPackageVersion = require('gluesql-napi-linux-s390x-gnu/package.json').version
+        if (bindingPackageVersion !== '0.17.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.17.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -454,15 +454,15 @@ function requireNative() {
   } else if (process.platform === 'openharmony') {
     if (process.arch === 'arm64') {
       try {
-        return require('./napi-rs.openharmony-arm64.node')
+        return require('./gluesql-napi.openharmony-arm64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('napi-rs-openharmony-arm64')
-        const bindingPackageVersion = require('napi-rs-openharmony-arm64/package.json').version
-        if (bindingPackageVersion !== '1.0.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 1.0.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('gluesql-napi-openharmony-arm64')
+        const bindingPackageVersion = require('gluesql-napi-openharmony-arm64/package.json').version
+        if (bindingPackageVersion !== '0.17.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.17.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -470,15 +470,15 @@ function requireNative() {
       }
     } else if (process.arch === 'x64') {
       try {
-        return require('./napi-rs.openharmony-x64.node')
+        return require('./gluesql-napi.openharmony-x64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('napi-rs-openharmony-x64')
-        const bindingPackageVersion = require('napi-rs-openharmony-x64/package.json').version
-        if (bindingPackageVersion !== '1.0.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 1.0.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('gluesql-napi-openharmony-x64')
+        const bindingPackageVersion = require('gluesql-napi-openharmony-x64/package.json').version
+        if (bindingPackageVersion !== '0.17.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.17.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -486,15 +486,15 @@ function requireNative() {
       }
     } else if (process.arch === 'arm') {
       try {
-        return require('./napi-rs.openharmony-arm.node')
+        return require('./gluesql-napi.openharmony-arm.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('napi-rs-openharmony-arm')
-        const bindingPackageVersion = require('napi-rs-openharmony-arm/package.json').version
-        if (bindingPackageVersion !== '1.0.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
-          throw new Error(`Native binding package version mismatch, expected 1.0.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
+        const binding = require('gluesql-napi-openharmony-arm')
+        const bindingPackageVersion = require('gluesql-napi-openharmony-arm/package.json').version
+        if (bindingPackageVersion !== '0.17.0' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
+          throw new Error(`Native binding package version mismatch, expected 0.17.0 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
         return binding
       } catch (e) {
@@ -514,7 +514,7 @@ if (!nativeBinding || process.env.NAPI_RS_FORCE_WASI) {
   let wasiBinding = null
   let wasiBindingError = null
   try {
-    wasiBinding = require('./napi-rs.wasi.cjs')
+    wasiBinding = require('./gluesql-napi.wasi.cjs')
     nativeBinding = wasiBinding
   } catch (err) {
     if (process.env.NAPI_RS_FORCE_WASI) {
@@ -523,7 +523,7 @@ if (!nativeBinding || process.env.NAPI_RS_FORCE_WASI) {
   }
   if (!nativeBinding) {
     try {
-      wasiBinding = require('napi-rs-wasm32-wasi')
+      wasiBinding = require('gluesql-napi-wasm32-wasi')
       nativeBinding = wasiBinding
     } catch (err) {
       if (process.env.NAPI_RS_FORCE_WASI) {
@@ -557,4 +557,4 @@ if (!nativeBinding) {
 }
 
 module.exports = nativeBinding
-module.exports.plus100 = nativeBinding.plus100
+module.exports.Glue = nativeBinding.Glue

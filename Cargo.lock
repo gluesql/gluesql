@@ -1522,6 +1522,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "gluesql-napi"
+version = "0.17.0"
+dependencies = [
+ "console_error_panic_hook",
+ "gluesql-composite-storage",
+ "gluesql-core",
+ "gluesql-idb-storage",
+ "gluesql-web-storage",
+ "gluesql_memory_storage",
+ "napi",
+ "napi-build",
+ "napi-derive",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "gluesql-parquet-storage"
 version = "0.17.0"
 dependencies = [
@@ -2274,6 +2291,9 @@ dependencies = [
  "napi-sys",
  "nohash-hasher",
  "rustc-hash",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -2316,15 +2336,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3e4e7135a8f97aa0f1509cce21a8a1f9dcec1b50d8dee006b48a5adb69a9d64d"
 dependencies = [
  "libloading",
-]
-
-[[package]]
-name = "napi_rs"
-version = "0.1.0"
-dependencies = [
- "napi",
- "napi-build",
- "napi-derive",
 ]
 
 [[package]]
