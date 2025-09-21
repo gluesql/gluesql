@@ -1,10 +1,15 @@
 #[cfg(feature = "gluesql_sled_storage")]
 mod hello_world {
     use {
-        gluesql::{gluesql_sled_storage::SledStorage, prelude::Glue},
+        gluesql::{
+            FromGlueRow,
+            gluesql_sled_storage::SledStorage,
+            prelude::{Glue, SelectExt},
+        },
         std::fs,
     };
 
+    #[derive(Debug, FromGlueRow)]
     struct GreetRow {
         name: String,
     }
@@ -43,25 +48,16 @@ mod hello_world {
             SELECT name FROM greet
         ";
 
-        let mut result = glue.execute(queries).await.expect("Failed to execute");
+        let result = glue.execute(queries).await.expect("Failed to execute");
 
         /*
             Query results are wrapped into a payload enum, on the basis of the query type
         */
         assert_eq!(result.len(), 1);
 
-        let payload = result.remove(0);
-
-        let rows = payload
-            .select()
-            .unwrap()
-            .map(|map| {
-                let name = *map.get("name").unwrap();
-                let name = name.into();
-
-                GreetRow { name }
-            })
-            .collect::<Vec<_>>();
+        let rows = result
+            .rows_as::<GreetRow>()
+            .expect("Failed to decode select rows");
 
         assert_eq!(rows.len(), 1);
         assert_eq!(&rows[0].name, "World");
