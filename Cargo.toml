@@ -6,6 +6,7 @@ members = [
   "macros",
   "pkg/rust",
   "pkg/javascript",
+  "pkg/napi-rs",
   "pkg/python",
   "storages/*",
   "test-suite",
