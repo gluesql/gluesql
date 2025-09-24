@@ -31,10 +31,20 @@ GlueSQL supports both SQL and its own query builder (AST Builder). Unlike other 
 - example: [pkg/rust/examples/hello_world.rs](./pkg/rust/examples/hello_world.rs)
 
 ```rust
+#[derive(gluesql::FromGlueRow)]
+struct Row {
+    id: i64,
+    name: String,
+}
+
 let storage = MemoryStorage::default();
 let mut glue = Glue::new(storage);
 
-let payloads = glue.execute("SELECT * FROM Foo;").await.unwrap();
+let rows = glue
+    .execute("SELECT id, name FROM Foo;")
+    .await
+    .rows_as::<Row>()
+    .unwrap();
 ```
 
 ### SQL Example
