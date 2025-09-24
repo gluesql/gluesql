@@ -15,7 +15,7 @@ quote = "1"
 syn = { version = "2", features = ["full"] }
 
 [dev-dependencies]
-gluesql = { path = "../pkg/rust", version = "0.17.0" }
+gluesql = { path = "../pkg/rust", version = "0.18.0" }
 futures = "0.3"
 chrono = "0.4"
 rust_decimal = "1"
