@@ -1,5 +1,6 @@
 use {
     proc_macro::TokenStream,
+    proc_macro_crate::{FoundCrate, crate_name},
     quote::quote,
     syn::{
         Attribute, Data, DeriveInput, Expr, ExprLit, Fields, Lit, MetaNameValue, Type,
@@ -7,9 +8,52 @@ use {
     },
 };
 
+fn resolve_gluesql_crate() -> Result<syn::Path, syn::Error> {
+    if std::env::var("CARGO_PKG_NAME")
+        .map(|name| name == "gluesql")
+        .unwrap_or(false)
+    {
+        return Ok(syn::parse_quote!(::gluesql::core));
+    }
+
+    if let Ok(found) = crate_name("gluesql") {
+        let path = match found {
+            FoundCrate::Itself => syn::parse_quote!(crate::core),
+            FoundCrate::Name(name) => {
+                let ident = syn::Ident::new(&name, proc_macro2::Span::call_site());
+                syn::parse_quote!(::#ident::core)
+            }
+        };
+
+        return Ok(path);
+    }
+
+    let found = crate_name("gluesql_core")
+        .or_else(|_| crate_name("gluesql-core"))
+        .map_err(|_| {
+            syn::Error::new(
+                proc_macro2::Span::call_site(),
+                "failed to locate `gluesql` crate; add a dependency on `gluesql` or `gluesql-core`",
+            )
+        })?;
+
+    let path = match found {
+        FoundCrate::Itself => syn::parse_quote!(crate),
+        FoundCrate::Name(name) => {
+            let ident = syn::Ident::new(&name, proc_macro2::Span::call_site());
+            syn::parse_quote!(::#ident)
+        }
+    };
+
+    Ok(path)
+}
+
 // Testable helper: build implementation or return a syn::Error for invalid inputs.
 fn expand_from_glue_row(input: DeriveInput) -> Result<proc_macro2::TokenStream, syn::Error> {
     let input_span = input.span();
+
+    let gluesql_crate_path = resolve_gluesql_crate()?;
+    let gluesql_crate = quote! { #gluesql_crate_path };
 
     let ident = input.ident.clone();
     let data = match input.data {
@@ -64,25 +108,25 @@ fn expand_from_glue_row(input: DeriveInput) -> Result<proc_macro2::TokenStream, 
 
         // compute expected kind and matching arms
         let (_expected_str, value_match_ref, value_match_idx) =
-            match_expected(&base_ty, &field_name_literal, &column_name);
+            match_expected(&gluesql_crate, &base_ty, &field_name_literal, &column_name);
 
         let init_expr = if is_option {
             quote! {
                 let __idx = __labels.iter().position(|l| l == #column_name)
-                    .ok_or(::gluesql::core::row_conversion::RowConversionError::MissingColumn { field: #field_name_literal, column: #column_name })?;
+                    .ok_or(#gluesql_crate::row_conversion::RowConversionError::MissingColumn { field: #field_name_literal, column: #column_name })?;
                 let __v = &__row[__idx];
                 let #field_ident = match __v {
-                    ::gluesql::core::data::Value::Null => None,
+                    #gluesql_crate::data::Value::Null => None,
                     __v => Some({ #value_match_ref }),
                 };
             }
         } else {
             quote! {
                 let __idx = __labels.iter().position(|l| l == #column_name)
-                    .ok_or(::gluesql::core::row_conversion::RowConversionError::MissingColumn { field: #field_name_literal, column: #column_name })?;
+                    .ok_or(#gluesql_crate::row_conversion::RowConversionError::MissingColumn { field: #field_name_literal, column: #column_name })?;
                 let __v = &__row[__idx];
-                if matches!(__v, ::gluesql::core::data::Value::Null) {
-                    return Err(::gluesql::core::row_conversion::RowConversionError::NullNotAllowed { field: #field_name_literal, column: __labels[__idx].clone() });
+                if matches!(__v, #gluesql_crate::data::Value::Null) {
+                    return Err(#gluesql_crate::row_conversion::RowConversionError::NullNotAllowed { field: #field_name_literal, column: __labels[__idx].clone() });
                 }
                 let #field_ident = { #value_match_ref };
             }
@@ -96,15 +140,15 @@ fn expand_from_glue_row(input: DeriveInput) -> Result<proc_macro2::TokenStream, 
             quote! {
                 let __v = &__row[__idx[#idx_pos]];
                 let #field_ident = match __v {
-                    ::gluesql::core::data::Value::Null => None,
+                    #gluesql_crate::data::Value::Null => None,
                     __v => Some({ #value_match_idx }),
                 };
             }
         } else {
             quote! {
                 let __v = &__row[__idx[#idx_pos]];
-                if matches!(__v, ::gluesql::core::data::Value::Null) {
-                    return Err(::gluesql::core::row_conversion::RowConversionError::NullNotAllowed { field: #field_name_literal, column: __labels[__idx[#idx_pos]].clone() });
+                if matches!(__v, #gluesql_crate::data::Value::Null) {
+                    return Err(#gluesql_crate::row_conversion::RowConversionError::NullNotAllowed { field: #field_name_literal, column: __labels[__idx[#idx_pos]].clone() });
                 }
                 let #field_ident = { #value_match_idx };
             }
@@ -115,23 +159,23 @@ fn expand_from_glue_row(input: DeriveInput) -> Result<proc_macro2::TokenStream, 
     let fields_len = fields_meta_pairs.len();
 
     let expanded = quote! {
-        impl ::gluesql::core::row_conversion::FromGlueRow for #ident {
+        impl #gluesql_crate::row_conversion::FromGlueRow for #ident {
             fn __glue_fields() -> &'static [(&'static str, &'static str)] {
                 static FIELDS: [(&str, &str); #fields_len] = [ #(#fields_meta_pairs),* ];
                 &FIELDS
             }
             fn from_glue_row(
                 __labels: &[::std::string::String],
-                __row: &[::gluesql::core::data::Value],
-            ) -> ::core::result::Result<Self, ::gluesql::core::row_conversion::RowConversionError> {
+                __row: &[#gluesql_crate::data::Value],
+            ) -> ::core::result::Result<Self, #gluesql_crate::row_conversion::RowConversionError> {
                 #(#field_inits)*
                 Ok(Self { #(#field_idents),* })
             }
             fn from_glue_row_with_idx(
                 __idx: &[usize],
                 __labels: &[::std::string::String],
-                __row: &[::gluesql::core::data::Value],
-            ) -> ::core::result::Result<Self, ::gluesql::core::row_conversion::RowConversionError> {
+                __row: &[#gluesql_crate::data::Value],
+            ) -> ::core::result::Result<Self, #gluesql_crate::row_conversion::RowConversionError> {
                 #(#field_inits_with_idx)*
                 Ok(Self { #(#field_idents),* })
             }
@@ -295,6 +339,7 @@ fn get_hashmap_types(ty: &Type) -> Option<(&Type, &Type)> {
 }
 
 fn match_expected(
+    gluesql_crate: &proc_macro2::TokenStream,
     base_ty: &Type,
     field_name_literal: &str,
     column_name: &str,
@@ -305,38 +350,38 @@ fn match_expected(
 ) {
     // expected_str and match arms for by-label and by-index variants
     let got_str = quote! { match __v {
-        ::gluesql::core::data::Value::I8(_) => "I8",
-        ::gluesql::core::data::Value::I16(_) => "I16",
-        ::gluesql::core::data::Value::I32(_) => "I32",
-        ::gluesql::core::data::Value::I64(_) => "I64",
-        ::gluesql::core::data::Value::I128(_) => "I128",
-        ::gluesql::core::data::Value::U8(_) => "U8",
-        ::gluesql::core::data::Value::U16(_) => "U16",
-        ::gluesql::core::data::Value::U32(_) => "U32",
-        ::gluesql::core::data::Value::U64(_) => "U64",
-        ::gluesql::core::data::Value::U128(_) => "U128",
-        ::gluesql::core::data::Value::F32(_) => "F32",
-        ::gluesql::core::data::Value::F64(_) => "F64",
-        ::gluesql::core::data::Value::Decimal(_) => "Decimal",
-        ::gluesql::core::data::Value::Bool(_) => "Bool",
-        ::gluesql::core::data::Value::Str(_) => "Str",
-        ::gluesql::core::data::Value::Bytea(_) => "Bytea",
-        ::gluesql::core::data::Value::Inet(_) => "Inet",
-        ::gluesql::core::data::Value::Date(_) => "Date",
-        ::gluesql::core::data::Value::Timestamp(_) => "Timestamp",
-        ::gluesql::core::data::Value::Time(_) => "Time",
-        ::gluesql::core::data::Value::Interval(_) => "Interval",
-        ::gluesql::core::data::Value::Uuid(_) => "Uuid",
-        ::gluesql::core::data::Value::Map(_) => "Map",
-        ::gluesql::core::data::Value::List(_) => "List",
-        ::gluesql::core::data::Value::Point(_) => "Point",
-        ::gluesql::core::data::Value::Null => "Null",
+        #gluesql_crate::data::Value::I8(_) => "I8",
+        #gluesql_crate::data::Value::I16(_) => "I16",
+        #gluesql_crate::data::Value::I32(_) => "I32",
+        #gluesql_crate::data::Value::I64(_) => "I64",
+        #gluesql_crate::data::Value::I128(_) => "I128",
+        #gluesql_crate::data::Value::U8(_) => "U8",
+        #gluesql_crate::data::Value::U16(_) => "U16",
+        #gluesql_crate::data::Value::U32(_) => "U32",
+        #gluesql_crate::data::Value::U64(_) => "U64",
+        #gluesql_crate::data::Value::U128(_) => "U128",
+        #gluesql_crate::data::Value::F32(_) => "F32",
+        #gluesql_crate::data::Value::F64(_) => "F64",
+        #gluesql_crate::data::Value::Decimal(_) => "Decimal",
+        #gluesql_crate::data::Value::Bool(_) => "Bool",
+        #gluesql_crate::data::Value::Str(_) => "Str",
+        #gluesql_crate::data::Value::Bytea(_) => "Bytea",
+        #gluesql_crate::data::Value::Inet(_) => "Inet",
+        #gluesql_crate::data::Value::Date(_) => "Date",
+        #gluesql_crate::data::Value::Timestamp(_) => "Timestamp",
+        #gluesql_crate::data::Value::Time(_) => "Time",
+        #gluesql_crate::data::Value::Interval(_) => "Interval",
+        #gluesql_crate::data::Value::Uuid(_) => "Uuid",
+        #gluesql_crate::data::Value::Map(_) => "Map",
+        #gluesql_crate::data::Value::List(_) => "List",
+        #gluesql_crate::data::Value::Point(_) => "Point",
+        #gluesql_crate::data::Value::Null => "Null",
     }};
 
     macro_rules! arms_copy {
         ($variant:ident, $expected:expr) => {{
-            let by_ref = quote! { if let ::gluesql::core::data::Value::$variant(v) = __v { *v } else { let __got: &str = #got_str; return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch { field: Some(#field_name_literal), column: Some(__labels[__idx].clone()), expected: $expected, got: __got }) } };
-            let by_idx = quote! { if let ::gluesql::core::data::Value::$variant(v) = __v { *v } else { let __got: &str = #got_str; return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch { field: Some(#field_name_literal), column: Some(#column_name.to_string()), expected: $expected, got: __got }) } };
+            let by_ref = quote! { if let #gluesql_crate::data::Value::$variant(v) = __v { *v } else { let __got: &str = #got_str; return Err(#gluesql_crate::row_conversion::RowConversionError::TypeMismatch { field: Some(#field_name_literal), column: Some(__labels[__idx].clone()), expected: $expected, got: __got }) } };
+            let by_idx = quote! { if let #gluesql_crate::data::Value::$variant(v) = __v { *v } else { let __got: &str = #got_str; return Err(#gluesql_crate::row_conversion::RowConversionError::TypeMismatch { field: Some(#field_name_literal), column: Some(#column_name.to_string()), expected: $expected, got: __got }) } };
             ($expected, by_ref, by_idx)
         }}
     }
@@ -344,14 +389,14 @@ fn match_expected(
     macro_rules! arms_copy_either {
         ($v1:ident, $v2:ident, $expected:expr) => {{
             let by_ref = quote! {
-                if let ::gluesql::core::data::Value::$v1(v) = __v { *v }
-                else if let ::gluesql::core::data::Value::$v2(v) = __v { *v }
-                else { let __got: &str = #got_str; return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch { field: Some(#field_name_literal), column: Some(__labels[__idx].clone()), expected: $expected, got: __got }) }
+                if let #gluesql_crate::data::Value::$v1(v) = __v { *v }
+                else if let #gluesql_crate::data::Value::$v2(v) = __v { *v }
+                else { let __got: &str = #got_str; return Err(#gluesql_crate::row_conversion::RowConversionError::TypeMismatch { field: Some(#field_name_literal), column: Some(__labels[__idx].clone()), expected: $expected, got: __got }) }
             };
             let by_idx = quote! {
-                if let ::gluesql::core::data::Value::$v1(v) = __v { *v }
-                else if let ::gluesql::core::data::Value::$v2(v) = __v { *v }
-                else { let __got: &str = #got_str; return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch { field: Some(#field_name_literal), column: Some(#column_name.to_string()), expected: $expected, got: __got }) }
+                if let #gluesql_crate::data::Value::$v1(v) = __v { *v }
+                else if let #gluesql_crate::data::Value::$v2(v) = __v { *v }
+                else { let __got: &str = #got_str; return Err(#gluesql_crate::row_conversion::RowConversionError::TypeMismatch { field: Some(#field_name_literal), column: Some(#column_name.to_string()), expected: $expected, got: __got }) }
             };
             ($expected, by_ref, by_idx)
         }}
@@ -359,8 +404,8 @@ fn match_expected(
 
     macro_rules! arms_clone {
         ($variant:ident, $expected:expr) => {{
-            let by_ref = quote! { if let ::gluesql::core::data::Value::$variant(v) = __v { v.clone() } else { let __got: &str = #got_str; return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch { field: Some(#field_name_literal), column: Some(__labels[__idx].clone()), expected: $expected, got: __got }) } };
-            let by_idx = quote! { if let ::gluesql::core::data::Value::$variant(v) = __v { v.clone() } else { let __got: &str = #got_str; return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch { field: Some(#field_name_literal), column: Some(#column_name.to_string()), expected: $expected, got: __got }) } };
+            let by_ref = quote! { if let #gluesql_crate::data::Value::$variant(v) = __v { v.clone() } else { let __got: &str = #got_str; return Err(#gluesql_crate::row_conversion::RowConversionError::TypeMismatch { field: Some(#field_name_literal), column: Some(__labels[__idx].clone()), expected: $expected, got: __got }) } };
+            let by_idx = quote! { if let #gluesql_crate::data::Value::$variant(v) = __v { v.clone() } else { let __got: &str = #got_str; return Err(#gluesql_crate::row_conversion::RowConversionError::TypeMismatch { field: Some(#field_name_literal), column: Some(#column_name.to_string()), expected: $expected, got: __got }) } };
             ($expected, by_ref, by_idx)
         }}
     }
@@ -408,22 +453,22 @@ fn match_expected(
         // Accept Value::Str as before, plus Date/Time/Timestamp (formatted to RFC3339 with trailing 'Z') and Uuid (hyphenated string)
         let by_ref = quote! {
             match __v {
-                ::gluesql::core::data::Value::Str(v) => v.clone(),
-                ::gluesql::core::data::Value::Date(v) => v.to_string(),
-                ::gluesql::core::data::Value::Time(v) => v.to_string(),
-                ::gluesql::core::data::Value::Uuid(v) => ::gluesql::core::row_conversion::uuid_to_string(*v),
-                ::gluesql::core::data::Value::Timestamp(v) => v.format("%Y-%m-%dT%H:%M:%S%.fZ").to_string(),
-                _ => { let __got: &str = #got_str; return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch { field: Some(#field_name_literal), column: Some(__labels[__idx].clone()), expected: "String", got: __got }) }
+                #gluesql_crate::data::Value::Str(v) => v.clone(),
+                #gluesql_crate::data::Value::Date(v) => v.to_string(),
+                #gluesql_crate::data::Value::Time(v) => v.to_string(),
+                #gluesql_crate::data::Value::Uuid(v) => #gluesql_crate::row_conversion::uuid_to_string(*v),
+                #gluesql_crate::data::Value::Timestamp(v) => v.format("%Y-%m-%dT%H:%M:%S%.fZ").to_string(),
+                _ => { let __got: &str = #got_str; return Err(#gluesql_crate::row_conversion::RowConversionError::TypeMismatch { field: Some(#field_name_literal), column: Some(__labels[__idx].clone()), expected: "String", got: __got }) }
             }
         };
         let by_idx = quote! {
             match __v {
-                ::gluesql::core::data::Value::Str(v) => v.clone(),
-                ::gluesql::core::data::Value::Date(v) => v.to_string(),
-                ::gluesql::core::data::Value::Time(v) => v.to_string(),
-                ::gluesql::core::data::Value::Uuid(v) => ::gluesql::core::row_conversion::uuid_to_string(*v),
-                ::gluesql::core::data::Value::Timestamp(v) => v.format("%Y-%m-%dT%H:%M:%S%.fZ").to_string(),
-                _ => { let __got: &str = #got_str; return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch { field: Some(#field_name_literal), column: Some(#column_name.to_string()), expected: "String", got: __got }) }
+                #gluesql_crate::data::Value::Str(v) => v.clone(),
+                #gluesql_crate::data::Value::Date(v) => v.to_string(),
+                #gluesql_crate::data::Value::Time(v) => v.to_string(),
+                #gluesql_crate::data::Value::Uuid(v) => #gluesql_crate::row_conversion::uuid_to_string(*v),
+                #gluesql_crate::data::Value::Timestamp(v) => v.format("%Y-%m-%dT%H:%M:%S%.fZ").to_string(),
+                _ => { let __got: &str = #got_str; return Err(#gluesql_crate::row_conversion::RowConversionError::TypeMismatch { field: Some(#field_name_literal), column: Some(#column_name.to_string()), expected: "String", got: __got }) }
             }
         };
         return ("String", by_ref, by_idx);
@@ -465,15 +510,15 @@ fn match_expected(
             None => (false, v_ty),
         };
         let (_inner_exp_s, inner_by_ref, inner_by_idx) =
-            match_expected(val_base_ty, field_name_literal, column_name);
+            match_expected(gluesql_crate, val_base_ty, field_name_literal, column_name);
 
         let by_ref = if is_opt_val {
             quote! {
-                if let ::gluesql::core::data::Value::Map(__map) = __v {
+                if let #gluesql_crate::data::Value::Map(__map) = __v {
                     let mut __out: ::std::collections::BTreeMap<::std::string::String, #v_ty> = ::std::collections::BTreeMap::new();
                     for (__k, __item) in __map.iter() {
                         let __val: #v_ty = match __item {
-                            ::gluesql::core::data::Value::Null => None,
+                            #gluesql_crate::data::Value::Null => None,
                             __item => {
                                 let __v = __item;
                                 Some({ #inner_by_ref })
@@ -484,7 +529,7 @@ fn match_expected(
                     __out
                 } else {
                     let __got: &str = #got_str;
-                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                    return Err(#gluesql_crate::row_conversion::RowConversionError::TypeMismatch {
                         field: Some(#field_name_literal),
                         column: Some(__labels[__idx].clone()),
                         expected: #expected_lit,
@@ -494,7 +539,7 @@ fn match_expected(
             }
         } else {
             quote! {
-                if let ::gluesql::core::data::Value::Map(__map) = __v {
+                if let #gluesql_crate::data::Value::Map(__map) = __v {
                     let mut __out: ::std::collections::BTreeMap<::std::string::String, #v_ty> = ::std::collections::BTreeMap::new();
                     for (__k, __item) in __map.iter() {
                         let __val: #v_ty = {
@@ -506,7 +551,7 @@ fn match_expected(
                     __out
                 } else {
                     let __got: &str = #got_str;
-                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                    return Err(#gluesql_crate::row_conversion::RowConversionError::TypeMismatch {
                         field: Some(#field_name_literal),
                         column: Some(__labels[__idx].clone()),
                         expected: #expected_lit,
@@ -518,11 +563,11 @@ fn match_expected(
 
         let by_idx = if is_opt_val {
             quote! {
-                if let ::gluesql::core::data::Value::Map(__map) = __v {
+                if let #gluesql_crate::data::Value::Map(__map) = __v {
                     let mut __out: ::std::collections::BTreeMap<::std::string::String, #v_ty> = ::std::collections::BTreeMap::new();
                     for (__k, __item) in __map.iter() {
                         let __val: #v_ty = match __item {
-                            ::gluesql::core::data::Value::Null => None,
+                            #gluesql_crate::data::Value::Null => None,
                             __item => {
                                 let __v = __item;
                                 Some({ #inner_by_idx })
@@ -533,7 +578,7 @@ fn match_expected(
                     __out
                 } else {
                     let __got: &str = #got_str;
-                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                    return Err(#gluesql_crate::row_conversion::RowConversionError::TypeMismatch {
                         field: Some(#field_name_literal),
                         column: Some(#column_name.to_string()),
                         expected: #expected_lit,
@@ -543,7 +588,7 @@ fn match_expected(
             }
         } else {
             quote! {
-                if let ::gluesql::core::data::Value::Map(__map) = __v {
+                if let #gluesql_crate::data::Value::Map(__map) = __v {
                     let mut __out: ::std::collections::BTreeMap<::std::string::String, #v_ty> = ::std::collections::BTreeMap::new();
                     for (__k, __item) in __map.iter() {
                         let __val: #v_ty = {
@@ -555,7 +600,7 @@ fn match_expected(
                     __out
                 } else {
                     let __got: &str = #got_str;
-                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                    return Err(#gluesql_crate::row_conversion::RowConversionError::TypeMismatch {
                         field: Some(#field_name_literal),
                         column: Some(#column_name.to_string()),
                         expected: #expected_lit,
@@ -575,15 +620,15 @@ fn match_expected(
         // Special case: HashMap<String, Value>
         if last_ident_is(v_ty, "Value") {
             let by_ref = quote! {
-                if let ::gluesql::core::data::Value::Map(__map) = __v {
-                    let mut __out: ::std::collections::HashMap<::std::string::String, ::gluesql::core::data::Value> = ::std::collections::HashMap::with_capacity(__map.len());
+                if let #gluesql_crate::data::Value::Map(__map) = __v {
+                    let mut __out: ::std::collections::HashMap<::std::string::String, #gluesql_crate::data::Value> = ::std::collections::HashMap::with_capacity(__map.len());
                     for (__k, __item) in __map.iter() {
                         __out.insert(__k.clone(), __item.clone());
                     }
                     __out
                 } else {
                     let __got: &str = #got_str;
-                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                    return Err(#gluesql_crate::row_conversion::RowConversionError::TypeMismatch {
                         field: Some(#field_name_literal),
                         column: Some(__labels[__idx].clone()),
                         expected: "HashMap<String, Value>",
@@ -592,15 +637,15 @@ fn match_expected(
                 }
             };
             let by_idx = quote! {
-                if let ::gluesql::core::data::Value::Map(__map) = __v {
-                    let mut __out: ::std::collections::HashMap<::std::string::String, ::gluesql::core::data::Value> = ::std::collections::HashMap::with_capacity(__map.len());
+                if let #gluesql_crate::data::Value::Map(__map) = __v {
+                    let mut __out: ::std::collections::HashMap<::std::string::String, #gluesql_crate::data::Value> = ::std::collections::HashMap::with_capacity(__map.len());
                     for (__k, __item) in __map.iter() {
                         __out.insert(__k.clone(), __item.clone());
                     }
                     __out
                 } else {
                     let __got: &str = #got_str;
-                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                    return Err(#gluesql_crate::row_conversion::RowConversionError::TypeMismatch {
                         field: Some(#field_name_literal),
                         column: Some(#column_name.to_string()),
                         expected: "HashMap<String, Value>",
@@ -619,15 +664,15 @@ fn match_expected(
             None => (false, v_ty),
         };
         let (_inner_exp_s, inner_by_ref, inner_by_idx) =
-            match_expected(val_base_ty, field_name_literal, column_name);
+            match_expected(gluesql_crate, val_base_ty, field_name_literal, column_name);
 
         let by_ref = if is_opt_val {
             quote! {
-                if let ::gluesql::core::data::Value::Map(__map) = __v {
+                if let #gluesql_crate::data::Value::Map(__map) = __v {
                     let mut __out: ::std::collections::HashMap<::std::string::String, #v_ty> = ::std::collections::HashMap::with_capacity(__map.len());
                     for (__k, __item) in __map.iter() {
                         let __val: #v_ty = match __item {
-                            ::gluesql::core::data::Value::Null => None,
+                            #gluesql_crate::data::Value::Null => None,
                             __item => {
                                 let __v = __item;
                                 Some({ #inner_by_ref })
@@ -638,7 +683,7 @@ fn match_expected(
                     __out
                 } else {
                     let __got: &str = #got_str;
-                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                    return Err(#gluesql_crate::row_conversion::RowConversionError::TypeMismatch {
                         field: Some(#field_name_literal),
                         column: Some(__labels[__idx].clone()),
                         expected: #expected_lit,
@@ -648,7 +693,7 @@ fn match_expected(
             }
         } else {
             quote! {
-                if let ::gluesql::core::data::Value::Map(__map) = __v {
+                if let #gluesql_crate::data::Value::Map(__map) = __v {
                     let mut __out: ::std::collections::HashMap<::std::string::String, #v_ty> = ::std::collections::HashMap::with_capacity(__map.len());
                     for (__k, __item) in __map.iter() {
                         let __val: #v_ty = {
@@ -660,7 +705,7 @@ fn match_expected(
                     __out
                 } else {
                     let __got: &str = #got_str;
-                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                    return Err(#gluesql_crate::row_conversion::RowConversionError::TypeMismatch {
                         field: Some(#field_name_literal),
                         column: Some(__labels[__idx].clone()),
                         expected: #expected_lit,
@@ -672,11 +717,11 @@ fn match_expected(
 
         let by_idx = if is_opt_val {
             quote! {
-                if let ::gluesql::core::data::Value::Map(__map) = __v {
+                if let #gluesql_crate::data::Value::Map(__map) = __v {
                     let mut __out: ::std::collections::HashMap<::std::string::String, #v_ty> = ::std::collections::HashMap::with_capacity(__map.len());
                     for (__k, __item) in __map.iter() {
                         let __val: #v_ty = match __item {
-                            ::gluesql::core::data::Value::Null => None,
+                            #gluesql_crate::data::Value::Null => None,
                             __item => {
                                 let __v = __item;
                                 Some({ #inner_by_idx })
@@ -687,7 +732,7 @@ fn match_expected(
                     __out
                 } else {
                     let __got: &str = #got_str;
-                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                    return Err(#gluesql_crate::row_conversion::RowConversionError::TypeMismatch {
                         field: Some(#field_name_literal),
                         column: Some(#column_name.to_string()),
                         expected: #expected_lit,
@@ -697,7 +742,7 @@ fn match_expected(
             }
         } else {
             quote! {
-                if let ::gluesql::core::data::Value::Map(__map) = __v {
+                if let #gluesql_crate::data::Value::Map(__map) = __v {
                     let mut __out: ::std::collections::HashMap<::std::string::String, #v_ty> = ::std::collections::HashMap::with_capacity(__map.len());
                     for (__k, __item) in __map.iter() {
                         let __val: #v_ty = {
@@ -709,7 +754,7 @@ fn match_expected(
                     __out
                 } else {
                     let __got: &str = #got_str;
-                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                    return Err(#gluesql_crate::row_conversion::RowConversionError::TypeMismatch {
                         field: Some(#field_name_literal),
                         column: Some(#column_name.to_string()),
                         expected: #expected_lit,
@@ -737,15 +782,15 @@ fn match_expected(
             None => (false, inner),
         };
         let (_inner_exp_s, inner_by_ref, inner_by_idx) =
-            match_expected(elem_base_ty, field_name_literal, column_name);
+            match_expected(gluesql_crate, elem_base_ty, field_name_literal, column_name);
 
         let by_ref = if is_opt_elem {
             quote! {
-                if let ::gluesql::core::data::Value::List(__list) = __v {
+                if let #gluesql_crate::data::Value::List(__list) = __v {
                     let mut __out: ::std::vec::Vec<#inner> = ::std::vec::Vec::with_capacity(__list.len());
                     for __item in __list.iter() {
                         let __elem: #inner = match __item {
-                            ::gluesql::core::data::Value::Null => None,
+                            #gluesql_crate::data::Value::Null => None,
                             __item => {
                                 let __v = __item;
                                 Some({ #inner_by_ref })
@@ -756,7 +801,7 @@ fn match_expected(
                     __out
                 } else {
                     let __got: &str = #got_str;
-                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                    return Err(#gluesql_crate::row_conversion::RowConversionError::TypeMismatch {
                         field: Some(#field_name_literal),
                         column: Some(__labels[__idx].clone()),
                         expected: #expected_lit,
@@ -766,7 +811,7 @@ fn match_expected(
             }
         } else {
             quote! {
-                if let ::gluesql::core::data::Value::List(__list) = __v {
+                if let #gluesql_crate::data::Value::List(__list) = __v {
                     let mut __out: ::std::vec::Vec<#inner> = ::std::vec::Vec::with_capacity(__list.len());
                     for __item in __list.iter() {
                         let __elem: #inner = {
@@ -778,7 +823,7 @@ fn match_expected(
                     __out
                 } else {
                     let __got: &str = #got_str;
-                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                    return Err(#gluesql_crate::row_conversion::RowConversionError::TypeMismatch {
                         field: Some(#field_name_literal),
                         column: Some(__labels[__idx].clone()),
                         expected: #expected_lit,
@@ -790,11 +835,11 @@ fn match_expected(
 
         let by_idx = if is_opt_elem {
             quote! {
-                if let ::gluesql::core::data::Value::List(__list) = __v {
+                if let #gluesql_crate::data::Value::List(__list) = __v {
                     let mut __out: ::std::vec::Vec<#inner> = ::std::vec::Vec::with_capacity(__list.len());
                     for __item in __list.iter() {
                         let __elem: #inner = match __item {
-                            ::gluesql::core::data::Value::Null => None,
+                            #gluesql_crate::data::Value::Null => None,
                             __item => {
                                 let __v = __item;
                                 Some({ #inner_by_idx })
@@ -805,7 +850,7 @@ fn match_expected(
                     __out
                 } else {
                     let __got: &str = #got_str;
-                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                    return Err(#gluesql_crate::row_conversion::RowConversionError::TypeMismatch {
                         field: Some(#field_name_literal),
                         column: Some(#column_name.to_string()),
                         expected: #expected_lit,
@@ -815,7 +860,7 @@ fn match_expected(
             }
         } else {
             quote! {
-                if let ::gluesql::core::data::Value::List(__list) = __v {
+                if let #gluesql_crate::data::Value::List(__list) = __v {
                     let mut __out: ::std::vec::Vec<#inner> = ::std::vec::Vec::with_capacity(__list.len());
                     for __item in __list.iter() {
                         let __elem: #inner = {
@@ -827,7 +872,7 @@ fn match_expected(
                     __out
                 } else {
                     let __got: &str = #got_str;
-                    return Err(::gluesql::core::row_conversion::RowConversionError::TypeMismatch {
+                    return Err(#gluesql_crate::row_conversion::RowConversionError::TypeMismatch {
                         field: Some(#field_name_literal),
                         column: Some(#column_name.to_string()),
                         expected: #expected_lit,

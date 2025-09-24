@@ -1,5 +1,4 @@
-use gluesql::FromGlueRow;
+use gluesql_macros::FromGlueRow;
 
 #[derive(FromGlueRow)]
 struct T(i32);
-

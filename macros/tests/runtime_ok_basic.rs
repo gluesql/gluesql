@@ -1,9 +1,11 @@
 use {
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
-    gluesql::{
-        FromGlueRow,
-        core::{data::Value, executor::Payload, row_conversion::SelectExt},
+    gluesql_core::{
+        data::{Interval, Point, Value},
+        executor::Payload,
+        row_conversion::SelectExt,
     },
+    gluesql_macros::FromGlueRow,
     rust_decimal::Decimal,
     std::{
         collections::BTreeMap,
@@ -93,18 +95,16 @@ struct AllTypes {
     ts_: NaiveDateTime,
     time_: NaiveTime,
     dec_: Decimal,
-    interval_: gluesql::core::data::Interval,
+    interval_: Interval,
     map_: BTreeMap<String, Value>,
     list_: Vec<Value>,
-    point_: gluesql::core::data::Point,
+    point_: Point,
     opt_s_none: Option<String>,
     opt_i64_some: Option<i64>,
 }
 
 #[test]
 fn all_types_ok() {
-    use gluesql::core::data::{Interval, Point};
-
     let date = NaiveDate::from_ymd_opt(2020, 1, 2).unwrap();
     let time = NaiveTime::from_hms_opt(3, 4, 5).unwrap();
     let ts = NaiveDateTime::new(date, time);

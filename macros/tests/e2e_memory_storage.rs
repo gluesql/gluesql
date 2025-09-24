@@ -1,4 +1,4 @@
-use gluesql::FromGlueRow;
+use gluesql_macros::FromGlueRow;
 
 #[derive(Debug, PartialEq, FromGlueRow)]
 struct User {
@@ -9,9 +9,9 @@ struct User {
 
 #[test]
 fn end_to_end_with_memory_storage() {
-    use gluesql::{
-        core::row_conversion::SelectResultExt,
-        prelude::{Glue, MemoryStorage},
+    use {
+        gluesql_core::{prelude::Glue, row_conversion::SelectResultExt},
+        gluesql_memory_storage::MemoryStorage,
     };
 
     let fut = async move {

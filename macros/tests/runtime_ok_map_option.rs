@@ -1,6 +1,6 @@
-use gluesql::{
-    FromGlueRow,
-    core::{data::Value, row_conversion::FromGlueRow as _},
+use {
+    gluesql_core::{data::Value, row_conversion::FromGlueRow as _},
+    gluesql_macros::FromGlueRow,
 };
 
 #[derive(Debug, PartialEq, FromGlueRow)]
@@ -10,7 +10,7 @@ struct BMOptI64 {
 
 #[test]
 fn btreemap_option_i64_rows_as_and_direct() {
-    use gluesql::core::{executor::Payload, row_conversion::SelectExt};
+    use gluesql_core::{executor::Payload, row_conversion::SelectExt};
     use std::collections::BTreeMap;
 
     let mut m = BTreeMap::new();
@@ -42,7 +42,7 @@ struct HMOptStr {
 
 #[test]
 fn hashmap_option_string_rows_as_and_direct() {
-    use gluesql::core::{executor::Payload, row_conversion::SelectExt};
+    use gluesql_core::{executor::Payload, row_conversion::SelectExt};
     use std::collections::BTreeMap;
 
     let mut m = BTreeMap::new();
@@ -72,7 +72,7 @@ struct HMValue {
 
 #[test]
 fn hashmap_value_rows_as_and_direct() {
-    use gluesql::core::{executor::Payload, row_conversion::SelectExt};
+    use gluesql_core::{executor::Payload, row_conversion::SelectExt};
     use std::collections::BTreeMap;
 
     let mut m = BTreeMap::new();
