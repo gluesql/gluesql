@@ -120,11 +120,18 @@ fn expand_from_glue_row(input: DeriveInput) -> Result<proc_macro2::TokenStream, 
                 static FIELDS: [(&str, &str); #fields_len] = [ #(#fields_meta_pairs),* ];
                 &FIELDS
             }
-            fn from_glue_row(__labels: &[String], __row: &[::gluesql::core::data::Value]) -> Result<Self, ::gluesql::core::row_conversion::RowConversionError> {
+            fn from_glue_row(
+                __labels: &[::std::string::String],
+                __row: &[::gluesql::core::data::Value],
+            ) -> ::core::result::Result<Self, ::gluesql::core::row_conversion::RowConversionError> {
                 #(#field_inits)*
                 Ok(Self { #(#field_idents),* })
             }
-            fn from_glue_row_with_idx(__idx: &[usize], __labels: &[String], __row: &[::gluesql::core::data::Value]) -> Result<Self, ::gluesql::core::row_conversion::RowConversionError> {
+            fn from_glue_row_with_idx(
+                __idx: &[usize],
+                __labels: &[::std::string::String],
+                __row: &[::gluesql::core::data::Value],
+            ) -> ::core::result::Result<Self, ::gluesql::core::row_conversion::RowConversionError> {
                 #(#field_inits_with_idx)*
                 Ok(Self { #(#field_idents),* })
             }
