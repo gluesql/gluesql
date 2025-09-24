@@ -1453,7 +1453,9 @@ version = "0.18.0"
 dependencies = [
  "chrono",
  "futures",
- "gluesql",
+ "gluesql-core",
+ "gluesql_memory_storage",
+ "proc-macro-crate",
  "proc-macro2",
  "quote",
  "rust_decimal",

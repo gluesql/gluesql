@@ -1,10 +1,10 @@
-use gluesql::{
-    FromGlueRow,
-    core::{
-        data::Value,
+use {
+    gluesql_core::{
+        data::{Interval, Point, Value},
         executor::Payload,
         row_conversion::{RowConversionError, SelectExt},
     },
+    gluesql_macros::FromGlueRow,
 };
 
 #[allow(dead_code)]
@@ -124,7 +124,7 @@ fn got_list_expected_time() {
 #[allow(dead_code)]
 #[derive(Debug, FromGlueRow)]
 struct IntervalField {
-    v: gluesql::core::data::Interval,
+    v: Interval,
 }
 
 #[test]
@@ -171,7 +171,7 @@ fn got_bool_expected_list() {
 
 #[derive(Debug, FromGlueRow)]
 struct PointOptField {
-    v: Option<gluesql::core::data::Point>,
+    v: Option<Point>,
 }
 
 #[test]
