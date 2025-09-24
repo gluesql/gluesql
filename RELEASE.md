@@ -33,6 +33,7 @@ let first = glue
 ```
 
 - Result conversion works on individual `Payload`s or the entire `execute` result, and documentation/examples now showcase the pattern for immediate adoption.
+- The derive now maps `UUID` values into `String` fields without extra helpers and qualifies its generated `Result` usage so local aliases continue to compile ([#1796](https://github.com/gluesql/gluesql/pull/1796), [#1797](https://github.com/gluesql/gluesql/pull/1797)); the README and hello world example were refreshed to match ([#1790](https://github.com/gluesql/gluesql/pull/1790)).
 
 ### Full `SELECT DISTINCT` support
 - GlueSQL now recognises `DISTINCT` in projections and across aggregate functions, including `COUNT(DISTINCT *)`, `SUM(DISTINCT col)` and friends ([#1710](https://github.com/gluesql/gluesql/pull/1710)). AST Builder gained `.distinct()` helpers and the executor deduplicates rows during planning.
