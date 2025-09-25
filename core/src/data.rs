@@ -1,4 +1,5 @@
 mod bigdecimal_ext;
+mod float_vector;
 mod function;
 mod interval;
 mod key;
@@ -13,6 +14,7 @@ pub mod value;
 
 pub use {
     bigdecimal_ext::BigDecimalExt,
+    float_vector::{FloatVector, VectorError},
     function::CustomFunction,
     interval::{Interval, IntervalError},
     key::{Key, KeyError},
