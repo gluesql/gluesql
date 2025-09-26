@@ -39,6 +39,7 @@ use {
         ReferentialAction as SqlReferentialAction, Statement as SqlStatement,
         TableConstraint as SqlTableConstraint, TableFactor, TableWithJoins,
     },
+    std::num::NonZeroUsize,
 };
 
 pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
@@ -387,32 +388,22 @@ fn translate_internal(sql_statement: &SqlStatement, params: &[ParamLiteral]) -> 
 }
 
 pub(crate) fn bind_placeholder(params: &[ParamLiteral], placeholder: &str) -> Result<Expr> {
-    let index = if let Some(stripped) = placeholder.strip_prefix('$') {
-        stripped
-            .parse::<usize>()
-            .map_err(|_| TranslateError::InvalidPlaceholder {
-                placeholder: placeholder.to_owned(),
-            })?
-    } else {
-        return Err(TranslateError::InvalidPlaceholder {
-            placeholder: placeholder.to_owned(),
-        }
-        .into());
+    let invalid_placeholder = || TranslateError::InvalidPlaceholder {
+        placeholder: placeholder.to_owned(),
     };
 
-    if index == 0 {
-        return Err(TranslateError::InvalidPlaceholder {
-            placeholder: placeholder.to_owned(),
-        }
-        .into());
-    }
+    let index = placeholder
+        .strip_prefix('$')
+        .ok_or_else(invalid_placeholder)?
+        .parse::<NonZeroUsize>()
+        .map_err(|_| invalid_placeholder())?;
 
     let literal =
         params
-            .get(index - 1)
+            .get(index.get() - 1)
             .cloned()
             .ok_or(TranslateError::ParameterIndexOutOfRange {
-                index,
+                index: index.get(),
                 len: params.len(),
             })?;
 
