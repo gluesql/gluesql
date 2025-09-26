@@ -21,7 +21,10 @@ impl Interval {
                 let literal = match expr.as_ref() {
                     Expr::Literal(literal) => literal.to_sql(),
                     _ => {
-                        return Err(IntervalError::ParseSupportedOnlyLiteral { expr: *expr }.into());
+                        return Err(IntervalError::ParseSupportedOnlyLiteral {
+                            expr: expr.clone(),
+                        }
+                        .into());
                     }
                 };
 
