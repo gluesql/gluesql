@@ -254,6 +254,23 @@ mod tests {
         uuid::Uuid,
     };
 
+    use std::fmt::{self, Display};
+
+    #[derive(Debug)]
+    struct BadNumber;
+
+    impl Display for BadNumber {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "not-a-number")
+        }
+    }
+
+    impl IntoParamLiteral for BadNumber {
+        fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
+            into_number_literal(self).map(ParamLiteral::Literal)
+        }
+    }
+
     #[test]
     fn converts_basic_literals() {
         let literal = true.into_param_literal().unwrap().into_expr();
@@ -427,6 +444,12 @@ mod tests {
             expr,
             Expr::Literal(AstLiteral::QuotedString("POINT(1 2)".to_owned()))
         );
+
+        let invalid = BadNumber.into_param_literal();
+        assert!(matches!(
+            invalid,
+            Err(TranslateError::InvalidParamLiteral { ref value }) if value == "not-a-number"
+        ));
     }
 
     #[test]
