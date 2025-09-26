@@ -179,9 +179,9 @@ impl From<Interval> for ParamLiteral {
                 last_field: None,
             },
             Interval::Microsecond(micros) => ParamLiteral::Interval {
-                expr: Box::new(ParamLiteral::Literal(into_number_literal(
-                    micros / 1_000_000,
-                ))),
+                expr: Box::new(ParamLiteral::Literal(into_number_literal(Decimal::new(
+                    micros, 6,
+                )))),
                 leading_field: Some(DateTimeField::Second),
                 last_field: None,
             },
@@ -214,6 +214,8 @@ mod tests {
     use {
         super::*,
         crate::ast::{AstLiteral, Expr},
+        bigdecimal::BigDecimal,
+        std::str::FromStr,
     };
 
     #[test]
@@ -265,6 +267,18 @@ mod tests {
             Expr::Interval {
                 expr: Box::new(Expr::Literal(AstLiteral::Number(2.into()))),
                 leading_field: Some(DateTimeField::Month),
+                last_field: None,
+            }
+        );
+
+        let expr = ParamLiteral::from(Interval::Microsecond(1_500_000)).into_expr();
+        assert_eq!(
+            expr,
+            Expr::Interval {
+                expr: Box::new(Expr::Literal(AstLiteral::Number(
+                    BigDecimal::from_str("1.5").unwrap(),
+                ))),
+                leading_field: Some(DateTimeField::Second),
                 last_field: None,
             }
         );
