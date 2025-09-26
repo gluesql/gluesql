@@ -414,4 +414,41 @@ mod tests {
             TranslateError::UnsupportedQueryOption("unused"),
         );
     }
+
+    #[test]
+    fn translate_binds_indexed_placeholders() {
+        let mut parsed = parse("SELECT $1, $2").expect("parse placeholder query");
+        let statement = parsed.remove(0);
+        let query = match statement {
+            SqlStatement::Query(query) => query,
+            _ => unreachable!("expected query statement"),
+        };
+
+        let params = [ParamLiteral::from(1_i64), ParamLiteral::from("GlueSQL")];
+        let translated = translate_query_with_params(&query, &params).expect("translate");
+
+        match translated.body {
+            SetExpr::Select(select) => {
+                assert_eq!(select.projection.len(), 2);
+
+                match &select.projection[0] {
+                    SelectItem::Expr { expr, .. } => {
+                        assert_eq!(expr, &Expr::Literal(AstLiteral::Number(1.into())));
+                    }
+                    item => panic!("unexpected select item: {item:?}"),
+                }
+
+                match &select.projection[1] {
+                    SelectItem::Expr { expr, .. } => {
+                        assert_eq!(
+                            expr,
+                            &Expr::Literal(AstLiteral::QuotedString("GlueSQL".to_owned()))
+                        );
+                    }
+                    item => panic!("unexpected select item: {item:?}"),
+                }
+            }
+            body => panic!("expected select body, got {body:?}"),
+        }
+    }
 }
