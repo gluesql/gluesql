@@ -234,6 +234,12 @@ mod tests {
             Expr::Literal(AstLiteral::QuotedString("glue".to_owned()))
         );
 
+        let literal = ParamLiteral::from(String::from("owned"));
+        assert_eq!(
+            literal.into_expr(),
+            Expr::Literal(AstLiteral::QuotedString("owned".to_owned()))
+        );
+
         let literal = ParamLiteral::from(3_i16).into_expr();
         assert_eq!(literal, Expr::Literal(AstLiteral::Number(3.into())));
 
@@ -317,6 +323,12 @@ mod tests {
         assert_eq!(
             expr,
             Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1.25").unwrap()))
+        );
+
+        let expr = ParamLiteral::from(1.5_f32).into_expr();
+        assert_eq!(
+            expr,
+            Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1.5").unwrap()))
         );
 
         let expr = ParamLiteral::from(Decimal::new(345, 2)).into_expr();
