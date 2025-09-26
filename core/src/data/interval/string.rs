@@ -22,7 +22,11 @@ impl Interval {
                     Expr::Literal(literal) => literal.to_sql(),
                     _ => {
                         return Err(IntervalError::ParseSupportedOnlyLiteral {
-                            expr: expr.clone(),
+                            expr: Box::new(Expr::Interval {
+                                expr,
+                                leading_field,
+                                last_field,
+                            }),
                         }
                         .into());
                     }
@@ -151,7 +155,7 @@ impl Interval {
 mod tests {
     use {
         super::{Interval, IntervalError},
-        crate::ast::{DateTimeField, Expr},
+        crate::{parse_sql::parse_interval, translate::translate_expr},
     };
 
     #[test]
@@ -277,14 +281,13 @@ mod tests {
     fn parse_rejects_non_literal_expr() {
         let error = Interval::parse("INTERVAL value DAY").unwrap_err();
 
+        let parsed = parse_interval("INTERVAL value DAY").unwrap();
+        let expected_expr = translate_expr(&parsed).unwrap();
+
         assert_eq!(
             error,
             IntervalError::ParseSupportedOnlyLiteral {
-                expr: Box::new(Expr::Interval {
-                    expr: Box::new(Expr::Identifier("value".to_owned())),
-                    leading_field: Some(DateTimeField::Day),
-                    last_field: None,
-                }),
+                expr: Box::new(expected_expr),
             }
             .into(),
         );
