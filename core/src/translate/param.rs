@@ -239,6 +239,21 @@ macro_rules! params {
     };
 }
 
+#[macro_export]
+macro_rules! try_params {
+    ($($expr:expr),* $(,)?) => {{
+        let result = vec![
+            $(
+                $crate::translate::IntoParamLiteral::into_param_literal($expr)
+            ),*
+        ]
+        .into_iter()
+        .collect::<::core::result::Result<Vec<_>, _>>();
+
+        result
+    }};
+}
+
 #[cfg(test)]
 mod tests {
     use {
@@ -474,5 +489,17 @@ mod tests {
             params[3].clone().into_expr(),
             Expr::Literal(AstLiteral::Null)
         );
+    }
+
+    #[test]
+    fn try_params_macro_propagates_errors() {
+        let ok = crate::try_params![1_i64, "Glue"].expect("valid parameters should succeed");
+        assert_eq!(ok.len(), 2);
+
+        let err = crate::try_params![1_f64, f64::INFINITY];
+        assert!(matches!(
+            err,
+            Err(TranslateError::NonFiniteFloatParameter { ref value }) if value == "inf"
+        ));
     }
 }
