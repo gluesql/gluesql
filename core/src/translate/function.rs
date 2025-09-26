@@ -751,50 +751,6 @@ pub(crate) fn translate_function_with_params(
     }
 }
 
-#[allow(dead_code)]
-pub fn translate_trim(
-    expr: &SqlExpr,
-    trim_where: &Option<SqlTrimWhereField>,
-    trim_what: &Option<Box<SqlExpr>>,
-) -> Result<Expr> {
-    translate_trim_with_params(&[], expr, trim_where, trim_what)
-}
-
-#[allow(dead_code)]
-pub fn translate_floor(expr: &SqlExpr) -> Result<Expr> {
-    translate_floor_with_params(&[], expr)
-}
-
-#[allow(dead_code)]
-pub fn translate_ceil(expr: &SqlExpr) -> Result<Expr> {
-    translate_ceil_with_params(&[], expr)
-}
-
-#[allow(dead_code)]
-pub fn translate_position(sub_expr: &SqlExpr, from_expr: &SqlExpr) -> Result<Expr> {
-    translate_position_with_params(&[], sub_expr, from_expr)
-}
-
-#[allow(dead_code)]
-pub fn translate_cast(
-    kind: &SqlCastKind,
-    expr: &SqlExpr,
-    data_type: &SqlDataType,
-    format: Option<&SqlCastFormat>,
-) -> Result<Expr> {
-    translate_cast_with_params(&[], kind, expr, data_type, format)
-}
-
-#[allow(dead_code)]
-pub fn translate_extract(field: &SqlDateTimeField, expr: &SqlExpr) -> Result<Expr> {
-    translate_extract_with_params(&[], field, expr)
-}
-
-#[allow(dead_code)]
-pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
-    translate_function_with_params(&[], sql_function)
-}
-
 #[cfg(test)]
 mod tests {
     use {
