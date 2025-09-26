@@ -44,6 +44,13 @@ test_case!(migrate, {
             .into(),
         ),
         (
+            "INSERT INTO Test (id, num, name) VALUES (1, 1, name);",
+            EvaluateError::ContextRequiredForIdentEvaluation(Box::new(Expr::Identifier(
+                "name".to_owned(),
+            )))
+            .into(),
+        ),
+        (
             "SELECT * FROM Test WHERE Here.User.id = 1",
             TranslateError::UnsupportedExpr("Here.User.id".to_owned()).into(),
         ),
