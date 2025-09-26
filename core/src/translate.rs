@@ -671,4 +671,10 @@ mod tests {
         let params = [ParamLiteral::from(1_i64)];
         assert_invalid_placeholder(&params, "$0");
     }
+
+    #[test]
+    fn reject_non_numeric_index_placeholder() {
+        let params = [ParamLiteral::from(1_i64)];
+        assert_invalid_placeholder(&params, "$foo");
+    }
 }
