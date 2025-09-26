@@ -14,7 +14,7 @@ use {
         stream::{StreamExt, TryStreamExt},
     },
     gluesql_core::{
-        ast::{Expr, ToSql},
+        ast::ToSql,
         data::Value,
         store::{DataRow, GStore, GStoreMut, Store, Transaction},
     },
@@ -169,7 +169,7 @@ pub fn dump_database(storage: &mut SledStorage, dump_path: PathBuf) -> Result<()
                 .chunks(100);
 
             while let Some(rows) = rows_list.next().await {
-                let exprs_list = rows
+                let rows_sql = rows
                     .into_iter()
                     .map(|result| {
                         result.and_then(|data_row| {
@@ -178,24 +178,17 @@ pub fn dump_database(storage: &mut SledStorage, dump_path: PathBuf) -> Result<()
                                 DataRow::Map(values) => vec![Value::Map(values)],
                             };
 
-                            values
+                            Ok(values
                                 .into_iter()
-                                .map(Expr::try_from)
-                                .collect::<std::result::Result<Vec<_>, _>>()
+                                .map(|value| value.to_sql())
+                                .collect::<Vec<_>>())
                         })
                     })
                     .collect::<std::result::Result<Vec<_>, _>>()?;
 
-                let values = exprs_list
+                let values = rows_sql
                     .into_iter()
-                    .map(|exprs| {
-                        let row = exprs
-                            .into_iter()
-                            .map(|expr| expr.to_sql())
-                            .collect::<Vec<_>>()
-                            .join(", ");
-                        format!("({row})")
-                    })
+                    .map(|row| format!("({})", row.join(", ")))
                     .collect::<Vec<_>>()
                     .join(", ");
 
@@ -210,4 +203,25 @@ pub fn dump_database(storage: &mut SledStorage, dump_path: PathBuf) -> Result<()
 
         Ok(())
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use {super::*, gluesql_core::data::Value};
+
+    #[test]
+    fn format_dump_row_values() {
+        let row = vec![Value::Bool(true), Value::Str("glue".into()), Value::Null];
+        let formatted = vec![
+            row.into_iter()
+                .map(|value| value.to_sql())
+                .collect::<Vec<_>>(),
+        ]
+        .into_iter()
+        .map(|values| format!("({})", values.join(", ")))
+        .collect::<Vec<_>>()
+        .join(", ");
+
+        assert_eq!(formatted, "(TRUE, 'glue', NULL)");
+    }
 }
