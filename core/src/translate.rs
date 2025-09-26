@@ -556,6 +556,17 @@ mod tests {
         assert_eq!(actual, expected);
     }
 
+    fn assert_invalid_placeholder(params: &[ParamLiteral], placeholder: &str) {
+        let err = bind_placeholder(params, placeholder).unwrap_err();
+        assert_eq!(
+            err,
+            TranslateError::InvalidPlaceholder {
+                placeholder: placeholder.to_owned(),
+            }
+            .into()
+        );
+    }
+
     #[test]
     fn statement() {
         assert_translate_error(
@@ -648,5 +659,16 @@ mod tests {
         for (sql, err) in cases {
             assert_translate_error(sql, err);
         }
+    }
+
+    #[test]
+    fn reject_non_dollar_placeholder() {
+        assert_invalid_placeholder(&[], "?1");
+    }
+
+    #[test]
+    fn reject_zero_index_placeholder() {
+        let params = [ParamLiteral::from(1_i64)];
+        assert_invalid_placeholder(&params, "$0");
     }
 }
