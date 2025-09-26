@@ -27,9 +27,9 @@ pub async fn create_index<T: GStore + GStoreMut>(
 
     let (valid, has_ident) = validate_index_expr(&columns, expr);
     if !valid {
-        return Err(AlterError::UnsupportedIndexExpr(expr.clone()).into());
+        return Err(AlterError::UnsupportedIndexExpr(Box::new(expr.clone())).into());
     } else if !has_ident {
-        return Err(AlterError::IdentifierNotFound(expr.clone()).into());
+        return Err(AlterError::IdentifierNotFound(Box::new(expr.clone())).into());
     }
 
     storage.create_index(table_name, index_name, column).await
