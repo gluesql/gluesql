@@ -3,6 +3,7 @@ use {
         Aggregate, AstLiteral, BinaryOperator, DataType, DateTimeField, Function, Query, ToSql,
         ToSqlUnquoted, UnaryOperator,
     },
+    crate::data::Value,
     serde::{Deserialize, Serialize},
 };
 
@@ -52,6 +53,7 @@ pub enum Expr {
     },
     Nested(Box<Expr>),
     Literal(AstLiteral),
+    Value(Value),
     TypedString {
         data_type: DataType,
         value: String,
@@ -181,6 +183,7 @@ impl Expr {
             },
             Expr::Nested(expr) => format!("({})", expr.to_sql_with(quoted)),
             Expr::Literal(s) => s.to_sql(),
+            Expr::Value(value) => value.to_sql(),
             Expr::TypedString { data_type, value } => format!("{data_type} '{value}'"),
             Expr::Case {
                 operand,

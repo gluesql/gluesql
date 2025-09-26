@@ -29,6 +29,7 @@ mod expr;
 mod json;
 mod literal;
 mod selector;
+mod to_sql;
 mod uuid;
 
 pub use {
