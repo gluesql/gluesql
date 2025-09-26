@@ -26,7 +26,7 @@ mod parameter_binding_example {
         let rows = glue
             .execute_with_params(
                 "SELECT name FROM bind_example WHERE id = $1",
-                gluesql::params![2_i64],
+                gluesql::params![1_i64],
             )
             .await?;
 
