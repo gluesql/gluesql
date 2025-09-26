@@ -141,7 +141,9 @@ impl IntoParamLiteral for Vec<u8> {
 
 impl IntoParamLiteral for &[u8] {
     fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
-        Ok(ParamLiteral::Literal(AstLiteral::HexString(hex::encode(self))))
+        Ok(ParamLiteral::Literal(AstLiteral::HexString(hex::encode(
+            self,
+        ))))
     }
 }
 

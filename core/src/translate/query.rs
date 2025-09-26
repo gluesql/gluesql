@@ -50,7 +50,7 @@ pub(crate) fn translate_query_with_params(
         return Err(TranslateError::UnsupportedQueryOption(reason).into());
     }
 
-    let body = translate_set_expr_with_params(params, body)?;
+    let body = translate_set_expr_with_params(body, params)?;
     let mut order_by_exprs = Vec::new();
     for clause in order_by.iter() {
         for expr in clause.exprs.iter() {
@@ -80,11 +80,11 @@ pub fn translate_query(sql_query: &SqlQuery) -> Result<Query> {
 }
 
 fn translate_set_expr_with_params(
-    params: &[ParamLiteral],
     sql_set_expr: &SqlSetExpr,
+    params: &[ParamLiteral],
 ) -> Result<SetExpr> {
     match sql_set_expr {
-        SqlSetExpr::Select(select) => translate_select_with_params(params, select)
+        SqlSetExpr::Select(select) => translate_select_with_params(select, params)
             .map(Box::new)
             .map(SetExpr::Select),
         SqlSetExpr::Values(sqlparser::ast::Values { rows, .. }) => rows
@@ -102,7 +102,7 @@ fn translate_set_expr_with_params(
     }
 }
 
-fn translate_select_with_params(params: &[ParamLiteral], sql_select: &SqlSelect) -> Result<Select> {
+fn translate_select_with_params(sql_select: &SqlSelect, params: &[ParamLiteral]) -> Result<Select> {
     let SqlSelect {
         projection,
         from,
@@ -158,7 +158,7 @@ fn translate_select_with_params(params: &[ParamLiteral], sql_select: &SqlSelect)
         distinct,
         projection: projection
             .iter()
-            .map(|item| translate_select_item_with_params(params, item))
+            .map(|item| translate_select_item_with_params(item, params))
             .collect::<Result<_>>()?,
         from,
         selection: selection
@@ -177,8 +177,8 @@ fn translate_select_with_params(params: &[ParamLiteral], sql_select: &SqlSelect)
 }
 
 pub(crate) fn translate_select_item_with_params(
-    params: &[ParamLiteral],
     sql_select_item: &SqlSelectItem,
+    params: &[ParamLiteral],
 ) -> Result<SelectItem> {
     match sql_select_item {
         SqlSelectItem::UnnamedExpr(expr) => {
@@ -209,7 +209,7 @@ pub(crate) fn translate_select_item_with_params(
 
 pub fn translate_select_item(sql_select_item: &SqlSelectItem) -> Result<SelectItem> {
     const NO_PARAMS: [ParamLiteral; 0] = [];
-    translate_select_item_with_params(&NO_PARAMS, sql_select_item)
+    translate_select_item_with_params(sql_select_item, &NO_PARAMS)
 }
 
 fn translate_table_with_joins(
