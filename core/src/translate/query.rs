@@ -361,7 +361,13 @@ fn translate_join(params: &[ParamLiteral], sql_join: &SqlJoin) -> Result<Join> {
 mod tests {
     use {
         super::*,
-        crate::{parse_sql::parse, result::Error},
+        crate::{
+            ast::{
+                AstLiteral, Expr, Query, Select, SelectItem, SetExpr, TableFactor, TableWithJoins,
+            },
+            parse_sql::{parse, parse_query},
+            result::Error,
+        },
         sqlparser::ast::Statement as SqlStatement,
     };
 
@@ -417,38 +423,42 @@ mod tests {
 
     #[test]
     fn translate_binds_indexed_placeholders() {
-        let mut parsed = parse("SELECT $1, $2").expect("parse placeholder query");
-        let statement = parsed.remove(0);
-        let query = match statement {
-            SqlStatement::Query(query) => query,
-            _ => unreachable!("expected query statement"),
+        let query = parse_query("SELECT $1, $2").expect("parse placeholder query");
+        let params = [ParamLiteral::from(1_i64), ParamLiteral::from("GlueSQL")];
+        let translated = translate_query_with_params(query.as_ref(), &params).expect("translate");
+
+        let expected = Query {
+            body: SetExpr::Select(Box::new(Select {
+                distinct: false,
+                projection: vec![
+                    SelectItem::Expr {
+                        expr: Expr::Literal(AstLiteral::Number(1.into())),
+                        label: "$1".to_owned(),
+                    },
+                    SelectItem::Expr {
+                        expr: Expr::Literal(AstLiteral::QuotedString("GlueSQL".to_owned())),
+                        label: "$2".to_owned(),
+                    },
+                ],
+                from: TableWithJoins {
+                    relation: TableFactor::Series {
+                        alias: TableAlias {
+                            name: "Series".to_owned(),
+                            columns: Vec::new(),
+                        },
+                        size: Expr::Literal(AstLiteral::Number(1.into())),
+                    },
+                    joins: Vec::new(),
+                },
+                selection: None,
+                group_by: Vec::new(),
+                having: None,
+            })),
+            order_by: Vec::new(),
+            limit: None,
+            offset: None,
         };
 
-        let params = [ParamLiteral::from(1_i64), ParamLiteral::from("GlueSQL")];
-        let translated = translate_query_with_params(&query, &params).expect("translate");
-
-        match translated.body {
-            SetExpr::Select(select) => {
-                assert_eq!(select.projection.len(), 2);
-
-                match &select.projection[0] {
-                    SelectItem::Expr { expr, .. } => {
-                        assert_eq!(expr, &Expr::Literal(AstLiteral::Number(1.into())));
-                    }
-                    item => panic!("unexpected select item: {item:?}"),
-                }
-
-                match &select.projection[1] {
-                    SelectItem::Expr { expr, .. } => {
-                        assert_eq!(
-                            expr,
-                            &Expr::Literal(AstLiteral::QuotedString("GlueSQL".to_owned()))
-                        );
-                    }
-                    item => panic!("unexpected select item: {item:?}"),
-                }
-            }
-            body => panic!("expected select body, got {body:?}"),
-        }
+        assert_eq!(translated, expected);
     }
 }
