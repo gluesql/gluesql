@@ -29,10 +29,6 @@ impl ParamLiteral {
         Self::Literal(AstLiteral::Null)
     }
 
-    pub(crate) fn into_expr_for_placeholder(self, _index: usize) -> crate::result::Result<Expr> {
-        Ok(self.into_expr())
-    }
-
     pub fn into_expr(self) -> Expr {
         match self {
             ParamLiteral::Literal(literal) => Expr::Literal(literal),
