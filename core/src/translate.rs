@@ -13,7 +13,7 @@ pub use self::{
     ddl::translate_column_def,
     error::TranslateError,
     expr::{translate_expr, translate_order_by_expr},
-    param::ParamLiteral,
+    param::{IntoParamLiteral, ParamLiteral},
     query::{alias_or_name, translate_query, translate_select_item},
 };
 
@@ -49,9 +49,12 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
 pub fn translate_with_params<I, P>(sql_statement: &SqlStatement, params: I) -> Result<Statement>
 where
     I: IntoIterator<Item = P>,
-    P: Into<ParamLiteral>,
+    P: IntoParamLiteral,
 {
-    let params: Vec<ParamLiteral> = params.into_iter().map(Into::into).collect();
+    let params: Vec<ParamLiteral> = params
+        .into_iter()
+        .map(IntoParamLiteral::into_param_literal)
+        .collect::<Result<_, TranslateError>>()?;
 
     translate_internal(sql_statement, &params)
 }
@@ -658,13 +661,13 @@ mod tests {
 
     #[test]
     fn reject_zero_index_placeholder() {
-        let params = [ParamLiteral::from(1_i64)];
+        let params = [1_i64.into_param_literal().unwrap()];
         assert_invalid_placeholder(&params, "$0");
     }
 
     #[test]
     fn reject_non_numeric_index_placeholder() {
-        let params = [ParamLiteral::from(1_i64)];
+        let params = [1_i64.into_param_literal().unwrap()];
         assert_invalid_placeholder(&params, "$foo");
     }
 }

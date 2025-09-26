@@ -206,4 +206,10 @@ pub enum TranslateError {
 
     #[error("failed to convert parameter {index} into expression: {reason}")]
     ParameterTypeConversionFailed { index: usize, reason: String },
+
+    #[error("failed to convert parameter literal from value `{value}`")]
+    InvalidParamLiteral { value: String },
+
+    #[error("non-finite float parameter literal: {value}")]
+    NonFiniteFloatParameter { value: String },
 }

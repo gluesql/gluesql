@@ -6,7 +6,7 @@ use {
         plan::plan,
         result::Result,
         store::{GStore, GStoreMut},
-        translate::{ParamLiteral, translate_with_params},
+        translate::{IntoParamLiteral, ParamLiteral, TranslateError, translate_with_params},
     },
     futures::{
         TryStreamExt,
@@ -32,10 +32,13 @@ impl<T: GStore + GStoreMut> Glue<T> {
     where
         Sql: AsRef<str>,
         I: IntoIterator<Item = P>,
-        P: Into<ParamLiteral>,
+        P: IntoParamLiteral,
     {
         let parsed = parse(sql)?;
-        let params: Vec<ParamLiteral> = params.into_iter().map(Into::into).collect();
+        let params: Vec<ParamLiteral> = params
+            .into_iter()
+            .map(|value| value.into_param_literal())
+            .collect::<Result<_, TranslateError>>()?;
         let storage = &self.storage;
         stream::iter(parsed)
             .map(|p| translate_with_params(&p, params.clone()))
@@ -61,7 +64,7 @@ impl<T: GStore + GStoreMut> Glue<T> {
     where
         Sql: AsRef<str>,
         I: IntoIterator<Item = P>,
-        P: Into<ParamLiteral>,
+        P: IntoParamLiteral,
     {
         let statements = self.plan_with_params(sql, params).await?;
         let mut payloads = Vec::<Payload>::new();

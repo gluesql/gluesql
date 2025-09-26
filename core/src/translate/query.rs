@@ -367,6 +367,7 @@ mod tests {
             },
             parse_sql::{parse, parse_query},
             result::Error,
+            translate::IntoParamLiteral,
         },
         sqlparser::ast::Statement as SqlStatement,
     };
@@ -424,7 +425,10 @@ mod tests {
     #[test]
     fn translate_binds_indexed_placeholders() {
         let query = parse_query("SELECT $1, $2").expect("parse placeholder query");
-        let params = [ParamLiteral::from(1_i64), ParamLiteral::from("GlueSQL")];
+        let params = [
+            1_i64.into_param_literal().unwrap(),
+            "GlueSQL".into_param_literal().unwrap(),
+        ];
         let translated = translate_query_with_params(query.as_ref(), &params).expect("translate");
 
         let expected = Query {
