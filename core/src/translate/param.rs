@@ -209,9 +209,15 @@ macro_rules! params {
 mod tests {
     use {
         super::*,
-        crate::ast::{AstLiteral, Expr},
+        crate::{
+            ast::{AstLiteral, Expr},
+            data::Point,
+        },
         bigdecimal::BigDecimal,
-        std::str::FromStr,
+        chrono::{NaiveDate, NaiveTime},
+        rust_decimal::Decimal,
+        std::{net::IpAddr, str::FromStr},
+        uuid::Uuid,
     };
 
     #[test]
@@ -227,6 +233,12 @@ mod tests {
             literal,
             Expr::Literal(AstLiteral::QuotedString("glue".to_owned()))
         );
+
+        let literal = ParamLiteral::from(3_i16).into_expr();
+        assert_eq!(literal, Expr::Literal(AstLiteral::Number(3.into())));
+
+        let literal = ParamLiteral::from(7_u32).into_expr();
+        assert_eq!(literal, Expr::Literal(AstLiteral::Number(7.into())));
     }
 
     #[test]
@@ -238,6 +250,16 @@ mod tests {
             Expr::TypedString {
                 data_type: DataType::Date,
                 value: "2024-01-15".to_owned(),
+            }
+        );
+
+        let time = NaiveTime::from_hms_opt(9, 45, 30).unwrap();
+        let expr = ParamLiteral::from(time).into_expr();
+        assert_eq!(
+            expr,
+            Expr::TypedString {
+                data_type: DataType::Time,
+                value: "09:45:30".to_owned(),
             }
         );
 
@@ -287,5 +309,80 @@ mod tests {
 
         let expr = ParamLiteral::from(None::<i32>).into_expr();
         assert_eq!(expr, Expr::Literal(AstLiteral::Null));
+    }
+
+    #[test]
+    fn converts_scalars_and_structs() {
+        let expr = ParamLiteral::from(1.25_f64).into_expr();
+        assert_eq!(
+            expr,
+            Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1.25").unwrap()))
+        );
+
+        let expr = ParamLiteral::from(Decimal::new(345, 2)).into_expr();
+        assert_eq!(
+            expr,
+            Expr::Literal(AstLiteral::Number(BigDecimal::from_str("3.45").unwrap()))
+        );
+
+        let expr = ParamLiteral::from(vec![0x12_u8, 0xAB]).into_expr();
+        assert_eq!(
+            expr,
+            Expr::Literal(AstLiteral::HexString("12ab".to_owned()))
+        );
+
+        let bytes = [0xCD_u8, 0xEF];
+        let expr = ParamLiteral::from(bytes.as_slice()).into_expr();
+        assert_eq!(
+            expr,
+            Expr::Literal(AstLiteral::HexString("cdef".to_owned()))
+        );
+
+        let ip = IpAddr::from_str("127.0.0.1").unwrap();
+        let expr = ParamLiteral::from(ip).into_expr();
+        assert_eq!(
+            expr,
+            Expr::Literal(AstLiteral::QuotedString("127.0.0.1".to_owned()))
+        );
+
+        let uuid = Uuid::parse_str("123e4567-e89b-12d3-a456-426614174000").unwrap();
+        let expr = ParamLiteral::from(uuid).into_expr();
+        assert_eq!(
+            expr,
+            Expr::Literal(AstLiteral::QuotedString(
+                "123e4567-e89b-12d3-a456-426614174000".to_owned()
+            ))
+        );
+
+        let point = Point::new(1.0, 2.0);
+        let expr = ParamLiteral::from(point).into_expr();
+        assert_eq!(
+            expr,
+            Expr::Literal(AstLiteral::QuotedString("POINT(1 2)".to_owned()))
+        );
+    }
+
+    #[test]
+    fn params_macro_collects_literals() {
+        let params = crate::params![1_i64, "Glue", Some(false), None::<i32>];
+
+        assert_eq!(params.len(), 4);
+
+        assert_eq!(
+            params[0].clone().into_expr(),
+            Expr::Literal(AstLiteral::Number(1.into()))
+        );
+        assert_eq!(
+            params[1].clone().into_expr(),
+            Expr::Literal(AstLiteral::QuotedString("Glue".to_owned()))
+        );
+        assert_eq!(
+            params[2].clone().into_expr(),
+            Expr::Literal(AstLiteral::Boolean(false))
+        );
+        assert_eq!(
+            params[3].clone().into_expr(),
+            Expr::Literal(AstLiteral::Null)
+        );
     }
 }
