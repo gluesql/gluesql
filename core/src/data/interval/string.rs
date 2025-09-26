@@ -149,7 +149,10 @@ impl Interval {
 
 #[cfg(test)]
 mod tests {
-    use super::Interval;
+    use {
+        super::{Interval, IntervalError},
+        crate::ast::Expr,
+    };
 
     #[test]
     fn parse() {
@@ -267,6 +270,19 @@ mod tests {
         test!(
             30 days, 30 hours, 100 seconds, 3 microseconds =>
             "31 06:01:40.000003" DAY TO SECOND
+        );
+    }
+
+    #[test]
+    fn parse_rejects_non_literal_expr() {
+        let error = Interval::parse("INTERVAL value DAY").unwrap_err();
+
+        assert_eq!(
+            error,
+            IntervalError::ParseSupportedOnlyLiteral {
+                expr: Box::new(Expr::Identifier("value".to_owned())),
+            }
+            .into(),
         );
     }
 }
