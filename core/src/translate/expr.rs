@@ -1,24 +1,25 @@
 use {
     super::{
-        TranslateError,
+        ParamLiteral, TranslateError,
         ast_literal::{translate_ast_literal, translate_datetime_field},
+        bind_placeholder,
         data_type::translate_data_type,
         function::{
-            translate_cast, translate_ceil, translate_extract, translate_floor, translate_function,
-            translate_position,
+            translate_cast_with_params, translate_ceil_with_params, translate_extract_with_params,
+            translate_floor_with_params, translate_function_with_params,
+            translate_position_with_params, translate_trim_with_params,
         },
         operator::{translate_binary_operator, translate_unary_operator},
-        translate_idents, translate_query,
+        translate_idents, translate_query_with_params,
     },
     crate::{
         ast::{Expr, OrderByExpr},
         result::Result,
-        translate::function::translate_trim,
     },
     sqlparser::ast::{
         Array, CeilFloorKind as SqlCeilFloorKind, DateTimeField as SqlDateTimeField,
         Expr as SqlExpr, Interval as SqlInterval, OrderByExpr as SqlOrderByExpr,
-        Subscript as SqlSubscript,
+        Subscript as SqlSubscript, Value as SqlValue,
     },
 };
 
@@ -30,7 +31,10 @@ use {
 /// This is because it follows the parsed result of `sqlparser-rs` as it is. <br>
 /// It is ambiguous whether the parsed tokens will be classified as a lower level of [`Expr`] or a lower level of [`Expr::Function`]. <br>
 /// In `GlueSQL`, if an argument is received wrapped in `( )` in the sql statement, the standard is set to translate in the form of `Expr::Function(Box<Function::Cast>)` rather than `Expr::Cast`.
-pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
+pub(crate) fn translate_expr_with_params(
+    sql_expr: &SqlExpr,
+    params: &[ParamLiteral],
+) -> Result<Expr> {
     match sql_expr {
         SqlExpr::Identifier(ident) => Ok(Expr::Identifier(ident.value.clone())),
         SqlExpr::CompoundIdentifier(idents) => (idents.len() == 2)
@@ -41,15 +45,22 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             .ok_or_else(|| {
                 TranslateError::UnsupportedExpr(translate_idents(idents).join(".")).into()
             }),
-        SqlExpr::IsNull(expr) => translate_expr(expr).map(Box::new).map(Expr::IsNull),
-        SqlExpr::IsNotNull(expr) => translate_expr(expr).map(Box::new).map(Expr::IsNotNull),
+        SqlExpr::IsNull(expr) => translate_expr_with_params(expr, params)
+            .map(Box::new)
+            .map(Expr::IsNull),
+        SqlExpr::IsNotNull(expr) => translate_expr_with_params(expr, params)
+            .map(Box::new)
+            .map(Expr::IsNotNull),
         SqlExpr::InList {
             expr,
             list,
             negated,
         } => Ok(Expr::InList {
-            expr: translate_expr(expr).map(Box::new)?,
-            list: list.iter().map(translate_expr).collect::<Result<_>>()?,
+            expr: translate_expr_with_params(expr, params).map(Box::new)?,
+            list: list
+                .iter()
+                .map(|expr| translate_expr_with_params(expr, params))
+                .collect::<Result<_>>()?,
             negated: *negated,
         }),
         SqlExpr::InSubquery {
@@ -57,8 +68,8 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             subquery,
             negated,
         } => Ok(Expr::InSubquery {
-            expr: translate_expr(expr).map(Box::new)?,
-            subquery: translate_query(subquery).map(Box::new)?,
+            expr: translate_expr_with_params(expr, params).map(Box::new)?,
+            subquery: translate_query_with_params(subquery, params).map(Box::new)?,
             negated: *negated,
         }),
         SqlExpr::Between {
@@ -67,10 +78,10 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             low,
             high,
         } => Ok(Expr::Between {
-            expr: translate_expr(expr).map(Box::new)?,
+            expr: translate_expr_with_params(expr, params).map(Box::new)?,
             negated: *negated,
-            low: translate_expr(low).map(Box::new)?,
-            high: translate_expr(high).map(Box::new)?,
+            low: translate_expr_with_params(low, params).map(Box::new)?,
+            high: translate_expr_with_params(high, params).map(Box::new)?,
         }),
         SqlExpr::Like {
             expr,
@@ -79,9 +90,9 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             escape_char: None,
             ..
         } => Ok(Expr::Like {
-            expr: translate_expr(expr).map(Box::new)?,
+            expr: translate_expr_with_params(expr, params).map(Box::new)?,
             negated: *negated,
-            pattern: translate_expr(pattern).map(Box::new)?,
+            pattern: translate_expr_with_params(pattern, params).map(Box::new)?,
         }),
         SqlExpr::ILike {
             expr,
@@ -90,27 +101,32 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             escape_char: None,
             ..
         } => Ok(Expr::ILike {
-            expr: translate_expr(expr).map(Box::new)?,
+            expr: translate_expr_with_params(expr, params).map(Box::new)?,
             negated: *negated,
-            pattern: translate_expr(pattern).map(Box::new)?,
+            pattern: translate_expr_with_params(pattern, params).map(Box::new)?,
         }),
         SqlExpr::BinaryOp { left, op, right } => Ok(Expr::BinaryOp {
-            left: translate_expr(left).map(Box::new)?,
+            left: translate_expr_with_params(left, params).map(Box::new)?,
             op: translate_binary_operator(op)?,
-            right: translate_expr(right).map(Box::new)?,
+            right: translate_expr_with_params(right, params).map(Box::new)?,
         }),
         SqlExpr::UnaryOp { op, expr } => Ok(Expr::UnaryOp {
             op: translate_unary_operator(op)?,
-            expr: translate_expr(expr).map(Box::new)?,
+            expr: translate_expr_with_params(expr, params).map(Box::new)?,
         }),
-        SqlExpr::Extract { field, expr, .. } => translate_extract(field, expr),
-        SqlExpr::Nested(expr) => translate_expr(expr).map(Box::new).map(Expr::Nested),
-        SqlExpr::Value(value) => translate_ast_literal(value).map(Expr::Literal),
+        SqlExpr::Extract { field, expr, .. } => translate_extract_with_params(params, field, expr),
+        SqlExpr::Nested(expr) => translate_expr_with_params(expr, params)
+            .map(Box::new)
+            .map(Expr::Nested),
+        SqlExpr::Value(value) => match value {
+            SqlValue::Placeholder(placeholder) => bind_placeholder(params, placeholder),
+            _ => translate_ast_literal(value).map(Expr::Literal),
+        },
         SqlExpr::TypedString { data_type, value } => Ok(Expr::TypedString {
             data_type: translate_data_type(data_type)?,
             value: value.to_owned(),
         }),
-        SqlExpr::Function(function) => translate_function(function),
+        SqlExpr::Function(function) => translate_function_with_params(params, function),
         SqlExpr::Trim {
             expr,
             trim_where,
@@ -121,7 +137,7 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
                 return Err(TranslateError::UnsupportedTrimChars.into());
             }
 
-            translate_trim(expr, trim_where, trim_what)
+            translate_trim_with_params(params, expr, trim_where, trim_what)
         }
         SqlExpr::Floor { expr, field } => {
             if !matches!(
@@ -131,7 +147,7 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
                 return Err(TranslateError::UnsupportedExpr(sql_expr.to_string()).into());
             }
 
-            translate_floor(expr)
+            translate_floor_with_params(params, expr)
         }
         SqlExpr::Ceil { expr, field } => {
             if !matches!(
@@ -141,13 +157,15 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
                 return Err(TranslateError::UnsupportedExpr(sql_expr.to_string()).into());
             }
 
-            translate_ceil(expr)
+            translate_ceil_with_params(params, expr)
         }
         SqlExpr::Exists { subquery, negated } => Ok(Expr::Exists {
-            subquery: translate_query(subquery).map(Box::new)?,
+            subquery: translate_query_with_params(subquery, params).map(Box::new)?,
             negated: *negated,
         }),
-        SqlExpr::Subquery(query) => translate_query(query).map(Box::new).map(Expr::Subquery),
+        SqlExpr::Subquery(query) => translate_query_with_params(query, params)
+            .map(Box::new)
+            .map(Expr::Subquery),
         SqlExpr::Case {
             operand,
             conditions,
@@ -156,43 +174,46 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
         } => Ok(Expr::Case {
             operand: operand
                 .as_ref()
-                .map(|expr| translate_expr(expr.as_ref()).map(Box::new))
+                .map(|expr| translate_expr_with_params(expr.as_ref(), params).map(Box::new))
                 .transpose()?,
             when_then: conditions
                 .iter()
                 .zip(results)
                 .map(|(when, then)| {
-                    let when = translate_expr(when)?;
-                    let then = translate_expr(then)?;
+                    let when = translate_expr_with_params(when, params)?;
+                    let then = translate_expr_with_params(then, params)?;
 
                     Ok((when, then))
                 })
                 .collect::<Result<Vec<_>>>()?,
             else_result: else_result
                 .as_ref()
-                .map(|expr| translate_expr(expr.as_ref()).map(Box::new))
+                .map(|expr| translate_expr_with_params(expr.as_ref(), params).map(Box::new))
                 .transpose()?,
         }),
         SqlExpr::Subscript { expr, subscript } => match subscript.as_ref() {
             SqlSubscript::Index { index } => Ok(Expr::ArrayIndex {
-                obj: translate_expr(expr).map(Box::new)?,
-                indexes: vec![translate_expr(index)?],
+                obj: translate_expr_with_params(expr, params).map(Box::new)?,
+                indexes: vec![translate_expr_with_params(index, params)?],
             }),
             SqlSubscript::Slice { .. } => {
                 Err(TranslateError::UnsupportedExpr(sql_expr.to_string()).into())
             }
         },
         SqlExpr::Array(Array { elem, .. }) => Ok(Expr::Array {
-            elem: elem.iter().map(translate_expr).collect::<Result<_>>()?,
+            elem: elem
+                .iter()
+                .map(|expr| translate_expr_with_params(expr, params))
+                .collect::<Result<_>>()?,
         }),
-        SqlExpr::Position { expr, r#in } => translate_position(expr, r#in),
+        SqlExpr::Position { expr, r#in } => translate_position_with_params(params, expr, r#in),
         SqlExpr::Interval(SqlInterval {
             value,
             leading_field,
             last_field,
             ..
         }) => Ok(Expr::Interval {
-            expr: translate_expr(value).map(Box::new)?,
+            expr: translate_expr_with_params(value, params).map(Box::new)?,
             leading_field: leading_field
                 .as_ref()
                 .map(translate_datetime_field)
@@ -207,13 +228,21 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             data_type,
             format,
             kind,
-        } => translate_cast(kind, expr, data_type, format.as_ref()),
+        } => translate_cast_with_params(params, kind, expr, data_type, format.as_ref()),
 
         _ => Err(TranslateError::UnsupportedExpr(sql_expr.to_string()).into()),
     }
 }
 
-pub fn translate_order_by_expr(sql_order_by_expr: &SqlOrderByExpr) -> Result<OrderByExpr> {
+pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
+    const NO_PARAMS: [ParamLiteral; 0] = [];
+    translate_expr_with_params(sql_expr, &NO_PARAMS)
+}
+
+pub(crate) fn translate_order_by_expr_with_params(
+    sql_order_by_expr: &SqlOrderByExpr,
+    params: &[ParamLiteral],
+) -> Result<OrderByExpr> {
     let SqlOrderByExpr {
         expr,
         asc,
@@ -226,7 +255,12 @@ pub fn translate_order_by_expr(sql_order_by_expr: &SqlOrderByExpr) -> Result<Ord
     }
 
     Ok(OrderByExpr {
-        expr: translate_expr(expr)?,
+        expr: translate_expr_with_params(expr, params)?,
         asc: *asc,
     })
+}
+
+pub fn translate_order_by_expr(sql_order_by_expr: &SqlOrderByExpr) -> Result<OrderByExpr> {
+    const NO_PARAMS: [ParamLiteral; 0] = [];
+    translate_order_by_expr_with_params(sql_order_by_expr, &NO_PARAMS)
 }
