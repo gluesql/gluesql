@@ -5,7 +5,7 @@ use {
         data::{Interval, Point},
     },
     bigdecimal::BigDecimal,
-    chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc},
+    chrono::{NaiveDate, NaiveDateTime, NaiveTime, Timelike},
     rust_decimal::Decimal,
     std::net::IpAddr,
     uuid::Uuid,
@@ -175,9 +175,15 @@ impl IntoParamLiteral for NaiveTime {
 
 impl IntoParamLiteral for NaiveDateTime {
     fn into_param_literal(self) -> Result<ParamLiteral, TranslateError> {
+        let value = if self.time().nanosecond() == 0 {
+            self.format("%Y-%m-%d %H:%M:%S").to_string()
+        } else {
+            self.format("%Y-%m-%d %H:%M:%S%.f").to_string()
+        };
+
         Ok(ParamLiteral::TypedString {
             data_type: DataType::Timestamp,
-            value: Utc.from_utc_datetime(&self).to_string(),
+            value,
         })
     }
 }
@@ -346,7 +352,23 @@ mod tests {
             expr,
             Expr::TypedString {
                 data_type: DataType::Timestamp,
-                value: "2024-01-15 12:00:00 UTC".to_owned(),
+                value: "2024-01-15 12:00:00".to_owned(),
+            }
+        );
+
+        let timestamp_with_fraction = NaiveDate::from_ymd_opt(2024, 1, 15)
+            .unwrap()
+            .and_hms_micro_opt(12, 0, 0, 123_456)
+            .unwrap();
+        let expr = timestamp_with_fraction
+            .into_param_literal()
+            .unwrap()
+            .into_expr();
+        assert_eq!(
+            expr,
+            Expr::TypedString {
+                data_type: DataType::Timestamp,
+                value: "2024-01-15 12:00:00.123456".to_owned(),
             }
         );
     }
