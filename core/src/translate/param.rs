@@ -81,12 +81,18 @@ impl_from_integer!(
 
 impl From<f32> for ParamLiteral {
     fn from(value: f32) -> Self {
+        if !value.is_finite() {
+            return ParamLiteral::null();
+        }
         ParamLiteral::Literal(into_number_literal(value))
     }
 }
 
 impl From<f64> for ParamLiteral {
     fn from(value: f64) -> Self {
+        if !value.is_finite() {
+            return ParamLiteral::null();
+        }
         ParamLiteral::Literal(into_number_literal(value))
     }
 }
@@ -324,6 +330,12 @@ mod tests {
             expr,
             Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1.25").unwrap()))
         );
+
+        let expr = ParamLiteral::from(f32::NAN).into_expr();
+        assert_eq!(expr, Expr::Literal(AstLiteral::Null));
+
+        let expr = ParamLiteral::from(f64::INFINITY).into_expr();
+        assert_eq!(expr, Expr::Literal(AstLiteral::Null));
 
         let expr = ParamLiteral::from(1.5_f32).into_expr();
         assert_eq!(
