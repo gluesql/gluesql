@@ -416,7 +416,6 @@ pub(crate) fn bind_placeholder(params: &[ParamLiteral], placeholder: &str) -> Re
                 len: params.len(),
             })?;
 
-    // Placeholder indices are already validated when building ParamLiteral.
     Ok(literal.into_expr())
 }
 
