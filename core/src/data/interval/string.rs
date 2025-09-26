@@ -151,7 +151,7 @@ impl Interval {
 mod tests {
     use {
         super::{Interval, IntervalError},
-        crate::ast::Expr,
+        crate::ast::{DateTimeField, Expr},
     };
 
     #[test]
@@ -280,7 +280,11 @@ mod tests {
         assert_eq!(
             error,
             IntervalError::ParseSupportedOnlyLiteral {
-                expr: Box::new(Expr::Identifier("value".to_owned())),
+                expr: Box::new(Expr::Interval {
+                    expr: Box::new(Expr::Identifier("value".to_owned())),
+                    leading_field: Some(DateTimeField::Day),
+                    last_field: None,
+                }),
             }
             .into(),
         );
