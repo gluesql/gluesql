@@ -1,6 +1,6 @@
-use gluesql::{
-    FromGlueRow,
-    core::{data::Value, executor::Payload, row_conversion::SelectExt},
+use {
+    gluesql_core::{data::Value, executor::Payload, row_conversion::SelectExt},
+    gluesql_macros::FromGlueRow,
 };
 
 #[derive(Debug, PartialEq, FromGlueRow)]

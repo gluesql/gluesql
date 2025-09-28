@@ -1,10 +1,10 @@
-use gluesql::{
-    FromGlueRow,
-    core::{
+use {
+    gluesql_core::{
         data::Value,
         executor::Payload,
         row_conversion::{RowConversionError, SelectExt},
     },
+    gluesql_macros::FromGlueRow,
 };
 
 #[allow(dead_code)]

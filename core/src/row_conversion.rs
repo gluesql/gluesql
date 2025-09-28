@@ -1,5 +1,17 @@
 use serde::Serialize;
 
+pub fn uuid_to_string(value: u128) -> String {
+    let hex = format!("{value:032x}");
+    format!(
+        "{}-{}-{}-{}-{}",
+        &hex[0..8],
+        &hex[8..12],
+        &hex[12..16],
+        &hex[16..20],
+        &hex[20..32]
+    )
+}
+
 #[derive(Debug, thiserror::Error, PartialEq, Serialize)]
 pub enum RowConversionError {
     #[error("not a select payload")]
@@ -140,8 +152,17 @@ impl SelectResultExt for crate::result::Result<crate::executor::Payload> {
 
 #[cfg(test)]
 mod tests {
-    use super::{FromGlueRow, RowConversionError, SelectExt};
+    use super::{FromGlueRow, RowConversionError, SelectExt, uuid_to_string};
     use crate::{data::Value, executor::Payload};
+
+    #[test]
+    fn uuid_to_string_formats_hyphenated_lower() {
+        let value = 0x936DA01F9ABD4D9D80C702AF85C822A8u128;
+        assert_eq!(
+            uuid_to_string(value),
+            "936da01f-9abd-4d9d-80c7-02af85c822a8"
+        );
+    }
 
     #[derive(Debug, PartialEq)]
     struct Dummy {

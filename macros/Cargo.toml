@@ -13,9 +13,11 @@ proc-macro = true
 proc-macro2 = "1"
 quote = "1"
 syn = { version = "2", features = ["full"] }
+proc-macro-crate = "3"
 
 [dev-dependencies]
-gluesql = { path = "../pkg/rust", version = "0.17.0" }
+gluesql-core.workspace = true
+gluesql_memory_storage.workspace = true
 futures = "0.3"
 chrono = "0.4"
 rust_decimal = "1"

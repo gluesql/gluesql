@@ -41,7 +41,7 @@ async fn scan_data_to_ignore_directory_items() {
     glue.execute("CREATE TABLE Foo (id INTEGER);")
         .await
         .unwrap();
-    glue.execute("INSERT TABLE Foo VALUES (1), (2), (3);")
+    glue.execute("INSERT INTO Foo VALUES (1), (2), (3);")
         .await
         .unwrap();
 

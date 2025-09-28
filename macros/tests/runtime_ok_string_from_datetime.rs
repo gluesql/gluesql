@@ -1,11 +1,16 @@
-use gluesql::{
-    FromGlueRow,
-    core::{data::Value, executor::Payload, row_conversion::SelectExt},
+use {
+    gluesql_core::{data::Value, executor::Payload, row_conversion::SelectExt},
+    gluesql_macros::FromGlueRow,
 };
 
 #[derive(Debug, PartialEq, FromGlueRow)]
 struct SString {
     v: String,
+}
+
+#[derive(Debug, PartialEq, FromGlueRow)]
+struct SStringOpt {
+    v: Option<String>,
 }
 
 #[test]
@@ -51,4 +56,32 @@ fn timestamp_to_string() {
 
     let rows: Vec<SString> = payload.rows_as::<SString>().unwrap();
     assert_eq!(rows[0].v, "2023-04-05T01:02:03Z");
+}
+
+#[test]
+fn uuid_to_string() {
+    let uuid_u128 = 0x936DA01F9ABD4D9D80C702AF85C822A8u128;
+    let payload = Payload::Select {
+        labels: vec!["v".into()],
+        rows: vec![vec![Value::Uuid(uuid_u128)]],
+    };
+
+    let rows: Vec<SString> = payload.rows_as::<SString>().unwrap();
+    assert_eq!(rows[0].v, "936da01f-9abd-4d9d-80c7-02af85c822a8");
+}
+
+#[test]
+fn uuid_to_option_string() {
+    let uuid_u128 = 0x550E8400E29B41D4A716446655440000u128;
+    let payload = Payload::Select {
+        labels: vec!["v".into()],
+        rows: vec![vec![Value::Uuid(uuid_u128)], vec![Value::Null]],
+    };
+
+    let rows: Vec<SStringOpt> = payload.rows_as::<SStringOpt>().unwrap();
+    assert_eq!(
+        rows[0].v.as_deref(),
+        Some("550e8400-e29b-41d4-a716-446655440000")
+    );
+    assert_eq!(rows[1].v, None);
 }

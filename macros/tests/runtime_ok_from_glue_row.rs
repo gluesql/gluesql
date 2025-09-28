@@ -1,6 +1,6 @@
-use gluesql::{
-    FromGlueRow,
-    core::{data::Value, row_conversion::FromGlueRow as _},
+use {
+    gluesql_core::{data::Value, row_conversion::FromGlueRow as _},
+    gluesql_macros::FromGlueRow,
 };
 
 #[derive(Debug, PartialEq, FromGlueRow)]
@@ -38,7 +38,7 @@ struct DirectNonNull {
 
 #[test]
 fn direct_from_glue_row_null_not_allowed() {
-    use gluesql::core::row_conversion::RowConversionError;
+    use gluesql_core::row_conversion::RowConversionError;
     let labels = vec!["v".to_string()];
     let row = vec![Value::Null];
     let err = DirectNonNull::from_glue_row(&labels, &row).unwrap_err();
@@ -53,7 +53,7 @@ struct DirectMismatch {
 
 #[test]
 fn direct_from_glue_row_type_mismatch() {
-    use gluesql::core::row_conversion::RowConversionError;
+    use gluesql_core::row_conversion::RowConversionError;
     let labels = vec!["v".to_string()];
     let row = vec![Value::I64(1)];
     let err = DirectMismatch::from_glue_row(&labels, &row).unwrap_err();

@@ -1,6 +1,6 @@
-use gluesql::{
-    FromGlueRow,
-    core::{data::Value, error::Error, executor::Payload, row_conversion::SelectResultExt},
+use {
+    gluesql_core::{data::Value, error::Error, executor::Payload, row_conversion::SelectResultExt},
+    gluesql_macros::FromGlueRow,
 };
 
 #[derive(Debug, PartialEq, FromGlueRow)]
@@ -21,8 +21,7 @@ fn result_rows_as_ok() {
 
 #[test]
 fn result_rows_as_not_select_payload_maps_error() {
-    use gluesql::core::error::Error as CoreError;
-    use gluesql::core::row_conversion::RowConversionError;
+    use gluesql_core::{error::Error as CoreError, row_conversion::RowConversionError};
 
     let res: Result<Vec<Payload>, Error> = Ok(vec![Payload::Insert(1)]);
     let err = res.rows_as::<User>().unwrap_err();

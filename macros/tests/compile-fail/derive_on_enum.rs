@@ -1,7 +1,6 @@
-use gluesql::FromGlueRow;
+use gluesql_macros::FromGlueRow;
 
 #[derive(FromGlueRow)]
 enum E {
     A,
 }
-
