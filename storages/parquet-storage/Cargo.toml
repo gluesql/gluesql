@@ -26,5 +26,5 @@ rust_decimal = "1.15"
 test-suite.workspace = true
 uuid = "1"
 
-[lints]
-workspace = true
+[lints.clippy]
+pedantic = "warn"
