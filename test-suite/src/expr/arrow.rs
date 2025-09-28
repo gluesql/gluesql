@@ -130,16 +130,16 @@ test_case!(arrow, {
     .await;
 
     let typed_selectors = [
-        ("INT8", "CAST(1 AS INT8)"),
-        ("INT16", "CAST(1 AS INT16)"),
-        ("INT32", "CAST(1 AS INT32)"),
-        ("INT64", "CAST(1 AS INT64)"),
-        ("INT128", "CAST(1 AS INT128)"),
-        ("UINT8", "CAST(1 AS UINT8)"),
-        ("UINT16", "CAST(1 AS UINT16)"),
-        ("UINT32", "CAST(1 AS UINT32)"),
-        ("UINT64", "CAST(1 AS UINT64)"),
-        ("UINT128", "CAST(1 AS UINT128)"),
+        ("INT8", "CAST(3 AS INT8)"),
+        ("INT16", "CAST(3 AS INT16)"),
+        ("INT32", "CAST(3 AS INT32)"),
+        ("INT64", "CAST(3 AS INT64)"),
+        ("INT128", "CAST(3 AS INT128)"),
+        ("UINT8", "CAST(3 AS UINT8)"),
+        ("UINT16", "CAST(3 AS UINT16)"),
+        ("UINT32", "CAST(3 AS UINT32)"),
+        ("UINT64", "CAST(3 AS UINT64)"),
+        ("UINT128", "CAST(3 AS UINT128)"),
     ];
 
     for (label, selector_expr) in typed_selectors {
