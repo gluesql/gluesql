@@ -7,31 +7,22 @@ use gluesql_sled_storage::{SledStorage, sled::Config};
 
 use crate::error::GlueSQLError;
 
-#[derive(uniffi::Record)]
-pub struct SledConfig {
-    pub path: Option<String>,
-    pub mode: Option<String>,
-}
-
 #[derive(uniffi::Enum)]
 pub enum Storage {
     Memory,
+    SharedMemory,
     Json {
         path: String,
     },
     Sled {
-        path: String,
-        config: Option<SledConfig>,
-    },
-    SharedMemory {
-        namespace: String,
+        config: SledConfig,
     },
 }
 
 pub enum StorageBackend {
     Memory(Arc<tokio::sync::Mutex<MemoryStorage>>),
-    Json(Arc<tokio::sync::Mutex<JsonStorage>>),
     SharedMemory(Arc<tokio::sync::Mutex<SharedMemoryStorage>>),
+    Json(Arc<tokio::sync::Mutex<JsonStorage>>),
     Sled(Arc<tokio::sync::Mutex<SledStorage>>),
 }
 
@@ -41,26 +32,28 @@ impl StorageBackend {
             Storage::Memory => {
                 StorageBackend::Memory(Arc::new(tokio::sync::Mutex::new(MemoryStorage::default())))
             }
+            Storage::SharedMemory => {
+                StorageBackend::SharedMemory(Arc::new(
+                    tokio::sync::Mutex::new(SharedMemoryStorage::new()),
+                ))
+            }
             Storage::Json { path } => {
                 let json_storage = JsonStorage::new(&path)
                     .map_err(|e| GlueSQLError::StorageError(e.to_string()))?;
                 StorageBackend::Json(Arc::new(tokio::sync::Mutex::new(json_storage)))
             }
-            Storage::SharedMemory { namespace: _ } => StorageBackend::SharedMemory(Arc::new(
-                tokio::sync::Mutex::new(SharedMemoryStorage::new()),
-            )),
-            Storage::Sled { path, config } => {
-                let sled_config = if let Some(config) = config {
-                    let mut cfg = Config::default();
-                    if let Some(path) = &config.path {
-                        cfg = cfg.path(path);
-                    }
-                    cfg
-                } else {
-                    Config::default().path(&path)
-                };
+            Storage::Sled { config } => {
+                let sled_cfg = Config::default()
+                    .path(&config.path)
+                    .cache_capacity(config.cache_capacity as u64)
+                    .create_new(config.create_new)
+                    .mode(config.mode.into())
+                    .temporary(config.temporary)
+                    .use_compression(config.use_compression)
+                    .compression_factor(config.compression_factor)
+                    .print_profile_on_drop(config.print_profile_on_drop);
 
-                let sled_storage = SledStorage::try_from(sled_config)
+                let sled_storage = SledStorage::try_from(sled_cfg)
                     .map_err(|e| GlueSQLError::StorageError(e.to_string()))?;
                 StorageBackend::Sled(Arc::new(tokio::sync::Mutex::new(sled_storage)))
             }
@@ -68,4 +61,32 @@ impl StorageBackend {
 
         Ok(storage_backend)
     }
+}
+
+#[derive(uniffi::Enum, Default, Clone)]
+pub enum Mode {
+    #[default]
+    LowSpace,
+    HighThroughput,
+}
+
+impl From<Mode> for gluesql_sled_storage::sled::Mode {
+    fn from(mode: Mode) -> Self {
+        match mode {
+            Mode::LowSpace => gluesql_sled_storage::sled::Mode::LowSpace,
+            Mode::HighThroughput => gluesql_sled_storage::sled::Mode::HighThroughput,
+        }
+    }
+}
+
+#[derive(uniffi::Record, Default, Clone)]
+pub struct SledConfig {
+    pub path: String,
+    pub cache_capacity: i64,
+    pub mode: Mode,
+    pub create_new: bool,
+    pub temporary: bool,
+    pub use_compression: bool,
+    pub compression_factor: i32,
+    pub print_profile_on_drop: bool,
 }

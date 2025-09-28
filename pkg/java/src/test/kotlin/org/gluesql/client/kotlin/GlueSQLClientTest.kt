@@ -1,7 +1,15 @@
 package org.gluesql.client.kotlin
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import org.gluesql.storage.StorageFactory.Companion.json
+import org.gluesql.storage.StorageFactory.Companion.memory
+import org.gluesql.storage.StorageFactory.Companion.sharedMemory
+import org.gluesql.storage.StorageFactory.Companion.sled
+import org.gluesql.uniffi.Mode
+import org.gluesql.uniffi.SledConfig
 import org.gluesql.uniffi.Storage
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -49,5 +57,31 @@ class GlueSQLClientTest {
             val result = customClient.query("CREATE TABLE test (id INTEGER)")
             assertNotNull(result)
         }
+    }
+
+    @Test
+    fun testStorageFactory() {
+        // Test different storage types creation
+        val memoryStorage = memory()
+        Assertions.assertNotNull(memoryStorage)
+
+        val jsonStorage = json("/tmp/test.json")
+        Assertions.assertNotNull(jsonStorage)
+
+        val sharedMemoryStorage = sharedMemory()
+        Assertions.assertNotNull(sharedMemoryStorage)
+
+        val sledConfig = SledConfig(
+            path = "/tmp/test-advanced.sled",
+            cacheCapacity = 2048L,
+            mode = Mode.HIGH_THROUGHPUT,
+            createNew = true,
+            temporary = false,
+            useCompression = true,
+            compressionFactor = 7,
+            printProfileOnDrop = false
+        )
+        val advancedSledStorage = sled(sledConfig)
+        Assertions.assertNotNull(advancedSledStorage)
     }
 }

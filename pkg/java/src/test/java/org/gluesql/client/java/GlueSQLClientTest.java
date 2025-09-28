@@ -1,7 +1,11 @@
 package org.gluesql.client.java;
 
+import org.gluesql.storage.config.SledConfigBuilder;
+import org.gluesql.storage.StorageFactory;
+import org.gluesql.uniffi.Mode;
 import org.gluesql.uniffi.QueryResult;
 import org.gluesql.uniffi.Storage;
+import org.gluesql.uniffi.SledConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -63,7 +67,19 @@ public class GlueSQLClientTest {
         Storage jsonStorage = StorageFactory.json("/tmp/test.json");
         assertNotNull(jsonStorage);
         
-        Storage sharedMemoryStorage = StorageFactory.sharedMemory("test");
+        Storage sharedMemoryStorage = StorageFactory.sharedMemory();
         assertNotNull(sharedMemoryStorage);
+
+        SledConfig sledConfig = SledConfigBuilder.create("/tmp/test-advanced.sled")
+            .cacheCapacity(2048L)
+            .mode(Mode.HIGH_THROUGHPUT)
+            .createNew(true)
+            .temporary(false)
+            .useCompression(true)
+            .compressionFactor(7)
+            .printProfileOnDrop(false)
+            .build();
+        Storage advancedSledStorage = StorageFactory.sled(sledConfig);
+        assertNotNull(advancedSledStorage);
     }
 }

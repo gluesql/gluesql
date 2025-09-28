@@ -1,4 +1,4 @@
-package org.gluesql.client.java
+package org.gluesql.storage
 
 import org.gluesql.uniffi.SledConfig
 import org.gluesql.uniffi.Storage
@@ -18,11 +18,19 @@ import org.gluesql.uniffi.Storage
  * // JSON file storage
  * Storage storage = StorageFactory.json("/path/to/database.json");
  * 
- * // Sled storage
+ * // Sled storage (simple)
  * Storage storage = StorageFactory.sled("/path/to/database");
  * 
+ * // Sled storage (advanced with builder)
+ * SledConfig config = SledConfigBuilder.create("/path/to/database")
+ *     .cacheCapacity(4096L)
+ *     .mode(Mode.HIGH_THROUGHPUT)
+ *     .useCompression(true)
+ *     .build();
+ * Storage storage = StorageFactory.sled(config);
+ * 
  * // Shared memory storage
- * Storage storage = StorageFactory.sharedMemory("my_namespace");
+ * Storage storage = StorageFactory.sharedMemory();
  * ```
  */
 class StorageFactory {
@@ -34,10 +42,9 @@ class StorageFactory {
         fun json(path: String): Storage = Storage.Json(path)
         
         @JvmStatic
-        @JvmOverloads
-        fun sled(path: String, config: SledConfig? = null): Storage = Storage.Sled(path, config)
+        fun sled(config: SledConfig): Storage = Storage.Sled(config)
 
         @JvmStatic
-        fun sharedMemory(namespace: String): Storage = Storage.SharedMemory(namespace)
+        fun sharedMemory(): Storage = Storage.SharedMemory
     }
 }

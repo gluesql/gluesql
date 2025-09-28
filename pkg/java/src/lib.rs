@@ -4,7 +4,7 @@ mod storage;
 mod uniffi_types;
 
 pub use error::GlueSQLError;
-pub use storage::{SledConfig, Storage, StorageBackend};
+pub use storage::{Mode, SledConfig, Storage, StorageBackend};
 pub use uniffi_types::{
     CreateResult, DeleteResult, DropTableResult, InsertResult, QueryResult, SelectResult,
     ShowColumnsResult, ShowVariableResult, SqlValue, UpdateResult,
