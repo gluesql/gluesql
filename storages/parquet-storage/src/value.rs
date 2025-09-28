@@ -46,10 +46,9 @@ impl ParquetField {
                         .map_err(|_| Error::StorageMsg("Invalid minute component".to_owned()))?;
                     let seconds = u32::try_from(total_seconds % 60)
                         .map_err(|_| Error::StorageMsg("Invalid second component".to_owned()))?;
-                    let micros =
-                        u32::try_from(micros_since_midnight % 1_000_000).map_err(|_| {
-                            Error::StorageMsg("Invalid microsecond component".to_owned())
-                        })?;
+                    let micros = micros_since_midnight.rem_euclid(1_000_000);
+                    let micros = u32::try_from(micros)
+                        .unwrap_or_else(|_| unreachable!("rem_euclid ensures micros fits u32"));
 
                     return NaiveTime::from_hms_micro_opt(hours % 24, minutes, seconds, micros)
                         .map_storage_err(Error::StorageMsg(
