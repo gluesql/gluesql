@@ -27,3 +27,6 @@ iter-enum = "1"
 [dev-dependencies]
 test-suite.workspace = true
 uuid = "1"
+
+[lints]
+workspace = true

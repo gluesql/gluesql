@@ -27,3 +27,6 @@ toml = "0.8.6"
 
 [features]
 test-redis = []
+
+[lints]
+workspace = true
