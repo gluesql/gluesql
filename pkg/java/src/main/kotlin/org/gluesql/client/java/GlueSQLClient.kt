@@ -21,12 +21,14 @@ import java.util.concurrent.CompletableFuture
  * 
  * ### Synchronous execution (blocking):
  * ```java
+ * Storage storage = StorageFactory.memory();
  * GlueSQLClient client = new GlueSQLClient(storage);
  * List<QueryResult> results = client.query("SELECT * FROM users");
  * ```
  * 
  * ### Asynchronous execution (non-blocking):
  * ```java
+ * Storage storage = StorageFactory.json("/path/to/database.json");
  * GlueSQLClient client = new GlueSQLClient(storage);
  * CompletableFuture<List<QueryResult>> future = client.queryAsync("SELECT * FROM users");
  * future.thenAccept(results -> {
