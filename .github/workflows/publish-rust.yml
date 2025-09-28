@@ -47,6 +47,7 @@ jobs:
               "gluesql-git-storage"
               "gluesql-composite-storage"
               "gluesql-cli"
+              "gluesql-macros"
               "gluesql"
             )
             for package in "${packages[@]}"; do
