@@ -34,10 +34,8 @@ class StorageFactory {
         fun json(path: String): Storage = Storage.Json(path)
         
         @JvmStatic
-        fun sled(path: String): Storage = Storage.Sled(path, null)
-        
-        @JvmStatic
-        fun sled(path: String, config: SledConfig): Storage = Storage.Sled(path, config)
+        @JvmOverloads
+        fun sled(path: String, config: SledConfig? = null): Storage = Storage.Sled(path, config)
 
         @JvmStatic
         fun sharedMemory(namespace: String): Storage = Storage.SharedMemory(namespace)
