@@ -113,7 +113,7 @@ test_case!(arrow, {
 
     g.test(
         r#"SELECT '{"role":"admin"}'->'role' AS result;"#,
-        Ok(select!(result Str; "admin".to_owned())),
+        Ok(select_with_null!(result; Value::Null)),
     )
     .await;
 
