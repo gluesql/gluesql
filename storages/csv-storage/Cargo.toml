@@ -27,3 +27,6 @@ test-suite.workspace = true
 tokio = { version = "1", features = ["rt", "macros"] }
 rust_decimal = "1"
 rust_decimal_macros = "1"
+
+[lints]
+workspace = true
