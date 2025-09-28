@@ -1,6 +1,9 @@
 use {
     crate::*,
-    gluesql_core::prelude::Value::{self, Bool, F64, I64, Map, Str},
+    gluesql_core::{
+        executor::EvaluateError,
+        prelude::Value::{self, Bool, F64, I64, Map, Str},
+    },
 };
 
 test_case!(arrow, {
@@ -61,6 +64,12 @@ test_case!(arrow, {
     .await;
 
     g.test(
+        "SELECT object->NULL AS result FROM ArrowSample;",
+        Ok(select_with_null!(result; Value::Null)),
+    )
+    .await;
+
+    g.test(
         "SELECT array->0 AS result FROM ArrowSample;",
         Ok(select!(result I64; 1)),
     )
@@ -93,6 +102,12 @@ test_case!(arrow, {
     g.test(
         "SELECT 1 -> 'foo' AS result;",
         Ok(select_with_null!(result; Value::Null)),
+    )
+    .await;
+
+    g.test(
+        "SELECT object->TRUE AS result FROM ArrowSample;",
+        Err(EvaluateError::FunctionRequiresIntegerOrStringValue("->".to_owned()).into()),
     )
     .await;
 });
