@@ -341,6 +341,7 @@ macro_rules! generate_store_tests {
 
         glue!(expr_between, expr::between::between);
         glue!(expr_in_list, expr::in_list::in_list);
+        glue!(expr_arrow, expr::arrow::arrow);
     };
 }
 
