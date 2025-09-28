@@ -128,3 +128,11 @@ Cargo.lock
 !.yarn/sdks
 !.yarn/versions
 /npm
+
+# WASM build auto generated files
+gluesql-napi.wasi-browser.js
+gluesql-napi.wasi.cjs
+gluesql-napi.wasm32-wasi.debug.wasm
+gluesql-napi.wasm32-wasi.wasm
+wasi-worker-browser.mjs
+wasi-worker.mjs

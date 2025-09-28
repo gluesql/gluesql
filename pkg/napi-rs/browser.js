@@ -1,2 +1,1 @@
-export * from './gluesql-napi.wasi-browser';
-
+export * from 'gluesql-napi-wasm32-wasi'
