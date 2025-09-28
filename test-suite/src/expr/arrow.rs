@@ -100,8 +100,20 @@ test_case!(arrow, {
     .await;
 
     g.test(
+        "SELECT array->'3' AS result FROM ArrowSample;",
+        Ok(select!(result F64; 4.25_f64)),
+    )
+    .await;
+
+    g.test(
         "SELECT 1 -> 'foo' AS result;",
         Ok(select_with_null!(result; Value::Null)),
+    )
+    .await;
+
+    g.test(
+        r#"SELECT '{"role":"admin"}'->'role' AS result;"#,
+        Ok(select!(result Str; "admin".to_owned())),
     )
     .await;
 
@@ -110,4 +122,34 @@ test_case!(arrow, {
         Err(EvaluateError::FunctionRequiresIntegerOrStringValue("->".to_owned()).into()),
     )
     .await;
+
+    g.test(
+        "SELECT NULL->'role' AS result;",
+        Ok(select_with_null!(result; Value::Null)),
+    )
+    .await;
+
+    let typed_selectors = [
+        ("INT8", "CAST(1 AS INT8)"),
+        ("INT16", "CAST(1 AS INT16)"),
+        ("INT32", "CAST(1 AS INT32)"),
+        ("INT64", "CAST(1 AS INT64)"),
+        ("INT128", "CAST(1 AS INT128)"),
+        ("UINT8", "CAST(1 AS UINT8)"),
+        ("UINT16", "CAST(1 AS UINT16)"),
+        ("UINT32", "CAST(1 AS UINT32)"),
+        ("UINT64", "CAST(1 AS UINT64)"),
+        ("UINT128", "CAST(1 AS UINT128)"),
+    ];
+
+    for (label, selector_expr) in typed_selectors {
+        let sql = format!(
+            "SELECT array->{} AS result FROM ArrowSample;",
+            selector_expr
+        );
+        let test_name = format!("Arrow selector uses {label}");
+
+        g.named_test(&test_name, sql.as_str(), Ok(select!(result F64; 4.25_f64)))
+            .await;
+    }
 });
