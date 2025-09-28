@@ -6,11 +6,9 @@ use {
 test_case!(arrow, {
     let g = get_tester!();
 
-    g.run("CREATE TABLE ArrowSample (object MAP, array LIST);")
-        .await;
-
     g.run(
         r#"
+        CREATE TABLE ArrowSample (object MAP, array LIST);
         INSERT INTO ArrowSample VALUES (
             '{"id":1,"b":2,"name":"Han","price":4.25,"active":true,"nested":{"role":"admin"}}',
             '[1,"two",true,4.25,null]'
