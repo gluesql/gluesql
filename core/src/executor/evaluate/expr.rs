@@ -68,7 +68,7 @@ pub fn binary_op<'a>(
         BinaryOperator::BitwiseAnd => l.bitwise_and(&r),
         BinaryOperator::BitwiseShiftLeft => l.bitwise_shift_left(&r),
         BinaryOperator::BitwiseShiftRight => l.bitwise_shift_right(&r),
-        BinaryOperator::GetJSONArrow => l.get_json_arrow(&r),
+        BinaryOperator::Arrow => l.get_json_arrow(&r),
     }
 }
 

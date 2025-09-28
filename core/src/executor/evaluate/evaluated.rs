@@ -280,10 +280,9 @@ impl<'a> Evaluated<'a> {
     }
 
     pub fn get_json_arrow<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
-        let base = Value::try_from(self.clone())?;
         let selector = Value::try_from(other.clone())?;
 
-        if base.is_null() || selector.is_null() {
+        if selector.is_null() {
             return Ok(Evaluated::Value(Value::Null));
         }
 
@@ -303,7 +302,26 @@ impl<'a> Evaluated<'a> {
         }
         .ok_or_else(|| EvaluateError::FunctionRequiresIntegerOrStringValue("->".to_owned()))?;
 
-        match base.selector(&key) {
+        let result = match self {
+            Evaluated::Value(base) => {
+                if base.is_null() {
+                    return Ok(Evaluated::Value(Value::Null));
+                }
+
+                base.selector(&key)
+            }
+            _ => {
+                let base = Value::try_from(self.clone())?;
+
+                if base.is_null() {
+                    return Ok(Evaluated::Value(Value::Null));
+                }
+
+                base.selector(&key)
+            }
+        };
+
+        match result {
             Ok(value) => Ok(Evaluated::Value(value)),
             Err(err) => match err {
                 Error::Value(value_err) => match *value_err {
