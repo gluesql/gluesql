@@ -50,6 +50,7 @@
   },
   "scripts": {
     "artifacts": "napi artifacts",
+    "test": "vitest",
     "build": "napi build --platform --release",
     "build:debug": "napi build --platform",
     "build:wasm": "napi build --platform --target wasm32-wasip1-threads --release",
@@ -74,7 +75,8 @@
     "npm-run-all2": "^8.0.4",
     "oxlint": "^1.14.0",
     "prettier": "^3.6.2",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
   },
   "lint-staged": {
     "*.@(js|ts|tsx)": [
