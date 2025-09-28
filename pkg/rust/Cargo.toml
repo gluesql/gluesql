@@ -55,3 +55,6 @@ default = [
   "gluesql-file-storage",
   "gluesql-git-storage",
 ]
+
+[lints]
+workspace = true

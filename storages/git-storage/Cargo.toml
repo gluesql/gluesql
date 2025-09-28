@@ -23,3 +23,6 @@ uuid = { version = "1.10.0", features = ["v7"] }
 
 [features]
 test-git-remote = []
+
+[lints]
+workspace = true

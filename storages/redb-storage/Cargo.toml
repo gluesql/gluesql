@@ -22,3 +22,6 @@ async-stream = "0.3.6"
 [dev-dependencies]
 test-suite.workspace = true
 tokio = { version = "1", features = ["rt", "macros"] }
+
+[lints]
+workspace = true

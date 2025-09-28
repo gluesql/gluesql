@@ -12,3 +12,6 @@ documentation.workspace = true
 indexmap = "1"
 pin-project = "1"
 futures = "0.3"
+
+[lints]
+workspace = true
