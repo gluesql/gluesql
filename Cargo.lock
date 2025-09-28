@@ -1493,7 +1493,6 @@ dependencies = [
  "futures",
  "gluesql-core",
  "gluesql-test-suite",
- "lazy_static",
  "num-traits",
  "parquet",
  "rust_decimal",

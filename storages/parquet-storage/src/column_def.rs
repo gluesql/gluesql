@@ -5,13 +5,12 @@ use {
         prelude::{DataType, Error},
         translate::translate_expr,
     },
-    lazy_static::lazy_static,
     parquet::{basic::Type as PhysicalType, format::KeyValue, schema::types::Type as SchemaType},
-    std::{collections::HashMap, convert::TryFrom},
+    std::{collections::HashMap, convert::TryFrom, sync::LazyLock},
 };
 
-lazy_static! {
-    static ref PARQUET_TO_GLUESQL_DATA_TYPE_MAPPING: HashMap<&'static str, DataType> = {
+static PARQUET_TO_GLUESQL_DATA_TYPE_MAPPING: LazyLock<HashMap<&'static str, DataType>> =
+    LazyLock::new(|| {
         let mut m = HashMap::new();
         m.insert("Boolean", DataType::Boolean);
         m.insert("Int8", DataType::Int8);
@@ -38,9 +37,9 @@ lazy_static! {
         m.insert("List", DataType::List);
         m.insert("Decimal", DataType::Decimal);
         m.insert("Point", DataType::Point);
+
         m
-    };
-}
+    });
 
 pub fn map_parquet_to_gluesql(data_type: &str) -> Option<&'static DataType> {
     PARQUET_TO_GLUESQL_DATA_TYPE_MAPPING.get(data_type)
@@ -57,8 +56,8 @@ impl<'a> ParquetSchemaType<'a> {
         self.inner
     }
 
-    pub fn get_metadata(&self) -> &Option<&'a Vec<KeyValue>> {
-        &self.metadata
+    pub fn get_metadata(&self) -> Option<&'a Vec<KeyValue>> {
+        self.metadata
     }
 }
 
@@ -70,7 +69,7 @@ impl<'a> TryFrom<ParquetSchemaType<'a>> for ColumnDef {
 
         let name = inner.name().to_owned();
         let mut data_type = match inner {
-            SchemaType::PrimitiveType { physical_type, .. } => convert_to_data_type(physical_type),
+            SchemaType::PrimitiveType { physical_type, .. } => convert_to_data_type(*physical_type),
             SchemaType::GroupType { .. } => DataType::Map,
         };
         let nullable = inner.is_optional();
@@ -78,8 +77,8 @@ impl<'a> TryFrom<ParquetSchemaType<'a>> for ColumnDef {
         let mut default = None;
         let mut comment = None;
 
-        if let Some(metadata) = parquet_col_def.get_metadata().as_deref() {
-            for kv in metadata.iter() {
+        if let Some(metadata) = parquet_col_def.get_metadata() {
+            for kv in metadata {
                 match kv.key.as_str() {
                     k if k == format!("unique_option{name}") => match kv.value.as_deref() {
                         Some("primary_key") => {
@@ -122,7 +121,7 @@ impl<'a> TryFrom<ParquetSchemaType<'a>> for ColumnDef {
     }
 }
 
-fn convert_to_data_type(pt: &PhysicalType) -> DataType {
+fn convert_to_data_type(pt: PhysicalType) -> DataType {
     match pt {
         PhysicalType::BOOLEAN => DataType::Boolean,
         PhysicalType::INT32 => DataType::Int32,

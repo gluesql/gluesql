@@ -9,27 +9,33 @@ use {
         prelude::{DataType, Error, Value},
         store::{DataRow, StoreMut},
     },
-    lazy_static::lazy_static,
     parquet::{
         basic::{ConvertedType, Type},
-        column::writer::ColumnWriter,
-        data_type::{ByteArray, FixedLenByteArray},
-        file::{properties::WriterProperties, writer::SerializedFileWriter},
+        column::writer::{ColumnWriter, ColumnWriterImpl},
+        data_type::{
+            BoolType, ByteArray, ByteArrayType, DoubleType, FixedLenByteArray,
+            FixedLenByteArrayType, FloatType, Int32Type, Int64Type, Int96Type,
+        },
+        file::{
+            properties::WriterProperties,
+            writer::{SerializedFileWriter, SerializedRowGroupWriter},
+        },
         format::KeyValue,
         schema::types::Type as SchemaType,
     },
     std::{
         cmp::Ordering,
-        collections::HashMap,
+        collections::{BTreeMap, HashMap},
+        convert::TryFrom,
         fs::{File, remove_file},
         iter::Peekable,
-        sync::Arc,
+        sync::{Arc, LazyLock},
         vec::IntoIter,
     },
 };
 
-lazy_static! {
-    static ref GLUESQL_TO_PARQUET_DATA_TYPE_MAPPING: HashMap<DataType, &'static str> = {
+static GLUESQL_TO_PARQUET_DATA_TYPE_MAPPING: LazyLock<HashMap<DataType, &'static str>> =
+    LazyLock::new(|| {
         let mut m = HashMap::new();
         m.insert(DataType::Boolean, "Boolean");
         m.insert(DataType::Int8, "Int8");
@@ -56,18 +62,19 @@ lazy_static! {
         m.insert(DataType::List, "List");
         m.insert(DataType::Decimal, "Decimal");
         m.insert(DataType::Point, "Point");
+
         m
-    };
-}
+    });
+
+const DEF_PRESENT: [i16; 1] = [1];
+const DEF_NULL: [i16; 1] = [0];
 
 #[async_trait]
 impl StoreMut for ParquetStorage {
     async fn insert_schema(&mut self, schema: &Schema) -> Result<()> {
         let data_path = self.data_path(schema.table_name.as_str());
         let file = File::create(data_path).map_storage_err()?;
-        self.write(schema.clone(), Vec::new(), file)?;
-
-        Ok(())
+        Self::write(schema, &[], file)
     }
 
     async fn delete_schema(&mut self, table_name: &str) -> Result<()> {
@@ -88,7 +95,7 @@ impl StoreMut for ParquetStorage {
             .collect::<Result<Vec<_>>>()?;
 
         let file = File::create(schema_path).map_storage_err()?;
-        self.write(schema, rows, file)
+        Self::write(&schema, &rows, file)
     }
 
     async fn insert_data(&mut self, table_name: &str, mut rows: Vec<(Key, DataRow)>) -> Result<()> {
@@ -98,7 +105,7 @@ impl StoreMut for ParquetStorage {
 
         let sort_merge = SortMerge::new(prev_rows, rows.into_iter());
         let merged = sort_merge.collect::<Result<Vec<_>>>()?;
-        self.rewrite(schema, merged)
+        self.rewrite(&schema, &merged)
     }
 
     async fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) -> Result<()> {
@@ -115,7 +122,7 @@ impl StoreMut for ParquetStorage {
             })
             .collect::<Result<Vec<_>>>()?;
 
-        self.rewrite(schema, rows)
+        self.rewrite(&schema, &rows)
     }
 }
 
@@ -166,248 +173,415 @@ where
 }
 
 impl ParquetStorage {
-    fn rewrite(&mut self, schema: Schema, rows: Vec<DataRow>) -> Result<()> {
+    fn rewrite(&mut self, schema: &Schema, rows: &[DataRow]) -> Result<()> {
         let parquet_path = self.data_path(&schema.table_name);
         let file = File::create(parquet_path).map_storage_err()?;
-        self.write(schema, rows, file)
+        Self::write(schema, rows, file)
     }
 
-    fn write(&mut self, schema: Schema, rows: Vec<DataRow>, file: File) -> Result<()> {
-        let schema_type: Arc<SchemaType> =
-            self.convert_to_parquet_schema(&schema).map_storage_err()?;
+    fn write(schema: &Schema, rows: &[DataRow], file: File) -> Result<()> {
+        let schema_type = Self::convert_to_parquet_schema(schema)?;
+        let props = Self::build_writer_properties(schema)?;
+        let mut file_writer =
+            SerializedFileWriter::new(file, Arc::clone(&schema_type), props).map_storage_err()?;
 
-        let metadata = Self::gather_metadata_from_glue_schema(&schema)?;
+        {
+            let mut row_group_writer = file_writer.next_row_group().map_storage_err()?;
+            Self::write_row_group(&schema_type, rows, &mut row_group_writer)?;
+            row_group_writer.close().map_storage_err()?;
+        }
 
-        let props = Arc::new(
+        file_writer.close().map_storage_err()?;
+        Ok(())
+    }
+
+    fn build_writer_properties(schema: &Schema) -> Result<Arc<WriterProperties>> {
+        let metadata = Self::gather_metadata_from_glue_schema(schema)?;
+
+        Ok(Arc::new(
             WriterProperties::builder()
                 .set_key_value_metadata(metadata)
                 .build(),
-        );
+        ))
+    }
 
-        let mut file_writer =
-            SerializedFileWriter::new(file, schema_type.clone(), props).map_storage_err()?;
-
-        let mut row_group_writer = file_writer.next_row_group().map_storage_err()?;
-
-        for (i, _) in schema_type.get_fields().iter().enumerate() {
-            let mut writer = row_group_writer
+    fn write_row_group(
+        schema_type: &SchemaType,
+        rows: &[DataRow],
+        row_group_writer: &mut SerializedRowGroupWriter<'_, File>,
+    ) -> Result<()> {
+        for (index, _) in schema_type.get_fields().iter().enumerate() {
+            let mut column_writer = row_group_writer
                 .next_column()
                 .map_storage_err()?
-                .ok_or(Error::StorageMsg("Expected a column but found None".into()))?;
-            let mut col_writer = writer.untyped();
-            for row in &rows {
-                match row {
-                    DataRow::Vec(values) => {
-                        let value = values[i].clone();
-                        let col_writer = &mut col_writer;
-                        match (value, col_writer) {
-                            (Value::Null, ColumnWriter::BoolColumnWriter(typed)) => {
-                                typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
-                            }
-                            (Value::Null, ColumnWriter::Int32ColumnWriter(typed)) => {
-                                typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
-                            }
-                            (Value::Null, ColumnWriter::Int64ColumnWriter(typed)) => {
-                                typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
-                            }
-                            (Value::Null, ColumnWriter::Int96ColumnWriter(typed)) => {
-                                typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
-                            }
-                            (Value::Null, ColumnWriter::FloatColumnWriter(typed)) => {
-                                typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
-                            }
-                            (Value::Null, ColumnWriter::DoubleColumnWriter(typed)) => {
-                                typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
-                            }
-                            (Value::Null, ColumnWriter::ByteArrayColumnWriter(typed)) => {
-                                typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
-                            }
-                            (Value::Null, ColumnWriter::FixedLenByteArrayColumnWriter(typed)) => {
-                                typed.write_batch(&[], Some(&[0]), None).map_storage_err()?;
-                            }
-                            (Value::Bool(val), ColumnWriter::BoolColumnWriter(typed)) => {
-                                typed
-                                    .write_batch(&[val], Some(&[1]), None)
-                                    .map_storage_err()?;
-                            }
-                            (Value::I8(val), ColumnWriter::Int32ColumnWriter(typed)) => {
-                                typed
-                                    .write_batch(&[i32::from(val)], Some(&[1]), None)
-                                    .map_storage_err()?;
-                            }
-                            (Value::I16(val), ColumnWriter::Int32ColumnWriter(typed)) => {
-                                typed
-                                    .write_batch(&[i32::from(val)], Some(&[1]), None)
-                                    .map_storage_err()?;
-                            }
-                            (Value::I32(val), ColumnWriter::Int32ColumnWriter(typed)) => {
-                                typed
-                                    .write_batch(&[val], Some(&[1]), None)
-                                    .map_storage_err()?;
-                            }
-                            (Value::Date(d), ColumnWriter::Int32ColumnWriter(typed)) => {
-                                let epoch = NaiveDate::from_ymd_opt(1970, 1, 1)
-                                    .expect("Invalid epoch date");
-                                let days_since_epoch = (d - epoch).num_days() as i32;
-                                typed
-                                    .write_batch(&[days_since_epoch], Some(&[1]), None)
-                                    .map_storage_err()?;
-                            }
-                            (Value::U8(val), ColumnWriter::Int32ColumnWriter(typed)) => {
-                                typed
-                                    .write_batch(&[i32::from(val)], Some(&[1]), None)
-                                    .map_storage_err()?;
-                            }
-                            (Value::U16(val), ColumnWriter::Int32ColumnWriter(typed)) => {
-                                typed
-                                    .write_batch(&[i32::from(val)], Some(&[1]), None)
-                                    .map_storage_err()?;
-                            }
-                            (Value::U32(val), ColumnWriter::Int32ColumnWriter(typed)) => {
-                                typed
-                                    .write_batch(&[val as i32], Some(&[1]), None)
-                                    .map_storage_err()?;
-                            }
-                            (Value::U64(val), ColumnWriter::Int64ColumnWriter(typed)) => {
-                                typed
-                                    .write_batch(&[val as i64], Some(&[1]), None)
-                                    .map_storage_err()?;
-                            }
-                            (Value::I64(val), ColumnWriter::Int64ColumnWriter(typed)) => {
-                                typed
-                                    .write_batch(&[val], Some(&[1]), None)
-                                    .map_storage_err()?;
-                            }
-                            (Value::Time(val), ColumnWriter::Int64ColumnWriter(typed)) => {
-                                let total_micros = (i64::from(val.hour()) * 60 * 60 * 1_000_000) // hours to micros
-                                + (i64::from(val.minute()) * 60 * 1_000_000)                          // minutes to micros
-                                + (i64::from(val.second()) * 1_000_000)                               // seconds to micros
-                                + (i64::from(val.nanosecond()) / 1_000); // nanos to micros
-                                typed
-                                    .write_batch(&[total_micros], Some(&[1]), None)
-                                    .map_storage_err()?;
-                            }
-                            (Value::Timestamp(val), ColumnWriter::ByteArrayColumnWriter(typed)) => {
-                                let serialized = bincode::serialize(&val).map_storage_err()?;
-                                typed
-                                    .write_batch(&[serialized.into()], Some(&[1]), None)
-                                    .map_storage_err()?;
-                            }
-                            (Value::I128(val), ColumnWriter::ByteArrayColumnWriter(typed)) => {
-                                let serialized = bincode::serialize(&val).map_storage_err()?;
-                                typed
-                                    .write_batch(&[serialized.into()], Some(&[1]), None)
-                                    .map_storage_err()?;
-                            }
-                            (Value::U128(val), ColumnWriter::ByteArrayColumnWriter(typed)) => {
-                                let serialized = bincode::serialize(&val).map_storage_err()?;
-                                typed
-                                    .write_batch(&[serialized.into()], Some(&[1]), None)
-                                    .map_storage_err()?;
-                            }
-                            (
-                                Value::Uuid(val),
-                                ColumnWriter::FixedLenByteArrayColumnWriter(typed),
-                            ) => {
-                                let serialized = bincode::serialize(&val).map_storage_err()?;
-                                typed
-                                    .write_batch(
-                                        &[FixedLenByteArray::from(serialized.to_vec())],
-                                        Some(&[1]),
-                                        None,
-                                    )
-                                    .map_storage_err()?;
-                            }
-                            (Value::F32(val), ColumnWriter::FloatColumnWriter(typed)) => {
-                                typed
-                                    .write_batch(&[val], Some(&[1]), None)
-                                    .map_storage_err()?;
-                            }
-                            (Value::F64(val), ColumnWriter::DoubleColumnWriter(typed)) => {
-                                typed
-                                    .write_batch(&[val], Some(&[1]), None)
-                                    .map_storage_err()?;
-                            }
-                            (Value::Str(val), ColumnWriter::ByteArrayColumnWriter(typed)) => {
-                                typed
-                                    .write_batch(
-                                        &[ByteArray::from(val.as_bytes())],
-                                        Some(&[1]),
-                                        None,
-                                    )
-                                    .map_storage_err()?;
-                            }
-                            (Value::Decimal(val), ColumnWriter::ByteArrayColumnWriter(typed)) => {
-                                let serialized = bincode::serialize(&val).map_storage_err()?;
-                                typed
-                                    .write_batch(&[serialized.into()], Some(&[1]), None)
-                                    .map_storage_err()?;
-                            }
-                            (Value::Interval(val), ColumnWriter::ByteArrayColumnWriter(typed)) => {
-                                let serialized = bincode::serialize(&val).map_storage_err()?;
-                                typed
-                                    .write_batch(&[serialized.into()], Some(&[1]), None)
-                                    .map_storage_err()?;
-                            }
-                            (Value::Bytea(val), ColumnWriter::ByteArrayColumnWriter(typed)) => {
-                                let byte_array = ByteArray::from(val);
-                                typed
-                                    .write_batch(&[byte_array], Some(&[1]), None)
-                                    .map_storage_err()?;
-                            }
-                            (Value::Map(m), ColumnWriter::ByteArrayColumnWriter(typed)) => {
-                                let serialized = bincode::serialize(&m).map_storage_err()?;
-                                typed
-                                    .write_batch(&[serialized.into()], Some(&[1]), None)
-                                    .map_storage_err()?;
-                            }
-                            (Value::List(l), ColumnWriter::ByteArrayColumnWriter(typed)) => {
-                                let serialized = bincode::serialize(&l).map_storage_err()?;
-                                typed
-                                    .write_batch(&[serialized.into()], Some(&[1]), None)
-                                    .map_storage_err()?;
-                            }
-                            (Value::Point(p), ColumnWriter::ByteArrayColumnWriter(typed)) => {
-                                let serialized = bincode::serialize(&p).map_storage_err()?;
-                                typed
-                                    .write_batch(&[serialized.into()], Some(&[1]), None)
-                                    .map_storage_err()?;
-                            }
-                            (Value::Inet(inet), ColumnWriter::ByteArrayColumnWriter(typed)) => {
-                                let serialized = bincode::serialize(&inet).map_storage_err()?;
-                                typed
-                                    .write_batch(&[serialized.into()], Some(&[1]), None)
-                                    .map_storage_err()?;
-                            }
-                            _ => return Err(
-                                ParquetStorageError::UnreachableGlueSqlValueTypeForParquetWriter
-                                    .into(),
-                            ),
-                        };
-                    }
-                    DataRow::Map(map) => {
-                        let serialized = bincode::serialize(&map).map_storage_err()?;
-                        if let ColumnWriter::ByteArrayColumnWriter(typed) = col_writer {
-                            typed
-                                .write_batch(&[serialized.into()], Some(&[1]), None)
-                                .map_storage_err()?;
-                        }
-                    }
-                }
-            }
-            writer.close().map_storage_err()?;
-        }
+                .ok_or_else(|| Error::StorageMsg("Expected a column but found None".into()))?;
 
-        row_group_writer.close().map_storage_err()?;
-        file_writer.close().map_storage_err()?;
+            {
+                let untyped = column_writer.untyped();
+                Self::write_column(index, rows, untyped)?;
+            }
+
+            column_writer.close().map_storage_err()?;
+        }
 
         Ok(())
     }
 
-    fn convert_to_parquet_schema(
-        &self,
-        schema: &Schema,
-    ) -> Result<Arc<parquet::schema::types::Type>> {
+    fn write_column(
+        column_index: usize,
+        rows: &[DataRow],
+        column_writer: &mut ColumnWriter<'_>,
+    ) -> Result<()> {
+        for row in rows {
+            match row {
+                DataRow::Vec(values) => {
+                    let value = values.get(column_index).ok_or_else(|| {
+                        Error::StorageMsg(format!(
+                            "Row length mismatch while writing column {column_index}"
+                        ))
+                    })?;
+
+                    Self::write_value(value, column_writer)?;
+                }
+                DataRow::Map(map) => {
+                    Self::write_map_row(map, column_writer)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn write_map_row(
+        map: &BTreeMap<String, Value>,
+        column_writer: &mut ColumnWriter<'_>,
+    ) -> Result<()> {
+        if let ColumnWriter::ByteArrayColumnWriter(writer) = column_writer {
+            let serialized = bincode::serialize(map).map_storage_err()?;
+            writer
+                .write_batch(&[serialized.into()], Some(&DEF_PRESENT), None)
+                .map_storage_err()?;
+
+            return Ok(());
+        }
+
+        Err(ParquetStorageError::UnreachableGlueSqlValueTypeForParquetWriter.into())
+    }
+
+    fn write_value(value: &Value, column_writer: &mut ColumnWriter<'_>) -> Result<()> {
+        match column_writer {
+            ColumnWriter::BoolColumnWriter(writer) => Self::write_bool_column(writer, value),
+            ColumnWriter::Int32ColumnWriter(writer) => Self::write_int32_column(writer, value),
+            ColumnWriter::Int64ColumnWriter(writer) => Self::write_int64_column(writer, value),
+            ColumnWriter::Int96ColumnWriter(writer) => Self::write_int96_column(writer, value),
+            ColumnWriter::FloatColumnWriter(writer) => Self::write_float_column(writer, value),
+            ColumnWriter::DoubleColumnWriter(writer) => Self::write_double_column(writer, value),
+            ColumnWriter::ByteArrayColumnWriter(writer) => {
+                Self::write_byte_array_column(writer, value)
+            }
+            ColumnWriter::FixedLenByteArrayColumnWriter(writer) => {
+                Self::write_fixed_len_byte_array_column(writer, value)
+            }
+        }
+    }
+
+    fn write_bool_column(writer: &mut ColumnWriterImpl<'_, BoolType>, value: &Value) -> Result<()> {
+        match value {
+            Value::Null => {
+                writer
+                    .write_batch(&[], Some(&DEF_NULL), None)
+                    .map_storage_err()?;
+            }
+            Value::Bool(val) => {
+                writer
+                    .write_batch(&[*val], Some(&DEF_PRESENT), None)
+                    .map_storage_err()?;
+            }
+            _ => {
+                return Err(
+                    ParquetStorageError::UnreachableGlueSqlValueTypeForParquetWriter.into(),
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    fn write_int32_column(
+        writer: &mut ColumnWriterImpl<'_, Int32Type>,
+        value: &Value,
+    ) -> Result<()> {
+        match value {
+            Value::Null => {
+                writer
+                    .write_batch(&[], Some(&DEF_NULL), None)
+                    .map_storage_err()?;
+            }
+            Value::I8(val) => {
+                writer
+                    .write_batch(&[i32::from(*val)], Some(&DEF_PRESENT), None)
+                    .map_storage_err()?;
+            }
+            Value::I16(val) => {
+                writer
+                    .write_batch(&[i32::from(*val)], Some(&DEF_PRESENT), None)
+                    .map_storage_err()?;
+            }
+            Value::I32(val) => {
+                writer
+                    .write_batch(&[*val], Some(&DEF_PRESENT), None)
+                    .map_storage_err()?;
+            }
+            Value::Date(date) => {
+                let epoch = NaiveDate::from_ymd_opt(1970, 1, 1)
+                    .ok_or_else(|| Error::StorageMsg("Invalid epoch date".to_owned()))?;
+                let days = (*date - epoch).num_days();
+                let days_since_epoch = i32::try_from(days).map_err(|_| {
+                    Error::StorageMsg("Date value exceeds parquet INT32 range".to_owned())
+                })?;
+
+                writer
+                    .write_batch(&[days_since_epoch], Some(&DEF_PRESENT), None)
+                    .map_storage_err()?;
+            }
+            Value::U8(val) => {
+                writer
+                    .write_batch(&[i32::from(*val)], Some(&DEF_PRESENT), None)
+                    .map_storage_err()?;
+            }
+            Value::U16(val) => {
+                writer
+                    .write_batch(&[i32::from(*val)], Some(&DEF_PRESENT), None)
+                    .map_storage_err()?;
+            }
+            Value::U32(val) => {
+                let converted = i32::try_from(*val).map_err(|_| {
+                    Error::StorageMsg("u32 value exceeds parquet INT32 range".to_owned())
+                })?;
+                writer
+                    .write_batch(&[converted], Some(&DEF_PRESENT), None)
+                    .map_storage_err()?;
+            }
+            _ => {
+                return Err(
+                    ParquetStorageError::UnreachableGlueSqlValueTypeForParquetWriter.into(),
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    fn write_int64_column(
+        writer: &mut ColumnWriterImpl<'_, Int64Type>,
+        value: &Value,
+    ) -> Result<()> {
+        match value {
+            Value::Null => {
+                writer
+                    .write_batch(&[], Some(&DEF_NULL), None)
+                    .map_storage_err()?;
+            }
+            Value::I64(val) => {
+                writer
+                    .write_batch(&[*val], Some(&DEF_PRESENT), None)
+                    .map_storage_err()?;
+            }
+            Value::U64(val) => {
+                let converted = i64::try_from(*val).map_err(|_| {
+                    Error::StorageMsg("u64 value exceeds parquet INT64 range".to_owned())
+                })?;
+                writer
+                    .write_batch(&[converted], Some(&DEF_PRESENT), None)
+                    .map_storage_err()?;
+            }
+            Value::Time(time) => {
+                let total_micros = i64::from(time.hour()) * 60 * 60 * 1_000_000
+                    + i64::from(time.minute()) * 60 * 1_000_000
+                    + i64::from(time.second()) * 1_000_000
+                    + i64::from(time.nanosecond()) / 1_000;
+
+                writer
+                    .write_batch(&[total_micros], Some(&DEF_PRESENT), None)
+                    .map_storage_err()?;
+            }
+            _ => {
+                return Err(
+                    ParquetStorageError::UnreachableGlueSqlValueTypeForParquetWriter.into(),
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    fn write_int96_column(
+        writer: &mut ColumnWriterImpl<'_, Int96Type>,
+        value: &Value,
+    ) -> Result<()> {
+        match value {
+            Value::Null => {
+                writer
+                    .write_batch(&[], Some(&DEF_NULL), None)
+                    .map_storage_err()?;
+                Ok(())
+            }
+            _ => Err(ParquetStorageError::UnreachableGlueSqlValueTypeForParquetWriter.into()),
+        }
+    }
+
+    fn write_float_column(
+        writer: &mut ColumnWriterImpl<'_, FloatType>,
+        value: &Value,
+    ) -> Result<()> {
+        match value {
+            Value::Null => {
+                writer
+                    .write_batch(&[], Some(&DEF_NULL), None)
+                    .map_storage_err()?;
+            }
+            Value::F32(val) => {
+                writer
+                    .write_batch(&[*val], Some(&DEF_PRESENT), None)
+                    .map_storage_err()?;
+            }
+            _ => {
+                return Err(
+                    ParquetStorageError::UnreachableGlueSqlValueTypeForParquetWriter.into(),
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    fn write_double_column(
+        writer: &mut ColumnWriterImpl<'_, DoubleType>,
+        value: &Value,
+    ) -> Result<()> {
+        match value {
+            Value::Null => {
+                writer
+                    .write_batch(&[], Some(&DEF_NULL), None)
+                    .map_storage_err()?;
+            }
+            Value::F64(val) => {
+                writer
+                    .write_batch(&[*val], Some(&DEF_PRESENT), None)
+                    .map_storage_err()?;
+            }
+            _ => {
+                return Err(
+                    ParquetStorageError::UnreachableGlueSqlValueTypeForParquetWriter.into(),
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    fn write_byte_array_column(
+        writer: &mut ColumnWriterImpl<'_, ByteArrayType>,
+        value: &Value,
+    ) -> Result<()> {
+        match value {
+            Value::Null => {
+                writer
+                    .write_batch(&[], Some(&DEF_NULL), None)
+                    .map_storage_err()?;
+            }
+            Value::Str(val) => {
+                writer
+                    .write_batch(&[ByteArray::from(val.as_bytes())], Some(&DEF_PRESENT), None)
+                    .map_storage_err()?;
+            }
+            Value::Timestamp(val) => {
+                Self::write_serialized_byte_array(writer, val)?;
+            }
+            Value::I128(val) => {
+                Self::write_serialized_byte_array(writer, val)?;
+            }
+            Value::U128(val) => {
+                Self::write_serialized_byte_array(writer, val)?;
+            }
+            Value::Decimal(val) => {
+                Self::write_serialized_byte_array(writer, val)?;
+            }
+            Value::Interval(val) => {
+                Self::write_serialized_byte_array(writer, val)?;
+            }
+            Value::Bytea(val) => {
+                writer
+                    .write_batch(&[ByteArray::from(val.as_slice())], Some(&DEF_PRESENT), None)
+                    .map_storage_err()?;
+            }
+            Value::Map(val) => {
+                Self::write_serialized_byte_array(writer, val)?;
+            }
+            Value::List(val) => {
+                Self::write_serialized_byte_array(writer, val)?;
+            }
+            Value::Point(val) => {
+                Self::write_serialized_byte_array(writer, val)?;
+            }
+            Value::Inet(val) => {
+                Self::write_serialized_byte_array(writer, val)?;
+            }
+            _ => {
+                return Err(
+                    ParquetStorageError::UnreachableGlueSqlValueTypeForParquetWriter.into(),
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    fn write_serialized_byte_array<T>(
+        writer: &mut ColumnWriterImpl<'_, ByteArrayType>,
+        value: &T,
+    ) -> Result<()>
+    where
+        T: serde::Serialize,
+    {
+        let serialized = bincode::serialize(value).map_storage_err()?;
+        writer
+            .write_batch(&[serialized.into()], Some(&DEF_PRESENT), None)
+            .map_storage_err()?;
+        Ok(())
+    }
+
+    fn write_fixed_len_byte_array_column(
+        writer: &mut ColumnWriterImpl<'_, FixedLenByteArrayType>,
+        value: &Value,
+    ) -> Result<()> {
+        match value {
+            Value::Null => {
+                writer
+                    .write_batch(&[], Some(&DEF_NULL), None)
+                    .map_storage_err()?;
+            }
+            Value::Uuid(val) => {
+                let serialized = bincode::serialize(val).map_storage_err()?;
+                writer
+                    .write_batch(
+                        &[FixedLenByteArray::from(serialized)],
+                        Some(&DEF_PRESENT),
+                        None,
+                    )
+                    .map_storage_err()?;
+            }
+            _ => {
+                return Err(
+                    ParquetStorageError::UnreachableGlueSqlValueTypeForParquetWriter.into(),
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    fn convert_to_parquet_schema(schema: &Schema) -> Result<Arc<parquet::schema::types::Type>> {
         let mut fields = Vec::new();
         let column_defs = match schema.column_defs {
             Some(ref defs) => defs.clone(),
@@ -425,7 +599,7 @@ impl ParquetStorage {
 
         for column_def in column_defs {
             let (physical_type, converted_type_option) =
-                Self::get_parquet_type_mappings(&column_def.data_type)?;
+                Self::get_parquet_type_mappings(&column_def.data_type);
             let repetition = if column_def.nullable {
                 parquet::basic::Repetition::OPTIONAL
             } else {
@@ -488,7 +662,7 @@ impl ParquetStorage {
                 if let Some(comment) = &column_def.comment {
                     metadata.push(KeyValue {
                         key: format!("comment_{}", column_def.name),
-                        value: Some(comment.to_string()),
+                        value: Some(comment.clone()),
                     });
                 }
 
@@ -497,7 +671,7 @@ impl ParquetStorage {
                 {
                     metadata.push(KeyValue {
                         key: format!("data_type{}", column_def.name),
-                        value: Some(data_type_str.to_string()),
+                        value: Some((*data_type_str).to_owned()),
                     });
                 }
             }
@@ -522,33 +696,33 @@ impl ParquetStorage {
         Ok(Some(metadata))
     }
 
-    fn get_parquet_type_mappings(data_type: &DataType) -> Result<(Type, Option<ConvertedType>)> {
+    fn get_parquet_type_mappings(data_type: &DataType) -> (Type, Option<ConvertedType>) {
         match data_type {
-            DataType::Text => Ok((Type::BYTE_ARRAY, Some(ConvertedType::UTF8))),
-            DataType::Date => Ok((Type::INT32, Some(ConvertedType::DATE))),
-            DataType::Uint8 => Ok((Type::INT32, Some(ConvertedType::UINT_8))),
-            DataType::Int => Ok((Type::INT64, Some(ConvertedType::INT_64))),
-            DataType::Int8 => Ok((Type::INT32, Some(ConvertedType::INT_8))),
-            DataType::Int16 => Ok((Type::INT32, Some(ConvertedType::INT_16))),
-            DataType::Int32 => Ok((Type::INT32, Some(ConvertedType::INT_32))),
-            DataType::Uint16 => Ok((Type::INT32, Some(ConvertedType::UINT_16))),
-            DataType::Uint32 => Ok((Type::INT32, Some(ConvertedType::UINT_32))),
-            DataType::Uint64 => Ok((Type::INT64, Some(ConvertedType::UINT_64))),
-            DataType::Boolean => Ok((Type::BOOLEAN, None)),
-            DataType::Float32 => Ok((Type::FLOAT, None)),
-            DataType::Float => Ok((Type::DOUBLE, None)),
-            DataType::Uuid => Ok((Type::FIXED_LEN_BYTE_ARRAY, None)),
-            DataType::Point => Ok((Type::BYTE_ARRAY, None)),
-            DataType::Inet => Ok((Type::BYTE_ARRAY, None)),
-            DataType::Uint128 => Ok((Type::BYTE_ARRAY, None)),
-            DataType::Int128 => Ok((Type::BYTE_ARRAY, None)),
-            DataType::Time => Ok((Type::INT64, None)),
-            DataType::Map => Ok((Type::BYTE_ARRAY, None)),
-            DataType::List => Ok((Type::BYTE_ARRAY, None)),
-            DataType::Interval => Ok((Type::BYTE_ARRAY, None)),
-            DataType::Decimal => Ok((Type::BYTE_ARRAY, None)),
-            DataType::Timestamp => Ok((Type::BYTE_ARRAY, None)),
-            DataType::Bytea => Ok((Type::BYTE_ARRAY, None)),
+            DataType::Text => (Type::BYTE_ARRAY, Some(ConvertedType::UTF8)),
+            DataType::Date => (Type::INT32, Some(ConvertedType::DATE)),
+            DataType::Uint8 => (Type::INT32, Some(ConvertedType::UINT_8)),
+            DataType::Int => (Type::INT64, Some(ConvertedType::INT_64)),
+            DataType::Int8 => (Type::INT32, Some(ConvertedType::INT_8)),
+            DataType::Int16 => (Type::INT32, Some(ConvertedType::INT_16)),
+            DataType::Int32 => (Type::INT32, Some(ConvertedType::INT_32)),
+            DataType::Uint16 => (Type::INT32, Some(ConvertedType::UINT_16)),
+            DataType::Uint32 => (Type::INT32, Some(ConvertedType::UINT_32)),
+            DataType::Uint64 => (Type::INT64, Some(ConvertedType::UINT_64)),
+            DataType::Boolean => (Type::BOOLEAN, None),
+            DataType::Float32 => (Type::FLOAT, None),
+            DataType::Float => (Type::DOUBLE, None),
+            DataType::Uuid => (Type::FIXED_LEN_BYTE_ARRAY, None),
+            DataType::Time => (Type::INT64, None),
+            DataType::Point
+            | DataType::Inet
+            | DataType::Uint128
+            | DataType::Int128
+            | DataType::Map
+            | DataType::List
+            | DataType::Interval
+            | DataType::Decimal
+            | DataType::Timestamp
+            | DataType::Bytea => (Type::BYTE_ARRAY, None),
         }
     }
 }
