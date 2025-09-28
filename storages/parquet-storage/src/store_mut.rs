@@ -945,14 +945,14 @@ mod tests {
             .expect("build schema type")
     }
 
-    fn write_with_schema_type(schema_type: Arc<SchemaType>, rows: &[DataRow]) -> Result<()> {
+    fn write_with_schema_type(schema_type: &Arc<SchemaType>, rows: &[DataRow]) -> Result<()> {
         let (path, file) = temp_file("custom-schema");
         let props = Arc::new(WriterProperties::builder().build());
         let mut file_writer =
-            SerializedFileWriter::new(file, Arc::clone(&schema_type), props).expect("writer");
+            SerializedFileWriter::new(file, Arc::clone(schema_type), props).expect("writer");
         {
             let mut row_group_writer = file_writer.next_row_group().expect("row group");
-            ParquetStorage::write_row_group(&schema_type, rows, &mut row_group_writer)?;
+            ParquetStorage::write_row_group(schema_type, rows, &mut row_group_writer)?;
             row_group_writer.close().map_storage_err()?;
         }
         file_writer.close().map_storage_err()?;
@@ -964,14 +964,14 @@ mod tests {
     fn write_int96_column_handles_nulls() {
         let schema_type = build_int96_schema_type();
         let rows = vec![DataRow::Vec(vec![Value::Null])];
-        write_with_schema_type(schema_type, &rows).expect("int96 null write");
+        write_with_schema_type(&schema_type, &rows).expect("int96 null write");
     }
 
     #[test]
     fn write_int96_column_rejects_non_null_values() {
         let schema_type = build_int96_schema_type();
         let rows = vec![DataRow::Vec(vec![Value::Bool(true)])];
-        let err = write_with_schema_type(schema_type, &rows).expect_err("should fail");
+        let err = write_with_schema_type(&schema_type, &rows).expect_err("should fail");
         assert!(format!("{err}").contains("Unreachable"));
     }
 }
