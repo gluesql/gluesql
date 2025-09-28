@@ -2,7 +2,7 @@ use {
     super::error::EvaluateError,
     crate::{
         ast::{BinaryOperator, DataType, TrimWhereField},
-        data::{Key, Literal, Value, value::BTreeMapJsonExt},
+        data::{Key, Literal, Value, ValueError, value::BTreeMapJsonExt},
         result::{Error, Result},
     },
     std::{borrow::Cow, cmp::Ordering, collections::BTreeMap, ops::Range},
@@ -277,6 +277,42 @@ impl<'a> Evaluated<'a> {
             |l, r| l.bitwise_shift_right(r),
             |l, r| l.bitwise_shift_right(r),
         )
+    }
+
+    pub fn get_json_arrow<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
+        let base = Value::try_from(self.clone())?;
+        let selector = Value::try_from(other.clone())?;
+
+        if base.is_null() || selector.is_null() {
+            return Ok(Evaluated::Value(Value::Null));
+        }
+
+        let key = match selector {
+            Value::Str(v) => Some(v.clone()),
+            Value::I8(v) => Some(v.to_string()),
+            Value::I16(v) => Some(v.to_string()),
+            Value::I32(v) => Some(v.to_string()),
+            Value::I64(v) => Some(v.to_string()),
+            Value::I128(v) => Some(v.to_string()),
+            Value::U8(v) => Some(v.to_string()),
+            Value::U16(v) => Some(v.to_string()),
+            Value::U32(v) => Some(v.to_string()),
+            Value::U64(v) => Some(v.to_string()),
+            Value::U128(v) => Some(v.to_string()),
+            _ => None,
+        }
+        .ok_or_else(|| EvaluateError::FunctionRequiresIntegerOrStringValue("->".to_owned()))?;
+
+        match base.selector(&key) {
+            Ok(value) => Ok(Evaluated::Value(value)),
+            Err(err) => match err {
+                Error::Value(value_err) => match *value_err {
+                    ValueError::SelectorRequiresMapOrListTypes => Ok(Evaluated::Value(Value::Null)),
+                    other => Err(Error::Value(Box::new(other))),
+                },
+                other => Err(other),
+            },
+        }
     }
 
     pub fn unary_plus(&self) -> Result<Evaluated<'a>> {
