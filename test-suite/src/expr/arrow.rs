@@ -1,6 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
+        error::TranslateError,
         executor::EvaluateError,
         prelude::Value::{self, Bool, F64, I64, Map, Str},
     },
@@ -119,6 +120,18 @@ test_case!(arrow, {
 
     g.test(
         "SELECT array->-1 AS result FROM ArrowSample;",
+        Err(TranslateError::UnsupportedBinaryOperator("->-".to_owned()).into()),
+    )
+    .await;
+
+    g.test(
+        "SELECT array->(-1) AS result FROM ArrowSample;",
+        Ok(select_with_null!(result; Value::Null)),
+    )
+    .await;
+
+    g.test(
+        "SELECT array->CAST(-1 AS INT16) AS result FROM ArrowSample;",
         Ok(select_with_null!(result; Value::Null)),
     )
     .await;
