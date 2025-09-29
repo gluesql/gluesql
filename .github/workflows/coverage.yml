@@ -104,6 +104,9 @@ jobs:
         run: |
           xz -T0 -9e -c coverage/lcov.info > coverage/lcov.info.xz
           rm -f coverage/lcov.info
+      - name: Record PR number
+        if: github.event_name == 'pull_request'
+        run: echo "${{ github.event.pull_request.number }}" > coverage/pr-number
       - name: Set timestamp
         run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H%M%SZ')" >> $GITHUB_ENV
       - name: Create GitHub App token
@@ -131,4 +134,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage
-          path: coverage/lcov.info.xz
+          path: coverage
