@@ -18,6 +18,12 @@ impl ParquetField {
         &self.0
     }
 
+    #[allow(clippy::too_many_lines)]
+    /// Convert the inner parquet [`Field`] into a `GlueSQL` [`Value`].
+    ///
+    /// # Errors
+    ///
+    /// Returns an [`Error::StorageMsg`] when deserialization or type conversion fails.
     pub fn to_value(&self, schema: &Schema, idx: usize) -> Result<Value> {
         match self.as_field() {
             Field::Bool(v) => Ok(Value::Bool(*v)),
@@ -30,22 +36,25 @@ impl ParquetField {
                     && column.data_type == DataType::Time
                 {
                     // Convert from microseconds since midnight to NaiveTime
-                    let total_seconds = v / 1_000_000;
-                    let hours = (total_seconds / 3600) % 24;
-                    let minutes = (total_seconds / 60) % 60;
-                    let seconds = total_seconds % 60;
-                    let micros = v % 1_000_000;
+                    let micros_in_day = 86_400_i64 * 1_000_000;
+                    let micros_since_midnight = v.rem_euclid(micros_in_day);
+                    let total_seconds = micros_since_midnight / 1_000_000;
 
-                    return NaiveTime::from_hms_micro_opt(
-                        hours as u32,
-                        minutes as u32,
-                        seconds as u32,
-                        micros as u32,
-                    )
-                    .map_storage_err(Error::StorageMsg(
-                        "Failed to convert to NaiveTime".to_owned(),
-                    ))
-                    .map(Value::Time);
+                    let hours = u32::try_from(total_seconds / 3_600)
+                        .map_err(|_| Error::StorageMsg("Invalid hour component".to_owned()))?;
+                    let minutes = u32::try_from((total_seconds / 60) % 60)
+                        .map_err(|_| Error::StorageMsg("Invalid minute component".to_owned()))?;
+                    let seconds = u32::try_from(total_seconds % 60)
+                        .map_err(|_| Error::StorageMsg("Invalid second component".to_owned()))?;
+                    let micros = micros_since_midnight.rem_euclid(1_000_000);
+                    let micros = u32::try_from(micros)
+                        .unwrap_or_else(|_| unreachable!("rem_euclid ensures micros fits u32"));
+
+                    return NaiveTime::from_hms_micro_opt(hours % 24, minutes, seconds, micros)
+                        .map_storage_err(Error::StorageMsg(
+                            "Failed to convert to NaiveTime".to_owned(),
+                        ))
+                        .map(Value::Time);
                 }
                 Ok(Value::I64(*v))
             }

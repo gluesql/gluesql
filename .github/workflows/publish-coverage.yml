@@ -63,7 +63,6 @@ jobs:
         run: |
           echo "RUN_ID=${{ github.event.workflow_run.id }}" >> $GITHUB_ENV
           echo "COMMIT_SHA=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_ENV
-          echo "PR_NUMBER=${{ github.event.workflow_run.pull_requests[0].number }}" >> $GITHUB_ENV
           echo "ARTIFACT_NAME=coverage" >> $GITHUB_ENV
       - name: Download coverage artifact
         uses: actions/download-artifact@v4
@@ -72,6 +71,20 @@ jobs:
           run-id: ${{ env.RUN_ID }}
           path: coverage
           github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Load PR number from artifact
+        if: github.event_name == 'workflow_run'
+        run: |
+          pr_file="coverage/pr-number"
+          if [ ! -f "${pr_file}" ]; then
+            echo "PR number file not found in artifact: ${pr_file}" >&2
+            exit 1
+          fi
+          pr_number=$(cat "${pr_file}" | tr -d '\n\r ')
+          if [ -z "${pr_number}" ]; then
+            echo "PR number file is empty: ${pr_file}" >&2
+            exit 1
+          fi
+          echo "PR_NUMBER=${pr_number}" >> $GITHUB_ENV
       # No normalization needed: file will be at ./coverage/lcov.info.xz
       - name: Set timestamp
         run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H%M%SZ')" >> $GITHUB_ENV
