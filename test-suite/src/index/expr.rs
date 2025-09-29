@@ -60,7 +60,7 @@ test_case!(expr, {
 
     g.test(
         "CREATE INDEX idx_literal ON Test (100)",
-        Err(AlterError::IdentifierNotFound(parse_expr("100")).into()),
+        Err(AlterError::IdentifierNotFound(Box::new(parse_expr("100"))).into()),
     )
     .await;
 
