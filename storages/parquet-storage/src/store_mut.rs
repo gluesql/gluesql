@@ -232,12 +232,12 @@ impl ParquetStorage {
                             }
                             (Value::I8(val), ColumnWriter::Int32ColumnWriter(typed)) => {
                                 typed
-                                    .write_batch(&[val as i32], Some(&[1]), None)
+                                    .write_batch(&[i32::from(val)], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
                             (Value::I16(val), ColumnWriter::Int32ColumnWriter(typed)) => {
                                 typed
-                                    .write_batch(&[val as i32], Some(&[1]), None)
+                                    .write_batch(&[i32::from(val)], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
                             (Value::I32(val), ColumnWriter::Int32ColumnWriter(typed)) => {
@@ -255,12 +255,12 @@ impl ParquetStorage {
                             }
                             (Value::U8(val), ColumnWriter::Int32ColumnWriter(typed)) => {
                                 typed
-                                    .write_batch(&[val as i32], Some(&[1]), None)
+                                    .write_batch(&[i32::from(val)], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
                             (Value::U16(val), ColumnWriter::Int32ColumnWriter(typed)) => {
                                 typed
-                                    .write_batch(&[val as i32], Some(&[1]), None)
+                                    .write_batch(&[i32::from(val)], Some(&[1]), None)
                                     .map_storage_err()?;
                             }
                             (Value::U32(val), ColumnWriter::Int32ColumnWriter(typed)) => {
@@ -279,10 +279,10 @@ impl ParquetStorage {
                                     .map_storage_err()?;
                             }
                             (Value::Time(val), ColumnWriter::Int64ColumnWriter(typed)) => {
-                                let total_micros = (val.hour() as i64 * 60 * 60 * 1_000_000) // hours to micros
-                                + (val.minute() as i64 * 60 * 1_000_000)                          // minutes to micros
-                                + (val.second() as i64 * 1_000_000)                               // seconds to micros
-                                + (val.nanosecond() as i64 / 1_000); // nanos to micros
+                                let total_micros = (i64::from(val.hour()) * 60 * 60 * 1_000_000) // hours to micros
+                                + (i64::from(val.minute()) * 60 * 1_000_000)                          // minutes to micros
+                                + (i64::from(val.second()) * 1_000_000)                               // seconds to micros
+                                + (i64::from(val.nanosecond()) / 1_000); // nanos to micros
                                 typed
                                     .write_batch(&[total_micros], Some(&[1]), None)
                                     .map_storage_err()?;
