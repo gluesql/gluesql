@@ -23,12 +23,13 @@ use {
     ddl::translate_alter_table_operation,
     sqlparser::ast::{
         Assignment as SqlAssignment, AssignmentTarget as SqlAssignmentTarget,
-        CommentDef as SqlCommentDef, CreateFunctionBody as SqlCreateFunctionBody,
-        CreateIndex as SqlCreateIndex, CreateTable as SqlCreateTable, Delete as SqlDelete,
-        FromTable as SqlFromTable, Ident as SqlIdent, Insert as SqlInsert,
-        ObjectName as SqlObjectName, ObjectType as SqlObjectType,
-        ReferentialAction as SqlReferentialAction, Statement as SqlStatement,
-        TableConstraint as SqlTableConstraint, TableFactor, TableWithJoins,
+        CommentDef as SqlCommentDef, CreateFunction as SqlCreateFunction,
+        CreateFunctionBody as SqlCreateFunctionBody, CreateIndex as SqlCreateIndex,
+        CreateTable as SqlCreateTable, Delete as SqlDelete, FromTable as SqlFromTable,
+        Ident as SqlIdent, Insert as SqlInsert, ObjectName as SqlObjectName,
+        ObjectType as SqlObjectType, ReferentialAction as SqlReferentialAction, ShowStatementIn,
+        ShowStatementOptions, Statement as SqlStatement, TableConstraint as SqlTableConstraint,
+        TableFactor, TableWithJoins,
     },
 };
 
@@ -294,9 +295,19 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
         SqlStatement::Commit { .. } => Ok(Statement::Commit),
         SqlStatement::Rollback { .. } => Ok(Statement::Rollback),
         SqlStatement::ShowTables {
-            filter: None,
-            db_name: None,
-            ..
+            terse: false,
+            history: false,
+            extended: false,
+            full: false,
+            external: false,
+            show_options:
+                ShowStatementOptions {
+                    show_in: None,
+                    starts_with: None,
+                    limit: None,
+                    limit_from: None,
+                    filter_position: None,
+                },
         } => Ok(Statement::ShowVariable(Variable::Tables)),
         SqlStatement::ShowFunctions { filter: None } => {
             Ok(Statement::ShowVariable(Variable::Functions))
@@ -323,16 +334,31 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 TranslateError::UnsupportedShowVariableStatement(sql_statement.to_string()).into(),
             ),
         },
-        SqlStatement::ShowColumns { table_name, .. } => Ok(Statement::ShowColumns {
+        SqlStatement::ShowColumns {
+            extended: false,
+            full: false,
+            show_options:
+                ShowStatementOptions {
+                    show_in:
+                        Some(ShowStatementIn {
+                            parent_name: Some(table_name),
+                            ..
+                        }),
+                    starts_with: None,
+                    limit: None,
+                    limit_from: None,
+                    filter_position: None,
+                },
+        } => Ok(Statement::ShowColumns {
             table_name: translate_object_name(table_name)?,
         }),
-        SqlStatement::CreateFunction {
+        SqlStatement::CreateFunction(SqlCreateFunction {
             or_replace,
             name,
             args,
             function_body: Some(SqlCreateFunctionBody::Return(return_)),
             ..
-        } => {
+        }) => {
             let args = args
                 .as_ref()
                 .map(|args| {
@@ -348,9 +374,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 return_: translate_expr(return_)?,
             })
         }
-        SqlStatement::CreateFunction { .. } => {
-            Err(TranslateError::UnsupportedEmptyFunctionBody.into())
-        }
+        SqlStatement::CreateFunction(_) => Err(TranslateError::UnsupportedEmptyFunctionBody.into()),
         _ => Err(TranslateError::UnsupportedStatement(sql_statement.to_string()).into()),
     }
 }

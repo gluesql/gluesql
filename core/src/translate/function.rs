@@ -213,7 +213,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
     let function_arg_exprs = args
         .iter()
         .map(|arg| match arg {
-            SqlFunctionArg::Named { .. } => {
+            SqlFunctionArg::Named { .. } | SqlFunctionArg::ExprNamed { .. } => {
                 Err(TranslateError::NamedFunctionArgNotSupported.into())
             }
             SqlFunctionArg::Unnamed(arg_expr) => Ok(arg_expr),
