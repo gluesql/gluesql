@@ -65,6 +65,12 @@ test_case!(arrow, {
     .await;
 
     g.test(
+        "SELECT object->CAST(1 AS INT16) AS result FROM ArrowSample;",
+        Ok(select!(result Str; "first".to_owned())),
+    )
+    .await;
+
+    g.test(
         "SELECT object->'missing' AS result FROM ArrowSample;",
         Ok(select_with_null!(result; Value::Null)),
     )
@@ -143,6 +149,12 @@ test_case!(arrow, {
     .await;
 
     g.test(
+        "SELECT TRUE -> 'foo' AS result;",
+        Ok(select_with_null!(result; Value::Null)),
+    )
+    .await;
+
+    g.test(
         r#"SELECT '{"role":"admin"}'->'role' AS result;"#,
         Ok(select_with_null!(result; Value::Null)),
     )
@@ -159,6 +171,34 @@ test_case!(arrow, {
         Ok(select_with_null!(result; Value::Null)),
     )
     .await;
+
+    let map_typed_selectors = [
+        ("INT8", "CAST(1 AS INT8)"),
+        ("INT16", "CAST(1 AS INT16)"),
+        ("INT32", "CAST(1 AS INT32)"),
+        ("INT64", "CAST(1 AS INT64)"),
+        ("INT128", "CAST(1 AS INT128)"),
+        ("UINT8", "CAST(1 AS UINT8)"),
+        ("UINT16", "CAST(1 AS UINT16)"),
+        ("UINT32", "CAST(1 AS UINT32)"),
+        ("UINT64", "CAST(1 AS UINT64)"),
+        ("UINT128", "CAST(1 AS UINT128)"),
+    ];
+
+    for (label, selector_expr) in map_typed_selectors {
+        let sql = format!(
+            "SELECT object->{} AS result FROM ArrowSample;",
+            selector_expr
+        );
+        let test_name = format!("Arrow map selector uses {label}");
+
+        g.named_test(
+            &test_name,
+            sql.as_str(),
+            Ok(select!(result Str; "first".to_owned())),
+        )
+        .await;
+    }
 
     let typed_selectors = [
         ("INT8", "CAST(3 AS INT8)"),
