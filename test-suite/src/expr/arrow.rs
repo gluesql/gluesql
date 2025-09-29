@@ -15,7 +15,7 @@ test_case!(arrow, {
     g.run(
         r#"
         INSERT INTO ArrowSample VALUES (
-            '{"id":1,"b":2,"name":"Han","price":4.25,"active":true,"nested":{"role":"admin"}}',
+            '{"id":1,"b":2,"name":"Han","price":4.25,"active":true,"nested":{"role":"admin"},"1":"first"}',
             '[1,"two",true,4.25,null]'
         );
         "#,
@@ -54,6 +54,12 @@ test_case!(arrow, {
     g.test(
         "SELECT object->'nested' AS result FROM ArrowSample;",
         Ok(select!(result Map; nested_map.clone())),
+    )
+    .await;
+
+    g.test(
+        "SELECT object->1 AS result FROM ArrowSample;",
+        Ok(select!(result Str; "first".to_owned())),
     )
     .await;
 
@@ -102,6 +108,18 @@ test_case!(arrow, {
     g.test(
         "SELECT array->'3' AS result FROM ArrowSample;",
         Ok(select!(result F64; 4.25_f64)),
+    )
+    .await;
+
+    g.test(
+        "SELECT array->'foo' AS result FROM ArrowSample;",
+        Ok(select_with_null!(result; Value::Null)),
+    )
+    .await;
+
+    g.test(
+        "SELECT array->-1 AS result FROM ArrowSample;",
+        Ok(select_with_null!(result; Value::Null)),
     )
     .await;
 
