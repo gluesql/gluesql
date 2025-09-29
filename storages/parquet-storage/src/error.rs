@@ -1,6 +1,11 @@
 use {gluesql_core::prelude::Error, thiserror::Error};
 
 pub trait ResultExt<T, E: ToString> {
+    /// Convert an external error into a `GlueSQL` storage error.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Error::StorageMsg` when the result contains an error.
     fn map_storage_err(self) -> Result<T, Error>;
 }
 
@@ -11,6 +16,11 @@ impl<T, E: ToString> ResultExt<T, E> for std::result::Result<T, E> {
 }
 
 pub trait OptionExt<T, E: ToString> {
+    /// Convert a missing option into a `GlueSQL` storage error.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Error::StorageMsg` when the option is `None`.
     fn map_storage_err(self, error: E) -> Result<T, Error>;
 }
 
