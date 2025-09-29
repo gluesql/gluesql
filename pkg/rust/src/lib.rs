@@ -9,6 +9,8 @@ pub mod core {
     pub use gluesql_core::*;
 }
 
+pub use gluesql_core::params;
+
 // Re-export the derive macro so users can `use gluesql::FromGlueRow`.
 pub use gluesql_macros::FromGlueRow;
 
