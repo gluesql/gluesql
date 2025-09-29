@@ -20,3 +20,6 @@ gluesql_memory_storage.workspace = true
 gluesql_sled_storage.workspace = true
 
 tokio = { version = "1", features = ["rt", "macros"] }
+
+[lints]
+workspace = true

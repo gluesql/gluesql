@@ -138,7 +138,7 @@ impl Value {
             (Value::F32(l), Literal::Number(r)) => l.partial_cmp(&r.to_f32()?),
             (Value::F64(l), Literal::Number(r)) => l.partial_cmp(&r.to_f64()?),
             (Value::Decimal(l), Literal::Number(r)) => {
-                BigDecimal::new(l.mantissa().into(), l.scale() as i64).partial_cmp(r)
+                BigDecimal::new(l.mantissa().into(), i64::from(l.scale())).partial_cmp(r)
             }
             (Value::Str(l), Literal::Text(r)) => Some(l.as_str().cmp(r)),
             (Value::Date(l), Literal::Text(r)) => l.partial_cmp(&r.parse::<NaiveDate>().ok()?),

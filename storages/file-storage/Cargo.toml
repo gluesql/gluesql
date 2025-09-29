@@ -20,3 +20,6 @@ ron = { version = "0.8.1", features = ["integer128"] }
 [dev-dependencies]
 test-suite.workspace = true
 tokio = { version = "1", features = ["rt", "macros"] }
+
+[lints]
+workspace = true
