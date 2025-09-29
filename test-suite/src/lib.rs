@@ -2,16 +2,10 @@
 
 pub mod aggregate;
 pub mod alter;
-pub mod arithmetic;
 pub mod array;
 pub mod ast_builder;
 pub mod basic;
-pub mod bitwise_and;
-pub mod bitwise_shift_left;
-pub mod bitwise_shift_right;
-pub mod case;
 pub mod column_alias;
-pub mod concat;
 pub mod custom_function;
 pub mod data_type;
 pub mod default;
@@ -44,7 +38,6 @@ pub mod store;
 pub mod synthesize;
 pub mod transaction;
 pub mod type_match;
-pub mod unary_operator;
 pub mod update;
 pub mod validate;
 pub mod values;
@@ -79,7 +72,6 @@ macro_rules! generate_store_tests {
         glue!(delete, delete::delete);
         glue!(basic, basic::basic);
         glue!(array, array::array);
-        glue!(bitwise_and, bitwise_and::bitwise_and);
         glue!(aggregate_avg, aggregate::avg::avg);
         glue!(aggregate_count, aggregate::count::count);
         glue!(aggregate_group_by, aggregate::group_by::group_by);
@@ -90,16 +82,27 @@ macro_rules! generate_store_tests {
         glue!(aggregate_variance, aggregate::variance::variance);
         glue!(aggregate_error, aggregate::error::error);
         glue!(aggregate_expr, aggregate::expr::expr);
-        glue!(arithmetic_error, arithmetic::error::error);
-        glue!(arithmetic_project, arithmetic::project::project);
-        glue!(arithmetic_on_where, arithmetic::on_where::on_where);
-        glue!(concat, concat::concat);
         glue!(project, project::project);
-        glue!(bitwise_shift_left, bitwise_shift_left::bitwise_shift_left);
+
+        // expression tests
+        glue!(arithmetic_error, expr::arithmetic::error::error);
+        glue!(arithmetic_project, expr::arithmetic::project::project);
+        glue!(arithmetic_on_where, expr::arithmetic::on_where::on_where);
+        glue!(bitwise_and, expr::bitwise_and::bitwise_and);
+        glue!(
+            bitwise_shift_left,
+            expr::bitwise_shift_left::bitwise_shift_left
+        );
         glue!(
             bitwise_shift_right,
-            bitwise_shift_right::bitwise_shift_right
+            expr::bitwise_shift_right::bitwise_shift_right
         );
+        glue!(case, expr::case::case);
+        glue!(concat, expr::concat::concat);
+        glue!(expr_between, expr::between::between);
+        glue!(expr_in_list, expr::in_list::in_list);
+        glue!(unary_operator, expr::unary_operator::unary_operator);
+
         glue!(create_table, alter::create_table);
         glue!(drop_table, alter::drop_table);
         glue!(default, default::default);
@@ -108,7 +111,6 @@ macro_rules! generate_store_tests {
         glue!(filter, filter::filter);
         glue!(inline_view, inline_view::inline_view);
         glue!(values, values::values);
-        glue!(unary_operator, unary_operator::unary_operator);
         glue!(function_upper_lower, function::upper_lower::upper_lower);
         glue!(function_initcap, function::initcap::initcap);
         glue!(function_gcd_lcm, function::gcd_lcm::gcd_lcm);
@@ -220,7 +222,6 @@ macro_rules! generate_store_tests {
         glue!(function_pi, function::pi::pi);
         glue!(function_reverse, function::reverse::reverse);
         glue!(function_repeat, function::repeat::repeat);
-        glue!(case, case::case);
         glue!(function_substr, function::substr::substr);
         glue!(uuid, data_type::uuid::uuid);
         glue!(decimal, data_type::decimal::decimal);
@@ -338,9 +339,6 @@ macro_rules! generate_store_tests {
         glue!(schemaless_error, schemaless::error);
 
         glue!(store_insert_schema, store::insert_schema::insert_schema);
-
-        glue!(expr_between, expr::between::between);
-        glue!(expr_in_list, expr::in_list::in_list);
     };
 }
 

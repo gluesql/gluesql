@@ -24,3 +24,6 @@ send_wrapper = { version = "0.6", features = ["futures"] }
 [dev-dependencies]
 test-suite.workspace = true
 wasm-bindgen-test = "0.3.40"
+
+[lints]
+workspace = true

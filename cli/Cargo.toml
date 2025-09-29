@@ -30,3 +30,6 @@ strum_macros = "0.25"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }
+
+[lints]
+workspace = true

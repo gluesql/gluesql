@@ -24,8 +24,8 @@ test_case!(int32, {
     g.test(
         &format!(
             "INSERT INTO Item VALUES ({}, {i64})",
-            i32::MAX as i64 + 1_i64,
-            i64 = i32::MIN as i64 - 1_i64
+            i64::from(i32::MAX) + 1_i64,
+            i64 = i64::from(i32::MIN) - 1_i64
         ),
         Err(ValueError::FailedToParseNumber.into()),
     )
@@ -34,11 +34,11 @@ test_case!(int32, {
     g.test(
         &format!(
             "select cast({} as INT32) from Item",
-            i32::MAX as i64 + 1_i64
+            i64::from(i32::MAX) + 1_i64
         ),
         Err(ValueError::LiteralCastToDataTypeFailed(
             DataType::Int32,
-            (i32::MAX as i64 + 1_i64).to_string(),
+            (i64::from(i32::MAX) + 1_i64).to_string(),
         )
         .into()),
     )
@@ -47,11 +47,11 @@ test_case!(int32, {
     g.test(
         &format!(
             "select cast({} as INT32) from Item",
-            i32::MIN as i64 - 1_i64
+            i64::from(i32::MIN) - 1_i64
         ),
         Err(ValueError::LiteralCastToDataTypeFailed(
             DataType::Int32,
-            (i32::MIN as i64 - 1_i64).to_string(),
+            (i64::from(i32::MIN) - 1_i64).to_string(),
         )
         .into()),
     )

@@ -194,7 +194,7 @@ mod tests {
         assert_eq!(
             Value::F32(1.23_f32).try_into(),
             Ok(JsonValue::Number(
-                JsonNumber::from_f64(1.23_f32 as f64).unwrap()
+                JsonNumber::from_f64(f64::from(1.23_f32)).unwrap()
             ))
         );
         assert_eq!(
