@@ -268,7 +268,7 @@ impl Key {
                 let sign = u8::from(v.is_sign_positive());
                 let convert = |v: Decimal| {
                     let v = v.unpack();
-                    let v = v.lo as i128 + ((v.mid as i128) << 32) + ((v.hi as i128) << 64);
+                    let v = i128::from(v.lo) + (i128::from(v.mid) << 32) + (i128::from(v.hi) << 64);
 
                     if sign == 0 { -v } else { v }
                 };

@@ -110,7 +110,7 @@ impl ParquetField {
             }
             Field::Date(v) => {
                 let epoch = NaiveDate::from_ymd_opt(1970, 1, 1).expect("Invalid epoch date");
-                let result_date = epoch + Duration::days(*v as i64);
+                let result_date = epoch + Duration::days(i64::from(*v));
                 Ok(Value::Date(result_date))
             }
             Field::Group(v) => {

@@ -15,17 +15,17 @@ impl PartialEq<Value> for f64 {
         let lhs = *self;
 
         match *other {
-            I8(rhs) => (lhs - (rhs as f64)).abs() < f64::EPSILON,
-            I16(rhs) => (lhs - (rhs as f64)).abs() < f64::EPSILON,
-            I32(rhs) => (lhs - (rhs as f64)).abs() < f64::EPSILON,
+            I8(rhs) => (lhs - f64::from(rhs)).abs() < f64::EPSILON,
+            I16(rhs) => (lhs - f64::from(rhs)).abs() < f64::EPSILON,
+            I32(rhs) => (lhs - f64::from(rhs)).abs() < f64::EPSILON,
             I64(rhs) => (lhs - (rhs as f64)).abs() < f64::EPSILON,
             I128(rhs) => (lhs - (rhs as f64)).abs() < f64::EPSILON,
-            U8(rhs) => (lhs - (rhs as f64)).abs() < f64::EPSILON,
-            U16(rhs) => (lhs - (rhs as f64)).abs() < f64::EPSILON,
-            U32(rhs) => (lhs - (rhs as f64)).abs() < f64::EPSILON,
+            U8(rhs) => (lhs - f64::from(rhs)).abs() < f64::EPSILON,
+            U16(rhs) => (lhs - f64::from(rhs)).abs() < f64::EPSILON,
+            U32(rhs) => (lhs - f64::from(rhs)).abs() < f64::EPSILON,
             U64(rhs) => (lhs - (rhs as f64)).abs() < f64::EPSILON,
             U128(rhs) => (lhs - (rhs as f64)).abs() < f64::EPSILON,
-            F32(rhs) => (lhs - rhs as f64).abs() < f64::EPSILON,
+            F32(rhs) => (lhs - f64::from(rhs)).abs() < f64::EPSILON,
             F64(rhs) => (lhs - rhs).abs() < f64::EPSILON,
             Decimal(rhs) => Decimal::from_f64_retain(lhs)
                 .map(|x| rhs == x)
@@ -38,17 +38,17 @@ impl PartialEq<Value> for f64 {
 impl PartialOrd<Value> for f64 {
     fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
         match *other {
-            I8(rhs) => self.partial_cmp(&(rhs as f64)),
-            I16(rhs) => self.partial_cmp(&(rhs as f64)),
-            I32(rhs) => self.partial_cmp(&(rhs as f64)),
+            I8(rhs) => self.partial_cmp(&f64::from(rhs)),
+            I16(rhs) => self.partial_cmp(&f64::from(rhs)),
+            I32(rhs) => self.partial_cmp(&f64::from(rhs)),
             I64(rhs) => self.partial_cmp(&(rhs as f64)),
             I128(rhs) => self.partial_cmp(&(rhs as f64)),
-            U8(rhs) => self.partial_cmp(&(rhs as f64)),
-            U16(rhs) => self.partial_cmp(&(rhs as f64)),
-            U32(rhs) => self.partial_cmp(&(rhs as f64)),
+            U8(rhs) => self.partial_cmp(&f64::from(rhs)),
+            U16(rhs) => self.partial_cmp(&f64::from(rhs)),
+            U32(rhs) => self.partial_cmp(&f64::from(rhs)),
             U64(rhs) => self.partial_cmp(&(rhs as f64)),
             U128(rhs) => self.partial_cmp(&(rhs as f64)),
-            F32(rhs) => self.partial_cmp(&(rhs as f64)),
+            F32(rhs) => self.partial_cmp(&f64::from(rhs)),
             F64(rhs) => self.partial_cmp(&rhs),
             Decimal(rhs) => Decimal::from_f64_retain(*self)
                 .map(|x| x.partial_cmp(&rhs))
@@ -65,17 +65,17 @@ impl TryBinaryOperator for f64 {
         let lhs = *self;
 
         match *rhs {
-            I8(rhs) => Ok(F64(lhs + rhs as f64)),
-            I16(rhs) => Ok(F64(lhs + rhs as f64)),
-            I32(rhs) => Ok(F64(lhs + rhs as f64)),
+            I8(rhs) => Ok(F64(lhs + f64::from(rhs))),
+            I16(rhs) => Ok(F64(lhs + f64::from(rhs))),
+            I32(rhs) => Ok(F64(lhs + f64::from(rhs))),
             I64(rhs) => Ok(F64(lhs + rhs as f64)),
             I128(rhs) => Ok(F64(lhs + rhs as f64)),
-            U8(rhs) => Ok(F64(lhs + rhs as f64)),
-            U16(rhs) => Ok(F64(lhs + rhs as f64)),
-            U32(rhs) => Ok(F64(lhs + rhs as f64)),
+            U8(rhs) => Ok(F64(lhs + f64::from(rhs))),
+            U16(rhs) => Ok(F64(lhs + f64::from(rhs))),
+            U32(rhs) => Ok(F64(lhs + f64::from(rhs))),
             U64(rhs) => Ok(F64(lhs + rhs as f64)),
             U128(rhs) => Ok(F64(lhs + rhs as f64)),
-            F32(rhs) => Ok(F64(lhs + rhs as f64)),
+            F32(rhs) => Ok(F64(lhs + f64::from(rhs))),
             F64(rhs) => Ok(F64(lhs + rhs)),
             Decimal(rhs) => Decimal::from_f64_retain(lhs)
                 .map(|x| Ok(Decimal(x + rhs)))
@@ -94,17 +94,17 @@ impl TryBinaryOperator for f64 {
         let lhs = *self;
 
         match *rhs {
-            I8(rhs) => Ok(F64(lhs - rhs as f64)),
-            I16(rhs) => Ok(F64(lhs - rhs as f64)),
-            I32(rhs) => Ok(F64(lhs - rhs as f64)),
+            I8(rhs) => Ok(F64(lhs - f64::from(rhs))),
+            I16(rhs) => Ok(F64(lhs - f64::from(rhs))),
+            I32(rhs) => Ok(F64(lhs - f64::from(rhs))),
             I64(rhs) => Ok(F64(lhs - rhs as f64)),
             I128(rhs) => Ok(F64(lhs - rhs as f64)),
-            U8(rhs) => Ok(F64(lhs - rhs as f64)),
-            U16(rhs) => Ok(F64(lhs - rhs as f64)),
-            U32(rhs) => Ok(F64(lhs - rhs as f64)),
+            U8(rhs) => Ok(F64(lhs - f64::from(rhs))),
+            U16(rhs) => Ok(F64(lhs - f64::from(rhs))),
+            U32(rhs) => Ok(F64(lhs - f64::from(rhs))),
             U64(rhs) => Ok(F64(lhs - rhs as f64)),
             U128(rhs) => Ok(F64(lhs - rhs as f64)),
-            F32(rhs) => Ok(F64(lhs - rhs as f64)),
+            F32(rhs) => Ok(F64(lhs - f64::from(rhs))),
             F64(rhs) => Ok(F64(lhs - rhs)),
             Decimal(rhs) => Decimal::from_f64_retain(lhs)
                 .map(|x| Ok(Decimal(x - rhs)))
@@ -123,17 +123,17 @@ impl TryBinaryOperator for f64 {
         let lhs = *self;
 
         match *rhs {
-            I8(rhs) => Ok(F64(lhs * rhs as f64)),
-            I16(rhs) => Ok(F64(lhs * rhs as f64)),
-            I32(rhs) => Ok(F64(lhs * rhs as f64)),
+            I8(rhs) => Ok(F64(lhs * f64::from(rhs))),
+            I16(rhs) => Ok(F64(lhs * f64::from(rhs))),
+            I32(rhs) => Ok(F64(lhs * f64::from(rhs))),
             I64(rhs) => Ok(F64(lhs * rhs as f64)),
             I128(rhs) => Ok(F64(lhs * rhs as f64)),
-            U8(rhs) => Ok(F64(lhs * rhs as f64)),
-            U16(rhs) => Ok(F64(lhs * rhs as f64)),
-            U32(rhs) => Ok(F64(lhs * rhs as f64)),
+            U8(rhs) => Ok(F64(lhs * f64::from(rhs))),
+            U16(rhs) => Ok(F64(lhs * f64::from(rhs))),
+            U32(rhs) => Ok(F64(lhs * f64::from(rhs))),
             U64(rhs) => Ok(F64(lhs * rhs as f64)),
             U128(rhs) => Ok(F64(lhs * rhs as f64)),
-            F32(rhs) => Ok(F64(lhs * rhs as f64)),
+            F32(rhs) => Ok(F64(lhs * f64::from(rhs))),
             F64(rhs) => Ok(F64(lhs * rhs)),
             Interval(rhs) => Ok(Interval(lhs * rhs)),
             Decimal(rhs) => Decimal::from_f64_retain(lhs)
@@ -153,17 +153,17 @@ impl TryBinaryOperator for f64 {
         let lhs = *self;
 
         match *rhs {
-            I8(rhs) => Ok(F64(lhs / rhs as f64)),
-            I16(rhs) => Ok(F64(lhs / rhs as f64)),
-            I32(rhs) => Ok(F64(lhs / rhs as f64)),
+            I8(rhs) => Ok(F64(lhs / f64::from(rhs))),
+            I16(rhs) => Ok(F64(lhs / f64::from(rhs))),
+            I32(rhs) => Ok(F64(lhs / f64::from(rhs))),
             I64(rhs) => Ok(F64(lhs / rhs as f64)),
             I128(rhs) => Ok(F64(lhs / rhs as f64)),
-            U8(rhs) => Ok(F64(lhs / rhs as f64)),
-            U16(rhs) => Ok(F64(lhs / rhs as f64)),
-            U32(rhs) => Ok(F64(lhs / rhs as f64)),
+            U8(rhs) => Ok(F64(lhs / f64::from(rhs))),
+            U16(rhs) => Ok(F64(lhs / f64::from(rhs))),
+            U32(rhs) => Ok(F64(lhs / f64::from(rhs))),
             U64(rhs) => Ok(F64(lhs / rhs as f64)),
             U128(rhs) => Ok(F64(lhs / rhs as f64)),
-            F32(rhs) => Ok(F64(lhs / rhs as f64)),
+            F32(rhs) => Ok(F64(lhs / f64::from(rhs))),
             F64(rhs) => Ok(F64(lhs / rhs)),
             Decimal(rhs) => Decimal::from_f64_retain(lhs)
                 .map(|x| Ok(Decimal(x * rhs)))
@@ -182,17 +182,17 @@ impl TryBinaryOperator for f64 {
         let lhs = *self;
 
         match *rhs {
-            I8(rhs) => Ok(F64(lhs % rhs as f64)),
-            I16(rhs) => Ok(F64(lhs % rhs as f64)),
-            I32(rhs) => Ok(F64(lhs % rhs as f64)),
+            I8(rhs) => Ok(F64(lhs % f64::from(rhs))),
+            I16(rhs) => Ok(F64(lhs % f64::from(rhs))),
+            I32(rhs) => Ok(F64(lhs % f64::from(rhs))),
             I64(rhs) => Ok(F64(lhs % rhs as f64)),
             I128(rhs) => Ok(F64(lhs % rhs as f64)),
-            U8(rhs) => Ok(F64(lhs % rhs as f64)),
-            U16(rhs) => Ok(F64(lhs % rhs as f64)),
-            U32(rhs) => Ok(F64(lhs % rhs as f64)),
+            U8(rhs) => Ok(F64(lhs % f64::from(rhs))),
+            U16(rhs) => Ok(F64(lhs % f64::from(rhs))),
+            U32(rhs) => Ok(F64(lhs % f64::from(rhs))),
             U64(rhs) => Ok(F64(lhs % rhs as f64)),
             U128(rhs) => Ok(F64(lhs % rhs as f64)),
-            F32(rhs) => Ok(F64(lhs % rhs as f64)),
+            F32(rhs) => Ok(F64(lhs % f64::from(rhs))),
             F64(rhs) => Ok(F64(lhs % rhs)),
             Decimal(rhs) => match Decimal::from_f64_retain(lhs) {
                 Some(x) => x
