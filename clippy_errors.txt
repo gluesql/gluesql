@@ -1,0 +1,147 @@
+error: casting `u32` to `i32` may wrap around the value
+  --> core/src/data/interval/primitive.rs:88:51
+   |
+88 |             Interval::Month(v) => Interval::Month(((v as u32) * rhs) as i32),
+   |                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_wrap
+   = note: `-D clippy::cast-possible-wrap` implied by `-D clippy::pedantic`
+   = help: to override `-D clippy::pedantic` add `#[allow(clippy::cast_possible_wrap)]`
+
+error: casting `u64` to `i64` may wrap around the value
+   --> core/src/data/interval/primitive.rs:100:63
+    |
+100 |             Interval::Microsecond(v) => Interval::Microsecond(((v as u64) * rhs) as i64),
+    |                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_wrap
+
+error: casting `u32` to `i32` may wrap around the value
+   --> core/src/data/interval/primitive.rs:316:51
+    |
+316 |             Interval::Month(v) => Interval::Month(((v as u32) / rhs) as i32),
+    |                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_wrap
+
+error: casting `u64` to `i64` may wrap around the value
+   --> core/src/data/interval/primitive.rs:328:63
+    |
+328 |             Interval::Microsecond(v) => Interval::Microsecond(((v as u64) / rhs) as i64),
+    |                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_wrap
+
+error: casting `u32` to `i32` may wrap around the value
+   --> core/src/data/interval/primitive.rs:448:51
+    |
+448 |             Interval::Month(v) => Interval::Month((self / (v as u32)) as i32),
+    |                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_wrap
+
+error: casting `u64` to `i64` may wrap around the value
+   --> core/src/data/interval/primitive.rs:460:63
+    |
+460 |             Interval::Microsecond(v) => Interval::Microsecond((self / (v as u64)) as i64),
+    |                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_wrap
+
+error: casting `u32` to `i32` may wrap around the value
+  --> core/src/data/interval.rs:96:29
+   |
+96 |                 let month = timestamp.month() as i32 + n;
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_wrap
+
+error: casting `u32` to `i32` may wrap around the value
+   --> core/src/data/interval.rs:113:54
+    |
+113 |                 let months = timestamp.year() * 12 + timestamp.month() as i32 - n;
+    |                                                      ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_wrap
+
+error: casting `u128` to `i128` may wrap around the value
+   --> core/src/data/value.rs:740:43
+    |
+740 |             U128(a) => factorial_function(*a as i128).map(I128),
+    |                                           ^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_wrap
+
+error: casting `usize` to `i64` may wrap around the value on targets with 64-bit wide pointers
+   --> core/src/data/value.rs:858:45
+    |
+858 |             (Str(from), Str(sub)) => Ok(I64(str_position(from, sub) as i64)),
+    |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_wrap
+
+error: casting `usize` to `i64` may wrap around the value on targets with 64-bit wide pointers
+   --> core/src/data/value.rs:875:24
+    |
+875 |         let position = str_position(&from[(start - 1) as usize..], sub) as i64;
+    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_wrap
+
+error: casting `usize` to `i64` may wrap around the value on targets with 64-bit wide pointers
+   --> core/src/executor/evaluate/evaluated.rs:620:21
+    |
+620 |             None => source.len() as i64,
+    |                     ^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_wrap
+
+error: casting `usize` to `i64` may wrap around the value on targets with 64-bit wide pointers
+   --> core/src/executor/evaluate/evaluated.rs:626:14
+    |
+626 |             (range.start as i64 + start + count).clamp(0, source.len() as i64) as usize
+    |              ^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_wrap
+
+error: casting `usize` to `i64` may wrap around the value on targets with 64-bit wide pointers
+   --> core/src/executor/evaluate/evaluated.rs:626:59
+    |
+626 |             (range.start as i64 + start + count).clamp(0, source.len() as i64) as usize
+    |                                                           ^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_wrap
+
+error: casting `usize` to `i64` may wrap around the value on targets with 64-bit wide pointers
+   --> core/src/executor/evaluate/evaluated.rs:629:30
+    |
+629 |         let start = (start + range.start as i64).clamp(0, source.len() as i64) as usize;
+    |                              ^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_wrap
+
+error: casting `usize` to `i64` may wrap around the value on targets with 64-bit wide pointers
+   --> core/src/executor/evaluate/evaluated.rs:629:59
+    |
+629 |         let start = (start + range.start as i64).clamp(0, source.len() as i64) as usize;
+    |                                                           ^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_wrap
+
+error: casting `usize` to `i64` may wrap around the value on targets with 64-bit wide pointers
+   --> core/src/executor/evaluate/function.rs:682:26
+    |
+682 |                 start += l.len() as i64;
+    |                          ^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_wrap
+
+error: casting `usize` to `i64` may wrap around the value on targets with 64-bit wide pointers
+   --> core/src/executor/fetch.rs:311:52
+    |
+311 | ...                   Value::I64(index as i64 + 1),
+    |                                  ^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_wrap
+
+error: could not compile `gluesql-core` (lib) due to 18 previous errors
