@@ -70,6 +70,7 @@ where
 
     match expr {
         Expr::Literal(ast_literal) => expr::literal(ast_literal),
+        Expr::Value(value) => Ok(Evaluated::Value(value.clone())),
         Expr::TypedString { data_type, value } => {
             expr::typed_string(data_type, Cow::Borrowed(value))
         }
