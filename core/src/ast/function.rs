@@ -219,6 +219,10 @@ pub enum Function {
         values: Option<Expr>,
     },
     Dedup(Expr),
+    Instr {
+        string: Expr,
+        substring: Expr,
+    },
 }
 
 impl ToSql for Function {
@@ -509,6 +513,9 @@ impl ToSql for Function {
                 ),
             },
             Function::Dedup(list) => format!("DEDUP({})", list.to_sql()),
+            Function::Instr { string, substring } => {
+                format!("INSTR({}, {})", string.to_sql(), substring.to_sql())
+            }
         }
     }
 }
@@ -1478,7 +1485,16 @@ mod tests {
                 "list".to_owned()
             ))))
             .to_sql(),
-        )
+        );
+
+        assert_eq!(
+            "INSTR('Hello World', 'World')",
+            &Expr::Function(Box::new(Function::Instr {
+                string: Expr::Literal(AstLiteral::QuotedString("Hello World".to_owned())),
+                substring: Expr::Literal(AstLiteral::QuotedString("World".to_owned()))
+            }))
+            .to_sql()
+        );
     }
 
     #[test]
