@@ -89,7 +89,9 @@ impl Glue {
       {
         Err(Error::new(
           Status::InvalidArg,
-          format!("{default_engine} is not supported (options: memory, localStorage, sessionStorage)"),
+          format!(
+            "{default_engine} is not supported (options: memory, localStorage, sessionStorage)"
+          ),
         ))
       } else {
         storage.set_default(default_engine);
