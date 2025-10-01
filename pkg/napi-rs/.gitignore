@@ -136,3 +136,6 @@ gluesql-napi.wasm32-wasi.debug.wasm
 gluesql-napi.wasm32-wasi.wasm
 wasi-worker-browser.mjs
 wasi-worker.mjs
+browser.js
+index.d.ts
+index.js

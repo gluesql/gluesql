@@ -4,25 +4,28 @@ mod debug;
 mod payload;
 mod utils;
 
-use {
-  debug::console_debug,
-  gluesql_core::prelude::{execute, parse, plan, translate},
-  gluesql_memory_storage::MemoryStorage,
-  napi::bindgen_prelude::*,
-  napi_derive::napi,
-  std::sync::{Arc, Mutex},
-};
+use debug::console_debug;
+use gluesql_core::prelude::{execute, parse, plan, translate};
+use gluesql_memory_storage::MemoryStorage;
+use napi::bindgen_prelude::*;
+use napi_derive::napi;
+use std::sync::{Arc, Mutex};
 
-#[cfg(not(target_family = "wasm"))]
 use gluesql_composite_storage::CompositeStorage;
+
+// Web / IDB storage crates are only available on wasm; import them conditionally
+#[cfg(target_family = "wasm")]
+use gluesql_web_storage::{WebStorage, WebStorageType};
 
 #[napi]
 pub struct Glue {
   #[cfg(not(target_family = "wasm"))]
   storage: Arc<Mutex<Option<CompositeStorage>>>,
 
+  // For wasm target, use a CompositeStorage so we can support memory,
+  // localStorage, sessionStorage.
   #[cfg(target_family = "wasm")]
-  storage: Arc<Mutex<Option<MemoryStorage>>>,
+  storage: Arc<Mutex<Option<CompositeStorage>>>,
 }
 
 impl Default for Glue {
@@ -49,7 +52,21 @@ impl Glue {
       storage
     };
     #[cfg(target_family = "wasm")]
-    let storage = MemoryStorage::default();
+    let storage = {
+      // Construct a composite storage with memory + web storages available in browsers.
+      let mut storage = CompositeStorage::default();
+      storage.push("memory", MemoryStorage::default());
+
+      // Add localStorage and sessionStorage wrappers.
+      storage.push("localStorage", WebStorage::new(WebStorageType::Local));
+      storage.push("sessionStorage", WebStorage::new(WebStorageType::Session));
+      storage.set_default("memory");
+
+      console_debug("[GlueSQL] loaded: memory, localStorage, sessionStorage");
+      console_debug("[GlueSQL] default engine: memory");
+
+      storage
+    };
 
     let storage = Arc::new(Mutex::new(Some(storage)));
 
@@ -58,36 +75,38 @@ impl Glue {
     Self { storage }
   }
 
-  #[cfg(not(target_family = "wasm"))]
+  /// Set default engine. On wasm targets this supports memory, localStorage,
+  /// and sessionStorage. On non-wasm targets only "memory" is supported.
   #[napi]
   pub fn set_default_engine(&self, default_engine: String) -> Result<()> {
     let mut storage_guard = self.storage.lock().unwrap();
     let mut storage = storage_guard.take().unwrap();
 
-    let result = {
-      if !["memory"]
+    let result = if cfg!(target_family = "wasm") {
+      if !["memory", "localStorage", "sessionStorage"]
         .iter()
         .any(|engine| engine == &default_engine.as_str())
       {
         Err(Error::new(
           Status::InvalidArg,
-          format!("{default_engine} is not supported (options: memory)"),
+          format!("{default_engine} is not supported (options: memory, localStorage, sessionStorage)"),
         ))
       } else {
         storage.set_default(default_engine);
         Ok(())
       }
+    } else if default_engine != "memory" {
+      Err(Error::new(
+        Status::InvalidArg,
+        format!("{default_engine} is not supported (options: memory)"),
+      ))
+    } else {
+      storage.set_default(default_engine);
+      Ok(())
     };
 
     *storage_guard = Some(storage);
     result
-  }
-
-  #[cfg(target_family = "wasm")]
-  #[napi]
-  pub fn set_default_engine(&self, _default_engine: String) -> Result<()> {
-    // In WASM, only memory storage is available, so this is a no-op
-    Ok(())
   }
 
   #[napi]
@@ -150,7 +169,6 @@ impl Glue {
   }
 }
 
-// Export for testing
 pub use payload::convert;
 
 #[cfg(test)]
