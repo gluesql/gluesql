@@ -1,6 +1,5 @@
 import { expect, it } from "vitest";
-// @ts-expect-error
-const { Glue }: typeof import('../../index.js') = await import('../../browser.js')
+import { Glue } from "../../gluesql-napi.wasi-browser";
 
 it("Builded wasm package should loaded", async () => {
   const glue = new Glue();

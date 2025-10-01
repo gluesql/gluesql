@@ -3,7 +3,7 @@
   "version": "0.17.0",
   "description": "GlueSQL is quite sticky, it attaches to anywhere - NAPI-RS bindings",
   "main": "index.js",
-  "browser": "browser.js",
+  "browser": "gluesql-napi.wasi-browser.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/gluesql/gluesql.git"
@@ -24,7 +24,10 @@
   "files": [
     "index.d.ts",
     "index.js",
-    "browser.js"
+    "gluesql-napi.wasi-browser.js",
+    "gluesql-napi.wasm32-wasi.wasm",
+    "wasi-worker-browser.mjs",
+    "wasi-worker.mjs"
   ],
   "napi": {
     "binaryName": "gluesql-napi",
@@ -37,8 +40,7 @@
     ],
     "wasm": {
       "initialMemory": 1024,
-      "maximumMemory": 16384,
-      "needsPatchWasmJs": true
+      "maximumMemory": 16384
     }
   },
   "engines": {
