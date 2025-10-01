@@ -1,10 +1,10 @@
 // Console debug function that outputs to Node.js console
-pub fn console_debug(msg: &str) {
+pub fn console_debug(_msg: &str) {
   #[cfg(debug_assertions)]
   {
     // In Node.js environment, eprintln! goes to stderr which appears in console
     // This mimics JavaScript's console.debug behavior
-    eprintln!("{}", msg);
+    eprintln!("{}", _msg);
   }
 }
 
