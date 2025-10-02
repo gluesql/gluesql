@@ -327,7 +327,7 @@ impl<'a> Evaluated<'a> {
         )
     }
 
-    pub fn get_json_arrow<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
+    pub fn arrow<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
         let selector = Value::try_from(other.clone())?;
 
         if selector.is_null() {
@@ -363,11 +363,6 @@ impl<'a> Evaluated<'a> {
 
         match value_result {
             Ok(value) => Ok(Evaluated::Value(value)),
-            Err(Error::Value(err))
-                if err.as_ref() == &ValueError::SelectorRequiresMapOrListTypes =>
-            {
-                Ok(Evaluated::Value(Value::Null))
-            }
             Err(err) => Err(err),
         }
     }
