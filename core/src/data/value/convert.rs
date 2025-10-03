@@ -34,7 +34,22 @@ macro_rules! try_from_owned_value {
 }
 
 try_from_owned_value!(
-    bool, i8, i16, i32, i64, i128, f32, f64, u8, u16, u32, u64, u128, usize, Decimal, crate::data::FloatVector
+    bool,
+    i8,
+    i16,
+    i32,
+    i64,
+    i128,
+    f32,
+    f64,
+    u8,
+    u16,
+    u32,
+    u64,
+    u128,
+    usize,
+    Decimal,
+    crate::data::FloatVector
 );
 
 impl From<&Value> for String {
@@ -1102,7 +1117,7 @@ impl TryFrom<&Value> for crate::data::FloatVector {
                         _ => Err(()),
                     })
                     .collect();
-                
+
                 match floats {
                     Ok(float_vec) => {
                         crate::data::FloatVector::new(float_vec).map_err(|_| ConvertError {
