@@ -74,7 +74,14 @@ impl<'a> TryFrom<&'a AstLiteral> for Literal<'a> {
             AstLiteral::Number(v) => Number(Cow::Borrowed(v)),
             AstLiteral::QuotedString(v) => Text(Cow::Borrowed(v)),
             AstLiteral::HexString(v) => {
-                Bytea(hex::decode(v).map_err(|_| LiteralError::FailedToDecodeHexString(v.clone()))?)
+                // Check if this looks like a FloatVector literal (starts with [ and ends with ])
+                if v.starts_with('[') && v.ends_with(']') {
+                    // This is likely a FloatVector literal that was mistakenly parsed as HexString
+                    Text(Cow::Borrowed(v))
+                } else {
+                    // This is a real hex string for bytea
+                    Bytea(hex::decode(v).map_err(|_| LiteralError::FailedToDecodeHexString(v.clone()))?)
+                }
             }
             AstLiteral::Null => Null,
         };
