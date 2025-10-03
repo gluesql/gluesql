@@ -47,6 +47,7 @@ pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
                 Some("LIST") => Ok(DataType::List),
                 Some("POINT") => Ok(DataType::Point),
                 Some("INET") => Ok(DataType::Inet),
+                Some("FLOAT_VECTOR") => Ok(DataType::FloatVector),
 
                 _ => Err(TranslateError::UnsupportedDataType(sql_data_type.to_string()).into()),
             }
@@ -114,5 +115,6 @@ mod tests {
         test!("LIST" => Ok(DataType::List));
         test!("POINT" => Ok(DataType::Point));
         test!("INET" => Ok(DataType::Inet));
+        test!("FLOAT_VECTOR" => Ok(DataType::FloatVector));
     }
 }

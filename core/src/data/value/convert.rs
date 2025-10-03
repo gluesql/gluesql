@@ -69,6 +69,7 @@ impl From<&Value> for String {
                 .to_string(),
             Value::Decimal(value) => value.to_string(),
             Value::Point(value) => value.to_string(),
+            Value::FloatVector(value) => value.to_string(),
             Value::Null => "NULL".to_owned(),
         }
     }
@@ -170,6 +171,7 @@ impl TryFrom<&Value> for bool {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Inet(_)
             | Value::Null => {
                 return Err(ConvertError {
@@ -226,6 +228,7 @@ impl TryFrom<&Value> for i8 {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Inet(_)
             | Value::Null => {
                 return Err(ConvertError {
@@ -282,6 +285,7 @@ impl TryFrom<&Value> for i16 {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Inet(_)
             | Value::Null => {
                 return Err(ConvertError {
@@ -335,6 +339,7 @@ impl TryFrom<&Value> for i32 {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Inet(_)
             | Value::Null => {
                 return Err(ConvertError {
@@ -388,6 +393,7 @@ impl TryFrom<&Value> for i64 {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Inet(_)
             | Value::Null => {
                 return Err(ConvertError {
@@ -441,6 +447,7 @@ impl TryFrom<&Value> for i128 {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Inet(_)
             | Value::Null => {
                 return Err(ConvertError {
@@ -494,6 +501,7 @@ impl TryFrom<&Value> for u8 {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Inet(_)
             | Value::Null => {
                 return Err(ConvertError {
@@ -546,6 +554,7 @@ impl TryFrom<&Value> for u16 {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Inet(_)
             | Value::Null => {
                 return Err(ConvertError {
@@ -601,6 +610,7 @@ impl TryFrom<&Value> for u32 {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Null => {
                 return Err(ConvertError {
                     value: v.clone(),
@@ -654,6 +664,7 @@ impl TryFrom<&Value> for u64 {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Null => {
                 return Err(ConvertError {
                     value: v.clone(),
@@ -707,6 +718,7 @@ impl TryFrom<&Value> for u128 {
             | Value::Inet(IpAddr::V4(_))
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Null => {
                 return Err(ConvertError {
                     value: v.clone(),
@@ -765,6 +777,7 @@ impl TryFrom<&Value> for f32 {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Inet(_)
             | Value::Null => {
                 return Err(ConvertError {
@@ -824,6 +837,7 @@ impl TryFrom<&Value> for f64 {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Inet(_)
             | Value::Null => {
                 return Err(ConvertError {
@@ -879,6 +893,7 @@ impl TryFrom<&Value> for usize {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Inet(_)
             | Value::Null => return Err(err()),
         })
@@ -933,6 +948,7 @@ impl TryFrom<&Value> for Decimal {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Inet(_)
             | Value::Null => {
                 return Err(ConvertError {
