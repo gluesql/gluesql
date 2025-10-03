@@ -722,7 +722,8 @@ impl ParquetStorage {
             | DataType::Interval
             | DataType::Decimal
             | DataType::Timestamp
-            | DataType::Bytea => (Type::BYTE_ARRAY, None),
+            | DataType::Bytea
+            | DataType::FloatVector => (Type::BYTE_ARRAY, None),
         }
     }
 }
