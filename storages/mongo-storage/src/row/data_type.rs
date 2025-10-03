@@ -77,6 +77,7 @@ impl From<&DataType> for BsonType {
             DataType::Point => BsonType::Object,
             DataType::Inet => BsonType::String,
             DataType::Interval => BsonType::String,
+            DataType::FloatVector => BsonType::Array,
         }
     }
 }

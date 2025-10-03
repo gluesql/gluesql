@@ -37,7 +37,7 @@ static PARQUET_TO_GLUESQL_DATA_TYPE_MAPPING: LazyLock<HashMap<&'static str, Data
         m.insert("List", DataType::List);
         m.insert("Decimal", DataType::Decimal);
         m.insert("Point", DataType::Point);
-
+        m.insert("FloatVector", DataType::FloatVector);
         m
     });
 

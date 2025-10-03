@@ -34,7 +34,22 @@ macro_rules! try_from_owned_value {
 }
 
 try_from_owned_value!(
-    bool, i8, i16, i32, i64, i128, f32, f64, u8, u16, u32, u64, u128, usize, Decimal
+    bool,
+    i8,
+    i16,
+    i32,
+    i64,
+    i128,
+    f32,
+    f64,
+    u8,
+    u16,
+    u32,
+    u64,
+    u128,
+    usize,
+    Decimal,
+    crate::data::FloatVector
 );
 
 impl From<&Value> for String {
@@ -69,6 +84,7 @@ impl From<&Value> for String {
                 .to_string(),
             Value::Decimal(value) => value.to_string(),
             Value::Point(value) => value.to_string(),
+            Value::FloatVector(value) => value.to_string(),
             Value::Null => "NULL".to_owned(),
         }
     }
@@ -170,6 +186,7 @@ impl TryFrom<&Value> for bool {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Inet(_)
             | Value::Null => {
                 return Err(ConvertError {
@@ -226,6 +243,7 @@ impl TryFrom<&Value> for i8 {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Inet(_)
             | Value::Null => {
                 return Err(ConvertError {
@@ -282,6 +300,7 @@ impl TryFrom<&Value> for i16 {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Inet(_)
             | Value::Null => {
                 return Err(ConvertError {
@@ -335,6 +354,7 @@ impl TryFrom<&Value> for i32 {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Inet(_)
             | Value::Null => {
                 return Err(ConvertError {
@@ -388,6 +408,7 @@ impl TryFrom<&Value> for i64 {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Inet(_)
             | Value::Null => {
                 return Err(ConvertError {
@@ -441,6 +462,7 @@ impl TryFrom<&Value> for i128 {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Inet(_)
             | Value::Null => {
                 return Err(ConvertError {
@@ -494,6 +516,7 @@ impl TryFrom<&Value> for u8 {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Inet(_)
             | Value::Null => {
                 return Err(ConvertError {
@@ -546,6 +569,7 @@ impl TryFrom<&Value> for u16 {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Inet(_)
             | Value::Null => {
                 return Err(ConvertError {
@@ -601,6 +625,7 @@ impl TryFrom<&Value> for u32 {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Null => {
                 return Err(ConvertError {
                     value: v.clone(),
@@ -654,6 +679,7 @@ impl TryFrom<&Value> for u64 {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Null => {
                 return Err(ConvertError {
                     value: v.clone(),
@@ -707,6 +733,7 @@ impl TryFrom<&Value> for u128 {
             | Value::Inet(IpAddr::V4(_))
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Null => {
                 return Err(ConvertError {
                     value: v.clone(),
@@ -765,6 +792,7 @@ impl TryFrom<&Value> for f32 {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Inet(_)
             | Value::Null => {
                 return Err(ConvertError {
@@ -824,6 +852,7 @@ impl TryFrom<&Value> for f64 {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Inet(_)
             | Value::Null => {
                 return Err(ConvertError {
@@ -879,6 +908,7 @@ impl TryFrom<&Value> for usize {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Inet(_)
             | Value::Null => return Err(err()),
         })
@@ -933,6 +963,7 @@ impl TryFrom<&Value> for Decimal {
             | Value::List(_)
             | Value::Bytea(_)
             | Value::Point(_)
+            | Value::FloatVector(_)
             | Value::Inet(_)
             | Value::Null => {
                 return Err(ConvertError {
@@ -1048,6 +1079,65 @@ impl TryFrom<&Value> for Point {
                 return Err(ConvertError {
                     value: v.clone(),
                     data_type: DataType::Point,
+                });
+            }
+        })
+    }
+}
+
+impl TryFrom<&Value> for crate::data::FloatVector {
+    type Error = ConvertError;
+
+    fn try_from(v: &Value) -> Result<crate::data::FloatVector> {
+        Ok(match v {
+            Value::FloatVector(value) => value.clone(),
+            Value::Str(value) => {
+                // Try to parse string as vector literal like "[1.0, 2.0, 3.0]"
+                match Value::parse_json_vector(value) {
+                    Ok(Value::FloatVector(vector)) => vector,
+                    _ => {
+                        return Err(ConvertError {
+                            value: v.clone(),
+                            data_type: DataType::FloatVector,
+                        });
+                    }
+                }
+            }
+            Value::List(values) => {
+                // Convert list of numeric values to FloatVector
+                let floats: std::result::Result<Vec<f32>, _> = values
+                    .iter()
+                    .map(|val| match val {
+                        Value::F32(f) => Ok(*f),
+                        Value::F64(f) => Ok(*f as f32),
+                        Value::I32(i) => Ok(*i as f32),
+                        Value::I64(i) => Ok(*i as f32),
+                        Value::U32(u) => Ok(*u as f32),
+                        Value::U64(u) => Ok(*u as f32),
+                        _ => Err(()),
+                    })
+                    .collect();
+
+                match floats {
+                    Ok(float_vec) => {
+                        crate::data::FloatVector::new(float_vec).map_err(|_| ConvertError {
+                            value: v.clone(),
+                            data_type: DataType::FloatVector,
+                        })?
+                    }
+                    Err(_) => {
+                        return Err(ConvertError {
+                            value: v.clone(),
+                            data_type: DataType::FloatVector,
+                        });
+                    }
+                }
+            }
+
+            _ => {
+                return Err(ConvertError {
+                    value: v.clone(),
+                    data_type: DataType::FloatVector,
                 });
             }
         })
@@ -2256,5 +2346,80 @@ mod tests {
         );
 
         err!(&Value::Date(date(2021, 11, 20)));
+    }
+
+    #[test]
+    fn try_into_float_vector() {
+        use crate::data::FloatVector;
+
+        macro_rules! test {
+            ($from: expr, $to: expr) => {
+                assert_eq!((&$from).try_into() as Result<FloatVector>, $to);
+                assert_eq!(FloatVector::try_from(&$from), $to);
+            };
+        }
+
+        macro_rules! err {
+            ($from: expr) => {
+                test!(
+                    $from,
+                    Err(ConvertError {
+                        value: $from.clone(),
+                        data_type: DataType::FloatVector,
+                    })
+                )
+            };
+        }
+
+        // Test direct FloatVector value
+        let vector = FloatVector::new(vec![1.0, 2.0, 3.0]).unwrap();
+        test!(Value::FloatVector(vector.clone()), Ok(vector.clone()));
+
+        // Test string literals
+        test!(
+            Value::Str("[1.0, 2.0, 3.0]".to_owned()),
+            Ok(FloatVector::new(vec![1.0, 2.0, 3.0]).unwrap())
+        );
+        test!(
+            Value::Str("[1, 2.5, 3]".to_owned()),
+            Ok(FloatVector::new(vec![1.0, 2.5, 3.0]).unwrap())
+        );
+
+        // Test Value::List conversion
+        test!(
+            Value::List(vec![Value::F32(1.0), Value::F32(2.0), Value::F32(3.0)]),
+            Ok(FloatVector::new(vec![1.0, 2.0, 3.0]).unwrap())
+        );
+        test!(
+            Value::List(vec![Value::F64(1.5), Value::F64(2.5)]),
+            Ok(FloatVector::new(vec![1.5, 2.5]).unwrap())
+        );
+        test!(
+            Value::List(vec![Value::I32(1), Value::I32(2), Value::I32(3)]),
+            Ok(FloatVector::new(vec![1.0, 2.0, 3.0]).unwrap())
+        );
+        test!(
+            Value::List(vec![Value::I64(1), Value::F32(2.5), Value::U32(3)]),
+            Ok(FloatVector::new(vec![1.0, 2.5, 3.0]).unwrap())
+        );
+
+        // Test error cases - invalid string formats
+        err!(Value::Str("not_json".to_owned()));
+        err!(Value::Str("{\"a\": 1}".to_owned())); // Object, not array
+        err!(Value::Str("[1.0, \"hello\", 3.0]".to_owned())); // Non-numeric in array
+        err!(Value::Str("[]".to_owned())); // Empty vector
+
+        // Test error cases - invalid list contents
+        err!(Value::List(vec![Value::Str("hello".to_owned())])); // Non-numeric value
+        err!(Value::List(vec![Value::Bool(true), Value::F32(1.0)])); // Mixed with bool
+        err!(Value::List(vec![])); // Empty list
+
+        // Test error cases - incompatible value types
+        err!(Value::Bool(true));
+        err!(Value::I32(123));
+        err!(Value::Date(date(2021, 11, 20)));
+        err!(Value::Map(std::collections::BTreeMap::new()));
+        err!(Value::Null);
+        err!(Value::Bytea(vec![1, 2, 3]));
     }
 }

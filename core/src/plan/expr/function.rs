@@ -70,7 +70,10 @@ impl Function {
             | Self::Dedup(expr)
             | Self::Entries(expr)
             | Self::Keys(expr)
-            | Self::Values(expr) => Exprs::Single([expr].into_iter()),
+            | Self::Values(expr)
+            | Self::VectorMagnitude(expr)
+            | Self::VectorNormalize(expr)
+            | Self::VectorDimension(expr) => Exprs::Single([expr].into_iter()),
             Self::Left { expr, size: expr2 }
             | Self::Right { expr, size: expr2 }
             | Self::Lpad {
@@ -167,7 +170,55 @@ impl Function {
                 geometry1: expr,
                 geometry2: expr2,
             }
-            | Self::AddMonth { expr, size: expr2 } => Exprs::Double([expr, expr2].into_iter()),
+            | Self::AddMonth { expr, size: expr2 }
+            | Self::VectorDot {
+                left: expr,
+                right: expr2,
+            }
+            | Self::VectorAdd {
+                left: expr,
+                right: expr2,
+            }
+            | Self::VectorSub {
+                left: expr,
+                right: expr2,
+            }
+            | Self::VectorScalarMul {
+                vector: expr,
+                scalar: expr2,
+            }
+            | Self::VectorEuclideanDist {
+                left: expr,
+                right: expr2,
+            }
+            | Self::VectorCosineSim {
+                left: expr,
+                right: expr2,
+            }
+            | Self::VectorAt {
+                vector: expr,
+                index: expr2,
+            }
+            | Self::VectorManhattanDist {
+                left: expr,
+                right: expr2,
+            }
+            | Self::VectorChebyshevDist {
+                left: expr,
+                right: expr2,
+            }
+            | Self::VectorHammingDist {
+                left: expr,
+                right: expr2,
+            }
+            | Self::VectorJaccardSim {
+                left: expr,
+                right: expr2,
+            }
+            | Self::VectorCanberraDist {
+                left: expr,
+                right: expr2,
+            } => Exprs::Double([expr, expr2].into_iter()),
 
             Self::Lpad {
                 expr,
@@ -204,6 +255,11 @@ impl Function {
                 begin_index: expr2,
                 end_index: expr3,
                 values: None,
+            }
+            | Self::VectorMinkowskiDist {
+                left: expr,
+                right: expr2,
+                p: expr3,
             } => Exprs::Triple([expr, expr2, expr3].into_iter()),
             Self::Custom { name: _, exprs } => Exprs::VariableArgs(exprs.iter()),
             Self::Coalesce(exprs) => Exprs::VariableArgs(exprs.iter()),
@@ -307,6 +363,11 @@ mod tests {
 
         test(r#"DEDUP(list)"#, &["list"]);
 
+        // Vector functions - Single argument
+        test(r#"VECTOR_MAGNITUDE('[1.0, 2.0, 3.0]')"#, &[r#"'[1.0, 2.0, 3.0]'"#]);
+        test(r#"VECTOR_NORMALIZE(vector_col)"#, &["vector_col"]);
+        test(r#"VECTOR_DIMENSION('[1.0, 2.0]')"#, &[r#"'[1.0, 2.0]'"#]);
+
         // Double
         test(r#"LEFT("hello", 2)"#, &[r#""hello""#, "2"]);
         test(r#"RIGHT("hello", 2)"#, &[r#""hello""#, "2"]);
@@ -331,6 +392,19 @@ mod tests {
         test(r#"UNWRAP(field, "foo.1")"#, &["field", r#""foo.1""#]);
         test(r#"SKIP(list, 2)"#, &[r#""list""#, r#"2"#]);
 
+        // Vector functions - Double argument
+        test(r#"VECTOR_DOT('[1.0, 2.0]', '[3.0, 4.0]')"#, &[r#"'[1.0, 2.0]'"#, r#"'[3.0, 4.0]'"#]);
+        test(r#"VECTOR_ADD(vec1, vec2)"#, &["vec1", "vec2"]);
+        test(r#"VECTOR_SUB('[1.0, 2.0]', vector_col)"#, &[r#"'[1.0, 2.0]'"#, "vector_col"]);
+        test(r#"VECTOR_EUCLIDEAN_DIST('[1.0, 2.0]', '[3.0, 4.0]')"#, &[r#"'[1.0, 2.0]'"#, r#"'[3.0, 4.0]'"#]);
+        test(r#"VECTOR_COSINE_SIM(a, b)"#, &["a", "b"]);
+        test(r#"VECTOR_AT('[1.0, 2.0, 3.0]', 1)"#, &[r#"'[1.0, 2.0, 3.0]'"#, "1"]);
+        test(r#"VECTOR_MANHATTAN_DIST(vec_a, vec_b)"#, &["vec_a", "vec_b"]);
+        test(r#"VECTOR_CHEBYSHEV_DIST('[1.0]', '[2.0]')"#, &[r#"'[1.0]'"#, r#"'[2.0]'"#]);
+        test(r#"VECTOR_HAMMING_DIST(x, y)"#, &["x", "y"]);
+        test(r#"VECTOR_JACCARD_SIM('[1.0, 0.0]', '[0.0, 1.0]')"#, &[r#"'[1.0, 0.0]'"#, r#"'[0.0, 1.0]'"#]);
+        test(r#"VECTOR_CANBERRA_DIST(col1, col2)"#, &["col1", "col2"]);
+
         // Triple
         test(
             r#"LPAD(name, 20, '>")++++<')"#,
@@ -345,6 +419,10 @@ mod tests {
             &[r#"'   >++++("<   '"#, "3", "11"],
         );
         test(r#"SPLICE(list, 2, 4)"#, &["list", "2", "4"]);
+
+        // Vector functions - Triple argument  
+        test(r#"VECTOR_MINKOWSKI_DIST('[1.0, 2.0]', '[3.0, 4.0]', 2.0)"#, &[r#"'[1.0, 2.0]'"#, r#"'[3.0, 4.0]'"#, "2.0"]);
+        test(r#"VECTOR_MINKOWSKI_DIST(vec_a, vec_b, p_value)"#, &["vec_a", "vec_b", "p_value"]);
 
         // Quadruple
         test(
