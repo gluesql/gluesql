@@ -89,10 +89,10 @@ impl IntoValue for Bson {
                         _ => Err(MongoStorageError::UnsupportedBsonType),
                     })
                     .collect();
-                
+
                 let floats = floats?;
-                let float_vector = FloatVector::new(floats)
-                    .map_err(|_| MongoStorageError::UnsupportedBsonType)?;
+                let float_vector =
+                    FloatVector::new(floats).map_err(|_| MongoStorageError::UnsupportedBsonType)?;
                 Value::FloatVector(float_vector)
             }
             (Bson::Array(array), _) => {

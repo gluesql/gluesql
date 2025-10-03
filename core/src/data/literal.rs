@@ -80,7 +80,10 @@ impl<'a> TryFrom<&'a AstLiteral> for Literal<'a> {
                     Text(Cow::Borrowed(v))
                 } else {
                     // This is a real hex string for bytea
-                    Bytea(hex::decode(v).map_err(|_| LiteralError::FailedToDecodeHexString(v.clone()))?)
+                    Bytea(
+                        hex::decode(v)
+                            .map_err(|_| LiteralError::FailedToDecodeHexString(v.clone()))?,
+                    )
                 }
             }
             AstLiteral::Null => Null,
