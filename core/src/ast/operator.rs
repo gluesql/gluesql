@@ -44,6 +44,7 @@ pub enum BinaryOperator {
     BitwiseAnd,
     BitwiseShiftLeft,
     BitwiseShiftRight,
+    Arrow,
 }
 
 impl ToSql for BinaryOperator {
@@ -67,6 +68,7 @@ impl ToSql for BinaryOperator {
             BinaryOperator::BitwiseAnd => "&".to_owned(),
             BinaryOperator::BitwiseShiftLeft => "<<".to_owned(),
             BinaryOperator::BitwiseShiftRight => ">>".to_owned(),
+            BinaryOperator::Arrow => "->".to_owned(),
         }
     }
 }

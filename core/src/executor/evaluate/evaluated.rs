@@ -1,11 +1,11 @@
 use {
-    super::error::EvaluateError,
+    super::{error::EvaluateError, function},
     crate::{
         ast::{BinaryOperator, DataType, TrimWhereField},
         data::{Key, Literal, Value, value::BTreeMapJsonExt},
         result::{Error, Result},
     },
-    std::{borrow::Cow, cmp::Ordering, collections::BTreeMap, ops::Range},
+    std::{borrow::Cow, cmp::Ordering, collections::BTreeMap, convert::TryFrom, ops::Range},
     utils::Tribool,
 };
 
@@ -277,6 +277,48 @@ impl<'a> Evaluated<'a> {
             |l, r| l.bitwise_shift_right(r),
             |l, r| l.bitwise_shift_right(r),
         )
+    }
+
+    pub fn arrow<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
+        let selector = Value::try_from(other.clone())?;
+
+        if selector.is_null() {
+            return Ok(Evaluated::Value(Value::Null));
+        }
+
+        if !matches!(
+            &selector,
+            Value::Str(_)
+                | Value::I8(_)
+                | Value::I16(_)
+                | Value::I32(_)
+                | Value::I64(_)
+                | Value::I128(_)
+                | Value::U8(_)
+                | Value::U16(_)
+                | Value::U32(_)
+                | Value::U64(_)
+                | Value::U128(_)
+        ) {
+            return Err(EvaluateError::ArrowSelectorRequiresIntegerOrString(format!(
+                "{:?}",
+                selector
+            ))
+            .into());
+        }
+
+        let value_result = match self {
+            Evaluated::Value(base) => function::select_arrow_value(base, &selector),
+            _ => {
+                let base = Value::try_from(self.clone())?;
+                function::select_arrow_value(&base, &selector)
+            }
+        };
+
+        match value_result {
+            Ok(value) => Ok(Evaluated::Value(value)),
+            Err(err) => Err(err),
+        }
     }
 
     pub fn unary_plus(&self) -> Result<Evaluated<'a>> {
