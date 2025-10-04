@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        error::{Error, TranslateError, ValueError},
+        error::TranslateError,
         executor::EvaluateError,
         prelude::Value::{self, Bool, F64, I64, Map, Str},
     },
@@ -144,30 +144,25 @@ test_case!(arrow, {
 
     g.test(
         "SELECT 1 -> 'foo' AS result;",
-        Err(Error::Value(Box::new(
-            ValueError::SelectorRequiresMapOrListTypes,
-        ))),
+        Err(EvaluateError::ArrowBaseRequiresMapOrList.into()),
     )
     .await;
 
     g.test(
         "SELECT TRUE -> 'foo' AS result;",
-        Err(Error::Value(Box::new(
-            ValueError::SelectorRequiresMapOrListTypes,
-        ))),
+        Err(EvaluateError::ArrowBaseRequiresMapOrList.into()),
     )
     .await;
 
     g.test(
         r#"SELECT '{"role":"admin"}'->'role' AS result;"#,
-        Err(Error::Value(Box::new(
-            ValueError::SelectorRequiresMapOrListTypes,
-        ))),
+        Err(EvaluateError::ArrowBaseRequiresMapOrList.into()),
     )
     .await;
+
     g.test(
         "SELECT object->TRUE AS result FROM ArrowSample;",
-        Err(EvaluateError::FunctionRequiresIntegerOrStringValue("->".to_owned()).into()),
+        Err(EvaluateError::ArrowSelectorRequiresIntegerOrString("Bool(true)".to_owned()).into()),
     )
     .await;
 
