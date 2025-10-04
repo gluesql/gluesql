@@ -8,6 +8,7 @@ use {
     chrono::{Datelike, Duration, Months},
     md5::{Digest, Md5},
     rand::{Rng, SeedableRng, rngs::StdRng},
+    std::borrow::Cow,
     std::ops::ControlFlow::{self as StdControlFlow, Break, Continue},
     uuid::Uuid,
 };
@@ -1100,5 +1101,65 @@ pub fn dedup<'a>(list: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
             Continue(Evaluated::Value(Value::List(list)))
         }
         _ => Err(EvaluateError::ListTypeRequired.into()).into_control_flow(),
+    }
+}
+
+pub fn select_arrow_value(base: &Value, selector: &Value) -> Result<Value> {
+    if base.is_null() {
+        return Ok(Value::Null);
+    }
+
+    match base {
+        Value::Map(map) => {
+            let key = match selector {
+                Value::Str(value) => Cow::Borrowed(value.as_str()),
+                Value::I8(value) => Cow::Owned(value.to_string()),
+                Value::I16(value) => Cow::Owned(value.to_string()),
+                Value::I32(value) => Cow::Owned(value.to_string()),
+                Value::I64(value) => Cow::Owned(value.to_string()),
+                Value::I128(value) => Cow::Owned(value.to_string()),
+                Value::U8(value) => Cow::Owned(value.to_string()),
+                Value::U16(value) => Cow::Owned(value.to_string()),
+                Value::U32(value) => Cow::Owned(value.to_string()),
+                Value::U64(value) => Cow::Owned(value.to_string()),
+                Value::U128(value) => Cow::Owned(value.to_string()),
+                _ => {
+                    return Err(EvaluateError::ArrowSelectorRequiresIntegerOrString(format!(
+                        "{:?}",
+                        selector
+                    ))
+                    .into());
+                }
+            };
+
+            Ok(map.get(key.as_ref()).cloned().unwrap_or(Value::Null))
+        }
+        Value::List(list) => {
+            let index = match selector {
+                Value::Str(value) => value.parse::<usize>().ok(),
+                Value::I8(value) => usize::try_from(*value).ok(),
+                Value::I16(value) => usize::try_from(*value).ok(),
+                Value::I32(value) => usize::try_from(*value).ok(),
+                Value::I64(value) => usize::try_from(*value).ok(),
+                Value::I128(value) => usize::try_from(*value).ok(),
+                Value::U8(value) => Some(*value as usize),
+                Value::U16(value) => Some(*value as usize),
+                Value::U32(value) => usize::try_from(*value).ok(),
+                Value::U64(value) => usize::try_from(*value).ok(),
+                Value::U128(value) => usize::try_from(*value).ok(),
+                _ => {
+                    return Err(EvaluateError::ArrowSelectorRequiresIntegerOrString(format!(
+                        "{:?}",
+                        selector
+                    ))
+                    .into());
+                }
+            };
+
+            Ok(index
+                .and_then(|idx| list.get(idx).cloned())
+                .unwrap_or(Value::Null))
+        }
+        _ => Err(EvaluateError::ArrowBaseRequiresMapOrList.into()),
     }
 }

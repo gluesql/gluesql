@@ -1,8 +1,8 @@
 use {
-    super::error::EvaluateError,
+    super::{error::EvaluateError, function},
     crate::{
         ast::{BinaryOperator, DataType, TrimWhereField},
-        data::{Key, Literal, Value, ValueError, value::BTreeMapJsonExt},
+        data::{Key, Literal, Value, value::BTreeMapJsonExt},
         result::{Error, Result},
     },
     std::{borrow::Cow, cmp::Ordering, collections::BTreeMap, convert::TryFrom, ops::Range},
@@ -86,54 +86,6 @@ impl TryFrom<Evaluated<'_>> for BTreeMap<String, Value> {
             Evaluated::Value(v) => Err(EvaluateError::MapOrStringValueRequired(v.into()).into()),
             Evaluated::StrSlice { source, range } => BTreeMap::parse_json_object(&source[range]),
         }
-    }
-}
-
-fn select_arrow_value(base: &Value, selector: &Value) -> Result<Value> {
-    if base.is_null() {
-        return Ok(Value::Null);
-    }
-
-    match base {
-        Value::Map(map) => {
-            let key = match selector {
-                Value::Str(value) => Cow::Borrowed(value.as_str()),
-                Value::I8(value) => Cow::Owned(value.to_string()),
-                Value::I16(value) => Cow::Owned(value.to_string()),
-                Value::I32(value) => Cow::Owned(value.to_string()),
-                Value::I64(value) => Cow::Owned(value.to_string()),
-                Value::I128(value) => Cow::Owned(value.to_string()),
-                Value::U8(value) => Cow::Owned(value.to_string()),
-                Value::U16(value) => Cow::Owned(value.to_string()),
-                Value::U32(value) => Cow::Owned(value.to_string()),
-                Value::U64(value) => Cow::Owned(value.to_string()),
-                Value::U128(value) => Cow::Owned(value.to_string()),
-                _ => return Err(ValueError::SelectorRequiresMapOrListTypes.into()),
-            };
-
-            Ok(map.get(key.as_ref()).cloned().unwrap_or(Value::Null))
-        }
-        Value::List(list) => {
-            let index = match selector {
-                Value::Str(value) => value.parse::<usize>().ok(),
-                Value::I8(value) => usize::try_from(*value).ok(),
-                Value::I16(value) => usize::try_from(*value).ok(),
-                Value::I32(value) => usize::try_from(*value).ok(),
-                Value::I64(value) => usize::try_from(*value).ok(),
-                Value::I128(value) => usize::try_from(*value).ok(),
-                Value::U8(value) => Some(*value as usize),
-                Value::U16(value) => Some(*value as usize),
-                Value::U32(value) => usize::try_from(*value).ok(),
-                Value::U64(value) => usize::try_from(*value).ok(),
-                Value::U128(value) => usize::try_from(*value).ok(),
-                _ => return Err(ValueError::SelectorRequiresMapOrListTypes.into()),
-            };
-
-            Ok(index
-                .and_then(|idx| list.get(idx).cloned())
-                .unwrap_or(Value::Null))
-        }
-        _ => Err(ValueError::SelectorRequiresMapOrListTypes.into()),
     }
 }
 
@@ -348,16 +300,18 @@ impl<'a> Evaluated<'a> {
                 | Value::U64(_)
                 | Value::U128(_)
         ) {
-            return Err(
-                EvaluateError::FunctionRequiresIntegerOrStringValue("->".to_owned()).into(),
-            );
+            return Err(EvaluateError::ArrowSelectorRequiresIntegerOrString(format!(
+                "{:?}",
+                selector
+            ))
+            .into());
         }
 
         let value_result = match self {
-            Evaluated::Value(base) => select_arrow_value(base, &selector),
+            Evaluated::Value(base) => function::select_arrow_value(base, &selector),
             _ => {
                 let base = Value::try_from(self.clone())?;
-                select_arrow_value(&base, &selector)
+                function::select_arrow_value(&base, &selector)
             }
         };
 

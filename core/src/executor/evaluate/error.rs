@@ -20,6 +20,12 @@ pub enum EvaluateError {
     #[error("function requires integer or string value: {0}")]
     FunctionRequiresIntegerOrStringValue(String),
 
+    #[error("arrow base requires MAP or LIST types")]
+    ArrowBaseRequiresMapOrList,
+
+    #[error("arrow selector requires integer or string value: {0}")]
+    ArrowSelectorRequiresIntegerOrString(String),
+
     #[error("function requires integer value: {0}")]
     FunctionRequiresIntegerValue(String),
 
