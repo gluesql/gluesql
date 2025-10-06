@@ -145,7 +145,7 @@ fn eval_to_point(name: &str, evaluated: Evaluated<'_>) -> ControlFlow<Point> {
 }
 
 // --- text ---
-pub fn concat(exprs: Vec<Evaluated<'_>>) -> ControlFlow<Evaluated> {
+pub fn concat(exprs: Vec<Evaluated<'_>>) -> ControlFlow<Evaluated<'_>> {
     let value = exprs
         .into_iter()
         .try_fold(None, |left: Option<Evaluated>, right| match left {
@@ -440,6 +440,10 @@ pub fn rand<'a>(name: String, seed: Option<Evaluated<'_>>) -> ControlFlow<Evalua
 
 pub fn round<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
     eval_to_float(&name, n).map(|n| Evaluated::Value(Value::F64(n.round())))
+}
+
+pub fn trunc<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {
+    eval_to_float(&name, n).map(|n| Evaluated::Value(Value::F64(n.trunc())))
 }
 
 pub fn floor<'a>(name: String, n: Evaluated<'_>) -> ControlFlow<Evaluated<'a>> {

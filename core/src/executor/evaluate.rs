@@ -515,6 +515,7 @@ async fn evaluate_function<'a, 'b: 'a, 'c: 'a, T: GStore>(
             f::rand(name, expr)
         }
         Function::Round(expr) => f::round(name, eval(expr).await?),
+        Function::Trunc(expr) => f::trunc(name, eval(expr).await?),
         Function::Floor(expr) => f::floor(name, eval(expr).await?),
         Function::Radians(expr) => f::radians(name, eval(expr).await?),
         Function::Degrees(expr) => f::degrees(name, eval(expr).await?),

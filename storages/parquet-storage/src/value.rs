@@ -25,28 +25,27 @@ impl ParquetField {
             Field::Short(v) => Ok(Value::I16(*v)),
             Field::Int(v) => Ok(Value::I32(*v)),
             Field::Long(v) => {
-                if let Some(columns) = &schema.column_defs {
-                    if let Some(column) = columns.get(idx) {
-                        if column.data_type == DataType::Time {
-                            // Convert from microseconds since midnight to NaiveTime
-                            let total_seconds = v / 1_000_000;
-                            let hours = (total_seconds / 3600) % 24;
-                            let minutes = (total_seconds / 60) % 60;
-                            let seconds = total_seconds % 60;
-                            let micros = v % 1_000_000;
+                if let Some(columns) = &schema.column_defs
+                    && let Some(column) = columns.get(idx)
+                    && column.data_type == DataType::Time
+                {
+                    // Convert from microseconds since midnight to NaiveTime
+                    let total_seconds = v / 1_000_000;
+                    let hours = (total_seconds / 3600) % 24;
+                    let minutes = (total_seconds / 60) % 60;
+                    let seconds = total_seconds % 60;
+                    let micros = v % 1_000_000;
 
-                            return NaiveTime::from_hms_micro_opt(
-                                hours as u32,
-                                minutes as u32,
-                                seconds as u32,
-                                micros as u32,
-                            )
-                            .map_storage_err(Error::StorageMsg(
-                                "Failed to convert to NaiveTime".to_owned(),
-                            ))
-                            .map(Value::Time);
-                        }
-                    }
+                    return NaiveTime::from_hms_micro_opt(
+                        hours as u32,
+                        minutes as u32,
+                        seconds as u32,
+                        micros as u32,
+                    )
+                    .map_storage_err(Error::StorageMsg(
+                        "Failed to convert to NaiveTime".to_owned(),
+                    ))
+                    .map(Value::Time);
                 }
                 Ok(Value::I64(*v))
             }
@@ -58,53 +57,53 @@ impl ParquetField {
             Field::Double(v) => Ok(Value::F64(*v)),
             Field::Str(v) => Ok(Value::Str(v.clone())),
             Field::Bytes(v) => {
-                if let Some(columns) = &schema.column_defs {
-                    if let Some(column) = columns.get(idx) {
-                        match column.data_type {
-                            DataType::Timestamp => {
-                                let timestamp = bincode::deserialize(v.data()).map_storage_err()?;
-                                return Ok(Value::Timestamp(timestamp));
-                            }
-                            DataType::Uuid => {
-                                let uuid = bincode::deserialize(v.data()).map_storage_err()?;
-                                return Ok(Value::Uuid(uuid));
-                            }
-                            DataType::Uint128 => {
-                                let uint128 = bincode::deserialize(v.data()).map_storage_err()?;
-                                return Ok(Value::U128(uint128));
-                            }
-                            DataType::Int128 => {
-                                let int128 = bincode::deserialize(v.data()).map_storage_err()?;
-                                return Ok(Value::I128(int128));
-                            }
-                            DataType::Interval => {
-                                let interval = bincode::deserialize(v.data()).map_storage_err()?;
-                                return Ok(Value::Interval(interval));
-                            }
-                            DataType::Decimal => {
-                                let decimal = bincode::deserialize(v.data()).map_storage_err()?;
-                                return Ok(Value::Decimal(decimal));
-                            }
-                            DataType::Map => {
-                                let map: BTreeMap<String, Value> =
-                                    bincode::deserialize(v.data()).map_storage_err()?;
-                                return Ok(Value::Map(map));
-                            }
-                            DataType::List => {
-                                let list: Vec<Value> =
-                                    bincode::deserialize(v.data()).map_storage_err()?;
-                                return Ok(Value::List(list));
-                            }
-                            DataType::Inet => {
-                                let inet = bincode::deserialize(v.data()).map_storage_err()?;
-                                return Ok(Value::Inet(inet));
-                            }
-                            DataType::Point => {
-                                let point = bincode::deserialize(v.data()).map_storage_err()?;
-                                return Ok(Value::Point(point));
-                            }
-                            _ => {}
+                if let Some(columns) = &schema.column_defs
+                    && let Some(column) = columns.get(idx)
+                {
+                    match column.data_type {
+                        DataType::Timestamp => {
+                            let timestamp = bincode::deserialize(v.data()).map_storage_err()?;
+                            return Ok(Value::Timestamp(timestamp));
                         }
+                        DataType::Uuid => {
+                            let uuid = bincode::deserialize(v.data()).map_storage_err()?;
+                            return Ok(Value::Uuid(uuid));
+                        }
+                        DataType::Uint128 => {
+                            let uint128 = bincode::deserialize(v.data()).map_storage_err()?;
+                            return Ok(Value::U128(uint128));
+                        }
+                        DataType::Int128 => {
+                            let int128 = bincode::deserialize(v.data()).map_storage_err()?;
+                            return Ok(Value::I128(int128));
+                        }
+                        DataType::Interval => {
+                            let interval = bincode::deserialize(v.data()).map_storage_err()?;
+                            return Ok(Value::Interval(interval));
+                        }
+                        DataType::Decimal => {
+                            let decimal = bincode::deserialize(v.data()).map_storage_err()?;
+                            return Ok(Value::Decimal(decimal));
+                        }
+                        DataType::Map => {
+                            let map: BTreeMap<String, Value> =
+                                bincode::deserialize(v.data()).map_storage_err()?;
+                            return Ok(Value::Map(map));
+                        }
+                        DataType::List => {
+                            let list: Vec<Value> =
+                                bincode::deserialize(v.data()).map_storage_err()?;
+                            return Ok(Value::List(list));
+                        }
+                        DataType::Inet => {
+                            let inet = bincode::deserialize(v.data()).map_storage_err()?;
+                            return Ok(Value::Inet(inet));
+                        }
+                        DataType::Point => {
+                            let point = bincode::deserialize(v.data()).map_storage_err()?;
+                            return Ok(Value::Point(point));
+                        }
+                        _ => {}
                     }
                 }
                 Ok(Value::Bytea(v.data().to_vec()))

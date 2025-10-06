@@ -3,6 +3,7 @@ resolver = "2"
 members = [
   "cli",
   "core",
+  "macros",
   "pkg/rust",
   "pkg/javascript",
   "pkg/python",
@@ -13,6 +14,7 @@ members = [
 default-members = [
   "cli",
   "core",
+  "macros",
   "pkg/rust",
   "pkg/javascript",
   "pkg/python",

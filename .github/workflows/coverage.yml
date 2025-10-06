@@ -15,32 +15,63 @@ env:
 
 jobs:
   coverage:
-    runs-on: [self-hosted, linux]
+    runs-on: ubuntu-latest
+    env:
+      COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+      mongo:
+        image: mongo
+        ports:
+          - 27017:27017
     steps:
       - uses: actions/checkout@v4
-      - run: rustup component add llvm-tools-preview
-      - run: cargo install grcov
-      - name: clean
+      - name: Free disk space (pre-build)
+        continue-on-error: true
         run: |
-          cargo clean
-          rm -rf ./target/debug/deps/gluesql*
-          rm *.profraw && rm **/*.profraw
-          cd storages/csv-storage && rm -rf ./tmp && cd ../..
-          cd storages/json-storage && rm -rf ./tmp && cd ../..
-          redis-cli flushall
-      - name: build
-        env:
-          RUSTFLAGS: -Cinstrument-coverage
-        run: cargo build --verbose
+          echo "Freeing disk space..."
+          echo "Disk before:"
+          df -h
+          sudo rm -rf /usr/local/lib/android || true
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /opt/ghc || true
+          if command -v docker >/dev/null 2>&1; then
+            timeout 60 docker image prune -af || true
+          fi
+          echo "Disk after:"
+          df -h
+      - name: Configure git user
+        run: |
+          git config --global user.email "ci@example.com"
+          git config --global user.name "CI"
+      - run: rustup component add llvm-tools-preview
+      - name: Install grcov (prebuilt)
+        uses: taiki-e/install-action@v2
+        with:
+          tool: grcov@0.10.5
+      - name: Prepare coverage dirs
+        run: |
+          mkdir -p coverage/profraw
       - name: test
         env:
           RUSTFLAGS: -Cinstrument-coverage
-          LLVM_PROFILE_FILE: gluesql-%p-%m.profraw
+          LLVM_PROFILE_FILE: coverage/profraw/%p-%m.profraw
           GIT_REMOTE: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
         run: GIT_REMOTE=$GIT_REMOTE cargo test --all-features --verbose
+      - name: Merge coverage profiles and free space
+        run: |
+          echo "Merging coverage profiles..."
+          LLVM_BIN=$(rustc --print sysroot)/lib/rustlib/$(rustc -vV | sed -n 's|host: ||p')/bin
+          "$LLVM_BIN/llvm-profdata" merge -sparse coverage/profraw/*.profraw -o coverage/merged.profdata
+          echo "Removing incremental build artifacts to free space..."
+          rm -rf target/debug/incremental || true
+          echo "Removing Cargo registry/git caches to free space..."
+          rm -rf ~/.cargo/registry ~/.cargo/git || true
       - name: Run grcov
         run: |
-          mkdir coverage
           grcov . \
             --binary-path ./target/debug/ \
             -s . \
@@ -52,6 +83,11 @@ jobs:
             --ignore "cli/src/{cli,helper,lib,main}.rs" \
             --excl-line "(#\\[derive\\()|(^\s*.await[;,]?$)|(^test_case\!\([\d\w]+,)" \
             -o ./coverage/lcov.info
+      - name: Cleanup raw and merged profiles
+        if: always()
+        run: |
+          rm -f coverage/profraw/*.profraw || true
+          rm -f coverage/merged.profdata || true
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
@@ -64,3 +100,35 @@ jobs:
         uses: coverallsapp/github-action@master
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Compress coverage report
+        run: |
+          xz -T0 -9e -c coverage/lcov.info > coverage/lcov.info.xz
+          rm -f coverage/lcov.info
+      - name: Set timestamp
+        run: echo "TIMESTAMP=$(date -u +'%Y-%m-%dT%H%M%SZ')" >> $GITHUB_ENV
+      - name: Create GitHub App token
+        if: github.repository == 'gluesql/gluesql' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.COVERAGE_APP_ID }}
+          installation-id: ${{ secrets.COVERAGE_APP_INSTALLATION_ID }}
+          private-key: ${{ secrets.COVERAGE_APP_PRIVATE_KEY }}
+          owner: gluesql
+          repositories: gluesql, gluesql.github.io
+      - name: Publish coverage to gluesql.github.io
+        if: github.repository == 'gluesql/gluesql' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git clone https://github.com/gluesql/gluesql.github.io.git
+          cd gluesql.github.io
+          git checkout gh-pages
+          mkdir -p coverage/main
+          cp ../coverage/lcov.info.xz coverage/main/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
+          git add coverage/main/${TIMESTAMP}.${COMMIT_SHA}.lcov.info.xz
+          git commit -m "Coverage: main@${COMMIT_SHA}"
+          git push https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/gluesql/gluesql.github.io.git
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/lcov.info.xz

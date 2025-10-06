@@ -1,7 +1,7 @@
 use {
     crate::{
         ast::{Aggregate, AggregateFunction, CountArgExpr, DataType},
-        data::{Key, Value},
+        data::Value,
         executor::{
             context::RowContext,
             evaluate::{EvaluateError, evaluate},
@@ -15,7 +15,7 @@ use {
     utils::{IndexMap, Vector},
 };
 
-type Group = Arc<Vec<Key>>;
+type Group = Arc<Vec<Value>>;
 type ValuesMap<'a> = HashMap<&'a Aggregate, Value>;
 type Context<'a> = Arc<RowContext<'a>>;
 
@@ -97,10 +97,10 @@ impl AggrValue {
                     None
                 };
 
-                if let Some(ref mut set) = distinct_values {
-                    if !value.is_null() {
-                        set.insert(value.clone());
-                    }
+                if let Some(ref mut set) = distinct_values
+                    && !value.is_null()
+                {
+                    set.insert(value.clone());
                 }
 
                 AggrValue::Count {
@@ -406,14 +406,14 @@ impl<'a, T: GStore> State<'a, T> {
         State {
             storage,
             index: 0,
-            group: Arc::new(vec![Key::None]),
+            group: Arc::new(vec![Value::Null]),
             values: IndexMap::new(),
             groups: HashSet::new(),
             contexts: Vector::new(),
         }
     }
 
-    pub fn apply(self, index: usize, group: Vec<Key>, context: Arc<RowContext<'a>>) -> Self {
+    pub fn apply(self, index: usize, group: Vec<Value>, context: Arc<RowContext<'a>>) -> Self {
         let group = Arc::new(group);
         let (groups, contexts) = if self.groups.contains(&group) {
             (self.groups, self.contexts)

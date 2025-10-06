@@ -18,22 +18,20 @@ pub fn validate(schema_map: &SchemaMap, statement: &Statement) -> Result<()> {
         _ => None,
     };
 
-    if let Some(query) = query {
-        if let Query {
+    if let Some(query) = query
+        && let Query {
             body: SetExpr::Select(select),
             ..
         } = query
-        {
-            for select_item in &select.projection {
-                if let SelectItem::Expr {
-                    expr: Expr::Identifier(ident),
-                    ..
-                } = select_item
-                {
-                    if let Some(context) = contextualize_query(schema_map, query) {
-                        context.validate_duplicated(ident)?;
-                    }
-                }
+    {
+        for select_item in &select.projection {
+            if let SelectItem::Expr {
+                expr: Expr::Identifier(ident),
+                ..
+            } = select_item
+                && let Some(context) = contextualize_query(schema_map, query)
+            {
+                context.validate_duplicated(ident)?;
             }
         }
     }

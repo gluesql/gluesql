@@ -67,6 +67,7 @@ pub enum Function {
     },
     Rand(Option<Expr>),
     Round(Expr),
+    Trunc(Expr),
     Floor(Expr),
     Trim {
         expr: Expr,
@@ -302,6 +303,7 @@ impl ToSql for Function {
                 None => "RAND()".to_owned(),
             },
             Function::Round(e) => format!("ROUND({})", e.to_sql()),
+            Function::Trunc(e) => format!("TRUNC({})", e.to_sql()),
             Function::Floor(e) => format!("FLOOR({})", e.to_sql()),
             Function::Trim {
                 expr,
@@ -846,6 +848,14 @@ mod tests {
         assert_eq!(
             r#"ROUND("num")"#,
             &Expr::Function(Box::new(Function::Round(Expr::Identifier(
+                "num".to_owned()
+            ))))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"TRUNC("num")"#,
+            &Expr::Function(Box::new(Function::Trunc(Expr::Identifier(
                 "num".to_owned()
             ))))
             .to_sql()
