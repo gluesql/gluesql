@@ -1,9 +1,10 @@
 mod error;
 mod store;
+mod utils;
 
 use {
     error::ResultExt,
-    gluesql_core::error::{Error, Result},
+    gluesql_core::error::Result,
     milvus::{
         client::{Client, ClientBuilder},
     },
