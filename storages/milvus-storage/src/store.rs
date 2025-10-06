@@ -1,22 +1,34 @@
 use async_trait::async_trait;
-use gluesql_core::{ast::{ColumnUniqueOption, DataType}, data::Schema, error::{Error, Result}, store::{DataRow, RowIter, Store}};
-use milvus::{collection::Collection, proto::schema::DataType as MilvusDataType, proto::schema::CollectionSchema as ProtoCollectionSchema};
+use futures::future::try_join_all;
 
 use crate::{error::ResultExt, MilvusStorage};
 
 #[async_trait]
 impl Store for MilvusStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
-        if self.client.has_collection(table_name).await.map_storage_err()? {
+        if !self.client.has_collection(table_name).await.map_storage_err()? {
+            return Ok(None);
+        }
             let collection = self.client.get_collection(table_name).await.map_storage_err()?;
             let schema = self.schema_from_collection(collection)?;
-            return Ok(Some(schema));
-        }
-        Ok(None)
+        Ok(Some(schema))
     }
 
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
-        
+        let collection_names = self.client.list_collections().await.map_storage_err()?;
+        if collection_names.is_empty() {
+            return Ok(vec![])
+        }
+        let tasks = collection_names
+            .iter()
+            .map(|name| self.fetch_schema(&name));
+
+        let schemas = try_join_all(tasks).await?
+            .into_iter()
+            .flatten()
+            .collect();
+    
+        Ok(schemas)
     }
 
     async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {
