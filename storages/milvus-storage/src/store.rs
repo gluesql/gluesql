@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use futures::future::try_join_all;
+use futures::{future::try_join_all, stream};
 use gluesql_core::{
     ast::{ColumnDef, ColumnUniqueOption, DataType},
     data::{Key, Schema, Value},
@@ -65,12 +65,60 @@ impl Store for MilvusStorage {
             return Ok(None);
         }
 
-        let data_row = self.convert_field_columns_to_datarow(&results, &schema)?;
+        let data_row = self.convert_field_columns_to_datarow(&results, &schema, 0)?;
         Ok(Some(data_row))
     }
 
     async fn scan_data<'a>(&'a self, table_name: &str) -> Result<RowIter<'a>> {
+        // WARNING: Milvus full table scan limitations
+        //
+        // Recommendations:
+        // - Use this method only for development/testing with small datasets
+        // - For production, use SELECT with WHERE clause for filtered queries
+        // - Vector databases are optimized for similarity search, not full scans
+        //
+        // Future: When SDK adds QueryOptions support, add limit parameter here
 
+        if !self.client.has_collection(table_name).await.map_storage_err()? {
+            return Ok(Box::pin(stream::empty()));
+        }
+
+        let collection = self.client.get_collection(table_name).await.map_storage_err()?;
+        let schema = self.schema_from_collection(collection)?;
+
+        let collection = self.client.get_collection(table_name).await.map_storage_err()?;
+        let results = collection.query("".to_string(), Vec::<String>::new())
+            .await
+            .map_storage_err()?;
+
+        let rows = if results.is_empty() {
+            vec![]
+        } else {
+            let column_defs = schema.column_defs.as_ref()
+                .ok_or_else(|| Error::StorageMsg("No column definitions found".to_string()))?;
+
+            let primary_key_field = get_primary_key(column_defs)
+                .ok_or_else(|| Error::StorageMsg("No primary key found".to_string()))?;
+
+            let pk_index = column_defs
+                .iter()
+                .position(|cd| cd.name == primary_key_field.name)
+                .ok_or_else(|| Error::StorageMsg("Primary key not found in columns".to_string()))?;
+
+            let row_count = results.first()
+                .map(|fc| fc.len())
+                .unwrap_or(0);
+
+            (0..row_count)
+                .map(|idx| {
+                    let data_row = self.convert_field_columns_to_datarow(&results, &schema, idx)?;
+                    let key = self.extract_key_from_datarow(&data_row, pk_index)?;
+                    Ok((key, data_row))
+                })
+                .collect()
+        };
+
+        Ok(Box::pin(stream::iter(rows)))
     }
 }
 
@@ -78,7 +126,8 @@ impl MilvusStorage {
     fn convert_field_columns_to_datarow(
         &self,
         field_columns: &[FieldColumn],
-        schema: &Schema
+        schema: &Schema,
+        row_index: usize
     ) -> Result<DataRow> {
         let column_defs = schema.column_defs.as_ref()
             .ok_or_else(|| Error::StorageMsg("No column definitions".to_string()))?;
@@ -91,14 +140,30 @@ impl MilvusStorage {
                     .find(|fc| fc.name == col_def.name)
                     .ok_or_else(|| Error::StorageMsg(format!("Field {} not found in results", col_def.name)))?;
 
-                let milvus_value = field_col.get(0)
-                    .ok_or_else(|| Error::StorageMsg(format!("No value at index 0 for field {}", col_def.name)))?;
+                let milvus_value = field_col.get(row_index)
+                    .ok_or_else(|| Error::StorageMsg(format!("No value at index {} for field {}", row_index, col_def.name)))?;
 
                 self.milvus_value_to_glue_value(milvus_value, &col_def.data_type)
             })
             .collect::<Result<Vec<Value>>>()?;
 
         Ok(DataRow::Vec(values))
+    }
+
+    fn extract_key_from_datarow(&self, data_row: &DataRow, pk_index: usize) -> Result<Key> {
+        let values = match data_row {
+            DataRow::Vec(v) => v,
+            _ => return Err(Error::StorageMsg("Expected DataRow::Vec".to_string())),
+        };
+
+        match &values[pk_index] {
+            Value::I8(v) => Ok(Key::I8(*v)),
+            Value::I16(v) => Ok(Key::I16(*v)),
+            Value::I32(v) => Ok(Key::I32(*v)),
+            Value::I64(v) => Ok(Key::I64(*v)),
+            Value::Str(v) => Ok(Key::Str(v.clone())),
+            _ => Err(Error::StorageMsg("Unsupported primary key type".to_string())),
+        }
     }
 
     fn milvus_value_to_glue_value(&self, milvus_val: milvus::value::Value, data_type: &DataType) -> Result<Value> {
@@ -121,9 +186,9 @@ impl MilvusStorage {
                     .collect();
                 Ok(Value::Bytea(bytes))
             },
-            (mv, dt) => Err(Error::StorageMsg(format!(
-                "Type mismatch: Milvus value {:?} cannot be converted to {:?}",
-                mv, dt
+            (_, dt) => Err(Error::StorageMsg(format!(
+                "Type mismatch: Milvus value cannot be converted to {:?}",
+                dt
             )))
         }
     }
