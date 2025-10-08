@@ -11,9 +11,9 @@ pub enum SqlValue {
     I16 { value: i16 },
     I32 { value: i32 },
     I64 { value: i64 },
-    U8 { value: u8 },
-    U16 { value: u16 },
-    U32 { value: u32 },
+    U8 { value: i16 },   // Java compatibility: u8 -> i16 (0-255 fits in i16)
+    U16 { value: i32 },  // Java compatibility: u16 -> i32 (0-65535 fits in i32) 
+    U32 { value: i64 },  // Java compatibility: u32 -> i64 (0-4294967295 fits in i64)
     F32 { value: f32 },
     F64 { value: f64 },
     BigInt { value: String },
@@ -53,9 +53,9 @@ impl From<CoreValue> for SqlValue {
             CoreValue::I128(n) => SqlValue::BigInt {
                 value: n.to_string(),
             },
-            CoreValue::U8(n) => SqlValue::U8 { value: n },
-            CoreValue::U16(n) => SqlValue::U16 { value: n },
-            CoreValue::U32(n) => SqlValue::U32 { value: n },
+            CoreValue::U8(n) => SqlValue::U8 { value: n as i16 },
+            CoreValue::U16(n) => SqlValue::U16 { value: n as i32 },
+            CoreValue::U32(n) => SqlValue::U32 { value: n as i64 },
             CoreValue::U64(n) => SqlValue::BigInt {
                 value: n.to_string(),
             },
