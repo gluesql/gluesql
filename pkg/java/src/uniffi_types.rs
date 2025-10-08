@@ -1,12 +1,23 @@
+use std::collections::HashMap;
 use gluesql_core::prelude::{Payload as CorePayload, PayloadVariable, Value as CoreValue};
 
 #[derive(uniffi::Enum)]
 pub enum SqlValue {
     Bool { value: bool },
+    I8 { value: i8 },
+    I16 { value: i16 },
+    I32 { value: i32 },
     I64 { value: i64 },
+    U8 { value: u8 },
+    U16 { value: u16 },
+    U32 { value: u32 },
+    U64 { value: u64 },
+    F32 { value: f32 },
     F64 { value: f64 },
     Str { value: String },
     Bytes { value: Vec<u8> },
+    SqlMap { value: HashMap<String, SqlValue> },
+    SqlList { value: Vec<SqlValue> },
     Null,
 }
 
@@ -14,129 +25,41 @@ impl From<CoreValue> for SqlValue {
     fn from(value: CoreValue) -> Self {
         match value {
             CoreValue::Bool(b) => SqlValue::Bool { value: b },
-            CoreValue::I8(n) => SqlValue::I64 { value: n as i64 },
-            CoreValue::I16(n) => SqlValue::I64 { value: n as i64 },
-            CoreValue::I32(n) => SqlValue::I64 { value: n as i64 },
+            CoreValue::I8(n) => SqlValue::I8 { value: n },
+            CoreValue::I16(n) => SqlValue::I16 { value: n },
+            CoreValue::I32(n) => SqlValue::I32 { value: n },
             CoreValue::I64(n) => SqlValue::I64 { value: n },
             CoreValue::I128(n) => SqlValue::I64 { value: n as i64 }, // Truncation risk
-            CoreValue::U8(n) => SqlValue::I64 { value: n as i64 },
-            CoreValue::U16(n) => SqlValue::I64 { value: n as i64 },
-            CoreValue::U32(n) => SqlValue::I64 { value: n as i64 },
-            CoreValue::U64(n) => SqlValue::I64 { value: n as i64 }, // Truncation risk
+            CoreValue::U8(n) => SqlValue::U8 { value: n },
+            CoreValue::U16(n) => SqlValue::U16 { value: n },
+            CoreValue::U32(n) => SqlValue::U32 { value: n },
+            CoreValue::U64(n) => SqlValue::U64 { value: n },
             CoreValue::U128(n) => SqlValue::I64 { value: n as i64 }, // Truncation risk
-            CoreValue::F32(f) => SqlValue::F64 { value: f as f64 },
+            CoreValue::F32(f) => SqlValue::F32 { value: f },
             CoreValue::F64(f) => SqlValue::F64 { value: f },
-            CoreValue::Decimal(d) => SqlValue::Str {
-                value: d.to_string(),
-            },
+            CoreValue::Decimal(d) => SqlValue::Str { value: d.to_string() },
             CoreValue::Str(s) => SqlValue::Str { value: s },
             CoreValue::Bytea(bytes) => SqlValue::Bytes { value: bytes },
-            CoreValue::Inet(ip) => SqlValue::Str {
-                value: ip.to_string(),
-            },
-            CoreValue::Date(date) => SqlValue::Str {
-                value: date.format("%Y-%m-%d").to_string(),
-            },
-            CoreValue::Timestamp(ts) => SqlValue::Str {
-                value: ts.format("%Y-%m-%d %H:%M:%S%.3f").to_string(),
-            },
-            CoreValue::Time(time) => SqlValue::Str {
-                value: time.format("%H:%M:%S%.3f").to_string(),
-            },
-            CoreValue::Interval(interval) => SqlValue::Str {
-                value: format!("{:?}", interval),
-            },
+            CoreValue::Inet(ip) => SqlValue::Str { value: ip.to_string() },
+            CoreValue::Date(date) => SqlValue::Str { value: date.format("%Y-%m-%d").to_string() },
+            CoreValue::Timestamp(ts) => SqlValue::Str { value: ts.format("%Y-%m-%d %H:%M:%S%.3f").to_string() },
+            CoreValue::Time(time) => SqlValue::Str { value: time.format("%H:%M:%S%.3f").to_string() },
+            CoreValue::Interval(interval) => SqlValue::Str { value: format!("{:?}", interval) },
             CoreValue::Uuid(uuid) => {
                 let uuid = uuid::Uuid::from_u128(uuid);
-                SqlValue::Str {
-                    value: uuid.to_string(),
-                }
+                SqlValue::Str { value: uuid.to_string() }
             }
             CoreValue::Map(map) => {
-                // Convert to JSON string representation
-                let json_map: serde_json::Map<String, serde_json::Value> = map
-                    .into_iter()
-                    .map(|(k, v)| (k, convert_value_to_json(v)))
-                    .collect();
-                SqlValue::Str {
-                    value: serde_json::to_string(&json_map).unwrap_or_else(|_| "{}".to_string()),
-                }
+                let mut m: HashMap<String, SqlValue> = HashMap::new();
+                map.into_iter().for_each(|(key, value)| {
+                    m.insert(key, value.into());
+                });
+                SqlValue::SqlMap { value: m }
             }
-            CoreValue::List(list) => {
-                // Convert to JSON array representation
-                let json_list: Vec<serde_json::Value> =
-                    list.into_iter().map(convert_value_to_json).collect();
-                SqlValue::Str {
-                    value: serde_json::to_string(&json_list).unwrap_or_else(|_| "[]".to_string()),
-                }
-            }
-            CoreValue::Point(point) => SqlValue::Str {
-                value: format!("({}, {})", point.x, point.y),
-            },
+            CoreValue::List(list) => SqlValue::SqlList { value: list.into_iter().map(|x| x.into()).collect() },
+            CoreValue::Point(point) => SqlValue::Str { value: format!("({}, {})", point.x, point.y) },
             CoreValue::Null => SqlValue::Null,
         }
-    }
-}
-
-fn convert_value_to_json(value: CoreValue) -> serde_json::Value {
-    use serde_json::Value as JsonValue;
-
-    match value {
-        CoreValue::Bool(b) => JsonValue::Bool(b),
-        CoreValue::I8(n) => JsonValue::Number(serde_json::Number::from(n)),
-        CoreValue::I16(n) => JsonValue::Number(serde_json::Number::from(n)),
-        CoreValue::I32(n) => JsonValue::Number(serde_json::Number::from(n)),
-        CoreValue::I64(n) => JsonValue::Number(serde_json::Number::from(n)),
-        CoreValue::I128(n) => JsonValue::String(n.to_string()),
-        CoreValue::U8(n) => JsonValue::Number(serde_json::Number::from(n)),
-        CoreValue::U16(n) => JsonValue::Number(serde_json::Number::from(n)),
-        CoreValue::U32(n) => JsonValue::Number(serde_json::Number::from(n)),
-        CoreValue::U64(n) => JsonValue::Number(serde_json::Number::from(n)),
-        CoreValue::U128(n) => JsonValue::String(n.to_string()),
-        CoreValue::F32(f) => serde_json::Number::from_f64(f as f64)
-            .map(JsonValue::Number)
-            .unwrap_or(JsonValue::String(f.to_string())),
-        CoreValue::F64(f) => serde_json::Number::from_f64(f)
-            .map(JsonValue::Number)
-            .unwrap_or(JsonValue::String(f.to_string())),
-        CoreValue::Decimal(d) => JsonValue::String(d.to_string()),
-        CoreValue::Str(s) => JsonValue::String(s),
-        CoreValue::Bytea(bytes) => JsonValue::String(format!("\\x{}", hex::encode(bytes))),
-        CoreValue::Inet(ip) => JsonValue::String(ip.to_string()),
-        CoreValue::Date(date) => JsonValue::String(date.format("%Y-%m-%d").to_string()),
-        CoreValue::Timestamp(ts) => {
-            JsonValue::String(ts.format("%Y-%m-%d %H:%M:%S%.3f").to_string())
-        }
-        CoreValue::Time(time) => JsonValue::String(time.format("%H:%M:%S%.3f").to_string()),
-        CoreValue::Interval(interval) => JsonValue::String(format!("{:?}", interval)),
-        CoreValue::Uuid(uuid) => {
-            let uuid = uuid::Uuid::from_u128(uuid);
-            JsonValue::String(uuid.to_string())
-        }
-        CoreValue::Map(map) => {
-            let json_map: serde_json::Map<String, JsonValue> = map
-                .into_iter()
-                .map(|(k, v)| (k, convert_value_to_json(v)))
-                .collect();
-            JsonValue::Object(json_map)
-        }
-        CoreValue::List(list) => {
-            let json_list: Vec<JsonValue> = list.into_iter().map(convert_value_to_json).collect();
-            JsonValue::Array(json_list)
-        }
-        CoreValue::Point(point) => {
-            let mut map = serde_json::Map::new();
-            map.insert(
-                "x".to_string(),
-                JsonValue::Number(serde_json::Number::from_f64(point.x).unwrap()),
-            );
-            map.insert(
-                "y".to_string(),
-                JsonValue::Number(serde_json::Number::from_f64(point.y).unwrap()),
-            );
-            JsonValue::Object(map)
-        }
-        CoreValue::Null => JsonValue::Null,
     }
 }
 
