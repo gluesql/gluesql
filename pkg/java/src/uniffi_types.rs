@@ -27,7 +27,7 @@ pub enum SqlValue {
     Uuid { value: String },
     SqlMap { value: HashMap<String, SqlValue> },
     SqlList { value: Vec<SqlValue> },
-    Point { value: Point },
+    SqlPoint { value: Point },
     Null,
 }
 
@@ -100,7 +100,7 @@ impl From<CoreValue> for SqlValue {
             CoreValue::List(list) => SqlValue::SqlList {
                 value: list.into_iter().map(|x| x.into()).collect(),
             },
-            CoreValue::Point(point) => SqlValue::Point {
+            CoreValue::Point(point) => SqlValue::SqlPoint {
                 value: point.into(),
             },
             CoreValue::Null => SqlValue::Null,
