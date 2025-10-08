@@ -1,8 +1,8 @@
-use std::collections::HashMap;
 use gluesql_core::{
-    data::{Point as CorePoint},
-    prelude::{Payload as CorePayload, PayloadVariable, Value as CoreValue}
+    data::Point as CorePoint,
+    prelude::{Payload as CorePayload, PayloadVariable, Value as CoreValue},
 };
+use std::collections::HashMap;
 
 #[derive(uniffi::Enum)]
 pub enum SqlValue {
@@ -50,25 +50,45 @@ impl From<CoreValue> for SqlValue {
             CoreValue::I16(n) => SqlValue::I16 { value: n },
             CoreValue::I32(n) => SqlValue::I32 { value: n },
             CoreValue::I64(n) => SqlValue::I64 { value: n },
-            CoreValue::I128(n) => SqlValue::BigInt { value: n.to_string() },
+            CoreValue::I128(n) => SqlValue::BigInt {
+                value: n.to_string(),
+            },
             CoreValue::U8(n) => SqlValue::U8 { value: n },
             CoreValue::U16(n) => SqlValue::U16 { value: n },
             CoreValue::U32(n) => SqlValue::U32 { value: n },
-            CoreValue::U64(n) => SqlValue::BigInt { value: n.to_string() },
-            CoreValue::U128(n) => SqlValue::BigInt { value: n.to_string() },
+            CoreValue::U64(n) => SqlValue::BigInt {
+                value: n.to_string(),
+            },
+            CoreValue::U128(n) => SqlValue::BigInt {
+                value: n.to_string(),
+            },
             CoreValue::F32(f) => SqlValue::F32 { value: f },
             CoreValue::F64(f) => SqlValue::F64 { value: f },
-            CoreValue::Decimal(d) => SqlValue::Str { value: d.to_string() },
+            CoreValue::Decimal(d) => SqlValue::Str {
+                value: d.to_string(),
+            },
             CoreValue::Str(s) => SqlValue::Str { value: s },
             CoreValue::Bytea(bytes) => SqlValue::Bytes { value: bytes },
-            CoreValue::Inet(ip) => SqlValue::Inet { value: ip.to_string() },
-            CoreValue::Date(date) => SqlValue::Date { value: date.format("%Y-%m-%d").to_string() },
-            CoreValue::Timestamp(ts) => SqlValue::Timestamp { value: ts.format("%Y-%m-%d %H:%M:%S%.3f").to_string() },
-            CoreValue::Time(time) => SqlValue::Time { value: time.format("%H:%M:%S%.3f").to_string() },
-            CoreValue::Interval(interval) => SqlValue::Interval { value: format!("{:?}", interval) },
+            CoreValue::Inet(ip) => SqlValue::Inet {
+                value: ip.to_string(),
+            },
+            CoreValue::Date(date) => SqlValue::Date {
+                value: date.format("%Y-%m-%d").to_string(),
+            },
+            CoreValue::Timestamp(ts) => SqlValue::Timestamp {
+                value: ts.format("%Y-%m-%d %H:%M:%S%.3f").to_string(),
+            },
+            CoreValue::Time(time) => SqlValue::Time {
+                value: time.format("%H:%M:%S%.3f").to_string(),
+            },
+            CoreValue::Interval(interval) => SqlValue::Interval {
+                value: format!("{:?}", interval),
+            },
             CoreValue::Uuid(uuid) => {
                 let uuid = uuid::Uuid::from_u128(uuid);
-                SqlValue::Uuid { value: uuid.to_string() }
+                SqlValue::Uuid {
+                    value: uuid.to_string(),
+                }
             }
             CoreValue::Map(map) => {
                 let mut m: HashMap<String, SqlValue> = HashMap::new();
@@ -77,8 +97,12 @@ impl From<CoreValue> for SqlValue {
                 });
                 SqlValue::SqlMap { value: m }
             }
-            CoreValue::List(list) => SqlValue::SqlList { value: list.into_iter().map(|x| x.into()).collect() },
-            CoreValue::Point(point) => SqlValue::Point { value: point.into() },
+            CoreValue::List(list) => SqlValue::SqlList {
+                value: list.into_iter().map(|x| x.into()).collect(),
+            },
+            CoreValue::Point(point) => SqlValue::Point {
+                value: point.into(),
+            },
             CoreValue::Null => SqlValue::Null,
         }
     }

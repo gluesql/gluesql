@@ -11,12 +11,8 @@ use crate::error::GlueSQLError;
 pub enum Storage {
     Memory,
     SharedMemory,
-    Json {
-        path: String,
-    },
-    Sled {
-        config: SledConfig,
-    },
+    Json { path: String },
+    Sled { config: SledConfig },
 }
 
 pub enum StorageBackend {
@@ -32,11 +28,9 @@ impl StorageBackend {
             Storage::Memory => {
                 StorageBackend::Memory(Arc::new(tokio::sync::Mutex::new(MemoryStorage::default())))
             }
-            Storage::SharedMemory => {
-                StorageBackend::SharedMemory(Arc::new(
-                    tokio::sync::Mutex::new(SharedMemoryStorage::new()),
-                ))
-            }
+            Storage::SharedMemory => StorageBackend::SharedMemory(Arc::new(
+                tokio::sync::Mutex::new(SharedMemoryStorage::new()),
+            )),
             Storage::Json { path } => {
                 let json_storage = JsonStorage::new(&path)
                     .map_err(|e| GlueSQLError::StorageError(e.to_string()))?;
