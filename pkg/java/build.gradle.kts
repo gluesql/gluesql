@@ -7,6 +7,10 @@ plugins {
 group = "org.gluesql"
 version = "0.1.0"
 
+base {
+    archivesName.set("gluesql")
+}
+
 repositories {
     mavenCentral()
 }

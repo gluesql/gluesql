@@ -1,91 +1,82 @@
-# GlueSQL Java/Kotlin Bindings
+# GlueSQL Java/Kotlin
 
-Java and Kotlin bindings for GlueSQL using UniFFI.
+GlueSQL Java/Kotlin bindings provide a SQL database engine for JVM applications. It works as an embedded database and supports multiple storage backends including memory, JSON file, Sled, and shared memory.
 
-## Requirements
+Learn more at **<https://gluesql.org/docs>**
 
-- Rust 1.70+
-- Java 11+
-- Kotlin 1.9+
-- Gradle 8.0+
+* [Getting Started - Java](https://gluesql.org/docs/dev/getting-started/java)
+* [Getting Started - Kotlin](https://gluesql.org/docs/dev/getting-started/kotlin)
+* [SQL Syntax](https://gluesql.org/docs/dev/sql-syntax/intro)
 
-## Build
+## Installation
 
-```bash
-# Build Rust library and generate bindings
-./gradlew build
+### Gradle
+```kotlin
+dependencies {
+    implementation("org.gluesql:gluesql:0.1.0")
+}
+```
 
-# Run tests
-./gradlew test
+### Maven
+```xml
+<dependency>
+    <groupId>org.gluesql</groupId>
+    <artifactId>gluesql</artifactId>
+    <version>0.1.0</version>
+</dependency>
 ```
 
 ## Usage
 
-### Kotlin
+### Java
 
-```kotlin
-import org.gluesql.*
-import kotlinx.coroutines.runBlocking
+```java
+import org.gluesql.client.java.GlueSQLClient;
+import org.gluesql.storage.StorageFactory;
+import org.gluesql.uniffi.QueryResult;
 
-fun main() = runBlocking {
-    // Create GlueSQL instance with memory storage
-    val glue = GlueSQLWrapper(Storage.Memory)
-    
-    // Create table
-    glue.query("CREATE TABLE users (id INTEGER, name TEXT)")
-    
-    // Insert data
-    glue.query("INSERT INTO users VALUES (1, 'Alice'), (2, 'Bob')")
-    
-    // Query data
-    val results = glue.query("SELECT * FROM users")
-    val selectResult = results[0] as QueryResult.Select
-    
-    println("Labels: ${selectResult.labels}")
-    selectResult.rows.forEach { row ->
-        println("Row: $row")
+public class Example {
+    public static void main(String[] args) throws Exception {
+        GlueSQLClient client = new GlueSQLClient(StorageFactory.memory());
+        
+        client.query("CREATE TABLE User (id INTEGER, name TEXT)");
+        client.query("INSERT INTO User VALUES (1, 'Hello'), (2, 'World')");
+        
+        List<QueryResult> results = client.query("SELECT * FROM User");
+        QueryResult.Select selectResult = (QueryResult.Select) results.get(0);
+        
+        System.out.println(selectResult.getResult().getRows());
     }
 }
 ```
 
-### Java
+### Kotlin
 
-```java
-import org.gluesql.*;
-import java.util.List;
+```kotlin
+import org.gluesql.client.kotlin.GlueSQLClient
+import org.gluesql.storage.StorageFactory
+import kotlinx.coroutines.runBlocking
 
-public class Example {
-    public static void main(String[] args) {
-        GlueSQLWrapper glue = new GlueSQLWrapper(Storage.Memory.INSTANCE);
-        
-        // Use blocking API for Java
-        List<QueryResult> results = glue.queryBlocking("CREATE TABLE test (id INTEGER)");
-        System.out.println("Table created");
-        
-        glue.queryBlocking("INSERT INTO test VALUES (1)");
-        List<QueryResult> selectResults = glue.queryBlocking("SELECT * FROM test");
-        
-        QueryResult.Select selectResult = (QueryResult.Select) selectResults.get(0);
-        System.out.println("Data: " + selectResult.getRows());
-    }
+fun main() = runBlocking {
+    val client = GlueSQLClient(StorageFactory.memory())
+    
+    client.query("CREATE TABLE User (id INTEGER, name TEXT)")
+    client.query("INSERT INTO User VALUES (1, 'Hello'), (2, 'World')")
+    
+    val results = client.query("SELECT * FROM User")
+    val selectResult = results[0] as QueryResult.Select
+    
+    println(selectResult.result.rows)
 }
 ```
 
 ## Storage Types
 
-- `Storage.Memory` - In-memory storage
-- `Storage.Json(path)` - JSON file storage
-- `Storage.Sled(path, config)` - Sled database storage
-- `Storage.SharedMemory(namespace)` - Shared memory storage
+- `StorageFactory.memory()` - In-memory storage
+- `StorageFactory.json(path)` - JSON file storage
+- `StorageFactory.sled(config)` - Sled database storage
+- `StorageFactory.sharedMemory()` - Shared memory storage
 
-## Error Handling
+## License
 
-All GlueSQL errors are wrapped in `GlueSQLException` with the original error details.
-
-```kotlin
-try {
-    glue.query("INVALID SQL")
-} catch (e: GlueSQLException) {
-    println("Error: ${e.message}")
-}
-```
+This project is licensed under the Apache License, Version 2.0 - see the [LICENSE](https://raw.githubusercontent.com/gluesql/gluesql/main/LICENSE) file for details.
