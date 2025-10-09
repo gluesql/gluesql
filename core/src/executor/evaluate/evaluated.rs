@@ -307,12 +307,11 @@ impl<'a> Evaluated<'a> {
             .into());
         }
 
-        let value_result = match self {
-            Evaluated::Value(base) => function::select_arrow_value(base, &selector),
-            _ => {
-                let base = Value::try_from(self.clone())?;
-                function::select_arrow_value(&base, &selector)
-            }
+        let value_result = if let Evaluated::Value(base) = self {
+            function::select_arrow_value(base, &selector)
+        } else {
+            let base = Value::try_from(self.clone())?;
+            function::select_arrow_value(&base, &selector)
         };
 
         match value_result {

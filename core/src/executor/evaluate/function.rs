@@ -1149,8 +1149,7 @@ pub fn select_arrow_value(base: &Value, selector: &Value) -> Result<Value> {
                 Value::U128(value) => usize::try_from(*value).ok(),
                 _ => {
                     return Err(EvaluateError::ArrowSelectorRequiresIntegerOrString(format!(
-                        "{:?}",
-                        selector
+                        "{selector:?}?"
                     ))
                     .into());
                 }

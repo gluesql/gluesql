@@ -1,5 +1,5 @@
 use {
-    crate::*,
+    crate::{row, select, select_with_null, stringify_label, test_case},
     gluesql_core::{
         error::TranslateError,
         executor::EvaluateError,
@@ -23,9 +23,8 @@ test_case!(arrow, {
     )
     .await;
 
-    let nested_map = match Value::parse_json_map(r#"{"role":"admin"}"#).unwrap() {
-        Value::Map(map) => map,
-        _ => unreachable!(),
+    let Value::Map(nested_map) = Value::parse_json_map(r#"{"role":"admin"}"#).unwrap() else {
+        unreachable!()
     };
 
     g.test(
@@ -186,10 +185,7 @@ test_case!(arrow, {
     ];
 
     for (label, selector_expr) in map_typed_selectors {
-        let sql = format!(
-            "SELECT object->{} AS result FROM ArrowSample;",
-            selector_expr
-        );
+        let sql = format!("SELECT object->{selector_expr} AS result FROM ArrowSample;");
         let test_name = format!("Arrow map selector uses {label}");
 
         g.named_test(
@@ -214,10 +210,7 @@ test_case!(arrow, {
     ];
 
     for (label, selector_expr) in typed_selectors {
-        let sql = format!(
-            "SELECT array->{} AS result FROM ArrowSample;",
-            selector_expr
-        );
+        let sql = format!("SELECT array->{selector_expr} AS result FROM ArrowSample;");
         let test_name = format!("Arrow selector uses {label}");
 
         g.named_test(&test_name, sql.as_str(), Ok(select!(result F64; 4.25_f64)))
