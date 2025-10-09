@@ -802,7 +802,7 @@ pub fn last_day<'a>(name: String, expr: Evaluated<'_>) -> ControlFlow<Evaluated<
     };
 
     Continue(Evaluated::Value(Value::Date(
-        date + Months::new(1) - Duration::days(date.day() as i64),
+        date + Months::new(1) - Duration::days(i64::from(date.day())),
     )))
 }
 

@@ -21,11 +21,10 @@ parquet = "43.0.0"
 byteorder = "1.4.3"
 num-traits = "0.2.5"
 rust_decimal = "1.15"
-lazy_static = "1.4.0"
 
 [dev-dependencies]
 test-suite.workspace = true
 uuid = "1"
 
-[lints]
-workspace = true
+[lints.clippy]
+pedantic = "warn"
