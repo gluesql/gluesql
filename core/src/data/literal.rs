@@ -671,6 +671,9 @@ mod tests {
         }
 
         ok!(num(11), num(12), num(8));
+        ok!(Null, num(12), Null);
+        ok!(num(11), Null, Null);
+        ok!(Null, Null, Null);
         err!(text("11"), num(12));
         err!(num(11), text("12"));
         err!(text("11"), text("12"));
