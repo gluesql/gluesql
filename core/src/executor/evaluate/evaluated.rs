@@ -286,27 +286,6 @@ impl<'a> Evaluated<'a> {
             return Ok(Evaluated::Value(Value::Null));
         }
 
-        if !matches!(
-            &selector,
-            Value::Str(_)
-                | Value::I8(_)
-                | Value::I16(_)
-                | Value::I32(_)
-                | Value::I64(_)
-                | Value::I128(_)
-                | Value::U8(_)
-                | Value::U16(_)
-                | Value::U32(_)
-                | Value::U64(_)
-                | Value::U128(_)
-        ) {
-            return Err(EvaluateError::ArrowSelectorRequiresIntegerOrString(format!(
-                "{:?}",
-                selector
-            ))
-            .into());
-        }
-
         let value_result = if let Evaluated::Value(base) = self {
             function::select_arrow_value(base, &selector)
         } else {
