@@ -12,20 +12,20 @@ import java.util.concurrent.CompletableFuture
 
 /**
  * GlueSQL client optimized for Java applications.
- * 
+ *
  * This client provides both synchronous and asynchronous query execution methods
  * tailored for Java development patterns. Use this client when working in pure Java
  * environments or when you prefer Java's concurrency models.
- * 
+ *
  * ## Usage Examples
- * 
+ *
  * ### Synchronous execution (blocking):
  * ```java
  * Storage storage = StorageFactory.memory();
  * GlueSQLClient client = new GlueSQLClient(storage);
  * List<QueryResult> results = client.query("SELECT * FROM users");
  * ```
- * 
+ *
  * ### Asynchronous execution (non-blocking):
  * ```java
  * Storage storage = StorageFactory.json("/path/to/database.json");
@@ -35,7 +35,7 @@ import java.util.concurrent.CompletableFuture
  *     // Process results
  * });
  * ```
- * 
+ *
  * @param storage The storage backend to use for database operations
  * @constructor Creates a new GlueSQL client instance for Java applications
  */
@@ -44,7 +44,7 @@ class GlueSQLClient(storage: Storage) {
 
     /**
      * Execute SQL query synchronously (blocking).
-     * 
+     *
      * This method blocks the current thread until the query completes.
      * Suitable for simple applications or when you need immediate results.
      *
@@ -59,7 +59,7 @@ class GlueSQLClient(storage: Storage) {
 
     /**
      * Execute SQL query asynchronously (non-blocking).
-     * 
+     *
      * This method returns immediately with a CompletableFuture that will
      * complete when the query finishes. Suitable for high-performance
      * applications that need to handle multiple concurrent operations.

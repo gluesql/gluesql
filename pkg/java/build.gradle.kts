@@ -1,7 +1,10 @@
+import org.jetbrains.kotlin.js.inline.clean.removeUnusedImports
+
 plugins {
     kotlin("jvm") version "1.9.20"
     `java-library`
     `maven-publish`
+    id("com.diffplug.spotless") version "6.25.0"
 }
 
 group = "org.gluesql"
@@ -81,6 +84,24 @@ kotlin {
 
 tasks.compileKotlin {
     dependsOn(generateBindings)
+}
+
+
+spotless {
+    java {
+        target("src/**/*.java")
+        googleJavaFormat()
+        removeUnusedImports()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+    
+    kotlin {
+        target("src/**/*.kt")
+        ktlint()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
 }
 
 publishing {

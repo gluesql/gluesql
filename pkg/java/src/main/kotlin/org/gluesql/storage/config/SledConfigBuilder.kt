@@ -26,7 +26,6 @@ import org.gluesql.uniffi.SledConfig
  * ```
  */
 class SledConfigBuilder private constructor(private val path: String) {
-
     private var cacheCapacity: Long = 1024L * 1024L * 1024L // 1gb
     private var mode: Mode = Mode.LOW_SPACE
     private var createNew: Boolean = false
@@ -75,14 +74,15 @@ class SledConfigBuilder private constructor(private val path: String) {
         return this
     }
 
-    fun build() = SledConfig(
-        path,
-        cacheCapacity,
-        mode,
-        createNew,
-        temporary,
-        useCompression,
-        compressionFactor,
-        printProfileOnDrop
-    )
+    fun build() =
+        SledConfig(
+            path,
+            cacheCapacity,
+            mode,
+            createNew,
+            temporary,
+            useCompression,
+            compressionFactor,
+            printProfileOnDrop,
+        )
 }

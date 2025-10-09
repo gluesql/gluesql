@@ -59,6 +59,31 @@ pkg/java/
 ./gradlew test --tests "SqlValueTest"
 ```
 
+## Code Style & Formatting
+
+We use `Spotless` for code formatting with:
+- **Kotlin**: ktlint default conventions
+- **Java**: Google Java Format default style
+- Automatic removal of unused imports and trailing whitespace
+- Files end with newline
+
+```bash
+# Check code formatting
+./gradlew spotlessCheck
+
+# Auto-format all code
+./gradlew spotlessApply
+```
+
+### Pre-commit Formatting
+
+Before committing changes, always run:
+
+```bash
+# Format all code and run tests
+./gradlew spotlessApply test
+```
+
 ## Common Issues
 
 ### Library Not Found Error
