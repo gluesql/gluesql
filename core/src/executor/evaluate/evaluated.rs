@@ -314,10 +314,7 @@ impl<'a> Evaluated<'a> {
             function::select_arrow_value(&base, &selector)
         };
 
-        match value_result {
-            Ok(value) => Ok(Evaluated::Value(value)),
-            Err(err) => Err(err),
-        }
+        value_result.map(Evaluated::Value)
     }
 
     pub fn unary_plus(&self) -> Result<Evaluated<'a>> {
